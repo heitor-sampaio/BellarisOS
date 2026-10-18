@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import '@estetica-os/nucleo/estilos/globals.css'
 import './site.css'
+import { SCRIPT_DO_MOVIMENTO } from '@/lib/movimento'
 
 const TITULO = 'BellarisOS — sistema para clínicas de estética'
 const DESCRICAO = 'Agenda, prontuário, WhatsApp, vendas, financeiro e automações num lugar só. Teste grátis por 14 dias, sem cartão.'
@@ -23,6 +24,10 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, them
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
+      <head>
+        {/* Liga o movimento ANTES de pintar (sem piscar), e o desliga sozinho se a página não carregar. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_DO_MOVIMENTO }} />
+      </head>
       <body>{children}</body>
     </html>
   )

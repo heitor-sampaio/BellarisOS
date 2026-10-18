@@ -1,5 +1,6 @@
 import { connection } from 'next/server'
-import { Topo, Hero, DiaDaClinica, Destaques, EAinda, Seguranca, Perguntas, Final, Rodape } from '@/components/conteudo'
+import { Movimento } from '@/components/movimento'
+import { Topo, Hero, Faixa, DiaDaClinica, Destaques, EAinda, Seguranca, Perguntas, Final, Rodape } from '@/components/conteudo'
 import { Precos } from '@/components/precos'
 import { lerPlanos } from '@/lib/planos'
 import { linksDaClinica, enderecoDoSite } from '@/lib/links'
@@ -36,6 +37,7 @@ export default async function Inicio() {
       <Topo links={links} />
       <main>
         <Hero links={links} />
+        <Faixa />
         <DiaDaClinica />
         <Destaques />
         <EAinda />
@@ -45,6 +47,7 @@ export default async function Inicio() {
         <Final links={links} />
       </main>
       <Rodape links={links} />
+      <Movimento />
     </div>
   )
 }

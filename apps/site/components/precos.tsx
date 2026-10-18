@@ -12,7 +12,7 @@ export function Precos({ planos, comecar }: { planos: PlanoDoSite[] | null; come
   return (
     <section id="precos" className="site-secao" aria-labelledby="precos-titulo">
       <div className="site-container">
-        <div className="site-cabeca site-cabeca-centro">
+        <div className="site-cabeca site-cabeca-centro" data-revelar>
           <span className="site-overline">✦ Preços</span>
           <h2 id="precos-titulo" className="site-h2">Um preço por mês, do tamanho da sua clínica.</h2>
           <p className="site-lead">Comece com 14 dias grátis, com tudo liberado. Sem cartão de crédito.</p>
@@ -41,7 +41,8 @@ function Planos({ planos, comecar }: { planos: PlanoDoSite[]; comecar: string })
         {cartoes.map((c, i) => {
           const realce = i === destaque
           return (
-            <article key={c.nome} className={`site-plano${realce ? ' site-plano-destaque' : ''}`}>
+            <article key={c.nome} className={`site-plano${realce ? ' site-plano-destaque' : ''}`}
+              data-revelar style={{ '--ordem': i } as React.CSSProperties}>
               {realce && <span className="site-plano-selo">Copilot incluído</span>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <h3 className="site-h3">{c.nome}</h3>
@@ -69,7 +70,7 @@ function Planos({ planos, comecar }: { planos: PlanoDoSite[]; comecar: string })
         As conversas do WhatsApp oficial têm a tarifa da Meta, cobrada pela Meta direto na conta da clínica.
       </p>
 
-      <details className="site-comparar">
+      <details className="site-comparar" data-revelar>
         <summary>Comparar tudo o que cada plano inclui <ChevronDown size={18} aria-hidden="true" /></summary>
         <div className="site-tabela-rolagem">
           <table className="site-tabela">

@@ -1,7 +1,8 @@
 import {
-  Check, Plus, Package, Gift, BarChart3, ShieldCheck, Search, FileSpreadsheet, Megaphone, Building2,
+  Check, Plus, Package, Gift, BarChart3, ShieldCheck, Search, FileSpreadsheet, Megaphone, Building2, ArrowRight,
 } from 'lucide-react'
 import { Navegador, Celular } from '@/components/molduras'
+import { AvisosDoHero, DemoConversa, DemoCopilot } from '@/components/demos'
 import { TELAS, type Tela } from '@/lib/telas'
 
 /**
@@ -13,6 +14,14 @@ import { TELAS, type Tela } from '@/lib/telas'
  */
 
 type Links = { comecar: string; entrar: string; privacidade: string }
+
+/**
+ * `data-revelar` marca o que ENTRA quando chega na tela (o valor é a direção:
+ * vazio sobe, `esquerda`/`direita` vêm do lado, `zoom` cresce); `--ordem`
+ * escalona os vizinhos. Quem liga é `components/movimento.tsx` — sem ele, a
+ * marca não faz nada e a página fica como sempre foi.
+ */
+const ordem = (n: number) => ({ '--ordem': n }) as React.CSSProperties
 
 export function Topo({ links }: { links: Links }) {
   return (
@@ -38,24 +47,54 @@ export function Hero({ links }: { links: Links }) {
     <section id="inicio" className="site-hero">
       <div className="site-container">
         <div className="site-hero-texto">
-          <span className="site-overline">✦ Sistema para clínicas de estética</span>
-          <h1 className="site-h1">A clínica inteira num lugar só.</h1>
-          <p className="site-lead" style={{ maxWidth: 640 }}>
+          <span className="site-overline" data-revelar style={ordem(0)}>✦ Sistema para clínicas de estética</span>
+          <h1 className="site-h1" data-revelar style={ordem(1)}>A clínica inteira <span className="site-h1-marca">num lugar só.</span></h1>
+          <p className="site-lead" data-revelar style={{ maxWidth: 640, ...ordem(2) }}>
             Da primeira mensagem no WhatsApp ao retorno da cliente: agenda, prontuário, vendas,
             financeiro e atendimento falando entre si — sem planilha e sem cinco sistemas abertos.
           </p>
-          <div className="site-hero-chamadas">
-            <a className="site-botao site-botao-primario" href={links.comecar}>Começar grátis</a>
+          <div className="site-hero-chamadas" data-revelar style={ordem(3)}>
+            <a className="site-botao site-botao-primario" href={links.comecar}>
+              Começar grátis <ArrowRight size={18} className="site-botao-seta" aria-hidden="true" />
+            </a>
             <a className="site-botao site-botao-secundario" href="#precos">Ver os preços</a>
           </div>
-          <p className="site-hero-nota">14 dias com tudo liberado. Sem cartão de crédito.</p>
+          <p className="site-hero-nota" data-revelar style={ordem(4)}>14 dias com tudo liberado. Sem cartão de crédito.</p>
         </div>
-        <div className="site-hero-visual">
-          <Navegador tela={TELAS.agenda} prioridade tamanhos="(min-width: 1100px) 1000px, 100vw" />
-          <Celular tela={TELAS.inboxCelular} className="site-hero-celular" prioridade />
+        <div className="site-hero-visual" data-revelar="zoom" style={ordem(5)}>
+          {/* O palco inclina a tela e a endireita conforme a página rola. */}
+          <div className="site-hero-palco">
+            <Navegador tela={TELAS.agenda} prioridade tamanhos="(min-width: 1100px) 1000px, 100vw" />
+            <div className="site-hero-celular">
+              <Celular tela={TELAS.inboxCelular} prioridade />
+            </div>
+          </div>
+          <AvisosDoHero />
         </div>
       </div>
     </section>
+  )
+}
+
+const FAIXA = [
+  'Agenda', 'WhatsApp', 'Prontuário', 'Injetáveis', 'Pacotes', 'Financeiro', 'Comissões', 'Estoque',
+  'Fidelidade', 'Automações', 'Termos assinados', 'Copilot', 'Portal da cliente', 'Relatórios',
+]
+
+/**
+ * A faixa que corre embaixo do hero. É decoração (cada item está descrito na
+ * página): vai duas vezes, para a volta não ter emenda, e fica parada para
+ * quem pede menos movimento.
+ */
+export function Faixa() {
+  const itens = FAIXA.map(f => <span key={f} className="site-faixa-item">{f}<i>✦</i></span>)
+  return (
+    <div className="site-faixa" aria-hidden="true">
+      <div className="site-faixa-trilho">
+        <span className="site-faixa-grupo">{itens}</span>
+        <span className="site-faixa-grupo">{itens}</span>
+      </div>
+    </div>
   )
 }
 
@@ -71,13 +110,14 @@ export function DiaDaClinica() {
   return (
     <section className="site-secao" aria-labelledby="dia-titulo">
       <div className="site-container">
-        <div className="site-cabeca">
+        <div className="site-cabeca" data-revelar>
           <span className="site-overline">✦ O dia da clínica</span>
           <h2 id="dia-titulo" className="site-h2">Uma cliente, do primeiro “oi” ao retorno — sem passar a limpo.</h2>
         </div>
+        {/* Com movimento, a vez passa de passo em passo (o preenchido em rosé). */}
         <ol className="site-passos" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {PASSOS.map((p, i) => (
-            <li key={p.titulo} className="site-passo">
+            <li key={p.titulo} className="site-passo" data-revelar style={ordem(i)}>
               <span className="site-passo-numero" aria-hidden="true">{i + 1}</span>
               <h3 className="site-h3">{p.titulo}</h3>
               <p>{p.texto}</p>
@@ -96,6 +136,8 @@ interface Destaque {
   itens: { forte: string; resto: string }[]
   tela: Tela
   celular?: boolean
+  /** A demonstração viva que flutua sobre a tela. */
+  demo?: 'conversa' | 'copilot'
 }
 
 const DESTAQUES: Destaque[] = [
@@ -107,7 +149,7 @@ const DESTAQUES: Destaque[] = [
       { forte: 'Cada conversa vira oportunidade', resto: ' num funil de vendas, com responsável e etapa.' },
       { forte: 'Modelos aprovados pela Meta', resto: ' para lembrete, confirmação e campanha.' },
     ],
-    tela: TELAS.inbox,
+    tela: TELAS.inbox, demo: 'conversa',
   },
   {
     overline: 'Agenda e atendimento', titulo: 'A agenda que a recepção entende de primeira',
@@ -164,7 +206,7 @@ const DESTAQUES: Destaque[] = [
       { forte: 'Consulta e opera', resto: ' agenda, clientes, vendas, financeiro e estoque, com as permissões de quem pede.' },
       { forte: 'Nada clínico', resto: ' vai para a inteligência artificial: o prontuário fica no sistema.' },
     ],
-    tela: TELAS.copilot,
+    tela: TELAS.copilot, demo: 'copilot',
   },
   {
     overline: 'Portal da cliente', titulo: 'A cliente agenda sozinha — e vê o que já fez',
@@ -183,7 +225,7 @@ export function Destaques() {
       <div className="site-container site-destaques">
         {DESTAQUES.map((d, i) => (
           <article key={d.titulo} className={`site-destaque${i % 2 ? ' site-destaque-invertido' : ''}`}>
-            <div className="site-destaque-texto">
+            <div className="site-destaque-texto" data-revelar>
               <span className="site-overline">✦ {d.overline}</span>
               <h2 className="site-h2">{d.titulo}</h2>
               <p className="site-lead">{d.texto}</p>
@@ -193,8 +235,12 @@ export function Destaques() {
                 ))}
               </ul>
             </div>
-            <div className="site-destaque-visual">
+            {/* A tela vem do lado em que fica: do outro lado do texto. */}
+            <div className={`site-destaque-visual${d.demo ? ' site-destaque-com-demo' : ''}`}
+              data-revelar={i % 2 ? 'esquerda' : 'direita'} style={ordem(1)}>
               {d.celular ? <Celular tela={d.tela} className="site-destaque-celular" /> : <Navegador tela={d.tela} />}
+              {d.demo === 'conversa' && <DemoConversa />}
+              {d.demo === 'copilot' && <DemoCopilot />}
             </div>
           </article>
         ))}
@@ -218,13 +264,13 @@ export function EAinda() {
   return (
     <section className="site-secao" aria-labelledby="ainda-titulo">
       <div className="site-container">
-        <div className="site-cabeca">
+        <div className="site-cabeca" data-revelar>
           <span className="site-overline">✦ E ainda</span>
           <h2 id="ainda-titulo" className="site-h2">O resto do dia também mora aqui.</h2>
         </div>
         <div className="site-grade">
-          {ITENS.map(({ icone: Icone, titulo, texto }) => (
-            <div key={titulo} className="site-item">
+          {ITENS.map(({ icone: Icone, titulo, texto }, i) => (
+            <div key={titulo} className="site-item" data-revelar data-luz style={ordem(i % 4)}>
               <span className="site-item-icone" aria-hidden="true"><Icone size={19} /></span>
               <h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>{titulo}</h3>
               <p>{texto}</p>
@@ -240,7 +286,7 @@ export function Seguranca() {
   return (
     <section className="site-secao" aria-labelledby="seguranca-titulo">
       <div className="site-container">
-        <div className="site-seguranca">
+        <div className="site-seguranca" data-revelar>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <span className="site-overline">✦ Segurança e LGPD</span>
             <h2 id="seguranca-titulo" className="site-h2">Dado de saúde com o cuidado que ele pede.</h2>
@@ -271,13 +317,13 @@ export function Perguntas() {
   return (
     <section id="perguntas" className="site-secao" aria-labelledby="perguntas-titulo">
       <div className="site-container">
-        <div className="site-cabeca site-cabeca-centro">
+        <div className="site-cabeca site-cabeca-centro" data-revelar>
           <span className="site-overline">✦ Perguntas</span>
           <h2 id="perguntas-titulo" className="site-h2">O que costumam perguntar</h2>
         </div>
         <div className="site-perguntas">
-          {PERGUNTAS.map(q => (
-            <details key={q.p} className="site-pergunta">
+          {PERGUNTAS.map((q, i) => (
+            <details key={q.p} className="site-pergunta" data-revelar style={ordem(i)}>
               <summary>{q.p}<Plus size={18} aria-hidden="true" /></summary>
               <p>{q.r}</p>
             </details>
@@ -292,7 +338,7 @@ export function Final({ links }: { links: Links }) {
   return (
     <section className="site-secao" aria-labelledby="final-titulo">
       <div className="site-container">
-        <div className="site-final">
+        <div className="site-final" data-revelar="zoom">
           <h2 id="final-titulo" className="site-h2">Teste na sua clínica, com a sua agenda.</h2>
           <p className="site-lead">14 dias com tudo liberado. Se não fizer sentido, é só não continuar.</p>
           <a className="site-botao site-botao-claro" href={links.comecar}>Começar grátis</a>

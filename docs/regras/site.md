@@ -54,6 +54,37 @@ própria clínica, tudo liberado, sem cartão).
 - **O teste**: `apps/web/e2e-site/site.spec.ts` (`playwright.site.config.ts`)
   e o vitest de `apps/site/tests/`.
 
+## O movimento (2026-10-18)
+
+O Heitor pediu o site "mais atraente e dinâmico". O sistema proíbe animação de
+entrada (o fade-up que prendia a opacidade, na skill `/lumiere-design`) e
+gradiente de fundo; **o site é a exceção às duas**, só ele: é vitrine, não
+ferramenta de uso o dia inteiro. O resto do design system vale igual (tokens,
+fonte, raios, sombras de quem flutua).
+
+- **A página nasce visível e parada.** Tudo que mexe vive sob a classe
+  `site-movimento` no `<html>`, que o script do `<head>`
+  (`lib/movimento.ts`, `SCRIPT_DO_MOVIMENTO`) liga antes de pintar — só para
+  quem NÃO pediu menos movimento ao aparelho — e tira sozinho em 3,5 s se o
+  JavaScript da página não marcar `data-movimento="vivo"`. Sem JS, com o
+  script bloqueado ou com `prefers-reduced-motion`, a página é a de antes.
+- **`data-revelar`** marca o que entra quando chega na tela (valor =
+  direção: vazio, `esquerda`, `direita`, `zoom`; `--ordem` escalona). A
+  entrada é ANIMAÇÃO, não transição: o que reage ao mouse usa a propriedade
+  `translate`, que não briga com o `transform` da entrada.
+- **As demonstrações** (`components/demos.tsx`: os avisos do hero, a conversa
+  do WhatsApp, o Copilot) contam a mesma história das telas fotografadas da
+  Clínica Aurora — Mariana Costa, Dra. Ana Lima, quinta às 10h. São
+  `aria-hidden` (o texto alternativo das telas já diz o que mostram) e andam
+  por `useSequencia` só enquanto estão na tela. Sem movimento, ficam paradas:
+  as conversas no FIM (inteiras), os avisos no primeiro.
+- O que é contínuo (a faixa, o brilho do hero, a vez dos passos, o celular
+  flutuando) é `infinite` só sob a classe. Durações, curvas e tamanhos são
+  token em `app/site.css` (`--site-mov-*`, `--site-curva*`, `--site-demo-*`).
+- A prova é `e2e-site/movimento.spec.ts`: com movimento entra e anda; sem JS,
+  com o script bloqueado e com movimento reduzido, nada fica invisível e
+  nenhuma animação infinita roda.
+
 ## O texto
 
 - **Nada inventado**: sem depoimento, cliente, logo de parceiro ou número de
@@ -77,4 +108,8 @@ própria clínica, tudo liberado, sem cartão).
 ❌ Foto de tela com dado de cliente real (é a Clínica Aurora, da câmera)
 ❌ Tamanho de fonte à mão no site (é token em app/site.css)
 ❌ Spec do site ou da câmera dentro de e2e/ (a completa não sobe o site)
+❌ Esconder conteúdo (opacity 0) fora de .site-movimento — sem JS ou com o script bloqueado, ficaria invisível
+❌ Animação infinita fora de .site-movimento (quem pede menos movimento a veria)
+❌ Demonstração que conta o que as telas não mostram (é a história da Clínica Aurora, não promessa nova)
+❌ Levar a exceção do movimento ou do gradiente de fundo para a clínica (lá vale a skill /lumiere-design)
 ```

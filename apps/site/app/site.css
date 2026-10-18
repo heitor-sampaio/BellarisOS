@@ -22,6 +22,21 @@
   --site-margem: 16px;
   --site-secao: clamp(64px, 10vw, 120px);
   --site-topo-h: 64px;
+
+  /* O movimento (2026-10-18): durações, curvas e distâncias, como token. */
+  --site-mov-rapido: 220ms;
+  --site-mov-lento: 900ms;
+  --site-mov-escalonar: 90ms;
+  --site-curva: cubic-bezier(.16, 1, .3, 1);
+  --site-curva-mola: cubic-bezier(.34, 1.56, .64, 1);
+  --site-revelar-distancia: 28px;
+  --site-ciclo-passos: 12.5s;
+  --site-faixa-volta: 48s;
+  --site-demo-largura: 310px;
+  --site-demo-altura: 272px;
+  --site-demo-fala: 13.5px;
+  --site-aviso-largura: 320px;
+  --site-faixa: clamp(18px, 2.4vw, 24px);
 }
 
 @media (min-width: 720px) {
@@ -79,7 +94,7 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 /* No celular, a tela do computador vira miniatura ilegível: fica a do celular. */
 @media (max-width: 559px) {
   .site-hero-visual { padding-right: 0; }
-  .site-hero-visual > .site-navegador { display: none; }
+  .site-hero-palco > .site-navegador { display: none; }
   .site-hero-celular { position: static; width: min(260px, 72vw); margin: 0 auto; }
 }
 
@@ -186,3 +201,233 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 .site-rodape a { color: var(--text-soft); font-size: var(--site-pequeno); font-weight: var(--weight-semibold); text-decoration: none; }
 .site-rodape a:hover { color: var(--brand); }
 .site-rodape small { color: var(--text-faint); font-size: var(--text-xs-sz); }
+
+/* ============================================================
+   O MOVIMENTO (2026-10-18)
+   Exceção do site à regra do sistema ("sem animação de entrada",
+   ver docs/regras/site.md): uma página de apresentação precisa de
+   vida. O que mexe vale só sob `.site-movimento`, que o script do
+   <head> liga (lib/movimento.ts) e tira sozinho se a página não
+   carregar. Sem a classe, a página é a de antes — inteira e parada.
+   ============================================================ */
+
+/* ─── Entrar quando chega na tela ─── */
+[data-revelar] { --revelar-de: translateY(var(--site-revelar-distancia)); }
+[data-revelar="esquerda"] { --revelar-de: translateX(calc(var(--site-revelar-distancia) * -1.5)); }
+[data-revelar="direita"] { --revelar-de: translateX(calc(var(--site-revelar-distancia) * 1.5)); }
+[data-revelar="zoom"] { --revelar-de: translateY(var(--site-revelar-distancia)) scale(.96); }
+.site-movimento [data-revelar]:not(.revelado) { opacity: 0; }
+/* Animação, não transição: o que reage ao mouse usa `translate`, que não
+   briga com o `transform` da entrada nem herda o atraso dela. */
+.site-movimento [data-revelar].revelado {
+  animation: site-entra var(--site-mov-lento) var(--site-curva) both;
+  animation-delay: calc(var(--ordem, 0) * var(--site-mov-escalonar));
+}
+@keyframes site-entra { from { opacity: 0; transform: var(--revelar-de); } to { opacity: 1; transform: none; } }
+
+/* ─── O topo ganha a borda quando a página rola ─── */
+@supports (animation-timeline: scroll()) {
+  .site-topo { animation: site-topo-borda linear both; animation-timeline: scroll(root); animation-range: 0 120px; }
+}
+@keyframes site-topo-borda { to { border-bottom-color: var(--border); } }
+
+/* ─── O hero ─── */
+.site-h1-marca { color: var(--brand); background: linear-gradient(var(--brand-3), var(--brand-3)) no-repeat 0 94% / 100% .1em; }
+.site-movimento .site-h1-marca { background-size: 0% .1em; transition: background-size 1100ms var(--site-curva) 700ms; }
+.site-movimento .revelado .site-h1-marca { background-size: 100% .1em; }
+
+.site-botao-seta { transition: translate var(--site-mov-rapido) var(--site-curva-mola); }
+.site-movimento .site-botao:hover .site-botao-seta { translate: 4px 0; }
+
+/* O brilho rosé atrás das telas: parado, é uma luz; com movimento, respira. */
+.site-hero-visual { isolation: isolate; }
+.site-hero-visual::before {
+  content: ""; position: absolute; z-index: -1; inset: 6% -4% -8% -4%; pointer-events: none;
+  background:
+    radial-gradient(50% 55% at 28% 38%, color-mix(in srgb, var(--brand-3) 75%, transparent), transparent 70%),
+    radial-gradient(45% 50% at 74% 62%, color-mix(in srgb, var(--brand-2) 50%, transparent), transparent 70%);
+  filter: blur(48px);
+}
+.site-movimento .site-hero-visual::before { animation: site-respira 14s ease-in-out infinite alternate; }
+@keyframes site-respira {
+  from { transform: translate3d(-2%, 0, 0) scale(1); }
+  to { transform: translate3d(3%, -3%, 0) scale(1.08); }
+}
+
+/* A tela chega inclinada e se endireita conforme a página rola. */
+.site-hero-palco { position: relative; transform-origin: 50% 0; }
+@supports (animation-timeline: scroll()) {
+  .site-movimento .site-hero-palco { animation: site-endireita linear both; animation-timeline: scroll(root); animation-range: 0 520px; }
+}
+@keyframes site-endireita {
+  from { transform: perspective(1800px) rotateX(16deg) scale(.95); }
+  to { transform: none; }
+}
+.site-movimento .site-hero-celular .site-celular { animation: site-flutua 7s ease-in-out infinite; }
+@keyframes site-flutua { 50% { transform: translateY(-12px) rotate(-1deg); } }
+
+/* Os avisos ao vivo sobre a agenda: um de cada vez, empilhados no mesmo lugar. */
+.site-avisos { position: absolute; left: clamp(-28px, -2vw, -8px); top: 26%; width: min(var(--site-aviso-largura), 72%); display: grid; z-index: 2; }
+.site-aviso {
+  grid-area: 1 / 1; display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card-token);
+  box-shadow: var(--shadow-popover); padding: 12px 14px;
+  opacity: 0; visibility: hidden; transform: translateY(14px) scale(.97);
+  transition: opacity 500ms var(--site-curva), transform 700ms var(--site-curva), visibility 0s 700ms;
+}
+.site-aviso.ativo { opacity: 1; visibility: visible; transform: none; transition-delay: 160ms, 160ms, 0s; }
+.site-aviso-icone { width: 38px; height: 38px; border-radius: var(--radius-field-token); display: flex; align-items: center; justify-content: center; background: var(--brand-soft); color: var(--brand); }
+.site-aviso-whatsapp { background: var(--success-soft); color: var(--success); }
+.site-aviso-corpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.site-aviso-rotulo { font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: var(--tracking-overline); color: var(--text-muted); }
+.site-aviso-rotulo i { font-style: normal; font-weight: var(--weight-semibold); text-transform: none; letter-spacing: 0; color: var(--text-faint); margin-left: 4px; }
+.site-aviso strong { font-size: var(--site-pequeno); font-weight: var(--weight-extrabold); }
+.site-aviso-texto { font-size: var(--text-xs-sz); color: var(--text-soft); line-height: var(--leading-snug); }
+@media (max-width: 559px) {
+  .site-avisos { position: relative; left: auto; top: auto; width: min(var(--site-aviso-largura), 90%); margin: -56px auto 0; }
+}
+
+/* ─── A faixa que corre embaixo do hero ─── */
+.site-faixa {
+  overflow: hidden; padding: 18px 0; border-block: 1px solid var(--border); background: var(--surface);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.site-faixa-trilho, .site-faixa-grupo { display: flex; width: max-content; }
+.site-faixa-item { display: inline-flex; align-items: center; gap: 28px; padding-right: 28px; font-size: var(--site-faixa); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); color: var(--text-soft); white-space: nowrap; }
+.site-faixa-item i { font-style: normal; color: var(--brand); font-size: .7em; }
+.site-movimento .site-faixa-trilho { animation: site-desliza var(--site-faixa-volta) linear infinite; }
+.site-movimento .site-faixa:hover .site-faixa-trilho { animation-play-state: paused; }
+@keyframes site-desliza { to { transform: translateX(-50%); } }
+
+/* ─── O dia da clínica: a vez passa de passo em passo ─── */
+.site-movimento .site-passo.revelado {
+  animation-name: site-entra, site-passo-vez;
+  animation-duration: var(--site-mov-lento), var(--site-ciclo-passos);
+  animation-timing-function: var(--site-curva), ease-in-out;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: both, none;
+  animation-delay: calc(var(--ordem, 0) * var(--site-mov-escalonar)), calc(var(--ordem, 0) * var(--site-ciclo-passos) / 5);
+}
+.site-movimento .site-passo:last-child .site-passo-numero { background: var(--brand-soft); color: var(--brand); }
+.site-movimento .site-passo.revelado .site-passo-numero {
+  animation: site-numero-vez var(--site-ciclo-passos) ease-in-out infinite;
+  animation-delay: calc(var(--ordem, 0) * var(--site-ciclo-passos) / 5);
+}
+@keyframes site-passo-vez {
+  0%, 22%, 100% { border-color: var(--border); }
+  4%, 18% { border-color: var(--brand-soft-border); }
+}
+@keyframes site-numero-vez {
+  0%, 22%, 100% { background: var(--brand-soft); color: var(--brand); box-shadow: none; transform: none; }
+  4%, 18% { background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-brand-btn); transform: scale(1.12); }
+}
+
+/* ─── Os destaques: a tela sobe um pouco no mouse ─── */
+.site-destaque-visual .site-navegador { transition: translate var(--site-mov-rapido) var(--site-curva); }
+@media (hover: hover) {
+  .site-movimento .site-destaque-visual:hover .site-navegador { translate: 0 -6px; }
+}
+
+/* As demonstrações que flutuam sobre a tela. */
+.site-destaque-com-demo { padding-bottom: 48px; }
+.site-demo {
+  position: absolute; bottom: 0; left: clamp(-32px, -2.5vw, -8px); z-index: 2;
+  width: min(var(--site-demo-largura), 78%);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card-token);
+  box-shadow: var(--shadow-overlay); overflow: hidden; display: flex; flex-direction: column;
+  font-size: var(--site-demo-fala);
+}
+.site-destaque-invertido .site-demo { left: auto; right: clamp(-32px, -2.5vw, -8px); }
+@media (max-width: 719px) {
+  .site-destaque-com-demo { padding-bottom: 0; }
+  .site-demo, .site-destaque-invertido .site-demo { position: relative; left: auto; right: auto; bottom: auto; margin: -64px 0 0 auto; width: min(var(--site-demo-largura), 92%); }
+}
+.site-demo-topo { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--hairline); }
+.site-demo-avatar { width: 32px; height: 32px; border-radius: var(--radius-full); background: var(--brand-soft); color: var(--brand); font-weight: var(--weight-extrabold); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.site-demo-avatar-copilot { background: var(--gradient-brand); color: var(--on-brand); }
+.site-demo-quem { display: flex; flex-direction: column; line-height: var(--leading-snug); font-size: var(--text-xs-sz); }
+.site-demo-quem strong { font-size: var(--site-pequeno); font-weight: var(--weight-extrabold); }
+.site-demo-canal { color: var(--success); font-weight: var(--weight-bold); }
+/* As falas descem do fundo, como num chat; o que sobe demais some num esfumado. */
+.site-demo-falas {
+  height: var(--site-demo-altura); padding: 14px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px;
+  background: var(--bg-app); overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 36px);
+  mask-image: linear-gradient(to bottom, transparent, #000 36px);
+}
+.site-demo-fala { max-width: 86%; padding: 9px 12px; border-radius: var(--radius-card-token); line-height: var(--leading-snug); display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.site-demo-ela { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; transform-origin: 0 100%; }
+.site-demo-clinica { align-self: flex-end; background: var(--brand); color: var(--on-brand); border-bottom-right-radius: 4px; font-weight: var(--weight-semibold); transform-origin: 100% 100%; }
+.site-demo-etiqueta { align-self: flex-start; padding: 2px 8px; border-radius: var(--radius-chip-token); background: var(--warning-soft); color: var(--warning); font-size: var(--text-2xs); font-weight: var(--weight-bold); }
+.site-demo-evento { align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--radius-chip-token); background: var(--success-soft); color: var(--success); font-size: var(--text-xs-sz); font-weight: var(--weight-bold); flex-shrink: 0; }
+.site-demo-confirma { align-self: flex-start; width: 88%; background: var(--surface); border: 1px solid var(--brand-soft-border); border-radius: var(--radius-card-token); padding: 12px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.site-demo-confirma-titulo { font-weight: var(--weight-extrabold); margin-bottom: 4px; }
+.site-demo-confirma-botoes { display: flex; gap: 6px; margin-top: 8px; }
+.site-demo-botao { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: var(--radius-field-token); background: var(--brand); color: var(--on-brand); font-weight: var(--weight-bold); font-size: var(--text-xs-sz); transition: background var(--site-mov-rapido) ease, transform var(--site-mov-rapido) var(--site-curva-mola); }
+.site-demo-botao.apertado { background: var(--brand-deep); transform: scale(.94); }
+.site-demo-botao-neutro { background: var(--surface); color: var(--text-soft); border: 1px solid var(--border); }
+.site-demo-campo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-field-token); color: var(--text); font-weight: var(--weight-semibold); white-space: nowrap; overflow: hidden; }
+.site-demo-campo svg { flex-shrink: 0; color: var(--brand); }
+.site-demo-campo .site-muted { font-weight: var(--weight-medium); }
+.site-demo-digitado { overflow: hidden; }
+.site-demo-digitando { flex-direction: row; gap: 4px; padding: 12px 14px; }
+.site-demo-digitando i { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; opacity: .45; }
+.site-demo-ela.site-demo-digitando { color: var(--text-muted); }
+
+.site-movimento .site-demo-fala, .site-movimento .site-demo-evento, .site-movimento .site-demo-confirma { animation: site-fala-entra 520ms var(--site-curva-mola) both; }
+@keyframes site-fala-entra { from { opacity: 0; transform: translateY(10px) scale(.92); } }
+.site-movimento .site-demo-digitando i { animation: site-pula 1s ease-in-out infinite; }
+.site-movimento .site-demo-digitando i:nth-child(2) { animation-delay: 150ms; }
+.site-movimento .site-demo-digitando i:nth-child(3) { animation-delay: 300ms; }
+@keyframes site-pula { 0%, 60%, 100% { transform: none; opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+/* O texto do campo aparece da esquerda para a direita, como quem digita. */
+.site-movimento .site-demo-digitado { animation: site-digita 1500ms steps(36, end) both; }
+@keyframes site-digita { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* ─── E ainda: a luz que segue o mouse e o ícone que responde ─── */
+.site-item { transition: translate var(--site-mov-rapido) var(--site-curva), border-color var(--site-mov-rapido) ease; }
+.site-item-icone { transition: transform var(--site-mov-rapido) var(--site-curva-mola), background-color var(--site-mov-rapido) ease, color var(--site-mov-rapido) ease; }
+@media (hover: hover) {
+  .site-item:hover {
+    border-color: var(--brand-soft-border);
+    background: radial-gradient(260px circle at var(--luz-x, 50%) var(--luz-y, 0%), var(--brand-soft), transparent 70%), var(--surface);
+  }
+  .site-item:hover .site-item-icone { background: var(--brand); color: var(--on-brand); }
+  .site-movimento .site-item:hover { translate: 0 -4px; }
+  .site-movimento .site-item:hover .site-item-icone { transform: rotate(-8deg) scale(1.1); }
+}
+
+/* ─── Preços ─── */
+.site-plano { transition: translate var(--site-mov-rapido) var(--site-curva), border-color var(--site-mov-rapido) ease; }
+@media (hover: hover) {
+  .site-movimento .site-plano:hover { translate: 0 -6px; }
+  .site-plano:not(.site-plano-destaque):hover { border-color: var(--brand-soft-border); }
+}
+/* O plano em destaque ganha um brilho que passa de tempos em tempos. */
+.site-plano-destaque { position: relative; overflow: hidden; isolation: isolate; }
+.site-plano-destaque::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--on-brand) 20%, transparent) 50%, transparent 65%);
+  transform: translateX(-100%);
+}
+.site-movimento .site-plano-destaque::after { animation: site-brilho 7s ease-in-out 1.2s infinite; }
+@keyframes site-brilho { 0% { transform: translateX(-100%); } 22%, 100% { transform: translateX(100%); } }
+
+/* As perguntas e o comparativo abrem deslizando (onde o navegador sabe). */
+.site-movimento .site-pergunta, .site-movimento .site-comparar { interpolate-size: allow-keywords; }
+.site-movimento .site-pergunta::details-content, .site-movimento .site-comparar::details-content {
+  block-size: 0; overflow: hidden;
+  transition: block-size 420ms var(--site-curva), content-visibility 420ms allow-discrete;
+}
+.site-movimento .site-pergunta[open]::details-content, .site-movimento .site-comparar[open]::details-content { block-size: auto; }
+.site-comparar summary svg { transition: transform var(--site-mov-rapido) var(--site-curva); }
+
+/* ─── A chamada final: a luz passeia dentro do rosé ─── */
+.site-final { position: relative; overflow: hidden; isolation: isolate; }
+.site-final::before {
+  content: ""; position: absolute; z-index: -1; width: 70%; aspect-ratio: 1; left: -10%; top: -40%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--on-brand) 22%, transparent), transparent);
+}
+.site-movimento .site-final::before { animation: site-passeia 16s ease-in-out infinite alternate; }
+@keyframes site-passeia { to { transform: translate(85%, 70%); } }

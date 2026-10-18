@@ -142,7 +142,9 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   tudo registrado "via suporte" e visível à clínica (Configurações → Suporte).
 - **Site** (app próprio, bellarisos.com — 2026-10-17): a página de apresentação,
   com os preços dos planos do sistema, telas reais e o teste grátis de 14 dias.
-  O `/` da clínica só leva ao login ou ao portal.
+  Desde 2026-10-18 com movimento: as seções entram ao rolar, e as demonstrações
+  (avisos do hero, WhatsApp, Copilot) se mexem sozinhas. O `/` da clínica só
+  leva ao login ou ao portal.
 - **Administração do sistema** (app próprio, admin.bellarisos.com, só ADMIN da plataforma): painel do
   negócio (MRR, redes por situação), redes (criar, editar, desligar), planos,
   assinatura e cobrança pelo **Asaas** (webhook + regras de teste e carência),
@@ -1302,6 +1304,34 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-18 — O site ganha movimento
+
+Pedido do Heitor: a primeira versão do site estava boa, mas parada; faltavam
+animação e motion graphics. Ele aprovou o nível "marcante" e a exceção, só no
+site, a duas regras do sistema: animação de entrada e gradiente de fundo.
+
+- **O hero**: a agenda chega inclinada em 3D e se endireita com a rolagem
+  (animação ligada à rolagem, onde o navegador sabe); o celular flutua; um
+  brilho rosé respira atrás; avisos ao vivo passam sobre a agenda (WhatsApp da
+  Mariana → agendado → termo assinado → Copilot). No lugar de trocar as telas:
+  a agenda tem o menu lateral e as outras não, e a troca ficaria torta.
+- **Uma faixa** com as funcionalidades corre embaixo do hero; **os passos** do
+  dia da clínica passam a vez em rosé, um por um; **as seções** entram quando
+  chegam na tela.
+- **Demonstrações vivas** sobre as telas: a conversa do WhatsApp chegando (com
+  a etiqueta do anúncio e o "Agendado") e o Copilot respondendo e pedindo
+  "Confirma?" antes de agendar. É a mesma história das telas fotografadas, não
+  promessa nova.
+- **Os cartões** respondem ao mouse (luz que segue o ponteiro, ícone que gira),
+  o plano em destaque ganha um brilho que passa, as perguntas abrem deslizando.
+
+A página nasce visível e parada: o movimento só liga pela classe
+`site-movimento`, que o script do `<head>` põe (fora para quem pede menos
+movimento) e tira sozinho se o JavaScript não carregar. Prova:
+`e2e-site/movimento.spec.ts` (6) — com movimento, sem JS, com o script
+bloqueado e com movimento reduzido. Sem dependência nova (CSS e um script
+pequeno). Regras em `docs/regras/site.md`, "O movimento".
 
 ### 2026-10-17 — Reconectar o número que já está no ar não o derruba mais
 
