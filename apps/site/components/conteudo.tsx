@@ -1,5 +1,6 @@
 import {
   Check, Plus, Package, Gift, BarChart3, ShieldCheck, Search, FileSpreadsheet, Megaphone, Building2, ArrowRight,
+  MessagesSquare, CalendarDays, CalendarPlus, Wallet, Smartphone, PenLine, Star, Bell,
 } from 'lucide-react'
 import { Navegador, Celular } from '@/components/molduras'
 import { AvisosDoHero, DemoConversa, DemoCopilot } from '@/components/demos'
@@ -30,6 +31,7 @@ export function Topo({ links }: { links: Links }) {
         <a href="#inicio" className="site-wordmark" aria-label="BellarisOS, início">BellarisOS <span>✦</span></a>
         <nav className="site-ancoras" aria-label="Seções">
           <a href="#funcionalidades">Funcionalidades</a>
+          <a href="#app-da-cliente">App da cliente</a>
           <a href="#precos">Preços</a>
           <a href="#perguntas">Perguntas</a>
         </nav>
@@ -47,11 +49,11 @@ export function Hero({ links }: { links: Links }) {
     <section id="inicio" className="site-hero">
       <div className="site-container">
         <div className="site-hero-texto">
-          <span className="site-overline" data-revelar style={ordem(0)}>✦ Sistema para clínicas de estética</span>
+          <span className="site-overline" data-revelar style={ordem(0)}>✦ O sistema operacional da clínica de estética</span>
           <h1 className="site-h1" data-revelar style={ordem(1)}>A clínica inteira <span className="site-h1-marca">num lugar só.</span></h1>
           <p className="site-lead" data-revelar style={{ maxWidth: 640, ...ordem(2) }}>
-            Da primeira mensagem no WhatsApp ao retorno da cliente: agenda, prontuário, vendas,
-            financeiro e atendimento falando entre si — sem planilha e sem cinco sistemas abertos.
+            ERP e CRM num sistema só: o comercial, o atendimento, o financeiro e o marketing da clínica
+            no mesmo lugar — e um app para a sua cliente agendar sozinha.
           </p>
           <div className="site-hero-chamadas" data-revelar style={ordem(3)}>
             <a className="site-botao site-botao-primario" href={links.comecar}>
@@ -78,7 +80,7 @@ export function Hero({ links }: { links: Links }) {
 
 const FAIXA = [
   'Agenda', 'WhatsApp', 'Prontuário', 'Injetáveis', 'Pacotes', 'Financeiro', 'Comissões', 'Estoque',
-  'Fidelidade', 'Automações', 'Termos assinados', 'Copilot', 'Portal da cliente', 'Relatórios',
+  'Fidelidade', 'Automações', 'Termos assinados', 'Copilot', 'App da cliente', 'Relatórios', 'Campanhas',
 ]
 
 /**
@@ -95,6 +97,63 @@ export function Faixa() {
         <span className="site-faixa-grupo">{itens}</span>
       </div>
     </div>
+  )
+}
+
+/**
+ * O posicionamento (decisão do Heitor, 2026-10-18): o BellarisOS não é um
+ * sistema financeiro com agenda em volta, nem cinco ferramentas ligadas — é
+ * ERP e CRM no mesmo sistema, o sistema operacional da clínica. As frentes
+ * em volta do núcleo, e a cliente ligada a elas pelo app dela.
+ */
+interface Frente { area: string; icone: typeof Wallet; titulo: string; sigla?: string; itens: string[] }
+const FRENTES: Frente[] = [
+  { area: 'com', icone: MessagesSquare, titulo: 'Comercial', sigla: 'CRM', itens: ['O WhatsApp da equipe num inbox só', 'Funil de oportunidades', 'De qual anúncio a cliente veio', 'Venda de pacote e pré-pago'] },
+  { area: 'ate', icone: CalendarDays, titulo: 'Atendimento', itens: ['Agenda por profissional e sala', 'Prontuário e injetáveis', 'Termos assinados sem papel', 'Estoque com baixa na sessão'] },
+  { area: 'fin', icone: Wallet, titulo: 'Financeiro', sigla: 'ERP', itens: ['Caixa, contas a pagar e a receber', 'O resultado do mês (DRE)', 'Comissões com regra', 'Parcelas no financeiro'] },
+  { area: 'mar', icone: Megaphone, titulo: 'Marketing', itens: ['Automações sem programador', 'Campanhas por WhatsApp e no app', 'Fidelidade com pontos', 'Anúncio ligado à venda'] },
+]
+
+export function UmSistema() {
+  return (
+    <section id="um-sistema" className="site-secao" aria-labelledby="um-sistema-titulo">
+      <div className="site-container">
+        <div className="site-cabeca site-cabeca-centro" data-revelar>
+          <span className="site-overline">✦ ERP + CRM</span>
+          <h2 id="um-sistema-titulo" className="site-h2">Não são sistemas separados. É um sistema só.</h2>
+          <p className="site-lead">
+            O comercial, o atendimento, o financeiro e o marketing trabalham sobre a mesma cliente,
+            a mesma agenda e o mesmo caixa. E a sua cliente tem o app dela, ligado a tudo isso.
+          </p>
+        </div>
+        <div className="site-mapa">
+          <div className="site-nucleo" data-revelar="zoom">
+            <span className="site-nucleo-marca">BellarisOS <span>✦</span></span>
+            <strong>O sistema operacional da clínica</strong>
+            <p>Um cadastro de cliente, uma agenda, um caixa — e cada parte do sistema lendo os mesmos dados.</p>
+          </div>
+          {FRENTES.map(({ area, icone: Icone, titulo, sigla, itens }, i) => (
+            <div key={area} className={`site-frente site-frente-${area}`} data-revelar style={ordem(i + 1)}>
+              <div className="site-frente-cabeca">
+                <span className="site-item-icone" aria-hidden="true"><Icone size={19} /></span>
+                <h3 className="site-h3">{titulo}</h3>
+                {sigla && <span className="site-frente-sigla">{sigla}</span>}
+              </div>
+              <ul>{itens.map(t => <li key={t}>{t}</li>)}</ul>
+            </div>
+          ))}
+          <div className="site-frente site-frente-app" data-revelar style={ordem(5)}>
+            <div className="site-frente-cabeca">
+              <span className="site-item-icone" aria-hidden="true"><Smartphone size={19} /></span>
+              <h3 className="site-h3">App da cliente</h3>
+              <span className="site-frente-sigla">Diferencial</span>
+            </div>
+            <ul>{APP_NA_FRENTE.map(t => <li key={t}>{t}</li>)}</ul>
+            <a href="#app-da-cliente" className="site-frente-link">Conhecer o app <ArrowRight size={16} aria-hidden="true" /></a>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -208,16 +267,60 @@ const DESTAQUES: Destaque[] = [
     ],
     tela: TELAS.copilot, demo: 'copilot',
   },
-  {
-    overline: 'Portal da cliente', titulo: 'A cliente agenda sozinha — e vê o que já fez',
-    texto: 'Pelo celular, a cliente vê os próximos horários, o histórico, os pacotes e os pontos, e agenda o que a clínica liberar.',
-    itens: [
-      { forte: 'Assina os termos', resto: ' e pede uma cópia dos próprios dados, como manda a LGPD.' },
-      { forte: 'Notificações', resto: ' de horário e de campanha no celular.' },
-    ],
-    tela: TELAS.portal, celular: true,
-  },
 ]
+
+/**
+ * O app da cliente (2026-10-18): o diferencial, com seção própria. Só o que o
+ * portal FAZ hoje — conferido tela a tela: ela não paga, não cancela nem
+ * remarca por ele, e o app leva o nome da unidade, não a logo da clínica.
+ */
+export const APP_NA_FRENTE = ['Agenda sozinha', 'Assina os termos no celular', 'Pacotes, pontos e histórico', 'Um aviso a cada passo']
+
+const NO_APP = [
+  { icone: CalendarPlus, forte: 'Agenda sozinha', resto: 'o procedimento, a profissional e um horário livre — só o que a clínica liberar.' },
+  { icone: PenLine, forte: 'Assina pelo celular', resto: 'o termo chega no app e ela assina com o dedo; o PDF vai para a ficha.' },
+  { icone: Package, forte: 'Acompanha o tratamento', resto: 'pacotes com as sessões feitas, créditos e planos de tratamento.' },
+  { icone: Gift, forte: 'Pontos e recompensas', resto: 'o saldo, o que vai vencer e o catálogo de recompensas da clínica.' },
+  { icone: Star, forte: 'Confirma e avalia', resto: 'depois do atendimento, dá nota ao procedimento e à profissional.' },
+  { icone: Bell, forte: 'Um aviso a cada passo', resto: 'horário confirmado, termo para assinar, pontos e as campanhas da clínica.' },
+]
+
+export function AppDaCliente() {
+  return (
+    <section id="app-da-cliente" className="site-secao" aria-labelledby="app-titulo">
+      <div className="site-container">
+        <div className="site-app">
+          <div className="site-app-texto" data-revelar>
+            <span className="site-overline">✦ App da cliente</span>
+            <h2 id="app-titulo" className="site-h2">A sua cliente com a clínica no bolso.</h2>
+            <p className="site-lead">
+              Ela agenda, assina, acompanha o tratamento e junta pontos pelo celular — e a recepção para
+              de responder no WhatsApp o que o app já mostra.
+            </p>
+            <ul className="site-app-lista">
+              {NO_APP.map(({ icone: Icone, forte, resto }, i) => (
+                <li key={forte} data-revelar style={ordem(i)}>
+                  <span className="site-item-icone" aria-hidden="true"><Icone size={18} /></span>
+                  <span><strong>{forte}</strong>{resto}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="site-app-nota">
+              A clínica cria o acesso na ficha da cliente, e ela entra com o e-mail. Os dados dela, ela pede
+              pelo próprio app, como manda a LGPD.
+            </p>
+          </div>
+          {/* Três telas do app, em leque; a do meio na frente. */}
+          <div className="site-app-palco" data-revelar="zoom" style={ordem(1)}>
+            <Celular tela={TELAS.portalAgendar} className="site-app-celular site-app-celular-esq" />
+            <Celular tela={TELAS.portal} className="site-app-celular site-app-celular-meio" />
+            <Celular tela={TELAS.portalPontos} className="site-app-celular site-app-celular-dir" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 export function Destaques() {
   return (
@@ -355,6 +458,7 @@ export function Rodape({ links }: { links: Links }) {
         <a href="#inicio" className="site-wordmark">BellarisOS <span>✦</span></a>
         <nav aria-label="Rodapé">
           <a href="#funcionalidades">Funcionalidades</a>
+          <a href="#app-da-cliente">App da cliente</a>
           <a href="#precos">Preços</a>
           <a href={links.entrar}>Entrar</a>
           <a href={links.comecar}>Começar grátis</a>

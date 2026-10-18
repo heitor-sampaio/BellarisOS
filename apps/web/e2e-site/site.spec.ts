@@ -101,6 +101,29 @@ test('cabe no celular, e toda imagem carrega', async ({ page }) => {
   expect(await page.locator('img').count(), 'a página mostra as telas do sistema').toBeGreaterThan(3)
 })
 
+test('diz o que o BellarisOS é: o sistema operacional da clínica, ERP e CRM num sistema só', async ({ page }) => {
+  await page.goto('/')
+  await expect(page).toHaveTitle(/sistema operacional/i)
+  await expect(page.locator('#inicio')).toContainText(/sistema operacional/i)
+  const umSo = page.locator('#um-sistema')
+  await expect(umSo.getByRole('heading', { level: 2 })).toBeVisible()
+  await expect(umSo).toContainText('ERP')
+  await expect(umSo).toContainText('CRM')
+  // As frentes da clínica, e a cliente ligada a elas.
+  for (const frente of ['Comercial', 'Atendimento', 'Financeiro', 'Marketing', 'App da cliente']) {
+    await expect(umSo.getByRole('heading', { name: frente, exact: true })).toBeVisible()
+  }
+})
+
+test('o app da cliente tem seção própria, chamada no topo', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.site-topo').getByRole('link', { name: 'App da cliente' })).toHaveAttribute('href', '#app-da-cliente')
+  const app = page.locator('#app-da-cliente')
+  await expect(app.getByRole('heading', { level: 2 })).toBeVisible()
+  // Mais de uma tela do portal, de verdade.
+  expect(await app.locator('img').count()).toBeGreaterThanOrEqual(3)
+})
+
 test('o rodapé leva à política de privacidade da clínica', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Política de Privacidade' })).toHaveAttribute('href', `${CLINICA}/privacidade`)

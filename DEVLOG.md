@@ -1305,6 +1305,26 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-18 — O site diz o que o BellarisOS é: o sistema operacional da clínica
+
+Posicionamento do Heitor: "não somos sistemas separados, somos literalmente um
+sistema operacional para clínicas", e o app da cliente é um diferencial. O
+site passou a dizer isso:
+
+- **Hero, título e imagem de compartilhamento**: "O sistema operacional da
+  clínica de estética" — ERP e CRM num sistema só, e um app para a cliente.
+- **Seção nova "É um sistema só"**: o núcleo em rosé e as frentes em volta
+  (Comercial/CRM, Atendimento, Financeiro/ERP, Marketing), ligadas a ele por
+  linhas em que o fluxo corre, e o App da cliente embaixo.
+- **Seção própria do App da cliente** (no menu do topo), com três telas reais
+  em leque — início, agendar com os horários livres, pontos — e o que ela faz
+  pelo app. Saiu dos destaques, onde era o último.
+
+Para as fotos, a câmera agora marca procedimentos para o app, liga a
+fidelidade com recompensas e dá pontos à Mariana. O texto do app foi conferido
+tela a tela no portal: não promete pagar, cancelar/remarcar nem a logo da
+clínica, que ele não tem. Prova: dois casos novos em `e2e-site/site.spec.ts`.
+
 ### 2026-10-18 — O site ganha movimento
 
 Pedido do Heitor: a primeira versão do site estava boa, mas parada; faltavam

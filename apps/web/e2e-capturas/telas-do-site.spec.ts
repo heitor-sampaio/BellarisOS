@@ -100,6 +100,8 @@ test.beforeAll(async () => {
     { tenant_id: tenantId, name: 'Drenagem linfática', category: 'Corporal', duration_min: 50, price: 180 },
   ], 'procedimentos')
   const [toxina, labial, limpeza, bio, peeling, drenagem] = procs.map(p => p.id)
+  // O que a cliente agenda sozinha pelo app (o resto, só a recepção).
+  await db.from('procedures').update({ visible_on_client_app: true }).in('id', [toxina!, labial!, limpeza!, peeling!, drenagem!])
   const salas = await inserir('rooms', [1, 2, 3].map(n => ({ branch_id: branchId, name: `Sala ${n}` })), 'salas')
 
   // A cliente do portal é a Mariana: a que aparece na ficha e no celular.
@@ -254,7 +256,23 @@ test.beforeAll(async () => {
     doc(c(2), 'Termo de consentimento · Toxina botulínica', 'ASSINADO', 2),
     doc(c(6), 'Termo de consentimento · Preenchimento labial', 'PENDENTE', 0),
     doc(c(0), 'Termo de consentimento · Toxina botulínica', 'ASSINADO', 0),
+    // O que a Mariana tem para assinar no app.
+    doc(mariana, 'Termo de consentimento · Bioestimulador de colágeno', 'PENDENTE', 0),
   ], 'termos')
+
+  // A fidelidade da clínica: pontos da Mariana e o catálogo de recompensas.
+  expect((await db.from('loyalty_configs').upsert({ tenant_id: tenantId, enabled: true, client_redeem: true, first_access_bonus: 0, expiry_months: null, expiry_notice_days: null }, { onConflict: 'tenant_id' })).error, 'fidelidade').toBeNull()
+  await inserir('loyalty_rewards', [
+    { tenant_id: tenantId, name: 'Limpeza de pele', type: 'PROCEDIMENTO', procedure_id: limpeza, points_cost: 400, validity_days: 60, is_active: true },
+    { tenant_id: tenantId, name: 'R$ 100 de desconto', type: 'DESCONTO_VALOR', discount_value: 100, points_cost: 250, validity_days: 30, is_active: true },
+    { tenant_id: tenantId, name: 'Drenagem linfática', type: 'PROCEDIMENTO', procedure_id: drenagem, points_cost: 300, validity_days: 60, is_active: true },
+  ], 'recompensas')
+  // Os pontos dos pagamentos dela (o saldo é a soma do extrato).
+  const { data: contaDaMariana } = await db.from('loyalty_accounts').upsert({ client_id: mariana }, { onConflict: 'client_id' }).select('id').single<{ id: string }>()
+  await inserir('loyalty_transactions', [[120, 28], [220, 14]].map(([pontos, dias]) => ({
+    loyalty_account_id: contaDaMariana!.id, branch_id: branchId, kind: 'GANHO', points: pontos,
+    description: 'Pontos do pagamento', created_by: 'e2e-capturas', created_at: emSP(diasAtras(dias!), '12:00'),
+  })), 'pontos da Mariana')
 })
 
 test.afterAll(async () => {
@@ -273,10 +291,13 @@ test.afterAll(async () => {
   await db.from('automation_runs').delete().eq('automation_id', automacaoId)
   await db.from('automations').delete().eq('tenant_id', tenantId)
   await db.from('client_packages').delete().eq('package_id', pacoteId)
+  await db.from('loyalty_vouchers').delete().eq('tenant_id', tenantId)
   const falhas = await apagarClientes(clientes)
   for (const f of falhas) console.warn(`[capturas] não apagou ${f.o_que}: ${f.erro}`)
   await portal?.limpar()
   await db.from('service_packages').delete().eq('tenant_id', tenantId)
+  await db.from('loyalty_rewards').delete().eq('tenant_id', tenantId)
+  await db.from('loyalty_configs').delete().eq('tenant_id', tenantId)
   await db.from('rooms').delete().eq('branch_id', branchId)
   await db.from('copilot_mensagens').delete().eq('tenant_id', tenantId)
   await db.from('copilot_conversas').delete().eq('tenant_id', tenantId)
@@ -366,11 +387,42 @@ test('Copilot', async ({ browser }) => {
   await ctx.close()
 })
 
-test('portal da cliente no celular', async ({ browser }) => {
+async function comoCliente(browser: import('@playwright/test').Browser) {
   const ctx = await browser.newContext({ storageState: portal.estado, viewport: CELULAR, locale: 'pt-BR', timezoneId: 'America/Sao_Paulo', deviceScaleFactor: 3, isMobile: true, hasTouch: true })
-  const page = await ctx.newPage()
+  return { ctx, page: await ctx.newPage() }
+}
+
+test('app da cliente: o início', async ({ browser }) => {
+  const { ctx, page } = await comoCliente(browser)
   await page.goto(`/${portal.slug}/cliente`)
   await expect(page.getByText(/Mariana/).filter({ visible: true }).first()).toBeVisible()
   await fotografar(page, 'portal-celular')
+  await ctx.close()
+})
+
+test('app da cliente: agendar sozinha', async ({ browser }) => {
+  const { ctx, page } = await comoCliente(browser)
+  await page.goto(`/${portal.slug}/cliente/agendamentos/novo`)
+  await page.getByRole('button', { name: /Limpeza de pele/ }).click()
+  await page.getByRole('button', { name: /Dra\. Bianca Rocha/ }).click()
+  // Depois de amanhã (num dia útil), para ter a grade livre.
+  const d = new Date(`${hojeSP()}T12:00:00-03:00`)
+  d.setDate(d.getDate() + 2)
+  while ([0, 6].includes(d.getDay())) d.setDate(d.getDate() + 1)
+  const data = page.locator('input[type="date"]')
+  await data.fill(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d))
+  await expect(page.getByText('HORÁRIOS DISPONÍVEIS')).toBeVisible()
+  await expect(page.getByRole('button', { name: /\d{2}:\d{2}/ }).first()).toBeVisible({ timeout: 15_000 })
+  // Sem o dia da data selecionado (o foco ficaria na foto).
+  await data.blur()
+  await fotografar(page, 'portal-agendar')
+  await ctx.close()
+})
+
+test('app da cliente: os pontos', async ({ browser }) => {
+  const { ctx, page } = await comoCliente(browser)
+  await page.goto(`/${portal.slug}/cliente/fidelidade`)
+  await expect(page.getByText('340').filter({ visible: true }).first()).toBeVisible()
+  await fotografar(page, 'portal-pontos')
   await ctx.close()
 })

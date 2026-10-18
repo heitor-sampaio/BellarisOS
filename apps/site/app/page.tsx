@@ -1,6 +1,6 @@
 import { connection } from 'next/server'
 import { Movimento } from '@/components/movimento'
-import { Topo, Hero, Faixa, DiaDaClinica, Destaques, EAinda, Seguranca, Perguntas, Final, Rodape } from '@/components/conteudo'
+import { Topo, Hero, Faixa, UmSistema, DiaDaClinica, AppDaCliente, Destaques, EAinda, Seguranca, Perguntas, Final, Rodape } from '@/components/conteudo'
 import { Precos } from '@/components/precos'
 import { lerPlanos } from '@/lib/planos'
 import { linksDaClinica, enderecoDoSite } from '@/lib/links'
@@ -23,7 +23,7 @@ export default async function Inicio() {
     url: enderecoDoSite(),
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web, Android',
-    description: 'Sistema para clínicas de estética: agenda, prontuário, WhatsApp, vendas, financeiro e automações num lugar só.',
+    description: 'O sistema operacional da clínica de estética: ERP e CRM num sistema só — agenda, prontuário, WhatsApp, vendas, financeiro, marketing e o app da cliente.',
     inLanguage: 'pt-BR',
     offers: (planos ?? []).map(p => ({
       '@type': 'Offer', name: p.nome, price: (p.valorCentavos / 100).toFixed(2), priceCurrency: 'BRL',
@@ -38,7 +38,9 @@ export default async function Inicio() {
       <main>
         <Hero links={links} />
         <Faixa />
+        <UmSistema />
         <DiaDaClinica />
+        <AppDaCliente />
         <Destaques />
         <EAinda />
         <Seguranca />

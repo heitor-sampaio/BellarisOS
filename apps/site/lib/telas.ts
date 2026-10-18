@@ -21,5 +21,7 @@ export const TELAS = {
   automacao:    semMenu('automacao', 'O editor de automações do BellarisOS: o gatilho, a condição e o aviso à equipe'),
   copilot:      semMenu('copilot', 'O Copilot do BellarisOS respondendo a um pedido sobre a agenda'),
   documento:    semMenu('documento', 'A tela de Documentos do BellarisOS: os termos de cada cliente, assinados e a enviar'),
-  portal:       celular('portal-celular', 'O portal da cliente no celular: os próximos horários e o agendamento'),
+  portal:       celular('portal-celular', 'O início do app da cliente: o que confirmar, o próximo horário e os tratamentos em curso'),
+  portalAgendar: celular('portal-agendar', 'O app da cliente: escolhendo a data e um horário livre para agendar sozinha'),
+  portalPontos: celular('portal-pontos', 'O app da cliente: o saldo de pontos e as recompensas da clínica'),
 } as const satisfies Record<string, Tela>

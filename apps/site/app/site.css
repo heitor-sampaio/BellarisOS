@@ -37,6 +37,12 @@
   --site-demo-fala: 13.5px;
   --site-aviso-largura: 320px;
   --site-faixa: clamp(18px, 2.4vw, 24px);
+
+  /* Um sistema só (2026-10-18): o núcleo e as ligações das frentes até ele. */
+  --site-nucleo: clamp(22px, 2.6vw, 28px);
+  --site-mapa-ligacao: 56px;
+  --site-mapa-ligacao-v: 24px;
+  --site-app-celular: clamp(160px, 17vw, 228px);
 }
 
 @media (min-width: 720px) {
@@ -106,6 +112,88 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 .site-navegador img, .site-celular img { display: block; width: 100%; height: auto; }
 .site-celular { background: var(--text); padding: 7px; border-radius: var(--site-celular-raio); box-shadow: var(--shadow-overlay); }
 .site-celular-tela { border-radius: var(--site-celular-tela-raio); overflow: hidden; background: var(--surface); }
+
+/* ─── Um sistema só: o núcleo e as frentes em volta (2026-10-18) ─── */
+.site-mapa { display: grid; gap: 14px; grid-template-columns: 1fr; grid-template-areas: "nucleo" "com" "ate" "fin" "mar" "app"; }
+@media (min-width: 640px) {
+  .site-mapa { grid-template-columns: 1fr 1fr; grid-template-areas: "nucleo nucleo" "com fin" "ate mar" "app app"; }
+}
+@media (min-width: 1000px) {
+  .site-mapa { grid-template-columns: 1fr minmax(280px, .9fr) 1fr; grid-template-areas: "com nucleo fin" "ate nucleo mar" ". app ."; column-gap: var(--site-mapa-ligacao); row-gap: var(--site-mapa-ligacao-v); }
+}
+.site-nucleo {
+  grid-area: nucleo; position: relative; background: var(--gradient-brand); color: var(--on-brand);
+  border-radius: var(--radius-card-token); box-shadow: var(--shadow-brand-card);
+  padding: 32px 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;
+}
+.site-nucleo-marca { font-size: var(--site-pequeno); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: var(--tracking-overline); color: color-mix(in srgb, var(--on-brand) 85%, transparent); }
+.site-nucleo strong { font-size: var(--site-nucleo); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); line-height: 1.15; text-wrap: balance; }
+.site-nucleo p { font-size: var(--site-pequeno); color: color-mix(in srgb, var(--on-brand) 85%, transparent); max-width: 300px; }
+.site-frente { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card-token); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.site-frente-com { grid-area: com; } .site-frente-ate { grid-area: ate; } .site-frente-fin { grid-area: fin; } .site-frente-mar { grid-area: mar; } .site-frente-app { grid-area: app; }
+.site-frente-cabeca { display: flex; align-items: center; gap: 10px; }
+.site-frente-cabeca .site-item-icone { margin-bottom: 0; }
+.site-frente-sigla { margin-left: auto; padding: 3px 9px; border-radius: var(--radius-chip-token); background: var(--brand-soft); color: var(--brand); font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: var(--tracking-overline); }
+.site-frente ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; color: var(--text-soft); font-size: var(--site-pequeno); }
+.site-frente li { position: relative; padding-left: 14px; }
+.site-frente li::before { content: ""; position: absolute; left: 0; top: .6em; width: 5px; height: 5px; border-radius: var(--radius-full); background: var(--brand-3); }
+.site-frente-app { background: var(--brand-soft); border-color: var(--brand-soft-border); }
+.site-frente-app .site-frente-sigla { background: var(--brand); color: var(--on-brand); }
+.site-frente-app .site-item-icone { background: var(--surface); }
+.site-frente-link { display: inline-flex; align-items: center; gap: 6px; color: var(--brand); font-size: var(--site-pequeno); font-weight: var(--weight-bold); text-decoration: none; }
+.site-frente-link svg { transition: translate var(--site-mov-rapido) var(--site-curva-mola); }
+.site-frente-link:hover svg { translate: 4px 0; }
+/* As ligações até o núcleo: só onde o mapa está montado em volta dele. */
+@media (min-width: 1000px) {
+  .site-frente-com::after, .site-frente-ate::after, .site-frente-fin::after, .site-frente-mar::after {
+    content: ""; position: absolute; top: 50%; left: 100%; width: var(--site-mapa-ligacao); height: 2px;
+    background: repeating-linear-gradient(90deg, var(--brand-3) 0 6px, transparent 6px 12px);
+  }
+  .site-frente-fin::after, .site-frente-mar::after { left: auto; right: 100%; }
+  .site-frente-app::after {
+    content: ""; position: absolute; left: 50%; bottom: 100%; width: 2px; height: var(--site-mapa-ligacao-v);
+    background: repeating-linear-gradient(180deg, var(--brand-3) 0 6px, transparent 6px 12px);
+  }
+}
+
+/* ─── O app da cliente (2026-10-18): o texto e três telas em leque ─── */
+.site-app {
+  display: grid; gap: 40px; grid-template-columns: 1fr; align-items: center;
+  background: var(--brand-soft); border: 1px solid var(--brand-soft-border); border-radius: var(--radius-card-token);
+  padding: clamp(28px, 5vw, 64px) clamp(20px, 5vw, 64px); overflow: hidden;
+}
+@media (min-width: 1000px) { .site-app { grid-template-columns: 1fr 1fr; gap: 40px; } }
+.site-app-texto { display: flex; flex-direction: column; gap: 16px; }
+.site-app-texto .site-lead { color: var(--text-soft); }
+.site-app-lista { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 14px 20px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .site-app-lista { grid-template-columns: 1fr 1fr; } }
+.site-app-lista li { display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start; color: var(--text-soft); font-size: var(--site-pequeno); }
+.site-app-lista .site-item-icone { margin: 0; background: var(--surface); }
+.site-app-lista strong { display: block; color: var(--text); font-weight: var(--weight-extrabold); font-size: var(--site-corpo); }
+.site-app-nota { font-size: var(--site-pequeno); color: var(--text-muted); }
+.site-app-palco { position: relative; display: grid; grid-template-columns: 1fr; justify-items: center; padding: 12px 0 8px; }
+.site-app-celular { grid-area: 1 / 1; width: var(--site-app-celular); }
+.site-app-celular-meio { z-index: 2; }
+.site-app-celular-esq { transform: translateX(-52%) rotate(-7deg) scale(.88); }
+.site-app-celular-dir { transform: translateX(52%) rotate(7deg) scale(.88); }
+@media (max-width: 479px) {
+  .site-app-celular-esq { transform: translateX(-40%) rotate(-7deg) scale(.82); }
+  .site-app-celular-dir { transform: translateX(40%) rotate(7deg) scale(.82); }
+}
+.site-movimento .site-app-celular-meio { animation: site-flutua 7s ease-in-out infinite; }
+.site-movimento .site-app-celular-esq { animation: site-flutua-esq 8s ease-in-out infinite; }
+.site-movimento .site-app-celular-dir { animation: site-flutua-dir 8s ease-in-out 1.4s infinite; }
+@keyframes site-flutua-esq {
+  0%, 100% { transform: translateX(-52%) rotate(-7deg) scale(.88); }
+  50% { transform: translateX(-54%) translateY(-10px) rotate(-8deg) scale(.88); }
+}
+@keyframes site-flutua-dir {
+  0%, 100% { transform: translateX(52%) rotate(7deg) scale(.88); }
+  50% { transform: translateX(54%) translateY(-10px) rotate(8deg) scale(.88); }
+}
+@media (max-width: 479px) {
+  .site-movimento .site-app-celular-esq, .site-movimento .site-app-celular-dir { animation: none; }
+}
 
 /* ─── O dia da clínica ─── */
 .site-cabeca { max-width: 720px; display: flex; flex-direction: column; gap: 14px; margin-bottom: clamp(32px, 5vw, 56px); }
@@ -422,6 +510,21 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 }
 .site-movimento .site-pergunta[open]::details-content, .site-movimento .site-comparar[open]::details-content { block-size: auto; }
 .site-comparar summary svg { transition: transform var(--site-mov-rapido) var(--site-curva); }
+
+/* ─── Um sistema só: o que corre pelas ligações e o núcleo que pulsa ─── */
+.site-movimento .site-frente-com::after, .site-movimento .site-frente-ate::after { animation: site-fluxo-x 1.1s linear infinite; }
+.site-movimento .site-frente-fin::after, .site-movimento .site-frente-mar::after { animation: site-fluxo-x 1.1s linear infinite reverse; }
+.site-movimento .site-frente-app::after { animation: site-fluxo-y 1.1s linear infinite; }
+@keyframes site-fluxo-x { to { background-position: 12px 0; } }
+@keyframes site-fluxo-y { to { background-position: 0 -12px; } }
+.site-movimento .site-nucleo::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  animation: site-pulso 2.8s ease-out infinite;
+}
+@keyframes site-pulso {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 35%, transparent); }
+  to { box-shadow: 0 0 0 22px transparent; }
+}
 
 /* ─── A chamada final: a luz passeia dentro do rosé ─── */
 .site-final { position: relative; overflow: hidden; isolation: isolate; }

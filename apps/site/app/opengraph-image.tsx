@@ -6,7 +6,7 @@ import { ImageResponse } from 'next/og'
  * (`--gradient-brand`: #c34d6b → #a63a55; `--on-brand`), escritas aqui. Sem o ✦:
  * a fonte padrão não tem o glifo, e o ImageResponse tentaria baixá-la no build.
  */
-export const alt = 'BellarisOS — a clínica inteira num lugar só'
+export const alt = 'BellarisOS — o sistema operacional da clínica de estética'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -19,11 +19,11 @@ export default function Imagem() {
       }}>
         <div style={{ display: 'flex', fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em' }}>BellarisOS</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <div style={{ display: 'flex', fontSize: 84, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.02 }}>
-            A clínica inteira num lugar só.
+          <div style={{ display: 'flex', fontSize: 76, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.02 }}>
+            O sistema operacional da clínica de estética.
           </div>
           <div style={{ display: 'flex', fontSize: 32, opacity: 0.88 }}>
-            Agenda, prontuário, WhatsApp, vendas e financeiro para clínicas de estética.
+            ERP + CRM num sistema só — e o app da sua cliente.
           </div>
         </div>
         <div style={{ display: 'flex', fontSize: 28, fontWeight: 700 }}>Teste grátis por 14 dias · bellarisos.com</div>

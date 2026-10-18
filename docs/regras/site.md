@@ -18,6 +18,26 @@ própria clínica, tudo liberado, sem cartão).
   na página.
 - **O produto aparece em telas REAIS**, fotografadas de uma clínica fictícia.
 
+## O posicionamento (decisão do Heitor, 2026-10-18)
+
+"Não somos sistemas separados, somos literalmente um sistema operacional para
+clínicas." O site diz isso em três lugares:
+
+- **O hero e o título da página**: "O sistema operacional da clínica de
+  estética" — ERP e CRM num sistema só, do comercial ao financeiro e ao
+  marketing, e o app da cliente.
+- **"Não são sistemas separados. É um sistema só."** (`#um-sistema`): o núcleo
+  em rosé e as frentes em volta — Comercial (CRM), Atendimento, Financeiro
+  (ERP), Marketing — e o App da cliente ligado a elas.
+- **O app da cliente é o diferencial**, com seção própria (`#app-da-cliente`,
+  no menu do topo) e três telas do app em leque. O nome na página é sempre
+  **"App da cliente"** (no sistema é o portal do cliente).
+  - O texto diz só o que o portal FAZ: agendar sozinha (o que a clínica
+    liberar), assinar com o dedo, pacotes/créditos/planos, pontos e
+    recompensas, confirmar e avaliar, avisos no celular, LGPD. Ele NÃO cobra
+    (o financeiro é consulta), NÃO cancela nem remarca, e leva o nome da
+    unidade — não a logo da clínica.
+
 ## Como é feito
 
 - **`apps/site`**: Next 16.3.4 standalone, o Dockerfile de sempre com
@@ -47,6 +67,10 @@ própria clínica, tudo liberado, sem cartão).
   "Clínica Aurora" numa rede `[e2e]` própria — agenda do dia, conversas, um
   pacote, o financeiro do mês, injetáveis, automação, termos, o portal da
   Mariana — e apaga tudo no fim. Nos destaques, a foto sai sem o menu lateral.
+  O app da cliente tem três fotos (início, agendar com os horários livres,
+  pontos): a câmera marca procedimentos como `visible_on_client_app`, liga a
+  fidelidade com recompensas e grava os pontos como GANHO (o extrato mostra
+  "Ganho no pagamento", não "Ajuste da equipe").
 - **SEO**: metadata com canonical (`SITE_URL`), `robots.ts`, `sitemap.ts`,
   `opengraph-image` (gerada, com as cores dos tokens escritas — o ImageResponse
   não lê CSS), ícones a partir do logo do app, JSON-LD `SoftwareApplication`
@@ -112,4 +136,6 @@ fonte, raios, sombras de quem flutua).
 ❌ Animação infinita fora de .site-movimento (quem pede menos movimento a veria)
 ❌ Demonstração que conta o que as telas não mostram (é a história da Clínica Aurora, não promessa nova)
 ❌ Levar a exceção do movimento ou do gradiente de fundo para a clínica (lá vale a skill /lumiere-design)
+❌ Prometer no app da cliente pagar, cancelar/remarcar ou a logo da clínica (o portal não faz)
+❌ Chamar o app da cliente de "portal" na página (um nome por conceito: "App da cliente")
 ```
