@@ -1305,6 +1305,32 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-19 — A mesma cliente em várias clínicas (em andamento)
+
+Pedido do Heitor: quem frequenta mais de uma clínica que usa o BellarisOS
+precisa entrar com uma conta só e escolher a clínica. Até aqui não dava: a
+segunda clínica que criasse o acesso para o mesmo e-mail recebia "Este e-mail
+já está em uso por outra conta" (o Auth tem um login por e-mail, e
+`clients.auth_id` era único no banco inteiro).
+
+Decisões dele: **um login por pessoa, uma ficha em cada clínica**; a clínica
+nova LIGA a ficha à conta que já existe sozinha, quando o e-mail e o CPF batem;
+no primeiro login com mais de uma clínica, a pessoa escolhe; depois, entra na
+última que usou. Quem é da equipe de uma clínica e cliente de outra com o mesmo
+e-mail fica de fora (usa outro e-mail, como hoje).
+
+- **Etapa 1 — o banco** (migrations `20261019000001` e `…02`): uma ficha por
+  login EM CADA REDE (`clients_um_login_por_rede`; o único antigo saiu), e
+  `private.clientes_do_login()` — as fichas deste login, todas e só as dela —
+  no lado da cliente de 21 políticas (agendamentos, avisos, pontos, créditos,
+  pacotes, LGPD, documentos, injetáveis, aparelhos de push). Antes, umas
+  pegavam a ficha pela claim `client_id` e outras com `limit 1`: com duas
+  fichas, uma sumiria em silêncio. A claim fica como a marca "é cliente".
+  Prova: `e2e/portal-cliente-varias-clinicas.spec.ts`, com o token dela.
+- Faltam: o app escolher a ficha pela clínica do endereço, a ligação na hora
+  de dar o acesso, o seletor, e os avisos, o bônus de primeiro acesso e a
+  clínica bloqueada por clínica.
+
 ### 2026-10-18 — O site diz o que o BellarisOS é: o sistema operacional da clínica
 
 Posicionamento do Heitor: "não somos sistemas separados, somos literalmente um

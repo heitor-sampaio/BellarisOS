@@ -1,0 +1,108 @@
+import { test, expect } from '@playwright/test'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { banco } from './apoio/banco'
+import { clienteComSessao, type ClienteDeTeste } from './apoio/sessao'
+import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+
+/**
+ * A mesma pessoa cliente de DUAS clínicas que usam o BellarisOS (2026-10-19).
+ *
+ * Decisão do Heitor: um login por pessoa, uma ficha em cada clínica. A conta é
+ * dela; as fichas são de cada clínica, e cada clínica só vê a sua. Até aqui o
+ * banco tinha `clients.auth_id` ÚNICO — um login, uma ficha, em qualquer rede —
+ * e a segunda clínica recebia "Este e-mail já está em uso por outra conta".
+ *
+ * O cenário: duas redes `[e2e]` (A e B), a cliente com ficha e login na A, a
+ * ficha dela na B ligada ao MESMO login, e uma outra pessoa na B (sem login) —
+ * a vítima: nada dela pode aparecer.
+ */
+
+const marca = Date.now().toString(36)
+const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const db = () => banco()
+
+let A: OutraRede
+let B: OutraRede
+let cliente: ClienteDeTeste
+let loginDela = ''
+let fichaB = ''
+let alheia = ''
+
+/** O PostgREST com a sessão da cliente — o que o navegador dela pode fazer. */
+function comoEla(): SupabaseClient {
+  return createClient(URL_, ANON, {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: `Bearer ${cliente.accessToken}` } },
+  })
+}
+
+async function agendamento(rede: OutraRede, clienteId: string): Promise<string> {
+  const { data, error } = await db().from('appointments').insert({
+    branch_id: rede.branchId, client_id: clienteId, procedure_id: rede.procedureId,
+    professional_id: rede.professionalId, status: 'SCHEDULED', source: 'INTERNAL',
+    scheduled_at: new Date(Date.now() + 2 * 24 * 3600_000).toISOString(), duration_min: 30, price: 0,
+  }).select('id').single<{ id: string }>()
+  expect(error, 'criar o agendamento').toBeNull()
+  return data!.id
+}
+
+test.describe('a mesma cliente em duas clínicas', () => {
+  test.beforeAll(async () => {
+    A = await criarOutraRede(`vca${marca}`)
+    B = await criarOutraRede(`vcb${marca}`)
+    cliente = await clienteComSessao(`vc${marca}`, { id: A.branchId, slug: `e2e-un-vca${marca}` }, { tenant: A.tenantId })
+    const { data: ela } = await db().from('clients').select('auth_id').eq('id', cliente.clientId).single<{ auth_id: string }>()
+    loginDela = ela!.auth_id
+
+    fichaB = await B.criarCliente('Mesma pessoa')
+    alheia = await B.criarCliente('Outra pessoa')
+    const { error } = await db().from('clients').update({ auth_id: loginDela }).eq('id', fichaB)
+    expect(error, 'o mesmo login ligado à ficha dela na clínica B').toBeNull()
+  })
+
+  test.afterAll(async () => {
+    await cliente?.limpar()
+    await B?.limpar()
+    await A?.limpar()
+  })
+
+  test('com o token dela, o banco mostra as fichas dela nas duas clínicas — e só as dela', async () => {
+    const [agA, agB, agAlheio] = [
+      await agendamento(A, cliente.clientId), await agendamento(B, fichaB), await agendamento(B, alheia),
+    ]
+    const { error: eN } = await db().from('client_notifications').insert([
+      { client_id: cliente.clientId, title: 'Aviso da A' },
+      { client_id: fichaB, title: 'Aviso da B' },
+      { client_id: alheia, title: 'Aviso alheio' },
+    ])
+    expect(eN, 'criar os avisos').toBeNull()
+    const { error: eC } = await db().from('internal_credits').insert([
+      { client_id: cliente.clientId, branch_id: A.branchId, amount: 10, description: 'crédito A' },
+      { client_id: fichaB, branch_id: B.branchId, amount: 20, description: 'crédito B' },
+      { client_id: alheia, branch_id: B.branchId, amount: 30, description: 'crédito alheio' },
+    ])
+    expect(eC, 'criar os créditos').toBeNull()
+
+    const ela = comoEla()
+    const ids = async (tabela: string, coluna = 'id') => {
+      const { data, error } = await ela.from(tabela).select(coluna)
+      expect(error, `ler ${tabela} como ela`).toBeNull()
+      return ((data ?? []) as unknown as Record<string, string>[]).map(l => l[coluna]).sort()
+    }
+    const dela = [cliente.clientId, fichaB].sort()
+
+    expect(await ids('clients'), 'as duas fichas dela, e não a da outra pessoa').toEqual(dela)
+    expect(await ids('appointments'), 'os agendamentos dela nas duas clínicas').toEqual([agA, agB].sort())
+    expect(await ids('client_notifications', 'client_id'), 'os avisos das duas clínicas').toEqual(dela)
+    expect(await ids('loyalty_accounts', 'client_id'), 'as contas de pontos das duas').toEqual(dela)
+    expect(await ids('internal_credits', 'client_id'), 'os créditos das duas').toEqual(dela)
+    expect(agAlheio).toBeTruthy()
+
+    // Escrever: o pedido de LGPD vai pela ficha da clínica a que se refere.
+    const { error: eLgpdB } = await ela.from('lgpd_requests').insert({ client_id: fichaB, type: 'export', tenant_id: B.tenantId })
+    expect(eLgpdB, 'ela pede pela ficha da B').toBeNull()
+    const { error: eLgpdAlheio } = await ela.from('lgpd_requests').insert({ client_id: alheia, type: 'export', tenant_id: B.tenantId })
+    expect(eLgpdAlheio, 'nunca pela ficha de outra pessoa').not.toBeNull()
+  })
+})
