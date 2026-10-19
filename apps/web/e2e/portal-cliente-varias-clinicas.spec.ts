@@ -28,6 +28,7 @@ let cliente: ClienteDeTeste
 let loginDela = ''
 let fichaB = ''
 let alheia = ''
+let agA = '', agB = '', agAlheio = ''
 
 /** O PostgREST com a sessão da cliente — o que o navegador dela pode fazer. */
 function comoEla(): SupabaseClient {
@@ -59,6 +60,10 @@ test.describe('a mesma cliente em duas clínicas', () => {
     alheia = await B.criarCliente('Outra pessoa')
     const { error } = await db().from('clients').update({ auth_id: loginDela }).eq('id', fichaB)
     expect(error, 'o mesmo login ligado à ficha dela na clínica B').toBeNull()
+
+    agA = await agendamento(A, cliente.clientId)
+    agB = await agendamento(B, fichaB)
+    agAlheio = await agendamento(B, alheia)
   })
 
   test.afterAll(async () => {
@@ -68,9 +73,6 @@ test.describe('a mesma cliente em duas clínicas', () => {
   })
 
   test('com o token dela, o banco mostra as fichas dela nas duas clínicas — e só as dela', async () => {
-    const [agA, agB, agAlheio] = [
-      await agendamento(A, cliente.clientId), await agendamento(B, fichaB), await agendamento(B, alheia),
-    ]
     const { error: eN } = await db().from('client_notifications').insert([
       { client_id: cliente.clientId, title: 'Aviso da A' },
       { client_id: fichaB, title: 'Aviso da B' },
@@ -104,5 +106,52 @@ test.describe('a mesma cliente em duas clínicas', () => {
     expect(eLgpdB, 'ela pede pela ficha da B').toBeNull()
     const { error: eLgpdAlheio } = await ela.from('lgpd_requests').insert({ client_id: alheia, type: 'export', tenant_id: B.tenantId })
     expect(eLgpdAlheio, 'nunca pela ficha de outra pessoa').not.toBeNull()
+  })
+
+  // A clínica é a do ENDEREÇO: o app acha a ficha dela naquela clínica — a
+  // claim `client_id` do token é só a marca "é cliente" (é a da A, aqui).
+  test('no portal de cada clínica ela vê e edita a ficha DAQUELA clínica', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    try {
+      const procA = `Proc vca${marca}`
+      const procB = `Proc vcb${marca}`
+
+      await page.goto(`/e2e-un-vcb${marca}/cliente/home`)
+      await expect(page).toHaveURL(new RegExp(`/e2e-un-vcb${marca}/cliente/home`))
+      await expect(page.getByText(procB).first(), 'o agendamento da B').toBeVisible()
+      await expect(page.getByText(procA), 'nada da A no portal da B').toHaveCount(0)
+
+      await page.goto(`/e2e-un-vca${marca}/cliente/home`)
+      await expect(page.getByText(procA).first(), 'o agendamento da A').toBeVisible()
+      await expect(page.getByText(procB), 'nada da B no portal da A').toHaveCount(0)
+
+      // A action também: o perfil salvo no portal da B grava a ficha da B.
+      const cidade = `[e2e] Cidade B ${marca}`
+      await page.goto(`/e2e-un-vcb${marca}/cliente/perfil`)
+      await page.getByRole('button', { name: 'Editar' }).click()
+      await page.locator('input[name="city"]').fill(cidade)
+      await page.getByRole('button', { name: 'Salvar' }).click()
+      await expect.poll(async () =>
+        (await db().from('clients').select('city').eq('id', fichaB).single()).data?.city,
+      ).toBe(cidade)
+      const { data: a } = await db().from('clients').select('city').eq('id', cliente.clientId).single()
+      expect(a?.city, 'a ficha da A não muda').not.toBe(cidade)
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('numa clínica em que ela não tem ficha, o portal não abre', async ({ browser }) => {
+    const C = await criarOutraRede(`vcc${marca}`)
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/e2e-un-vcc${marca}/cliente/home`)
+      await expect(page).not.toHaveURL(new RegExp(`/e2e-un-vcc${marca}/`))
+    } finally {
+      await ctx.close()
+      await C.limpar()
+    }
   })
 })

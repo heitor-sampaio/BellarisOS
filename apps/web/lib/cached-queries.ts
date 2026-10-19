@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
+import type { FichaDoLogin } from '@/lib/clientes/ficha-da-requisicao'
 
 // ─── Membro por auth_id (usado no getTenantContext) ───────────────────────────
 // Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
@@ -50,6 +51,36 @@ export function getCachedMember(authId: string) {
     },
     [`member-${authId}`],
     { revalidate: 3600, tags: [`user:${authId}`] },
+  )()
+}
+
+// ─── As fichas de um login de cliente (uma por clínica, 2026-10-19) ──────────
+// A mesma pessoa pode ser cliente de várias clínicas com um login só. O
+// `buildContext` escolhe, entre estas, a da clínica do endereço
+// (lib/clientes/ficha-da-requisicao.ts). Quem liga uma ficha nova ao login
+// expira a tag `fichas-do-login:<authId>`.
+export type FichaDoLoginCacheada = FichaDoLogin & { unidade: string; rede: string }
+
+export const tagDasFichasDoLogin = (authId: string) => `fichas-do-login:${authId}`
+
+export function getCachedFichasDoLogin(authId: string) {
+  return unstable_cache(
+    async (): Promise<FichaDoLoginCacheada[]> => {
+      const data = await ler(createAdminClient()
+        .from('clients')
+        .select('id, tenant_id, branches(slug, name, tenants(name))')
+        .eq('auth_id', authId)
+        .order('created_at'), 'buscar as fichas do login')
+      return (data ?? []).map(c => {
+        const unidade = c.branches as unknown as { slug: string; name: string; tenants: { name: string } | null } | null
+        return {
+          clientId: c.id as string, tenantId: c.tenant_id as string,
+          slug: unidade?.slug ?? null, unidade: unidade?.name ?? '', rede: unidade?.tenants?.name ?? '',
+        }
+      })
+    },
+    [`fichas-do-login-${authId}`],
+    { revalidate: 300, tags: [tagDasFichasDoLogin(authId)] },
   )()
 }
 

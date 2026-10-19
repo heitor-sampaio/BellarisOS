@@ -5,7 +5,8 @@ import type {
   ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
-import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
+import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedFichasDoLogin, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
+import { fichaDaRequisicao } from '@/lib/clientes/ficha-da-requisicao'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
   resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
@@ -46,13 +47,23 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // `redirect` e não `throw`: numa página vira a tela de login, não a de erro.
   if (member && !member.isActive) redirect('/login?acesso=desativado')
 
+  // A CLIENTE pode ter uma ficha em cada clínica, com um login só: vale a da
+  // clínica do ENDEREÇO (lib/clientes/ficha-da-requisicao.ts). No portal de
+  // uma clínica em que ela não tem ficha, volta para a porta de entrada.
+  let clientId = meta.client_id ?? null
+  let redeDaCliente: string | null = null
+  if (isClient) {
+    const ficha = fichaDaRequisicao(await getCachedFichasDoLogin(authId), await caminhoDaRequisicao(), clientId)
+    if (ficha === 'fora') redirect('/auth/redirect')
+    if (ficha) { clientId = ficha.clientId; redeDaCliente = ficha.tenantId }
+    else if (clientId) redeDaCliente = await getCachedRedeDoCliente(clientId)
+  }
+
   // Rede BLOQUEADA (desligada pela plataforma, ou assinatura suspensa ou
   // cancelada): a equipe inteira só vê a tela de regularizar — páginas E
   // actions, porque toda action passa por aqui (lib/redes/situacao.ts).
   // O paciente de uma clínica bloqueada também não usa o portal (nem agenda).
-  const redeDoContexto = isClient
-    ? (meta.client_id ? await getCachedRedeDoCliente(meta.client_id) : null)
-    : tenantId
+  const redeDoContexto = isClient ? redeDaCliente : tenantId
   const rede = redeDoContexto ? await getCachedRede(redeDoContexto) : null
   if (rede && redeBloqueada(rede)) redirect('/conta-suspensa')
   // O PLANO da rede (o retrato; null = sem plano = tudo liberado).
@@ -121,7 +132,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     branchId,
     role,
     roleId,
-    clientId: meta.client_id ?? null,
+    clientId,
     permissions,
     scopes,
     reportTabs,
@@ -181,6 +192,19 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     },
   }
 })
+
+/**
+ * O "MÉTODO /caminho" desta requisição, como o proxy anotou
+ * (`x-bellaris-caminho`; o vindo do navegador é sobrescrito). Fora de uma
+ * requisição (sem cabeçalhos), vazio.
+ */
+async function caminhoDaRequisicao(): Promise<string> {
+  try {
+    return (await headers()).get('x-bellaris-caminho') ?? ''
+  } catch {
+    return ''
+  }
+}
 
 /**
  * Registra a requisição feita na sessão de suporte (`support_access_log`):

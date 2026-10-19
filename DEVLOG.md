@@ -1327,9 +1327,16 @@ e-mail fica de fora (usa outro e-mail, como hoje).
   pegavam a ficha pela claim `client_id` e outras com `limit 1`: com duas
   fichas, uma sumiria em silêncio. A claim fica como a marca "é cliente".
   Prova: `e2e/portal-cliente-varias-clinicas.spec.ts`, com o token dela.
-- Faltam: o app escolher a ficha pela clínica do endereço, a ligação na hora
-  de dar o acesso, o seletor, e os avisos, o bônus de primeiro acesso e a
-  clínica bloqueada por clínica.
+- **Etapa 2 — a clínica é a do endereço**: o `buildContext` escolhe, entre
+  as fichas do login (`getCachedFichasDoLogin`, tag
+  `fichas-do-login:<authId>`), a da clínica do caminho
+  (`fichaDaRequisicao`, pelo `x-bellaris-caminho` do proxy — a action posta
+  na rota da página, então vale para ela também). Duas abas em clínicas
+  diferentes não se atropelam. Portal de clínica sem ficha dela → a porta de
+  entrada; fora de um portal (api, auth), a ficha da marca do token. O PDF do
+  documento (sem clínica no endereço) aceita o de qualquer ficha dela.
+- Faltam: a ligação na hora de dar o acesso, o seletor, e os avisos, o bônus
+  de primeiro acesso e a clínica bloqueada por clínica.
 
 ### 2026-10-18 — O site diz o que o BellarisOS é: o sistema operacional da clínica
 
