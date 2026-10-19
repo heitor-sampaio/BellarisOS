@@ -1353,6 +1353,11 @@ movimento) e tira sozinho se o JavaScript não carregar. Prova:
 bloqueado e com movimento reduzido. Sem dependência nova (CSS e um script
 pequeno). Regras em `docs/regras/site.md`, "O movimento".
 
+Ajuste (2026-10-19, pedido do Heitor): o "num lugar só." do título perdeu o
+traço embaixo, que cortava o "g" e parecia link. O destaque ficou só a cor
+rosé; com movimento, um brilho claro passa uma vez pelas palavras quando o
+título entra.
+
 ### 2026-10-17 — Reconectar o número que já está no ar não o derruba mais
 
 Visto no primeiro teste do Heitor com um número real: a janela da Meta lista

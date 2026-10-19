@@ -102,6 +102,9 @@ fonte, raios, sombras de quem flutua).
   `aria-hidden` (o texto alternativo das telas já diz o que mostram) e andam
   por `useSequencia` só enquanto estão na tela. Sem movimento, ficam paradas:
   as conversas no FIM (inteiras), os avisos no primeiro.
+- **O destaque do título** ("num lugar só.") é a cor rosé, sem traço embaixo
+  (cortava o "g" e parecia link). Com movimento, um brilho passa UMA vez
+  pelas palavras quando o título entra, e elas terminam rosé sólido.
 - O que é contínuo (a faixa, o brilho do hero, a vez dos passos, o celular
   flutuando) é `infinite` só sob a classe. Durações, curvas e tamanhos são
   token em `app/site.css` (`--site-mov-*`, `--site-curva*`, `--site-demo-*`).

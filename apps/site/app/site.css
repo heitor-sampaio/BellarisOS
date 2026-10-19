@@ -29,6 +29,8 @@
   --site-mov-escalonar: 90ms;
   --site-curva: cubic-bezier(.16, 1, .3, 1);
   --site-curva-mola: cubic-bezier(.34, 1.56, .64, 1);
+  --site-curva-passagem: cubic-bezier(.45, 0, .55, 1);
+  --site-marca-brilho: 1800ms;
   --site-revelar-distancia: 28px;
   --site-ciclo-passos: 12.5s;
   --site-faixa-volta: 48s;
@@ -320,9 +322,18 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 @keyframes site-topo-borda { to { border-bottom-color: var(--border); } }
 
 /* ─── O hero ─── */
-.site-h1-marca { color: var(--brand); background: linear-gradient(var(--brand-3), var(--brand-3)) no-repeat 0 94% / 100% .1em; }
-.site-movimento .site-h1-marca { background-size: 0% .1em; transition: background-size 1100ms var(--site-curva) 700ms; }
-.site-movimento .revelado .site-h1-marca { background-size: 100% .1em; }
+/* O destaque é a cor, sem traço (o traço cortava o "g" e parecia link). Com
+   movimento, um brilho passa UMA vez pelas palavras quando o título entra; nas
+   duas pontas da passagem o gradiente é rosé sólido. */
+.site-h1-marca { color: var(--brand); }
+@supports (background-clip: text) {
+  .site-movimento .site-h1-marca {
+    background: linear-gradient(100deg, var(--brand) 40%, var(--brand-3) 50%, var(--brand) 60%) 100% 0 / 250% 100%;
+    background-clip: text; -webkit-background-clip: text; color: transparent;
+  }
+  .site-movimento .revelado .site-h1-marca { animation: site-marca-brilha var(--site-marca-brilho) var(--site-curva-passagem) var(--site-mov-lento) both; }
+}
+@keyframes site-marca-brilha { from { background-position: 100% 0; } to { background-position: 0 0; } }
 
 .site-botao-seta { transition: translate var(--site-mov-rapido) var(--site-curva-mola); }
 .site-movimento .site-botao:hover .site-botao-seta { translate: 4px 0; }
