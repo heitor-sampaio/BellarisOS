@@ -128,9 +128,11 @@ export async function addClient(
   // telefone — e o histórico de atendimento ficaria dividido entre os dois.
   const jaExiste = await clienteRapidoDoTelefone(admin, ctx.tenantId!, phone)
 
-  // 1) Conta de login PRIMEIRO (login = e-mail, senha = CPF). E-mail já usado → aborta sem criar cliente órfão.
+  // 1) Conta de login PRIMEIRO (login = e-mail, senha = CPF) — ou a que ela já
+  // tem em outra clínica, quando o e-mail e o CPF batem (a senha fica a dela).
+  // E-mail de equipe ou CPF que não bate → aborta sem criar cliente órfão.
   // O núcleo do acesso (lib/clients/acesso.ts), o mesmo do Copilot.
-  const login = await criarLoginDoCliente(admin, email, document)
+  const login = await criarLoginDoCliente(admin, ctx.tenantId!, email, document)
   if ('error' in login) return { error: login.error }
   const authId = login.authId
 
@@ -149,12 +151,12 @@ export async function addClient(
     : await admin.from('clients').insert(dadosDoCliente).select('id').single()
 
   if (error || !client) {
-    await desfazerLogin(admin, authId)  // rollback do login órfão
+    await desfazerLogin(admin, login)  // rollback do login órfão (o que ela já tinha fica)
     return { error: 'Erro ao cadastrar cliente. Tente novamente.' }
   }
 
   // 3) Claims do cliente + conta de fidelidade
-  await ligarLoginAoCliente(admin, authId, client.id)
+  await ligarLoginAoCliente(admin, login, client.id)
   // A conta de pontos: pela função do banco, que não duplica e não cala erro.
   if (!jaExiste) await gravar(admin.rpc('fidelidade_conta', { p_cliente: client.id }), 'abrir a conta de fidelidade')
 

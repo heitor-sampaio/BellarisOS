@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco } from './apoio/banco'
-import { clienteComSessao, type ClienteDeTeste } from './apoio/sessao'
+import { clienteComSessao, criarMembro, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { apagarClientes } from './apoio/limpeza'
 
 /**
  * A mesma pessoa cliente de DUAS clínicas que usam o BellarisOS (2026-10-19).
@@ -29,6 +30,17 @@ let loginDela = ''
 let fichaB = ''
 let alheia = ''
 let agA = '', agB = '', agAlheio = ''
+
+/** CPF com dígito verificador válido, do relógio mais um deslocamento (dois no mesmo ms diferem). */
+function cpfDeTeste(desloca: number): string {
+  const base = String(Date.now() + desloca * 7919).slice(-9).split('').map(Number)
+  const dv = (nums: number[]) => {
+    const r = (nums.reduce((s, n, i) => s + n * (nums.length + 1 - i), 0) * 10) % 11
+    return r === 10 ? 0 : r
+  }
+  const d1 = dv(base)
+  return [...base, d1, dv([...base, d1])].join('')
+}
 
 /** O PostgREST com a sessão da cliente — o que o navegador dela pode fazer. */
 function comoEla(): SupabaseClient {
@@ -139,6 +151,58 @@ test.describe('a mesma cliente em duas clínicas', () => {
       expect(a?.city, 'a ficha da A não muda').not.toBe(cidade)
     } finally {
       await ctx.close()
+    }
+  })
+
+  // A clínica B cadastra pela TELA quem já usa o BellarisOS na A: e-mail e CPF
+  // batem → a ficha nova é ligada à conta que ela já tem (decisão do Heitor:
+  // liga sozinho). CPF diferente, ou e-mail de alguém da equipe, é recusado.
+  test('a clínica B cadastra quem já tem conta: liga a ficha à mesma conta', async ({ browser }) => {
+    const pessoa = await clienteComSessao(`vd${marca}`, { id: A.branchId, slug: `e2e-un-vca${marca}` }, { tenant: A.tenantId })
+    const recepcao = await criarMembro(`vdb${marca}`, {
+      tenant: B.tenantId, branchId: B.branchId, permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }],
+    })
+    const cpf = cpfDeTeste(1)
+    const emailDela = `e2e-cliente-vd${marca}@bellaris.invalid`
+    await db().from('clients').update({ document: cpf }).eq('id', pessoa.clientId)
+    const { data: loginP } = await db().from('clients').select('auth_id').eq('id', pessoa.clientId).single<{ auth_id: string }>()
+
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    const page = await ctx.newPage()
+    const cadastrar = async (email: string, documento: string) => {
+      await page.goto(`/e2e-un-vcb${marca}/clients/new`)
+      await page.locator('input[name="name"]').fill(`[e2e] Ela na B ${marca}`)
+      await page.locator('input[name="phone"]').fill('48 9' + String(Date.now()).slice(-8))
+      await page.locator('input[name="email"]').fill(email)
+      await page.locator('input[name="document"]').fill(documento)
+      await page.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    }
+    const fichaNaB = async () => (await db().from('clients').select('id, auth_id')
+      .eq('tenant_id', B.tenantId).eq('email', emailDela).maybeSingle<{ id: string; auth_id: string | null }>()).data
+    try {
+      await cadastrar(emailDela, cpfDeTeste(2))
+      await expect(page.getByText(/outro CPF/i), 'CPF diferente: recusado').toBeVisible()
+      expect(await fichaNaB(), 'e nada foi cadastrado').toBeNull()
+
+      await cadastrar(`e2e-membro-vdb${marca}@bellaris.invalid`, cpfDeTeste(3))
+      await expect(page.getByText('Este e-mail já está em uso por outra conta.'), 'e-mail da equipe: recusado').toBeVisible()
+
+      await cadastrar(emailDela, cpf)
+      await expect.poll(fichaNaB, { message: 'a ficha da B nasce ligada à conta dela' })
+        .toMatchObject({ auth_id: loginP!.auth_id })
+
+      // E ela entra no portal da B com a sessão que já tinha.
+      const dela = await browser.newContext({ storageState: pessoa.estado })
+      const p = await dela.newPage()
+      await p.goto(`/e2e-un-vcb${marca}/cliente/home`)
+      await expect(p).toHaveURL(new RegExp(`/e2e-un-vcb${marca}/cliente/home`))
+      await dela.close()
+    } finally {
+      await ctx.close()
+      const ficha = await fichaNaB()
+      if (ficha) await apagarClientes([ficha.id])
+      await recepcao.limpar()
+      await pessoa.limpar()
     }
   })
 

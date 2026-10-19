@@ -1335,8 +1335,16 @@ e-mail fica de fora (usa outro e-mail, como hoje).
   diferentes não se atropelam. Portal de clínica sem ficha dela → a porta de
   entrada; fora de um portal (api, auth), a ficha da marca do token. O PDF do
   documento (sem clínica no endereço) aceita o de qualquer ficha dela.
-- Faltam: a ligação na hora de dar o acesso, o seletor, e os avisos, o bônus
-  de primeiro acesso e a clínica bloqueada por clínica.
+- **Etapa 3 — a clínica nova liga sozinha**: dar acesso (cadastro com
+  acesso, e as duas ferramentas do Copilot) passa por
+  `login_de_cliente_para_ligar` (migration `20261019000003`, só service
+  role): e-mail com login de CLIENTE e uma ficha dele com o mesmo CPF → a
+  ficha nova entra nessa conta, sem mexer na senha nem no token (só expira
+  `fichas-do-login`). CPF que não bate ("…com outro CPF. Confira…"), e-mail
+  de equipe ou da plataforma ("já está em uso por outra conta") e login que
+  já tem ficha nesta clínica são recusados. O rollback só apaga login NOVO.
+- Faltam: o seletor, e os avisos, o bônus de primeiro acesso e a clínica
+  bloqueada por clínica.
 
 ### 2026-10-18 — O site diz o que o BellarisOS é: o sistema operacional da clínica
 

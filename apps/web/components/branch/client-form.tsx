@@ -235,7 +235,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       }}>
         Ao cadastrar, será criado um acesso do cliente ao app com{' '}
         <b style={{ color: 'var(--text)' }}>login = e-mail</b> e{' '}
-        <b style={{ color: 'var(--text)' }}>senha = CPF</b>.
+        <b style={{ color: 'var(--text)' }}>senha = CPF</b>. Se ela já usa o app em outra clínica, com o
+        mesmo e-mail e CPF, esta ficha entra na conta dela, e a senha continua a que ela já usa.
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>

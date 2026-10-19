@@ -72,7 +72,8 @@ function linhasDoComplemento(x: Complemento) {
 interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; nascimento?: string; unidade?: string; criar_acesso?: boolean }
 interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean }
 
-const linhaDoAcesso = (email: string) => ({ rotulo: 'Acesso ao app', valor: `login ${email}, senha inicial = o CPF` })
+// Quem já usa o app em outra clínica (mesmo e-mail e CPF) entra na conta que tem (lib/clients/acesso.ts).
+const linhaDoAcesso = (email: string) => ({ rotulo: 'Acesso ao app', valor: `login ${email}, senha inicial = o CPF (se ela já usa o app em outra clínica, a senha continua a dela)` })
 
 export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro> = {
   nome: 'cadastrar_cliente',
