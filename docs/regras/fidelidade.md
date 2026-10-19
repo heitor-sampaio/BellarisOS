@@ -86,7 +86,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     (`first_access_bonus`): lançamento BONUS, uma vez por `bonus_ref`
     (`ANIVERSARIO:<ano>`, `PRIMEIRO_ACESSO`) — é o índice único que impede dar
     duas vezes, não o app. Quem nasceu em 29/02 ganha em 28/02 fora de ano
-    bissexto. O primeiro acesso é o primeiro login do cliente
+    bissexto. O primeiro acesso é POR FICHA (por clínica, desde 2026-10-19:
+    a mesma pessoa pode ser cliente de várias com um login só) — o login marca
+    a ficha do token, e o layout do portal marca cada outra na primeira vez
+    que ela abre aquela clínica. É o primeiro login do cliente
     (`clients.app_account_created_at`, marcado por `fidelidade_primeiro_acesso`
     no `loginAction` e na sessão do app); quem já tinha entrado antes da
     opção existir não ganha.

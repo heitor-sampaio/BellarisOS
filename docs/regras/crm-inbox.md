@@ -7,7 +7,11 @@
 
 ### 9.2 Clientes / CRM
 - CPF (`document`) único por `tenantId` — constraint `@@unique([tenantId, document])`
-- `authId` em `Client` é opcional — preenchido apenas quando o cliente cria conta no app
+- `authId` em `Client` é opcional — preenchido quando a CLÍNICA dá o acesso ao
+  app. **O mesmo login pode estar em várias fichas, uma por rede** (a mesma
+  pessoa cliente de várias clínicas, 2026-10-19 — regras no §5 do
+  `CLAUDE.md`). Cada ficha continua da sua clínica: a LGPD (pedido, exportação)
+  é por ficha, e cada clínica responde pelos dados dela.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
 - Tags como `String[]` no registro; o VOCABULÁRIO é da rede (`tags`, abaixo).
   `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a

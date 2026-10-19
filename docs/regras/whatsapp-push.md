@@ -28,6 +28,13 @@
 - Notificações operacionais: novo agendamento, cancelamento, remarcação,
   check-in e estoque abaixo do mínimo
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
+- **O aviso da cliente vai aos aparelhos de TODAS as fichas do login dela**
+  (2026-10-19: a mesma pessoa pode ser cliente de várias clínicas com uma
+  conta só). O aparelho fica registrado pela ficha da clínica em que ela
+  estava; `notifyClient` busca por `aparelhos_da_cliente(ficha)` — os de
+  todas as fichas do mesmo login, e só dele. O registro (`client_notifications`)
+  continua sendo da ficha que o aviso diz respeito, e o link do aviso leva ao
+  portal daquela clínica.
 - Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
 
 ### 9.8.0 Os números de WhatsApp da rede

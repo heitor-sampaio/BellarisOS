@@ -182,19 +182,43 @@ action e das consultas com filtro está em `docs/regras/convencoes.md`.
 | Model no banco | `User` | `Client` |
 | Role no JWT | NETWORK_ADMIN, BRANCH_ADMIN, RECEPTIONIST, PROFESSIONAL, FINANCIAL | CLIENT |
 | `tenant_id` no JWT | Preenchido | `null` |
-| `client_id` no JWT | `null` | Preenchido |
+| `client_id` no JWT | `null` | Preenchido — só a MARCA "é cliente" (ver abaixo) |
 | Login | E-mail + senha | E-mail + senha (a inicial é o CPF; a clínica cria o acesso no cadastro) |
 | Plataformas | Web + app Android | Portal do cliente (web + app Android) |
-| Acesso ao banco | Filtra por `tenantId` / `branchId` | Filtra por `clientId` |
+| Acesso ao banco | Filtra por `tenantId` / `branchId` | Filtra por `ctx.clientId` (a ficha da clínica do endereço) |
 
-### Vinculação Cliente → Conta no App
+### O acesso da cliente — e a mesma pessoa em várias clínicas (2026-10-19)
 
-Quando um cliente cria conta no app:
-1. Informa CPF no cadastro
-2. Sistema busca `Client` pelo `tenantId` (da clínica que enviou o convite/QR Code) + `document` (CPF)
-3. Se encontrar: vincula o `authId` ao `Client.authId` e preenche `appAccountCreatedAt`
-4. Se não encontrar: cria novo `Client` com `authId` preenchido
-5. JWT do cliente recebe `client_id` e `role: CLIENT`
+Só a CLÍNICA cria o acesso (cadastro com acesso, ou o Copilot): não existe
+cadastro da cliente pelo app. Login = e-mail, senha inicial = CPF
+(`lib/clients/acesso.ts`).
+
+**Um login por pessoa, uma ficha em cada clínica** (decisão do Heitor). A
+conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
+- **No banco**: no máximo uma ficha por login EM CADA REDE
+  (`clients_um_login_por_rede`); o lado CLIENT das políticas usa
+  `private.clientes_do_login()` — as fichas deste login, todas e só as dela.
+  Política nova do lado da cliente passa por ela, nunca pela claim nem por
+  `auth_id = auth.uid() … limit 1`.
+- **No app, a ficha é a da clínica do ENDEREÇO** (`fichaDaRequisicao`, no
+  `buildContext`, pelo `x-bellaris-caminho`): `ctx.clientId` muda com a
+  clínica. A claim `client_id` é só a marca "é cliente" — nunca escolha dado
+  por ela. Rota sem clínica no endereço (`/api/*`) confere as fichas do login
+  (`getCachedFichasDoLogin`), não `ctx.clientId`.
+- **Dar acesso a quem já tem conta** (`login_de_cliente_para_ligar`): e-mail
+  de CLIENTE com uma ficha de mesmo CPF → a ficha nova entra nessa conta, sem
+  mexer na senha nem no token. CPF diferente, e-mail de equipe ou da
+  plataforma → recusado. Rollback só apaga login NOVO.
+- **A entrada**: uma clínica → direto; várias → o seletor `/auth/clinicas`
+  no primeiro login (e uma vez de novo quando entra uma clínica nova), depois
+  a última usada (`destinoDaCliente`, o único caminho dos quatro pontos de
+  login). Clínica fechada (bloqueada, sem portal no plano) não tranca as
+  outras.
+- Avisos no celular vão aos aparelhos de todas as fichas do login
+  (`aparelhos_da_cliente`); o bônus de primeiro acesso é por clínica.
+- Fica de fora: a mesma pessoa como EQUIPE de uma clínica e cliente de outra
+  com o mesmo e-mail (usa outro e-mail).
+- Prova: `e2e/portal-cliente-varias-clinicas.spec.ts`.
 
 ---
 
@@ -544,6 +568,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
+❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por clínica: é ctx.clientId no app, clientes_do_login() no banco)
 ❌ Criar política de RLS em tabela de credencial (integration_configs, whatsapp_numbers) — só o servidor lê
 ❌ Função security definer em public que recebe tenant por parâmetro e fica aberta a anon/authenticated
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão

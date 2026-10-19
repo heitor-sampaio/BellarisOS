@@ -1305,7 +1305,7 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
-### 2026-10-19 — A mesma cliente em várias clínicas (em andamento)
+### 2026-10-19 — A mesma cliente em várias clínicas
 
 Pedido do Heitor: quem frequenta mais de uma clínica que usa o BellarisOS
 precisa entrar com uma conta só e escolher a clínica. Até aqui não dava: a
@@ -1354,8 +1354,22 @@ e-mail fica de fora (usa outro e-mail, como hoje).
   e `portal_ultima_entrada_em` (o layout do portal grava, com folga de
   10 min) — migration `20261019000004`. No portal, o nome da unidade no
   topo leva ao seletor quando a conta tem mais de uma clínica.
-- Faltam: os avisos no celular, o bônus de primeiro acesso e a clínica
-  bloqueada por clínica.
+- **Etapa 5 — o que ainda supunha uma ficha por pessoa**: os avisos vão
+  aos aparelhos de todas as fichas do login (`aparelhos_da_cliente`,
+  migration `20261019000005`); o bônus de primeiro acesso sai na primeira
+  vez que ela abre cada clínica; clínica fechada (bloqueada, sem portal no
+  plano) não tranca as outras — o seletor a mostra "Indisponível no
+  momento", e "conta suspensa" só quando nenhuma abre.
+- As regras estão no §5 do `CLAUDE.md` (que descrevia um cadastro da
+  cliente pelo app, com busca pelo CPF, que nunca existiu: só a clínica cria
+  o acesso). Prova: `e2e/portal-cliente-varias-clinicas.spec.ts` (9 casos),
+  `tests/ficha-da-requisicao.test.ts`, `tests/entrada-da-cliente.test.ts`.
+- **Mexeu em `lib/auth.ts` e nos quatro destinos de login: vale uma
+  completa** (os casos do Copilot e do portal fora do plano só rodam contra
+  o build).
+- Possível depois: a mesma pessoa como equipe de uma clínica e cliente de
+  outra (hoje ela usa outro e-mail); slug de unidade único entre redes (hoje
+  o cookie do seletor desempata).
 
 ### 2026-10-18 — O site diz o que o BellarisOS é: o sistema operacional da clínica
 
