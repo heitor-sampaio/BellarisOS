@@ -1381,9 +1381,12 @@ e-mail fica de fora (usa outro e-mail, como hoje).
   cliente pelo app, com busca pelo CPF, que nunca existiu: só a clínica cria
   o acesso). Prova: `e2e/portal-cliente-varias-clinicas.spec.ts` (9 casos),
   `tests/ficha-da-requisicao.test.ts`, `tests/entrada-da-cliente.test.ts`.
-- **Mexeu em `lib/auth.ts` e nos quatro destinos de login: vale uma
-  completa** (os casos do Copilot e do portal fora do plano só rodam contra
-  o build).
+- **A completa** (run 39314202349, contra o build, depois do endereço único):
+  767 de 768. A falha não era desta frente — era um defeito do seletor de
+  lista (`PickerCompacto`): no múltiplo, os nomes marcados empurram o botão
+  para baixo, o painel ficava por cima dele, o clique fora caía no painel e o
+  "Salvar" da linha de número de WhatsApp ficava bloqueado. Corrigido em
+  `3918ee7` (o painel acompanha o botão).
 - **O endereço da unidade ficou único no sistema inteiro** (pedido do
   Heitor, opção 1 de 4): com "centro", "jardins" e "sao-jose" já no banco,
   a primeira clínica real de outra cidade repetiria. Índice
