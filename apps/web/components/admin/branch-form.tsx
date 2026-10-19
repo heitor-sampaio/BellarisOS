@@ -116,7 +116,7 @@ export function BranchForm() {
                     <label className="overline" htmlFor="br-slug">
                       Slug (URL)
                       <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
-                        — bellaris.com/<strong>{slug || 'nome-da-unidade'}</strong>
+                        — app.bellarisos.com/<strong>{slug || 'nome-da-unidade'}</strong>
                       </span>
                     </label>
                     <input
@@ -125,6 +125,9 @@ export function BranchForm() {
                       value={slug}
                       onChange={e => { setSlugTouched(true); setSlug(e.target.value) }}
                     />
+                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      O endereço é único entre todas as clínicas: se já estiver em uso, o sistema completa com o nome da sua.
+                    </span>
                   </div>
 
                   <div className="form-2col">

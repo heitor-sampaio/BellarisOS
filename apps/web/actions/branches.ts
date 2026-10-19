@@ -6,17 +6,7 @@ import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { semAcesso } from '@/lib/sem-acesso'
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-}
+import { slugDoTexto, candidatosDeEndereco, escolherEndereco } from '@/lib/unidades/endereco'
 
 export async function createBranch(
   _prev: { error: string } | { success: boolean } | undefined,
@@ -42,39 +32,43 @@ export async function createBranch(
   const limite = await conferirLimite(ctx.tenantId!, 'unidades')
   if (limite) return { error: limite }
 
-  const slug = slugRaw ? toSlug(slugRaw) : toSlug(name)
-  if (!slug) return { error: 'Slug inválido.' }
+  const base = slugDoTexto(slugRaw || name)
+  if (!base) return { error: 'Endereço inválido.' }
 
   const supabase = createAdminClient()
 
-  // Verifica unicidade do slug no tenant
-  const existing = await ler(supabase
-    .from('branches')
-    .select('id')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('slug', slug)
-    .maybeSingle(), 'buscar a unidade')
+  // O endereço é ÚNICO no sistema inteiro (lib/unidades/endereco.ts): o nome;
+  // ocupado — por outra clínica ou por uma rota do sistema —, o nome com a
+  // clínica no fim; depois, numerado. Sem erro na tela. Dois cadastros ao mesmo
+  // tempo batem no índice (23505): procura de novo.
+  const rede = await ler(supabase.from('tenants').select('name').eq('id', ctx.tenantId!).single(), 'buscar a rede')
+  const nomeDaClinica = (rede?.name as string | undefined) ?? ''
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const candidatos = candidatosDeEndereco(base, nomeDaClinica)
+    const ocupados = await ler(supabase.from('branches').select('slug').in('slug', candidatos), 'conferir os endereços') as { slug: string }[] | null
+    const slug = escolherEndereco(base, nomeDaClinica, new Set((ocupados ?? []).map(o => o.slug)))
+    if (!slug) return { error: 'Não achei um endereço livre para esta unidade. Tente outro nome.' }
 
-  if (existing) return { error: `O slug "${slug}" já está em uso. Escolha outro nome.` }
+    const { error: insertError } = await supabase.from('branches').insert({
+      tenant_id: ctx.tenantId!,
+      name,
+      slug,
+      document,
+      email,
+      phone,
+      address,
+      city,
+      state,
+      zip_code: zipCode,
+    })
+    if (insertError?.code === '23505') continue
+    if (insertError) return { error: 'Erro ao criar unidade. Tente novamente.' }
 
-  const { error: insertError } = await supabase.from('branches').insert({
-    tenant_id: ctx.tenantId!,
-    name,
-    slug,
-    document,
-    email,
-    phone,
-    address,
-    city,
-    state,
-    zip_code: zipCode,
-  })
-
-  if (insertError) return { error: 'Erro ao criar unidade. Tente novamente.' }
-
-  revalidatePath('/admin/branches')
-  revalidateTag(`branches:${ctx.tenantId!}`, 'max')
-  return { success: true }
+    revalidatePath('/admin/branches')
+    revalidateTag(`branches:${ctx.tenantId!}`, 'max')
+    return { success: true }
+  }
+  return { error: 'Erro ao criar unidade. Tente novamente.' }
 }
 
 export async function updateBranch(

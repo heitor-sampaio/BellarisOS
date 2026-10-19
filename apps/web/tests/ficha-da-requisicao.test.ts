@@ -26,14 +26,6 @@ describe('fichaDaRequisicao — a ficha é a da clínica do endereço', () => {
     expect(fichaDaRequisicao([A, B], 'GET /bela-pele/dashboard', 'ficha-a')).toEqual(B)
   })
 
-  it('duas clínicas com o MESMO slug de unidade (é único só na rede): desempata a escolhida no seletor', () => {
-    const C: FichaDoLogin = { clientId: 'ficha-c', tenantId: 'rede-c', slug: 'aurora' }
-    expect(fichaDaRequisicao([A, C], 'GET /aurora/cliente', 'ficha-a', 'ficha-c')).toEqual(C)
-    expect(fichaDaRequisicao([A, C], 'GET /aurora/cliente', 'ficha-a', null)).toEqual(A)
-    // A escolhida que não é desta unidade não desvia nada.
-    expect(fichaDaRequisicao([A, B, C], 'GET /bela-pele/cliente', 'ficha-a', 'ficha-c')).toEqual(B)
-  })
-
   it('sem ficha nenhuma: nada a escolher', () => {
     expect(fichaDaRequisicao([], 'GET /aurora/cliente/home', 'ficha-a')).toBeNull()
   })

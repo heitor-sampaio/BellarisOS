@@ -219,6 +219,14 @@ conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
 - Fica de fora: a mesma pessoa como EQUIPE de uma clínica e cliente de outra
   com o mesmo e-mail (usa outro e-mail).
 - Prova: `e2e/portal-cliente-varias-clinicas.spec.ts`.
+- **O endereço (slug) da unidade é único no sistema inteiro**
+  (`branches_slug_unico`, 2026-10-19) — é o que deixa o endereço decidir a
+  ficha. `createBranch` escolhe um livre sozinho (`lib/unidades/endereco.ts`):
+  o nome; ocupado por outra clínica ou por uma rota do sistema
+  (`ENDERECOS_RESERVADOS`), o nome com a clínica no fim; depois, numerado.
+  Pasta nova no topo de `app/` entra na reserva
+  (`tests/endereco-da-unidade.test.ts` trava). Prova:
+  `e2e/estrutura-endereco-da-unidade.spec.ts`.
 
 ---
 
@@ -569,6 +577,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
 ❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por clínica: é ctx.clientId no app, clientes_do_login() no banco)
+❌ Gravar o slug de uma unidade sem escolherEndereco (lib/unidades/endereco.ts) — é único no sistema inteiro, e nunca o nome de uma rota
 ❌ Criar política de RLS em tabela de credencial (integration_configs, whatsapp_numbers) — só o servidor lê
 ❌ Função security definer em public que recebe tenant por parâmetro e fica aberta a anon/authenticated
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão

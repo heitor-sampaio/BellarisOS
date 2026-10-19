@@ -47,6 +47,7 @@ export const ISOLADOS = [
   'documentos-modelos.spec.ts',
   'documentos-portal.spec.ts',
   'documentos-verificacao.spec.ts',
+  'estrutura-endereco-da-unidade.spec.ts',
   'financeiro-parcelas.spec.ts',
   'fidelidade-desconto-no-pagamento.spec.ts',
   'fidelidade-ganho.spec.ts',

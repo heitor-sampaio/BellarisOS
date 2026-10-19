@@ -1367,9 +1367,17 @@ e-mail fica de fora (usa outro e-mail, como hoje).
 - **Mexeu em `lib/auth.ts` e nos quatro destinos de login: vale uma
   completa** (os casos do Copilot e do portal fora do plano só rodam contra
   o build).
+- **O endereço da unidade ficou único no sistema inteiro** (pedido do
+  Heitor, opção 1 de 4): com "centro", "jardins" e "sao-jose" já no banco,
+  a primeira clínica real de outra cidade repetiria. Índice
+  `branches_slug_unico` (migration `20261019000006`, entrou sem conflito);
+  `createBranch` escolhe um livre sem erro na tela — o nome; ocupado, o nome
+  com a clínica no fim; depois, numerado — e nunca o nome de uma rota do
+  sistema (uma unidade "Admin" era sombreada pelo `/admin`). O desempate por
+  cookie do seletor saiu: o endereço decide a ficha. Era o que deixava o link
+  de um aviso da clínica B abrir a ficha dela na A.
 - Possível depois: a mesma pessoa como equipe de uma clínica e cliente de
-  outra (hoje ela usa outro e-mail); slug de unidade único entre redes (hoje
-  o cookie do seletor desempata).
+  outra (hoje ela usa outro e-mail).
 
 ### 2026-10-18 — O site diz o que o BellarisOS é: o sistema operacional da clínica
 

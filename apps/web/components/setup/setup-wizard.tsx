@@ -304,6 +304,9 @@ function StepBranch({ onNext }: { onNext: () => void }) {
           value={slug}
           onChange={e => { setSlugTouched(true); setSlug(e.target.value) }}
         />
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          O endereço é único entre todas as clínicas: se já estiver em uso, o sistema completa com o nome da sua.
+        </span>
       </div>
 
       <div className="form-2col">
