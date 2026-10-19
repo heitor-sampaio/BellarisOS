@@ -32,6 +32,10 @@ clínicas." O site diz isso em três lugares:
 - **O app da cliente é o diferencial**, com seção própria (`#app-da-cliente`,
   no menu do topo) e três telas do app em leque. O nome na página é sempre
   **"App da cliente"** (no sistema é o portal do cliente).
+  - O app é UM só, para todos (o mesmo sistema, no navegador ou no app
+    Android): quem decide o que se vê é o login. A cliente que entra vê só a
+    visão dela — por isso "o app dela". Não é um aplicativo separado, nem um
+    app da clínica na loja (esclarecimento do Heitor, 2026-10-19).
   - O texto diz só o que o portal FAZ: agendar sozinha (o que a clínica
     liberar), assinar com o dedo, pacotes/créditos/planos, pontos e
     recompensas, confirmar e avaliar, avisos no celular, LGPD. Ele NÃO cobra
@@ -141,4 +145,5 @@ fonte, raios, sombras de quem flutua).
 ❌ Levar a exceção do movimento ou do gradiente de fundo para a clínica (lá vale a skill /lumiere-design)
 ❌ Prometer no app da cliente pagar, cancelar/remarcar ou a logo da clínica (o portal não faz)
 ❌ Chamar o app da cliente de "portal" na página (um nome por conceito: "App da cliente")
+❌ Dizer que a cliente baixa um app à parte ou "o app da sua clínica" (é o mesmo app; o login abre a visão dela)
 ```
