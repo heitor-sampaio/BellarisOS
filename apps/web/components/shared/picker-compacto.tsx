@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Search } from 'lucide-react'
 
@@ -96,6 +96,20 @@ export function PickerCompacto({
     // Sem rolar: focar um campo fora da vista rola o contêiner até ele.
     setTimeout(() => campoRef.current?.focus({ preventScroll: true }), 0)
   }
+
+  // Aberto, o gatilho também MUDA DE LUGAR sem rolagem nenhuma: no múltiplo, o
+  // que se marca aparece em volta dele (os nomes escolhidos, acima do botão) e
+  // o empurra. Medido de novo quando a escolha ou o rótulo mudam (e só muda se
+  // mudou). Sem isto o
+  // painel ficava por cima do botão que o abriu, o clique fora caía nele e
+  // nada fechava (o "Salvar" da linha bloqueado, 2026-10-19).
+  useLayoutEffect(() => {
+    if (!aberto) return
+    const r = ancoraRef.current?.getBoundingClientRect()
+    if (!r) return
+    const nova = posicaoDoPainel(r, larguraPainel)
+    setPos(p => (p && p.left === nova.left && p.top === nova.top && p.bottom === nova.bottom && p.largura === nova.largura ? p : nova))
+  }, [aberto, larguraPainel, selecionadas, rotuloBotao])
 
   // Aberto, acompanha o gatilho se a página rolar ou a janela mudar.
   useEffect(() => {
