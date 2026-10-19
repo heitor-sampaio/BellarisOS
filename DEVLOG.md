@@ -1343,7 +1343,18 @@ e-mail fica de fora (usa outro e-mail, como hoje).
   `fichas-do-login`). CPF que não bate ("…com outro CPF. Confira…"), e-mail
   de equipe ou da plataforma ("já está em uso por outra conta") e login que
   já tem ficha nesta clínica são recusados. O rollback só apaga login NOVO.
-- Faltam: o seletor, e os avisos, o bônus de primeiro acesso e a clínica
+- **Etapa 4 — o seletor**: `/auth/clinicas` (fora do espaço dos slugs),
+  uma linha por clínica; escolher anota a entrada e guarda a ficha num
+  cookie que só DESEMPATA slug de unidade repetido (o slug é único só na
+  rede). A regra de entrada é uma só (`escolherEntrada` +
+  `destinoDaCliente`, nos quatro lugares que copiavam a unidade da ficha do
+  token): uma clínica → direto; mais de uma → o seletor se ela ainda não
+  escolheu desde que a última foi ligada (volta UMA vez quando entra uma
+  clínica nova), senão a última usada. Colunas `portal_ligado_em` (gatilho)
+  e `portal_ultima_entrada_em` (o layout do portal grava, com folga de
+  10 min) — migration `20261019000004`. No portal, o nome da unidade no
+  topo leva ao seletor quando a conta tem mais de uma clínica.
+- Faltam: os avisos no celular, o bônus de primeiro acesso e a clínica
   bloqueada por clínica.
 
 ### 2026-10-18 — O site diz o que o BellarisOS é: o sistema operacional da clínica

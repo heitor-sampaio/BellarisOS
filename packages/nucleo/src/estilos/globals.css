@@ -2573,3 +2573,28 @@ a.suporte-link-forte:hover { color: var(--brand); }
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 .busca-acao[aria-selected="true"] { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+
+/* ── O seletor de clínica da cliente (/auth/clinicas, 2026-10-19) ─────────── */
+/* A mesma pessoa cliente de várias clínicas escolhe em qual entrar. Cada
+   clínica é uma linha-botão: branca com borda, realce rosé no hover. */
+.seletor-de-clinica-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-card-token);
+  font-family: inherit; cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.seletor-de-clinica-item:hover:not(:disabled) { background: var(--brand-soft); border-color: var(--brand-soft-border); }
+.seletor-de-clinica-item:disabled { cursor: progress; }
+.seletor-de-clinica-item[aria-busy="true"] { background: var(--brand-soft); border-color: var(--brand-soft-border); }
+/* O nome da unidade no topo do portal, quando a conta tem mais de uma clínica:
+   leva ao seletor. Mesmo texto do título, com a seta de troca. */
+.portal-trocar-clinica {
+  display: inline-flex; align-items: center; gap: 4px; min-width: 0;
+  margin: -4px -6px; padding: 4px 6px; border-radius: var(--radius-field-token);
+  font-size: var(--text-card-title); font-weight: var(--weight-bold); color: var(--text);
+  letter-spacing: -0.01em; text-decoration: none;
+  transition: background 120ms ease;
+}
+.portal-trocar-clinica:hover { background: var(--brand-soft); }

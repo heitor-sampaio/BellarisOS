@@ -10,6 +10,7 @@ import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema, ResetPasswordSchema, UpdatePasswordSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
 import { ler } from '@/lib/db'
+import { destinoDaCliente } from '@/lib/clientes/destino'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
 
@@ -112,11 +113,8 @@ async function destinoDaSessao(supabase: Awaited<ReturnType<typeof createClient>
       const admin  = createAdminClient()
 
       if (claims.client_id) {
-        const cl = await ler(admin.from('clients').select('branch_id').eq('id', claims.client_id).single(), 'buscar o cliente')
-        if (cl?.branch_id) {
-          const br = await ler(admin.from('branches').select('slug').eq('id', cl.branch_id).single(), 'buscar a unidade')
-          if (br?.slug) dest = `/${br.slug}/cliente`
-        }
+        // Uma clínica, várias, o seletor ou a última usada (lib/clientes/entrada.ts).
+        dest = (await destinoDaCliente(user.id)) ?? dest
       } else if (claims.branch_id) {
         const br = await ler(admin.from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')
         dest = getRedirectPath(claims.role, br?.slug ?? null)

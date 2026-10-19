@@ -4,6 +4,7 @@ import { getTenantContext, getRedirectPath } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthRedirect } from '@/components/auth-redirect'
 import { ler } from '@/lib/db'
+import { destinoDaCliente } from '@/lib/clientes/destino'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,14 +26,8 @@ export default async function Entrada() {
     const ctx = await getTenantContext()
     const admin = createAdminClient()
 
-    if (ctx.isClient && ctx.clientId) {
-      const client = await ler(admin
-        .from('clients').select('branch_id').eq('id', ctx.clientId).single(), 'buscar o cliente')
-      if (client?.branch_id) {
-        const br = await ler(admin
-          .from('branches').select('slug').eq('id', client.branch_id).single(), 'buscar a unidade')
-        if (br?.slug) destino = `/${br.slug}/cliente`
-      }
+    if (ctx.isClient) {
+      destino = await destinoDaCliente(ctx.userId)
     } else if (ctx.branchId) {
       const br = await ler(admin
         .from('branches').select('slug').eq('id', ctx.branchId).single(), 'buscar a unidade')

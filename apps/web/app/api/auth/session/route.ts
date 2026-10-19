@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
 import { ler } from '@/lib/db'
+import { destinoDaCliente } from '@/lib/clientes/destino'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
 // Troca um par de tokens por cookies de sessão (httpOnly) e devolve o destino.
@@ -75,13 +76,8 @@ export async function POST(req: NextRequest) {
   }
   try {
     if (claims.client_id) {
-      const cl = await ler(admin
-        .from('clients').select('branch_id').eq('id', claims.client_id).single(), 'buscar o cliente')
-      if (cl?.branch_id) {
-        const br = await ler(admin
-          .from('branches').select('slug').eq('id', cl.branch_id).single(), 'buscar a unidade')
-        if (br?.slug) redirectTo = `/${br.slug}/cliente`
-      }
+      // Uma clínica, várias, o seletor ou a última usada (lib/clientes/entrada.ts).
+      redirectTo = (await destinoDaCliente(usuario.id)) ?? redirectTo
     } else if (claims.branch_id) {
       const br = await ler(admin
         .from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')

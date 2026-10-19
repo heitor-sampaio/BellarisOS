@@ -6,7 +6,7 @@ import type {
 } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
 import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedFichasDoLogin, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
-import { fichaDaRequisicao } from '@/lib/clientes/ficha-da-requisicao'
+import { fichaDaRequisicao, COOKIE_DA_FICHA } from '@/lib/clientes/ficha-da-requisicao'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
   resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
@@ -14,7 +14,7 @@ import {
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
 import { abasForaDoPlano, modulosForaDoPlano, type ChaveDeFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { sessaoDeSuporte, sessaoVigente, registrarAcessoDoSuporte } from '@/lib/suporte/sessao'
 import { marcarSessaoDeSuporte } from '@/lib/suporte/requisicao'
 import { nomeComSuporte } from '@/lib/suporte/regras'
@@ -53,7 +53,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   let clientId = meta.client_id ?? null
   let redeDaCliente: string | null = null
   if (isClient) {
-    const ficha = fichaDaRequisicao(await getCachedFichasDoLogin(authId), await caminhoDaRequisicao(), clientId)
+    const ficha = fichaDaRequisicao(await getCachedFichasDoLogin(authId), await caminhoDaRequisicao(), clientId, await fichaEscolhida())
     if (ficha === 'fora') redirect('/auth/redirect')
     if (ficha) { clientId = ficha.clientId; redeDaCliente = ficha.tenantId }
     else if (clientId) redeDaCliente = await getCachedRedeDoCliente(clientId)
@@ -203,6 +203,15 @@ async function caminhoDaRequisicao(): Promise<string> {
     return (await headers()).get('x-bellaris-caminho') ?? ''
   } catch {
     return ''
+  }
+}
+
+/** A ficha escolhida no seletor de clínica — só desempata slug repetido (lib/clientes/ficha-da-requisicao.ts). */
+async function fichaEscolhida(): Promise<string | null> {
+  try {
+    return (await cookies()).get(COOKIE_DA_FICHA)?.value ?? null
+  } catch {
+    return null
   }
 }
 

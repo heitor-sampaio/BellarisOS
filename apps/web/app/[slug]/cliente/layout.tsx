@@ -5,6 +5,11 @@ import { ler } from '@/lib/db'
 import { ClientPortalNav } from '@/components/client-portal/client-nav'
 import { NotificationBell } from '@/components/client-portal/notification-bell'
 import { CapacitorNavFix } from '@/components/client-portal/capacitor-nav-fix'
+import Link from 'next/link'
+import { ChevronsUpDown } from 'lucide-react'
+import { getCachedFichasDoLogin } from '@/lib/cached-queries'
+import { registrarEntradaNoPortal } from '@/lib/clientes/destino'
+import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 
 export default async function ClientPortalLayout({
   children,
@@ -22,14 +27,19 @@ export default async function ClientPortalLayout({
   // O slug NÃO é único entre redes: a unidade é procurada dentro da rede da
   // ficha do cliente. Só pelo slug, com duas redes usando o mesmo, o
   // `.single()` falhava e o erro era descartado.
-  const [cliente, unread] = await Promise.all([
+  const [cliente, unread, fichas] = await Promise.all([
     ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente'),
     admin
       .from('client_notifications')
       .select('id', { count: 'exact', head: true })
       .eq('client_id', ctx.clientId!)
       .eq('is_received', false),
+    getCachedFichasDoLogin(ctx.userId),
+    // A "última clínica usada" do próximo login (lib/clientes/entrada.ts).
+    registrarEntradaNoPortal(ctx.clientId!),
   ])
+  // Cliente de mais de uma clínica: o nome da unidade no topo leva ao seletor.
+  const variasClinicas = fichas.filter(f => f.slug).length > 1
   const branch = cliente
     ? await ler(admin.from('branches').select('name').eq('slug', slug).eq('tenant_id', cliente.tenant_id as string).maybeSingle(), 'buscar a unidade')
     : null
@@ -61,11 +71,18 @@ export default async function ClientPortalLayout({
           paddingLeft:    '20px',
           paddingRight:   '20px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, minWidth: 0 }}>
             <span style={{ fontSize: 'var(--text-card-title)', color: 'var(--brand)', fontWeight: 800, marginRight: 8, lineHeight: 1 }}>✦</span>
-            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-              {branchName}
-            </span>
+            {variasClinicas ? (
+              <Link href={ROTA_DO_SELETOR} aria-label="Trocar de clínica" title="Trocar de clínica" className="portal-trocar-clinica">
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{branchName}</span>
+                <ChevronsUpDown size={16} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
+              </Link>
+            ) : (
+              <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                {branchName}
+              </span>
+            )}
           </div>
           <NotificationBell initialUnread={initialUnread} clientId={ctx.clientId!} />
         </div>

@@ -14,6 +14,9 @@
  * - fora de um portal → a ficha da marca do token, ou a primeira;
  * - sem ficha nenhuma → null (quem chama fica com a claim, como antes).
  */
+/** O cookie da ficha escolhida no seletor (o desempate de slug repetido). */
+export const COOKIE_DA_FICHA = 'bellaris-ficha'
+
 export interface FichaDoLogin {
   clientId: string
   tenantId: string
@@ -23,14 +26,21 @@ export interface FichaDoLogin {
 
 export function fichaDaRequisicao<F extends FichaDoLogin>(
   fichas: F[], caminho: string, marcaDoToken: string | null,
+  /**
+   * A ficha escolhida no seletor (cookie `bellaris-ficha`). Só DESEMPATA: o
+   * slug da unidade é único dentro da rede, não entre redes, e duas clínicas
+   * dela podem ter uma unidade "centro". Forjar não leva a ficha de ninguém —
+   * só escolhe entre as dela.
+   */
+  escolhida: string | null = null,
 ): F | 'fora' | null {
   if (!fichas.length) return null
   // "MÉTODO /caminho?query" → os pedaços do caminho.
   const rota = (caminho.includes(' ') ? caminho.slice(caminho.indexOf(' ') + 1) : caminho).split('?')[0] ?? ''
   const [primeiro, segundo] = rota.split('/').filter(Boolean)
 
-  const daClinica = primeiro ? fichas.find(f => f.slug === primeiro) : undefined
-  if (daClinica) return daClinica
+  const daClinica = primeiro ? fichas.filter(f => f.slug === primeiro) : []
+  if (daClinica.length) return daClinica.find(f => f.clientId === escolhida) ?? daClinica[0]!
   if (primeiro && segundo === 'cliente') return 'fora'
 
   return fichas.find(f => f.clientId === marcaDoToken) ?? fichas[0]!

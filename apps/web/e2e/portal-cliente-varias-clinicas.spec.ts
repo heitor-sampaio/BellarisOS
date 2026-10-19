@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco } from './apoio/banco'
-import { clienteComSessao, criarMembro, type ClienteDeTeste } from './apoio/sessao'
+import fs from 'node:fs'
+import path from 'node:path'
+import { clienteComSessao, criarMembro, sessaoPorEmail, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarClientes } from './apoio/limpeza'
 
@@ -203,6 +205,51 @@ test.describe('a mesma cliente em duas clínicas', () => {
       if (ficha) await apagarClientes([ficha.id])
       await recepcao.limpar()
       await pessoa.limpar()
+    }
+  })
+
+  // Decisão do Heitor: no primeiro login com mais de uma clínica, ela escolhe;
+  // depois, entra na última que usou. No portal, o nome da unidade no topo
+  // leva de volta ao seletor.
+  test('com duas clínicas: o primeiro login é o seletor; depois, a última clínica usada', async ({ browser }) => {
+    await db().from('clients').update({ portal_ultima_entrada_em: null }).in('id', [cliente.clientId, fichaB])
+    const email = `e2e-cliente-vc${marca}@bellaris.invalid`
+    const estado = path.join(__dirname, '.auth', `cliente-vc-entrada-${marca}.json`)
+    try {
+      const primeira = await sessaoPorEmail(loginDela, email, estado)
+      expect(primeira.destino, 'nunca escolheu: o seletor').toBe('/auth/clinicas')
+
+      const ctx = await browser.newContext({ storageState: estado })
+      const page = await ctx.newPage()
+      await page.goto(primeira.destino)
+      await expect(page.getByRole('button', { name: new RegExp(`Unidade vca${marca}`) })).toBeVisible()
+      await page.getByRole('button', { name: new RegExp(`Unidade vcb${marca}`) }).click()
+      await expect(page).toHaveURL(new RegExp(`/e2e-un-vcb${marca}/cliente`))
+
+      // No portal, o topo leva de volta ao seletor.
+      await page.getByRole('link', { name: 'Trocar de clínica' }).click()
+      await expect(page).toHaveURL(/\/auth\/clinicas/)
+      await ctx.close()
+
+      const segunda = await sessaoPorEmail(loginDela, email, estado)
+      expect(segunda.destino, 'a última clínica usada').toBe(`/e2e-un-vcb${marca}/cliente`)
+    } finally {
+      fs.rmSync(estado, { force: true })
+    }
+  })
+
+  test('com UMA clínica só, o login vai direto para ela e o topo não oferece troca', async ({ browser }) => {
+    const sozinha = await clienteComSessao(`vs${marca}`, { id: A.branchId, slug: `e2e-un-vca${marca}` }, { tenant: A.tenantId })
+    try {
+      expect(sozinha.destino).toBe(`/e2e-un-vca${marca}/cliente`)
+      const ctx = await browser.newContext({ storageState: sozinha.estado })
+      const page = await ctx.newPage()
+      await page.goto(sozinha.destino)
+      await expect(page.getByText(`[e2e] Unidade vca${marca}`).first()).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Trocar de clínica' })).toHaveCount(0)
+      await ctx.close()
+    } finally {
+      await sozinha.limpar()
     }
   })
 
