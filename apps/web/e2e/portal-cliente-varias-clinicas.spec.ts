@@ -253,6 +253,53 @@ test.describe('a mesma cliente em duas clínicas', () => {
     }
   })
 
+  // O aparelho é registrado pela ficha da clínica em que ela estava; o aviso
+  // de QUALQUER clínica dela tem de chegar nele (e nunca no de outra pessoa).
+  test('os aparelhos dela recebem o aviso de qualquer clínica dela', async () => {
+    const token = `e2e-tok-${marca}`
+    const endpoint = `https://e2e.invalido/push/${marca}`
+    const { error: eT } = await db().from('push_tokens').insert({ token, platform: 'android', client_id: cliente.clientId })
+    const { error: eW } = await db().from('web_push_subscriptions')
+      .insert({ client_id: cliente.clientId, endpoint, keys: { p256dh: 'e2e', auth: 'e2e' } })
+    expect(eT ?? eW, 'registrar os aparelhos pela ficha da A').toBeNull()
+    try {
+      const { data: daB, error } = await db().rpc('aparelhos_da_cliente', { p_cliente: fichaB })
+      expect(error).toBeNull()
+      const lista = (daB ?? []) as { token: string | null; endpoint: string | null }[]
+      expect(lista.map(a => a.token).filter(Boolean), 'o celular, pelo aviso da B').toEqual([token])
+      expect(lista.map(a => a.endpoint).filter(Boolean), 'o navegador, pelo aviso da B').toEqual([endpoint])
+
+      const { data: daAlheia } = await db().rpc('aparelhos_da_cliente', { p_cliente: alheia })
+      expect(daAlheia ?? [], 'nada da outra pessoa').toEqual([])
+    } finally {
+      await db().from('push_tokens').delete().eq('token', token)
+      await db().from('web_push_subscriptions').delete().eq('endpoint', endpoint)
+    }
+  })
+
+  test('o bônus de primeiro acesso vale em cada clínica, na primeira vez que ela abre o portal dela', async ({ browser }) => {
+    const { error: eC } = await db().from('loyalty_configs')
+      .upsert({ tenant_id: B.tenantId, enabled: true, first_access_bonus: 50 }, { onConflict: 'tenant_id' })
+    expect(eC, 'ligar a fidelidade da B com o bônus').toBeNull()
+    await db().from('clients').update({ app_account_created_at: null }).eq('id', fichaB)
+    const { data: conta } = await db().from('loyalty_accounts').select('id').eq('client_id', fichaB).single<{ id: string }>()
+
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/e2e-un-vcb${marca}/cliente/home`)
+      await expect.poll(async () => (await db().from('loyalty_transactions').select('id')
+        .eq('loyalty_account_id', conta!.id).eq('bonus_ref', 'PRIMEIRO_ACESSO')).data?.length ?? 0,
+      { message: 'o bônus da B, uma vez' }).toBe(1)
+      await page.reload()
+      await page.waitForLoadState('networkidle')
+      expect((await db().from('loyalty_transactions').select('id')
+        .eq('loyalty_account_id', conta!.id).eq('bonus_ref', 'PRIMEIRO_ACESSO')).data?.length, 'e só uma').toBe(1)
+    } finally {
+      await ctx.close()
+    }
+  })
+
   test('numa clínica em que ela não tem ficha, o portal não abre', async ({ browser }) => {
     const C = await criarOutraRede(`vcc${marca}`)
     const ctx = await browser.newContext({ storageState: cliente.estado })
@@ -263,6 +310,40 @@ test.describe('a mesma cliente em duas clínicas', () => {
     } finally {
       await ctx.close()
       await C.limpar()
+    }
+  })
+
+  // Por último: a B fica bloqueada até o cache da rede (60 s) vencer de novo.
+  // Clínica bloqueada (assinatura, ou desligada pela plataforma) não tranca a
+  // conta dela inteira: as outras seguem, e o seletor diz qual não abre.
+  test('clínica bloqueada: as outras seguem abertas, e o seletor avisa', async ({ browser }) => {
+    test.setTimeout(240_000)
+    await db().from('tenants').update({ is_active: false }).eq('id', B.tenantId)
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    const email = `e2e-cliente-vc${marca}@bellaris.invalid`
+    const estado = path.join(__dirname, '.auth', `cliente-vc-bloq-${marca}.json`)
+    try {
+      // O portal da B leva ao seletor (e não a "conta suspensa"), assim que o
+      // cache da rede vence.
+      await expect.poll(async () => {
+        await page.goto(`/e2e-un-vcb${marca}/cliente/home`)
+        return new URL(page.url()).pathname
+      }, { timeout: 120_000, intervals: [5_000] }).toBe('/auth/clinicas')
+
+      const b = page.getByRole('button', { name: new RegExp(`Unidade vcb${marca}`) })
+      await expect(b).toBeDisabled()
+      await expect(b).toContainText('Indisponível')
+      await expect(page.getByRole('button', { name: new RegExp(`Unidade vca${marca}`) })).toBeEnabled()
+
+      // A situação da rede tem cache de até 60 s em cada caminho que a lê.
+      await expect.poll(async () => (await sessaoPorEmail(loginDela, email, estado)).destino,
+        { message: 'o login vai para a clínica que abre', timeout: 90_000, intervals: [5_000] })
+        .toBe(`/e2e-un-vca${marca}/cliente`)
+    } finally {
+      await ctx.close()
+      fs.rmSync(estado, { force: true })
+      await db().from('tenants').update({ is_active: true }).eq('id', B.tenantId)
     }
   })
 })

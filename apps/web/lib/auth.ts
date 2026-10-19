@@ -6,7 +6,9 @@ import type {
 } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
 import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedFichasDoLogin, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
-import { fichaDaRequisicao, COOKIE_DA_FICHA } from '@/lib/clientes/ficha-da-requisicao'
+import { fichaDaRequisicao, slugDoCaminho, COOKIE_DA_FICHA } from '@/lib/clientes/ficha-da-requisicao'
+import { clinicaAbreParaCliente, fichasQueAbrem } from '@/lib/clientes/disponibilidade'
+import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
   resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
@@ -53,8 +55,21 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   let clientId = meta.client_id ?? null
   let redeDaCliente: string | null = null
   if (isClient) {
-    const ficha = fichaDaRequisicao(await getCachedFichasDoLogin(authId), await caminhoDaRequisicao(), clientId, await fichaEscolhida())
+    const fichas = await getCachedFichasDoLogin(authId)
+    const caminho = await caminhoDaRequisicao()
+    let ficha = fichaDaRequisicao(fichas, caminho, clientId, await fichaEscolhida())
     if (ficha === 'fora') redirect('/auth/redirect')
+    // Clínica FECHADA (bloqueada, ou sem o portal no plano) não tranca a conta
+    // inteira: fora do portal dela, vale uma ficha que abre; no portal dela, o
+    // seletor. Nenhuma abre → segue, e o portão abaixo manda à conta suspensa.
+    if (ficha && !(await clinicaAbreParaCliente(ficha.tenantId))) {
+      const abertas = await fichasQueAbrem(fichas)
+      if (abertas.length && slugDoCaminho(caminho) === ficha.slug) {
+        redirect(ROTA_DO_SELETOR)
+      } else if (abertas.length) {
+        ficha = abertas.find(f => f.clientId === clientId) ?? abertas[0]!
+      }
+    }
     if (ficha) { clientId = ficha.clientId; redeDaCliente = ficha.tenantId }
     else if (clientId) redeDaCliente = await getCachedRedeDoCliente(clientId)
   }

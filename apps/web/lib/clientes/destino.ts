@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, tentar } from '@/lib/db'
 import { escolherEntrada, ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
+import { fichasQueAbrem } from '@/lib/clientes/disponibilidade'
 
 /**
  * O destino da cliente depois do login — um lugar só para a tela de login, a
@@ -13,14 +14,19 @@ import { escolherEntrada, ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 export async function destinoDaCliente(authId: string): Promise<string | null> {
   const linhas = await ler(createAdminClient()
     .from('clients')
-    .select('id, portal_ligado_em, portal_ultima_entrada_em, branches(slug)')
+    .select('id, tenant_id, portal_ligado_em, portal_ultima_entrada_em, branches(slug)')
     .eq('auth_id', authId), 'buscar as fichas da cliente')
-  const entrada = escolherEntrada((linhas ?? []).map(c => ({
+  const fichas = (linhas ?? []).map(c => ({
     clientId: c.id as string,
+    tenantId: c.tenant_id as string,
     slug: (c.branches as unknown as { slug: string } | null)?.slug ?? null,
     ligadaEm: (c.portal_ligado_em as string | null) ?? null,
     ultimaEntradaEm: (c.portal_ultima_entrada_em as string | null) ?? null,
-  })))
+  }))
+  // Clínica fechada (bloqueada, sem o portal no plano) fica fora da escolha —
+  // a não ser que nenhuma abra: aí a de sempre, e o portão mostra o aviso.
+  const abertas = await fichasQueAbrem(fichas)
+  const entrada = escolherEntrada(abertas.length ? abertas : fichas)
   if (!entrada) return null
   return entrada.tipo === 'seletor' ? ROTA_DO_SELETOR : `/${entrada.ficha.slug}/cliente`
 }

@@ -2598,3 +2598,4 @@ a.suporte-link-forte:hover { color: var(--brand); }
   transition: background 120ms ease;
 }
 .portal-trocar-clinica:hover { background: var(--brand-soft); }
+.seletor-de-clinica-item:disabled:not([aria-busy="true"]) { cursor: not-allowed; background: var(--bg-app); }

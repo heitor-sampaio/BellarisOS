@@ -24,6 +24,12 @@ export interface FichaDoLogin {
   slug: string | null
 }
 
+/** O primeiro pedaço do caminho ("MÉTODO /caminho?query") — o slug, quando é uma rota de unidade. */
+export function slugDoCaminho(caminho: string): string | null {
+  const rota = (caminho.includes(' ') ? caminho.slice(caminho.indexOf(' ') + 1) : caminho).split('?')[0] ?? ''
+  return rota.split('/').filter(Boolean)[0] ?? null
+}
+
 export function fichaDaRequisicao<F extends FichaDoLogin>(
   fichas: F[], caminho: string, marcaDoToken: string | null,
   /**

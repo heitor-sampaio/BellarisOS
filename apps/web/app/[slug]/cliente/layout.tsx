@@ -10,6 +10,7 @@ import { ChevronsUpDown } from 'lucide-react'
 import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import { registrarEntradaNoPortal } from '@/lib/clientes/destino'
 import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
+import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
 export default async function ClientPortalLayout({
   children,
@@ -28,7 +29,7 @@ export default async function ClientPortalLayout({
   // ficha do cliente. Só pelo slug, com duas redes usando o mesmo, o
   // `.single()` falhava e o erro era descartado.
   const [cliente, unread, fichas] = await Promise.all([
-    ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente'),
+    ler(admin.from('clients').select('tenant_id, app_account_created_at').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente'),
     admin
       .from('client_notifications')
       .select('id', { count: 'exact', head: true })
@@ -40,6 +41,10 @@ export default async function ClientPortalLayout({
   ])
   // Cliente de mais de uma clínica: o nome da unidade no topo leva ao seletor.
   const variasClinicas = fichas.filter(f => f.slug).length > 1
+  // O primeiro acesso é POR CLÍNICA: o login marca o da ficha do token, e cada
+  // outra clínica dela, na primeira vez que ela abre o portal de lá. O banco
+  // decide (uma vez por ficha); o bônus é acessório e nunca lança.
+  if (cliente && !cliente.app_account_created_at) await bonusDePrimeiroAcesso(ctx.clientId!)
   const branch = cliente
     ? await ler(admin.from('branches').select('name').eq('slug', slug).eq('tenant_id', cliente.tenant_id as string).maybeSingle(), 'buscar a unidade')
     : null

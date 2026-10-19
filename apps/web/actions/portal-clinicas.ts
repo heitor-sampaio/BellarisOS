@@ -7,6 +7,7 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import { registrarEntradaNoPortal } from '@/lib/clientes/destino'
 import { COOKIE_DA_FICHA } from '@/lib/clientes/ficha-da-requisicao'
+import { clinicaAbreParaCliente } from '@/lib/clientes/disponibilidade'
 
 /**
  * A cliente escolhe a clínica no seletor (`/auth/clinicas`, 2026-10-19).
@@ -22,6 +23,7 @@ export async function entrarNaClinica(clientId: unknown): Promise<{ error: strin
   const id = z.string().uuid().safeParse(clientId)
   const ficha = id.success ? (await getCachedFichasDoLogin(ctx.userId)).find(f => f.clientId === id.data) : undefined
   if (!ficha?.slug) return { error: 'Clínica não encontrada.' }
+  if (!(await clinicaAbreParaCliente(ficha.tenantId))) return { error: 'Esta clínica está indisponível no momento.' }
 
   await registrarEntradaNoPortal(ficha.clientId, { escolheuAgora: true })
   ;(await cookies()).set(COOKIE_DA_FICHA, ficha.clientId, {

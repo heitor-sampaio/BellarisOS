@@ -8,6 +8,8 @@ export interface ClinicaDoSeletor {
   clientId: string
   unidade: string
   rede: string
+  /** Fechada (bloqueada, ou sem o portal no plano): aparece, mas não entra. */
+  disponivel: boolean
 }
 
 /**
@@ -36,7 +38,7 @@ export function SeletorDeClinica({ clinicas }: { clinicas: ClinicaDoSeletor[] })
           key={c.clientId}
           type="button"
           onClick={() => entrar(c.clientId)}
-          disabled={entrando}
+          disabled={entrando || !c.disponivel}
           className="seletor-de-clinica-item"
           aria-busy={entrando && escolhida === c.clientId}
         >
@@ -47,8 +49,13 @@ export function SeletorDeClinica({ clinicas }: { clinicas: ClinicaDoSeletor[] })
             {c.rede && c.rede !== c.unidade && (
               <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{c.rede}</span>
             )}
+            {!c.disponivel && (
+              <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--warning)' }}>
+                Indisponível no momento
+              </span>
+            )}
           </span>
-          <ChevronRight size={18} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          {c.disponivel && <ChevronRight size={18} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
         </button>
       ))}
       {erro && (

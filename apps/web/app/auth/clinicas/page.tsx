@@ -4,6 +4,7 @@ import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import AuthLayout from '@/app/(auth)/layout'
 import { SeletorDeClinica } from '@/components/client-portal/seletor-de-clinica'
 import { BotaoSairDoPortal } from '@/components/client-portal/botao-sair'
+import { fichasQueAbrem } from '@/lib/clientes/disponibilidade'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +22,8 @@ export default async function SeletorDeClinicaPage() {
   const fichas = (await getCachedFichasDoLogin(ctx.userId)).filter(f => f.slug)
   if (!fichas.length) redirect('/login')
   if (fichas.length === 1) redirect(`/${fichas[0]!.slug}/cliente`)
+  // A clínica fechada aparece, mas não entra: ela sabe por que não a vê.
+  const abertas = new Set((await fichasQueAbrem(fichas)).map(f => f.clientId))
 
   return (
     <AuthLayout>
@@ -37,7 +40,9 @@ export default async function SeletorDeClinicaPage() {
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '6px 0 18px' }}>
           Sua conta está em mais de uma clínica. Dá para trocar depois, pelo nome da clínica no topo.
         </p>
-        <SeletorDeClinica clinicas={fichas.map(f => ({ clientId: f.clientId, unidade: f.unidade, rede: f.rede }))} />
+        <SeletorDeClinica clinicas={fichas.map(f => ({
+          clientId: f.clientId, unidade: f.unidade, rede: f.rede, disponivel: abertas.has(f.clientId),
+        }))} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
         <BotaoSairDoPortal />

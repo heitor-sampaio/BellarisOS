@@ -58,17 +58,17 @@ export async function notifyClient(admin: Admin, clientId: string, p: NotifyPayl
       data:      p.data ?? null,
     }), 'registrar a notificação do cliente')
 
+    // Os aparelhos de TODAS as fichas do mesmo login (a mesma pessoa em várias
+    // clínicas: o aparelho fica registrado pela ficha de onde ela estava).
     // `ler` dentro do try deste fire-and-forget: a falha cai no catch abaixo,
     // registrada, em vez de virar "o cliente não tem aparelho".
-    const [tokens, subs] = await Promise.all([
-      ler(admin.from('push_tokens').select('token').eq('client_id', clientId), 'carregar os aparelhos do cliente'),
-      ler(admin.from('web_push_subscriptions').select('endpoint, keys').eq('client_id', clientId), 'carregar as inscrições do cliente'),
-    ])
+    const aparelhos = (await ler(admin.rpc('aparelhos_da_cliente', { p_cliente: clientId }),
+      'carregar os aparelhos do cliente') ?? []) as { token: string | null; endpoint: string | null; keys: unknown }[]
 
     await Promise.allSettled([
-      sendFcmToTokens((tokens ?? []).map(t => t.token as string), p.title, p.body, admin, p.data),
+      sendFcmToTokens(aparelhos.flatMap(a => (a.token ? [a.token] : [])), p.title, p.body, admin, p.data),
       sendWebPushToSubs(
-        (subs ?? []).map(s => ({ endpoint: s.endpoint as string, keys: s.keys as { p256dh: string; auth: string } })),
+        aparelhos.flatMap(a => (a.endpoint ? [{ endpoint: a.endpoint, keys: a.keys as { p256dh: string; auth: string } }] : [])),
         p.title, p.body, p.data,
       ),
     ])
