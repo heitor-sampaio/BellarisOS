@@ -115,6 +115,33 @@ test('diz o que o BellarisOS é: o sistema operacional da clínica, ERP e CRM nu
   }
 })
 
+// Pedido do Heitor (2026-10-19): o sistema SUBSTITUI vários que não conversam
+// entre si — e isso aparece como troca concreta, linha por linha.
+test('mostra a troca: o que a clínica faz hoje em vários sistemas, e o que vira num só', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('#inicio')).toContainText(/vários sistemas/i)
+  const troca = page.locator('#troca')
+  await expect(troca.getByRole('heading', { level: 2 })).toBeVisible()
+  await expect(troca.getByText('Hoje, em vários sistemas', { exact: true })).toBeVisible()
+  await expect(troca.getByText('Com o BellarisOS', { exact: true })).toBeVisible()
+  // Cada linha: o antes e o depois, lado a lado.
+  const linhas = troca.locator('[data-troca]')
+  await expect(linhas).toHaveCount(6)
+  for (const linha of await linhas.all()) {
+    await expect(linha.locator('[data-antes]')).not.toBeEmpty()
+    await expect(linha.locator('[data-depois]')).not.toBeEmpty()
+  }
+})
+
+test('mostra por que é fácil de usar — com o que o sistema tem de verdade', async ({ page }) => {
+  await page.goto('/')
+  const facil = page.locator('#facil')
+  await expect(facil.getByRole('heading', { level: 2 })).toBeVisible()
+  for (const item of ['Tudo a um atalho', 'Cada um vê o seu', 'Peça em português', 'No computador e no celular', 'Comece com o que já tem', 'Ajuda dentro do sistema']) {
+    await expect(facil.getByRole('heading', { name: item, exact: true })).toBeVisible()
+  }
+})
+
 test('o app da cliente tem seção própria, chamada no topo', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('.site-topo').getByRole('link', { name: 'App da cliente' })).toHaveAttribute('href', '#app-da-cliente')

@@ -1305,6 +1305,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-19 — O site diz: um sistema no lugar de vários, e fácil de usar
+
+Pedido do Heitor: focar em ser um verdadeiro sistema operacional, fácil de
+usar e intuitivo, que substitui vários sistemas que não se comunicam. O hero
+ganhou isso no texto (o título ficou), e duas seções novas:
+- **`#troca`, logo depois do hero**: "Chega de passar a limpo de um sistema
+  para o outro." Seis linhas "hoje, em vários sistemas" × "com o
+  BellarisOS" (horário copiado do WhatsApp, caixa na planilha, comissão à
+  mão, termo no papel, estoque no olho, lembrete um por um) — cada "depois" é
+  uma funcionalidade que existe. Com movimento, o "depois" chega pela seta.
+- **`#facil`**: "Fácil para a equipe inteira, desde o primeiro dia." Seis
+  razões que o sistema sustenta (Ctrl+K, menu pelo cargo, Copilot, celular,
+  `/setup` + importação, Ajuda com chamados). Busca, cargos e importação
+  saíram do "E ainda", que ganhou "Créditos e pré-pago".
+- A descrição da página (busca e compartilhamento) segue a mesma mensagem.
+Prova: dois testes novos em `e2e-site/site.spec.ts` (18/18).
+
 ### 2026-10-19 — A mesma cliente em várias clínicas
 
 Pedido do Heitor: quem frequenta mais de uma clínica que usa o BellarisOS

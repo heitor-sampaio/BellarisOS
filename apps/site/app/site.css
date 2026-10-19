@@ -45,6 +45,10 @@
   --site-mapa-ligacao: 56px;
   --site-mapa-ligacao-v: 24px;
   --site-app-celular: clamp(160px, 17vw, 228px);
+
+  /* A troca (2026-10-19): a largura das duas colunas e o vão da seta. */
+  --site-troca-largura: 980px;
+  --site-troca-seta: 40px;
 }
 
 @media (min-width: 720px) {
@@ -231,6 +235,36 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 .site-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card-token); padding: 22px; display: flex; flex-direction: column; gap: 8px; }
 .site-item-icone { width: 38px; height: 38px; border-radius: var(--radius-field-token); background: var(--brand-soft); color: var(--brand); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
 .site-item p { color: var(--text-soft); font-size: var(--site-pequeno); }
+@media (min-width: 980px) { .site-grade-3 { grid-template-columns: repeat(3, 1fr); } }
+
+/* ─── A troca: vários sistemas → um só (2026-10-19) ───
+   O "hoje" fica no plano de fundo (tracejado, apagado); o "com o BellarisOS"
+   é o cartão branco com o check rosé — e o rótulo dele, preenchido. */
+.site-troca { max-width: var(--site-troca-largura); margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.site-troca-cabeca, .site-troca-linha { display: grid; gap: 8px; }
+.site-troca-cabeca { grid-template-columns: 1fr 1fr; margin-bottom: 6px; }
+.site-troca-linha { grid-template-columns: 1fr; }
+@media (min-width: 760px) {
+  .site-troca-cabeca, .site-troca-linha { grid-template-columns: 1fr var(--site-troca-seta) 1fr; align-items: stretch; }
+  .site-troca-cabeca .site-troca-rotulo-marca { grid-column: 3; }
+}
+.site-troca-rotulo {
+  justify-self: start; padding: 5px 12px; border-radius: var(--radius-chip-token);
+  font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: var(--tracking-overline);
+  color: var(--text-muted); background: var(--surface); border: 1px solid var(--border);
+}
+.site-troca-rotulo-marca { background: var(--brand); border-color: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-brand-btn); }
+.site-troca-antes, .site-troca-depois {
+  margin: 0; display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start;
+  padding: 14px 16px; border-radius: var(--radius-card-token); font-size: var(--site-pequeno); line-height: 1.45;
+}
+.site-troca-antes { border: 1px dashed var(--border); color: var(--text-muted); }
+.site-troca-antes svg { color: var(--text-faint); margin-top: 2px; }
+.site-troca-depois { background: var(--surface); border: 1px solid var(--brand-soft-border); color: var(--text); font-weight: var(--weight-semibold); }
+.site-troca-depois svg { color: var(--brand); margin-top: 2px; }
+.site-troca-seta { display: none; align-items: center; justify-content: center; color: var(--brand-2); }
+@media (min-width: 760px) { .site-troca-seta { display: flex; } }
+.site-troca-fecho { text-align: center; margin: 22px auto 0; max-width: 560px; color: var(--text-soft); font-weight: var(--weight-semibold); }
 
 /* ─── Segurança ─── */
 .site-seguranca { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card-token); padding: clamp(24px, 5vw, 56px); display: grid; gap: 32px; grid-template-columns: 1fr; }
@@ -314,6 +348,17 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
   animation-delay: calc(var(--ordem, 0) * var(--site-mov-escalonar));
 }
 @keyframes site-entra { from { opacity: 0; transform: var(--revelar-de); } to { opacity: 1; transform: none; } }
+
+/* ─── A troca: o "hoje" chega, e o "com o BellarisOS" vem depois, pela seta ─── */
+.site-movimento .site-troca-linha.revelado .site-troca-depois {
+  animation: site-troca-chega var(--site-mov-lento) var(--site-curva) both;
+  animation-delay: calc(var(--ordem, 0) * var(--site-mov-escalonar) + var(--site-mov-rapido) * 2);
+}
+.site-movimento .site-troca-linha.revelado .site-troca-seta {
+  animation: site-troca-chega var(--site-mov-lento) var(--site-curva) both;
+  animation-delay: calc(var(--ordem, 0) * var(--site-mov-escalonar) + var(--site-mov-rapido));
+}
+@keyframes site-troca-chega { from { opacity: 0; transform: translateX(calc(var(--site-revelar-distancia) * -1)); } to { opacity: 1; transform: none; } }
 
 /* ─── O topo ganha a borda quando a página rola ─── */
 @supports (animation-timeline: scroll()) {

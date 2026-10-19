@@ -1,6 +1,6 @@
 import {
   Check, Plus, Package, Gift, BarChart3, ShieldCheck, Search, FileSpreadsheet, Megaphone, Building2, ArrowRight,
-  MessagesSquare, CalendarDays, CalendarPlus, Wallet, Smartphone, PenLine, Star, Bell,
+  MessagesSquare, CalendarDays, CalendarPlus, Wallet, Smartphone, PenLine, Star, Bell, X, Sparkles, LifeBuoy,
 } from 'lucide-react'
 import { Navegador, Celular } from '@/components/molduras'
 import { AvisosDoHero, DemoConversa, DemoCopilot } from '@/components/demos'
@@ -51,9 +51,9 @@ export function Hero({ links }: { links: Links }) {
         <div className="site-hero-texto">
           <span className="site-overline" data-revelar style={ordem(0)}>✦ O sistema operacional da clínica de estética</span>
           <h1 className="site-h1" data-revelar style={ordem(1)}>A clínica inteira <span className="site-h1-marca">num lugar só.</span></h1>
-          <p className="site-lead" data-revelar style={{ maxWidth: 640, ...ordem(2) }}>
-            ERP e CRM num sistema só: o comercial, o atendimento, o financeiro e o marketing da clínica
-            no mesmo lugar — e um app para a sua cliente agendar sozinha.
+          <p className="site-lead" data-revelar style={{ maxWidth: 660, ...ordem(2) }}>
+            Agenda, WhatsApp, prontuário, vendas, financeiro e marketing num sistema só, fácil de usar —
+            no lugar de vários sistemas que não conversam entre si. E um app para a sua cliente agendar sozinha.
           </p>
           <div className="site-hero-chamadas" data-revelar style={ordem(3)}>
             <a className="site-botao site-botao-primario" href={links.comecar}>
@@ -97,6 +97,55 @@ export function Faixa() {
         <span className="site-faixa-grupo">{itens}</span>
       </div>
     </div>
+  )
+}
+
+/**
+ * A troca (pedido do Heitor, 2026-10-19): o BellarisOS SUBSTITUI a pilha de
+ * ferramentas que não conversam entre si. Cada linha é o que a equipe faz hoje
+ * à mão, entre um sistema e outro — e a funcionalidade que existe no lugar
+ * (conferida no sistema: agendar pelo inbox, caixa e DRE, comissão com regra,
+ * termo pelo app, baixa de estoque com lote, automações).
+ */
+const TROCAS = [
+  { antes: 'Combina o horário no WhatsApp e copia na agenda', depois: 'Agenda na própria conversa — e o horário já está na agenda' },
+  { antes: 'Fecha o caixa numa planilha à parte', depois: 'Recebeu na recepção, entrou no caixa e no resultado do mês' },
+  { antes: 'Calcula a comissão à mão no fim do mês', depois: 'A comissão se calcula sozinha, com a regra da clínica' },
+  { antes: 'Guarda o termo assinado numa pasta de papel', depois: 'O termo é assinado no celular e fica na ficha da cliente' },
+  { antes: 'Confere o estoque no olho', depois: 'O produto usado na sessão sai do estoque, com lote e validade' },
+  { antes: 'Manda lembrete de horário um por um', depois: 'Lembrete, confirmação e retorno saem sozinhos' },
+]
+
+export function Troca() {
+  return (
+    <section id="troca" className="site-secao" aria-labelledby="troca-titulo">
+      <div className="site-container">
+        <div className="site-cabeca site-cabeca-centro" data-revelar>
+          <span className="site-overline">✦ Um sistema no lugar de vários</span>
+          <h2 id="troca-titulo" className="site-h2">Chega de passar a limpo de um sistema para o outro.</h2>
+          <p className="site-lead">
+            Agenda num aplicativo, financeiro na planilha, WhatsApp no celular de alguém, termo no papel.
+            Nada conversa com nada — e a equipe passa o dia copiando de um lugar para o outro.
+          </p>
+        </div>
+        <div className="site-troca">
+          <div className="site-troca-cabeca">
+            <span className="site-troca-rotulo">Hoje, em vários sistemas</span>
+            <span className="site-troca-rotulo site-troca-rotulo-marca">Com o BellarisOS</span>
+          </div>
+          {TROCAS.map((t, i) => (
+            <div key={t.antes} className="site-troca-linha" data-troca data-revelar style={ordem(i)}>
+              <p className="site-troca-antes" data-antes><X size={16} aria-hidden="true" /><span>{t.antes}</span></p>
+              <span className="site-troca-seta" aria-hidden="true"><ArrowRight size={18} /></span>
+              <p className="site-troca-depois" data-depois><Check size={16} aria-hidden="true" /><span>{t.depois}</span></p>
+            </div>
+          ))}
+        </div>
+        <p className="site-troca-fecho" data-revelar>
+          Um cadastro, uma agenda, um caixa — atualizados na hora, para a equipe inteira.
+        </p>
+      </div>
+    </section>
   )
 }
 
@@ -183,6 +232,45 @@ export function DiaDaClinica() {
             </li>
           ))}
         </ol>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Fácil de usar (pedido do Heitor, 2026-10-19) — sustentado pelo que o sistema
+ * TEM: a busca universal (Ctrl+K), o menu recortado pelo cargo, o Copilot, o
+ * app Android, o /setup com a importação de contatos e a Ajuda com chamados.
+ */
+const FACIL = [
+  { icone: Search, titulo: 'Tudo a um atalho', texto: 'Cliente, conversa, agendamento ou tela: digite e vá, de qualquer lugar do sistema (Ctrl+K).' },
+  { icone: ShieldCheck, titulo: 'Cada um vê o seu', texto: 'O menu mostra só o que o cargo da pessoa usa: a recepção não tropeça no financeiro.' },
+  { icone: Sparkles, titulo: 'Peça em português', texto: 'O Copilot agenda, consulta e lança por texto ou por voz — e você confirma antes de gravar.' },
+  { icone: Smartphone, titulo: 'No computador e no celular', texto: 'O mesmo sistema no navegador e no app Android, com as notificações no bolso.' },
+  { icone: FileSpreadsheet, titulo: 'Comece com o que já tem', texto: 'Um passo a passo monta a clínica, e os contatos chegam de uma planilha.' },
+  { icone: LifeBuoy, titulo: 'Ajuda dentro do sistema', texto: 'Abra um chamado de qualquer tela, com o print, e acompanhe a resposta ali mesmo.' },
+]
+
+export function Facil() {
+  return (
+    <section id="facil" className="site-secao" aria-labelledby="facil-titulo">
+      <div className="site-container">
+        <div className="site-cabeca" data-revelar>
+          <span className="site-overline">✦ Fácil de usar</span>
+          <h2 id="facil-titulo" className="site-h2">Fácil para a equipe inteira, desde o primeiro dia.</h2>
+          <p className="site-lead">
+            Sem instalar nada e sem manual: cada pessoa vê só o que usa, e o que ela procura está a um atalho.
+          </p>
+        </div>
+        <div className="site-grade site-grade-3">
+          {FACIL.map(({ icone: Icone, titulo, texto }, i) => (
+            <div key={titulo} className="site-item" data-revelar data-luz style={ordem(i % 3)}>
+              <span className="site-item-icone" aria-hidden="true"><Icone size={19} /></span>
+              <h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>{titulo}</h3>
+              <p>{texto}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -357,11 +445,10 @@ const ITENS = [
   { icone: Gift, titulo: 'Fidelidade', texto: 'Pontos, recompensas, vouchers e o bônus de aniversário.' },
   { icone: BarChart3, titulo: 'Indicadores', texto: 'Faturamento, ocupação, ticket médio e funil — os números de um lugar só.' },
   { icone: Megaphone, titulo: 'Anúncios', texto: 'Meta e Google ligados à venda: saiba qual campanha trouxe cliente que pagou.' },
-  { icone: FileSpreadsheet, titulo: 'Importação', texto: 'Traga os contatos de outro sistema por planilha.' },
-  { icone: Search, titulo: 'Busca universal', texto: 'Cliente, agendamento ou tela: tudo a um Ctrl+K.' },
-  { icone: ShieldCheck, titulo: 'Cargos e acessos', texto: 'Você monta os cargos e decide quem vê o quê, módulo a módulo.' },
+  { icone: Wallet, titulo: 'Créditos e pré-pago', texto: 'Crédito da cliente e procedimento pago antes, abatidos no atendimento.' },
   { icone: Building2, titulo: 'Mais unidades', texto: 'Cresceu? Cada unidade com a operação dela, e a visão da rede inteira.' },
 ]
+// Busca, cargos e importação moram em "Fácil de usar" (2026-10-19).
 
 export function EAinda() {
   return (
@@ -371,9 +458,9 @@ export function EAinda() {
           <span className="site-overline">✦ E ainda</span>
           <h2 id="ainda-titulo" className="site-h2">O resto do dia também mora aqui.</h2>
         </div>
-        <div className="site-grade">
+        <div className="site-grade site-grade-3">
           {ITENS.map(({ icone: Icone, titulo, texto }, i) => (
-            <div key={titulo} className="site-item" data-revelar data-luz style={ordem(i % 4)}>
+            <div key={titulo} className="site-item" data-revelar data-luz style={ordem(i % 3)}>
               <span className="site-item-icone" aria-hidden="true"><Icone size={19} /></span>
               <h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>{titulo}</h3>
               <p>{texto}</p>

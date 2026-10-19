@@ -29,6 +29,15 @@ clínicas." O site diz isso em três lugares:
 - **"Não são sistemas separados. É um sistema só."** (`#um-sistema`): o núcleo
   em rosé e as frentes em volta — Comercial (CRM), Atendimento, Financeiro
   (ERP), Marketing — e o App da cliente ligado a elas.
+- **Um sistema no lugar de vários** (pedido do Heitor, 2026-10-19): o hero diz
+  que ele substitui vários sistemas que não conversam entre si, e a seção
+  `#troca` mostra a troca linha a linha — o que a equipe faz hoje à mão entre
+  um sistema e outro × a funcionalidade que existe no lugar. Cada "depois" é
+  uma funcionalidade conferida; nenhum concorrente citado.
+- **Fácil de usar** (`#facil`, 2026-10-19): sustentado só pelo que o sistema
+  tem — busca universal (Ctrl+K), menu recortado pelo cargo, Copilot, app
+  Android, o `/setup` com a importação, a Ajuda com chamados. Nada de "em 5
+  minutos" ou número de adoção.
 - **O app da cliente é o diferencial**, com seção própria (`#app-da-cliente`,
   no menu do topo) e três telas do app em leque. O nome na página é sempre
   **"App da cliente"** (no sistema é o portal do cliente).

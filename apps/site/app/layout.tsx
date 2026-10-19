@@ -4,7 +4,7 @@ import './site.css'
 import { SCRIPT_DO_MOVIMENTO } from '@/lib/movimento'
 
 const TITULO = 'BellarisOS — o sistema operacional da clínica de estética'
-const DESCRICAO = 'ERP e CRM num sistema só: agenda, prontuário, WhatsApp, vendas, financeiro, marketing e o app da sua cliente. Teste grátis por 14 dias, sem cartão.'
+const DESCRICAO = 'Um sistema só, fácil de usar, no lugar de vários: agenda, prontuário, WhatsApp, vendas, financeiro, marketing e o app da sua cliente. Teste grátis por 14 dias, sem cartão.'
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = (process.env.SITE_URL || 'https://bellarisos.com').replace(/\/$/, '')
