@@ -12,7 +12,8 @@ import type { ClientDocumentItem } from './client-documents-tab'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-renderer'
 import { AttendanceRecordCard } from './attendance-record-card'
-import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
+import { AnamneseGeralCartao } from './anamnese-geral'
+import type { AnamneseGeral } from '@/lib/anamnese-geral'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
@@ -159,7 +160,7 @@ interface Props {
   internalCredits:       ProfileInternalCredit[]
   documents:             ClientDocumentItem[]
   recordForms?:          ProfileRecordEntry[]
-  generalAnamnesis?:     GeneralAnamnesis | null
+  generalAnamnesis?:     AnamneseGeral | null
   canGrantCredit:        boolean
   branches:              { id: string; name: string }[]
   currentBranchId:       string
@@ -1568,7 +1569,7 @@ export function ClientProfile({
                 client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
                 subtitle={`${entry.procedureName ?? 'Atendimento'} · ${format(new Date(entry.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
                 generalAnamnesis={
-                  <AnamnesisTab embedded anamnesis={generalAnamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={false} />
+                  <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Pré-atendimento', rows: [] }} clientId={client.id} canEdit={false} />
                 }
                 ficha={entry.ficha && entry.ficha.rows.length > 0 ? {
                   name: entry.ficha.name,

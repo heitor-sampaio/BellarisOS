@@ -64,7 +64,7 @@ test.beforeAll(async () => {
   expect(eAp, 'criar o agendamento').toBeNull()
 
   const { data: pr, error: ePr } = await b.from('medical_records')
-    .upsert({ client_id: clienteId, general_anamnesis: { queixa: ANAMNESE } }, { onConflict: 'client_id' })
+    .upsert({ client_id: clienteId, general_anamnesis: { allergies: ANAMNESE } }, { onConflict: 'client_id' })
     .select('id').single<{ id: string }>()
   expect(ePr, 'criar o prontuário').toBeNull()
   const { error: eEn } = await b.from('medical_record_entries').insert({

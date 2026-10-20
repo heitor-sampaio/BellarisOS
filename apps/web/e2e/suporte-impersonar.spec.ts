@@ -65,7 +65,7 @@ test.beforeAll(async () => {
 
   const clienteId = await outra.criarCliente('Paciente Suporte')
   const { error: eMr } = await b.from('medical_records')
-    .upsert({ client_id: clienteId, general_anamnesis: { queixa: ANAMNESE } }, { onConflict: 'client_id' })
+    .upsert({ client_id: clienteId, general_anamnesis: { allergies: ANAMNESE } }, { onConflict: 'client_id' })
   expect(eMr).toBeNull()
   const { data: ap, error: eAp } = await b.from('appointments').insert({
     branch_id: outra.branchId, client_id: clienteId, procedure_id: outra.procedureId,

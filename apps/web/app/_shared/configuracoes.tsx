@@ -10,6 +10,7 @@ import type { RoleModulePermission } from '@/components/admin/roles-editor'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
+import { SettingsPreAtendimento } from '@/components/admin/settings-pre-atendimento'
 import { SettingsDocumentos } from '@/components/admin/settings-documentos'
 import { modelosDaRede, urlsDasImagensDosModelos } from '@/lib/documentos/modelos'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
@@ -164,6 +165,16 @@ export async function Configuracoes({
           .order('created_at'), 'carregar as fichas')
       : [],
   ])
+
+  // A ficha de pré-atendimento é da REDE (uma por rede): só quem é da rede a vê aqui.
+  const preAtendimento = wantsForms && ctx.branchId === null
+    ? await Promise.all([
+        ler(admin.from('forms').select('id, name, schema')
+          .eq('tenant_id', ctx.tenantId!).eq('tipo', 'PRE_ATENDIMENTO').maybeSingle(), 'carregar a ficha de pré-atendimento'),
+        ler(admin.from('tenants').select('pre_atendimento_envio, pre_atendimento_validade_meses')
+          .eq('id', ctx.tenantId!).single(), 'carregar o envio do pré-atendimento'),
+      ])
+    : null
 
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
@@ -351,7 +362,20 @@ export async function Configuracoes({
       )}
 
       {activeTab === 'fichas' && (
-        <SettingsFichas forms={fichas} semInjetaveis={!temRecurso(ctx, 'injetaveis')} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {preAtendimento && (() => {
+            const [ficha, rede] = preAtendimento as [{ id: string; name: string; schema: unknown } | null, { pre_atendimento_envio: boolean; pre_atendimento_validade_meses: number }]
+            return (
+              <SettingsPreAtendimento
+                ficha={ficha ? { id: ficha.id, name: ficha.name, rows: normalizeFormSchema(ficha.schema).rows } : null}
+                envio={rede.pre_atendimento_envio}
+                validadeMeses={rede.pre_atendimento_validade_meses}
+                podePersonalizar={temRecurso(ctx, 'fichas')}
+              />
+            )
+          })()}
+          <SettingsFichas forms={fichas} semInjetaveis={!temRecurso(ctx, 'injetaveis')} />
+        </div>
       )}
 
       {activeTab === 'documentos' && modelosDeDocumento && (

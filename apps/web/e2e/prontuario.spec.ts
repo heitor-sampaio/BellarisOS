@@ -94,14 +94,17 @@ test.describe.serial('prontuário', () => {
     await page.goto(`/admin/agenda/${c!.appt}`)
 
     // -- Anamnese geral (nasce aberta: o cliente ainda não tem) ----------------
-    await page.locator('select[name="skinType"]').selectOption({ index: 1 })
-    await page.locator('textarea[name="allergies"]').fill(`${PREFIXO} dipirona`)
+    // Desde 2026-10-20 é a ficha de pré-atendimento da rede (as perguntas de
+    // antes, com os mesmos ids): o campo se acha pelo rótulo.
+    const anamneseGeral = page.locator('[data-anamnese-geral]').first()
+    await anamneseGeral.locator('[data-campo="skinType"] select').selectOption({ index: 1 })
+    await anamneseGeral.locator('[data-campo="allergies"] textarea').fill(`${PREFIXO} dipirona`)
     const anamnese = capturarAcao(page, corpo => corpo.includes(c!.cliente) && corpo.includes('dipirona'))
     await page.getByRole('button', { name: 'Salvar anamnese' }).click()
     chamadas.anamnese = await anamnese
     await expect.poll(async () => {
       const { data } = await db.from('medical_records').select('general_anamnesis').eq('client_id', c!.cliente).maybeSingle()
-      return (data?.general_anamnesis as { allergies?: string } | null)?.allergies ?? null
+      return (data?.general_anamnesis as { respostas?: { allergies?: string } } | null)?.respostas?.allergies ?? null
     }, { message: 'a anamnese geral é gravada no prontuário do cliente' }).toBe(`${PREFIXO} dipirona`)
 
     // -- Ficha do procedimento --------------------------------------------------

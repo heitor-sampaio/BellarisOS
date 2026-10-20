@@ -8,7 +8,8 @@ import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
-import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
+import { paraAnamneseGeral } from '@/lib/anamnese-geral'
+import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 
@@ -190,7 +191,10 @@ export async function SessaoDeAtendimento({
   const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
     !isOwnScope(ctx, 'medical_records') || ctx.internalUserId === apptRaw.professional_id
   )
-  const anamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
+  // A anamnese geral: as perguntas da ficha de pré-atendimento da rede (a
+  // antiga, de campos fixos, convertida na hora).
+  const fichaPreAtendimento = await fichaDePreAtendimento(admin, ctx.tenantId!)
+  const anamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, fichaPreAtendimento) : null
 
   // Produtos do procedimento (insumos padrão)
   const defaultProducts: SessionProduct[] = ((procProductsRaw ?? []) as unknown as RawProcProduct[])
@@ -417,6 +421,7 @@ export async function SessaoDeAtendimento({
         appointment={appointment}
         client={client}
         anamnesis={anamnesis}
+        fichaPreAtendimento={fichaPreAtendimento}
         canEditRecords={canEditRecords}
         canViewRecords={canViewRecords}
         ficha={ficha}

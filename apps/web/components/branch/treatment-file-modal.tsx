@@ -12,6 +12,8 @@ import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type { TreatmentFileDetails } from '@/actions/treatment-plans'
 import type { ProfileClient, ProfilePackage } from './client-profile'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { RespostasDaAnamnese } from '@/components/branch/anamnese-geral'
+import { quemRespondeu } from '@/lib/anamnese-geral'
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -38,17 +40,6 @@ const APPT_STATUS: Record<string, { label: string; color: string }> = {
   COMPLETED:   { label: 'Realizada',    color: 'var(--success)' },
   CANCELLED:   { label: 'Cancelada',    color: 'var(--danger)' },
   NO_SHOW:     { label: 'Não compareceu', color: 'var(--text-muted)' },
-}
-
-const ANAMNESE_LABELS: Record<string, string> = {
-  skinType:                  'Tipo de pele',
-  allergies:                 'Alergias',
-  medications:               'Medicamentos em uso',
-  healthConditions:          'Condições de saúde',
-  previousProcedures:        'Procedimentos anteriores',
-  isPregnantOrBreastfeeding: 'Gestante ou amamentando',
-  useSunscreen:              'Usa protetor solar',
-  observations:              'Observações',
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -505,33 +496,13 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
               </div>
 
               {/* -- Anamnese ---------------------------------------- */}
-              {details?.anamnesis && Object.keys(details.anamnesis).some(k => {
-                const v = (details.anamnesis as unknown as Record<string, unknown>)[k]
-                return v !== null && v !== '' && v !== undefined
-              }) && (
+              {details?.anamnesis && Object.keys(details.anamnesis.respostas).length > 0 && (
                 <>
                   <Divider />
                   <div>
                     <SectionTitle>Anamnese</SectionTitle>
-                    <div className="rg-2">
-                      {Object.entries(details.anamnesis as unknown as Record<string, unknown>).map(([k, v]) => {
-                        const label = ANAMNESE_LABELS[k]
-                        if (!label) return null
-                        const strVal = typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v ?? '')
-                        if (!strVal || strVal === 'false') return null
-                        return (
-                          <div key={k} style={{
-                            background: 'var(--bg-app)', borderRadius: 8, padding: '10px 12px',
-                            border: '1px solid var(--border)',
-                          }}>
-                            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.05em', marginBottom: 4 }}>
-                              {label.toUpperCase()}
-                            </p>
-                            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 500 }}>{strVal}</p>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginBottom: 10 }}>{quemRespondeu(details.anamnesis)}</p>
+                    <RespostasDaAnamnese rows={details.anamnesis.ficha.rows} respostas={details.anamnesis.respostas} />
                   </div>
                 </>
               )}

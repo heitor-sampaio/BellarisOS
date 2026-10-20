@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
@@ -11,66 +10,8 @@ import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } fr
 import { ler } from '@/lib/db'
 
 
-export async function saveGeneralAnamnesis(
-  _prev: { error?: string } | null,
-  formData: FormData,
-): Promise<{ error?: string }> {
-  const ctx = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'MANAGE')
-
-  const clientId = (formData.get('client_id') as string | null)?.trim()
-  const branchId = (formData.get('branch_id') as string | null)?.trim()
-  const slug     = (formData.get('slug')      as string | null)?.trim()
-
-  if (!clientId || !branchId) return { error: 'Dados inválidos.' }
-
-  // Verify client belongs to this tenant's branch
-  const supabase = await createSupabase()
-  const branch = await ler(supabase
-    .from('branches')
-    .select('id')
-    .eq('id', branchId)
-    .eq('tenant_id', ctx.tenantId!)
-    .single(), 'buscar a unidade')
-  if (!branch) return { error: 'Filial não encontrada.' }
-
-  // O comentário acima prometia conferir o cliente e conferia só a filial: com
-  // a própria filial e o id de um cliente de OUTRA rede, gravava a anamnese de
-  // saúde dele. Achado na varredura de 2026-09-27.
-  const cliente = await ler(createAdminClient()
-    .from('clients').select('id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
-    'conferir o cliente da anamnese')
-  if (!cliente) return { error: 'Cliente não encontrado.' }
-
-  const anamnesis = {
-    skinType:                   (formData.get('skinType')                   as string) || '',
-    allergies:                  ((formData.get('allergies')                 as string) || '').trim(),
-    medications:                ((formData.get('medications')               as string) || '').trim(),
-    healthConditions:           ((formData.get('healthConditions')          as string) || '').trim(),
-    previousProcedures:         ((formData.get('previousProcedures')        as string) || '').trim(),
-    isPregnantOrBreastfeeding:  formData.get('isPregnantOrBreastfeeding')   === 'true',
-    useSunscreen:               formData.get('useSunscreen')                === 'true',
-    observations:               ((formData.get('observations')              as string) || '').trim(),
-    updatedAt:                  new Date().toISOString(),
-    updatedBy:                  ctx.internalUserId,
-  }
-
-  const admin = createAdminClient()
-
-  // Upsert medical_records row
-  const { error } = await admin
-    .from('medical_records')
-    .upsert(
-      { client_id: clientId, general_anamnesis: anamnesis },
-      { onConflict: 'client_id' },
-    )
-
-  if (error) return { error: `Erro ao salvar: ${error.message}` }
-
-  revalidatePath(`/${slug}/clients/${clientId}`)
-  revalidatePath(`/admin/clients/${clientId}`)
-  return {}
-}
+// A anamnese GERAL da cliente saiu daqui em 2026-10-20: é a ficha de
+// pré-atendimento da rede (actions/pre-atendimento.ts, salvarAnamneseGeral).
 
 // ─── Ficha de anamnese por procedimento (construtor) ──────────────────────────
 

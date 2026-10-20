@@ -81,16 +81,6 @@ export interface PlanSessionForCheckout {
   appointmentId:   string | null
 }
 
-export interface AnamnesisData {
-  skinType:                  string
-  allergies:                 string
-  medications:               string
-  healthConditions:          string
-  previousProcedures:        string
-  isPregnantOrBreastfeeding: boolean
-  useSunscreen:              boolean
-  observations:              string
-}
 
 /**
  * Regrava as sessões de um plano.
@@ -1010,7 +1000,8 @@ export async function generateEvaluationPlan(
 async function generateEvaluationPlanInterno(
   appointmentId:         string,
   complaints:            string,
-  anamnesis:             AnamnesisData,
+  /** As respostas da ficha de pré-atendimento (2026-10-20); null não mexe na anamnese. */
+  anamnesis:             Record<string, unknown> | null,
   sessions:              PlanSessionInput[],
   planNotes:             string,
   sessionNotes:          string,
@@ -1034,11 +1025,14 @@ async function generateEvaluationPlanInterno(
   // 1. Queixas do cliente → appointment.notes
   await gravar(admin.from('appointments').update({ notes: complaints.trim() }).eq('id', appointmentId), 'salvar as queixas do cliente')
 
-  // 2. Anamnese → medical_records.general_anamnesis
-  await gravar(admin.from('medical_records').upsert(
-    { client_id: appt.client_id, general_anamnesis: { ...anamnesis, updatedAt: new Date().toISOString(), updatedBy: ctx.internalUserId } },
-    { onConflict: 'client_id' },
-  ), 'salvar a anamnese')
+  // 2. Anamnese → medical_records.general_anamnesis, no formato da ficha de
+  //    pré-atendimento (e o pendente da cliente fecha).
+  if (anamnesis) {
+    await gravarAnamneseGeral(admin, {
+      tenantId: ctx.tenantId!, clientId: appt.client_id as string, respostas: anamnesis,
+      origem: 'EQUIPE', porUsuario: ctx.internalUserId,
+    })
+  }
 
   // 3. Upsert plano + salvar sessões enviadas pelo editor → PROPOSED
   const { data: plan, error: planErr } = await admin
@@ -1161,6 +1155,8 @@ import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto } from '@/lib/vendas/desconto'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
+import { paraAnamneseGeral, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { fichaDePreAtendimento, gravarAnamneseGeral } from '@/lib/pre-atendimento/ficha'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1668,7 +1664,7 @@ export interface TreatmentFileDetails {
   evaluationComplaints: string | null
   evaluationNotes:      string | null
   sessions:             TreatmentFileSession[]
-  anamnesis:            AnamnesisData | null
+  anamnesis:            AnamneseGeral | null
 }
 
 export async function getTreatmentPlanDetails(planId: string, clientId: string): Promise<{ data?: TreatmentFileDetails; error?: string }> {
@@ -1754,7 +1750,9 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
         evaluationNotes:      null,
         sessions,
         // Anamnese é prontuário: o arquivo do tratamento abre com agenda (2026-10-03).
-        anamnesis:            podeVerClinico(ctx, plan.professional_id ?? null) ? ((medRecord?.general_anamnesis as AnamnesisData | null) ?? null) : null,
+        anamnesis:            podeVerClinico(ctx, plan.professional_id ?? null)
+          ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(admin, ctx.tenantId!))
+          : null,
       },
     }
   } catch (e) {

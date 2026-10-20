@@ -16,7 +16,9 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
-import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
+import { paraAnamneseGeral } from '@/lib/anamnese-geral'
+import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
+import { createAdminClient as clienteDeServico } from '@/lib/supabase/admin'
 import { documentosDoCliente, assinadosDoCliente } from '@/lib/documentos/leitura'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 
@@ -192,7 +194,7 @@ export default async function ClientProfilePage({
     (appts ?? []).some((a: { professional_id?: string | null }) => a.professional_id === ctx.internalUserId)
   )
   const recordForms = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
-  const generalAnamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
+  const generalAnamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
 
   // Transactions
   type RawTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null }

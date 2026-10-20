@@ -31,6 +31,10 @@ interface Props {
   updateAction?: (input: { id: string; name: string; schema: unknown }) => Promise<SaveResult>
   /** O planejador de injetáveis fora do plano da rede: o tipo de campo não é oferecido (2026-10-07). */
   semInjetaveis?: boolean
+  /** Tipos de campo que esta ficha não oferece (o pré-atendimento: foto e planejador, 2026-10-20). */
+  tiposFora?: AnamnesisFieldType[]
+  /** O nome da ficha é fixo (o pré-atendimento): o campo do nome não aparece. */
+  nomeFixo?: boolean
 }
 
 const TYPE_ICON: Record<AnamnesisFieldType, ComponentType<{ size?: number }>> = {
@@ -47,8 +51,8 @@ function newField(type: AnamnesisFieldType = 'text'): AnamnesisField {
   return { id: newId(), type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }
 }
 
-export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction, semInjetaveis = false }: Props) {
-  const tipos = semInjetaveis ? FIELD_TYPES.filter(t => t.value !== 'injectable_map') : FIELD_TYPES
+export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction, semInjetaveis = false, tiposFora = [], nomeFixo = false }: Props) {
+  const tipos = FIELD_TYPES.filter(t => !tiposFora.includes(t.value) && !(semInjetaveis && t.value === 'injectable_map'))
   const createFn = createAction ?? criarFicha
   const updateFn = updateAction ?? atualizarFicha
   const [name, setName] = useState(existing?.name ?? '')
@@ -234,10 +238,12 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Nome da ficha *</label>
-        <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Anamnese — Toxina botulínica" />
-      </div>
+      {!nomeFixo && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Nome da ficha *</label>
+          <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Anamnese — Toxina botulínica" />
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* Paleta (desktop) */}

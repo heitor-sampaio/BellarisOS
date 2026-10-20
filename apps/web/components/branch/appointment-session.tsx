@@ -24,9 +24,8 @@ import { generateEvaluationPlan, getCheckoutPlan, receberDoPlano } from '@/actio
 import { CheckoutWizard } from '@/components/branch/checkout-wizard'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
-import type { AnamnesisData } from '@/actions/treatment-plans'
-import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
-import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
+import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle } from '@/components/branch/anamnese-geral'
+import type { AnamneseGeral, FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
@@ -106,7 +105,10 @@ export interface HistoryEntry {
 interface Props {
   appointment:        SessionAppointment
   client:             SessionClient
-  anamnesis:          GeneralAnamnesis | null
+  /** A anamnese geral da cliente: as perguntas da ficha de pré-atendimento (2026-10-20). */
+  anamnesis:          AnamneseGeral | null
+  /** A ficha de pré-atendimento ATUAL da rede (para responder ou corrigir). */
+  fichaPreAtendimento: FichaDePreAtendimento
   /** A ficha do procedimento — uma só desde 2026-09-25. */
   ficha:              { name: string; rows: AnamnesisRow[] } | null
   respostasDaFicha:   Record<string, unknown>
@@ -789,99 +791,12 @@ function DorasCard({ value, onChange, readonly }: {
   )
 }
 
-// -- Anamnese GERAL do cliente, inline (sempre em modo edição, controlado) -----
-// Este é o questionário de saúde da pessoa, preenchido uma vez e reaproveitado:
-// outra coisa da ficha do procedimento.
-
-const EVAL_SKIN_TYPES = [
-  { value: '',         label: 'Não informado' },
-  { value: 'normal',   label: 'Normal' },
-  { value: 'seca',     label: 'Seca' },
-  { value: 'oleosa',   label: 'Oleosa' },
-  { value: 'mista',    label: 'Mista' },
-  { value: 'sensivel', label: 'Sensível' },
-]
-
-function EvaluationAnamnesisFields({
-  value,
-  onChange,
-}: {
-  value:    AnamnesisData
-  onChange: (v: AnamnesisData) => void
-}) {
-  function set(field: keyof AnamnesisData, val: string | boolean) {
-    onChange({ ...value, [field]: val })
-  }
-
-  return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Anamnese</h3>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Ficha clínica do cliente</p>
-      </div>
-      <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div className="form-3col">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Tipo de pele</label>
-            <select value={value.skinType} onChange={e => set('skinType', e.target.value)} className="field">
-              {EVAL_SKIN_TYPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Usa protetor solar?</label>
-            <select value={value.useSunscreen ? 'true' : 'false'} onChange={e => set('useSunscreen', e.target.value === 'true')} className="field">
-              <option value="false">Não</option>
-              <option value="true">Sim</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Grávida / amamentando?</label>
-            <select value={value.isPregnantOrBreastfeeding ? 'true' : 'false'} onChange={e => set('isPregnantOrBreastfeeding', e.target.value === 'true')} className="field">
-              <option value="false">Não</option>
-              <option value="true">Sim</option>
-            </select>
-          </div>
-        </div>
-        <div className="form-2col">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Alergias</label>
-            <textarea rows={3} value={value.allergies} onChange={e => set('allergies', e.target.value)}
-              placeholder="Ex: látex, penicilina…" className="field" style={{ resize: 'vertical' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Medicamentos em uso</label>
-            <textarea rows={3} value={value.medications} onChange={e => set('medications', e.target.value)}
-              placeholder="Ex: anticoagulantes, isotretinoína…" className="field" style={{ resize: 'vertical' }} />
-          </div>
-        </div>
-        <div className="form-2col">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Condições de saúde</label>
-            <textarea rows={3} value={value.healthConditions} onChange={e => set('healthConditions', e.target.value)}
-              placeholder="Ex: diabetes, hipertensão…" className="field" style={{ resize: 'vertical' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Procedimentos anteriores</label>
-            <textarea rows={3} value={value.previousProcedures} onChange={e => set('previousProcedures', e.target.value)}
-              placeholder="Ex: botox há 6 meses…" className="field" style={{ resize: 'vertical' }} />
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">Observações gerais</label>
-          <textarea rows={2} value={value.observations} onChange={e => set('observations', e.target.value)}
-            placeholder="Anotações adicionais relevantes…" className="field" style={{ resize: 'vertical' }} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // -- Linha de anamnese ---------------------------------------------------------
 
 // -- Main component ------------------------------------------------------------
 
 export function AppointmentSession({
-  appointment, client, anamnesis, ficha, respostasDaFicha, products, availableProducts,
+  appointment, client, anamnesis, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
@@ -910,16 +825,8 @@ export function AppointmentSession({
 
   // Estado do formulário unificado de avaliação
   const [evalComplaints,         setEvalComplaints]         = useState(appointment.complaints ?? '')
-  const [evalAnamnesis,          setEvalAnamnesis]          = useState<AnamnesisData>({
-    skinType:                  anamnesis?.skinType                  ?? '',
-    allergies:                 anamnesis?.allergies                 ?? '',
-    medications:               anamnesis?.medications               ?? '',
-    healthConditions:          anamnesis?.healthConditions          ?? '',
-    previousProcedures:        anamnesis?.previousProcedures        ?? '',
-    isPregnantOrBreastfeeding: anamnesis?.isPregnantOrBreastfeeding ?? false,
-    useSunscreen:              anamnesis?.useSunscreen              ?? false,
-    observations:              anamnesis?.observations              ?? '',
-  })
+  // A anamnese da avaliação: a ficha de pré-atendimento, colhida ao gerar o plano.
+  const anamneseDaAvaliacao = useRef<AnamneseNaAvaliacaoHandle>(null)
   const [evalPlanNotes,          setEvalPlanNotes]          = useState(existingPlan?.notes ?? '')
   const [evalSessionNotes,       setEvalSessionNotes]       = useState(appointment.savedNotes ?? '')
   const [evalSessionInterc,      setEvalSessionInterc]      = useState(appointment.savedIntercurrences ?? '')
@@ -948,8 +855,10 @@ export function AppointmentSession({
     setGenerating(true); setGenError(null)
     const currentSessions = evalEditorRef.current?.getSessions() ?? []
     const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
+    const anamnese = await anamneseDaAvaliacao.current?.coletar()
+    if (anamnese?.error) { setGenerating(false); setGenError(anamnese.error); return }
     const res = await generateEvaluationPlan(
-      appointment.id, evalComplaints, evalAnamnesis, currentSessions, currentNotes,
+      appointment.id, evalComplaints, anamnese?.respostas ?? null, currentSessions, currentNotes,
       evalSessionNotes, evalSessionInterc, slug,
     )
     if (res.error || !res.planId) {
@@ -1169,7 +1078,7 @@ export function AppointmentSession({
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
       generalAnamnesis={
-        <AnamnesisTab embedded anamnesis={anamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={canEditRecords} />
+        <AnamneseGeralCartao embedded anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={canEditRecords} />
       }
       procedureNode={procedureNode}
       insumos={insumosNode ?? null}
@@ -1421,7 +1330,7 @@ export function AppointmentSession({
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                 {[
                   age ? `${age} anos` : null,
-                  anamnesis?.skinType ? `Pele ${anamnesis.skinType}` : null,
+                  typeof anamnesis?.respostas.skinType === 'string' ? `Pele ${anamnesis.respostas.skinType}` : null,
                   client.birthDate ? `Cliente desde ${format(new Date(client.birthDate), 'MMM yyyy', { locale: ptBR })}` : null,
                 ].filter(Boolean).join(' · ')}
               </p>
@@ -1664,10 +1573,7 @@ export function AppointmentSession({
                     readonly={editLocked}
                   />
 
-                  <EvaluationAnamnesisFields
-                    value={evalAnamnesis}
-                    onChange={setEvalAnamnesis}
-                  />
+                  <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento} />
 
                   <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}

@@ -2599,3 +2599,35 @@ a.suporte-link-forte:hover { color: var(--brand); }
 }
 .portal-trocar-clinica:hover { background: var(--brand-soft); }
 .seletor-de-clinica-item:disabled:not([aria-busy="true"]) { cursor: not-allowed; background: var(--bg-app); }
+
+/* ── A ficha de pré-atendimento em Configurações → Fichas (2026-10-20) ─────── */
+.pre-atendimento-config { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+.pre-atendimento-config-cabeca { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pre-atendimento-config-icone {
+  width: 38px; height: 38px; border-radius: var(--radius-field-token); background: var(--brand-soft); color: var(--brand);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.pre-atendimento-config-titulo { font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); }
+.pre-atendimento-config-texto { font-size: var(--text-sm-sz); color: var(--text-muted); line-height: 1.5; max-width: 620px; }
+.pre-atendimento-config-envio { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+.pre-atendimento-config-opcao { display: flex; align-items: center; gap: 10px; font-size: var(--text-base-sz); font-weight: var(--weight-semibold); color: var(--text); cursor: pointer; }
+.pre-atendimento-config-opcao input { width: 16px; height: 16px; accent-color: var(--brand); }
+.pre-atendimento-config-validade { display: flex; flex-direction: column; gap: 5px; max-width: 360px; }
+.pre-atendimento-config-validade .field { max-width: 120px; }
+.pre-atendimento-config-dica { font-size: var(--text-xs-sz); color: var(--text-muted); line-height: 1.5; }
+
+/* ── A anamnese geral da cliente: a ficha de pré-atendimento (2026-10-20) ──── */
+.anamnese-geral-cabeca { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.anamnese-geral-titulo { font-size: var(--text-base-sz); font-weight: var(--weight-extrabold); color: var(--text); flex: 1; }
+.anamnese-geral-topo { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.anamnese-geral-selo {
+  font-size: var(--text-2xs); font-weight: var(--weight-bold); padding: 3px 10px; border-radius: var(--radius-chip-token);
+  background: var(--success-soft); color: var(--success);
+}
+.anamnese-geral-respostas { display: grid; grid-template-columns: 1fr; gap: 14px 28px; }
+@media (min-width: 640px) { .anamnese-geral-respostas { grid-template-columns: 1fr 1fr; } }
+.anamnese-geral-secao { grid-column: 1 / -1; font-size: var(--text-sm-sz); font-weight: var(--weight-extrabold); color: var(--brand); text-transform: uppercase; letter-spacing: 0.05em; }
+.anamnese-geral-resposta { display: flex; flex-direction: column; gap: 4px; }
+.anamnese-geral-pergunta { font-size: var(--text-2xs); font-weight: var(--weight-bold); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.anamnese-geral-valor { font-size: var(--text-base-sz); color: var(--text); line-height: 1.6; white-space: pre-wrap; }
+.anamnese-geral-vazio { color: var(--text-faint); font-size: var(--text-base-sz); }

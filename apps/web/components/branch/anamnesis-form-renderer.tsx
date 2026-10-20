@@ -33,10 +33,12 @@ interface Props {
   hideSaveButton?: boolean
   /** O planejador de injetáveis fora do plano da rede: o campo dele fica só para ver (2026-10-07). */
   semInjetaveis?: boolean
+  /** O texto do botão de salvar (padrão: "Salvar ficha"). */
+  rotuloSalvar?: string
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
-  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false }, ref,
+  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha' }, ref,
 ) {
   const doSave = saveAction ?? salvarFichaDoProcedimento
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
@@ -113,7 +115,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
       {canEdit && !hideSaveButton && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 2 }}>
           <button type="button" onClick={save} disabled={saving} className="btn-primary" style={{ fontSize: 'var(--text-base-sz)' }}>
-            <Save size={14} /> {saving ? 'Salvando…' : 'Salvar ficha'}
+            <Save size={14} /> {saving ? 'Salvando…' : rotuloSalvar}
           </button>
           {savedAt && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
@@ -163,7 +165,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
   // Modo leitura
   if (!canEdit) {
     return (
-      <div>
+      <div data-campo={f.id}>
         <span style={labelStyle}>{f.label}</span>
         <ReadOnlyValue field={f} value={value} photoUrl={photoUrl} />
       </div>
@@ -172,8 +174,10 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
 
   const str = typeof value === 'string' ? value : ''
 
+  // `data-campo`: o id da pergunta — é por ele que um teste acha o campo (o
+  // rótulo não é único: o bloco de fora também o contém).
   return (
-    <div>
+    <div data-campo={f.id}>
       <label style={labelStyle}>{f.label}{req}</label>
       {f.help && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: -3, marginBottom: 6 }}>{f.help}</p>}
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarMembro } from './apoio/sessao'
+import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -131,5 +131,144 @@ test.describe('o pré-atendimento: a ficha da rede e o pendente do agendamento',
       },
     })
     expect((data as { ficha: { rows: unknown[] } }).ficha.rows.length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * Etapa 2, a equipe: a rede edita a ficha (pela action e pela tela de
+ * Configurações → Fichas), liga o envio, e a anamnese do atendimento passa a
+ * ser a ficha universal — com a resposta antiga convertida na hora.
+ */
+test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
+  let B: OutraRede
+  let gestor: MembroDeTeste
+  let daUnidade: MembroDeTeste
+  let clinica: MembroDeTeste
+
+  test.beforeAll(async () => {
+    B = await criarOutraRede(`pb${marca}`)
+    const fichas = [{ modulo: 'forms' as const, nivel: 'MANAGE' as const }]
+    gestor = await criarMembro(`pbg${marca}`, { tenant: B.tenantId, permissoes: fichas })
+    daUnidade = await criarMembro(`pbu${marca}`, { tenant: B.tenantId, branchId: B.branchId, permissoes: fichas })
+    clinica = await criarMembro(`pbc${marca}`, {
+      tenant: B.tenantId,
+      permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+    })
+  })
+  test.afterAll(async () => {
+    await clinica?.limpar(); await daUnidade?.limpar(); await gestor?.limpar()
+    await B?.limpar()
+  })
+
+  const fichaDaRede = async () => (await db().from('forms').select('id, schema').eq('tenant_id', B.tenantId).eq('tipo', 'PRE_ATENDIMENTO').single<{ id: string; schema: { rows: { fields: { id: string }[] }[] } }>()).data!
+  const idsDaFicha = async () => (await fichaDaRede()).schema.rows.flatMap(r => r.fields.map(f => f.id))
+  const comCampo = async (campo: Record<string, unknown>) => {
+    const atual = await fichaDaRede()
+    return { name: 'Pré-atendimento', schema: { rows: [...atual.schema.rows, { id: 'nova', fields: [campo] }] } }
+  }
+
+  test('a rede edita as perguntas — sem foto nem planejador, e só quem é da rede', async ({ browser }) => {
+    const comoGestor = await browser.newContext({ storageState: gestor.estado })
+    const comoUnidade = await browser.newContext({ storageState: daUnidade.estado })
+    try {
+      const p = await comoGestor.newPage()
+      await chamarAcao(p, 'actions/pre-atendimento.ts', 'salvarFichaDePreAtendimento', '/admin/settings?tab=fichas',
+        [await comCampo({ id: 'marcapasso', type: 'radio', label: 'Usa marcapasso?', options: ['Sim', 'Não'] })])
+      expect(await idsDaFicha(), 'a pergunta nova entra').toContain('marcapasso')
+
+      await chamarAcao(p, 'actions/pre-atendimento.ts', 'salvarFichaDePreAtendimento', '/admin/settings?tab=fichas',
+        [await comCampo({ id: 'foto-da-pele', type: 'photo', label: 'Foto da pele' })])
+      expect(await idsDaFicha(), 'foto a cliente não responde: recusada').not.toContain('foto-da-pele')
+
+      const u = await comoUnidade.newPage()
+      await chamarAcao(u, 'actions/pre-atendimento.ts', 'salvarFichaDePreAtendimento', `/e2e-un-pb${marca}/settings?tab=fichas`,
+        [await comCampo({ id: 'so-da-unidade', type: 'text', label: 'Da unidade' })])
+      expect(await idsDaFicha(), 'quem tem unidade fixa não muda a ficha da rede').not.toContain('so-da-unidade')
+    } finally {
+      await comoGestor.close(); await comoUnidade.close()
+    }
+  })
+
+  test('em Configurações → Fichas, a rede liga o envio e escolhe a validade', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: gestor.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto('/admin/settings?tab=fichas')
+      const secao = page.locator('[data-pre-atendimento]')
+      await expect(secao.getByRole('heading', { name: 'Ficha de pré-atendimento' })).toBeVisible()
+      await secao.getByLabel('Mandar a ficha quando a cliente for agendada').check()
+      await secao.getByLabel('Validade das respostas (meses)').fill('3')
+      await secao.getByRole('button', { name: 'Salvar o envio' }).click()
+      await expect.poll(async () => (await db().from('tenants').select('pre_atendimento_envio, pre_atendimento_validade_meses').eq('id', B.tenantId).single()).data)
+        .toEqual({ pre_atendimento_envio: true, pre_atendimento_validade_meses: 3 })
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('no atendimento, a anamnese é a ficha universal: a resposta antiga aparece, e salvar fecha o pendente', async ({ browser }) => {
+    await db().from('tenants').update({ pre_atendimento_envio: true }).eq('id', B.tenantId)
+    const cliente = await B.criarCliente('Anamnese antiga')
+    await db().from('medical_records').upsert({
+      client_id: cliente,
+      general_anamnesis: { skinType: 'oleosa', allergies: `dipirona ${marca}`, isPregnantOrBreastfeeding: false, useSunscreen: true, updatedAt: '2025-01-10T12:00:00.000Z' },
+    }, { onConflict: 'client_id' })
+    // Com ficha de procedimento, a sessão abre o atendimento (sem ela, abre a avaliação).
+    const { data: fp } = await db().from('forms').insert({ tenant_id: B.tenantId, name: `[e2e] Ficha ${marca}`, schema: { rows: [{ id: 'r', fields: [{ id: 'regiao', type: 'text', label: 'Região' }] }] }, is_active: true }).select('id').single<{ id: string }>()
+    await db().from('procedures').update({ form_id: fp!.id }).eq('id', B.procedureId)
+    const { data: ap } = await db().from('appointments').insert({
+      branch_id: B.branchId, client_id: cliente, procedure_id: B.procedureId, professional_id: B.professionalId,
+      status: 'SCHEDULED', source: 'INTERNAL', scheduled_at: new Date(Date.now() + 2 * 24 * 3600_000).toISOString(), duration_min: 30, price: 0,
+    }).select('id').single<{ id: string }>()
+    // A ficha aparece no atendimento quando a avaliação já gerou o plano (como em prontuario.spec).
+    await db().from('treatment_plans').insert({
+      branch_id: B.branchId, professional_id: B.professionalId, client_id: cliente,
+      evaluation_appointment_id: ap!.id, status: 'ACCEPTED', name: `[e2e] Plano ${marca}`,
+    })
+    expect((await db().from('pre_atendimentos').select('status').eq('client_id', cliente)).data, 'a anamnese de 2025 venceu: pendente').toEqual([{ status: 'PENDENTE' }])
+
+    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda/${ap!.id}`)
+      const cartao = page.locator('[data-anamnese-geral]').first()
+      await expect(cartao.getByText(`dipirona ${marca}`)).toBeVisible()
+      await expect(page.getByText(/Pele Oleosa/)).toBeVisible()
+
+      await cartao.getByRole('button', { name: 'Editar anamnese' }).click()
+      await cartao.locator('[data-campo="allergies"] textarea').fill(`látex ${marca}`)
+      await cartao.getByRole('button', { name: 'Salvar anamnese' }).click()
+      await expect.poll(async () => {
+        const { data } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
+        const g = data?.general_anamnesis as { versao?: number; origem?: string; respostas?: Record<string, string> }
+        return { versao: g?.versao, origem: g?.origem, alergias: g?.respostas?.allergies, pele: g?.respostas?.skinType }
+      }).toEqual({ versao: 2, origem: 'EQUIPE', alergias: `látex ${marca}`, pele: 'Oleosa' })
+      expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente)).data,
+        'a equipe respondeu: o pendente fecha').toEqual([{ status: 'RESPONDIDO', origem: 'EQUIPE' }])
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('na avaliação, a anamnese vai junto com o plano — no formato da ficha', async ({ browser }) => {
+    const cliente = await B.criarCliente('Avaliação')
+    const { data: ap } = await db().from('appointments').insert({
+      branch_id: B.branchId, client_id: cliente, procedure_id: B.procedureId, professional_id: B.professionalId,
+      status: 'IN_PROGRESS', source: 'INTERNAL', scheduled_at: new Date().toISOString(), started_at: new Date().toISOString(), duration_min: 30, price: 0,
+    }).select('id').single<{ id: string }>()
+    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const page = await ctx.newPage()
+    try {
+      await chamarAcao(page, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/admin/agenda/${ap!.id}`, [
+        ap!.id, 'Quer tratar manchas', { allergies: `pólen ${marca}`, campoQueNaoExiste: 'x' },
+        [{ procedures: [{ procedureId: B.procedureId, price: 100 }] }], '', '', '', `e2e-un-pb${marca}`,
+      ])
+      const { data } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
+      const g = data?.general_anamnesis as { versao?: number; respostas?: Record<string, string> }
+      expect(g?.versao).toBe(2)
+      expect(g?.respostas, 'só as perguntas da ficha').toEqual({ allergies: `pólen ${marca}` })
+    } finally {
+      await ctx.close()
+    }
   })
 })
