@@ -89,6 +89,19 @@ test('o link público de assinatura: sem token válido, nada abre nem assina', a
   expect(semCorpo.status()).toBe(400)
 })
 
+test('o link da ficha de pré-atendimento: sem token válido, nada abre nem grava', async ({ request }) => {
+  // O mesmo molde do link de assinatura: a defesa é o token + CPF.
+  const falso = 'A'.repeat(43)
+  const abrir = await request.post('/api/pre-atendimento/abrir', { data: { token: falso, cpf: '52998224725' } })
+  expect(abrir.status()).toBe(404)
+  const torto = await request.post('/api/pre-atendimento/abrir', { data: { token: '../../x', cpf: '52998224725' } })
+  expect(torto.status()).toBe(404)
+  const responder = await request.post('/api/pre-atendimento/responder', { data: { token: falso, cpf: '52998224725', respostas: { allergies: 'x' } } })
+  expect(responder.status()).toBe(404)
+  const semCorpo = await request.post('/api/pre-atendimento/responder', { data: 'x' })
+  expect(semCorpo.status()).toBe(400)
+})
+
 test('entrar como (suporte) exige alguém da plataforma, verificado', async ({ request, browser }) => {
   // Desde 2026-10-06 a entrada mora no app do SUPORTE (outro host).
   test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build')

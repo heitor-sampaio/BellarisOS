@@ -2638,3 +2638,14 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .pre-atendimento-cliente-titulo { font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); }
 .pre-atendimento-cliente-texto { font-size: var(--text-sm-sz); color: var(--text-muted); line-height: 1.5; }
 .pre-atendimento-cliente-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── O pré-atendimento na janela do agendamento (2026-10-20) ──────────────── */
+.pre-atendimento-agendamento { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; padding: 12px 14px; border-radius: var(--radius-card-sm); background: var(--bg-app); border: 1px solid var(--border); }
+.pre-atendimento-agendamento-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pre-atendimento-agendamento-topo .chip { display: inline-flex; align-items: center; gap: 5px; }
+.pre-atendimento-agendamento-texto { font-size: var(--text-xs-sz); color: var(--text-muted); line-height: 1.5; }
+.pre-atendimento-agendamento-erro { font-size: var(--text-xs-sz); color: var(--danger); font-weight: var(--weight-semibold); }
+.pre-atendimento-agendamento-link { display: flex; flex-direction: column; gap: 8px; }
+.pre-atendimento-agendamento-link .field { font-size: var(--text-xs-sz); background: var(--surface); }
+.pre-atendimento-agendamento-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.pre-atendimento-agendamento-botao { padding: 6px 12px; font-size: var(--text-xs-sz); display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }

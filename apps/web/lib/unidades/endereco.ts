@@ -15,7 +15,7 @@
  */
 export const ENDERECOS_RESERVADOS: readonly string[] = [
   // app/
-  'admin', 'api', 'assinar', 'auth', 'conta-suspensa', 'privacidade', 'verificar',
+  'admin', 'api', 'assinar', 'auth', 'conta-suspensa', 'pre-atendimento', 'privacidade', 'verificar',
   // app/(auth) e app/(setup)
   'login', 'register', 'reset-password', 'update-password', 'setup',
   // o proxy e o Next

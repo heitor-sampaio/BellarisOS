@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment } from '@/actions/appointments'
 import { rotaAtendimento } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 
 interface AppointmentEvent {
   id:               string
@@ -144,6 +145,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
             </div>
           )}
         </div>
+
+        {/* A ficha de pré-atendimento: pendente (com o link) ou respondida. */}
+        {isActive && <PreAtendimentoDoAgendamento appointmentId={appointment.id} podeMandar={!isProfessional} />}
 
         {/* Ações de status */}
         {isActive && (

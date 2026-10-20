@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { createHash, randomBytes } from 'node:crypto'
+import { test, expect, type Browser } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
@@ -349,6 +350,161 @@ test.describe('o pré-atendimento: a cliente responde no app', () => {
     try {
       await chamarAcao(page, 'actions/pre-atendimento-cliente.ts', 'responderPreAtendimento', `${portal()}/pre-atendimento`, [{ respostas: { allergies: 'outra coisa' } }])
       expect(await anamnese(), 'nada muda').toEqual(antes)
+    } finally {
+      await ctx.close()
+    }
+  })
+})
+
+/**
+ * Etapa 4, o link: para quem não usa o app, a equipe manda a ficha por um
+ * link (WhatsApp). Como o link de assinatura: SEM sessão, só o hash do token
+ * no banco, a pessoa confirma o CPF (ou o nascimento) antes de ver qualquer
+ * pergunta — o banco confere e conta as tentativas (5 erradas derrubam o
+ * link) —, e responder confere tudo de novo. Respondida a ficha, o link
+ * não abre mais.
+ */
+test.describe('o pré-atendimento: o link para quem não tem o app', () => {
+  let D: OutraRede
+  let recepcao: MembroDeTeste
+  let soVe: MembroDeTeste
+  const CPF = '52998224725'
+  /** Um CPF válido novo: o cadastro não aceita o mesmo CPF duas vezes na rede. */
+  const novoCpf = () => {
+    const d = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10))
+    for (const n of [9, 10]) d.push(((d.reduce((s, x, i) => s + x * (n + 1 - i), 0) * 10) % 11) % 10)
+    return d.join('')
+  }
+  const sha = (t: string) => createHash('sha256').update(t, 'utf8').digest('hex')
+  const ip = (n: number) => ({ 'x-real-ip': `198.51.100.${(150 + n + Math.floor(Math.random() * 90)) % 255}` })
+
+  test.beforeAll(async () => {
+    D = await criarOutraRede(`pd${marca}`)
+    await db().from('tenants').update({ pre_atendimento_envio: true }).eq('id', D.tenantId)
+    recepcao = await criarMembro(`pdr${marca}`, { tenant: D.tenantId, permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }] })
+    soVe = await criarMembro(`pdv${marca}`, { tenant: D.tenantId, permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+  })
+  test.afterAll(async () => { await soVe?.limpar(); await recepcao?.limpar(); await D?.limpar() })
+
+  // Daqui a 2 dias, um horário por cliente dentro da grade da agenda (7h–20h).
+  const DIA = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 2 * 24 * 3600_000))
+  let hora = 8
+
+  /** Uma cliente com CPF (ou só nascimento), agendada: o pendente nasce. */
+  async function agendada(rotulo: string, ident: { document?: string | null; birth_date?: string | null } = { document: novoCpf() }) {
+    const cliente = await D.criarCliente(rotulo)
+    const { error: eIdent } = await db().from('clients').update(ident).eq('id', cliente)
+    expect(eIdent, 'o CPF ou o nascimento da cliente').toBeNull()
+    const { data: ap, error } = await db().from('appointments').insert({
+      branch_id: D.branchId, client_id: cliente, procedure_id: D.procedureId, professional_id: D.professionalId,
+      status: 'SCHEDULED', source: 'INTERNAL', scheduled_at: new Date(`${DIA}T${String(hora++).padStart(2, '0')}:00:00-03:00`).toISOString(), duration_min: 30, price: 0,
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    return { cliente, agendamento: ap!.id, cpf: ident.document ?? '' }
+  }
+
+  async function gerarLink(browser: Browser, agendamento: string, quem = recepcao) {
+    const ctx = await browser.newContext({ storageState: quem.estado })
+    const page = await ctx.newPage()
+    try {
+      const r = await chamarAcao(page, 'actions/pre-atendimento.ts', 'gerarLinkDoPreAtendimento', `/admin/agenda`, [agendamento])
+      const token = /\/pre-atendimento\/([A-Za-z0-9_-]{43})/.exec(r.texto)?.[1] ?? ''
+      return { texto: r.texto, token }
+    } finally {
+      await ctx.close()
+    }
+  }
+
+  const pendenteDe = async (cliente: string) => (await db().from('pre_atendimentos').select('id, status, origem')
+    .eq('client_id', cliente).order('created_at', { ascending: false }).limit(1).single<{ id: string; status: string; origem: string | null }>()).data!
+
+  test('a equipe gera o link; a cliente abre sem conta, confirma o CPF e responde', async ({ browser }) => {
+    const { cliente, agendamento, cpf } = await agendada('Link')
+    const { texto, token } = await gerarLink(browser, agendamento)
+    expect(token, 'a action devolve o link').not.toBe('')
+    expect(texto, 'e a mensagem pronta para o WhatsApp').toContain('wa.me/')
+    const { data: links } = await db().from('pre_atendimento_links').select('token_hash').eq('pre_atendimento_id', (await pendenteDe(cliente)).id)
+    expect(links, 'só o hash do token vai ao banco').toEqual([{ token_hash: sha(token) }])
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/pre-atendimento/${token}`)
+      await expect(page.getByLabel('CPF')).toBeVisible()
+      await expect(page.locator('[data-campo="allergies"]'), 'nenhuma pergunta antes da identidade').toHaveCount(0)
+      await page.getByLabel('CPF').fill(cpf)
+      await page.getByRole('button', { name: 'Continuar' }).click()
+      await page.locator('[data-campo="allergies"] textarea').fill(`látex ${marca}`)
+      await page.getByRole('button', { name: 'Enviar respostas' }).click()
+      await expect(page.getByText('Respostas enviadas')).toBeVisible()
+      expect(await pendenteDe(cliente)).toMatchObject({ status: 'RESPONDIDO', origem: 'CLIENTE_LINK' })
+      const { data: mr } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
+      expect(mr?.general_anamnesis).toMatchObject({ origem: 'CLIENTE_LINK', respostas: { allergies: `látex ${marca}` } })
+
+      await page.goto(`/pre-atendimento/${token}`)
+      await expect(page.getByText('Ficha já respondida')).toBeVisible()
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('o link não deixa passar: CPF errado cinco vezes, token qualquer, responder sem a identidade', async ({ browser }) => {
+    const { cliente, agendamento, cpf } = await agendada('Erros')
+    const { token } = await gerarLink(browser, agendamento)
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const request = ctx.request
+    try {
+      const qualquer = randomBytes(32).toString('base64url')
+      expect((await request.post('/api/pre-atendimento/abrir', { data: { token: qualquer, cpf: CPF }, headers: ip(1) })).status()).toBe(404)
+      const semIdentidade = await request.post('/api/pre-atendimento/responder', { data: { token, cpf: '11144477735', respostas: { allergies: 'x' } }, headers: ip(2) })
+      expect(semIdentidade.status(), 'responder confere a identidade de novo').toBe(403)
+      expect((await pendenteDe(cliente)).status).toBe('PENDENTE')
+      // A errada pela rota de responder já contou: mais três ainda dizem "não confere"…
+      for (let i = 0; i < 3; i++) {
+        expect((await request.post('/api/pre-atendimento/abrir', { data: { token, cpf: '11144477735' }, headers: ip(3) })).status()).toBe(403)
+      }
+      // …a 5ª derruba o link, e nem o CPF certo o abre mais.
+      expect((await request.post('/api/pre-atendimento/abrir', { data: { token, cpf: '11144477735' }, headers: ip(3) })).status(), 'na 5ª errada o link caiu').toBe(410)
+      expect((await request.post('/api/pre-atendimento/abrir', { data: { token, cpf }, headers: ip(4) })).status()).toBe(410)
+      expect((await pendenteDe(cliente)).status, 'nada gravado').toBe('PENDENTE')
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('sem CPF, pede o nascimento; sem nenhum dos dois, não gera link', async ({ browser }) => {
+    const comNascimento = await agendada('Nascimento', { document: null, birth_date: '1990-05-17T00:00:00Z' })
+    const { token } = await gerarLink(browser, comNascimento.agendamento)
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    try {
+      const r = await ctx.request.post('/api/pre-atendimento/abrir', { data: { token, nascimento: '1990-05-17' }, headers: ip(5) })
+      expect(r.status()).toBe(200)
+    } finally {
+      await ctx.close()
+    }
+    const semNada = await agendada('Sem nada', { document: null, birth_date: null })
+    expect((await gerarLink(browser, semNada.agendamento)).token).toBe('')
+    expect((await db().from('pre_atendimento_links').select('id').eq('pre_atendimento_id', (await pendenteDe(semNada.cliente)).id)).data).toEqual([])
+  })
+
+  test('quem só vê a agenda não gera link', async ({ browser }) => {
+    const { cliente, agendamento } = await agendada('So ve')
+    expect((await gerarLink(browser, agendamento, soVe)).token).toBe('')
+    expect((await db().from('pre_atendimento_links').select('id').eq('pre_atendimento_id', (await pendenteDe(cliente)).id)).data).toEqual([])
+  })
+
+  test('na agenda, o agendamento mostra a ficha pendente e manda o link', async ({ browser }) => {
+    await agendada('Agenda')
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda?date=${DIA}`)
+      await page.locator(`[title*="Agenda pd${marca}"]`).first().click()
+      const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
+      await expect(ficha.getByText('Ficha de saúde pendente')).toBeVisible()
+      await ficha.getByRole('button', { name: 'Enviar a ficha' }).click()
+      await expect(ficha.getByLabel('Link da ficha')).toHaveValue(/\/pre-atendimento\/[A-Za-z0-9_-]{43}$/)
+      await expect(ficha.getByRole('link', { name: 'Abrir no WhatsApp' })).toHaveAttribute('href', /^https:\/\/wa\.me\/55/)
     } finally {
       await ctx.close()
     }

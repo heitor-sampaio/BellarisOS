@@ -90,6 +90,9 @@ export async function updateSession(request: NextRequest) {
       // O link de assinatura: o cliente abre sem conta; a identidade é o CPF
       // (ou o nascimento), conferido pelo banco.
       || pathname.startsWith('/assinar/')
+      // O link da ficha de pré-atendimento: o mesmo molde — sem conta, a
+      // identidade conferida pelo banco antes de qualquer pergunta.
+      || pathname.startsWith('/pre-atendimento/')
       || pathname.startsWith('/api/')
 
     if (!user && !isAuthRoute && !isPublicRoute) {

@@ -12,13 +12,22 @@ import type { FichaDePreAtendimento, RespostaDaAnamnese } from '@/lib/anamnese-g
  * O pré-atendimento no app da cliente (2026-10-20). COMPLETO: a ficha inteira
  * para responder (já com o que ela respondeu antes, se houver). CONFIRMAR
  * (dentro da validade): as respostas de antes, e "Nada mudou" — ou atualizar.
+ *
+ * A mesma tela serve ao link público (sem sessão): lá, `enviar` e
+ * `confirmar` vão pelas rotas do link, e não há "voltar ao início".
  */
-export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, voltar }: {
+type Envio = Promise<{ ok: true } | { error: string }>
+
+export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, voltar, enviar, confirmar }: {
   modo: 'COMPLETO' | 'CONFIRMAR'
   ficha: FichaDePreAtendimento
   respostasAnteriores: Record<string, RespostaDaAnamnese>
-  voltar: string
+  voltar: string | null
+  enviar?: (respostas: Record<string, unknown>) => Envio
+  confirmar?: () => Envio
 }) {
+  const enviarRespostas = enviar ?? (respostas => responderPreAtendimento({ respostas }))
+  const confirmarRespostas = confirmar ?? confirmarQueNadaMudou
   const [enviado, setEnviado] = useState(false)
   const [atualizando, setAtualizando] = useState(modo === 'COMPLETO')
   const [confirmando, iniciar] = useTransition()
@@ -30,7 +39,7 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
         <CheckCircle2 size={28} color="var(--success)" aria-hidden="true" />
         <p className="pre-atendimento-cliente-titulo">Respostas enviadas</p>
         <p className="pre-atendimento-cliente-texto">Obrigada! A clínica vai conferir com você no atendimento.</p>
-        <Link href={voltar} className="btn-secondary">Voltar ao início</Link>
+        {voltar && <Link href={voltar} className="btn-secondary">Voltar ao início</Link>}
       </div>
     )
   }
@@ -48,7 +57,7 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
           <button type="button" className="btn-primary" disabled={confirmando}
             onClick={() => iniciar(async () => {
               setErro(null)
-              const r = await confirmarQueNadaMudou()
+              const r = await confirmarRespostas()
               if ('error' in r) setErro(r.error)
               else setEnviado(true)
             })}>
@@ -77,7 +86,7 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
         semInjetaveis
         rotuloSalvar="Enviar respostas"
         saveAction={async ({ answers }) => {
-          const r = await responderPreAtendimento({ respostas: answers })
+          const r = await enviarRespostas(answers)
           if ('error' in r) return { error: r.error }
           setEnviado(true)
           return { ok: true }
