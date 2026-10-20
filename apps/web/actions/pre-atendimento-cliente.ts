@@ -1,6 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -13,6 +12,11 @@ import { gravarAnamneseGeral, preAtendimentoPendente } from '@/lib/pre-atendimen
  * ficha da sessão (ctx.clientId — a da clínica do endereço) e o pendente
  * dessa ficha; sem pendente, nada é gravado. Grava pelo núcleo
  * (`gravarAnamneseGeral`), com as perguntas que ela RECEBEU.
+ *
+ * Sem revalidatePath, de propósito: a página recarregada já não acha o
+ * pendente e troca a tela por "Nada para responder agora" — some o
+ * "Respostas enviadas" (a completa de 2026-10-20 pegou). A tela inicial é
+ * dinâmica: o cartão sai sozinho na próxima navegação.
  */
 
 type Resultado = { ok: true } | { error: string }
@@ -33,7 +37,6 @@ export async function responderPreAtendimento(input: unknown): Promise<Resultado
     tenantId: pendente.tenantId, clientId: ctx.clientId!, respostas: dados.data.respostas,
     origem: 'CLIENTE_APP', porUsuario: null, ficha: pendente.ficha,
   })
-  revalidatePath('/', 'layout')
   return { ok: true }
 }
 
@@ -54,6 +57,5 @@ export async function confirmarQueNadaMudou(): Promise<Resultado> {
     tenantId: pendente.tenantId, clientId: ctx.clientId!, respostas: atual.respostas,
     origem: 'CLIENTE_APP', porUsuario: null, ficha: pendente.ficha,
   })
-  revalidatePath('/', 'layout')
   return { ok: true }
 }

@@ -318,6 +318,10 @@ test.describe('o pré-atendimento: a cliente responde no app', () => {
       expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente.clientId)).data)
         .toEqual([{ status: 'RESPONDIDO', origem: 'CLIENTE_APP' }])
       expect(await anamnese()).toMatchObject({ origem: 'CLIENTE_APP', respostas: { allergies: `pólen ${marca}` } })
+      await page.getByRole('link', { name: 'Voltar ao início' }).click()
+      await expect(page).toHaveURL(new RegExp(`${portal()}/home`))
+      await expect(page.getByText(/^Olá, /), 'a tela inicial carregou').toBeVisible()
+      await expect(page.getByTestId('pre-atendimento-pendente'), 'respondida, o cartão sai').toHaveCount(0)
     } finally {
       await ctx.close()
     }
