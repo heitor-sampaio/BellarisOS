@@ -140,6 +140,9 @@ fonte, raios, sombras de quem flutua).
   conferida no DEVLOG e no código.
 - **O que depende de terceiro fica de fora até valer em produção**: Instagram e
   Messenger no inbox esperam a análise do app na Meta.
+- **Termo do sistema que não se explica sozinho** ("horário de silêncio")
+  ganha a explicação no próprio texto: `Termo` em `components/conteudo.tsx`
+  (sublinhado pontilhado; abre no hover, no foco e no toque; só CSS).
 - Funcionalidade nova que muda o que a clínica ganha → a página muda junto
   (texto e, se for o caso, uma tela no catálogo e na câmera).
 

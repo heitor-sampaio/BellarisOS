@@ -276,10 +276,25 @@ export function Facil() {
   )
 }
 
+/**
+ * Um termo do sistema explicado no próprio texto (2026-10-20): sublinhado
+ * pontilhado, e a explicação abre ao passar o mouse, ao focar pelo teclado ou
+ * ao tocar (o botão ganha o foco). Só CSS — e o `aria-describedby` liga o
+ * termo à explicação para o leitor de tela.
+ */
+function Termo({ id, children, dica }: { id: string; children: string; dica: string }) {
+  return (
+    <span className="site-termo">
+      <button type="button" className="site-termo-gatilho" aria-describedby={id}>{children}</button>
+      <span id={id} role="tooltip" className="site-termo-dica">{dica}</span>
+    </span>
+  )
+}
+
 interface Destaque {
   overline: string
   titulo: string
-  texto: string
+  texto: React.ReactNode
   itens: { forte: string; resto: string }[]
   tela: Tela
   celular?: boolean
@@ -339,7 +354,8 @@ const DESTAQUES: Destaque[] = [
   },
   {
     overline: 'Automações', titulo: 'O que a recepção faria de cabeça, o sistema faz sozinho',
-    texto: 'Monte regras sem programador: quando acontecer isto, espere tanto, mande aquilo — fora do horário de silêncio.',
+    texto: <>Monte regras sem programador: quando acontecer isto, espere tanto, mande aquilo — fora do{' '}
+      <Termo id="dica-silencio" dica="Das 21h às 8h (dá para mudar em cada automação), nenhuma mensagem automática sai para a cliente: o que cairia nesse horário espera e sai de manhã. Os avisos para a equipe saem na hora.">horário de silêncio</Termo>.</>,
     itens: [
       { forte: 'Lembrete e confirmação', resto: ' de horário, aniversário, retorno, reativação de quem sumiu.' },
       { forte: 'Campanhas', resto: ' para uma lista de clientes, por WhatsApp e notificação no app.' },

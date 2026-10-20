@@ -172,6 +172,20 @@ test('mostra por que é fácil de usar — com o que o sistema tem de verdade', 
   }
 })
 
+// Pedido do Heitor (2026-10-20): "horário de silêncio" não se explica sozinho
+// para quem não conhece o sistema — a explicação abre no próprio termo.
+test('o horário de silêncio das automações se explica num tooltip', async ({ page }) => {
+  await page.goto('/')
+  const termo = page.getByRole('button', { name: 'horário de silêncio' })
+  const dica = page.getByRole('tooltip')
+  await expect(dica).toBeHidden()
+  await termo.focus()
+  await expect(dica).toBeVisible()
+  await expect(dica).toContainText('21h')
+  await expect(dica).toContainText('espera')
+  await expect(termo).toHaveAttribute('aria-describedby', (await dica.getAttribute('id'))!)
+})
+
 test('o app da cliente tem seção própria, chamada no topo', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('.site-topo').getByRole('link', { name: 'App da cliente' })).toHaveAttribute('href', '#app-da-cliente')
