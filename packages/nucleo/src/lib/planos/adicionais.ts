@@ -34,7 +34,7 @@ export function lerAdicionais(gravado: unknown): AdicionaisContratados {
   for (const a of ADICIONAIS) {
     const q = g[a.chave]?.quantidade
     const v = g[a.chave]?.valor_centavos
-    if (typeof q === 'number' && Number.isInteger(q) && q >= 1 && q <= a.maximo
+    if (typeof q === 'number' && Number.isInteger(q) && q >= 1 && (a.maximo === null || q <= a.maximo)
       && typeof v === 'number' && Number.isInteger(v) && v >= 0) {
       saida[a.chave] = (g[a.chave] as { especial?: unknown }).especial === true
         ? { quantidade: q, valor_centavos: v, especial: true } : { quantidade: q, valor_centavos: v }

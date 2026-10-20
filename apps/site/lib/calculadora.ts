@@ -1,5 +1,5 @@
 import {
-  FUNCIONALIDADES, ADICIONAIS, adicionalCabeNoPlano, type ChaveDeFuncionalidade,
+  FUNCIONALIDADES, adicionalCabeNoPlano, type ChaveDeFuncionalidade,
 } from '@estetica-os/nucleo/lib/planos/recursos'
 import type { PlanoDoSite } from '@/lib/planos'
 
@@ -8,7 +8,7 @@ import type { PlanoDoSite } from '@/lib/planos'
  * da clínica e a página diz o plano.
  *
  * "Mais adequado" é o de MENOR TOTAL por mês que cabe, contando os adicionais
- * que o plano VENDE (número de WhatsApp além do limite, Copilot avulso) — não
+ * que o plano VENDE (número de WhatsApp além do limite — sem teto —, Copilot avulso) — não
  * só o preço do plano: com 2 números, o Starter com um extra sai mais barato
  * que o PRO. Empate: menos adicionais, depois a ordem do catálogo. Tudo vem
  * dos planos do sistema (`planos_do_site`): plano ou preço novo entra sozinho.
@@ -33,7 +33,6 @@ export type OrcamentoQueCabe = Extract<Orcamento, { cabe: true }>
 const ROTULO = new Map<string, string>(FUNCIONALIDADES.map(f => [f.chave, f.rotulo]))
 /** O nome curto, na conta ("Copilot", não "Copilot (IA secretária)"). */
 const curto = (chave: string) => (ROTULO.get(chave) ?? chave).replace(/\s*\(.*\)$/, '')
-const EXTRAS_DE_WHATSAPP = ADICIONAIS.find(a => a.chave === 'whatsapp')!.maximo
 
 const ate = (n: number, um: string, varios: string) => `Até ${n} ${n === 1 ? um : varios}`
 
@@ -51,8 +50,8 @@ export function orcar(p: PlanoDoSite, n: Necessidade): Orcamento {
     const extras = n.whatsapp - limites.whatsapp
     const preco = adicionais.whatsapp?.valor_centavos
     const vende = preco != null && adicionalCabeNoPlano(p.recursos, 'whatsapp')
+    // Sem teto de extras (2026-10-19): o plano que vende o número extra sempre cabe.
     if (!vende) return nao(ate(limites.whatsapp, 'número de WhatsApp', 'números de WhatsApp'))
-    if (extras > EXTRAS_DE_WHATSAPP) return nao(ate(limites.whatsapp + EXTRAS_DE_WHATSAPP, 'número de WhatsApp', 'números de WhatsApp'))
     itens.push({ rotulo: extras === 1 ? '1 número de WhatsApp extra' : `${extras} números de WhatsApp extras`, centavos: extras * preco })
   }
 

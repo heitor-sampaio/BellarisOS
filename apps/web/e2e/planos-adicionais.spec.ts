@@ -128,7 +128,10 @@ test.describe.serial('o banco: contratar e tirar adicional', () => {
 
   test('recusa o que não cabe: fora da faixa, desconhecido, não oferecido, plano que já inclui, rede sem plano', async () => {
     await redeCom({ oferta: { whatsapp: { valor_centavos: 4900 } } })
-    expect((await definir('whatsapp', 11)).error?.message ?? '').toMatch(/até 10/)
+    // Sem teto de conexões extras (2026-10-19, decisão do Heitor) — era 10. Negativo, não.
+    expect((await definir('whatsapp', -1)).error?.message ?? '').toMatch(/quantidade/i)
+    expect((await definir('whatsapp', 25)).error, '25 extras cabem').toBeNull()
+    expect((await definir('whatsapp', 0)).error).toBeNull()
     expect((await definir('copilot', 2)).error?.message ?? '').toMatch(/até 1/)
     expect((await definir('sms', 1)).error?.message ?? '').toMatch(/desconhecido/i)
     expect((await definir('copilot', 1)).error?.message ?? '', 'o plano não oferece o Copilot').toMatch(/não oferece/i)

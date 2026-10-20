@@ -69,9 +69,12 @@ describe('a calculadora indica o plano de menor total que cabe', () => {
     expect(indicado({ unidades: 2, funcionalidades: ['copilot'] })).toMatchObject({ plano: 'ULTRA', totalCentavos: 49900 })
   })
 
-  it('o número extra tem teto (10 por plano): além dele, o plano não cabe', () => {
-    expect(orcar(starter, n({ whatsapp: 12 }))).toEqual({ plano: 'Starter', cabe: false, motivo: 'Até 11 números de WhatsApp' })
-    expect(indicado({ whatsapp: 12 })).toMatchObject({ plano: 'PRO', totalCentavos: 29900 + 7 * 1900 })
+  // Não há teto de números extras (decisão do Heitor, 2026-10-19): passar de 15
+  // fazia a indicação sumir — nenhum plano cabia.
+  it('o número extra não tem teto: com 16 números, ainda há indicação', () => {
+    expect(orcar(starter, n({ whatsapp: 16 }))).toMatchObject({ plano: 'Starter', cabe: true, totalCentavos: 19900 + 15 * 3900 })
+    expect(indicado({ whatsapp: 16 })).toMatchObject({ plano: 'PRO', totalCentavos: 29900 + 11 * 1900 })
+    expect(indicado({ whatsapp: 60 })).toMatchObject({ plano: 'ULTRA', totalCentavos: 49900 + 55 * 990 })
   })
 
   it('cada plano que não cabe diz por quê', () => {

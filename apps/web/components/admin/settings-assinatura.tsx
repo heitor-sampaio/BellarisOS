@@ -26,7 +26,7 @@ const ROTULO_DO_ITEM = { plano: 'Plano', whatsapp: 'Conexões de WhatsApp', copi
 
 /** A mensalidade com uma unidade a mais e a menos do adicional — com as condições, como o banco conta. */
 function mensalidadeComMaisOuMenos(
-  a: NonNullable<AssinaturaLida['assinatura']>, chave: 'whatsapp' | 'copilot', maximo: number,
+  a: NonNullable<AssinaturaLida['assinatura']>, chave: 'whatsapp' | 'copilot', maximo: number | null,
 ): { totalSeMais: number | null; totalSeMenos: number | null } {
   const atual = a.adicionais[chave]
   const q = atual?.quantidade ?? 0
@@ -38,7 +38,7 @@ function mensalidadeComMaisOuMenos(
     return totalComCondicoes(a.valorCentavos, adicionais, a.condicoes)
   }
   return {
-    totalSeMais: preco != null && q < maximo ? com(q + 1) : null,
+    totalSeMais: preco != null && (maximo === null || q < maximo) ? com(q + 1) : null,
     totalSeMenos: q > 0 ? com(q - 1) : null,
   }
 }

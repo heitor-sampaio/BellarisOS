@@ -19,7 +19,8 @@ import type { ChaveDeAdicional } from '@estetica-os/nucleo/lib/planos/recursos'
 export interface AdicionalNaTela {
   chave: ChaveDeAdicional
   rotulo: string
-  maximo: number
+  /** null = sem teto (o WhatsApp extra, desde 2026-10-19). */
+  maximo: number | null
   emBreve: boolean
   /** O preço da PRÓXIMA unidade: o contratado (retrato) ou o que o plano oferece. */
   precoCentavos: number | null
@@ -90,7 +91,7 @@ export function AdicionaisDaClinica({ adicionais, totalCentavos, cobranca, semCo
                     {a.chave === 'whatsapp' ? 'Cancelar uma conexão' : 'Cancelar o Copilot'}
                   </button>
                 )}
-                {a.quantidade < a.maximo && a.precoCentavos != null && !a.especial && (
+                {(a.maximo === null || a.quantidade < a.maximo) && a.precoCentavos != null && !a.especial && (
                   <button type="button" className="btn-secondary"
                     onClick={() => setPedido({ chave: a.chave, quantidade: a.quantidade + 1, contratar: true })}>
                     {a.chave === 'whatsapp' ? 'Contratar mais uma conexão' : 'Contratar o Copilot'}

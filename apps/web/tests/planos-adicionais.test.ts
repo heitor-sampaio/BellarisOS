@@ -16,9 +16,10 @@ const base = (r: Partial<RecursosDoPlano> = {}): RecursosDoPlano => ({
 })
 
 describe('o catálogo de adicionais', () => {
-  it('tem a conexão de WhatsApp (até 10) e o Copilot (um só, em breve)', () => {
+  // 2026-10-19 (decisão do Heitor): não há teto de conexões extras — era 10.
+  it('tem a conexão de WhatsApp (sem teto) e o Copilot (um só)', () => {
     expect(ADICIONAIS.map(a => a.chave)).toEqual(['whatsapp', 'copilot'])
-    expect(ADICIONAIS.find(a => a.chave === 'whatsapp')?.maximo).toBe(10)
+    expect(ADICIONAIS.find(a => a.chave === 'whatsapp')?.maximo).toBeNull()
     expect(ADICIONAIS.find(a => a.chave === 'copilot')?.maximo).toBe(1)
   })
 })
@@ -69,6 +70,8 @@ describe('o contratado pela rede', () => {
       sms: { quantidade: 1, valor_centavos: 1 },
     })).toEqual({ whatsapp: { quantidade: 2, valor_centavos: 4900 } })
     expect(lerAdicionais({ whatsapp: { quantidade: 0, valor_centavos: 4900 } })).toEqual({})
+    // Sem teto de conexões extras: 25 é 25.
+    expect(lerAdicionais({ whatsapp: { quantidade: 25, valor_centavos: 990 } })).toEqual({ whatsapp: { quantidade: 25, valor_centavos: 990 } })
     expect(lerAdicionais(null)).toEqual({})
     expect(lerAdicionais('x')).toEqual({})
   })

@@ -1319,6 +1319,11 @@ depois dos cartões (`#calculadora`):
   (R$ 299); com 4, o PRO. Mostra a conta e os outros planos, com o total ou
   o motivo de não caber. Nenhum cabe → o teste grátis e a Ajuda.
 - A conta é pura (`apps/site/lib/calculadora.ts`) e lê os planos do sistema.
+- **Sem teto de números de WhatsApp extras** (2026-10-20, decisão do Heitor:
+  "não existe limitação"). Era 10 no sistema inteiro — catálogo, leitura da
+  assinatura, telas da clínica e do sistema e `assinatura_adicional_definir`
+  (migration `20261020000001`, que troca só o trecho do teto) —, e acima de 15
+  números a calculadora ficava sem indicação. O Copilot avulso segue um só.
 Prova: `apps/site/tests/calculadora.test.ts` (11) e o caso novo de
 `e2e-site/site.spec.ts` (19/19).
 

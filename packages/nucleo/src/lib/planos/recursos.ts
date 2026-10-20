@@ -74,15 +74,16 @@ export const LIMITE_MAXIMO = 10
  * Os ADICIONAIS (2026-10-07): o que a rede contrata além do plano, somado à
  * mensalidade. O plano OFERECE (e diz o preço, em `adicionais`); o que a rede
  * contratou mora em `tenant_subscriptions.adicionais` (`lib/planos/adicionais.ts`).
- *  - `whatsapp`: conexões além do limite do plano (só em plano COM limite);
+ *  - `whatsapp`: conexões além do limite do plano (só em plano COM limite) —
+ *    SEM TETO de quantidade (2026-10-19, decisão do Heitor; era 10);
  *  - `copilot`: o Copilot avulso (só em plano que não o inclui).
  * Chave nova aqui exige migration: a coluna `valor_total_centavos` e as
  * funções do banco conhecem as duas pelo nome.
  */
 export const ADICIONAIS = [
-  { chave: 'whatsapp', rotulo: 'Conexão de WhatsApp adicional', maximo: 10 },
+  { chave: 'whatsapp', rotulo: 'Conexão de WhatsApp adicional', maximo: null },
   { chave: 'copilot',  rotulo: 'Copilot (IA secretária)',       maximo: 1 },
-] as const
+] as const satisfies readonly { chave: string; rotulo: string; maximo: number | null }[]
 
 export type ChaveDeAdicional = (typeof ADICIONAIS)[number]['chave']
 

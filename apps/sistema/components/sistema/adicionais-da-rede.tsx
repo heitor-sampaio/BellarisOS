@@ -46,7 +46,7 @@ export function AdicionaisDaRede({ tenantId, recursos, oferta, adicionais, valor
 }
 
 function LinhaDoAdicional({ tenantId, chave, rotulo, maximo, cabe, oferta, contratado }: {
-  tenantId: string; chave: ChaveDeAdicional; rotulo: string; maximo: number; cabe: boolean
+  tenantId: string; chave: ChaveDeAdicional; rotulo: string; maximo: number | null; cabe: boolean
   oferta: number | null; contratado: { quantidade: number; valor_centavos: number; especial?: true } | null
 }) {
   const router = useRouter()
@@ -56,7 +56,10 @@ function LinhaDoAdicional({ tenantId, chave, rotulo, maximo, cabe, oferta, contr
 
   function salvar() {
     const q = Number(quantidade)
-    if (!Number.isInteger(q) || q < 0 || q > maximo) { toast.error(`Quantidade de 0 a ${maximo}.`); return }
+    // O WhatsApp extra não tem teto (2026-10-19); o Copilot avulso é um só.
+    if (!Number.isInteger(q) || q < 0 || (maximo !== null && q > maximo)) {
+      toast.error(maximo === null ? 'A quantidade não pode ser negativa.' : `Quantidade de 0 a ${maximo}.`); return
+    }
     const valor = preco.trim() ? centavosDe(preco) : null
     if (preco.trim() && valor == null) { toast.error('Preço inválido.'); return }
     iniciar(async () => {
@@ -77,7 +80,7 @@ function LinhaDoAdicional({ tenantId, chave, rotulo, maximo, cabe, oferta, contr
       ) : (
         <div className="sistema-acoes">
           <label className="suporte-campo"><span className="suporte-texto-fraco">Quantidade</span>
-            <input className="field" type="number" min={0} max={maximo} step={1} value={quantidade}
+            <input className="field" type="number" min={0} max={maximo ?? undefined} step={1} value={quantidade}
               onChange={e => setQuantidade(e.target.value)} data-largura="quantidade" />
           </label>
           <label className="suporte-campo"><span className="suporte-texto-fraco">Preço por mês (R$)</span>

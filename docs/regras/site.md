@@ -73,7 +73,7 @@ clínicas." O site diz isso em três lugares:
     unidades, pessoas na equipe, números de WhatsApp e o que muda de plano
     para plano (`escolhasDaCalculadora` — hoje, o Copilot) → o plano de
     MENOR TOTAL por mês que cabe, contando os adicionais que o plano vende
-    (número extra até o teto de 10, Copilot avulso); empate, menos
+    (número extra sem teto, Copilot avulso); empate, menos
     adicionais. A conta é uma só (`lib/calculadora.ts`, pura) e lê os planos
     do sistema: preço ou plano novo entra sozinho. Cada plano que não cabe
     diz por quê. Nasce calculada (sem JS, a resposta já está lá).

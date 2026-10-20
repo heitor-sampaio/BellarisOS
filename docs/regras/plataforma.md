@@ -247,7 +247,7 @@ um muro que não depende de cada trava do código.
     (tela da rede, `definirAdicional`, pode dar preço especial) e a clínica
     (Configurações → Assinatura, `contratarAdicional`, sempre o preço do
     plano). A ÚNICA porta de escrita é `assinatura_adicional_definir` (banco,
-    só service role): confere se cabe no plano, a quantidade (WhatsApp 0–10,
+    só service role): confere se cabe no plano, a quantidade (WhatsApp 0 ou mais, sem teto desde 2026-10-19;
     Copilot 0–1) e, ao tirar conexão, se os números ativos cabem — sob a
     mesma trava do gatilho do limite.
   - **O preço é RETRATADO** ao contratar: aumentar a quantidade mantém o
