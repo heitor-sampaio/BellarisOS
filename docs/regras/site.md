@@ -69,6 +69,14 @@ clínicas." O site diz isso em três lugares:
   - O cartão (`cartaoDoPlano`) traduz limites e adicionais em frases; o
     destaque em rosé é o plano com o Copilot incluído — o que ele tem a mais,
     sem inventar "o mais vendido".
+  - **A calculadora** (`#calculadora`, 2026-10-19, pedido do Heitor):
+    unidades, pessoas na equipe, números de WhatsApp e o que muda de plano
+    para plano (`escolhasDaCalculadora` — hoje, o Copilot) → o plano de
+    MENOR TOTAL por mês que cabe, contando os adicionais que o plano vende
+    (número extra até o teto de 10, Copilot avulso); empate, menos
+    adicionais. A conta é uma só (`lib/calculadora.ts`, pura) e lê os planos
+    do sistema: preço ou plano novo entra sozinho. Cada plano que não cabe
+    diz por quê. Nasce calculada (sem JS, a resposta já está lá).
   - O comparativo é o MESMO do sistema (`comparativoDosPlanos`, que subiu
     para `packages/nucleo/src/lib/planos/comparativo.ts`).
 - **A escala do site**: a paleta, a fonte, os raios e as sombras são os do
@@ -139,6 +147,7 @@ fonte, raios, sombras de quem flutua).
 
 ```
 ❌ Escrever preço na página (é planos_do_site; o sistema é a fonte)
+❌ Indicar plano por outra conta que não lib/calculadora (o "mais adequado" é o menor total que cabe, com os adicionais)
 ❌ Mostrar R$ 0 quando o banco não respondeu (é o último valor bom, ou o aviso)
 ❌ Dar ao serviço Site a service role ou qualquer segredo (só a chave pública)
 ❌ Abrir platform_plans para anon em vez de passar pela função (a cota e o id não são vitrine)

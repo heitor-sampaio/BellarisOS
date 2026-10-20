@@ -1305,6 +1305,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-19 — A calculadora de plano no site
+
+Pedido do Heitor: a pessoa informa unidades, colaboradores, números de
+WhatsApp "e o que mais fizer sentido", e a página indica o plano. Em Preços,
+depois dos cartões (`#calculadora`):
+- Pergunta unidades, pessoas na equipe, números de WhatsApp e o que muda de
+  plano para plano — hoje só o Copilot; a lista sai dos planos
+  (`escolhasDaCalculadora`). Equipe é ilimitada em todos os planos de hoje,
+  e a página diz isso embaixo da pergunta.
+- Indica o de MENOR TOTAL por mês que cabe, com os adicionais que o plano
+  vende: com 2 números, o Starter com um extra (R$ 238) ganha do PRO
+  (R$ 299); com 4, o PRO. Mostra a conta e os outros planos, com o total ou
+  o motivo de não caber. Nenhum cabe → o teste grátis e a Ajuda.
+- A conta é pura (`apps/site/lib/calculadora.ts`) e lê os planos do sistema.
+Prova: `apps/site/tests/calculadora.test.ts` (11) e o caso novo de
+`e2e-site/site.spec.ts` (19/19).
+
 ### 2026-10-19 — O site diz: um sistema no lugar de vários, e fácil de usar
 
 Pedido do Heitor: focar em ser um verdadeiro sistema operacional, fácil de

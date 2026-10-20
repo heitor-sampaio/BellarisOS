@@ -50,8 +50,38 @@ test('os preços são os dos planos ATIVOS do sistema', async ({ page }) => {
   for (const p of planos.filter(x => !x.ativo)) {
     await expect(precos.getByRole('heading', { name: p.nome, exact: true })).toHaveCount(0)
   }
-  // Cada plano chama para o mesmo teste grátis.
-  await expect(precos.getByRole('link', { name: /Começar grátis/ })).toHaveCount(ativos.length)
+  // Cada plano chama para o mesmo teste grátis (nos cartões; a calculadora tem o dela).
+  await expect(precos.locator('.site-planos').getByRole('link', { name: /Começar grátis/ })).toHaveCount(ativos.length)
+})
+
+// A calculadora (pedido do Heitor, 2026-10-19): ela diz o tamanho da clínica e
+// a página indica o plano — o de menor total que CABE, com os números do sistema.
+test('a calculadora indica um plano que cabe no tamanho da clínica', async ({ page }) => {
+  const ativos = (await planosDoBanco()).filter(p => p.ativo)
+  test.skip(!ativos.length, 'sem plano ativo no sistema')
+  const { data: comLimites } = await createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
+    .from('platform_plans').select('nome, valor_centavos, recursos').eq('ativo', true)
+  const limites = new Map((comLimites ?? []).map(p => [p.nome as string, (p.recursos as { limites: { unidades: number | null } }).limites]))
+
+  await page.goto('/')
+  const calc = page.locator('#calculadora')
+  await expect(calc.getByRole('heading', { level: 3 })).toBeVisible()
+  // Já nasce com uma indicação (a clínica de uma unidade), mesmo antes de mexer.
+  await expect(calc.locator('[data-indicado]')).toBeVisible()
+
+  // Mais unidades do que qualquer plano com limite: o indicado tem de caber.
+  const maiorLimite = Math.max(0, ...[...limites.values()].map(l => l.unidades ?? 0))
+  await calc.getByLabel('Unidades', { exact: true }).fill(String(maiorLimite + 1))
+  await calc.getByLabel('Unidades', { exact: true }).blur()
+  const semLimite = [...limites.entries()].filter(([, l]) => l.unidades === null).map(([nome]) => nome)
+  if (!semLimite.length) {
+    await expect(calc.locator('[data-nenhum]')).toBeVisible()
+    return
+  }
+  const nome = (await calc.locator('[data-indicado] [data-plano]').textContent())?.trim()
+  expect(semLimite, 'o indicado não tem limite de unidades').toContain(nome)
+  const plano = (comLimites ?? []).find(p => p.nome === nome)!
+  expect(semEspacoDuro(await calc.locator('[data-indicado] [data-total]').innerText())).toBe(reais(plano.valor_centavos as number))
 })
 
 test('os planos saem por uma função pública que só mostra o que é público', async () => {

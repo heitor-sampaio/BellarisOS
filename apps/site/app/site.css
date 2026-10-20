@@ -49,6 +49,11 @@
   /* A troca (2026-10-19): a largura das duas colunas e o vão da seta. */
   --site-troca-largura: 980px;
   --site-troca-seta: 40px;
+
+  /* A calculadora de plano (2026-10-19). */
+  --site-calc-largura: 920px;
+  --site-calc-botao: 42px;
+  --site-calc-contador: 200px;
 }
 
 @media (min-width: 720px) {
@@ -291,6 +296,59 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 .site-plano .site-botao { width: 100%; }
 .site-precos-nota { margin-top: 20px; text-align: center; font-size: var(--site-pequeno); color: var(--text-muted); }
 
+/* ─── A calculadora de plano (2026-10-19) ───
+   As perguntas no cartão branco; a resposta, o plano indicado, preenchida em
+   rosé (é o que importa no grupo); os outros planos, em linhas embaixo. */
+.site-calc {
+  margin: clamp(32px, 5vw, 48px) auto 0; max-width: var(--site-calc-largura);
+  display: grid; gap: 20px; grid-template-columns: 1fr;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card-token);
+  padding: clamp(20px, 3.5vw, 32px);
+}
+@media (min-width: 860px) { .site-calc { grid-template-columns: 1fr 1fr; gap: 32px; } }
+.site-calc-perguntas { display: flex; flex-direction: column; gap: 14px; }
+.site-calc-campo { display: flex; flex-direction: column; gap: 6px; }
+.site-calc-campo label { font-size: var(--site-pequeno); font-weight: var(--weight-bold); color: var(--text); }
+.site-calc-contador {
+  display: grid; grid-template-columns: var(--site-calc-botao) 1fr var(--site-calc-botao); align-items: stretch;
+  height: var(--site-calc-botao); max-width: var(--site-calc-contador);
+  border: 1px solid var(--border); border-radius: var(--radius-field-token); background: var(--bg-app); overflow: hidden;
+}
+.site-calc-contador button {
+  display: flex; align-items: center; justify-content: center; border: 0; background: transparent;
+  color: var(--brand); cursor: pointer; font: inherit; transition: background var(--site-mov-rapido) ease;
+}
+.site-calc-contador button:hover:not(:disabled) { background: var(--brand-soft); }
+.site-calc-contador button:disabled { color: var(--text-faint); cursor: default; }
+.site-calc-contador input {
+  width: 100%; border: 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  background: var(--surface); text-align: center; font: inherit; font-weight: var(--weight-bold); color: var(--text);
+  -moz-appearance: textfield; appearance: textfield;
+}
+.site-calc-contador input::-webkit-outer-spin-button, .site-calc-contador input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.site-calc-contador input:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.site-calc-dica { display: inline-flex; align-items: center; gap: 5px; font-size: var(--site-pequeno); color: var(--success); }
+.site-calc-opcao { display: flex; align-items: center; gap: 10px; font-size: var(--site-pequeno); font-weight: var(--weight-semibold); cursor: pointer; }
+.site-calc-opcao input { width: 18px; height: 18px; accent-color: var(--brand); }
+
+.site-calc-resposta { display: flex; flex-direction: column; gap: 12px; }
+.site-calc-indicado {
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  background: var(--gradient-brand); color: var(--on-brand); border-radius: var(--radius-card-token);
+  box-shadow: var(--shadow-brand-card); padding: clamp(18px, 3vw, 26px);
+}
+.site-calc-rotulo { font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: var(--tracking-overline); opacity: .85; }
+.site-calc-plano { font-size: var(--site-h3); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); }
+.site-calc-total { font-size: var(--site-preco); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); line-height: 1; margin: 2px 0 4px; }
+.site-calc-total small { font-size: var(--site-pequeno); font-weight: var(--weight-semibold); letter-spacing: 0; margin-left: 4px; }
+.site-calc-conta { list-style: none; padding: 10px 0 0; margin: 0 0 6px; width: 100%; border-top: 1px solid color-mix(in srgb, var(--on-brand) 30%, transparent); display: flex; flex-direction: column; gap: 4px; font-size: var(--site-pequeno); }
+.site-calc-conta li { display: flex; justify-content: space-between; gap: 12px; color: color-mix(in srgb, var(--on-brand) 88%, transparent); }
+.site-calc-nenhum { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; border: 1px dashed var(--border); border-radius: var(--radius-card-token); padding: 20px; }
+.site-calc-nenhum p { color: var(--text-soft); font-size: var(--site-pequeno); }
+.site-calc-outros { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--site-pequeno); }
+.site-calc-outros li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid var(--hairline); border-radius: var(--radius-field-token); }
+.site-calc-outro-nome { font-weight: var(--weight-bold); }
+
 .site-comparar { margin-top: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card-token); }
 .site-comparar summary { cursor: pointer; list-style: none; padding: 18px 22px; font-weight: var(--weight-bold); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .site-comparar summary::-webkit-details-marker { display: none; }
@@ -358,6 +416,10 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
   animation: site-troca-chega var(--site-mov-lento) var(--site-curva) both;
   animation-delay: calc(var(--ordem, 0) * var(--site-mov-escalonar) + var(--site-mov-rapido));
 }
+/* ─── A calculadora: a indicação nova chega com um pulo curto ─── */
+.site-movimento .site-calc-indicado { animation: site-calc-muda var(--site-mov-rapido) var(--site-curva-mola) both; }
+@keyframes site-calc-muda { from { transform: scale(.97); } to { transform: none; } }
+
 @keyframes site-troca-chega { from { opacity: 0; transform: translateX(calc(var(--site-revelar-distancia) * -1)); } to { opacity: 1; transform: none; } }
 
 /* ─── O topo ganha a borda quando a página rola ─── */
