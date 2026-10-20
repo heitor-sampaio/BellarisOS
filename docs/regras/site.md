@@ -92,7 +92,21 @@ clínicas." O site diz isso em três lugares:
   pontos): a câmera marca procedimentos como `visible_on_client_app`, liga a
   fidelidade com recompensas e grava os pontos como GANHO (o extrato mostra
   "Ganho no pagamento", não "Ajuste da equipe").
-- **SEO**: metadata com canonical (`SITE_URL`), `robots.ts`, `sitemap.ts`,
+- **SEO e GEO** (revistos em 2026-10-20, pedido do Heitor):
+  - os dados estruturados são UM grafo (`lib/dados-estruturados.ts`): a
+    organização, o site, o produto (cada plano ativo como oferta MENSAL,
+    `unitCode: MON`, e as funcionalidades do catálogo) e o `FAQPage` — as
+    MESMAS perguntas da página, de `lib/perguntas.ts`. O JSON-LD sai por
+    `jsonLd()` (escapa o `<`; o `.replace` antigo escrevia `<` por `<`);
+  - as perguntas começam pelas que se fazem a um buscador ou a uma IA (o que
+    é, para quem, o que substitui, quanto custa — o preço do sistema);
+  - `/llms.txt` (`lib/llms.ts`): o resumo em Markdown para as IAs, com a
+    definição, os planos e as perguntas da página — sem texto próprio;
+  - `robots.txt` libera com todas as letras os robôs das IAs (GPTBot,
+    ClaudeBot, PerplexityBot, Google-Extended…);
+  - a descrição cabe no resultado (até 160) e diz "sistema para clínica de
+    estética". Prova: o caso de SEO e o do `/llms.txt` em `e2e-site/site.spec.ts`.
+- **SEO** (2026-10-17): metadata com canonical (`SITE_URL`), `robots.ts`, `sitemap.ts`,
   `opengraph-image` (gerada, com as cores dos tokens escritas — o ImageResponse
   não lê CSS), ícones a partir do logo do app, JSON-LD `SoftwareApplication`
   com uma oferta por plano ativo. `www` → domínio sem `www` (308) em `proxy.ts`.
@@ -140,9 +154,12 @@ fonte, raios, sombras de quem flutua).
   conferida no DEVLOG e no código.
 - **O que depende de terceiro fica de fora até valer em produção**: Instagram e
   Messenger no inbox esperam a análise do app na Meta.
-- **Termo do sistema que não se explica sozinho** ("horário de silêncio")
-  ganha a explicação no próprio texto: `Termo` em `components/conteudo.tsx`
-  (sublinhado pontilhado; abre no hover, no foco e no toque; só CSS).
+- **Termo do sistema que não se explica sozinho** ganha a explicação no
+  próprio texto: `Termo` e as explicações em `components/termo.tsx`
+  (sublinhado pontilhado; abre no hover, no foco e no toque; só CSS), e
+  `TermosNaTela` a mantém dentro da tela do celular. Hoje: ERP e CRM, WhatsApp
+  oficial, modelos aprovados, tarifa da Meta, DRE, inbox, funil e horário de
+  silêncio. Explicação só diz o que o sistema faz.
 - Funcionalidade nova que muda o que a clínica ganha → a página muda junto
   (texto e, se for o caso, uma tela no catálogo e na câmera).
 
@@ -150,6 +167,8 @@ fonte, raios, sombras de quem flutua).
 
 ```
 ❌ Escrever preço na página (é planos_do_site; o sistema é a fonte)
+❌ Pergunta na página fora de lib/perguntas.ts (o FAQPage dos dados estruturados tem de ser a mesma, palavra por palavra)
+❌ JSON-LD num <script> sem jsonLd() (o "<" sem escape fecha a tag)
 ❌ Indicar plano por outra conta que não lib/calculadora (o "mais adequado" é o menor total que cabe, com os adicionais)
 ❌ Mostrar R$ 0 quando o banco não respondeu (é o último valor bom, ou o aviso)
 ❌ Dar ao serviço Site a service role ou qualquer segredo (só a chave pública)

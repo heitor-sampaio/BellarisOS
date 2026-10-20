@@ -1305,6 +1305,26 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-20 — O site: os termos explicados, e SEO e GEO
+
+Pedido do Heitor: explicar no próprio texto o que não se explica sozinho, e
+garantir o site "excelente em SEO e GEO".
+- **Oito termos com explicação** (`components/termo.tsx`): ERP e CRM,
+  WhatsApp oficial × WhatsApp Web, modelos aprovados pela Meta, tarifa da
+  Meta, DRE, inbox, funil de oportunidades e horário de silêncio. Abrem no
+  mouse, no foco e no toque; `TermosNaTela` desloca o que sairia da tela do
+  celular (ou abre embaixo).
+- **Dados estruturados em grafo**: organização, site, produto (planos como
+  oferta mensal, funcionalidades do catálogo) e `FAQPage` com as mesmas
+  perguntas da página. Achado: o escape do JSON-LD era um no-op
+  (`'<'` em TS já é `<`); agora `jsonLd()`.
+- **Perguntas para buscador e IA** primeiro: o que é, para quem, o que
+  substitui, quanto custa (o preço do sistema).
+- **`/llms.txt`**, os **robôs das IAs** liberados no `robots.txt`, e a
+  descrição em 153 caracteres com "sistema para clínica de estética".
+Prova: `e2e-site/site.spec.ts` (22/22) — o grafo, o FAQ igual à página, o
+`/llms.txt` com os planos, e cada termo dentro da tela de 390 px.
+
 ### 2026-10-19 — A calculadora de plano no site
 
 Pedido do Heitor: a pessoa informa unidades, colaboradores, números de

@@ -203,7 +203,10 @@ test('o rodapé leva à política de privacidade da clínica', async ({ page }) 
 test('buscador e compartilhamento: robots, sitemap, imagem e dados estruturados', async ({ page, request }) => {
   const robots = await request.get('/robots.txt')
   expect(robots.status()).toBe(200)
-  expect(await robots.text()).toContain('Sitemap:')
+  const textoRobots = await robots.text()
+  expect(textoRobots).toContain('Sitemap:')
+  // GEO (2026-10-20): os robôs das IAs liberados com todas as letras.
+  for (const robo of ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended']) expect(textoRobots).toContain(robo)
   const sitemap = await request.get('/sitemap.xml')
   expect(sitemap.status()).toBe(200)
   const og = await request.get('/opengraph-image')
@@ -212,10 +215,73 @@ test('buscador e compartilhamento: robots, sitemap, imagem e dados estruturados'
 
   await page.goto('/')
   await expect(page.locator('meta[property="og:image"]')).toHaveCount(1)
+  // A descrição cabe no resultado da busca (até 160) e diz o que se busca.
+  const descricao = await page.locator('meta[name="description"]').getAttribute('content')
+  expect(descricao!.length).toBeLessThanOrEqual(160)
+  expect(descricao).toMatch(/clínica de estética/i)
+
+  // Os dados estruturados (2026-10-20): um grafo com a organização, o site,
+  // o produto (cada plano ativo como oferta MENSAL) e as perguntas — as mesmas
+  // da página, palavra por palavra.
   const ld = JSON.parse(await page.locator('script[type="application/ld+json"]').first().textContent() ?? '{}')
-  expect(ld['@type']).toBe('SoftwareApplication')
+  const tipo = (t: string) => (ld['@graph'] as Record<string, unknown>[] ?? []).find(n => n['@type'] === t) as Record<string, any> | undefined
+  expect(tipo('Organization')?.name).toBe('BellarisOS')
+  expect(tipo('WebSite')?.inLanguage).toBe('pt-BR')
+  const app = tipo('SoftwareApplication')!
   const ativos = (await planosDoBanco()).filter(p => p.ativo)
-  expect(ld.offers?.length).toBe(ativos.length)
+  expect(app.offers?.length).toBe(ativos.length)
+  for (const o of app.offers) expect(o.priceSpecification?.referenceQuantity?.unitCode).toBe('MON')
+  expect(app.featureList?.length).toBeGreaterThan(5)
+  const faq = tipo('FAQPage')!
+  const naPagina = (await page.locator('#perguntas summary').allInnerTexts()).map(t => t.trim())
+  expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(naPagina)
+  expect(naPagina).toContain('O que é o BellarisOS?')
+  expect(naPagina).toContain('Quanto custa?')
+})
+
+// GEO (2026-10-20): o resumo para as IAs, em texto, com os preços do sistema.
+test('o /llms.txt resume o produto e os planos para as IAs', async ({ request }) => {
+  const r = await request.get('/llms.txt')
+  expect(r.status()).toBe(200)
+  expect(r.headers()['content-type']).toContain('text/plain')
+  const texto = semEspacoDuro(await r.text())
+  expect(texto).toMatch(/^# BellarisOS/)
+  expect(texto).toMatch(/clínica de estética/i)
+  for (const p of (await planosDoBanco()).filter(x => x.ativo)) {
+    expect(texto).toContain(p.nome)
+    expect(texto).toContain(reais(p.valor_centavos))
+  }
+})
+
+// Os termos que não se explicam sozinhos (pedido do Heitor, 2026-10-20): cada
+// um abre a explicação, e ela cabe na tela do celular.
+const TERMOS: [string, RegExp][] = [
+  ['ERP e CRM', /CRM.*cliente.*ERP/s],
+  ['O WhatsApp oficial da Meta', /QR code/],
+  ['Modelos aprovados pela Meta', /24h/],
+  ['tarifa da Meta', /Meta cobra/],
+  ['DRE', /entrou.*saiu/s],
+  ['inbox', /caixa de entrada/],
+  ['Funil de oportunidades', /etapas/],
+  ['horário de silêncio', /21h/],
+]
+
+test('cada termo do sistema se explica, e a explicação cabe no celular', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  for (const [termo, trecho] of TERMOS) {
+    const botao = page.getByRole('button', { name: termo, exact: true })
+    await botao.scrollIntoViewIfNeeded()
+    await botao.focus()
+    const dica = page.locator(`#${await botao.getAttribute('aria-describedby')}`)
+    await expect(dica, termo).toBeVisible()
+    await expect(dica, termo).toContainText(trecho)
+    const caixa = (await dica.boundingBox())!
+    expect(caixa.x, `${termo}: não sai pela esquerda`).toBeGreaterThanOrEqual(0)
+    expect(caixa.x + caixa.width, `${termo}: não sai pela direita`).toBeLessThanOrEqual(390)
+    expect(caixa.y, `${termo}: não sai por cima`).toBeGreaterThanOrEqual(0)
+    await botao.blur()
+  }
 })
 
 test('www vai para o domínio sem www', async ({ request }) => {

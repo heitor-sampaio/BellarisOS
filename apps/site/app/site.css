@@ -249,6 +249,9 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
   font-size: var(--site-pequeno); font-weight: var(--weight-medium); line-height: 1.5; color: var(--text-soft); text-align: left;
 }
 .site-termo:hover .site-termo-dica, .site-termo:focus-within .site-termo-dica { display: block; }
+/* components/termos-na-tela.tsx: o que sobraria fora da tela, e o lado. */
+.site-termo-dica { transform: translateX(var(--termo-x, 0)); }
+.site-termo-dica[data-abaixo] { bottom: auto; top: calc(100% + 8px); }
 .site-destaque-visual { position: relative; }
 .site-destaque-celular { width: min(300px, 72%); margin: 0 auto; }
 

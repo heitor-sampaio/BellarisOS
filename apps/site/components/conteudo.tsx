@@ -5,6 +5,8 @@ import {
 import { Navegador, Celular } from '@/components/molduras'
 import { AvisosDoHero, DemoConversa, DemoCopilot } from '@/components/demos'
 import { TELAS, type Tela } from '@/lib/telas'
+import { Termo } from '@/components/termo'
+import type { Pergunta } from '@/lib/perguntas'
 
 /**
  * O texto do site (2026-10-17). Regra: NADA inventado — sem depoimento, sem
@@ -155,9 +157,9 @@ export function Troca() {
  * ERP e CRM no mesmo sistema, o sistema operacional da clínica. As frentes
  * em volta do núcleo, e a cliente ligada a elas pelo app dela.
  */
-interface Frente { area: string; icone: typeof Wallet; titulo: string; sigla?: string; itens: string[] }
+interface Frente { area: string; icone: typeof Wallet; titulo: string; sigla?: string; itens: React.ReactNode[] }
 const FRENTES: Frente[] = [
-  { area: 'com', icone: MessagesSquare, titulo: 'Comercial', sigla: 'CRM', itens: ['O WhatsApp da equipe num inbox só', 'Funil de oportunidades', 'De qual anúncio a cliente veio', 'Venda de pacote e pré-pago'] },
+  { area: 'com', icone: MessagesSquare, titulo: 'Comercial', sigla: 'CRM', itens: [<>O WhatsApp da equipe num <Termo dica="inbox">inbox</Termo> só</>, <Termo key="funil" dica="funil">Funil de oportunidades</Termo>, 'De qual anúncio a cliente veio', 'Venda de pacote e pré-pago'] },
   { area: 'ate', icone: CalendarDays, titulo: 'Atendimento', itens: ['Agenda por profissional e sala', 'Prontuário e injetáveis', 'Termos assinados sem papel', 'Estoque com baixa na sessão'] },
   { area: 'fin', icone: Wallet, titulo: 'Financeiro', sigla: 'ERP', itens: ['Caixa, contas a pagar e a receber', 'O resultado do mês (DRE)', 'Comissões com regra', 'Parcelas no financeiro'] },
   { area: 'mar', icone: Megaphone, titulo: 'Marketing', itens: ['Automações sem programador', 'Campanhas por WhatsApp e no app', 'Fidelidade com pontos', 'Anúncio ligado à venda'] },
@@ -171,7 +173,7 @@ export function UmSistema() {
           <span className="site-overline">✦ ERP + CRM</span>
           <h2 id="um-sistema-titulo" className="site-h2">Não são sistemas separados. É um sistema só.</h2>
           <p className="site-lead">
-            O comercial, o atendimento, o financeiro e o marketing trabalham sobre a mesma cliente,
+            <Termo dica="erp-crm">ERP e CRM</Termo> no mesmo sistema: o comercial, o atendimento, o financeiro e o marketing trabalham sobre a mesma cliente,
             a mesma agenda e o mesmo caixa. E a sua cliente tem o app dela, ligado a tudo isso.
           </p>
         </div>
@@ -188,7 +190,7 @@ export function UmSistema() {
                 <h3 className="site-h3">{titulo}</h3>
                 {sigla && <span className="site-frente-sigla">{sigla}</span>}
               </div>
-              <ul>{itens.map(t => <li key={t}>{t}</li>)}</ul>
+              <ul>{itens.map((t, i) => <li key={i}>{t}</li>)}</ul>
             </div>
           ))}
           <div className="site-frente site-frente-app" data-revelar style={ordem(5)}>
@@ -276,26 +278,11 @@ export function Facil() {
   )
 }
 
-/**
- * Um termo do sistema explicado no próprio texto (2026-10-20): sublinhado
- * pontilhado, e a explicação abre ao passar o mouse, ao focar pelo teclado ou
- * ao tocar (o botão ganha o foco). Só CSS — e o `aria-describedby` liga o
- * termo à explicação para o leitor de tela.
- */
-function Termo({ id, children, dica }: { id: string; children: string; dica: string }) {
-  return (
-    <span className="site-termo">
-      <button type="button" className="site-termo-gatilho" aria-describedby={id}>{children}</button>
-      <span id={id} role="tooltip" className="site-termo-dica">{dica}</span>
-    </span>
-  )
-}
-
 interface Destaque {
   overline: string
   titulo: string
   texto: React.ReactNode
-  itens: { forte: string; resto: string }[]
+  itens: { forte: React.ReactNode; resto: React.ReactNode }[]
   tela: Tela
   celular?: boolean
   /** A demonstração viva que flutua sobre a tela. */
@@ -307,9 +294,9 @@ const DESTAQUES: Destaque[] = [
     overline: 'WhatsApp e atendimento', titulo: 'Todo o WhatsApp da clínica numa caixa só',
     texto: 'Várias pessoas atendendo os mesmos números, cada conversa com a ficha da cliente ao lado.',
     itens: [
-      { forte: 'O WhatsApp oficial da Meta', resto: ' sem largar o aplicativo do celular — os dois funcionam juntos. Ou o WhatsApp Web, pelo QR code.' },
+      { forte: <Termo dica="whatsapp-oficial">O WhatsApp oficial da Meta</Termo>, resto: ' sem largar o aplicativo do celular — os dois funcionam juntos. Ou o WhatsApp Web, pelo QR code.' },
       { forte: 'Cada conversa vira oportunidade', resto: ' num funil de vendas, com responsável e etapa.' },
-      { forte: 'Modelos aprovados pela Meta', resto: ' para lembrete, confirmação e campanha.' },
+      { forte: <Termo dica="modelos">Modelos aprovados pela Meta</Termo>, resto: ' para lembrete, confirmação e campanha.' },
     ],
     tela: TELAS.inbox, demo: 'conversa',
   },
@@ -337,7 +324,7 @@ const DESTAQUES: Destaque[] = [
     overline: 'Vendas e financeiro', titulo: 'Vendeu, entrou no caixa. Atendeu, gerou a comissão.',
     texto: 'Pacote, procedimento pré-pago, desconto e parcelas — com cada parcela no financeiro e a comissão calculada.',
     itens: [
-      { forte: 'O resultado do mês', resto: ' (DRE), contas a pagar e a receber, por unidade ou da clínica inteira.' },
+      { forte: 'O resultado do mês', resto: <> (<Termo dica="dre">DRE</Termo>), contas a pagar e a receber, por unidade ou da clínica inteira.</> },
       { forte: 'Comissões com regra', resto: ': por profissional, por procedimento, descontando a taxa do cartão.' },
       { forte: 'Relatórios', resto: ' de vendas, agenda, clientes e comercial, prontos para exportar.' },
     ],
@@ -355,7 +342,7 @@ const DESTAQUES: Destaque[] = [
   {
     overline: 'Automações', titulo: 'O que a recepção faria de cabeça, o sistema faz sozinho',
     texto: <>Monte regras sem programador: quando acontecer isto, espere tanto, mande aquilo — fora do{' '}
-      <Termo id="dica-silencio" dica="Das 21h às 8h (dá para mudar em cada automação), nenhuma mensagem automática sai para a cliente: o que cairia nesse horário espera e sai de manhã. Os avisos para a equipe saem na hora.">horário de silêncio</Termo>.</>,
+      <Termo dica="silencio">horário de silêncio</Termo>.</>,
     itens: [
       { forte: 'Lembrete e confirmação', resto: ' de horário, aniversário, retorno, reativação de quem sumiu.' },
       { forte: 'Campanhas', resto: ' para uma lista de clientes, por WhatsApp e notificação no app.' },
@@ -437,8 +424,8 @@ export function Destaques() {
               <h2 className="site-h2">{d.titulo}</h2>
               <p className="site-lead">{d.texto}</p>
               <ul className="site-lista">
-                {d.itens.map(it => (
-                  <li key={it.forte}><Check size={16} aria-hidden="true" /><span><strong>{it.forte}</strong>{it.resto}</span></li>
+                {d.itens.map((it, j) => (
+                  <li key={j}><Check size={16} aria-hidden="true" /><span><strong>{it.forte}</strong>{it.resto}</span></li>
                 ))}
               </ul>
             </div>
@@ -509,17 +496,8 @@ export function Seguranca() {
   )
 }
 
-const PERGUNTAS = [
-  { p: 'Como funciona o teste grátis?', r: 'Você cria a conta com seu e-mail e usa o sistema inteiro por 14 dias, sem cartão de crédito. Antes de terminar, combinamos o plano; o pagamento é por Pix, boleto ou cartão.' },
-  { p: 'Consigo trazer meus clientes de outro sistema?', r: 'Sim. A importação aceita uma planilha (CSV) com os contatos, e você confere tudo antes de entrar.' },
-  { p: 'Preciso do WhatsApp oficial?', r: 'Não. Dá para conectar pelo WhatsApp Web, lendo o QR code, ou pelo oficial da Meta — e no oficial o aplicativo do celular continua funcionando no mesmo número. As conversas do oficial têm a tarifa da Meta, cobrada por ela direto na conta da clínica.' },
-  { p: 'Quantas pessoas da equipe podem usar?', r: 'O limite de equipe, de unidades e de números de WhatsApp de cada plano está em Preços. Cada pessoa entra com o próprio acesso, e o cargo dela decide o que ela vê.' },
-  { p: 'Funciona no celular?', r: 'Sim: a equipe e as clientes usam pelo navegador, no computador ou no celular. No Android também há o aplicativo, com notificações.' },
-  { p: 'Minha clínica tem mais de uma unidade. Serve?', r: 'Serve. Cada unidade tem a agenda, o estoque e o caixa dela, e quem é da rede vê tudo consolidado.' },
-  { p: 'Os dados são meus?', r: 'São. A clínica é a dona dos dados das clientes; o BellarisOS só os guarda e processa para o sistema funcionar, como diz a política de privacidade.' },
-]
-
-export function Perguntas() {
+/** As perguntas vêm de lib/perguntas.ts — as mesmas do FAQPage dos dados estruturados. */
+export function Perguntas({ perguntas }: { perguntas: Pergunta[] }) {
   return (
     <section id="perguntas" className="site-secao" aria-labelledby="perguntas-titulo">
       <div className="site-container">
@@ -528,7 +506,7 @@ export function Perguntas() {
           <h2 id="perguntas-titulo" className="site-h2">O que costumam perguntar</h2>
         </div>
         <div className="site-perguntas">
-          {PERGUNTAS.map((q, i) => (
+          {perguntas.map((q, i) => (
             <details key={q.p} className="site-pergunta" data-revelar style={ordem(i)}>
               <summary>{q.p}<Plus size={18} aria-hidden="true" /></summary>
               <p>{q.r}</p>

@@ -2,6 +2,7 @@ import { Check, ChevronDown, Minus } from 'lucide-react'
 import { comparativoDosPlanos } from '@estetica-os/nucleo/lib/planos/comparativo'
 import { cartaoDoPlano, type PlanoDoSite } from '@/lib/planos'
 import { Calculadora } from '@/components/calculadora'
+import { Termo } from '@/components/termo'
 
 /**
  * Os preços (2026-10-17): os planos ATIVOS do sistema, um cartão cada, e o
@@ -68,7 +69,7 @@ function Planos({ planos, comecar }: { planos: PlanoDoSite[]; comecar: string })
         })}
       </div>
       <p className="site-precos-nota">
-        As conversas do WhatsApp oficial têm a tarifa da Meta, cobrada pela Meta direto na conta da clínica.
+        As conversas do WhatsApp oficial têm a <Termo dica="tarifa">tarifa da Meta</Termo>, cobrada pela Meta direto na conta da clínica.
       </p>
 
       <Calculadora planos={planos} comecar={comecar} />
