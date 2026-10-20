@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, tentar } from '@/lib/db'
 import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { notificarInteressados } from '@/lib/notifications/interessados'
+import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
 
 /**
  * O histórico e os avisos da AGENDA, divididos pelas actions (actions/appointments.ts)
@@ -94,6 +95,7 @@ export function notifyNewAppointment(appointmentId: string, ator?: string | null
       type: 'appointment_confirmed', title: 'Agendamento confirmado',
       body: `${c.procedureName} em ${when}.`, data,
     })
+    await avisarDoPreAtendimento(admin, avisarCliente, appointmentId)
     await notificarInteressados(admin,
       { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
       {

@@ -2631,3 +2631,10 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .anamnese-geral-pergunta { font-size: var(--text-2xs); font-weight: var(--weight-bold); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
 .anamnese-geral-valor { font-size: var(--text-base-sz); color: var(--text); line-height: 1.6; white-space: pre-wrap; }
 .anamnese-geral-vazio { color: var(--text-faint); font-size: var(--text-base-sz); }
+
+/* ── O pré-atendimento no app da cliente (2026-10-20) ─────────────────────── */
+.pre-atendimento-cliente { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.pre-atendimento-cliente-fim { padding: 28px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.pre-atendimento-cliente-titulo { font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); }
+.pre-atendimento-cliente-texto { font-size: var(--text-sm-sz); color: var(--text-muted); line-height: 1.5; }
+.pre-atendimento-cliente-acoes { display: flex; gap: 10px; flex-wrap: wrap; }

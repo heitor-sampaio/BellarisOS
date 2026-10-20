@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
+import { apagarClientes } from './apoio/limpeza'
 
 /**
  * O pré-atendimento (2026-10-20, decisões do Heitor): UMA ficha por rede, com
@@ -267,6 +268,87 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
       const g = data?.general_anamnesis as { versao?: number; respostas?: Record<string, string> }
       expect(g?.versao).toBe(2)
       expect(g?.respostas, 'só as perguntas da ficha').toEqual({ allergies: `pólen ${marca}` })
+    } finally {
+      await ctx.close()
+      // O plano nasce com o membro como profissional: sai antes dele (afterAll).
+      await apagarClientes([cliente])
+    }
+  })
+})
+
+/**
+ * Etapa 3, a cliente: o pré-atendimento aparece no app dela ao ser agendada;
+ * ela responde a ficha (ou, dentro da validade, só confirma que nada mudou),
+ * e a resposta vira a anamnese — com o selo "pela cliente, no app".
+ */
+test.describe('o pré-atendimento: a cliente responde no app', () => {
+  let C: OutraRede
+  let cliente: ClienteDeTeste
+  const portal = () => `/e2e-un-pc${marca}/cliente`
+
+  test.beforeAll(async () => {
+    C = await criarOutraRede(`pc${marca}`)
+    await db().from('tenants').update({ pre_atendimento_envio: true }).eq('id', C.tenantId)
+    cliente = await clienteComSessao(`pcc${marca}`, { id: C.branchId, slug: `e2e-un-pc${marca}` }, { tenant: C.tenantId })
+  })
+  test.afterAll(async () => { await cliente?.limpar(); await C?.limpar() })
+
+  const agendarC = async () => {
+    const { error } = await db().from('appointments').insert({
+      branch_id: C.branchId, client_id: cliente.clientId, procedure_id: C.procedureId, professional_id: C.professionalId,
+      status: 'SCHEDULED', source: 'INTERNAL', scheduled_at: new Date(Date.now() + 4 * 24 * 3600_000).toISOString(), duration_min: 30, price: 0,
+    })
+    expect(error).toBeNull()
+  }
+  const anamnese = async () => (await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente.clientId).maybeSingle()).data?.general_anamnesis as
+    { origem?: string; respondidoEm?: string; respostas?: Record<string, string> } | null
+
+  test('ela vê o pré-atendimento na tela inicial, responde, e ele fecha', async ({ browser }) => {
+    await agendarC()
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`${portal()}/home`)
+      await page.getByTestId('pre-atendimento-pendente').click()
+      await expect(page).toHaveURL(new RegExp(`${portal()}/pre-atendimento`))
+      await page.locator('[data-campo="allergies"] textarea').fill(`pólen ${marca}`)
+      await page.getByRole('button', { name: 'Enviar respostas' }).click()
+      await expect(page.getByText('Respostas enviadas')).toBeVisible()
+      expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente.clientId)).data)
+        .toEqual([{ status: 'RESPONDIDO', origem: 'CLIENTE_APP' }])
+      expect(await anamnese()).toMatchObject({ origem: 'CLIENTE_APP', respostas: { allergies: `pólen ${marca}` } })
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('dentro da validade, ela só confirma que nada mudou', async ({ browser }) => {
+    const antes = (await anamnese())?.respondidoEm
+    await agendarC()
+    expect((await db().from('pre_atendimentos').select('modo').eq('client_id', cliente.clientId).eq('status', 'PENDENTE')).data).toEqual([{ modo: 'CONFIRMAR' }])
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`${portal()}/pre-atendimento`)
+      await expect(page.getByText(`pólen ${marca}`)).toBeVisible()
+      await page.getByRole('button', { name: 'Nada mudou' }).click()
+      await expect(page.getByText('Respostas enviadas')).toBeVisible()
+      expect((await db().from('pre_atendimentos').select('status').eq('client_id', cliente.clientId).eq('status', 'PENDENTE')).data).toEqual([])
+      const depois = await anamnese()
+      expect(depois?.respostas?.allergies, 'as respostas ficam').toBe(`pólen ${marca}`)
+      expect(Date.parse(depois!.respondidoEm!), 'a data da resposta anda').toBeGreaterThan(Date.parse(antes!))
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('sem pré-atendimento pendente, responder não grava nada', async ({ browser }) => {
+    const antes = await anamnese()
+    const ctx = await browser.newContext({ storageState: cliente.estado })
+    const page = await ctx.newPage()
+    try {
+      await chamarAcao(page, 'actions/pre-atendimento-cliente.ts', 'responderPreAtendimento', `${portal()}/pre-atendimento`, [{ respostas: { allergies: 'outra coisa' } }])
+      expect(await anamnese(), 'nada muda').toEqual(antes)
     } finally {
       await ctx.close()
     }

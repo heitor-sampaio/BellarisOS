@@ -15,6 +15,7 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { EVENTOS } from '@estetica-os/types'
 import { ler, tentar } from '@/lib/db'
 import { conferirCredito, ligarCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
+import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -323,6 +324,7 @@ export function notifyAppointmentCreated(appointmentId: string): void {
       type: 'appointment_confirmed', title: 'Agendamento confirmado',
       body: `${procedureName} em ${when}.`, data: payload,
     })
+    await avisarDoPreAtendimento(admin, avisarCliente, appointmentId)
     if (professionalId) {
       await notifyUser(admin, professionalId, {
         type: 'appointment_new', title: 'Novo agendamento',

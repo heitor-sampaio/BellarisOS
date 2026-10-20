@@ -2,6 +2,7 @@ import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { normalizeFormSchema } from '@/lib/anamnesis'
+import { avisoDoPreAtendimento } from '@/lib/pre-atendimento/aviso'
 import { respostasDaFicha, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -34,8 +35,14 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
   respostas: unknown
   origem: Exclude<OrigemDaAnamnese, 'LEGADO'>
   porUsuario: string | null
+  /**
+   * As perguntas que a cliente RECEBEU (o retrato do envio): ela respondeu
+   * aquelas, mesmo que a clínica tenha mexido na ficha depois. Sem ele, a ficha
+   * atual da rede (a equipe responde o que vê agora).
+   */
+  ficha?: FichaDePreAtendimento
 }): Promise<AnamneseGeral> {
-  const ficha = await fichaDePreAtendimento(admin, o.tenantId)
+  const ficha = o.ficha ?? await fichaDePreAtendimento(admin, o.tenantId)
   const anamnese: AnamneseGeral = {
     versao: 2,
     ficha,
@@ -55,4 +62,42 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
     })
     .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar o pré-atendimento')
   return anamnese
+}
+
+export interface PreAtendimentoPendente {
+  id: string
+  tenantId: string
+  modo: 'COMPLETO' | 'CONFIRMAR'
+  ficha: FichaDePreAtendimento
+}
+
+/** O pré-atendimento PENDENTE de uma ficha de cliente (no máximo um — índice único), ou null. */
+export async function preAtendimentoPendente(admin: Admin, clientId: string): Promise<PreAtendimentoPendente | null> {
+  const p = await ler(admin.from('pre_atendimentos').select('id, tenant_id, modo, ficha')
+    .eq('client_id', clientId).eq('status', 'PENDENTE').maybeSingle(), 'buscar o pré-atendimento pendente') as
+    { id: string; tenant_id: string; modo: 'COMPLETO' | 'CONFIRMAR'; ficha: { formId?: string; nome?: string; rows?: unknown } } | null
+  if (!p) return null
+  return {
+    id: p.id, tenantId: p.tenant_id, modo: p.modo,
+    ficha: { formId: p.ficha?.formId ?? null, nome: p.ficha?.nome ?? 'Pré-atendimento', rows: normalizeFormSchema({ rows: p.ficha?.rows }).rows },
+  }
+}
+
+/**
+ * Avisa a cliente do pré-atendimento que ESTE agendamento deixou pendente
+ * (o gatilho cria um só por cliente: se já havia outro pendente, este
+ * agendamento não criou nada e não há o que avisar de novo). Para chamar
+ * dentro do `after()` dos avisos de agendamento, com o notificador de lá.
+ */
+export async function avisarDoPreAtendimento(
+  admin: Admin,
+  avisarCliente: (admin: Admin, clientId: string, p: ReturnType<typeof avisoDoPreAtendimento>) => Promise<void>,
+  appointmentId: string,
+): Promise<void> {
+  const p = await ler(admin.from('pre_atendimentos').select('client_id, modo, appointments(branches(slug))')
+    .eq('appointment_id', appointmentId).eq('status', 'PENDENTE').maybeSingle(), 'buscar o pré-atendimento do agendamento') as
+    { client_id: string; modo: 'COMPLETO' | 'CONFIRMAR'; appointments: { branches: { slug: string } | null } | null } | null
+  const slug = p?.appointments?.branches?.slug
+  if (!p || !slug) return
+  await avisarCliente(admin, p.client_id, avisoDoPreAtendimento(slug, p.modo))
 }

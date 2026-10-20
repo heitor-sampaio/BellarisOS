@@ -2,7 +2,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
-import { CalendarDays, ChevronRight, FileSignature, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronRight, ClipboardList, FileSignature, Sparkles } from 'lucide-react'
+import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 
 // -- Helpers --------------------------------------------------------
@@ -111,6 +112,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // Termos e contratos esperando a assinatura dele (§9.4.1).
   const paraAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
     .eq('client_id', ctx.clientId!).in('status', ['A_GERAR', 'PENDENTE']), 'contar os documentos para assinar')
+  // A ficha de pré-atendimento que a clínica mandou ao agendar (2026-10-20).
+  const preAtendimento = await preAtendimentoPendente(admin, ctx.clientId!)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -130,6 +133,25 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           Bem-vinda ao seu espaço pessoal.
         </p>
       </div>
+
+      {/* -- Pré-atendimento ---------------------------------------- */}
+      {preAtendimento && (
+        <Link href={`/${slug}/cliente/pre-atendimento`} data-testid="pre-atendimento-pendente" className="card" style={{
+          textDecoration: 'none', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12,
+          borderColor: 'var(--brand-soft-border)', background: 'var(--brand-soft)',
+        }}>
+          <ClipboardList size={20} color="var(--brand)" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
+              {preAtendimento.modo === 'CONFIRMAR' ? 'Confirme a sua ficha de saúde' : 'Responda a sua ficha de saúde'}
+            </p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              {preAtendimento.modo === 'CONFIRMAR' ? 'Algo mudou desde a última vez? Leva um minuto.' : 'Algumas perguntas antes do seu atendimento.'}
+            </p>
+          </div>
+          <ChevronRight size={16} color="var(--brand)" />
+        </Link>
+      )}
 
       {/* -- Documentos para assinar --------------------------------- */}
       {paraAssinar > 0 && (
