@@ -1305,6 +1305,39 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-20 — O pré-atendimento: a ficha universal, respondida antes do horário
+
+Pedido do Heitor, depois de comparar com a Clínica Experts: a cliente responde
+a ficha de saúde antes de chegar. As decisões dele: as perguntas são da PESSOA,
+não do tratamento — uma ficha universal por rede, editável; o envio ligado ou
+não pela rede; mandada ao agendar. Aceitas as sugestões: validade (padrão 6
+meses, e dentro dela só "algo mudou?"), link por WhatsApp para quem não tem o
+app, e a anamnese de antes migrada. Regras em `docs/regras/atendimento.md`.
+- **O banco** (bb8beb9): `forms.tipo = 'PRE_ATENDIMENTO'`, uma por rede,
+  nascida com as perguntas e os ids da anamnese de campos fixos;
+  `pre_atendimentos` (o pendente, com o retrato da ficha), criado por gatilho
+  em QUALQUER agendamento, um por cliente.
+- **A equipe** (f2a807e): a ficha em Configurações → Fichas (só a rede, sem
+  foto nem injetáveis), o envio e a validade; a anamnese da sessão e da
+  avaliação passa a ser a ficha, por um caminho só (`gravarAnamneseGeral`),
+  que fecha o pendente. A anamnese antiga foi convertida (`20261020000003`).
+  Achado no caminho: as actions das fichas de procedimento editavam e apagavam
+  a de pré-atendimento — agora filtram o tipo.
+- **A cliente no app** (7c5a4c4): aviso no celular ao ser agendada (genérico:
+  vai à tela de bloqueio), cartão na tela inicial e a ficha — a inteira, ou
+  as respostas de antes com "Nada mudou".
+- **O link** (9ea62c4): `/pre-atendimento/[token]`, no molde do link de
+  assinatura — só o hash do token, CPF ou nascimento antes de qualquer
+  pergunta, tentativas contadas no banco, e o link morre com o pendente. A
+  janela do agendamento mostra "Ficha de saúde pendente/respondida" e manda o
+  link (copiar ou `wa.me`).
+Prova: `e2e/ficha-pre-atendimento.spec.ts` (19 casos em quatro redes `[e2e]`)
+e `tests/pre-atendimento-aviso.test.ts`.
+Em aberto: mandar o link pela conversa do inbox (hoje é copiar ou `wa.me`),
+o selo no bloco do calendário (hoje só na janela do agendamento) e o
+histórico dos pré-atendimentos na exportação LGPD (a anamnese atual já vai,
+dentro do prontuário; as respostas de envios anteriores, não).
+
 ### 2026-10-20 — O site: os termos explicados, e SEO e GEO
 
 Pedido do Heitor: explicar no próprio texto o que não se explica sozinho, e

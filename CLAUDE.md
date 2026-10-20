@@ -284,7 +284,8 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   de chamar `getTenantContext`. O proxy manda para `/login` tudo que
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser
   vista. Hoje são: `/`, `/privacidade`, `/verificar*` (conferir documento
-  assinado), `/assinar/*` (o link de assinatura), `/schedule*` e
+  assinado), `/assinar/*` (o link de assinatura), `/pre-atendimento/*` (o
+  link da ficha de pré-atendimento), `/schedule*` e
   `/api/*`, mais as telas de autenticação.
   - Quem precisa disso: o que é lido por quem **ainda não entrou** ou **nunca
     vai entrar**. A política de privacidade é o caso típico — e loja de
@@ -397,7 +398,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 
 | Arquivo (`docs/regras/`) | Seções | Ler antes de mexer em |
 |---|---|---|
-| `atendimento.md` | §9.1 Agenda, §9.3 Procedimentos, §9.4 Prontuário, §9.5 Estoque, §10 Conclusão do atendimento | `appointments`, `lib/appointments/`, `createAppointmentCore`, `procedures`, `medical_records*`, `forms`, `stock_*`, `product_batches`, `lib/estoque/`, `finishSession`, `concluir_atendimento`, agenda, sessão de atendimento |
+| `atendimento.md` | §9.1 Agenda, §9.3 Procedimentos, §9.4 Prontuário, §9.5 Estoque, §10 Conclusão do atendimento | `appointments`, `lib/appointments/`, `createAppointmentCore`, `procedures`, `medical_records*`, `forms`, `pre_atendimento*`, `lib/pre-atendimento/`, `lib/anamnese-geral.ts`, `stock_*`, `product_batches`, `lib/estoque/`, `finishSession`, `concluir_atendimento`, agenda, sessão de atendimento |
 | `crm-inbox.md` | §9.2 Clientes / CRM (com LGPD), §9.2.1 Contato, conversa, oportunidade e cliente | `clients`, `contacts`, `conversations`, `leads`, `lead_events`, `lib/inbox/`, `lib/crm/`, `lib/contatos/`, `inbox_pagina`, `actions/inbox.ts`, `actions/lgpd.ts`, inbox, quadro de oportunidades, ficha do cliente |
 | `fidelidade.md` | §9.2.2 Fidelidade | `loyalty_*`, `lib/fidelidade/`, `confirmar_pagamento_do_atendimento`, pontos, vouchers, recompensas |
 | `vendas-financeiro.md` | §9.3.1 Pacotes, §9.3.2 Pré-pago, §9.6 Financeiro | `service_packages*`, `client_packages`, `package_sessions`, `procedure_sales*`, `financial_transactions`, `internal_credits`, `estornar_transacao`, `lib/checkout/`, `lib/vendas/`, `lib/pacotes/`, `lib/creditos/`, `actions/pre-pago.ts`, `actions/financial.ts`, checkout do plano, "Vender", desconto, parcelas |

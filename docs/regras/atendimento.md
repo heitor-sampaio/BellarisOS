@@ -69,11 +69,54 @@ const procedures = await ler(
   - **Não confundir com `medical_records.general_anamnesis`**: aquilo é o
     questionário de saúde do CLIENTE, preenchido uma vez, que alimenta o termo
     de consentimento e o planejamento. Esse continua existindo e é outra coisa.
+- **A anamnese geral é a ficha de PRÉ-ATENDIMENTO da rede** (2026-10-20,
+  decisões do Heitor): perguntas sobre a PESSOA (alergias, medicamentos,
+  gestação…), iguais para qualquer atendimento.
+  - **Uma ficha por rede**: `forms.tipo = 'PRE_ATENDIMENTO'`
+    (`forms_um_pre_atendimento_por_rede`), que nasce com a rede (gatilho em
+    `tenants`) com as perguntas da anamnese de campos fixos de antes, e os
+    MESMOS ids (`allergies`, `medications`, `skinType`…). Edita só quem tem
+    `forms: MANAGE` e é da rede, em Configurações → Fichas; sem foto nem
+    planejador de injetáveis (`TIPOS_FORA_DO_PRE_ATENDIMENTO`: a cliente
+    responde pelo celular). As actions e listas das fichas de PROCEDIMENTO
+    filtram `tipo = 'PROCEDIMENTO'` — sem isso, editavam e apagavam esta.
+  - **O formato gravado** é `{ versao: 2, ficha: { formId, nome, rows },
+    respostas, respondidoEm, origem, respondidoPor }`: a resposta leva o retrato
+    das perguntas de quando foi respondida. A de campos fixos foi convertida
+    (`anamnese_do_legado`, migration `20261020000003`); quem lê usa
+    `paraAnamneseGeral` (`lib/anamnese-geral.ts`), que entende os dois.
+  - **Grava por UM caminho**: `gravarAnamneseGeral`
+    (`lib/pre-atendimento/ficha.ts`) — a equipe na sessão e na avaliação, a
+    cliente no app e pelo link. Ele fecha o pendente da cliente: quem
+    respondeu na clínica não responde de novo no app.
+  - **O envio ao agendar é da rede** (`tenants.pre_atendimento_envio`,
+    desligado por padrão): o gatilho `trg_pre_atendimento_no_agendamento`
+    cria o pendente em `pre_atendimentos` por QUALQUER caminho que agende —
+    um por cliente (`pre_atendimentos_um_pendente`), com o retrato da ficha
+    do momento. Dentro da validade
+    (`tenants.pre_atendimento_validade_meses`, padrão 6) o modo é
+    `CONFIRMAR` ("algo mudou?"); fora dela, ou sem resposta, `COMPLETO`.
+  - **A cliente responde no app** (`/[slug]/cliente/pre-atendimento`, o
+    cartão da tela inicial e um aviso no celular ao ser agendada — genérico,
+    sem nada de saúde, só quando ESTE agendamento abriu o pendente) **ou pelo
+    link** (`/pre-atendimento/[token]`, no molde do link de assinatura, §9.4.1):
+    só o hash do token, CPF ou nascimento antes de qualquer pergunta,
+    `pre_atendimento_link_abrir` conta as tentativas (5 derrubam o link, 20 na
+    hora param o IP), responder confere de novo, e o link morre com o pendente.
+    A equipe manda o link pela janela do agendamento ("Enviar a ficha":
+    copiar ou `wa.me`, com `agenda: MANAGE`), que mostra só o ESTADO
+    (pendente/respondida) — as respostas são do prontuário.
+  - `pre_atendimentos` e `pre_atendimento_links` têm RLS ligada e nenhuma
+    política permissiva: só o servidor lê e grava. Prova:
+    `e2e/ficha-pre-atendimento.spec.ts`.
 - `RecordPhoto.source`: `"web"` ou `"mobile"` — rastrear de onde veio o upload
 - `RecordPhoto.type`: `"before"`, `"after"`, ou `"during"`
 - `ConsentTerm.signedVia`: `"web"` ou `"paper"` — `consent_terms` é o LEGADO dos
   termos fixos do checkout; os termos e contratos novos são o §9.4.1
-- Cliente NÃO acessa o prontuário pelo app — apenas histórico de procedimentos
+- Cliente NÃO acessa o prontuário pelo app — apenas histórico de procedimentos.
+  A exceção é a ficha de pré-atendimento PENDENTE dela: ali ela vê as
+  perguntas e, dentro da validade, as próprias respostas de antes — nada de
+  evolução, foto ou anotação da equipe.
 - **Dado clínico só com o módulo de prontuário, venha da tela que vier**
   (`podeVerClinico(ctx)`, `lib/auth.ts`; 2026-10-03). Vazavam por telas de
   outros módulos e foram fechados: a evolução na sessão de atendimento (só
@@ -162,6 +205,10 @@ O resto do fluxo:
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts
 ❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)
 ❌ Confundir a ficha do PROCEDIMENTO (forms/form_data) com a anamnese GERAL do cliente
+❌ Action ou lista de ficha de procedimento sem .eq('tipo', 'PROCEDIMENTO') (edita e apaga a ficha de pré-atendimento)
+❌ Gravar a anamnese geral fora de gravarAnamneseGeral (o pendente fica aberto e a cliente responde de novo)
+❌ Ler general_anamnesis direto, sem paraAnamneseGeral (há dois formatos no banco)
+❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
