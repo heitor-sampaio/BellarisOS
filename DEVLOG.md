@@ -6438,15 +6438,18 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
-- **O DNS do site** (2026-10-17): o serviço **Site** já está no Railway
-  (as chaves por referência ao serviço Suporte; endereço provisório
-  `site-production-dc7f9.up.railway.app`), com `bellarisos.com` e
-  `www.bellarisos.com` ligados. Falta criar no DNS os CNAME (raiz →
-  `yaq42rjq.up.railway.app`, com ALIAS/flattening; `www` →
-  `hi6xtd21.up.railway.app`) e os TXT `_railway-verify` e
-  `_railway-verify.www` — sem tocar nos registros do Resend. Conferir no texto do site: o "combinamos o
-  plano" do fim do teste, o app Android citado como disponível, e se a
-  política de privacidade já tem razão social e CNPJ.
+- ~~O DNS do site~~ — **no ar desde 2026-10-20**: o DNS passou da GoDaddy
+  para o Cloudflare (a GoDaddy não aceita CNAME na raiz; o domínio segue
+  registrado lá), com os registros em "DNS only" (nuvem cinza).
+  `bellarisos.com` com certificado Let's Encrypt válido; `www`, `app`,
+  `admin` e `suporte` também. Ligar o proxy (nuvem laranja) exige o SSL em
+  "Full (strict)" antes.
+- **Conferir no texto do site**: o "combinamos o plano" do fim do teste, o
+  app Android citado como disponível, e se a política de privacidade já tem
+  razão social e CNPJ.
+- **Buscadores** (2026-10-20): cadastrar o site no Google Search Console e no
+  Bing Webmaster Tools com o `sitemap.xml`; os perfis da marca (para o
+  `sameAs` dos dados estruturados).
 - **O custo real da OpenAI no sistema** (2026-10-08): criar na OpenAI uma
   chave de ADMINISTRAÇÃO da organização, só leitura (Settings → Organization →
   Admin keys; restrita à leitura da Usage API), e colar no serviço **Sistema**
