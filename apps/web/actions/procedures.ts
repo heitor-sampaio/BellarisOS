@@ -44,7 +44,7 @@ async function idsDoFormularioDaRede(
       ? ler(admin.from('products').select('id').eq('tenant_id', tenantId).in('id', produtos), 'conferir os insumos')
       : Promise.resolve([]),
     ids.ficha
-      ? ler(admin.from('forms').select('id').eq('tenant_id', tenantId).eq('id', ids.ficha).maybeSingle(), 'conferir a ficha')
+      ? ler(admin.from('forms').select('id').eq('tenant_id', tenantId).eq('tipo', 'PROCEDIMENTO').eq('id', ids.ficha).maybeSingle(), 'conferir a ficha')
       : Promise.resolve({ id: null }),
     modelos.length
       ? ler(admin.from('document_templates').select('id, kind').eq('tenant_id', tenantId).in('id', modelos), 'conferir os modelos de documento')

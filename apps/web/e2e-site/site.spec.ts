@@ -224,17 +224,22 @@ test('buscador e compartilhamento: robots, sitemap, imagem e dados estruturados'
   // o produto (cada plano ativo como oferta MENSAL) e as perguntas — as mesmas
   // da página, palavra por palavra.
   const ld = JSON.parse(await page.locator('script[type="application/ld+json"]').first().textContent() ?? '{}')
-  const tipo = (t: string) => (ld['@graph'] as Record<string, unknown>[] ?? []).find(n => n['@type'] === t) as Record<string, any> | undefined
+  interface NoDoGrafo {
+    '@type': string; name?: string; inLanguage?: string; featureList?: string[]
+    offers?: { priceSpecification?: { referenceQuantity?: { unitCode?: string } } }[]
+    mainEntity?: { name: string }[]
+  }
+  const tipo = (t: string) => ((ld['@graph'] ?? []) as NoDoGrafo[]).find(n => n['@type'] === t)
   expect(tipo('Organization')?.name).toBe('BellarisOS')
   expect(tipo('WebSite')?.inLanguage).toBe('pt-BR')
   const app = tipo('SoftwareApplication')!
   const ativos = (await planosDoBanco()).filter(p => p.ativo)
   expect(app.offers?.length).toBe(ativos.length)
-  for (const o of app.offers) expect(o.priceSpecification?.referenceQuantity?.unitCode).toBe('MON')
+  for (const o of app.offers ?? []) expect(o.priceSpecification?.referenceQuantity?.unitCode).toBe('MON')
   expect(app.featureList?.length).toBeGreaterThan(5)
   const faq = tipo('FAQPage')!
   const naPagina = (await page.locator('#perguntas summary').allInnerTexts()).map(t => t.trim())
-  expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(naPagina)
+  expect((faq.mainEntity ?? []).map(q => q.name)).toEqual(naPagina)
   expect(naPagina).toContain('O que é o BellarisOS?')
   expect(naPagina).toContain('Quanto custa?')
 })
@@ -256,11 +261,11 @@ test('o /llms.txt resume o produto e os planos para as IAs', async ({ request })
 // Os termos que não se explicam sozinhos (pedido do Heitor, 2026-10-20): cada
 // um abre a explicação, e ela cabe na tela do celular.
 const TERMOS: [string, RegExp][] = [
-  ['ERP e CRM', /CRM.*cliente.*ERP/s],
+  ['ERP e CRM', /CRM[\s\S]*cliente[\s\S]*ERP/],
   ['O WhatsApp oficial da Meta', /QR code/],
   ['Modelos aprovados pela Meta', /24h/],
   ['tarifa da Meta', /Meta cobra/],
-  ['DRE', /entrou.*saiu/s],
+  ['DRE', /entrou[\s\S]*saiu/],
   ['inbox', /caixa de entrada/],
   ['Funil de oportunidades', /etapas/],
   ['horário de silêncio', /21h/],

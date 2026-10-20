@@ -160,6 +160,7 @@ export async function Configuracoes({
           .from('forms')
           .select('id, name, schema, is_active')
           .eq('tenant_id', ctx.tenantId!)
+          .eq('tipo', 'PROCEDIMENTO')
           .order('created_at'), 'carregar as fichas')
       : [],
   ])

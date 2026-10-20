@@ -70,7 +70,7 @@ export default async function AdminProceduresPage({
     getCachedProductsReference(ctx.tenantId!),
 
     ler(admin.from('forms').select('id, name')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as fichas'),
+      .eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').eq('is_active', true).order('name'), 'carregar as fichas'),
 
     // O vocabulário da rede (Procedimentos → Categorias).
     categoriasAtivasDaRede(ctx.tenantId!),

@@ -77,6 +77,8 @@ export async function atualizarFicha(input: {
       .update(patch)
       .eq('id', input.id)
       .eq('tenant_id', ctx.tenantId!)
+      // Só as de PROCEDIMENTO: a de pré-atendimento (forms.tipo) tem as ações dela.
+      .eq('tipo', 'PROCEDIMENTO')
 
     if (error) return { error: `Erro ao salvar ficha: ${error.message}` }
     revalidate()
@@ -98,6 +100,8 @@ export async function definirFichaAtiva(id: string, isActive: boolean): Promise<
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('tenant_id', ctx.tenantId!)
+      // Só as de PROCEDIMENTO: a de pré-atendimento (forms.tipo) tem as ações dela.
+      .eq('tipo', 'PROCEDIMENTO')
     if (error) return { error: error.message }
     revalidate()
     return { ok: true }
@@ -119,6 +123,8 @@ export async function apagarFicha(id: string): Promise<Result> {
       .delete()
       .eq('id', id)
       .eq('tenant_id', ctx.tenantId!)
+      // Só as de PROCEDIMENTO: a de pré-atendimento (forms.tipo) tem as ações dela.
+      .eq('tipo', 'PROCEDIMENTO')
     if (error) return { error: error.message }
     revalidate()
     return { ok: true }
