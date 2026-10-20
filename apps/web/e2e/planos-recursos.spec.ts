@@ -301,9 +301,11 @@ test.describe.serial('o plano corta o que é parte de um módulo — inclusive p
           await p.goto(s.tela!)
           // isVisible() não espera: com a suíte carregada, a tela ainda não
           // tinha desenhado o "sem acesso" (instável em 2026-10-07).
+          // Nem o networkidle bastou: na completa de 2026-10-20 a tela de
+          // comissões já estava barrada na captura, e a leitura veio antes.
           await p.waitForLoadState('networkidle')
-          const barrada = new URL(p.url()).pathname !== s.tela || await p.getByText(SEM_ACESSO).isVisible()
-          expect(barrada, `tela: ${s.chave}`).toBe(!comPlano)
+          await expect.poll(async () => new URL(p.url()).pathname !== s.tela || await p.getByText(SEM_ACESSO).isVisible(),
+            { message: `tela: ${s.chave}`, timeout: comPlano ? 2_000 : 15_000 }).toBe(!comPlano)
         }
         for (const s of SUBFUNCIONALIDADES) {
           const r = await chamarAcao(p, s.acao.arquivo, s.acao.funcao, s.acao.rota, s.acao.args(outra))

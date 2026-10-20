@@ -151,8 +151,14 @@ test.describe.serial('mensagens pela Meta e crons', () => {
       await page.goto(`/admin/inbox?c=${f!.convUazapi}`)
       // PNG 1×1 — o menor arquivo de imagem válido.
       const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')
-      await page.locator('input[type="file"]').first().setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: png })
-      await page.locator('button', { hasText: 'Enviar' }).last().click()
+      const enviar = page.locator('button', { hasText: 'Enviar' }).last()
+      // Antes da hidratação o change do input se perde, e a prévia nunca abre
+      // (a completa de 2026-10-20 esperou 5 minutos pelo "Enviar"): repete.
+      await expect(async () => {
+        await page.locator('input[type="file"]').first().setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: png })
+        await expect(enviar).toBeVisible({ timeout: 3_000 })
+      }).toPass({ timeout: 30_000 })
+      await enviar.click()
       await expect.poll(() => f!.uazapi.para('/send/media').length, { message: 'saiu para o provedor' }).toBe(1)
     } finally {
       await ctx.close()
