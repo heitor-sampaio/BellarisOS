@@ -6427,6 +6427,8 @@ verdade. O que vale:
 | **Caixa de abrir/fechar removido** | 2026-09-18 | Menos de 1% dos recebimentos é em dinheiro; o fechamento existe para contar a gaveta, e não há gaveta. A auditoria do dia é a tela do financeiro. `cash_registers` fica com o histórico; `cashier` passa a significar RECEBER na recepção. |
 | **Procedimento e configuração são dados da REDE** | 2026-09-18 | A unidade vê o catálogo; alterar exige abrangência de rede. |
 | **Relatórios liberados aba a aba** | 2026-09-18 | `reports` num nível só entregava o faturamento junto com o funil. Cargos existentes começaram sem nenhuma aba. |
+| **NFS-e fica para o futuro** | 2026-10-20 | A emissão pede um emissor pago (a indicada foi a Focus NFe, ~R$ 548/mês com CNPJs ilimitados), e o custo não cabe agora. O diferencial vem por outro lado. |
+| **Pré-atendimento: uma ficha universal por rede** | 2026-10-20 | As perguntas são da PESSOA (alergias, medicamentos, gestação), não do tratamento: uma ficha editável por rede, envio ligado ou não pela rede, enviada ao agendar, com validade (padrão 6 meses) e link por WhatsApp para quem não tem o app. Substitui a anamnese geral de campos fixos. |
 | **Agendamento público sem login: descartado** | 2026-09-09 | Só equipe autenticada ou o próprio cliente pelo portal/app, e apenas para procedimentos `visible_on_client_app`. |
 | **LGPD: só exportação** | 2026-09-09 | Exclusão conflita com guarda legal de prontuário e registros fiscais. |
 | **Cliente não se auto-cadastra** | 2026-07-21 | A conta nasce quando a equipe cadastra. |
