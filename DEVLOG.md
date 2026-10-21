@@ -1305,6 +1305,38 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-20 — Um dia de clínica simulado por um time de agentes, e o que ele achou
+
+Pedido do Heitor: "um agente para cada função que teria alguém fazendo na
+clínica, e validar se tudo funciona mesmo". Rodou EM PRODUÇÃO (escolha dele),
+numa rede nova "[sim] Clínica Aurora" criada pelo mesmo caminho do cadastro,
+das 17:07 às 19:55: a dona montou a clínica do zero (setup, procedimentos,
+pacote, estoque, equipe, comissão, ficha de saúde), o SDR trabalhou o funil, a
+recepção a agenda (encaixe, link da ficha, remarcação), as clientes usaram o
+app e o link no celular, a profissional (escopo só os meus) atendeu, o caixa
+recebeu, vendeu e estornou, e a dona conferiu cada número no fim do dia. Um
+consolidador conferiu cada achado no código: 37 defeitos (31 confirmados, 5
+prováveis, 1 já corrigido e não publicado), 7 enganos ou regra documentada, e
+uma lista de atritos por tela. Os dados ficaram no banco para o Heitor ver.
+
+O dinheiro básico bateu (receita, despesa, lucro, comissão e pontos), e as
+permissões pela URL seguraram cada cargo. Corrigidos no mesmo dia, nesta ordem
+(a dele):
+- **O deploy** — o Railway não publicou `ba58b2d` e `afd0c49` (nenhum deploy
+  criado para a clínica); o commit seguinte publicou tudo.
+- **D2, cobrança em dobro** (ebbde76): "cartão de crédito em N vezes" agora é
+  PAGO na hora, com `cartao_vezes` para a taxa da comissão (decisão dele), e
+  o check-in só cobra parcela vencida.
+- **D3/D4, o atendimento que gerou um plano** (c717daa): o checkout cobra os
+  dois (decisão dele); antes cobrava só o plano e a limpeza ficava sem pagar.
+- **D1, o quadro vazio para quem é de unidade** (904ba24): a página lia
+  `leads` pela sessão, e a política só deixa a rede.
+- **D5/D7/D15, a conclusão** (2cbbcf6): o insumo de hoje ganha lugar no
+  formulário da avaliação e entra marcado; o "Finalizar" leva a evolução da
+  tela; o cache de produtos expira com `updateTag`.
+
+O que falta está em "5. Em aberto → Da simulação de 2026-10-20".
+
 ### 2026-10-20 — O pré-atendimento: a ficha universal, respondida antes do horário
 
 Pedido do Heitor, depois de comparar com a Clínica Experts: a cliente responde
@@ -6566,6 +6598,31 @@ verdade. O que vale:
 - **App Review da Meta** (`pages_messaging`, `instagram_manage_messages`).
 - Perguntas abertas com o suporte da uazapi: o proxy `internal` é dedicado por
   instância ou compartilhado? `DELETE /instance` para a cobrança na hora?
+
+### Da simulação de 2026-10-20 (o que ainda falta)
+
+O relatório inteiro (com capturas) ficou na máquina do Heitor, fora do git:
+`apps/web/.sim/relatorio.md`. Corrigidos: D1, D2, D3, D4, D5, D7, D15 e o
+deploy. Faltam, por gravidade:
+- **D6** margem por procedimento com o custo da EMBALAGEM (Toxina −3858%) e a
+  conta feita na página, fora de `lib/metrics`.
+- **D8** a profissional não tem onde anexar foto clínica (o "Anexar" exige
+  `clients: MANAGE` e cai em "sem acesso"; `record_photos` sem tela).
+- **D9** o caixa sem o módulo de Termos não conclui o checkout ("Forbidden"
+  cru na tela) — decidir se receber exige Termos.
+- **D10** o setup não retoma, e confirmar apaga o telefone da rede.
+- **D11** não existe horário de funcionamento (grade e livres fixos 08–20).
+- **D12** a ocupação do dia difere entre Dashboard e Agenda (conta na tela).
+- Médios: D13 (atendimento concluído antes da hora fora dos indicadores),
+  D14 (cargos prontos "acesso total" sem permissão), D16 (lista de clientes
+  com cache velho), D17/D18 (nascimento um dia antes; "cliente desde" o
+  nascimento), D19 (anamnese do link vira "pela equipe"), D20 (LGPD diz "não
+  pedido" quando está em análise), D22 (aba Financeiro da ficha sem trava),
+  D24 (categorias de despesa somam o estorno), D25 (estorno sem confirmação).
+- Baixos: D26–D37 (saudação "Bom dia" fixa, "filialis", iniciais, horários
+  passados no app, "4 sessãoões"…).
+- A rede "[sim] Clínica Aurora" (`00a5ea5b-…`) e os logins `sim-*@bellaris.invalid`
+  continuam em produção — apagar quando o Heitor pedir.
 
 ### Próximas fases já combinadas
 
