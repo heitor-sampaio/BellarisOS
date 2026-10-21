@@ -59,7 +59,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   titular pediu e `medical_status` (`not_requested | pending | approved |
   denied`) registra a decisão de quem tem `medical_records: MANAGE`, na aba
   LGPD de `/admin/settings`. Aprovar recoloca o pedido em `pending` e o pacote
-  é regerado com a parte clínica.
+  é regerado com a parte clínica. Sem o prontuário, o pacote diz POR QUÊ
+  (`textoDoProntuarioForaDoPacote`): não pedido, pedido e em análise, ou não
+  liberado — era sempre "não incluído", como se não tivesse pedido
+  (simulação de 2026-10-20).
 
 **O importador de contatos (CSV)** (2026-10-13; **Configurações → Importações**,
 nos dois portais — pedido do Heitor, saiu de Clientes e de Oportunidades;

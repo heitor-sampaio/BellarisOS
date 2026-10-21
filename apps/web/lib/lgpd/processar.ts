@@ -31,7 +31,7 @@ export async function processExportRequest(requestId: string): Promise<void> {
     // Clínico só entra com aprovação explícita da equipe.
     const includeMedical = claimed.include_medical && claimed.medical_status === 'approved'
     const { jsonPath, pdfPath, expiresAt } = await buildClientExport(
-      claimed.id, claimed.client_id, includeMedical,
+      claimed.id, claimed.client_id, includeMedical, claimed.medical_status,
     )
 
     await gravar(admin.from('lgpd_requests').update({

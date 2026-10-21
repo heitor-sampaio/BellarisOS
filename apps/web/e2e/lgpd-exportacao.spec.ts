@@ -78,7 +78,9 @@ test.describe.serial('LGPD: exportação de dados', () => {
 
     const pacote = await jsonDoPacote(row!.export_json_path)
     expect(pacote.solicitacao.incluiProntuario).toBe(false)
-    expect(pacote.prontuario, 'sem liberação, o prontuário NÃO entra').toBe('Não incluído nesta solicitação.')
+    // Pedido e aguardando a clínica: o pacote diz que está EM ANÁLISE — era 'Não
+    // incluído nesta solicitação', como se não tivesse pedido (simulação de 2026-10-20).
+    expect(pacote.prontuario, 'sem liberação, o prontuário NÃO entra — e o pacote diz por quê').toMatch(/em análise/)
     expect(JSON.stringify(pacote)).not.toContain(ALERGIA)
   })
 

@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDia } from '@estetica-os/utils'
+import { textoDoProntuarioForaDoPacote, type SituacaoDoProntuario } from '@/lib/lgpd/situacao-do-prontuario'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
@@ -37,7 +38,10 @@ export async function buildClientExport(
   requestId: string,
   clientId: string,
   includeMedical: boolean,
+  /** A situação do pedido do prontuário (`lgpd_requests.medical_status`): o que dizer quando ele não vai. */
+  situacaoDoProntuario: SituacaoDoProntuario = null,
 ): Promise<ExportResult> {
+  const foraDoPacote = textoDoProntuarioForaDoPacote(situacaoDoProntuario)
   const admin = createAdminClient()
 
   const { data: client, error: clientErr } = await admin
@@ -167,7 +171,7 @@ export async function buildClientExport(
     termosEContratos: (termos ?? []).map(t => Object.fromEntries(Object.entries(t).filter(([k]) => k !== 'signed_pdf_path'))),
     planosDeTratamento: plans ?? [],
     comunicacoes: notifications ?? [],
-    prontuario:   includeMedical ? medical : 'Não incluído nesta solicitação.',
+    prontuario:   includeMedical ? medical : foraDoPacote.json,
   }
 
   // ─── PDF (leitura) ─────────────────────────────────────────────────────────
@@ -276,14 +280,7 @@ export async function buildClientExport(
       },
     )
   } else {
-    sections.push({
-      title: 'Prontuário',
-      lines: [
-        'Os dados de prontuário (anamnese, evolução dos atendimentos e fotos',
-        'clínicas) não fazem parte deste pacote. Para',
-        'solicitá-los, procure a unidade onde você é atendido.',
-      ],
-    })
+    sections.push({ title: 'Prontuário', lines: foraDoPacote.pdf })
   }
 
   sections.push({
