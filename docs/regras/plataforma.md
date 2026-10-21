@@ -144,6 +144,11 @@ um muro que não depende de cada trava do código.
   cadastro público e o "Nova rede" do `/sistema` (este cria o login do
   responsável e manda o e-mail de definir senha; a unidade fica para o
   `/setup`). Rede não se apaga — cancela.
+- **O `/setup` retoma de onde parou** (2026-10-20): os dados já gravados da
+  rede vêm preenchidos (o campo vazio grava nulo — sem isso, confirmar apagava
+  o telefone), a rede que já tem unidade ativa vai direto ao "Tudo pronto!"
+  (sem isso, a única saída era criar uma segunda unidade), e o passo da
+  unidade tem "Voltar". Prova: `e2e/setup-retoma.spec.ts`.
 - **Planos**: catálogo em `platform_plans` (não se apaga, desativa); a rede
   guarda o RETRATO do valor em `tenant_subscriptions.valor_centavos` — é o
   preço especial e o que o catálogo novo não muda. `tenants.plan_name` é a

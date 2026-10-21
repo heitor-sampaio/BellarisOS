@@ -89,17 +89,19 @@ function Stepper({ current }: { current: number }) {
 
 // -- Step 1 — Dados da rede ----------------------------------------------------
 
+interface DadosDaRede { nome: string; documento: string; telefone: string; site: string }
+
 function StepNetwork({
-  initialName,
+  inicial,
   onNext,
 }: {
-  initialName: string
-  onNext: (savedName: string) => void
+  inicial: DadosDaRede
+  onNext: (salvos: DadosDaRede) => void
 }) {
-  const [name,     setName]     = useState(initialName)
-  const [document, setDocument] = useState('')
-  const [phone,    setPhone]    = useState('')
-  const [website,  setWebsite]  = useState('')
+  const [name,     setName]     = useState(inicial.nome)
+  const [document, setDocument] = useState(inicial.documento)
+  const [phone,    setPhone]    = useState(inicial.telefone)
+  const [website,  setWebsite]  = useState(inicial.site)
   const [error,    setError]    = useState<string | null>(null)
   const [pending,  startTransition] = useTransition()
 
@@ -111,7 +113,7 @@ function StepNetwork({
       if (result && 'error' in result) {
         setError(result.error ?? null)
       } else {
-        onNext(name)
+        onNext({ nome: name, documento: document, telefone: phone, site: website })
       }
     })
   }
@@ -204,7 +206,7 @@ function StepNetwork({
 
 // -- Step 2 — Primeira unidade -------------------------------------------------
 
-function StepBranch({ onNext }: { onNext: () => void }) {
+function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const [name,       setName]       = useState('')
   const [slugDigitado, setSlug]     = useState('')
   const [slugTouched,setSlugTouched]= useState(false)
@@ -291,7 +293,7 @@ function StepBranch({ onNext }: { onNext: () => void }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <label className="overline" htmlFor="br-slug">
-          Slug (URL)
+          Endereço da unidade
           <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
             — /{slug || 'nome-da-unidade'}
           </span>
@@ -409,7 +411,8 @@ function StepBranch({ onNext }: { onNext: () => void }) {
         </p>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+        <button type="button" onClick={onBack} disabled={pending} className="btn-secondary">← Voltar</button>
         <button type="submit" disabled={pending} className="btn-primary">
           {pending ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Criando…</> : 'Continuar →'}
         </button>
@@ -489,9 +492,10 @@ function StepDone({ tenantName }: { tenantName: string }) {
 
 // -- Wizard root ---------------------------------------------------------------
 
-export function SetupWizard({ tenantName }: { tenantName: string }) {
-  const [step, setStep] = useState(0)
-  const [networkName, setNetworkName] = useState(tenantName)
+export function SetupWizard({ rede: inicial, temUnidade }: { rede: DadosDaRede; temUnidade: boolean }) {
+  // A rede que já tem unidade (saiu no meio e voltou) vai direto ao fim.
+  const [step, setStep] = useState(temUnidade ? 2 : 0)
+  const [rede, setRede] = useState(inicial)
 
   return (
     <div className="card" style={{ padding: '32px 28px' }}>
@@ -499,15 +503,15 @@ export function SetupWizard({ tenantName }: { tenantName: string }) {
 
       {step === 0 && (
         <StepNetwork
-          initialName={networkName}
-          onNext={(savedName) => { setNetworkName(savedName); setStep(1) }}
+          inicial={rede}
+          onNext={(salvos) => { setRede(salvos); setStep(1) }}
         />
       )}
       {step === 1 && (
-        <StepBranch onNext={() => setStep(2)} />
+        <StepBranch onNext={() => setStep(2)} onBack={() => setStep(0)} />
       )}
       {step === 2 && (
-        <StepDone tenantName={networkName} />
+        <StepDone tenantName={rede.nome} />
       )}
     </div>
   )
