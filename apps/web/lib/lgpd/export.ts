@@ -318,7 +318,7 @@ export async function buildClientExport(
         emptyLabel: 'Nenhuma ficha de saúde respondida.',
         lines: fichas.flatMap(p => [
           `${fmtDateTime(p.respondidaEm)} — ${p.ficha}${p.respondidaPor ? ` — por ${p.respondidaPor}` : ''}`,
-          ...p.respostas.map(r => `   ${r.pergunta}: ${r.resposta.replace(/s+/g, ' ').trim()}`),
+          ...p.respostas.map(r => `   ${r.pergunta}: ${r.resposta.replace(/\s+/g, ' ').trim()}`),
         ]),
       },
     )
