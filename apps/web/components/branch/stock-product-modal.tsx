@@ -472,6 +472,17 @@ function ProductFields({
                 </div>
               </div>
 
+              {/* A despesa da compra: era lançada PAGA, hoje, sem a tela dizer
+                  (simulação de 2026-10-20). Agora é escolha visível. */}
+              {Number(costPriceStr) > 0 && (
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, cursor: 'pointer' }}>
+                  <input type="checkbox" name="initial_expense" defaultChecked style={{ marginTop: 2, accentColor: 'var(--brand)' }} />
+                  <span>
+                    <strong style={{ color: 'var(--text)' }}>Lançar o custo como despesa paga hoje</strong> — no financeiro da unidade, categoria Estoque. Desmarque se esse estoque já tinha sido pago antes.
+                  </span>
+                </label>
+              )}
+
               {/* Lote + Validade */}
               <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

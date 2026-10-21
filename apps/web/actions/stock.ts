@@ -136,52 +136,23 @@ async function createProductInterno(
     }
 
     if (initialQty && initialQty > 0 && filialEstoque && newProduct) {
-      await gravar(admin.from('stock_movements').insert({
-        branch_id:     filialEstoque,
-        product_id:    newProduct.id,
-        type:          'PURCHASE',
-        quantity:      initialQty,
-        balance_after: initialQty,
-        notes:         str(formData, 'initial_notes') ?? 'Estoque inicial',
-        created_by:    ctx.internalUserId,
-      }), 'registrar a movimentação de estoque')
-
-      await gravar(admin.from('branch_product_stock').upsert({
-        product_id:    newProduct.id,
-        branch_id:     filialEstoque,
-        current_stock: initialQty,
-        min_stock:     minStock,
-        updated_at:    new Date().toISOString(),
-      }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
-
-      const initialBatch   = str(formData, 'initial_batch')
-      const initialExpires = str(formData, 'initial_expires_at')
-      if (initialBatch) {
-        await gravar(admin.from('product_batches').insert({
-          product_id:   newProduct.id,
-          // O lote é da unidade que recebeu (o saldo também é).
-          branch_id:    filialEstoque,
-          batch_number: initialBatch,
-          expires_at:   initialExpires ?? null,
-          quantity:     initialQty,
-        }), 'registrar o lote do produto')
-      }
-
-      // Atualiza custo do produto e registra despesa financeira
-      if (initialCost && initialCost > 0) {
-        await gravar(admin.from('products').update({ cost_price: initialCost }).eq('id', newProduct.id), 'atualizar o custo do produto')
-
-        await gravar(admin.from('financial_transactions').insert({
-          branch_id:   filialEstoque,
-          type:        'EXPENSE',
-          category:    'Estoque',
-          description: `Compra: ${name}`,
-          amount:      initialCost * initialQty,
-          is_paid:     true,
-          paid_at:     new Date().toISOString(),
-          notes:       str(formData, 'initial_notes') ?? 'Estoque inicial',
-          created_by:  ctx.internalUserId,
-        }), 'lançar a despesa da compra')
+      // Numa transação só (estoque_inicial, sobre estoque_entrada — 2026-10-21):
+      // movimento, saldo com o mínimo, lote, custo e, SE marcada na tela, a
+      // despesa paga de hoje. Eram quatro gravações soltas.
+      if (ctx.branchId !== null && filialEstoque !== ctx.branchId) return { error: 'Produto criado, mas o estoque inicial é só da sua unidade.' }
+      const unidadeDaRede = await produtoEUnidadesDaRede(admin, ctx.tenantId!, newProduct.id, [filialEstoque])
+      if (!unidadeDaRede) return { error: 'Produto criado, mas a unidade do estoque inicial não é desta rede.' }
+      try {
+        await gravar(admin.rpc('estoque_inicial', {
+          p_produto: newProduct.id, p_unidade: filialEstoque, p_quantidade: initialQty,
+          p_custo: initialCost && initialCost > 0 ? initialCost : null,
+          p_observacao: str(formData, 'initial_notes') ?? 'Estoque inicial',
+          p_lote: str(formData, 'initial_batch'), p_validade: str(formData, 'initial_expires_at'),
+          p_autor: ctx.internalUserId, p_minimo: minStock,
+          p_despesa: formData.get('initial_expense') === 'on', p_descricao: `Compra: ${name}`,
+        }), 'registrar o estoque inicial')
+      } catch (e) {
+        return { error: `Produto criado, mas o estoque inicial não entrou: ${mensagemDoErro(e)} Lance a entrada pela tela de estoque.` }
       }
     }
 
