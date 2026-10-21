@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
+import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { semAcesso } from '@/lib/sem-acesso'
 
@@ -1429,6 +1430,23 @@ async function checkoutTreatmentPlanInterno(
     }), 'registrar o checkout no histórico')
   }
 
+  // 5. O atendimento de hoje (o que GEROU o plano), se tem preço e não foi
+  //    recebido: vai junto, pelo caminho do avulso — com o appointment_id, a
+  //    comissão e as métricas o leem como sempre. Só quando algo é recebido
+  //    agora; "a receber" e "no atendimento" o deixam para a tela dele.
+  let aviso: string | undefined
+  if (pagamento && pagamento.forma !== 'A_RECEBER') {
+    const hoje = await atendimentoDeHojeDoPlano(admin, planId)
+    if (hoje) {
+      const { error } = await admin.rpc('confirmar_pagamento_do_atendimento', {
+        p_agendamento: hoje.appointmentId, p_tenant: ctx.tenantId, p_ator: ctx.internalUserId,
+        p_ator_nome:   ctx.userName || ctx.roleLabel || 'Recepção',
+        p_dados:       { metodo: pagamento.metodo, pontos: 0, desconto: 0, valor_final: hoje.preco, cartao_vezes: vezesNoCartao(pagamento) },
+      })
+      if (error) aviso = `O plano foi fechado, mas o atendimento de hoje não foi recebido (${error.message}). Receba pela tela do atendimento.`
+    }
+  }
+
   if (slug) {
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/checkout`)
@@ -1446,7 +1464,7 @@ async function checkoutTreatmentPlanInterno(
     revalidatePath(`/admin/agenda/${plan.evaluation_appointment_id}`)
   }
 
-  return { transactionId, newAppointmentId }
+  return { transactionId, newAppointmentId, ...(aviso ? { aviso } : {}) }
 }
 
 // -- Receber no check-in -------------------------------------------------------

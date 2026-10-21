@@ -4,6 +4,7 @@ import { getTreatmentPlanSessions } from '@/actions/treatment-plans'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { ler } from '@/lib/db'
 import { precosDoPlano } from '@/lib/checkout/desconto-do-plano'
+import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 
 /**
  * Monta o que o `CheckoutWizard` precisa para um plano.
@@ -40,7 +41,7 @@ export async function montarCheckoutPlan(
   type RawClient = { name: string; document: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw] = await Promise.all([
+  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje] = await Promise.all([
     getTreatmentPlanSessions(planId),
     // O total é o de ANTES do desconto: depois de um checkout que falhou no
     // meio, os preços do plano já estão rateados, e o desconto é dado de novo
@@ -49,6 +50,7 @@ export async function montarCheckoutPlan(
     getCachedBranchProfessionals(branchId, tenantId),
     ler(admin.from('medical_records').select('id').eq('client_id', planRaw.client_id).maybeSingle(), 'buscar o prontuário do cliente'),
     ler(admin.from('branches').select('id, name').eq('tenant_id', tenantId).eq('is_active', true).order('name'), 'carregar as unidades'),
+    atendimentoDeHojeDoPlano(admin, planId),
   ])
 
   return {
@@ -69,6 +71,7 @@ export async function montarCheckoutPlan(
       professionals:    ((professionalsRaw ?? []) as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name })),
       branches:         ((branchesRaw      ?? []) as { id: string; name: string }[]).map(b => ({ id: b.id, name: b.name })),
       currentBranchId:  branchId,
+      atendimentoDeHoje,
     },
   }
 }

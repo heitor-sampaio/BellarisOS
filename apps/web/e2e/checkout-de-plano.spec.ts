@@ -238,6 +238,38 @@ test.describe.serial('checkout de plano', () => {
     })
   })
 
+  test('o atendimento de hoje vai junto: o checkout mostra e recebe os dois (2026-10-20)', async ({ browser }) => {
+    // A simulação de um dia de clínica: a limpeza de R$ 180 da Joana, concluída,
+    // gerou um plano — e o checkout ("Novo paciente") cobrou SÓ o plano. O
+    // atendimento ficou sem receber, e o caixa achou que tinha cobrado a limpeza.
+    const { planId, cliente } = await plano('hoje')
+    const { data: ap, error: eAp } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: procs.P1,
+      scheduled_at: new Date().toISOString(), duration_min: 30, price: 180, status: 'COMPLETED', source: 'INTERNAL',
+    }).select('id').single<{ id: string }>()
+    expect(eAp, 'o atendimento de hoje').toBeNull()
+    await db().from('treatment_plans').update({ evaluation_appointment_id: ap!.id }).eq('id', planId)
+
+    const avista = { forma: 'AVISTA', metodo: 'PIX' }
+    await como(browser, async page => {
+      const rota = `/admin/checkout/${planId}`
+      await page.goto(rota)
+      await expect(page.getByTestId('atendimento-de-hoje')).toContainText(/R\$\s180,00/)
+
+      await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, avista])
+      for (const d of await docsDoPlano(planId)) await assinarNoPapel(d.id)
+      // O que a action devolve vem no meio do payload da página: a prova é o financeiro, abaixo.
+      await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota, [planId, avista, [], slug])
+    })
+
+    const { data: doAtendimento } = await db().from('financial_transactions')
+      .select('amount, is_paid, payment_method').eq('appointment_id', ap!.id)
+    expect((doAtendimento ?? []).map(t => [Number(t.amount), t.is_paid, t.payment_method]), 'o atendimento recebido, com o seu id')
+      .toEqual([[180, true, 'PIX']])
+    const { data: doPlano } = await db().from('financial_transactions').select('amount, is_paid').eq('treatment_plan_id', planId)
+    expect((doPlano ?? []).map(t => [Number(t.amount), t.is_paid]), 'o plano, separado').toEqual([[TOTAL, true]])
+  })
+
   test('o plano de outra rede: nem prepara nem fecha', async ({ browser }) => {
     const alheio = await alheia!.criarPlanoProposto('alheio', { semTermo: true })
     const { planId: meu } = await plano('controle')

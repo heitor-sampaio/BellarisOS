@@ -32,6 +32,11 @@ export interface CheckoutPlan {
   professionals:    { id: string; name: string }[]
   branches:         { id: string; name: string }[]
   currentBranchId:  string
+  /**
+   * O atendimento que gerou o plano, com preço e ainda não recebido: vai junto
+   * quando algo é recebido agora (2026-10-20 — o checkout cobrava só o plano).
+   */
+  atendimentoDeHoje: { appointmentId: string; procedimento: string; preco: number } | null
 }
 
 interface DaySlot {
@@ -122,6 +127,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [parcelas,      setParcelas]      = useState(3)
   // À vista no cartão de crédito: em quantas vezes na maquininha (pago na hora).
   const [vezesCartao,   setVezesCartao]   = useState(1)
+  // O atendimento que gerou o plano entra junto quando algo é recebido agora.
+  const recebeHoje   = !!plan.atendimentoDeHoje && (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO')
+  const precoDeHoje  = plan.atendimentoDeHoje?.preco ?? 0
   const [primeiroVenc,  setPrimeiroVenc]  = useState(() =>
     format(new Date(Date.now() + 30 * 864e5), 'yyyy-MM-dd'),
   )
@@ -289,6 +297,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     startSubmit(async () => {
       const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug, descontoDoEstado(desconto))
       if (result.error) { setError(result.error); return }
+      // O plano fechou; só o atendimento de hoje não foi recebido — a pessoa precisa saber.
+      if ('aviso' in result && result.aviso) { setError(result.aviso); return }
       if (onDone) { onDone(plan.clientId); return }
       router.push(rotaCliente(pathname, slug, plan.clientId))
     })
@@ -458,6 +468,17 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         </div>
       </div>
 
+      {plan.atendimentoDeHoje && (
+        <div data-testid="atendimento-de-hoje" className="card" style={{ padding: '14px 20px', marginBottom: 20 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
+            Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}
+          </p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+            Ainda não foi recebido. O plano acima é das PRÓXIMAS sessões; recebendo agora, os dois entram juntos.
+          </p>
+        </div>
+      )}
+
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
       <button onClick={() => { setError(null); setStep(1) }}
@@ -495,6 +516,19 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <div style={{ marginBottom: 16, maxWidth: 360 }}>
           <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} />
         </div>
+
+        {plan.atendimentoDeHoje && (
+          <div data-testid="atendimento-de-hoje-no-pagamento" style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
+              Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}
+            </p>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+              {recebeHoje
+                ? 'Ainda não foi recebido: entra junto, à vista, no mesmo meio de pagamento. O plano é das próximas sessões.'
+                : 'Ainda não foi recebido e fica fora deste checkout — receba pela tela do atendimento. O plano é das próximas sessões.'}
+            </p>
+          </div>
+        )}
 
         {formaPgto === 'PARCELADO' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -587,7 +621,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
           </span>
           <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-            {fmtBRL(formaPgto === 'AVISTA' ? liquido : formaPgto === 'PARCELADO' ? entradaNum : 0)}
+            {fmtBRL((formaPgto === 'AVISTA' ? liquido : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0))}
           </span>
         </div>
         {formaPgto !== 'AVISTA' && (

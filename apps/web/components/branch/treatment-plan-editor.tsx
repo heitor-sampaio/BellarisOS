@@ -624,8 +624,15 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
   return (
     <div className="card" style={{ overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
+          {/* Na simulação de 2026-10-20 a profissional montou aqui a sessão que
+              estava FAZENDO (com o insumo) — e virou um plano de outra sessão. */}
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+            As PRÓXIMAS sessões, para a cliente fechar. O que foi feito hoje vai na conclusão do atendimento.
+          </p>
+        </div>
         {grandTotal > 0 && (
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
             {fmtBRL(grandTotal)}

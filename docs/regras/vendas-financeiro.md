@@ -180,6 +180,18 @@ o procedimento avulso pago antes.
   (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
   check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
   Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.
+- **O checkout do plano cobra também o "atendimento de hoje"** (decisão do
+  Heitor, 2026-10-20): o atendimento que GEROU o plano
+  (`evaluation_appointment_id`), quando está concluído, tem preço, é avulso e
+  ainda não foi recebido (`atendimentoDeHojeDoPlano`,
+  `lib/checkout/atendimento-de-hoje.ts`). O wizard o mostra como item; se algo
+  é recebido agora (à vista ou entrada + parcelas), ele entra junto, à vista e
+  no mesmo meio, por `confirmar_pagamento_do_atendimento` — com o
+  `appointment_id`, como qualquer avulso (comissão e métricas iguais). "A
+  receber" e "no atendimento" o deixam para o "Confirmar pagamento" da tela
+  dele. Na simulação, a limpeza de R$ 180 que gerou um plano nunca foi
+  cobrada: o checkout ("Novo paciente") cobrava só o plano. Prova:
+  `e2e/checkout-de-plano.spec.ts`.
 - **O check-in só cobra o que VENCEU** (`emAbertoDoPlano` /
   `separarOEmAberto`): em aberto sem data ou com vencimento até o fim de hoje
   (Brasília). Parcela que vence depois já está combinada — aparece no banner
@@ -241,4 +253,5 @@ o procedimento avulso pago antes.
 ❌ Dar baixa sem a guarda do já pago/estornado (marcarPagoCore confere a linha devolvida)
 ❌ Gravar "cartão de crédito em N vezes" como parcelas a receber (é pago na hora, com cartao_vezes) — entrada + parcelas é o crediário da clínica
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
+❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ```
