@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import '@estetica-os/nucleo/estilos/globals.css'
 import { NavigationProgress }    from '@/components/shared/navigation-progress'
 import { NativeShell }           from '@/components/native-shell'
+import { ValidacaoEmPortugues }  from '@/components/shared/validacao-em-portugues'
 import { Toaster }               from 'sonner'
 
 // Garante renderização dinâmica em todas as páginas para que as env vars de
@@ -92,6 +93,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: "(function(){try{if(localStorage.getItem('sidebar-collapsed')==='1')document.documentElement.classList.add('sidebar-collapsed')}catch(e){}})()" }} />
         {/* Configura shell nativo (classe .capacitor + status bar rosé/branco) */}
         <NativeShell />
+        {/* A validação do navegador em português (ele escreve na língua dele). */}
+        <ValidacaoEmPortugues />
         {/* Barra de progresso de navegação — aparece ao clicar em qualquer NavItem */}
         <NavigationProgress />
         {children}

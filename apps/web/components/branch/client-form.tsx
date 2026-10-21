@@ -45,17 +45,29 @@ function maskCPF(v: string) {
   return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4')
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/**
+ * O rótulo ENVOLVE o campo (2026-10-21): solto, o leitor de tela e o clique no
+ * rótulo não chegavam ao campo. `grupo` é para o que não é um campo só (as
+ * tags são botões: dentro de um <label>, o clique no rótulo apertaria o
+ * primeiro).
+ */
+function Field({ label, children, grupo }: { label: string; children: React.ReactNode; grupo?: boolean }) {
+  const rotulo = (
+    <span style={{
+      fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
+      color: 'var(--text-muted)', letterSpacing: '0.04em',
+    }}>
+      {label}
+    </span>
+  )
+  if (grupo) {
+    return <div role="group" aria-label={label} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>{rotulo}{children}</div>
+  }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{
-        fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
-        color: 'var(--text-muted)', letterSpacing: '0.04em',
-      }}>
-        {label}
-      </label>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {rotulo}
       {children}
-    </div>
+    </label>
   )
 }
 
@@ -176,7 +188,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       </div>
 
       {/* Tags */}
-      <Field label="Tags">
+      <Field label="Tags" grupo>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {opcoesDeTag(vocabulario ?? [], selectedTags).map(tag => {
             const active = temTag(selectedTags, tag)

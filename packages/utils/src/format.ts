@@ -49,3 +49,17 @@ export function idadeEm(nascimento: string | null | undefined, hoje: Date = new 
   const ano = Number(m[1]), mesN = Number(m[2]), dia = Number(m[3])
   return a! - ano - ((mes! < mesN || (mes === mesN && d! < dia)) ? 1 : 0)
 }
+
+/**
+ * A máscara do telefone ENQUANTO se digita: "(48", "(48) 9912", "(48) 99123-4567".
+ * `maskPhone` só formata o número inteiro (2026-10-21: o telefone da unidade e
+ * o cadastro rápido da agenda ficavam sem máscara nenhuma).
+ */
+export const maskPhoneDigitando = (valor: string) => {
+  const d = valor.replace(/\D/g, '').slice(0, 11)
+  if (d.length === 0) return ''
+  if (d.length <= 2) return `(${d}`
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+}

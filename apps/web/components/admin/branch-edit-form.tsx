@@ -5,6 +5,7 @@ import { updateBranch } from '@/actions/branches'
 import { Save, Loader2 } from 'lucide-react'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { normalizarHorario } from '@/lib/agenda/horario'
+import { maskPhoneDigitando } from '@estetica-os/utils'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -91,8 +92,9 @@ export function BranchEditForm({ branch }: Props) {
         <div className="form-2col">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label className="overline" htmlFor="be-phone">Telefone</label>
-            <input id="be-phone" name="phone" type="text" className="field"
-              defaultValue={branch.phone ?? ''}
+            <input id="be-phone" name="phone" type="tel" className="field"
+              defaultValue={branch.phone ? maskPhoneDigitando(branch.phone) : ''}
+              onChange={e => { e.target.value = maskPhoneDigitando(e.target.value) }}
               placeholder="(11) 99999-9999" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

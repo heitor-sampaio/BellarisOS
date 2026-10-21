@@ -25,9 +25,10 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   INTERNAL_CREDIT: 'Crédito interno',
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+/** `htmlFor` liga o rótulo ao campo (2026-10-21: soltos, o leitor de tela não os ligava). */
+function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label style={{
+    <label htmlFor={htmlFor} style={{
       fontSize: 'var(--text-xs-sz)', fontWeight: 700,
       color: 'var(--text-muted)', letterSpacing: '0.04em',
     }}>
@@ -197,24 +198,24 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
 
             {/* Descrição */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <Label>Descrição *</Label>
-              <input name="description" type="text" required className="field"
+              <Label htmlFor="lanc-descricao">Descrição *</Label>
+              <input id="lanc-descricao" name="description" type="text" required className="field"
                 placeholder={type === 'INCOME' ? 'Ex: Venda de produto — cliente Maria' : 'Ex: Pagamento de aluguel — maio'} />
             </div>
 
             {/* Categoria + Valor bruto */}
             <div className="form-2col">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label>Categoria *</Label>
-                <select name="category" required className="field" key={type}>
+                <Label htmlFor="lanc-categoria">Categoria *</Label>
+                <select id="lanc-categoria" name="category" required className="field" key={type}>
                   <option value="">Selecione…</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label>Valor bruto (R$) *</Label>
+                <Label htmlFor="lanc-valor">Valor bruto (R$) *</Label>
                 <input
-                  type="number" step="0.01" min="0.01" required className="field"
+                  id="lanc-valor" type="number" step="0.01" min="0.01" required className="field"
                   placeholder="0,00"
                   value={rawAmount}
                   onChange={e => setRawAmount(e.target.value)}
@@ -297,11 +298,12 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
             {/* Hidden amount com valor final calculado */}
             <input type="hidden" name="amount" value={finalAmount > 0 ? finalAmount.toFixed(2) : ''} />
 
-            {/* Forma de pagamento (só para receita) */}
-            {type === 'INCOME' && (
+            {/* Forma de pagamento — também na despesa (2026-10-21: a
+                simulação não tinha onde dizer como pagou o fornecedor). */}
+            {(
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label>Forma de pagamento</Label>
-                <select name="payment_method" className="field">
+                <Label htmlFor="lanc-forma">Forma de pagamento</Label>
+                <select id="lanc-forma" name="payment_method" className="field">
                   <option value="">Não informado</option>
                   {Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
@@ -330,16 +332,16 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
               </div>
               {!isPaid && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Vencimento</Label>
-                  <input name="due_date" type="date" className="field" />
+                  <Label htmlFor="lanc-vencimento">Vencimento</Label>
+                  <input id="lanc-vencimento" name="due_date" type="date" className="field" />
                 </div>
               )}
             </div>
 
             {/* Observações */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <Label>Observações</Label>
-              <textarea name="notes" rows={2} className="field"
+              <Label htmlFor="lanc-obs">Observações</Label>
+              <textarea id="lanc-obs" name="notes" rows={2} className="field"
                 placeholder="Detalhes adicionais…" style={{ resize: 'none' }} />
             </div>
 

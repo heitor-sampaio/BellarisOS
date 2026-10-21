@@ -96,6 +96,19 @@ Princípios inegociáveis:
   a digitar. O critério do que é busca é o ÍCONE DE LUPA, não o placeholder.
 - **Copy em pt-BR**, sentence case, moeda no formato `R$ 1.240`, percentuais com vírgula (`12,4%`).
 
+### Formulários (2026-10-21)
+
+- **O rótulo é LIGADO ao campo**: envolvendo-o (`<label>texto + campo</label>`) ou
+  com `htmlFor`/`id`. Rótulo solto não chega ao leitor de tela nem ao clique.
+  Grupo de botões/opções não vai dentro de `<label>` (o clique apertaria o
+  primeiro): `role="group"` com `aria-label`/`aria-labelledby`.
+- **A validação do navegador fala português** (`ValidacaoEmPortugues`, no
+  layout raiz): o navegador escreve na língua DELE.
+- **Telefone com máscara enquanto se digita**: `maskPhoneDigitando`
+  (@estetica-os/utils); para mostrar, `maskPhone`.
+- Aviso de "deu certo" é o `toast` do sonner (abaixo) — não um componente novo.
+- No celular (< 640px), a linha da ficha (`.anamnesis-row`) vira UMA coluna.
+
 ### Bibliotecas de UI (integração com o design system)
 
 #### Web

@@ -173,34 +173,38 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
   }
 
   const str = typeof value === 'string' ? value : ''
+  // O rótulo ligado ao campo (2026-10-21; a simulação viu a ficha de saúde
+  // com rótulos soltos). Para as opções (rádio, caixas), o grupo leva o nome.
+  const idDoCampo = `campo-${f.id}`
+  const idDoRotulo = `rotulo-${f.id}`
 
   // `data-campo`: o id da pergunta — é por ele que um teste acha o campo (o
   // rótulo não é único: o bloco de fora também o contém).
   return (
     <div data-campo={f.id}>
-      <label style={labelStyle}>{f.label}{req}</label>
+      <label id={idDoRotulo} htmlFor={idDoCampo} style={labelStyle}>{f.label}{req}</label>
       {f.help && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: -3, marginBottom: 6 }}>{f.help}</p>}
 
       {f.type === 'text' && (
-        <input className="field" value={str} placeholder={f.placeholder} onChange={e => onChange(e.target.value)} />
+        <input id={idDoCampo} className="field" value={str} placeholder={f.placeholder} onChange={e => onChange(e.target.value)} />
       )}
       {f.type === 'textarea' && (
-        <textarea className="field" rows={3} value={str} placeholder={f.placeholder} onChange={e => onChange(e.target.value)} style={{ resize: 'vertical' }} />
+        <textarea id={idDoCampo} className="field" rows={3} value={str} placeholder={f.placeholder} onChange={e => onChange(e.target.value)} style={{ resize: 'vertical' }} />
       )}
       {f.type === 'number' && (
-        <input type="number" className="field" value={str} placeholder={f.placeholder} onChange={e => onChange(e.target.value)} />
+        <input id={idDoCampo} type="number" className="field" value={str} placeholder={f.placeholder} onChange={e => onChange(e.target.value)} />
       )}
       {f.type === 'date' && (
-        <input type="date" className="field" value={str} onChange={e => onChange(e.target.value)} />
+        <input id={idDoCampo} type="date" className="field" value={str} onChange={e => onChange(e.target.value)} />
       )}
       {f.type === 'select' && (
-        <select className="field" value={str} onChange={e => onChange(e.target.value)}>
+        <select id={idDoCampo} className="field" value={str} onChange={e => onChange(e.target.value)}>
           <option value="">Selecione…</option>
           {(f.options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
         </select>
       )}
       {f.type === 'radio' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div role="radiogroup" aria-labelledby={idDoRotulo} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(f.options ?? []).map(o => (
             <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' }}>
               <input type="radio" name={f.id} checked={str === o} onChange={() => onChange(o)} style={{ accentColor: 'var(--brand)' }} />
@@ -210,7 +214,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
         </div>
       )}
       {f.type === 'checkbox' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div role="group" aria-labelledby={idDoRotulo} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(f.options ?? []).map(o => {
             const checked = Array.isArray(value) && value.includes(o)
             return (

@@ -5,6 +5,7 @@ import { Plus, X, Loader2 } from 'lucide-react'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { maskPhoneDigitando } from '@estetica-os/utils'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -133,7 +134,8 @@ export function BranchForm() {
                   <div className="form-2col">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-phone">Telefone</label>
-                      <input id="br-phone" name="phone" type="text" className="field" placeholder="(11) 99999-9999" />
+                      <input id="br-phone" name="phone" type="tel" className="field" placeholder="(11) 99999-9999"
+                        onChange={e => { e.target.value = maskPhoneDigitando(e.target.value) }} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-email">E-mail</label>

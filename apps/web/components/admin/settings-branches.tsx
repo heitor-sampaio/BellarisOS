@@ -7,6 +7,7 @@ import { MapPin, Mail, Phone, Power, PowerOff, ChevronRight } from 'lucide-react
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import Link from 'next/link'
 import { ler } from '@/lib/db'
+import { maskPhone } from '@estetica-os/utils'
 
 export async function SettingsBranches() {
   const ctx = await getTenantContext()
@@ -117,7 +118,7 @@ export async function SettingsBranches() {
                   )}
                   {branch.phone && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      <Phone size={12} style={{ flexShrink: 0 }} /> {branch.phone}
+                      <Phone size={12} style={{ flexShrink: 0 }} /> {maskPhone(branch.phone)}
                     </span>
                   )}
                 </div>

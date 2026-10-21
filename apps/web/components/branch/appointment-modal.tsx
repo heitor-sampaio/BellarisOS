@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar, clienteParaAgendar } from '@/actions/appointments'
 import { creditosParaAgendar } from '@/actions/creditos'
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, maskPhoneDigitando } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -249,7 +249,7 @@ export function AppointmentModal({
                       type="tel" name="client_phone" className="field"
                       placeholder="Telefone com DDD"
                       value={novoTelefone}
-                      onChange={e => setNovoTelefone(e.target.value)}
+                      onChange={e => setNovoTelefone(maskPhoneDigitando(e.target.value))}
                     />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
