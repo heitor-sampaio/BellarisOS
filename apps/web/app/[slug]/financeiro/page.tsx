@@ -5,7 +5,8 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar } from '@/lib/metrics'
+import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler } from '@/lib/db'
 
 export default async function FinancialPage({
@@ -40,11 +41,15 @@ export default async function FinancialPage({
   // parcela criada num mês e paga no outro — e o checkout de plano cria
   // exatamente isso.
   const argsDoNucleo = { tenantId: ctx.tenantId!, branchIds: [branch.id as string] }
-  const [totais, totaisAnteriores, composicao] = await Promise.all([
+  const [totais, totaisAnteriores, composicao, serie, aPagar, aPagarAnterior] = await Promise.all([
     getCore({ ...argsDoNucleo, from: start,     to: end }),
     getCore({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
     // Formas de pagamento e categorias: também do banco (a tela somava a lista).
     getComposicaoFinanceira({ ...argsDoNucleo, from: start, to: end }),
+    // O gráfico e o "A pagar" também (2026-10-21): eram somados na lista.
+    getSeries({ ...argsDoNucleo, from: start, to: end, granularity: granularidadeDoPeriodo(period) }),
+    getAPagar({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
+    getAPagar({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
   ])
 
   const transactions = await ler(supabase
@@ -64,12 +69,6 @@ export default async function FinancialPage({
     .order('data_de_referencia', { ascending: false }), 'carregar os lançamentos')
 
 
-  const prevTxs = await ler(supabase
-    .from('financial_transactions')
-    .select('type, amount, is_paid, notes, category')
-    .eq('branch_id', branch.id)
-    .gte('data_de_referencia', prevStart.toISOString())
-    .lte('data_de_referencia', prevEnd.toISOString()), 'carregar os lançamentos do período anterior')
 
   // Comissões do período (registros individuais).
   // `commissions` não tem `created_at` nem `is_paid` — a consulta anterior
@@ -130,7 +129,9 @@ export default async function FinancialPage({
         customFrom={sp.from}
         customTo={sp.to}
         transactions={(transactions ?? []) as unknown as Props['transactions']}
-        prevTransactions={(prevTxs ?? []) as unknown as Props['prevTransactions']}
+        serie={serie}
+        aPagar={aPagar}
+        aPagarAnterior={aPagarAnterior}
         commissions={commissions}
         canReverse={canReverse}
         canWrite={canWrite}

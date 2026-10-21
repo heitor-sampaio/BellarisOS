@@ -149,7 +149,7 @@ export async function getByBranch(
 }
 
 export async function getSeries(
-  args: Args & { granularity?: 'hour' | 'day' | 'month' },
+  args: Args & { granularity?: 'hour' | 'day' | 'week' | 'month' },
 ): Promise<SeriesPoint[]> {
   const { data, error } = await createAdminClient().rpc('metrics_series', {
     ...baseArgs(args), p_granularity: args.granularity ?? 'day',
@@ -258,6 +258,15 @@ export async function getMovimentacoes(args: Args): Promise<{ porUnidade: Record
     porUnidade: Object.fromEntries(linhas.filter(l => l.branch_id).map(l => [l.branch_id as string, n(l.n)])),
     total:      n(linhas.find(l => l.branch_id === null)?.n),
   }
+}
+
+/** A despesa em aberto do período (vencimento no período), sem estorno — o "A pagar". */
+export async function getAPagar(args: Args): Promise<number> {
+  const { data, error } = await createAdminClient().rpc('metrics_a_pagar', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  })
+  logRpcError('metrics_a_pagar', error)
+  return n(data)
 }
 
 export interface ComposicaoFinanceira {

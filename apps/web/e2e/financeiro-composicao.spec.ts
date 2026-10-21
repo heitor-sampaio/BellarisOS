@@ -47,3 +47,21 @@ test('o estorno sai dos dois lados; despesa e receita por categoria e por forma'
     .map(l => `${l.grupo}:${l.chave}:${Number(l.valor)}`).sort()
   expect(linhas).toEqual(['DESPESA:Aluguel:2500', 'FORMA:PIX:180', 'RECEITA:Serviços:180'])
 })
+
+test('a despesa a pagar e a série por semana vêm do banco', async () => {
+  const agora = new Date()
+  await db().from('financial_transactions').insert([
+    { branch_id: rede!.branchId, type: 'EXPENSE', category: 'Fornecedor', description: 'e2e a pagar', amount: 300, is_paid: false, due_date: agora.toISOString(), created_by: 'e2e' },
+    { branch_id: rede!.branchId, type: 'EXPENSE', category: 'Fornecedor', description: 'e2e paga', amount: 40, is_paid: true, paid_at: agora.toISOString(), created_by: 'e2e' },
+  ])
+  const janela = { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: new Date(Date.now() - 3_600_000).toISOString(), p_to: new Date(Date.now() + 3_600_000).toISOString() }
+  const { data: aPagar, error } = await db().rpc('metrics_a_pagar', janela)
+  expect(error, 'a função existe').toBeNull()
+  expect(Number(aPagar)).toBe(300)
+  const { data: semanas, error: eS } = await db().rpc('metrics_series', { ...janela, p_granularity: 'week' })
+  expect(eS).toBeNull()
+  const s = (semanas ?? []) as { bucket: string }[]
+  expect(s.length).toBeGreaterThan(0)
+  // O balde da semana começa na segunda-feira.
+  expect(new Date(s[0]!.bucket).getUTCDay()).toBe(1)
+})

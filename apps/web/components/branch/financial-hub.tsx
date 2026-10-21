@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useMemo, useTransition, useRef } from 'react'
+import { montarBarras, type BarDatum, type PontoDaSerie } from '@/lib/financeiro/barras'
 import type { ComposicaoFinanceira } from '@/lib/metrics'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -16,8 +17,6 @@ import { SegSelect }                                        from '@/components/s
 import { iniciaisDoNome } from '@estetica-os/utils'
 
 // --- Types --------------------------------------------------------
-
-interface PrevTx { type: 'INCOME' | 'EXPENSE'; amount: number; is_paid: boolean; notes?: string | null; category?: string | null }
 
 interface CommissionEntry {
   id:               string
@@ -62,7 +61,11 @@ interface Props {
   customFrom?:      string
   customTo?:        string
   transactions:     Transaction[]
-  prevTransactions: PrevTx[]
+  /** A série de receita × despesa do período (metrics_series). */
+  serie:            PontoDaSerie[]
+  /** A despesa a pagar do período e do anterior (metrics_a_pagar). */
+  aPagar:           number
+  aPagarAnterior:   number
   commissions:      CommissionEntry[]
   canReverse:       boolean
   canWrite:         boolean
@@ -177,73 +180,6 @@ function KpiCardFull({
 }
 
 // --- Evolution Chart (SVG bar chart) -----------------------------
-
-interface BarDatum { label: string; income: number; expense: number }
-
-function groupByPeriod(
-  txs: Transaction[],
-  period: string,
-  startISO: string,
-): BarDatum[] {
-  const start = new Date(startISO)
-
-  if (period === 'today') {
-    const hours: BarDatum[] = Array.from({ length: 24 }, (_, h) => ({
-      label: `${h}h`, income: 0, expense: 0,
-    }))
-    txs.forEach(tx => {
-      if (!tx.is_paid) return
-      const h = new Date(tx.paid_at ?? tx.created_at).getHours()
-      if (tx.type === 'INCOME')  hours[h]!.income  += Number(tx.amount)
-      if (tx.type === 'EXPENSE') hours[h]!.expense += Number(tx.amount)
-    })
-    return hours
-  }
-
-  if (period === 'quarter') {
-    const weeks: Record<string, BarDatum> = {}
-    txs.forEach(tx => {
-      if (!tx.is_paid) return
-      const d = new Date(tx.paid_at ?? tx.created_at)
-      const ws = new Date(d)
-      ws.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-      const key = ws.toISOString().slice(0, 10)
-      if (!weeks[key]) {
-        weeks[key] = {
-          label: ws.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-          income: 0, expense: 0,
-        }
-      }
-      if (tx.type === 'INCOME')  weeks[key].income  += Number(tx.amount)
-      if (tx.type === 'EXPENSE') weeks[key].expense += Number(tx.amount)
-    })
-    return Object.entries(weeks).sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v)
-  }
-
-  // Day-by-day
-  const map: Record<string, BarDatum> = {}
-  const cur = new Date(start)
-  cur.setHours(0, 0, 0, 0)
-  const now = new Date()
-  while (cur <= now) {
-    const key = cur.toISOString().slice(0, 10)
-    map[key] = {
-      label: cur.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      income: 0, expense: 0,
-    }
-    cur.setDate(cur.getDate() + 1)
-  }
-  txs.forEach(tx => {
-    if (!tx.is_paid) return
-    // O que foi pago conta no dia do PAGAMENTO, não da criação (a parcela
-    // criada na venda e paga meses depois caía no dia da venda).
-    const key = (tx.paid_at ?? tx.created_at).slice(0, 10)
-    if (!map[key]) return
-    if (tx.type === 'INCOME')  map[key].income  += Number(tx.amount)
-    if (tx.type === 'EXPENSE') map[key].expense += Number(tx.amount)
-  })
-  return Object.values(map)
-}
 
 function EvolutionChart({ data }: { data: BarDatum[] }) {
   const H        = 130
@@ -545,7 +481,7 @@ export function FinancialHub({
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
-  transactions, prevTransactions,
+  transactions, serie, aPagar, aPagarAnterior,
   commissions,
   canReverse,
   canWrite,
@@ -562,12 +498,8 @@ export function FinancialHub({
   }
 
   // -- KPIs ------------------------------------------------------
-  // Estorno sai dos DOIS lados: a transação marcada "Estornada" e a
-  // contra-transação de categoria "Estorno". Antes só a original era excluída
-  // e a contra-transação continuava somando como despesa — o estorno derrubava
-  // a receita E subia a despesa, batendo duas vezes no resultado.
-  const notReversal = (t: { notes?: string | null; category?: string | null }) =>
-    t.notes !== 'Estornada' && t.category !== 'Estorno'
+  // Estorno sai dos DOIS lados (a "Estornada" e a contra-transação "Estorno"):
+  // a regra mora no banco, nas métricas de onde vêm todos os números abaixo.
 
   // Nada disto é somado aqui: vem de `metrics_core`, a mesma conta que o
   // dashboard e os relatórios usam. O que a tela fazia à mão tinha a regra de
@@ -588,25 +520,16 @@ export function FinancialHub({
     ? totais.serviceRevenue / totais.appointmentsCompleted
     : 0
 
-  // A despesa pendente não está no núcleo e continua saindo da lista — é o
-  // total a pagar dos lançamentos do período, não uma medida de caixa.
-  const { pendingExpense, prevPendingExpense } = useMemo(() => ({
-    pendingExpense: transactions
-      .filter(t => !t.is_paid && notReversal(t) && t.type === 'EXPENSE')
-      .reduce((s, t) => s + Number(t.amount), 0),
-    prevPendingExpense: prevTransactions
-      .filter(t => !t.is_paid && notReversal(t) && t.type === 'EXPENSE')
-      .reduce((s, t) => s + Number(t.amount), 0),
-  }), [transactions, prevTransactions])
+  // A despesa a pagar vem do banco (metrics_a_pagar): era somada na lista.
+  const pendingExpense     = aPagar
+  const prevPendingExpense = aPagarAnterior
 
   const saldo     = income - expense
   const prevSaldo = prevIncome - prevExpense
 
   // -- Charts ----------------------------------------------------
-  const barData = useMemo(
-    () => groupByPeriod(transactions, period, periodStart),
-    [transactions, period, periodStart],
-  )
+  // Os valores vêm de metrics_series; aqui só se posiciona (lib/financeiro/barras).
+  const barData = useMemo(() => montarBarras(serie, period, periodStart), [serie, period, periodStart])
 
   // A composição vem do banco (metrics_financeiro_composicao): a tela somava a
   // lista e contava a contra-transação do estorno como despesa — as categorias

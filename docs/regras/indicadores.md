@@ -54,8 +54,9 @@
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.
     A tela da unidade somava a lista e contava a contra-transação do estorno
-    como despesa. ⚠️ O gráfico de barras do mesmo hub (`groupByPeriod`)
-    ainda soma a lista na tela — dívida registrada no DEVLOG. Prova:
+    como despesa. O gráfico do mesmo hub vem de `metrics_series` (que
+    aceita `'week'`; `lib/financeiro/barras.ts` só posiciona) e o "A
+    pagar", de `metrics_a_pagar` (2026-10-21) — o hub não soma mais nada. Prova:
     `e2e/financeiro-composicao.spec.ts`.
   - `margem por procedimento` = (preço − custo) ÷ preço, com o custo = insumos
     ao custo da unidade de CONSUMO (o preço da embalagem ÷ o que ela rende) +
