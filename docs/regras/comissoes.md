@@ -75,7 +75,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     sistema) libera na conclusão.
   - Taxa: `private.comissao_taxa_pct` (a do meio; no crédito, a da maior
     parcela cadastrada até a do recebimento). No plano, ponderada pelo que
-    cada recebimento pagou.
+    cada recebimento pagou. As vezes do recebimento: `cartao_vezes` (crédito
+    em N vezes, pago na hora — 2026-10-20), senão `parcela_total`, senão 1.
+    O avulso usava sempre 1x.
 - **Quem acerta**: a conclusão, e o gatilho `trg_comissoes_do_pagamento` em
   `financial_transactions` (pagamento, recebimento do plano, estorno — marcar
   `notes = 'Estornada'` é o estorno). `confirmar_pagamento_do_atendimento` não

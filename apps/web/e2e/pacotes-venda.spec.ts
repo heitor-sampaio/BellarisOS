@@ -340,4 +340,27 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       expect((cp ?? []).map(c => Number(c.price))).toEqual([800])
     })
   })
+
+  test('cartão de crédito em 3x: a venda nasce PAGA, com as vezes (2026-10-20)', async ({ browser }) => {
+    // Na simulação de 2026-10-20 o "3x no cartão" só cabia em "entrada +
+    // parcelas", a receber — e o check-in oferecia cobrar de novo.
+    const antes = new Set(((await db().from('client_packages').select('id').eq('client_id', cliente)).data ?? []).map(c => c.id as string))
+    await comSessao(browser, gestor!, async p => {
+      await p.goto(`/admin/clients/${cliente}`)
+      await p.getByRole('button', { name: 'Vender', exact: true }).click()
+      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
+      await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
+      await dlg.getByRole('button', { name: 'À vista' }).click()
+      await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
+      await dlg.getByLabel('Vezes no cartão').selectOption('3')
+      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await expect(dlg).toBeHidden({ timeout: 15_000 })
+    })
+    const { data: cps } = await db().from('client_packages').select('id').eq('client_id', cliente)
+    const nova = (cps ?? []).map(c => c.id as string).filter(id => !antes.has(id))
+    expect(nova, 'uma venda nova').toHaveLength(1)
+    const { data: txs } = await db().from('financial_transactions').select('amount, is_paid, payment_method, cartao_vezes').eq('client_package_id', nova[0]!)
+    expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, t.payment_method, t.cartao_vezes])).toEqual([[800, true, 'CREDIT_CARD', 3]])
+  })
 })

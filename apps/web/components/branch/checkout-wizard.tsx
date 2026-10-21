@@ -120,6 +120,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [formaPgto,     setFormaPgto]     = useState<'NADA_AGORA' | 'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('NADA_AGORA')
   const [entrada,       setEntrada]       = useState('')
   const [parcelas,      setParcelas]      = useState(3)
+  // À vista no cartão de crédito: em quantas vezes na maquininha (pago na hora).
+  const [vezesCartao,   setVezesCartao]   = useState(1)
   const [primeiroVenc,  setPrimeiroVenc]  = useState(() =>
     format(new Date(Date.now() + 30 * 864e5), 'yyyy-MM-dd'),
   )
@@ -262,7 +264,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         vencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
       }
     }
-    return { forma: 'AVISTA', metodo: paymentMethod }
+    return paymentMethod === 'CREDIT_CARD' && vezesCartao > 1
+      ? { forma: 'AVISTA', metodo: paymentMethod, vezes: vezesCartao }
+      : { forma: 'AVISTA', metodo: paymentMethod }
   }
 
   function handleFinish() {
@@ -566,6 +570,18 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             </button>
           ))}
         </div>
+        {formaPgto === 'AVISTA' && paymentMethod === 'CREDIT_CARD' && (
+          <div style={{ marginBottom: 16, maxWidth: 220 }}>
+            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
+              Vezes no cartão
+              <select value={vezesCartao} onChange={e => setVezesCartao(Number(e.target.value))} className="field" style={{ marginTop: 5 }} aria-label="Vezes no cartão">
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                  <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}

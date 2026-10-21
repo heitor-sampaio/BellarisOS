@@ -21,6 +21,8 @@ export interface EstadoDoPagamento {
   data:     string
   /** 'YYYY-MM-DD' do vencimento do "a receber" — OPCIONAL (vazio = sem data). */
   vencimento: string
+  /** À vista no cartão de crédito: em quantas vezes na maquininha (1 = à vista). */
+  vezes:    number
 }
 
 const METODOS = [
@@ -46,6 +48,7 @@ export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, pa
     parcelas: atual?.forma === 'PARCELADO' ? atual.parcelas : 3,
     data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento) : hojeMais(30),
     vencimento: atual?.forma === 'A_RECEBER' && atual.vencimento ? diaDe(atual.vencimento) : '',
+    vezes:    atual?.forma === 'AVISTA' ? (atual.vezes ?? 1) : 1,
   }
 }
 
@@ -55,7 +58,11 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
   // Vazio segue vazio: o servidor responde "data inválida" em vez de a tela quebrar.
   const iso = (dia: string) => dia ? new Date(`${dia}T12:00:00-03:00`).toISOString() : ''
   if (e.forma === 'NADA_AGORA') return null
-  if (e.forma === 'AVISTA') return { forma: 'AVISTA', metodo: e.metodo }
+  if (e.forma === 'AVISTA') {
+    return e.metodo === 'CREDIT_CARD' && e.vezes > 1
+      ? { forma: 'AVISTA', metodo: e.metodo, vezes: e.vezes }
+      : { forma: 'AVISTA', metodo: e.metodo }
+  }
   if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo, vencimento: e.vencimento ? iso(e.vencimento) : null }
   const dataIso = iso(e.data)
   const s = e.entrada.trim()
@@ -86,6 +93,14 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
               {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </label>
+          {forma === 'AVISTA' && estado.metodo === 'CREDIT_CARD' && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={rotulo}>Vezes no cartão</span>
+              <select className="field" value={estado.vezes} onChange={e => mudar({ vezes: Number(e.target.value) })} aria-label="Vezes no cartão">
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
+              </select>
+            </label>
+          )}
           {forma === 'PARCELADO' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={rotulo}>Entrada (opcional)</span>

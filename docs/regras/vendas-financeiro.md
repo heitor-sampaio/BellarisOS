@@ -170,6 +170,22 @@ o procedimento avulso pago antes.
     lista do financeiro recorta o período — a parcela de novembro aparece em
     novembro — e que o "a receber" do período conta.
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
+- **Cartão de crédito em N vezes é PAGO na hora** (decisão do Heitor,
+  2026-10-20): quem paga a clínica é a maquininha, então para o cliente está
+  quitado. É o "À vista" com o meio Cartão de crédito e "Vezes no cartão"
+  (1–12): UM lançamento pago, com `financial_transactions.cartao_vezes`
+  (2–12, só no crédito — a restrição do banco confere) — só para a taxa da
+  comissão (§9.7). "Entrada + parcelas" é o CREDIÁRIO da própria clínica: cada
+  parcela a receber. Vale nas cinco portas: pacote e pré-pago
+  (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
+  check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
+  Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.
+- **O check-in só cobra o que VENCEU** (`emAbertoDoPlano` /
+  `separarOEmAberto`): em aberto sem data ou com vencimento até o fim de hoje
+  (Brasília). Parcela que vence depois já está combinada — aparece no banner
+  como "a vencer", sem botão, e se recebe no financeiro. Antes o banner
+  oferecia "Receber R$ 600" de um plano parcelado: cobrança em dobro (a
+  simulação de 2026-10-20 achou). Prova: `e2e/plano-recebimento.spec.ts`.
 - **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
   lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
   lançamento é de R$ 0 e sem forma de pagamento.
@@ -223,4 +239,6 @@ o procedimento avulso pago antes.
 ❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou
 ❌ Gravar due_date como "AAAA-MM-DD" cru (meia-noite UTC = 21h da VÉSPERA em Brasília) — use vencimentoDoDia (lib/financeiro/lancamento.ts)
 ❌ Dar baixa sem a guarda do já pago/estornado (marcarPagoCore confere a linha devolvida)
+❌ Gravar "cartão de crédito em N vezes" como parcelas a receber (é pago na hora, com cartao_vezes) — entrada + parcelas é o crediário da clínica
+❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ```

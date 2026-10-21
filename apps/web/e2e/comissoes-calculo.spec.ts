@@ -177,6 +177,33 @@ test.describe.serial('comissões — cálculo e extrato', () => {
     expect((liberada ?? []).map(e => [Number(e.dados?.valor), e.origem])).toEqual([[18.4, 'banco']])
   })
 
+  test('cartão de crédito em 3x: pago na hora, com a taxa da faixa de 3x (2026-10-20)', async () => {
+    // A maquininha paga a clínica: o lançamento nasce PAGO, e as vezes ficam
+    // nele para a taxa — antes o único jeito era "entrada + parcelas", a receber.
+    await configurar({ modo: 'PAGAMENTO', desconta_taxa: true })
+    await taxas([{ metodo: 'CREDIT_CARD', parcelas: 1, taxa_pct: 3 }, { metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 6 }])
+    const ap = await atendimento(200)
+    await concluir(ap, 200)
+    const { data: tx, error } = await db().rpc('confirmar_pagamento_do_atendimento', {
+      p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+      p_dados: { metodo: 'CREDIT_CARD', cartao_vezes: 3, pontos: 0, desconto: 0, valor_final: 200 },
+    })
+    expect(error, 'pagar em 3x').toBeNull()
+    const { data: l } = await db().from('financial_transactions').select('is_paid, cartao_vezes').eq('id', tx as string).single()
+    expect(l, 'um lançamento só, pago, com as vezes').toEqual({ is_paid: true, cartao_vezes: 3 })
+    // (200 − 6% da faixa de 3x) × 10% = 18,80.
+    expect(await extrato(ap)).toEqual([['LIBERACAO', 18.8]])
+
+    // Vezes fora do crédito ou fora de 1–12: recusado.
+    const ap2 = await atendimento(100)
+    await concluir(ap2, 100)
+    const { error: ePix } = await db().rpc('confirmar_pagamento_do_atendimento', {
+      p_agendamento: ap2, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+      p_dados: { metodo: 'PIX', cartao_vezes: 3, pontos: 0, desconto: 0, valor_final: 100 },
+    })
+    expect(ePix?.message).toMatch(/só no cartão de crédito/)
+  })
+
   test('mudar a configuração depois não reescreve o atendimento já concluído', async () => {
     await configurar({ modo: 'ATENDIMENTO' })
     const ap = await atendimento(100)

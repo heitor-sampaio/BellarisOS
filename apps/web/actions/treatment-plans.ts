@@ -1150,7 +1150,7 @@ export type SessionScheduleInput = {
 // O pagamento do plano mora em lib/checkout/pagamento.ts: o contrato de plano
 // (lib/documentos) também o lê, e aqui todo export é endpoint público.
 export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
-import { rotuloDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { rotuloDoPagamento, vezesNoCartao, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto } from '@/lib/vendas/desconto'
@@ -1303,11 +1303,15 @@ async function checkoutTreatmentPlanInterno(
     transactionId = data!.id as string
 
   } else if (pagamento.forma === 'AVISTA') {
+    // No cartão de crédito em N vezes a maquininha paga a clínica: pago na
+    // hora, e as vezes ficam no lançamento para a taxa da comissão.
+    const vezes = vezesNoCartao(pagamento)
     const { data, error } = await lancar({
       amount:           total,
       payment_method:   pagamento.metodo,
       is_paid:          true,
       paid_at:          agora,
+      ...(vezes > 1 ? { cartao_vezes: vezes } : {}),
     })
     if (error) return { error: `Erro ao registrar pagamento: ${error.message}` }
     transactionId = data!.id as string
@@ -1454,7 +1458,8 @@ async function checkoutTreatmentPlanInterno(
  * cabe quitar tudo agora ou receber uma entrada e parcelar o resto.
  */
 export type RecebimentoDoPlano =
-  | { forma: 'AVISTA';    metodo: string }
+  /** `vezes`: o cartão de crédito em N vezes, pago na hora (2026-10-20). */
+  | { forma: 'AVISTA';    metodo: string; vezes?: number }
   | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
 
 /**
@@ -1527,6 +1532,7 @@ async function receberDoPlanoInterno(
   const agora          = new Date().toISOString()
 
   if (recebimento.forma === 'AVISTA') {
+    const vezes = vezesNoCartao(recebimento)
     // Quita os lançamentos pendentes do plano. `paid_at` é o eixo de
     // `revenueCash`: a receita entra no caixa de hoje, não no dia do aceite.
     const { error } = await admin
@@ -1535,7 +1541,8 @@ async function receberDoPlanoInterno(
         is_paid:          true,
         paid_at:          agora,
         payment_method:   recebimento.metodo,
-          updated_at:       agora,
+        cartao_vezes:     vezes > 1 ? vezes : null,
+        updated_at:       agora,
       })
       .in('id', saldo.pendentes)
     if (error) return { error: `Erro ao registrar o recebimento: ${error.message}` }
@@ -1618,7 +1625,7 @@ async function receberDoPlanoInterno(
       action:          'PAYMENT_CONFIRMED',
       description:     `Plano de tratamento recebido — R$ ${saldo.emAberto.toFixed(2).replace('.', ',')} — ${
         recebimento.forma === 'AVISTA'
-          ? `${recebimento.metodo} à vista`
+          ? (vezesNoCartao(recebimento) > 1 ? `${recebimento.metodo} em ${vezesNoCartao(recebimento)}x` : `${recebimento.metodo} à vista`)
           : `entrada + ${recebimento.parcelas}x em ${recebimento.metodo}`
       }`,
     }), 'registrar no histórico do agendamento')

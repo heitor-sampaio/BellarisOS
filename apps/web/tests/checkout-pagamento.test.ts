@@ -59,3 +59,29 @@ describe('o retrato do pagamento', () => {
     expect(pagamentoDoRetrato({ forma: 'NADA_AGORA' })).toBeNull()
   })
 })
+
+describe('cartão de crédito em N vezes (2026-10-20)', () => {
+  // A maquininha paga a clínica: para o cliente, é pago na hora. Até aqui o
+  // único jeito de dizer "3x no cartão" era "entrada + parcelas", que grava
+  // cada parcela A RECEBER — e o check-in oferecia cobrar de novo.
+  const tresVezes: PagamentoDoPlano = { forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 }
+
+  it('a frase do contrato diz em quantas vezes', () => {
+    expect(valoresDoPagamento(tresVezes, 600)['pagamento.forma']).toMatch(/^R\$\s600,00 no cartão de crédito em 3x$/)
+    expect(valoresDoPagamento(tresVezes, 600)['pagamento.parcelas']).toBe('3')
+    expect(rotuloDoPagamento(tresVezes)).toBe('CREDIT_CARD em 3x')
+  })
+
+  it('1x é o à vista de sempre, e o retrato de antes não muda', () => {
+    expect(pagamentoNormalizado({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 1 }))
+      .toEqual(pagamentoNormalizado({ forma: 'AVISTA', metodo: 'CREDIT_CARD' }))
+    expect(pagamentoNormalizado({ forma: 'AVISTA', metodo: 'PIX' })).toEqual({ forma: 'AVISTA', metodo: 'PIX' })
+  })
+
+  it('o retrato guarda as vezes e volta igual', () => {
+    const retrato = pagamentoNormalizado(tresVezes)
+    expect(retrato).toEqual({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 })
+    expect(pagamentoDoRetrato(retrato)).toEqual(tresVezes)
+    expect(mesmoPagamento(retrato, pagamentoNormalizado({ ...tresVezes, vezes: 4 }))).toBe(false)
+  })
+})

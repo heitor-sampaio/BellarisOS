@@ -49,3 +49,21 @@ describe('lançamentos de uma venda', () => {
     expect(EntradaDoPagamento.safeParse({ forma: 'A_RECEBER', metodo: null, vencimento: '2026-10-10T15:00:00.000Z' }).success).toBe(true)
   })
 })
+
+describe('cartão de crédito em N vezes (2026-10-20)', () => {
+  it('um lançamento só, PAGO, com as vezes do cartão (a taxa da comissão é a da faixa)', () => {
+    expect(lancamentosDoPagamento(600, { forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 }, 'Pacote')).toEqual([
+      { amount: 600, payment_method: 'CREDIT_CARD', is_paid: true, due_date: null, notes: null, cartao_vezes: 3 },
+    ])
+  })
+  it('vezes só no crédito, de 1 a 12', () => {
+    expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 }).success).toBe(true)
+    expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'PIX', vezes: 3 }).success).toBe(false)
+    expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 13 }).success).toBe(false)
+    expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 0 }).success).toBe(false)
+  })
+  it('1x não leva vezes (o à vista de sempre)', () => {
+    const [l] = lancamentosDoPagamento(600, { forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 1 }, 'Pacote')
+    expect(l).not.toHaveProperty('cartao_vezes')
+  })
+})

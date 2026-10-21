@@ -365,12 +365,15 @@ export async function SessaoDeAtendimento({
     ?? (planRaw?.status === 'ACCEPTED' ? (planRaw.id as string) : null)
 
   const saldoDoPlano = planoDaCobranca ? await emAbertoDoPlano(planoDaCobranca) : null
-  const planoEmAberto = saldoDoPlano && saldoDoPlano.emAberto > 0
+  // O que vai vencer aparece, mas só como informação: já está combinado.
+  const planoEmAberto = saldoDoPlano && (saldoDoPlano.emAberto > 0 || saldoDoPlano.aVencer > 0)
     ? {
         planId:   saldoDoPlano.planId,
         nome:     saldoDoPlano.nome,
         emAberto: saldoDoPlano.emAberto,
         recebido: saldoDoPlano.recebido,
+        aVencer:  saldoDoPlano.aVencer,
+        proximoVencimento: saldoDoPlano.proximoVencimento,
       }
     : null
 

@@ -12,7 +12,12 @@ import { formatBRL, formatDate } from '@estetica-os/utils'
  * endpoint público, e isto é regra de texto.
  */
 export type PagamentoDoPlano =
-  | { forma: 'AVISTA';    metodo: string }
+  /**
+   * `vezes` só no cartão de crédito (2026-10-20): a maquininha paga a clínica,
+   * então para o cliente é PAGO na hora — "entrada + parcelas" é o crediário da
+   * própria clínica, cada parcela a receber. 1 (ou ausente) é o à vista de sempre.
+   */
+  | { forma: 'AVISTA';    metodo: string; vezes?: number }
   | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
   /** Vencimento opcional: "a receber" sem data combinada é válido. */
   | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string | null }
@@ -20,7 +25,7 @@ export type PagamentoDoPlano =
 /** A linha do tempo do atendimento: curta, com o método como a tela o guarda. */
 export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
   if (!p)                      return 'em aberto, a receber no atendimento'
-  if (p.forma === 'AVISTA')    return `${p.metodo} à vista`
+  if (p.forma === 'AVISTA')    return vezesNoCartao(p) > 1 ? `${p.metodo} em ${vezesNoCartao(p)}x` : `${p.metodo} à vista`
   if (p.forma === 'A_RECEBER') return 'a receber'
   const entrada = p.entrada > 0
     ? `entrada de R$ ${p.entrada.toFixed(2).replace('.', ',')} + `
@@ -39,6 +44,12 @@ const metodo = (m: string | null | undefined) => (m ? METODO[m] ?? `em ${m}` : n
 
 const centavos = (v: number) => Math.round(v * 100) / 100
 
+/** As vezes do cartão de crédito à vista; 1 em qualquer outro caso. */
+export function vezesNoCartao(p: PagamentoDoPlano | null | undefined): number {
+  if (!p || p.forma !== 'AVISTA' || p.metodo !== 'CREDIT_CARD') return 1
+  return Math.max(1, Math.min(12, Math.round(Number(p.vezes) || 1)))
+}
+
 /** Para a TELA: o combinado numa frase curta, com o meio de pagamento por extenso. */
 export function frasesDoPagamento(p: PagamentoDoPlano | null, desconto = 0): string {
   const comDesconto = desconto > 0 ? ` · desconto de ${formatBRL(desconto)}` : ''
@@ -47,7 +58,7 @@ export function frasesDoPagamento(p: PagamentoDoPlano | null, desconto = 0): str
 
 function fraseSemDesconto(p: PagamentoDoPlano | null): string {
   if (!p) return 'No atendimento'
-  if (p.forma === 'AVISTA') return `À vista, ${metodo(p.metodo)}`
+  if (p.forma === 'AVISTA') return vezesNoCartao(p) > 1 ? `No cartão de crédito em ${vezesNoCartao(p)}x` : `À vista, ${metodo(p.metodo)}`
   if (p.forma === 'A_RECEBER') return `A receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
   const entrada = p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} + ` : ''
   return `${entrada}${p.parcelas}x ${metodo(p.metodo)}, a primeira em ${formatDate(p.primeiroVencimento)}`.replace(/^./, c => c.toUpperCase())
@@ -82,6 +93,14 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     return { ...vazio, 'pagamento.forma': `${formatBRL(total)}, a receber no atendimento` }
   }
   if (p.forma === 'AVISTA') {
+    const vezes = vezesNoCartao(p)
+    if (vezes > 1) {
+      return {
+        ...vazio, 'pagamento.metodo': metodo(p.metodo), 'pagamento.parcelas': String(vezes),
+        'pagamento.valor_parcela': formatBRL(centavos(total / vezes)),
+        'pagamento.forma': `${formatBRL(total)} ${metodo(p.metodo)} em ${vezes}x`,
+      }
+    }
     return { ...vazio, 'pagamento.metodo': metodo(p.metodo), 'pagamento.forma': `${formatBRL(total)} à vista, ${metodo(p.metodo)}` }
   }
   if (p.forma === 'A_RECEBER') {
@@ -124,7 +143,8 @@ export function pagamentoNormalizado(p: PagamentoDoPlano | null, desconto = 0): 
 function normalizadoSemDesconto(p: PagamentoDoPlano | null): Record<string, string | number | null> {
   const dia = (iso: string) => iso.slice(0, 10)
   if (!p) return { forma: 'NADA_AGORA' }
-  if (p.forma === 'AVISTA') return { forma: 'AVISTA', metodo: p.metodo }
+  // As vezes só entram quando passam de 1: o retrato do à vista de antes segue igual.
+  if (p.forma === 'AVISTA') return vezesNoCartao(p) > 1 ? { forma: 'AVISTA', metodo: p.metodo, vezes: vezesNoCartao(p) } : { forma: 'AVISTA', metodo: p.metodo }
   if (p.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: p.metodo ?? null, vencimento: p.vencimento ? dia(p.vencimento) : null }
   return {
     forma: 'PARCELADO', metodo: p.metodo, entrada: centavos(p.entrada),
@@ -147,7 +167,9 @@ export function pagamentoDoRetrato(retrato: unknown): PagamentoDoPlano | null {
   const r = (retrato ?? {}) as Record<string, unknown>
   const dia = (d: unknown) => new Date(`${String(d)}T12:00:00-03:00`).toISOString()
   switch (r.forma) {
-    case 'AVISTA':    return { forma: 'AVISTA', metodo: String(r.metodo) }
+    case 'AVISTA':    return Number(r.vezes) > 1
+      ? { forma: 'AVISTA', metodo: String(r.metodo), vezes: Number(r.vezes) }
+      : { forma: 'AVISTA', metodo: String(r.metodo) }
     case 'A_RECEBER': return { forma: 'A_RECEBER', metodo: (r.metodo as string | null) ?? null, vencimento: r.vencimento ? dia(r.vencimento) : null }
     case 'PARCELADO': return {
       forma: 'PARCELADO', metodo: String(r.metodo), entrada: Number(r.entrada) || 0,

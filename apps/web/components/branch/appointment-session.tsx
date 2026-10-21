@@ -10,6 +10,7 @@ import {
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { formatDate } from '@estetica-os/utils'
 import {
   checkinAppointment,
   startAppointment,
@@ -152,7 +153,7 @@ interface Props {
    * Saldo do plano de tratamento ligado a este atendimento. Nulo quando não há
    * plano ou quando não sobrou nada a receber.
    */
-  planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number } | null
+  planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null } | null
   /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
   documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean } | null
 }
@@ -323,6 +324,8 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
   onClose: () => void
 }) {
   const metodoInicial = PAYMENT_METHODS.some(m => m.value === pagamentoCombinado?.metodo) ? pagamentoCombinado!.metodo! : 'PIX'
+  // Controlado só para saber se é crédito: aí aparecem as vezes na maquininha.
+  const [metodoEscolhido, setMetodoEscolhido] = useState(metodoInicial)
   const router = useRouter()
   const [state, action, pending] = useActionState(confirmPayment, null)
   // Pontos de fidelidade: só aparecem com o programa ligado e saldo positivo
@@ -422,9 +425,14 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <label className="field-label">Forma de pagamento *</label>
-                <select name="payment_method" className="field" defaultValue={metodoInicial} aria-label="Forma de pagamento">
+                <select name="payment_method" className="field" value={metodoEscolhido} onChange={e => setMetodoEscolhido(e.target.value)} aria-label="Forma de pagamento">
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
+                {metodoEscolhido === 'CREDIT_CARD' && (
+                  <select name="cartao_vezes" className="field" defaultValue="1" aria-label="Vezes no cartão">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
+                  </select>
+                )}
                 {pagamentoCombinado && (
                   <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     Combinado no contrato: {pagamentoCombinado.rotulo}.
@@ -469,7 +477,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
  * avaliação. Agora o saldo aparece aqui, no atendimento marcado.
  */
 function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
-  plano:         { planId: string; nome: string | null; emAberto: number; recebido: number }
+  plano:         { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null }
   appointmentId: string
   slug:          string
   podeReceber:   boolean
@@ -480,6 +488,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   const [metodo,  setMetodo]  = useState('PIX')
   const [entrada, setEntrada] = useState(0)
   const [parcelas, setParcelas] = useState(3)
+  const [vezes,   setVezes]   = useState(1)
   const [venc,    setVenc]    = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1)
     return d.toISOString().slice(0, 10)
@@ -492,7 +501,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
     const res = await receberDoPlano(
       plano.planId,
       forma === 'AVISTA'
-        ? { forma: 'AVISTA', metodo }
+        ? (metodo === 'CREDIT_CARD' && vezes > 1 ? { forma: 'AVISTA', metodo, vezes } : { forma: 'AVISTA', metodo })
         : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString() },
       appointmentId,
       slug,
@@ -517,15 +526,20 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
         </div>
         <div style={{ flex: 1, minWidth: 180 }}>
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-            {plano.nome ?? 'Plano de tratamento'} · em aberto {fmtBRL(plano.emAberto)}
+            {plano.nome ?? 'Plano de tratamento'} · {plano.emAberto > 0
+              ? <>em aberto {fmtBRL(plano.emAberto)}</>
+              : <>{fmtBRL(plano.aVencer)} a vencer</>}
           </p>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            {plano.recebido > 0
-              ? `Já recebido: ${fmtBRL(plano.recebido)}. O saldo é cobrado no check-in.`
-              : 'O plano foi aceito sem cobrança. O valor é recebido agora, no check-in.'}
+            {plano.emAberto > 0
+              ? (plano.recebido > 0 || plano.aVencer > 0
+                  ? `Já recebido: ${fmtBRL(plano.recebido)}. O que venceu é cobrado no check-in.`
+                  : 'O plano foi aceito sem cobrança. O valor é recebido agora, no check-in.')
+              : `Parcelas combinadas, recebidas no financeiro${plano.proximoVencimento ? ` — a próxima vence em ${formatDate(plano.proximoVencimento)}` : ''}. Nada a cobrar agora.`}
+            {plano.emAberto > 0 && plano.aVencer > 0 && ` Mais ${fmtBRL(plano.aVencer)} a vencer.`}
           </p>
         </div>
-        {podeReceber && (
+        {podeReceber && plano.emAberto > 0 && (
           <button type="button" onClick={() => setAberto(true)} className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', fontSize: 'var(--text-base-sz)' }}>
             <CreditCard size={14} /> Receber {fmtBRL(plano.emAberto)}
@@ -564,6 +578,15 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
+
+              {forma === 'AVISTA' && metodo === 'CREDIT_CARD' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label className="field-label" htmlFor="vezes-no-cartao">Vezes no cartão</label>
+                  <select id="vezes-no-cartao" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
+                  </select>
+                </div>
+              )}
 
               {forma === 'PARCELADO' && (
                 <>
@@ -1361,7 +1384,7 @@ export function AppointmentSession({
         </div>
 
         {/* -- Plano em aberto: a cobrança acontece na chegada ------------- */}
-        {planoEmAberto && planoEmAberto.emAberto > 0 && (
+        {planoEmAberto && (planoEmAberto.emAberto > 0 || planoEmAberto.aVencer > 0) && (
           <PlanoEmAbertoBanner
             plano={planoEmAberto}
             appointmentId={appointment.id}

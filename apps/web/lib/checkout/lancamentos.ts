@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { PagamentoDoPlano } from './pagamento'
 import { dividirEmParcelas, rotuloDaParcela } from './parcelas'
+import { vezesNoCartao } from './pagamento'
 
 /**
  * Os lançamentos de uma venda paga de uma vez ou em partes — hoje, a venda de
@@ -26,6 +27,8 @@ export interface Lancamento {
   parcela_numero?: number
   parcela_total?:  number
   parcela_grupo?:  string
+  /** Cartão de crédito em N vezes, PAGO na hora: a faixa da taxa da maquininha. */
+  cartao_vezes?:   number
 }
 
 const METODOS = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const
@@ -33,20 +36,24 @@ const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválid
 
 /** O pagamento como chega do navegador: conferido aqui, antes de virar dinheiro. */
 export const EntradaDoPagamento = z.discriminatedUnion('forma', [
-  z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS) }),
+  z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional() }),
   z.object({
     forma: z.literal('PARCELADO'), metodo: z.enum(METODOS),
     entrada: z.number().min(0), parcelas: z.number().int().min(1).max(12), primeiroVencimento: data,
   }),
   z.object({ forma: z.literal('A_RECEBER'), metodo: z.enum(METODOS).nullable(), vencimento: data.nullable() }),
-])
+]).refine(
+  p => p.forma !== 'AVISTA' || !p.vezes || p.vezes === 1 || p.metodo === 'CREDIT_CARD',
+  'Parcelar na maquininha só no cartão de crédito.',
+)
 
 const centavos = (v: number) => Math.round(v * 100) / 100
 
 export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotulo: string): Lancamento[] {
   const valor = centavos(total)
   if (p.forma === 'AVISTA') {
-    return [{ amount: valor, payment_method: p.metodo, is_paid: true, due_date: null, notes: null }]
+    const vezes = vezesNoCartao(p)
+    return [{ amount: valor, payment_method: p.metodo, is_paid: true, due_date: null, notes: null, ...(vezes > 1 ? { cartao_vezes: vezes } : {}) }]
   }
   if (p.forma === 'A_RECEBER') {
     return [{ amount: valor, payment_method: p.metodo, is_paid: false, due_date: p.vencimento, notes: `${rotulo} — a receber` }]

@@ -69,7 +69,7 @@ test.describe.serial('receber o plano no atendimento', () => {
     expect(falhas).toEqual([])
   })
 
-  test('entrada + parcelas, e depois o saldo à vista', async ({ page }) => {
+  test('entrada + parcelas; o check-in só cobra o que venceu', async ({ page }) => {
     const db = banco()
     await page.goto(`/admin/agenda/${c!.appt}`)
     await expect(page.getByText(/em aberto R\$\s300,00/)).toBeVisible()
@@ -100,19 +100,26 @@ test.describe.serial('receber o plano no atendimento', () => {
     const { data: hist } = await db.from('appointment_history').select('action, description').eq('appointment_id', c!.appt).eq('action', 'PAYMENT_CONFIRMED')
     expect(hist?.[0]?.description, 'o recebimento entra no histórico da sessão').toMatch(/Plano de tratamento recebido/)
 
-    // O banner continua, com o saldo; quitar à vista zera o plano.
+    // As parcelas vencem a partir do mês que vem: já estão COMBINADAS, e o
+    // check-in não as cobra de novo (a simulação de 2026-10-20 viu "Receber
+    // R$ 600" num plano parcelado). O banner só informa o que vai vencer.
     await page.reload()
-    await expect(page.getByText(/em aberto R\$\s200,00/)).toBeVisible()
-    await page.getByRole('button', { name: /Receber R\$\s200,00/ }).click()
+    await expect(page.getByText(/R\$\s200,00 a vencer/)).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Receber R\$/ })).toHaveCount(0)
+
+    // Uma parcela que VENCEU volta a ser cobrada no check-in — só ela.
+    const ontem = new Date(Date.now() - 86_400_000).toISOString()
+    await db.from('financial_transactions').update({ due_date: ontem })
+      .eq('treatment_plan_id', c!.plano).eq('parcela_numero', 1).eq('is_paid', false)
+    await page.reload()
+    await expect(page.getByText(/em aberto R\$\s100,00/)).toBeVisible()
+    await page.getByRole('button', { name: /Receber R\$\s100,00/ }).click()
     await page.getByRole('button', { name: 'Confirmar recebimento' }).click()
     await expect.poll(async () => {
-      const { data } = await db.from('financial_transactions').select('id')
+      const { data } = await db.from('financial_transactions').select('parcela_numero')
         .eq('treatment_plan_id', c!.plano).eq('is_paid', false).gt('amount', 0)
-      return data?.length ?? -1
-    }, { message: 'à vista quita o que estava em aberto' }).toBe(0)
-    const { data: pagas } = await db.from('financial_transactions').select('is_paid')
-      .eq('treatment_plan_id', c!.plano).not('parcela_total', 'is', null)
-    expect((pagas ?? []).length > 0 && (pagas ?? []).every(p => p.is_paid), 'as parcelas saem pagas junto').toBe(true)
+      return (data ?? []).map(t => t.parcela_numero)
+    }, { message: 'à vista quita só o vencido; a parcela de depois continua a vencer' }).toEqual([2])
   })
 
   test('o histórico de um atendimento de outra rede não ganha o recebimento', async ({ page }) => {

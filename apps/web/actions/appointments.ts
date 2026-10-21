@@ -774,6 +774,8 @@ export async function confirmPayment(
     const slug          = (formData.get('slug') as string)?.trim()
     const pedido        = Math.trunc(Number(formData.get('pontos') ?? 0) || 0)
     const voucherId     = (formData.get('voucher_id') as string | null)?.trim() || null
+    // Cartão de crédito em N vezes (2026-10-20): pago na hora; o banco confere 1–12 e o meio.
+    const cartaoVezes   = paymentMethod === 'CREDIT_CARD' ? Math.trunc(Number(formData.get('cartao_vezes') ?? 1) || 1) : 1
     // Desconto comercial da recepção (2026-09-30): R$ ou %, sem teto.
     const valorDoDesconto = Number(formData.get('desconto_valor') ?? 0) || 0
     const pedidoDeDesconto = EntradaDoDesconto.safeParse(
@@ -844,6 +846,7 @@ export async function confirmPayment(
         p_dados:       {
           metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal,
           voucher_id: voucherId, desconto_voucher: descontoVoucher, desconto_venda: descontoVenda,
+          cartao_vezes: valorFinal > 0 ? cartaoVezes : 1,
         },
       }), 'confirmar o pagamento')
     } catch (e) {
