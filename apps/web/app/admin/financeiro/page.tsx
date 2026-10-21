@@ -126,7 +126,9 @@ export default async function AdminFinanceiroPage({
   const branchNameMap = Object.fromEntries(branches.map(b => [b.id, b.name]))
   const branchSlugMap = Object.fromEntries(branches.map(b => [b.id, b.slug]))
 
-  const branchStats = branchMetrics.map(b => ({
+  // Unidade desativada só entra se teve movimento no período (o dinheiro
+  // aconteceu); sem nada, era ruído no ranking (simulação de 2026-10-20).
+  const branchStats = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
     id:          b.branchId,
     name:        b.branchName,
     slug:        b.branchSlug,

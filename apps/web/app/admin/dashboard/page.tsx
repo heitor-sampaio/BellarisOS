@@ -209,7 +209,8 @@ export default async function AdminDashboardPage({
   const ticketMedio = ratio(core.serviceRevenue, core.appointmentsCompleted) ?? 0
 
   // -- Por filial ----------------------------------------------------
-  const branchStats: BranchStat[] = branchMetrics.map(b => ({
+  // Unidade desativada só entra se teve movimento no período (simulação de 2026-10-20).
+  const branchStats: BranchStat[] = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
     id:           b.branchId,
     name:         b.branchName,
     slug:         b.branchSlug,
@@ -308,7 +309,7 @@ export default async function AdminDashboardPage({
   // -- Aproveitamento da agenda por filial ---------------------------
   // Renomeado de "ocupação": o denominador é o total marcado, não a
   // capacidade instalada. É taxa de comparecimento, e o rótulo agora diz isso.
-  const branchOccupancy = branchMetrics.map(b => ({
+  const branchOccupancy = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
     name:         b.branchName,
     slug:         b.branchSlug,
     completed:    b.appointmentsCompleted,
