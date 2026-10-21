@@ -3,7 +3,8 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { avisoDoPreAtendimento } from '@/lib/pre-atendimento/aviso'
-import { respostasDaFicha, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { respostasDaFicha, alergiasDaAnamnese, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { notifyUser } from '@/lib/notifications/notify'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -60,6 +61,12 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
       .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar o pré-atendimento')
     return antes
   }
+  // O agendamento do pendente que esta resposta fecha: é a profissional dele
+  // que recebe o aviso, quando quem responde é a cliente.
+  const daCliente = o.origem === 'CLIENTE_APP' || o.origem === 'CLIENTE_LINK'
+  const pendenteAntes = daCliente ? await ler(admin.from('pre_atendimentos').select('appointment_id')
+    .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE').maybeSingle(),
+    'buscar o pré-atendimento pendente') as { appointment_id: string | null } | null : null
   const anamnese: AnamneseGeral = {
     versao: 2,
     ficha,
@@ -78,7 +85,32 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
       origem: o.origem, respondido_por: o.porUsuario, updated_at: anamnese.respondidoEm,
     })
     .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar o pré-atendimento')
+  if (pendenteAntes?.appointment_id) await avisarAProfissional(admin, pendenteAntes.appointment_id, anamnese)
   return anamnese
+}
+
+/**
+ * A cliente respondeu a ficha: a profissional do agendamento é avisada (sino e
+ * celular), e o aviso diz a alergia, se houver (2026-10-21, decisão do
+ * Heitor). Acessório: falhar aqui não desfaz a resposta.
+ */
+async function avisarAProfissional(admin: Admin, appointmentId: string, anamnese: AnamneseGeral): Promise<void> {
+  try {
+    const ag = await ler(admin.from('appointments').select('professional_id, scheduled_at, clients(name)')
+      .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento da ficha') as
+      { professional_id: string | null; scheduled_at: string; clients: { name: string } | null } | null
+    if (!ag?.professional_id) return
+    const quando = new Date(ag.scheduled_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    const alergia = alergiasDaAnamnese(anamnese)
+    await notifyUser(admin, ag.professional_id, {
+      type: 'pre_atendimento_respondido',
+      title: 'Ficha de saúde respondida',
+      body: `${ag.clients?.name ?? 'A cliente'} respondeu a ficha para ${quando}.${alergia ? ` Atenção — alergia: ${alergia}.` : ''}`,
+      data: { appointment_id: appointmentId },
+    })
+  } catch (e) {
+    console.error('[pre-atendimento] avisar a profissional:', e)
+  }
 }
 
 /** As mesmas respostas, sem olhar a ordem das chaves (e vazio = ausente). */

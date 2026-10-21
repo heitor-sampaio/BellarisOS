@@ -376,6 +376,10 @@ test.describe('o pré-atendimento: a cliente responde no app', () => {
       expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente.clientId)).data)
         .toEqual([{ status: 'RESPONDIDO', origem: 'CLIENTE_APP' }])
       expect(await anamnese()).toMatchObject({ origem: 'CLIENTE_APP', respostas: { allergies: `pólen ${marca}` } })
+      // A profissional do agendamento é avisada, com a alergia (2026-10-21, decisão do Heitor).
+      await expect.poll(async () => (await db().from('user_notifications').select('title, body')
+        .eq('user_id', C.professionalId).eq('type', 'pre_atendimento_respondido')).data ?? [], { message: 'o aviso à profissional' })
+        .toEqual([expect.objectContaining({ title: 'Ficha de saúde respondida', body: expect.stringContaining(`pólen ${marca}`) })])
       await page.getByRole('link', { name: 'Voltar ao início' }).click()
       await expect(page).toHaveURL(new RegExp(`${portal()}/home`))
       await expect(page.getByText(/^Olá, /), 'a tela inicial carregou').toBeVisible()

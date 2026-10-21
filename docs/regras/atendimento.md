@@ -152,6 +152,9 @@ const procedures = await ler(
     pendente** (decisão do Heitor, 2026-10-21; migration `20261021000008`):
     a última resposta é a mais recente entre a anamnese e os pré-atendimentos
     respondidos.
+    **A cliente respondeu (app ou link): a PROFISSIONAL do agendamento é
+    avisada** (sino e celular; o aviso diz a alergia, se houver — decisão do
+    Heitor, 2026-10-21), dentro de `gravarAnamneseGeral`.
   - **A cliente responde no app** (`/[slug]/cliente/pre-atendimento`, o
     cartão da tela inicial e um aviso no celular ao ser agendada — genérico,
     sem nada de saúde, só quando ESTE agendamento abriu o pendente) **ou pelo
