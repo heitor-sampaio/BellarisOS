@@ -21,7 +21,10 @@ export function iniciaisDoNome(nome: string | null | undefined, quantas: 1 | 2 =
   const limpo = (nome ?? '').trim()
   if (!limpo) return '?'
 
-  const partes = limpo.split(/\s+/).filter(Boolean)
+  // Sem título ("Dra.") e sem o que vem entre parênteses ("(dona)"): eram as
+  // iniciais "D" e "F(" na simulação de um dia de clínica (2026-10-20).
+  const semEnfeite = limpo.split(/\s+/).filter(p => p && !/^\(.*\)?$/.test(p) && !/^(dr|dra|sr|sra|srta|prof|profa)\.?$/i.test(p))
+  const partes = semEnfeite.length ? semEnfeite : limpo.split(/\s+/).filter(Boolean)
   const primeiroDe = (p: string) => Array.from(p)[0] ?? ''
 
   if (quantas === 1) return primeiroDe(partes[0]!).toUpperCase()

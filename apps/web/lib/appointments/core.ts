@@ -326,7 +326,8 @@ export function notifyAppointmentCreated(appointmentId: string): void {
 
     const payload = { appointment_id: appointmentId }
     await avisarCliente(admin, clientId, {
-      type: 'appointment_confirmed', title: 'Agendamento confirmado',
+      // "Marcado", não "confirmado": a clínica ainda não confirmou (simulação de 2026-10-20).
+      type: 'appointment_confirmed', title: 'Horário marcado',
       body: `${procedureName} em ${when}.`, data: payload,
     })
     await avisarDoPreAtendimento(admin, avisarCliente, appointmentId)

@@ -92,7 +92,8 @@ export function notifyNewAppointment(appointmentId: string, ator?: string | null
     const when = fmtDateTime(c.scheduledAt)
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
-      type: 'appointment_confirmed', title: 'Agendamento confirmado',
+      // "Marcado", não "confirmado": a clínica ainda não confirmou (simulação de 2026-10-20).
+      type: 'appointment_confirmed', title: 'Horário marcado',
       body: `${c.procedureName} em ${when}.`, data,
     })
     await avisarDoPreAtendimento(admin, avisarCliente, appointmentId)

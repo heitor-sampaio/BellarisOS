@@ -52,6 +52,20 @@ export async function addAppointment(
     // registrar o horário.
     let clientId = (formData.get('client_id') as string)?.trim() || ''
     if (!clientId) {
+      // O choque de horário ANTES de nascer a ficha rápida: recusado depois,
+      // o agendamento sumia e a ficha ficava (simulação de 2026-10-20). O
+      // núcleo confere de novo — esta é só para não sobrar cadastro.
+      const profissional = (formData.get('professional_id') as string) || null
+      const quando       = new Date(formData.get('scheduled_at') as string)
+      const procedimento = (formData.get('procedure_id') as string) || null
+      if (profissional && !Number.isNaN(quando.getTime())) {
+        const proc = procedimento
+          ? await ler(admin.from('procedures').select('duration_min').eq('id', procedimento).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a duração do procedimento') as { duration_min: number | null } | null
+          : null
+        if (await horarioOcupado(admin, {
+          tenantId: ctx.tenantId!, professionalId: profissional, inicio: quando, duracaoMin: Number(proc?.duration_min) || 60,
+        })) return { error: 'Este profissional já tem agendamento nesse horário.' }
+      }
       const novo = await garantirClienteRapido(admin, ctx, {
         nome:     (formData.get('client_name')  as string) ?? '',
         telefone: (formData.get('client_phone') as string) ?? '',

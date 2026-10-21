@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
+import { iniciaisDoNome } from '@estetica-os/utils'
+import { saudacao, primeiroNome } from '@/lib/saudacao'
 import { Menu } from 'lucide-react'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { savePushToken } from '@/actions/push-subscriptions'
@@ -44,7 +46,8 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, plano = null, suporte = null, assinatura = null, agendaPropria = false }: TopbarProps) {
-  const firstName  = userName.split(' ')[0] ?? userName
+  // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
+  const firstName  = primeiroNome(userName)
   const { toggle } = useSidebar()
 
   useEffect(() => {
@@ -99,7 +102,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
         color:      'var(--text-muted)',
         fontWeight: 'var(--weight-semibold)',
       }}>
-        Bom dia, {firstName} ✦
+        {saudacao()}, {firstName} ✦
       </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
@@ -126,7 +129,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
             fontSize:       'var(--text-xs-sz)',
             flexShrink:     0,
           }}>
-            {firstName[0]?.toUpperCase()}
+            {iniciaisDoNome(userName, 1)}
           </div>
           {/* Nome + cargo — oculto em mobile */}
           <div className="hide-mobile">

@@ -181,3 +181,49 @@ test('agenda pela rede: marcar com nome e telefone, confirmar, remarcar e cancel
     return count ?? 0
   }, { message: 'cancelar deveria avisar a equipe' }).toBeGreaterThan(0)
 })
+
+test('choque de horário com cliente novo: recusado, e a ficha rápida não nasce (2026-10-20)', async ({ page }) => {
+  // Simulação de um dia de clínica: a recepção marcava num horário ocupado com
+  // "nome e telefone"; o agendamento era recusado, mas a ficha ficava criada.
+  const unidade = await unidadeQueAtende()
+  test.skip(unidade === null, 'nenhuma unidade ativa tem profissional que atende')
+  const db = banco()
+  const d = new Date(); d.setDate(d.getDate() + 31)
+  const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d)
+  const { data: prof } = await db.from('users').select('id, tenant_id')
+    .eq('branch_id', unidade!.id).eq('provides_services', true).eq('is_active', true).limit(1).single<{ id: string; tenant_id: string }>()
+  const { data: ocupante } = await db.from('clients').insert({
+    tenant_id: prof!.tenant_id, branch_id: unidade!.id, name: nomeDeTeste('Ocupante'), phone: '5548' + String(Date.now()).slice(-9),
+  }).select('id').single<{ id: string }>()
+  const { data: proc } = await db.from('procedures').select('id').eq('tenant_id', prof!.tenant_id).eq('is_active', true).limit(1).single<{ id: string }>()
+  const { data: ag, error } = await db.from('appointments').insert({
+    branch_id: unidade!.id, client_id: ocupante!.id, professional_id: prof!.id, procedure_id: proc!.id,
+    scheduled_at: new Date(`${dia}T09:00:00-03:00`).toISOString(), duration_min: 60, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const nomeNovo = nomeDeTeste('Cliente do choque')
+  try {
+    await page.goto(`/admin/agenda?date=${dia}`)
+    await page.getByRole('button', { name: 'Agendar' }).click()
+    const modal = page.locator('form').filter({ has: page.locator('input[name="client_name"], input[placeholder*="Buscar cliente"]') }).first()
+    await modal.locator('select').first().selectOption({ label: unidade!.name })
+    await page.getByRole('button', { name: /Não é cliente ainda/ }).click()
+    await page.locator('input[name="client_name"]').fill(nomeNovo)
+    await page.locator('input[name="client_phone"]').fill('47988' + String(Date.now()).slice(-6))
+    const procedimento = modal.locator('select[name="procedure_id"]')
+    const profissional = modal.locator('select[name="professional_id"]')
+    await expect(procedimento.locator('option')).not.toHaveCount(1)
+    await procedimento.selectOption({ index: 1 })
+    await profissional.selectOption(prof!.id)
+    await modal.locator('input[type="datetime-local"]').fill(`${dia}T09:00`)
+    await page.getByRole('button', { name: 'Confirmar agendamento' }).click()
+    await expect(page.getByText('Este profissional já tem agendamento nesse horário.')).toBeVisible()
+    const { data: criado } = await db.from('clients').select('id').eq('name', nomeNovo)
+    expect(criado ?? [], 'a ficha rápida não nasceu').toHaveLength(0)
+  } finally {
+    const falhas = await apagarAgendamentos([ag!.id])
+    const { data: sobra } = await db.from('clients').select('id').eq('name', nomeNovo)
+    await apagarClientes([ocupante!.id, ...(sobra ?? []).map(c => c.id as string)], falhas)
+    expect(falhas).toEqual([])
+  }
+})

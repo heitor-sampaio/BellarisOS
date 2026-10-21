@@ -454,7 +454,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
         Comissões
       </p>
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 14 }}>
-        {groups.length} profissional{groups.length !== 1 ? 'is' : ''} · {entries.length} lançamentos
+        {groups.length} {groups.length === 1 ? 'profissional' : 'profissionais'} · {entries.length} lançamentos
       </p>
 
       {/* Total */}

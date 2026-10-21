@@ -424,7 +424,7 @@ export function AdminDashboardView({
             Visão geral da rede
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
-            {monthLabel} · {branchCount} filial{branchCount !== 1 ? 'is' : ''} · {totalClientsEver.toLocaleString('pt-BR')} clientes
+            {monthLabel} · {branchCount} {branchCount === 1 ? 'unidade' : 'unidades'} · {totalClientsEver.toLocaleString('pt-BR')} clientes
           </p>
           {!hasAlerts && (
             <div style={{

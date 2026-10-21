@@ -189,7 +189,7 @@ export function PlanejamentosClient({
                     )}
                   </p>
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
-                    {p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''}
+                    {p.sessoes} {p.sessoes === 1 ? 'sessão' : 'sessões'}
                     {p.unidade ? ` · ${p.unidade}` : ''}
                     {' · '}{new Date(p.criadoEm).toLocaleDateString('pt-BR')}
                   </p>

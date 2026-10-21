@@ -133,7 +133,7 @@ export default async function AdminOportunidadesPage({
             {stats.porResultado && ` · ${stats.perdidos} perdidos`}
             {' · '}{stats.conversao}% de conversão
             {stats.porResultado && ` · ${stats.clientes} viraram clientes`}
-            {' · '}{branches.length} filial{branches.length !== 1 ? 'is' : ''}
+            {' · '}{branches.length} {branches.length === 1 ? 'unidade' : 'unidades'}
           </p>
         </div>
 

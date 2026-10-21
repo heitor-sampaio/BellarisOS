@@ -257,7 +257,7 @@ export function PlanejamentoTratamento({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-                    {p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''}
+                    {p.sessoes} {p.sessoes === 1 ? 'sessão' : 'sessões'}
                   </span>
                   <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
                     {st.label}

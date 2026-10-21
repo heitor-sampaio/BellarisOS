@@ -195,7 +195,7 @@ export default async function AdminEstoquePage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {unidade
               ? unidade.name
-              : `Visão consolidada da rede · ${branches.length} filial${branches.length !== 1 ? 'is' : ''}`}
+              : `Visão consolidada da rede · ${branches.length} ${branches.length === 1 ? 'unidade' : 'unidades'}`}
           </p>
         </div>
 

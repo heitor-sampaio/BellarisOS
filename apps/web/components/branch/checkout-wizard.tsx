@@ -858,7 +858,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <div className="card" style={{ padding: '14px 20px', marginBottom: 14 }}>
           <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)', letterSpacing: '0.06em' }}>
             <Check size={12} style={{ display: 'inline', marginRight: 4 }} />
-            {scheduledCount} de {plan.sessions.length} sessão{plan.sessions.length !== 1 ? 'ões' : ''} com data definida
+            {scheduledCount} de {plan.sessions.length} {plan.sessions.length === 1 ? 'sessão' : 'sessões'} com data definida
           </p>
         </div>
       )}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { iniciaisDoNome } from '@estetica-os/utils'
 import { usePathname, useRouter } from 'next/navigation'
 import { Search, UserPlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -32,15 +33,13 @@ interface Props {
 
 type Filter = 'ativos' | 'novos' | 'inativos'
 
-function getInitials(name: string) {
-  const parts = name.trim().split(' ')
-  return (parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? parts[0]?.[1] ?? '')
-}
 
 function lastVisitLabel(iso: string | null): string {
   if (!iso) return 'Sem visitas'
   const diff = Date.now() - new Date(iso).getTime()
-  const days = Math.floor(diff / 86400000)
+  // Concluído antes da hora marcada (scheduled_at mais tarde que agora): é
+  // hoje, não "-1 dias" (simulação de um dia de clínica, 2026-10-20).
+  const days = Math.max(0, Math.floor(diff / 86400000))
   if (days === 0) return 'Última visita: Hoje'
   if (days === 1) return 'Última visita: Ontem'
   if (days < 7)  return `Última visita: ${days} dias`
@@ -228,7 +227,7 @@ export function ClientsSidebar({
         ) : (
           filtered.map(c => {
             const isSelected = c.id === selectedId
-            const initials   = getInitials(c.name).toUpperCase()
+            const initials   = iniciaisDoNome(c.name)
             const isVip      = c.tags.includes('VIP')
             const badgeLabel = isVip ? 'VIP' : c.isNew ? 'Novo' : 'Regular'
             const badgeColor = isVip ? 'var(--brand)' : c.isNew ? 'var(--success)' : 'var(--text-faint)'

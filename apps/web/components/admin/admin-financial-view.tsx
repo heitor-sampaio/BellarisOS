@@ -259,7 +259,7 @@ export function AdminFinancialView({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 3 }}>
             {periodLabel} · {statDaUnidade
               ? statDaUnidade.name
-              : `${branchStats.length} filial${branchStats.length !== 1 ? 'is' : ''}`}
+              : `${branchStats.length} ${branchStats.length === 1 ? 'unidade' : 'unidades'}`}
           </p>
         </div>
 
