@@ -119,14 +119,26 @@ test.describe.serial('LGPD: exportação de dados', () => {
 
     // Com OUTRO pedido aberto (o do teste anterior), liberar reabriria este e
     // esbarraria no índice: a tela diz o motivo, em vez do "duplicate key" cru.
-    await linha.getByRole('button', { name: 'Liberar' }).click()
+    // Liberar pede confirmação (2026-10-21): o prontuário vai para a cliente.
+    // O "Liberar" só abre a confirmação: antes da hidratação, o clique se perde.
+    await expect(async () => {
+      const confirmar = page.getByRole('button', { name: 'Confirmar liberação' })
+      if (!(await confirmar.isVisible())) await linha.getByRole('button', { name: 'Liberar' }).click({ timeout: 1000 })
+      await expect(confirmar).toBeVisible({ timeout: 2000 })
+    }).toPass()
+    await page.getByRole('button', { name: 'Confirmar liberação' }).click()
     await expect(page.getByText(/já tem outra solicitação em andamento/)).toBeVisible()
 
     await db.from('lgpd_requests').delete().eq('client_id', cliente!.clientId).neq('id', pedido)
     await page.reload()
-    await page.locator('div, li, tr').filter({ hasText: nome })
+    const deNovo = page.locator('div, li, tr').filter({ hasText: nome })
       .filter({ has: page.getByRole('button', { name: 'Liberar' }) }).last()
-      .getByRole('button', { name: 'Liberar' }).click()
+    await expect(async () => {
+      const confirmar = page.getByRole('button', { name: 'Confirmar liberação' })
+      if (!(await confirmar.isVisible())) await deNovo.getByRole('button', { name: 'Liberar' }).click({ timeout: 1000 })
+      await expect(confirmar).toBeVisible({ timeout: 2000 })
+    }).toPass()
+    await page.getByRole('button', { name: 'Confirmar liberação' }).click()
 
     await expect.poll(async () => {
       const { data } = await db.from('lgpd_requests').select('status, medical_status, medical_reviewed_by, export_json_path').eq('id', pedido).single()

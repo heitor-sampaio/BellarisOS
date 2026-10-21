@@ -23,7 +23,8 @@ export interface PacoteDoCatalogo {
 interface ItemDoRascunho { procedureId: string; quantidade: string }
 interface Rascunho { id?: string; name: string; itens: ItemDoRascunho[]; preco: string; validade: string; ativo: boolean }
 
-const vazio = (procedureId: string): Rascunho => ({ name: '', itens: [{ procedureId, quantidade: '5' }], preco: '', validade: '', ativo: true })
+// Sem número de sessões escolhido por nós (2026-10-21: nascia com 5).
+const vazio = (procedureId: string): Rascunho => ({ name: '', itens: [{ procedureId, quantidade: '' }], preco: '', validade: '', ativo: true })
 const numero = (t: string) => { const s = t.trim(); return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s) }
 
 export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInicial = '' }: {
@@ -166,7 +167,7 @@ function Formulario({ inicial, procedimentos, aoTerminar }: {
             <select className="field" aria-label={`Procedimento ${i + 1}`} value={it.procedureId} onChange={e => mudarItem(i, { procedureId: e.target.value })}>
               {procedimentos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <input className="field" type="number" min={1} max={100} aria-label={`Sessões do procedimento ${i + 1}`}
+            <input className="field" type="number" min={1} max={100} placeholder="Ex.: 5" aria-label={`Sessões do procedimento ${i + 1}`}
               value={it.quantidade} onChange={e => mudarItem(i, { quantidade: e.target.value })} />
             <button type="button" className="btn-ghost" style={{ padding: 6, color: 'var(--text-muted)' }} disabled={r.itens.length === 1}
               aria-label={`Tirar o procedimento ${i + 1}`} onClick={() => mudar({ itens: r.itens.filter((_, j) => j !== i) })}>

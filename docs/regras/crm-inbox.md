@@ -82,6 +82,11 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (`textoDoProntuarioForaDoPacote`): não pedido, pedido e em análise, ou não
   liberado — era sempre "não incluído", como se não tivesse pedido
   (simulação de 2026-10-20).
+  **Liberar pede confirmação** (o prontuário vai para a cliente; a confirmação
+  nasce ABAIXO do botão, nunca no lugar dele: trocado debaixo do cursor, o
+  mesmo clique liberava), e a aba mostra os pedidos esperando: "LGPD (n)".
+  A lista pede Clientes (Ver): sem o módulo, a aba diz o porquê (era a tela
+  inteira em "sem acesso").
 - **A ficha de saúde (pré-atendimento) no pacote** (2026-10-21): o
   HISTÓRICO (`fichasDeSaude`: quando foi mandada, ficha completa ou
   confirmação, a situação, quando e por onde foi respondida) vai na parte

@@ -115,7 +115,7 @@ export function BranchForm() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline" htmlFor="br-slug">
-                      Slug (URL)
+                      Endereço da unidade
                       <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
                         — app.bellarisos.com/<strong>{slug || 'nome-da-unidade'}</strong>
                       </span>

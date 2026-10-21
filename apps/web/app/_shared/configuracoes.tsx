@@ -102,6 +102,22 @@ export async function Configuracoes({
   const ctx = await getTenantContext()
 
   const tabs = TABS.filter(t => abas.includes(t.key) && abaLiberada(t, m => can(ctx, m, 'MANAGE')) && abaNoPlano(t, ctx.plano))
+
+  // O pedido de LGPD esperando a liberação do prontuário aparece no NOME da
+  // aba (2026-10-21): só dentro dela, ninguém sabia que havia pedido.
+  const lgpdEsperando = tabs.some(t => t.key === 'lgpd')
+    ? (await createAdminClient().from('lgpd_requests').select('id', { count: 'exact', head: true })
+        .eq('tenant_id', ctx.tenantId!).eq('medical_status', 'pending')).count ?? 0
+    : 0
+  const rotuloDaAba = (t: (typeof tabs)[number]) => t.key === 'lgpd' && lgpdEsperando > 0 ? `${t.label} (${lgpdEsperando})` : t.label
+
+  // O topo diz o que a pessoa vê: a SDR, que só mexe em Tags e Importações,
+  // lia "Cargos, modelos de ficha e integrações" (2026-10-21).
+  const listaPt = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs.at(-1)}`
+  const subtituloDaTela = tabs.some(t => t.key === 'permissions')
+    ? subtitulo
+    : `${listaPt(tabs.map(t => t.label.toLowerCase())).replace(/^./, c => c.toUpperCase())} da rede`
+
   if (tabs.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
@@ -177,7 +193,10 @@ export async function Configuracoes({
     : null
 
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
-  const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
+  // A lista mostra nomes de clientes e pede Clientes (Ver): sem o módulo, a tela
+  // inteira caía em "sem acesso" (2026-10-21). Sem ele, a aba diz o porquê.
+  const lgpdSemClientes = activeTab === 'lgpd' && !can(ctx, 'clients', 'VIEW')
+  const lgpdRequests = activeTab === 'lgpd' && !lgpdSemClientes ? await listDataRequests() : []
   const dadosDoSuporte = activeTab === 'suporte' && !ctx.suporte ? await dadosDaAbaSuporte(ctx.tenantId!) : null
   // A assinatura do BellarisOS (o plano, as faturas): só a aba dela lê.
   const assinatura = activeTab === 'assinatura' ? await lerAssinatura(ctx.tenantId!) : null
@@ -294,7 +313,7 @@ export async function Configuracoes({
           Configurações
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {subtitulo}
+          {subtituloDaTela}
         </p>
       </div>
 
@@ -320,7 +339,7 @@ export async function Configuracoes({
           botão que abre menu — melhor que a fila de abas rolando de lado. */}
       <div style={{ marginBottom: 28 }}>
         <SegSelect
-          options={tabs.map(t => ({ key: t.key, label: t.label }))}
+          options={tabs.map(t => ({ key: t.key, label: rotuloDaAba(t) }))}
           value={activeTab}
           basePath={basePath}
           paramName="tab"
@@ -349,7 +368,9 @@ export async function Configuracoes({
             permsByRole={permsByRole}
             tabsByRole={tabsByRole}
             canSeeTeam={atalhoParaEquipe && can(ctx, 'team', 'MANAGE')}
-            foraDoPlano={modulosForaDoPlano(lerRecursos(ctx.plano ?? null))}
+            // O Copilot é a única função que "sem plano" NÃO libera (lib/copilot/disponivel):
+            // a matriz não o oferece à rede que não o tem (2026-10-21).
+            foraDoPlano={[...modulosForaDoPlano(lerRecursos(ctx.plano ?? null)), ...(copilotNoPlano(ctx) ? [] : ['copilot' as const])]}
           />
           {/* Depois da matriz: refina o escopo "só os meus" que se escolhe nela. */}
           {visibilidadeDoInbox && (
@@ -422,7 +443,13 @@ export async function Configuracoes({
           </p>
         ))}
 
-      {activeTab === 'lgpd' && (
+      {lgpdSemClientes && (
+        <p className="card" style={{ padding: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          Os pedidos mostram os nomes das clientes: para vê-los, o cargo precisa de Clientes (Ver).
+        </p>
+      )}
+
+      {activeTab === 'lgpd' && !lgpdSemClientes && (
         <SettingsLgpd
           requests={lgpdRequests}
           canReviewMedical={ctx.permissions.medical_records === 'MANAGE'}

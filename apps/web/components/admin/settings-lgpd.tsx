@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { reviewMedicalData, type LgpdAdminRow } from '@/actions/lgpd'
 import { ShieldCheck, Check, X, AlertTriangle } from 'lucide-react'
 
@@ -40,6 +40,9 @@ const fmt = (iso: string | null) =>
 
 function ReviewButtons({ requestId }: { requestId: string }) {
   const [state, action, pending] = useActionState(reviewMedicalData, null)
+  // Liberar manda o prontuário (dado de saúde) à cliente: pede confirmação
+  // (2026-10-21; era um clique só).
+  const [confirmando, setConfirmando] = useState(false)
 
   const base = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -48,23 +51,49 @@ function ReviewButtons({ requestId }: { requestId: string }) {
     opacity: pending ? 0.6 : 1,
   } as const
 
+  // A confirmação nasce ABAIXO, não no lugar do "Liberar": trocado debaixo do
+  // cursor, o mesmo clique caía no botão novo e já liberava.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-      <form action={action} style={{ display: 'flex', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+      <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
         <input type="hidden" name="request_id" value={requestId} />
-        <button
-          type="submit" name="decision" value="approved" disabled={pending}
-          style={{ ...base, border: 'none', background: 'var(--brand)', color: 'var(--surface)',
-                   boxShadow: 'var(--shadow-brand-btn)' }}
-        >
-          <Check size={14} /> Liberar
-        </button>
-        <button
-          type="submit" name="decision" value="denied" disabled={pending}
-          style={{ ...base, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
-        >
-          <X size={14} /> Negar
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button" disabled={pending || confirmando} onClick={() => setConfirmando(true)}
+            style={{ ...base, border: 'none', background: 'var(--brand)', color: 'var(--surface)',
+                     boxShadow: 'var(--shadow-brand-btn)' }}
+          >
+            <Check size={14} /> Liberar
+          </button>
+          <button
+            type="submit" name="decision" value="denied" disabled={pending}
+            style={{ ...base, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+          >
+            <X size={14} /> Negar
+          </button>
+        </div>
+        {confirmando && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', maxWidth: 360,
+            padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          }}>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', textAlign: 'right', lineHeight: 1.5 }}>
+              O pacote é refeito com a anamnese, a evolução e as fotos, e vai para a cliente. Não se desfaz.
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" disabled={pending} onClick={() => setConfirmando(false)}
+                style={{ ...base, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}>
+                Voltar
+              </button>
+              <button
+                type="submit" name="decision" value="approved" disabled={pending}
+                style={{ ...base, border: 'none', background: 'var(--brand)', color: 'var(--surface)' }}
+              >
+                <Check size={14} /> Confirmar liberação
+              </button>
+            </div>
+          </div>
+        )}
       </form>
       {state?.error && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)' }}>{state.error}</span>}
     </div>
