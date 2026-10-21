@@ -47,6 +47,12 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `private.tags_padrao()` — espelha `CLIENT_TAGS`).
 - Prova: `e2e/tags-da-rede.spec.ts`, `tests/tags.test.ts`.
 - `InternalCredit`: saldo de crédito do cliente (concessão manual, cancelamento de plano pago, estorno de um pagamento feito com crédito); usado como método de pagamento `INTERNAL_CREDIT`, que o desconta (§9.6)
+- **A aba Financeiro da ficha é do financeiro** (2026-10-20): os pagamentos e
+  o crédito interno do cliente só são carregados para `financial: VIEW` ou
+  quem recebe (`podeReceber`), e a aba some para os outros. Carregava para
+  quem tinha só o cadastro, e o SDR via cada pagamento. Os KPIs da visão geral
+  (LTV, ticket) ficam: são agregados comerciais. Prova:
+  `e2e/ficha-financeiro-so-com-modulo.spec.ts`.
 - `LgpdRequest`: pedido de acesso aos dados pelo titular. Só `type: "export"`
   está implementado — a exclusão continua fora de escopo por conflitar com a
   guarda legal de prontuário e de registros fiscais. Fluxo: o cliente solicita

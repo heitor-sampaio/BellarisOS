@@ -308,13 +308,17 @@ export default async function AdminClientProfilePage({
   }))
 
   const seenIds = new Set(apptTransactions.map(t => t.id))
-  const transactions: ProfileTransaction[] = [
+  // Os pagamentos e o crédito do cliente são do FINANCEIRO (ou de quem recebe):
+  // carregados para quem só tinha o cadastro, a aba Financeiro abria para o SDR
+  // (simulação de um dia de clínica, 2026-10-20).
+  const veFinanceiro = can(ctx, 'financial', 'VIEW') || podeReceber(ctx)
+  const transactions: ProfileTransaction[] = !veFinanceiro ? [] : [
     ...apptTransactions,
     ...checkoutTransactions.filter(t => !seenIds.has(t.id)),
   ].sort((a, b) => (b.paidAt ?? b.createdAt).localeCompare(a.paidAt ?? a.createdAt))
 
   type RawCredit = { id: string; amount: string; description: string; created_at: string }
-  const internalCredits: ProfileInternalCredit[] = ((credits as RawCredit[] | null) ?? []).map(c => ({
+  const internalCredits: ProfileInternalCredit[] = !veFinanceiro ? [] : ((credits as RawCredit[] | null) ?? []).map(c => ({
     id: c.id, amount: parseFloat(c.amount), description: c.description, createdAt: c.created_at,
   }))
 
@@ -417,6 +421,7 @@ export default async function AdminClientProfilePage({
         activePackage={activePackage}
         sessionNotes={sessionNotes}
         transactions={transactions}
+        veFinanceiro={veFinanceiro}
         internalCredits={internalCredits}
         documents={documents}
         termos={can(ctx, 'documents', 'VIEW')

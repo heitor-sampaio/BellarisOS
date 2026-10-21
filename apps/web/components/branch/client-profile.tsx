@@ -170,6 +170,8 @@ interface Props {
   podeAnexarClinico?:    boolean
   /** Anexar o que não é clínico (RG, comprovante…): o cadastro (`clients: MANAGE`). */
   podeAnexarComum?:      boolean
+  /** O financeiro do cliente (pagamentos, crédito): `financial` ou quem recebe. */
+  veFinanceiro?:         boolean
   isNetworkWide:         boolean
   /**
    * Cliente da REDE: `clients.branch_id` nulo. Os gestos que gravam por filial
@@ -1034,7 +1036,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], prePagos = [], podeAgendar = false,
 }: Props) {
@@ -1077,7 +1079,7 @@ export function ClientProfile({
     setMenuAberto(false)
     router.refresh()
   }
-  const visibleTabs = TABS.filter(t => t.key !== 'fichas' || recordForms.length > 0)
+  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro))
 
   /**
    * A aba aberta mora na URL, não em `useState`.
