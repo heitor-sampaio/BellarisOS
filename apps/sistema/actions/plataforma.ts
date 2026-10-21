@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, updateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getPlatformContext, type PapelDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/auditoria'
 import { sessoesEmCurso, tagDaSessao } from '@estetica-os/nucleo/lib/suporte/sessao'
@@ -120,7 +120,7 @@ export async function ativarAtendente(staffId: string, ativo: boolean): Promise<
       .eq('id', staffId).select('id').single(), 'atualizar a equipe da plataforma')
     const { error } = await admin.auth.admin.updateUserById(pessoa.auth_id, { ban_duration: ativo ? 'none' : '876000h' })
     if (error) return { ok: false, error: `Atualizado, mas o Auth recusou o bloqueio: ${error.message}` }
-    updateTag(`plataforma:${pessoa.auth_id}`)
+    revalidateTag(`plataforma:${pessoa.auth_id}`, { expire: 0 })
     // O cache da pessoa mora também no app do SUPORTE (outro processo).
     await expirarEm('suporte', [`plataforma:${pessoa.auth_id}`])
     if (!ativo) {
@@ -128,7 +128,7 @@ export async function ativarAtendente(staffId: string, ativo: boolean): Promise<
       for (const s of await sessoesEmCurso({ atendente: staffId })) {
         await gravar(admin.rpc('suporte_sessao_encerrar', { p_sessao: s.id, p_motivo: 'atendente desativado' }), 'encerrar a sessão de suporte')
         if (s.authSessionId) {
-          updateTag(tagDaSessao(s.authSessionId))
+          revalidateTag(tagDaSessao(s.authSessionId), { expire: 0 })
           await expirarNaClinica([tagDaSessao(s.authSessionId)])
         }
       }

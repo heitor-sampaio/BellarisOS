@@ -217,8 +217,8 @@ O resto do fluxo:
   profissional lançava o insumo no editor do PLANO, que nunca baixa. O insumo
   adicionado entra MARCADO (só o marcado baixa). A lista de produtos é cache
   (`products:<rede>`): criar, editar e ativar produto o expiram com
-  `updateTag` — com `revalidateTag 'max'` o produto novo não aparecia na
-  próxima tela. Prova: `e2e/atendimento-fechamento.spec.ts`.
+  `revalidateTag(tag, { expire: 0 })` — com `'max'` o produto novo não
+  aparecia na próxima tela. Prova: `e2e/atendimento-fechamento.spec.ts`.
 - **O "Finalizar" leva a evolução que está NA TELA**: o modal abre com o que a
   profissional escreveu na página (avaliação ou ficha), não com o gravado —
   sem "Salvar" antes, a evolução se perdia (simulação de 2026-10-20).

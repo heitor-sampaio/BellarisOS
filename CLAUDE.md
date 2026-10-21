@@ -493,8 +493,9 @@ Regras:
 - **Membro desativado não opera.** `buildContext` confere `users.is_active`
   (via `getCachedMember`) e manda para `/login?acesso=desativado`; desativar
   também bloqueia a conta no Auth (`ban_duration`) e expira o cache do membro
-  com `updateTag` — o `revalidateTag(…, 'max')` serviria o valor velho em mais
-  uma requisição. Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
+  com `revalidateTag(tag, { expire: 0 })` — o `'max'` serviria o valor velho em
+  mais uma requisição, e o `updateTag` se mostrou instável no `unstable_cache`
+  (2026-10-21). Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
   desativa a si mesmo. Prova: `e2e/membro-desativado.spec.ts`.
 - **A abrangência se confere na ACTION, não só no layout.** Registro de
   unidade que chega por id (agendamento, lançamento, plano, mapa, membro,
@@ -590,7 +591,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
-❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag
+❌ Expirar cache com revalidateTag 'max' (serve o velho mais uma vez) ou com updateTag (instável no unstable_cache — 2026-10-21) — é revalidateTag(tag, { expire: 0 }) (tests/cache-expira-na-hora.test.ts trava)
 ❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
 ❌ Tirar inicial de nome com nome[0] ou charAt(0) — use iniciaisDoNome (quebra em emoji)
 ❌ map() que devolve <> sem chave (a key no filho de dentro não conta)

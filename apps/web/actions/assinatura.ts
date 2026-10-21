@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, updateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, mensagemDoErro } from '@/lib/db'
@@ -40,7 +40,7 @@ export async function contratarAdicional(chave: string, quantidade: number): Pro
       p_tenant: tenantId, p_chave: chave, p_quantidade: quantidade, p_valor_centavos: null,
     }), 'mudar o adicional') as { antes: unknown; depois: unknown; pendente_no_asaas: boolean }
     // O limite e as funcionalidades mudam já na próxima tela.
-    updateTag(tagDaRede(tenantId))
+    revalidateTag(tagDaRede(tenantId), { expire: 0 })
     try {
       await registrarAutomatico('assinatura.adicional', tenantId, {
         chave, origem: 'clinica', ator: { id: ctx.internalUserId, nome: ctx.userName }, antes: r.antes, depois: r.depois,

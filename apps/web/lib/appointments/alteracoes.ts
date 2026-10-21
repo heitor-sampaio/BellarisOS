@@ -142,7 +142,7 @@ export function revalidarAgendamento(ctx: TenantContext, appointmentId: string, 
   }
   revalidatePath('/admin/agenda')
   revalidatePath(`/admin/agenda/${appointmentId}`)
-  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+  revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
 }
 
 /**

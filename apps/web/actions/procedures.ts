@@ -194,7 +194,7 @@ async function addProcedureInterno(
   }
 
   revalidatePath('/admin/procedures')
-  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
+  revalidateTag(`procedures:${ctx.tenantId!}`, { expire: 0 })
   return { success: true, procedureId: procedure.id }
 }
 
@@ -329,7 +329,7 @@ async function updateProcedureInterno(
   }
 
   revalidatePath('/admin/procedures')
-  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
+  revalidateTag(`procedures:${ctx.tenantId!}`, { expire: 0 })
   return { success: true }
 }
 
@@ -366,7 +366,7 @@ async function toggleProcedureStatusInterno(procedureId: string, isActive: boole
     .eq('tenant_id', ctx.tenantId!), 'mudar a situação do procedimento')
 
   revalidatePath('/admin/procedures')
-  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
+  revalidateTag(`procedures:${ctx.tenantId!}`, { expire: 0 })
 }
 
 /**

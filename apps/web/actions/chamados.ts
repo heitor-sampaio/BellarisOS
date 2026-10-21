@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { podeIncluirClinico, HORAS_PADRAO } from '@/lib/suporte/regras'
 import { contextoDoNavegador } from '@/lib/suporte/chamados-regras'
-import { updateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { sessoesEmCurso, tagDaSessao } from '@/lib/suporte/sessao'
 import {
   chamadosDaClinica, lerChamado, guardarAnexo, removerAnexo,
@@ -85,7 +85,7 @@ export async function abrirChamado(form: FormData): Promise<Resultado<{ chamadoI
     if (error) { await removerAnexo(anexo); return { ok: false, error: error.message } }
     const linha = (data as { chamado_id: string; numero: number }[] | null)?.[0]
     if (!linha) return { ok: false, error: 'Não consegui abrir o chamado.' }
-    for (const s of emCurso) if (s.authSessionId) updateTag(tagDaSessao(s.authSessionId))
+    for (const s of emCurso) if (s.authSessionId) revalidateTag(tagDaSessao(s.authSessionId), { expire: 0 })
     return { ok: true, chamadoId: linha.chamado_id, numero: Number(linha.numero) }
   } catch (e) {
     await removerAnexo(anexo)

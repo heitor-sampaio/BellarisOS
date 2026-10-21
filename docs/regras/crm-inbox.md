@@ -51,7 +51,8 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   cria, edita, importa ou etiqueta cliente a expira com
   `revalidateTag(tag, { expire: 0 })` — vale dentro e fora de Server Action
   (Copilot). Com `'max'` a lista abria sem o cadastrado; e, na prova de
-  2026-10-21, nem o `updateTag` derrubou este `unstable_cache`. Prova:
+  2026-10-21, nem o `updateTag` derrubou este `unstable_cache` (daí a regra do
+  CLAUDE.md §14 valer para todos os caches). Prova:
   `e2e/ficha-lista-de-clientes.spec.ts`.
 - **A aba Financeiro da ficha é do financeiro** (2026-10-20): os pagamentos e
   o crédito interno do cliente só são carregados para `financial: VIEW` ou

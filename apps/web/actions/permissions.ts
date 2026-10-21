@@ -110,6 +110,6 @@ export async function saveRolePermissions(
   )
 
   revalidatePath('/admin/settings')
-  revalidateTag(`permissions:${ctx.tenantId!}`, 'max')
+  revalidateTag(`permissions:${ctx.tenantId!}`, { expire: 0 })
   return { success: true }
 }

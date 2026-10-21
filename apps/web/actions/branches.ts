@@ -66,7 +66,7 @@ export async function createBranch(
     if (insertError) return { error: 'Erro ao criar unidade. Tente novamente.' }
 
     revalidatePath('/admin/branches')
-    revalidateTag(`branches:${ctx.tenantId!}`, 'max')
+    revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
     return { success: true }
   }
   return { error: 'Erro ao criar unidade. Tente novamente.' }
@@ -128,7 +128,7 @@ export async function updateBranch(
 
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)
-  revalidateTag(`branches:${ctx.tenantId!}`, 'max')
+  revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
   return { success: true }
 }
 
@@ -156,5 +156,5 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
 
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)
-  revalidateTag(`branches:${ctx.tenantId!}`, 'max')
+  revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
 }

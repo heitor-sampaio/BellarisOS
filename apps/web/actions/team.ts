@@ -2,7 +2,7 @@
 
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
-import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -151,8 +151,8 @@ export async function createTeamMember(
   await membroCriado(novo.id as string, ctx)
 
   revalidatePath(redirectPath)
-  revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
-  revalidateTag(`user:${authId}`, 'max')
+  revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
+  revalidateTag(`user:${authId}`, { expire: 0 })
   return { success: true }
 }
 
@@ -223,10 +223,10 @@ export async function updateTeamMember(
   }), 'atualizar o acesso do membro')
 
   revalidatePath(redirectPath)
-  revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
+  revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
   // `updateTag` expira na hora; o perfil 'max' ainda serviria o valor velho na
   // próxima requisição — um cargo rebaixado ganharia mais uma com o acesso antigo.
-  updateTag(`user:${member.auth_id}`)
+  revalidateTag(`user:${member.auth_id}`, { expire: 0 })
   return { success: true }
 }
 
@@ -269,7 +269,7 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
     // Resposta do Auth, não do PostgREST: o erro é tratado aqui, e alto.
     const { error: erroBloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: '876000h' })
     if (erroBloqueio) throw new Error(`Desativado, mas não consegui bloquear o login: ${erroBloqueio.message}`)
-    updateTag(`user:${membro.auth_id}`)
+    revalidateTag(`user:${membro.auth_id}`, { expire: 0 })
   }
 
   // Quem sai da equipe leva junto a autorização de suporte que tinha dado (e
@@ -280,7 +280,7 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
     const sessoes = await gravar(admin.rpc('suporte_revogar_autorizacao', {
       p_grant: vigente.id, p_tenant: ctx.tenantId!, p_por_user: ctx.internalUserId, p_por_staff: null, p_motivo: 'membro desativado',
     }), 'revogar a autorização de suporte') as string[] | null
-    for (const s of sessoes ?? []) updateTag(`suporte-sessao:${s}`)
+    for (const s of sessoes ?? []) revalidateTag(`suporte-sessao:${s}`, { expire: 0 })
   }
 
   // O retrato leva o cargo e a abrangência que a pessoa tinha — é o que uma
@@ -289,7 +289,7 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
   await membroDesativado(userId, ctx)
 
   revalidatePath(redirectPath)
-  revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
+  revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
 }
 
 export async function reactivateTeamMember(userId: string, redirectPath: string = '/admin/team') {
@@ -307,11 +307,11 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
   if (membro.auth_id) {
     const { error: erroDesbloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: 'none' })
     if (erroDesbloqueio) throw new Error(`Reativado, mas não consegui desbloquear o login: ${erroDesbloqueio.message}`)
-    updateTag(`user:${membro.auth_id}`)
+    revalidateTag(`user:${membro.auth_id}`, { expire: 0 })
   }
 
   await membroReativado(userId, ctx)
 
   revalidatePath(redirectPath)
-  revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
+  revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
 }

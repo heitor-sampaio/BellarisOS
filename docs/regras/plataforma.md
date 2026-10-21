@@ -429,7 +429,7 @@ um muro que não depende de cada trava do código.
   (gatilho `trg_autorizacao_revogada_encerra`): re-autorizar sem dado clínico
   não pode deixar a sessão seguir com o retrato antigo. Quem mexe na
   autorização lê as sessões em curso ANTES (`sessoesEmCurso`) para expirar o
-  cache delas (`updateTag(tagDaSessao(…))`). Desativar o atendente também
+  cache delas (`revalidateTag(tagDaSessao(…), { expire: 0 })`). Desativar o atendente também
   derruba a dele, e `sessaoVigente` confere que ele segue na equipe.
 - **A sessão de suporte não GRAVA pelo PostgREST** (2026-10-08): o token
   dela está no navegador do atendente (httpOnly não esconde das ferramentas

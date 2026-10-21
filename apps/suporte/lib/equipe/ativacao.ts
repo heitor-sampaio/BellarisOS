@@ -1,4 +1,4 @@
-import { updateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { gravar } from '@estetica-os/nucleo/lib/db'
 import { expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
@@ -18,7 +18,7 @@ export async function reativarMembro(admin: Admin, membro: { id: string; tenantI
   if (membro.authId) {
     const { error } = await admin.auth.admin.updateUserById(membro.authId, { ban_duration: 'none' })
     if (error) throw new Error(`Reativado, mas não consegui desbloquear o login: ${error.message}`)
-    updateTag(`user:${membro.authId}`)
+    revalidateTag(`user:${membro.authId}`, { expire: 0 })
     // O cache do membro mora na CLÍNICA (outro processo).
     await expirarNaClinica([`user:${membro.authId}`])
   }

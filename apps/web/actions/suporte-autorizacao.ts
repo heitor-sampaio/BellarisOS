@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, updateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
@@ -47,7 +47,7 @@ export async function autorizarSuporte(pedido: {
       p_via: chamadoId ? 'chamado' : 'configuracoes', p_ticket: chamadoId, p_clinico: clinico, p_horas: horas,
     })
     if (error) return { ok: false, error: error.message }
-    for (const s of emCurso) if (s.authSessionId) updateTag(tagDaSessao(s.authSessionId))
+    for (const s of emCurso) if (s.authSessionId) revalidateTag(tagDaSessao(s.authSessionId), { expire: 0 })
     revalidatePath('/admin/settings')
     return { ok: true }
   } catch (e) {
@@ -71,7 +71,7 @@ export async function revogarAutorizacaoDeSuporte(grantId: string): Promise<Resu
     })
     if (error) return { ok: false, error: error.message }
     // A sessão em curso cai na próxima requisição do atendente.
-    for (const s of (data ?? []) as string[]) updateTag(tagDaSessao(s))
+    for (const s of (data ?? []) as string[]) revalidateTag(tagDaSessao(s), { expire: 0 })
     revalidatePath('/admin/settings')
     return { ok: true }
   } catch (e) {

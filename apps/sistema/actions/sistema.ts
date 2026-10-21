@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, updateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/auditoria'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
@@ -25,7 +25,7 @@ import { normalizarCondicao, ITENS_DA_ASSINATURA } from '@estetica-os/nucleo/lib
  * `updateTag` daqui não chega lá (`expirarNaClinica`).
  */
 async function expirarAqui(tag: string): Promise<void> {
-  updateTag(tag)
+  revalidateTag(tag, { expire: 0 })
   await expirarNaClinica([tag])
 }
 
@@ -36,7 +36,7 @@ async function expirarAqui(tag: string): Promise<void> {
  * `getPlatformContext({ papel: 'ADMIN' })` (marca + equipe ativa + verificação
  * em duas etapas + papel). Tudo fica em `platform_audit_log`.
  *
- * Mudou a situação da rede → `updateTag(tagDaRede)`: o portão de
+ * Mudou a situação da rede → `revalidateTag(tagDaRede, { expire: 0 })`: o portão de
  * `buildContext` barra (ou libera) já na próxima tela.
  */
 type Resultado<T = object> = ({ ok: true } & T) | { ok: false; error: string }

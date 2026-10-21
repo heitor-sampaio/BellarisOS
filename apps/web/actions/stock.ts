@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { revalidatePath, updateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -191,7 +191,7 @@ async function createProductInterno(
     // updateTag, não revalidateTag 'max': o 'max' serve a lista velha mais uma vez,
     // e o produto recém-criado não aparecia no "Novo procedimento" nem no
     // atendimento (simulação de 2026-10-20).
-    updateTag(`products:${ctx.tenantId!}`)
+    revalidateTag(`products:${ctx.tenantId!}`, { expire: 0 })
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -257,7 +257,7 @@ export async function updateProduct(
     // updateTag, não revalidateTag 'max': o 'max' serve a lista velha mais uma vez,
     // e o produto recém-criado não aparecia no "Novo procedimento" nem no
     // atendimento (simulação de 2026-10-20).
-    updateTag(`products:${ctx.tenantId!}`)
+    revalidateTag(`products:${ctx.tenantId!}`, { expire: 0 })
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -317,7 +317,7 @@ async function toggleProductActiveInterno(productId: string, isActive: boolean) 
     // updateTag, não revalidateTag 'max': o 'max' serve a lista velha mais uma vez,
     // e o produto recém-criado não aparecia no "Novo procedimento" nem no
     // atendimento (simulação de 2026-10-20).
-    updateTag(`products:${ctx.tenantId!}`)
+    revalidateTag(`products:${ctx.tenantId!}`, { expire: 0 })
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }

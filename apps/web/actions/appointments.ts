@@ -559,7 +559,7 @@ async function cancelAppointmentSessionInterno(
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
-    revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+    revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
     notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
     return {}
   } catch (e) {
@@ -766,7 +766,7 @@ async function finishSessionInterno(
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidatePath(`/${slug}/dashboard`)
     revalidatePath(`/${slug}/estoque`)
-    revalidateTag(`appointments:${apptBranch!.tenant_id}`, 'max')
+    revalidateTag(`appointments:${apptBranch!.tenant_id}`, { expire: 0 })
     notifyCompleted(appointmentId)
     return { avisos }
   } catch (e) {
@@ -870,7 +870,7 @@ export async function confirmPayment(
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidatePath(`/${slug}/financeiro`)
-    revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+    revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
     notifyPayment(appointmentId)
     return {}
   } catch (e) {
@@ -1038,7 +1038,7 @@ export async function rescheduleAppointment(
 
     if (slug) revalidatePath(`/${slug}/agenda`)
     revalidatePath('/admin/agenda')
-    revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+    revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
     notifyRescheduledAppointment(appointmentId, ctx.internalUserId)
     return { success: true }
   } catch (e) {
@@ -1281,7 +1281,7 @@ async function schedulePackageSessionInterno(params: {
   const appt = { id: res.id }
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
-  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+  revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
   notifyNewAppointment(appt.id, ctx.internalUserId)
   return { appointmentId: appt.id }
 }
@@ -1373,7 +1373,7 @@ async function schedulePlanSessionInterno(params: {
     .eq('id', params.sessionId), 'vincular a sessão do plano ao agendamento')
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
-  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+  revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
   notifyNewAppointment(appt.id, ctx.internalUserId)
   return { appointmentId: appt.id }
 }
