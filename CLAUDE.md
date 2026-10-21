@@ -565,6 +565,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Somar dinheiro por uma regra própria em vez de partir de metrics_receitas_pagas
 ❌ Migration que cria função sem notify pgrst, 'reload schema' no fim
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
+❌ Exibir data SEM hora (nascimento) com formatDate/new Date — é meia-noite UTC e vira a véspera em Brasília; use formatDia/idadeEm (@estetica-os/utils)
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
 ❌ Declarar variável plpgsql com nome de coluna (42702 dentro do gatilho, insert descartado)

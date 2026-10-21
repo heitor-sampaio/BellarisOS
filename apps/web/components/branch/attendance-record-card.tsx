@@ -1,9 +1,8 @@
 'use client'
 
 import React from 'react'
+import { formatDia, idadeEm } from '@estetica-os/utils'
 import { FileText } from 'lucide-react'
-import { differenceInYears, format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 
 // Documento único do atendimento, em 3 seções:
 //   1. Dados do cliente (identificação + a anamnese GERAL do cliente, que é o
@@ -71,8 +70,8 @@ function SectionOverline({ label, subtitle }: { label: string; subtitle?: string
 }
 
 export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha }: Props) {
-  const age = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
-  const birth = client.birthDate ? format(new Date(client.birthDate), 'dd/MM/yyyy', { locale: ptBR }) : null
+  const age = idadeEm(client.birthDate)
+  const birth = formatDia(client.birthDate)
 
   const sectionDivider: React.CSSProperties = {
     borderTop: '1px solid var(--hairline)', paddingTop: 20, marginTop: 20,

@@ -10,7 +10,7 @@ import {
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { formatDate } from '@estetica-os/utils'
+import { formatDate, idadeEm } from '@estetica-os/utils'
 import {
   checkinAppointment,
   startAppointment,
@@ -72,6 +72,8 @@ export interface SessionClient {
   name:      string
   phone:     string | null
   birthDate: string | null
+  /** O cadastro: "cliente desde". */
+  createdAt: string | null
   tags:      string[]
   notes:     string | null
   document:  string | null
@@ -169,8 +171,7 @@ function initials(name: string) {
 }
 
 function calcAge(birthDate: string | null) {
-  if (!birthDate) return null
-  return Math.floor((Date.now() - new Date(birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+  return idadeEm(birthDate)
 }
 
 function fmtTimer(s: number) {
@@ -1365,7 +1366,8 @@ export function AppointmentSession({
                 {[
                   age ? `${age} anos` : null,
                   typeof anamnesis?.respostas.skinType === 'string' ? `Pele ${anamnesis.respostas.skinType}` : null,
-                  client.birthDate ? `Cliente desde ${format(new Date(client.birthDate), 'MMM yyyy', { locale: ptBR })}` : null,
+                  // Desde quando é CLIENTE (o cadastro) — mostrava o mês de nascimento.
+                  client.createdAt ? `Cliente desde ${format(new Date(client.createdAt), 'MMM yyyy', { locale: ptBR })}` : null,
                 ].filter(Boolean).join(' · ')}
               </p>
             </div>

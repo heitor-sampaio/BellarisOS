@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { formatDia } from '@estetica-os/utils'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
@@ -178,7 +179,7 @@ export async function buildClientExport(
         ['CPF', client.document ? maskCPF(String(client.document)) : '—'],
         ['E-mail', String(client.email ?? '—')],
         ['Telefone', client.phone ? maskPhone(String(client.phone)) : '—'],
-        ['Data de nascimento', fmtDate(client.birth_date)],
+        ['Data de nascimento', formatDia(client.birth_date) ?? '—'],
         ['Gênero', String(client.gender ?? '—')],
         ['Endereço', [client.address, client.address_number, client.address_complement, client.neighborhood, client.city, client.state, client.zip_code].filter(Boolean).join(', ') || '—'],
         ['Unidade de cadastro', unit(client.branch_id)],

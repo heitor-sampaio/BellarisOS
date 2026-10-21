@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { idadeEm } from '@estetica-os/utils'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaAtendimento } from '@/lib/rotas'
 import { X, User, Stethoscope, Calendar, CheckCircle2, Play, ChevronRight, Loader2, Settings } from 'lucide-react'
@@ -305,8 +306,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
   }
 
   function calcAge(birthDate: string) {
-    const diff = agora - new Date(birthDate).getTime()
-    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25))
+    return idadeEm(birthDate, new Date(agora)) ?? 0
   }
 
   if (sessionsOpen) {

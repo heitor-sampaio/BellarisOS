@@ -52,7 +52,7 @@ export async function SessaoDeAtendimento({
         procedures(id, name, category, duration_min, form_id),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
-        client:clients(id, name, phone, birth_date, tags, notes, document)
+        client:clients(id, name, phone, birth_date, created_at, tags, notes, document)
       `)
       .eq('id', id)
       .eq('branch_id', branchId)
@@ -70,7 +70,7 @@ export async function SessaoDeAtendimento({
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
   type RawProf   = { id: string; name: string }
   type RawRoom   = { id: string; name: string } | null
-  type RawClient = { id: string; name: string; phone: string | null; birth_date: string | null; tags: string[] | null; notes: string | null; document: string | null }
+  type RawClient = { id: string; name: string; phone: string | null; birth_date: string | null; created_at: string | null; tags: string[] | null; notes: string | null; document: string | null }
 
   const proc = apptRaw.procedures   as unknown as RawProc   | null
   const prof = apptRaw.professional as unknown as RawProf   | null
@@ -351,6 +351,7 @@ export async function SessaoDeAtendimento({
     name:      cli.name,
     phone:     cli.phone ?? null,
     birthDate: cli.birth_date ?? null,
+    createdAt: cli.created_at ?? null,
     tags:      (cli.tags as string[]) ?? [],
     notes:     cli.notes ?? null,
     document:  cli.document ?? null,

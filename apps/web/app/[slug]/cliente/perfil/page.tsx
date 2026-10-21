@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { formatDia } from '@estetica-os/utils'
 import { BotaoSairDoPortal } from '@/components/client-portal/botao-sair'
 import { EditProfileForm } from '@/components/client-portal/edit-profile-form'
 import { DataRequestCard } from '@/components/client-portal/data-request-card'
@@ -95,7 +96,7 @@ export default async function ClientProfilePage() {
           {client.birth_date && (
             <StaticRow
               label="Data de nascimento"
-              value={new Date(client.birth_date).toLocaleDateString('pt-BR')}
+              value={formatDia(client.birth_date) ?? ''}
             />
           )}
           {client.gender && (

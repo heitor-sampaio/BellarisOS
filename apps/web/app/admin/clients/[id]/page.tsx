@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
+import { idadeEm } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { ehAnexoClinico } from '@/lib/clientes/anexos'
-import { differenceInYears, format } from 'date-fns'
+import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
@@ -186,7 +187,7 @@ export default async function AdminClientProfilePage({
   const doCliente = await getDoCliente(ctx.tenantId!, id)
   type DirectTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null }
   const directTxList     = (directTxRaw as DirectTx[] | null) ?? []
-  const age              = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
+  const age              = idadeEm(client.birthDate)
 
   const stats: ProfileStats = {
     totalSessions: doCliente.atendimentos,
