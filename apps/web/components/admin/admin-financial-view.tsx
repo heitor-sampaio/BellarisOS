@@ -11,6 +11,7 @@ import {
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
+import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 
@@ -172,7 +173,9 @@ export function AdminFinancialView({
   canPay = false, canReverse = false, podeDarCredito = false, clients = [],
 }: Props) {
   const router      = useRouter()
-  const [, startT]  = useTransition()
+  const [estornando, startT] = useTransition()
+  // O lançamento esperando a confirmação do estorno (era um clique só, sem volta).
+  const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number } | null>(null)
   const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
   // A unidade da ação vem da própria transação — não há o que perguntar.
@@ -190,6 +193,7 @@ export function AdminFinancialView({
     startT(async () => {
       const r = await reverseTransaction(id, slug)
       if (r?.error) { toast.error(r.error); return }
+      setAEstornar(null)
       toast.success('Lançamento estornado.')
       router.refresh()
     })
@@ -240,6 +244,11 @@ export function AdminFinancialView({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {aEstornar && (
+        <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
+          onConfirmar={() => estornar(aEstornar.id, aEstornar.slug)} onVoltar={() => setAEstornar(null)} />
+      )}
 
       {/* Header: título (esquerda) + seletores e botão (direita) */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -545,7 +554,7 @@ export function AdminFinancialView({
                         {/* Estorno não se estorna (o banco também recusa): desfazer é
                             coisa do financeiro, não um segundo clique. */}
                         {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
-                          <button type="button" onClick={() => estornar(t.id, slugDaTx)} title="Estornar" style={{
+                          <button type="button" onClick={() => setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount) })} title="Estornar" style={{
                             width: 30, height: 30, borderRadius: 7,
                             border: '1px solid var(--border)', background: 'var(--surface)',
                             color: 'var(--text-faint)', cursor: 'pointer',

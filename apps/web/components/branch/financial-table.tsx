@@ -9,6 +9,7 @@ import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SegSelect } from '@/components/shared/seg-select'
+import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 
 export interface Transaction {
   id:             string
@@ -71,7 +72,10 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
   const [sortDir,    setSortDir]    = useState<SortDir>('desc')
 
   const router        = useRouter()
-  const [, startTx] = useTransition()
+  const [estornando, startTx] = useTransition()
+  // O lançamento esperando a confirmação do estorno. Era um clique só, sem
+  // volta (simulação de um dia de clínica, 2026-10-20).
+  const [aEstornar, setAEstornar] = useState<{ id: string; descricao: string; valor: number } | null>(null)
 
   // As actions devolvem `{ error }` quando não conseguem — descartar isso
   // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
@@ -88,6 +92,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
     startTx(async () => {
       const r = await reverseTransaction(id, slug)
       if (r?.error) { toast.error(r.error); return }
+      setAEstornar(null)
       toast.success('Lançamento estornado.')
       router.refresh()
     })
@@ -122,6 +127,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
   }
 
   return (
+    <>
+    {aEstornar && (
+      <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
+        onConfirmar={() => handleReverse(aEstornar.id)} onVoltar={() => setAEstornar(null)} />
+    )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Filtros */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -337,7 +347,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                           )}
                           {/* Estorno não se estorna — o banco também recusa. */}
                           {tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
-                            <button type="button" onClick={() => handleReverse(tx.id)} title="Estornar" style={{
+                            <button type="button" onClick={() => setAEstornar({ id: tx.id, descricao: tx.description, valor: tx.amount })} title="Estornar" style={{
                               width: 30, height: 30, borderRadius: 7,
                               border: '1px solid var(--border)', background: 'var(--surface)',
                               color: 'var(--text-faint)', cursor: 'pointer',
@@ -357,5 +367,6 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
         )}
       </div>
     </div>
+  </>
   )
 }

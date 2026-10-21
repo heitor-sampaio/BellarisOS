@@ -62,6 +62,16 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   const linha = page.locator('tr').filter({ hasText: descricao }).first()
   await expect(linha).toBeVisible()
   await linha.getByTitle('Estornar').click()
+  // Estornar pede confirmação, com o valor (simulação de um dia de clínica,
+  // 2026-10-20: era um clique só, sem volta). Voltar não estorna nada.
+  const confirmar = page.getByRole('dialog', { name: 'Estornar este lançamento?' })
+  await expect(confirmar).toBeVisible()
+  await confirmar.getByRole('button', { name: 'Voltar' }).click()
+  await expect(confirmar).toBeHidden()
+  expect((await db.from('financial_transactions').select('notes').eq('id', original!.id).single()).data?.notes ?? null,
+    'voltar não estorna').not.toBe('Estornada')
+  await linha.getByTitle('Estornar').click()
+  await page.getByRole('dialog', { name: 'Estornar este lançamento?' }).getByRole('button', { name: 'Confirmar estorno' }).click()
 
   // O aviso é a prova de que a tela parou de descartar o resultado da action.
   await expect(page.getByText('Lançamento estornado.')).toBeVisible()

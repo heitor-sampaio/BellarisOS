@@ -229,6 +229,9 @@ o procedimento avulso pago antes.
   `internal_credits.amount` — concessão positiva, uso NEGATIVO com o
   `transaction_id` que o consumiu. Estornar um pagamento feito com crédito
   devolve o crédito.
+- **Estornar pede confirmação** (`ConfirmarEstorno`, nos financeiros da rede e
+  da unidade; 2026-10-20): mostra o lançamento e o valor e avisa que não se
+  desfaz. Era um clique só.
 - Estorno (`estornar_transacao`, uma transação): contra-transação + a original
   marcada `notes='Estornada'` (nunca deletar). Recusa lançamento **não pago**
   e o **próprio estorno**. A contra-transação não leva `appointment_id` (há
