@@ -76,6 +76,12 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (`textoDoProntuarioForaDoPacote`): não pedido, pedido e em análise, ou não
   liberado — era sempre "não incluído", como se não tivesse pedido
   (simulação de 2026-10-20).
+- **A ficha de saúde (pré-atendimento) no pacote** (2026-10-21): o
+  HISTÓRICO (`fichasDeSaude`: quando foi mandada, ficha completa ou
+  confirmação, a situação, quando e por onde foi respondida) vai na parte
+  geral; as perguntas e respostas, pergunta a pergunta e com o rótulo da
+  ficha do ENVIO, só no prontuário liberado (`prontuario.fichasDeSaude`).
+  Prova: `e2e/lgpd-exportacao.spec.ts`.
 
 **O importador de contatos (CSV)** (2026-10-13; **Configurações → Importações**,
 nos dois portais — pedido do Heitor, saiu de Clientes e de Oportunidades;

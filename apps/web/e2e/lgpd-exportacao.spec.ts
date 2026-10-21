@@ -19,6 +19,7 @@ import { capturarAcao, reenviarAcao } from './apoio/acao'
 
 const marca = Date.now().toString(36)
 const ALERGIA = `${PREFIXO} alergia lgpd ${marca}`
+const RESPOSTA_DA_FICHA = `${PREFIXO} resposta da ficha lgpd ${marca}`
 
 /** O pacote como o CLIENTE o recebe: por link assinado, não pela API de admin. */
 async function jsonDoPacote(caminho: string) {
@@ -26,7 +27,7 @@ async function jsonDoPacote(caminho: string) {
   expect(error, 'o pacote tem de estar no bucket').toBeNull()
   const r = await fetch(data!.signedUrl)
   expect(r.ok).toBe(true)
-  return await r.json() as { prontuario: unknown; solicitacao: { incluiProntuario: boolean } }
+  return await r.json() as { prontuario: unknown; solicitacao: { incluiProntuario: boolean }; fichasDeSaude: unknown }
 }
 
 test.describe.serial('LGPD: exportação de dados', () => {
@@ -42,6 +43,15 @@ test.describe.serial('LGPD: exportação de dados', () => {
     // Um prontuário com anamnese — é por ele que se sabe se a parte clínica entrou.
     await banco().from('medical_records').upsert(
       { client_id: cliente.clientId, general_anamnesis: { allergies: ALERGIA } }, { onConflict: 'client_id' })
+    // Uma ficha de pré-atendimento respondida (2026-10-21): o HISTÓRICO vai na
+    // parte geral; as respostas, que são de saúde, só com o prontuário.
+    const { data: c } = await banco().from('clients').select('tenant_id').eq('id', cliente.clientId).single<{ tenant_id: string }>()
+    const { error } = await banco().from('pre_atendimentos').insert({
+      tenant_id: c!.tenant_id, client_id: cliente.clientId, status: 'RESPONDIDO', modo: 'COMPLETO', origem: 'CLIENTE_LINK',
+      ficha: { formId: null, nome: 'Pré-atendimento', rows: [{ id: 'r1', fields: [{ id: 'allergies', type: 'textarea', label: 'Alergias' }] }] },
+      respostas: { allergies: RESPOSTA_DA_FICHA }, respondido_em: new Date().toISOString(),
+    })
+    expect(error, 'a ficha respondida').toBeNull()
   })
 
   test.afterAll(async () => {
@@ -82,6 +92,10 @@ test.describe.serial('LGPD: exportação de dados', () => {
     // incluído nesta solicitação', como se não tivesse pedido (simulação de 2026-10-20).
     expect(pacote.prontuario, 'sem liberação, o prontuário NÃO entra — e o pacote diz por quê').toMatch(/em análise/)
     expect(JSON.stringify(pacote)).not.toContain(ALERGIA)
+    expect(pacote.fichasDeSaude, 'o histórico da ficha de saúde vai na parte geral').toEqual([
+      expect.objectContaining({ situacao: 'Respondida', respondidaPor: 'a cliente, pelo link' }),
+    ])
+    expect(JSON.stringify(pacote), 'as respostas não').not.toContain(RESPOSTA_DA_FICHA)
   })
 
   test('um pedido em aberto por cliente — garantido pelo banco', async () => {
@@ -123,6 +137,9 @@ test.describe.serial('LGPD: exportação de dados', () => {
     const pacote = await jsonDoPacote(row!.export_json_path)
     expect(pacote.solicitacao.incluiProntuario).toBe(true)
     expect(JSON.stringify(pacote.prontuario), 'agora o prontuário está no pacote').toContain(ALERGIA)
+    expect((pacote.prontuario as { fichasDeSaude?: unknown }).fichasDeSaude, 'e as respostas da ficha de saúde, pergunta a pergunta').toEqual([
+      expect.objectContaining({ respostas: [{ pergunta: 'Alergias', resposta: RESPOSTA_DA_FICHA }] }),
+    ])
   })
 
   test('o cliente baixa o que é dele; outro cliente, pedindo o mesmo id, não', async ({ browser }) => {

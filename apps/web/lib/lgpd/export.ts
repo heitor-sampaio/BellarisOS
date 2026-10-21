@@ -6,6 +6,7 @@ import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
 import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
+import { flattenFields, type AnamnesisRow } from '@/lib/anamnesis'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -30,6 +31,22 @@ const fmtMoney    = (v: unknown) => formatBRL(Number(v ?? 0))
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', IN_PROGRESS: 'Em atendimento',
   COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu',
+}
+
+// A ficha de saúde (pré-atendimento, 2026-10-21): o histórico em palavras.
+const SITUACAO_DA_FICHA: Record<string, string> = { PENDENTE: 'Pendente', RESPONDIDO: 'Respondida', CANCELADO: 'Cancelada' }
+const TIPO_DA_FICHA: Record<string, string> = { COMPLETO: 'Ficha completa', CONFIRMAR: 'Confirmação ("algo mudou?")' }
+const QUEM_RESPONDEU: Record<string, string> = {
+  CLIENTE_APP: 'a cliente, pelo app', CLIENTE_LINK: 'a cliente, pelo link', EQUIPE: 'a equipe da clínica',
+}
+
+/** As respostas da ficha, pergunta a pergunta, com o rótulo da ficha do envio. */
+function respostasLegiveis(ficha: unknown, respostas: unknown): { pergunta: string; resposta: string }[] {
+  const rows = ((ficha as { rows?: AnamnesisRow[] } | null)?.rows ?? []) as AnamnesisRow[]
+  const r = (respostas && typeof respostas === 'object' ? respostas : {}) as Record<string, unknown>
+  return flattenFields({ rows })
+    .filter(c => c.type !== 'section' && r[c.id] !== undefined && r[c.id] !== null && r[c.id] !== '')
+    .map(c => ({ pergunta: c.label, resposta: Array.isArray(r[c.id]) ? (r[c.id] as unknown[]).map(String).join(', ') : String(r[c.id]) }))
 }
 
 export type ExportResult = { jsonPath: string; pdfPath: string; expiresAt: Date }
@@ -64,7 +81,7 @@ export async function buildClientExport(
 
   const [
     apptRes, txRes, creditRes, loyaltyRes, packageRes,
-    documentRes, notificationRes, planRes, branchRes, termosRes, prePagoRes,
+    documentRes, notificationRes, planRes, branchRes, termosRes, prePagoRes, fichasRes,
   ] = await Promise.all([
     // `users` é desambiguado pela FK: appointments referencia users duas vezes
     // (professional_id e created_by_id) e o embed sem qualificação falha com
@@ -102,6 +119,12 @@ export async function buildClientExport(
     admin.from('procedure_sales')
       .select('sold_at, expires_at, quantity, preco_tabela, desconto, price, procedures(name), procedure_sale_units(numero, status, used_at, cancelled_at)')
       .eq('client_id', clientId).order('sold_at', { ascending: false }),
+    // A ficha de saúde (pré-atendimento): só o HISTÓRICO na parte geral —
+    // quando foi mandada, a situação, quando e por onde foi respondida. As
+    // perguntas e respostas são de saúde: vão com o prontuário.
+    admin.from('pre_atendimentos')
+      .select('created_at, status, modo, origem, respondido_em')
+      .eq('client_id', clientId).order('created_at', { ascending: false }),
   ])
 
   const appointments  = unwrap('os agendamentos', apptRes)
@@ -115,6 +138,13 @@ export async function buildClientExport(
   const branches      = unwrap('as unidades', branchRes)
   const termos        = unwrap('os termos e contratos', termosRes)
   const prePagos      = unwrap('os procedimentos pré-pagos', prePagoRes)
+  const fichasDeSaude = (unwrap('as fichas de saúde', fichasRes) ?? []).map(p => ({
+    enviadaEm:     p.created_at as string,
+    tipo:          TIPO_DA_FICHA[p.modo as string] ?? String(p.modo),
+    situacao:      SITUACAO_DA_FICHA[p.status as string] ?? String(p.status),
+    respondidaEm:  (p.respondido_em as string | null) ?? null,
+    respondidaPor: p.origem ? QUEM_RESPONDEU[p.origem as string] ?? String(p.origem) : null,
+  }))
 
   const branchName = new Map((branches ?? []).map(b => [b.id as string, b.name as string]))
   const unit = (id: string | null | undefined) => (id ? branchName.get(id) ?? '—' : '—')
@@ -129,12 +159,22 @@ export async function buildClientExport(
       .maybeSingle()
 
     const record = unwrap('o prontuário', recordRes)
+    const respondidas = unwrap('as respostas das fichas de saúde', await admin.from('pre_atendimentos')
+      .select('respondido_em, origem, ficha, respostas')
+      .eq('client_id', clientId).eq('status', 'RESPONDIDO').order('respondido_em', { ascending: false }))
+    const fichasRespondidas = (respondidas ?? []).map(p => ({
+      respondidaEm:  p.respondido_em as string | null,
+      respondidaPor: p.origem ? QUEM_RESPONDEU[p.origem as string] ?? String(p.origem) : null,
+      ficha:         ((p.ficha as { nome?: string } | null)?.nome) ?? 'Pré-atendimento',
+      respostas:     respostasLegiveis(p.ficha, p.respostas),
+    }))
 
-    if (record) {
+    if (record || fichasRespondidas.length) {
       medical = {
-        criadoEm:      record.created_at,
-        anamneseGeral: record.general_anamnesis,
-        atendimentos:  record.medical_record_entries ?? [],
+        criadoEm:      record?.created_at ?? null,
+        anamneseGeral: record?.general_anamnesis ?? null,
+        atendimentos:  record?.medical_record_entries ?? [],
+        fichasDeSaude: fichasRespondidas,
       }
     }
   }
@@ -170,6 +210,7 @@ export async function buildClientExport(
     // de cada um vai junto no pacote (pasta documentos/).
     termosEContratos: (termos ?? []).map(t => Object.fromEntries(Object.entries(t).filter(([k]) => k !== 'signed_pdf_path'))),
     planosDeTratamento: plans ?? [],
+    fichasDeSaude,
     comunicacoes: notifications ?? [],
     prontuario:   includeMedical ? medical : foraDoPacote.json,
   }
@@ -256,6 +297,12 @@ export async function buildClientExport(
       }),
     },
     {
+      title: `Fichas de saúde — pré-atendimento (${fichasDeSaude.length})`,
+      emptyLabel: 'Nenhuma ficha de saúde enviada.',
+      lines: fichasDeSaude.map(p => `${fmtDate(p.enviadaEm)} — ${p.tipo} — ${p.situacao}`
+        + (p.respondidaEm ? ` em ${fmtDateTime(p.respondidaEm)}` : '') + (p.respondidaPor ? ` por ${p.respondidaPor}` : '')),
+    },
+    {
       title: `Comunicações recebidas (${(notifications ?? []).length})`,
       emptyLabel: 'Nenhuma comunicação registrada.',
       lines: (notifications ?? []).slice(0, 50).map(n => `${fmtDate(n.created_at)} — ${String(n.title ?? '')}`),
@@ -264,6 +311,17 @@ export async function buildClientExport(
 
   if (includeMedical) {
     const entries = (medical?.atendimentos ?? []) as Record<string, unknown>[]
+    const fichas = (medical?.fichasDeSaude ?? []) as { respondidaEm: string | null; respondidaPor: string | null; ficha: string; respostas: { pergunta: string; resposta: string }[] }[]
+    sections.push(
+      {
+        title: `Prontuário — fichas de saúde respondidas (${fichas.length})`,
+        emptyLabel: 'Nenhuma ficha de saúde respondida.',
+        lines: fichas.flatMap(p => [
+          `${fmtDateTime(p.respondidaEm)} — ${p.ficha}${p.respondidaPor ? ` — por ${p.respondidaPor}` : ''}`,
+          ...p.respostas.map(r => `   ${r.pergunta}: ${r.resposta.replace(/s+/g, ' ').trim()}`),
+        ]),
+      },
+    )
     sections.push(
       {
         title: `Prontuário — registros de atendimento (${entries.length})`,
