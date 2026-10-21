@@ -4,6 +4,7 @@ import {
   addDays, startOfWeek, startOfMonth, endOfMonth,
   isSameDay, isSameMonth, format,
 } from 'date-fns'
+import type { SeloDaFicha as SeloDaFichaEstado } from '@/lib/pre-atendimento/selos'
 
 export interface CalendarEvent {
   id:              string
@@ -16,6 +17,8 @@ export interface CalendarEvent {
   professionalId:  string
   professionalName: string
   price:           string
+  /** A ficha de saúde da cliente para este horário (selo no bloco). */
+  fichaDeSaude?:   SeloDaFichaEstado | null
 }
 
 interface Props {

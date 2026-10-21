@@ -130,6 +130,10 @@ const procedures = await ler(
     as regras do §9.4.1 — conversa achada ANTES de gerar, caixa da conversa,
     janela fechada devolve o link para copiar. A mensagem é a genérica.
     Prova: `e2e/ficha-pre-atendimento-conversa.spec.ts`.
+    Na agenda (rede e unidade, dia e semana), o BLOCO do agendamento leva o
+    selo da ficha (`selosDaFicha`, `lib/pre-atendimento/selos.ts`, a mesma
+    regra da janela: pendente da cliente em horário que ainda vai acontecer,
+    respondida para ESTE agendamento) — só o estado, nunca as respostas.
   - `pre_atendimentos` e `pre_atendimento_links` têm RLS ligada e nenhuma
     política permissiva: só o servidor lê e grava. Prova:
     `e2e/ficha-pre-atendimento.spec.ts`.

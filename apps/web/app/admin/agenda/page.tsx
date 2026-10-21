@@ -4,6 +4,7 @@ import { ler } from '@/lib/db'
 import type { ComponentProps } from 'react'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { selosDaFicha } from '@/lib/pre-atendimento/selos'
 import { dayKeyTZ, weekdayTZ, addDaysTZ, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 
 type AgendaView = 'day' | 'week'
@@ -104,7 +105,10 @@ export default async function AdminAgendaPage({
   // vazia é informação ("dia livre"), não sintoma.
   const apptsRaw = await ler(apptsQuery, 'carregar a agenda da rede')
 
-  const appointments = (apptsRaw ?? []) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
+  // O selo da ficha de saúde no bloco (2026-10-21): só o estado, do banco.
+  const brutos = (apptsRaw ?? []) as unknown as { id: string; client_id: string | null; status: string }[]
+  const selos = await selosDaFicha(ctx.tenantId!, brutos)
+  const appointments = brutos.map(a => ({ ...a, ficha: selos[a.id] ?? null })) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
 
   return (
     <>

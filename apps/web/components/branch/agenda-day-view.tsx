@@ -3,6 +3,7 @@
 import { createContext, useContext, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import type { CalendarEvent } from './agenda-month-view'
+import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 
 interface Professional { id: string; name: string }
 
@@ -140,6 +141,7 @@ function ProfColumn({
         return (
           <div
             key={ev.id}
+            data-agendamento={ev.id}
             draggable={isDraggable}
             onDragStart={isDraggable ? e => { e.stopPropagation(); onDragStart(e, ev.id) } : undefined}
             onDragEnd={isDraggable ? onDragEnd : undefined}
@@ -179,6 +181,7 @@ function ProfColumn({
           >
             <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : 'var(--success)', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               <span>{timeStr} · {ev.durationMin}min</span>
+              <SeloDaFicha estado={ev.fichaDeSaude} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· concluído</span>}
             </div>

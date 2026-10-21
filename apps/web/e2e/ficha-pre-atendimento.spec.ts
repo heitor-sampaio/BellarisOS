@@ -547,4 +547,40 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await ctx.close()
     }
   })
+
+  test('na agenda, o bloco do agendamento mostra a ficha: pendente ou respondida', async ({ browser }) => {
+    const pendente = await agendada('Selo pendente')
+    const respondida = await agendada('Selo respondida')
+    const semFicha = await agendada('Selo sem ficha')
+    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respondido_em: new Date().toISOString() })
+      .eq('id', (await pendenteDe(respondida.cliente)).id)).error).toBeNull()
+    expect((await db().from('pre_atendimentos').update({ status: 'CANCELADO' })
+      .eq('id', (await pendenteDe(semFicha.cliente)).id)).error).toBeNull()
+    // Hoje, para a agenda da unidade (abre no dia de hoje): a mesma cliente pendente.
+    const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+    const { data: deHoje, error } = await db().from('appointments').insert({
+      branch_id: D.branchId, client_id: pendente.cliente, procedure_id: D.procedureId, professional_id: D.professionalId,
+      status: 'SCHEDULED', source: 'INTERNAL', scheduled_at: new Date(`${hoje}T12:00:00-03:00`).toISOString(), duration_min: 30, price: 0,
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    const { data: un } = await db().from('branches').select('slug').eq('id', D.branchId).single<{ slug: string }>()
+    // A agenda da unidade tem uma coluna por profissional DELA.
+    expect((await db().from('users').update({ branch_id: D.branchId, provides_services: true }).eq('id', D.professionalId)).error).toBeNull()
+
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda?date=${DIA}`)
+      const bloco = (nome: string) => page.locator(`[title*="${nome} pd${marca}"]`).first()
+      await expect(bloco('Selo pendente').locator('[data-ficha-de-saude="PENDENTE"]')).toHaveCount(1)
+      await expect(bloco('Selo respondida').locator('[data-ficha-de-saude="RESPONDIDA"]')).toHaveCount(1)
+      await expect(bloco('Selo sem ficha')).toBeVisible()
+      await expect(bloco('Selo sem ficha').locator('[data-ficha-de-saude]')).toHaveCount(0)
+
+      await page.goto(`/${un!.slug}/agenda`)
+      await expect(page.locator(`[data-agendamento="${deHoje!.id}"] [data-ficha-de-saude="PENDENTE"]`)).toHaveCount(1)
+    } finally {
+      await ctx.close()
+    }
+  })
 })

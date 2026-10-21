@@ -7,6 +7,8 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { AppointmentModal } from '@/components/branch/appointment-modal'
 import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
+import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
+import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -23,6 +25,8 @@ interface Appointment {
   procedures:      { name: string } | null
   clients:         { name: string } | null
   users:           { name: string } | null
+  /** A ficha de saúde da cliente para este horário (selo no bloco). */
+  ficha?:          EstadoDaFicha | null
 }
 
 interface Props {
@@ -296,8 +300,11 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
                         display:      'block',
                       }}
                     >
-                      <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: st.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {a.procedures?.name ?? '—'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: st.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                          {a.procedures?.name ?? '—'}
+                        </span>
+                        <SeloDaFicha estado={a.ficha} />
                       </div>
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {a.clients?.name ?? '—'}
@@ -409,6 +416,7 @@ function WeekGrid({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                       <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.text }}>{t}</span>
+                      <SeloDaFicha estado={a.ficha} />
                       <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {branches.find(b => b.id === a.branch_id)?.name ?? ''}
                       </span>

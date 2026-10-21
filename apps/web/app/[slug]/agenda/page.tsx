@@ -8,6 +8,7 @@ import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
+import { selosDaFicha } from '@/lib/pre-atendimento/selos'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
   getCachedBranchProfessionals, getCachedRoomsByBranch,
@@ -37,7 +38,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
   let appointmentsQuery = supabase
     .from('appointments')
     .select(`
-      id, scheduled_at, duration_min, status, price, professional_id,
+      id, scheduled_at, duration_min, status, price, professional_id, client_id,
       clients(name),
       procedures(name),
       users!professional_id(name)
@@ -85,6 +86,9 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
   // descartado e a unidade inteira aparecia sem nenhum atendimento.
   if (apptErr) throw new Error(`Erro ao carregar a agenda: ${apptErr.message}`)
 
+  // O selo da ficha de saúde no bloco (2026-10-21): só o estado, do banco.
+  const selos = await selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[])
+
   // Mapeia appointments para eventos do FullCalendar
   const events = (rawAppointments ?? []).map(a => {
     const client       = a.clients       as unknown as { name: string } | null
@@ -103,6 +107,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
       professionalName: professional?.name ?? '—',
       professionalId:   a.professional_id ?? '',
       price:            String(a.price),
+      fichaDeSaude:     selos[a.id] ?? null,
     }
   })
 

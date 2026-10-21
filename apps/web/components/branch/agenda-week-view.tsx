@@ -1,6 +1,7 @@
 'use client'
 
 import { addDays, startOfWeek, isSameDay, format } from 'date-fns'
+import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import type { CalendarEvent } from './agenda-month-view'
 
 interface Professional { id: string; name: string }
@@ -64,7 +65,10 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(34,22,25,.08)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
     >
-      <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)' }}>{time}</div>
+      <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+        {time}
+        <SeloDaFicha estado={ev.fichaDeSaude} />
+      </div>
       <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {shortName(ev.clientName)}
       </div>
