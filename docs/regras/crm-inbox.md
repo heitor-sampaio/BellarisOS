@@ -348,6 +348,7 @@ o contato junto.
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
 ❌ Editar nome/telefone numa cópia (conversa, oportunidade) sem propagarDadosDaPessoa
 ❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a dona é contato_id)
+❌ Ler leads pela SESSÃO numa tela que roda na unidade (a política de leitura só deixa passar quem é da rede, e o lead é sempre da rede: o quadro da unidade via "0 leads" até 2026-10-20) — o servidor lê pelo cliente de serviço, com a rede e o ownerFilter na consulta
 ❌ Agrupar a fila do inbox por pessoa — é uma linha por conversa (decisão de 2026-09-26)
 ❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)
 ❌ Procurar "o anúncio do cliente" na conversa mais recente em vez da mais recente COM anúncio

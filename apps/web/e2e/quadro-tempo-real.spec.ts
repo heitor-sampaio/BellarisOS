@@ -100,3 +100,20 @@ test('quem é de unidade vê a etapa renomeada, sem recarregar', async ({ browse
     await expect(visivel(novo)).toBeVisible({ timeout: 30_000 })
   })
 })
+
+test('quem é de unidade VÊ os leads da rede no quadro, e o ?lead= abre o card (2026-10-20)', async ({ browser }) => {
+  // A simulação de um dia de clínica: o SDR e a recepção, de unidade fixa,
+  // viam "0 leads" — a política de leitura de `leads` exigia a claim de
+  // unidade nula, e o lead é sempre da rede (branch_id nulo). O teste acima só
+  // olhava a etapa, que não passa por ela.
+  const nome = `${PREFIXO} Lead da rede ${marca}`
+  const { data: lead, error } = await db().from('leads').insert({
+    tenant_id: f!.outra.tenantId, name: nome, phone: '5548901' + String(Date.now()).slice(-6), crm_stage_id: f!.etapa,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  await comQuadroAberto(browser, f!.unidade, `/${f!.slug}/oportunidades`, async p => {
+    await expect(p.locator('.crm-card').filter({ hasText: nome })).toBeVisible()
+    await p.goto(`/${f!.slug}/oportunidades?lead=${lead!.id}`)
+    await expect(p.getByRole('dialog').filter({ hasText: nome })).toBeVisible()
+  })
+})

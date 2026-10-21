@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { funnelStats } from '@/lib/crm'
 import { CRMBoard } from '@/components/branch/crm-board'
@@ -96,10 +97,16 @@ export default async function BranchOportunidadesPage({
   // `ownerFilter` continua valendo: é o alcance do CARGO ("só os próprios
   // leads"), coisa diferente de recorte por unidade. Funil sem etapa nenhuma
   // não tem o que buscar — `.in()` com lista vazia é inválido no PostgREST.
+  //
+  // ⚠️ Pelo cliente de SERVIÇO, depois do assertPermission e com a rede e o
+  // alcance na própria consulta (como o inbox). A política de leitura de
+  // `leads` só deixa passar quem é da REDE (claim de unidade nula), e o lead
+  // é sempre da rede: pela sessão, todo membro de unidade via "0 leads" — a
+  // simulação de um dia de clínica (2026-10-20) achou no SDR e na recepção.
   const leadOwner = ownerFilter(ctx, 'crm')
   let leads: LeadLido[] = []
   if (stageIds.length > 0) {
-    let leadsQuery = supabase
+    let leadsQuery = createAdminClient()
       .from('leads')
       .select(`
         id, name, phone, email, social_media, source,
