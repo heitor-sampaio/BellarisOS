@@ -1,5 +1,6 @@
 ﻿import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { capacidadeEmMinutos, normalizarHorario } from '@/lib/agenda/horario'
 import { getTenantContext, isOwnScope, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
@@ -14,7 +15,7 @@ import { unitTag } from '@estetica-os/utils'
 import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
-  resolvePeriod, delta, ratio, occupancyPct, CAPACITY_HOURS_PER_DAY,
+  resolvePeriod, delta, ratio, occupancyPct,
   getCore, getSeries, getTopProcedures, EMPTY_CORE,
 } from '@/lib/metrics'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
@@ -133,7 +134,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     monthSeries,
     pendingCheckouts,
     todayAppts,
-    professionalsCount,
+    profissionaisDaUnidade,
     procedureStats,
     paraReativar,
   ] = await Promise.all([
@@ -174,9 +175,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       : Promise.resolve([]),
 
     (canAgenda && !professionalOnly)
-      ? contar(admin.from('users').select('id', { count: 'exact', head: true })
-          .eq('branch_id', branchId).eq('provides_services', true).eq('is_active', true), 'contar os profissionais')
-      : Promise.resolve(0),
+      // Os profissionais e o horário de cada um: a capacidade da ocupação.
+      ? ler(admin.from('users').select('horario')
+          .eq('branch_id', branchId).eq('provides_services', true).eq('is_active', true), 'carregar os profissionais')
+      : Promise.resolve([]),
 
     canProcedures
       ? getTopProcedures({
@@ -214,8 +216,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const scheduledMin  = validToday.reduce((s, a) => s + (a.duration_min ?? 0), 0)
 
   // Capacidade do DIA (a agenda mostrada é a de hoje), não do mês.
-  const capacityMin = (professionalsCount ?? 0) * CAPACITY_HOURS_PER_DAY * 60
-  const occupancy   = occupancyPct(scheduledMin, professionalsCount ?? 0, todayStart, todayEnd) ?? 0
+  // A capacidade do DIA (a agenda mostrada é a de hoje), pelo HORÁRIO da
+  // unidade e de cada profissional — a mesma conta da agenda (lib/agenda/horario).
+  const professionalsCount = (profissionaisDaUnidade ?? []).length
+  const horarios = {
+    unidade:       normalizarHorario((await ler(admin.from('branches').select('horario').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade') as { horario?: unknown } | null)?.horario),
+    profissionais: ((profissionaisDaUnidade ?? []) as { horario: unknown }[]).map(p => normalizarHorario(p.horario)),
+  }
+  const capacityMin = capacidadeEmMinutos(horarios.unidade, horarios.profissionais, todayStart, todayEnd)
+  const occupancy   = occupancyPct(scheduledMin, horarios, todayStart, todayEnd) ?? 0
 
   // -- Gráfico dos últimos 6 meses -------------------------------
   const seriesByMonth = new Map(monthSeries.map(p => [monthKeyTZ(p.bucket), p.revenue]))

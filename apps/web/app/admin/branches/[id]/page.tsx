@@ -23,7 +23,7 @@ export default async function BranchDetailPage({ params }: Props) {
     .from('branches')
     .select(`
       id, name, slug, document, state_registration,
-      email, phone, address, city, state, zip_code,
+      email, phone, address, city, state, zip_code, horario,
       is_active, created_at,
       users(id, name, is_active)
     `)

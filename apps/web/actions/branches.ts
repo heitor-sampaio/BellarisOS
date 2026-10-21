@@ -1,6 +1,7 @@
 'use server'
 
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
+import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -88,6 +89,16 @@ export async function updateBranch(
   const city              = (formData.get('city') as string)?.trim() || null
   const state             = (formData.get('state') as string)?.trim().toUpperCase() || null
   const zipCode           = (formData.get('zip_code') as string)?.trim() || null
+  // O horário de funcionamento (2026-10-21): vazio = sem cadastro (o padrão).
+  const horarioBruto      = formData.get('horario')
+  let horario: Horario | null | undefined = undefined
+  if (typeof horarioBruto === 'string') {
+    if (!horarioBruto.trim()) horario = null
+    else {
+      try { horario = normalizarHorario(JSON.parse(horarioBruto)) } catch { horario = null }
+      if (!horario) return { error: 'Horário inválido: confira se cada período fecha depois de abrir e se não há períodos sobrepostos.' }
+    }
+  }
 
   if (!name) return { error: 'Nome é obrigatório.' }
   // Quem tem unidade fixa edita a dela; a da rede, todas (§11). Até 2026-09-28
@@ -108,6 +119,7 @@ export async function updateBranch(
       city,
       state,
       zip_code: zipCode,
+      ...(horario !== undefined ? { horario } : {}),
     })
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)

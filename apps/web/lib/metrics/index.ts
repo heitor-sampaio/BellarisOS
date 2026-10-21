@@ -19,38 +19,26 @@
  */
 
 export * from './period'
+import { ocupacaoEmPct, type Horario } from '@/lib/agenda/horario'
 export * from './queries'
 
-/** Jornada considerada por profissional. Não há cadastro de horário de
- *  funcionamento no schema — quando houver, trocar por ele. */
-export const CAPACITY_HOURS_PER_DAY = 8
-
-/** Dias com expediente (seg–sáb) entre duas datas, no fuso do negócio. */
-export function businessDaysBetween(from: Date, to: Date): number {
-  const MS_DAY = 86_400_000
-  const days = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / MS_DAY))
-  let count = 0
-  for (let i = 0; i < days; i++) {
-    const d = new Date(from.getTime() + i * MS_DAY)
-    const wd = d.getUTCDay()
-    if (wd !== 0) count++   // domingo não conta
-  }
-  return Math.max(1, count)
-}
-
 /**
- * Ocupação: percentual da capacidade que foi efetivamente agendada.
- * Retorna null quando não há capacidade (sem profissional), para a UI
- * mostrar "—" em vez de 0% — que era lido como "ninguém atendeu".
+ * Ocupação: percentual da capacidade que foi agendada — minutos dos
+ * agendamentos que não foram cancelados nem faltas (os concluídos contam) ÷ a
+ * capacidade do HORÁRIO de funcionamento: a soma, por profissional e por dia,
+ * dos minutos em que ele atende na unidade (`capacidadeEmMinutos`,
+ * lib/agenda/horario.ts). Percentual inteiro, até 100.
+ *
+ * Era 8 h por profissional (seg–sáb) aqui e 12 h na agenda, que fazia a conta
+ * na tela: as duas davam números diferentes (D12 da simulação de 2026-10-20).
+ * Retorna null sem capacidade (sem profissional), para a UI mostrar "—" em
+ * vez de 0% — que era lido como "ninguém atendeu".
  */
 export function occupancyPct(
   scheduledMinutes: number,
-  professionals: number,
+  horarios: { unidade: Horario | null; profissionais: (Horario | null)[] },
   from: Date,
   to: Date,
 ): number | null {
-  if (!professionals) return null
-  const capacity = professionals * CAPACITY_HOURS_PER_DAY * 60 * businessDaysBetween(from, to)
-  if (!capacity) return null
-  return Math.min((scheduledMinutes / capacity) * 100, 100)
+  return ocupacaoEmPct(scheduledMinutes, horarios.unidade, horarios.profissionais, from, to)
 }

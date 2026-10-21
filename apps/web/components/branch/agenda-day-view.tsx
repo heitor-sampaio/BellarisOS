@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { createContext, useContext, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import type { CalendarEvent } from './agenda-month-view'
 
@@ -14,12 +14,21 @@ interface Props {
   onEventClick:  (ev: CalendarEvent) => void
   onSlotClick:   (date: Date, profId?: string) => void
   onDrop:        (eventId: string, newStart: Date, newProfId: string) => Promise<void>
+  /** As horas da grade (o horário de funcionamento da unidade); sem ela, 07–21. */
+  janela?:       { inicio: number; fim: number }
 }
 
-const START_HOUR = 7
-const END_HOUR   = 21
+// A janela da grade vem do horário de funcionamento (prop `janela`); o
+// padrão, sem ela, é o de antes. As funções abaixo a recebem.
+const START_PADRAO = 7
+const END_PADRAO   = 21
 const HOUR_PX    = 80
-const TOTAL_PX   = (END_HOUR - START_HOUR) * HOUR_PX
+
+interface Grade { START_HOUR: number; END_HOUR: number; TOTAL_PX: number; HOURS: number[] }
+function gradeDe(inicio: number, fim: number): Grade {
+  return { START_HOUR: inicio, END_HOUR: fim, TOTAL_PX: (fim - inicio) * HOUR_PX, HOURS: Array.from({ length: fim - inicio }, (_, i) => inicio + i) }
+}
+const GradeCtx = createContext<Grade>(gradeDe(START_PADRAO, END_PADRAO))
 const TIME_COL_W = 60
 
 const PROF_COLORS = [
@@ -31,20 +40,19 @@ const PROF_COLORS = [
   { bg: 'var(--cat-6-soft)', text: 'var(--cat-6)' },
 ]
 
-const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
 
 function getInitials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
 }
 
-function timeToY(isoStr: string): number {
+function timeToY(isoStr: string, g: Grade): number {
   const d = new Date(isoStr)
-  return (d.getHours() + d.getMinutes() / 60 - START_HOUR) * HOUR_PX
+  return (d.getHours() + d.getMinutes() / 60 - g.START_HOUR) * HOUR_PX
 }
 
-function yToTime(y: number, baseDate: Date): Date {
-  const totalMin  = START_HOUR * 60 + Math.round(y / HOUR_PX * 60 / 15) * 15
-  const clamped   = Math.max(START_HOUR * 60, Math.min((END_HOUR - 0.25) * 60, totalMin))
+function yToTime(y: number, baseDate: Date, g: Grade): Date {
+  const totalMin  = g.START_HOUR * 60 + Math.round(y / HOUR_PX * 60 / 15) * 15
+  const clamped   = Math.max(g.START_HOUR * 60, Math.min((g.END_HOUR - 0.25) * 60, totalMin))
   const result    = new Date(baseDate)
   result.setHours(Math.floor(clamped / 60), clamped % 60, 0, 0)
   return result
@@ -73,12 +81,13 @@ function ProfColumn({
   onEventClick, onSlotClick, onDragStart, onDragEnd, onDragOver, onDrop,
 }: ColProps) {
   const colRef = useRef<HTMLDivElement>(null)
+  const g = useContext(GradeCtx)
 
   return (
     <div
       ref={colRef}
       style={{
-        flex: 1, minWidth: 160, position: 'relative', height: TOTAL_PX,
+        flex: 1, minWidth: 160, position: 'relative', height: g.TOTAL_PX,
         borderLeft: isFirst ? 'none' : '1px solid var(--border)',
         background: dropPreviewY !== null ? 'rgba(195,77,107,0.025)' : undefined,
         cursor: canWrite ? 'crosshair' : 'default',
@@ -88,21 +97,21 @@ function ProfColumn({
       onClick={e => {
         if (!canWrite || draggingId) return
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-        onSlotClick(yToTime(e.clientY - rect.top, currentDate))
+        onSlotClick(yToTime(e.clientY - rect.top, currentDate, g))
       }}
     >
       {/* Hour grid lines */}
-      {HOURS.map(h => (
+      {g.HOURS.map(h => (
         <div key={h} style={{
-          position: 'absolute', top: (h - START_HOUR) * HOUR_PX,
+          position: 'absolute', top: (h - g.START_HOUR) * HOUR_PX,
           left: 0, right: 0, borderTop: '1px solid var(--border)', pointerEvents: 'none',
         }} />
       ))}
 
       {/* Half-hour lines */}
-      {HOURS.map(h => (
+      {g.HOURS.map(h => (
         <div key={`h${h}`} style={{
-          position: 'absolute', top: (h - START_HOUR) * HOUR_PX + HOUR_PX / 2,
+          position: 'absolute', top: (h - g.START_HOUR) * HOUR_PX + HOUR_PX / 2,
           left: 0, right: 0, borderTop: '1px dashed var(--hairline)', pointerEvents: 'none',
         }} />
       ))}
@@ -118,7 +127,7 @@ function ProfColumn({
 
       {/* Events */}
       {events.map(ev => {
-        const top       = Math.max(0, timeToY(ev.start))
+        const top       = Math.max(0, timeToY(ev.start, g))
         const height    = Math.max(32, (ev.durationMin / 60) * HOUR_PX - 4)
         const isDragging = draggingId === ev.id
         const isProgress  = ev.status === 'IN_PROGRESS'
@@ -190,12 +199,21 @@ function ProfColumn({
   )
 }
 
-export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop }: Props) {
+export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela }: Props) {
   const [draggingId,   setDraggingId]   = useState<string | null>(null)
   const [dropTarget,   setDropTarget]   = useState<{ profId: string; y: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const todayEvents = events.filter(e => isSameDay(new Date(e.start), currentDate))
+  // A grade do horário da unidade, estendida pelos agendamentos do dia que
+  // caem fora dele (um encaixe às 21 h não pode sumir da tela).
+  let inicio = janela?.inicio ?? START_PADRAO, fim = janela?.fim ?? END_PADRAO
+  for (const ev of todayEvents) {
+    const a = new Date(ev.start), b = new Date(a.getTime() + ev.durationMin * 60000)
+    inicio = Math.min(inicio, a.getHours())
+    fim    = Math.max(fim, b.getHours() + (b.getMinutes() > 0 ? 1 : 0))
+  }
+  const g = gradeDe(inicio, Math.min(24, Math.max(fim, inicio + 1)))
 
   function getRelY(e: React.DragEvent, colEl: HTMLElement): number {
     const rect      = colEl.getBoundingClientRect()
@@ -206,13 +224,13 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   function handleDragOver(e: React.DragEvent, colEl: HTMLElement, profId: string) {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    setDropTarget({ profId, y: Math.min(TOTAL_PX - 2, getRelY(e, colEl)) })
+    setDropTarget({ profId, y: Math.min(g.TOTAL_PX - 2, getRelY(e, colEl)) })
   }
 
   async function handleDrop(e: React.DragEvent, colEl: HTMLElement, profId: string) {
     e.preventDefault()
     if (!draggingId) return
-    const newStart = yToTime(getRelY(e, colEl), currentDate)
+    const newStart = yToTime(getRelY(e, colEl), currentDate, g)
     setDraggingId(null)
     setDropTarget(null)
     await onDrop(draggingId, newStart, profId)
@@ -227,6 +245,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   }
 
   return (
+    <GradeCtx.Provider value={g}>
     <div className="table-wrap">
     <div ref={scrollRef} style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minWidth: 500 }}>
       {/* Sticky professional headers — dentro do scroll para largura idêntica à do grid */}
@@ -265,13 +284,13 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'flex', minHeight: TOTAL_PX }}>
+      <div style={{ display: 'flex', minHeight: g.TOTAL_PX }}>
         {/* Time labels */}
         <div style={{ width: TIME_COL_W, flexShrink: 0, position: 'relative' }}>
-          {HOURS.map(h => (
+          {g.HOURS.map(h => (
             <div key={h} style={{
               position: 'absolute',
-              top: (h - START_HOUR) * HOUR_PX - 7,
+              top: (h - g.START_HOUR) * HOUR_PX - 7,
               right: 8,
               fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', userSelect: 'none',
             }}>
@@ -308,5 +327,6 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
       </div>
     </div>
     </div>
+    </GradeCtx.Provider>
   )
 }

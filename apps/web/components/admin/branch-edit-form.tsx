@@ -3,6 +3,8 @@
 import { useActionState, useState } from 'react'
 import { updateBranch } from '@/actions/branches'
 import { Save, Loader2 } from 'lucide-react'
+import { EditorDeHorario } from '@/components/shared/editor-de-horario'
+import { normalizarHorario } from '@/lib/agenda/horario'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -21,6 +23,7 @@ interface BranchData {
   city:               string | null
   state:              string | null
   zip_code:           string | null
+  horario?:           unknown
 }
 
 interface Props {
@@ -183,6 +186,14 @@ export function BranchEditForm({ branch }: Props) {
             </select>
           </div>
         </div>
+      </section>
+
+      <section className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p className="overline" style={{ marginBottom: 4 }}>Horário de funcionamento</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          Os horários livres da agenda e do app da cliente, e a ocupação, seguem este horário.
+        </p>
+        <EditorDeHorario nome="horario" valor={normalizarHorario(branch.horario)} />
       </section>
 
       {/* Feedback + Submit */}

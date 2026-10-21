@@ -1,47 +1,47 @@
 import { describe, it, expect } from 'vitest'
-import { businessDaysBetween, occupancyPct, CAPACITY_HOURS_PER_DAY } from '@/lib/metrics'
+import { occupancyPct } from '@/lib/metrics'
 import { zonedToUtc } from '@/lib/datetime'
 
-const seg = zonedToUtc(2026, 9, 14)   // segunda
-const sab = zonedToUtc(2026, 9, 19)   // sábado
-const dom = zonedToUtc(2026, 9, 20)   // domingo
-const segSeguinte = zonedToUtc(2026, 9, 21)
+// A ocupação usa a capacidade do HORÁRIO de funcionamento (2026-10-21): até
+// aqui era 8 h por profissional no dashboard e 12 h na agenda, e as duas telas
+// davam números diferentes (D12 da simulação de um dia de clínica).
 
-describe('businessDaysBetween', () => {
-  it('conta de segunda a sábado', () => {
-    expect(businessDaysBetween(seg, dom)).toBe(6)
-  })
-
-  it('domingo não conta', () => {
-    expect(businessDaysBetween(sab, segSeguinte)).toBe(1)
-  })
-
-  it('janela menor que um dia ainda vale um dia — nunca divide por zero', () => {
-    expect(businessDaysBetween(seg, seg)).toBe(1)
-  })
-})
+const seg = zonedToUtc(2026, 10, 19)  // segunda, 19/10/2026 (o mês de zonedToUtc começa em 1)
+const dom = zonedToUtc(2026, 10, 25)  // domingo
+const fimDaSeg = new Date(seg.getTime() + 86_399_000)
+const padrao = { unidade: null, profissionais: [null] }   // seg–sáb, 08–20: 720 min/dia
 
 describe('occupancyPct', () => {
-  it('minutos agendados sobre a capacidade do período', () => {
-    const capacidadeDeUmDia = CAPACITY_HOURS_PER_DAY * 60      // 480 min
-    expect(occupancyPct(capacidadeDeUmDia / 2, 1, seg, seg)).toBe(50)
+  it('minutos agendados sobre a capacidade do horário', () => {
+    expect(occupancyPct(360, padrao, seg, fimDaSeg)).toBe(50)
+  })
+
+  it('o domingo fechado não conta capacidade', () => {
+    expect(occupancyPct(6 * 720, padrao, seg, dom)).toBe(100)
+  })
+
+  it('o horário da unidade decide a capacidade', () => {
+    const meioPeriodo = { unidade: { dias: { 1: [{ de: '08:00', ate: '12:00' }] } }, profissionais: [null] }
+    expect(occupancyPct(120, meioPeriodo, seg, fimDaSeg)).toBe(50)
   })
 
   it('sem profissional devolve null — 0% seria lido como "ninguém atendeu"', () => {
-    expect(occupancyPct(300, 0, seg, dom)).toBeNull()
+    expect(occupancyPct(300, { unidade: null, profissionais: [] }, seg, dom)).toBeNull()
   })
 
   it('não passa de 100%', () => {
-    expect(occupancyPct(999_999, 1, seg, dom)).toBe(100)
+    expect(occupancyPct(999_999, padrao, seg, dom)).toBe(100)
   })
 
   it('mais profissionais, mais capacidade — a mesma agenda ocupa menos', () => {
-    const um   = occupancyPct(2400, 1, seg, dom)!
-    const dois = occupancyPct(2400, 2, seg, dom)!
-    expect(dois).toBeCloseTo(um / 2, 10)
+    expect(occupancyPct(720, { unidade: null, profissionais: [null, null] }, seg, fimDaSeg)).toBe(50)
+  })
+
+  it('percentual inteiro (a tela mostrava "6.25")', () => {
+    expect(occupancyPct(45, padrao, seg, fimDaSeg)).toBe(6)
   })
 
   it('zero agendado é 0%, não null', () => {
-    expect(occupancyPct(0, 2, seg, dom)).toBe(0)
+    expect(occupancyPct(0, padrao, seg, dom)).toBe(0)
   })
 })

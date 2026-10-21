@@ -1,6 +1,7 @@
 'use server'
 
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
+import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
@@ -170,6 +171,16 @@ export async function updateTeamMember(
   const branchId         = formData.get('branchId') as string | null
   const providesServices = formData.get('providesServices') === 'on'
   const redirectPath     = (formData.get('redirectPath') as string) ?? '/admin/team'
+  // O horário de atendimento (2026-10-21): vazio = segue a unidade.
+  const horarioBruto     = formData.get('horario')
+  let horario: Horario | null | undefined = undefined
+  if (typeof horarioBruto === 'string') {
+    if (!horarioBruto.trim()) horario = null
+    else {
+      try { horario = normalizarHorario(JSON.parse(horarioBruto)) } catch { horario = null }
+      if (!horario) return { error: 'Horário inválido: confira se cada período fecha depois de abrir e se não há períodos sobrepostos.' }
+    }
+  }
 
   if (!userId || !roleId) return { error: 'Dados incompletos.' }
 
@@ -196,7 +207,7 @@ export async function updateTeamMember(
 
   const { error } = await admin
     .from('users')
-    .update({ role_id: roleId, branch_id: effectiveBranchId, provides_services: providesServices })
+    .update({ role_id: roleId, branch_id: effectiveBranchId, provides_services: providesServices, ...(horario !== undefined ? { horario } : {}) })
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
   if (error) return { error: 'Erro ao atualizar membro.' }

@@ -6,6 +6,21 @@
 > `CLAUDE.md` e valem aqui. Os números de seção são os de sempre.
 
 ### 9.1 Agenda
+- **O horário de funcionamento é da UNIDADE e, dentro dele, do PROFISSIONAL**
+  (decisão do Heitor, 2026-10-21): `branches.horario` e `users.horario`
+  (jsonb, por dia da semana, com pausa), editados em Configurações → Unidades e
+  na Equipe ("segue o horário da unidade"). Sem cadastro, a unidade é segunda a
+  sábado 08–20 e o profissional segue a unidade. A conta é UMA, pura, em
+  `lib/agenda/horario.ts` (`normalizarHorario` confere o que vem da tela):
+  - os livres (`computeAvailableSlots`: app da cliente, CRM, Copilot) só
+    dentro de unidade ∩ profissional, inteiros num período (não atravessam a
+    pausa) e, hoje, nunca antes de agora;
+  - a grade da agenda (dia) abre e fecha no horário da unidade, estendida pelos
+    agendamentos que caem fora dele;
+  - a capacidade da ocupação (`capacidadeEmMinutos`, §13.1).
+  A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
+  das sessões do plano continuam livres. Prova:
+  `e2e/agenda-horario-de-funcionamento.spec.ts`, `tests/agenda-horario.test.ts`.
 - Status: `SCHEDULED → CONFIRMED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `startedAt`, `completedAt`, `cancelledAt`
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.

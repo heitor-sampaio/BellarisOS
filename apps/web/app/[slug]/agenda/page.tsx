@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
+import { ler } from '@/lib/db'
 import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -58,13 +61,23 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
     procedures,
     professionals,
     rooms,
+    horarioRaw,
   ] = await Promise.all([
     appointmentsQuery,
 
     getCachedBranchProcedures(branchId, ctx.tenantId!),
     getCachedBranchProfessionals(branchId, ctx.tenantId!),
     getCachedRoomsByBranch(branchId, ctx.tenantId!),
+    // O horário de funcionamento (2026-10-21): a grade e a ocupação da agenda.
+    Promise.all([
+      ler(createAdminClient().from('branches').select('horario').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade'),
+      ler(createAdminClient().from('users').select('id, horario').eq('branch_id', branchId).eq('provides_services', true), 'buscar o horário dos profissionais'),
+    ]),
   ])
+  const horarioDaUnidade = normalizarHorario((horarioRaw[0] as { horario?: unknown } | null)?.horario)
+  const horariosDosProfissionais: Record<string, Horario | null> = Object.fromEntries(
+    ((horarioRaw[1] ?? []) as { id: string; horario: unknown }[]).map(p => [p.id, normalizarHorario(p.horario)]),
+  )
 
   // Agenda vazia é um fato; agenda que falhou é outra coisa. `appointments` tem
   // duas chaves para `users` (`professional_id` e `created_by_id`), então o
@@ -120,6 +133,8 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
         events={events}
         procedures={procedures ?? []}
         professionals={professionals ?? []}
+        horarioDaUnidade={horarioDaUnidade}
+        horariosDosProfissionais={horariosDosProfissionais}
         rooms={rooms ?? []}
         canWrite={canManageAgenda}
         userRole={ctx.role}

@@ -4,6 +4,7 @@
 // insert, histórico) desacoplada de FormData/cookies. Sem 'use server'.
 
 import { after } from 'next/server'
+import { intervalosDoDia, normalizarHorario, slotsDoDia, diaDaSemana } from '@/lib/agenda/horario'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { TenantContext } from '@estetica-os/types'
@@ -252,8 +253,11 @@ export async function createAppointmentCore(
 }
 
 /**
- * Slots livres de 30min (08:00–20:00, UTC-3) de um profissional num dia,
- * descontando os já ocupados. Reutilizável por qualquer role — o caller valida acesso.
+ * Slots livres de 30 min de um profissional num dia, dentro do HORÁRIO da
+ * unidade e do dele (`lib/agenda/horario.ts`, 2026-10-21 — eram fixos em
+ * 08–20, domingo inclusive), descontando os já ocupados e, hoje, o que já
+ * passou (o app oferecia horários vencidos e só recusava no último passo).
+ * Reutilizável por qualquer role — o caller valida acesso.
  */
 export async function computeAvailableSlots(
   admin: Admin,
@@ -262,13 +266,23 @@ export async function computeAvailableSlots(
   date: string,
   durationMin: number,
 ): Promise<string[]> {
-  const dayStart = new Date(`${date}T08:00:00-03:00`).toISOString()
-  const dayEnd   = new Date(`${date}T20:00:00-03:00`).toISOString()
+  const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
+  const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
+
+  const [unidade, prof] = await Promise.all([
+    ler(admin.from('branches').select('horario').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade'),
+    ler(admin.from('users').select('horario').eq('id', professionalId).maybeSingle(), 'buscar o horário do profissional'),
+  ])
+  const intervalos = intervalosDoDia(
+    normalizarHorario((unidade as { horario?: unknown } | null)?.horario),
+    normalizarHorario((prof as { horario?: unknown } | null)?.horario),
+    diaDaSemana(date),
+  )
+  if (!intervalos.length) return []
 
   // O profissional em QUALQUER unidade (o da rede atende em várias; o id do
-  // profissional já é de uma rede só), e o que começou antes das 8h e ainda
-  // ocupa a manhã (2026-10-08). `branchId` fica na assinatura dos chamadores.
-  void branchId
+  // profissional já é de uma rede só), e o que começou antes e ainda ocupa o
+  // começo do dia (2026-10-08).
   const booked = await ler(admin
     .from('appointments')
     .select('scheduled_at, duration_min')
@@ -277,25 +291,16 @@ export async function computeAvailableSlots(
     .lt('scheduled_at', dayEnd)
     .not('status', 'in', IGNORED_STATUS), 'carregar os agendamentos')
 
-  const allSlots: string[] = []
-  for (let h = 8; h < 20; h++) {
-    for (const m of [0, 30]) {
-      allSlots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
-    }
-  }
-
   const occupied = (booked ?? []).map((b) => ({
     start: new Date(b.scheduled_at as string).getTime(),
     end:   new Date(b.scheduled_at as string).getTime() + (Number(b.duration_min) || 60) * 60000,
   }))
+  const agora = Date.now()
 
-  const cutoff = new Date(`${date}T20:00:00-03:00`).getTime()
-
-  return allSlots.filter((slot) => {
-    const [hh, mm]  = slot.split(':').map(Number)
-    const slotStart = new Date(`${date}T${String(hh!).padStart(2, '0')}:${String(mm!).padStart(2, '0')}:00-03:00`).getTime()
+  return slotsDoDia(intervalos, durationMin).filter((slot) => {
+    const slotStart = new Date(`${date}T${slot}:00-03:00`).getTime()
     const slotEnd   = slotStart + durationMin * 60000
-    if (slotEnd > cutoff) return false
+    if (slotStart <= agora) return false
     return !occupied.some((o) => slotStart < o.end && slotEnd > o.start)
   })
 }

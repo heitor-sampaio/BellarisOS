@@ -61,7 +61,7 @@ export default async function AdminTeamPage({
     ler((() => {
       let query = supabase
         .from('users')
-        .select('id, name, email, role_id, is_active, branch_id, provides_services, branches(name)')
+        .select('id, name, email, role_id, is_active, branch_id, provides_services, horario, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
       if (branch) query = query.eq('branch_id', branch)
@@ -254,7 +254,7 @@ export default async function AdminTeamPage({
                           email:            m.email ?? '',
                           roleId:           m.role_id ?? null,
                           branchId:         m.branch_id ?? null,
-                          providesServices: !!m.provides_services,
+                          providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                         }}
                         branches={branches ?? []}
                         roles={assignableRoles}

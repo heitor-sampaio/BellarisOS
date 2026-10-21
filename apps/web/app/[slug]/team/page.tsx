@@ -56,7 +56,7 @@ export default async function TeamPage({
   const [todosOsMembros, tenantRoles] = await Promise.all([
     ler(supabase
       .from('users')
-      .select('id, name, email, role_id, is_active, provides_services')
+      .select('id, name, email, role_id, is_active, provides_services, horario')
       .eq('branch_id', branchId)
       .order('name'), 'carregar a equipe'),
     ler(supabase
@@ -184,7 +184,7 @@ export default async function TeamPage({
                           email:            m.email ?? '',
                           roleId:           m.role_id ?? null,
                           branchId:         branchId,
-                          providesServices: !!m.provides_services,
+                          providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                         }}
                         branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade' }]}
                         roles={assignableRoles}

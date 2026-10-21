@@ -44,7 +44,12 @@
   - `serviceRevenue` — preço dos atendimentos concluídos (eixo em `scheduled_at`)
   - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos` — **numerador e
     denominador do mesmo conjunto**
-  - `occupancy` = minutos agendados ÷ capacidade (`occupancyPct()`)
+  - `occupancy` = minutos agendados (sem cancelados e faltas; os concluídos
+    contam) ÷ a capacidade do HORÁRIO de funcionamento — por profissional e
+    por dia, unidade ∩ profissional (`occupancyPct()` → `ocupacaoEmPct`,
+    `lib/agenda/horario.ts`; 2026-10-21). Percentual inteiro. A agenda e o
+    dashboard da unidade usam a MESMA função: eram 12 h na agenda (sem os
+    concluídos) e 8 h no dashboard, e as duas davam números diferentes.
   - **composição do financeiro** (receita por forma de pagamento, receita e
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.

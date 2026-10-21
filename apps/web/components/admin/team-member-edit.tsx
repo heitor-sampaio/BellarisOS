@@ -1,6 +1,8 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { EditorDeHorario } from '@/components/shared/editor-de-horario'
+import { normalizarHorario } from '@/lib/agenda/horario'
 import { Pencil, X } from 'lucide-react'
 import { updateTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -16,6 +18,8 @@ export interface EditableMember {
   roleId:           string | null
   branchId:         string | null
   providesServices: boolean
+  /** O horário de atendimento (nulo = segue a unidade). */
+  horario?:         unknown
 }
 
 interface Props {
@@ -144,6 +148,11 @@ export function TeamMemberEdit({ member, branches, roles, canChooseScope, redire
                     Atende clientes (aparece na agenda como profissional e gera comissão)
                   </span>
                 </label>
+
+                <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span className="field-label">Horário de atendimento</span>
+                  <EditorDeHorario nome="horario" valor={normalizarHorario(member.horario)} seguir="Segue o horário da unidade" />
+                </div>
               </div>
 
               {stateError && (
