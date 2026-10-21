@@ -56,7 +56,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
     ler(admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
-      .in('status', ['SCHEDULED', 'CONFIRMED'])
+      .in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED'])
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at')
       .limit(1)

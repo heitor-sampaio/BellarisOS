@@ -146,17 +146,23 @@ export function revalidarAgendamento(ctx: TenantContext, appointmentId: string, 
 }
 
 /**
- * O CHECK-IN ("o cliente chegou") — o núcleo da agenda e do Copilot
- * (2026-10-08). Só de "agendado", com a guarda do status na própria escrita.
- * O aviso (`notifyCheckin`) é do chamador.
+ * O CHECK-IN ("a cliente chegou") — o núcleo da agenda e do Copilot
+ * (2026-10-08). Desde 2026-10-21 é um status PRÓPRIO, "Chegou" (ARRIVED, com
+ * `arrived_at`): antes gravava CONFIRMED, o mesmo de "confirmou presença", e a
+ * recepção não distinguia quem já estava na sala de espera. Vale de Agendado
+ * (chegar também confirma) ou de Confirmado, com a guarda do status na própria
+ * escrita. O aviso (`notifyCheckin`) é do chamador.
  */
 export async function checkinCore(admin: Admin, ctx: TenantContext, appointmentId: string): Promise<{ ok: true } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
-  if (existente.status !== 'SCHEDULED') return { error: 'Check-in só é possível em agendamentos com status Agendado.' }
+  if (existente.status !== 'SCHEDULED' && existente.status !== 'CONFIRMED') {
+    return { error: 'Check-in só é possível em agendamentos Agendados ou Confirmados.' }
+  }
+  const agora = new Date().toISOString()
   const feitas = await gravar(admin.from('appointments')
-    .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
-    .eq('id', existente.id).eq('status', 'SCHEDULED').select('id'), 'registrar a chegada do cliente') as { id: string }[] | null
+    .update({ status: 'ARRIVED', arrived_at: agora, ...(existente.status === 'SCHEDULED' ? { confirmed_at: agora } : {}) })
+    .eq('id', existente.id).eq('status', existente.status).select('id'), 'registrar a chegada do cliente') as { id: string }[] | null
   if (!feitas?.length) return { error: 'O agendamento mudou de situação. Confira na agenda.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)

@@ -21,8 +21,16 @@
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
   das sessões do plano continuam livres. Prova:
   `e2e/agenda-horario-de-funcionamento.spec.ts`, `tests/agenda-horario.test.ts`.
-- Status: `SCHEDULED → CONFIRMED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
-- Campos de timestamp por transição: `confirmedAt`, `startedAt`, `completedAt`, `cancelledAt`
+- Status: `SCHEDULED → CONFIRMED → ARRIVED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
+- Campos de timestamp por transição: `confirmedAt`, `arrivedAt`, `startedAt`, `completedAt`, `cancelledAt`
+- **Confirmar e chegar são passos diferentes** (2026-10-21, decisão do Heitor;
+  migrations `20261021000009/10`): CONFIRMED é "confirmou presença"; ARRIVED
+  ("Chegou", `arrived_at`) é o check-in — a cliente está na sala de espera.
+  Antes os dois gravavam CONFIRMED. O check-in (`checkinCore`, a agenda e o
+  Copilot) vale de Agendado (chegar também confirma) ou de Confirmado; o
+  atendimento começa de Confirmado ou de Chegou. Chegar emite os documentos do
+  início, como confirmar. Lista nova de status "em aberto" inclui ARRIVED.
+  Prova: `e2e/agenda-check-in.spec.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
 - **Todo agendamento tem procedimento.** A "avaliação" era a exceção que
   permitia marcar sem escolher um — ela deixou de ser entidade em 2026-09-25 e

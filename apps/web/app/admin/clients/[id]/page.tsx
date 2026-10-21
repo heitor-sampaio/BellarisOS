@@ -28,7 +28,7 @@ const SUBTITULO_DO_CANAL: Record<string, string> = {
 }
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 
-const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
+const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
 export default async function AdminClientProfilePage({
   params,

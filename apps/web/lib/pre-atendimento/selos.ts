@@ -5,7 +5,7 @@ import { ler } from '@/lib/db'
 export type SeloDaFicha = 'PENDENTE' | 'RESPONDIDA'
 
 /** Status em que o agendamento ainda vai acontecer (ou está acontecendo). */
-const EM_ABERTO = new Set(['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'])
+const EM_ABERTO = new Set(['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'])
 /** Ids por consulta: a lista vai na URL do PostgREST. */
 const LOTE = 150
 

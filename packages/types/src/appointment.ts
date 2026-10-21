@@ -1,6 +1,8 @@
 export type AppointmentStatus =
   | 'SCHEDULED'
   | 'CONFIRMED'
+  /** Chegou à clínica — o check-in (2026-10-21). */
+  | 'ARRIVED'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'CANCELLED'

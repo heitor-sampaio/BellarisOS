@@ -926,7 +926,7 @@ async function cancelTreatmentPlanInterno(
     .from('appointments')
     .select('id, price')
     .eq('treatment_plan_id', planId)
-    .in('status', ['SCHEDULED', 'CONFIRMED']), 'carregar os agendamentos')
+    .in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED']), 'carregar os agendamentos')
 
   if (futureAppts && futureAppts.length > 0) {
     const apptIds = futureAppts.map(a => a.id)

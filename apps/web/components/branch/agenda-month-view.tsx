@@ -19,6 +19,8 @@ export interface CalendarEvent {
   price:           string
   /** A ficha de saúde da cliente para este horário (selo no bloco). */
   fichaDeSaude?:   SeloDaFichaEstado | null
+  /** O check-in (2026-10-21): quando chegou. */
+  arrivedAt?:      string | null
 }
 
 interface Props {

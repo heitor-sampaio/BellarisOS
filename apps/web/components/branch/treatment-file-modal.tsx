@@ -37,6 +37,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 const APPT_STATUS: Record<string, { label: string; color: string }> = {
   SCHEDULED:   { label: 'Agendada',     color: 'var(--info)' },
   CONFIRMED:   { label: 'Confirmada',   color: 'var(--info)' },
+  ARRIVED:     { label: 'Na clínica',   color: 'var(--success)' },
   IN_PROGRESS: { label: 'Em andamento', color: 'var(--warning)' },
   COMPLETED:   { label: 'Realizada',    color: 'var(--success)' },
   CANCELLED:   { label: 'Cancelada',    color: 'var(--danger)' },
@@ -74,7 +75,7 @@ function SessionItem({
   const apptStatus = appt?.status ?? null
   const isDone     = apptStatus === 'COMPLETED'
   const isActive   = apptStatus === 'IN_PROGRESS'
-  const isBooked   = apptStatus === 'SCHEDULED' || apptStatus === 'CONFIRMED'
+  const isBooked   = apptStatus === 'SCHEDULED' || apptStatus === 'CONFIRMED' || apptStatus === 'ARRIVED'
 
   const dotColor = isDone ? 'var(--success)' : isActive ? 'var(--warning)' : isBooked ? 'var(--info)' : 'var(--border)'
   const dotBg    = isDone ? 'var(--success-bg)' : isActive ? 'var(--warning-soft)' : isBooked ? 'var(--info-soft)' : 'var(--bg-app)'
@@ -187,7 +188,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
     })
   })
 
-  const scheduled = details.sessions.filter(s => s.appointment && (s.appointment.status === 'SCHEDULED' || s.appointment.status === 'CONFIRMED'))
+  const scheduled = details.sessions.filter(s => s.appointment && (s.appointment.status === 'SCHEDULED' || s.appointment.status === 'CONFIRMED' || s.appointment.status === 'ARRIVED'))
   scheduled.forEach(s => {
     if (!s.appointment) return
     const procName = s.procedures[0]?.name ?? '—'

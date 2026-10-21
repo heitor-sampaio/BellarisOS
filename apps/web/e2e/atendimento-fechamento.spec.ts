@@ -118,7 +118,7 @@ test.describe.serial('fechar um atendimento', () => {
 
     await page.getByRole('button', { name: 'Check-in' }).click()
     await expect.poll(async () => (await db.from('appointments').select('status').eq('id', c!.agendamento).single()).data?.status)
-      .toBe('CONFIRMED')
+      .toBe('ARRIVED')
 
     await page.getByRole('button', { name: 'Iniciar atendimento' }).click()
     await expect.poll(async () => (await db.from('appointments').select('status').eq('id', c!.agendamento).single()).data?.status)

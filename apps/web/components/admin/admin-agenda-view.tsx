@@ -19,6 +19,8 @@ interface Appointment {
   scheduled_at:    string
   started_at:      string | null
   completed_at:    string | null
+  /** O check-in (2026-10-21): quando chegou. */
+  arrived_at?:     string | null
   status:          string
   branch_id:       string
   price:           number | null
@@ -67,9 +69,16 @@ function horarioNoY(dia: string, y: number): string {
   return `${dia}T${hh}:${mm}`
 }
 
+/** "Chegou 9:42" no bloco — o check-in (2026-10-21). */
+function chegouEm(iso: string | null | undefined): string {
+  if (!iso) return 'Chegou'
+  return `Chegou ${new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}`
+}
+
 const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; label: string }> = {
   SCHEDULED:   { bg: 'var(--info-soft)', border: 'var(--info-border)', text: 'var(--info)', label: 'Agendado'      },
   CONFIRMED:   { bg: 'var(--success-bg)', border: 'var(--cat-4-soft)', text: 'var(--cat-4)', label: 'Confirmado'     },
+  ARRIVED:     { bg: 'var(--success-soft)', border: 'var(--success)', text: 'var(--success)', label: 'Chegou'         },
   IN_PROGRESS: { bg: 'var(--warning-soft)', border: 'var(--warning-border)', text: 'var(--warning)', label: 'Em atendimento' },
   COMPLETED:   { bg: 'var(--success-bg)', border: 'var(--success-border)', text: 'var(--success)', label: 'Concluído'      },
   CANCELLED:   { bg: 'var(--bg-app)', border: 'var(--border)', text: 'var(--text-faint)', label: 'Cancelado'      },
@@ -310,7 +319,7 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
                         {a.clients?.name ?? '—'}
                       </div>
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-                        {a.users?.name ?? '—'}
+                        {a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}
                       </div>
                     </button>
                   )
@@ -428,7 +437,7 @@ function WeekGrid({
                       {a.clients?.name ?? '—'}
                     </div>
                     <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-                      {a.users?.name ?? '—'}
+                      {a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}
                     </div>
                   </div>
                 )
@@ -503,7 +512,7 @@ export function AdminAgendaView({
   const total     = appointments.length
   const completed = appointments.filter(a => a.status === 'COMPLETED').length
   const inProg    = appointments.filter(a => a.status === 'IN_PROGRESS').length
-  const confirmed = appointments.filter(a => a.status === 'CONFIRMED').length
+  const confirmed = appointments.filter(a => a.status === 'CONFIRMED' || a.status === 'ARRIVED').length
   const cancelled = appointments.filter(a => a.status === 'CANCELLED' || a.status === 'NO_SHOW').length
 
   return (

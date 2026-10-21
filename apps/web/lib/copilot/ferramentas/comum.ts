@@ -107,7 +107,7 @@ export async function nomesPorId(c: ContextoDaFerramenta, tabela: 'users' | 'pro
 
 /** O texto curto do status do agendamento. */
 export const STATUS_DO_AGENDAMENTO: Record<string, string> = {
-  SCHEDULED: 'agendado', CONFIRMED: 'confirmado', IN_PROGRESS: 'em atendimento',
+  SCHEDULED: 'agendado', CONFIRMED: 'confirmado', ARRIVED: 'chegou', IN_PROGRESS: 'em atendimento',
   COMPLETED: 'concluído', CANCELLED: 'cancelado', NO_SHOW: 'faltou',
 }
 

@@ -189,6 +189,7 @@ function realDurationMin(startedAt: string | null, completedAt: string | null): 
 const STATUS_OVERLINE: Record<string, { label: string; color: string }> = {
   SCHEDULED:   { label: 'Agendado',          color: 'var(--text-muted)' },
   CONFIRMED:   { label: 'Confirmado',         color: 'var(--info)' },
+  ARRIVED:     { label: 'Chegou — na espera', color: 'var(--success)' },
   IN_PROGRESS: { label: 'Atendimento em andamento', color: 'var(--brand)' },
   COMPLETED:   { label: 'Concluído',          color: 'var(--success)' },
   CANCELLED:   { label: 'Cancelado',          color: 'var(--warning)' },
@@ -920,7 +921,7 @@ export function AppointmentSession({
 
   const status    = appointment.status
   const overline  = STATUS_OVERLINE[status] ?? STATUS_OVERLINE['SCHEDULED']!
-  const isActive  = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'].includes(status)
+  const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status)
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
   const age       = calcAge(client.birthDate)
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
@@ -1258,7 +1259,7 @@ export function AppointmentSession({
               <ClipboardList size={14} /> Planejamento
             </button>
 
-            {status === 'SCHEDULED' && canCheckin && (
+            {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && (
               <button type="button" onClick={handleCheckin} disabled={checkingIn}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--success)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
                 {checkingIn ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
@@ -1266,8 +1267,8 @@ export function AppointmentSession({
               </button>
             )}
 
-            {/* Iniciar (CONFIRMED + canManage) */}
-            {status === 'CONFIRMED' && canManage && (
+            {/* Iniciar (Confirmado ou Chegou + canManage) */}
+            {(status === 'CONFIRMED' || status === 'ARRIVED') && canManage && (
               <button type="button" onClick={handleStart} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>

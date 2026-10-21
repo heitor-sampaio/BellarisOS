@@ -231,7 +231,7 @@ export default async function AdminDashboardPage({
         slug:       branch.slug,
         total:      bToday.length,
         scheduled:  bToday.filter(a => a.status === 'SCHEDULED').length,
-        confirmed:  bToday.filter(a => a.status === 'CONFIRMED').length,
+        confirmed:  bToday.filter(a => a.status === 'CONFIRMED' || a.status === 'ARRIVED').length,
         inProgress: bToday.filter(a => a.status === 'IN_PROGRESS').length,
         completed:  bToday.filter(a => a.status === 'COMPLETED').length,
       }

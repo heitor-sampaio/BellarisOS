@@ -301,6 +301,7 @@ const STATUS_LABEL: Record<string, string> = {
   COMPLETED:   'Concluído',
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
+  ARRIVED:     'Chegou',
   IN_PROGRESS: 'Em atendimento',
   CANCELLED:   'Cancelado',
   NO_SHOW:     'Não compareceu',

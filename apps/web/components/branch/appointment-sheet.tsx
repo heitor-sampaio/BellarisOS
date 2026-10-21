@@ -2,7 +2,7 @@
 
 import { useState, useActionState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock } from 'lucide-react'
+import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock, DoorOpen } from 'lucide-react'
 import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment } from '@/actions/appointments'
 import { rotaAtendimento } from '@/lib/rotas'
@@ -39,6 +39,7 @@ interface AppointmentSheetProps {
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
+  ARRIVED:     'Chegou',
   IN_PROGRESS: 'Em atendimento',
   COMPLETED:   'Concluído',
   CANCELLED:   'Cancelado',
@@ -47,6 +48,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_CHIP: Record<string, string> = {
   SCHEDULED:   'chip chip-muted',
   CONFIRMED:   'chip chip-brand',
+  ARRIVED:     'chip chip-success',
   IN_PROGRESS: 'chip chip-warning',
   COMPLETED:   'chip chip-success',
   CANCELLED:   'chip chip-muted',
@@ -100,7 +102,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   }
 
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appointment.status)
-  const isActive  = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'].includes(appointment.status)
+  const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(appointment.status)
 
   return (
     <JanelaModal onFechar={onClose} rotulo="Agendamento" largura={440}>
@@ -158,7 +160,14 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
                 <CheckCircle2 size={14} /> Confirmar agendamento
               </button>
             )}
-            {appointment.status === 'CONFIRMED' && (
+            {/* Chegou (o check-in): a recepção marca quem está na sala de espera. */}
+            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && !isProfessional && (
+              <button disabled={loading} onClick={() => changeStatus('ARRIVED')}
+                className={appointment.status === 'CONFIRMED' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
+                <DoorOpen size={14} /> Chegou
+              </button>
+            )}
+            {(appointment.status === 'CONFIRMED' || appointment.status === 'ARRIVED') && (
               <button disabled={loading} onClick={() => changeStatus('IN_PROGRESS')} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                 <Play size={14} /> Iniciar atendimento
               </button>

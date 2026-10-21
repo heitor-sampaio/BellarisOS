@@ -39,7 +39,7 @@ function shortName(name: string) {
 function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) {
   const time        = format(new Date(ev.start), 'HH:mm')
   const isProgress  = ev.status === 'IN_PROGRESS'
-  const isConfirmed = ev.status === 'CONFIRMED'
+  const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'ARRIVED'
   const isScheduled = ev.status === 'SCHEDULED'
 
   return (
@@ -67,6 +67,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
     >
       <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
         {time}
+        {ev.status === 'ARRIVED' && <span>· Chegou</span>}
         <SeloDaFicha estado={ev.fichaDeSaude} />
       </div>
       <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -70,7 +70,7 @@ test('check-in pelo Copilot: o cartão, e o Confirmar marca a chegada com histó
     await cartao.getByRole('button', { name: 'Confirmar' }).click()
     await expect(cartao.getByRole('status')).toContainText('Feito')
   })
-  expect((await db().from('appointments').select('status').eq('id', data!.id).single()).data!.status).toBe('CONFIRMED')
+  expect((await db().from('appointments').select('status').eq('id', data!.id).single()).data!.status).toBe('ARRIVED')
   const { data: h } = await db().from('appointment_history').select('action, changed_by_name').eq('appointment_id', data!.id)
   expect(h!.map(x => x.action)).toContain('CHECKIN')
   expect(h!.find(x => x.action === 'CHECKIN')!.changed_by_name).toContain('(via Copilot)')

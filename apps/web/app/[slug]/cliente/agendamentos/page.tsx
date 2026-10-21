@@ -7,6 +7,7 @@ import { ler } from '@/lib/db'
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
+  ARRIVED:     'Na clínica',
   IN_PROGRESS: 'Em atendimento',
   COMPLETED:   'Concluído',
   CANCELLED:   'Cancelado',
@@ -16,6 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
   SCHEDULED:   'var(--brand)',
   CONFIRMED:   'var(--success)',
+  ARRIVED:     'var(--success)',
   IN_PROGRESS: 'var(--warning)',
   COMPLETED:   'var(--text-muted)',
   CANCELLED:   'var(--danger)',
@@ -45,7 +47,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
     .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
   const appointments = (data ?? []) as unknown as Appt[]
-  const upcoming = appointments.filter(a => ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'].includes(a.status))
+  const upcoming = appointments.filter(a => ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status))
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
   const past = appointments.filter(a => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status))
 

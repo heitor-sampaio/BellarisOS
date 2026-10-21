@@ -103,7 +103,7 @@ export async function addAppointment(
 // --- Atualizar status do agendamento -----------------------------
 export async function updateAppointmentStatus(
   appointmentId: string,
-  status: 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW',
+  status: 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW',
   slug: string,
   cancellationReason?: string,
 ) {
@@ -131,6 +131,16 @@ export async function updateAppointmentStatus(
 
   if (status === 'COMPLETED') {
     await completeAppointment(appointmentId, slug, ctx)
+    return
+  }
+
+  // Chegou (o check-in) também é núcleo dividido, e avisa a profissional.
+  if (status === 'ARRIVED') {
+    if (ctx.permissions.agenda !== 'MANAGE') throw semAcesso()
+    const r = await checkinCore(createAdminClient(), ctx, appointmentId)
+    if ('error' in r) throw new Error(r.error)
+    notifyCheckin(appointmentId)
+    revalidarAgendamento(ctx, appointmentId, slug)
     return
   }
 
@@ -328,7 +338,7 @@ async function completeAppointment(
   revalidatePath(`/${slug}/financeiro`)
 }
 
-// --- Check-in do cliente (SCHEDULED → CONFIRMED) -----------------
+// --- Check-in do cliente (Agendado ou Confirmado → Chegou) ---------
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
  *
@@ -359,8 +369,7 @@ async function checkinAppointmentInterno(
     const r = await checkinCore(createAdminClient(), ctx, appointmentId)
     if ('error' in r) return { error: r.error }
 
-    revalidatePath(`/${slug}/agenda`)
-    revalidatePath(`/${slug}/agenda/${appointmentId}`)
+    revalidarAgendamento(ctx, appointmentId, slug || null)
     notifyCheckin(appointmentId)
     return {}
   } catch (e) {
@@ -368,7 +377,7 @@ async function checkinAppointmentInterno(
   }
 }
 
-// --- Iniciar atendimento (CONFIRMED → IN_PROGRESS) ---------------
+// --- Iniciar atendimento (Confirmado ou Chegou → Em atendimento) ---
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
  *
@@ -404,7 +413,7 @@ async function startAppointmentInterno(
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
-    if (appt.status !== 'CONFIRMED') return { error: 'O cliente precisa fazer check-in antes de iniciar.' }
+    if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou ter chegado (check-in) antes de iniciar.' }
 
     if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }

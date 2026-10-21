@@ -58,6 +58,7 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
 const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }> = {
   SCHEDULED:   { label: 'Aguardando',  bg: 'var(--bg-app)',      color: 'var(--text-muted)' },
   CONFIRMED:   { label: 'Confirmado',  bg: 'var(--brand-soft)',  color: 'var(--brand)'      },
+  ARRIVED:     { label: 'Chegou',      bg: 'var(--success-soft)', color: 'var(--success)'    },
   IN_PROGRESS: { label: 'Em atend.',   bg: 'var(--warning-soft)',color: 'var(--warning)'    },
   COMPLETED:   { label: 'Concluído',   bg: 'var(--success-soft)',color: 'var(--success)'    },
   CANCELLED:   { label: 'Cancelado',   bg: 'var(--bg-app)',      color: 'var(--text-faint)' },

@@ -132,7 +132,8 @@ function ProfColumn({
         const height    = Math.max(32, (ev.durationMin / 60) * HOUR_PX - 4)
         const isDragging = draggingId === ev.id
         const isProgress  = ev.status === 'IN_PROGRESS'
-        const isConfirmed = ev.status === 'CONFIRMED'
+        const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'ARRIVED'
+        const isArrived   = ev.status === 'ARRIVED'
         const isScheduled = ev.status === 'SCHEDULED'
         const isCompleted = ev.status === 'COMPLETED'
         const timeStr   = format(new Date(ev.start), 'HH:mm')
@@ -183,6 +184,7 @@ function ProfColumn({
               <span>{timeStr} · {ev.durationMin}min</span>
               <SeloDaFicha estado={ev.fichaDeSaude} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
+              {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· concluído</span>}
             </div>
             {height > 42 && (

@@ -250,7 +250,7 @@ export const confirmarAgendamento: FerramentaDeEscrita<{ agendamento: string }, 
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
-    if (ag.status !== 'SCHEDULED') return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    if (ag.status !== 'SCHEDULED' && ag.status !== 'CONFIRMED') return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
     return {
       resumo: {
         titulo: 'Confirmar presença',
@@ -276,7 +276,7 @@ export const fazerCheckIn: FerramentaDeEscrita<{ agendamento: string }, { appoin
   nome: 'fazer_check_in',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
-  descricao: 'Faz o CHECK-IN de um agendamento (id): o cliente chegou à clínica. Só de agendamento "agendado".',
+  descricao: 'Faz o CHECK-IN de um agendamento (id): o cliente chegou à clínica (fica "chegou", na sala de espera). De agendamento "agendado" ou "confirmado".',
   parametros: z.object({ agendamento: UUID }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)

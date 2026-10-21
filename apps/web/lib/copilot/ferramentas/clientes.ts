@@ -60,7 +60,7 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
       unidadesDaRede(c),
       verAgenda ? (() => {
         let q = c.admin.from('appointments').select('id, scheduled_at, status, procedure_id, professional_id, branch_id')
-          .eq('client_id', ficha.id).gte('scheduled_at', agora).in('status', ['SCHEDULED', 'CONFIRMED']).order('scheduled_at').limit(5)
+          .eq('client_id', ficha.id).gte('scheduled_at', agora).in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED']).order('scheduled_at').limit(5)
         if (dono) q = q.eq('professional_id', dono)
         if (c.ctx.branchId) q = q.eq('branch_id', c.ctx.branchId)
         return ler(q, 'ler os próximos atendimentos')

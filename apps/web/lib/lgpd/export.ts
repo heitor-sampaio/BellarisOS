@@ -29,7 +29,7 @@ const fmtDateTime = (v: string | null | undefined) => (v ? formatDateTime(v) : '
 const fmtMoney    = (v: unknown) => formatBRL(Number(v ?? 0))
 
 const STATUS_LABEL: Record<string, string> = {
-  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', IN_PROGRESS: 'Em atendimento',
+  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Chegou', IN_PROGRESS: 'Em atendimento',
   COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu',
 }
 

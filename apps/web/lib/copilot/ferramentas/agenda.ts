@@ -15,7 +15,7 @@ import {
  * tela: o profissional que só vê a própria agenda só lê a própria agenda.
  */
 
-const STATUS = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const
+const STATUS = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const
 
 export const agendamentos: FerramentaDeLeitura<{
   de?: string; ate?: string; profissional?: string; unidade?: string; status?: (typeof STATUS)[number][]; cliente?: string
@@ -29,7 +29,7 @@ export const agendamentos: FerramentaDeLeitura<{
     ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de".'),
     profissional: z.string().max(80).optional(),
     unidade: z.string().max(80).optional(),
-    status: z.array(z.enum(STATUS)).max(6).optional().describe('SCHEDULED, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW. Padrão: todos menos cancelados.'),
+    status: z.array(z.enum(STATUS)).max(7).optional().describe('SCHEDULED, CONFIRMED, ARRIVED (chegou), IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW. Padrão: todos menos cancelados.'),
     cliente: UUID.optional().describe('Id do cliente (use buscar antes).'),
   }),
   async executar(c, args) {
