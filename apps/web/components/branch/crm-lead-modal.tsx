@@ -99,7 +99,17 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const router    = useRouter()
     const pathname  = usePathname()
 
-    const [state, formAction, pending] = useActionState(action, undefined)
+    // O que foi ENVIADO, guardado na hora: o React 19 limpa o formulário depois
+    // da action, e o card otimista lia o nome do campo já vazio (o "+" da
+    // coluna criava card sem nome — simulação de 2026-10-20).
+    const enviado = useRef<FormData | null>(null)
+    const [state, formAction, pending] = useActionState(
+      (anterior: Awaited<ReturnType<typeof action>> | undefined, dados: FormData) => {
+        enviado.current = dados
+        return action(anterior as never, dados)
+      },
+      undefined,
+    )
     const [phone,           setPhone]           = useState(existing?.phone ?? '')
     const [selectedProcs,   setSelectedProcs]   = useState<string[]>(
       existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [],
@@ -206,14 +216,15 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       if (!state?.success) return
       close()
       if (!isEdit && 'leadId' in state && onLeadCreated) {
+        const campo = (nome: string) => String(enviado.current?.get(nome) ?? '').trim()
         const newLead: Lead = {
           id:           state.leadId as string,
-          name:         (dialogRef.current?.querySelector<HTMLInputElement>('[name="name"]')?.value ?? '').trim(),
+          name:         campo('name'),
           phone:        phone || null,
-          email:        (dialogRef.current?.querySelector<HTMLInputElement>('[name="email"]')?.value ?? '').trim() || null,
-          social_media: (dialogRef.current?.querySelector<HTMLInputElement>('[name="social_media"]')?.value ?? '').trim() || null,
-          source:       (dialogRef.current?.querySelector<HTMLSelectElement>('[name="source"]')?.value ?? '') || null,
-          notes:        (dialogRef.current?.querySelector<HTMLTextAreaElement>('[name="notes"]')?.value ?? '').trim() || null,
+          email:        campo('email') || null,
+          social_media: campo('social_media') || null,
+          source:       campo('source') || null,
+          notes:        campo('notes') || null,
           crm_stage_id: stageId || null,
           client_id:    null,
           created_at:   (state as { createdAt?: string }).createdAt ?? new Date().toISOString(),
@@ -230,7 +241,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
         router.refresh()
       }
     })
-    useEffect(() => { if (state?.success) aoSalvar() }, [state?.success])
+    useEffect(() => { if (state?.success) aoSalvar() }, [state])
 
     function toggleProc(id: string) {
       setSelectedProcs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])

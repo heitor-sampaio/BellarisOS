@@ -1742,6 +1742,12 @@ export function CRMInbox({
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 10 }}>
                   {search || filtrosAtivos ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
                 </p>
+                {/* Sem canal nenhum, a caixa fica vazia para sempre: diz o porquê. */}
+                {!search && !filtrosAtivos && canaisConectados.length === 0 && (
+                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+                    Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado em Configurações → Integrações.
+                  </p>
+                )}
                 {/* Lista vazia por causa de filtro tem saída à mão: sem isto a
                     pessoa fica olhando um vazio que ela mesma causou. */}
                 {filtrosAtivos && (
@@ -1754,7 +1760,7 @@ export function CRMInbox({
                     Limpar filtros
                   </button>
                 )}
-                {canEdit && !search && !filtrosAtivos && (
+                {canEdit && !search && !filtrosAtivos && canaisConectados.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowNewConv(true)}

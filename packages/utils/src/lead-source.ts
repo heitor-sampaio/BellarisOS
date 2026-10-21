@@ -26,6 +26,8 @@ export const LEAD_SOURCES: LeadSourceDef[] = [
   { key: 'Instagram',  label: 'Instagram',  paid: false, style: { bg: '#fce8f4', color: '#b52d7c' } },
   { key: 'Indicação',  label: 'Indicação',  paid: false, style: { bg: '#fef3e8', color: '#8a5a1a' } },
   { key: 'WhatsApp',   label: 'WhatsApp',   paid: false, style: { bg: '#e8f5ec', color: '#1a7a3a' } },
+  // Quem liga para a clínica (2026-10-21; a simulação não tinha onde pôr).
+  { key: 'Telefone',   label: 'Telefone',   paid: false, style: { bg: '#e8f0f4', color: '#2d5e7a' } },
   { key: 'Site',       label: 'Site',       paid: false, style: { bg: '#e8edf4', color: '#2d4e7a' } },
   { key: 'Evento',     label: 'Evento',     paid: false, style: { bg: '#f4e8f4', color: '#7a2d7a' } },
   { key: 'Outro',      label: 'Outro',      paid: false, style: NEUTRAL },

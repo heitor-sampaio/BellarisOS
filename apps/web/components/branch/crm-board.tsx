@@ -370,6 +370,8 @@ export interface Lead {
 
 interface CRMBoardProps {
   initialLeads: Lead[]
+  /** A unidade do portal: o lead criado pelo "+" da coluna nasce com a tag dela. */
+  branchName?:  string
   /** Etapas do funil aberto — são as colunas do quadro. */
   stages:       CRMStage[]
   /** Etapas de todos os funis: o modal do lead usa para mover entre funis. */
@@ -657,6 +659,7 @@ function LeadCard({
         ref={cardRef}
         className="crm-card"
         data-lead-id={lead.id}
+        data-lead-card
         draggable
         onDragStart={handleDragStartCard}
         onDragEnd={handleDragEndCard}
@@ -679,7 +682,9 @@ function LeadCard({
             {lead.source && (
               <TagBadge label={lead.source} style={sourceStyle(lead.source)} size="xs" />
             )}
-            {lead.tags?.map(t => (
+            {/* A tag igual à origem não se repete: era "Instagram Instagram" (a
+                origem e a tag que a conversa deriva dela). */}
+            {lead.tags?.filter(t => t.toLowerCase() !== (lead.source ?? '').toLowerCase()).map(t => (
               <TagBadge key={t} label={t} size="xs" />
             ))}
           </div>
@@ -930,7 +935,7 @@ const semRelogio = () => null
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId, unidades,
-  procedures, branchId, slug, networkMode, branches, leadAberto,
+  procedures, branchId, branchName, slug, networkMode, branches, leadAberto,
 }: CRMBoardProps) {
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -1030,7 +1035,9 @@ export function CRMBoard({
   }, [leads, filters, sort, nowMs, montadoEm])
 
   function handleLeadCreated(lead: Lead) {
-    setLeads(prev => [lead, ...prev])
+    // A resposta da action já pode ter trazido a lista nova do servidor, com o
+    // lead dentro: acrescentar de novo mostrava o card duas vezes.
+    setLeads(prev => prev.some(l => l.id === lead.id) ? prev : [lead, ...prev])
   }
 
   function handleLeadDeleted(id: string) {
@@ -1156,14 +1163,14 @@ export function CRMBoard({
               </div>
               {!networkMode && (
               <CRMLeadModal
-                branchId={branchId} slug={slug}
+                branchId={branchId} slug={slug} branchName={branchName}
                 stages={allStages} funnels={funnels} funnelId={funnelId}
                 unidades={unidades}
                 procedures={procedures}
                 initialStageId={stage.id}
                 onLeadCreated={handleLeadCreated}
                 trigger={
-                  <button type="button" style={{
+                  <button type="button" aria-label="Novo lead nesta etapa" title="Novo lead nesta etapa" style={{
                     width: 24, height: 24, borderRadius: 7,
                     background: 'var(--bg-app)', border: '1px solid var(--border)',
                     color: 'var(--text-muted)',

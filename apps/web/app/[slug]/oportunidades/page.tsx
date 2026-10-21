@@ -211,6 +211,7 @@ export default async function BranchOportunidadesPage({
         unidades={unidades}
         procedures={procedures}
         branchId={branch.id}
+        branchName={branch.name}
         slug={slug}
         leadAberto={leadAberto}
       />
