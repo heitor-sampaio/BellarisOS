@@ -1335,6 +1335,14 @@ permissões pela URL seguraram cada cargo. Corrigidos no mesmo dia, nesta ordem
   formulário da avaliação e entra marcado; o "Finalizar" leva a evolução da
   tela; o cache de produtos expira com `updateTag`.
 
+Em 2026-10-21, as pendências (decisões dele: o caixa colhe a assinatura do
+checkout; os cargos prontos viram modelos editáveis; horário de funcionamento
+por unidade, dia e profissional): D9 (f15d313), D10 (1aca009), D8 (47d0f0e),
+D6 (ab6548b), D17/D18 (7ca1da7), D19 (bcae9c6), D20 (984b94a), D22 (d762855),
+D24 (c038a33), D25 (4612387), D16 (654bd89), D14 (e1c206b), D11/D12/D27 —
+o horário de funcionamento e uma ocupação só (3a867c4) —, o lote dos baixos
+D26/D28–D33/D35 (71fcbbb) e a unidade desativada sem movimento (2f009e1).
+
 O que falta está em "5. Em aberto → Da simulação de 2026-10-20".
 
 ### 2026-10-20 — O pré-atendimento: a ficha universal, respondida antes do horário
@@ -6602,25 +6610,23 @@ verdade. O que vale:
 ### Da simulação de 2026-10-20 (o que ainda falta)
 
 O relatório inteiro (com capturas) ficou na máquina do Heitor, fora do git:
-`apps/web/.sim/relatorio.md`. Corrigidos: D1, D2, D3, D4, D5, D7, D15 e o
-deploy. Faltam, por gravidade:
-- **D6** margem por procedimento com o custo da EMBALAGEM (Toxina −3858%) e a
-  conta feita na página, fora de `lib/metrics`.
-- **D8** a profissional não tem onde anexar foto clínica (o "Anexar" exige
-  `clients: MANAGE` e cai em "sem acesso"; `record_photos` sem tela).
-- **D9** o caixa sem o módulo de Termos não conclui o checkout ("Forbidden"
-  cru na tela) — decidir se receber exige Termos.
-- **D10** o setup não retoma, e confirmar apaga o telefone da rede.
-- **D11** não existe horário de funcionamento (grade e livres fixos 08–20).
-- **D12** a ocupação do dia difere entre Dashboard e Agenda (conta na tela).
-- Médios: D13 (atendimento concluído antes da hora fora dos indicadores),
-  D14 (cargos prontos "acesso total" sem permissão), D16 (lista de clientes
-  com cache velho), D17/D18 (nascimento um dia antes; "cliente desde" o
-  nascimento), D19 (anamnese do link vira "pela equipe"), D20 (LGPD diz "não
-  pedido" quando está em análise), D22 (aba Financeiro da ficha sem trava),
-  D24 (categorias de despesa somam o estorno), D25 (estorno sem confirmação).
-- Baixos: D26–D37 (saudação "Bom dia" fixa, "filialis", iniciais, horários
-  passados no app, "4 sessãoões"…).
+`apps/web/.sim/relatorio.md`. Corrigidos em 2026-10-20/21: D1–D12, D14,
+D15–D20, D22, D24–D33 e o deploy (ver a linha do tempo). Faltam:
+- **D13 — decisão do Heitor**: o atendimento concluído ANTES da hora marcada
+  fica fora dos indicadores até essa hora (o eixo do serviço é
+  `scheduled_at` e o período parcial fecha em "agora"). Mexe no eixo
+  canônico de todas as métricas.
+- **D34, D36, D37** (prováveis, não conferidos): a coluna MOVIM. da unidade ≠
+  o total da rede; os cartões do dashboard dizem "do mês" com o filtro
+  "Hoje"; o perfil da cliente só mostra o endereço salvo ao recarregar.
+- **Os atritos** do relatório (por tela: setup, cadastro, agenda, ficha e
+  link, oportunidades, atendimento, checkout, portal, dashboard) — nenhum foi
+  tratado.
+- **Dívida achada no caminho**: o gráfico de barras do financeiro da unidade
+  (`groupByPeriod`) ainda soma a lista na tela; e o `updateTag` NÃO
+  derrubou o `unstable_cache` da lista de clientes (a lista passou a
+  `revalidateTag(tag, { expire: 0 })`) — conferir os outros `unstable_cache`
+  invalidados com `updateTag` (a regra do CLAUDE.md §14 pede `updateTag`).
 - A rede "[sim] Clínica Aurora" (`00a5ea5b-…`) e os logins `sim-*@bellaris.invalid`
   continuam em produção — apagar quando o Heitor pedir.
 
