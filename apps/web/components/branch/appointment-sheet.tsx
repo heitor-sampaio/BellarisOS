@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment } from '@/actions/appointments'
 import { rotaAtendimento } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { toast } from 'sonner'
 import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 
 interface AppointmentEvent {
@@ -33,8 +34,6 @@ interface AppointmentSheetProps {
    * botões apareciam para quem a action recusaria.
    */
   escopoProprio?: boolean
-  /** O aviso de que deu certo, mostrado pela agenda depois que a janela fecha. */
-  onAviso?:       (texto: string) => void
   onClose:     () => void
 }
 
@@ -57,7 +56,7 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, onClose, onAviso }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, onClose }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
   const router   = useRouter()
   // Para onde ir ao iniciar o atendimento: quem decide o portal é o caminho
@@ -75,7 +74,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   const [remarcaState, remarcaAction, remarcaPending] = useActionState(
     async (anterior: Parameters<typeof rescheduleAppointment>[0], dados: FormData) => {
       const r = await rescheduleAppointment(anterior, dados)
-      if (r?.success) { setRemarcando(false); onClose(); onAviso?.('Agendamento remarcado.'); router.refresh() }
+      if (r?.success) { setRemarcando(false); onClose(); toast.success('Agendamento remarcado.'); router.refresh() }
       return r
     },
     undefined,
@@ -108,7 +107,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
     // O erro fica na janela: antes ela fechava como se tivesse dado certo.
     if (r?.error) { setErro(r.error); return }
     const aviso = AVISO[status]
-    if (aviso) onAviso?.(aviso)
+    if (aviso) toast.success(aviso)
     if (status === 'IN_PROGRESS') {
       onClose()
       router.push(rotaAtendimento(pathname, slug, appointment.id))

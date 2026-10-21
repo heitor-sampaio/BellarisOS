@@ -7,7 +7,6 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { AppointmentModal } from '@/components/branch/appointment-modal'
 import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
-import { AvisoFlutuante, useAviso } from '@/components/shared/aviso-flutuante'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 
@@ -471,7 +470,6 @@ export function AdminAgendaView({
   view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, podeAgendar, escopoProprio,
 }: Props) {
   const router = useRouter()
-  const [aviso, avisar] = useAviso()
   // `true` = veio do botão "Agendar" (sem hora nem unidade);
   // objeto = veio de um horário vazio da grade.
   const [agendando, setAgendando] = useState<true | { branchId: string; quando: string } | null>(null)
@@ -668,10 +666,8 @@ export function AdminAgendaView({
           userRole=""
           escopoProprio={escopoProprio}
           onClose={() => { setSelecionado(null); router.refresh() }}
-          onAviso={avisar}
         />
       )}
-      <AvisoFlutuante texto={aviso} />
 
       {agendando && (
         <AppointmentModal

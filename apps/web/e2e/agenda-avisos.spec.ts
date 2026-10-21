@@ -68,7 +68,7 @@ test.describe.serial('a agenda avisa', () => {
       await p.goto(`/admin/agenda?date=${AMANHA}`)
       await p.locator(`[title*="Confirma av${marca}"]`).first().click()
       await p.getByRole('button', { name: 'Confirmar agendamento' }).click()
-      await expect(p.getByRole('status').filter({ hasText: 'Agendamento confirmado.' })).toBeVisible()
+      await expect(p.getByText('Agendamento confirmado.'), 'o aviso (toast) da agenda').toBeVisible()
     })
     expect(await statusDe(id)).toBe('CONFIRMED')
   })

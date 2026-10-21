@@ -13,7 +13,6 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { AppointmentModal } from './appointment-modal'
 import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from './appointment-sheet'
-import { AvisoFlutuante, useAviso } from '@/components/shared/aviso-flutuante'
 import { AgendaDayView } from './agenda-day-view'
 import { AgendaWeekView } from './agenda-week-view'
 import { AgendaMonthView } from './agenda-month-view'
@@ -134,7 +133,6 @@ export function AgendaCalendar({
   horarioDaUnidade = null, horariosDosProfissionais = {}, dataInicial = null,
 }: AgendaCalendarProps) {
   const router = useRouter()
-  const [aviso, avisar] = useAviso()
 
   const [view,          setView]          = useState<ViewMode>('dia')
   const [currentDate,   setCurrentDateState] = useState(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : new Date())
@@ -193,8 +191,6 @@ export function AgendaCalendar({
 
   return (
     <>
-      <AvisoFlutuante texto={aviso} />
-
       {/* Drop error toast */}
       {dropError && (
         <div style={{
@@ -367,7 +363,6 @@ export function AgendaCalendar({
           slug={slug}
           userRole={userRole}
           onClose={() => setSelectedEvent(null)}
-          onAviso={avisar}
         />
       )}
     </>

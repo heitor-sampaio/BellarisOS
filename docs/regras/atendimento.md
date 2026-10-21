@@ -34,7 +34,7 @@
 - **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
   action recusa). `updateAppointmentStatus` devolve `{ error }` (só a trava de
   permissão lança): a folha mostra o erro e, no sucesso, a agenda dá o aviso
-  (`AvisoFlutuante`). A agenda da unidade leva o dia na URL (`?date=`), e a
+  (o `toast` do sonner, o de todo o app). A agenda da unidade leva o dia na URL (`?date=`), e a
   grade de hoje abre na hora de agora. Prova: `e2e/agenda-avisos.spec.ts`.
 - **O prontuário na ficha da cliente** é a aba "Prontuário" (a chave segue
   `fichas`): aparece para quem pode ver o clínico mesmo antes do primeiro
