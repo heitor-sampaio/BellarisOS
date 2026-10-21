@@ -417,6 +417,7 @@ export default async function AdminClientProfilePage({
         recentAppointments={recentAppointments}
         allAppointments={allAppointments}
         recordForms={recordForms}
+        podeVerProntuario={canViewRecords}
         generalAnamnesis={generalAnamnesis}
         fidelidade={fidelidade}
         activePackage={activePackage}

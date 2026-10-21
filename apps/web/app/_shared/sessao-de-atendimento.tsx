@@ -52,7 +52,7 @@ export async function SessaoDeAtendimento({
         procedures(id, name, category, duration_min, form_id),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
-        client:clients(id, name, phone, birth_date, created_at, tags, notes, document)
+        client:clients(id, name, phone, birth_date, created_at, tags, notes, document, auth_id)
       `)
       .eq('id', id)
       .eq('branch_id', branchId)
@@ -341,6 +341,7 @@ export async function SessaoDeAtendimento({
     savedIntercurrences: canViewRecords ? (mreRaw?.intercurrences ?? null) : null,
     complaints:          apptRaw.notes ?? null,
     clientConfirmedAt:   apptRaw.client_confirmed_at ?? null,
+    clientTemApp:        !!(apptRaw.client as { auth_id?: string | null } | null)?.auth_id,
     clientRating:        apptRaw.client_rating ?? null,
     procedureRating:     apptRaw.procedure_rating ?? null,
     clientFeedback:      apptRaw.client_feedback ?? null,

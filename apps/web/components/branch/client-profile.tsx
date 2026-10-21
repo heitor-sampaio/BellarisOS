@@ -13,7 +13,8 @@ import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-renderer'
 import { AttendanceRecordCard } from './attendance-record-card'
 import { AnamneseGeralCartao } from './anamnese-geral'
-import type { AnamneseGeral } from '@/lib/anamnese-geral'
+import { alergiasDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
@@ -162,6 +163,8 @@ interface Props {
   internalCredits:       ProfileInternalCredit[]
   documents:             ClientDocumentItem[]
   recordForms?:          ProfileRecordEntry[]
+  /** Quem vê o prontuário: a aba aparece mesmo sem atendimento registrado. */
+  podeVerProntuario?:    boolean
   generalAnamnesis?:     AnamneseGeral | null
   canGrantCredit:        boolean
   branches:              { id: string; name: string }[]
@@ -318,7 +321,8 @@ const TABS: { key: TabKey; label: string }[] = [
   // O plano de tratamento é do cliente: vários ao longo do tempo, criados
   // aqui ou durante um atendimento.
   { key: 'planejamento', label: 'Planejamento' },
-  { key: 'fichas',     label: 'Fichas' },
+  // A chave fica 'fichas' (os links com ?aba=fichas continuam valendo).
+  { key: 'fichas',     label: 'Prontuário' },
   { key: 'financeiro', label: 'Financeiro' },
   { key: 'documentos', label: 'Documentos' },
   { key: 'dados',      label: 'Dados' },
@@ -1083,7 +1087,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], prePagos = [], podeAgendar = false,
 }: Props) {
@@ -1126,7 +1130,9 @@ export function ClientProfile({
     setMenuAberto(false)
     router.refresh()
   }
-  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro))
+  // O prontuário aparece para quem pode vê-lo, mesmo antes do primeiro
+  // atendimento (a anamnese já está lá): a dona não achava a aba (2026-10-20).
+  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro))
 
   /**
    * A aba aberta mora na URL, não em `useState`.
@@ -1313,6 +1319,9 @@ export function ClientProfile({
           </div>
         ))}
       </div>
+
+      {/* A alergia em destaque (só chega aqui com o prontuário à vista). */}
+      <AlertaDeAlergia alergias={alergiasDaAnamnese(generalAnamnesis)} />
 
       {/* -- Tabs ------------------------------------------------------ */}
       <div className="tabs-bar" style={{ gap: 0 }}>
@@ -1610,9 +1619,16 @@ export function ClientProfile({
       {tab === 'fichas' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {recordForms.length === 0 ? (
-            <div className="card" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-              Nenhuma ficha preenchida ainda.
-            </div>
+            <>
+              {generalAnamnesis && (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis.ficha} clientId={client.id} canEdit={false} />
+                </div>
+              )}
+              <div className="card" style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
+                Nenhum atendimento registrado ainda.
+              </div>
+            </>
           ) : (
             recordForms.map(entry => (
               <AttendanceRecordCard

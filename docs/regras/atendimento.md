@@ -36,6 +36,13 @@
   permissão lança): a folha mostra o erro e, no sucesso, a agenda dá o aviso
   (`AvisoFlutuante`). A agenda da unidade leva o dia na URL (`?date=`), e a
   grade de hoje abre na hora de agora. Prova: `e2e/agenda-avisos.spec.ts`.
+- **O prontuário na ficha da cliente** é a aba "Prontuário" (a chave segue
+  `fichas`): aparece para quem pode ver o clínico mesmo antes do primeiro
+  atendimento, com a anamnese. **A alergia vai em destaque** na ficha e no
+  atendimento (`alergiasDaAnamnese` + `AlertaDeAlergia`: o campo `allergies` ou
+  de rótulo "alerg…", sem "não"/"nenhuma"), só para quem vê o prontuário.
+  "Aguardando confirmação do cliente pelo app" só para quem TEM o app.
+  Prova: `e2e/prontuario-atritos.spec.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
 - **O procedimento novo nasce FORA do app** (`visible_on_client_app` desligado,
   2026-10-21): só vai para o self-service o que a clínica marca. Nascia ligado,

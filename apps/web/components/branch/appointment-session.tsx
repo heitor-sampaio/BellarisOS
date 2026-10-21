@@ -26,7 +26,8 @@ import { CheckoutWizard } from '@/components/branch/checkout-wizard'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle } from '@/components/branch/anamnese-geral'
-import type { AnamneseGeral, FichaDePreAtendimento } from '@/lib/anamnese-geral'
+import { alergiasDaAnamnese, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
+import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
@@ -62,6 +63,8 @@ export interface SessionAppointment {
   savedIntercurrences: string | null
   complaints:          string | null
   clientConfirmedAt:   string | null
+  /** A cliente tem o app (login): só então se espera a confirmação por ele. */
+  clientTemApp?:       boolean
   clientRating:        number | null
   procedureRating:     number | null
   clientFeedback:      string | null
@@ -1323,6 +1326,9 @@ export function AppointmentSession({
           </div>
         </div>
 
+        {/* A alergia em destaque, acima de tudo (só com o prontuário à vista). */}
+        <AlertaDeAlergia alergias={alergiasDaAnamnese(anamnesis)} />
+
         {erroAoIniciar && (
           <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroAoIniciar}</p>
         )}
@@ -1503,9 +1509,13 @@ export function AppointmentSession({
                       </p>
                     )}
                   </div>
-                ) : (
+                ) : appointment.clientTemApp ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600, marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>
                     ⏳ Aguardando confirmação do cliente pelo app
+                  </p>
+                ) : (
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>
+                    Cliente sem o app: a confirmação pelo app não se aplica.
                   </p>
                 )}
               </div>

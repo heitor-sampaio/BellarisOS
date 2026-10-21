@@ -116,3 +116,26 @@ export function quemRespondeu(a: AnamneseGeral): string {
   const quando = a.respondidoEm ? ` em ${new Date(a.respondidoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''
   return `Respondida ${ORIGEM[a.origem]}${quando}`
 }
+
+/** Respostas que dizem "não tem": não viram alerta. */
+const NEGATIVA = /^(n[aã]o|nenhum[a]?|nada|n\/?a|sem alergias?|-+|—)\.?$/i
+
+/**
+ * As alergias que a anamnese registra, para o ALERTA na ficha e no
+ * atendimento (2026-10-21; a simulação viu a alergia da cliente sem destaque
+ * nenhum). Os campos da ficha cujo id é `allergies` ou cujo rótulo fala de
+ * alergia; "não", "nenhuma" e vazio não contam. Nulo quando não há o que
+ * avisar.
+ */
+export function alergiasDaAnamnese(a: AnamneseGeral | null): string | null {
+  if (!a) return null
+  const campos = flattenFields({ rows: a.ficha?.rows ?? [] })
+    .filter(f => f.id === 'allergies' || /alerg/i.test(f.label ?? ''))
+    .map(f => f.id)
+  if (!campos.includes('allergies')) campos.push('allergies')
+  const partes = [...new Set(campos)].flatMap(id => {
+    const r = a.respostas?.[id]
+    return Array.isArray(r) ? r : r ? [r] : []
+  }).map(t => String(t).trim()).filter(t => t && !NEGATIVA.test(t))
+  return partes.length ? [...new Set(partes)].join('; ') : null
+}

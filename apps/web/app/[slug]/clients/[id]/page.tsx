@@ -439,6 +439,7 @@ export default async function ClientProfilePage({
       recentAppointments={recentAppointments}
       allAppointments={allAppointments}
       recordForms={recordForms}
+      podeVerProntuario={canViewRecords}
       generalAnamnesis={generalAnamnesis}
       fidelidade={await fidelidadeDoPerfil(ctx, id)}
       activePackage={activePackage}
