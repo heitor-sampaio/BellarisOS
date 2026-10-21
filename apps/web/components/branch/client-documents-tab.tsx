@@ -32,6 +32,8 @@ interface Props {
   slug:      string
   /** Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem aparece no formulário. */
   podeAnexarClinico?: boolean
+  /** O cadastro (`clients: MANAGE`): anexar e apagar o que não é clínico. */
+  podeAnexarComum?:   boolean
 }
 
 // -- Constants -----------------------------------------------------------------
@@ -81,9 +83,9 @@ function categoryLabel(cat: string): string {
 // -- Upload form ---------------------------------------------------------------
 
 function UploadForm({
-  clientId, branchId, slug, podeAnexarClinico, onClose,
+  clientId, branchId, slug, podeAnexarClinico, podeAnexarComum, onClose,
 }: {
-  clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; onClose: () => void
+  clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; podeAnexarComum: boolean; onClose: () => void
 }) {
   const formRef     = useRef<HTMLFormElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -139,7 +141,7 @@ function UploadForm({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label className="field-label">Categoria *</label>
           <select name="category" className="field" style={{ background: 'var(--surface)' }}>
-            {CATEGORIES.filter(c => podeAnexarClinico || !ehAnexoClinico(c.value)).map(c => (
+            {CATEGORIES.filter(c => ehAnexoClinico(c.value) ? podeAnexarClinico : podeAnexarComum).map(c => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
@@ -283,7 +285,7 @@ function DocumentRow({
 
 // -- Main component ------------------------------------------------------------
 
-export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false }: Props) {
+export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false, podeAnexarComum = false }: Props) {
   const router = useRouter()
   const [showForm, setShowForm]   = useState(false)
   // A lista vem das PROPS a cada render; localmente só se guarda o que acabou
@@ -317,6 +319,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
           branchId={branchId}
           slug={slug}
           podeAnexarClinico={podeAnexarClinico}
+          podeAnexarComum={podeAnexarComum}
           onClose={() => { setShowForm(false); router.refresh() }}
         />
       )}
@@ -343,14 +346,16 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setShowForm(v => !v)}
-            className={showForm ? 'btn-ghost' : 'btn-primary'}
-            style={{ gap: 6, fontSize: 'var(--text-sm-sz)' }}
-          >
-            {showForm ? <><X size={13} /> Cancelar</> : <><Plus size={13} /> Adicionar documento</>}
-          </button>
+          {(podeAnexarComum || podeAnexarClinico) && (
+            <button
+              type="button"
+              onClick={() => setShowForm(v => !v)}
+              className={showForm ? 'btn-ghost' : 'btn-primary'}
+              style={{ gap: 6, fontSize: 'var(--text-sm-sz)' }}
+            >
+              {showForm ? <><X size={13} /> Cancelar</> : <><Plus size={13} /> Adicionar documento</>}
+            </button>
+          )}
         </div>
 
         {/* Empty state */}
@@ -411,7 +416,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
                   doc={doc}
                   slug={slug}
                   clientId={clientId}
-                  podeApagar={podeAnexarClinico || !ehAnexoClinico(doc.category)}
+                  podeApagar={ehAnexoClinico(doc.category) ? podeAnexarClinico : podeAnexarComum}
                   onDelete={handleDelete}
                 />
               ))}

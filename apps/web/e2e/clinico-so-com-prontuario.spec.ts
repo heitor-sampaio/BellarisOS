@@ -166,6 +166,47 @@ test.describe.serial('dado clínico só com prontuário', () => {
     expect(depois, 'o admin apaga').toBeNull()
   })
 
+  test('a profissional (prontuário, sem cadastro) anexa foto clínica de quem ela atende (2026-10-20)', async ({ browser }) => {
+    // Simulação de um dia de clínica: a Dra. Lívia (Clientes = Ver, prontuário
+    // só dos dela) não tinha onde anexar foto — o "Anexar" exigia gerir o
+    // cadastro, e caía em "sem acesso". Anexo clínico é prontuário: é o módulo
+    // dele que decide, com o mesmo alcance da ficha.
+    const prof = await criarMembro(`clprof${marca}`, {
+      tenant: f!.outra.tenantId, rotulo: 'Clinico profissional',
+      permissoes: [
+        { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' },
+        { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      ],
+    })
+    criado.membros.push(prof)
+    const { error: eAp } = await db().from('appointments').insert({
+      branch_id: f!.outra.branchId, client_id: f!.clienteId, procedure_id: f!.outra.procedureId,
+      professional_id: prof.userId, status: 'COMPLETED', source: 'INTERNAL',
+      scheduled_at: new Date().toISOString(), duration_min: 30, price: 0,
+    })
+    expect(eAp, 'o atendimento dela').toBeNull()
+    const outraCliente = await f!.outra.criarCliente('Paciente de outra profissional')
+
+    const NOME = `FOTO-CLINICA-${marca}`
+    await comSessao(browser, prof.estado, async p => {
+      await p.goto(`/admin/clients/${f!.clienteId}?aba=documentos`)
+      await p.getByRole('button', { name: 'Adicionar documento' }).click()
+      await p.locator('input[name="name"]').fill(NOME)
+      await p.locator('select[name="category"]').selectOption('foto_clinica')
+      await p.locator('input[name="file"]').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from('89504e470d0a1a0a', 'hex') })
+      await p.getByRole('button', { name: 'Anexar documento' }).click()
+      await expect.poll(async () => (await db().from('client_documents').select('category').eq('name', NOME).maybeSingle()).data?.category,
+        { message: 'a foto clínica foi anexada', timeout: 20_000 }).toBe('foto_clinica')
+      // Só o que é dela: sem o cadastro, a categoria comum não aparece.
+      await p.getByRole('button', { name: 'Adicionar documento' }).click()
+      await expect(p.locator('select[name="category"] option[value="outro"]')).toHaveCount(0)
+
+      // De quem ela NÃO atende, não anexa.
+      await p.goto(`/admin/clients/${outraCliente}?aba=documentos`)
+      await expect(p.getByRole('button', { name: 'Adicionar documento' })).toHaveCount(0)
+    })
+  })
+
   test('arquivo do tratamento: anotação do profissional e anamnese só com prontuário', async ({ browser }) => {
     await comSessao(browser, f!.admin.estado, async p => {
       const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'getTreatmentPlanDetails', `/admin/clients/${f!.clienteId}`,

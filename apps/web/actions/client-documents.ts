@@ -1,7 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, can } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, can, isOwnScope } from '@/lib/auth'
+import type { TenantContext } from '@estetica-os/types'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { ehAnexoClinico } from '@/lib/clientes/anexos'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -11,12 +13,31 @@ import { gravar, ler, tentar } from '@/lib/db'
 const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
 
+const SEM_ACESSO_COMUM   = 'Seu cargo não libera anexar documentos do cadastro.'
+const SEM_ACESSO_CLINICO = 'Anexo clínico (exame, laudo, foto clínica, receita…) é prontuário: é preciso o módulo Prontuário — e, com "só os meus", ser cliente que você atende.'
+
+/**
+ * Quem mexe num anexo: o que é CLÍNICO é prontuário — o módulo dele decide,
+ * com o mesmo alcance da ficha ("só os meus" = cliente que este profissional
+ * atendeu); o resto é o cadastro (`clients: MANAGE`). Até 2026-10-20 tudo
+ * pedia o cadastro, e a profissional (Clientes = Ver) não tinha onde anexar a
+ * foto clínica — a simulação de um dia de clínica achou.
+ */
+async function recusaDoAnexo(ctx: TenantContext, admin: SupabaseClient, categoria: string | null, clientId: string): Promise<string | null> {
+  if (!ehAnexoClinico(categoria)) return can(ctx, 'clients', 'MANAGE') ? null : SEM_ACESSO_COMUM
+  if (!can(ctx, 'medical_records', 'MANAGE')) return SEM_ACESSO_CLINICO
+  if (!isOwnScope(ctx, 'medical_records')) return null
+  if (!ctx.internalUserId) return SEM_ACESSO_CLINICO
+  const meu = await ler(admin.from('appointments').select('id')
+    .eq('client_id', clientId).eq('professional_id', ctx.internalUserId).limit(1), 'conferir se o cliente é atendido por você')
+  return (meu ?? []).length ? null : SEM_ACESSO_CLINICO
+}
+
 export async function uploadClientDocument(
   _prev: { error?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'clients', 'MANAGE')
 
   const file      = formData.get('file') as File | null
   const name      = (formData.get('name') as string | null)?.trim()
@@ -29,10 +50,6 @@ export async function uploadClientDocument(
   if (!name)                    return { error: 'Informe o nome do documento.' }
   if (!clientId || !branchId)   return { error: 'Dados inválidos.' }
   if (file.size > MAX_FILE_SIZE) return { error: 'Arquivo deve ter no máximo 20 MB.' }
-  // Exame, laudo, foto clínica, receita e termo são prontuário (2026-10-03).
-  if (ehAnexoClinico(category) && !can(ctx, 'medical_records', 'MANAGE')) {
-    return { error: 'Anexo clínico (exame, laudo, receita…) é prontuário: é preciso ter o módulo Prontuário para gerenciar.' }
-  }
 
   // Ensure client belongs to this tenant
   const supabase = await createSupabase()
@@ -53,6 +70,10 @@ export async function uploadClientDocument(
     .from('clients').select('id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
     'conferir o cliente do documento')
   if (!cliente) return { error: 'Cliente não encontrado.' }
+
+  // Exame, laudo, foto clínica, receita e termo são prontuário (2026-10-03).
+  const recusa = await recusaDoAnexo(ctx, admin, category, clientId)
+  if (recusa) return { error: recusa }
 
   // Bucket PRIVADO (LGPD) — nunca público. Guardamos o path; servimos por signed URL.
   await ensurePrivateBucket(BUCKET)
@@ -102,14 +123,13 @@ export async function deleteClientDocument(
   clientId: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'clients', 'MANAGE')
 
   const admin = createAdminClient()
 
   // Verify ownership via branch → tenant
   const doc = await ler(admin
     .from('client_documents')
-    .select('id, file_path, branch_id, category, branches!inner(tenant_id)')
+    .select('id, file_path, branch_id, category, client_id, branches!inner(tenant_id)')
     .eq('id', documentId)
     .single(), 'buscar o documento')
 
@@ -118,7 +138,7 @@ export async function deleteClientDocument(
   const tenantId = (doc.branches as unknown as { tenant_id: string }).tenant_id
   // E a unidade onde o documento foi posto, ao alcance de quem apaga (§11).
   if (tenantId !== ctx.tenantId || !alcancaUnidade(ctx, doc.branch_id as string)) return { error: 'Acesso negado.' }
-  if (ehAnexoClinico(doc.category as string) && !can(ctx, 'medical_records', 'MANAGE')) return { error: 'Acesso negado.' }
+  if (await recusaDoAnexo(ctx, admin, doc.category as string, doc.client_id as string)) return { error: 'Acesso negado.' }
 
   if (doc.file_path) {
     await gravar(admin.storage.from(BUCKET).remove([doc.file_path]), 'apagar o arquivo do documento')

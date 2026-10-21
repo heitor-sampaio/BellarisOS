@@ -125,6 +125,13 @@ const procedures = await ler(
   profissional no plano e a anamnese no arquivo do tratamento (só `agenda`).
   Concluir o atendimento e salvar a evolução pedem `medical_records: MANAGE`
   (gravam prontuário). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
+- **Anexar (e apagar) anexo CLÍNICO é do prontuário, não do cadastro**
+  (2026-10-20, `recusaDoAnexo` em `actions/client-documents.ts`):
+  `medical_records: MANAGE` com o alcance da ficha — no "só os meus", só de
+  cliente que o profissional atendeu. O anexo comum (RG, comprovante) segue
+  `clients: MANAGE`. A ficha oferece a cada um só as categorias dele. Antes
+  tudo pedia o cadastro, e a profissional não tinha onde anexar a foto
+  clínica (simulação de um dia de clínica).
 
 ---
 
