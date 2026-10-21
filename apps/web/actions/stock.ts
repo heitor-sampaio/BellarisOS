@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -188,7 +188,10 @@ async function createProductInterno(
     revalidatePath('/admin/produtos')
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
-    revalidateTag(`products:${ctx.tenantId!}`, 'max')
+    // updateTag, não revalidateTag 'max': o 'max' serve a lista velha mais uma vez,
+    // e o produto recém-criado não aparecia no "Novo procedimento" nem no
+    // atendimento (simulação de 2026-10-20).
+    updateTag(`products:${ctx.tenantId!}`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -251,7 +254,10 @@ export async function updateProduct(
     revalidatePath('/admin/produtos')
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
-    revalidateTag(`products:${ctx.tenantId!}`, 'max')
+    // updateTag, não revalidateTag 'max': o 'max' serve a lista velha mais uma vez,
+    // e o produto recém-criado não aparecia no "Novo procedimento" nem no
+    // atendimento (simulação de 2026-10-20).
+    updateTag(`products:${ctx.tenantId!}`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -308,7 +314,10 @@ async function toggleProductActiveInterno(productId: string, isActive: boolean) 
       .eq('tenant_id', ctx.tenantId!), 'mudar a situação do produto')
 
     revalidatePath('/admin/produtos')
-    revalidateTag(`products:${ctx.tenantId!}`, 'max')
+    // updateTag, não revalidateTag 'max': o 'max' serve a lista velha mais uma vez,
+    // e o produto recém-criado não aparecia no "Novo procedimento" nem no
+    // atendimento (simulação de 2026-10-20).
+    updateTag(`products:${ctx.tenantId!}`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }

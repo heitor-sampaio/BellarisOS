@@ -124,8 +124,14 @@ test.describe.serial('fechar um atendimento', () => {
     await expect.poll(async () => (await db.from('appointments').select('status').eq('id', c!.agendamento).single()).data?.status)
       .toBe('IN_PROGRESS')
 
+    // A evolução escrita NA PÁGINA, sem "Salvar", e finalizada pelo modal: o
+    // modal abria com o que estava gravado (nada) e a evolução se perdia — a
+    // simulação de um dia de clínica (2026-10-20) achou na Dra. Lívia.
+    await page.locator('textarea[placeholder^="Técnicas utilizadas"]').fill(`${PREFIXO} observação final`)
+    await page.locator('textarea[placeholder^="Reações, intercorrências"]').fill(`${PREFIXO} eritema leve`)
     await page.getByRole('button', { name: 'Finalizar atendimento' }).click()
-    await page.locator('textarea[name="notes"]').fill(`${PREFIXO} observação final`)
+    await expect(page.locator('textarea[name="notes"]'), 'o modal traz o que está na tela').toHaveValue(`${PREFIXO} observação final`)
+    await expect(page.locator('textarea[name="intercurrences"]')).toHaveValue(`${PREFIXO} eritema leve`)
     await page.getByRole('button', { name: 'Confirmar conclusão' }).click()
 
     // Concluiu, e AVISOU: o modal não some calado quando falta insumo.
@@ -138,8 +144,9 @@ test.describe.serial('fechar um atendimento', () => {
     expect(ag!.status).toBe('COMPLETED')
     expect(ag!.completed_at, 'a conclusão grava quando').not.toBeNull()
 
-    const { data: entrada } = await db.from('medical_record_entries').select('notes').eq('appointment_id', c!.agendamento).single()
+    const { data: entrada } = await db.from('medical_record_entries').select('notes, intercurrences').eq('appointment_id', c!.agendamento).single()
     expect(entrada!.notes, 'a observação vai para o prontuário').toBe(`${PREFIXO} observação final`)
+    expect(entrada!.intercurrences, 'e a intercorrência também').toBe(`${PREFIXO} eritema leve`)
 
     const { data: mov } = await db.from('stock_movements')
       .select('type, quantity, balance_after').eq('appointment_id', c!.agendamento).single()
@@ -160,6 +167,61 @@ test.describe.serial('fechar um atendimento', () => {
     // A receita NÃO nasce no fechamento — é o pagamento que a lança.
     const { data: rec } = await db.from('financial_transactions').select('id').eq('appointment_id', c!.agendamento)
     expect(rec ?? []).toHaveLength(0)
+  })
+
+  test('o insumo que não está no procedimento: adicionado na tela, baixa na conclusão (2026-10-20)', async ({ page }) => {
+    // A simulação de um dia de clínica: o atendimento avulso abre no formulário
+    // de avaliação, que não tinha o cartão de insumos — a profissional lançou o
+    // ácido no editor do PLANO e o estoque nunca baixou. E o "Adicionar insumo"
+    // entrava DESMARCADO: só o marcado baixa.
+    const db = banco()
+    const nome = `${PREFIXO} Ácido avulso ${marca}`
+    // O produto nasce pela TELA do estoque: a lista de produtos (cache) tem de
+    // vir nova JÁ na próxima tela — com revalidateTag 'max' vinha a velha, e o
+    // produto recém-criado não aparecia (D15 da mesma simulação).
+    await page.goto('/admin/estoque')
+    await page.getByRole('button', { name: 'Novo produto' }).click()
+    const novo = page.locator('dialog[open]')
+    await novo.locator('input[name="name"]').fill(nome)
+    await novo.getByRole('button', { name: 'Criar produto' }).click()
+    await expect(novo).toBeHidden()
+    let prodId = ''
+    await expect.poll(async () => {
+      prodId = ((await db.from('products').select('id').eq('name', nome).maybeSingle()).data?.id as string) ?? ''
+      return prodId
+    }).not.toBe('')
+    const prod = { id: prodId }
+    try {
+      const { data: ap, error: eA } = await db.from('appointments').insert({
+        branch_id: c!.unidade, client_id: c!.cliente, procedure_id: c!.procedimento, professional_id: c!.profissional,
+        scheduled_at: new Date().toISOString(), started_at: new Date().toISOString(), duration_min: 30, price: PRECO,
+        status: 'IN_PROGRESS', source: 'INTERNAL',
+      }).select('id').single<{ id: string }>()
+      expect(eA).toBeNull()
+
+      await page.goto(`/admin/agenda/${ap!.id}`)
+      await page.getByRole('button', { name: 'Adicionar insumo' }).click()
+      await page.getByPlaceholder('Buscar produto…').fill(`Ácido avulso ${marca}`)
+      await page.getByRole('button', { name: new RegExp(`Ácido avulso ${marca}`) }).dispatchEvent('mousedown')
+      const qtd = page.locator('input[type="number"][step="0.001"]').last()
+      await qtd.fill('5')
+      await qtd.blur()
+      await page.getByRole('button', { name: 'Finalizar atendimento' }).click()
+      await page.getByRole('button', { name: 'Confirmar conclusão' }).click()
+      // O insumo do procedimento (2) falta de novo: o aviso aparece e se fecha.
+      const aviso = page.getByRole('alertdialog', { name: /faltou insumo/ })
+      if (await aviso.isVisible().catch(() => false)) await aviso.getByRole('button', { name: 'Entendi' }).click()
+
+      await expect.poll(async () => {
+        const { data } = await db.from('stock_movements').select('quantity').eq('appointment_id', ap!.id).eq('product_id', prod.id)
+        return (data ?? []).map(m => Number(m.quantity))
+      }, { message: 'o insumo adicionado baixa', timeout: 20_000 }).toEqual([-5])
+    } finally {
+      await db.from('stock_movements').delete().eq('product_id', prod.id)
+      await db.from('domain_events').delete().eq('entidade_id', prod.id)
+      await db.from('branch_product_stock').delete().eq('product_id', prod.id)
+      await db.from('products').delete().eq('id', prod.id)
+    }
   })
 
   test('receber: crédito sem saldo é recusado; Pix lança a receita paga', async ({ page }) => {

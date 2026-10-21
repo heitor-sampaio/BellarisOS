@@ -185,6 +185,18 @@ O resto do fluxo:
 - A **receita não nasce no fechamento**: é `confirmPayment`, na recepção, que a
   lança já paga. Marcar "Concluído" na agenda (`completeAppointment`) exige o
   fechamento feito e só lança a conta a receber, se faltar — repetir é seguro.
+- **O insumo usado hoje se lança na tela do atendimento, em todo formato
+  dela** (2026-10-20): o cartão "Insumos utilizados" (os do cadastro do
+  procedimento, marcados, mais o "Adicionar insumo") aparece também no
+  formulário da avaliação — o atendimento avulso abre nele, e sem o cartão a
+  profissional lançava o insumo no editor do PLANO, que nunca baixa. O insumo
+  adicionado entra MARCADO (só o marcado baixa). A lista de produtos é cache
+  (`products:<rede>`): criar, editar e ativar produto o expiram com
+  `updateTag` — com `revalidateTag 'max'` o produto novo não aparecia na
+  próxima tela. Prova: `e2e/atendimento-fechamento.spec.ts`.
+- **O "Finalizar" leva a evolução que está NA TELA**: o modal abre com o que a
+  profissional escreveu na página (avaliação ou ficha), não com o gravado —
+  sem "Salvar" antes, a evolução se perdia (simulação de 2026-10-20).
 - **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
   (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
   aparecer no estoque, e a tela mostra o que faltou.

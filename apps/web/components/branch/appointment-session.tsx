@@ -950,6 +950,10 @@ export function AppointmentSession({
     router.refresh()
   }
 
+  // Qual formulário de evolução está à vista (o mesmo critério do corpo da página).
+  const usaFormularioDaAvaliacao = !isPartOfPlan && podeMontarPlano
+    && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
+
   const confirmedInsumos = useMemo(
     () => insumos.filter(i => checkedIds.has(i.productId)),
     [insumos, checkedIds],
@@ -1122,19 +1126,22 @@ export function AppointmentSession({
     />
   )
 
-  const insumosSection = (
-    <InsumoCard
-      embedded
-      items={insumos}
-      available={availableProducts}
-      checkedIds={checkedIds}
-      readonly={isDone}
-      onToggle={id => setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })}
-      onChangeQty={(id, qty) => setInsumos(prev => prev.map(i => i.productId === id ? { ...i, quantity: qty } : i))}
-      onAdd={p => setInsumos(prev => [...prev, { productId: p.id, name: p.name, unit: p.unit, quantity: 1 }])}
-      onRemove={id => { setInsumos(prev => prev.filter(i => i.productId !== id)); setCheckedIds(prev => { const n = new Set(prev); n.delete(id); return n }) }}
-    />
-  )
+  const insumoProps = {
+    items:       insumos,
+    available:   availableProducts,
+    checkedIds,
+    readonly:    isDone,
+    onToggle:    (id: string) => setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }),
+    onChangeQty: (id: string, qty: number) => setInsumos(prev => prev.map(i => i.productId === id ? { ...i, quantity: qty } : i)),
+    // O adicionado já entra MARCADO: só o marcado baixa, e adicionar é dizer
+    // "usei" — desmarcado, ele sumia da conclusão sem ninguém perceber.
+    onAdd:       (p: AvailableProduct) => {
+      setInsumos(prev => [...prev, { productId: p.id, name: p.name, unit: p.unit, quantity: 1 }])
+      setCheckedIds(prev => new Set(prev).add(p.id))
+    },
+    onRemove:    (id: string) => { setInsumos(prev => prev.filter(i => i.productId !== id)); setCheckedIds(prev => { const n = new Set(prev); n.delete(id); return n }) },
+  }
+  const insumosSection = <InsumoCard embedded {...insumoProps} />
 
   return (
     <>
@@ -1199,7 +1206,11 @@ export function AppointmentSession({
       {showFinish  && (
         <FinishModal
           appointmentId={appointment.id} slug={slug}
-          initialNotes={appointment.savedNotes} initialIntercurrences={appointment.savedIntercurrences}
+          // O que está NA TELA, não o que foi gravado: a evolução escrita na
+          // página sem "Salvar" se perdia ao finalizar (simulação de 2026-10-20).
+          // A avaliação ainda sem plano tem o formulário dela; os outros, o de sempre.
+          initialNotes={usaFormularioDaAvaliacao ? evalSessionNotes : notes}
+          initialIntercurrences={usaFormularioDaAvaliacao ? evalSessionInterc : intercurrences}
           insumos={confirmedInsumos}
           onClose={() => setShowFinish(false)}
         />
@@ -1607,6 +1618,11 @@ export function AppointmentSession({
                     hideActions={true}
                     onPlanChange={(_items, notes) => setEvalPlanNotes(notes)}
                   />
+
+                  {/* O que foi USADO hoje. O formulário da avaliação não tinha
+                      onde lançar: a profissional lançava no editor do plano e o
+                      estoque nunca baixava (simulação de 2026-10-20). */}
+                  {canEditRecords && <InsumoCard {...insumoProps} />}
 
                   {/* Observações do atendimento — controladas, sem save individual.
                       São prontuário: só para quem o escreve. */}
