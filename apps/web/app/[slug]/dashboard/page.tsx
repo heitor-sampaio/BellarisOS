@@ -11,7 +11,7 @@ import { RevenueBarChart } from '@/components/branch/revenue-bar-chart'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { unitTag } from '@estetica-os/utils'
+import { unitTag, iniciaisDoNome } from '@estetica-os/utils'
 import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
@@ -35,8 +35,7 @@ function avatarColor(name: string) {
   return PALETTE[h % PALETTE.length]!
 }
 function initials(name: string) {
-  const p = name.trim().split(' ')
-  return (p.length >= 2 ? p[0]![0]! + p[p.length - 1]![0]! : p[0]!.substring(0, 2)).toUpperCase()
+  return iniciaisDoNome(name)
 }
 
 // --- Avatar pill --------------------------------------------------

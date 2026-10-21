@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { iniciaisDoNome } from '@estetica-os/utils'
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -38,7 +39,7 @@ const DAY_END     = 21
 const WORK_MIN    = 8 * 60
 
 function initials(name: string) {
-  return name.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase()
+  return iniciaisDoNome(name)
 }
 
 function fmtDuration(min: number) {

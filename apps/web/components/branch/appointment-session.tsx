@@ -10,7 +10,7 @@ import {
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { formatDate, idadeEm } from '@estetica-os/utils'
+import { formatDate, idadeEm, iniciaisDoNome } from '@estetica-os/utils'
 import {
   checkinAppointment,
   startAppointment,
@@ -170,7 +170,7 @@ function fmtBRL(v: number) {
 }
 
 function initials(name: string) {
-  return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+  return iniciaisDoNome(name)
 }
 
 function calcAge(birthDate: string | null) {

@@ -1,5 +1,6 @@
 'use client'
 
+import { iniciaisDoNome } from '@estetica-os/utils'
 import { addDays, startOfWeek, isSameDay, format } from 'date-fns'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import type { CalendarEvent } from './agenda-month-view'
@@ -27,7 +28,7 @@ const PROF_COLORS = [
 ]
 
 function getInitials(name: string) {
-  return name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
+  return iniciaisDoNome(name)
 }
 
 function shortName(name: string) {

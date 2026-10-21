@@ -21,7 +21,7 @@ import { LeadTimeline } from './lead-timeline'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { rotaAgenda, rotaClientes } from '@/lib/rotas'
 import { rotaComParams } from '@/lib/query-params'
-import { isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
+import { isUnitTag, unitTag, unitTagName, iniciaisDoNome } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { format, isSameDay, subDays } from 'date-fns'
@@ -290,8 +290,7 @@ function NotasDoCliente({
 // -- Helpers ------------------------------------------------------------------
 
 function getInitials(name: string) {
-  const p = name.trim().split(' ')
-  return ((p[0]?.[0] ?? '') + (p[p.length - 1]?.[0] ?? p[0]?.[1] ?? '')).toUpperCase()
+  return iniciaisDoNome(name)
 }
 
 function fmtBRL(v: number) {

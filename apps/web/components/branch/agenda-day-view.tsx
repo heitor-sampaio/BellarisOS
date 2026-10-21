@@ -1,5 +1,6 @@
 'use client'
 
+import { iniciaisDoNome } from '@estetica-os/utils'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import type { CalendarEvent } from './agenda-month-view'
@@ -43,7 +44,7 @@ const PROF_COLORS = [
 
 
 function getInitials(name: string) {
-  return name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
+  return iniciaisDoNome(name)
 }
 
 function timeToY(isoStr: string, g: Grade): number {
