@@ -1,5 +1,7 @@
 ﻿'use server'
 
+import { ligarCredito } from '@/lib/creditos/credito'
+import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can } from '@/lib/auth'
@@ -1513,6 +1515,11 @@ export async function createClientAppointment(params: {
       return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
 
+    // O que ela JÁ PAGOU deste procedimento (2026-10-21, decisão do Heitor): a
+    // sessão livre de um plano vendido, ou o crédito de pacote/pré-pago. Sem
+    // isso, o agendamento nascia avulso e o checkout cobraria de novo.
+    const pago = await pagoParaAgendar(admin, cliente.tenant_id as string, ctx.clientId!, params.procedureId)
+
     const { data: appt, error } = await admin
       .from('appointments')
       .insert({
@@ -1522,16 +1529,30 @@ export async function createClientAppointment(params: {
         professional_id: params.professionalId,
         scheduled_at:    params.scheduledAt,
         duration_min:    procedure.duration_min,
-        price:           procedure.price,
+        price:           pago ? pago.preco : procedure.price,
         status:          'SCHEDULED',
         // CLIENT_APP é o cliente pelo portal/app; ONLINE era o agendamento
         // público, que foi descartado (§9.1).
         source:          'CLIENT_APP',
+        treatment_plan_id: pago?.tipo === 'PLANO' ? pago.planId : null,
       })
       .select('id')
       .single()
 
     if (error || !appt) return { error: `Erro ao criar agendamento: ${error?.message}` }
+
+    // Liga o que foi pago, só se ainda estiver livre (compare-and-swap). Perdeu
+    // a corrida para outro agendamento: este segue avulso, com o preço de tabela.
+    if (pago) {
+      const ligou = pago.tipo === 'PLANO'
+        ? ((await gravar(admin.from('treatment_plan_sessions').update({ appointment_id: appt.id })
+            .eq('id', pago.sessionId).is('appointment_id', null).select('id'), 'ligar a sessão do plano')) as unknown[] | null)?.length
+        : await ligarCredito(admin, pago.credito, appt.id as string)
+      if (!ligou) {
+        await gravar(admin.from('appointments').update({ treatment_plan_id: null, price: procedure.price })
+          .eq('id', appt.id as string), 'desligar o agendamento do que já foi usado')
+      }
+    }
 
     revalidatePath(`/${params.slug}/cliente/agendamentos`)
     // Marcado pelo proprio cliente no portal: nao ha ator da equipe a excluir.

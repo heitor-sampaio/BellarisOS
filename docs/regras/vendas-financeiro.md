@@ -192,6 +192,13 @@ o procedimento avulso pago antes.
   dele. Na simulação, a limpeza de R$ 180 que gerou um plano nunca foi
   cobrada: o checkout ("Novo paciente") cobrava só o plano. Prova:
   `e2e/checkout-de-plano.spec.ts`.
+- **O agendamento pela cliente no app usa o que ela já pagou** (2026-10-21,
+  decisão do Heitor): a sessão livre de um plano VENDIDO (`ACCEPTED`, a mais
+  antiga, cujo primeiro procedimento é o agendado — preço = a soma da sessão)
+  ou, sem ela, o crédito de pacote/pré-pago (`pagoParaAgendar`,
+  `lib/creditos/pago-no-app.ts`). A ligação é compare-and-swap; perdeu a
+  corrida, o agendamento fica avulso. Prova:
+  `e2e/portal-cliente-agendar-o-que-ja-pagou.spec.ts`.
 - **O check-in só cobra o que VENCEU** (`emAbertoDoPlano` /
   `separarOEmAberto`): em aberto sem data ou com vencimento até o fim de hoje
   (Brasília). Parcela que vence depois já está combinada — aparece no banner
