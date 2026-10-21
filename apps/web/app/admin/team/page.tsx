@@ -1,4 +1,5 @@
 import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
+import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura'
@@ -264,19 +265,19 @@ export default async function AdminTeamPage({
                       {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
                           (a action também recusa). */}
                       {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
-                        <form action={async () => {
-                          'use server'
-                          await deactivateTeamMember(m.id, '/admin/team')
-                        }}>
-                          <button
-                            type="submit"
-                            className="btn-ghost"
-                            style={{ padding: '5px 8px', color: 'var(--text-faint)' }}
-                            title="Desativar membro"
-                          >
-                            <UserMinus size={15} />
-                          </button>
-                        </form>
+                        <BotaoComConfirmacao
+                          acao={async () => {
+                            'use server'
+                            await deactivateTeamMember(m.id, '/admin/team')
+                          }}
+                          titulo="Desativar membro?"
+                          explicacao={<><strong style={{ color: 'var(--text)' }}>{m.name}</strong> não entra mais no sistema, e sai da agenda. Dá para reativar depois.</>}
+                          rotuloConfirmar="Desativar"
+                          title="Desativar membro"
+                          style={{ padding: '5px 8px', color: 'var(--text-faint)' }}
+                        >
+                          <UserMinus size={15} />
+                        </BotaoComConfirmacao>
                       ) : (
                         <form action={async () => {
                           'use server'

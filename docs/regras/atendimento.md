@@ -37,6 +37,9 @@
   (`AvisoFlutuante`). A agenda da unidade leva o dia na URL (`?date=`), e a
   grade de hoje abre na hora de agora. Prova: `e2e/agenda-avisos.spec.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
+- **O procedimento novo nasce FORA do app** (`visible_on_client_app` desligado,
+  2026-10-21): só vai para o self-service o que a clínica marca. Nascia ligado,
+  e a Toxina da simulação ficaria agendável pelo app.
 - **Todo agendamento tem procedimento.** A "avaliação" era a exceção que
   permitia marcar sem escolher um — ela deixou de ser entidade em 2026-09-25 e
   virou um procedimento como outro qualquer, com a ficha que precisar. Não há

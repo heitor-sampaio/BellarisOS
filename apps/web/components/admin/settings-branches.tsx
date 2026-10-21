@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { getTenantContext } from '@/lib/auth'
 import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
@@ -126,21 +127,33 @@ export async function SettingsBranches() {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   paddingTop: 14, borderTop: '1px solid var(--hairline)',
                 }}>
-                  <form action={async () => {
-                    'use server'
-                    await toggleBranchStatus(branch.id, !branch.is_active)
-                  }}>
-                    <button
-                      type="submit"
-                      className="btn-ghost"
-                      style={{ fontSize: 'var(--text-xs-sz)', gap: 5, color: branch.is_active ? 'var(--text-faint)' : 'var(--success)' }}
+                  {branch.is_active ? (
+                    <BotaoComConfirmacao
+                      acao={async () => {
+                        'use server'
+                        await toggleBranchStatus(branch.id, false)
+                      }}
+                      titulo="Desativar unidade?"
+                      explicacao={<><strong style={{ color: 'var(--text)' }}>{branch.name}</strong> sai do ar: a agenda dela fecha para novos agendamentos, e ela some do app das clientes. Dá para reativar depois.</>}
+                      rotuloConfirmar="Desativar"
+                      style={{ fontSize: 'var(--text-xs-sz)', gap: 5, color: 'var(--text-faint)' }}
                     >
-                      {branch.is_active
-                        ? <><PowerOff size={13} /> Desativar</>
-                        : <><Power size={13} /> Reativar</>
-                      }
-                    </button>
-                  </form>
+                      <PowerOff size={13} /> Desativar
+                    </BotaoComConfirmacao>
+                  ) : (
+                    <form action={async () => {
+                      'use server'
+                      await toggleBranchStatus(branch.id, true)
+                    }}>
+                      <button
+                        type="submit"
+                        className="btn-ghost"
+                        style={{ fontSize: 'var(--text-xs-sz)', gap: 5, color: 'var(--success)' }}
+                      >
+                        <Power size={13} /> Reativar
+                      </button>
+                    </form>
+                  )}
 
                   <Link
                     href={`/admin/branches/${branch.id}`}

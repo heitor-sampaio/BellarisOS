@@ -221,7 +221,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
       {step === 2 && (
         <div>
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
-            Com quem você prefere ser atendido?
+            Tem preferência de profissional?
           </p>
           {professionals.length === 0 && (
             <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', textAlign: 'center', padding: '48px 0' }}>

@@ -343,7 +343,7 @@ function ProductFields({
               Produto para venda direta ao cliente
             </span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              {vendaDireta ? 'Informe o preço de venda abaixo' : 'Apenas para uso interno como insumo'}
+              {vendaDireta ? 'Ligado: informe o preço de venda abaixo.' : 'Desligado: o produto é só insumo, de uso interno.'}
             </span>
           </div>
         </button>

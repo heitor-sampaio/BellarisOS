@@ -309,7 +309,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
         <Field label="Visível no app do cliente">
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingTop: 6 }}>
             <input type="checkbox" name="visible_on_client_app"
-              defaultChecked={existing?.visible_on_client_app ?? true}
+              defaultChecked={existing?.visible_on_client_app ?? false}
               style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
             <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
               Permitir agendamento self-service
