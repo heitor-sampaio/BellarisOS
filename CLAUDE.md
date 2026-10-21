@@ -287,6 +287,8 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
 - O layout de `[slug]` deixa o CLIENTE passar (é por ele que se chega a
   `/[slug]/cliente`): tela de equipe em `[slug]` sem `assertPermission` é tela
   aberta ao cliente final. Prova em `e2e/portais-isolamento.spec.ts`.
+  Desde 2026-10-21 o layout também LEVA a cliente que abre uma tela da equipe
+  ao portal dela (`/[slug]/cliente`) — a trava da página continua valendo.
 - **Rota PÚBLICA se declara em `lib/supabase/middleware.ts`**, não só deixando
   de chamar `getTenantContext`. O proxy manda para `/login` tudo que
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser

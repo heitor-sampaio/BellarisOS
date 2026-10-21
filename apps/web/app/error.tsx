@@ -68,8 +68,10 @@ export default function AppError({
         </p>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-          <button type="button" className="btn-secondary" onClick={() => router.back()}>
-            <ArrowLeft size={14} /> Voltar
+          {/* O início da pessoa (o portal dela), não o histórico: aberta direto, a
+              tela não tem para onde voltar, e o router.back() ia a about:blank. */}
+          <button type="button" className="btn-secondary" onClick={() => router.push('/auth/redirect')}>
+            <ArrowLeft size={14} /> Ir para o início
           </button>
           {!forbidden && !limite && (
             <button type="button" className="btn-primary" onClick={reset}>

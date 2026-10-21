@@ -1,5 +1,5 @@
 import { redirect, notFound } from 'next/navigation'
-import { getTenantContext, isOwnScope } from '@/lib/auth'
+import { getTenantContext, isOwnScope, caminhoDaRequisicao } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { BranchSidebar } from '@/components/branch/sidebar'
@@ -33,6 +33,10 @@ export default async function BranchLayout({
       .single(), 'buscar o cliente')
     const clientBranch = clientData?.branches as unknown as { slug: string } | null
     if (!clientData?.branch_id || clientBranch?.slug !== slug) redirect('/login')
+    // Tela da equipe aberta pela cliente (um link, o histórico): o portal dela,
+    // não a tela de "sem acesso" — que fala de cargo e de rede (2026-10-21).
+    const caminho = (await caminhoDaRequisicao()).split(' ')[1]?.split('?')[0] ?? ''
+    if (caminho.startsWith(`/${slug}/`) && !caminho.startsWith(`/${slug}/cliente`)) redirect(`/${slug}/cliente`)
     return <>{children}</>
   }
 

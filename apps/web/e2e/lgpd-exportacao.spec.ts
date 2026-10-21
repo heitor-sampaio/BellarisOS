@@ -149,11 +149,15 @@ test.describe.serial('LGPD: exportação de dados', () => {
       await page.goto(`/${cliente!.slug}/cliente/perfil`)
       await expect(page.getByText('Prontuário incluído')).toBeVisible()
       const chamada = capturarAcao(page, corpo => corpo.includes(pedido))
-      const popup = ctx.waitForEvent('page')
+      // Um DOWNLOAD, não um popup (2026-10-21): a janela nova falhava no app
+      // Android (WebView). O link assinado já diz "baixar", com o nome do arquivo.
+      const download = page.waitForEvent('download')
       await page.getByRole('button', { name: 'Baixar dados (JSON)' }).click()
       baixar = await chamada
-      const aba = await popup
-      expect(aba.url(), 'download por link assinado do bucket privado').toMatch(/lgpd-exports.*token=/)
+      const arquivo = await download
+      expect(arquivo.url(), 'download por link assinado do bucket privado').toMatch(/lgpd-exports.*token=/)
+      expect(arquivo.suggestedFilename()).toMatch(/\.json$/)
+      expect(ctx.pages(), 'sem janela nova').toHaveLength(1)
     } finally {
       await ctx.close()
     }

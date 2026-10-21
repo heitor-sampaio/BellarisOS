@@ -4,7 +4,6 @@ import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSignedUrl } from '@/lib/storage'
 import { LGPD_BUCKET } from '@/lib/lgpd/export'
 import { processExportRequest } from '@/lib/lgpd/processar'
 import { ler } from '@/lib/db'
@@ -124,12 +123,21 @@ export async function getExportDownloadUrls(
     return { error: 'O prazo de download expirou. Faça uma nova solicitação.' }
   }
 
+  // O link já diz "baixar", com o nome do arquivo (2026-10-21): a tela abria
+  // num popup, que falha no app Android (WebView). Assim a tela navega para ele
+  // e o arquivo baixa, sem janela nova.
+  const assinar = async (caminho: string | null, nome: string) => {
+    if (!caminho) return undefined
+    const { data, error } = await createAdminClient().storage.from(LGPD_BUCKET).createSignedUrl(caminho, 600, { download: nome })
+    if (error) console.error('[lgpd] assinar o download:', error.message)
+    return data?.signedUrl ?? undefined
+  }
   const [pdf, json] = await Promise.all([
-    getSignedUrl(LGPD_BUCKET, row.export_pdf_path, 600),
-    getSignedUrl(LGPD_BUCKET, row.export_json_path, 600),
+    assinar(row.export_pdf_path as string | null, 'meus-dados.pdf'),
+    assinar(row.export_json_path as string | null, 'meus-dados.json'),
   ])
 
-  return { pdf: pdf ?? undefined, json: json ?? undefined }
+  return { pdf, json }
 }
 
 // ─── Equipe ──────────────────────────────────────────────────────────────────

@@ -47,7 +47,9 @@ function DownloadRow({ request }: { request: LgpdRequestRow }) {
       const res = await getExportDownloadUrls(request.id)
       if (res.error) { setError(res.error); return }
       const url = kind === 'pdf' ? res.pdf : res.json
-      if (url) window.open(url, '_blank', 'noopener')
+      // O link baixa (Content-Disposition): navegar não sai da tela. No app
+      // Android, o link de fora abre no navegador do aparelho, que baixa.
+      if (url) window.location.href = url
       else setError('Arquivo indisponível.')
     })
   }

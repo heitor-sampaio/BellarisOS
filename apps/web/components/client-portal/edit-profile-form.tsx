@@ -1,9 +1,16 @@
 ﻿'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateClientSelf } from '@/actions/clients'
 import { Pencil, X, Check } from 'lucide-react'
+import { fetchCep } from '@/lib/cep'
+
+/** 00000-000 enquanto digita. */
+function mascaraDoCep(v: string): string {
+  const d = v.replace(/\D/g, '').slice(0, 8)
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d
+}
 
 type Client = {
   phone:              string | null
@@ -40,6 +47,25 @@ function Label({ children }: { children: React.ReactNode }) {
 export function EditProfileForm({ client }: Props) {
   const [editing, setEditing] = useState(false)
   const [state, action, pending] = useActionState(updateClientSelf, undefined)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // O CEP com máscara, e o endereço preenchido pelo ViaCEP (2026-10-21; a
+  // simulação viu o portal sem nenhum dos dois). Só preenche: ela corrige.
+  async function aoDigitarCep(e: React.ChangeEvent<HTMLInputElement>) {
+    e.target.value = mascaraDoCep(e.target.value)
+    if (e.target.value.replace(/\D/g, '').length !== 8) return
+    const r = await fetchCep(e.target.value)
+    const form = formRef.current
+    if (!r || !form) return
+    const preencher = (nome: string, valor: string) => {
+      const campo = form.elements.namedItem(nome) as HTMLInputElement | HTMLSelectElement | null
+      if (campo && valor) campo.value = valor
+    }
+    preencher('address', r.street)
+    preencher('neighborhood', r.neighborhood)
+    preencher('city', r.city)
+    preencher('state', r.uf)
+  }
 
   const fmtPhone = (p: string | null) => {
     if (!p) return '—'
@@ -121,7 +147,7 @@ export function EditProfileForm({ client }: Props) {
 
       {/* -- Edit mode --------------------------------------------- */}
       {editing && (
-        <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <form ref={formRef} action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="form-2col">
             <div>
               <Label>Telefone</Label>
@@ -151,7 +177,10 @@ export function EditProfileForm({ client }: Props) {
               name="zip_code"
               type="text"
               className="field"
-              defaultValue={client.zip_code ?? ''}
+              defaultValue={client.zip_code ? mascaraDoCep(client.zip_code) : ''}
+              onChange={aoDigitarCep}
+              inputMode="numeric"
+              autoComplete="postal-code"
               placeholder="00000-000"
               maxLength={9}
               style={{ maxWidth: 140 }}

@@ -213,7 +213,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
  * (`x-bellaris-caminho`; o vindo do navegador é sobrescrito). Fora de uma
  * requisição (sem cabeçalhos), vazio.
  */
-async function caminhoDaRequisicao(): Promise<string> {
+export async function caminhoDaRequisicao(): Promise<string> {
   try {
     return (await headers()).get('x-bellaris-caminho') ?? ''
   } catch {
