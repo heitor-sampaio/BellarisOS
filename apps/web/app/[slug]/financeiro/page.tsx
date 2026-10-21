@@ -5,7 +5,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCommissionsDetail, getCore } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira } from '@/lib/metrics'
 import { ler } from '@/lib/db'
 
 export default async function FinancialPage({
@@ -40,9 +40,11 @@ export default async function FinancialPage({
   // parcela criada num mês e paga no outro — e o checkout de plano cria
   // exatamente isso.
   const argsDoNucleo = { tenantId: ctx.tenantId!, branchIds: [branch.id as string] }
-  const [totais, totaisAnteriores] = await Promise.all([
+  const [totais, totaisAnteriores, composicao] = await Promise.all([
     getCore({ ...argsDoNucleo, from: start,     to: end }),
     getCore({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
+    // Formas de pagamento e categorias: também do banco (a tela somava a lista).
+    getComposicaoFinanceira({ ...argsDoNucleo, from: start, to: end }),
   ])
 
   const transactions = await ler(supabase
@@ -118,6 +120,7 @@ export default async function FinancialPage({
       <FinancialHub
         totais={totais}
         totaisAnteriores={totaisAnteriores}
+        composicao={composicao}
         branchId={branch.id}
         branchName={branch.name}
         slug={slug}

@@ -243,6 +243,30 @@ export async function getMargemPorProcedimento(args: { tenantId: string; limit?:
   }))
 }
 
+export interface ComposicaoFinanceira {
+  /** Receita paga por forma de pagamento (método do banco: PIX, CASH…). */
+  formas:   { chave: string; valor: number }[]
+  receitas: { chave: string; valor: number }[]
+  despesas: { chave: string; valor: number }[]
+}
+
+/**
+ * Receita por forma de pagamento e receita/despesa por categoria, no período
+ * (`metrics_financeiro_composicao`, a regra de metrics_core: estorno fora dos
+ * dois lados). A tela do financeiro somava a lista e contava a
+ * contra-transação do estorno como despesa (simulação de 2026-10-20).
+ */
+export async function getComposicaoFinanceira(args: Args): Promise<ComposicaoFinanceira> {
+  const { data, error } = await createAdminClient().rpc('metrics_financeiro_composicao', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  })
+  logRpcError('metrics_financeiro_composicao', error)
+  const linhas = ((data as { grupo: string; chave: string; valor: unknown }[] | null) ?? [])
+  const de = (g: string) => linhas.filter(l => l.grupo === g).map(l => ({ chave: String(l.chave), valor: n(l.valor) }))
+    .sort((a, b) => b.valor - a.valor)
+  return { formas: de('FORMA'), receitas: de('RECEITA'), despesas: de('DESPESA') }
+}
+
 export type CommissionEntry = {
   id: string; professionalId: string; professionalName: string
   amount: number; isPaid: boolean; referenceAt: string

@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useMemo, useTransition, useRef } from 'react'
+import type { ComposicaoFinanceira } from '@/lib/metrics'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -49,6 +50,8 @@ interface Props {
    * vizinhas é o defeito que mais custa confiança.
    */
   totais:           TotaisDoPeriodo
+  /** Formas de pagamento e categorias do período — de lib/metrics, não da lista. */
+  composicao:       ComposicaoFinanceira
   totaisAnteriores: TotaisDoPeriodo
   branchId:         string
   branchName:       string
@@ -538,7 +541,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores,
+  totais, totaisAnteriores, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -605,30 +608,16 @@ export function FinancialHub({
     [transactions, period, periodStart],
   )
 
-  const { paymentSegments, paymentTotal } = useMemo(() => {
-    const byMethod: Record<string, number> = {}
-    transactions
-      .filter(t => t.is_paid && t.type === 'INCOME' && t.payment_method && t.notes !== 'Estornada')
-      .forEach(t => { byMethod[t.payment_method!] = (byMethod[t.payment_method!] ?? 0) + Number(t.amount) })
-    const total = Object.values(byMethod).reduce((s, v) => s + v, 0)
-    const segs  = Object.entries(byMethod)
-      .sort(([, a], [, b]) => b - a)
-      .map(([k, v]) => ({ label: PM_LABELS[k] ?? k, value: v, color: PM_COLORS[k] ?? '#aaa' }))
-    return { paymentSegments: segs, paymentTotal: total }
-  }, [transactions])
-
-  const { incomeCategories, expenseCategories } = useMemo(() => {
-    const inc: Record<string, number> = {}
-    const exp: Record<string, number> = {}
-    transactions.filter(t => t.is_paid && t.notes !== 'Estornada').forEach(t => {
-      if (t.type === 'INCOME')  inc[t.category] = (inc[t.category] ?? 0) + Number(t.amount)
-      if (t.type === 'EXPENSE') exp[t.category] = (exp[t.category] ?? 0) + Number(t.amount)
-    })
-    const toItems = (map: Record<string, number>, total: number) =>
-      Object.entries(map).sort(([, a], [, b]) => b - a)
-        .map(([label, value]) => ({ label, value, pct: total > 0 ? (value / total) * 100 : 0 }))
-    return { incomeCategories: toItems(inc, income), expenseCategories: toItems(exp, expense) }
-  }, [transactions, income, expense])
+  // A composição vem do banco (metrics_financeiro_composicao): a tela somava a
+  // lista e contava a contra-transação do estorno como despesa — as categorias
+  // davam R$ 6.950 contra o KPI de R$ 6.900 (simulação de 2026-10-20).
+  const paymentSegments = composicao.formas
+    .map(f => ({ label: PM_LABELS[f.chave] ?? f.chave, value: f.valor, color: PM_COLORS[f.chave] ?? '#aaa' }))
+  const paymentTotal = income
+  const comoItens = (lista: { chave: string; valor: number }[], total: number) =>
+    lista.map(x => ({ label: x.chave, value: x.valor, pct: total > 0 ? (x.valor / total) * 100 : 0 }))
+  const incomeCategories  = comoItens(composicao.receitas, income)
+  const expenseCategories = comoItens(composicao.despesas, expense)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
