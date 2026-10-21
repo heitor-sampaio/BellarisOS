@@ -1,6 +1,6 @@
 'use server'
 
-import { updateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { getTenantContext, assertAnyPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
@@ -74,7 +74,7 @@ export async function renomearTag(id: string, bruto: string): Promise<
   if (error) return { ok: false, error: `Não foi possível renomear: ${error.message}` }
   const r = ((data ?? []) as { nome_final: string; registros: number }[])[0]
   // A lista de clientes guarda as tags no cache.
-  updateTag(`clients:${ctx.tenantId!}`)
+  revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
   return {
     ok: true, nome: r?.nome_final ?? v.nome, registros: Number(r?.registros ?? 0),
     juntou,

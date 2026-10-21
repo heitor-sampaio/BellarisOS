@@ -126,7 +126,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       const novo = await garantirClienteRapido(c.admin, c.ctx, { nome: p.clienteNovo.nome, telefone: p.clienteNovo.telefone, branchId: p.branchId })
       if (novo.error || !novo.clientId) return { erro: novo.error ?? 'Não foi possível registrar o cliente.' }
       clientId = novo.clientId
-      revalidateTag(`clients:${c.ctx.tenantId!}`, 'max')
+      revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     }
     const r = await createAppointmentCore(c.admin, c.ctx, {
       branchId: p.branchId, clientId: clientId!, procedureId: p.procedureId, professionalId: p.professionalId,

@@ -47,6 +47,12 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `private.tags_padrao()` — espelha `CLIENT_TAGS`).
 - Prova: `e2e/tags-da-rede.spec.ts`, `tests/tags.test.ts`.
 - `InternalCredit`: saldo de crédito do cliente (concessão manual, cancelamento de plano pago, estorno de um pagamento feito com crédito); usado como método de pagamento `INTERNAL_CREDIT`, que o desconta (§9.6)
+- **A lista de clientes é cache** (`clients:<rede>`, 120 s; rede e unidade): quem
+  cria, edita, importa ou etiqueta cliente a expira com
+  `revalidateTag(tag, { expire: 0 })` — vale dentro e fora de Server Action
+  (Copilot). Com `'max'` a lista abria sem o cadastrado; e, na prova de
+  2026-10-21, nem o `updateTag` derrubou este `unstable_cache`. Prova:
+  `e2e/ficha-lista-de-clientes.spec.ts`.
 - **A aba Financeiro da ficha é do financeiro** (2026-10-20): os pagamentos e
   o crédito interno do cliente só são carregados para `financial: VIEW` ou
   quem recebe (`podeReceber`), e a aba some para os outros. Carregava para

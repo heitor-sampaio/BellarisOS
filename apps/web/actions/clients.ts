@@ -107,7 +107,7 @@ export async function addClient(
       })
       revalidatePath('/admin/oportunidades')
       revalidatePath(`/${slug}/oportunidades`)
-      revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+      revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
       return { success: true, clientId: existing.id as string }
     }
     // Veio do inbox e o CPF já é de um cliente: liga o contato e pronto. Antes
@@ -115,7 +115,7 @@ export async function addClient(
     // vincular nada — a pessoa ficava sem o selo de cliente na conversa.
     if (conversationId) {
       revalidatePath('/admin/inbox')
-      revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+      revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
       return { success: true, clientId: existing.id as string }
     }
     return { error: 'Já existe um cliente com este CPF nesta rede.' }
@@ -214,7 +214,7 @@ export async function addClient(
   }
 
   revalidatePath(`/${slug}/clients`)
-  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+  revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
   return { success: true, clientId: client.id as string }
 }
 
@@ -426,6 +426,6 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
   }
   revalidatePath('/admin/clients')
   revalidatePath(`/admin/clients/${clientId}`)
-  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+  revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
   return {}
 }

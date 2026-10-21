@@ -214,7 +214,7 @@ export async function createCrmAppointment(
     if (input.leadId) {
       await gravar(admin.from('leads').update({ client_id: clientId }).eq('id', input.leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
     }
-    revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+    revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
     revalidatePath('/admin/inbox')
   }
 

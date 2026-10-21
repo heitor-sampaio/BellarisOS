@@ -1,7 +1,7 @@
 'use server'
 
 import { after } from 'next/server'
-import { updateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso, can, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
@@ -174,7 +174,7 @@ export async function andamentoDaImportacao(id: string): Promise<AndamentoDaImpo
   // Terminou: a lista de clientes (cache, lib/cached-queries) precisa ver o que
   // entrou. Do `after()` a invalidação não chega à tela; daqui, sim — e a tela
   // recarrega ao ver "concluída".
-  if (a.status === 'concluida' || a.status === 'falhou') updateTag(`clients:${ctx.tenantId!}`)
+  if (a.status === 'concluida' || a.status === 'falhou') revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
   return {
     status: a.status, total: a.total, processadas: a.processadas, novas: a.novas, completadas: a.completadas,
     sem_mudanca: a.sem_mudanca, com_erro: a.com_erro, oportunidades: a.oportunidades, erro: a.erro,

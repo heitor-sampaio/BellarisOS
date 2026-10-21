@@ -59,7 +59,7 @@ export async function addAppointment(
       })
       if (novo.error || !novo.clientId) return { error: novo.error ?? 'Não foi possível registrar o cliente.' }
       clientId = novo.clientId
-      revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+      revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
     }
 
     const result = await createAppointmentCore(admin, ctx, {

@@ -129,7 +129,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     })
     if (r.error || !r.clientId) return { erro: r.error ?? 'Não foi possível cadastrar.' }
     if (!r.criado) return { erro: 'Esse telefone acabou de ser cadastrado para outro cliente.' }
-    revalidateTag(`clients:${c.ctx.tenantId!}`, 'max')
+    revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     const ficha = { href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
     // O acesso ao app, depois da ficha: falhar aqui não desfaz o cadastro (o
     // acesso sai depois, pela ficha ou de novo pelo Copilot).
@@ -311,7 +311,7 @@ export const criarAcessoAoApp: FerramentaDeEscrita<ArgsAcesso, PayloadAcesso> = 
     // O mesmo núcleo da tela de cadastro (lib/clients/acesso.ts).
     const r = await darAcessoAoCliente(c.admin, c.ctx, p.clientId, p.email, p.cpf)
     if ('error' in r) return { erro: r.error }
-    revalidateTag(`clients:${c.ctx.tenantId!}`, 'max')
+    revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     return { mensagem: 'Acesso ao app criado.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
   },
 }

@@ -52,6 +52,6 @@ export async function atualizarClienteCore(
 
   if (slug) revalidatePath(`/${slug}/clients/${clientId}`)
   revalidatePath(`/admin/clients/${clientId}`)
-  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+  revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
   return {}
 }
