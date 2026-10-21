@@ -611,4 +611,22 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await ctx.close()
     }
   })
+
+  test('com um link já valendo, a janela diz até quando — e gerar outro avisa que cancela esse', async ({ browser }) => {
+    const { agendamento } = await agendada('Link valendo')
+    const { token } = await gerarLink(browser, agendamento)
+    expect(token).not.toBe('')
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda?date=${DIA}`)
+      await page.locator(`[title*="Link valendo pd${marca}"]`).first().click()
+      const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
+      await expect(ficha.getByText(/Já há um link valendo até/)).toBeVisible()
+      await expect(ficha.getByText(/Gerar outro cancela esse/)).toBeVisible()
+      await expect(ficha.getByRole('button', { name: 'Gerar outro link' })).toBeVisible()
+    } finally {
+      await ctx.close()
+    }
+  })
 })

@@ -120,6 +120,8 @@ export interface SituacaoDoPreAtendimento {
   podeLink: boolean
   /** A rede manda o link também pela conversa do inbox (a chave dos documentos). */
   pelaConversa?: boolean
+  /** Já há um link valendo (não usado, não revogado, no prazo): até quando. */
+  linkValidoAte?: string | null
 }
 
 /**
@@ -143,7 +145,20 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
     envioPelaConversaLigado(ctx.tenantId!),
   ])
   const podeLink = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0 || !!cliente?.birth_date
-  if (pendente) return { estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, pelaConversa }
+  if (pendente) {
+    // O link que já está valendo: gerar outro o cancela, e a tela precisa dizer
+    // (2026-10-21; a simulação viu o anterior ser revogado em silêncio).
+    const { data: pre } = await admin.from('pre_atendimentos').select('id').eq('client_id', ap.client_id)
+      .eq('tenant_id', ctx.tenantId!).eq('status', 'PENDENTE').maybeSingle()
+    const valendo = pre ? await ler(admin.from('pre_atendimento_links').select('expires_at')
+      .eq('pre_atendimento_id', pre.id as string).is('revoked_at', null).is('used_at', null)
+      .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      'buscar o link da ficha') as { expires_at: string } | null : null
+    return {
+      estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, pelaConversa,
+      linkValidoAte: valendo?.expires_at ?? null,
+    }
+  }
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }
   return { estado: null, podeLink }
 }

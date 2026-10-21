@@ -87,7 +87,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, podeMandar }: { app
               </button>
             )}
             <button type="button" className="btn-secondary pre-atendimento-agendamento-botao" disabled={gerando} onClick={gerar}>
-              {gerando ? 'Gerando…' : 'Enviar a ficha'}
+              {gerando ? 'Gerando…' : situacao.linkValidoAte ? 'Gerar outro link' : 'Enviar a ficha'}
             </button>
           </div>
         )}
@@ -97,6 +97,11 @@ export function PreAtendimentoDoAgendamento({ appointmentId, podeMandar }: { app
           ? 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
           : 'Sem CPF nem data de nascimento no cadastro, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
       </p>
+      {situacao.linkValidoAte && !link && !enviado && (
+        <p className="pre-atendimento-agendamento-texto">
+          Já há um link valendo até {formatDate(situacao.linkValidoAte)} às {formatTime(situacao.linkValidoAte)}. Gerar outro cancela esse.
+        </p>
+      )}
       {enviado && <p role="status" className="pre-atendimento-agendamento-texto">Link enviado pela conversa do WhatsApp da clínica.</p>}
       {erro && <p role="alert" className="pre-atendimento-agendamento-erro">{erro}</p>}
       {link && (
