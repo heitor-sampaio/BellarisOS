@@ -45,7 +45,8 @@ export async function criarLoginDoCliente(
     return { error: RECUSA[conta.motivo] ?? RECUSA.equipe! }
   }
 
-  const { data, error } = await admin.auth.admin.createUser({ email, password: cpf, email_confirm: true })
+  // A senha inicial é o CPF: provisória, troca-se no primeiro acesso (o proxy).
+  const { data, error } = await admin.auth.admin.createUser({ email, password: cpf, email_confirm: true, app_metadata: { senha_provisoria: true } })
   if (error || !data?.user) {
     // Entre a conferência e a criação, outro caminho criou o login.
     const ja = /already|registered|exists/i.test(error?.message ?? '')

@@ -1,8 +1,9 @@
 'use client'
 
+import Link from 'next/link'
 import {
   LayoutGrid, Calendar, BarChart3,
-  Settings, LogOut, Sparkles, Ticket, Boxes, Contact, CreditCard, Layers, Megaphone,
+  Settings, LogOut, KeyRound, Sparkles, Ticket, Boxes, Contact, CreditCard, Layers, Megaphone,
   UsersRound, Bell, ChevronLeft, ChevronRight, Inbox, FileText, ClipboardCheck, ClipboardList,
   Syringe, Workflow,
   FileSignature,
@@ -140,6 +141,27 @@ export function AdminSidebar({ permissions, plano = null }: { permissions: Resol
             </span>
             <span style={{ opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 220, overflow: 'hidden', transition: 'opacity 160ms ease, max-width var(--sidebar-anim) var(--sidebar-ease)' }}>Recolher</span>
           </button>
+
+          {/* A senha de cada um (2026-10-21): a inicial é dada por quem cria o membro. */}
+          <Link
+            href="/update-password"
+            title={collapsed ? 'Trocar senha' : undefined}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+              gap: collapsed ? 0 : 10, padding: collapsed ? '6px 17px' : '6px 12px',
+              borderRadius: 'var(--radius-field-token)', textDecoration: 'none',
+              background: 'transparent', color: footerColor,
+              fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
+              whiteSpace: 'nowrap', overflow: 'hidden', transition: 'background 120ms ease, padding var(--sidebar-anim) var(--sidebar-ease)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = footerHover)}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <KeyRound size={16} />
+            </span>
+            <span style={{ opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 220, overflow: 'hidden', transition: 'opacity 160ms ease, max-width var(--sidebar-anim) var(--sidebar-ease)' }}>Trocar senha</span>
+          </Link>
 
           <form action={logoutAction}>
             <button

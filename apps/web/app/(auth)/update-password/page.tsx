@@ -16,7 +16,10 @@ export default function UpdatePasswordPage() {
 
 function NovaSenha() {
   const [state, action, pending] = useActionState(updatePasswordAction, undefined)
-  const linkRuim = useSearchParams().get('erro') === 'link'
+  const busca = useSearchParams()
+  const linkRuim = busca.get('erro') === 'link'
+  // A senha dada por outra pessoa, no primeiro acesso (o proxy traz aqui).
+  const primeiro = busca.get('primeiro') === '1'
 
   useEffect(() => {
     if (state && 'redirectTo' in state && state.redirectTo) window.location.href = state.redirectTo
@@ -48,10 +51,12 @@ function NovaSenha() {
         letterSpacing: 'var(--tracking-tight)',
         marginBottom: 6,
       }}>
-        Nova senha
+        {primeiro ? 'Troque a senha inicial' : 'Nova senha'}
       </h1>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 28 }}>
-        Escolha a senha que vai usar para entrar.
+        {primeiro
+          ? 'A senha com que você entrou foi criada pela clínica. Escolha a sua para continuar.'
+          : 'Escolha a senha que vai usar para entrar.'}
       </p>
 
       <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

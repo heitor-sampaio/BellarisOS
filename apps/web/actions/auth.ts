@@ -96,6 +96,11 @@ export async function loginAction(
     return { error: AVISO_DA_PLATAFORMA }
   }
 
+  // A senha dada por outra pessoa se troca antes de tudo (o proxy também leva lá).
+  if ((user?.app_metadata as { senha_provisoria?: boolean } | undefined)?.senha_provisoria === true) {
+    return { redirectTo: '/update-password?primeiro=1' }
+  }
+
   return { redirectTo: await destinoDaSessao(supabase) }
 }
 
@@ -182,6 +187,15 @@ export async function updatePasswordAction(
     // A mensagem do Auth é em inglês; a mais comum é repetir a senha atual.
     if (/different from the old/i.test(error.message)) return { error: 'A nova senha precisa ser diferente da atual.' }
     return { error: 'Não consegui trocar a senha. Tente novamente.' }
+  }
+
+  // Trocada, a senha deixa de ser provisória: a marca sai (só o servidor
+  // escreve app_metadata) e a sessão renova, para o token novo já vir sem ela
+  // — senão o proxy levaria de volta à troca até o token vencer.
+  if ((user.app_metadata as { senha_provisoria?: boolean } | undefined)?.senha_provisoria) {
+    const { error: eMarca } = await createAdminClient().auth.admin.updateUserById(user.id, { app_metadata: { senha_provisoria: null } })
+    if (eMarca) return { error: 'A senha foi trocada, mas não consegui liberar a entrada. Tente de novo.' }
+    await supabase.auth.refreshSession()
   }
 
   return { redirectTo: await destinoDaSessao(supabase) }

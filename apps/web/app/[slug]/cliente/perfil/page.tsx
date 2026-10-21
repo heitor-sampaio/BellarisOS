@@ -7,6 +7,8 @@ import { DataRequestCard } from '@/components/client-portal/data-request-card'
 import { getMyDataRequests } from '@/actions/lgpd'
 import { ler } from '@/lib/db'
 import { iniciaisDoNome } from '@estetica-os/utils'
+import { KeyRound } from 'lucide-react'
+import Link from 'next/link'
 
 function maskCpf(cpf: string | null) {
   if (!cpf) return '—'
@@ -126,6 +128,13 @@ export default async function ClientProfilePage() {
       {/* -- Dados pessoais (LGPD) --------------------------------- */}
       <section>
         <DataRequestCard requests={dataRequests} />
+      </section>
+
+      {/* -- Senha (2026-10-21): a inicial é o CPF, e ela troca quando quiser -- */}
+      <section>
+        <Link href="/update-password" className="btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
+          <KeyRound size={14} aria-hidden="true" /> Trocar senha
+        </Link>
       </section>
 
       {/* -- Logout ------------------------------------------------ */}

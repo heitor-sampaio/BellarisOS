@@ -193,6 +193,13 @@ Só a CLÍNICA cria o acesso (cadastro com acesso, ou o Copilot): não existe
 cadastro da cliente pelo app. Login = e-mail, senha inicial = CPF
 (`lib/clients/acesso.ts`).
 
+**Senha dada por outra pessoa é provisória** (2026-10-21, decisão do Heitor):
+o membro criado pela Equipe e a cliente com o acesso criado pela clínica
+nascem com `app_metadata.senha_provisoria`, e o proxy leva a
+`/update-password?primeiro=1` até a troca (a sessão de suporte passa).
+`createUser` com senha sem a marca: `tests/senha-provisoria.test.ts` trava.
+Prova: `e2e/autenticacao-senha-inicial.spec.ts`.
+
 **Um login por pessoa, uma ficha em cada clínica** (decisão do Heitor). A
 conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
 - **No banco**: no máximo uma ficha por login EM CADA REDE

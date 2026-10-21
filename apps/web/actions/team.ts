@@ -109,10 +109,12 @@ export async function createTeamMember(
   if ('error' in branchCheck) return branchCheck
 
   // 1. Criar usuário no Supabase Auth (exige service role)
+  // A senha é de quem criou: provisória, troca-se no primeiro acesso (o proxy).
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
+    app_metadata: { senha_provisoria: true },
   })
   if (authError || !authData.user) {
     if (authError?.message?.includes('already registered')) {

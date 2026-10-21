@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { opcoesDoCookieDeSessao } from './cookie-de-sessao'
 import { politicaDaClinica } from '@/lib/seguranca/csp'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function updateSession(request: NextRequest) {
   try {
@@ -116,6 +117,28 @@ export async function updateSession(request: NextRequest) {
       // Leva os cookies apagados nesta mesma resposta.
       supabaseResponse.cookies.getAll().forEach(c => resposta.cookies.set(c))
       return resposta
+    }
+
+    // A senha dada por outra pessoa (o membro criado pela Equipe, a cliente
+    // com o acesso criado pela clínica) se troca antes de qualquer tela
+    // (2026-10-21): `app_metadata.senha_provisoria`, posta na criação e tirada
+    // pela troca (`updatePasswordAction`). As /api/*, as telas de entrada e a
+    // própria troca passam. A sessão de SUPORTE também: o atendente entra no
+    // login do membro e não troca a senha dele (o banco e a action recusam).
+    const provisoria = (user?.app_metadata as { senha_provisoria?: boolean } | undefined)?.senha_provisoria === true
+    if (user && provisoria && !isAuthRoute && !pathname.startsWith('/api/') && !pathname.startsWith('/auth/')) {
+      const sid = (user as { session_id?: string }).session_id
+      const { data: suporte } = sid
+        ? await createAdminClient().from('support_sessions').select('id').eq('auth_session_id', sid).maybeSingle()
+        : { data: null }
+      if (!suporte) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/update-password'
+        url.search = '?primeiro=1'
+        const resposta = NextResponse.redirect(url)
+        supabaseResponse.cookies.getAll().forEach(c => resposta.cookies.set(c))
+        return resposta
+      }
     }
 
     return supabaseResponse
