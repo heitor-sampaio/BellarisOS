@@ -123,3 +123,24 @@ describe('mensagemDoErro', () => {
     expect(mensagemDoErro(new Error(''))).toBe('Não consegui completar a operação.')
   })
 })
+
+describe('lerTodas', () => {
+  it('lê página a página até a que vem incompleta, pelos intervalos certos', async () => {
+    const { lerTodas } = await import('@/lib/db')
+    const pedidos: [number, number][] = []
+    const total = 2005
+    const linhas = await lerTodas<number>(async (de, ate) => {
+      pedidos.push([de, ate])
+      const fim = Math.min(ate, total - 1)
+      return { data: fim < de ? [] : Array.from({ length: fim - de + 1 }, (_, i) => de + i), error: null }
+    }, 'testar')
+    expect(linhas).toHaveLength(total)
+    expect(linhas[1999]).toBe(1999)
+    expect(pedidos).toEqual([[0, 999], [1000, 1999], [2000, 2999]])
+  })
+
+  it('para no primeiro erro, como o ler', async () => {
+    const { lerTodas } = await import('@/lib/db')
+    await expect(lerTodas(async () => ({ data: null, error: { message: 'caiu', code: 'X' } as never }), 'testar')).rejects.toThrow()
+  })
+})

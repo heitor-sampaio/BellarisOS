@@ -73,6 +73,24 @@ export async function ler<T>(consulta: PromiseLike<Resposta<T>>, oQue: string): 
 }
 
 /**
+ * Lê TODAS as linhas, em páginas (2026-10-21). O PostgREST devolve no máximo
+ * 1000 linhas por consulta, e a lista que passava disso chegava cortada em
+ * silêncio — a agenda da unidade (3 meses) perdia horários. `montar` recebe o
+ * intervalo e devolve a consulta com `.range(de, ate)` — e com uma ORDEM
+ * estável (sem ela, as páginas se sobrepõem).
+ */
+export async function lerTodas<T>(
+  montar: (de: number, ate: number) => PromiseLike<Resposta<T[] | null>>, oQue: string, porPagina = 1000,
+): Promise<T[]> {
+  const todas: T[] = []
+  for (let de = 0; ; de += porPagina) {
+    const pagina = (await ler(montar(de, de + porPagina - 1), oQue)) ?? []
+    todas.push(...pagina)
+    if (pagina.length < porPagina) return todas
+  }
+}
+
+/**
  * Conta — e para o fluxo se a contagem falhar.
  *
  * Para `select('id', { count: 'exact', head: true })`: ali o dado é o

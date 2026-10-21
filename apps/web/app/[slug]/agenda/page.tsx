@@ -3,7 +3,7 @@ import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -42,22 +42,25 @@ export default async function AgendaPage({ params, searchParams }: {
   const from = startOfMonth(subMonths(base, 1)).toISOString()
   const to   = endOfMonth(addMonths(base, 1)).toISOString()
 
-  let appointmentsQuery = supabase
-    .from('appointments')
-    .select(`
-      id, scheduled_at, duration_min, status, price, professional_id, client_id, arrived_at,
-      clients(name),
-      procedures(name),
-      users!professional_id(name)
-    `)
-    .eq('branch_id', branchId)
-    .gte('scheduled_at', from)
-    .lte('scheduled_at', to)
-    .not('status', 'in', '("CANCELLED","NO_SHOW")')
-    .order('scheduled_at')
-
-  if (professionalOnly && ctx.internalUserId) {
-    appointmentsQuery = appointmentsQuery.eq('professional_id', ctx.internalUserId)
+  // Em páginas (lerTodas, 2026-10-21): o PostgREST devolve no máximo 1000
+  // linhas, e numa unidade movimentada os 3 meses passam disso — a grade
+  // perdia horários em silêncio. A ordem tem desempate pelo id: sem ela, as
+  // páginas se sobrepõem.
+  const paginaDaAgenda = (de: number, ate: number) => {
+    let q = supabase
+      .from('appointments')
+      .select(`
+        id, scheduled_at, duration_min, status, price, professional_id, client_id, arrived_at,
+        clients(name),
+        procedures(name),
+        users!professional_id(name)
+      `)
+      .eq('branch_id', branchId)
+      .gte('scheduled_at', from)
+      .lte('scheduled_at', to)
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
+    if (professionalOnly && ctx.internalUserId) q = q.eq('professional_id', ctx.internalUserId)
+    return q.order('scheduled_at').order('id').range(de, ate)
   }
 
   // A lista de clientes saiu daqui: a busca do agendamento passou a ser feita
@@ -65,13 +68,13 @@ export default async function AgendaPage({ params, searchParams }: {
   // em JavaScript para de funcionar quando a base cresce — e não achava o
   // telefone mascarado de qualquer forma.
   const [
-    { data: rawAppointments, error: apptErr },
+    rawAppointments,
     procedures,
     professionals,
     rooms,
     horarioRaw,
   ] = await Promise.all([
-    appointmentsQuery,
+    lerTodas(paginaDaAgenda, 'carregar a agenda'),
 
     getCachedBranchProcedures(branchId, ctx.tenantId!),
     getCachedBranchProfessionals(branchId, ctx.tenantId!),
@@ -91,7 +94,6 @@ export default async function AgendaPage({ params, searchParams }: {
   // duas chaves para `users` (`professional_id` e `created_by_id`), então o
   // embed precisa dizer qual — sem isso o PostgREST recusa, o erro era
   // descartado e a unidade inteira aparecia sem nenhum atendimento.
-  if (apptErr) throw new Error(`Erro ao carregar a agenda: ${apptErr.message}`)
 
   // O selo da ficha de saúde no bloco (2026-10-21): só o estado, do banco.
   const selos = await selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[])
