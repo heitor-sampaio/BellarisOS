@@ -101,7 +101,24 @@ export async function addAppointment(
 }
 
 // --- Atualizar status do agendamento -----------------------------
+/**
+ * O erro vira `{ error }` para a tela (2026-10-21): lançado, chegava trocado
+ * em produção, e a janela do agendamento nem o tratava — fechava como se
+ * tivesse dado certo. A trava de permissão (`semAcesso`) segue lançando.
+ */
 export async function updateAppointmentStatus(
+  ...args: Parameters<typeof updateAppointmentStatusInterno>
+): Promise<{ error?: string }> {
+  try {
+    await updateAppointmentStatusInterno(...args)
+    return {}
+  } catch (e) {
+    if (e && typeof e === 'object' && 'digest' in e) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function updateAppointmentStatusInterno(
   appointmentId: string,
   status: 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW',
   slug: string,
@@ -156,10 +173,14 @@ export async function updateAppointmentStatus(
   // cancelado nem a falta (o gatilho trg_atendimento_concluido_nao_cancela é a
   // segunda linha). Desfazer o dinheiro é estornar o pagamento.
   if (status === 'CANCELLED' || status === 'NO_SHOW') {
-    const atual = await ler(createAdminClient().from('appointments').select('status')
+    const atual = await ler(createAdminClient().from('appointments').select('status, scheduled_at')
       .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento')
     if (atual?.status === 'COMPLETED') {
       throw new Error('Atendimento concluído não pode ser cancelado nem marcado como falta. Para devolver o dinheiro, estorne o pagamento.')
+    }
+    // Falta é de quem não veio na hora — antes dela, ainda pode vir.
+    if (status === 'NO_SHOW' && atual?.scheduled_at && new Date(atual.scheduled_at as string).getTime() > Date.now()) {
+      throw new Error('O horário ainda não chegou: "Não compareceu" só depois do início do agendamento.')
     }
   }
 

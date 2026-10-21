@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { AppointmentModal } from './appointment-modal'
 import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from './appointment-sheet'
+import { AvisoFlutuante, useAviso } from '@/components/shared/aviso-flutuante'
 import { AgendaDayView } from './agenda-day-view'
 import { AgendaWeekView } from './agenda-week-view'
 import { AgendaMonthView } from './agenda-month-view'
@@ -44,6 +45,8 @@ interface AgendaCalendarProps {
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
   horarioDaUnidade?:          Horario | null
   horariosDosProfissionais?:  Record<string, Horario | null>
+  /** O dia da URL (`?date=AAAA-MM-DD`); sem ele, hoje. */
+  dataInicial?:  string | null
 }
 
 // -- KPI helpers -------------------------------------------------------------
@@ -128,12 +131,23 @@ function todayDate(): Date {
 
 export function AgendaCalendar({
   branchId, slug, events, procedures, professionals, rooms, canWrite, userRole,
-  horarioDaUnidade = null, horariosDosProfissionais = {},
+  horarioDaUnidade = null, horariosDosProfissionais = {}, dataInicial = null,
 }: AgendaCalendarProps) {
   const router = useRouter()
+  const [aviso, avisar] = useAviso()
 
   const [view,          setView]          = useState<ViewMode>('dia')
-  const [currentDate,   setCurrentDate]   = useState(new Date())
+  const [currentDate,   setCurrentDateState] = useState(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : new Date())
+  // O dia aberto vai para a URL sem nova navegação (o servidor já trouxe a janela).
+  const setCurrentDate = useCallback((v: Date | ((d: Date) => Date)) => {
+    setCurrentDateState(prev => {
+      const prox = typeof v === 'function' ? v(prev) : v
+      const url = new URL(window.location.href)
+      url.searchParams.set('date', format(prox, 'yyyy-MM-dd'))
+      window.history.replaceState(null, '', url)
+      return prox
+    })
+  }, [])
   const [showCreate,    setShowCreate]    = useState(false)
   const [defaultDate,   setDefaultDate]   = useState('')
   const [clienteInicial, setClienteInicial] = useState<string | null>(null)
@@ -179,6 +193,8 @@ export function AgendaCalendar({
 
   return (
     <>
+      <AvisoFlutuante texto={aviso} />
+
       {/* Drop error toast */}
       {dropError && (
         <div style={{
@@ -240,6 +256,7 @@ export function AgendaCalendar({
             <button
               type="button"
               onClick={() => setCurrentDate(d => navigate(view, d, -1))}
+              aria-label={view === 'dia' ? 'Dia anterior' : view === 'semana' ? 'Semana anterior' : 'Mês anterior'}
               className="btn-ghost"
               style={{ padding: '6px 8px', lineHeight: 0 }}
             >
@@ -251,6 +268,7 @@ export function AgendaCalendar({
             <button
               type="button"
               onClick={() => setCurrentDate(d => navigate(view, d, 1))}
+              aria-label={view === 'dia' ? 'Próximo dia' : view === 'semana' ? 'Próxima semana' : 'Próximo mês'}
               className="btn-ghost"
               style={{ padding: '6px 8px', lineHeight: 0 }}
             >
@@ -349,6 +367,7 @@ export function AgendaCalendar({
           slug={slug}
           userRole={userRole}
           onClose={() => setSelectedEvent(null)}
+          onAviso={avisar}
         />
       )}
     </>

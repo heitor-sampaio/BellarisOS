@@ -33,6 +33,8 @@ interface AppointmentSheetProps {
    * botões apareciam para quem a action recusaria.
    */
   escopoProprio?: boolean
+  /** O aviso de que deu certo, mostrado pela agenda depois que a janela fecha. */
+  onAviso?:       (texto: string) => void
   onClose:     () => void
 }
 
@@ -55,7 +57,7 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, onClose, onAviso }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
   const router   = useRouter()
   // Para onde ir ao iniciar o atendimento: quem decide o portal é o caminho
@@ -66,13 +68,14 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   const [cancelReason, setCancelReason]         = useState('')
   const [loading, setLoading]                   = useState(false)
   const [remarcando, setRemarcando]             = useState(false)
+  const [erro, setErro]                         = useState<string | null>(null)
 
   // O sucesso é tratado na própria action, quando a resposta chega — e não num
   // efeito que observa o estado depois.
   const [remarcaState, remarcaAction, remarcaPending] = useActionState(
     async (anterior: Parameters<typeof rescheduleAppointment>[0], dados: FormData) => {
       const r = await rescheduleAppointment(anterior, dados)
-      if (r?.success) { setRemarcando(false); onClose(); router.refresh() }
+      if (r?.success) { setRemarcando(false); onClose(); onAviso?.('Agendamento remarcado.'); router.refresh() }
       return r
     },
     undefined,
@@ -87,12 +90,25 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   const inicioLocal = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
   const [novoDT, setNovoDT] = useState(inicioLocal)
 
+  // O que dizer quando dá certo (2026-10-21): a janela fechava em silêncio.
+  const AVISO: Partial<Record<Parameters<typeof updateAppointmentStatus>[1], string>> = {
+    CONFIRMED: 'Agendamento confirmado.',
+    ARRIVED:   'Chegada registrada: a cliente está na espera.',
+    NO_SHOW:   'Marcado como "não compareceu".',
+    CANCELLED: 'Agendamento cancelado.',
+  }
+
   async function changeStatus(status: Parameters<typeof updateAppointmentStatus>[1]) {
     setLoading(true)
-    await updateAppointmentStatus(appointment.id, status, slug,
+    setErro(null)
+    const r = await updateAppointmentStatus(appointment.id, status, slug,
       status === 'CANCELLED' ? cancelReason : undefined
     )
     setLoading(false)
+    // O erro fica na janela: antes ela fechava como se tivesse dado certo.
+    if (r?.error) { setErro(r.error); return }
+    const aviso = AVISO[status]
+    if (aviso) onAviso?.(aviso)
     if (status === 'IN_PROGRESS') {
       onClose()
       router.push(rotaAtendimento(pathname, slug, appointment.id))
@@ -103,6 +119,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
 
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appointment.status)
   const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(appointment.status)
+  // Falta é de quem não veio na hora: antes do início, ainda pode vir.
+  const [abertaEm] = useState(() => Date.now())
+  const jaComecou = new Date(appointment.start).getTime() <= abertaEm
 
   return (
     <JanelaModal onFechar={onClose} rotulo="Agendamento" largura={440}>
@@ -216,10 +235,14 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
               </form>
             )}
 
+            {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
+
             <div style={{ display: 'flex', gap: 8 }}>
-              <button disabled={loading} onClick={() => changeStatus('NO_SHOW')} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
-                <AlertCircle size={14} /> Não compareceu
-              </button>
+              {jaComecou && (
+                <button disabled={loading} onClick={() => changeStatus('NO_SHOW')} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
+                  <AlertCircle size={14} /> Não compareceu
+                </button>
+              )}
               <button disabled={loading} onClick={() => setShowCancelReason(true)} className="btn-ghost" style={{ flex: 1, justifyContent: 'center', color: 'var(--warning)' }}>
                 <Ban size={14} /> Cancelar
               </button>

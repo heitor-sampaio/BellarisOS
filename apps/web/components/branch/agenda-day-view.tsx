@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import type { CalendarEvent } from './agenda-month-view'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
@@ -180,8 +180,10 @@ function ProfColumn({
               (e.currentTarget as HTMLElement).style.boxShadow = 'none'
             }}
           >
-            <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : 'var(--success)', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              <span>{timeStr} · {ev.durationMin}min</span>
+            <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : 'var(--success)', display: 'flex', gap: 4, flexWrap: height > 42 ? 'wrap' : 'nowrap', overflow: 'hidden' }}>
+              <span style={{ flexShrink: 0 }}>{timeStr}{height > 42 ? ` · ${ev.durationMin}min` : ''}</span>
+              {/* O bloco curto (30 min) não tem altura para a linha do nome: ele vem aqui. */}
+              {height <= 42 && <span style={{ color: isCompleted ? 'var(--text-muted)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.clientName}</span>}
               <SeloDaFicha estado={ev.fichaDeSaude} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
               {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
@@ -220,6 +222,14 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   }
   const g = gradeDe(inicio, Math.min(24, Math.max(fim, inicio + 1)))
 
+  // Hoje, a grade abre na hora de agora (uma hora antes), não no começo do dia.
+  const ehHoje = isSameDay(currentDate, new Date())
+  useEffect(() => {
+    if (!ehHoje || !scrollRef.current) return
+    const agora = new Date()
+    scrollRef.current.scrollTop = Math.max(0, (agora.getHours() - 1 - g.START_HOUR) * HOUR_PX)
+  }, [ehHoje, g.START_HOUR])
+
   function getRelY(e: React.DragEvent, colEl: HTMLElement): number {
     const rect      = colEl.getBoundingClientRect()
     const scrollTop = scrollRef.current?.scrollTop ?? 0
@@ -252,7 +262,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   return (
     <GradeCtx.Provider value={g}>
     <div className="table-wrap">
-    <div ref={scrollRef} style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minWidth: 500 }}>
+    <div ref={scrollRef} data-grade-do-dia style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minWidth: 500 }}>
       {/* Sticky professional headers — dentro do scroll para largura idêntica à do grid */}
       <div style={{
         display: 'flex', position: 'sticky', top: 0, zIndex: 10,

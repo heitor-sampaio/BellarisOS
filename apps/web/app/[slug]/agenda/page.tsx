@@ -14,8 +14,14 @@ import {
   getCachedBranchProfessionals, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
 
-export default async function AgendaPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function AgendaPage({ params, searchParams }: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ date?: string }>
+}) {
   const { slug } = await params
+  // O dia aberto vai na URL (2026-10-21): recarregar ou mandar o link abre nele.
+  const dataDaUrl = (await searchParams).date
+  const dataInicial = dataDaUrl && /^\d{4}-\d{2}-\d{2}$/.test(dataDaUrl) ? dataDaUrl : null
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
 
@@ -31,9 +37,10 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
 
   const branchId = branch.id
 
-  // Janela de 3 meses: mês anterior + atual + próximo
-  const from = startOfMonth(subMonths(new Date(), 1)).toISOString()
-  const to   = endOfMonth(addMonths(new Date(), 1)).toISOString()
+  // Janela de 3 meses em volta do dia aberto: mês anterior + atual + próximo
+  const base = dataInicial ? new Date(`${dataInicial}T12:00:00`) : new Date()
+  const from = startOfMonth(subMonths(base, 1)).toISOString()
+  const to   = endOfMonth(addMonths(base, 1)).toISOString()
 
   let appointmentsQuery = supabase
     .from('appointments')
@@ -144,6 +151,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
         rooms={rooms ?? []}
         canWrite={canManageAgenda}
         userRole={ctx.role}
+        dataInicial={dataInicial}
       />
     </div>
   )

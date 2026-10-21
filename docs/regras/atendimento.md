@@ -31,6 +31,11 @@
   atendimento começa de Confirmado ou de Chegou. Chegar emite os documentos do
   início, como confirmar. Lista nova de status "em aberto" inclui ARRIVED.
   Prova: `e2e/agenda-check-in.spec.ts`.
+- **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
+  action recusa). `updateAppointmentStatus` devolve `{ error }` (só a trava de
+  permissão lança): a folha mostra o erro e, no sucesso, a agenda dá o aviso
+  (`AvisoFlutuante`). A agenda da unidade leva o dia na URL (`?date=`), e a
+  grade de hoje abre na hora de agora. Prova: `e2e/agenda-avisos.spec.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
 - **Todo agendamento tem procedimento.** A "avaliação" era a exceção que
   permitia marcar sem escolher um — ela deixou de ser entidade em 2026-09-25 e
