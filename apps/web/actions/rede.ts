@@ -15,6 +15,8 @@ export interface DadosDaRede {
   email:     string | null
   phone:     string | null
   website:   string | null
+  /** Até quantas horas antes a cliente cancela ou remarca pelo portal (2026-10-21). */
+  prazoPortalHoras: number
   /** Somente leitura — quem muda isso é a assinatura, não esta tela. */
   planName:   string | null
   planStatus: string | null
@@ -28,7 +30,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
   const t = await ler(
     createAdminClient()
       .from('tenants')
-      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at')
+      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at, portal_prazo_alteracao_horas')
       .eq('id', ctx.tenantId!)
       .maybeSingle(),
     'carregar os dados da rede',
@@ -43,6 +45,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
     email:      (t.email as string | null) ?? null,
     phone:      (t.phone as string | null) ?? null,
     website:    (t.website as string | null) ?? null,
+    prazoPortalHoras: Number(t.portal_prazo_alteracao_horas ?? 24),
     planName:   (t.plan_name as string | null) ?? null,
     planStatus: (t.plan_status as string | null) ?? null,
     criadaEm:   t.created_at as string,
@@ -83,6 +86,11 @@ export async function atualizarDadosDaRede(
     return { error: 'Documento deve ter 11 (CPF) ou 14 (CNPJ) dígitos.' }
   }
 
+  const prazo = Number(texto('portal_prazo_alteracao_horas') ?? 24)
+  if (!Number.isInteger(prazo) || prazo < 0 || prazo > 720) {
+    return { error: 'O prazo do portal vai de 0 a 720 horas.' }
+  }
+
   let website = texto('website')
   if (website && !/^https?:\/\//i.test(website)) website = `https://${website}`
 
@@ -95,6 +103,7 @@ export async function atualizarDadosDaRede(
         email,
         phone:    texto('phone'),
         website,
+        portal_prazo_alteracao_horas: prazo,
         updated_at: new Date().toISOString(),
       })
       .eq('id', ctx.tenantId!)

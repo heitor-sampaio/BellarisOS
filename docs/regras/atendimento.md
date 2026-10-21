@@ -44,6 +44,17 @@
   "Aguardando confirmação do cliente pelo app" só para quem TEM o app.
   Prova: `e2e/prontuario-atritos.spec.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
+- **A cliente cancela e remarca pelo portal até o prazo da rede**
+  (`tenants.portal_prazo_alteracao_horas`, 24h por padrão, Configurações →
+  Geral; decisão do Heitor, 2026-10-21): o cartão da agenda abre o detalhe
+  (`/[slug]/cliente/agendamentos/[id]`, só a ficha DELA), e
+  `actions/portal-agendamentos.ts` confere de novo o prazo e o status; o horário
+  novo é um dos livres do self-service, para o mesmo profissional. Dentro do
+  prazo, só "Falar com a clínica" (WhatsApp da unidade). Prova:
+  `e2e/portal-cliente-alterar-agendamento.spec.ts`.
+- **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
+  `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
+  sessão do plano (estas duas ficavam presas ao agendamento cancelado).
 - **O procedimento novo nasce FORA do app** (`visible_on_client_app` desligado,
   2026-10-21): só vai para o self-service o que a clínica marca. Nascia ligado,
   e a Toxina da simulação ficaria agendável pelo app.

@@ -74,6 +74,11 @@ export function SettingsGeral({ rede, podeEditar }: { rede: DadosDaRede; podeEdi
           <input name="website" className="field" defaultValue={rede.website ?? ''} disabled={!podeEditar}
             placeholder="bellaris.com.br" />
         </Campo>
+
+        <Campo rotulo="Prazo do portal (horas)" dica="Até quantas horas antes a cliente cancela ou remarca pelo app. Depois, só falando com a clínica.">
+          <input name="portal_prazo_alteracao_horas" type="number" min={0} max={720} step={1} className="field"
+            defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
+        </Campo>
       </div>
 
       {/* O que não se edita, à vista. */}

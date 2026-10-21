@@ -84,7 +84,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         <section style={{ marginBottom: 28 }}>
           <GroupLabel>Próximos</GroupLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} highlight />)}
+            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight />)}
           </div>
         </section>
       )}
@@ -94,7 +94,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         <section>
           <GroupLabel>Histórico</GroupLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {past.map(a => <AppointmentCard key={a.id} appt={a} />)}
+            {past.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} />)}
           </div>
         </section>
       )}
@@ -140,7 +140,8 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-function AppointmentCard({ appt, highlight = false }: { appt: Appt; highlight?: boolean }) {
+// O cartão abre o agendamento (2026-10-21: não abria — nem detalhe, nem cancelar).
+function AppointmentCard({ appt, slug, highlight = false }: { appt: Appt; slug: string; highlight?: boolean }) {
   const dt    = new Date(appt.scheduled_at)
   const color = STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
   const price = appt.price
@@ -148,9 +149,11 @@ function AppointmentCard({ appt, highlight = false }: { appt: Appt; highlight?: 
     : '—'
 
   return (
-    <div
+    <Link
+      href={`/${slug}/cliente/agendamentos/${appt.id}`}
       className="card"
       style={{
+        display: 'block', textDecoration: 'none', color: 'inherit',
         padding: highlight ? '16px 18px' : '13px 18px',
         border:  highlight ? '1.5px solid var(--brand)' : undefined,
       }}
@@ -200,6 +203,6 @@ function AppointmentCard({ appt, highlight = false }: { appt: Appt; highlight?: 
           </span>
         )}
       </div>
-    </div>
+    </Link>
   )
 }

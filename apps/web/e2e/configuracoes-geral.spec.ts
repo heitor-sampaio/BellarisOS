@@ -64,3 +64,22 @@ test('documento com máscara é gravado só com os dígitos', async ({ page }) =
     await db.from('tenants').update({ document: original || null }).eq('id', antes!.id)
   }
 })
+
+test('o prazo do portal (cancelar e remarcar pelo app) se configura aqui', async ({ page }) => {
+  const db = banco()
+  const { data: antes } = await db.from('tenants').select('id, portal_prazo_alteracao_horas').eq('id', await tenantId()).single()
+  const original = Number(antes!.portal_prazo_alteracao_horas ?? 24)
+  try {
+    await page.goto('/admin/settings?tab=general')
+    await page.waitForLoadState('networkidle')
+    const prazo = page.locator('input[name="portal_prazo_alteracao_horas"]')
+    await expect(prazo).toHaveValue(String(original))
+    await prazo.fill('48')
+    await page.getByRole('button', { name: 'Salvar' }).click()
+    await expect(page.getByText('Salvo', { exact: true })).toBeVisible()
+    const { data: depois } = await db.from('tenants').select('portal_prazo_alteracao_horas').eq('id', antes!.id).single()
+    expect(depois?.portal_prazo_alteracao_horas).toBe(48)
+  } finally {
+    await db.from('tenants').update({ portal_prazo_alteracao_horas: original }).eq('id', antes!.id)
+  }
+})
