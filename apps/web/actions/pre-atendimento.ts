@@ -13,6 +13,10 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { normalizeFormSchema, validateFormSchema, flattenFields } from '@/lib/anamnesis'
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
 import { gravarAnamneseGeral, preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
+import { conversaDoCliente, envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
+import { enviarNaConversa } from '@/lib/inbox/enviar'
+import { emitirEventoDeConversa } from '@/lib/events/conversa'
+import { EVENTOS } from '@estetica-os/types'
 
 /**
  * O pré-atendimento pela equipe (2026-10-20, decisões do Heitor): a ficha
@@ -114,6 +118,8 @@ export interface SituacaoDoPreAtendimento {
   respondidoEm?: string | null
   /** O cadastro tem CPF ou nascimento — sem um dos dois, não há link. */
   podeLink: boolean
+  /** A rede manda o link também pela conversa do inbox (a chave dos documentos). */
+  pelaConversa?: boolean
 }
 
 /**
@@ -128,15 +134,16 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
   if (!ap) return { error: 'Agendamento não encontrado.' }
   if (!ap.client_id) return { estado: null, podeLink: false }
   const admin = createAdminClient()
-  const [pendente, deste, cliente] = await Promise.all([
+  const [pendente, deste, cliente, pelaConversa] = await Promise.all([
     ler(admin.from('pre_atendimentos').select('modo').eq('client_id', ap.client_id).eq('tenant_id', ctx.tenantId!)
       .eq('status', 'PENDENTE').maybeSingle(), 'buscar o pré-atendimento pendente'),
     ler(admin.from('pre_atendimentos').select('respondido_em').eq('appointment_id', ap.id).eq('status', 'RESPONDIDO')
       .order('respondido_em', { ascending: false }).limit(1).maybeSingle(), 'buscar o pré-atendimento do agendamento'),
     ler(admin.from('clients').select('document, birth_date').eq('id', ap.client_id).maybeSingle(), 'buscar a cliente'),
+    envioPelaConversaLigado(ctx.tenantId!),
   ])
   const podeLink = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0 || !!cliente?.birth_date
-  if (pendente) return { estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink }
+  if (pendente) return { estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, pelaConversa }
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }
   return { estado: null, podeLink }
 }
@@ -164,32 +171,81 @@ export async function gerarLinkDoPreAtendimento(appointmentId: string): Promise<
     if (travado) return { error: travado }
     const ap = await agendamentoAoAlcance(ctx, appointmentId)
     if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
-
-    const admin = createAdminClient()
-    const pendente = await preAtendimentoPendente(admin, ap.client_id)
-    if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de pré-atendimento esperando resposta.' }
-    const cliente = await ler(admin.from('clients').select('name, document, birth_date, phone').eq('id', ap.client_id).single(), 'buscar a cliente')
-    const temCpf = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0
-    if (!temCpf && !cliente?.birth_date) {
-      // Sem nada para conferir, o link (com dado de saúde) valeria para quem o tivesse na mão.
-      return { error: 'O cadastro da cliente não tem CPF nem data de nascimento, e o link precisa de um dos dois para conferir quem abre. Complete o cadastro.' }
-    }
-
-    const { token, hash } = novoToken()
-    const expiraEm = new Date(Date.now() + VALIDADE_DO_LINK_DIAS * 86_400_000).toISOString()
-    await gravar(admin.rpc('pre_atendimento_link_criar', {
-      p_pre: pendente.id, p_tenant: ctx.tenantId!, p_token_hash: hash, p_expira: expiraEm, p_ator: ctx.internalUserId ?? null,
-    }), 'gerar o link da ficha')
-
-    const unidade = await ler(admin.from('branches').select('name').eq('id', ap.branch_id).maybeSingle(), 'buscar a unidade')
-    const clinica = (unidade?.name as string) || 'A clínica'
-    const url = `${origemPublicaDe(await headers())}/pre-atendimento/${token}`
-    const primeiroNome = ((cliente?.name as string) ?? '').trim().split(/\s+/)[0] ?? ''
-    const mensagem = `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! ${clinica} mandou a sua ficha de pré-atendimento. `
-      + `Para responder, abra o link abaixo e confirme o seu ${temCpf ? 'CPF' : 'data de nascimento'}. O link vale por ${VALIDADE_DO_LINK_DIAS} dias.\n\n${url}`
-    const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
-    return { link: { url, expiraEm, mensagem, whatsapp: `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(mensagem)}` } }
+    return await criarLinkDaFicha(ctx, { ...ap, client_id: ap.client_id })
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
+}
+
+/**
+ * Manda o link da ficha pela conversa do inbox da cliente (2026-10-21): a
+ * MESMA chave do link de assinatura (`documentos_link_pela_conversa`,
+ * Configurações → Documentos), a mesma conversa (a que ela usou por último) e
+ * a mesma regra — a conversa se acha ANTES de gerar, para não revogar à toa o
+ * link que ela já tem. Não saiu (janela de 24h fechada, caixa fora do ar): o
+ * link volta para copiar.
+ */
+export async function enviarFichaPelaConversa(appointmentId: string): Promise<{ error: string; link?: LinkDoPreAtendimento } | { link: LinkDoPreAtendimento; enviado: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de pré-atendimento')
+    if (travado) return { error: travado }
+    const ap = await agendamentoAoAlcance(ctx, appointmentId)
+    if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
+    if (!(await envioPelaConversaLigado(ctx.tenantId!))) {
+      return { error: 'O envio pela conversa está desligado nesta rede. Quem administra liga em Configurações → Documentos.' }
+    }
+    const conversa = await conversaDoCliente(ctx.tenantId!, ap.client_id)
+    if (!conversa) {
+      return { error: 'Esta cliente não tem conversa aberta no WhatsApp da clínica. Use "Enviar a ficha" para copiar ou abrir no WhatsApp do aparelho.' }
+    }
+
+    const criado = await criarLinkDaFicha(ctx, { ...ap, client_id: ap.client_id })
+    if ('error' in criado) return criado
+
+    const r = await enviarNaConversa(ctx.tenantId!, conversa, criado.link.mensagem,
+      { id: ctx.internalUserId ?? null, nome: ctx.userName || null }, { pelaCaixaDaConversa: true })
+    if (!r.ok) {
+      return { error: `Não foi pela conversa: ${r.error ?? 'falha no envio.'} O link foi gerado — copie ou abra no WhatsApp do aparelho.`, link: criado.link }
+    }
+    // O mesmo fato que a resposta da equipe no inbox emite.
+    await emitirEventoDeConversa(EVENTOS.CONVERSA_MENSAGEM_ENVIADA, conversa, ctx.tenantId!, {
+      texto: criado.link.mensagem, mensagemId: r.mensagemId!, ctx,
+    })
+    return { link: criado.link, enviado: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** O link novo da ficha pendente (revoga o anterior), com a mensagem pronta. */
+async function criarLinkDaFicha(
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  ap: { client_id: string; branch_id: string },
+): Promise<{ error: string } | { link: LinkDoPreAtendimento }> {
+  const admin = createAdminClient()
+  const pendente = await preAtendimentoPendente(admin, ap.client_id)
+  if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de pré-atendimento esperando resposta.' }
+  const cliente = await ler(admin.from('clients').select('name, document, birth_date, phone').eq('id', ap.client_id).single(), 'buscar a cliente')
+  const temCpf = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0
+  if (!temCpf && !cliente?.birth_date) {
+    // Sem nada para conferir, o link (com dado de saúde) valeria para quem o tivesse na mão.
+    return { error: 'O cadastro da cliente não tem CPF nem data de nascimento, e o link precisa de um dos dois para conferir quem abre. Complete o cadastro.' }
+  }
+
+  const { token, hash } = novoToken()
+  const expiraEm = new Date(Date.now() + VALIDADE_DO_LINK_DIAS * 86_400_000).toISOString()
+  await gravar(admin.rpc('pre_atendimento_link_criar', {
+    p_pre: pendente.id, p_tenant: ctx.tenantId!, p_token_hash: hash, p_expira: expiraEm, p_ator: ctx.internalUserId ?? null,
+  }), 'gerar o link da ficha')
+
+  const unidade = await ler(admin.from('branches').select('name').eq('id', ap.branch_id).maybeSingle(), 'buscar a unidade')
+  const clinica = (unidade?.name as string) || 'A clínica'
+  const url = `${origemPublicaDe(await headers())}/pre-atendimento/${token}`
+  const primeiroNome = ((cliente?.name as string) ?? '').trim().split(/\s+/)[0] ?? ''
+  const mensagem = `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! ${clinica} mandou a sua ficha de pré-atendimento. `
+    + `Para responder, abra o link abaixo e confirme o seu ${temCpf ? 'CPF' : 'data de nascimento'}. O link vale por ${VALIDADE_DO_LINK_DIAS} dias.\n\n${url}`
+  const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
+  return { link: { url, expiraEm, mensagem, whatsapp: `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(mensagem)}` } }
 }

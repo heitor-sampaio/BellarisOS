@@ -189,6 +189,8 @@ DEVLOG ("Termos e contratos").
     Não exige `crm`: quem manda não lê a conversa. Janela de 24h fechada: não
     sai, e o link volta para copiar. Sem conversa: recusa ANTES de gerar
     (não revoga o link que existe).
+    A mesma chave vale para a ficha de saúde (pré-atendimento, §9.4 —
+    `enviarFichaPelaConversa`, 2026-10-21): a configuração diz os dois.
 - **A tela de Documentos** (`/admin/documentos` e `/[slug]/documentos`, corpo
   em `app/_shared/documentos-emitidos.tsx`, menu Atendimento; pedido do
   Heitor, 2026-10-14): todo termo e contrato emitido no período, com a

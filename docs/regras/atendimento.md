@@ -124,6 +124,12 @@ const procedures = await ler(
     A equipe manda o link pela janela do agendamento ("Enviar a ficha":
     copiar ou `wa.me`, com `agenda: MANAGE`), que mostra só o ESTADO
     (pendente/respondida) — as respostas são do prontuário.
+    Com a rede mandando também pela conversa (a MESMA chave do link de
+    assinatura, `documentos_link_pela_conversa` — decisão do Heitor,
+    2026-10-21), aparece "Mandar pela conversa" (`enviarFichaPelaConversa`):
+    as regras do §9.4.1 — conversa achada ANTES de gerar, caixa da conversa,
+    janela fechada devolve o link para copiar. A mensagem é a genérica.
+    Prova: `e2e/ficha-pre-atendimento-conversa.spec.ts`.
   - `pre_atendimentos` e `pre_atendimento_links` têm RLS ligada e nenhuma
     política permissiva: só o servidor lê e grava. Prova:
     `e2e/ficha-pre-atendimento.spec.ts`.
