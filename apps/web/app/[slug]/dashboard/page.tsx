@@ -514,24 +514,23 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </div>
         )}
 
-        {/* Funil de leads / ciclo de cliente */}
+        {/* O ciclo de clientes do mês. Chamava-se "Funil de leads", com o selo
+            CRM — e não tem lead nenhum: são os clientes e os agendamentos do
+            mês (a simulação de 2026-10-20 viu o caixa achar que via o CRM). */}
         {canClients && (
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <div style={{ marginBottom: 4 }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-              Funil de leads
+              Clientes no mês
             </h2>
-            <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)', borderRadius: 99, padding: '2px 8px' }}>
-              CRM
-            </span>
           </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Situação atual da filial</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Novos clientes e agendamentos da unidade neste mês</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {funnel.map((f, i) => {
               const barPct = funnelMax > 0 ? Math.round((f.count / Math.max(funnelMax, 1)) * 100) : 0
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div key={i} data-etapa={f.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 110, flexShrink: 0 }}>{f.label}</span>
                   <div style={{ flex: 1, height: 22, borderRadius: 6, background: 'var(--bg-app)', overflow: 'hidden', position: 'relative' }}>
                     <div style={{
@@ -539,12 +538,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                       width: `${Math.max(barPct, f.count > 0 ? 12 : 0)}%`,
                       background: f.color, borderRadius: 6,
                     }} />
-                    {f.count > 0 && (
-                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--on-brand)', zIndex: 1 }}>
-                        {f.count}
-                      </span>
-                    )}
                   </div>
+                  {/* O número fora da barra: dentro, em branco, sumia nas barras claras. */}
+                  <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--text)', minWidth: 28, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    {f.count}
+                  </span>
                 </div>
               )
             })}
