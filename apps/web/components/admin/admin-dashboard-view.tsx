@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
+import { rotulosDoPeriodo } from '@/lib/rotulos-do-periodo'
 import Link from 'next/link'
 import {
   TrendingUp, TrendingDown, Users, Calendar,
@@ -283,8 +284,10 @@ function RatingBadge({ value, max = 5 }: { value: number; max?: number }) {
 // --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
-  label, value, format = 'brl', sub, delta, icon, brand = false,
+  label, value, format = 'brl', sub, delta, icon, brand = false, anterior = 'mês anterior',
 }: {
+  /** Com o que o delta compara ("ontem", "mês anterior"); nulo esconde o delta. */
+  anterior?: string | null
   label:   string
   value:   number
   format?: 'brl' | 'int'
@@ -328,7 +331,7 @@ function KpiCard({
         </span>
       )}
 
-      {delta != null && (
+      {delta != null && anterior && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: -2 }}>
           {delta.up
             ? <ArrowUpRight  size={12} color={brand ? 'rgba(255,255,255,.8)' : 'var(--success)'} />
@@ -339,7 +342,7 @@ function KpiCard({
               ? (delta.up ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.55)')
               : (delta.up ? 'var(--success)' : 'var(--danger)'),
           }}>
-            {delta.pct.toFixed(1).replace('.', ',')}% vs. mês anterior
+            {delta.pct.toFixed(1).replace('.', ',')}% vs. {anterior}
           </span>
         </div>
       )}
@@ -391,6 +394,8 @@ export function AdminDashboardView({
   hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
   currentPeriod, customFrom, customTo, granularity,
 }: AdminDashboardProps) {
+  // "do mês" só no mês: com o filtro "Hoje" os cartões diziam "do mês" (D36).
+  const rotulo = rotulosDoPeriodo(currentPeriod)
 
   const deltaRevenue      = pctDelta(totalRevenue,      prevRevenue)
   const deltaAppointments = pctDelta(totalAppointments, prevAppointments)
@@ -449,14 +454,15 @@ export function AdminDashboardView({
       <div className="kpi-grid-auto" style={{ gap: 16 }}>
         {can('financial') && <KpiCard
           brand
-          label="Receita bruta do mês"
+          label={`Receita bruta ${rotulo.doPeriodo}`}
           value={totalRevenue}
           format="brl"
           delta={deltaRevenue}
+          anterior={rotulo.anterior}
           icon={<TrendingUp size={16} color="var(--surface)" />}
         />}
         {can('financial') && <KpiCard
-          label="Custo do mês"
+          label={`Custo ${rotulo.doPeriodo}`}
           value={totalCost}
           format="brl"
           sub="despesas registradas"
@@ -466,8 +472,9 @@ export function AdminDashboardView({
           label="Atendimentos"
           value={totalAppointments}
           format="int"
-          sub="concluídos no mês"
+          sub={`concluídos ${rotulo.noPeriodo}`}
           delta={deltaAppointments}
+          anterior={rotulo.anterior}
           icon={<Calendar size={16} color="var(--brand)" />}
         />}
         {can('clients') && <KpiCard
@@ -476,6 +483,7 @@ export function AdminDashboardView({
           format="int"
           sub={`${totalClientsEver.toLocaleString('pt-BR')} no total`}
           delta={deltaNewClients}
+          anterior={rotulo.anterior}
           icon={<Users size={16} color="var(--brand)" />}
         />}
         {can('financial') && <KpiCard
@@ -683,7 +691,7 @@ export function AdminDashboardView({
 
               {/* Giro */}
               <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Giro do mês</span>
+                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Giro {rotulo.doPeriodo}</span>
                 <AnimatedNum value={stockTurnover} format="brl" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }} />
               </div>
 
