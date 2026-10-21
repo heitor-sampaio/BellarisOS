@@ -114,6 +114,10 @@ const procedures = await ler(
     do momento. Dentro da validade
     (`tenants.pre_atendimento_validade_meses`, padrão 6) o modo é
     `CONFIRMAR` ("algo mudou?"); fora dela, ou sem resposta, `COMPLETO`.
+    **Respondida (ou confirmada) há menos de 30 dias, o agendamento não abre
+    pendente** (decisão do Heitor, 2026-10-21; migration `20261021000008`):
+    a última resposta é a mais recente entre a anamnese e os pré-atendimentos
+    respondidos.
   - **A cliente responde no app** (`/[slug]/cliente/pre-atendimento`, o
     cartão da tela inicial e um aviso no celular ao ser agendada — genérico,
     sem nada de saúde, só quando ESTE agendamento abriu o pendente) **ou pelo

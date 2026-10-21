@@ -100,9 +100,9 @@ test.describe('o pré-atendimento: a ficha da rede e o pendente do agendamento',
   test('dentro da validade, pede só a confirmação; vencida, a ficha inteira', async () => {
     await ligarEnvio(true)
     const ha = (meses: number) => new Date(Date.now() - meses * 30 * 24 * 3600_000).toISOString()
-    const recente = await A.criarCliente('Respondeu há 1 mês')
+    const recente = await A.criarCliente('Respondeu há 2 meses')
     const antiga = await A.criarCliente('Respondeu há 8 meses')
-    for (const [cliente, quando] of [[recente, ha(1)], [antiga, ha(8)]] as const) {
+    for (const [cliente, quando] of [[recente, ha(2)], [antiga, ha(8)]] as const) {
       const { error } = await db().from('medical_records').upsert({
         client_id: cliente,
         general_anamnesis: { versao: 2, respostas: { allergies: 'nenhuma' }, respondidoEm: quando, origem: 'EQUIPE' },
@@ -113,6 +113,30 @@ test.describe('o pré-atendimento: a ficha da rede e o pendente do agendamento',
     await agendar(antiga)
     expect((await pendentes(recente))[0]?.modo, 'dentro dos 6 meses').toBe('CONFIRMAR')
     expect((await pendentes(antiga))[0]?.modo, 'passou dos 6 meses').toBe('COMPLETO')
+  })
+
+  test('respondida há menos de 30 dias, o agendamento novo não pede de novo (2026-10-21)', async () => {
+    await ligarEnvio(true)
+    const ha = (dias: number) => new Date(Date.now() - dias * 24 * 3600_000).toISOString()
+    // Pela anamnese (a equipe salvou) e pelo pré-atendimento respondido (a cliente confirmou).
+    const pelaAnamnese = await A.criarCliente('Respondeu há 10 dias')
+    expect((await db().from('medical_records').upsert({
+      client_id: pelaAnamnese,
+      general_anamnesis: { versao: 2, respostas: { allergies: 'nenhuma' }, respondidoEm: ha(10), origem: 'EQUIPE' },
+    }, { onConflict: 'client_id' })).error).toBeNull()
+    const pelaFicha = await A.criarCliente('Confirmou há 5 dias')
+    expect((await db().from('medical_records').upsert({
+      client_id: pelaFicha,
+      general_anamnesis: { versao: 2, respostas: { allergies: 'nenhuma' }, respondidoEm: ha(90), origem: 'EQUIPE' },
+    }, { onConflict: 'client_id' })).error).toBeNull()
+    expect((await db().from('pre_atendimentos').insert({
+      tenant_id: A.tenantId, client_id: pelaFicha, status: 'RESPONDIDO', modo: 'CONFIRMAR', origem: 'CLIENTE_APP',
+      ficha: { formId: null, nome: 'Pré-atendimento', rows: [] }, respostas: {}, respondido_em: ha(5),
+    })).error).toBeNull()
+    await agendar(pelaAnamnese)
+    await agendar(pelaFicha)
+    expect(await pendentes(pelaAnamnese), 'a anamnese de 10 dias vale').toEqual([])
+    expect(await pendentes(pelaFicha), 'a confirmação de 5 dias vale').toEqual([])
   })
 
   test('a anamnese antiga (campos fixos) vira resposta da ficha nova, sem perder nada', async () => {
@@ -362,7 +386,11 @@ test.describe('o pré-atendimento: a cliente responde no app', () => {
   })
 
   test('dentro da validade, ela só confirma que nada mudou', async ({ browser }) => {
-    const antes = (await anamnese())?.respondidoEm
+    // Respondida há 40 dias: fora da janela de 30 (em que nem se pede), dentro da validade.
+    const antes = new Date(Date.now() - 40 * 86_400_000).toISOString()
+    expect((await db().from('medical_records').update({ general_anamnesis: { ...(await anamnese()), respondidoEm: antes } })
+      .eq('client_id', cliente.clientId)).error).toBeNull()
+    expect((await db().from('pre_atendimentos').update({ respondido_em: antes }).eq('client_id', cliente.clientId).eq('status', 'RESPONDIDO')).error).toBeNull()
     await agendarC()
     expect((await db().from('pre_atendimentos').select('modo').eq('client_id', cliente.clientId).eq('status', 'PENDENTE')).data).toEqual([{ modo: 'CONFIRMAR' }])
     const ctx = await browser.newContext({ storageState: cliente.estado })
