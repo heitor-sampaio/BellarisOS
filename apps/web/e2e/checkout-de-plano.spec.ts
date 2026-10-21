@@ -270,6 +270,61 @@ test.describe.serial('checkout de plano', () => {
     expect((doPlano ?? []).map(t => [Number(t.amount), t.is_paid]), 'o plano, separado').toEqual([[TOTAL, true]])
   })
 
+  test('o caixa sem o módulo de Termos colhe a assinatura do checkout (2026-10-20)', async ({ browser }) => {
+    // Na simulação de um dia de clínica, o caixa (Recebimentos, sem Termos)
+    // travou em "Colher assinatura" com um "Forbidden" cru. Decisão do Heitor:
+    // quem recebe colhe a assinatura DAQUELE checkout; o resto dos documentos
+    // continua com o módulo de Termos.
+    test.setTimeout(150_000)
+    const { planId } = await plano('caixa')
+    const caixa = await criarMembro(`chkc${marca}`, {
+      tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Caixa sem Termos', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'VIEW' }],
+    })
+    try {
+      const ctx = await browser.newContext({ storageState: caixa.estado })
+      try {
+        const page = await ctx.newPage()
+        await page.addInitScript(() => { window.print = () => {} })
+        // O caixa da simulação era de UNIDADE: o checkout é o da unidade.
+        await page.goto(`/${slug}/checkout/${planId}`)
+        await page.getByRole('button', { name: 'Confirmar plano' }).click()
+        await page.getByRole('button', { name: 'À vista' }).click()
+        await page.getByRole('button', { name: 'Ir para a documentação' }).click()
+        const linhas = page.locator('[data-documento]')
+        await expect(linhas).toHaveCount(3)
+        for (let i = 0; i < 3; i++) {
+          await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
+          await page.getByRole('button', { name: 'Assinar no papel' }).click()
+          await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
+          await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
+          await page.getByRole('button', { name: 'Continuar' }).click()
+        }
+        await expect(page.getByText('Forbidden')).toHaveCount(0)
+      } finally { await ctx.close() }
+      const docs = await docsDoPlano(planId)
+      expect(docs.map(d => d.status), 'os três assinados pelo caixa').toEqual(['ASSINADO', 'ASSINADO', 'ASSINADO'])
+
+      // Fora do checkout, o caixa continua sem os documentos: um documento de
+      // atendimento (não de plano em checkout) não abre.
+      // Um termo da rede que não é de plano em checkout (o primeiro termo do
+      // plano, desligado do plano).
+      const [umDoPlano] = docs.filter(d => d.kind === 'TERMO')
+      const { error: eDesliga } = await db().from('issued_documents').update({ treatment_plan_id: null }).eq('id', umDoPlano!.id)
+      expect(eDesliga, 'desligar o termo do plano').toBeNull()
+      const avulso = { id: umDoPlano!.id }
+      {
+        const ctx2 = await browser.newContext({ storageState: caixa.estado })
+        try {
+          const p = await ctx2.newPage()
+          const r = await chamarAcao(p, 'actions/documentos.ts', 'documentoParaAssinar', `/${slug}/checkout/${planId}`, [avulso.id])
+          expect(r.texto).toContain('Seu cargo não libera esta ação.')
+        } finally { await ctx2.close() }
+      }
+    } finally {
+      await caixa.limpar()
+    }
+  })
+
   test('o plano de outra rede: nem prepara nem fecha', async ({ browser }) => {
     const alheio = await alheia!.criarPlanoProposto('alheio', { semTermo: true })
     const { planId: meu } = await plano('controle')

@@ -90,7 +90,13 @@ describe('mensagemDoErro', () => {
   })
 
   it('aproveita a mensagem de um Error comum', () => {
-    expect(mensagemDoErro(new Error('Forbidden'))).toBe('Forbidden')
+    expect(mensagemDoErro(new Error('Não achei o cliente.'))).toBe('Não achei o cliente.')
+  })
+
+  it('a falta de permissão vira frase, nunca o "Forbidden" cru (simulação de 2026-10-20)', () => {
+    // O caixa viu "Forbidden" na tela do checkout: a action embrulhava o erro
+    // de semAcesso() e devolvia a mensagem dele.
+    expect(mensagemDoErro(new Error('Forbidden'))).toBe('Seu cargo não libera esta ação.')
   })
 
   it('mensagem escrita por uma função do banco chega inteira ao usuário', () => {

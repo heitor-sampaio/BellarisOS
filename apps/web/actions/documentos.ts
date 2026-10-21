@@ -51,6 +51,23 @@ async function documentoAoAlcance(ctx: TenantContext, id: string): Promise<Docum
   return doc as unknown as DocumentoAssinavel
 }
 
+/**
+ * Quem COLHE a assinatura: o módulo de Termos — ou quem RECEBE, no documento
+ * de um plano que está no checkout (decisão do Heitor, 2026-10-20). O caixa da
+ * simulação de um dia de clínica travou em "Colher assinatura": fechar a venda
+ * exigia um módulo que ele não tinha. Fora do checkout, os documentos
+ * continuam do módulo de Termos.
+ */
+async function assertPodeColher(ctx: TenantContext, doc: DocumentoAssinavel): Promise<void> {
+  if (can(ctx, 'documents', 'MANAGE')) return
+  if (podeReceber(ctx) && doc.treatment_plan_id) {
+    const plano = await ler(createAdminClient().from('treatment_plans').select('status')
+      .eq('id', doc.treatment_plan_id).maybeSingle(), 'buscar o plano do documento') as { status: string } | null
+    if (plano?.status === 'PROPOSED') return
+  }
+  throw semAcesso()
+}
+
 // ─── Na clínica, na tela ─────────────────────────────────────────────────────
 
 export async function assinarNaClinica(input: {
@@ -62,11 +79,11 @@ export async function assinarNaClinica(input: {
 }): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
     const travado = bloqueioDoSuporte(ctx, 'colher assinatura')
     if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, input.id)
     if (!doc) return { error: 'Documento não encontrado.' }
+    await assertPodeColher(ctx, doc)
     if (!input.identidadeConferida) return { error: 'Confira o documento de identidade do cliente antes de entregar o aparelho.' }
     if (typeof input.assinatura !== 'string' || !input.assinatura.startsWith('data:image/png;base64,')) {
       return { error: 'Faça a assinatura antes de confirmar.' }
@@ -119,11 +136,11 @@ function tipoDaDigitalizacao(bytes: Buffer): { ext: string; mime: string } | nul
 export async function marcarAssinadoEmPapel(formData: FormData): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
     const travado = bloqueioDoSuporte(ctx, 'registrar assinatura em papel')
     if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, formData.get('id') as string)
     if (!doc) return { error: 'Documento não encontrado.' }
+    await assertPodeColher(ctx, doc)
 
     const admin = createAdminClient()
     let scan: { path: string; sha: string } | null = null
@@ -268,9 +285,9 @@ export async function definirPagamentoDoContrato(
 export async function documentoParaAssinar(id: string): Promise<{ doc?: DocumentoNaTela; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
     const alvo = await documentoAoAlcance(ctx, id)
     if (!alvo) return { error: 'Documento não encontrado.' }
+    await assertPodeColher(ctx, alvo)
     const d = await documentoParaExibir(ctx.tenantId!, alvo.id, { montarDeNovo: true })
     if (!d) return { error: 'Documento não encontrado.' }
     return {
@@ -516,9 +533,9 @@ export async function dispensarDocumento(id: string, motivo: string): Promise<Re
 export async function montarDocumentoDeNovo(id: string): Promise<Resultado & { faltando?: number }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
+    await assertPodeColher(ctx, doc)
     const novo = await garantirRenderizado(ctx.tenantId!, doc.id, { forcar: true })
     return { faltando: novo?.status === 'INCOMPLETO' ? 1 : 0 }
   } catch (e) {

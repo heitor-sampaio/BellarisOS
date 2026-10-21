@@ -209,7 +209,7 @@ test.describe.serial('o plano corta módulos inteiros na clínica — inclusive 
       const r = await chamarAcao(p, 'actions/stock.ts', 'adminUpdateMinStock', '/admin/estoque',
         ['00000000-0000-4000-8000-000000000000', outra.branchId, 9])
       // Recusada: o digest de semAcesso(), ou o "Forbidden" de quem embrulha o erro.
-      expect(r.texto).toMatch(/BELLARIS_SEM_ACESSO|Forbidden/)
+      expect(r.texto).toMatch(/BELLARIS_SEM_ACESSO|Forbidden|Seu cargo não libera/)
     })
   })
 
@@ -225,7 +225,7 @@ test.describe.serial('o plano corta módulos inteiros na clínica — inclusive 
       const r = await chamarAcao(p, 'actions/stock.ts', 'adminUpdateMinStock', '/admin/estoque',
         ['00000000-0000-4000-8000-000000000000', outra.branchId, 9])
       // Passou da trava: chega à conferência do produto (que não existe).
-      expect(r.texto).not.toMatch(/BELLARIS_SEM_ACESSO|Forbidden/)
+      expect(r.texto).not.toMatch(/BELLARIS_SEM_ACESSO|Forbidden|Seu cargo não libera/)
       expect(r.texto).toContain('Produto ou filial não encontrado')
     })
   })
@@ -267,7 +267,7 @@ const SUBFUNCIONALIDADES: {
     acao: { arquivo: 'actions/fichas.ts', funcao: 'criarFicha', rota: '/admin/settings', args: () => [{ name: '', schema: null }] } },
 ]
 const ZERO = '00000000-0000-4000-8000-000000000000'
-const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden/
+const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden|Seu cargo não libera/
 
 test.describe.serial('o plano corta o que é parte de um módulo — inclusive para o dono', () => {
   let dono: MembroDeTeste | null = null
@@ -550,7 +550,7 @@ test.describe.serial('a aba Assinatura mostra o que o plano inclui', () => {
 test.describe.serial('correções da verificação das fases 3–5', () => {
   let dono: MembroDeTeste | null = null
   const ZERO_ = '00000000-0000-4000-8000-000000000000'
-  const RECUSADA_ = /BELLARIS_SEM_ACESSO|Forbidden/
+  const RECUSADA_ = /BELLARIS_SEM_ACESSO|Forbidden|Seu cargo não libera/
   type Limites = { unidades: number | null; membros: number | null; whatsapp: number | null }
   const com = async (funcionalidades: string[] | null, limites: Limites = { unidades: null, membros: null, whatsapp: null }) => {
     const recursos = funcionalidades ? { funcionalidades, limites } : null

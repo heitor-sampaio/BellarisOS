@@ -74,6 +74,12 @@ DEVLOG ("Termos e contratos").
   altera (gatilho); modelo não se apaga (desativa).
 - **Modelos são `forms: MANAGE`** (Configurações → Documentos); colher a
   assinatura é o módulo `documents`; ligar ao procedimento é `procedures`.
+  - **Exceção do checkout** (decisão do Heitor, 2026-10-20): quem RECEBE
+    (`podeReceber`) colhe a assinatura do documento de um plano que está no
+    checkout (`treatment_plan_id` de plano PROPOSED) — abrir, assinar na tela,
+    no papel e montar de novo (`assertPodeColher`, `actions/documentos.ts`).
+    O caixa da simulação de um dia de clínica travava ali. Fora do checkout,
+    continua o módulo de Termos. Prova: `e2e/checkout-de-plano.spec.ts`.
 - O banco recusa modelo de outra rede no procedimento (chave composta com
   `tenant_id`) e o tipo errado no campo (gatilho
   `trg_procedimento_modelos_do_tipo`).

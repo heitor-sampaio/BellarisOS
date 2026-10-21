@@ -19,11 +19,13 @@ export interface DocumentoAssinavel {
   branch_id:      string | null
   client_id:      string
   appointment_id: string | null
+  /** O plano do documento (contrato e termos do checkout), se houver. */
+  treatment_plan_id: string | null
   title:          string
   status:         string
 }
 
-export const COLUNAS_ASSINAVEIS = 'id, tenant_id, branch_id, client_id, appointment_id, title, status'
+export const COLUNAS_ASSINAVEIS = 'id, tenant_id, branch_id, client_id, appointment_id, treatment_plan_id, title, status'
 
 /**
  * O IP de quem está na tela. O `X-Real-IP` vem PRIMEIRO: é a borda do Railway
