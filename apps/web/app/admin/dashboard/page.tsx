@@ -15,7 +15,7 @@ import { startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ, partsInTZ } from '@/lib/
 import {
   resolvePeriod, ratio, percent, EMPTY_CORE,
   getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
-  getTopClients, getLeadFunnel, getRankingDeComissao,
+  getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
@@ -32,10 +32,6 @@ type SaldoLido = {
   current_stock: Num; min_stock: Num; branch_id: string
   products: { name: string; is_active: boolean } | null
   branches: { name: string; slug: string } | null
-}
-type ProcedimentoLido = {
-  id: string; name: string; price: Num; labor_cost: Num; other_costs: Num
-  procedure_products: { quantity: Num; products: { cost_price: Num } | null }[] | null
 }
 
 export default async function AdminDashboardPage({
@@ -132,7 +128,7 @@ export default async function AdminDashboardPage({
     todayApptsRaw,
     pendingPlansRaw,
     bpsRaw,
-    proceduresRaw,
+    margensDosProcedimentos,
     stockTurnover,
     demografia,
   ] = needsCore ? await Promise.all([
@@ -177,11 +173,9 @@ export default async function AdminDashboardPage({
       .or('min_stock.gt.0,current_stock.eq.0')
       .order('current_stock', { ascending: true }), 'carregar os saldos de estoque'),
 
-    // Procedimentos ativos com custo variável (para cálculo de margem)
-    ler(admin.from('procedures')
-      .select('id, name, price, labor_cost, other_costs, procedure_products(quantity, products(cost_price))')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true), 'carregar os procedimentos'),
+    // Margem por procedimento — contada no banco, com o custo da unidade de
+    // consumo do insumo (era o da embalagem, feito aqui na página).
+    getMargemPorProcedimento({ tenantId: ctx.tenantId!, limit: 5 }),
 
     // Giro do período: consumo em procedimentos, ao custo do MOVIMENTO (não
     // ao custo atual do produto, que mudaria o giro a cada compra). Fim do
@@ -372,20 +366,8 @@ export default async function AdminDashboardPage({
     name: p.name, amount: p.commission, pct: barPct(p.commission, maxProfComm),
   }))
 
-  // 3. Margem por procedimento — inclui mão de obra e outros custos, que já
-  // existem no cadastro e ficavam de fora (a margem saía sempre otimista).
-  const procedureMargins = ((proceduresRaw ?? []) as unknown as ProcedimentoLido[])
-    .map(proc => {
-      const inputs = (proc.procedure_products ?? []).reduce((s: number, pp) =>
-        s + (Number(pp.quantity) * Number(pp.products?.cost_price ?? 0)), 0)
-      const cost      = inputs + Number(proc.labor_cost ?? 0) + Number(proc.other_costs ?? 0)
-      const price     = Number(proc.price ?? 0)
-      const marginPct = price > 0 ? ((price - cost) / price) * 100 : 0
-      return { name: proc.name, price, cost, marginPct }
-    })
-    .filter(p => p.price > 0)
-    .sort((a, b) => b.marginPct - a.marginPct)
-    .slice(0, 5)
+  // 3. Margem por procedimento (lib/metrics: insumos, mão de obra e outros custos).
+  const procedureMargins = margensDosProcedimentos ?? []
 
   // 4. Avaliações — exige pelo menos 3 notas para entrar no ranking; com uma
   // nota só, um único atendimento definia o "melhor" e o "pior" da rede.

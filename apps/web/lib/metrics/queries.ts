@@ -224,6 +224,25 @@ export async function getRankingDeComissao(args: Args & { limit?: number }): Pro
   }))
 }
 
+/**
+ * Margem por procedimento (o catálogo, não um período): preço − (insumos ao
+ * custo da unidade de CONSUMO + mão de obra + outros custos). A conta é do
+ * banco (`metrics_margem_procedimentos`); até 2026-10-21 a página fazia, com o
+ * preço da embalagem inteira — a Toxina saía com −3858%.
+ */
+export async function getMargemPorProcedimento(args: { tenantId: string; limit?: number }): Promise<{ name: string; price: number; cost: number; marginPct: number }[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_margem_procedimentos', {
+    p_tenant: args.tenantId, p_limit: args.limit ?? 5,
+  })
+  logRpcError('metrics_margem_procedimentos', error)
+  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
+    name:      String(r.procedure_name),
+    price:     n(r.price),
+    cost:      n(r.cost),
+    marginPct: n(r.margin_pct),
+  }))
+}
+
 export type CommissionEntry = {
   id: string; professionalId: string; professionalName: string
   amount: number; isPaid: boolean; referenceAt: string

@@ -45,6 +45,13 @@
   - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos` — **numerador e
     denominador do mesmo conjunto**
   - `occupancy` = minutos agendados ÷ capacidade (`occupancyPct()`)
+  - `margem por procedimento` = (preço − custo) ÷ preço, com o custo = insumos
+    ao custo da unidade de CONSUMO (o preço da embalagem ÷ o que ela rende) +
+    mão de obra + outros custos (`metrics_margem_procedimentos`,
+    `getMargemPorProcedimento`; 2026-10-21). É o custo ATUAL do catálogo — o
+    giro de estoque é que usa o custo do movimento. Até então a página fazia a
+    conta com o preço da embalagem inteira (a Toxina saía com −3858%). Prova:
+    `e2e/indicadores-margem.spec.ts`.
   - `retenção` = clientes atendidos no período que **já tinham sido atendidos
     antes dele** ÷ atendidos no período (`getRetention`). Não confundir com
     recorrência dentro da janela, que em períodos curtos dá zero por construção.
