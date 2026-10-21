@@ -74,6 +74,7 @@ export default async function ClientProfilePage({
     neighborhood:      raw.neighborhood ?? null,
     city:              raw.city ?? null,
     state:             raw.state ?? null,
+    temAcesso:         !!raw.auth_id,
   }
 
   // Parallel data fetches (cacheadas — TTL 60s, tags clients/appointments do tenant)

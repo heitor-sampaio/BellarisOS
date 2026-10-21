@@ -76,6 +76,7 @@ export default async function AdminClientProfilePage({
     neighborhood:      raw.neighborhood ?? null,
     city:              raw.city ?? null,
     state:             raw.state ?? null,
+    temAcesso:         !!raw.auth_id,
   }
 
   const [

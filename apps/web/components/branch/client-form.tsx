@@ -66,6 +66,10 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [phone, setPhone] = useState(prefill?.phone ?? '')
   const [document, setDocument] = useState('')
+  const [email, setEmail] = useState(prefill?.email ?? '')
+  // O acesso ao app é escolha (2026-10-21): só com e-mail e CPF.
+  const [comAcesso, setComAcesso] = useState(false)
+  const podeAcesso = email.trim().length > 0 && document.replace(/\D/g, '').length === 11
   const [unitId, setUnitId] = useState(branchId || branches?.[0]?.id || '')
 
   const router   = useRouter()
@@ -138,17 +142,18 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           />
         </Field>
 
-        <Field label="E-mail *">
+        <Field label="E-mail">
           <input
-            name="email" type="email" required className="field"
-            defaultValue={prefill?.email ?? ''}
+            name="email" type="email" className="field"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
             placeholder="ana@email.com"
           />
         </Field>
 
-        <Field label="CPF *">
+        <Field label="CPF">
           <input
-            name="document" type="text" required className="field"
+            name="document" type="text" className="field" inputMode="numeric"
             value={document}
             onChange={e => setDocument(maskCPF(e.target.value))}
             placeholder="000.000.000-00"
@@ -228,16 +233,30 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         </div>
       )}
 
-      <div style={{
+      <label style={{
+        display: 'flex', gap: 10, alignItems: 'flex-start',
         fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
         background: 'var(--bg-app)', border: '1px solid var(--hairline)',
-        borderRadius: 10, padding: '10px 12px',
+        borderRadius: 10, padding: '10px 12px', cursor: podeAcesso ? 'pointer' : 'default',
       }}>
-        Ao cadastrar, será criado um acesso do cliente ao app com{' '}
-        <b style={{ color: 'var(--text)' }}>login = e-mail</b> e{' '}
-        <b style={{ color: 'var(--text)' }}>senha = CPF</b>. Se ela já usa o app em outra clínica, com o
-        mesmo e-mail e CPF, esta ficha entra na conta dela, e a senha continua a que ela já usa.
-      </div>
+        <input
+          type="checkbox" name="_acesso"
+          checked={comAcesso && podeAcesso} disabled={!podeAcesso}
+          onChange={e => setComAcesso(e.target.checked)}
+          aria-label="Criar o acesso ao app"
+          style={{ marginTop: 2, accentColor: 'var(--brand)' }}
+        />
+        <span>
+          <b style={{ color: 'var(--text)' }}>Criar o acesso ao app</b>
+          {podeAcesso ? (
+            <> — login = e-mail e senha inicial = CPF. Se ela já usa o app em outra clínica, com o mesmo e-mail e
+              CPF, esta ficha entra na conta dela, e a senha continua a que ela já usa.</>
+          ) : (
+            <> — precisa do e-mail e do CPF. Sem eles, a cliente é cadastrada sem o app, e o acesso pode ser dado
+              depois, na aba Dados da ficha.</>
+          )}
+        </span>
+      </label>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
         {showCancelButton && (

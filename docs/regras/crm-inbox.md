@@ -12,6 +12,12 @@
   pessoa cliente de várias clínicas, 2026-10-19 — regras no §5 do
   `CLAUDE.md`). Cada ficha continua da sua clínica: a LGPD (pedido, exportação)
   é por ficha, e cada clínica responde pelos dados dela.
+- **A cliente de balcão** (2026-10-21, decisão do Heitor): "Novo cliente"
+  pede só nome e telefone; e-mail e CPF são opcionais (preenchidos, válidos).
+  O acesso ao app é a caixa "Criar o acesso ao app", que só se marca com os
+  dois — sem ela, nenhum login nasce. Depois, a aba Dados da ficha dá o acesso
+  (`darAcessoAoApp`, com o e-mail e o CPF SALVOS; o núcleo é
+  `darAcessoAoCliente`). Prova: `e2e/ficha-cadastro-de-balcao.spec.ts`.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
 - Tags como `String[]` no registro; o VOCABULÁRIO é da rede (`tags`, abaixo).
   `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a

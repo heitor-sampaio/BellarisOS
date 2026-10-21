@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
-import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus } from '@/actions/clients'
+import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
@@ -53,6 +53,8 @@ export interface ProfileClient {
   neighborhood:       string | null
   city:               string | null
   state:              string | null
+  /** A ficha tem login no app (o acesso pode ser dado depois do cadastro). */
+  temAcesso?:         boolean
 }
 
 export interface ProfileStats {
@@ -737,6 +739,8 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
         })()}
       </div>
 
+      {!client.temAcesso && <AcessoAoApp clientId={client.id} pronto={!!client.email && (client.document ?? '').replace(/\D/g, '').length === 11} />}
+
       {saveError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{saveError}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -752,6 +756,48 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
                       'Salvar dados'}
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * A ficha sem login no app (a cliente de balcão, 2026-10-21): o acesso se dá
+ * aqui, com o e-mail e o CPF já SALVOS na ficha.
+ */
+function AcessoAoApp({ clientId, pronto }: { clientId: string; pronto: boolean }) {
+  const router = useRouter()
+  const [dando, setDando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [feito, setFeito] = useState(false)
+
+  async function dar() {
+    setErro(null)
+    setDando(true)
+    const r = await darAcessoAoApp(clientId)
+    setDando(false)
+    if ('error' in r) { setErro(r.error); return }
+    setFeito(true)
+    router.refresh()
+  }
+
+  return (
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+      background: 'var(--bg-app)', border: '1px solid var(--hairline)', borderRadius: 10, padding: '10px 12px',
+    }}>
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 460 }}>
+        {feito
+          ? 'Acesso criado: login = e-mail, senha = CPF.'
+          : pronto
+            ? 'Esta cliente ainda não tem acesso ao app. O login é o e-mail, e a senha inicial, o CPF.'
+            : 'Esta cliente ainda não tem acesso ao app. Para dar, salve o e-mail e o CPF dela.'}
+      </p>
+      {!feito && (
+        <button type="button" className="btn-secondary" disabled={!pronto || dando} onClick={dar}>
+          {dando ? 'Criando…' : 'Dar acesso ao app'}
+        </button>
+      )}
+      {erro && <p role="alert" style={{ width: '100%', fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
     </div>
   )
 }

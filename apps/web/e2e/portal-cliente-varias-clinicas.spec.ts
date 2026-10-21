@@ -177,6 +177,12 @@ test.describe('a mesma cliente em duas clínicas', () => {
       await page.locator('input[name="phone"]').fill('48 9' + String(Date.now()).slice(-8))
       await page.locator('input[name="email"]').fill(email)
       await page.locator('input[name="document"]').fill(documento)
+      // O acesso ao app é escolha de quem cadastra (2026-10-21).
+      await expect(async () => {
+        await page.locator('input[name="document"]').fill('')
+        await page.locator('input[name="document"]').fill(documento)
+        await page.getByRole('checkbox', { name: 'Criar o acesso ao app' }).check({ timeout: 1000 })
+      }).toPass()
       await page.getByRole('button', { name: 'Cadastrar cliente' }).click()
     }
     const fichaNaB = async () => (await db().from('clients').select('id, auth_id')

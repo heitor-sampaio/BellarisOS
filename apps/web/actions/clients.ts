@@ -13,9 +13,10 @@ import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { EVENTOS } from '@estetica-os/types'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
-import { criarLoginDoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
+import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -72,6 +73,9 @@ export async function addClient(
   const birthDate = (formData.get('birth_date') as string) || null
   const gender    = (formData.get('gender') as string) || null
   const notes     = (formData.get('notes') as string)?.trim() || null
+  // O acesso ao app é escolha de quem cadastra (2026-10-21): a cliente de
+  // balcão entra com nome e telefone, sem e-mail nem CPF.
+  const comAcesso = formData.get('_acesso') === 'on'
   const tagsRaw   = formData.get('tags') as string
   const tags: string[] = tagsRaw ? JSON.parse(tagsRaw) : []
 
@@ -82,13 +86,14 @@ export async function addClient(
 
   // Regra de negócio de CRIAR CLIENTE — idêntica no cadastro manual e na conversão de lead.
   if (!name || !phone)                     return { error: 'Nome e telefone são obrigatórios.' }
-  if (!email)                              return { error: 'E-mail é obrigatório.' }
-  if (!document || document.length !== 11) return { error: 'CPF válido é obrigatório.' }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'E-mail inválido.' }
+  if (document && document.length !== 11)  return { error: 'CPF inválido: são 11 dígitos.' }
+  if (comAcesso && (!email || !document))  return { error: 'O acesso ao app precisa do e-mail e do CPF.' }
 
   const admin = createAdminClient()
 
   // CPF único por rede. Na conversão (leadId), se o CPF já é de um cliente, liga o lead a ele (dedupe).
-  const existing = await ler(admin
+  const existing = !document ? null : await ler(admin
     .from('clients')
     .select('id')
     .eq('tenant_id', ctx.tenantId!)
@@ -132,9 +137,13 @@ export async function addClient(
   // tem em outra clínica, quando o e-mail e o CPF batem (a senha fica a dela).
   // E-mail de equipe ou CPF que não bate → aborta sem criar cliente órfão.
   // O núcleo do acesso (lib/clients/acesso.ts), o mesmo do Copilot.
-  const login = await criarLoginDoCliente(admin, ctx.tenantId!, email, document)
-  if ('error' in login) return { error: login.error }
-  const authId = login.authId
+  // Sem a caixa marcada, nenhum login: a ficha ganha o acesso depois, na aba Dados.
+  let login: Awaited<ReturnType<typeof criarLoginDoCliente>> | null = null
+  if (comAcesso) {
+    login = await criarLoginDoCliente(admin, ctx.tenantId!, email!, document!)
+    if ('error' in login) return { error: login.error }
+  }
+  const authId = login && !('error' in login) ? login.authId : null
 
   // 2) Cliente — completa a ficha rápida quando ela existe, senão cria.
   const dadosDoCliente = {
@@ -151,12 +160,12 @@ export async function addClient(
     : await admin.from('clients').insert(dadosDoCliente).select('id').single()
 
   if (error || !client) {
-    await desfazerLogin(admin, login)  // rollback do login órfão (o que ela já tinha fica)
+    if (login && !('error' in login)) await desfazerLogin(admin, login)  // rollback do login órfão (o que ela já tinha fica)
     return { error: 'Erro ao cadastrar cliente. Tente novamente.' }
   }
 
   // 3) Claims do cliente + conta de fidelidade
-  await ligarLoginAoCliente(admin, login, client.id)
+  if (login && !('error' in login)) await ligarLoginAoCliente(admin, login, client.id)
   // A conta de pontos: pela função do banco, que não duplica e não cala erro.
   if (!jaExiste) await gravar(admin.rpc('fidelidade_conta', { p_cliente: client.id }), 'abrir a conta de fidelidade')
 
@@ -222,6 +231,34 @@ export async function addClient(
 // edita tudo o que ela editava, e nenhuma tela montava o modo de edição do
 // ClientForm que a chamava. Duas actions para a mesma coisa, uma sem porta —
 // e todo export daqui é um endpoint público.
+
+/**
+ * Dá à cliente que não ganhou no cadastro o acesso ao app (2026-10-21), pela
+ * aba Dados da ficha: login = o e-mail da ficha, senha inicial = o CPF — o
+ * núcleo de sempre (`darAcessoAoCliente`, o mesmo do Copilot).
+ */
+export async function darAcessoAoApp(clientId: string): Promise<{ ok: true } | { error: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'clients', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'dar acesso ao app')
+    if (travado) return { error: travado }
+    const admin = createAdminClient()
+    const ficha = await ler(admin.from('clients').select('id, email, document')
+      .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente') as { id: string; email: string | null; document: string | null } | null
+    if (!ficha) return { error: 'Cliente não encontrado.' }
+    const cpf = (ficha.document ?? '').replace(/\D/g, '')
+    if (!ficha.email || cpf.length !== 11) return { error: 'Para o acesso ao app, salve antes o e-mail e o CPF da cliente.' }
+    const r = await darAcessoAoCliente(admin, ctx, ficha.id, ficha.email.toLowerCase(), cpf)
+    if ('error' in r) return r
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
 
 // --- Conceder crédito interno --------------------------------------
 export async function grantInternalCredit(

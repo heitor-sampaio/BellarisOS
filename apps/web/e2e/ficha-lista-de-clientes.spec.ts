@@ -63,6 +63,10 @@ test('cadastrou, a lista já mostra — sem buscar', async ({ browser }) => {
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
     await expect.poll(async () => (await db().from('clients').select('id').eq('name', NOME)).data?.length ?? 0,
       { message: 'o cadastro grava', timeout: 20_000 }).toBe(1)
+    // A action expira o cache no FIM (depois da fidelidade e do evento): a pessoa
+    // só sai da tela quando ela termina — a ficha nova abre. Abrir a lista logo
+    // que a linha aparece no banco corria contra isso.
+    await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
 
     await p.goto('/admin/clients')
     await expect(p.getByText(NOME).first(), 'a lista nova, já na primeira tela').toBeVisible()
