@@ -261,6 +261,10 @@ test.describe.serial('portal do cliente', () => {
       await expect.poll(async () =>
         (await db().from('clients').select('city').eq('id', f!.cliente.clientId).single()).data?.city,
       ).toBe(`${PREFIXO} Cidade ${marca}`)
+      // E a tela já mostra o que foi salvo, sem recarregar (simulação de
+      // 2026-10-20: o cartão só mudava ao recarregar a página — D37).
+      await expect(page.getByRole('button', { name: 'Editar' })).toBeVisible()
+      await expect(page.getByText(`${PREFIXO} Cidade ${marca}`).first()).toBeVisible()
     } finally {
       await fechar()
     }

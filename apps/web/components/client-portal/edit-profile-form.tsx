@@ -1,6 +1,7 @@
 ﻿'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateClientSelf } from '@/actions/clients'
 import { Pencil, X, Check } from 'lucide-react'
 
@@ -52,6 +53,10 @@ export function EditProfileForm({ client }: Props) {
   if (state?.success && editing) {
     setEditing(false)
   }
+  // E pede a página nova: o cartão mostra o `client` do servidor, e o que
+  // acabou de ser salvo só aparecia ao recarregar (simulação de 2026-10-20).
+  const router = useRouter()
+  useEffect(() => { if (state?.success) router.refresh() }, [state, router])
 
   return (
     <div>
