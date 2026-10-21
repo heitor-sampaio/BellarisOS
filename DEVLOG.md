@@ -1343,6 +1343,23 @@ D24 (c038a33), D25 (4612387), D16 (654bd89), D14 (e1c206b), D11/D12/D27 —
 o horário de funcionamento e uma ocupação só (3a867c4) —, o lote dos baixos
 D26/D28–D33/D35 (71fcbbb) e a unidade desativada sem movimento (2f009e1).
 
+Na tarde de 2026-10-21: D34 (c6ba571), D36 (aa94d1c), D37 (0b09fc1), as
+dívidas — todo cache expira com `revalidateTag(tag, { expire: 0 })`
+(f8d1e5b) e o gráfico e o "A pagar" do hub vêm do banco (b2fa01f) —, as três
+sobras do pré-atendimento — a ficha pela conversa, com a MESMA chave do link
+de assinatura (bcff945), o selo na agenda (35b9a50), a ficha no pacote LGPD
+(72c0098) — e os atritos, com quatro decisões dele: a ficha não é pedida de
+novo por 30 dias (7aee469); a cliente de balcão entra com nome e telefone, e
+o acesso ao app só se marcar (19063cb); a senha dada por outra pessoa é
+provisória e se troca no 1º acesso (4fee2ef); o check-in vira o status
+"Chegou" (fb0d9c3). Depois, os atritos sem decisão: dashboard (f666f1e),
+agenda (e3ca7b0, 0164401), confirmações e procedimento fora do app (36ffea4),
+portal (1b3a9ab), CRM (3c4c7d5), prontuário e alergia (3611eea), iniciais
+(afe47ba), `seed_tenant_admin_role` no repositório (1d037cf), estoque
+inicial numa transação (28553bb), formulários (775e159), o link da ficha
+valendo (6eb1f2e), configurações e LGPD (232f62a) e a agenda que perdia
+horários acima de 1000 linhas (7c04db3).
+
 O que falta está em "5. Em aberto → Da simulação de 2026-10-20".
 
 ### 2026-10-20 — O pré-atendimento: a ficha universal, respondida antes do horário
@@ -6610,23 +6627,30 @@ verdade. O que vale:
 ### Da simulação de 2026-10-20 (o que ainda falta)
 
 O relatório inteiro (com capturas) ficou na máquina do Heitor, fora do git:
-`apps/web/.sim/relatorio.md`. Corrigidos em 2026-10-20/21: D1–D12, D14,
-D15–D20, D22, D24–D33 e o deploy (ver a linha do tempo). Faltam:
-- **D13 — decisão do Heitor**: o atendimento concluído ANTES da hora marcada
-  fica fora dos indicadores até essa hora (o eixo do serviço é
-  `scheduled_at` e o período parcial fecha em "agora"). Mexe no eixo
-  canônico de todas as métricas.
-- **D34, D36, D37** (prováveis, não conferidos): a coluna MOVIM. da unidade ≠
-  o total da rede; os cartões do dashboard dizem "do mês" com o filtro
-  "Hoje"; o perfil da cliente só mostra o endereço salvo ao recarregar.
-- **Os atritos** do relatório (por tela: setup, cadastro, agenda, ficha e
-  link, oportunidades, atendimento, checkout, portal, dashboard) — nenhum foi
-  tratado.
-- **Dívida achada no caminho**: o gráfico de barras do financeiro da unidade
-  (`groupByPeriod`) ainda soma a lista na tela; e o `updateTag` NÃO
-  derrubou o `unstable_cache` da lista de clientes (a lista passou a
-  `revalidateTag(tag, { expire: 0 })`) — conferir os outros `unstable_cache`
-  invalidados com `updateTag` (a regra do CLAUDE.md §14 pede `updateTag`).
+`apps/web/.sim/relatorio.md`. Corrigidos em 2026-10-20/21: todos os D's
+menos o D13, e a maior parte dos atritos (ver a linha do tempo). Faltam:
+- **D13 — decisão do Heitor** (ele pediu mais contexto): o atendimento
+  concluído ANTES da hora marcada fica fora dos indicadores até essa hora,
+  porque o eixo do serviço é `scheduled_at` e o período parcial fecha em
+  "agora". Opções: (a) contar o concluído pelo `completed_at`; (b) o
+  "hoje" fechar no fim do dia; (c) manter. Mexe em metrics_core, by_branch,
+  series, relatório e nos rankings.
+- **Recursos novos que pedem decisão** (a simulação viu, nenhum é conserto):
+  abrir/fechar caixa (`cash_registers` existe vazia); o motivo da perda do
+  lead (e uma etapa de negociação no funil padrão); avisar a equipe quando a
+  ficha de saúde é respondida; os cartões da agenda do portal da cliente
+  abrirem o detalhe e cancelarem/remarcarem (qual a regra de prazo?); o
+  agendamento pelo app ligar-se ao plano já pago (risco de cobrar duas
+  vezes); o checkout trocar o plano pelo pacote equivalente; o plano
+  oferecer pacotes; o Financeiro da rede com "A receber" e a coluna de
+  cliente; a data da despesa; o cancelado na grade da agenda (hoje some; o
+  motivo aparece na tela do atendimento); "Novo plano" criar o rascunho só
+  ao salvar.
+- **Não reproduzido**: "as notificações não ficam lidas" (abrir no sino
+  marca — conferido).
+- **Varredura que vale à parte**: listas que leem uma janela grande sem
+  paginar (o PostgREST corta em 1000; a agenda da unidade já usa
+  `lerTodas`, 7c04db3).
 - A rede "[sim] Clínica Aurora" (`00a5ea5b-…`) e os logins `sim-*@bellaris.invalid`
   continuam em produção — apagar quando o Heitor pedir.
 
