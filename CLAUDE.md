@@ -431,7 +431,10 @@ nenhuma parte da conclusão se grava fora dela.
 ## 11. Permissões por módulo
 
 Não existem mais cargos fixos. Cada rede cria seus próprios cargos (`tenant_roles`)
-e monta a matriz em Configurações → Cargos. A autorização tem **três eixos**:
+e monta a matriz em Configurações → Cargos. A rede nasce com quatro MODELOS
+editáveis (Gerente, Recepcionista, Profissional, Financeiro — matriz inicial em
+`private.cargos_modelo_semear`, 2026-10-21); de sistema só o "Admin da rede" e
+o "Não definido". A autorização tem **três eixos**:
 
 | Eixo | Onde mora | O que decide |
 |---|---|---|
