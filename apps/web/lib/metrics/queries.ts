@@ -243,6 +243,23 @@ export async function getMargemPorProcedimento(args: { tenantId: string; limit?:
   }))
 }
 
+/**
+ * As movimentações do financeiro (os lançamentos da LISTA: data de referência
+ * no período, sem o saldo zerado), por unidade e no total — o mesmo número na
+ * coluna e no rodapé (`metrics_movimentacoes`, 2026-10-21; eram duas contas).
+ */
+export async function getMovimentacoes(args: Args): Promise<{ porUnidade: Record<string, number>; total: number }> {
+  const { data, error } = await createAdminClient().rpc('metrics_movimentacoes', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  })
+  logRpcError('metrics_movimentacoes', error)
+  const linhas = (data as { branch_id: string | null; n: unknown }[] | null) ?? []
+  return {
+    porUnidade: Object.fromEntries(linhas.filter(l => l.branch_id).map(l => [l.branch_id as string, n(l.n)])),
+    total:      n(linhas.find(l => l.branch_id === null)?.n),
+  }
+}
+
 export interface ComposicaoFinanceira {
   /** Receita paga por forma de pagamento (método do banco: PIX, CASH…). */
   formas:   { chave: string; valor: number }[]

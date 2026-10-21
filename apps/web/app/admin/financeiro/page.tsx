@@ -3,7 +3,7 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCore, getByBranch } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes } from '@/lib/metrics'
 import { ler } from '@/lib/db'
 
 /** Lançamento como o select pede. */
@@ -75,7 +75,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -107,6 +107,10 @@ export default async function AdminFinanceiroPage({
           .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
           .order('name').limit(500), 'carregar os clientes da rede')
       : Promise.resolve([] as { id: string; name: string }[]),
+
+    // As movimentações com a regra da LISTA (data de referência até o fim do
+    // período): a coluna da unidade e o total contam o mesmo (D34).
+    getMovimentacoes({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
   ])
 
   const txs = (txsRaw ?? []) as LancamentoLido[]
@@ -136,7 +140,7 @@ export default async function AdminFinanceiroPage({
     expenses:    b.expensesCash,
     result:      b.revenueCash - b.expensesCash,
     commissions: b.commissionsOpen + b.commissionsPaid,
-    txCount:     b.transactionsCount,
+    txCount:     movimentacoes.porUnidade[b.branchId] ?? 0,
   }))
 
   // Transações enriquecidas com nome da filial
@@ -158,6 +162,7 @@ export default async function AdminFinanceiroPage({
         totalExpenses={totalExpenses}
         totalResult={totalRevenue - totalExpenses}
         totalCommissions={totalComm}
+        totalMovimentacoes={movimentacoes.total}
         prevRevenue={prevRevenue}
         prevExpenses={prevExpenses}
         branchStats={branchStats}

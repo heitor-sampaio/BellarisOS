@@ -56,6 +56,8 @@ interface Props {
   totalExpenses:    number
   totalResult:      number
   totalCommissions: number
+  /** O total de movimentações (metrics_movimentacoes), a mesma conta da coluna. */
+  totalMovimentacoes: number
   prevRevenue:      number
   prevExpenses:     number
   branchStats:      BranchStat[]
@@ -167,7 +169,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalCommissions,
+  totalRevenue, totalExpenses, totalResult, totalCommissions, totalMovimentacoes,
   prevRevenue, prevExpenses,
   branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
   canPay = false, canReverse = false, podeDarCredito = false, clients = [],
@@ -414,7 +416,7 @@ export function AdminFinancialView({
               <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalExpenses)}</td>
               <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: totalResult >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtBRL(totalResult)}</td>
               <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalCommissions)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-faint)' }}>{transactions.length}</td>
+              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-faint)' }}>{totalMovimentacoes}</td>
               <td />
             </tr>
           </tfoot>
