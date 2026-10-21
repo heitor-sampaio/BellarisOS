@@ -88,7 +88,10 @@ const procedures = await ler(
   - **Grava por UM caminho**: `gravarAnamneseGeral`
     (`lib/pre-atendimento/ficha.ts`) — a equipe na sessão e na avaliação, a
     cliente no app e pelo link. Ele fecha o pendente da cliente: quem
-    respondeu na clínica não responde de novo no app.
+    respondeu na clínica não responde de novo no app. A EQUIPE regravando as
+    MESMAS respostas não troca a autoria nem a data (a avaliação marcava como
+    "pela equipe" a ficha que a cliente respondeu pelo link — 2026-10-20); a
+    cliente confirmando ("nada mudou") renova a data, que é a validade.
   - **O envio ao agendar é da rede** (`tenants.pre_atendimento_envio`,
     desligado por padrão): o gatilho `trg_pre_atendimento_no_agendamento`
     cria o pendente em `pre_atendimentos` por QUALQUER caminho que agende —

@@ -275,6 +275,40 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
       await apagarClientes([cliente])
     }
   })
+
+  test('mandar a avaliação SEM mudar a ficha não troca quem respondeu (2026-10-20)', async ({ browser }) => {
+    // Simulação de um dia de clínica: a Joana respondeu pelo link; depois do
+    // "Enviar para a recepção", a ficha dela passou a dizer "pela equipe" — a
+    // avaliação regravava as mesmas respostas com a origem da equipe.
+    const cliente = await B.criarCliente('Avaliação link')
+    const respondidoEm = '2026-10-19T15:00:00.000Z'
+    const { error: eR } = await db().from('medical_records').upsert({ client_id: cliente, general_anamnesis: {
+      versao: 2, ficha: { formId: null, nome: 'Pré-atendimento', rows: (await fichaDaRede()).schema.rows },
+      respostas: { allergies: `dipirona ${marca}` }, respondidoEm, origem: 'CLIENTE_LINK', respondidoPor: null,
+    } }, { onConflict: 'client_id' })
+    expect(eR).toBeNull()
+    const { data: ap } = await db().from('appointments').insert({
+      branch_id: B.branchId, client_id: cliente, procedure_id: B.procedureId, professional_id: B.professionalId,
+      status: 'IN_PROGRESS', source: 'INTERNAL', scheduled_at: new Date().toISOString(), started_at: new Date().toISOString(), duration_min: 30, price: 0,
+    }).select('id').single<{ id: string }>()
+    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const page = await ctx.newPage()
+    try {
+      await chamarAcao(page, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/admin/agenda/${ap!.id}`, [
+        ap!.id, 'Quer tratar manchas', { allergies: `dipirona ${marca}` },
+        [{ procedures: [{ procedureId: B.procedureId, price: 100 }] }], '', '', '', `e2e-un-pb${marca}`,
+      ])
+      const { data: plano } = await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', ap!.id).maybeSingle()
+      expect(plano, 'a avaliação foi enviada').toBeTruthy()
+      const { data } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
+      const g = data?.general_anamnesis as { origem?: string; respondidoEm?: string }
+      expect(g?.origem, 'continua pelo link').toBe('CLIENTE_LINK')
+      expect(g?.respondidoEm).toBe(respondidoEm)
+    } finally {
+      await ctx.close()
+      await apagarClientes([cliente])
+    }
+  })
 })
 
 /**

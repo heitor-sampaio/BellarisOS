@@ -43,10 +43,27 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
   ficha?: FichaDePreAtendimento
 }): Promise<AnamneseGeral> {
   const ficha = o.ficha ?? await fichaDePreAtendimento(admin, o.tenantId)
+  const respostas = respostasDaFicha(ficha.rows, o.respostas)
+  // A EQUIPE regravando as MESMAS respostas não troca quem respondeu nem
+  // quando: mandar a avaliação regravava a ficha que a cliente respondeu pelo
+  // link como "pela equipe" (simulação de um dia de clínica, 2026-10-20). A
+  // cliente confirmando ("nada mudou") renova a data — é a validade.
+  const atual = o.origem !== 'EQUIPE' ? null : await ler(admin.from('medical_records').select('general_anamnesis')
+    .eq('client_id', o.clientId).maybeSingle(), 'buscar a anamnese atual') as { general_anamnesis: AnamneseGeral | null } | null
+  const antes = atual?.general_anamnesis
+  if (antes?.versao === 2 && mesmasRespostas(antes.respostas, respostas)) {
+    await gravar(admin.from('pre_atendimentos')
+      .update({
+        status: 'RESPONDIDO', respostas, respondido_em: new Date().toISOString(),
+        origem: o.origem, respondido_por: o.porUsuario, updated_at: new Date().toISOString(),
+      })
+      .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar o pré-atendimento')
+    return antes
+  }
   const anamnese: AnamneseGeral = {
     versao: 2,
     ficha,
-    respostas: respostasDaFicha(ficha.rows, o.respostas),
+    respostas,
     respondidoEm: new Date().toISOString(),
     origem: o.origem,
     respondidoPor: o.porUsuario,
@@ -62,6 +79,14 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
     })
     .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar o pré-atendimento')
   return anamnese
+}
+
+/** As mesmas respostas, sem olhar a ordem das chaves (e vazio = ausente). */
+function mesmasRespostas(a: unknown, b: unknown): boolean {
+  const limpo = (v: unknown) => Object.entries((v ?? {}) as Record<string, unknown>)
+    .filter(([, x]) => x !== null && x !== undefined && x !== '' && !(Array.isArray(x) && x.length === 0))
+    .sort(([k1], [k2]) => k1.localeCompare(k2))
+  return JSON.stringify(limpo(a)) === JSON.stringify(limpo(b))
 }
 
 export interface PreAtendimentoPendente {
