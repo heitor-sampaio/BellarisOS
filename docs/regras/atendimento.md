@@ -52,6 +52,14 @@
   novo é um dos livres do self-service, para o mesmo profissional. Dentro do
   prazo, só "Falar com a clínica" (WhatsApp da unidade). Prova:
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
+- **"Mostrar cancelados"** (2026-10-21, decisão do Heitor): a agenda da
+  unidade deixa o cancelado e a falta fora da grade; o botão do cabeçalho
+  (`?cancelados=1`, a consulta do servidor) os traz de volta, apagados, riscados
+  e com o motivo (`cancellation_reason`). Não contam em nada (atendimentos,
+  ocupação, a contagem do profissional) e não se arrastam; no dia, dividem o
+  horário com quem o ocupou depois (o ativo à esquerda). A agenda da rede, que
+  sempre os mostrou, apaga o bloco e diz o motivo. Prova:
+  `e2e/agenda-cancelados.spec.ts`.
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).

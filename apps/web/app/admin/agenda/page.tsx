@@ -94,7 +94,7 @@ export default async function AdminAgendaPage({
 
   let apptsQuery = admin
     .from('appointments')
-    .select('id, scheduled_at, started_at, completed_at, arrived_at, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users!appointments_professional_id_fkey(name)')
+    .select('id, scheduled_at, started_at, completed_at, arrived_at, cancellation_reason, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users!appointments_professional_id_fkey(name)')
     .in('branch_id', branchIds)
     .gte('scheduled_at', startDate.toISOString())
     .lte('scheduled_at', endDate.toISOString())

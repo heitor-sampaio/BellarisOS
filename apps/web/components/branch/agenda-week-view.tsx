@@ -3,7 +3,7 @@
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { addDays, startOfWeek, isSameDay, format } from 'date-fns'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
-import type { CalendarEvent } from './agenda-month-view'
+import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 
 interface Professional { id: string; name: string }
 
@@ -39,6 +39,26 @@ function shortName(name: string) {
 
 function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) {
   const time        = format(new Date(ev.start), 'HH:mm')
+  if (eventoDesmarcado(ev)) {
+    return (
+      <div data-agendamento={ev.id} data-cancelado="" title={ev.motivoDoCancelamento ?? undefined}
+        onClick={e => { e.stopPropagation(); onClick() }}
+        style={{ padding: '6px 8px', borderRadius: 8, marginBottom: 4, cursor: 'pointer', opacity: 0.6,
+          background: 'var(--bg-app)', border: '1px dashed var(--border)' }}>
+        <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--danger)' }}>
+          {time} · {ev.status === 'NO_SHOW' ? 'Não compareceu' : 'Cancelado'}
+        </div>
+        <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'line-through', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {shortName(ev.clientName)}
+        </div>
+        {ev.motivoDoCancelamento && (
+          <div style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {ev.motivoDoCancelamento}
+          </div>
+        )}
+      </div>
+    )
+  }
   const isProgress  = ev.status === 'IN_PROGRESS'
   const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'ARRIVED'
   const isScheduled = ev.status === 'SCHEDULED'

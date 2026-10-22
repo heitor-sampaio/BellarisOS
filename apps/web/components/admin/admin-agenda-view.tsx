@@ -21,6 +21,8 @@ interface Appointment {
   completed_at:    string | null
   /** O check-in (2026-10-21): quando chegou. */
   arrived_at?:     string | null
+  /** Cancelado: o motivo, no bloco (2026-10-21). */
+  cancellation_reason?: string | null
   status:          string
   branch_id:       string
   price:           number | null
@@ -67,6 +69,11 @@ function horarioNoY(dia: string, y: number): string {
   const hh = String(GRID_START + Math.floor(min / 60)).padStart(2, '0')
   const mm = String(min % 60).padStart(2, '0')
   return `${dia}T${hh}:${mm}`
+}
+
+/** Cancelado ou falta: o bloco vai apagado, com o motivo (2026-10-21). */
+function desmarcado(a: { status: string }): boolean {
+  return a.status === 'CANCELLED' || a.status === 'NO_SHOW'
 }
 
 /** "Chegou 9:42" no bloco — o check-in (2026-10-21). */
@@ -290,9 +297,11 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
                     <button
                       key={a.id}
                       type="button"
+                      data-agendamento={a.id}
                       onClick={() => onSelecionar(a)}
-                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}`}
+                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}`}
                       style={{
+                        opacity:      desmarcado(a) ? 0.6 : 1,
                         position: 'absolute',
                         top:    top + 1,
                         left:   l,
@@ -315,11 +324,13 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
                         </span>
                         <SeloDaFicha estado={a.ficha} />
                       </div>
-                      <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                      <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, textDecoration: desmarcado(a) ? 'line-through' : undefined }}>
                         {a.clients?.name ?? '—'}
                       </div>
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-                        {a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}
+                        {desmarcado(a)
+                          ? <>{st.label}{a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}</>
+                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}</>}
                       </div>
                     </button>
                   )
@@ -414,8 +425,10 @@ function WeekGrid({
                 return (
                   <div
                     key={a.id}
-                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}`}
+                    data-agendamento={a.id}
+                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}`}
                     style={{
+                      opacity:      desmarcado(a) ? 0.6 : 1,
                       background:   st.bg,
                       borderLeft:   `3px solid ${st.border}`,
                       borderRadius: 5,

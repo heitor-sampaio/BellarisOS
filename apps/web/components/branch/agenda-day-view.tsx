@@ -3,7 +3,7 @@
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
-import type { CalendarEvent } from './agenda-month-view'
+import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 
 interface Professional { id: string; name: string }
@@ -129,6 +129,12 @@ function ProfColumn({
 
       {/* Events */}
       {events.map(ev => {
+        // O cancelado (com "Mostrar cancelados") divide o horário com quem o
+        // ocupou depois: o ativo à esquerda, o cancelado apagado à direita.
+        const desmarcado = eventoDesmarcado(ev)
+        const ini = new Date(ev.start).getTime(), fimEv = ini + ev.durationMin * 60000
+        const divide = events.some(o => o.id !== ev.id && eventoDesmarcado(o) !== desmarcado
+          && new Date(o.start).getTime() < fimEv && new Date(o.start).getTime() + o.durationMin * 60000 > ini)
         const top       = Math.max(0, timeToY(ev.start, g))
         const height    = Math.max(32, (ev.durationMin / 60) * HOUR_PX - 4)
         const isDragging = draggingId === ev.id
@@ -138,7 +144,38 @@ function ProfColumn({
         const isScheduled = ev.status === 'SCHEDULED'
         const isCompleted = ev.status === 'COMPLETED'
         const timeStr   = format(new Date(ev.start), 'HH:mm')
-        const isDraggable = canWrite && !isCompleted
+        const isDraggable = canWrite && !isCompleted && !desmarcado
+
+        if (desmarcado) {
+          return (
+            <div
+              key={ev.id}
+              data-agendamento={ev.id}
+              data-cancelado=""
+              onClick={e => { e.stopPropagation(); onEventClick(ev) }}
+              title={ev.motivoDoCancelamento ?? undefined}
+              style={{
+                position: 'absolute', top: top + 2, height,
+                left: divide ? '50%' : 4, right: 4,
+                borderRadius: 8, padding: '5px 8px', overflow: 'hidden',
+                cursor: 'pointer', userSelect: 'none', zIndex: 1, opacity: 0.6,
+                background: 'var(--bg-app)', border: '1px dashed var(--border)',
+              }}
+            >
+              <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--danger)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {timeStr} · {ev.status === 'NO_SHOW' ? 'Não compareceu' : 'Cancelado'}
+              </div>
+              <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'line-through', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {ev.clientName}
+              </div>
+              {ev.motivoDoCancelamento && height > 42 && (
+                <div style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {ev.motivoDoCancelamento}
+                </div>
+              )}
+            </div>
+          )
+        }
 
         return (
           <div
@@ -151,7 +188,7 @@ function ProfColumn({
             style={{
               position:   'absolute',
               top:        top + 2,
-              left:       4, right: 4,
+              left:       4, right: divide ? '50%' : 4,
               height,
               borderRadius: 8,
               padding:    '5px 8px',
@@ -272,7 +309,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
         <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
         {professionals.map((pro, i) => {
           const clr    = PROF_COLORS[i % PROF_COLORS.length]!
-          const proEvs = todayEvents.filter(e => e.professionalId === pro.id)
+          const proEvs = todayEvents.filter(e => e.professionalId === pro.id && !eventoDesmarcado(e))
           return (
             <div key={pro.id} style={{
               flex: 1, minWidth: 160, padding: '12px 14px',

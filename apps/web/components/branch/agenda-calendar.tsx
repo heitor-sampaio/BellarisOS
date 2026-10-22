@@ -46,6 +46,8 @@ interface AgendaCalendarProps {
   horariosDosProfissionais?:  Record<string, Horario | null>
   /** O dia da URL (`?date=AAAA-MM-DD`); sem ele, hoje. */
   dataInicial?:  string | null
+  /** `?cancelados=1`: a grade traz os cancelados e as faltas, apagados. */
+  comCancelados?: boolean
 }
 
 // -- KPI helpers -------------------------------------------------------------
@@ -130,9 +132,18 @@ function todayDate(): Date {
 
 export function AgendaCalendar({
   branchId, slug, events, procedures, professionals, rooms, canWrite, userRole,
-  horarioDaUnidade = null, horariosDosProfissionais = {}, dataInicial = null,
+  horarioDaUnidade = null, horariosDosProfissionais = {}, dataInicial = null, comCancelados = false,
 }: AgendaCalendarProps) {
   const router = useRouter()
+
+  // Liga e desliga pela URL: quem traz os cancelados é o servidor (a consulta
+  // da agenda os deixa de fora). O dia aberto vai junto, já na URL.
+  function alternarCancelados() {
+    const url = new URL(window.location.href)
+    if (comCancelados) url.searchParams.delete('cancelados')
+    else url.searchParams.set('cancelados', '1')
+    router.replace(url.pathname + url.search, { scroll: false })
+  }
 
   const [view,          setView]          = useState<ViewMode>('dia')
   const [currentDate,   setCurrentDateState] = useState(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : new Date())
@@ -223,6 +234,10 @@ export function AgendaCalendar({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button type="button" onClick={alternarCancelados} aria-pressed={comCancelados}
+            className={comCancelados ? 'filtro-toggle is-ativo' : 'filtro-toggle'}>
+            {comCancelados ? 'Esconder cancelados' : 'Mostrar cancelados'}
+          </button>
           {/* View switcher */}
           <SegSelect
             options={(['dia', 'semana', 'mes'] as ViewMode[]).map(v => ({ key: v, label: viewLabel[v] }))}

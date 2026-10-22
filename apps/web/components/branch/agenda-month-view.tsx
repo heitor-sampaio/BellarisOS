@@ -21,6 +21,13 @@ export interface CalendarEvent {
   fichaDeSaude?:   SeloDaFichaEstado | null
   /** O check-in (2026-10-21): quando chegou. */
   arrivedAt?:      string | null
+  /** Cancelado: o motivo (aparece com "Mostrar cancelados"). */
+  motivoDoCancelamento?: string | null
+}
+
+/** Cancelado ou falta: fora da conta, e apagado na grade quando aparece. */
+export function eventoDesmarcado(ev: { status: string }): boolean {
+  return ev.status === 'CANCELLED' || ev.status === 'NO_SHOW'
 }
 
 interface Props {

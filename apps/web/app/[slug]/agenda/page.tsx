@@ -16,11 +16,15 @@ import {
 
 export default async function AgendaPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ date?: string }>
+  searchParams: Promise<{ date?: string; cancelados?: string }>
 }) {
   const { slug } = await params
   // O dia aberto vai na URL (2026-10-21): recarregar ou mandar o link abre nele.
-  const dataDaUrl = (await searchParams).date
+  const busca = await searchParams
+  const dataDaUrl = busca.date
+  // "Mostrar cancelados" (2026-10-21, decisão do Heitor): o cancelado e a falta
+  // ficam fora da grade, e voltam — apagados, com o motivo — por este botão.
+  const comCancelados = busca.cancelados === '1'
   const dataInicial = dataDaUrl && /^\d{4}-\d{2}-\d{2}$/.test(dataDaUrl) ? dataDaUrl : null
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -51,6 +55,7 @@ export default async function AgendaPage({ params, searchParams }: {
       .from('appointments')
       .select(`
         id, scheduled_at, duration_min, status, price, professional_id, client_id, arrived_at,
+        cancellation_reason,
         clients(name),
         procedures(name),
         users!professional_id(name)
@@ -58,7 +63,7 @@ export default async function AgendaPage({ params, searchParams }: {
       .eq('branch_id', branchId)
       .gte('scheduled_at', from)
       .lte('scheduled_at', to)
-      .not('status', 'in', '("CANCELLED","NO_SHOW")')
+    if (!comCancelados) q = q.not('status', 'in', '("CANCELLED","NO_SHOW")')
     if (professionalOnly && ctx.internalUserId) q = q.eq('professional_id', ctx.internalUserId)
     return q.order('scheduled_at').order('id').range(de, ate)
   }
@@ -118,6 +123,7 @@ export default async function AgendaPage({ params, searchParams }: {
       price:            String(a.price),
       fichaDeSaude:     selos[a.id] ?? null,
       arrivedAt:        (a as { arrived_at?: string | null }).arrived_at ?? null,
+      motivoDoCancelamento: (a as { cancellation_reason?: string | null }).cancellation_reason ?? null,
     }
   })
 
@@ -154,6 +160,7 @@ export default async function AgendaPage({ params, searchParams }: {
         canWrite={canManageAgenda}
         userRole={ctx.role}
         dataInicial={dataInicial}
+        comCancelados={comCancelados}
       />
     </div>
   )
