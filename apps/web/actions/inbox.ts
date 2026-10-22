@@ -1,5 +1,6 @@
 'use server'
 
+import { moverEtapaCore } from '@/lib/crm/oportunidade'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso, temRecurso } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
@@ -1226,6 +1227,8 @@ export async function atualizarContato(
 export async function definirSituacaoOportunidade(
   leadId: string,
   desfecho: 'OPEN' | 'WON' | 'LOST',
+  /** Marcando perdida, o motivo (2026-10-21, decisão do Heitor). */
+  perda?: { motivoId: string; obs?: string | null } | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'oportunidades')
@@ -1266,19 +1269,11 @@ export async function definirSituacaoOportunidade(
   }
   if (destino.id === atual.id) return { ok: true }
 
-  const { error } = await admin
-    .from('leads').update({ crm_stage_id: destino.id }).eq('id', leadId)
-  if (error) return { ok: false, error: error.message }
-
-  await registrarEventoLead({
-    tenantId:    ctx.tenantId!,
-    leadId,
-    type:        'STAGE_CHANGED',
-    fromStageId: atual.id,
-    toStageId:   destino.id,
-    actorUserId: ctx.internalUserId,
-    actorName:   ctx.userName || null,
-  })
+  // O núcleo do quadro e do Copilot: o motivo da perda, a linha do tempo e os
+  // eventos de ganho/perda (até 2026-10-21 este caminho gravava a etapa direto,
+  // sem nenhum dos três).
+  const r = await moverEtapaCore(admin, ctx, leadId, destino.id, { perda, exigirMotivo: true })
+  if ('error' in r) return { ok: false, error: r.error }
 
   revalidarInbox()
   revalidatePath('/admin/oportunidades')

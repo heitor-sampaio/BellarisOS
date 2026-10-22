@@ -347,6 +347,34 @@ o gatilho mostra a escolhida, e sem divisor entre eles), e o período tem
 "Personalizado": De/Até no rodapé do painel, que só filtra ao aplicar e
 compara o DIA da criação no fuso do negócio (`dayKeyTZ`).
 
+**O funil da rede NOVA** (`DEFAULT_STAGES`, `lib/crm.ts`, criado no primeiro
+acesso por `seedDefaultFunnel`): Novo, Em contato, Avaliação, Em negociação,
+Agendado, Fechado, Perdido. "Em negociação" entrou em 2026-10-21 (decisão do
+Heitor) — as redes que já existiam não mudaram. Prova:
+`tests/crm-etapas-padrao.test.ts`.
+
+**O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
+a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um
+motivo da lista da REDE (`crm_motivos_perda`, editada em Configurar funis →
+"Motivos de perda"; desativar tira da escolha sem apagar) e uma observação
+opcional. Vale no arraste do quadro, no painel do inbox (marcar perdida ou
+escolher a etapa) e no modal do lead.
+- Tudo passa por `moverEtapaCore` com `exigirMotivo: true` (`updateLeadStage`,
+  `definirSituacaoOportunidade` — que até então gravava a etapa direto, sem
+  linha do tempo nem evento de ganho/perda) ou por `camposDaPerda`
+  (`updateLead`). Sem motivo, a action recusa.
+- O Copilot e as automações movem sem perguntar: o lead fica sem motivo e
+  conta como "Sem motivo" no relatório.
+- No lead: `motivo_perda_id`, `motivo_perda_obs`, `perdido_em`; sair da
+  etapa perdida limpa os três (a linha do tempo guarda o histórico, com o
+  motivo na mudança do `STAGE_CHANGED`).
+- Relatórios → Comercial → "Motivos de perda": `metrics_motivos_de_perda`
+  (`getMotivosDePerda`), pelo `perdido_em` no período, da rede inteira. O
+  quadro filtra por "Motivo da perda".
+- Rede nova nasce com Preço, Sem retorno, Fechou com outra clínica, Sem
+  horário que sirva, Desistiu, Outro (gatilho `trg_motivos_perda_na_rede_nova`).
+Prova: `e2e/crm-motivo-da-perda.spec.ts`.
+
 **Nome e telefone são da pessoa, e as cópias acompanham** (2026-09-28). A conversa
 e a oportunidade guardam cópia, e a edição em qualquer
 um dos dois lugares — painel do inbox (`atualizarContato`) ou card da
@@ -389,6 +417,7 @@ o contato junto.
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Mostrar o nome da conversa (contact_name) em vez do da pessoa (contacts.name)
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
+❌ Levar lead a etapa perdida pela tela sem o motivo, ou gravar crm_stage_id fora de moverEtapaCore / camposDaPerda (o motivo e o perdido_em ficam velhos)
 ❌ Importar (planilha, lote) emitindo evento de domínio, ou trocando dado que a ficha já tem
 ❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)

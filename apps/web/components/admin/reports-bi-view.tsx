@@ -53,6 +53,8 @@ export interface DadosComerciais {
   comerciaisRealizados:   number
   comparecimento:         number
   ranking: { id: string; name: string; leads: number; convertidos: number; agendamentos: number }[]
+  /** Por que as oportunidades do período foram perdidas (2026-10-21). */
+  motivosDePerda: { motivo: string; total: number }[]
 }
 
 export interface ReportsBiProps {
@@ -1057,6 +1059,7 @@ function TabComercial(p: ReportsBiProps) {
   // A barra mais cheia é a maior etapa, não o total: com o total, um funil de
   // topo largo deixava todas as outras etapas invisíveis.
   const maiorEtapa = Math.max(1, ...c.etapas.map(e => e.count))
+  const maiorMotivo = Math.max(1, ...c.motivosDePerda.map(m => m.total))
 
   const colunas: TableColumn[] = [
     { key: 'name',         label: 'Vendedor' },
@@ -1119,6 +1122,28 @@ function TabComercial(p: ReportsBiProps) {
           />
         </SCard>
       </div>
+
+      <SCard title="Motivos de perda">
+        {c.motivosDePerda.length === 0 ? (
+          <EmptyMsg texto="Nenhuma oportunidade perdida no período." />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-motivos-de-perda>
+            {c.motivosDePerda.map(m => (
+              <div key={m.motivo} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 180, fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', flexShrink: 0 }}>
+                  {m.motivo}
+                </div>
+                <div style={{ flex: 1, height: 10, background: 'var(--track, var(--border))', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ width: `${(m.total / maiorMotivo) * 100}%`, height: '100%', background: 'var(--brand)', borderRadius: 99 }} />
+                </div>
+                <div style={{ width: 40, textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', fontVariant: 'tabular-nums' }}>
+                  {fmtInt(m.total)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SCard>
     </div>
   )
 }

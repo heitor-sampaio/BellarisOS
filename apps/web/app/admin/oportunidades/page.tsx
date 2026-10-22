@@ -1,4 +1,5 @@
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
+import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -53,6 +54,10 @@ export default async function AdminOportunidadesPage({
 
   // -- Funis e etapas --
   const funnels     = await seedDefaultFunnel(ctx.tenantId!)
+  // Os motivos de perda: levar o card à etapa perdida pergunta o motivo.
+  // Todos (a configuração reativa os desligados); o quadro pergunta só os ativos.
+  const motivosTodos  = await motivosDaRede(createAdminClient(), ctx.tenantId!, true)
+  const motivosDePerda = motivosTodos.filter(m => m.ativo)
   const ativos      = funnels.filter(f => f.archived_at === null)
   const selecionado = ativos.find(f => f.id === rawFunil)
     ?? ativos.find(f => f.is_default)
@@ -79,6 +84,7 @@ export default async function AdminOportunidadesPage({
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
         owner_id, users(name), contato_id,
+        motivo_perda_id, crm_motivos_perda(nome),
         lead_procedures(procedure_id, procedures(name, price))
       `)
       .eq('tenant_id', ctx.tenantId!)
@@ -141,6 +147,7 @@ export default async function AdminOportunidadesPage({
           {canEdit && branches.length > 0 && (
             <>
               <CRMStageSettings
+                motivos={motivosTodos}
                 slug=""
                 funnels={funnels}
                 stages={allStages}
@@ -175,6 +182,7 @@ export default async function AdminOportunidadesPage({
       ) : (
         <>
           <CRMBoard
+        motivos={motivosDePerda}
             initialLeads={leads as unknown as ComponentProps<typeof CRMBoard>['initialLeads']}
             stages={stages}
             allStages={allStages}

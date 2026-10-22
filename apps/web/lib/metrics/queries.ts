@@ -353,6 +353,19 @@ export async function getNewClientsSeries(
 }
 
 /**
+ * Os motivos das oportunidades PERDIDAS no período (`leads.perdido_em`), da
+ * rede inteira — os leads são da rede, como no funil. Perdida sem motivo (o
+ * Copilot e as automações movem sem perguntar) vem como "Sem motivo".
+ */
+export async function getMotivosDePerda(args: { tenantId: string; from: Date; to: Date }): Promise<{ motivo: string; total: number }[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_motivos_de_perda', {
+    p_tenant: args.tenantId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  })
+  logRpcError('metrics_motivos_de_perda', error)
+  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({ motivo: String(r.motivo), total: n(r.total) }))
+}
+
+/**
  * Etapas de UM funil.
  *
  * Sem `funnelId` a função do banco usa o funil padrão da rede. Desde que existe

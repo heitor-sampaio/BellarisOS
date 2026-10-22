@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -46,6 +47,10 @@ export default async function BranchOportunidadesPage({
 
   // Funis da rede (seed automático no primeiro acesso) e o funil aberto.
   const funnels      = await seedDefaultFunnel(ctx.tenantId!)
+  // Os motivos de perda: levar o card à etapa perdida pergunta o motivo.
+  // Todos (a configuração reativa os desligados); o quadro pergunta só os ativos.
+  const motivosTodos  = await motivosDaRede(createAdminClient(), ctx.tenantId!, true)
+  const motivosDePerda = motivosTodos.filter(m => m.ativo)
   const ativos       = funnels.filter(f => f.archived_at === null)
   const selecionado  = ativos.find(f => f.id === rawFunil)
     ?? ativos.find(f => f.is_default)
@@ -112,6 +117,7 @@ export default async function BranchOportunidadesPage({
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
         owner_id, users(name), contato_id,
+        motivo_perda_id, crm_motivos_perda(nome),
         lead_procedures(procedure_id, procedures(name, price))
       `)
       .eq('tenant_id', ctx.tenantId!)
@@ -174,6 +180,7 @@ export default async function BranchOportunidadesPage({
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {podeConfigurar && (
             <CRMStageSettings
+              motivos={motivosTodos}
               slug={slug}
               funnels={funnels}
               stages={allStages}
@@ -203,6 +210,7 @@ export default async function BranchOportunidadesPage({
 
       {/* Board */}
       <CRMBoard
+        motivos={motivosDePerda}
         initialLeads={leadsData as unknown as import('@/components/branch/crm-board').Lead[]}
         stages={stages}
         allStages={allStages}

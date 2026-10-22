@@ -7,7 +7,7 @@ import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi
 import { addDaysTZ, startOfDayTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { getRelatorio } from '@/lib/metrics/relatorio'
 import {
-  resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, percent,
+  resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, percent,
   getCore, getSeries,
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
@@ -332,7 +332,7 @@ async function painelComercial({
     ?? funisAtivos.find(f => f.is_default)
     ?? funisAtivos[0]
 
-  const [etapasRaw, leadsRaw, apptsRaw, usersRaw] = await Promise.all([
+  const [etapasRaw, leadsRaw, apptsRaw, usersRaw, motivosDePerda] = await Promise.all([
     getLeadFunnel({
       tenantId, branchIds: null, from, to, funnelId: funilAtivo?.id ?? null,
     }),
@@ -348,6 +348,8 @@ async function painelComercial({
       .gte('scheduled_at', fromISO).lte('scheduled_at', toISO), 'carregar os agendamentos do funil'),
 
     ler(admin.from('users').select('id, name').eq('tenant_id', tenantId), 'carregar a equipe'),
+
+    getMotivosDePerda({ tenantId, from, to }),
   ])
 
   const leads = (leadsRaw ?? []) as { client_id: string | null; owner_id: string | null }[]
@@ -408,5 +410,6 @@ async function painelComercial({
     comparecimento: percent(comerciaisRealizados, comerciaisConsiderados) ?? 0,
     ranking: [...vendedores.values()]
       .sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos)),
+    motivosDePerda,
   }
 }

@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { PerguntaDaPerda, type OpcaoDeMotivo } from '@/components/branch/pergunta-da-perda'
 import { useState, useTransition, useRef, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -33,6 +34,8 @@ interface FiltersState {
   /** Nome do dono, ou SEM_DONO para o bolo comum. */
   owners:       string[]
   procedureIds: string[]
+  /** Motivos de perda (id). Só os leads perdidos por eles ficam. */
+  motivos:      string[]
   situation:    'all' | 'converted' | 'not_converted'
   period:       'all' | '7d' | '30d' | '90d' | 'custom'
   /** O intervalo do "Personalizado", em dias do fuso do negócio (AAAA-MM-DD). */
@@ -42,7 +45,7 @@ interface FiltersState {
 type SortOrder = 'newest' | 'oldest' | 'name_asc' | 'name_desc'
 
 const DEFAULT_FILTERS: FiltersState = {
-  sources: [], tags: [], owners: [], procedureIds: [], situation: 'all', period: 'all', periodoDe: '', periodoAte: '',
+  sources: [], tags: [], owners: [], procedureIds: [], motivos: [], situation: 'all', period: 'all', periodoDe: '', periodoAte: '',
 }
 
 const SITUACOES: { valor: FiltersState['situation']; rotulo: string }[] = [
@@ -112,7 +115,15 @@ function FiltersBar({
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
   }, [leads])
 
+  // Motivos de perda presentes nos leads da tela (os perdidos).
+  const availableMotivos = useMemo(() => {
+    const map = new Map<string, string>()
+    leads.forEach(l => { if (l.motivo_perda_id) map.set(l.motivo_perda_id, l.crm_motivos_perda?.nome ?? 'Motivo') })
+    return [...map.entries()].map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+  }, [leads])
+
   const activeCount =
+    (filters.motivos.length > 0 ? 1 : 0) +
     (filters.sources.length > 0 ? 1 : 0) +
     (filters.tags.length > 0 ? 1 : 0) +
     (filters.owners.length > 0 ? 1 : 0) +
@@ -157,6 +168,13 @@ function FiltersBar({
   const rotuloPeriodo = filters.period === 'custom'
     ? `${diaCurto(filters.periodoDe)} – ${diaCurto(filters.periodoAte)}`
     : filters.period === 'all' ? 'Período' : PERIODOS.find(p => p.valor === filters.period)!.rotulo
+
+  function toggleMotivo(id: string) {
+    const next = filters.motivos.includes(id)
+      ? filters.motivos.filter(x => x !== id)
+      : [...filters.motivos, id]
+    onFiltersChange({ ...filters, motivos: next })
+  }
 
   function toggleProcedure(id: string) {
     const next = filters.procedureIds.includes(id)
@@ -255,6 +273,18 @@ function FiltersBar({
           textoListaVazia="Nenhum procedimento nos leads carregados."
           classeBotao={classeGatilho(filters.procedureIds.length > 0)}
           onEscolher={toggleProcedure}
+        />
+      )}
+
+      {availableMotivos.length > 0 && (
+        <PickerCompacto
+          rotuloBotao={rotuloFiltro('Motivo da perda', filters.motivos.length)}
+          opcoes={availableMotivos.map(m => ({ valor: m.id, rotulo: m.nome }))}
+          selecionadas={filters.motivos}
+          multiplo
+          textoListaVazia="Nenhum lead perdido com motivo."
+          classeBotao={classeGatilho(filters.motivos.length > 0)}
+          onEscolher={toggleMotivo}
         />
       )}
 
@@ -366,10 +396,15 @@ export interface Lead {
   branch_name?: string | null
   branch_slug?: string | null
   lead_procedures: { procedure_id: string; procedures: { name: string; price: number } | null }[]
+  /** Perdido: o motivo (2026-10-21). */
+  motivo_perda_id?:   string | null
+  crm_motivos_perda?: { nome: string } | null
 }
 
 interface CRMBoardProps {
   initialLeads: Lead[]
+  /** Os motivos de perda da rede: levar o card à etapa perdida pergunta o motivo. */
+  motivos?:     OpcaoDeMotivo[]
   /** A unidade do portal: o lead criado pelo "+" da coluna nasce com a tag dela. */
   branchName?:  string
   /** Etapas do funil aberto — são as colunas do quadro. */
@@ -935,8 +970,12 @@ const semRelogio = () => null
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId, unidades,
-  procedures, branchId, branchName, slug, networkMode, branches, leadAberto,
+  procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [],
 }: CRMBoardProps) {
+  // Levar o card à etapa de desfecho perdido pergunta o motivo antes de mover.
+  const [perdaPendente, setPerdaPendente] = useState<{ id: string; etapa: string } | null>(null)
+  const [perdendo, setPerdendo] = useState(false)
+  const [erroDaPerda, setErroDaPerda] = useState<string | null>(null)
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [overStage,  setOverStage]  = useState<string | null>(null)
@@ -1001,6 +1040,9 @@ export function CRMBoard({
       result = result.filter(l =>
         filters.owners.includes(l.owner_name ?? SEM_DONO),
       )
+
+    if (filters.motivos.length > 0)
+      result = result.filter(l => !!l.motivo_perda_id && filters.motivos.includes(l.motivo_perda_id))
 
     if (filters.procedureIds.length > 0)
       result = result.filter(l =>
@@ -1080,13 +1122,35 @@ export function CRMBoard({
       return
     }
 
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, crm_stage_id: targetStageId } : l))
     setDraggingId(null); setOverStage(null); enterCounts.current = {}
-    startTransition(() => updateLeadStage(id, targetStageId, slug))
+    if (allStages.find(s => s.id === targetStageId)?.outcome === 'LOST') {
+      setErroDaPerda(null)
+      setPerdaPendente({ id, etapa: targetStageId })
+      return
+    }
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, crm_stage_id: targetStageId, motivo_perda_id: null, crm_motivos_perda: null } : l))
+    startTransition(async () => { await updateLeadStage(id, targetStageId, slug) })
+  }
+
+  async function confirmarPerda(perda: { motivoId: string; obs: string | null }) {
+    if (!perdaPendente) return
+    setPerdendo(true); setErroDaPerda(null)
+    const r = await updateLeadStage(perdaPendente.id, perdaPendente.etapa, slug, perda)
+    setPerdendo(false)
+    if (r?.error) { setErroDaPerda(r.error); return }
+    const { id, etapa } = perdaPendente
+    const nome = motivos.find(m => m.id === perda.motivoId)?.nome ?? null
+    setLeads(prev => prev.map(l => l.id === id
+      ? { ...l, crm_stage_id: etapa, motivo_perda_id: perda.motivoId, crm_motivos_perda: nome ? { nome } : null } : l))
+    setPerdaPendente(null)
   }
 
   return (
     <div className="crm-board-root" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
+      {perdaPendente && (
+        <PerguntaDaPerda motivos={motivos} enviando={perdendo} erro={erroDaPerda}
+          onConfirmar={confirmarPerda} onVoltar={() => setPerdaPendente(null)} />
+      )}
       <FiltersBar
         leads={leads}
         filters={filters}
@@ -1126,6 +1190,7 @@ export function CRMBoard({
         return (
           <div
             key={stage.id}
+            data-coluna-desfecho={stage.outcome}
             onDragEnter={e => handleDragEnter(e, stage.id)}
             onDragLeave={e => handleDragLeave(e, stage.id)}
             onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}

@@ -8,6 +8,7 @@ import { gravar, ler } from '@/lib/db'
 import { seedDefaultFunnel, listStages } from '@/lib/crm/funis'
 import { registrarEventoLead, etapaAtualDoLead } from '@/lib/lead-events'
 import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/lead'
+import { camposDaPerda, type PerdaInformada } from '@/lib/crm/motivos-perda'
 
 /**
  * CRIAR uma oportunidade e MOVER de etapa — os núcleos que o quadro (actions/
@@ -137,13 +138,27 @@ export async function criarOportunidadeCore(
   return { leadId: lead.id as string, createdAt: lead.created_at as string }
 }
 
-export async function moverEtapaCore(admin: Admin, ctx: TenantContext, leadId: string, stageId: string): Promise<{ ok: true } | { error: string }> {
+export async function moverEtapaCore(
+  admin: Admin, ctx: TenantContext, leadId: string, stageId: string,
+  /**
+   * O motivo da perda, quando o destino é uma etapa de desfecho LOST. A TELA
+   * exige (`exigirMotivo`); o Copilot e as automações movem sem ele.
+   */
+  opcoes: { perda?: PerdaInformada | null; exigirMotivo?: boolean } = {},
+): Promise<{ ok: true } | { error: string }> {
   if (!(await etapaDaRede(ctx.tenantId!, stageId))) return { error: 'Etapa não encontrada.' }
 
   // Antes do update: é a única chance de saber de onde o card saiu.
   const etapaAnterior = await etapaAtualDoLead(ctx.tenantId!, leadId)
+  const destinoAntes = await etapaDeCrm(ctx.tenantId!, stageId)
+  const perda = await camposDaPerda(admin, ctx.tenantId!, {
+    desfechoDestino: destinoAntes.desfecho, perda: opcoes.perda, exigirMotivo: !!opcoes.exigirMotivo,
+  })
+  if ('error' in perda) return perda
+  // Mover para a MESMA etapa não mexe no motivo já registrado.
+  const patch = etapaAnterior === stageId ? { crm_stage_id: stageId } : { crm_stage_id: stageId, ...perda.patch }
 
-  let q = admin.from('leads').update({ crm_stage_id: stageId }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
+  let q = admin.from('leads').update(patch).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
   const owner = ownerFilter(ctx, 'crm')
   if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
   const { data, error } = await q.select('id')
@@ -154,6 +169,7 @@ export async function moverEtapaCore(admin: Admin, ctx: TenantContext, leadId: s
     await registrarEventoLead({
       tenantId: ctx.tenantId!, leadId, type: 'STAGE_CHANGED', fromStageId: etapaAnterior, toStageId: stageId,
       actorUserId: ctx.internalUserId, actorName: ctx.userName || null,
+      changes: perda.mudanca ? [perda.mudanca] : null,
     })
     // A corrente de eventos, ao lado da linha do tempo do card. O movimento
     // sempre emite; chegar numa etapa de desfecho emite TAMBÉM o ganho ou o

@@ -124,7 +124,7 @@ test.describe.serial('estrutura do CRM', () => {
 
     const chamada = capturarAcao(page, corpo => corpo.includes(f!.funil))
     await page.getByPlaceholder('Nome da etapa').fill(nome)
-    await page.getByRole('button', { name: 'Adicionar' }).click()
+    await page.getByRole('button', { name: 'Adicionar', exact: true }).click()
     const req = await chamada
     const etapasCom = async (funil: string, n: string) =>
       ((await db().from('crm_stages').select('id').eq('funnel_id', funil).eq('name', n)).data ?? []).length

@@ -1,5 +1,6 @@
 'use client'
 
+import { PerguntaDaPerda } from '@/components/branch/pergunta-da-perda'
 import { useEffect, useEffectEvent, useState, useTransition, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { rotaCliente, rotaOportunidades } from '@/lib/rotas'
@@ -194,6 +195,11 @@ export function InboxLeadPanel({
   const [expandida, setExpandida] = useState<string | null>(null)
   const [mostrarConcluidas, setMostrarConcluidas] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // "Por que perdeu?": marcar perdida (ou levar a uma etapa perdida) pergunta o
+  // motivo antes (2026-10-21, decisão do Heitor).
+  const [perguntaPerda, setPerguntaPerda] = useState<{ leadId: string; etapa?: string } | null>(null)
+  const [perdendo, setPerdendo] = useState(false)
+  const [erroDaPerda, setErroDaPerda] = useState<string | null>(null)
   const [aviso, setAviso] = useState<{ funnelId: string; leadId: string } | null>(null)
 
   // Contato (editável, com salvamento automático)
@@ -522,11 +528,27 @@ export function InboxLeadPanel({
             disabled={disabled}
             aberta={expandida === o.id}
             onToggle={() => setExpandida(e => (e === o.id ? null : o.id))}
-            onConcluir={d => comAcao(() => definirSituacaoOportunidade(o.id, d))}
+            onConcluir={d => { if (d === 'LOST') { setErroDaPerda(null); setPerguntaPerda({ leadId: o.id }) } else void comAcao(() => definirSituacaoOportunidade(o.id, d)) }}
+            onPerder={etapa => { setErroDaPerda(null); setPerguntaPerda({ leadId: o.id, etapa }) }}
             onMudou={() => { void recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.() }}
             onAgendar={card.comAgenda ? () => setScheduling(o.id) : undefined}
           />
         ))}
+
+        {perguntaPerda && (
+          <PerguntaDaPerda enviando={perdendo} erro={erroDaPerda} onVoltar={() => setPerguntaPerda(null)}
+            onConfirmar={async perda => {
+              setPerdendo(true); setErroDaPerda(null)
+              const { leadId, etapa } = perguntaPerda
+              const r = etapa
+                ? await updateLeadStage(leadId, etapa, slug, perda).then(x => ({ ok: !x?.error, error: x?.error }))
+                : await definirSituacaoOportunidade(leadId, 'LOST', perda)
+              setPerdendo(false)
+              if (!r.ok) { setErroDaPerda(r.error ?? 'Não foi possível marcar como perdida.'); return }
+              setPerguntaPerda(null)
+              await recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.()
+            }} />
+        )}
 
         {!disabled && (
           <NovaOportunidade
@@ -705,7 +727,7 @@ function JanelaDeCadastro({ onFechar, children }: { onFechar: () => void; childr
 /** Uma oportunidade aberta: resumo sempre visível, detalhes ao expandir. */
 function OportunidadeItem({
   oportunidade: o, stages, funnels, corDaEtapa, procedimentos, slug, disabled, aberta,
-  onToggle, onConcluir, onMudou, onAgendar,
+  onToggle, onConcluir, onMudou, onAgendar, onPerder,
 }: {
   oportunidade: Oportunidade
   stages:   InboxStage[]
@@ -718,6 +740,8 @@ function OportunidadeItem({
   aberta:   boolean
   onToggle:   () => void
   onConcluir: (situacao: 'OPEN' | 'WON' | 'LOST') => void
+  /** Escolheu uma etapa de desfecho perdido: quem chama pergunta o motivo. */
+  onPerder:   (etapa: string) => void
   onMudou:    () => void
   /** Ausente: a agenda está fora do plano da rede. */
   onAgendar?: () => void
@@ -734,6 +758,7 @@ function OportunidadeItem({
   )
 
   function mudarEtapa(next: string) {
+    if (stages.find(s => s.id === next)?.outcome === 'LOST') { onPerder(next); return }
     setStageId(next)
     startSave(async () => {
       await updateLeadStage(o.id, next, slug)

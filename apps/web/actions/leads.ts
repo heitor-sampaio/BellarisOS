@@ -1,5 +1,8 @@
 ﻿'use server'
 
+import { camposDaPerda } from '@/lib/crm/motivos-perda'
+import { etapaDeCrm } from '@/lib/events/lead'
+import type { LeadChange } from '@/lib/lead-events'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -191,6 +194,21 @@ export async function updateLead(
     const antes = await estadoAtualDoLead(ctx.tenantId!, leadId)
     const etapaAnterior = antes?.crm_stage_id ?? null
 
+    // Mudou de etapa pelo modal: a perdida pede o motivo (2026-10-21), e sair
+    // dela limpa o motivo — a mesma regra do quadro (camposDaPerda).
+    let mudancaDaPerda: LeadChange | null = null
+    if (crmStageId && crmStageId !== etapaAnterior) {
+      const destino = await etapaDeCrm(ctx.tenantId!, crmStageId)
+      const motivoId = str(formData, 'motivo_perda_id')
+      const perda = await camposDaPerda(createAdminClient(), ctx.tenantId!, {
+        desfechoDestino: destino.desfecho, exigirMotivo: true,
+        perda: motivoId ? { motivoId, obs: str(formData, 'motivo_perda_obs') } : null,
+      })
+      if ('error' in perda) return { error: perda.error }
+      Object.assign(patch, perda.patch)
+      mudancaDaPerda = perda.mudanca
+    }
+
     // Alcance "só os próprios leads" entra como filtro da própria query: sem
     // isso, o cargo não veria o lead na lista mas ainda o editaria pelo id.
     const admin = createAdminClient()
@@ -244,6 +262,7 @@ export async function updateLead(
         fromStageId: etapaAnterior,
         toStageId:   crmStageId,
         ...autor,
+        changes:     mudancaDaPerda ? [mudancaDaPerda] : null,
       })
     }
 
@@ -301,20 +320,26 @@ export async function updateLead(
 }
 
 // --- Mover entre colunas (drag & drop) ---------------------------
-export async function updateLeadStage(leadId: string, crm_stage_id: string, slug: string) {
+export async function updateLeadStage(
+  leadId: string, crm_stage_id: string, slug: string,
+  /** Levando à etapa perdida, o motivo (a tela exige — 2026-10-21). */
+  perda?: { motivoId: string; obs?: string | null } | null,
+): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     // O núcleo (lib/crm/oportunidade.ts) é o mesmo do Copilot.
-    const r = await moverEtapaCore(createAdminClient(), ctx, leadId, crm_stage_id)
-    if ('error' in r) { console.error('[updateLeadStage]', r.error); return }
+    const r = await moverEtapaCore(createAdminClient(), ctx, leadId, crm_stage_id, { perda, exigirMotivo: true })
+    if ('error' in r) return { error: r.error }
 
     revalidatePath(`/${slug}/oportunidades`)
     revalidatePath('/admin/oportunidades')
+    return {}
   } catch (e) {
     console.error('[updateLeadStage]', e)
+    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
 }
 

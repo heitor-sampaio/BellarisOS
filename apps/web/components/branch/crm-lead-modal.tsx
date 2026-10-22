@@ -11,6 +11,8 @@ import { openLeadConversation } from '@/actions/inbox'
 import { rotaInbox } from '@/lib/rotas'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { StageOptions } from './stage-options'
+import { MotivoDaPerdaCampos, type OpcaoDeMotivo } from './pergunta-da-perda'
+import { listarMotivosDePerda } from '@/actions/crm-motivos'
 import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
 import { LEAD_SOURCES, unitTag } from '@estetica-os/utils'
@@ -118,6 +120,20 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '',
     )
     const [tags,      setTags]      = useState<string[]>(existing?.tags ?? [])
+
+    // Levar o lead (já existente) a uma etapa de desfecho perdido pede o motivo
+    // ali mesmo, como o quadro (2026-10-21). A lista só é buscada quando precisa.
+    const vaiPerder = isEdit && stageId !== (existing?.crm_stage_id ?? '')
+      && stages.find(s => s.id === stageId)?.outcome === 'LOST'
+    const [motivos,  setMotivos]  = useState<OpcaoDeMotivo[] | null>(null)
+    const [motivoId, setMotivoId] = useState('')
+    const [motivoObs, setMotivoObs] = useState('')
+    useEffect(() => {
+      if (!vaiPerder || motivos) return
+      let vivo = true
+      listarMotivosDePerda().then(l => { if (vivo) setMotivos(l) }).catch(() => { if (vivo) setMotivos([]) })
+      return () => { vivo = false }
+    }, [vaiPerder, motivos])
     const [tagDraft,  setTagDraft]  = useState('')
 
     /**
@@ -175,6 +191,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setPhone(existing?.phone ?? '')
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
+      setMotivoId(''); setMotivoObs('')
       // Lead novo no portal da unidade já nasce marcado com ela — quem cria
       // ali está trabalhando aquela unidade.
       const tagsIniciais = existing?.tags
@@ -446,6 +463,14 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   </select>
                 </div>
               </div>
+
+              {vaiPerder && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <MotivoDaPerdaCampos motivos={motivos ?? []} motivoId={motivoId} obs={motivoObs}
+                    onMotivo={setMotivoId} onObs={setMotivoObs}
+                    nomes={{ motivo: 'motivo_perda_id', obs: 'motivo_perda_obs' }} />
+                </div>
+              )}
 
               {/* Responsável */}
               {responsaveis?.pode ? (

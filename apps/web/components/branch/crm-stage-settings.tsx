@@ -17,6 +17,7 @@ import {
 import {
   createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels,
 } from '@/actions/crm-funnels'
+import { MotivosDePerdaConfig, type MotivoConfiguravel } from './motivos-de-perda-config'
 
 // Converte hex em versão suave para a borda (hex 8 dígitos com alpha)
 function softBorder(hex: string) { return hex + '50' }
@@ -29,6 +30,8 @@ interface CRMStageSettingsProps {
   stages: CRMStage[]
   /** Funil aberto no quadro, para o modal abrir já nele. */
   activeFunnelId: string
+  /** Os motivos de perda da rede, inclusive os desativados. */
+  motivos?: MotivoConfiguravel[]
 }
 
 // --- Linha de etapa ----------------------------------------------
@@ -326,7 +329,7 @@ function IconBtn({
 
 // --- Modal de configuração ----------------------------------------
 export function CRMStageSettings({
-  slug, funnels: initialFunnels, stages: initialStages, activeFunnelId,
+  slug, funnels: initialFunnels, stages: initialStages, activeFunnelId, motivos = [],
 }: CRMStageSettingsProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
@@ -670,6 +673,8 @@ export function CRMStageSettings({
             </div>
           </div>
         </div>
+
+        <MotivosDePerdaConfig motivos={motivos} />
       </dialog>
     </>
   )
