@@ -165,7 +165,11 @@ test.describe.serial('suporte: credenciais e travas', () => {
     expect(await sessoesAtivasDaRede(outra!.tenantId)).toHaveLength(0)
     expect(await rest(capturada.access_token, `clients?select=id&id=eq.${clienteId}`)).toHaveLength(0)
     expect(await renovar(capturada.refresh_token)).toBe(false)
-    await sup!.page.goto('/admin/dashboard')
+    // A tela aberta também descobre a sessão encerrada (o refresh dela cai em
+    // /auth/suporte-fim) e navega sozinha para o mesmo lugar: se chegar
+    // primeiro, o goto é atropelado — ERR_ABORTED na completa de 2026-10-22,
+    // já no painel certo. Quem prova o destino é a URL, logo abaixo.
+    await sup!.page.goto('/admin/dashboard').catch((e: Error) => { if (!/ERR_ABORTED/.test(e.message)) throw e })
     // De volta ao painel, no host do suporte (ou ao login, sem a sessão de suporte).
     await expect(sup!.page).toHaveURL(new RegExp(`^${urlDaPlataforma('suporte')}/|/login`), { timeout: 30_000 })
     await sup!.ctx.close()

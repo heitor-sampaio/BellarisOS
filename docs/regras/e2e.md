@@ -136,5 +136,9 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   - Teste que agenda por horário LIVRE escolhe o dia com
     `diaEmQueAUnidadeAbre` (`apoio/datas.ts`). "Hoje + N" cai num domingo
     conforme o dia em que roda, e domingo não tem horário livre.
+  - `page.goto` com `net::ERR_ABORTED` numa tela que a sessão acabou de
+    perder: a própria tela (o refresh dela) navegou primeiro para o mesmo
+    destino. Tolere só o ERR_ABORTED e prove o destino pela URL
+    (`suporte-credenciais`, "re-autorizar").
   - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
     `<script>` sem nonce. Ele não existe no build.
