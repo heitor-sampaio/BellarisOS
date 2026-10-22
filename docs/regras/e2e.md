@@ -125,3 +125,16 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     mudou — e as fotos novas entram no commit.
   - As duas pastas estão fora do `testDir` da suíte de propósito: a completa
     não sobe o site, e a câmera não prova nada.
+- **Lendo o log da completa** (2026-10-22):
+  - `Minified React error #441` e `#419` no console são o SERVIDOR lançando
+    ao renderizar. O #441 vem do Server Component; o #419, de uma área com
+    `loading.tsx` que o servidor não terminou. Aparecem exatamente nos testes
+    que abrem página PROIBIDA de propósito (`semAcesso()`: isolamento dos
+    portais, "sem o módulo, a tela é fechada", a tela de sem acesso). É o
+    previsto, não um defeito: confira o horário do erro com o teste que
+    rodava antes de caçar.
+  - Teste que agenda por horário LIVRE escolhe o dia com
+    `diaEmQueAUnidadeAbre` (`apoio/datas.ts`). "Hoje + N" cai num domingo
+    conforme o dia em que roda, e domingo não tem horário livre.
+  - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
+    `<script>` sem nonce. Ele não existe no build.

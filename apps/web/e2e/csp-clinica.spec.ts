@@ -20,7 +20,8 @@ test('a página leva o CSP em modo de aviso, com o nonce que os scripts do Next 
   expect(comNonce).toBeGreaterThan(0)
   // E os NOSSOS scripts embutidos (o layout raiz) também — o primeiro aviso que
   // o modo de aviso deu: os quatro do layout, em toda tela.
-  expect(await page.locator('script:not([src]):not([nonce])').count(), 'script embutido sem nonce').toBe(0)
+  // (O painel do Next no `next dev` é um <script> sem nonce; não existe no build.)
+  expect(await page.locator('script:not([src]):not([nonce]):not([data-nextjs-dev-overlay])').count(), 'script embutido sem nonce').toBe(0)
 })
 
 test.describe('a rota dos avisos', () => {
