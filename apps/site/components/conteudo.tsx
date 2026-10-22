@@ -1,6 +1,7 @@
 import {
   Check, Plus, Package, Gift, BarChart3, ShieldCheck, Search, FileSpreadsheet, Megaphone, Building2, ArrowRight,
   MessagesSquare, CalendarDays, CalendarPlus, Wallet, Smartphone, PenLine, Star, Bell, X, Sparkles, LifeBuoy,
+  Receipt, Landmark, Pill,
 } from 'lucide-react'
 import { Navegador, Celular } from '@/components/molduras'
 import { AvisosDoHero, DemoConversa, DemoCopilot } from '@/components/demos'
@@ -465,6 +466,42 @@ export function EAinda() {
           {ITENS.map(({ icone: Icone, titulo, texto }, i) => (
             <div key={titulo} className="site-item" data-revelar data-luz style={ordem(i % 3)}>
               <span className="site-item-icone" aria-hidden="true"><Icone size={19} /></span>
+              <h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>{titulo}</h3>
+              <p>{texto}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * O que vem por aí (pedido do Heitor, 2026-10-22). Fica SEPARADO do que já
+ * existe, e cada item leva o selo "Em breve": a regra "nada inventado" vale —
+ * nada aqui é dito como pronto, e não há data prometida.
+ */
+const EM_BREVE = [
+  { icone: Receipt, titulo: 'Emissor de NFS-e', texto: 'A nota fiscal de serviço emitida pelo próprio sistema, a partir do que a clínica recebeu.' },
+  { icone: Landmark, titulo: 'Integração com Open Banking', texto: 'A conta da clínica ligada ao financeiro, para o extrato do banco conferir com os lançamentos.' },
+  { icone: Pill, titulo: 'Receituário digital Memed', texto: 'A receita digital da Memed feita de dentro do atendimento, sem abrir outro sistema.' },
+]
+
+export function EmBreve() {
+  return (
+    <section id="em-breve" className="site-secao" aria-labelledby="em-breve-titulo">
+      <div className="site-container">
+        <div className="site-cabeca" data-revelar>
+          <span className="site-overline">✦ Em breve</span>
+          <h2 id="em-breve-titulo" className="site-h2">O que está chegando.</h2>
+        </div>
+        <div className="site-grade site-grade-3">
+          {EM_BREVE.map(({ icone: Icone, titulo, texto }, i) => (
+            <div key={titulo} className="site-item site-item-em-breve" data-em-breve data-revelar style={ordem(i)}>
+              <div className="site-em-breve-cabeca">
+                <span className="site-item-icone" aria-hidden="true"><Icone size={19} /></span>
+                <span className="site-em-breve-selo">Em breve</span>
+              </div>
               <h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>{titulo}</h3>
               <p>{texto}</p>
             </div>

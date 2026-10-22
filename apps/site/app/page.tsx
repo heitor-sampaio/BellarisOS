@@ -1,7 +1,7 @@
 import { connection } from 'next/server'
 import { Movimento } from '@/components/movimento'
 import { TermosNaTela } from '@/components/termos-na-tela'
-import { Topo, Hero, Faixa, Troca, UmSistema, DiaDaClinica, Facil, AppDaCliente, Destaques, EAinda, Seguranca, Perguntas, Final, Rodape } from '@/components/conteudo'
+import { Topo, Hero, Faixa, Troca, UmSistema, DiaDaClinica, Facil, AppDaCliente, Destaques, EAinda, EmBreve, Seguranca, Perguntas, Final, Rodape } from '@/components/conteudo'
 import { Precos } from '@/components/precos'
 import { lerPlanos } from '@/lib/planos'
 import { linksDaClinica, enderecoDoSite } from '@/lib/links'
@@ -34,6 +34,7 @@ export default async function Inicio() {
         <AppDaCliente />
         <Destaques />
         <EAinda />
+        <EmBreve />
         <Seguranca />
         <Precos planos={planos} comecar={links.comecar} />
         <Perguntas perguntas={perguntas} />

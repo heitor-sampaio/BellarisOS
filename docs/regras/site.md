@@ -162,6 +162,13 @@ fonte, raios, sombras de quem flutua).
   silêncio. Explicação só diz o que o sistema faz.
 - Funcionalidade nova que muda o que a clínica ganha → a página muda junto
   (texto e, se for o caso, uma tela no catálogo e na câmera).
+- **"Em breve"** (`#em-breve`, pedido do Heitor, 2026-10-22): o que está
+  chegando mora numa seção PRÓPRIA, depois de "E ainda" — cartão tracejado e o
+  selo "Em breve" em cada item, sem data prometida. Hoje: emissor de NFS-e,
+  integração com Open Banking e o receituário digital Memed. Só entra ali o
+  que o Heitor pedir; quando ficar pronto, o item SAI daqui e vai para o
+  lugar das funcionalidades. Não entra nos dados estruturados, no `/llms.txt`
+  nem nas perguntas (lá só o que existe).
 
 ## O que nunca fazer aqui
 
@@ -175,6 +182,7 @@ fonte, raios, sombras de quem flutua).
 ❌ Abrir platform_plans para anon em vez de passar pela função (a cota e o id não são vitrine)
 ❌ Script, pixel ou fonte de fora sem mexer na CSP do site — e sem o Heitor pedir
 ❌ Depoimento, cliente, logo ou número de uso inventado
+❌ Misturar o que ainda não existe com as funcionalidades (é a seção "Em breve", com o selo) — ou pô-lo nos dados estruturados
 ❌ Prometer funcionalidade que ainda depende de aprovação de terceiro
 ❌ Foto de tela com dado de cliente real (é a Clínica Aurora, da câmera)
 ❌ Tamanho de fonte à mão no site (é token em app/site.css)

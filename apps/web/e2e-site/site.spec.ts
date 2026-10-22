@@ -172,6 +172,21 @@ test('mostra por que é fácil de usar — com o que o sistema tem de verdade', 
   }
 })
 
+// Pedido do Heitor (2026-10-22): o que vem por aí, marcado como "em breve" —
+// nunca misturado ao que já existe.
+test('o que vem por aí fica numa seção própria, cada item marcado "em breve"', async ({ page }) => {
+  await page.goto('/')
+  const emBreve = page.locator('#em-breve')
+  await expect(emBreve.getByRole('heading', { level: 2 })).toBeVisible()
+  for (const item of ['Emissor de NFS-e', 'Integração com Open Banking', 'Receituário digital Memed']) {
+    const cartao = emBreve.locator('[data-em-breve]').filter({ has: page.getByRole('heading', { name: item, exact: true }) })
+    await expect(cartao).toBeVisible()
+    await expect(cartao).toContainText('Em breve')
+  }
+  // E nada disso aparece entre as funcionalidades que já existem.
+  await expect(page.locator('#funcionalidades')).not.toContainText('NFS-e')
+})
+
 // Pedido do Heitor (2026-10-20): "horário de silêncio" não se explica sozinho
 // para quem não conhece o sistema — a explicação abre no próprio termo.
 test('o horário de silêncio das automações se explica num tooltip', async ({ page }) => {

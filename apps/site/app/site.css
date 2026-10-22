@@ -264,6 +264,13 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 .site-item p { color: var(--text-soft); font-size: var(--site-pequeno); }
 @media (min-width: 980px) { .site-grade-3 { grid-template-columns: repeat(3, 1fr); } }
 
+/* ─── Em breve (2026-10-22): o que vem por aí, separado do que já existe ───
+   O cartão tracejado diz "ainda não"; o selo diz o mesmo em palavras. */
+.site-item-em-breve { border-style: dashed; background: transparent; }
+.site-em-breve-cabeca { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.site-em-breve-cabeca .site-item-icone { margin-bottom: 0; }
+.site-em-breve-selo { padding: 3px 10px; border-radius: var(--radius-chip-token); background: var(--brand-soft); color: var(--brand); font-size: var(--text-2xs); font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: var(--tracking-overline); }
+
 /* ─── A troca: vários sistemas → um só (2026-10-19) ───
    O "hoje" fica no plano de fundo (tracejado, apagado); o "com o BellarisOS"
    é o cartão branco com o check rosé — e o rótulo dele, preenchido. */

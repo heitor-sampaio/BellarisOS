@@ -143,8 +143,9 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 - **Site** (app próprio, bellarisos.com — 2026-10-17): a página de apresentação,
   com os preços dos planos do sistema, telas reais e o teste grátis de 14 dias.
   Desde 2026-10-18 com movimento: as seções entram ao rolar, e as demonstrações
-  (avisos do hero, WhatsApp, Copilot) se mexem sozinhas. O `/` da clínica só
-  leva ao login ou ao portal.
+  (avisos do hero, WhatsApp, Copilot) se mexem sozinhas. Desde 2026-10-22, a
+  seção "Em breve": emissor de NFS-e, Open Banking e o receituário Memed. O
+  `/` da clínica só leva ao login ou ao portal.
 - **Administração do sistema** (app próprio, admin.bellarisos.com, só ADMIN da plataforma): painel do
   negócio (MRR, redes por situação), redes (criar, editar, desligar), planos,
   assinatura e cobrança pelo **Asaas** (webhook + regras de teste e carência),
