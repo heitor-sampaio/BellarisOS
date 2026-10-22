@@ -1,17 +1,24 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * O CSP da clínica em REPORT-ONLY (2026-10-08): toda página leva a política
- * (com o nonce da requisição, que o Next põe nos scripts dele) e o navegador
- * AVISA o que seria bloqueado em /api/csp-relatorio — que só registra no log.
- * Nada é bloqueado ainda: o cabeçalho é o -Report-Only.
+ * O CSP da clínica (2026-10-08 em modo de aviso; BLOQUEIA desde 2026-10-22).
+ * Toda página leva a política com o nonce da requisição, que o Next põe nos
+ * scripts dele, e o navegador relata o que barrou em /api/csp-relatorio, que
+ * registra no log. No BUILD (a completa, a produção) o cabeçalho é o que
+ * bloqueia; no `next dev` segue o que só avisa (o painel de erros do Next
+ * injeta script sem nonce).
  */
 
-test('a página leva o CSP em modo de aviso, com o nonce que os scripts do Next usam', async ({ page }) => {
+const NO_BUILD = !!process.env.E2E_BUILD
+
+test('a página leva o CSP — bloqueando no build —, com o nonce que os scripts do Next usam', async ({ page }) => {
   const resposta = await page.goto('/admin/dashboard')
   const h = resposta!.headers()
-  expect(h['content-security-policy'], 'ainda não bloqueia').toBeUndefined()
-  const politica = h['content-security-policy-report-only'] ?? ''
+  const [vale, sobra] = NO_BUILD
+    ? ['content-security-policy', 'content-security-policy-report-only']
+    : ['content-security-policy-report-only', 'content-security-policy']
+  expect(h[sobra], `só um cabeçalho de CSP (${vale})`).toBeUndefined()
+  const politica = h[vale] ?? ''
   const nonce = politica.match(/'nonce-([^']+)'/)?.[1]
   expect(nonce, 'a política tem o nonce').toBeTruthy()
   expect(politica).toContain('report-uri /api/csp-relatorio')
@@ -22,6 +29,36 @@ test('a página leva o CSP em modo de aviso, com o nonce que os scripts do Next 
   // o modo de aviso deu: os quatro do layout, em toda tela.
   // (O painel do Next no `next dev` é um <script> sem nonce; não existe no build.)
   expect(await page.locator('script:not([src]):not([nonce]):not([data-nextjs-dev-overlay])').count(), 'script embutido sem nonce').toBe(0)
+})
+
+// A rede de proteção do bloqueio: as telas principais abertas de ponta a ponta
+// sem NENHUMA violação. O evento `securitypolicyviolation` dispara nos dois
+// modos, então isto também vale no `next dev` (lá, menos o script embutido e o
+// eval do próprio Next).
+test('as telas principais não esbarram no CSP', async ({ page }) => {
+  test.setTimeout(240_000)
+  await page.addInitScript(() => {
+    const w = window as unknown as { __csp: string[] }
+    w.__csp = []
+    document.addEventListener('securitypolicyviolation', e => {
+      w.__csp.push(`${e.effectiveDirective} ${e.blockedURI || '?'} (${location.pathname})`)
+    })
+  })
+  const telas = [
+    '/admin/dashboard', '/admin/agenda', '/admin/inbox', '/admin/clients',
+    '/admin/oportunidades', '/admin/financeiro', '/admin/estoque',
+    '/admin/documentos', '/admin/marketing', '/admin/reports',
+    '/admin/automacoes', '/admin/settings', '/admin/team',
+  ]
+  const violacoes: string[] = []
+  for (const tela of telas) {
+    await page.goto(tela)
+    // O que a tela busca depois de abrir (o mapa, o tempo real, as imagens).
+    await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {})
+    const desta = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp)
+    violacoes.push(...desta.filter(v => NO_BUILD || !/^script-src(-elem)? (inline|eval) /.test(v)))
+  }
+  expect(violacoes, 'violações do CSP').toEqual([])
 })
 
 test.describe('a rota dos avisos', () => {

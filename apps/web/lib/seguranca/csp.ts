@@ -1,18 +1,30 @@
 /**
- * O CSP da CLÍNICA (2026-10-08) — por enquanto em REPORT-ONLY: o navegador
- * avisa o que seria bloqueado (em `/api/csp-relatorio`, que registra no log) e
- * não bloqueia nada. A clínica carrega muita coisa de fora (o SDK da Meta, a
- * mídia do WhatsApp, o Supabase, as fontes), e uma lista incompleta bloqueando
- * quebraria tela em produção sem ninguém ver. O caminho: avisar, juntar o que
- * é legítimo, e só então trocar o cabeçalho para o que bloqueia.
+ * O CSP da CLÍNICA. Nasceu em REPORT-ONLY (2026-10-08): o navegador avisava o
+ * que seria bloqueado, em `/api/csp-relatorio`, que registra no log. Juntados
+ * os avisos de duas semanas (a Meta e o ViaCEP, liberados) e o inventário do
+ * que a clínica carrega de fora, passou a BLOQUEAR em 2026-10-22. O relatório
+ * continua: o que for barrado aparece no log como `[csp] … barrou …`.
  *
- * A política é a que um dia vai bloquear — estrita como a dos hosts da
- * plataforma (`packages/nucleo/src/lib/plataforma/porta.ts`): script só com o
- * nonce da requisição (e o que ele carregar, `strict-dynamic`). Estilo fica
+ * Estrita como a dos hosts da plataforma
+ * (`packages/nucleo/src/lib/plataforma/porta.ts`): script só com o nonce da
+ * requisição (e o que ele carregar, `strict-dynamic`). Estilo fica
  * `'unsafe-inline'`: as telas usam `style` em linha, e CSS não executa nada.
+ *
+ * O que fica de fora dela: o app Android. O Capacitor busca o HTML por conta
+ * própria (para injetar a ponte nativa) e o entrega ao WebView SEM os
+ * cabeçalhos do servidor.
  */
 
 export const ROTA_DO_RELATORIO = '/api/csp-relatorio'
+
+/**
+ * Qual cabeçalho leva a política: o que bloqueia no build (a produção e a
+ * completa), o que só avisa no `next dev` — o painel de erros do Next injeta
+ * um script sem nonce, e bloqueá-lo tiraria a tela de erro do desenvolvimento.
+ */
+export function cabecalhoDoCsp(dev: boolean): 'content-security-policy' | 'content-security-policy-report-only' {
+  return dev ? 'content-security-policy-report-only' : 'content-security-policy'
+}
 
 export function politicaDaClinica(o: { nonce: string; supabase: string; dev: boolean }): string {
   const supa = o.supabase.replace(/\/+$/, '')
@@ -22,8 +34,10 @@ export function politicaDaClinica(o: { nonce: string; supabase: string; dev: boo
     `script-src 'self' 'nonce-${o.nonce}' 'strict-dynamic'${o.dev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    // O mapa de calor do dashboard (os ladrilhos do ArcGIS).
-    `img-src 'self' data: blob: ${supa} https://server.arcgisonline.com`,
+    // O mapa de calor do dashboard (os ladrilhos do ArcGIS). E a miniatura do
+    // criativo da Meta (o selo "Veio de anúncio" quando o aviso não trouxe o
+    // base64, e a peça na tela da campanha): a URL que a Graph devolve.
+    `img-src 'self' data: blob: ${supa} https://server.arcgisonline.com https://*.fbcdn.net https://www.facebook.com`,
     `media-src 'self' blob: ${supa}`,
     // O endereço pelo CEP: o navegador consulta o ViaCEP (ficha da cliente,
     // perfil do app, unidade — 2026-10-22). E o SDK da Meta, que só carrega no

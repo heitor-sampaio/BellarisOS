@@ -127,6 +127,31 @@ No DNS do `bellarisos.com` ficam os registros do Resend (MX, SPF, DKIM) — o
 apontamento do domínio raiz não os toca, e no domínio raiz o CNAME só vale com
 ALIAS/"CNAME flattening".
 
+## O CSP da clínica (bloqueia desde 2026-10-22)
+
+Toda página da clínica leva `Content-Security-Policy` (`lib/seguranca/csp.ts`,
+posto pelo proxy em `lib/supabase/middleware.ts`): script só com o nonce da
+requisição (`strict-dynamic`), e uma lista curta do que vem de fora — o
+Supabase (e o `wss` do tempo real), as fontes do Google, os ladrilhos do
+ArcGIS, o ViaCEP, a Meta (o SDK do "Conectar pela Meta" e a miniatura do
+criativo do anúncio, `*.fbcdn.net`). Ficou de outubro a 22/10 em modo de
+aviso; os avisos de duas semanas e um inventário do código fecharam a lista.
+
+- **Só bloqueia no build.** No `next dev` segue `-Report-Only`
+  (`cabecalhoDoCsp`): o painel de erros do Next injeta script sem nonce.
+  Por isso a quebra só aparece contra o build (a completa, a produção).
+- **O navegador relata o que barrou** em `/api/csp-relatorio`, e o log do
+  serviço BellarisOS ganha `[csp] <diretiva> barrou <origem> em <página>`.
+  Linha nova ali é uma tela que perdeu algo: se for legítimo, liberar na
+  política (com o teste em `tests/csp-clinica.test.ts`).
+- **Página precisa ser dinâmica.** O nonce entra na renderização; página
+  pré-gerada no build sai sem ele e fica sem JavaScript. Hoje só o
+  `/_global-error` é estático.
+- **O app Android fica fora dela**: o Capacitor busca o HTML sozinho (para
+  injetar a ponte nativa) e o entrega ao WebView sem os cabeçalhos.
+- Prova: `e2e/csp-clinica.spec.ts` (o cabeçalho que bloqueia no build e
+  treze telas abertas sem nenhuma violação).
+
 ## 14.1 Jobs agendados (cron)
 
 São **dois serviços** no Railway, com ritmos diferentes, e os dois rodam o

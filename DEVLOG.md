@@ -1420,6 +1420,24 @@ o selo no bloco do calendário (hoje só na janela do agendamento) e o
 histórico dos pré-atendimentos na exportação LGPD (a anamnese atual já vai,
 dentro do prontuário; as respostas de envios anteriores, não).
 
+### 2026-10-22 — O CSP da clínica passa a bloquear
+
+Pedido do Heitor. O CSP estava em modo de aviso desde 2026-10-08. Os avisos de
+produção dessas duas semanas eram todos da Meta (o SDK que vinha em toda
+página, já tirado) e do ViaCEP, os dois liberados. Antes de virar, um
+inventário do que a clínica carrega de fora achou mais um: a miniatura do
+criativo do anúncio, que vem do CDN da Meta (`*.fbcdn.net`) no selo "Veio de
+anúncio" e na tela da campanha.
+
+- No build (produção e completa) o cabeçalho é o que bloqueia; no `next dev`
+  segue o que avisa (o painel de erros do Next não tem nonce).
+- O que for barrado continua indo ao log: `[csp] <diretiva> barrou …`.
+- O app Android fica fora: o Capacitor entrega o HTML ao WebView sem os
+  cabeçalhos do servidor.
+- Prova: `e2e/csp-clinica.spec.ts` ganhou a varredura de treze telas sem
+  nenhuma violação, e o cabeçalho que bloqueia no build. Regras em
+  `docs/regras/infra.md`.
+
 ### 2026-10-22 — Site: a agenda no destaque da agenda, e o "Fácil de usar" sem a luz
 
 Pedidos do Heitor: o destaque "Agenda e atendimento" mostrava a ficha da
@@ -6643,12 +6661,9 @@ verdade. O que vale:
   `/api/cron/*`, `/api/health` e `/api/interno/*`, e conferir o
   `Cf-Access-Jwt-Assertion` no `proxyDaPlataforma` (senão a borda do Railway
   é um atalho).
-- **CSP na clínica**: ~~começar em Report-Only~~ **ligado em Report-Only em
-  2026-10-08** (`lib/seguranca/csp.ts`, avisos em `/api/csp-relatorio` →
-  linhas `[csp] … bloquearia …` no log do serviço BellarisOS). Falta: deixar
-  alguns dias com uso real, juntar os avisos, liberar na política o que for
-  legítimo (o SDK da Meta, a mídia do WhatsApp…) e trocar o cabeçalho para o
-  que bloqueia (`content-security-policy`).
+- ~~**CSP na clínica**~~ **bloqueando desde 2026-10-22** (ver a linha do
+  tempo; regras em `docs/regras/infra.md`). O que fica: olhar o log por
+  `[csp] … barrou …` nos primeiros dias de uso real.
 
 - ~~App da Meta não existe~~ **existe e é Tech Provider** (2026-09-30), com o
   cadastro incorporado no ar (v4, `config_id` em `META_ES_CONFIG_ID`). Falta:

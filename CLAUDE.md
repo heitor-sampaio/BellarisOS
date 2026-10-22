@@ -421,7 +421,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `busca.md` | §6 Busca universal | `busca_universal`, `lib/busca/`, `actions/busca.ts`, `busca-universal.tsx` |
 | `design.md` | §13 Design System ("Rosé Vivo") | qualquer componente visual, `globals.css`, seletor, modal, popover, menu |
 | `indicadores.md` | §13.1 Indicadores | `lib/metrics/`, `metrics_*`, `lib/datetime.ts`, `resolvePeriod`, dashboard, relatórios (inclusive o de vendas), qualquer número na tela |
-| `infra.md` | §12 Variáveis de ambiente, §14.1 Cron | env, `scripts/cron.mjs`, `app/api/cron/`, Railway, Dockerfile |
+| `infra.md` | §12 Variáveis de ambiente, §14.1 Cron, o CSP da clínica | env, `scripts/cron.mjs`, `app/api/cron/`, Railway, Dockerfile, `lib/seguranca/csp.ts` |
 | `e2e.md` | §15 A completa em duas metades e o apoio do E2E | `apps/web/e2e/`, `playwright*.config.ts`, `.github/workflows/e2e.yml` |
 | `convencoes.md` | §4/§8 os modelos de action e de consulta | a primeira action ou consulta nova da sessão |
 
@@ -617,7 +617,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Implementar feature sem o teste escrito antes e visto falhando (§15, TDD)
 ❌ Gravar cookie de sessão sem opcoesDoCookieDeSessao, ou ler/guardar a sessão no JS (o refresh token iria junto)
 ❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
-❌ Script, iframe ou mídia de fora novo na clínica sem olhar o aviso do CSP ([csp] no log): quando o CSP bloquear, ele quebra
+❌ Script, imagem, iframe, mídia ou conexão de fora nova na clínica sem liberar no CSP (lib/seguranca/csp.ts) — ele BLOQUEIA desde 2026-10-22, e só no build
 ❌ Route handler que AGE pela sessão (POST) sem conferir o Origin — os hosts *.bellarisos.com são o mesmo SITE, e o cookie lax vai junto
 ❌ Validar o destino `next` de um link com startsWith('/') — é caminhoInterno (lib/origem; `/\x.com` e tab viram `//x.com`)
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico

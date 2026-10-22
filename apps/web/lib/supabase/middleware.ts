@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { opcoesDoCookieDeSessao } from './cookie-de-sessao'
-import { politicaDaClinica } from '@/lib/seguranca/csp'
+import { cabecalhoDoCsp, politicaDaClinica } from '@/lib/seguranca/csp'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function updateSession(request: NextRequest) {
@@ -12,21 +12,22 @@ export async function updateSession(request: NextRequest) {
     const cabecalhos = new Headers(request.headers)
     cabecalhos.set('x-bellaris-caminho', `${request.method} ${request.nextUrl.pathname}${request.nextUrl.search}`)
 
-    // O CSP da clínica, por enquanto só AVISANDO (lib/seguranca/csp.ts): o
-    // nonce vai no cabeçalho do PEDIDO (o Next o lê e o põe nos scripts dele) e
-    // no da resposta. As /api/* não levam (não são páginas).
+    // O CSP da clínica (lib/seguranca/csp.ts) — bloqueia no build, só avisa no
+    // `next dev`. O nonce vai no cabeçalho do PEDIDO (o Next o lê e o põe nos
+    // scripts dele) e no da resposta. As /api/* não levam (não são páginas).
     let csp: string | null = null
+    let nomeDoCsp = cabecalhoDoCsp(false)
     if (!request.nextUrl.pathname.startsWith('/api/')) {
       const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-      csp = politicaDaClinica({
-        nonce, supabase: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '', dev: process.env.NODE_ENV === 'development',
-      })
-      cabecalhos.set('content-security-policy-report-only', csp)
+      const dev = process.env.NODE_ENV === 'development'
+      csp = politicaDaClinica({ nonce, supabase: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '', dev })
+      nomeDoCsp = cabecalhoDoCsp(dev)
+      cabecalhos.set(nomeDoCsp, csp)
       cabecalhos.set('x-nonce', nonce)
     }
     const seguir = () => {
       const r = NextResponse.next({ request: { headers: cabecalhos } })
-      if (csp) r.headers.set('content-security-policy-report-only', csp)
+      if (csp) r.headers.set(nomeDoCsp, csp)
       return r
     }
     let supabaseResponse = seguir()

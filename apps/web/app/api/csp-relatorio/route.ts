@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resumoDoRelatorio } from '@/lib/seguranca/csp'
 
 /**
- * Os AVISOS do CSP da clínica (2026-10-08, report-only): o navegador manda o
- * que a política bloquearia, e aqui vira UMA linha no log do Railway por
- * (diretiva, origem bloqueada, página) — é com esse log que a lista do que é
- * legítimo se completa antes de o CSP passar a bloquear.
+ * O relatório do CSP da clínica (2026-10-08; bloqueia desde 2026-10-22): o
+ * navegador manda o que a política barrou, e aqui vira UMA linha no log do
+ * Railway por (diretiva, origem barrada, página). Linha nova depois do
+ * bloqueio é uma tela que perdeu algo: liberar na política, se for legítimo.
+ * (No `next dev` a política só avisa, e a linha diz o que ela barraria.)
  *
  * É pública por natureza: o navegador manda sem sessão. A defesa é o formato:
  * só os tipos de relatório, corpo pequeno, nada gravado no banco, e o log sem
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     if (vistos.has(chave)) continue
     if (vistos.size >= 500) vistos.clear()
     vistos.add(chave)
-    console.warn(`[csp] ${v.diretiva} bloquearia ${v.bloqueado} em ${v.pagina}`)
+    console.warn(`[csp] ${v.diretiva} barrou ${v.bloqueado} em ${v.pagina}`)
   }
   return new NextResponse(null, { status: 204 })
 }

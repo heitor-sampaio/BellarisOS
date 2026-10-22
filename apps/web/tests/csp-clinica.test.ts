@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { politicaDaClinica, resumoDoRelatorio } from '@/lib/seguranca/csp'
+import { cabecalhoDoCsp, politicaDaClinica, resumoDoRelatorio } from '@/lib/seguranca/csp'
 
 /**
  * O CSP da clínica (2026-10-08), por enquanto em REPORT-ONLY: avisa, não
@@ -30,12 +30,32 @@ describe('politicaDaClinica', () => {
     expect(p).toMatch(/connect-src [^;]*https:\/\/connect\.facebook\.net/)
     expect(p).toMatch(/connect-src [^;]*https:\/\/www\.facebook\.com/)
   })
+  // A miniatura do criativo do anúncio (o selo "Veio de anúncio" do inbox, quando
+  // o aviso não trouxe o base64, e a peça na tela da campanha) é a URL que a
+  // Graph devolve: hospedada no CDN da Meta (scontent…fbcdn.net) ou em
+  // www.facebook.com/ads/image.
+  it('a miniatura do anúncio da Meta nas imagens', () => {
+    expect(p).toMatch(/img-src [^;]*https:\/\/\*\.fbcdn\.net/)
+    expect(p).toMatch(/img-src [^;]*https:\/\/www\.facebook\.com/)
+  })
   it('manda os avisos para a rota da clínica', () => {
     expect(p).toContain('report-uri /api/csp-relatorio')
   })
   it('sem moldura e sem plugin', () => {
     expect(p).toContain("frame-ancestors 'none'")
     expect(p).toContain("object-src 'none'")
+  })
+})
+
+// 2026-10-22: o CSP passa a BLOQUEAR no build. No `next dev` segue só avisando:
+// o painel de erros do Next injeta script sem nonce, e bloqueá-lo tiraria do
+// desenvolvimento a tela de erro.
+describe('cabecalhoDoCsp', () => {
+  it('no build, o cabeçalho que bloqueia', () => {
+    expect(cabecalhoDoCsp(false)).toBe('content-security-policy')
+  })
+  it('no next dev, o que só avisa', () => {
+    expect(cabecalhoDoCsp(true)).toBe('content-security-policy-report-only')
   })
 })
 
