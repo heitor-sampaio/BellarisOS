@@ -25,6 +25,8 @@ interface BranchStat {
   expenses:    number
   result:      number
   commissions: number
+  aReceber:    number
+  aPagar:      number
   txCount:     number
 }
 
@@ -43,6 +45,8 @@ interface AdminTx {
   data_de_referencia?: string | null
   branch_id:      string
   branchName:     string
+  /** De quem é o lançamento (2026-10-21): o cliente, quando há. */
+  clienteNome?:   string | null
   /** `'Estornada'` marca a ponta estornada — o estorno sai dos dois lados. */
   notes:          string | null
 }
@@ -56,6 +60,9 @@ interface Props {
   totalExpenses:    number
   totalResult:      number
   totalCommissions: number
+  /** A receber e a pagar no período (lib/metrics: revenuePending, metrics_a_pagar). */
+  totalAReceber:    number
+  totalAPagar:      number
   /** O total de movimentações (metrics_movimentacoes), a mesma conta da coluna. */
   totalMovimentacoes: number
   prevRevenue:      number
@@ -115,8 +122,10 @@ function pctDelta(curr: number, prev: number) {
 // --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
-  label, value, delta, icon, brand = false,
+  label, value, delta, icon, brand = false, chave,
 }: {
+  /** `data-kpi`, para o teste achar o cartão. */
+  chave?: string
   label:  string
   value:  string
   delta?: { pct: number; up: boolean } | null
@@ -124,7 +133,7 @@ function KpiCard({
   brand?: boolean
 }) {
   return (
-    <div className="card" style={{
+    <div className="card" data-kpi={chave} style={{
       padding: '20px 22px',
       background: brand ? 'var(--brand)' : 'var(--surface)',
       display: 'flex', flexDirection: 'column', gap: 10,
@@ -169,7 +178,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalCommissions, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAPagar, totalMovimentacoes,
   prevRevenue, prevExpenses,
   branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
   canPay = false, canReverse = false, podeDarCredito = false, clients = [],
@@ -234,6 +243,8 @@ export function AdminFinancialView({
   const expenses    = statDaUnidade ? statDaUnidade.expenses    : totalExpenses
   const result      = statDaUnidade ? statDaUnidade.result      : totalResult
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
+  const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
+  const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
 
   const iconColor    = (brand: boolean) => brand ? 'var(--surface)' : 'var(--brand)'
   // Sem base de comparação por unidade, não se inventa delta: `prevRevenue` e
@@ -331,6 +342,19 @@ export function AdminFinancialView({
           label="Comissões"
           value={fmtBRL(commissions)}
           icon={<Users size={16} color="var(--brand)" />}
+        />
+        {/* A receber e a pagar (2026-10-21): a unidade mostrava, a rede não. */}
+        <KpiCard
+          chave="a-receber"
+          label="A receber"
+          value={fmtBRL(aReceber)}
+          icon={<Clock size={16} color="var(--brand)" />}
+        />
+        <KpiCard
+          chave="a-pagar"
+          label="A pagar"
+          value={fmtBRL(aPagar)}
+          icon={<Clock size={16} color="var(--brand)" />}
         />
       </div>
 
@@ -458,7 +482,7 @@ export function AdminFinancialView({
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Data', 'Descrição', 'Filial', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
+                {['Data', 'Descrição', 'Cliente', 'Filial', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
                   <th key={h} style={{
                     padding: '10px 16px', textAlign: h === 'Valor' ? 'right' : 'left',
                     fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
@@ -494,6 +518,9 @@ export function AdminFinancialView({
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                         {t.description || '—'}
                       </span>
+                    </td>
+                    <td data-label="Cliente" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: t.clienteNome ? 'var(--text)' : 'var(--text-faint)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.clienteNome ?? '—'}
                     </td>
                     <td data-label="Filial" data-par style={{ padding: '11px 16px' }}>
                       <span style={{

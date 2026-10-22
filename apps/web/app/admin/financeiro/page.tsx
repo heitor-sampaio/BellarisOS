@@ -3,7 +3,7 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCore, getByBranch, getMovimentacoes } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getAPagar } from '@/lib/metrics'
 import { ler } from '@/lib/db'
 
 /** Lançamento como o select pede. */
@@ -11,6 +11,7 @@ type LancamentoLido = {
   id: string; type: string; category: string | null; description: string; amount: number | string
   payment_method: string | null; is_paid: boolean; paid_at: string | null; due_date: string | null
   created_at: string; branch_id: string; notes: string | null
+  cliente: { name: string } | null
 }
 
 export default async function AdminFinanceiroPage({
@@ -75,7 +76,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, aPagarPorUnidade] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -84,7 +85,7 @@ export default async function AdminFinanceiroPage({
     // Por `ler`: consulta que falha PARA, em vez de virar um extrato vazio.
     ler(admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes, data_de_referencia, parcela_numero, parcela_total')
+      .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
     // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
@@ -111,9 +112,16 @@ export default async function AdminFinanceiroPage({
     // As movimentações com a regra da LISTA (data de referência até o fim do
     // período): a coluna da unidade e o total contam o mesmo (D34).
     getMovimentacoes({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
-  ])
 
-  const txs = (txsRaw ?? []) as LancamentoLido[]
+    // "A pagar" por unidade (2026-10-21): a mesma conta do financeiro da
+    // unidade (metrics_a_pagar, até o fim do período). A rede é a soma no banco
+    // de cada uma — uma chamada por unidade, e a clínica típica tem uma.
+    Promise.all(branchIds.map(async id => [id, await getAPagar({ tenantId: ctx.tenantId!, branchIds: [id], from: start, to: fimDoPeriodo })] as const)),
+  ])
+  const aPagarDe = Object.fromEntries(aPagarPorUnidade)
+  const totalAPagar = await getAPagar({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
+
+  const txs = (txsRaw ?? []) as unknown as LancamentoLido[]
 
   // KPIs consolidados
   const totalRevenue  = core.revenueCash
@@ -140,6 +148,8 @@ export default async function AdminFinanceiroPage({
     expenses:    b.expensesCash,
     result:      b.revenueCash - b.expensesCash,
     commissions: b.commissionsOpen + b.commissionsPaid,
+    aReceber:    b.revenuePending,
+    aPagar:      aPagarDe[b.branchId] ?? 0,
     txCount:     movimentacoes.porUnidade[b.branchId] ?? 0,
   }))
 
@@ -147,6 +157,7 @@ export default async function AdminFinanceiroPage({
   const transactions = txs.map(t => ({
     ...t,
     branchName: branchNameMap[t.branch_id] ?? '—',
+    clienteNome: t.cliente?.name ?? null,
     amount:     Number(t.amount),
   }))
 
@@ -162,6 +173,8 @@ export default async function AdminFinanceiroPage({
         totalExpenses={totalExpenses}
         totalResult={totalRevenue - totalExpenses}
         totalCommissions={totalComm}
+        totalAReceber={core.revenuePending}
+        totalAPagar={totalAPagar}
         totalMovimentacoes={movimentacoes.total}
         prevRevenue={prevRevenue}
         prevExpenses={prevExpenses}

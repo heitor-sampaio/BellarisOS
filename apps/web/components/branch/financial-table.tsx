@@ -26,6 +26,8 @@ export interface Transaction {
   appointment_id: string | null
   /** O pago, no dia do pagamento; o em aberto, no vencimento (ou na criação). */
   data_de_referencia?: string | null
+  /** De quem é o lançamento (2026-10-21). */
+  cliente?: { name: string } | null
 }
 
 interface Props {
@@ -209,6 +211,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                 <tr>
                   <th style={thStyle}>DATA</th>
                   <th style={thStyle}>DESCRIÇÃO</th>
+                  <th style={thStyle}>CLIENTE</th>
                   <th style={thStyle}>CATEGORIA</th>
                   <th style={thStyle}>PAGAMENTO</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>VALOR</th>
@@ -263,6 +266,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                             )}
                           </div>
                         </div>
+                      </td>
+
+                      {/* Cliente */}
+                      <td data-label="Cliente" data-par style={{ padding: '13px 16px', fontSize: 'var(--text-sm-sz)', color: tx.cliente?.name ? 'var(--text)' : 'var(--text-faint)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tx.cliente?.name ?? '—'}
                       </td>
 
                       {/* Categoria */}

@@ -169,6 +169,13 @@ o procedimento avulso pago antes.
     em aberto, no vencimento (ou na criação, sem vencimento). É por ela que a
     lista do financeiro recorta o período — a parcela de novembro aparece em
     novembro — e que o "a receber" do período conta.
+- **O financeiro da rede tem "A receber" e "A pagar"**, e as duas listas (rede
+  e unidade) a coluna **Cliente** (2026-10-21, decisão do Heitor). Os números
+  são os da unidade: `revenuePending` (getCore/getByBranch) e
+  `metrics_a_pagar` até o fim do período; com uma unidade recortada, os dela.
+  O cliente é `financial_transactions.client_id` (embed
+  `clients!financial_transactions_client_id_fkey`); sem ele, "—". Prova:
+  `e2e/financeiro-rede-a-receber.spec.ts`.
 - **O lançamento manual pago tem a DATA do pagamento** (2026-10-21, decisão
   do Heitor): "Data do pagamento" no Novo lançamento (hoje por padrão, nunca no
   futuro — a tela limita e `pagoNoDia`, em `lib/financeiro/lancamento.ts`,
