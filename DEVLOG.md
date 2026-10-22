@@ -1360,6 +1360,30 @@ inicial numa transação (28553bb), formulários (775e159), o link da ficha
 valendo (6eb1f2e), configurações e LGPD (232f62a) e a agenda que perdia
 horários acima de 1000 linhas (7c04db3).
 
+Na noite de 2026-10-21, os recursos novos que a simulação viu, com as
+decisões dele (todas as recomendadas):
+- o agendamento pelo app LIGA à sessão livre do plano vendido, ou ao
+  crédito de pacote ou pré-pago (6395e22);
+- a cliente cancela e remarca pelo portal até o prazo da rede, 24h por
+  padrão; dentro do prazo, só "falar com a clínica". Cancelar também solta
+  a sessão de pacote e de plano (38bdec5);
+- a ficha respondida avisa a profissional do agendamento, com a alergia
+  (063a3ff);
+- o motivo da perda: lista da rede mais observação, que vai à linha do
+  tempo, ao filtro do quadro e ao relatório (1bf12c9);
+- a rede nova ganha a etapa "Em negociação" (654af07);
+- "Mostrar cancelados" na agenda (a8f9149);
+- "Novo plano" só grava ao salvar (cfd3519);
+- a data do pagamento no lançamento manual (0707530);
+- "A receber"/"A pagar" no financeiro da rede, e a coluna Cliente nas duas
+  listas (49fd1d4);
+- o FECHAMENTO DO DIA, sem abertura de caixa: o dia por forma de
+  pagamento, a conferência do dinheiro e quem fechou (ffcede7);
+- o checkout sugere o pacote equivalente, e a economia entra como desconto
+  (c9acb0b).
+A rede "[sim] Clínica Aurora" foi apagada, com os logins `sim-*` e os
+arquivos dela.
+
 O que falta está em "5. Em aberto → Da simulação de 2026-10-20".
 
 ### 2026-10-20 — O pré-atendimento: a ficha universal, respondida antes do horário
@@ -6635,24 +6659,20 @@ menos o D13, e a maior parte dos atritos (ver a linha do tempo). Faltam:
   "agora". Opções: (a) contar o concluído pelo `completed_at`; (b) o
   "hoje" fechar no fim do dia; (c) manter. Mexe em metrics_core, by_branch,
   series, relatório e nos rankings.
-- **Recursos novos que pedem decisão** (a simulação viu, nenhum é conserto):
-  abrir/fechar caixa (`cash_registers` existe vazia); o motivo da perda do
-  lead (e uma etapa de negociação no funil padrão); avisar a equipe quando a
-  ficha de saúde é respondida; os cartões da agenda do portal da cliente
-  abrirem o detalhe e cancelarem/remarcarem (qual a regra de prazo?); o
-  agendamento pelo app ligar-se ao plano já pago (risco de cobrar duas
-  vezes); o checkout trocar o plano pelo pacote equivalente; o plano
-  oferecer pacotes; o Financeiro da rede com "A receber" e a coluna de
-  cliente; a data da despesa; o cancelado na grade da agenda (hoje some; o
-  motivo aparece na tela do atendimento); "Novo plano" criar o rascunho só
-  ao salvar.
+- ~~Recursos novos que pedem decisão~~ **decididos e feitos em 2026-10-21**
+  (ver a linha do tempo): fechamento do dia (sem abertura), motivo da perda
+  e "Em negociação", aviso da ficha respondida, cancelar e remarcar pelo
+  portal, o app ligado ao que já foi pago, a sugestão do pacote no checkout,
+  "A receber" e Cliente no financeiro, a data do pagamento, os cancelados
+  na agenda e o "Novo plano" só ao salvar. Ficou de fora "o plano oferecer
+  pacotes": o checkout sugere o pacote, e o plano segue por procedimento.
 - **Não reproduzido**: "as notificações não ficam lidas" (abrir no sino
   marca — conferido).
 - **Varredura que vale à parte**: listas que leem uma janela grande sem
   paginar (o PostgREST corta em 1000; a agenda da unidade já usa
   `lerTodas`, 7c04db3).
-- A rede "[sim] Clínica Aurora" (`00a5ea5b-…`) e os logins `sim-*@bellaris.invalid`
-  continuam em produção — apagar quando o Heitor pedir.
+- ~~A rede "[sim] Clínica Aurora" e os logins `sim-*`~~ **apagados em
+  2026-10-21**, a pedido dele.
 
 ### Próximas fases já combinadas
 
