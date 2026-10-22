@@ -5,6 +5,9 @@ import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { ler } from '@/lib/db'
 import { precosDoPlano } from '@/lib/checkout/desconto-do-plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
+import { pacoteEquivalente } from '@/lib/checkout/pacote-equivalente'
+import { catalogoDePacotes } from '@/lib/pacotes/leitura'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 
 /**
  * Monta o que o `CheckoutWizard` precisa para um plano.
@@ -41,7 +44,7 @@ export async function montarCheckoutPlan(
   type RawClient = { name: string; document: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje] = await Promise.all([
+  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes] = await Promise.all([
     getTreatmentPlanSessions(planId),
     // O total é o de ANTES do desconto: depois de um checkout que falhou no
     // meio, os preços do plano já estão rateados, e o desconto é dado de novo
@@ -51,6 +54,8 @@ export async function montarCheckoutPlan(
     ler(admin.from('medical_records').select('id').eq('client_id', planRaw.client_id).maybeSingle(), 'buscar o prontuário do cliente'),
     ler(admin.from('branches').select('id, name').eq('tenant_id', tenantId).eq('is_active', true).order('name'), 'carregar as unidades'),
     atendimentoDeHojeDoPlano(admin, planId),
+    // Os pacotes à venda na unidade, para sugerir o equivalente (2026-10-21).
+    redeTemRecurso(tenantId, 'pacotes').then(tem => tem ? catalogoDePacotes(tenantId, { branchId, soAtivos: true }) : []),
   ])
 
   return {
@@ -72,6 +77,7 @@ export async function montarCheckoutPlan(
       branches:         ((branchesRaw      ?? []) as { id: string; name: string }[]).map(b => ({ id: b.id, name: b.name })),
       currentBranchId:  branchId,
       atendimentoDeHoje,
+      pacoteEquivalente: pacoteEquivalente(sessions, precos.subtotal, pacotes),
     },
   }
 }

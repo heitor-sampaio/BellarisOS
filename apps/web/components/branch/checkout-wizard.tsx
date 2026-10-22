@@ -13,7 +13,7 @@ import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actio
 import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
 import { SegSelect } from '@/components/shared/seg-select'
-import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
+import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -37,6 +37,11 @@ export interface CheckoutPlan {
    * quando algo é recebido agora (2026-10-20 — o checkout cobrava só o plano).
    */
   atendimentoDeHoje: { appointmentId: string; procedimento: string; preco: number } | null
+  /**
+   * O pacote do catálogo com a mesma composição, mais barato (2026-10-21):
+   * "Fechar como pacote" põe a economia como desconto do plano.
+   */
+  pacoteEquivalente?: { id: string; nome: string; preco: number; economia: number } | null
 }
 
 interface DaySlot {
@@ -513,6 +518,24 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             ariaLabel="Como vai ser pago"
           />
         </div>
+        {plan.pacoteEquivalente && (() => {
+          const pac = plan.pacoteEquivalente
+          const aplicado = contaDesc.reais === pac.economia
+          return (
+            <div data-pacote-equivalente style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+                <strong>{pac.nome}</strong> tem as mesmas sessões: {fmtBRL(pac.preco)} (economia de {fmtBRL(pac.economia)})
+              </p>
+              {aplicado ? (
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>Preço do pacote aplicado</span>
+              ) : (
+                <button type="button" className="btn-primary" onClick={() => setDesconto(estadoDoDesconto(pac.economia))}>
+                  Fechar como pacote
+                </button>
+              )}
+            </div>
+          )
+        })()}
         <div style={{ marginBottom: 16, maxWidth: 360 }}>
           <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} />
         </div>

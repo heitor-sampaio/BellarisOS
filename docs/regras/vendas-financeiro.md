@@ -220,6 +220,15 @@ o procedimento avulso pago antes.
   dele. Na simulação, a limpeza de R$ 180 que gerou um plano nunca foi
   cobrada: o checkout ("Novo paciente") cobrava só o plano. Prova:
   `e2e/checkout-de-plano.spec.ts`.
+- **O checkout do plano SUGERE o pacote equivalente** (2026-10-21, decisão
+  do Heitor): quando as sessões do plano têm os MESMOS procedimentos, nas
+  mesmas quantidades, de um pacote ativo à venda na unidade, e ele sai mais
+  barato (`pacoteEquivalente`, `lib/checkout/pacote-equivalente.ts`, em
+  centavos; o mais barato se houver dois), o passo do pagamento mostra "X tem
+  as mesmas sessões: R$ … (economia de R$ …)". "Fechar como pacote" põe a
+  economia no campo de DESCONTO: o plano continua por procedimento, e o
+  desconto é rateado como qualquer outro. Não vira venda de pacote. Prova:
+  `tests/pacote-equivalente.test.ts`, `e2e/checkout-pacote-equivalente.spec.ts`.
 - **O agendamento pela cliente no app usa o que ela já pagou** (2026-10-21,
   decisão do Heitor): a sessão livre de um plano VENDIDO (`ACCEPTED`, a mais
   antiga, cujo primeiro procedimento é o agendado — preço = a soma da sessão)
