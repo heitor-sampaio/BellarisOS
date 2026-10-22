@@ -6695,7 +6695,7 @@ tempo). O que sobrou:
   está no plano ULTRA, de cortesia (conferido em 2026-10-08).
 - **(Opcional) ligar o hook de token**: Supabase → Authentication → Hooks →
   Custom Access Token → `public.suporte_hook_do_token`. Nada depende dele.
-- ~~Vale uma rodada completa do E2E~~ **rodou** várias vezes desde então (a última em 2026-10-22: 875 verdes e 1 intermitente do próprio teste — o `goto` atropelado em `suporte-credenciais` —, corrigido).
+- ~~Vale uma rodada completa do E2E~~ **rodou** várias vezes desde então (a última em 2026-10-22: 875 verdes; os intermitentes das três rodadas do dia eram dos testes — o `goto` atropelado pela própria tela no fim da sessão de suporte e uma leitura do banco que caiu na rede do runner —, corrigidos em `apoio/`).
 - ~~Risco aceito: o atendente gravava pelo PostgREST o que a RLS deixa ao
   membro~~ **fechado em 2026-10-08**: a sessão de suporte não grava pelo
   PostgREST em tabela nenhuma (`suporte_sem_escrita`, ver a linha do tempo).

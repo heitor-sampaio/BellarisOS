@@ -138,7 +138,11 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     conforme o dia em que roda, e domingo não tem horário livre.
   - `page.goto` com `net::ERR_ABORTED` numa tela que a sessão acabou de
     perder: a própria tela (o refresh dela) navegou primeiro para o mesmo
-    destino. Tolere só o ERR_ABORTED e prove o destino pela URL
-    (`suporte-credenciais`, "re-autorizar").
+    destino. É `irComASessaoCaindo` (`apoio/suporte.ts`): tolera só o
+    ERR_ABORTED, e o destino se prova pela URL.
+  - `banco()` repete sozinho a LEITURA (GET/HEAD) que cai na rede do runner
+    — até 3 vezes, 20 s cada; gravação nunca (poderia gravar duas vezes).
+    Leitura com `.single()` que o teste usa a seguir confere o `error`: sem
+    isso, a queda vira um `null.id` mudo.
   - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
     `<script>` sem nonce. Ele não existe no build.

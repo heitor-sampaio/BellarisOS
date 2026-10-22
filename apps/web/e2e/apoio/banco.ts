@@ -13,8 +13,29 @@ export function banco(): SupabaseClient {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
+    { auth: { persistSession: false }, global: { fetch: fetchQueInsiste } },
   )
+}
+
+/**
+ * A LEITURA que cai na rede (o `fetch` lança, sem resposta) tenta de novo.
+ * Na completa de 2026-10-22 um GET de `package_sessions` nunca chegou ao
+ * Supabase (não está no log dele): o runner ficou ~70 s pendurado e o
+ * supabase-js devolveu `data: null` — o teste morreu num `null.id` sem dizer
+ * nada. Só GET e HEAD: repetir uma gravação que talvez tenha chegado gravaria
+ * duas vezes. Resposta de erro (4xx, 5xx) não é repetida — é o banco falando.
+ */
+async function fetchQueInsiste(entrada: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const metodo = (init?.method ?? 'GET').toUpperCase()
+  if (metodo !== 'GET' && metodo !== 'HEAD') return fetch(entrada, init)
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await fetch(entrada, { ...init, signal: init?.signal ?? AbortSignal.timeout(20_000) })
+    } catch (e) {
+      if (tentativa >= 3 || init?.signal?.aborted) throw e
+      await new Promise(r => setTimeout(r, 1_000 * tentativa))
+    }
+  }
 }
 
 /** Prefixo de tudo que a suíte cria — e o único critério da limpeza. */

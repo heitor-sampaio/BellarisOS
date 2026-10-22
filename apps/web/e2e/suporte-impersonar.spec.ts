@@ -5,7 +5,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
-import { entrarComo } from './apoio/suporte'
+import { entrarComo, irComASessaoCaindo } from './apoio/suporte'
 
 /**
  * "Entrar como" um membro — o suporte com impersonificação (fase 2, 2026-10-03).
@@ -312,7 +312,7 @@ test.describe.serial('suporte: entrar como', () => {
       const r = await chamarAcao(p, 'actions/suporte-autorizacao.ts', 'revogarAutorizacaoDeSuporte', '/admin/settings', [g!.id])
       expect(r.texto).toContain('"ok":true')
     } finally { await ctx.close() }
-    await sup.page.goto(`/admin/clients/${f!.clienteId}`)
+    await irComASessaoCaindo(sup.page, `/admin/clients/${f!.clienteId}`)
     await expect(sup.page).toHaveURL(new RegExp(`^${SUP()}/redes/`), { timeout: 30_000 })
     expect(await rest(capturada.access_token, `clients?select=id&id=eq.${f!.clienteId}`)).toHaveLength(0)
     expect(await renovar(capturada.refresh_token)).toBe(false)

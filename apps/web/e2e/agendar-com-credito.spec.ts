@@ -227,7 +227,8 @@ test.describe.serial('agendar com crédito', () => {
       p_sessoes: [{ procedure_id: rede!.procedureId, preco: 250 }, { procedure_id: rede!.procedureId, preco: 250 }],
     })
     expect(error).toBeNull()
-    const { data: s1 } = await db().from('package_sessions').select('id').eq('client_package_id', cp as string).eq('session_number', 1).single()
+    const { data: s1, error: erroDaSessao } = await db().from('package_sessions').select('id').eq('client_package_id', cp as string).eq('session_number', 1).single()
+    expect(erroDaSessao, 'ler a 1ª sessão do pacote').toBeNull()
     const pedido = (hora: string) => [{
       packageSessionId: s1!.id, branchId: rede!.branchId, professionalId: rede!.professionalId,
       scheduledAt: amanha(hora).iso, clientId: cliente, procedureId: rede!.procedureId, price: 0, durationMin: 60, slug: 'admin',

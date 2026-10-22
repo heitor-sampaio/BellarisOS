@@ -164,3 +164,15 @@ export async function limparSuporteDaRede(tenantId: string): Promise<string[]> {
   anote('registros', (await b.from('platform_audit_log').delete().eq('tenant_id', tenantId)).error)
   return falhas
 }
+
+/**
+ * Navega numa tela da clínica cuja sessão de suporte ACABOU de cair
+ * (re-autorizada, revogada). A tela aberta também descobre o fim — o refresh
+ * dela cai em /auth/suporte-fim — e navega sozinha para o mesmo destino; se
+ * chegar primeiro, o `goto` é atropelado com ERR_ABORTED (completa de
+ * 2026-10-22, duas vezes, já no painel certo). Só esse erro é tolerado: quem
+ * prova o destino é a URL conferida depois.
+ */
+export async function irComASessaoCaindo(page: Page, caminho: string): Promise<void> {
+  await page.goto(caminho).catch((e: Error) => { if (!/ERR_ABORTED/.test(e.message)) throw e })
+}
