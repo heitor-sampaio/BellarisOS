@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { clienteComSessao, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
  * A cliente agenda pelo app um procedimento que ela JÁ PAGOU (2026-10-21,
@@ -20,7 +21,8 @@ let cliente: ClienteDeTeste | null = null
 let slug = ''
 let plano = ''
 let sessao = ''
-const AMANHA = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 86_400_000))
+// Amanhã, ou o seguinte em que a unidade abre (num sábado, amanhã é domingo).
+const AMANHA = diaEmQueAUnidadeAbre(1)
 
 async function agendar(p: Page, hora: string) {
   const r = await chamarAcao(p, 'actions/appointments.ts', 'createClientAppointment', `/${slug}/cliente/agendamentos/novo`, [{

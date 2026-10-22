@@ -5,6 +5,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { dayKeyTZ, addDaysTZ } from '../lib/datetime'
 import { ARQUIVO_DE_SESSAO } from '../playwright.config'
+import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
  * O portal do cliente final, ponta a ponta — até 2026-09-27 nenhum teste
@@ -37,7 +38,8 @@ interface Fx {
 let f: Fx | null = null
 
 /** Dia futuro, longe de qualquer agenda real, no fuso da clínica. */
-const DIA = dayKeyTZ(addDaysTZ(new Date(), 45))
+// Um dia em que a unidade abre: hoje + 45 caiu num domingo em 2026-10-22.
+const DIA = diaEmQueAUnidadeAbre(45)
 const instante = (dia: string, hora: string) => new Date(`${dia}T${hora}:00-03:00`).toISOString()
 
 const agendamentosDo = async (clientId: string) =>
