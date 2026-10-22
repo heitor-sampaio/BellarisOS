@@ -6651,14 +6651,13 @@ verdade. O que vale:
 ### Da simulação de 2026-10-20 (o que ainda falta)
 
 O relatório inteiro (com capturas) ficou na máquina do Heitor, fora do git:
-`apps/web/.sim/relatorio.md`. Corrigidos em 2026-10-20/21: todos os D's
-menos o D13, e a maior parte dos atritos (ver a linha do tempo). Faltam:
-- **D13 — decisão do Heitor** (ele pediu mais contexto): o atendimento
-  concluído ANTES da hora marcada fica fora dos indicadores até essa hora,
-  porque o eixo do serviço é `scheduled_at` e o período parcial fecha em
-  "agora". Opções: (a) contar o concluído pelo `completed_at`; (b) o
-  "hoje" fechar no fim do dia; (c) manter. Mexe em metrics_core, by_branch,
-  series, relatório e nos rankings.
+`apps/web/.sim/relatorio.md`. Corrigidos em 2026-10-20/22: todos os D's
+(o D13 por último, em 2026-10-22) e a maior parte dos atritos (ver a linha do
+tempo). O que sobrou:
+- ~~D13~~ **feita em 2026-10-22** (decisão do Heitor: a hora que vier
+  primeiro, a marcada ou a da conclusão): `appointments.aconteceu_em` é o
+  eixo de todo indicador de atendimento. Junto, o "Próximo atendimento" da
+  profissional deixou de mostrar quem já foi atendida.
 - ~~Recursos novos que pedem decisão~~ **decididos e feitos em 2026-10-21**
   (ver a linha do tempo): fechamento do dia (sem abertura), motivo da perda
   e "Em negociação", aviso da ficha respondida, cancelar e remarcar pelo

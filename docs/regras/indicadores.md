@@ -41,7 +41,20 @@
   - `revenuePending` — a receber, pelo VENCIMENTO (`data_de_referencia`;
     sem vencimento, a criação). Era pela criação: o parcelado inteiro caía no
     mês da venda.
-  - `serviceRevenue` — preço dos atendimentos concluídos (eixo em `scheduled_at`)
+  - `serviceRevenue` — preço dos atendimentos concluídos, no eixo
+    `appointments.aconteceu_em`
+  - **O atendimento conta quando ACONTECEU** (D13, decisão do Heitor,
+    2026-10-22): `aconteceu_em` (coluna gerada) é a hora marcada, ou a da
+    conclusão quando ela veio ANTES. Todo indicador de atendimento usa esse
+    eixo — `metrics_core`, `by_branch`, `relatorio`, `retention`, os rankings,
+    a receita por categoria, `metrics_vendas` e os clientes a reativar
+    (migration `20261022000001`). Era `scheduled_at`, e como o período em
+    andamento fecha em "agora", o concluído antes da hora (chegou cedo, o
+    encaixe adiantou) ficava fora do dashboard até a hora marcada passar. O
+    concluído DEPOIS da hora (finalizado no dia seguinte) segue no dia
+    marcado: contar pela conclusão pura mudaria o atendimento de dia e de mês.
+    Indicador novo de atendimento filtra por `aconteceu_em`, nunca por
+    `scheduled_at`. Prova: `e2e/indicadores-concluido-antes-da-hora.spec.ts`.
   - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos` — **numerador e
     denominador do mesmo conjunto**
   - `occupancy` = minutos agendados (sem cancelados e faltas; os concluídos

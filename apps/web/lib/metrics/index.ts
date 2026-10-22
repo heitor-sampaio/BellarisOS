@@ -9,7 +9,8 @@
  * Definições canônicas:
  *   revenueCash     — recebido no período (INCOME pago, eixo em paid_at).
  *   revenuePending  — a receber (INCOME não pago).
- *   serviceRevenue  — preço dos atendimentos concluídos (eixo em scheduled_at).
+ *   serviceRevenue  — preço dos atendimentos concluídos (eixo em aconteceu_em: a hora
+ *                     marcada, ou a da conclusão se veio antes — D13, 2026-10-22).
  *   ticketMedio     — serviceRevenue ÷ atendimentos concluídos. Mesmo conjunto
  *                     nos dois lados da divisão; antes o numerador vinha do
  *                     caixa (incluindo vendas sem atendimento) e o denominador
