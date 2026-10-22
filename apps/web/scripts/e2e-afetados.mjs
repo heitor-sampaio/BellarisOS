@@ -33,6 +33,10 @@ const RAIZ = path.resolve(WEB, '..', '..')
 // palavra do arquivo que testa) — senão só a completa o roda. O script avisa
 // no fim quais specs nenhuma área cobre.
 const AREAS = [
+  // O CSP da clínica e o que vem de fora (o SDK da Meta, só na tela que o usa).
+  { nome: 'CSP e scripts de fora',
+    chaves: ['seguranca/csp', 'csp-relatorio', 'app/layout.tsx', 'conectar-whatsapp-meta', 'sdk-da-meta'],
+    specs: /^(csp-clinica|sdk-da-meta)/ },
   { nome: 'Copilot',
     chaves: ['copilot', 'openai'],
     specs: /^(copilot|api-sem-credencial)/ },

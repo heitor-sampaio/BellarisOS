@@ -252,6 +252,13 @@ Configurações → WhatsApp → Oficial (`ConectarWhatsAppPelaMeta`): abre a ja
 da Meta pelo SDK (`FB.login` com o `config_id` de `META_ES_CONFIG_ID`, lido no
 servidor), e a escolha da tela vira o `featureType` —
 `whatsapp_business_app_onboarding` na coexistência, nada na Cloud API.
+- **O SDK da Meta carrega SÓ nesse botão** (2026-10-22): o componente põe o
+  `sdk.js` na página ao montar, com o `appId` lido no servidor, e SEM
+  `logPageView`. Até então ele vinha no layout raiz e toda página da clínica
+  avisava a Meta da visita — inclusive o portal da cliente e o link público
+  da ficha de pré-atendimento, com o token no endereço. O CSP libera
+  `connect.facebook.net` e `www.facebook.com` nas conexões. Prova:
+  `e2e/sdk-da-meta-so-onde-usa.spec.ts`.
 - **A janela devolve duas coisas por dois canais**: o código (no `FB.login`,
   vale 30 s) e a conta + o número (postMessage `WA_EMBEDDED_SIGNUP`, só de
   `facebook.com`). A tela junta os dois e chama `conectarWhatsAppPelaMeta`.
@@ -341,6 +348,7 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Gravar config de integração com chave fora da lista do provedor, ou baseUrl não pública (SSRF)
 ❌ Gravar mensagem de saída sem whatsapp_number_id (texto, template e mídia levam a caixa que enviou)
 ❌ Criar a caixa do cadastro incorporado com os ids que o navegador mandou sem conferir com o token (/{waba}/phone_numbers)
+❌ Carregar o SDK da Meta fora da tela que o usa (layout, portal, página pública) ou com logPageView — a visita vai para a Meta
 ❌ Pedir à Meta a sincronização da coexistência antes de gravar a caixa (o histórico chega uma vez só)
 ❌ Importar histórico ou mensagem do aplicativo emitindo evento de conversa (dispara automação para o passado) ou sem importada = true
 ❌ Gravar o formulário manual por cima da caixa do cadastro incorporado (apaga o token da Meta)

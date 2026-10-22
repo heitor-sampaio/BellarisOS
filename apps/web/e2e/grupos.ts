@@ -78,6 +78,7 @@ export const ISOLADOS = [
   'crm-responsavel.spec.ts',
   'templates-por-numero.spec.ts',
   'whatsapp-modo-oficial.spec.ts',
+  'sdk-da-meta-so-onde-usa.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',

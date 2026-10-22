@@ -297,7 +297,7 @@ function CredencialManual({ recolhida, children }: { recolhida: boolean; childre
  * A caixa conectada pelo cadastro incorporado: não tem credencial para editar
  * (o token fica no servidor). Liga, desliga e reconecta.
  */
-function CaixaDoCadastro({ numero, configId }: { numero: NumeroNaTela; configId: string | null }) {
+function CaixaDoCadastro({ numero, configId, appId }: { numero: NumeroNaTela; configId: string | null; appId: string | null }) {
   const modo = modoDaConfig(numero.config as Record<string, string>)
   const [isActive, setIsActive] = useState(numero.isActive)
   const [pendente, iniciar] = useTransition()
@@ -335,13 +335,13 @@ function CaixaDoCadastro({ numero, configId }: { numero: NumeroNaTela; configId:
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>{erro}</p>}
 
-      {configId && <ConectarWhatsAppPelaMeta configId={configId} modo={modo} rotulo="Reconectar pela Meta" />}
+      {configId && <ConectarWhatsAppPelaMeta configId={configId} appId={appId} modo={modo} rotulo="Reconectar pela Meta" />}
     </div>
   )
 }
 
-function OfficialForm({ numero, configIdDoCadastro, nomeDoNumero }: {
-  numero?: NumeroNaTela; configIdDoCadastro: string | null; nomeDoNumero?: string
+function OfficialForm({ numero, configIdDoCadastro, appIdDaMeta, nomeDoNumero }: {
+  numero?: NumeroNaTela; configIdDoCadastro: string | null; appIdDaMeta: string | null; nomeDoNumero?: string
 }) {
   const origem = useOrigem()
   const existing = (numero?.config ?? {}) as Record<string, string>
@@ -360,7 +360,7 @@ function OfficialForm({ numero, configIdDoCadastro, nomeDoNumero }: {
   const [saved,         setSaved]         = useState(false)
 
   if (numero && (numero.config as Record<string, unknown>)?.conexao === 'cadastro_incorporado') {
-    return <CaixaDoCadastro numero={numero} configId={configIdDoCadastro} />
+    return <CaixaDoCadastro numero={numero} configId={configIdDoCadastro} appId={appIdDaMeta} />
   }
 
   function handleSave() {
@@ -407,7 +407,7 @@ function OfficialForm({ numero, configIdDoCadastro, nomeDoNumero }: {
             Abre uma janela da Meta: você entra com o Facebook da clínica, escolhe a conta do
             WhatsApp e o número, e volta com tudo pronto — sem copiar token nenhum.
           </p>
-          <ConectarWhatsAppPelaMeta configId={configIdDoCadastro} modo={modo} nomeDoNumero={nomeDoNumero} />
+          <ConectarWhatsAppPelaMeta configId={configIdDoCadastro} appId={appIdDaMeta} modo={modo} nomeDoNumero={nomeDoNumero} />
         </div>
       )}
 
@@ -1236,6 +1236,8 @@ interface SettingsIntegrationsProps {
    * servidor). Sem ele, a caixa oficial só se conecta com credencial colada.
    */
   configIdDoCadastro?: string | null
+  /** O app da Meta do SDK (`NEXT_PUBLIC_META_APP_ID`, lido no servidor). */
+  appIdDaMeta?: string | null
 }
 
 type Section = 'whatsapp' | 'meta_messaging' | 'meta_ads' | 'google_ads' | null
@@ -1301,7 +1303,7 @@ function SectionCard({
   )
 }
 
-export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, opcoesDeVinculo, metaStep, metaError, metaErrorReason, configIdDoCadastro = null }: SettingsIntegrationsProps) {
+export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, opcoesDeVinculo, metaStep, metaError, metaErrorReason, configIdDoCadastro = null, appIdDaMeta = null }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>(
     // Volta do OAuth: abre a seção que pede a escolha. O de anúncios volta com
     // `select`, e caía na seção do WhatsApp com a conta a escolher escondida.
@@ -1482,7 +1484,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
               : <UazapiForm numero={caixaEmEdicao} nomeDoNumero={adicionando ? nomeNovo : undefined} />}
           </>
         ) : (
-          <OfficialForm numero={caixaEmEdicao} configIdDoCadastro={configIdDoCadastro} nomeDoNumero={adicionando ? nomeNovo : undefined} />
+          <OfficialForm numero={caixaEmEdicao} configIdDoCadastro={configIdDoCadastro} appIdDaMeta={appIdDaMeta} nomeDoNumero={adicionando ? nomeNovo : undefined} />
         )}
         </>
         )}

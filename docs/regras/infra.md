@@ -50,7 +50,7 @@ UAZAPI_PROXY_TEMPLATE=             # vazio = proxy gerenciado pela própria uaza
 # Meta — o app do BellarisOS (Tech Provider): login de anúncios/Instagram/
 # Messenger, cadastro incorporado do WhatsApp e webhooks (§9.8.0, §9.8.1)
 META_APP_ID=                       # o mesmo app_id do link do cadastro incorporado
-NEXT_PUBLIC_META_APP_ID=           # o SDK da Meta no navegador (app/layout.tsx)
+NEXT_PUBLIC_META_APP_ID=           # o SDK da Meta, só no "Conectar pela Meta" (lido no servidor, configuracoes.tsx)
 META_APP_SECRET=                   # troca de código por token + assinatura dos webhooks
 META_VERIFY_TOKEN=                 # handshake dos webhooks (/api/webhooks/whatsapp e /meta)
 META_ES_CONFIG_ID=                 # config_id do cadastro incorporado (lido no servidor)

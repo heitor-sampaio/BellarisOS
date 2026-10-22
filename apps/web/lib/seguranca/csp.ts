@@ -26,8 +26,9 @@ export function politicaDaClinica(o: { nonce: string; supabase: string; dev: boo
     `img-src 'self' data: blob: ${supa} https://server.arcgisonline.com`,
     `media-src 'self' blob: ${supa}`,
     // O endereço pelo CEP: o navegador consulta o ViaCEP (ficha da cliente,
-    // perfil do app, unidade — 2026-10-22).
-    `connect-src 'self' ${supa} ${realtime} https://viacep.com.br`,
+    // perfil do app, unidade — 2026-10-22). E o SDK da Meta, que só carrega no
+    // "Conectar pela Meta" do WhatsApp oficial (conectar-whatsapp-meta.tsx).
+    `connect-src 'self' ${supa} ${realtime} https://viacep.com.br https://connect.facebook.net https://www.facebook.com`,
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

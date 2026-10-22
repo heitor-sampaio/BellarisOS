@@ -19,7 +19,12 @@ import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
  * (`conectarWhatsAppPelaMeta` → `lib/whatsapp/cadastro-incorporado.ts`), e é
  * ele que confere que o número é mesmo daquela conta.
  *
- * O SDK da Meta é carregado pelo layout (`app/layout.tsx`).
+ * O SDK da Meta carrega AQUI, e só aqui (2026-10-22): até então vinha no
+ * layout raiz com `logPageView`, e toda página da clínica avisava a Meta da
+ * visita — o login, o portal da cliente, o link público da ficha com o token
+ * no endereço. Carrega ao montar o botão (o `FB.login` precisa ser chamado no
+ * clique, sem esperar nada, ou o navegador barra a janela), e sem contar a
+ * visita. O `appId` vem do servidor: no build do Railway não há env.
  */
 
 interface Sessao { wabaId: string; phoneNumberId: string; businessId: string | null }
@@ -35,8 +40,33 @@ declare global {
   interface Window {
     FB?: {
       login: (cb: (r: { authResponse?: { code?: string } | null; status?: string }) => void, opcoes: Record<string, unknown>) => void
+      init:  (opcoes: Record<string, unknown>) => void
     }
+    fbAsyncInit?: () => void
   }
+}
+
+let carregando: Promise<void> | null = null
+
+/** Põe o SDK da Meta na página uma vez (as próximas chamadas esperam a mesma carga). */
+function carregarSdkDaMeta(appId: string): Promise<void> {
+  if (window.FB) return Promise.resolve()
+  if (carregando) return carregando
+  carregando = new Promise<void>((resolve, reject) => {
+    window.fbAsyncInit = () => {
+      window.FB!.init({ appId, cookie: true, xfbml: true, version: 'v25.0' })
+      resolve()
+    }
+    const s = document.createElement('script')
+    s.id = 'facebook-jssdk'
+    s.src = 'https://connect.facebook.net/en_US/sdk.js'
+    s.async = true
+    s.crossOrigin = 'anonymous'
+    // Bloqueador de anúncios, rede caída: a próxima montagem tenta de novo.
+    s.onerror = () => { carregando = null; s.remove(); reject(new Error('SDK da Meta')) }
+    document.body.appendChild(s)
+  })
+  return carregando
 }
 
 const EVENTOS_DE_SUCESSO = new Set([
@@ -44,10 +74,12 @@ const EVENTOS_DE_SUCESSO = new Set([
   'FINISH_OBO_MIGRATION', 'FINISH_GRANT_ONLY_API_ACCESS',
 ])
 
-export function ConectarWhatsAppPelaMeta({ configId, modo, rotulo = 'Conectar pela Meta', nomeDoNumero }: {
+export function ConectarWhatsAppPelaMeta({ configId, appId, modo, rotulo = 'Conectar pela Meta', nomeDoNumero }: {
   /** O nome escolhido para o número (sem ele, o que já tinha ou o da conta na Meta). */
   nomeDoNumero?: string
   configId: string
+  /** O app da Meta (`NEXT_PUBLIC_META_APP_ID`, lido no servidor). */
+  appId:    string | null
   modo:     ModoOficial
   rotulo?:  string
 }) {
@@ -55,6 +87,8 @@ export function ConectarWhatsAppPelaMeta({ configId, modo, rotulo = 'Conectar pe
   const [estado, setEstado] = useState<Estado>({ fase: 'ocioso' })
   const sessao = useRef<Sessao | null>(null)
   const saida = useRef<string | null>(null)
+
+  useEffect(() => { void carregarSdkDaMeta(appId ?? '').catch(() => {}) }, [appId])
 
   // A conta e o número escolhidos chegam por postMessage da janela da Meta.
   useEffect(() => {

@@ -1420,6 +1420,24 @@ o selo no bloco do calendário (hoje só na janela do agendamento) e o
 histórico dos pré-atendimentos na exportação LGPD (a anamnese atual já vai,
 dentro do prontuário; as respostas de envios anteriores, não).
 
+### 2026-10-22 — O SDK da Meta sai das páginas que não o usam
+
+O log do CSP acusava `connect-src bloquearia https://connect.facebook.net`
+em /login, /register, /admin/team e no link da ficha de pré-atendimento. A
+causa: o SDK da Meta vinha no layout raiz desde 2026-06-30, com
+`FB.AppEvents.logPageView()`, e toda página da clínica avisava a Meta da
+visita, com os cookies dela — o portal da cliente e o link público da ficha,
+que leva o token no endereço, inclusive. Quem usa o SDK é uma tela só: o
+"Conectar pela Meta" do WhatsApp oficial.
+
+- O `ConectarWhatsAppPelaMeta` carrega o SDK ao montar, uma vez, com o
+  `appId` lido no servidor; sem `logPageView`. O layout não o carrega mais.
+- O CSP libera `connect.facebook.net` e `www.facebook.com` nas conexões, para
+  o botão continuar funcionando no dia em que o CSP bloquear.
+- Prova: `e2e/sdk-da-meta-so-onde-usa.spec.ts` (login, cadastro, privacidade
+  e clientes sem pedido nenhum à Meta; o botão carrega o SDK) e o
+  `tests/csp-clinica.test.ts`.
+
 ### 2026-10-20 — O site: os termos explicados, e SEO e GEO
 
 Pedido do Heitor: explicar no próprio texto o que não se explica sozinho, e

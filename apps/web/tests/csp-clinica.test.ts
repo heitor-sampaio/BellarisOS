@@ -23,6 +23,13 @@ describe('politicaDaClinica', () => {
   it('o ViaCEP nas conexões (o endereço pelo CEP)', () => {
     expect(p).toMatch(/connect-src [^;]*https:\/\/viacep\.com\.br/)
   })
+  // O SDK da Meta, só na tela do "Conectar pela Meta" (2026-10-22): ele busca
+  // em connect.facebook.net e www.facebook.com. Sem isto, no dia em que o CSP
+  // bloquear, conectar o WhatsApp oficial para.
+  it('a Meta nas conexões (o cadastro incorporado do WhatsApp)', () => {
+    expect(p).toMatch(/connect-src [^;]*https:\/\/connect\.facebook\.net/)
+    expect(p).toMatch(/connect-src [^;]*https:\/\/www\.facebook\.com/)
+  })
   it('manda os avisos para a rota da clínica', () => {
     expect(p).toContain('report-uri /api/csp-relatorio')
   })

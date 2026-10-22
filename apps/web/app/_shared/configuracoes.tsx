@@ -416,6 +416,8 @@ export async function Configuracoes({
           // O config_id do cadastro incorporado (Embedded Signup) da Meta. Não é
           // segredo, mas é por instalação: mora no ambiente, lido aqui no servidor.
           configIdDoCadastro={process.env.META_ES_CONFIG_ID || null}
+          // O app da Meta do SDK, que só carrega no "Conectar pela Meta".
+          appIdDaMeta={process.env.NEXT_PUBLIC_META_APP_ID || null}
         />
       )}
 

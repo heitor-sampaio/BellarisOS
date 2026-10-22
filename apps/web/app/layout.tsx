@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import Script from 'next/script'
 import { headers } from 'next/headers'
 import '@estetica-os/nucleo/estilos/globals.css'
 import { NavigationProgress }    from '@/components/shared/navigation-progress'
@@ -30,12 +29,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Lidos em runtime pelo servidor — não dependem de build-time inlining
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-  const metaAppId   = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
 
   const runtimeConfig = `
     window.__SUPABASE_URL__=${JSON.stringify(supabaseUrl)};
     window.__SUPABASE_KEY__=${JSON.stringify(supabaseKey)};
-    window.fbAsyncInit=function(){FB.init({appId:${JSON.stringify(metaAppId)},cookie:true,xfbml:true,version:'v25.0'});FB.AppEvents.logPageView();};
   `.trim()
 
   // MessageChannel polyfill: must run BEFORE deferred scripts (React/Next.js).
@@ -107,12 +104,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           richColors
           toastOptions={{ style: { fontFamily: 'var(--font-sans)' } }}
         />
-        <Script
-          id="facebook-jssdk"
-          src="https://connect.facebook.net/en_US/sdk.js"
-          strategy="lazyOnload"
-          nonce={nonce}
-        />
+        {/* O SDK da Meta NÃO vem aqui (2026-10-22): carrega só no "Conectar pela
+            Meta" (conectar-whatsapp-meta.tsx). Daqui, com logPageView, toda
+            página — login, portal da cliente, o link da ficha com o token —
+            avisava a Meta da visita. */}
       </body>
     </html>
   )
