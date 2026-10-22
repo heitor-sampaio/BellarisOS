@@ -31,6 +31,7 @@ export const DEFAULT_STAGES: { name: string; color: string; outcome: StageOutcom
   { name: 'Novo',       color: '#c34d6b', outcome: 'OPEN' },
   { name: 'Em contato', color: '#7c4ddb', outcome: 'OPEN' },
   { name: 'Avaliação',  color: '#c98a1e', outcome: 'OPEN' },
+  { name: 'Em negociação', color: '#b0568f', outcome: 'OPEN' },
   { name: 'Agendado',   color: '#2563b0', outcome: 'OPEN' },
   { name: 'Fechado',    color: '#3f9b6f', outcome: 'WON'  },
   { name: 'Perdido',    color: '#9e9e9e', outcome: 'LOST' },
