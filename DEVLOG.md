@@ -1420,6 +1420,14 @@ o selo no bloco do calendário (hoje só na janela do agendamento) e o
 histórico dos pré-atendimentos na exportação LGPD (a anamnese atual já vai,
 dentro do prontuário; as respostas de envios anteriores, não).
 
+### 2026-10-22 — Site: a agenda no destaque da agenda, e o "Fácil de usar" sem a luz
+
+Pedidos do Heitor: o destaque "Agenda e atendimento" mostrava a ficha da
+cliente; agora mostra a agenda do dia (foto nova da câmera, `agenda-dia`, sem
+o menu e rolada até a manhã). E os cartões do "Fácil de usar" perderam o
+brilho rosé que seguia o mouse (o "E ainda" mantém). Provas em
+`e2e-site/site.spec.ts` e `e2e-site/movimento.spec.ts`.
+
 ### 2026-10-22 — O SDK da Meta sai das páginas que não o usam
 
 O log do CSP acusava `connect-src bloquearia https://connect.facebook.net`

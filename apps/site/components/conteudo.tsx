@@ -310,7 +310,8 @@ const DESTAQUES: Destaque[] = [
       { forte: 'O histórico inteiro da cliente', resto: ' — pacotes, créditos, próximos horários — na ficha.' },
       { forte: 'Cargos sob medida', resto: ': cada pessoa vê só o que o cargo dela libera.' },
     ],
-    tela: TELAS.ficha,
+    // A agenda, não a ficha (pedido do Heitor, 2026-10-22).
+    tela: TELAS.agendaDia,
   },
   {
     overline: 'Prontuário', titulo: 'O planejador de injetáveis, ponto a ponto',

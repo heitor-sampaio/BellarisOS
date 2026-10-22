@@ -13,6 +13,7 @@ const celular = (arquivo: string, descricao: string): Tela => ({ arquivo: `/tela
 
 export const TELAS = {
   agenda:       computador('agenda', 'A agenda do dia no BellarisOS, com os horários de cada profissional'),
+  agendaDia:    semMenu('agenda-dia', 'A agenda do dia no BellarisOS, por profissional, com a situação de cada atendimento'),
   inbox:        semMenu('inbox', 'O inbox do BellarisOS com uma conversa de WhatsApp aberta e os dados da cliente ao lado'),
   inboxCelular: celular('inbox-celular', 'Uma conversa de WhatsApp no BellarisOS, pelo celular'),
   ficha:        semMenu('ficha', 'A ficha da cliente no BellarisOS: histórico, pacotes e próximos horários'),

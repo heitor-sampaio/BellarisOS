@@ -89,6 +89,8 @@ clínicas." O site diz isso em três lugares:
   "Clínica Aurora" numa rede `[e2e]` própria — agenda do dia, conversas, um
   pacote, o financeiro do mês, injetáveis, automação, termos, o portal da
   Mariana — e apaga tudo no fim. Nos destaques, a foto sai sem o menu lateral.
+  Cada destaque mostra a tela DO QUE ele fala: o de "Agenda e atendimento" é
+  a agenda do dia (`agenda-dia`, rolada até a manhã), não a ficha (2026-10-22).
   O app da cliente tem três fotos (início, agendar com os horários livres,
   pontos): a câmera marca procedimentos como `visible_on_client_app`, liga a
   fidelidade com recompensas e grava os pontos como GANHO (o extrato mostra

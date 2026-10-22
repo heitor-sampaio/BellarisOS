@@ -319,6 +319,23 @@ test('agenda do dia', async ({ browser }) => {
   await ctx.close()
 })
 
+// O destaque "Agenda e atendimento" (2026-10-22): a agenda do dia sem o menu,
+// como os outros destaques (o hero a mostra com o menu). Com o agendamento
+// aberto o modal cobria a agenda com o fundo desfocado.
+test('agenda do dia, sem o menu', async ({ browser }) => {
+  const { ctx, page } = await comoDona(browser, COMPUTADOR)
+  await page.goto(`/${portal.slug}/agenda`)
+  await expect(page.getByText('Mariana Costa').filter({ visible: true }).first()).toBeVisible()
+  // A grade abre na hora de AGORA; a foto mostra a manhã, onde está o movimento.
+  await page.getByText('08:00', { exact: true }).first().evaluate(rotulo => {
+    let p = rotulo.parentElement
+    while (p && !(p.scrollHeight > p.clientHeight && getComputedStyle(p).overflowY !== 'visible')) p = p.parentElement
+    if (p) p.scrollTop += rotulo.getBoundingClientRect().top - p.getBoundingClientRect().top - 8
+  })
+  await fotografar(page, 'agenda-dia', true)
+  await ctx.close()
+})
+
 test('inbox, no computador e no celular', async ({ browser }) => {
   const { ctx, page } = await comoDona(browser, COMPUTADOR)
   await page.goto(`/admin/inbox?c=${conversaAberta}`)

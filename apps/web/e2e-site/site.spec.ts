@@ -319,3 +319,12 @@ test('www vai para o domínio sem www', async ({ request }) => {
   expect(r.status()).toBe(308)
   expect(r.headers().location).toBe('https://bellarisos.com/')
 })
+
+// Pedido do Heitor (2026-10-22): o destaque da agenda mostrava a ficha da cliente.
+test('o destaque "Agenda e atendimento" mostra a agenda, não a ficha', async ({ page }) => {
+  await page.goto('/')
+  const destaque = page.locator('article.site-destaque').filter({ hasText: 'Agenda e atendimento' })
+  const img = destaque.locator('img').first()
+  await expect(img).toHaveAttribute('alt', /agenda/i)
+  expect(await img.getAttribute('alt')).not.toMatch(/ficha/i)
+})
