@@ -330,6 +330,34 @@ export async function criarPlanoDoCliente(
 }
 
 /**
+ * O primeiro "Salvar plano" de um plano novo (2026-10-21, decisão do Heitor):
+ * o "Novo plano" abre o editor sem gravar nada, e o plano nasce aqui, já com
+ * as sessões. Antes ele nascia vazio no clique, e quem desistia deixava um
+ * rascunho de zero sessões na ficha.
+ *
+ * Se as sessões não gravarem, o plano recém-criado (vazio, sem nada que
+ * dependa dele) é desfeito: não sobra o rascunho que esta mudança veio tirar.
+ */
+export async function salvarPlanoNovo(
+  clientId: string | null,
+  branchId: string,
+  appointmentId: string | null,
+  sessions: PlanSessionInput[],
+  notes: string,
+): Promise<{ planId?: string; error?: string }> {
+  const criado = await criarPlanoDoCliente(clientId, branchId, appointmentId)
+  if (criado.error || !criado.planId) return { error: criado.error ?? 'Não foi possível criar o plano.' }
+  const salvo = await salvarPlanoDoCliente(criado.planId, sessions, notes)
+  if (salvo.error) {
+    const admin = createAdminClient()
+    await tentar(admin.from('treatment_plan_sessions').delete().eq('plan_id', criado.planId), 'desfazer as sessões do plano novo')
+    await tentar(admin.from('treatment_plans').delete().eq('id', criado.planId).eq('status', 'DRAFT'), 'desfazer o plano novo')
+    return { error: salvo.error }
+  }
+  return { planId: criado.planId }
+}
+
+/**
  * Liga um plano a um cliente — na criação ou depois.
  *
  * É o gesto que transforma um planejamento feito "para a Marina que veio por

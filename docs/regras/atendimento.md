@@ -209,6 +209,13 @@ const procedures = await ler(
   `clients: MANAGE`. A ficha oferece a cada um só as categorias dele. Antes
   tudo pedia o cadastro, e a profissional não tinha onde anexar a foto
   clínica (simulação de um dia de clínica).
+- **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
+  Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um
+  rascunho que existe só na tela; o plano nasce no primeiro "Salvar plano"
+  (`salvarPlanoNovo`, que cria e grava as sessões — e desfaz o plano vazio se
+  as sessões falharem). Aceitar e "Cliente vai pensar" só aparecem depois de
+  salvo. Antes ele nascia vazio no clique, e quem desistia deixava um rascunho
+  de zero sessões. Prova: `e2e/plano-novo-so-ao-salvar.spec.ts`.
 
 ---
 

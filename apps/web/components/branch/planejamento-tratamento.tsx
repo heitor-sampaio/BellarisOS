@@ -4,7 +4,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CreditCard, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
 import {
-  getPlanosDoCliente, criarPlanoDoCliente, salvarPlanoDoCliente, getPlanoParaEditar,
+  getPlanosDoCliente, salvarPlanoNovo, salvarPlanoDoCliente, getPlanoParaEditar,
   proposeTreatmentPlan, getCheckoutPlan, vincularClienteAoPlano, buscarClientesParaPlano,
 } from '@/actions/treatment-plans'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
@@ -153,18 +153,33 @@ export function PlanejamentoTratamento({
     aplicarPlano(await getPlanoParaEditar(planId))
   }
 
-  async function novoPlano() {
-    setErro(null); setCarregando(true)
-    const res = await criarPlanoDoCliente(clientId, branchId, appointmentId)
-    setCarregando(false)
-    if (res.error || !res.planId) { setErro(res.error ?? 'Não foi possível criar o plano.'); return }
-    await carregarLista()
-    pedirAbrir(res.planId)
+  // "Novo plano" abre o editor SEM gravar (2026-10-21, decisão do Heitor): o
+  // plano nasce no primeiro "Salvar plano". O rascunho da tela não tem id.
+  function novoPlano() {
+    setErro(null)
+    setAberto({ id: '', status: 'DRAFT', notes: null, sessions: [] })
+  }
+  const ehNovo = aberto?.id === ''
+
+  /** Voltar à lista: o rascunho da tela só some; o plano salvo passa pelo pai. */
+  function voltarALista() {
+    setErro(null)
+    if (ehNovo) { setAberto(null); return }
+    pedirAbrir(null)
   }
 
   async function salvar(sessions: Parameters<typeof salvarPlanoDoCliente>[1], notes: string) {
     if (!aberto) return
     setErro(null); setSalvando(true)
+    if (ehNovo) {
+      const novo = await salvarPlanoNovo(clientId, branchId, appointmentId ?? null, sessions, notes)
+      setSalvando(false)
+      if (novo.error || !novo.planId) { setErro(novo.error ?? 'Não foi possível criar o plano.'); return }
+      await carregarLista()
+      if (controlado) onAbrir!(novo.planId)
+      else await abrirPlano(novo.planId)
+      return
+    }
     const res = await salvarPlanoDoCliente(aberto.id, sessions, notes)
     setSalvando(false)
     if (res.error) { setErro(res.error); return }
@@ -303,7 +318,7 @@ export function PlanejamentoTratamento({
             página já tem o seu "Planejamentos", e este levaria a uma lista que
             não é a desta tela — a do cliente, dentro da tela do plano dele. */}
         {!(planIdInicial && !controlado) && (
-          <button type="button" onClick={() => { pedirAbrir(null); setErro(null) }} className="btn-ghost"
+          <button type="button" onClick={voltarALista} className="btn-ghost"
             style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}>
             <ChevronLeft size={14} /> Planos
           </button>
@@ -318,7 +333,7 @@ export function PlanejamentoTratamento({
       )}
 
       {/* Sem cliente: o plano existe pelo nome, e ganha dono quando houver um. */}
-      {!clientId && podeEditar && (
+      {!clientId && podeEditar && !ehNovo && (
         <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {clienteLigado ? (
             <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>
@@ -376,7 +391,13 @@ export function PlanejamentoTratamento({
         onSalvarPorPlano={editavel ? salvar : undefined}
       />
 
-      {editavel && (
+      {editavel && ehNovo && (
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          O plano é criado ao salvar. Depois de salvo, ele pode ser aceito ou ficar para a cliente pensar.
+        </p>
+      )}
+
+      {editavel && !ehNovo && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* Aceitar deixou de depender do caixa: a profissional fecha o plano
               na sala e o valor fica em aberto, para ser recebido no check-in.
