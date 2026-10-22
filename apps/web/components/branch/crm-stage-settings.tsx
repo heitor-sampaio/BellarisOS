@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
-  OUTCOME_COPY, OUTCOME_VALUES,
+  OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA,
   type CRMFunnel, type CRMStage, type StageOutcome,
 } from '@/lib/crm'
 import {
@@ -646,7 +646,7 @@ export function CRMStageSettings({
                 </select>
                 <input
                   name="color" type="color"
-                  defaultValue="var(--brand)"
+                  defaultValue={COR_DA_ETAPA_NOVA}
                   title="Cor da etapa"
                   style={{
                     width: 38, height: 38, borderRadius: 10,

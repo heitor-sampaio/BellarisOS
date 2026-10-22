@@ -38,6 +38,13 @@ export const DEFAULT_STAGES: { name: string; color: string; outcome: StageOutcom
 ]
 
 /**
+ * A cor que a etapa nova (Configurar funis) traz marcada: a do "Novo", a da
+ * marca. É DADO (a cor da etapa se grava em hex), e o <input type=color> só
+ * aceita hex — com "var(--brand)" o navegador o trocava por preto (2026-10-22).
+ */
+export const COR_DA_ETAPA_NOVA = DEFAULT_STAGES[0]!.color
+
+/**
  * Esqueleto de um funil novo.
  *
  * Funil criado vazio abre num quadro sem coluna nenhuma — não dá para arrastar

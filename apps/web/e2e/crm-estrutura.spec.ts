@@ -138,4 +138,14 @@ test.describe.serial('estrutura do CRM', () => {
     await reenviarAcao(page, req, [[nome, `${nome} 2`]])
     await expect.poll(() => etapasCom(f!.funil, `${nome} 2`), { message: 'o reenvio funciona' }).toBe(1)
   })
+
+  // A completa de 2026-10-22 mostrou no console: o seletor de cor da etapa
+  // nova nascia com "var(--brand)", que não é cor de <input type=color> — o
+  // navegador o trocava por preto, e a etapa nova nascia preta.
+  test('a cor da etapa nova nasce na cor da marca, não em preto', async ({ page }) => {
+    await page.goto('/admin/oportunidades')
+    await page.getByTitle('Configurar funis').click()
+    const cor = page.locator('dialog[open] input[name="color"]')
+    await expect(cor).toHaveValue('#c34d6b')
+  })
 })
