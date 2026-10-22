@@ -47,9 +47,10 @@ clínicas." O site diz isso em três lugares:
     app da clínica na loja (esclarecimento do Heitor, 2026-10-19).
   - O texto diz só o que o portal FAZ: agendar sozinha (o que a clínica
     liberar), assinar com o dedo, pacotes/créditos/planos, pontos e
-    recompensas, confirmar e avaliar, avisos no celular, LGPD. Ele NÃO cobra
-    (o financeiro é consulta), NÃO cancela nem remarca, e leva o nome da
-    unidade — não a logo da clínica.
+    recompensas, confirmar e avaliar, avisos no celular, LGPD, e — desde
+    2026-10-21 — remarcar e cancelar até o prazo da clínica (24h por padrão;
+    depois, "fala com a clínica"). Ele NÃO cobra (o financeiro é consulta) e
+    leva o nome da unidade — não a logo da clínica.
 
 ## Como é feito
 
@@ -191,7 +192,7 @@ fonte, raios, sombras de quem flutua).
 ❌ Animação infinita fora de .site-movimento (quem pede menos movimento a veria)
 ❌ Demonstração que conta o que as telas não mostram (é a história da Clínica Aurora, não promessa nova)
 ❌ Levar a exceção do movimento ou do gradiente de fundo para a clínica (lá vale a skill /lumiere-design)
-❌ Prometer no app da cliente pagar, cancelar/remarcar ou a logo da clínica (o portal não faz)
+❌ Prometer no app da cliente pagar ou a logo da clínica (o portal não faz) — ou cancelar/remarcar sem o prazo da clínica
 ❌ Chamar o app da cliente de "portal" na página (um nome por conceito: "App da cliente")
 ❌ Dizer que a cliente baixa um app à parte ou "o app da sua clínica" (é o mesmo app; o login abre a visão dela)
 ```

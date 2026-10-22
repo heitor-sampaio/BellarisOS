@@ -363,14 +363,16 @@ const DESTAQUES: Destaque[] = [
 
 /**
  * O app da cliente (2026-10-18): o diferencial, com seção própria. Só o que o
- * portal FAZ hoje — conferido tela a tela: ela não paga, não cancela nem
- * remarca por ele, e o app leva o nome da unidade, não a logo da clínica.
+ * portal FAZ hoje — conferido tela a tela: ela não paga por ele, e o app leva
+ * o nome da unidade, não a logo da clínica. Remarcar e cancelar entraram em
+ * 2026-10-21, até o prazo da clínica (`tenants.portal_prazo_alteracao_horas`).
  */
 export const APP_NA_FRENTE = ['Agenda sozinha', 'Assina os termos no celular', 'Pacotes, pontos e histórico', 'Um aviso a cada passo']
 
 const NO_APP = [
   { icone: CalendarPlus, forte: 'Agenda sozinha', resto: 'o procedimento, a profissional e um horário livre — só o que a clínica liberar.' },
   { icone: PenLine, forte: 'Assina pelo celular', resto: 'o termo chega no app e ela assina com o dedo; o PDF vai para a ficha.' },
+  { icone: CalendarDays, forte: 'Remarca ou cancela', resto: 'até o prazo da clínica (24 horas antes, se ela não mudar); mais perto da hora, fala com a clínica pelo WhatsApp.' },
   { icone: Package, forte: 'Acompanha o tratamento', resto: 'pacotes com as sessões feitas, créditos e planos de tratamento.' },
   { icone: Gift, forte: 'Pontos e recompensas', resto: 'o saldo, o que vai vencer e o catálogo de recompensas da clínica.' },
   { icone: Star, forte: 'Confirma e avalia', resto: 'depois do atendimento, dá nota ao procedimento e à profissional.' },

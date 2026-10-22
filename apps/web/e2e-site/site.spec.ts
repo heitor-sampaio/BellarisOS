@@ -210,6 +210,16 @@ test('o app da cliente tem seção própria, chamada no topo', async ({ page }) 
   expect(await app.locator('img').count()).toBeGreaterThanOrEqual(3)
 })
 
+// Desde 2026-10-21 a cliente cancela e remarca pelo app até o prazo da
+// clínica (24h, se a clínica não mudar); mais perto, fala com a clínica.
+test('o app da cliente diz que ela remarca e cancela, até o prazo da clínica', async ({ page }) => {
+  await page.goto('/')
+  const item = page.locator('#app-da-cliente li').filter({ hasText: 'Remarca ou cancela' })
+  await expect(item).toBeVisible()
+  await expect(item).toContainText('24 horas')
+  await expect(item).toContainText('fala com a clínica')
+})
+
 test('o rodapé leva à política de privacidade da clínica', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Política de Privacidade' })).toHaveAttribute('href', `${CLINICA}/privacidade`)
