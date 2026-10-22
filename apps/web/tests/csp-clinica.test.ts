@@ -17,6 +17,12 @@ describe('politicaDaClinica', () => {
     expect(p).toContain('https://x.supabase.co')
     expect(p).toContain('wss://x.supabase.co')
   })
+  // O endereço pelo CEP é buscado pelo NAVEGADOR no ViaCEP (ficha da cliente,
+  // perfil do app, unidade). A completa de 2026-10-22 mostrou o aviso: no dia
+  // em que o CSP bloquear, o preenchimento pelo CEP para.
+  it('o ViaCEP nas conexões (o endereço pelo CEP)', () => {
+    expect(p).toMatch(/connect-src [^;]*https:\/\/viacep\.com\.br/)
+  })
   it('manda os avisos para a rota da clínica', () => {
     expect(p).toContain('report-uri /api/csp-relatorio')
   })

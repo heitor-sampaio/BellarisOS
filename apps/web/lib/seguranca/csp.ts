@@ -25,7 +25,9 @@ export function politicaDaClinica(o: { nonce: string; supabase: string; dev: boo
     // O mapa de calor do dashboard (os ladrilhos do ArcGIS).
     `img-src 'self' data: blob: ${supa} https://server.arcgisonline.com`,
     `media-src 'self' blob: ${supa}`,
-    `connect-src 'self' ${supa} ${realtime}`,
+    // O endereço pelo CEP: o navegador consulta o ViaCEP (ficha da cliente,
+    // perfil do app, unidade — 2026-10-22).
+    `connect-src 'self' ${supa} ${realtime} https://viacep.com.br`,
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
