@@ -169,6 +169,12 @@ o procedimento avulso pago antes.
     em aberto, no vencimento (ou na criação, sem vencimento). É por ela que a
     lista do financeiro recorta o período — a parcela de novembro aparece em
     novembro — e que o "a receber" do período conta.
+- **O lançamento manual pago tem a DATA do pagamento** (2026-10-21, decisão
+  do Heitor): "Data do pagamento" no Novo lançamento (hoje por padrão, nunca no
+  futuro — a tela limita e `pagoNoDia`, em `lib/financeiro/lancamento.ts`,
+  recusa). Hoje é o instante de agora; antes de hoje, o meio-dia daquele dia
+  em Brasília. Era sempre "agora": a conta paga na semana passada caía no caixa
+  de hoje. Prova: `e2e/financeiro-data-do-lancamento.spec.ts`.
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
 - **Cartão de crédito em N vezes é PAGO na hora** (decisão do Heitor,
   2026-10-20): quem paga a clínica é a maquininha, então para o cliente está

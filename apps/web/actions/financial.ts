@@ -51,6 +51,7 @@ export async function createTransactionAdvanced(
     const dueDate       = str(formData, 'due_date') || null
     const notes         = str(formData, 'notes')
     const isPaid        = str(formData, 'is_paid') === 'true'
+    const paidOn        = str(formData, 'paid_on')
     const scheduleMode  = str(formData, 'schedule_mode') ?? 'single'
 
     if (!type)                return { error: 'Tipo é obrigatório.' }
@@ -124,7 +125,7 @@ export async function createTransactionAdvanced(
       // O núcleo (lib/financeiro/lancamento.ts) é o mesmo do Copilot.
       const r = await lancarCore(admin, ctx, {
         branchId, tipo: type, categoria: category, descricao: description, valor: amount,
-        formaDePagamento: paymentMethod, vencimento: dueDate, pago: isPaid, observacoes: notes,
+        formaDePagamento: paymentMethod, vencimento: dueDate, pago: isPaid, pagoEm: paidOn, observacoes: notes,
       })
       if ('error' in r) return { error: r.error }
     }

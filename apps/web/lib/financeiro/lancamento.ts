@@ -4,6 +4,7 @@ import { alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { vencimentoDoDia } from '@/lib/financeiro/vencimentos'
+import { dayKeyTZ } from '@/lib/datetime'
 
 /**
  * LANÇAR (receita ou despesa, à vista ou com vencimento) e DAR BAIXA — os
@@ -29,7 +30,22 @@ export interface NovoLancamento {
   /** "AAAA-MM-DD" (o dia), como o formulário manda. */
   vencimento?: string | null
   pago: boolean
+  /**
+   * Pago: o DIA do pagamento, "AAAA-MM-DD" (2026-10-21, decisão do Heitor).
+   * Sem ele, ou hoje, é agora; antes de hoje, o meio-dia daquele dia em
+   * Brasília. No futuro é recusado.
+   */
+  pagoEm?: string | null
   observacoes?: string | null
+}
+
+/** O `paid_at` do lançamento pago no dia escolhido. */
+export function pagoNoDia(pagoEm: string | null | undefined, agora = new Date()): string | { error: string } {
+  if (!pagoEm) return agora.toISOString()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(pagoEm)) return { error: 'Data do pagamento inválida.' }
+  const hoje = dayKeyTZ(agora)
+  if (pagoEm > hoje) return { error: 'A data do pagamento não pode ser no futuro.' }
+  return pagoEm === hoje ? agora.toISOString() : vencimentoDoDia(pagoEm)!
 }
 
 // O vencimento é um DIA, gravado ao meio-dia de Brasília (lib/financeiro/vencimentos.ts).
@@ -45,6 +61,8 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
   if (!l.categoria) return { error: 'Categoria é obrigatória.' }
   if (!l.descricao) return { error: 'Descrição é obrigatória.' }
   if (!l.valor || l.valor <= 0) return { error: 'Valor deve ser maior que zero.' }
+  const pagoEm = l.pago ? pagoNoDia(l.pagoEm) : null
+  if (pagoEm && typeof pagoEm !== 'string') return pagoEm
 
   const linha = await gravar(admin.from('financial_transactions').insert({
     branch_id:      l.branchId,
@@ -55,7 +73,7 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
     payment_method: l.formaDePagamento || null,
     due_date:       vencimentoDoDia(l.vencimento),
     is_paid:        l.pago,
-    paid_at:        l.pago ? new Date().toISOString() : null,
+    paid_at:        pagoEm,
     notes:          l.observacoes ?? null,
     created_by:     ctx.internalUserId,
   }).select('id').single(), 'registrar o lançamento') as { id: string }

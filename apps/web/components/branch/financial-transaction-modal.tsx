@@ -3,6 +3,7 @@
 import { useRef, useCallback, useActionState, useEffect, useState, useMemo, isValidElement } from 'react'
 import { X, TrendingUp, TrendingDown, Tag, CalendarClock } from 'lucide-react'
 import { createTransactionAdvanced } from '@/actions/financial'
+import { dayKeyTZ } from '@/lib/datetime'
 
 interface Props {
   branchId?:  string
@@ -62,6 +63,8 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   const [firstDueDate,   setFirstDueDate]   = useState('')
 
   const [state, formAction, pending] = useActionState(createTransactionAdvanced, undefined)
+  // Hoje no fuso da clínica, lido ao abrir (o "agora" muda entre aberturas).
+  const [hojeBR, setHojeBR] = useState(() => dayKeyTZ(new Date()))
 
   const grossAmount    = parsePtBR(rawAmount)
   const discountNumber = parsePtBR(discountVal)
@@ -79,6 +82,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
 
   const open = useCallback(() => {
     formRef.current?.reset()
+    setHojeBR(dayKeyTZ(new Date()))
     setType('INCOME')
     setIsPaid(true)
     setRawAmount('')
@@ -330,6 +334,15 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                   ))}
                 </div>
               </div>
+              {/* A data do pagamento (2026-10-21, decisão do Heitor): era sempre
+                  "agora", e a conta paga na semana passada caía no caixa de hoje. */}
+              {isPaid && scheduleMode === 'single' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label htmlFor="lanc-pago-em">Data do pagamento</Label>
+                  <input id="lanc-pago-em" name="paid_on" type="date" className="field"
+                    key={hojeBR} defaultValue={hojeBR} max={hojeBR} required />
+                </div>
+              )}
               {!isPaid && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Label htmlFor="lanc-vencimento">Vencimento</Label>
