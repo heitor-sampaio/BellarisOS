@@ -93,6 +93,8 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'templates', recurso: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
 
   { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
+  // O fechamento do dia (2026-10-21): quem recebe fecha; o financeiro vê.
+  { key: 'fechamento',   group: 'dinheiro',     label: 'Fechamento do dia', href: '/admin/fechamento', visible: p => recebe(p) || has(p, 'financial') },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
 
   // O funil comercial era uma entrada à parte (`/admin/comercial`). Virou a aba
@@ -130,6 +132,8 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // checkout do plano —, e desde que o caixa de abrir/fechar saiu não há mais
   // tela própria dele: quem só recebe entrava aqui e via a tela vazia.
   { key: 'financial',     group: 'dinheiro',    label: 'Financeiro',    href: '/financeiro',    visible: p => has(p, 'financial') },
+  // A tela de quem só RECEBE (cashier): o fechamento do dia (2026-10-21).
+  { key: 'fechamento',    group: 'dinheiro',    label: 'Fechamento do dia', href: '/fechamento', visible: p => recebe(p) || has(p, 'financial') },
   { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },

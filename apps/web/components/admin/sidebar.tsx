@@ -6,7 +6,7 @@ import {
   Settings, LogOut, KeyRound, Sparkles, Ticket, Boxes, Contact, CreditCard, Layers, Megaphone,
   UsersRound, Bell, ChevronLeft, ChevronRight, Inbox, FileText, ClipboardCheck, ClipboardList,
   Syringe, Workflow,
-  FileSignature,
+  FileSignature, Wallet,
 } from 'lucide-react'
 import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
 import { logoutAction } from '@/actions/auth'
@@ -28,6 +28,7 @@ const ICONS: Record<string, React.ReactNode> = {
   checkout:     <ClipboardCheck size={18} />,
   reports:      <BarChart3  size={18} />,
   financial:    <CreditCard size={18} />,
+  fechamento: <Wallet size={18} />,
   stock:        <Boxes      size={18} />,
   procedures:   <Sparkles   size={18} />,
   pacotes:      <Ticket     size={18} />,

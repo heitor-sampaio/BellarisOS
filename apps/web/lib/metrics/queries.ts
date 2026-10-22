@@ -269,6 +269,36 @@ export async function getAPagar(args: Args): Promise<number> {
   return n(data)
 }
 
+export interface LinhaDoFechamento { forma: string; entradas: number; saidas: number; saldo: number; lancamentos: number }
+export interface FechamentoDoDia {
+  /** Uma linha por forma de pagamento (CASH, PIX…; SEM_FORMA = pago com pontos/sem forma). */
+  formas: LinhaDoFechamento[]
+  total:  LinhaDoFechamento
+  /** O dinheiro em espécie que deve estar na gaveta: o saldo de CASH do dia. */
+  esperadoDinheiro: number
+}
+
+/**
+ * O dia da unidade por forma de pagamento (`metrics_fechamento_do_dia`,
+ * 2026-10-21): entradas pela regra de receita de sempre, saídas pagas, estorno
+ * fora dos dois lados. O total vem do banco.
+ */
+export async function getFechamentoDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<FechamentoDoDia> {
+  const { data, error } = await createAdminClient().rpc('metrics_fechamento_do_dia', {
+    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  })
+  logRpcError('metrics_fechamento_do_dia', error)
+  const linhas = ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
+    forma: String(r.forma), entradas: n(r.entradas), saidas: n(r.saidas), saldo: n(r.saldo), lancamentos: n(r.lancamentos),
+  }))
+  const total = linhas.find(l => l.forma === 'TOTAL') ?? { forma: 'TOTAL', entradas: 0, saidas: 0, saldo: 0, lancamentos: 0 }
+  return {
+    formas: linhas.filter(l => l.forma !== 'TOTAL').sort((x, y) => y.entradas - x.entradas),
+    total,
+    esperadoDinheiro: linhas.find(l => l.forma === 'CASH')?.saldo ?? 0,
+  }
+}
+
 export interface ComposicaoFinanceira {
   /** Receita paga por forma de pagamento (método do banco: PIX, CASH…). */
   formas:   { chave: string; valor: number }[]

@@ -139,7 +139,8 @@ o procedimento avulso pago antes.
 ---
 
 ### 9.6 Financeiro
-- **Não existe caixa de abrir e fechar.** Foi removido em 2026-09-18: quase
+- **Não existe caixa de ABRIR** (o fechamento do dia, abaixo, é outra coisa:
+  conferência, não gaveta aberta). O caixa de abrir e fechar foi removido em 2026-09-18: quase
   nada é recebido em dinheiro vivo (a rede opera em Pix e cartão), e a
   conferência que o fechamento existia para fazer — contar a gaveta e comparar
   com o esperado — não tinha gaveta para contar. A auditoria do dia é a própria
@@ -147,6 +148,20 @@ o procedimento avulso pago antes.
   A tabela `cash_registers` e a coluna `financial_transactions.cash_register_id`
   continuam no banco com o histórico do que já passou por lá; nada novo é
   escrito nelas. Registro financeiro não se apaga.
+- **O FECHAMENTO DO DIA** (2026-10-21, decisão do Heitor — sem abertura):
+  Dinheiro e estoque → "Fechamento do dia" (`/[slug]/fechamento` e
+  `/admin/fechamento?unidade=`, corpo em `app/_shared/fechamento-do-dia.tsx`).
+  O dia da unidade por forma de pagamento — entradas (a regra de
+  `metrics_receitas_pagas`), saídas pagas e saldo, com o total, tudo de
+  `metrics_fechamento_do_dia` (`getFechamentoDoDia`) —, o dinheiro em espécie
+  esperado (o saldo de `CASH`), a contagem e quem fechou.
+  - Vê quem recebe ou tem `financial`; FECHA quem recebe (`podeReceber`,
+    `fecharODia` em `actions/fechamento.ts`). É a tela de quem só tem
+    `cashier`, que até aqui não tinha nenhuma.
+  - Cada fechamento é um REGISTRO em `fechamentos_do_dia` (com o retrato do
+    resumo, refeito no servidor; a diferença é coluna gerada). Fechar de novo
+    não apaga o anterior — vale o mais recente. Dia futuro não fecha.
+  - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - O módulo `cashier` **sobreviveu com outro significado**: RECEBER o pagamento
   do atendimento e do plano, na recepção. Não abre tela nenhuma por si só — o
   financeiro da unidade e o da rede pedem `financial`. `podeReceber` (cashier OU
