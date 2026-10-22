@@ -115,8 +115,10 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
     const inProgress = todayEvents.find(e => e.status === 'IN_PROGRESS')
     if (inProgress) return { ev: inProgress, label: 'Em atendimento agora' }
     const now = today.getTime()
+    // O já concluído (atendido antes da hora) também sai: o destaque dizia
+    // "Próximo atendimento" de quem já tinha ido embora (simulação, 2026-10-20).
     const next = todayEvents
-      .filter(e => parseISO(e.start).getTime() > now && e.status !== 'CANCELLED' && e.status !== 'NO_SHOW')
+      .filter(e => parseISO(e.start).getTime() > now && !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(e.status))
       .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())[0]
     if (next) return { ev: next, label: 'Próximo atendimento' }
     return null
