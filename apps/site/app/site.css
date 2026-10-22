@@ -620,12 +620,12 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-topo-h) + 12
 .site-movimento .site-demo-digitado { animation: site-digita 1500ms steps(36, end) both; }
 @keyframes site-digita { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
-/* ─── E ainda: a luz que segue o mouse e o ícone que responde ─── */
+/* ─── E ainda: a luz que segue o mouse (só em [data-luz]) e o ícone que responde ─── */
 .site-item { transition: translate var(--site-mov-rapido) var(--site-curva), border-color var(--site-mov-rapido) ease; }
 .site-item-icone { transition: transform var(--site-mov-rapido) var(--site-curva-mola), background-color var(--site-mov-rapido) ease, color var(--site-mov-rapido) ease; }
 @media (hover: hover) {
-  .site-item:hover {
-    border-color: var(--brand-soft-border);
+  .site-item:hover { border-color: var(--brand-soft-border); }
+  .site-item[data-luz]:hover {
     background: radial-gradient(260px circle at var(--luz-x, 50%) var(--luz-y, 0%), var(--brand-soft), transparent 70%), var(--surface);
   }
   .site-item:hover .site-item-icone { background: var(--brand); color: var(--on-brand); }

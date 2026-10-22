@@ -83,3 +83,15 @@ test('as demonstrações conversam quando chegam na tela', async ({ page }) => {
       { timeout: 15_000, message: `a demonstração ${nome} não andou` }).toBeGreaterThan(2)
   }
 })
+
+// Pedido do Heitor (2026-10-22): no "Fácil de usar", o fundo do cartão não ganha
+// o brilho rosé que seguia o mouse — o cartão responde só pela borda e pelo ícone.
+test('"Fácil de usar": o cartão sob o mouse fica com o fundo liso', async ({ page }) => {
+  await page.goto('/')
+  const cartao = page.locator('#facil .site-item').first()
+  await cartao.scrollIntoViewIfNeeded()
+  await expect.poll(() => cartao.evaluate(e => getComputedStyle(e).opacity)).toBe('1')
+  await cartao.hover({ position: { x: 40, y: 40 } })
+  await page.mouse.move((await cartao.boundingBox())!.x + 60, (await cartao.boundingBox())!.y + 50)
+  expect(await cartao.evaluate(e => getComputedStyle(e).backgroundImage)).toBe('none')
+})

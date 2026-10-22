@@ -267,7 +267,8 @@ export function Facil() {
         </div>
         <div className="site-grade site-grade-3">
           {FACIL.map(({ icone: Icone, titulo, texto }, i) => (
-            <div key={titulo} className="site-item" data-revelar data-luz style={ordem(i % 3)}>
+            // Sem a luz que segue o mouse (pedido do Heitor, 2026-10-22).
+            <div key={titulo} className="site-item" data-revelar style={ordem(i % 3)}>
               <span className="site-item-icone" aria-hidden="true"><Icone size={19} /></span>
               <h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>{titulo}</h3>
               <p>{texto}</p>
