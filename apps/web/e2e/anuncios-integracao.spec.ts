@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { subirGraphFalsa, type GraphFalsa } from './apoio/graph-falsa'
+import { decifrarSegredos, temSegredoEmTextoPuro } from '../lib/integracoes/cofre'
 
 /**
  * A integração de anúncios pela tela: a volta do OAuth da Meta, a escolha da
@@ -29,9 +30,16 @@ const db = () => banco()
 interface Fx { graph: GraphFalsa; outra: OutraRede; config: MembroDeTeste; leitor: MembroDeTeste }
 let f: Fx | null = null
 
-const integracao = async (provider: 'meta_ads' | 'google_ads') =>
+/** A linha como está NO BANCO (os segredos cifrados). */
+const crua = async (provider: 'meta_ads' | 'google_ads') =>
   (await db().from('integration_configs').select('config, is_active')
     .eq('tenant_id', f!.outra.tenantId).eq('provider', provider).maybeSingle()).data
+
+/** A linha como o servidor a usa: os segredos decifrados (lib/integracoes/cofre). */
+const integracao = async (provider: 'meta_ads' | 'google_ads') => {
+  const linha = await crua(provider)
+  return linha && { ...linha, config: decifrarSegredos(linha.config as Record<string, unknown>) }
+}
 
 const eventos = async (nome: string) =>
   (await db().from('domain_events').select('id').eq('tenant_id', f!.outra.tenantId).eq('nome', nome)).data?.length ?? 0
@@ -204,6 +212,10 @@ test.describe.serial('integração de anúncios pela tela', () => {
       await cartao.getByRole('button', { name: 'Salvar', exact: true }).click()
       await expect.poll(async () => (await integracao('google_ads'))?.is_active).toBe(true)
       expect((await integracao('google_ads'))!.config).toEqual(campos)
+      // No banco, os três segredos ficam CIFRADOS (2026-10-23): quem tiver só o
+      // banco não leva a credencial do Google.
+      expect(temSegredoEmTextoPuro((await crua('google_ads'))!.config), 'nenhum segredo em texto no banco').toBe(false)
+      expect(JSON.stringify((await crua('google_ads'))!.config)).not.toContain(`dev-${marca}`)
 
       // Pela action, com chaves que a tela não manda: só as cinco gravam.
       await chamarAcao(p, 'actions/integrations.ts', 'saveAdsConfig', '/admin/settings',

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { decifrarSegredos } from '@/lib/integracoes/cofre'
 import type { ChannelKind, SendProvider } from './types'
 import { MetaMessagingProvider, type MetaMessagingConfig } from '@/lib/meta/messaging'
 
@@ -94,7 +95,8 @@ export async function getMetaMessagingConfig(
 
   if (error) { console.error('[getMetaMessagingConfig]', error.message); return null }
   if (!data) return null
-  return { provider: 'meta_messaging', ...(data.config as object) } as MetaMessagingConfig
+  // O token de cada página vem CIFRADO do banco (lib/integracoes/cofre.ts).
+  return { provider: 'meta_messaging', ...decifrarSegredos(data.config as Record<string, unknown>) } as MetaMessagingConfig
 }
 
 /**
@@ -119,7 +121,8 @@ export async function getTenantPorPagina(
     const achou = (config.pages ?? []).some(
       p => p.pageId === id || p.igUserId === id,
     )
-    if (achou) return { tenantId: row.tenant_id, config }
+    // Só a rede que casou tem o token decifrado (lib/integracoes/cofre.ts).
+    if (achou) return { tenantId: row.tenant_id, config: { provider: 'meta_messaging', ...decifrarSegredos(row.config) } as MetaMessagingConfig }
   }
   return null
 }

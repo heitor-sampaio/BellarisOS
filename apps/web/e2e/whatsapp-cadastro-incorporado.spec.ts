@@ -5,6 +5,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { subirGraphFalsa, type GraphFalsa } from './apoio/graph-falsa'
+import { decifrarSegredos, temSegredoEmTextoPuro } from '../lib/integracoes/cofre'
 
 /**
  * O cadastro incorporado da Meta (Embedded Signup) e a coexistência.
@@ -87,9 +88,16 @@ async function como<T>(browser: Browser, quem: 'config' | 'leitor', fn: (p: Page
 const conectar = (p: Page, pedido: Record<string, unknown>) =>
   chamarAcao(p, 'actions/integrations.ts', 'conectarWhatsAppPelaMeta', '/admin/settings', [pedido])
 
-const caixa = async (foneId: string) =>
+/** A caixa como está NO BANCO (os segredos cifrados). */
+const caixaCrua = async (foneId: string) =>
   (await db().from('whatsapp_numbers').select('id, config, is_active, is_default, label, waba_id')
     .eq('tenant_id', f!.outra.tenantId).eq('phone_number_id', foneId).maybeSingle()).data
+
+/** A caixa como o servidor a usa: o token e o PIN decifrados (lib/integracoes/cofre). */
+const caixa = async (foneId: string) => {
+  const linha = await caixaCrua(foneId)
+  return linha && { ...linha, config: decifrarSegredos(linha.config as Record<string, unknown>) }
+}
 
 /** Entrega assinada com o segredo do app, como a Meta faz. */
 async function entregar(p: Page, campo: string, valor: Record<string, unknown>) {
@@ -139,6 +147,9 @@ test.describe.serial('WhatsApp pelo cadastro incorporado da Meta', () => {
       accessToken: TOKEN, wabaId: WABA, phoneNumberId: FONE_ID, businessId: '777',
     })
     expect((linha?.config as Record<string, unknown>).appSecret, 'sem segredo próprio').toBeUndefined()
+    // No banco, o token de negócio da Meta fica CIFRADO (2026-10-23).
+    expect(temSegredoEmTextoPuro((await caixaCrua(FONE_ID))!.config), 'o token no banco é cifrado').toBe(false)
+    expect(JSON.stringify((await caixaCrua(FONE_ID))!.config)).not.toContain(TOKEN)
 
     const troca = f!.graph.terminadasEm('/oauth/access_token').at(-1)
     expect(troca?.corpo).toMatchObject({ code: 'cod-coex' })

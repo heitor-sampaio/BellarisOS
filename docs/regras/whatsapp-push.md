@@ -208,6 +208,28 @@ vira o marcador `SEGREDO_GUARDADO`, e salvar com ele mantém o do banco
 (`mesclarSegredos` em `salvarNumeroWhatsApp` e `saveAdsConfig`). Chave nova de
 credencial entra na lista, senão volta para a tela.
 
+⚠️ **A credencial mora CIFRADA no banco** (2026-10-23, decisão do Heitor;
+`lib/integracoes/cofre.ts`). Cada segredo da mesma lista fechada
+(`ehChaveSecreta`) vai ao banco por `cifrarSegredos` — AES-256-GCM com a
+`CREDENCIAIS_CHAVE`, que mora FORA do banco (Railway, `.env.local`, secret
+`e2e` do GitHub) — e o servidor lê por `decifrarSegredos`. Quem tiver só o
+banco (dump, backup, a senha do Postgres) vê `cifrado:v1:…`.
+- As leituras passam pelas fábricas (`numeroDaLinha` em `lib/whatsapp/factory`,
+  `getAdsConfig`, `getMetaMessagingConfig`, `getTenantPorPagina`), que já
+  decifram. Consulta direta às duas tabelas que USE o segredo decifra por si.
+- Toda gravação de `config` passa por `cifrarSegredos` — também a que regrava o
+  `config` lido (ele é idempotente: o que já está cifrado, fica).
+- O texto puro antigo é lido como está (as linhas de antes, e o que os specs
+  semeiam direto no banco). `scripts/cifrar-credenciais.ts` passa pelas antigas.
+- Sem a chave, gravar segredo PARA (nunca em texto puro); chave errada ou texto
+  adulterado PARAM a leitura (o GCM confere).
+- ⚠️ Perder a chave é reconectar todas as integrações: ela tem cópia com o
+  Heitor. Trocar de chave é um `cifrado:v2:` lido ao lado do v1.
+- Prova: `tests/cofre-de-credenciais.test.ts`; no banco,
+  `e2e/anuncios-integracao.spec.ts` (Google Ads), `whatsapp-conexao-nova`
+  (o token da instância, e a uazapi recebendo o decifrado) e
+  `whatsapp-cadastro-incorporado` (o token da Meta).
+
 ⚠️ **O `config` de uma integração só grava as chaves do provedor**
 (`CHAVES_DA_CONFIG` nas caixas, `CHAVES_DO_ADS` nos anúncios), e a
 `baseUrl` tem de ser `https` e pública (`enderecoPublico`). O servidor
@@ -346,6 +368,8 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Gravar config de integração com chave fora da lista do provedor, ou baseUrl não pública (SSRF)
+❌ Gravar config de integração sem cifrarSegredos, ou usar um segredo lido direto do banco sem decifrarSegredos
+❌ Criar chave de credencial fora de CHAVES_SECRETAS (sem-segredo.ts): ela iria à tela E ao banco em texto puro
 ❌ Gravar mensagem de saída sem whatsapp_number_id (texto, template e mídia levam a caixa que enviou)
 ❌ Criar a caixa do cadastro incorporado com os ids que o navegador mandou sem conferir com o token (/{waba}/phone_numbers)
 ❌ Carregar o SDK da Meta fora da tela que o usa (layout, portal, página pública) ou com logPageView — a visita vai para a Meta

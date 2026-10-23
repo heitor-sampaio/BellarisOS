@@ -4,6 +4,7 @@ import type {
 } from './types'
 import { UazapiProvider } from './uazapi'
 import { OfficialAPIProvider } from './official'
+import { decifrarSegredos } from '@/lib/integracoes/cofre'
 
 export function resolveProvider(config: WhatsAppConfig): WhatsAppProvider {
   if (config.provider === 'uazapi')   return new UazapiProvider(config)
@@ -58,7 +59,8 @@ function numeroDaLinha(l: LinhaDoNumero): NumeroDeWhatsApp {
     isDefault: l.is_default,
     isActive:  l.is_active,
     managed:   l.managed,
-    config: { ...(l.config as object), provider: l.provider } as WhatsAppConfig,
+    // Os segredos vêm CIFRADOS do banco (lib/integracoes/cofre.ts).
+    config: { ...decifrarSegredos(l.config), provider: l.provider } as WhatsAppConfig,
   }
 }
 
@@ -175,7 +177,7 @@ export async function getNumeroPorTokenUazapi(
 
   const recebido = Buffer.from(token)
   for (const linha of linhas(data)) {
-    const guardado = linha.config?.token
+    const guardado = decifrarSegredos(linha.config).token
     if (typeof guardado !== 'string' || !guardado) continue
 
     // Comparação em tempo constante: o token é credencial, não identificador.

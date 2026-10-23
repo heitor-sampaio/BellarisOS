@@ -5,6 +5,7 @@ import { getTenantContext, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { MetaMessagingPage } from '@/lib/meta/messaging'
 import { origemPublica, urlPublica } from '@/lib/origem'
+import { cifrarSegredos } from '@/lib/integracoes/cofre'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
 const BACK  = '/admin/settings?tab=integrations'
@@ -86,7 +87,8 @@ export async function GET(req: NextRequest) {
       .upsert({
         tenant_id:  ctx.tenantId!,
         provider:   produto === 'mensagens' ? 'meta_messaging' : 'meta_ads',
-        config,
+        // O token da Meta vai CIFRADO ao banco (lib/integracoes/cofre.ts).
+        config:     cifrarSegredos(config),
         is_active:  false,   // só ativa depois de escolher conta/página na tela
         updated_at: new Date().toISOString(),
       }, { onConflict: 'tenant_id,provider' })

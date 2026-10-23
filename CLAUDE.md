@@ -623,6 +623,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Validar o destino `next` de um link com startsWith('/') — é caminhoInterno (lib/origem; `/\x.com` e tab viram `//x.com`)
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
+❌ Gravar config de integração sem cifrarSegredos (lib/integracoes/cofre.ts) — o token iria em texto ao banco
 ❌ Action que manda algo ao PACIENTE (mensagem, campanha, link, pedido de assinatura) sem bloqueioDoSuporte
 ❌ Tabela clínica nova sem a política RESTRICTIVE suporte_sem_clinico
 ❌ Tabela nova sem as políticas RESTRICTIVE suporte_sem_escrita_ins/_upd/_del (a sessão de suporte gravaria pelo PostgREST; o laço está em 20261008000010)

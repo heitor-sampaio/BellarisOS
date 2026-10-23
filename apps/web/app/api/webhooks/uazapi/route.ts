@@ -7,6 +7,7 @@ import {
   resolveConversation, insertInboundMessage, updateMessageStatus, applyMessageEdit,
 } from '@/lib/inbox/resolve-conversation'
 import { ler } from '@/lib/db'
+import { cifrarSegredos } from '@/lib/integracoes/cofre'
 
 /**
  * Webhook da uazapi.
@@ -145,7 +146,8 @@ async function tratarConexao(
     .from('whatsapp_numbers')
     .update({
       is_active:  conectado,
-      config:     conectado && phone ? { ...atual, connectedPhone: phone } : atual,
+      // `atual` vem como está no banco; o que ainda estiver em texto sai cifrado.
+      config:     cifrarSegredos(conectado && phone ? { ...atual, connectedPhone: phone } : atual),
       // A coluna é a verdade para quem lê; o campo no jsonb sobrevive porque é
       // o que a tela de configuração ainda mostra.
       ...(conectado && phone ? { phone_e164: phone } : {}),

@@ -14,6 +14,7 @@ import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { getNumero } from '@/lib/whatsapp/factory'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { gravar, ler, tentar } from '@/lib/db'
+import { cifrarSegredos } from '@/lib/integracoes/cofre'
 import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
 import { dispararHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
 
@@ -311,10 +312,10 @@ export async function criarConexaoUazapi(
     managed:      true,
   }
 
-  // (3) A credencial na linha.
+  // (3) A credencial na linha — o token vai CIFRADO (lib/integracoes/cofre.ts).
   const { error } = await admin
     .from('whatsapp_numbers')
-    .update({ config, updated_at: new Date().toISOString() })
+    .update({ config: cifrarSegredos(config), updated_at: new Date().toISOString() })
     .eq('id', numeroId)
 
   if (error) {
@@ -332,7 +333,7 @@ export async function criarConexaoUazapi(
   try {
     await configurarWebhook(base, criada.token, `${appUrl}/api/webhooks/uazapi`)
     await gravar(admin.from('whatsapp_numbers')
-      .update({ config: { ...config, webhookAppliedAt: new Date().toISOString() } })
+      .update({ config: cifrarSegredos({ ...config, webhookAppliedAt: new Date().toISOString() }) })
       .eq('id', numeroId), 'salvar a conexão do WhatsApp')
   } catch (e) {
     console.error('[criarConexaoUazapi] webhook:', e)
@@ -350,7 +351,7 @@ export async function criarConexaoUazapi(
     try {
       await definirProxy(base, criada.token, proxyUrl)
       await gravar(admin.from('whatsapp_numbers')
-        .update({ config: { ...config, proxyUrl, proxyAppliedAt: new Date().toISOString() } })
+        .update({ config: cifrarSegredos({ ...config, proxyUrl, proxyAppliedAt: new Date().toISOString() }) })
         .eq('id', numeroId), 'salvar a conexão do WhatsApp')
     } catch (e) {
       console.error('[criarConexaoUazapi] proxy:', e)
@@ -470,7 +471,8 @@ async function marcarConectada(
   const { error } = await admin
     .from('whatsapp_numbers')
     .update({
-      config:     { ...semProvider, connectedPhone: phone, connectedName: name },
+      // `numero.config` chegou DECIFRADO (getNumero): volta cifrado ao banco.
+      config:     cifrarSegredos({ ...semProvider, connectedPhone: phone, connectedName: name }),
       phone_e164: phone,
       // O rótulo automático segue o nome do WhatsApp enquanto ninguém deu um
       // nome próprio à caixa. Rótulo escolhido pela rede nunca é sobrescrito.

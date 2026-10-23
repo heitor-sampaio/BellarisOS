@@ -9,6 +9,7 @@ import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integr
 import { ler } from '@/lib/db'
 import { enderecoPublico } from '@/lib/whatsapp/endereco-publico'
 import { mascararSegredos, mesclarSegredos } from '@/lib/integracoes/sem-segredo'
+import { cifrarSegredos, decifrarSegredos } from '@/lib/integracoes/cofre'
 import { conectarPeloCadastro } from '@/lib/whatsapp/cadastro-incorporado'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import { acompanharCatalogos } from '@/lib/templates/catalogo'
@@ -124,14 +125,16 @@ export async function salvarNumeroWhatsApp(
   }
   let rotulo = rotuloDaConexao(nome)
   if (provider === 'official' && rotulo === nome.padrao) {
-    rotulo = rotuloDaConexao({ ...nome, daMeta: await nomeDoNumeroNaMeta(cleanConfig) })
+    // O segredo mantido pelo marcador vem CIFRADO do banco: a Meta recebe o texto.
+    rotulo = rotuloDaConexao({ ...nome, daMeta: await nomeDoNumeroNaMeta(decifrarSegredos(cleanConfig)) })
   }
 
   const campos = {
     tenant_id:       ctx.tenantId!,
     provider,
     label:           rotulo,
-    config:          cleanConfig,
+    // Os segredos vão CIFRADOS ao banco (lib/integracoes/cofre.ts).
+    config:          cifrarSegredos(cleanConfig),
     phone_number_id: cleanConfig.phoneNumberId ?? null,
     waba_id:         cleanConfig.wabaId ?? null,
     is_active:       isActive,
@@ -363,7 +366,7 @@ export async function saveAdsConfig(
     .upsert({
       tenant_id:  ctx.tenantId!,
       provider,
-      config:     cleanConfig,
+      config:     cifrarSegredos(cleanConfig),
       is_active:  isActive,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'tenant_id,provider' })
@@ -419,7 +422,7 @@ export async function confirmMetaAdsSelection(
   const { error } = await admin
     .from('integration_configs')
     .update({
-      config: {
+      config: cifrarSegredos({
         access_token:    prev.access_token,
         meta_user_name:  prev.meta_user_name ?? '',
         adAccountId,
@@ -428,7 +431,7 @@ export async function confirmMetaAdsSelection(
         pixelName:       pixelName ?? '',
         // Costura do E2E (a Graph falsa): some se não estava lá.
         ...(typeof prev.graphBase === 'string' ? { graphBase: prev.graphBase } : {}),
-      },
+      }),
       is_active:  true,
       updated_at: new Date().toISOString(),
     })
@@ -464,7 +467,7 @@ export async function fetchMetaAdAccounts(): Promise<{
     .eq('provider', 'meta_ads')
     .maybeSingle(), 'buscar a integração')
 
-  const cfg = (data?.config ?? {}) as Record<string, unknown>
+  const cfg = decifrarSegredos(data?.config as Record<string, unknown> | null)
   const token = cfg.access_token as string | undefined
   if (!token) return { ok: false, error: 'Token não encontrado. Reconecte com o Facebook.' }
 
@@ -563,7 +566,7 @@ export async function confirmMetaPageSelection(
   const { error } = await admin
     .from('integration_configs')
     .update({
-      config:     { ...prev, activePageId: pageId },
+      config:     cifrarSegredos({ ...prev, activePageId: pageId }),
       is_active:  true,
       updated_at: new Date().toISOString(),
     })

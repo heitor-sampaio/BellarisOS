@@ -18,6 +18,10 @@
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=         # apenas server-side
+CREDENCIAIS_CHAVE=                 # SÓ no serviço BellarisOS (a clínica): 32 bytes em base64.
+                                   # Cifra os tokens de integração no banco (lib/integracoes/cofre.ts).
+                                   # A MESMA no .env.local e no secret `e2e` do GitHub. Perdê-la é
+                                   # reconectar toda integração: tem cópia com o Heitor.
 
 # Redis
 UPSTASH_REDIS_REST_URL=

@@ -3,6 +3,7 @@ import { conferirLimite, DIGEST_LIMITE_DO_PLANO } from '@estetica-os/nucleo/lib/
 import { randomInt } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, tentar } from '@/lib/db'
+import { cifrarSegredos, decifrarSegredos } from '@/lib/integracoes/cofre'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
 import { nomeDaMeta, rotuloDaConexao } from './rotulo'
@@ -157,7 +158,8 @@ export async function conectarPeloCadastro(
 
   // No ar, o PIN de duas etapas é o que já vale (o da conexão anterior, se foi
   // por aqui); só o número novo ganha um, e só ele é registrado.
-  const pinAtual = (existente?.config as { pin?: unknown } | null)?.pin
+  // O PIN guardado vem CIFRADO do banco (lib/integracoes/cofre.ts).
+  const pinAtual = decifrarSegredos(existente?.config as Record<string, unknown> | null).pin
   const pin = pedido.modo !== 'cloud_api' ? undefined
     : noAr ? (typeof pinAtual === 'string' ? pinAtual : undefined)
     : String(randomInt(0, 1_000_000)).padStart(6, '0')
@@ -177,7 +179,8 @@ export async function conectarPeloCadastro(
   const campos = {
     tenant_id: tenantId, provider: 'official', label: rotulo,
     phone_e164: telefone, phone_number_id: pedido.phoneNumberId, waba_id: pedido.wabaId,
-    config, is_active: noAr, updated_at: new Date().toISOString(),
+    // O token de negócio e o PIN vão CIFRADOS ao banco.
+    config: cifrarSegredos(config), is_active: noAr, updated_at: new Date().toISOString(),
   }
 
   // No ar: a caixa fica como está até a Meta aceitar; aí entra tudo numa escrita.

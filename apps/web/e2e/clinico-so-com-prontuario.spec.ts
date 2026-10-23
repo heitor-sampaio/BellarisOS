@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { decifrarSegredos } from '../lib/integracoes/cofre'
 
 /**
  * Dado clínico só com o módulo de prontuário, e credencial nunca na tela
@@ -243,6 +244,7 @@ test.describe.serial('credencial de integração fora da tela', () => {
         [f!.numeroId, 'uazapi', { token: MARCADOR, baseUrl: 'https://e2e.invalido' }, false])
     })
     const { data } = await db().from('whatsapp_numbers').select('config').eq('id', f!.numeroId).single<{ config: Record<string, string> }>()
-    expect(data!.config.token).toBe(TOKEN)
+    // No banco ele mora CIFRADO (lib/integracoes/cofre.ts): o que se compara é o decifrado.
+    expect(decifrarSegredos(data!.config).token).toBe(TOKEN)
   })
 })

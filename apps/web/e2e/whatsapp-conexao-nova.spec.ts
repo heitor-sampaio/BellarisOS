@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
 import { subirUazapiFalsa, PORTA_DA_UAZAPI_FALSA, type UazapiFalsa } from './apoio/uazapi-falsa'
+import { decifrarSegredos, PREFIXO_CIFRADO } from '../lib/integracoes/cofre'
 
 /**
  * "Adicionar número" pela conexão gerenciada abre uma instância NOVA
@@ -84,6 +85,15 @@ test('"Adicionar número" cria uma instância nova e mostra o QR dela, não a co
   expect(data, 'a caixa nova, gerenciada e ainda não pareada').toEqual([
     expect.objectContaining({ managed: true, is_active: false }),
   ])
+
+  // O token da instância nova fica CIFRADO no banco (2026-10-23: quem tiver só
+  // o banco não leva a credencial) — e o que vai à uazapi, quando a tela
+  // consulta a conexão, é o decifrado.
+  const { data: nova } = await banco().from('whatsapp_numbers').select('config')
+    .eq('id', data![0]!.id).single<{ config: Record<string, string> }>()
+  expect(nova!.config.token?.startsWith(PREFIXO_CIFRADO), 'o token no banco é cifrado').toBe(true)
+  const token = decifrarSegredos(nova!.config).token
+  await expect.poll(() => falsa.para('/instance/status').map(c => c.token), 'a consulta leva o token decifrado').toContain(token)
 })
 
 const FONE_DO_HISTORICO = `5549${String(Date.now()).slice(-9)}`

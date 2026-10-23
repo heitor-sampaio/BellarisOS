@@ -1493,6 +1493,22 @@ verificador do Supabase acusava três coisas:
 Sobra só `planos_do_site`, aberta de propósito (o site a lê sem login).
 Migration `20261023000002`; sem comportamento novo, sem teste novo.
 
+### 2026-10-23 — Quem tiver só o banco não leva as credenciais
+
+A conversa seguiu para "e se alguém tiver acesso ao banco em si?". Feito:
+- **A porta direta do Postgres**: o app só fala com o banco por HTTPS.
+  `DATABASE_URL` e `DIRECT_URL` (cópias da senha do Postgres que nada lia)
+  saíram do Railway; as Network Restrictions do Supabase ficam com o Heitor
+  no painel.
+- **Os tokens de integração cifrados** (decisão do Heitor: a chave no Railway,
+  não o Vault — o Vault é lido por quem entra no banco como administrador).
+  `lib/integracoes/cofre.ts`: AES-256-GCM com a `CREDENCIAIS_CHAVE`, só os
+  segredos da lista fechada (`ehChaveSecreta`), lendo também o texto puro
+  antigo. Toda gravação de `config` em `integration_configs` e
+  `whatsapp_numbers` cifra; as fábricas decifram. `scripts/cifrar-credenciais.ts`
+  passa pelas linhas antigas (ensaio por padrão; confere a ida e volta antes de
+  gravar). Regras em `docs/regras/whatsapp-push.md`.
+
 ### 2026-10-22 — O CSP da clínica passa a bloquear
 
 Pedido do Heitor. O CSP estava em modo de aviso desde 2026-10-08. Os avisos de
@@ -6685,8 +6701,11 @@ verdade. O que vale:
 - **Conferir no texto do site**: o "combinamos o plano" do fim do teste, o
   app Android citado como disponível, e se a política de privacidade já tem
   razão social e CNPJ.
-- **Proteção de dados** (2026-10-23): ligar no Supabase a proteção contra
-  senha vazada (Authentication → Password security); verificação em duas
+- **Proteção de dados** (2026-10-23): Network Restrictions no Supabase
+  (Database → fechar a conexão direta) e SSL Enforcement; apagar no Railway os
+  NOMES `DATABASE_URL` e `DIRECT_URL` (os valores já estão vazios); guardar a
+  `CREDENCIAIS_CHAVE` num gerenciador de senhas; ligar no Supabase a proteção
+  contra senha vazada (Authentication → Password security); verificação em duas
   etapas nas contas do Supabase, Railway, GitHub, Cloudflare e no e-mail
   delas. Em aberto, para decidir: verificação em duas etapas na equipe da
   clínica (obrigatória para o admin da rede e quem vê prontuário?), um

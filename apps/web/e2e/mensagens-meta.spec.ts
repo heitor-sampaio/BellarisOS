@@ -6,6 +6,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { subirGraphFalsa, type GraphFalsa } from './apoio/graph-falsa'
 import { subirUazapiFalsa, type UazapiFalsa } from './apoio/uazapi-falsa'
+import { decifrarSegredos } from '../lib/integracoes/cofre'
 
 /**
  * O que faltava da P5: template, mídia, entrada pelo Instagram e os crons
@@ -210,8 +211,10 @@ test.describe.serial('mensagens pela Meta e crons', () => {
       chamarAcao(page, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings',
         // Inativa: ativar emitiria "integração conectada" na corrente da rede.
         [null, 'uazapi', config, false, { rotulo: `${PREFIXO} Config ${marca} ${sufixo}` }])
-    const caixas = async () => (await db().from('whatsapp_numbers').select('label, config')
-      .like('label', `${PREFIXO} Config ${marca}%`)).data ?? []
+    // O token mora CIFRADO no banco (lib/integracoes/cofre.ts): compara-se o decifrado.
+    const caixas = async () => ((await db().from('whatsapp_numbers').select('label, config')
+      .like('label', `${PREFIXO} Config ${marca}%`)).data ?? [])
+      .map(c => ({ ...c, config: decifrarSegredos(c.config as Record<string, unknown>) }))
     try {
       // O servidor faz a chamada para esse endereço: aceitar um interno é dar à
       // clínica um jeito de o app falar com a rede de dentro (SSRF).

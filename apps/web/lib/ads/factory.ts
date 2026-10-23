@@ -3,6 +3,7 @@ import { MetaAdsProvider } from './meta'
 import { GoogleAdsProvider } from './google'
 import type { AdsConfig, MetaAdsConfig, GoogleAdsConfig, AdsProvider } from './types'
 import { ler } from '@/lib/db'
+import { decifrarSegredos } from '@/lib/integracoes/cofre'
 
 export async function getAdsConfig(
   tenantId: string,
@@ -19,7 +20,8 @@ export async function getAdsConfig(
 
   if (!data) return null
 
-  const raw = data.config as Record<string, unknown>
+  // Os segredos vêm CIFRADOS do banco (lib/integracoes/cofre.ts).
+  const raw = decifrarSegredos(data.config as Record<string, unknown>)
 
   if (data.provider === 'meta_ads') {
     return {

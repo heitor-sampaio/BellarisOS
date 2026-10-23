@@ -42,6 +42,9 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # O cofre das credenciais (lib/integracoes/cofre.ts). A MESMA da produção:
+      # o E2E fala com o banco dela, onde os segredos estão cifrados com ela.
+      CREDENCIAIS_CHAVE: ${{ secrets.CREDENCIAIS_CHAVE }}
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
       TZ: America/Sao_Paulo
       NEXT_TELEMETRY_DISABLED: '1'

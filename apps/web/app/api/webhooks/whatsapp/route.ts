@@ -4,6 +4,7 @@ import { getNumeroPorPhoneNumberId } from '@/lib/whatsapp/factory'
 import { resolveConversation, insertInboundMessage, updateMessageStatus } from '@/lib/inbox/resolve-conversation'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
 import { ler } from '@/lib/db'
+import { decifrarSegredos } from '@/lib/integracoes/cofre'
 import { mudancasDaCoexistencia, tratarCoexistencia } from '@/lib/whatsapp/coexistencia'
 
 // -- GET: Meta webhook subscription verification ------------------------------
@@ -38,7 +39,8 @@ export async function GET(req: NextRequest) {
     .eq('provider', 'official'), 'carregar as caixas de WhatsApp')
 
   for (const row of (linhas ?? [])) {
-    const config = { ...(row.config as object), provider: 'official' } as OfficialConfig
+    // O verifyToken vem CIFRADO do banco (lib/integracoes/cofre.ts).
+    const config = { ...decifrarSegredos(row.config as Record<string, unknown>), provider: 'official' } as OfficialConfig
     const provider = new OfficialAPIProvider(config)
     const challenge = provider.handleChallenge(url)
     if (challenge) return new Response(challenge, { status: 200 })
