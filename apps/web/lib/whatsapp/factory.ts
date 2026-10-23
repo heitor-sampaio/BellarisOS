@@ -177,7 +177,15 @@ export async function getNumeroPorTokenUazapi(
 
   const recebido = Buffer.from(token)
   for (const linha of linhas(data)) {
-    const guardado = decifrarSegredos(linha.config).token
+    // Uma linha que não decifra (cifrada com outra chave) não derruba a busca
+    // das outras: sem isto, nenhuma mensagem entrava, de rede nenhuma.
+    let guardado: unknown
+    try {
+      guardado = decifrarSegredos(linha.config).token
+    } catch (e) {
+      console.error('[getNumeroPorTokenUazapi] caixa sem decifrar:', linha.id, e instanceof Error ? e.message : e)
+      continue
+    }
     if (typeof guardado !== 'string' || !guardado) continue
 
     // Comparação em tempo constante: o token é credencial, não identificador.

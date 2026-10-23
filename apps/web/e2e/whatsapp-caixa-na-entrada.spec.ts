@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
+import { randomBytes } from 'node:crypto'
 import { banco, apagarConversas, tenantId, PREFIXO } from './apoio/banco'
+import { cifrarSegredos } from '../lib/integracoes/cofre'
 
 /**
  * A mensagem que entra carrega POR QUAL CAIXA entrou.
@@ -93,4 +95,61 @@ test('a conversa e a mensagem nascem carimbadas com a caixa que recebeu', async 
     message: 'a mensagem também carrega a caixa: ela pode divergir da conversa '
       + 'quando o usuário responde pelo número dele',
   }).toBe(caixa!.id)
+})
+
+// Uma caixa que não decifra não derruba as outras (2026-10-23). O webhook acha
+// a caixa decifrando o token de TODAS as da uazapi (lib/whatsapp/factory.ts):
+// uma linha cifrada com outra chave — a chave colada errada num ambiente —
+// fazia a busca inteira lançar, e nenhuma mensagem entrava, de rede nenhuma.
+test('uma caixa com credencial que não decifra não derruba a entrada das outras', async ({ request }) => {
+  const db = banco()
+  const marca = Date.now().toString(36)
+  const fone = '5547' + String(Date.now()).slice(-9)
+  const estragada = cifrarSegredos({ token: `e2e-estragada-${marca}` }, randomBytes(32)).token
+  const token = `e2e-boa-${marca}`
+  // A estragada entra ANTES: a varredura passa por ela primeiro.
+  const { data: caixas, error } = await db.from('whatsapp_numbers').insert([
+    { tenant_id: await tenantId(), provider: 'uazapi', label: `${PREFIXO} estragada ${marca}`, is_active: true, config: { token: estragada, baseUrl: 'https://e2e.invalido' } },
+    { tenant_id: await tenantId(), provider: 'uazapi', label: `${PREFIXO} boa ${marca}`, is_active: true, config: { token, baseUrl: 'https://e2e.invalido' } },
+  ]).select('id')
+  expect(error, 'criar as caixas').toBeNull()
+  const ids = (caixas ?? []).map(c => c.id as string)
+  let conversa: string | null = null
+  try {
+    const res = await request.post('/api/webhooks/uazapi', {
+      data: { token, data: {
+        chat: { name: '[e2e] Caixa boa', phone: fone },
+        message: { sender_pn: fone, chatid: `${fone}@s.whatsapp.net`, text: 'chegou?', messageTimestamp: Math.floor(Date.now() / 1000), id: 'E2EBOA_' + marca, fromMe: false },
+      } },
+    })
+    expect(res.status(), 'o webhook não quebra').toBe(200)
+    await expect.poll(async () => {
+      conversa = ((await db.from('conversations').select('id').eq('contact_phone', fone).maybeSingle()).data?.id as string) ?? null
+      return conversa
+    }, { message: 'a mensagem da caixa boa entra' }).not.toBeNull()
+  } finally {
+    if (conversa) await apagarConversas([conversa])
+    await db.from('whatsapp_numbers').delete().in('id', ids)
+  }
+})
+
+// O mesmo no handshake da Cloud API: o webhook confere o `verifyToken` de
+// TODAS as caixas oficiais, e uma que não decifra derrubava a verificação.
+test('a verificação do webhook oficial passa mesmo com uma caixa que não decifra', async ({ request }) => {
+  const db = banco()
+  const marca = Date.now().toString(36)
+  const verificacao = `e2e-verifica-${marca}`
+  const estragada = cifrarSegredos({ verifyToken: `e2e-estragada-${marca}` }, randomBytes(32)).verifyToken
+  const { data: caixas, error } = await db.from('whatsapp_numbers').insert([
+    { tenant_id: await tenantId(), provider: 'official', label: `${PREFIXO} oficial estragada ${marca}`, is_active: false, config: { verifyToken: estragada } },
+    { tenant_id: await tenantId(), provider: 'official', label: `${PREFIXO} oficial boa ${marca}`, is_active: false, config: { verifyToken: verificacao } },
+  ]).select('id')
+  expect(error, 'criar as caixas').toBeNull()
+  try {
+    const res = await request.get(`/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${verificacao}&hub.challenge=desafio-${marca}`)
+    expect(res.status(), 'a verificação não quebra').toBe(200)
+    expect(await res.text()).toBe(`desafio-${marca}`)
+  } finally {
+    await db.from('whatsapp_numbers').delete().in('id', (caixas ?? []).map(c => c.id as string))
+  }
 })

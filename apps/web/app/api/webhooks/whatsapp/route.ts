@@ -39,8 +39,14 @@ export async function GET(req: NextRequest) {
     .eq('provider', 'official'), 'carregar as caixas de WhatsApp')
 
   for (const row of (linhas ?? [])) {
-    // O verifyToken vem CIFRADO do banco (lib/integracoes/cofre.ts).
-    const config = { ...decifrarSegredos(row.config as Record<string, unknown>), provider: 'official' } as OfficialConfig
+    // O verifyToken vem CIFRADO do banco (lib/integracoes/cofre.ts). A caixa
+    // que não decifra (outra chave) é pulada: não derruba a verificação das outras.
+    let segredos: Record<string, unknown>
+    try { segredos = decifrarSegredos(row.config as Record<string, unknown>) } catch (e) {
+      console.error('[webhook/whatsapp] caixa sem decifrar:', e instanceof Error ? e.message : e)
+      continue
+    }
+    const config = { ...segredos, provider: 'official' } as OfficialConfig
     const provider = new OfficialAPIProvider(config)
     const challenge = provider.handleChallenge(url)
     if (challenge) return new Response(challenge, { status: 200 })
