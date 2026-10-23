@@ -1508,6 +1508,15 @@ A conversa seguiu para "e se alguém tiver acesso ao banco em si?". Feito:
   `whatsapp_numbers` cifra; as fábricas decifram. `scripts/cifrar-credenciais.ts`
   passa pelas linhas antigas (ensaio por padrão; confere a ida e volta antes de
   gravar). Regras em `docs/regras/whatsapp-push.md`.
+- **No ar e migrado** (2026-10-23, depois do deploy de `c0d2a34`): a chave do
+  Railway foi conferida SEM ser lida — a caixa inativa da AgapeFlow cifrada
+  primeiro (`--so`), uma entrega com token desconhecido ao webhook da uazapi
+  de produção, e nenhum "sem decifrar" no log. Depois, as 5 linhas: nenhum
+  segredo em texto nas duas tabelas, e o handshake do webhook oficial lendo a
+  "ARCH Meta" cifrada (403 para o token errado, sem erro).
+- **Uma caixa que não decifra não derruba as outras** (`c0d2a34`): o webhook
+  da uazapi e o handshake da Cloud API decifram TODAS as caixas para achar a
+  sua; a que não decifra é pulada, com o id no log.
 
 ### 2026-10-22 — O CSP da clínica passa a bloquear
 

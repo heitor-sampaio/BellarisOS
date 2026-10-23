@@ -13,6 +13,7 @@
  * do Railway):
  *   node ../../node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/cli.mjs scripts/cifrar-credenciais.ts
  *   … scripts/cifrar-credenciais.ts --gravar
+ *   … scripts/cifrar-credenciais.ts --gravar --so <id>   (uma linha só)
  *
  * Nunca imprime um segredo: só contagens e ids.
  */
@@ -22,6 +23,9 @@ import { cifrarSegredos, decifrarSegredos, temSegredoEmTextoPuro } from '../lib/
 
 process.loadEnvFile('.env.local')
 const gravar = process.argv.includes('--gravar')
+// `--so <id>`: uma linha só — a primeira, para conferir que a chave do Railway
+// é a mesma antes de cifrar a caixa que está no ar.
+const so = process.argv.includes('--so') ? process.argv[process.argv.indexOf('--so') + 1] : null
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false },
 })
@@ -33,6 +37,7 @@ async function passar(tabela: 'integration_configs' | 'whatsapp_numbers') {
     if (error) throw new Error(`${tabela}: ${error.message}`)
     for (const linha of (data ?? []) as { id: string; config: Record<string, unknown> | null }[]) {
       total++
+      if (so && linha.id !== so) continue
       if (!temSegredoEmTextoPuro(linha.config)) continue
       pendentes++
       const config = linha.config ?? {}
