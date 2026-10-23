@@ -8,9 +8,11 @@
 ## 12. Variáveis de ambiente
 
 ```bash
-# Banco
-DATABASE_URL=postgresql://...
-DIRECT_URL=postgresql://...
+# Banco: NENHUMA conexão direta ao Postgres (2026-10-23). O app só fala com o
+# banco por HTTPS (PostgREST, com as chaves abaixo). DATABASE_URL e DIRECT_URL
+# eram cópias da senha do Postgres que nada lia — saíram do Railway, e as
+# Network Restrictions do Supabase (painel → Database) ficam fechando a porta
+# direta. Não as traga de volta.
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=

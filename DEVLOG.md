@@ -1470,6 +1470,12 @@ cron de aniversário pegou no teste. O schema `private` dá `usage` a
 No extrato da rede, a tabela mostra as 100 primeiras e avisa quantas há
 ("Exibindo 100 de N"); o N dizia 500 com 1011 no mês.
 
+A completa depois dela (run 40002032573, em `e46bef5`): a 1ª tentativa nem
+rodou teste (a instalação do navegador travou no espelho do Ubuntu, como em
+22/10); a 2ª deu 888 verdes e 1 falha — `crm-motivo-da-perda`, corrida do
+TESTE: o evento da linha do tempo é gravado depois do lead, e ele lia o
+evento assim que o lead mudava. Agora espera pelo evento.
+
 ### 2026-10-23 — O verificador de segurança do Supabase, limpo
 
 O Heitor perguntou como se proteger de vazamento de dados de pacientes. O

@@ -80,8 +80,10 @@ test.describe.serial('o motivo da perda', () => {
       const { data: lead } = await db().from('leads').select('motivo_perda_obs, perdido_em, crm_motivos_perda(nome)').eq('id', id).single()
       expect(lead).toMatchObject({ motivo_perda_obs: 'achou caro o pacote', crm_motivos_perda: { nome: 'Preço' } })
       expect(lead?.perdido_em).toBeTruthy()
-      const { data: ev } = await db().from('lead_events').select('changes').eq('lead_id', id).eq('type', 'STAGE_CHANGED')
-      expect(JSON.stringify(ev)).toContain('Preço')
+      // O evento da linha do tempo é gravado DEPOIS do lead (moverEtapaCore):
+      // esperar o lead mudar não garante que ele já esteja lá.
+      await expect.poll(async () => JSON.stringify((await db().from('lead_events').select('changes')
+        .eq('lead_id', id).eq('type', 'STAGE_CHANGED')).data ?? [])).toContain('Preço')
     })
   })
 
