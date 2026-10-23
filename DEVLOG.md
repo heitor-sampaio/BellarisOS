@@ -6624,10 +6624,14 @@ verdade. O que vale:
   chave, a aba Copilot mostra só a estimativa.
 - **O Copilot no ar** (2026-10-08): ~~colar a `OPENAI_API_KEY` no serviço
   BellarisOS do Railway~~ **feito** (o deploy com ela subiu às 13h27);
-  ~~testar à mão com a chave real~~ **feito** pelo Heitor ("deu boa"). Falta:
-  definir a cota do Copilot nos planos (hoje só o ULTRA o inclui, e SEM cota =
-  sem limite) e, se for vender o Copilot avulso no Starter e no PRO, o preço
-  do adicional nesses planos.
+  ~~testar à mão com a chave real~~ **feito** pelo Heitor ("deu boa").
+  ~~Definir a cota do Copilot nos planos~~ **decidido em 2026-10-23**: o
+  Copilot segue incluso só no ULTRA (no Starter e no PRO, adicional a R$ 299
+  e R$ 249, mantidos), e todo plano tem teto — Starter 20, PRO 25 e ULTRA 30
+  milhões de tokens/mês, gravados pelo Heitor no sistema. É rede de proteção,
+  não limite de uso: o pedido medido gasta ~6.900 tokens (`gpt-5-mini`,
+  ~R$ 0,02), e 20 mi dão umas 2.900 conversas. Recalibrar com 2–3 meses de
+  uso real. A cota não aparece no site (`planos_do_site` tira `cotas`).
 - **Os apps da plataforma no ar** (2026-10-06):
   - feito: no Railway, os serviços **Sistema** e **Suporte** (`BELLARIS_APP`,
     variáveis por referência às da clínica, `INTERNO_SECRET` nos três apps),
