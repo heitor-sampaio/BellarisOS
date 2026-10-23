@@ -1437,6 +1437,10 @@ anúncio" e na tela da campanha.
 - Prova: `e2e/csp-clinica.spec.ts` ganhou a varredura de treze telas sem
   nenhuma violação, e o cabeçalho que bloqueia no build. Regras em
   `docs/regras/infra.md`.
+- **A completa com o CSP bloqueando** (run 39972678512, em `f24294e`,
+  2026-10-23): toda verde, 883 (361 isolados + 522 compartilhados, 1
+  pulado). O log de produção não tem nenhum `[csp]` desde a publicação, mas
+  até a manhã de 23/10 só os crons tinham batido no servidor.
 
 ### 2026-10-22 — Site: a agenda no destaque da agenda, e o "Fácil de usar" sem a luz
 
