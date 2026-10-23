@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, lerTodas } from '@/lib/db'
+import { lerPublico } from '@/lib/clientes/publico'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
@@ -172,46 +173,29 @@ async function processBirthdayCampaign(
 ): Promise<number> {
   const rules = camp.audience_rules
 
-  // `birth_date` TEM de vir no select: o filtro abaixo é por ela. Sem ela, a
-  // lista de aniversariantes saía sempre vazia e a campanha de aniversário
-  // nunca mandou nada — o `any` do filtro escondia (2026-09-27).
-  let query = admin
-    .from('clients')
-    .select('id, name, birth_date, auth_id')
-    .eq('tenant_id', camp.tenant_id)
-    .eq('is_active', true)
-    .not('birth_date', 'is', null)
-
-  if (rules.branch_ids?.length) query = query.in('branch_id', rules.branch_ids)
-
-  const allClients = await ler(query.limit(5000), 'carregar os clientes com aniversário')
-
-  // Mês e dia lidos do TEXTO da data ('1990-09-27'). `new Date('1990-09-27')` é
-  // meia-noite em UTC, que em São Paulo ainda é o dia 26 — a campanha sairia
-  // na véspera.
-  //
-  // "Só quem tem o app" também é filtrado aqui: o `.not('auth_id', …)`
-  // condicional no builder estoura a inferência de tipo do Supabase (TS2589).
-  const birthdayClients: Destinatario[] = ((allClients ?? []) as { id: string; name: string; birth_date: string | null; auth_id: string | null }[])
-    .filter(c => {
-      if (!c.birth_date) return false
-      if (rules.has_app_account && !c.auth_id) return false
-      return Number(c.birth_date.slice(5, 7)) === today.month && Number(c.birth_date.slice(8, 10)) === today.day
-    })
-    .map(c => ({ id: c.id, name: c.name }))
+  // Os aniversariantes, filtrados NO BANCO (2026-10-22): o mês e o dia da data
+  // como gravada, que é o que o app lia do texto ('1990-09-27') — por
+  // `new Date()`, a meia-noite em UTC ainda é a véspera em São Paulo. Até
+  // então o app lia os clientes sem ordem, o PostgREST devolvia 1000, e o
+  // filtro do dia era feito sobre esse lote: quem ficava de fora nunca recebia.
+  const birthdayClients: Destinatario[] = (await lerPublico(camp.tenant_id, {
+    branch_ids: rules.branch_ids, has_app_account: rules.has_app_account,
+    aniversario: { mes: today.month, dia: today.day },
+  })).map(c => ({ id: c.id, name: c.name }))
 
   if (!birthdayClients.length) return 0
 
   // Idempotency: exclude clients already dispatched today
   const todayStart = startOfDayTZ(new Date())
 
-  const existing = await ler(admin
+  const existing = await lerTodas((de, ate) => admin
     .from('campaign_dispatches')
-    .select('client_id')
+    .select('id, client_id')
     .eq('campaign_id', camp.id)
-    .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
+    .gte('sent_at', todayStart.toISOString())
+    .order('id').range(de, ate), 'carregar os disparos')
 
-  const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
+  const alreadySent = new Set((existing as { client_id: string }[]).map(d => d.client_id))
   const toSend = birthdayClients.filter(c => !alreadySent.has(c.id))
 
   if (!toSend.length) return 0

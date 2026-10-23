@@ -5,6 +5,7 @@ import { gravar, ler } from '@/lib/db'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
+import { lerPublico } from '@/lib/clientes/publico'
 
 /**
  * O DISPARO de uma campanha (notificação + Web Push + FCM) para o público dela.
@@ -39,34 +40,17 @@ export async function dispatchCampaignInline(
   const admin = createAdminClient()
   const rules = campaign.audience_rules
 
-  // Build client query
-  let query = admin
-    .from('clients')
-    .select('id, name, auth_id')
-    .eq('tenant_id', tenantId)
-    .eq('is_active', true)
-
-  if (rules.branch_ids?.length)  query = query.in('branch_id', rules.branch_ids)
-  if (rules.genders?.length)     query = query.in('gender', rules.genders)
-  if (rules.tags?.length)        query = query.overlaps('tags', rules.tags)
-  if (rules.has_app_account)     query = query.not('auth_id', 'is', null)
-
-  const { data: clients, error } = await query.limit(2000)
-  if (error) return { sent: 0, error: error.message }
-
-  let eligibleClients = clients ?? []
-
-  // Filter by procedure history if needed
-  if (rules.procedure_ids?.length) {
-    const apptClients = await ler(admin
-      .from('appointments')
-      .select('client_id, branches!inner(tenant_id)')
-      .eq('branches.tenant_id', tenantId)
-      .in('procedure_id', rules.procedure_ids)
-      .eq('status', 'COMPLETED'), 'carregar os agendamentos')
-
-    const set = new Set(((apptClients ?? []) as { client_id: string }[]).map(a => a.client_id))
-    eligibleClients = eligibleClients.filter(c => set.has(c.id))
+  // O público inteiro, filtrado no banco (lib/clientes/publico.ts). Era lido
+  // com teto de 2000 — o PostgREST devolvia 1000 — e o filtro de procedimento
+  // aplicado depois, sobre esse lote.
+  let eligibleClients: { id: string; name: string; auth_id: string | null }[]
+  try {
+    eligibleClients = await lerPublico(tenantId, {
+      branch_ids: rules.branch_ids, genders: rules.genders, tags: rules.tags,
+      has_app_account: rules.has_app_account, procedure_ids: rules.procedure_ids,
+    })
+  } catch (e) {
+    return { sent: 0, error: e instanceof Error ? e.message : String(e) }
   }
 
   if (eligibleClients.length === 0) return { sent: 0 }

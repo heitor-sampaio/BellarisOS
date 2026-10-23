@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClipboardList, ChevronRight, User } from 'lucide-react'
+import { lerTodas } from '@/lib/db'
 
 /**
  * Planos de tratamento aguardando checkout — a mesma lista nos dois portais.
@@ -36,7 +37,9 @@ export async function ListaDeCheckout({
   // antiga somava `treatment_plan_items`, tabela que nenhum código escreve desde
   // que o plano passou a ser por sessão: a fila mostrava R$ 0,00 em todo plano
   // real, e quem ia receber não sabia de quanto era a venda.
-  const { data: plansRaw, error } = await admin
+  // Em páginas (2026-10-22): a fila vem da mais antiga para a mais nova, e com
+  // o corte de 1000 do PostgREST sumiam justamente as propostas mais novas.
+  const plansRaw = await lerTodas((de, ate) => admin
     .from('treatment_plans')
     .select(`
       id, status, professional_notes, professional_id, created_at, branch_id,
@@ -46,8 +49,8 @@ export async function ListaDeCheckout({
     `)
     .in('branch_id', branchIds)
     .eq('status', 'PROPOSED')
-    .order('created_at', { ascending: true })
-  if (error) throw new Error(`Falha ao carregar os checkouts: ${error.message}`)
+    .order('created_at', { ascending: true }).order('id')
+    .range(de, ate), 'carregar os checkouts')
 
   type RawClient = { name: string; phone: string | null }
   type RawSess   = { treatment_plan_session_procedures: { price: number }[] }

@@ -7,6 +7,7 @@ import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
 import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
 import { flattenFields, type AnamnesisRow } from '@/lib/anamnesis'
+import { lerTodas } from '@/lib/db'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -103,9 +104,12 @@ export async function buildClientExport(
       .eq('client_id', clientId),
     admin.from('client_documents')
       .select('created_at, name, category, file_name, mime_type, file_size').eq('client_id', clientId),
-    admin.from('client_notifications')
+    // TODAS (2026-10-22): tinha teto de 200, e o pacote do titular saía
+    // incompleto parecendo completo. Em páginas — o PostgREST corta em 1000.
+    lerTodas((de, ate) => admin.from('client_notifications')
       .select('created_at, title, body, type, is_read').eq('client_id', clientId)
-      .order('created_at', { ascending: false }).limit(200),
+      .order('created_at', { ascending: false }).order('id').range(de, ate), 'reunir as comunicações')
+      .then(data => ({ data, error: null })),
     admin.from('treatment_plans')
       .select('created_at, status, branch_id').eq('client_id', clientId),
     admin.from('branches').select('id, name').eq('tenant_id', client.tenant_id),

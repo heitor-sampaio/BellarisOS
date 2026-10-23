@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, contar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
+import { contarPublico } from '@/lib/clientes/publico'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 
 // -- Types --------------------------------------------------------------
@@ -318,52 +319,14 @@ export async function previewAudienceCount(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'marketing', 'MANAGE')
 
-  const admin = createAdminClient()
-  let query = admin
-    .from('clients')
-    .select('id', { count: 'exact', head: true })
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-
-  if (rules.branch_ids?.length) {
-    query = query.in('branch_id', rules.branch_ids)
-  }
-  if (rules.genders?.length) {
-    query = query.in('gender', rules.genders)
-  }
-  if (rules.tags?.length) {
-    query = query.overlaps('tags', rules.tags)
-  }
-  if (rules.has_app_account === true) {
-    query = query.not('auth_id', 'is', null)
-  }
-
-  // Contagem que falha não pode virar "0 clientes": quem monta a campanha
-  // concluiria que o público está vazio.
-  let result = await contar(query, 'contar o público da campanha')
-
-  // procedure_ids filter: clientes com appointments nesses procedimentos
-  if (rules.procedure_ids?.length) {
-    const apptClients = await ler(admin
-      .from('appointments')
-      .select('client_id, branches!inner(tenant_id)')
-      .eq('branches.tenant_id', ctx.tenantId!)
-      .in('procedure_id', rules.procedure_ids)
-      .eq('status', 'COMPLETED'), 'carregar os agendamentos')
-
-    const clientsWithProc = new Set(((apptClients ?? []) as { client_id: string }[]).map(a => a.client_id))
-    // This is an over-approximation without a subquery; use count from the base query
-    // filtered by intersection — for preview purposes this is acceptable
-    const procCount = await contar(admin
-      .from('clients')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .in('id', [...clientsWithProc].slice(0, 400)), 'contar o público com o procedimento')
-
-    result = Math.min(result, procCount)
-  }
-
-  return { count: result }
+  // Contado no banco, com o MESMO filtro do disparo (lib/clientes/publico.ts).
+  // Com procedimento, a conta era o mínimo entre o público e os 400 primeiros
+  // de quem fez o procedimento — nunca passava de 400. Contagem que falha não
+  // vira "0 clientes": `contar` para o fluxo.
+  const count = await contarPublico(ctx.tenantId!, {
+    branch_ids: rules.branch_ids, genders: rules.genders, tags: rules.tags,
+    has_app_account: rules.has_app_account === true, procedure_ids: rules.procedure_ids,
+  })
+  return { count }
 }
 

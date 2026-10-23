@@ -10,7 +10,7 @@ import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -111,24 +111,26 @@ export default async function BranchOportunidadesPage({
   const leadOwner = ownerFilter(ctx, 'crm')
   let leads: LeadLido[] = []
   if (stageIds.length > 0) {
-    let leadsQuery = createAdminClient()
-      .from('leads')
-      .select(`
-        id, name, phone, email, social_media, source,
-        crm_stage_id, notes, client_id, created_at, tags,
-        owner_id, users(name), contato_id,
-        motivo_perda_id, crm_motivos_perda(nome),
-        lead_procedures(procedure_id, procedures(name, price))
-      `)
-      .eq('tenant_id', ctx.tenantId!)
-      .in('crm_stage_id', stageIds)
-    // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
-    // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
-    // comum — aparece para todos até alguém assumir.
-    if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-    const { data, error } = await leadsQuery.order('created_at', { ascending: false })
-    if (error) throw new Error(`Falha ao carregar os leads: ${error.message}`)
-    leads = (data ?? []) as unknown as LeadLido[]
+    // Todas, em páginas (2026-10-22): o PostgREST corta em 1000, e os cards
+    // mais antigos sumiam das colunas — e os números do topo, contados daqui.
+    leads = (await lerTodas((de, ate) => {
+      let leadsQuery = createAdminClient()
+        .from('leads')
+        .select(`
+          id, name, phone, email, social_media, source,
+          crm_stage_id, notes, client_id, created_at, tags,
+          owner_id, users(name), contato_id,
+          motivo_perda_id, crm_motivos_perda(nome),
+          lead_procedures(procedure_id, procedures(name, price))
+        `)
+        .eq('tenant_id', ctx.tenantId!)
+        .in('crm_stage_id', stageIds)
+      // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
+      // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
+      // comum — aparece para todos até alguém assumir.
+      if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
+      return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
+    }, 'carregar os leads')) as unknown as LeadLido[]
   }
 
   const stats = funnelStats(

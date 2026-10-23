@@ -6,7 +6,7 @@ import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
@@ -526,21 +526,20 @@ export async function listarPlanejamentos(opcoes?: {
     ? doTenant.filter(b => b.id === opcoes.branchId)
     : doTenant
 
-  let query = admin
-    .from('treatment_plans')
-    .select(`
-      id, name, status, created_at, branch_id,
-      clients(id, name, phone, document),
-      treatment_plan_sessions(treatment_plan_session_procedures(price))
-    `)
-    .in('branch_id', alcance.map(b => b.id))
-    .order('created_at', { ascending: false })
-    .limit(200)
-
-  if (opcoes?.status) query = query.eq('status', opcoes.status)
-
-  const { data, error } = await query
-  if (error) throw new Error(`Falha ao carregar os planejamentos: ${error.message}`)
+  // Todos, em páginas (2026-10-22): tinha teto de 200, sem "ver mais" — os
+  // planejamentos mais antigos sumiam da lista.
+  const data = await lerTodas((de, ate) => {
+    let query = admin
+      .from('treatment_plans')
+      .select(`
+        id, name, status, created_at, branch_id,
+        clients(id, name, phone, document),
+        treatment_plan_sessions(treatment_plan_session_procedures(price))
+      `)
+      .in('branch_id', alcance.map(b => b.id))
+    if (opcoes?.status) query = query.eq('status', opcoes.status)
+    return query.order('created_at', { ascending: false }).order('id').range(de, ate)
+  }, 'carregar os planejamentos')
 
   type RawCli  = { id: string; name: string; phone: string | null; document: string | null }
   type RawSess = { treatment_plan_session_procedures: { price: number }[] }

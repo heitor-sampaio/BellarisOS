@@ -1420,6 +1420,56 @@ o selo no bloco do calendário (hoje só na janela do agendamento) e o
 histórico dos pré-atendimentos na exportação LGPD (a anamnese atual já vai,
 dentro do prontuário; as respostas de envios anteriores, não).
 
+### 2026-10-22 — A varredura das listas que o PostgREST cortava em 1000
+
+Pedido do Heitor ("faz a varredura"), a pendência que sobrou da agenda da
+unidade (7c04db3). O PostgREST devolve no máximo 1000 linhas por consulta e
+corta o resto sem erro; `.limit(2000)` também vira 1000. Um inventário de
+todas as leituras achou o mesmo corte em:
+
+- **a lista de clientes** (rede e unidade): parava numa letra do alfabeto, e
+  a busca da barra não achava o resto; o "N ativos" travava em 1000;
+- **a "última visita"**: vinha dos 800/1000 concluídos mais recentes — quem
+  não veio nesse intervalo aparecia "Sem visitas". Agora é agregada no
+  banco (`ultimas_visitas`), no eixo `aconteceu_em`;
+- **o público das campanhas e das automações**: lia 1000 (ou 501) clientes
+  SEM ordem e filtrava aniversário, "sem retorno" e procedimento DEPOIS, em
+  JavaScript. A campanha de aniversário perdia quem não vinha no lote, e a
+  prévia com procedimento nunca passava de 400 (e quebrava com a lista de
+  ids na URL). Agora tudo é filtrado no banco (`clientes_do_publico`,
+  `lib/clientes/publico.ts`), e o teto das automações vale depois do filtro;
+- **o quadro de oportunidades e o seletor do inbox**: os cards mais antigos
+  sumiam (e os números do topo). Com mais de 1000 contatos, o quadro
+  QUEBRAVA: a atividade das pessoas mandava todos os ids na URL ("Bad
+  Request"). Virou função agregada (`atividade_dos_contatos`);
+- **o relatório comercial**: contado na tela sobre as listas; agora
+  `metrics_comercial` (`getPainelComercial`, em `lib/metrics`);
+- **a agenda da rede** (`.limit(1000)`): o mesmo defeito da da unidade;
+- **o financeiro**: o extrato da unidade e o da rede (teto de 500), os
+  seletores de cliente do crédito (300/500), as comissões do período (o
+  total do card ficava baixo) e o extrato das comissões (teto de 2000 na
+  função — saiu);
+- **a fila do checkout**: vinha da mais antiga para a mais nova, e sumiam as
+  propostas mais NOVAS;
+- **as automações** (execuções da semana) e **os injetáveis** (última
+  aplicação e total), agora contados no banco; a lista de planejamentos
+  (teto de 200) e a de mapas (300) passam a vir inteiras;
+- **a exportação LGPD** levava só as 200 comunicações mais recentes.
+
+A regra ficou em `docs/regras/convencoes.md` ("Lista que cresce") e no §14.
+Prova: `e2e/listas-sem-corte.spec.ts` (uma rede com mais de 1000 linhas em
+cada lista e o alvo depois da 1000ª), a campanha de aniversário com 1010
+clientes antes da aniversariante e o pacote LGPD com 210 comunicações.
+Migrations `20261022000002` e `20261023000001`: a primeira versão de
+`clientes_do_publico` lia os filtros por um auxiliar no schema `private`, que
+o service role não alcança — falhava sempre (42501). Nada no ar a chamava; o
+cron de aniversário pegou no teste. O schema `private` dá `usage` a
+`authenticated` (as políticas o usam) e NÃO a `service_role`: função comum
+(não `security definer`) que o servidor chama não pode usar `private.*`.
+
+No extrato da rede, a tabela mostra as 100 primeiras e avisa quantas há
+("Exibindo 100 de N"); o N dizia 500 com 1011 no mês.
+
 ### 2026-10-22 — O CSP da clínica passa a bloquear
 
 Pedido do Heitor. O CSP estava em modo de aviso desde 2026-10-08. Os avisos de
@@ -6717,9 +6767,13 @@ tempo). O que sobrou:
   pacotes": o checkout sugere o pacote, e o plano segue por procedimento.
 - **Não reproduzido**: "as notificações não ficam lidas" (abrir no sino
   marca — conferido).
-- **Varredura que vale à parte**: listas que leem uma janela grande sem
-  paginar (o PostgREST corta em 1000; a agenda da unidade já usa
-  `lerTodas`, 7c04db3).
+- ~~**Varredura que vale à parte**~~ **feita em 2026-10-22** (ver a linha do
+  tempo). Ficou de fora, de risco baixo hoje: as respostas das funções do
+  cron de fidelidade (bônus de aniversário e aviso de vencimento valem para a
+  plataforma inteira; acima de 1000 num dia, o efeito sai e o aviso não), as
+  listas do dia do cron de campanhas, o teto diário por cliente das
+  automações (`falouHojeCom`, acima de 1000 execuções num dia) e as telas do
+  sistema (acima de 1000 redes).
 - ~~A rede "[sim] Clínica Aurora" e os logins `sim-*`~~ **apagados em
   2026-10-21**, a pedido dele.
 

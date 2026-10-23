@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getAPagar } from '@/lib/metrics'
-import { ler } from '@/lib/db'
+import { lerTodas } from '@/lib/db'
 
 /** Lançamento como o select pede. */
 type LancamentoLido = {
@@ -82,8 +82,9 @@ export default async function AdminFinanceiroPage({
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
 
     // A lista de lançamentos continua sendo lida direto — é extrato, não KPI.
-    // Por `ler`: consulta que falha PARA, em vez de virar um extrato vazio.
-    ler(admin
+    // Inteira, em páginas (2026-10-22): tinha teto de 500. Consulta que falha
+    // PARA, em vez de virar um extrato vazio.
+    lerTodas((de, ate) => admin
       .from('financial_transactions')
       .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
@@ -99,14 +100,14 @@ export default async function AdminFinanceiroPage({
     // relógio do app (medi 0,2s), então um lançamento feito neste segundo nasce
     // com `created_at` no futuro e some da tela que acabou de criá-lo.
       .lte('data_de_referencia', fimDoPeriodo.toISOString())
-      .order('data_de_referencia', { ascending: false })
-      .limit(500), 'carregar os lançamentos da rede'),
+      .order('data_de_referencia', { ascending: false }).order('id')
+      .range(de, ate), 'carregar os lançamentos da rede'),
 
     // Clientes da rede, para o crédito interno. Só quem recebe precisa.
     ctx.permissions.financial === 'MANAGE'
-      ? ler(admin.from('clients').select('id, name')
+      ? lerTodas((de, ate) => admin.from('clients').select('id, name')
           .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
-          .order('name').limit(500), 'carregar os clientes da rede')
+          .order('name').order('id').range(de, ate), 'carregar os clientes da rede')
       : Promise.resolve([] as { id: string; name: string }[]),
 
     // As movimentações com a regra da LISTA (data de referência até o fim do

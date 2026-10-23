@@ -7,6 +7,7 @@ import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { TravaRolagem } from '@/components/shared/trava-rolagem'
+import { lerTodas } from '@/lib/db'
 
 /** Nome da unidade marcada no lead, se houver. */
 function unidadeDoLead(tags: unknown): string | null {
@@ -43,13 +44,16 @@ export default async function AdminInboxPage({
   // Lista para o seletor de "nova conversa". Não passa por etapa nem funil: a
   // caixa de entrada é de contatos, não do funil.
   const leadOwner = ownerFilter(ctx, 'crm')
-  let leadsQuery = admin
-    .from('leads')
-    .select('id, name, phone, tags')
-    .eq('tenant_id', ctx.tenantId!)
-  if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-  const { data: leadsRaw, error } = await leadsQuery.order('created_at', { ascending: false })
-  if (error) throw new Error(`Falha ao carregar os leads: ${error.message}`)
+  // Todas, em páginas (2026-10-22): com o corte de 1000 do PostgREST, as
+  // oportunidades mais antigas não podiam ser escolhidas.
+  const leadsRaw = await lerTodas((de, ate) => {
+    let leadsQuery = admin
+      .from('leads')
+      .select('id, name, phone, tags')
+      .eq('tenant_id', ctx.tenantId!)
+    if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
+    return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
+  }, 'carregar os leads')
 
   const inboxLeads = (leadsRaw ?? []).map(l => ({
     id:          l.id as string,

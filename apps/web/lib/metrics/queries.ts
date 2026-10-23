@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { lerTodas } from '@/lib/db'
 
 /**
  * Acesso às funções de agregação do Postgres (migration 20260909000001).
@@ -328,11 +329,19 @@ export type CommissionEntry = {
   amount: number; isPaid: boolean; referenceAt: string
 }
 
-/** Extrato de comissões do período (a referência é o LANÇAMENTO, `released_at`). */
+/**
+ * Extrato de comissões do período (a referência é o LANÇAMENTO, `released_at`).
+ * Em páginas (2026-10-22): uma linha por comissão, e o PostgREST corta em 1000
+ * — o total do card ficava baixo e os profissionais do fim do alfabeto sumiam.
+ */
 export async function getCommissionsDetail(args: Args): Promise<CommissionEntry[]> {
-  const { data, error } = await createAdminClient().rpc('metrics_commissions_detail', baseArgs(args))
-  logRpcError('metrics_commissions_detail', error)
-  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
+  const admin = createAdminClient()
+  const data = await lerTodas<Record<string, unknown>>(
+    (de, ate) => admin.rpc('metrics_commissions_detail', baseArgs(args))
+      .order('professional_name').order('reference_at', { ascending: false }).order('id').range(de, ate),
+    'carregar as comissões do período',
+  )
+  return data.map(r => ({
     id:               String(r.id),
     professionalId:   String(r.professional_id),
     professionalName: r.professional_name ? String(r.professional_name) : 'Profissional',
@@ -380,6 +389,34 @@ export async function getNewClientsSeries(
     bucket: String(r.bucket),
     count:  n(r.count),
   }))
+}
+
+/**
+ * O painel comercial (relatório, aba Comercial), agregado no banco
+ * (`metrics_comercial`, 2026-10-22): leads da REDE criados no período e
+ * atendimentos COMERCIAIS das unidades marcados no período. Era contado na
+ * tela sobre as listas — até 1000 linhas de cada — e saía subcontado.
+ */
+export type PainelComercial = {
+  totalLeads: number; convertidos: number
+  agendados: number; considerados: number; realizados: number
+  porDono: { dono: string | null; leads: number; convertidos: number; agendamentos: number }[]
+}
+
+export async function getPainelComercial(args: { tenantId: string; branchIds: string[]; from: Date; to: Date }): Promise<PainelComercial> {
+  const { data, error } = await createAdminClient().rpc('metrics_comercial', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  })
+  logRpcError('metrics_comercial', error)
+  const r = (data ?? {}) as Record<string, unknown>
+  return {
+    totalLeads: n(r.total_leads), convertidos: n(r.convertidos),
+    agendados: n(r.agendados), considerados: n(r.considerados), realizados: n(r.realizados),
+    porDono: ((r.ranking as Record<string, unknown>[] | null) ?? []).map(d => ({
+      dono: d.dono == null ? null : String(d.dono),
+      leads: n(d.leads), convertidos: n(d.convertidos), agendamentos: n(d.agendamentos),
+    })),
+  }
 }
 
 /**

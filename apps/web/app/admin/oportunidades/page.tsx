@@ -13,6 +13,7 @@ import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { UserPlus } from 'lucide-react'
+import { lerTodas } from '@/lib/db'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -78,22 +79,24 @@ export default async function AdminOportunidadesPage({
   const leadOwner = ownerFilter(ctx, 'crm')
   let leadsRaw: LeadLido[] = []
   if (stageIds.length > 0) {
-    let leadsQuery = admin
-      .from('leads')
-      .select(`
-        id, name, phone, email, social_media, source,
-        crm_stage_id, notes, client_id, created_at, tags,
-        owner_id, users(name), contato_id,
-        motivo_perda_id, crm_motivos_perda(nome),
-        lead_procedures(procedure_id, procedures(name, price))
-      `)
-      .eq('tenant_id', ctx.tenantId!)
-      .in('crm_stage_id', stageIds)
-    // Lead sem dono fica no bolo comum: aparece para todos até alguém assumir.
-    if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-    const { data, error } = await leadsQuery.order('created_at', { ascending: false })
-    if (error) throw new Error(`Falha ao carregar os leads: ${error.message}`)
-    leadsRaw = (data ?? []) as unknown as LeadLido[]
+    // Todas, em páginas (2026-10-22): o PostgREST corta em 1000, e os cards
+    // mais antigos sumiam das colunas — e os números do topo, contados daqui.
+    leadsRaw = (await lerTodas((de, ate) => {
+      let leadsQuery = admin
+        .from('leads')
+        .select(`
+          id, name, phone, email, social_media, source,
+          crm_stage_id, notes, client_id, created_at, tags,
+          owner_id, users(name), contato_id,
+          motivo_perda_id, crm_motivos_perda(nome),
+          lead_procedures(procedure_id, procedures(name, price))
+        `)
+        .eq('tenant_id', ctx.tenantId!)
+        .in('crm_stage_id', stageIds)
+      // Lead sem dono fica no bolo comum: aparece para todos até alguém assumir.
+      if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
+      return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
+    }, 'carregar os leads')) as unknown as LeadLido[]
   }
 
   // A atividade da PESSOA dona de cada lead — de todas as threads dela, não só

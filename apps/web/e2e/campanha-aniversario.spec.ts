@@ -18,6 +18,8 @@ import { dayKeyTZ, addDaysTZ } from '../lib/datetime'
  * ele faz de hora em hora sozinho.
  */
 
+test.setTimeout(240_000)
+
 const marca = Date.now().toString(36)
 const db = () => banco()
 
@@ -41,6 +43,20 @@ test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request
       .select('id').single<{ id: string }>()
     expect(eu).toBeNull()
     unidade = u!.id
+
+    // 1010 clientes da unidade que NÃO fazem aniversário hoje, criadas ANTES da
+    // aniversariante (2026-10-22). O cron lia os clientes sem ordem e o
+    // PostgREST devolvia só 1000: o filtro do dia, feito em JavaScript, nunca
+    // via quem ficava depois — e a aniversariante não recebia nada.
+    const depois = dayKeyTZ(addDaysTZ(new Date(), 2))
+    for (let i = 0; i < 1010; i += 250) {
+      const { data, error } = await b.from('clients').insert(Array.from({ length: Math.min(250, 1010 - i) }, (_, j) => ({
+        tenant_id: tenant, branch_id: unidade, name: `${PREFIXO} Lote ${i + j} Aniversário ${marca}`,
+        birth_date: nasceu(depois), is_active: true, phone: '5500' + String(Date.now() + i + j).slice(-9),
+      }))).select('id')
+      expect(error, 'semear o lote').toBeNull()
+      clientes.push(...((data ?? []) as { id: string }[]).map(c => c.id))
+    }
 
     for (const [rotulo, dia] of [['Hoje', hoje], ['Amanhã', amanha]] as const) {
       const { data, error } = await b.from('clients').insert({
@@ -69,7 +85,7 @@ test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request
         .eq('body', `${PREFIXO} presente ${marca}`)).data ?? []
 
     await rodar()
-    const [aniversariante, deAmanha] = clientes
+    const [aniversariante, deAmanha] = clientes.slice(-2)
     expect(await recebidas(aniversariante!)).toEqual([{ title: `Feliz aniversário, ${PREFIXO}!`, body: `${PREFIXO} presente ${marca}` }])
     expect(await recebidas(deAmanha!), 'o de amanhã ainda não').toHaveLength(0)
 
@@ -80,7 +96,8 @@ test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request
     expect(camp!.total_sent).toBe(1)
   } finally {
     if (campanha) await b.from('notification_campaigns').delete().eq('id', campanha)
-    const falhas = await apagarClientes(clientes)
+    const falhas = []
+    for (let i = 0; i < clientes.length; i += 150) falhas.push(...await apagarClientes(clientes.slice(i, i + 150)))
     if (unidade) await b.from('branches').delete().eq('id', unidade)
     expect(falhas).toEqual([])
   }

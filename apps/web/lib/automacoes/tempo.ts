@@ -1,4 +1,3 @@
-import { createAdminClient } from '@/lib/supabase/admin'
 import { partsInTZ, startOfDayTZ } from '@/lib/datetime'
 import { valorDoCampo } from './condicoes'
 import { PASSO_DO_CRON_MIN, INTERVALO_MINIMO_MIN } from '@estetica-os/types'
@@ -6,7 +5,7 @@ import type {
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigGatilhoAgenda, ConfigBuscarClientes,
 } from '@estetica-os/types'
 import type { ContextoDaExecucao } from './contexto'
-import { ler } from '@/lib/db'
+import { lerPublicoAte } from '@/lib/clientes/publico'
 
 /**
  * O tempo — esperas, agenda e busca.
@@ -170,60 +169,35 @@ export async function buscarClientes(
   tenantId: string,
   cfg: ConfigBuscarClientes,
 ): Promise<{ clientes: ClienteEncontrado[]; truncado: boolean }> {
-  const admin = createAdminClient()
   const limite = Math.min(cfg.limite ?? 200, 500)
+  // Dia e mês no fuso do NEGÓCIO. Comparar com `getMonth()` cru usaria o fuso
+  // do processo (UTC no container) e erraria por um dia quem faz aniversário
+  // na virada.
+  const hoje = partsInTZ(new Date())
 
-  let q = admin
-    .from('clients')
-    .select('id, name, phone, birth_date, tags, branch_id')
-    .eq('tenant_id', tenantId)
-    .eq('is_active', true)
-    // Uma a mais para saber se o teto cortou alguém — e poder dizer isso no
-    // passo, em vez de silenciosamente atender só uma parte.
-    .limit(limite + 1)
-
-  if (cfg.unidadeId) q = q.eq('branch_id', cfg.unidadeId)
-  if (cfg.tags?.length) q = q.overlaps('tags', cfg.tags)
-
-  const { data, error } = await q
-  if (error) throw new Error(`Não consegui buscar os clientes: ${error.message}`)
-
-  let linhas = data ?? []
-
-  if (cfg.aniversarioHoje) {
-    // Dia e mês no fuso do NEGÓCIO. Comparar com `getMonth()` cru usaria o
-    // fuso do processo (UTC no container) e erraria por um dia quem faz
-    // aniversário na virada.
-    const hoje = partsInTZ(new Date())
-    const chave = `${String(hoje.month).padStart(2, '0')}-${String(hoje.day).padStart(2, '0')}`
-    linhas = linhas.filter(c => String(c.birth_date ?? '').slice(5, 10) === chave)
-  }
-
-  if (cfg.semRetornoHaDias) {
-    const corte = new Date(Date.now() - cfg.semRetornoHaDias * 24 * 3600 * 1000).toISOString()
-    const ids = linhas.map(c => c.id as string)
-
-    // Quem TEVE atendimento depois do corte sai da lista. A pergunta é sobre
-    // ausência, e ausência não se consulta direto: consulta-se a presença e
-    // tira-se o resto.
-    const recentes = await ler(admin
-      .from('appointments')
-      .select('client_id')
-      .in('client_id', ids)
-      .eq('status', 'COMPLETED')
-      .gte('scheduled_at', corte), 'carregar os agendamentos')
-
-    const voltaram = new Set((recentes ?? []).map(a => a.client_id as string))
-    linhas = linhas.filter(c => !voltaram.has(c.id as string))
-  }
+  // Todos os filtros NO BANCO, e o teto DEPOIS deles (2026-10-22). Antes o
+  // teto vinha primeiro — 501 clientes quaisquer — e o aniversário e o "sem
+  // retorno" filtravam esse lote: a automação de aniversário perdia quase
+  // todos os aniversariantes, e o `truncado`, contado depois, não avisava.
+  // Uma a mais que o teto, para saber se ele cortou alguém e poder dizer isso
+  // no passo, em vez de silenciosamente atender só uma parte.
+  const linhas = await lerPublicoAte(tenantId, {
+    branch_ids: cfg.unidadeId ? [cfg.unidadeId] : undefined,
+    tags: cfg.tags?.length ? cfg.tags : undefined,
+    aniversario: cfg.aniversarioHoje ? { mes: hoje.month, dia: hoje.day } : undefined,
+    // Quem TEVE atendimento concluído depois do corte sai da lista.
+    sem_retorno_desde: cfg.semRetornoHaDias
+      ? new Date(Date.now() - cfg.semRetornoHaDias * 24 * 3600 * 1000).toISOString()
+      : undefined,
+  }, limite + 1)
 
   const truncado = linhas.length > limite
   return {
     truncado,
     clientes: linhas.slice(0, limite).map(c => ({
-      id:       c.id as string,
-      nome:     c.name as string,
-      telefone: (c.phone as string | null) ?? null,
+      id:       c.id,
+      nome:     c.name,
+      telefone: c.phone ?? null,
     })),
   }
 }

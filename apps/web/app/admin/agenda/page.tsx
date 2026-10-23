@@ -1,6 +1,6 @@
 ﻿import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { lerTodas } from '@/lib/db'
 import type { ComponentProps } from 'react'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -92,18 +92,22 @@ export default async function AdminAgendaPage({
   // "só a própria" via a agenda de todo mundo nesta tela.
   const agendaOwner = ownerFilter(ctx, 'agenda')
 
-  let apptsQuery = admin
-    .from('appointments')
-    .select('id, scheduled_at, started_at, completed_at, arrived_at, cancellation_reason, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users!appointments_professional_id_fkey(name)')
-    .in('branch_id', branchIds)
-    .gte('scheduled_at', startDate.toISOString())
-    .lte('scheduled_at', endDate.toISOString())
-    .order('scheduled_at', { ascending: true })
-    .limit(1000)
-  if (agendaOwner) apptsQuery = apptsQuery.eq('professional_id', agendaOwner)
+  //
+  // Em páginas até o fim (2026-10-22), como a da unidade: com `.limit(1000)`,
+  // a semana de uma rede movimentada perdia os últimos horários, e o dia
+  // aparecia livre. A ordem tem desempate pelo id.
   // Falha para a tela: com o erro só no log, a agenda aparecia VAZIA — e agenda
   // vazia é informação ("dia livre"), não sintoma.
-  const apptsRaw = await ler(apptsQuery, 'carregar a agenda da rede')
+  const apptsRaw = await lerTodas((de, ate) => {
+    let apptsQuery = admin
+      .from('appointments')
+      .select('id, scheduled_at, started_at, completed_at, arrived_at, cancellation_reason, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users!appointments_professional_id_fkey(name)')
+      .in('branch_id', branchIds)
+      .gte('scheduled_at', startDate.toISOString())
+      .lte('scheduled_at', endDate.toISOString())
+    if (agendaOwner) apptsQuery = apptsQuery.eq('professional_id', agendaOwner)
+    return apptsQuery.order('scheduled_at', { ascending: true }).order('id').range(de, ate)
+  }, 'carregar a agenda da rede')
 
   // O selo da ficha de saúde no bloco (2026-10-21): só o estado, do banco.
   const brutos = (apptsRaw ?? []) as unknown as { id: string; client_id: string | null; status: string }[]

@@ -4,7 +4,7 @@ import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
-import { getCachedBranchClients, getCachedBranchCompletedAppointments } from '@/lib/cached-queries'
+import { getCachedBranchClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 
 export default async function ClientsLayout({
@@ -27,16 +27,13 @@ export default async function ClientsLayout({
     .single(), 'buscar a unidade')
   if (!branch) notFound()
 
-  const [rawClients, recentAppts] = await Promise.all([
+  const [rawClients, ultimasVisitas] = await Promise.all([
     getCachedBranchClients(branch.id, ctx.tenantId!),
-    getCachedBranchCompletedAppointments(branch.id, ctx.tenantId!),
+    getCachedUltimasVisitas(ctx.tenantId!, branch.id),
   ])
 
-  // Build last-visit map (first occurrence = most recent, since sorted desc)
-  const lastVisitMap = new Map<string, string>()
-  for (const a of recentAppts ?? []) {
-    if (!lastVisitMap.has(a.client_id)) lastVisitMap.set(a.client_id, a.scheduled_at)
-  }
+  // A última visita NESTA unidade, agregada no banco.
+  const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
 
   const thirtyDaysAgo = subDays(new Date(), 30)
   const clients = (rawClients ?? []).map(c => ({

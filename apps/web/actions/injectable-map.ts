@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { injectableTotals, emptyInjectableMap, type InjectableMapValue } from '@/lib/anamnesis'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 
 /**
  * Planejamento de injetáveis.
@@ -424,7 +424,7 @@ export async function listarPlanejamentosDoCliente(clientId: string): Promise<{
 
   if (error) return { mapas: [], error: `Não foi possível carregar: ${error.message}` }
 
-  const aplicacoes = await contarAplicacoes(admin, [clientId])
+  const aplicacoes = await contarAplicacoes(admin, ctx.tenantId!, [clientId])
   return { mapas: ((data ?? []) as unknown as MapaLido[]).map(l => linhaDaLista(l, aplicacoes)) }
 }
 
@@ -442,51 +442,55 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
   assertPermission(ctx, 'medical_records', 'VIEW')
   const admin = createAdminClient()
 
-  let q = admin
-    .from('injectable_maps')
-    .select('id, name, client_id, points, updated_at, clients(name, phone), branches(name)')
-    .eq('tenant_id', ctx.tenantId!)
-    .order('updated_at', { ascending: false })
-    .limit(300)
   // Planejamento avulso não tem unidade: ele aparece em qualquer recorte, senão
   // sumiria da tela exatamente de quem acabou de criá-lo.
   // Quem tem unidade fixa vê a dela, qualquer que seja o pedido (§11). E o id
   // entra num filtro em texto: só uuid.
   const recorte = ctx.branchId ?? branchId
   if (recorte && !/^[0-9a-f-]{36}$/i.test(recorte)) return { mapas: [], error: 'Unidade inválida.' }
-  if (recorte) q = q.or(`branch_id.eq.${recorte},branch_id.is.null`)
 
-  const { data, error } = await q
-  if (error) return { mapas: [], error: `Não foi possível carregar os planejamentos: ${error.message}` }
-
-  const linhas = (data ?? []) as unknown as MapaLido[]
+  // Todos, em páginas (2026-10-22): tinha teto de 300, e os mapas editados há
+  // mais tempo sumiam da lista.
+  let linhas: MapaLido[]
+  try {
+    linhas = await lerTodas((de, ate) => {
+      let q = admin
+        .from('injectable_maps')
+        .select('id, name, client_id, points, updated_at, clients(name, phone), branches(name)')
+        .eq('tenant_id', ctx.tenantId!)
+      if (recorte) q = q.or(`branch_id.eq.${recorte},branch_id.is.null`)
+      return q.order('updated_at', { ascending: false }).order('id').range(de, ate)
+    }, 'carregar os planejamentos') as unknown as MapaLido[]
+  } catch (e) {
+    return { mapas: [], error: `Não foi possível carregar os planejamentos: ${e instanceof Error ? e.message : String(e)}` }
+  }
   const ids = linhas.map(l => l.client_id).filter(Boolean) as string[]
-  const aplicacoes = await contarAplicacoes(admin, ids)
+  const aplicacoes = await contarAplicacoes(admin, ctx.tenantId!, ids)
 
   return { mapas: linhas.map(l => linhaDaLista(l, aplicacoes)) }
 }
 
 type ResumoAplicacoes = Map<string, { ultima: string; total: number }>
 
+/**
+ * A última aplicação e o total de cada cliente, agregados no banco
+ * (`aplicacoes_por_cliente`, 2026-10-22). Lia todas as aplicações dos
+ * clientes da lista, e o PostgREST cortava em 1000: o total ficava baixo, e
+ * quem só tinha aplicação antiga aparecia sem "última aplicação".
+ */
 async function contarAplicacoes(
   admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
   clientIds: string[],
 ): Promise<ResumoAplicacoes> {
   const porCliente: ResumoAplicacoes = new Map()
   if (clientIds.length === 0) return porCliente
 
   const data = await ler(admin
-    .from('injectable_applications')
-    .select('client_id, applied_at')
-    .in('client_id', clientIds)
-    .order('applied_at', { ascending: false }), 'carregar as aplicações')
+    .rpc('aplicacoes_por_cliente', { p_tenant: tenantId, p_clientes: [...new Set(clientIds)] }), 'carregar as aplicações')
 
-  for (const a of (data ?? []) as { client_id: string; applied_at: string }[]) {
-    const atual = porCliente.get(a.client_id)
-    // A consulta vem da mais recente para a mais antiga: a primeira de cada
-    // cliente é a última aplicação dele.
-    if (!atual) porCliente.set(a.client_id, { ultima: a.applied_at, total: 1 })
-    else atual.total++
+  for (const a of (data ?? []) as { client_id: string; ultima: string; total: number }[]) {
+    porCliente.set(a.client_id, { ultima: a.ultima, total: a.total })
   }
   return porCliente
 }

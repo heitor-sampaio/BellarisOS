@@ -74,7 +74,7 @@ export async function listarAutomacoes(): Promise<{
   if (error) return { automacoes: [], error: error.message }
 
   const ids = (data ?? []).map(a => a.id as string)
-  const resumo = await resumoDeExecucoes(ids)
+  const resumo = await resumoDeExecucoes(ctx.tenantId!, ids)
 
   return {
     automacoes: (data ?? []).map(a => ({
@@ -128,8 +128,15 @@ function caminhoDoFluxo(grafo: GrafoDeAutomacao | null): string[] {
   return caminho
 }
 
-/** Execuções dos últimos 7 dias por automação. */
+/**
+ * Execuções dos últimos 7 dias por automação, contadas no banco
+ * (`automacoes_execucoes`, 2026-10-22). Contava as linhas no app, e o
+ * PostgREST corta em 1000: um lembrete diário passava disso numa semana.
+ * Ensaio não é execução: a função deixa de fora (a lista diria que a
+ * automação rodou sozinha quando alguém só conferiu o fluxo).
+ */
 async function resumoDeExecucoes(
+  tenantId: string,
   ids: string[],
 ): Promise<Map<string, { total: number; falhas: number }>> {
   const mapa = new Map<string, { total: number; falhas: number }>()
@@ -137,22 +144,12 @@ async function resumoDeExecucoes(
 
   const desde = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
   const { data, error } = await createAdminClient()
-    .from('automation_runs')
-    .select('automation_id, status')
-    .in('automation_id', ids)
-    // Ensaio não é execução: contá-lo aqui faria a lista dizer que a
-    // automação rodou sozinha quando alguém só conferiu o fluxo.
-    .eq('simulacao', false)
-    .gte('created_at', desde)
+    .rpc('automacoes_execucoes', { p_tenant: tenantId, p_ids: ids, p_desde: desde })
 
   if (error) { console.error('[resumoDeExecucoes]', error.message); return mapa }
 
-  for (const r of data ?? []) {
-    const id = r.automation_id as string
-    const atual = mapa.get(id) ?? { total: 0, falhas: 0 }
-    atual.total += 1
-    if (r.status === 'falhou') atual.falhas += 1
-    mapa.set(id, atual)
+  for (const r of (data ?? []) as { automation_id: string; total: number; falhas: number }[]) {
+    mapa.set(r.automation_id, { total: r.total, falhas: r.falhas })
   }
   return mapa
 }

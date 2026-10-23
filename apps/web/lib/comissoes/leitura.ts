@@ -1,6 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import {
   configDaLinha, linhasDaComissao, precoDaSessaoDePacote,
   type ConfigDeComissao, type RegraDeComissao, type TaxaDePagamento, type TipoDeRegra, type MetodoComTaxa,
@@ -237,10 +237,18 @@ export async function resumoDasComissoes(r: Recorte): Promise<ResumoDoProfission
   }))
 }
 
-/** O extrato do período e o que ainda está a pagar (até 2.000 lançamentos). */
+/**
+ * O extrato do período e o que ainda está a pagar — inteiro, em páginas
+ * (2026-10-22). A função tinha teto de 2000, e o PostgREST cortava em 1000.
+ */
 export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtrato[]> {
-  const linhas = await ler(createAdminClient().rpc('comissoes_extrato', argsDoRecorte(r)), 'ler o extrato das comissões')
-  return ((linhas ?? []) as Record<string, unknown>[]).map(l => ({
+  const admin = createAdminClient()
+  const linhas = await lerTodas<Record<string, unknown>>(
+    (de, ate) => admin.rpc('comissoes_extrato', argsDoRecorte(r))
+      .order('released_at', { ascending: false }).order('id').range(de, ate),
+    'ler o extrato das comissões',
+  )
+  return linhas.map(l => ({
     id: String(l.id), professionalId: String(l.professional_id), branchId: String(l.branch_id),
     releasedAt: String(l.released_at), kind: l.kind as LancamentoDoExtrato['kind'], motivo: (l.motivo as string | null) ?? null,
     amount: Number(l.amount), status: l.status as LancamentoDoExtrato['status'], payoutId: (l.payout_id as string | null) ?? null,

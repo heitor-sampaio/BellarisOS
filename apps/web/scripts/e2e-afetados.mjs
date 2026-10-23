@@ -37,6 +37,11 @@ const AREAS = [
   { nome: 'CSP e scripts de fora',
     chaves: ['seguranca/csp', 'csp-relatorio', 'app/layout.tsx', 'conectar-whatsapp-meta', 'sdk-da-meta'],
     specs: /^(csp-clinica|sdk-da-meta)/ },
+  // As listas que o PostgREST cortava em 1000 linhas (a varredura de
+  // 2026-10-22): a prova de cada uma mora num spec só.
+  { nome: 'listas longas (sem o corte de 1000)',
+    chaves: ['cached-queries', 'lerTodas', 'notification-campaigns', 'disparo-de-campanha', 'automacoes/tempo', 'atividade-da-pessoa', 'reports-bi-section', 'lista-de-checkout', 'injectable-map', 'oportunidades/page', 'inbox/page', 'admin/agenda/page', 'financeiro/page', 'comissoes/leitura', 'metrics/queries'],
+    specs: /^(listas-sem-corte|agenda-mais-de-mil|campanha-aniversario)/ },
   { nome: 'Copilot',
     chaves: ['copilot', 'openai'],
     specs: /^(copilot|api-sem-credencial)/ },

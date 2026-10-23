@@ -2,7 +2,7 @@ import { subDays } from 'date-fns'
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
-import { getCachedNetworkClients, getCachedNetworkCompletedAppointments, getCachedNetworkBranches } from '@/lib/cached-queries'
+import { getCachedNetworkClients, getCachedUltimasVisitas, getCachedNetworkBranches } from '@/lib/cached-queries'
 
 export default async function AdminClientsLayout({
   children,
@@ -12,16 +12,13 @@ export default async function AdminClientsLayout({
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'VIEW')
 
-  const [rawClients, recentAppts, branchesRaw] = await Promise.all([
+  const [rawClients, ultimasVisitas, branchesRaw] = await Promise.all([
     getCachedNetworkClients(ctx.tenantId!),
-    getCachedNetworkCompletedAppointments(ctx.tenantId!),
+    getCachedUltimasVisitas(ctx.tenantId!, null),
     getCachedNetworkBranches(ctx.tenantId!),
   ])
 
-  const lastVisitMap = new Map<string, string>()
-  for (const a of recentAppts ?? []) {
-    if (!lastVisitMap.has(a.client_id)) lastVisitMap.set(a.client_id, a.scheduled_at)
-  }
+  const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
 
   const thirtyDaysAgo = subDays(new Date(), 30)
 

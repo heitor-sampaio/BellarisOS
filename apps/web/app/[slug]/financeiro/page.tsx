@@ -7,7 +7,7 @@ import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar } from '@/lib/metrics'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 
 export default async function FinancialPage({
   params,
@@ -52,7 +52,9 @@ export default async function FinancialPage({
     getAPagar({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
   ])
 
-  const transactions = await ler(supabase
+  // Em páginas (2026-10-22): o PostgREST corta em 1000, e o extrato do período
+  // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
+  const transactions = await lerTodas((de, ate) => supabase
     .from('financial_transactions')
     .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, notes, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
     .eq('branch_id', branch.id)
@@ -66,7 +68,8 @@ export default async function FinancialPage({
     // rede. O relógio do Postgres está à frente do relógio do app, e um
     // lançamento feito neste segundo sumia da tela que acabou de criá-lo.
     .lte('data_de_referencia', fimDoPeriodo.toISOString())
-    .order('data_de_referencia', { ascending: false }), 'carregar os lançamentos')
+    .order('data_de_referencia', { ascending: false }).order('id')
+    .range(de, ate), 'carregar os lançamentos')
 
 
 
@@ -98,14 +101,15 @@ export default async function FinancialPage({
 
   // Por `ler`: sem checar o erro, uma falha virava "nenhum cliente" no
   // lançamento de crédito, sem nada acusando.
+  // Todas as clientes ativas da unidade (eram as 300 primeiras do alfabeto).
   const clientsRaw = canWrite
-    ? await ler(supabase
+    ? await lerTodas((de, ate) => supabase
         .from('clients')
         .select('id, name')
         .eq('branch_id', branch.id)
         .eq('is_active', true)
-        .order('name')
-        .limit(300), 'carregar os clientes da unidade')
+        .order('name').order('id')
+        .range(de, ate), 'carregar os clientes da unidade')
     : []
 
   const clients = ((clientsRaw ?? []) as { id: string; name: string }[]).map(c => ({ id: c.id, name: c.name }))

@@ -7,7 +7,7 @@ import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi
 import { addDaysTZ, startOfDayTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { getRelatorio } from '@/lib/metrics/relatorio'
 import {
-  resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, percent,
+  resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
   getCore, getSeries,
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
@@ -321,8 +321,6 @@ async function painelComercial({
   rawFunil?: string
 }): Promise<DadosComerciais> {
   const admin    = createAdminClient()
-  const fromISO  = from.toISOString()
-  const toISO    = to.toISOString()
 
   // A rede pode ter vários funis; o painel mostra um. Empilhar todos somaria
   // etapas que não se sucedem.
@@ -332,34 +330,25 @@ async function painelComercial({
     ?? funisAtivos.find(f => f.is_default)
     ?? funisAtivos[0]
 
-  const [etapasRaw, leadsRaw, apptsRaw, usersRaw, motivosDePerda] = await Promise.all([
+  // Os números vêm agregados do banco (getPainelComercial, 2026-10-22): a tela
+  // contava sobre as listas de leads e de atendimentos, e o PostgREST cortava
+  // cada uma em 1000.
+  const [etapasRaw, painel, usersRaw, motivosDePerda] = await Promise.all([
     getLeadFunnel({
       tenantId, branchIds: null, from, to, funnelId: funilAtivo?.id ?? null,
     }),
 
-    ler(admin.from('leads')
-      .select('id, client_id, owner_id')
-      .eq('tenant_id', tenantId)
-      .gte('created_at', fromISO).lte('created_at', toISO), 'carregar os leads do período'),
-
-    ler(admin.from('appointments')
-      .select('id, status, source, created_by_id')
-      .in('branch_id', branchIds)
-      .gte('scheduled_at', fromISO).lte('scheduled_at', toISO), 'carregar os agendamentos do funil'),
+    getPainelComercial({ tenantId, branchIds, from, to }),
 
     ler(admin.from('users').select('id, name').eq('tenant_id', tenantId), 'carregar a equipe'),
 
     getMotivosDePerda({ tenantId, from, to }),
   ])
 
-  const leads = (leadsRaw ?? []) as { client_id: string | null; owner_id: string | null }[]
-  const appts = (apptsRaw ?? []) as { status: string; source: string; created_by_id: string | null }[]
   const nomeDe = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))
 
-  const totalLeads  = leads.length
-  const convertidos = leads.filter(l => l.client_id).length
-
-  const comerciais = appts.filter(a => a.source === 'COMMERCIAL')
+  const totalLeads  = painel.totalLeads
+  const convertidos = painel.convertidos
 
   // Comparecimento exclui as canceladas do denominador: com elas dentro a
   // métrica misturava "não cancelou" com "compareceu" e ficava sempre baixa.
@@ -369,8 +358,8 @@ async function painelComercial({
   // há mais o que a distinga na tabela. O que a métrica sempre quis saber é do
   // funil do time comercial: quantos primeiros atendimentos foram marcados e
   // quantos aconteceram. Isso o `source` responde, e o rótulo mudou junto.
-  const comerciaisConsiderados = comerciais.filter(a => a.status !== 'CANCELLED').length
-  const comerciaisRealizados   = comerciais.filter(a => a.status === 'COMPLETED').length
+  const comerciaisConsiderados = painel.considerados
+  const comerciaisRealizados   = painel.realizados
 
   // Leads sem dono entram numa linha própria em vez de sumirem: antes o
   // ranking somava menos leads que o KPI de leads recebidos, sem explicação.
@@ -390,12 +379,12 @@ async function painelComercial({
     }
     return v
   }
-  for (const l of leads) {
-    const v = bump(l.owner_id)
-    v.leads++
-    if (l.client_id) v.convertidos++
+  for (const d of painel.porDono) {
+    const v = bump(d.dono)
+    v.leads += d.leads
+    v.convertidos += d.convertidos
+    v.agendamentos += d.agendamentos
   }
-  for (const a of comerciais) bump(a.created_by_id).agendamentos++
 
   return {
     funis:      funisAtivos.map(f => ({ id: f.id, name: f.name })),
@@ -404,7 +393,7 @@ async function painelComercial({
     totalLeads,
     convertidos,
     conversao:      percent(convertidos, totalLeads) ?? 0,
-    comerciaisAgendados: comerciais.length,
+    comerciaisAgendados: painel.agendados,
     comerciaisConsiderados,
     comerciaisRealizados,
     comparecimento: percent(comerciaisRealizados, comerciaisConsiderados) ?? 0,

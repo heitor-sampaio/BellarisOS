@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { lerTodas } from '@/lib/db'
 
 export interface AtividadeDaPessoa {
   /** A última mensagem em QUALQUER thread da pessoa. */
@@ -32,29 +32,17 @@ export async function atividadeDasPessoas(
   const ids = [...new Set(contatoIds.filter(Boolean))]
   if (ids.length === 0) return porPessoa
 
-  const threads = await ler(
-    createAdminClient()
-      .from('conversations')
-      .select('contato_id, last_message_at, awaiting_since')
-      .eq('tenant_id', tenantId)
-      .in('contato_id', ids),
+  // Agregada no banco (`atividade_dos_contatos`, 2026-10-22): a mais recente e
+  // a espera mais antiga de cada pessoa. Lia as conversas de todos os contatos
+  // do quadro numa consulta só — mais de 1000 linhas cortadas, e a lista de
+  // ids inteira na URL.
+  const admin = createAdminClient()
+  const linhas = await lerTodas<{ contato_id: string; last_interaction_at: string | null; awaiting_since: string | null }>(
+    (de, ate) => admin.rpc('atividade_dos_contatos', { p_tenant: tenantId, p_contatos: ids }).order('contato_id').range(de, ate),
     'carregar a atividade dos contatos',
   )
-
-  for (const t of (threads ?? []) as {
-    contato_id: string; last_message_at: string | null; awaiting_since: string | null
-  }[]) {
-    const atual = porPessoa.get(t.contato_id) ?? { last_interaction_at: null, awaiting_since: null }
-    // Por Date.parse, não por texto: o Postgres corta zeros das frações de
-    // segundo, e aí `…02.4312+00` e `…02.431208+00` não ordenam como texto.
-    const ms = (v: string | null) => (v ? Date.parse(v) : NaN)
-    if (t.last_message_at && !(ms(atual.last_interaction_at) >= ms(t.last_message_at))) {
-      atual.last_interaction_at = t.last_message_at
-    }
-    if (t.awaiting_since && !(ms(atual.awaiting_since) <= ms(t.awaiting_since))) {
-      atual.awaiting_since = t.awaiting_since
-    }
-    porPessoa.set(t.contato_id, atual)
+  for (const l of linhas) {
+    porPessoa.set(l.contato_id, { last_interaction_at: l.last_interaction_at, awaiting_since: l.awaiting_since })
   }
   return porPessoa
 }

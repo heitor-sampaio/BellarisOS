@@ -27,7 +27,7 @@ async function jsonDoPacote(caminho: string) {
   expect(error, 'o pacote tem de estar no bucket').toBeNull()
   const r = await fetch(data!.signedUrl)
   expect(r.ok).toBe(true)
-  return await r.json() as { prontuario: unknown; solicitacao: { incluiProntuario: boolean }; fichasDeSaude: unknown }
+  return await r.json() as { prontuario: unknown; solicitacao: { incluiProntuario: boolean }; fichasDeSaude: unknown; comunicacoes: unknown[] }
 }
 
 test.describe.serial('LGPD: exportação de dados', () => {
@@ -52,6 +52,12 @@ test.describe.serial('LGPD: exportação de dados', () => {
       respostas: { allergies: RESPOSTA_DA_FICHA }, respondido_em: new Date().toISOString(),
     })
     expect(error, 'a ficha respondida').toBeNull()
+    // 210 comunicações recebidas (2026-10-22): o pacote levava só as 200 mais
+    // recentes, e saía incompleto parecendo completo.
+    const { error: eN } = await banco().from('client_notifications').insert(Array.from({ length: 210 }, (_, i) => ({
+      client_id: cliente!.clientId, title: `${PREFIXO} aviso ${i} ${marca}`, type: 'general',
+    })))
+    expect(eN, 'as comunicações').toBeNull()
   })
 
   test.afterAll(async () => {
@@ -96,6 +102,7 @@ test.describe.serial('LGPD: exportação de dados', () => {
       expect.objectContaining({ situacao: 'Respondida', respondidaPor: 'a cliente, pelo link' }),
     ])
     expect(JSON.stringify(pacote), 'as respostas não').not.toContain(RESPOSTA_DA_FICHA)
+    expect(pacote.comunicacoes.length, 'todas as comunicações recebidas').toBeGreaterThanOrEqual(210)
   })
 
   test('um pedido em aberto por cliente — garantido pelo banco', async () => {

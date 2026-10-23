@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import type { FichaDoLogin } from '@/lib/clientes/ficha-da-requisicao'
 
 // ─── Membro por auth_id (usado no getTenantContext) ───────────────────────────
@@ -101,34 +101,36 @@ export function getCachedBranchClients(branchId: string, tenantId: string) {
         .eq('tenant_id', tenantId)
         .maybeSingle(), 'buscar a unidade')
       if (!branch?.name) return []
-      const data = await ler(admin
+      // Todas, em páginas: o PostgREST corta em 1000, e a lista parava numa
+      // letra do alfabeto — a busca da barra (em memória) não achava o resto.
+      const nome = branch.name
+      return lerTodas((de, ate) => admin
         .from('clients')
         .select('id, name, phone, tags, is_active, created_at')
         .eq('tenant_id', tenantId)
-        .contains('tags', [unitTag(branch.name)])
-        .order('name'), 'carregar os clientes')
-      return data ?? []
+        .contains('tags', [unitTag(nome)])
+        .order('name').order('id')
+        .range(de, ate), 'carregar os clientes')
     },
     [`branch-clients-${branchId}`],
     { revalidate: 120, tags: [`clients:${tenantId}`] },
   )()
 }
 
-// ─── Branch: appointments concluídos (para calcular "última visita") ─────────
-export function getCachedBranchCompletedAppointments(branchId: string, tenantId: string) {
+// ─── A última visita de cada cliente (a lista de clientes) ───────────────────
+// Agregada no banco (`ultimas_visitas`, 2026-10-22). Era a lista dos 800
+// (unidade) ou 1000 (rede) concluídos mais recentes: quem não tinha vindo
+// nesse intervalo aparecia "Sem visitas", igual a quem nunca veio.
+export function getCachedUltimasVisitas(tenantId: string, branchId: string | null) {
   return unstable_cache(
-    async () => {
+    async (): Promise<{ client_id: string; ultima: string }[]> => {
       const admin = createAdminClient()
-      const data = await ler(admin
-        .from('appointments')
-        .select('client_id, scheduled_at')
-        .eq('branch_id', branchId)
-        .eq('status', 'COMPLETED')
-        .order('scheduled_at', { ascending: false })
-        .limit(800), 'carregar os agendamentos')
-      return data ?? []
+      return lerTodas((de, ate) => admin
+        .rpc('ultimas_visitas', { p_tenant: tenantId, p_branch: branchId })
+        .order('client_id')
+        .range(de, ate), 'carregar a última visita dos clientes') as Promise<{ client_id: string; ultima: string }[]>
     },
-    [`branch-appointments-completed-${branchId}`],
+    [`ultimas-visitas-${tenantId}-${branchId ?? 'rede'}`],
     { revalidate: 300, tags: [`appointments:${tenantId}`] },
   )()
 }
@@ -138,42 +140,16 @@ export function getCachedNetworkClients(tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const data = await ler(admin
+      // Todas, em páginas (ver getCachedBranchClients).
+      return lerTodas((de, ate) => admin
         .from('clients')
         .select('id, name, phone, tags, is_active, created_at, branch_id, branches!branch_id(id, name)')
         .eq('tenant_id', tenantId)
-        .order('name'), 'carregar os clientes')
-      return data ?? []
+        .order('name').order('id')
+        .range(de, ate), 'carregar os clientes')
     },
     [`network-clients-${tenantId}`],
     { revalidate: 120, tags: [`clients:${tenantId}`] },
-  )()
-}
-
-// ─── Network (admin): appointments concluídos de toda a rede ─────────────────
-export function getCachedNetworkCompletedAppointments(tenantId: string) {
-  return unstable_cache(
-    async () => {
-      const admin = createAdminClient()
-      // ⚠️ `appointments` NÃO tem `tenant_id` — a rede vem pela unidade.
-      //
-      // O filtro era `.eq('tenant_id', tenantId)`, e o Postgres respondia
-      // 42703 (coluna não existe) em toda chamada. Com o erro descartado, a
-      // lista voltava vazia e a coluna "última visita" da barra lateral de
-      // clientes do /admin ficava em branco para TODO MUNDO — que é
-      // exatamente o que se vê num cliente que nunca veio. Ninguém tinha
-      // como desconfiar.
-      const data = await ler(admin
-        .from('appointments')
-        .select('client_id, scheduled_at, branches!inner(tenant_id)')
-        .eq('branches.tenant_id', tenantId)
-        .eq('status', 'COMPLETED')
-        .order('scheduled_at', { ascending: false })
-        .limit(2000), 'carregar os agendamentos')
-      return data ?? []
-    },
-    [`network-appointments-completed-${tenantId}`],
-    { revalidate: 300, tags: [`appointments:${tenantId}`] },
   )()
 }
 
