@@ -1470,6 +1470,23 @@ cron de aniversário pegou no teste. O schema `private` dá `usage` a
 No extrato da rede, a tabela mostra as 100 primeiras e avisa quantas há
 ("Exibindo 100 de N"); o N dizia 500 com 1011 no mês.
 
+### 2026-10-23 — O verificador de segurança do Supabase, limpo
+
+O Heitor perguntou como se proteger de vazamento de dados de pacientes. O
+verificador do Supabase acusava três coisas:
+- **oito funções de gatilho** em `public` com `execute` para `anon` e
+  `authenticated`. Não havia porta: o PostgREST não publica função de gatilho
+  (responde PGRST202, conferido pela chave pública) e o Postgres recusa
+  chamá-la fora de um gatilho. Revogado assim mesmo, para o verificador
+  mostrar só o que importa;
+- **catorze funções sem `search_path`** fixo — fixado no mesmo caminho que
+  usavam (`public, extensions`);
+- **a proteção contra senha vazada desligada** — é um interruptor do painel
+  (ver §5).
+
+Sobra só `planos_do_site`, aberta de propósito (o site a lê sem login).
+Migration `20261023000002`; sem comportamento novo, sem teste novo.
+
 ### 2026-10-22 — O CSP da clínica passa a bloquear
 
 Pedido do Heitor. O CSP estava em modo de aviso desde 2026-10-08. Os avisos de
@@ -6662,6 +6679,13 @@ verdade. O que vale:
 - **Conferir no texto do site**: o "combinamos o plano" do fim do teste, o
   app Android citado como disponível, e se a política de privacidade já tem
   razão social e CNPJ.
+- **Proteção de dados** (2026-10-23): ligar no Supabase a proteção contra
+  senha vazada (Authentication → Password security); verificação em duas
+  etapas nas contas do Supabase, Railway, GitHub, Cloudflare e no e-mail
+  delas. Em aberto, para decidir: verificação em duas etapas na equipe da
+  clínica (obrigatória para o admin da rede e quem vê prontuário?), um
+  projeto Supabase só para o E2E antes da primeira clínica, e o registro de
+  quem abriu o prontuário.
 - **Buscadores** (2026-10-20): cadastrar o site no Google Search Console e no
   Bing Webmaster Tools com o `sitemap.xml`; os perfis da marca (para o
   `sameAs` dos dados estruturados).
