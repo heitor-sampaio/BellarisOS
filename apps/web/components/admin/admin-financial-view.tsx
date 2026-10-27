@@ -14,6 +14,7 @@ import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 // --- Types -------------------------------------------------------------------
 
@@ -37,6 +38,7 @@ interface AdminTx {
   description:    string
   amount:         number
   payment_method: string | null
+  cartao_vezes?:  number | null
   is_paid:        boolean
   paid_at:        string | null
   due_date:       string | null
@@ -102,14 +104,6 @@ const PERIOD_OPTIONS = [
   { value: 'quarter',    label: 'Últimos 90 dias' },
   { value: 'custom',     label: 'Personalizado' },
 ]
-
-const PM_LABELS: Record<string, string> = {
-  CASH:            'Dinheiro',
-  PIX:             'PIX',
-  DEBIT_CARD:      'Débito',
-  CREDIT_CARD:     'Crédito',
-  INTERNAL_CREDIT: 'Crédito interno',
-}
 
 function pctDelta(curr: number, prev: number) {
   // Sem base de comparação não existe variação: antes o primeiro mês de uso
@@ -532,7 +526,7 @@ export function AdminFinancialView({
                       </span>
                     </td>
                     <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                      {t.payment_method ? PM_LABELS[t.payment_method] ?? t.payment_method : '—'}
+                      {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes) : '—'}
                     </td>
                     <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
                       <span className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>

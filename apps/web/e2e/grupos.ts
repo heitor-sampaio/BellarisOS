@@ -52,6 +52,7 @@ export const ISOLADOS = [
   'fechamento-escopo-proprio.spec.ts',
   'ficha-pre-atendimento.spec.ts',
   'financeiro-a-receber-concluido.spec.ts',
+  'financeiro-credito-em-vezes.spec.ts',
   'financeiro-parcelas.spec.ts',
   'fidelidade-desconto-no-pagamento.spec.ts',
   'fidelidade-ganho.spec.ts',

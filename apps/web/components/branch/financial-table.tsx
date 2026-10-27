@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SegSelect } from '@/components/shared/seg-select'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 export interface Transaction {
   id:             string
@@ -18,6 +19,8 @@ export interface Transaction {
   description:    string
   amount:         number
   payment_method: string | null
+  /** Crédito em N vezes, pago na hora (A33: a lista dizia só "Crédito"). */
+  cartao_vezes?:  number | null
   is_paid:        boolean
   paid_at:        string | null
   due_date:       string | null
@@ -36,14 +39,6 @@ interface Props {
   slug:         string
   canReverse:   boolean
   canPay:       boolean
-}
-
-const PM_LABELS: Record<string, string> = {
-  CASH:            'Dinheiro',
-  PIX:             'PIX',
-  DEBIT_CARD:      'Débito',
-  CREDIT_CARD:     'Crédito',
-  INTERNAL_CREDIT: 'Crédito interno',
 }
 
 const PM_COLORS: Record<string, { bg: string; color: string }> = {
@@ -293,7 +288,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                             background: pmStyle.bg, color: pmStyle.color,
                             border: `1px solid ${pmStyle.color}30`,
                           }}>
-                            {PM_LABELS[tx.payment_method]}
+                            {rotuloDaForma(tx.payment_method, tx.cartao_vezes)}
                           </span>
                         ) : (
                           <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>—</span>

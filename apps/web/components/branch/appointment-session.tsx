@@ -40,6 +40,9 @@ import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
+
 
 // -- Types ----------------------------------------------------------------------
 
@@ -133,7 +136,7 @@ interface Props {
   canReassign:        boolean
   canPayment:         boolean
   isProfessional:     boolean
-  paymentTransaction: { id: string; paymentMethod: string; amount: number } | null
+  paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null } | null
   treatmentProcedures:   TreatmentProcedure[]
   treatmentPackages:     TreatmentPackage[]
   existingPlan:          ExistingPlan | null
@@ -336,6 +339,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
   const metodoInicial = PAYMENT_METHODS.some(m => m.value === pagamentoCombinado?.metodo) ? pagamentoCombinado!.metodo! : 'PIX'
   // Controlado só para saber se é crédito: aí aparecem as vezes na maquininha.
   const [metodoEscolhido, setMetodoEscolhido] = useState(metodoInicial)
+  const [vezes, setVezes] = useState(1)
   const router = useRouter()
   const [state, action, pending] = useActionState(confirmPayment, null)
   // Pontos de fidelidade: só aparecem com o programa ligado e saldo positivo
@@ -439,9 +443,12 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
                 {metodoEscolhido === 'CREDIT_CARD' && (
-                  <select name="cartao_vezes" className="field" defaultValue="1" aria-label="Vezes no cartão">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
-                  </select>
+                  <>
+                    <select name="cartao_vezes" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))} aria-label="Vezes no cartão">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
+                    </select>
+                    <AvisoDaTaxa vezes={vezes} />
+                  </>
                 )}
                 {pagamentoCombinado && (
                   <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
@@ -595,6 +602,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                   <select id="vezes-no-cartao" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                   </select>
+                  <AvisoDaTaxa vezes={vezes} />
                 </div>
               )}
 
@@ -1479,7 +1487,7 @@ export function AppointmentSession({
                 </p>
                 {paymentTransaction ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
-                    Pagamento confirmado — {PAYMENT_METHODS.find(m => m.value === paymentTransaction.paymentMethod)?.label ?? paymentTransaction.paymentMethod} · {fmtBRL(paymentTransaction.amount)}
+                    Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes)} · {fmtBRL(paymentTransaction.amount)}
                   </p>
                 ) : isPartOfPlan ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>

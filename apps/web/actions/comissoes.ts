@@ -15,7 +15,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento } from '@/lib/comissoes/config'
@@ -205,4 +205,19 @@ export async function estornarFechamento(fechamentoId: string, motivo: string): 
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
+}
+
+/**
+ * As taxas da maquininha do cartão de crédito, para o aviso de quem recebe
+ * (A33 da simulação de 2026-10-27): escolher "3x" sem a taxa de 3x cadastrada
+ * não dizia nada, e a comissão usava outra. Só leitura; pede quem recebe.
+ */
+export async function taxasDoCartaoDeCredito(): Promise<{ parcelas: number; taxa_pct: number }[]> {
+  const ctx = await getTenantContext()
+  if (!podeReceber(ctx)) return []
+  const linhas = await ler(createAdminClient().from('payment_fees')
+    .select('parcelas, taxa_pct').eq('tenant_id', ctx.tenantId!).eq('metodo', 'CREDIT_CARD'),
+  'carregar as taxas do cartão')
+  return ((linhas ?? []) as { parcelas: number; taxa_pct: number | string }[])
+    .map(t => ({ parcelas: Number(t.parcelas), taxa_pct: Number(t.taxa_pct) }))
 }

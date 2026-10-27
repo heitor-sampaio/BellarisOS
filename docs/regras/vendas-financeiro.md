@@ -244,6 +244,19 @@ o procedimento avulso pago antes.
   (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
   check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
   Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.
+  - **O "3x" aparece** (A33, 2026-10-27): o nome da forma é UM
+    (`rotuloDaForma`, `lib/financeiro/formas.ts` — "Crédito 3x" nas listas do
+    financeiro, na ficha, no "Pagamento confirmado" do atendimento e no
+    portal da cliente); o Fechamento do dia separa o crédito por vezes
+    (`CREDIT_CARD:3`, "Cartão de crédito 3x"). Escolher N vezes sem a taxa
+    da maquininha de N vezes cadastrada AVISA quem recebe (`AvisoDaTaxa`):
+    a comissão usa a da maior parcela cadastrada abaixo (`taxaQueVale`, o
+    espelho de `private.comissao_taxa_pct`) ou nenhuma. As taxas vão de
+    à vista a 12x em Configurações → Comissões.
+  - **"Sem forma (pontos)" só para o que os pontos pagaram** (A35): no
+    Fechamento do dia, a receita sem forma com `loyalty_discount` é `PONTOS`;
+    todo o resto sem forma (a compra de estoque) é "Sem forma de pagamento".
+  - Prova: `e2e/financeiro-credito-em-vezes.spec.ts`, `tests/financeiro-formas.test.ts`.
 - **O checkout do plano cobra também o "atendimento de hoje"** (decisão do
   Heitor, 2026-10-20): o atendimento que GEROU o plano
   (`evaluation_appointment_id`), quando está concluído, tem preço, é avulso e

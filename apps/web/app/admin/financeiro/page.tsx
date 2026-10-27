@@ -10,7 +10,7 @@ import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
 /** Lançamento como o select pede. */
 type LancamentoLido = {
   id: string; type: string; category: string | null; description: string; amount: number | string
-  payment_method: string | null; is_paid: boolean; paid_at: string | null; due_date: string | null
+  payment_method: string | null; cartao_vezes: number | null; is_paid: boolean; paid_at: string | null; due_date: string | null
   created_at: string; branch_id: string; notes: string | null
   cliente: { name: string } | null
 }
@@ -87,7 +87,7 @@ export default async function AdminFinanceiroPage({
     // PARA, em vez de virar um extrato vazio.
     lerTodas((de, ate) => admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
+      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
     // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —

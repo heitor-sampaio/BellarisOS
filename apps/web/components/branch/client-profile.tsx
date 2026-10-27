@@ -35,6 +35,7 @@ import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 // -- Types --------------------------------------------------------------------
 
@@ -342,16 +343,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'documentos', label: 'Documentos' },
   { key: 'dados',      label: 'Dados' },
 ]
-
-// -- Payment method labels -----------------------------------------------------
-
-const PAYMENT_LABEL: Record<string, string> = {
-  CASH:            'Dinheiro',
-  PIX:             'Pix',
-  DEBIT_CARD:      'Débito',
-  CREDIT_CARD:     'Crédito',
-  INTERNAL_CREDIT: 'Crédito interno',
-}
 
 type HistoryCfg = {
   dotColor: string
@@ -1024,7 +1015,7 @@ function FinanceiroTab({
                           background: 'var(--bg-app)', color: 'var(--text-muted)',
                           whiteSpace: 'nowrap',
                         }}>
-                          {PAYMENT_LABEL[t.paymentMethod] ?? t.paymentMethod}
+                          {rotuloDaForma(t.paymentMethod, t.cartaoVezes)}
                         </span>
                       )}
                     </td>

@@ -2,29 +2,23 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 type TxRow = {
   id:             string
   description:    string
   amount:         number
   payment_method: string | null
+  cartao_vezes: number | null
   is_paid:        boolean
   paid_at:        string | null
   created_at:     string
   procedure_name: string | null
 }
 
-const METHOD_LABEL: Record<string, string> = {
-  CASH:            'Dinheiro',
-  PIX:             'Pix',
-  DEBIT_CARD:      'Débito',
-  CREDIT_CARD:     'Crédito',
-  INTERNAL_CREDIT: 'Crédito interno',
-}
-
 /** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
 type LancamentoLido = {
-  id: string; description: string; amount: number | string; payment_method: string | null
+  id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
   is_paid: boolean; paid_at: string | null; created_at: string
   appointments: { procedures: { name: string } | null } | null
 }
@@ -38,7 +32,7 @@ export default async function ClientFinancialPage() {
   const data = await ler(admin
     .from('financial_transactions')
     .select(`
-      id, description, amount, payment_method, is_paid, paid_at, created_at,
+      id, description, amount, payment_method, cartao_vezes, is_paid, paid_at, created_at,
       appointments(procedures(name))
     `)
     // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
@@ -52,6 +46,7 @@ export default async function ClientFinancialPage() {
     description:    r.description,
     amount:         Number(r.amount),
     payment_method: r.payment_method,
+    cartao_vezes: r.cartao_vezes,
     is_paid:        Boolean(r.is_paid),
     paid_at:        r.paid_at,
     created_at:     r.created_at,
@@ -101,7 +96,7 @@ export default async function ClientFinancialPage() {
                 {r.paid_at
                   ? new Date(r.paid_at).toLocaleDateString('pt-BR')
                   : new Date(r.created_at).toLocaleDateString('pt-BR')}
-                {r.payment_method && ` · ${METHOD_LABEL[r.payment_method] ?? r.payment_method}`}
+                {r.payment_method && ` · ${rotuloDaForma(r.payment_method, r.cartao_vezes)}`}
               </p>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>

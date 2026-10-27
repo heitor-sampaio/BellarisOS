@@ -56,7 +56,7 @@ export default async function FinancialPage({
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
   const transactions = await lerTodas((de, ate) => supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, notes, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
     .eq('branch_id', branch.id)
     // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
     // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —

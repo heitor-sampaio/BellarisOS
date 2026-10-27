@@ -14,6 +14,7 @@ import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
+import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -637,6 +638,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 ))}
               </select>
             </label>
+            <AvisoDaTaxa vezes={vezesCartao} />
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>

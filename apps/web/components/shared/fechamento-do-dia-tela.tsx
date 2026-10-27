@@ -9,16 +9,13 @@ import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
+import { rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 
 export interface FechamentoFeito {
   id: string; esperado: number; contado: number; diferenca: number
   observacao: string | null; quem: string | null; quando: string
 }
 
-const FORMAS: Record<string, string> = {
-  CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Cartão de débito', CREDIT_CARD: 'Cartão de crédito',
-  INTERNAL_CREDIT: 'Crédito interno', SEM_FORMA: 'Sem forma (pontos)',
-}
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
@@ -114,7 +111,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                 const total = l.forma === 'TOTAL'
                 return (
                   <tr key={l.forma} data-forma={l.forma} style={{ borderTop: total ? '1px solid var(--border)' : '1px solid var(--hairline)', background: total ? 'var(--bg-app)' : undefined }}>
-                    <td data-label="" style={{ padding: '11px 16px', fontWeight: total ? 800 : 700, color: 'var(--text)' }}>{total ? 'Total do dia' : (FORMAS[l.forma] ?? l.forma)}</td>
+                    <td data-label="" style={{ padding: '11px 16px', fontWeight: total ? 800 : 700, color: 'var(--text)' }}>{total ? 'Total do dia' : rotuloDaFormaDoFechamento(l.forma)}</td>
                     <td data-label="Entradas" data-par style={{ padding: '11px 16px', textAlign: 'right', color: 'var(--success)', fontWeight: 700 }}>{brl(l.entradas)}</td>
                     <td data-label="Saídas" data-par style={{ padding: '11px 16px', textAlign: 'right', color: 'var(--text-muted)' }}>{brl(l.saidas)}</td>
                     <td data-label="Saldo" data-par style={{ padding: '11px 16px', textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(l.saldo)}</td>

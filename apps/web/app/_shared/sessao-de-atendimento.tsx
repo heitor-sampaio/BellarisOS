@@ -124,7 +124,7 @@ export async function SessaoDeAtendimento({
 
     ler(admin
       .from('financial_transactions')
-      .select('id, payment_method, amount')
+      .select('id, payment_method, amount, cartao_vezes')
       .eq('appointment_id', id)
       .maybeSingle(), 'carregar o pagamento do atendimento'),
 
@@ -396,10 +396,10 @@ export async function SessaoDeAtendimento({
   // recusado depois de a pessoa digitar tudo.
   const canEditRecords = canManage && can(ctx, 'medical_records', 'MANAGE')
 
-  type RawPayment = { id: string; payment_method: string; amount: number } | null
+  type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null } | null
   const paymentRawTyped = paymentRaw as RawPayment
   const paymentTransaction = paymentRawTyped
-    ? { id: paymentRawTyped.id, paymentMethod: paymentRawTyped.payment_method, amount: Number(paymentRawTyped.amount) }
+    ? { id: paymentRawTyped.id, paymentMethod: paymentRawTyped.payment_method, amount: Number(paymentRawTyped.amount), cartaoVezes: paymentRawTyped.cartao_vezes }
     : null
 
   // A ficha do procedimento (construtor) + as respostas já salvas.

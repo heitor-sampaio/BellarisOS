@@ -2,6 +2,7 @@
 
 import { SegSelect } from '@/components/shared/seg-select'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -99,6 +100,7 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
               <select className="field" value={estado.vezes} onChange={e => mudar({ vezes: Number(e.target.value) })} aria-label="Vezes no cartão">
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
               </select>
+              <AvisoDaTaxa vezes={estado.vezes} />
             </label>
           )}
           {forma === 'PARCELADO' && (
