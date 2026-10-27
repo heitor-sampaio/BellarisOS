@@ -118,6 +118,8 @@ export interface SituacaoDoPreAtendimento {
   respondidoEm?: string | null
   /** O cadastro tem CPF ou nascimento — sem um dos dois, não há link. */
   podeLink: boolean
+  /** A cliente do agendamento — para o atalho ao cadastro quando falta CPF e nascimento. */
+  clienteId?: string
   /** A rede manda o link também pela conversa do inbox (a chave dos documentos). */
   pelaConversa?: boolean
   /** Já há um link valendo (não usado, não revogado, no prazo): até quando. */
@@ -155,7 +157,7 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
       .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       'buscar o link da ficha') as { expires_at: string } | null : null
     return {
-      estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, pelaConversa,
+      estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, pelaConversa, clienteId: ap.client_id as string,
       linkValidoAte: valendo?.expires_at ?? null,
     }
   }

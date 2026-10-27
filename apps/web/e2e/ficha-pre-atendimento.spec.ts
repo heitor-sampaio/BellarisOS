@@ -633,4 +633,67 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await ctx.close()
     }
   })
+  test('A27: sem CPF nem nascimento, a janela diz o que falta e leva ao cadastro da cliente', async ({ browser }) => {
+    const sem = await agendada('Sem identidade', { document: null, birth_date: null })
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda?date=${DIA}`)
+      await page.locator(`[title*="Sem identidade pd${marca}"]`).first().click()
+      const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
+      await expect(ficha.getByText('Complete o CPF ou a data de nascimento para enviar o link')).toBeVisible()
+      await expect(ficha.getByRole('link', { name: 'Editar o cadastro' })).toHaveAttribute('href', `/admin/clients/${sem.cliente}?aba=dados`)
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('A48: "Ficha já respondida" mostra o contato da clínica', async ({ browser }) => {
+    expect((await db().from('branches').update({ phone: '(47) 99999-1234' }).eq('id', D.branchId)).error).toBeNull()
+    const { cliente, agendamento } = await agendada('Ja respondida')
+    const { token } = await gerarLink(browser, agendamento)
+    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respondido_em: new Date().toISOString() })
+      .eq('id', (await pendenteDe(cliente)).id)).error).toBeNull()
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/pre-atendimento/${token}`)
+      await expect(page.getByText('Ficha já respondida')).toBeVisible()
+      const contato = page.locator('[data-contato-da-clinica]')
+      await expect(contato).toContainText('(47) 99999-1234')
+      await expect(contato.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', 'https://wa.me/5547999991234')
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('A47: erro de validação no link leva o foco ao primeiro campo inválido, destacado e com a mensagem junto', async ({ browser }) => {
+    const { data: ficha } = await db().from('forms').select('id, schema').eq('tenant_id', D.tenantId).eq('tipo', 'PRE_ATENDIMENTO')
+      .single<{ id: string; schema: { rows: { fields: { id: string; required?: boolean }[] }[] } }>()
+    const comObrigatorio = JSON.parse(JSON.stringify(ficha!.schema))
+    for (const r of comObrigatorio.rows) for (const f of r.fields) if (f.id === 'allergies') f.required = true
+    expect((await db().from('forms').update({ schema: comObrigatorio }).eq('id', ficha!.id)).error).toBeNull()
+    const { agendamento, cpf } = await agendada('Validacao')
+    const { token } = await gerarLink(browser, agendamento)
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const page = await ctx.newPage()
+    try {
+      await page.setViewportSize({ width: 390, height: 700 })
+      await page.goto(`/pre-atendimento/${token}`)
+      await page.getByLabel('CPF').fill(cpf)
+      await page.getByRole('button', { name: 'Continuar' }).click()
+      await page.getByRole('button', { name: 'Enviar respostas' }).click()
+      const campo = page.locator('[data-campo="allergies"]')
+      await expect(campo).toHaveAttribute('data-invalido', 'true')
+      await expect(campo.getByRole('alert')).toContainText('Preencha')
+      await expect(campo.locator('textarea')).toBeFocused()
+      await expect(campo).toBeInViewport()
+      await campo.locator('textarea').fill('nenhuma')
+      await expect(campo).not.toHaveAttribute('data-invalido', 'true')
+    } finally {
+      await ctx.close()
+      await db().from('forms').update({ schema: ficha!.schema }).eq('id', ficha!.id)
+    }
+  })
+
 })

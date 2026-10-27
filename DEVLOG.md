@@ -6936,9 +6936,11 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   financeiro de TODOS (`podeVerFechamento`; o menu recebe o escopo), e a aba
   Financeiro da ficha, no "só os próprios", mostra só os atendimentos dela,
   com os totais do banco (`metrics_financeiro_do_cliente`).
-- **D7 (média)** "Não tenho alergias." dispara o alerta de alergia (a regex
+- ~~**D7 (média)** "Não tenho alergias." dispara o alerta de alergia (a regex
   `NEGATIVA` de `lib/anamnese-geral.ts` exige a resposta inteira), e o aviso
-  sai com ponto duplo.
+  sai com ponto duplo.~~ **feito em 2026-10-27** (HASH): `respostaDeAlergiaEhNegativa`
+  lê a resposta pelo COMEÇO (negação) e recua diante de ressalva ("não sei", "mas",
+  "só") ou alergia nomeada; `avisoDeAlergia` tira a pontuação sobrando do aviso.
 - ~~**D8 (média, regressão de `e3ca7b0`)** trocar de dia na agenda herda a
   rolagem de hoje e esconde a manhã.~~ **feito em 2026-10-27** (8f4e92f): a
   grade rola a cada troca de dia — hoje, uma hora antes de agora; outro dia, o
@@ -7026,6 +7028,13 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   `setCurrentDate` de `agenda-calendar.tsx` chama `history.replaceState` dentro
   do updater do `setState` (o React reclama "Cannot update Router while
   rendering") — já era assim, não mexi.
+- Atritos feitos (frente 5, ficha de saúde e link): A27, A47, A48 (HASH).
+  Decisões: na dúvida o alerta de alergia dispara ("não tenho alergia a
+  dipirona" e "não sei, acho que…" são alerta); o foco da validação vale para
+  TODO uso do `AnamnesisFormRenderer` (fichas de procedimento também); o contato
+  da clínica no link é o telefone da UNIDADE do agendamento (migration
+  `20261027000050`, `pre_atendimento_link_espiar` devolve `telefone`), só no
+  estado "Ficha já respondida"; sem telefone cadastrado a frase fica sem número.
 
 ### Próximas fases já combinadas
 

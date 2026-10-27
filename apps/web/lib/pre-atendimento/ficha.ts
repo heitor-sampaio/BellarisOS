@@ -3,7 +3,7 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { avisoDoPreAtendimento } from '@/lib/pre-atendimento/aviso'
-import { respostasDaFicha, alergiasDaAnamnese, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { respostasDaFicha, alergiasDaAnamnese, avisoDeAlergia, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { notifyUser } from '@/lib/notifications/notify'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -105,7 +105,7 @@ async function avisarAProfissional(admin: Admin, appointmentId: string, anamnese
     await notifyUser(admin, ag.professional_id, {
       type: 'pre_atendimento_respondido',
       title: 'Ficha de saúde respondida',
-      body: `${ag.clients?.name ?? 'A cliente'} respondeu a ficha para ${quando}.${alergia ? ` Atenção — alergia: ${alergia}.` : ''}`,
+      body: `${ag.clients?.name ?? 'A cliente'} respondeu a ficha para ${quando}.${avisoDeAlergia(alergia)}`,
       data: { appointment_id: appointmentId },
     })
   } catch (e) {

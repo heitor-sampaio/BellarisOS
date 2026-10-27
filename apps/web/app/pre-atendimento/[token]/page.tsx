@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { BadgeCheck, CircleAlert } from 'lucide-react'
 import { espiarLinkDaFicha, MENSAGEM_DO_LINK_DA_FICHA } from '@/lib/pre-atendimento/link-publico'
+import { formatarTelefone } from '@/lib/documentos/valores'
+import { telefoneParaWhatsApp } from '@/lib/documentos/link'
 import { MolduraDaVerificacao } from '@/app/verificar/moldura'
 import { FichaPorLink } from './ficha-por-link'
 
@@ -24,6 +26,8 @@ export const metadata: Metadata = {
 export default async function FichaPeloLinkPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const espiada = await espiarLinkDaFicha(decodeURIComponent(token))
+  const telefone = formatarTelefone(espiada.telefone)
+  const zap = telefoneParaWhatsApp(espiada.telefone)
 
   return (
     <MolduraDaVerificacao marca={null}>
@@ -42,6 +46,13 @@ export default async function FichaPeloLinkPage({ params }: { params: Promise<{ 
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }} data-estado={espiada.estado}>
               {MENSAGEM_DO_LINK_DA_FICHA[espiada.estado]}
             </p>
+            {espiada.estado === 'usado' && (
+              <p data-contato-da-clinica style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                Precisa corrigir alguma resposta? Fale com {espiada.clinica ?? 'a clínica'}
+                {telefone ? <>: <a href={`tel:${zap ? `+${zap}` : telefone.replace(/\D/g, '')}`} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{telefone}</a></> : '.'}
+                {zap && <> · <a href={`https://wa.me/${zap}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>WhatsApp</a></>}
+              </p>
+            )}
           </div>
         )}
     </MolduraDaVerificacao>

@@ -197,7 +197,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
         </div>
 
         {/* A ficha de pré-atendimento: pendente (com o link) ou respondida. */}
-        {isActive && <PreAtendimentoDoAgendamento appointmentId={appointment.id} podeMandar={!isProfessional} />}
+        {isActive && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={!isProfessional} />}
 
         {/* Ações de status */}
         {isActive && (

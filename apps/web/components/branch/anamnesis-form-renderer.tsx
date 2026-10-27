@@ -45,6 +45,15 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
   const [saving, setSaving]   = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [error, setError]     = useState<string | null>(null)
+  // O primeiro campo obrigatório vazio (2026-10-27, A47): a tela rola até ele, põe o foco, destaca e escreve a mensagem junto dele.
+  const [invalido, setInvalido] = useState<{ id: string; msg: string } | null>(null)
+  const raiz = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!invalido) return
+    const campo = Array.from(raiz.current?.querySelectorAll<HTMLElement>('[data-campo]') ?? []).find(e => e.dataset.campo === invalido.id)
+    campo?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    campo?.querySelector<HTMLElement>('input, textarea, select, button')?.focus({ preventScroll: true })
+  }, [invalido])
   // path da foto → signed URL (temporária) para exibir
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
 
@@ -66,6 +75,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
   function setAnswer(id: string, value: AnswerValue) {
     setAnswers(a => ({ ...a, [id]: value }))
     setSavedAt(null)
+    setInvalido(v => (v?.id === id ? null : v))
   }
   function toggleCheckbox(id: string, opt: string) {
     setAnswers(a => {
@@ -74,14 +84,15 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
       return { ...a, [id]: next }
     })
     setSavedAt(null)
+    setInvalido(v => (v?.id === id ? null : v))
   }
 
   async function save(): Promise<{ error?: string }> {
     if (!canEdit) return {}
-    setSaving(true); setError(null)
+    setSaving(true); setError(null); setInvalido(null)
     // valida obrigatórios
     const missing = flattenFields({ rows }).find(f => f.required && f.type !== 'section' && isEmpty(answers[f.id]))
-    if (missing) { const msg = `Preencha "${missing.label}".`; setError(msg); setSaving(false); return { error: msg } }
+    if (missing) { const msg = `Preencha "${missing.label}".`; setError(msg); setInvalido({ id: missing.id, msg }); setSaving(false); return { error: msg } }
     const res = await doSave({ appointmentId, slug, answers })
     setSaving(false)
     if (res.error) { setError(res.error); return { error: res.error } }
@@ -92,7 +103,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
   useImperativeHandle(ref, () => ({ save }))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div ref={raiz} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {rows.map(row => (
           <div key={row.id} className="anamnesis-row" data-cols={row.fields.length}>
@@ -100,6 +111,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
               <FieldView
                 key={f.id} field={f} value={answers[f.id]} canEdit={canEdit && !(semInjetaveis && f.type === 'injectable_map')}
                 appointmentId={appointmentId}
+                erro={invalido?.id === f.id ? invalido.msg : undefined}
                 photoUrl={typeof answers[f.id] === 'string' ? photoUrls[answers[f.id] as string] : undefined}
                 onPhotoUploaded={(path, url) => setPhotoUrls(m => ({ ...m, [path]: url }))}
                 onChange={v => setAnswer(f.id, v)}
@@ -141,12 +153,14 @@ const labelStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block',
 }
 
-function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoUploaded, onChange, onToggle }: {
+function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, erro, onPhotoUploaded, onChange, onToggle }: {
   field: AnamnesisField
   value: AnswerValue | undefined
   canEdit: boolean
   appointmentId: string
   photoUrl?: string
+  /** A mensagem de validação deste campo (o primeiro obrigatório vazio). */
+  erro?: string
   onPhotoUploaded: (path: string, url: string) => void
   onChange: (v: AnswerValue) => void
   onToggle: (opt: string) => void
@@ -181,8 +195,10 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
   // `data-campo`: o id da pergunta — é por ele que um teste acha o campo (o
   // rótulo não é único: o bloco de fora também o contém).
   return (
-    <div data-campo={f.id}>
+    <div data-campo={f.id} data-invalido={erro ? 'true' : undefined}
+      style={erro ? { borderLeft: '3px solid var(--danger)', paddingLeft: 10 } : undefined}>
       <label id={idDoRotulo} htmlFor={idDoCampo} style={labelStyle}>{f.label}{req}</label>
+      {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600, marginBottom: 6 }}>{erro}</p>}
       {f.help && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: -3, marginBottom: 6 }}>{f.help}</p>}
 
       {f.type === 'text' && (

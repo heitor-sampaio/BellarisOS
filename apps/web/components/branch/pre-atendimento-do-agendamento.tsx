@@ -1,8 +1,11 @@
 'use client'
 
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { ClipboardList, Copy, MessageCircle } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
+import { rotaCliente } from '@/lib/rotas'
 import {
   situacaoDoPreAtendimento, gerarLinkDoPreAtendimento, enviarFichaPelaConversa,
   type SituacaoDoPreAtendimento, type LinkDoPreAtendimento,
@@ -17,7 +20,8 @@ import {
  *
  * Sem envio ligado na rede (nenhuma ficha mandada), não mostra nada.
  */
-export function PreAtendimentoDoAgendamento({ appointmentId, podeMandar }: { appointmentId: string; podeMandar: boolean }) {
+export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }: { appointmentId: string; slug?: string; podeMandar: boolean }) {
+  const pathname = usePathname()
   const [situacao, setSituacao] = useState<SituacaoDoPreAtendimento | null>(null)
   const [link, setLink] = useState<LinkDoPreAtendimento | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -95,8 +99,13 @@ export function PreAtendimentoDoAgendamento({ appointmentId, podeMandar }: { app
       <p className="pre-atendimento-agendamento-texto">
         {situacao.podeLink
           ? 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
-          : 'Sem CPF nem data de nascimento no cadastro, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
+          : 'Complete o CPF ou a data de nascimento para enviar o link. Sem eles, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
       </p>
+      {!situacao.podeLink && situacao.clienteId && (
+        <Link href={`${rotaCliente(pathname, slug, situacao.clienteId)}?aba=dados`} className="btn-secondary pre-atendimento-agendamento-botao" style={{ alignSelf: 'flex-start' }}>
+          Editar o cadastro
+        </Link>
+      )}
       {situacao.linkValidoAte && !link && !enviado && (
         <p className="pre-atendimento-agendamento-texto">
           Já há um link valendo até {formatDate(situacao.linkValidoAte)} às {formatTime(situacao.linkValidoAte)}. Gerar outro cancela esse.

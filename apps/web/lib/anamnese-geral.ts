@@ -117,8 +117,22 @@ export function quemRespondeu(a: AnamneseGeral): string {
   return `Respondida ${ORIGEM[a.origem]}${quando}`
 }
 
-/** Respostas que dizem "não tem": não viram alerta. */
-const NEGATIVA = /^(n[aã]o|nenhum[a]?|nada|n\/?a|sem alergias?|-+|—)\.?$/i
+/**
+ * A resposta diz "não tem alergia"? (2026-10-27, D7) Começa por uma negação
+ * ("não", "nenhuma", "sem", "nego", "nunca tive"), com caixa, acento e
+ * pontuação ignorados — e não traz ressalva ("não sei", "mas", "só", "exceto")
+ * nem nomeia uma alergia ("não tenho alergia a dipirona" fica como alerta: na
+ * dúvida, avisa). Vazio também é negativa.
+ */
+export function respostaDeAlergiaEhNegativa(texto: string): boolean {
+  const t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9/\s,-]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!t || /^(-+|n\/?a|nada)$/.test(t)) return true
+  if (!/^(nao|nenhum|nenhuma|sem|nego|nunca)\b/.test(t)) return false
+  if (/\b(sei|certeza|lembro|acho|talvez|duvida|mas|porem|so|apenas|exceto|menos|sim)\b/.test(t)) return false
+  if (/\balergi\w*\s+(a|ao|aos|as|de|para|com)\s+(?!nada\b|nenhum)/.test(t)) return false
+  return true
+}
 
 /**
  * As alergias que a anamnese registra, para o ALERTA na ficha e no
@@ -136,6 +150,12 @@ export function alergiasDaAnamnese(a: AnamneseGeral | null): string | null {
   const partes = [...new Set(campos)].flatMap(id => {
     const r = a.respostas?.[id]
     return Array.isArray(r) ? r : r ? [r] : []
-  }).map(t => String(t).trim()).filter(t => t && !NEGATIVA.test(t))
+  }).map(t => String(t).trim()).filter(t => t && !respostaDeAlergiaEhNegativa(t))
   return partes.length ? [...new Set(partes)].join('; ') : null
+}
+
+/** O trecho do aviso à profissional: a alergia sem pontuação sobrando no fim (o texto da cliente já pode trazer o ponto). */
+export function avisoDeAlergia(alergia: string | null): string {
+  if (!alergia) return ''
+  return ` Atenção — alergia: ${alergia.replace(/[\s.;,!]+$/, '')}.`
 }

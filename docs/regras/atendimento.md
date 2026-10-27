@@ -193,7 +193,17 @@ const procedures = await ler(
     hora param o IP), responder confere de novo, e o link morre com o pendente.
     A equipe manda o link pela janela do agendamento ("Enviar a ficha":
     copiar ou `wa.me`, com `agenda: MANAGE`), que mostra só o ESTADO
-    (pendente/respondida) — as respostas são do prontuário.
+    (pendente/respondida) — as respostas são do prontuário. Cliente sem CPF
+    nem nascimento: a janela diz "Complete o CPF ou a data de nascimento para
+    enviar o link" e leva ao cadastro (`?aba=dados`, via `lib/rotas`). "Ficha já
+    respondida" mostra o telefone/WhatsApp da UNIDADE para corrigir algo. Erro
+    de validação (no link e nas fichas): rola ao primeiro campo obrigatório
+    vazio, foca, destaca e escreve a mensagem junto dele.
+  - **O alerta de alergia** (`alergiasDaAnamnese`) trata como NEGATIVA a
+    resposta que começa por negação ("não", "nenhuma", "sem", "nego", "nunca
+    tive"; caixa, acento e pontuação ignorados) — salvo ressalva ("não sei",
+    "mas", "só", "exceto") ou alergia nomeada ("não tenho alergia a X"): na
+    dúvida, avisa. Tabela em `tests/alergia-negativa.test.ts`.
     Com a rede mandando também pela conversa (a MESMA chave do link de
     assinatura, `documentos_link_pela_conversa` — decisão do Heitor,
     2026-10-21), aparece "Mandar pela conversa" (`enviarFichaPelaConversa`):
