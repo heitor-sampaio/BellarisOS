@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
+import { ticketMedio } from './resultado'
 
 /**
  * Contagens das telas da UNIDADE, agregadas no Postgres (migration
@@ -17,26 +18,31 @@ export async function getSessoesPorProcedimento(branchIds: string[]): Promise<Ma
     .map(r => [r.procedure_id, Number(r.sessoes)]))
 }
 
-/** O dinheiro de UM cliente (migration `20260927000013`). */
+/**
+ * O dinheiro de UM cliente — a MESMA conta do "Gasto médio" de Relatórios →
+ * Clientes (`metrics_gasto_por_cliente`, A26 da simulação de 2026-10-27): a
+ * ficha dizia "ticket R$ 0,00" ao lado de "LTV R$ 600", e os relatórios, "gasto
+ * médio R$ 390", cada um de uma conta. Aqui a função é chamada com a cliente e
+ * a janela inteira; lá, com o período.
+ */
 export interface DoCliente {
   /** O que o cliente pagou, desde sempre — pago, sem estorno (= LTV do dashboard). */
   ltv: number
   /** Atendimentos concluídos, desde sempre. */
   atendimentos: number
-  /** Ticket canônico recortado no cliente: serviço dos concluídos ÷ concluídos. */
-  ticketMedio: number
+  /** Ticket canônico recortado no cliente (lib/metrics/resultado). Nulo sem atendimento cobrado. */
+  ticketMedio: number | null
 }
 
 export async function getDoCliente(tenantId: string, clientId: string): Promise<DoCliente> {
-  const data = await ler(createAdminClient().rpc('metrics_do_cliente', {
-    p_tenant: tenantId, p_client: clientId,
+  const data = await ler(createAdminClient().rpc('metrics_gasto_por_cliente', {
+    p_tenant: tenantId, p_branch_ids: null, p_from: '2000-01-01T00:00:00Z', p_to: 'infinity', p_cliente: clientId,
   }), 'calcular o investido do cliente')
-  const d = (data ?? {}) as { ltv?: number; atendimentos?: number; receita_servico?: number }
-  const atendimentos = Number(d.atendimentos ?? 0)
+  const d = ((data ?? []) as { pago: number | string | null; receita_servico: number | string; atendimentos: number | string; atendimentos_cobrados: number | string }[])[0]
   return {
-    ltv: Number(d.ltv ?? 0),
-    atendimentos,
-    ticketMedio: atendimentos > 0 ? Number(d.receita_servico ?? 0) / atendimentos : 0,
+    ltv: Number(d?.pago ?? 0),
+    atendimentos: Number(d?.atendimentos ?? 0),
+    ticketMedio: ticketMedio({ serviceRevenue: Number(d?.receita_servico ?? 0), appointmentsCharged: Number(d?.atendimentos_cobrados ?? 0) }),
   }
 }
 

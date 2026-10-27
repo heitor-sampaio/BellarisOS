@@ -168,6 +168,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
       serviceRevenue: num(r.service_revenue), completed: num(r.appointments_completed), total: num(r.appointments_total),
       cancelled: num(r.appointments_cancelled), noShow: num(r.appointments_no_show), minutes: num(r.scheduled_minutes),
       newClients: num(r.new_clients), commOpen: num(r.commissions_open), commPaid: num(r.commissions_paid),
+      charged: num(r.appointments_charged),
     }).toEqual({
       revenueCash: 300,     // t1 + t2 (o estorno some dos dois lados)
       revenuePending: 70,   // t3
@@ -177,6 +178,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
       minutes: 60 + 30 + 20, // cancelado e falta não ocupam agenda
       newClients: 1,        // só C2: C1 é antigo e C3 é de OUTRA unidade
       commOpen: 25, commPaid: 10, // 20 de a1 + 5 do acerto de a0 lançado em março; o −2 é de abril
+      charged: 2,           // os concluídos COBRADOS (preço > 0): o denominador do ticket
     })
   })
 

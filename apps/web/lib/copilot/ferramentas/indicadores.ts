@@ -8,6 +8,7 @@ import { getRelatorio } from '@/lib/metrics/relatorio'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { ticketMedio } from '@/lib/metrics/resultado'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -85,7 +86,8 @@ export const indicadores: FerramentaDeLeitura<{
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
           agendamentos: atual.appointmentsTotal, cancelados: atual.appointmentsCancelled, faltas: atual.appointmentsNoShow,
-          ticketMedio: atual.appointmentsCompleted ? dinheiro(atual.serviceRevenue / atual.appointmentsCompleted) : null,
+          // Dos concluídos COBRADOS (lib/metrics/resultado), como as telas.
+          ticketMedio: (() => { const t = ticketMedio(atual); return t === null ? null : dinheiro(t) })(),
           novosClientes: atual.newClients, novosClientesAnterior: anterior.newClients,
           ...(comissoes ? { comissoesEmAberto: dinheiro(atual.commissionsOpen), comissoesPagas: dinheiro(atual.commissionsPaid) } : {}),
           nota: 'O período anterior é o equivalente (mesmo tamanho), não o mês inteiro.',

@@ -13,13 +13,14 @@ import type {
 import { AdminDashboardDynamic as AdminDashboardView } from '@/components/admin/admin-dashboard-dynamic'
 import { startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import {
-  resolvePeriod, ratio, percent, EMPTY_CORE,
+  resolvePeriod, percent, EMPTY_CORE,
   getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
   getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, contar } from '@/lib/db'
+import { ticketMedio as ticketMedioDe } from '@/lib/metrics/resultado'
 
 // -- Linhas como os selects as pedem ---------------------------------
 type Num = number | string | null
@@ -202,11 +203,9 @@ export default async function AdminDashboardPage({
   const newClients        = core.newClients
   const prevClientsCount  = prevCore.newClients
 
-  // Ticket médio = receita dos atendimentos ÷ atendimentos concluídos.
-  // Antes o numerador era o caixa do período (que inclui venda de produto,
-  // pacote e lançamento avulso) sobre a contagem da agenda: a conta nunca
-  // fechava quando conferida na mão.
-  const ticketMedio = ratio(core.serviceRevenue, core.appointmentsCompleted) ?? 0
+  // Ticket médio = receita dos atendimentos ÷ concluídos COBRADOS (lib/metrics:
+  // a avaliação de R$ 0 não puxa a média). 0 = sem atendimento cobrado ("—").
+  const ticketMedio = ticketMedioDe(core) ?? 0
 
   // -- Por filial ----------------------------------------------------
   // Unidade desativada só entra se teve movimento no período (simulação de 2026-10-20).
@@ -217,7 +216,7 @@ export default async function AdminDashboardPage({
     revenue:      b.revenueCash,
     appointments: b.appointmentsCompleted,
     newClients:   b.newClients,
-    ticketMedio:  ratio(b.serviceRevenue, b.appointmentsCompleted) ?? 0,
+    ticketMedio:  ticketMedioDe(b) ?? 0,
   }))
 
   // -- Hoje por filial -----------------------------------------------

@@ -5,6 +5,7 @@ import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getAPagar } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
+import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
 
 /** Lançamento como o select pede. */
 type LancamentoLido = {
@@ -147,7 +148,7 @@ export default async function AdminFinanceiroPage({
     slug:        b.branchSlug,
     revenue:     b.revenueCash,
     expenses:    b.expensesCash,
-    result:      b.revenueCash - b.expensesCash,
+    result:      resultadoDoPeriodo(b).lucro,
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    b.revenuePending,
     aPagar:      aPagarDe[b.branchId] ?? 0,
@@ -172,7 +173,7 @@ export default async function AdminFinanceiroPage({
         customTo={sp.to}
         totalRevenue={totalRevenue}
         totalExpenses={totalExpenses}
-        totalResult={totalRevenue - totalExpenses}
+        totalResult={resultadoDoPeriodo(core).lucro}
         totalCommissions={totalComm}
         totalAReceber={core.revenuePending}
         totalAPagar={totalAPagar}

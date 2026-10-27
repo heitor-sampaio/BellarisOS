@@ -15,11 +15,12 @@ import { unitTag, iniciaisDoNome } from '@estetica-os/utils'
 import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
-  resolvePeriod, delta, ratio, occupancyPct,
+  resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, EMPTY_CORE,
 } from '@/lib/metrics'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
+import { ticketMedio } from '@/lib/metrics/resultado'
 
 // --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
@@ -208,7 +209,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // Ticket médio = receita dos atendimentos ÷ atendimentos concluídos.
   // Numerador e denominador do mesmo conjunto — antes o numerador era o caixa
   // (que inclui venda de produto e plano) sobre a contagem da agenda.
-  const avgTicket = ratio(core.serviceRevenue, core.appointmentsCompleted) ?? 0
+  // Dos concluídos COBRADOS (lib/metrics): a avaliação de R$ 0 não puxa a média.
+  const avgTicket = ticketMedio(core) ?? 0
 
   const validToday    = (todayAppts ?? []).filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
   const todayCount    = validToday.length

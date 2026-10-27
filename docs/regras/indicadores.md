@@ -33,14 +33,15 @@
     `created_at` e somar dali põe a parcela criada em agosto e paga em
     setembro no mês errado — e o checkout de plano cria exatamente isso.
   - **O rótulo acompanha a conta.** "Ticket médio" é `serviceRevenue ÷
-    atendimentos concluídos` em toda tela; se a conta for outra, o nome tem
-    de ser outro. `e2e/relatorios-coerencia.spec.ts` compara tela, gráfico e
+    atendimentos concluídos COBRADOS` em toda tela; se a conta for outra, o
+    nome tem de ser outro. `e2e/relatorios-coerencia.spec.ts` compara tela, gráfico e
     banco para que a divergência não volte em silêncio.
 - **Definições canônicas** (uma só por indicador):
   - `revenueCash` — recebido (INCOME pago, eixo em `paid_at`)
   - `revenuePending` — a receber, pelo VENCIMENTO (`data_de_referencia`;
     sem vencimento, a criação). Era pela criação: o parcelado inteiro caía no
-    mês da venda.
+    mês da venda. O de cada unidade (`metrics_by_branch`) ainda contava pela
+    criação até 2026-10-27 (A34): agora também pelo vencimento.
   - `serviceRevenue` — preço dos atendimentos concluídos, no eixo
     `appointments.aconteceu_em`
   - **O atendimento conta quando ACONTECEU** (D13, decisão do Heitor,
@@ -55,8 +56,26 @@
     marcado: contar pela conclusão pura mudaria o atendimento de dia e de mês.
     Indicador novo de atendimento filtra por `aconteceu_em`, nunca por
     `scheduled_at`. Prova: `e2e/indicadores-concluido-antes-da-hora.spec.ts`.
-  - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos` — **numerador e
-    denominador do mesmo conjunto**
+  - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos COBRADOS`
+    (preço > 0; `appointments_charged` de `metrics_core`/`metrics_by_branch`)
+    — **numerador e denominador do mesmo conjunto**. A divisão é UMA,
+    `ticketMedio()` em `lib/metrics/resultado.ts`; sem atendimento cobrado, é
+    nulo e a tela mostra "—", não R$ 0,00. Decisão do Heitor, 2026-10-27: a
+    avaliação de R$ 0 entrava no denominador e a simulação viu "R$ 90" numa
+    clínica de limpezas de R$ 180. Prova: `e2e/indicadores-ticket-medio.spec.ts`.
+  - **Lucro e margem também moram em lib/metrics** (`resultadoDoPeriodo`,
+    `variacaoDaMargemPp` em `lib/metrics/resultado.ts`): lucro = receita paga
+    − despesa paga; margem = lucro ÷ receita, nula sem receita; a variação da
+    margem em p.p. Relatórios (visão geral e financeiro), o financeiro da
+    unidade e o da rede usavam cada um a sua subtração (2026-10-27).
+  - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
+    pago pela regra de receita, a receita de serviço, os concluídos e os
+    cobrados). A ficha a chama com a cliente e a janela inteira (`getDoCliente`:
+    LTV e ticket); Relatórios → Clientes, com o período ("Gasto médio" = a
+    média do pago de quem pagou, e o top clientes). A ficha da Mariana dizia
+    "ticket R$ 0,00" ao lado de "LTV R$ 600" e os relatórios "Gasto médio
+    R$ 390", cada um de uma conta (A26). `metrics_do_cliente` virou um
+    invólucro dela (o app não a chama mais).
   - `occupancy` = minutos agendados (sem cancelados e faltas; os concluídos
     contam) ÷ a capacidade do HORÁRIO de funcionamento — por profissional e
     por dia, unidade ∩ profissional (`occupancyPct()` → `ocupacaoEmPct`,

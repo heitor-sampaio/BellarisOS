@@ -21,6 +21,7 @@ import {
   CHART_COLORS, fmtBRLShort, fmtBRLFull,
   type TableColumn,
 } from './reports-charts'
+import { resultadoDoPeriodo, ticketMedio, variacaoDaMargemPp } from '@/lib/metrics/resultado'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -143,7 +144,8 @@ function KpiCard({
   label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false, detalhe,
 }: {
   label: string
-  value: number
+  /** Nulo = não há o número (ticket sem atendimento cobrado, margem sem receita): "—". */
+  value: number | null
   format?: 'brl' | 'brl-short' | 'int' | 'pct'
   delta?: number | null
   accent?: string
@@ -184,7 +186,7 @@ function KpiCard({
         color: hero ? 'var(--on-brand)' : accent ?? 'var(--brand)',
         margin: 0, letterSpacing: '-0.02em',
       }}>
-        <AnimatedNum value={value} format={format} />
+        {value == null ? '—' : <AnimatedNum value={value} format={format} />}
       </p>
       {hasDelta ? (
         <p style={{
@@ -295,11 +297,11 @@ function TabOverview(p: ReportsBiProps) {
   // o lucro do mês corrente — e esta tela discordava de /admin/financeiro.
   const expenses     = core.expensesCash
   const prevExpenses = corePrev.expensesCash
-  const profit       = revenue - expenses
-  const prevProfit   = prevRevenue - prevExpenses
-  // Ticket médio canônico (§13.1): receita dos atendimentos ÷ atendimentos
-  // concluídos, os dois do núcleo.
-  const avgTicket    = core.appointmentsCompleted > 0 ? core.serviceRevenue / core.appointmentsCompleted : 0
+  // Lucro e ticket vêm de lib/metrics (§13.1) — a tela não faz conta. O
+  // ticket é dos concluídos COBRADOS: a avaliação de R$ 0 não puxa a média.
+  const profit       = resultadoDoPeriodo(core).lucro
+  const prevProfit   = resultadoDoPeriodo(corePrev).lucro
+  const avgTicket    = ticketMedio(core)
 
   const byBranch = r.receitaPorUnidade
     .map(u => ({ name: nomeDaUnidade(u.branchId), value: u.atual }))
@@ -365,13 +367,14 @@ function TabFinanceiro(p: ReportsBiProps) {
   const stockCOGS   = r.consumoTotal
   const opEx        = core.expensesCash
   const prevOpEx    = corePrev.expensesCash
-  const profit      = revenue - opEx
-  const prevProfit  = prevRevenue - prevOpEx
-  const margin      = revenue > 0 ? (profit / revenue) * 100 : 0
-  const prevMargin  = prevRevenue > 0 ? (prevProfit / prevRevenue) * 100 : 0
-  // Margem é percentual: a variação se mede em pontos percentuais, não em
-  // "percentual de percentual" (20% → 22% não é "+10%", é "+2,0 p.p.").
-  const marginDeltaPp = margin - prevMargin
+  // Lucro, margem e a variação dela (em p.p.) vêm de lib/metrics
+  // (resultadoDoPeriodo): a tela fazia a conta. Sem receita, a margem é "—".
+  const resultado     = resultadoDoPeriodo(core)
+  const anterior      = resultadoDoPeriodo(corePrev)
+  const profit        = resultado.lucro
+  const prevProfit    = anterior.lucro
+  const margin        = resultado.margemPct
+  const marginDeltaPp = variacaoDaMargemPp(resultado, anterior)
 
   // Forma, categoria e unidade saem do MESMO conjunto do KPI (pago, sem
   // estorno, eixo em paid_at). Antes somavam por created_at e com estorno —
@@ -415,7 +418,7 @@ function TabFinanceiro(p: ReportsBiProps) {
           detalhe="Informativo: a compra já está nas despesas (Estoque)" />
         <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
         <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
-        <KpiCard label="Margem"          value={margin}    format="pct" accent={margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={prevRevenue > 0 ? marginDeltaPp : null} showDelta deltaUnit="p.p." />
+        <KpiCard label="Margem"          value={margin}    format="pct" accent={margin == null ? undefined : margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={marginDeltaPp} showDelta deltaUnit="p.p." />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>

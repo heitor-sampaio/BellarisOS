@@ -155,8 +155,9 @@ test('financeiro da unidade bate com o núcleo do mês', async ({ page }) => {
 
   const c = (nucleo as Record<string, number>[])[0]!
   const receita = Number(c.revenue_cash)
-  const ticket  = Number(c.appointments_completed) > 0
-    ? Number(c.service_revenue) / Number(c.appointments_completed)
+  // Dos concluídos COBRADOS (2026-10-27): a avaliação de R$ 0 não entra.
+  const ticket  = Number(c.appointments_charged) > 0
+    ? Number(c.service_revenue) / Number(c.appointments_charged)
     : 0
 
   await page.goto(`/${unidade!.slug}/financeiro?period=month`)

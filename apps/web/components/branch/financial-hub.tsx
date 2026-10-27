@@ -15,6 +15,7 @@ import { ClientCreditModal, ClientCreditModalHandle }       from './client-credi
 import { FinancialTable, Transaction }                      from './financial-table'
 import { SegSelect }                                        from '@/components/shared/seg-select'
 import { iniciaisDoNome } from '@estetica-os/utils'
+import { resultadoDoPeriodo, ticketMedio } from '@/lib/metrics/resultado'
 
 // --- Types --------------------------------------------------------
 
@@ -34,6 +35,7 @@ interface TotaisDoPeriodo {
   expensesCash:          number
   serviceRevenue:        number
   appointmentsCompleted: number
+  appointmentsCharged:   number
 }
 
 interface Props {
@@ -516,16 +518,16 @@ export function FinancialHub({
   // dividido pelos atendimentos concluídos — numerador e denominador do mesmo
   // conjunto. Antes era receita ÷ nº de lançamentos, que sobe quando alguém
   // paga em duas parcelas e desce quando paga numa.
-  const avgTicket = totais.appointmentsCompleted > 0
-    ? totais.serviceRevenue / totais.appointmentsCompleted
-    : 0
+  // Dos concluídos COBRADOS (lib/metrics): a avaliação de R$ 0 não puxa a média.
+  const avgTicket = ticketMedio(totais) ?? 0
 
   // A despesa a pagar vem do banco (metrics_a_pagar): era somada na lista.
   const pendingExpense     = aPagar
   const prevPendingExpense = aPagarAnterior
 
-  const saldo     = income - expense
-  const prevSaldo = prevIncome - prevExpense
+  // O lucro do período vem de lib/metrics (resultadoDoPeriodo), como nos Relatórios.
+  const saldo     = resultadoDoPeriodo(totais).lucro
+  const prevSaldo = resultadoDoPeriodo(totaisAnteriores).lucro
 
   // -- Charts ----------------------------------------------------
   // Os valores vêm de metrics_series; aqui só se posiciona (lib/financeiro/barras).

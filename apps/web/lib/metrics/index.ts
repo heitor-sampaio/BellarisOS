@@ -11,10 +11,11 @@
  *   revenuePending  — a receber (INCOME não pago).
  *   serviceRevenue  — preço dos atendimentos concluídos (eixo em aconteceu_em: a hora
  *                     marcada, ou a da conclusão se veio antes — D13, 2026-10-22).
- *   ticketMedio     — serviceRevenue ÷ atendimentos concluídos. Mesmo conjunto
- *                     nos dois lados da divisão; antes o numerador vinha do
- *                     caixa (incluindo vendas sem atendimento) e o denominador
- *                     da agenda, então a conta nunca fechava na mão.
+ *   ticketMedio     — serviceRevenue ÷ atendimentos concluídos COBRADOS (preço
+ *                     > 0; 2026-10-27 — a avaliação de R$ 0 puxava a média).
+ *                     Mesmo conjunto nos dois lados da divisão; antes o
+ *                     numerador vinha do caixa e o denominador da agenda.
+ *                     A conta mora em ./resultado (com o lucro e a margem).
  *   occupancy       — minutos agendados ÷ capacidade (profissionais × jornada
  *                     × dias com expediente no período).
  */
@@ -22,6 +23,7 @@
 export * from './period'
 import { ocupacaoEmPct, type Horario } from '@/lib/agenda/horario'
 export * from './queries'
+export * from './resultado'
 
 /**
  * Ocupação: percentual da capacidade que foi agendada — minutos dos

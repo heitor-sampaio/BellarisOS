@@ -24,13 +24,15 @@ export type MetricsCore = {
   newClients:            number
   commissionsOpen:       number
   commissionsPaid:       number
+  /** Concluídos COBRADOS (preço > 0): o denominador do ticket médio (2026-10-27). */
+  appointmentsCharged:   number
 }
 
 export const EMPTY_CORE: MetricsCore = {
   revenueCash: 0, revenuePending: 0, expensesCash: 0, serviceRevenue: 0,
   appointmentsCompleted: 0, appointmentsTotal: 0, appointmentsCancelled: 0,
   appointmentsNoShow: 0, scheduledMinutes: 0, newClients: 0,
-  commissionsOpen: 0, commissionsPaid: 0,
+  commissionsOpen: 0, commissionsPaid: 0, appointmentsCharged: 0,
 }
 
 export type BranchMetrics = {
@@ -51,6 +53,7 @@ export type BranchMetrics = {
   commissionsOpen:       number
   commissionsPaid:       number
   transactionsCount:     number
+  appointmentsCharged:   number
 }
 
 export type SeriesPoint       = { bucket: string; revenue: number; expenses: number }
@@ -118,6 +121,7 @@ export async function getCore(args: Args): Promise<MetricsCore> {
     newClients:            n(row.new_clients),
     commissionsOpen:       n(row.commissions_open),
     commissionsPaid:       n(row.commissions_paid),
+    appointmentsCharged:   n(row.appointments_charged),
   }
 }
 
@@ -146,6 +150,7 @@ export async function getByBranch(
     commissionsOpen:       n(r.commissions_open),
     commissionsPaid:       n(r.commissions_paid),
     transactionsCount:     n(r.transactions_count),
+    appointmentsCharged:   n(r.appointments_charged),
   }))
 }
 
