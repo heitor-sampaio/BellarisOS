@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, X, Upload, FileText, FileImage, File, FileSpreadsheet,
+  Plus, Upload, FileText, FileImage, File, FileSpreadsheet,
   Download, Trash2, Loader2,
 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -121,12 +121,9 @@ function UploadForm({
       <input type="hidden" name="branch_id" value={branchId} />
       <input type="hidden" name="slug"      value={slug} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>Novo documento</p>
-        <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '2px 4px' }}>
-          <X size={14} />
-        </button>
-      </div>
+      {/* Uma saída só: o "Cancelar" do fim (A32, 2026-10-27). Eram três — o X,
+          o Cancelar daqui e o botão do cabeçalho virando "Cancelar". */}
+      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>Novo documento</p>
 
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -346,14 +343,14 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
               </span>
             )}
           </div>
-          {(podeAnexarComum || podeAnexarClinico) && (
+          {(podeAnexarComum || podeAnexarClinico) && !showForm && (
             <button
               type="button"
-              onClick={() => setShowForm(v => !v)}
-              className={showForm ? 'btn-ghost' : 'btn-primary'}
+              onClick={() => setShowForm(true)}
+              className="btn-primary"
               style={{ gap: 6, fontSize: 'var(--text-sm-sz)' }}
             >
-              {showForm ? <><X size={13} /> Cancelar</> : <><Plus size={13} /> Adicionar documento</>}
+              <Plus size={13} /> Adicionar documento
             </button>
           )}
         </div>

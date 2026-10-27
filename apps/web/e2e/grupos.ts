@@ -91,6 +91,7 @@ export const ISOLADOS = [
   'prontuario-evolucao.spec.ts',
   'agenda-chegar-e-iniciar.spec.ts',
   'plano-dica-do-pacote.spec.ts',
+  'ficha-documentos-um-cancelar.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',
