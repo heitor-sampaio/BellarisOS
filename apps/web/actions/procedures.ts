@@ -6,6 +6,7 @@ import { comissaoDoFormulario, gravarComissaoDoProcedimento } from '@/lib/comiss
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { parseDinheiro } from '@estetica-os/utils'
 import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
 
 /**
@@ -98,12 +99,10 @@ async function addProcedureInterno(
   const category    = (formData.get('category') as string)?.trim()
   const description = (formData.get('description') as string)?.trim() || null
   const durationMin = parseInt(formData.get('duration_min') as string, 10)
-  const priceRaw    = (formData.get('price') as string)?.replace(/\./g, '').replace(',', '.')
-  const price       = parseFloat(priceRaw)
-  const laborCostRaw = (formData.get('labor_cost') as string)?.replace(/\./g, '').replace(',', '.')
-  const laborCost    = parseFloat(laborCostRaw) || 0
-  const otherCostsRaw = (formData.get('other_costs') as string)?.replace(/\./g, '').replace(',', '.')
-  const otherCosts    = parseFloat(otherCostsRaw) || 0
+  // Dinheiro como no resto do sistema: "180" é R$ 180,00 (D10).
+  const price       = parseDinheiro(String(formData.get('price') ?? ''))
+  const laborCost   = parseDinheiro(String(formData.get('labor_cost') ?? '')) || 0
+  const otherCosts  = parseDinheiro(String(formData.get('other_costs') ?? '')) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null
@@ -240,12 +239,10 @@ async function updateProcedureInterno(
   const category    = (formData.get('category') as string)?.trim()
   const description = (formData.get('description') as string)?.trim() || null
   const durationMin = parseInt(formData.get('duration_min') as string, 10)
-  const priceRaw    = (formData.get('price') as string)?.replace(/\./g, '').replace(',', '.')
-  const price       = parseFloat(priceRaw)
-  const laborCostRaw = (formData.get('labor_cost') as string)?.replace(/\./g, '').replace(',', '.')
-  const laborCost    = parseFloat(laborCostRaw) || 0
-  const otherCostsRaw = (formData.get('other_costs') as string)?.replace(/\./g, '').replace(',', '.')
-  const otherCosts    = parseFloat(otherCostsRaw) || 0
+  // Dinheiro como no resto do sistema: "180" é R$ 180,00 (D10).
+  const price       = parseDinheiro(String(formData.get('price') ?? ''))
+  const laborCost   = parseDinheiro(String(formData.get('labor_cost') ?? '')) || 0
+  const otherCosts  = parseDinheiro(String(formData.get('other_costs') ?? '')) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null

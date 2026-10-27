@@ -3,6 +3,7 @@
 import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
+import { parseDinheiro, formatDinheiroCampo } from '@estetica-os/utils'
 import {
   EditorDeComissao, entradaDaComissao, estadoInicialDaComissao, type DadosDaComissao,
 } from '@/components/admin/comissao-do-procedimento'
@@ -97,6 +98,14 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
+/** O que cabe num campo de dinheiro enquanto se digita: dígitos, vírgula e ponto. */
+const soDinheiro = (v: string) => v.replace(/[^\d.,]/g, '')
+/** Ao sair do campo: o valor em reais no formato do sistema ("180" -> "180,00"); vazio fica vazio. */
+function fechaDinheiro(v: string) {
+  const n = parseDinheiro(v)
+  return Number.isFinite(n) ? formatDinheiroCampo(n) : ''
+}
+
 function formatPrice(raw: string | number) {
   const n = parseFloat(String(raw))
   if (isNaN(n)) return ''
@@ -168,13 +177,10 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
   }
 
   function branchOverrideInput(branchId: string, field: 'price' | 'labor_cost') {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const digits = e.target.value.replace(/\D/g, '')
-      const num    = parseInt(digits || '0', 10) / 100
-      setBranchOverride(branchId, field, num > 0
-        ? num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        : '')
-    }
+    return (e: React.ChangeEvent<HTMLInputElement>) => setBranchOverride(branchId, field, soDinheiro(e.target.value))
+  }
+  function branchOverrideBlur(branchId: string, field: 'price' | 'labor_cost') {
+    return (e: React.FocusEvent<HTMLInputElement>) => setBranchOverride(branchId, field, fechaDinheiro(e.target.value))
   }
 
   // Serializa apenas overrides com pelo menos um valor preenchido
@@ -190,7 +196,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
 
   const productsCostCalc = insumos.reduce((sum, ins) => sum + (ins.unit_cost ?? 0) * ins.quantity, 0)
 
-  function parseBRL(v: string) { return parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0 }
+  function parseBRL(v: string) { const n = parseDinheiro(v); return Number.isFinite(n) ? n : 0 }
   const laborCostNum  = parseBRL(laborCost)
   const otherCostsNum = parseBRL(otherCosts)
   const totalCost     = laborCostNum + otherCostsNum + productsCostCalc
@@ -224,11 +230,13 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
     const m = parseFloat(cleaned.replace(',', '.')) || 0
     setPrice(m > 0 && m < 100 ? formatPrice(priceFromMargin(m)) : (m <= 0 ? formatPrice(totalCost) : ''))
   }
+  // Dinheiro como em todo o sistema (D10): "180" é R$ 180,00. Escreve-se livre
+  // e formata ao sair do campo.
   function handlePriceCalcInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const digits = e.target.value.replace(/\D/g, '')
-    const num    = parseInt(digits || '0', 10) / 100
+    const texto = soDinheiro(e.target.value)
+    const num   = parseBRL(texto)
     setAncora('price')
-    setPrice(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+    setPrice(texto)
     setMarginPct(num > 0 ? fmtMargin(marginFromPrice(num)) : '')
   }
 
@@ -260,15 +268,8 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
     setInsumos(p => p.filter((_, idx) => idx !== i))
   }
 
-  function makeCurrencyHandler(setter: (v: string) => void) {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const digits = e.target.value.replace(/\D/g, '')
-      const num    = parseInt(digits || '0', 10) / 100
-      setter(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
-    }
-  }
-  const handleLaborCostInput  = makeCurrencyHandler(setLaborCost)
-  const handleOtherCostsInput = makeCurrencyHandler(setOtherCosts)
+  const handleLaborCostInput  = (e: React.ChangeEvent<HTMLInputElement>) => setLaborCost(soDinheiro(e.target.value))
+  const handleOtherCostsInput = (e: React.ChangeEvent<HTMLInputElement>) => setOtherCosts(soDinheiro(e.target.value))
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
@@ -495,7 +496,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
           <Field label="Mão de obra">
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-              <input name="labor_cost" type="text" className="field" value={laborCost} onChange={handleLaborCostInput} placeholder="0,00" style={{ paddingLeft: 30 }} />
+              <input name="labor_cost" type="text" className="field" value={laborCost} onChange={handleLaborCostInput} onBlur={e => setLaborCost(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30 }} />
             </div>
           </Field>
 
@@ -513,7 +514,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
           <Field label="Outros custos">
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-              <input name="other_costs" type="text" className="field" value={otherCosts} onChange={handleOtherCostsInput} placeholder="0,00" style={{ paddingLeft: 30 }} />
+              <input name="other_costs" type="text" className="field" value={otherCosts} onChange={handleOtherCostsInput} onBlur={e => setOtherCosts(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30 }} />
             </div>
           </Field>
         </div>
@@ -538,7 +539,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
       <Field label="Preço do procedimento (R$) *" hint="Edite a margem ou o preço — o outro se ajusta automaticamente.">
         <div style={{ position: 'relative' }}>
           <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-          <input name="price" type="text" required className="field" value={price} onChange={handlePriceCalcInput} placeholder="0,00" style={{ paddingLeft: 30, fontWeight: 700 }} />
+          <input name="price" type="text" required className="field" value={price} onChange={handlePriceCalcInput} onBlur={e => setPrice(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30, fontWeight: 700 }} />
         </div>
       </Field>
 
@@ -594,7 +595,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
                       <input type="text" className="field" value={ov.price}
-                        onChange={branchOverrideInput(b.id, 'price')}
+                        onChange={branchOverrideInput(b.id, 'price')} onBlur={branchOverrideBlur(b.id, 'price')} inputMode="decimal"
                         placeholder={price || '—'}
                         style={{ paddingLeft: 26, fontSize: 'var(--text-sm-sz)', height: 32 }} />
                     </div>
