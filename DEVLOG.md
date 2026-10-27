@@ -6897,16 +6897,24 @@ O relatório inteiro (capturas, os 48 atritos A1–A48 por tela, o que ficou
 sem testar) está na máquina do Heitor, fora do git: `apps/web/.sim/relatorio.md`
 (o de 20/10 em `.sim/arquivo-2026-10-20/`). Os defeitos, todos conferidos no
 código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
-- **D1 (alta)** o consumo de insumo grava o custo da EMBALAGEM por unidade de
+- ~~**D1 (alta)** o consumo de insumo grava o custo da EMBALAGEM por unidade de
   consumo: 5 ml de ácido = R$ 450, não R$ 4,50 (`actions/appointments.ts:748`,
   falta dividir por `units_per_package`). Vai ao giro, ao dashboard e ao
-  `v_custo` da comissão de `concluir_atendimento` ("descontar insumos").
-- **D2 (alta)** o gráfico "Evolução do Período" soma o consumo à despesa
+  `v_custo` da comissão de `concluir_atendimento` ("descontar insumos").~~
+  **feito em 2026-10-27** (8ec9e9e): o custo é o da unidade de consumo
+  (`custo_de_consumo`, uma regra no banco que a conclusão, o voucher, o giro,
+  os relatórios, a margem e a comissão leem), e todo movimento está em
+  consumo (a entrada de 5 frascos grava +500 ml a R$ 0,90).
+- ~~**D2 (alta)** o gráfico "Evolução do Período" soma o consumo à despesa
   (`reports-bi-section.tsx:233`), contra os cartões e contra a regra de que a
-  compra já é despesa — e a conta é feita na tela (§13.1).
-- **D3 (alta, sobra do D6 de 20/10)** a margem por faixa etária de
+  compra já é despesa — e a conta é feita na tela (§13.1).~~ **feito em
+  2026-10-27** (8ec9e9e): o ponto vem pronto de `pontosDaEvolucao`
+  (`lib/metrics/evolucao.ts`), com custo = a despesa paga.
+- ~~**D3 (alta, sobra do D6 de 20/10)** a margem por faixa etária de
   `metrics_relatorio` ainda usa `pp.quantity * pr.cost_price` (−150%); só o
-  dashboard passou para `metrics_margem_procedimentos`.
+  dashboard passou para `metrics_margem_procedimentos`.~~ **feito em
+  2026-10-27** (8ec9e9e): as duas margens saem de
+  `metrics_custo_dos_procedimentos`.
 - **D4 (alta)** a evolução e a intercorrência gravadas não aparecem em aba
   nenhuma da ficha: `buildRecordForms` descarta entrada sem `form_data.ficha`,
   e o `sessionNotes` passado ao `ClientProfile` não é usado desde `03fe59c`.
@@ -6931,6 +6939,19 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   em inglês e sem layout.
 - A rede "[sim] Clínica Aurora" (`e63779b9-…`) e os logins `sim-*` ficaram no
   banco para o Heitor ver; apagar quando ele pedir.
+- Atritos feitos: A39 e o "− Custo de Insumos R$ 0,00" do DRE (8ec9e9e).
+  Decisões (custo de insumos): custo por unidade de consumo = custo da
+  embalagem ÷ o que ela rende, só para produto com unidade de consumo
+  (`units_per_package` > 0 E `consumption_unit`; sem ela, ÷ 1 — é o mesmo
+  critério da baixa); o MOVIMENTO (quantidade, saldo depois, custo) é em
+  consumo, e continuam em embalagens o que se digita, `cost_price`,
+  `current_stock`, o mínimo e os lotes; o custo do insumo é lido pelo banco
+  na conclusão e no voucher (o app não o manda); valor em estoque = saldo em
+  consumo × custo de consumo, também na coluna "Valor" da tela; o DRE perdeu
+  a linha de insumos e o KPI de consumo diz que é informativo. Dados: só a
+  rede [sim] tinha movimento de produto com unidade de consumo (2 compras e
+  1 consumo, convertidos) e uma linha de comissão (R$ 450 → R$ 4,50, sem
+  desconto de insumo — o valor da comissão não mudou).
 
 ### Próximas fases já combinadas
 
