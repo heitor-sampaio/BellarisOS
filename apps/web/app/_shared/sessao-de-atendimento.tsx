@@ -13,6 +13,7 @@ import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
+import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -424,6 +425,21 @@ export async function SessaoDeAtendimento({
     }
   }
 
+  // As fotos clínicas deste atendimento (A30, 2026-10-27): anexo clínico,
+  // então só para quem vê o prontuário dele — e o acesso já foi registrado
+  // acima. Bucket privado: a tela recebe URL assinada.
+  type RawFoto = { id: string; name: string; file_path: string; file_name: string; mime_type: string | null; created_at: string }
+  const fotosRaw = canViewRecords && cli
+    ? ((await ler(admin.from('client_documents')
+        .select('id, name, file_path, file_name, mime_type, created_at')
+        .eq('appointment_id', appointment.id).eq('client_id', cli.id)
+        .order('created_at'), 'carregar as fotos do atendimento')) ?? []) as RawFoto[]
+    : []
+  const urlsDasFotos = await getSignedUrls(CLIENT_DOCS_BUCKET, fotosRaw.map(f => f.file_path))
+  const fotosDoAtendimento = canViewRecords
+    ? fotosRaw.map(f => ({ id: f.id, name: f.name, fileName: f.file_name, mimeType: f.mime_type, createdAt: f.created_at, url: urlsDasFotos[f.file_path] ?? '' }))
+    : null
+
   return (
     <>
       <RealtimeRefresher tables={['appointments', 'medical_record_entries', 'financial_transactions']} />
@@ -434,6 +450,7 @@ export async function SessaoDeAtendimento({
         fichaPreAtendimento={fichaPreAtendimento}
         canEditRecords={canEditRecords}
         canViewRecords={canViewRecords}
+        fotosDoAtendimento={fotosDoAtendimento}
         ficha={ficha}
         respostasDaFicha={respostasDaFicha}
         products={products}

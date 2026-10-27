@@ -246,6 +246,17 @@ const procedures = await ler(
   `clients: MANAGE`. A ficha oferece a cada um só as categorias dele. Antes
   tudo pedia o cadastro, e a profissional não tinha onde anexar a foto
   clínica (simulação de um dia de clínica).
+- **A foto clínica entra pela tela do ATENDIMENTO, ligada a ele** (A30 da
+  simulação de 2026-10-27; migration `20261027000030`): o cartão "Fotos do
+  atendimento" (`components/branch/fotos-do-atendimento.tsx`) usa o MESMO
+  formulário e a MESMA action dos Documentos (`UploadForm` →
+  `uploadClientDocument`: bucket privado, URL assinada, `recusaDoAnexo`),
+  com a categoria fixa "Foto clínica" e `client_documents.appointment_id`.
+  A action confere que o atendimento é DESTA cliente, da rede e de unidade ao
+  alcance. O cartão só existe para quem vê o prontuário do atendimento
+  (`canViewRecords`, já registrado em `prontuario_acessos`); anexar, para
+  quem escreve nele. A foto aparece também na aba Documentos da ficha.
+  Prova: `e2e/atendimento-foto-clinica.spec.ts`.
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um
   rascunho que existe só na tela; o plano nasce no primeiro "Salvar plano"

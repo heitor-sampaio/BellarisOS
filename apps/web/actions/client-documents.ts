@@ -45,6 +45,9 @@ export async function uploadClientDocument(
   const clientId  = formData.get('client_id') as string | null
   const branchId  = formData.get('branch_id') as string | null
   const slug      = formData.get('slug') as string | null
+  // A foto clínica pela tela do atendimento (A30, 2026-10-27): o anexo fica
+  // ligado a ele. Vazio = anexado pela ficha.
+  const appointmentId = ((formData.get('appointment_id') as string | null) ?? '').trim() || null
 
   if (!file || file.size === 0) return { error: 'Selecione um arquivo.' }
   if (!name)                    return { error: 'Informe o nome do documento.' }
@@ -75,6 +78,16 @@ export async function uploadClientDocument(
   const recusa = await recusaDoAnexo(ctx, admin, category, clientId)
   if (recusa) return { error: recusa }
 
+  // O atendimento vem do formulário: é desta cliente, desta rede e de uma
+  // unidade ao alcance — senão a foto iria para o atendimento de outra pessoa.
+  if (appointmentId) {
+    const ag = await ler(admin.from('appointments').select('id, client_id, branch_id, branches!inner(tenant_id)')
+      .eq('id', appointmentId).maybeSingle(), 'conferir o atendimento do anexo')
+    const redeDoAtendimento = (ag?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!ag || redeDoAtendimento !== ctx.tenantId || !alcancaUnidade(ctx, ag.branch_id as string)) return { error: 'Atendimento não encontrado.' }
+    if (ag.client_id !== clientId) return { error: 'Este atendimento não é desta cliente.' }
+  }
+
   // Bucket PRIVADO (LGPD) — nunca público. Guardamos o path; servimos por signed URL.
   await ensurePrivateBucket(BUCKET)
 
@@ -101,6 +114,7 @@ export async function uploadClientDocument(
     file_size:   file.size,
     mime_type:   file.type || `application/${ext}`,
     uploaded_by: ctx.internalUserId,
+    appointment_id: appointmentId,
   })
 
   if (dbError) {
@@ -114,6 +128,10 @@ export async function uploadClientDocument(
   // no /admin o documento anexado não aparecia até recarregar a página.
   revalidatePath(`/${slug}/clients/${clientId}`)
   revalidatePath(`/admin/clients/${clientId}`)
+  if (appointmentId) {
+    revalidatePath(`/${slug}/agenda/${appointmentId}`)
+    revalidatePath(`/admin/agenda/${appointmentId}`)
+  }
   return {}
 }
 

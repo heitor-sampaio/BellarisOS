@@ -31,6 +31,7 @@ import { alergiasDaAnamnese, type AnamneseGeral, type FichaDePreAtendimento } fr
 import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
+import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/fotos-do-atendimento'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
@@ -136,6 +137,8 @@ interface Props {
   canEditRecords:     boolean
   /** Ver a evolução (prontuário). Sem o módulo, a tela nem recebe as anotações. */
   canViewRecords?:    boolean
+  /** As fotos clínicas deste atendimento (A30). Nulo = quem vê não tem o prontuário. */
+  fotosDoAtendimento?: FotoDoAtendimento[] | null
   canReassign:        boolean
   canPayment:         boolean
   isProfessional:     boolean
@@ -842,7 +845,7 @@ function DorasCard({ value, onChange, readonly }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
@@ -1820,6 +1823,19 @@ export function AppointmentSession({
                   </div>
                 )}
               </>
+            )}
+
+            {/* As fotos clínicas DESTE atendimento (A30, 2026-10-27): antes só
+                entravam pela ficha, sem saber de qual atendimento eram. */}
+            {fotosDoAtendimento && (
+              <FotosDoAtendimento
+                fotos={fotosDoAtendimento}
+                clientId={client.id}
+                branchId={branchId}
+                slug={slug}
+                appointmentId={appointment.id}
+                podeAnexar={canEditRecords}
+              />
             )}
 
             {/* Histórico */}

@@ -82,10 +82,24 @@ function categoryLabel(cat: string): string {
 
 // -- Upload form ---------------------------------------------------------------
 
-function UploadForm({
+/**
+ * O formulário de anexo — o da ficha e o da foto clínica na tela do
+ * atendimento (A30, 2026-10-27), que passa a categoria fixa e o atendimento.
+ */
+export function UploadForm({
   clientId, branchId, slug, podeAnexarClinico, podeAnexarComum, onClose,
+  categoriaFixa, appointmentId, nomePadrao, rotuloDoEnvio = 'Anexar documento', titulo = 'Novo documento', aceita,
 }: {
   clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; podeAnexarComum: boolean; onClose: () => void
+  /** A categoria já decidida (a foto clínica do atendimento): sem o seletor. */
+  categoriaFixa?: string
+  /** O atendimento a que o anexo fica ligado. */
+  appointmentId?: string
+  nomePadrao?:    string
+  rotuloDoEnvio?: string
+  titulo?:        string
+  /** O `accept` do arquivo; padrão, os tipos da ficha. */
+  aceita?:        string
 }) {
   const formRef     = useRef<HTMLFormElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -120,29 +134,34 @@ function UploadForm({
       <input type="hidden" name="client_id" value={clientId} />
       <input type="hidden" name="branch_id" value={branchId} />
       <input type="hidden" name="slug"      value={slug} />
+      {appointmentId && <input type="hidden" name="appointment_id" value={appointmentId} />}
+      {categoriaFixa && <input type="hidden" name="category" value={categoriaFixa} />}
 
       {/* Uma saída só: o "Cancelar" do fim (A32, 2026-10-27). Eram três — o X,
           o Cancelar daqui e o botão do cabeçalho virando "Cancelar". */}
-      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>Novo documento</p>
+      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>{titulo}</p>
 
-      <div className="form-2col">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">Nome do documento *</label>
+      <div className={categoriaFixa ? undefined : 'form-2col'}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="field-label">Nome do documento *</span>
           <input
             type="text" name="name" required
+            defaultValue={nomePadrao}
             placeholder="Ex: Termo de anamnese — Jun 2026"
             className="field"
             style={{ background: 'var(--surface)' }}
           />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">Categoria *</label>
-          <select name="category" className="field" style={{ background: 'var(--surface)' }}>
-            {CATEGORIES.filter(c => ehAnexoClinico(c.value) ? podeAnexarClinico : podeAnexarComum).map(c => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
-        </div>
+        </label>
+        {!categoriaFixa && (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="field-label">Categoria *</span>
+            <select name="category" className="field" style={{ background: 'var(--surface)' }}>
+              {CATEGORIES.filter(c => ehAnexoClinico(c.value) ? podeAnexarClinico : podeAnexarComum).map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {/* File input */}
@@ -161,13 +180,13 @@ function UploadForm({
           </span>
           <input
             type="file" name="file" required
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.txt"
+            accept={aceita ?? '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.txt'}
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
         </label>
         <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 4 }}>
-          PDF, Word, Excel, imagens — máximo 20 MB
+          {aceita ? 'Imagem (JPG, PNG, WebP) — máximo 20 MB' : 'PDF, Word, Excel, imagens — máximo 20 MB'}
         </p>
       </div>
 
@@ -183,7 +202,7 @@ function UploadForm({
         </button>
         <button type="submit" disabled={pending} className="btn-primary" style={{ gap: 6, minWidth: 120, justifyContent: 'center' }}>
           {pending ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-          {pending ? 'Enviando…' : 'Anexar documento'}
+          {pending ? 'Enviando…' : rotuloDoEnvio}
         </button>
       </div>
     </form>
