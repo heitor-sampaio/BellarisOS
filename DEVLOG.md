@@ -6939,8 +6939,10 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
 - **D7 (média)** "Não tenho alergias." dispara o alerta de alergia (a regex
   `NEGATIVA` de `lib/anamnese-geral.ts` exige a resposta inteira), e o aviso
   sai com ponto duplo.
-- **D8 (média, regressão de `e3ca7b0`)** trocar de dia na agenda herda a
-  rolagem de hoje e esconde a manhã.
+- ~~**D8 (média, regressão de `e3ca7b0`)** trocar de dia na agenda herda a
+  rolagem de hoje e esconde a manhã.~~ **feito em 2026-10-27** (8f4e92f): a
+  grade rola a cada troca de dia — hoje, uma hora antes de agora; outro dia, o
+  primeiro atendimento ou a abertura da unidade, o que vier antes.
 - ~~**D9 (média)** atendimento de R$ 0 fica para sempre "aguardando confirmação
   de pagamento" (`appointment-session.tsx`).~~ **feito em 2026-10-27**
   (f063c6f): "Sem cobrança" na tela e na janela da agenda, concluir não lança
@@ -7011,6 +7013,19 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   cartão só para quem vê o prontuário do atendimento. A31: o rascunho guarda a
   evolução e a intercorrência dos dois formulários, e some ao encerrar, ao
   salvar no servidor e ao gerar o plano da avaliação.
+- Atritos feitos (frente 4, agenda): A17, A18, A19, A20, A22, A23 e a sobra da
+  frente 3 (8f4e92f). Decisões: a chegada é por DIA (Brasília), na
+  `checkinCore`, e não por hora — quem chega cedo ou atrasada ainda é a do dia;
+  chegar já confirmava (`confirmed_at`), só a trava de dia é nova. A janela da
+  unidade passou a receber `escopoProprio` (antes comparava o nome do cargo)
+  e, com "só os meus", esconde Cancelar e Não compareceu. A sugestão de horário
+  (A20) só vale se a hora não veio de um clique na grade nem foi digitada; ela
+  procura até 14 dias à frente. A22: o formatador era o próprio
+  `text-transform: capitalize` (agenda da profissional e fechamento do dia);
+  o rótulo do mês na mesma tela continua capitalizado. Aviso: o
+  `setCurrentDate` de `agenda-calendar.tsx` chama `history.replaceState` dentro
+  do updater do `setState` (o React reclama "Cannot update Router while
+  rendering") — já era assim, não mexi.
 
 ### Próximas fases já combinadas
 

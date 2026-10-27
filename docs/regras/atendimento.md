@@ -40,6 +40,18 @@
   documentos). Com a agenda "só os meus", só no agendamento dela. Sem o
   check-in no cargo, a tela diz que a recepção marca a chegada. Prova:
   `e2e/agenda-chegar-e-iniciar.spec.ts`.
+- **A chegada é do DIA do agendamento** (A18, 2026-10-27): `checkinCore`
+  recusa fora do dia (Brasília, `ehODiaDoAgendamento`) — vale para a agenda, o
+  Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". Com a
+  agenda "só os meus", a janela também não mostra Cancelar nem "Não
+  compareceu" (a action recusa): mostra só o que a action deixa fazer. O
+  cancelado traz o motivo inteiro na janela e no tooltip do bloco.
+- **A grade do dia rola a cada troca de dia** (D8): hoje, uma hora antes de
+  agora; outro dia, o primeiro atendimento ou a abertura da unidade, o que
+  vier antes (`rolagemDaGrade`). O novo agendamento sugere o próximo horário
+  livre da profissional (A20, `proximoHorarioLivre`, a conta de
+  `computeAvailableSlots`) quando a hora não veio de um clique na grade.
+  A linha do tempo da cliente registra confirmação e chegada (A23).
 - **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
   action recusa). `updateAppointmentStatus` devolve `{ error }` (só a trava de
   permissão lança): a folha mostra o erro e, no sucesso, a agenda dá o aviso
