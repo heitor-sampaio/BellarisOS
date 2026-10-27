@@ -12,6 +12,9 @@ import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { semAcesso } from '@/lib/sem-acesso'
+import { catalogoDePacotes } from '@/lib/pacotes/leitura'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
+import type { PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -1820,4 +1823,26 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
+}
+
+/**
+ * Os pacotes à venda na unidade, para a DICA do plano (A28 da simulação de
+ * 2026-10-27): o plano continua por procedimento (decisão do Heitor de 21/10 —
+ * quem aplica o pacote é o checkout), mas diz quando as sessões batem com um
+ * pacote. O catálogo é o MESMO do checkout (`catalogoDePacotes`, ativos e ao
+ * alcance da unidade), e a conta é a dele (`pacoteEquivalente`), feita no
+ * editor. Só preço e composição — nada clínico.
+ */
+export async function pacotesParaODicaDoPlano(branchId: string): Promise<PacoteParaComparar[]> {
+  const ctx = await getTenantContext()
+  if (!can(ctx, 'medical_records', 'VIEW') && !can(ctx, 'agenda', 'VIEW') && !can(ctx, 'procedures', 'VIEW')) return []
+  if (!branchId || !alcancaUnidade(ctx, branchId)) return []
+  const unidade = await ler(createAdminClient().from('branches').select('id')
+    .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade do plano')
+  if (!unidade) return []
+  if (!(await redeTemRecurso(ctx.tenantId!, 'pacotes'))) return []
+  return (await catalogoDePacotes(ctx.tenantId!, { branchId, soAtivos: true })).map(p => ({
+    id: p.id, name: p.name, price: p.price,
+    itens: p.itens.map(i => ({ procedureId: i.procedureId, quantidade: i.quantidade })),
+  }))
 }

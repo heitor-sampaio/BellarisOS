@@ -1208,6 +1208,7 @@ export function AppointmentSession({
               availableProducts={availableProducts}
               podeEditar={canEditRecords}
               podeReceber={podeReceber}
+              planoNaTela={!isPartOfPlan && podeMontarPlano && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
             />
           </div>
         </JanelaModal>
@@ -1677,6 +1678,7 @@ export function AppointmentSession({
                   <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
                     ref={evalEditorRef}
+                    branchId={branchId}
                     procedures={treatmentProcedures} servicePackages={treatmentPackages}
                     existingPlan={existingPlan} procedureProductsMap={procedureProductsMap}
                     availableProducts={availableProducts}

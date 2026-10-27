@@ -253,6 +253,13 @@ const procedures = await ler(
   as sessões falharem). Aceitar e "Cliente vai pensar" só aparecem depois de
   salvo. Antes ele nascia vazio no clique, e quem desistia deixava um rascunho
   de zero sessões. Prova: `e2e/plano-novo-so-ao-salvar.spec.ts`.
+- **Na avaliação, o plano se monta NA TELA** (A29, 2026-10-27): enquanto o
+  plano da avaliação não foi gerado, a tela do atendimento já tem o editor
+  dele ("Tratamento"), e o Planejamento aberto por cima (`planoNaTela`) lista
+  os planos da cliente mas não oferece "Novo plano" — diz que o plano desta
+  avaliação se monta na própria tela. Eram dois "Nova sessão" no mesmo gesto,
+  e o plano feito no Planejamento ficava fora do "Enviar para a recepção".
+  Prova: `e2e/plano-dica-do-pacote.spec.ts`.
 
 ---
 

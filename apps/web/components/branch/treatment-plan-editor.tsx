@@ -1,8 +1,9 @@
 ﻿'use client'
 
-import { useState, useTransition, forwardRef, useImperativeHandle } from 'react'
-import { Plus, Trash2, Send, Save, Copy, ChevronDown, ChevronUp, FlaskConical } from 'lucide-react'
-import { saveTreatmentPlan, proposeTreatmentPlan } from '@/actions/treatment-plans'
+import { useState, useEffect, useTransition, forwardRef, useImperativeHandle } from 'react'
+import { Plus, Trash2, Send, Save, Copy, ChevronDown, ChevronUp, FlaskConical, Package } from 'lucide-react'
+import { saveTreatmentPlan, proposeTreatmentPlan, pacotesParaODicaDoPlano } from '@/actions/treatment-plans'
+import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
 import type { PlanSessionInput } from '@/actions/treatment-plans'
 
 export interface TreatmentPlanEditorRef {
@@ -102,6 +103,12 @@ interface Props {
    * atendimento, então salvar é por planId — quem hospeda decide como.
    */
   onSalvarPorPlano?:    (sessions: PlanSessionInput[], notes: string) => Promise<void>
+  /**
+   * A unidade do plano: com ela, o editor busca os pacotes à venda e DIZ quando
+   * as sessões batem com um (A28, 2026-10-27). O plano segue por procedimento;
+   * quem aplica a economia é o checkout.
+   */
+  branchId?:            string
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -404,9 +411,20 @@ function SessionCard({
 // -- Componente principal ------------------------------------------------------
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
-  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano,
+  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
+  // Os pacotes à venda na unidade — só para a dica; sem eles, nada aparece.
+  const [pacotes,   setPacotes]   = useState<PacoteParaComparar[]>([])
+  useEffect(() => {
+    if (!branchId) return
+    let vivo = true
+    pacotesParaODicaDoPlano(branchId)
+      .then(r => { if (vivo) setPacotes(r) })
+      // Só a dica: sem ela o plano funciona igual, mas o motivo vai ao console.
+      .catch(e => console.error('[plano] pacotes para a dica:', e))
+    return () => { vivo = false }
+  }, [branchId])
   const [notes,     setNotes]     = useState(existingPlan?.notes ?? '')
   const [msg,       setMsg]       = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -417,6 +435,13 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     (sum, s) => sum + s.procs.reduce((ps, p) => ps + p.price, 0),
     0,
   )
+
+  // A mesma conta do checkout: a dica não promete o que ele não aplica.
+  const pacoteDaDica = pacotes.length
+    ? pacoteEquivalente(
+        sessions.map(s => ({ procedures: s.procs.filter(p => p.procedureId).map(p => ({ procedureId: p.procedureId })) })),
+        grandTotal, pacotes)
+    : null
 
   // -- Handlers de sessão --------------------------------------------
 
@@ -687,6 +712,19 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
               <Plus size={13} /> Nova sessão
             </button>
           </>
+        )}
+
+        {/* As sessões batem com um pacote da rede: o plano segue por
+            procedimento, e a dica diz onde a economia entra (A28). */}
+        {pacoteDaDica && (
+          <div data-dica-do-pacote role="note"
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--info-soft)', border: '1px solid var(--info-border)' }}>
+            <Package size={15} style={{ color: 'var(--info)', flexShrink: 0, marginTop: 2 }} />
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.5 }}>
+              Há o pacote <strong>{pacoteDaDica.nome}</strong> por <strong>{fmtBRL(pacoteDaDica.preco)}</strong> — no checkout a economia
+              ({fmtBRL(pacoteDaDica.economia)}) entra como desconto.
+            </p>
+          </div>
         )}
 
         {/* Observações */}

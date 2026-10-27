@@ -286,6 +286,15 @@ o procedimento avulso pago antes.
   economia no campo de DESCONTO: o plano continua por procedimento, e o
   desconto é rateado como qualquer outro. Não vira venda de pacote. Prova:
   `tests/pacote-equivalente.test.ts`, `e2e/checkout-pacote-equivalente.spec.ts`.
+  - **O PLANO avisa antes** (A28 da simulação de 2026-10-27): o editor do
+    plano (avaliação, Planejamento, ficha) busca os pacotes à venda na
+    unidade (`pacotesParaODicaDoPlano`, o mesmo `catalogoDePacotes` do
+    checkout) e, quando as sessões batem (`pacoteEquivalente`, a MESMA
+    conta), diz "Há o pacote X por R$ Y — no checkout a economia (R$ Z)
+    entra como desconto". O plano segue por procedimento (decisão de
+    21/10); a dica só fala do pacote que o checkout vai oferecer — o plano
+    inteiro, não um pedaço dele. A Lívia e o Rafael montaram 4 × R$ 180
+    sem saber do pacote de R$ 600. Prova: `e2e/plano-dica-do-pacote.spec.ts`.
 - **O agendamento pela cliente no app usa o que ela já pagou** (2026-10-21,
   decisão do Heitor): a sessão livre de um plano VENDIDO (`ACCEPTED`, a mais
   antiga, cujo primeiro procedimento é o agendado — preço = a soma da sessão)

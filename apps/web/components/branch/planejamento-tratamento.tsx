@@ -48,7 +48,7 @@ function fmtBRL(v: number) {
 export function PlanejamentoTratamento({
   clientId, branchId, slug, appointmentId = null, planIdInicial = null,
   procedures, availableProducts = [],
-  podeEditar, podeReceber = false, abertoId, onAbrir,
+  podeEditar, podeReceber = false, abertoId, onAbrir, planoNaTela = false,
 }: {
   /** Vazio quando o plano ainda não tem cliente — o caso da tela geral. */
   clientId:      string
@@ -69,6 +69,12 @@ export function PlanejamentoTratamento({
    */
   abertoId?:     string | null
   onAbrir?:      (planId: string | null) => void
+  /**
+   * Aberto por cima da avaliação, que já tem o editor do plano NA TELA: um
+   * "Novo plano" aqui seria o segundo "Nova sessão" do mesmo gesto (A29,
+   * 2026-10-27). A lista e os planos que existem continuam.
+   */
+  planoNaTela?:  boolean
 }) {
   const router   = useRouter()
 
@@ -296,7 +302,12 @@ export function PlanejamentoTratamento({
         })
       )}
 
-      {podeEditar && (
+      {podeEditar && planoNaTela && (
+        <p data-plano-na-tela style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          Monte o plano desta avaliação na própria tela, em Tratamento.
+        </p>
+      )}
+      {podeEditar && !planoNaTela && (
         <button type="button" onClick={novoPlano} disabled={carregando} className="btn-primary"
           style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
           {carregando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
@@ -388,6 +399,7 @@ export function PlanejamentoTratamento({
         availableProducts={availableProducts}
         existingPlan={aberto}
         hideActions
+        branchId={branchId}
         onSalvarPorPlano={editavel ? salvar : undefined}
       />
 

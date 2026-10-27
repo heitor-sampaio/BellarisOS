@@ -27,7 +27,7 @@ type Aba = 'tratamento' | 'injetaveis'
 export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
-  podeEditar, podeReceber = false, navegarPorUrl = false,
+  podeEditar, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
 }: {
   clientId:       string
   branchId:       string
@@ -39,6 +39,8 @@ export function PainelPlanejamento({
   podeReceber?:   boolean
   /** Guarda a aba e o item aberto na URL, em vez de em estado local. */
   navegarPorUrl?: boolean
+  /** A avaliação já tem o editor do plano na tela: aqui não se abre outro (A29). */
+  planoNaTela?:   boolean
 }) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -97,6 +99,7 @@ export function PainelPlanejamento({
           podeReceber={podeReceber}
           abertoId={aberto}
           onAbrir={abrir}
+          planoNaTela={planoNaTela}
         />
       ) : (
         <PlanejamentoInjetaveis
