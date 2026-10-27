@@ -6915,9 +6915,13 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   dashboard passou para `metrics_margem_procedimentos`.~~ **feito em
   2026-10-27** (8ec9e9e): as duas margens saem de
   `metrics_custo_dos_procedimentos`.
-- **D4 (alta)** a evolução e a intercorrência gravadas não aparecem em aba
+- ~~**D4 (alta)** a evolução e a intercorrência gravadas não aparecem em aba
   nenhuma da ficha: `buildRecordForms` descarta entrada sem `form_data.ficha`,
-  e o `sessionNotes` passado ao `ClientProfile` não é usado desde `03fe59c`.
+  e o `sessionNotes` passado ao `ClientProfile` não é usado desde `03fe59c`.~~
+  **feito em 2026-10-27** (5a3f02a): a aba Prontuário lista todo atendimento
+  com evolução, intercorrência OU ficha, com a seção "Evolução do
+  atendimento"; o `sessionNotes` saiu. O "Histórico de procedimentos vazio"
+  da Lívia não reproduz (na produção, como ela, a avaliação aparece).
 - ~~**D5 (alta)** nenhum caminho pela tela leva ao "Confirmar pagamento" do
   atendimento CONCLUÍDO: a janela da agenda só diz "já foi encerrado"
   (`appointment-sheet.tsx`), e nenhuma lista mostra os concluídos a receber.~~
@@ -6986,6 +6990,27 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   atendimento e para o financeiro do portal da cliente.
   `metrics_do_cliente` virou invólucro de `metrics_gasto_por_cliente` e
   não tem chamador no app (sai numa limpeza).
+- Atritos feitos (frente 3, prontuário e atendimento): A21 (39540b1), A28 e
+  A29 (a7b6027), A32 (6821f61), A30 (f1f2fae), A31 (2ad0072). Decisões:
+  "Marcar chegada e iniciar" (`chegarEIniciar`) é da profissional DESTE
+  atendimento, na tela do atendimento (o destino da "Minha agenda") e na
+  janela da agenda, em Agendado e Confirmado; é o `checkinCore` e depois o
+  `startAppointment` (chegou mas o documento barrou o início: a tela diz);
+  com "só os meus", só no agendamento dela; sem o check-in no cargo, a tela
+  diz que a recepção marca a chegada. A dica do pacote no plano usa a conta
+  do checkout (`pacoteEquivalente`) sobre o plano INTEIRO — num pedaço dele
+  ela prometeria um desconto que o checkout não dá. O "Nova sessão" duplo era
+  o editor da avaliação na tela + o "Novo plano" do Planejamento por cima: na
+  avaliação ainda sem plano gerado, o Planejamento não oferece "Novo plano" e
+  diz que o plano se monta na tela. A32: uma saída só no formulário de
+  Documentos (o "Cancelar" do fim; o X e o botão do cabeçalho saíram). A30:
+  a foto do atendimento é `client_documents` com `appointment_id` (migration
+  `20261027000030`, `on delete set null`), o mesmo `UploadForm`/
+  `uploadClientDocument`, categoria fixa "Foto clínica", só imagem; a action
+  confere que o atendimento é da cliente, da rede e da unidade ao alcance; o
+  cartão só para quem vê o prontuário do atendimento. A31: o rascunho guarda a
+  evolução e a intercorrência dos dois formulários, e some ao encerrar, ao
+  salvar no servidor e ao gerar o plano da avaliação.
 
 ### Próximas fases já combinadas
 
