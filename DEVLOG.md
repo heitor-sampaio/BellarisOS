@@ -1493,6 +1493,28 @@ verificador do Supabase acusava três coisas:
 Sobra só `planos_do_site`, aberta de propósito (o site a lê sem login).
 Migration `20261023000002`; sem comportamento novo, sem teste novo.
 
+### 2026-10-27 — Segunda simulação de um dia de clínica
+
+Pedido do Heitor, de novo: um agente por função e duas clientes, para ver o
+sistema depois das correções de 20–22/10. Mesma montagem (produção, rede nova
+"[sim] Clínica Aurora"), agora com Sonnet nos papéis e Opus só no
+consolidador. Dez agentes: preparador, dona, SDR, recepção, Mariana no app e
+Joana só pelo link (as duas no celular), a profissional com escopo "só os
+meus", o financeiro e o fechamento da dona. O financeiro caiu no limite de uso
+do plano e foi retomado do ponto em que parou.
+
+O dinheiro do dia bateu em todas as telas (receita R$ 780, despesas
+R$ 4.900, comissão R$ 54, o fechamento do dia "Bateu"), as permissões pela URL
+seguraram cada cargo, a senha provisória levou todos à troca, e boa parte do
+que se corrigiu depois de 20/10 apareceu funcionando (baixa de estoque,
+evolução gravada, foto clínica, "Chegou", cancelados, motivo da perda,
+horário de funcionamento, o registro de acessos ao prontuário). Achou 12
+defeitos — quatro de alta: o custo do insumo 100 vezes maior, o gráfico que o
+soma de novo, a margem que ficou na conta antiga e a evolução que grava mas
+não aparece — e 48 atritos. Nada corrigido: o Heitor escolhe.
+
+O que falta está em "5. Em aberto → Da simulação de 2026-10-27".
+
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
 Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
@@ -6868,6 +6890,47 @@ tempo). O que sobrou:
   sistema (acima de 1000 redes).
 - ~~A rede "[sim] Clínica Aurora" e os logins `sim-*`~~ **apagados em
   2026-10-21**, a pedido dele.
+
+### Da simulação de 2026-10-27 (nada corrigido ainda)
+
+O relatório inteiro (capturas, os 48 atritos A1–A48 por tela, o que ficou
+sem testar) está na máquina do Heitor, fora do git: `apps/web/.sim/relatorio.md`
+(o de 20/10 em `.sim/arquivo-2026-10-20/`). Os defeitos, todos conferidos no
+código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
+- **D1 (alta)** o consumo de insumo grava o custo da EMBALAGEM por unidade de
+  consumo: 5 ml de ácido = R$ 450, não R$ 4,50 (`actions/appointments.ts:748`,
+  falta dividir por `units_per_package`). Vai ao giro, ao dashboard e ao
+  `v_custo` da comissão de `concluir_atendimento` ("descontar insumos").
+- **D2 (alta)** o gráfico "Evolução do Período" soma o consumo à despesa
+  (`reports-bi-section.tsx:233`), contra os cartões e contra a regra de que a
+  compra já é despesa — e a conta é feita na tela (§13.1).
+- **D3 (alta, sobra do D6 de 20/10)** a margem por faixa etária de
+  `metrics_relatorio` ainda usa `pp.quantity * pr.cost_price` (−150%); só o
+  dashboard passou para `metrics_margem_procedimentos`.
+- **D4 (alta)** a evolução e a intercorrência gravadas não aparecem em aba
+  nenhuma da ficha: `buildRecordForms` descarta entrada sem `form_data.ficha`,
+  e o `sessionNotes` passado ao `ClientProfile` não é usado desde `03fe59c`.
+- **D5 (alta)** nenhum caminho pela tela leva ao "Confirmar pagamento" do
+  atendimento CONCLUÍDO: a janela da agenda só diz "já foi encerrado"
+  (`appointment-sheet.tsx`), e nenhuma lista mostra os concluídos a receber.
+- **D6 (média)** a Profissional (`financial: VIEW/OWN`, para as comissões)
+  abre o Fechamento do dia da unidade: a página e o menu olham só o nível.
+- **D7 (média)** "Não tenho alergias." dispara o alerta de alergia (a regex
+  `NEGATIVA` de `lib/anamnese-geral.ts` exige a resposta inteira), e o aviso
+  sai com ponto duplo.
+- **D8 (média, regressão de `e3ca7b0`)** trocar de dia na agenda herda a
+  rolagem de hoje e esconde a manhã.
+- **D9 (média)** atendimento de R$ 0 fica para sempre "aguardando confirmação
+  de pagamento" (`appointment-session.tsx`).
+- **D10 (média)** o preço do procedimento é máscara de centavos: "180" vira
+  R$ 1,80 — só nesse formulário.
+- **D11 (média)** "Agendados pelo comercial" só conta o agendar pelo card do
+  CRM (regra), e lá `isComercial = ctx.branchId === null`: SDR de unidade
+  nunca conta.
+- **D12 (baixa)** não há `not-found.tsx`: rota inexistente cai no 404 do Next,
+  em inglês e sem layout.
+- A rede "[sim] Clínica Aurora" (`e63779b9-…`) e os logins `sim-*` ficaram no
+  banco para o Heitor ver; apagar quando ele pedir.
 
 ### Próximas fases já combinadas
 
