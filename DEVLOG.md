@@ -6918,18 +6918,30 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
 - **D4 (alta)** a evolução e a intercorrência gravadas não aparecem em aba
   nenhuma da ficha: `buildRecordForms` descarta entrada sem `form_data.ficha`,
   e o `sessionNotes` passado ao `ClientProfile` não é usado desde `03fe59c`.
-- **D5 (alta)** nenhum caminho pela tela leva ao "Confirmar pagamento" do
+- ~~**D5 (alta)** nenhum caminho pela tela leva ao "Confirmar pagamento" do
   atendimento CONCLUÍDO: a janela da agenda só diz "já foi encerrado"
-  (`appointment-sheet.tsx`), e nenhuma lista mostra os concluídos a receber.
-- **D6 (média)** a Profissional (`financial: VIEW/OWN`, para as comissões)
-  abre o Fechamento do dia da unidade: a página e o menu olham só o nível.
+  (`appointment-sheet.tsx`), e nenhuma lista mostra os concluídos a receber.~~
+  **feito em 2026-10-27** (f063c6f): a conta é uma, no banco
+  (`atendimentos_a_receber`); a janela da agenda tem "Receber pagamento" (leva
+  à tela do atendimento com a janela do pagamento aberta, `?receber=1`, pelos
+  dois portais), o Fechamento lista os "Concluídos a receber", a ficha mostra
+  os dela com o mesmo botão, e o "Vender" avisa do mesmo procedimento.
+- ~~**D6 (média)** a Profissional (`financial: VIEW/OWN`, para as comissões)
+  abre o Fechamento do dia da unidade: a página e o menu olham só o nível.~~
+  **feito em 2026-10-27** (28e5aa4): o Fechamento pede `cashier` ou o
+  financeiro de TODOS (`podeVerFechamento`; o menu recebe o escopo), e a aba
+  Financeiro da ficha, no "só os próprios", mostra só os atendimentos dela,
+  com os totais do banco (`metrics_financeiro_do_cliente`).
 - **D7 (média)** "Não tenho alergias." dispara o alerta de alergia (a regex
   `NEGATIVA` de `lib/anamnese-geral.ts` exige a resposta inteira), e o aviso
   sai com ponto duplo.
 - **D8 (média, regressão de `e3ca7b0`)** trocar de dia na agenda herda a
   rolagem de hoje e esconde a manhã.
-- **D9 (média)** atendimento de R$ 0 fica para sempre "aguardando confirmação
-  de pagamento" (`appointment-session.tsx`).
+- ~~**D9 (média)** atendimento de R$ 0 fica para sempre "aguardando confirmação
+  de pagamento" (`appointment-session.tsx`).~~ **feito em 2026-10-27**
+  (f063c6f): "Sem cobrança" na tela e na janela da agenda, concluir não lança
+  conta a receber de zero e o banco recusa receber R$ 0. Não havia dado preso:
+  os dois concluídos de R$ 0 da produção não tinham lançamento.
 - **D10 (média)** o preço do procedimento é máscara de centavos: "180" vira
   R$ 1,80 — só nesse formulário.
 - **D11 (média)** "Agendados pelo comercial" só conta o agendar pelo card do
@@ -6952,6 +6964,28 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   rede [sim] tinha movimento de produto com unidade de consumo (2 compras e
   1 consumo, convertidos) e uma linha de comissão (R$ 450 → R$ 4,50, sem
   desconto de insumo — o valor da comissão não mudou).
+- Atritos feitos (frente 2, receber, caixa e permissão): o ticket médio e
+  A26 (695dd11), A33 e A35 (a2e92ee), A34 (9403ff9; o "A receber" por unidade
+  também pelo vencimento em 695dd11), A36 (db9cc75); e o lucro e a margem dos
+  Relatórios e dos financeiros foram para `lib/metrics/resultado.ts` (695dd11).
+  Decisões: ticket médio = receita de serviço ÷ concluídos COBRADOS (preço >
+  0), "—" sem nenhum; o gasto de cada cliente é UMA conta
+  (`metrics_gasto_por_cliente`: a ficha com a janela inteira, os relatórios
+  com o período); "a receber" de atendimento = concluído, com preço, avulso e
+  sem recebimento pago — de qualquer dia no Fechamento; o botão "Receber" é
+  de quem tem `cashier` (o de `confirmPayment`); a aba Financeiro da ficha
+  no "só os próprios" recorta só quem NÃO recebe (quem recebe vê tudo) e
+  esconde o crédito interno; o "A receber" da ficha soma os concluídos sem
+  lançamento; o Fechamento separa o crédito por vezes (`CREDIT_CARD:3`) e
+  "(pontos)" só para receita sem forma com desconto de pontos; o aviso de
+  taxa aparece para qualquer N de crédito sem a taxa exata e diz qual vale
+  (a regra de `comissao_taxa_pct`); "A receber"/"A pagar" vão até o FIM do
+  período (o "A receber" ia até agora); o motivo do estorno é obrigatório na
+  tela e na action, gravado nas duas pontas, e o estorno herda forma e vezes.
+  Não há "recibo" no sistema: o "3x" foi para o "Pagamento confirmado" do
+  atendimento e para o financeiro do portal da cliente.
+  `metrics_do_cliente` virou invólucro de `metrics_gasto_por_cliente` e
+  não tem chamador no app (sai numa limpeza).
 
 ### Próximas fases já combinadas
 
