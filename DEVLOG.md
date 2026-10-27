@@ -6741,16 +6741,19 @@ verdade. O que vale:
 - **Conferir no texto do site**: o "combinamos o plano" do fim do teste, o
   app Android citado como disponível, e se a política de privacidade já tem
   razão social e CNPJ.
-- **Proteção de dados** (2026-10-23): Network Restrictions no Supabase
-  (Database → fechar a conexão direta) e SSL Enforcement; apagar no Railway os
-  NOMES `DATABASE_URL` e `DIRECT_URL` (os valores já estão vazios); guardar a
-  `CREDENCIAIS_CHAVE` num gerenciador de senhas; ligar no Supabase a proteção
-  contra senha vazada (Authentication → Password security); verificação em duas
-  etapas nas contas do Supabase, Railway, GitHub, Cloudflare e no e-mail
-  delas. Em aberto, para decidir: verificação em duas etapas na equipe da
-  clínica (obrigatória para o admin da rede e quem vê prontuário?), um
-  projeto Supabase só para o E2E antes da primeira clínica. ~~O registro de
-  quem abriu o prontuário~~ **feito em 2026-10-27**.
+- **Proteção de dados** (2026-10-23): ~~Network Restrictions, SSL
+  Enforcement e a proteção contra senha vazada~~ **feitos pelo Heitor**
+  ("Password Requirements" fica em "No required characters" — a senha
+  inicial é o CPF). Falta: apagar no Railway os NOMES `DATABASE_URL` e
+  `DIRECT_URL` (os valores já estão vazios); guardar a `CREDENCIAIS_CHAVE`
+  num gerenciador de senhas; verificação em duas etapas nas contas do
+  Supabase, Railway, GitHub, Cloudflare e no e-mail delas. Para decidir:
+  verificação em duas etapas na equipe da clínica (obrigatória para o admin da
+  rede e quem vê prontuário?), senha forte exigida na TROCA do primeiro
+  acesso, um projeto Supabase só para o E2E antes da primeira clínica, e as
+  chaves novas do Supabase (`sb_secret_…`, trocáveis uma a uma). ~~O registro
+  de quem abriu o prontuário~~ **feito em 2026-10-27** — completa verde
+  depois dele (run 40531303172, em `2767ba5`: 899, 1 pulado).
 - **Buscadores** (2026-10-20): cadastrar o site no Google Search Console e no
   Bing Webmaster Tools com o `sitemap.xml`; os perfis da marca (para o
   `sameAs` dos dados estruturados).
