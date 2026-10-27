@@ -1514,6 +1514,16 @@ A conversa seguiu para "e se alguém tiver acesso ao banco em si?". Feito:
   de produção, e nenhum "sem decifrar" no log. Depois, as 5 linhas: nenhum
   segredo em texto nas duas tabelas, e o handshake do webhook oficial lendo a
   "ARCH Meta" cifrada (403 para o token errado, sem erro).
+- **A completa depois do cofre** (run 40029052796, em `287fa96`): 887 verdes e
+  3 falhas — todas no acesso da cliente ao app. Não era o cofre: ao ligar a
+  proteção contra senha vazada, a mesma tela do Supabase (Authentication →
+  Sign In / Providers → Email) passou a EXIGIR minúscula, maiúscula, número e
+  símbolo, e o Auth recusava a senha inicial, que é o CPF. Em produção, de
+  23/10 a 27/10 a clínica não conseguiu dar acesso ao app a cliente nenhuma.
+  "Password Requirements" voltou a "No required characters" (a proteção contra
+  senha vazada e o tamanho mínimo ficam); os três specs passam. ⚠️ Senha forte,
+  se for o caso, se exige na TROCA obrigatória do primeiro acesso, pelo app —
+  nunca no Auth, que barra a provisória.
 - **Uma caixa que não decifra não derruba as outras** (`c0d2a34`): o webhook
   da uazapi e o handshake da Cloud API decifram TODAS as caixas para achar a
   sua; a que não decifra é pulada, com o id no log.
