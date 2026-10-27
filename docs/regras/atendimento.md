@@ -202,6 +202,27 @@ const procedures = await ler(
   profissional no plano e a anamnese no arquivo do tratamento (só `agenda`).
   Concluir o atendimento e salvar a evolução pedem `medical_records: MANAGE`
   (gravam prontuário). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
+- **Quem abriu o prontuário fica registrado** (2026-10-27, decisões do Heitor;
+  `lib/prontuario/acessos.ts`, tabela `prontuario_acessos`). Toda leitura
+  clínica: a ficha da cliente (com os anexos clínicos), a sessão de
+  atendimento, o plano com a anotação ou a anamnese (`getPlanosDoCliente`,
+  `getPlanoParaEditar`, `getCheckoutPlan`, `getTreatmentPlanDetails`) e a
+  liberação do prontuário no pacote LGPD.
+  - Registra-se DEPOIS de decidir que o dado vai à tela (o mesmo
+    `canViewRecords`/`podeVerClinico`), nunca só por abrir a página: quem não
+    tem o módulo abre a ficha e não entra no registro. Tela nova que mostra
+    dado clínico chama `registrarAcessoAoProntuario`.
+  - A mesma pessoa relendo a mesma cliente no mesmo ponto (e referência) em
+    30 min é uma linha só (`prontuario_registrar_acesso`): a tela recarrega
+    sozinha. Falha no registro vai ao log e não tranca o atendimento.
+  - Quem VÊ é o admin da REDE (`ctx.branchId === null` e
+    `medical_records: MANAGE`), no fim da aba Prontuário da ficha. A cliente
+    não o recebe no pacote LGPD (expõe nomes da equipe).
+  - Só o servidor lê e grava (RLS sem política); um acesso não se altera
+    (gatilho); `user_id` sem chave estrangeira — o registro sobrevive ao
+    membro, e o nome é o do ctx (com a marca "via suporte").
+  - Prova: `e2e/prontuario-acessos.spec.ts` e o caso da liberação em
+    `e2e/lgpd-exportacao.spec.ts`.
 - **Anexar (e apagar) anexo CLÍNICO é do prontuário, não do cadastro**
   (2026-10-20, `recusaDoAnexo` em `actions/client-documents.ts`):
   `medical_records: MANAGE` com o alcance da ficha — no "só os meus", só de

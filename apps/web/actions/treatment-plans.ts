@@ -264,6 +264,8 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
         origemId: (p.evaluation_appointment_id as string | null) ?? null,
       }
     })
+  // A anotação clínica foi à tela: fica no registro (lib/prontuario/acessos.ts).
+  if (planos.some(p => p.notes)) await registrarAcessoAoProntuario(ctx, clientId, 'plano')
 
   return { planos }
 }
@@ -597,7 +599,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   const data = await ler(admin
     .from('treatment_plans')
     .select(`
-      id, status, professional_notes, professional_id,
+      id, status, professional_notes, professional_id, client_id,
       treatment_plan_sessions(sort_order, treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name)))
     `)
     .eq('id', planId)
@@ -623,11 +625,14 @@ export async function getPlanoParaEditar(planId: string): Promise<{
         })),
     }))
 
+  const notes = podeVerClinico(ctx, (data.professional_id as string | null) ?? null) ? ((data.professional_notes as string | null) ?? null) : null
+  // A anotação clínica foi à tela: fica no registro (lib/prontuario/acessos.ts).
+  if (notes && data.client_id) await registrarAcessoAoProntuario(ctx, data.client_id as string, 'plano', data.id as string)
   return {
     plano: {
       id:       data.id as string,
       status:   data.status as string,
-      notes:    podeVerClinico(ctx, (data.professional_id as string | null) ?? null) ? ((data.professional_notes as string | null) ?? null) : null,
+      notes,
       sessions,
     },
   }
@@ -1163,6 +1168,8 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
   const { plan: checkout, error } = await montarCheckoutPlan(
     planId, plan.branch_id as string, branch.name, ctx.tenantId!, prof => podeVerClinico(ctx, prof),
   )
+  // A anotação clínica foi à tela: fica no registro (lib/prontuario/acessos.ts).
+  if (checkout?.professionalNotes) await registrarAcessoAoProntuario(ctx, checkout.clientId, 'plano', planId)
   return checkout ? { plan: checkout } : { error: error ?? 'Plano não encontrado.' }
 }
 
@@ -1185,6 +1192,7 @@ import { EntradaDoDesconto } from '@/lib/vendas/desconto'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { paraAnamneseGeral, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento, gravarAnamneseGeral } from '@/lib/pre-atendimento/ficha'
+import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1790,6 +1798,8 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
       }
     })
 
+    // A anotação e a anamnese vão à tela: fica no registro (lib/prontuario/acessos.ts).
+    if (podeVerClinico(ctx, plan.professional_id ?? null)) await registrarAcessoAoProntuario(ctx, clientId, 'plano', plan.id)
     return {
       data: {
         id:                   plan.id,

@@ -622,6 +622,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Route handler que AGE pela sessão (POST) sem conferir o Origin — os hosts *.bellarisos.com são o mesmo SITE, e o cookie lax vai junto
 ❌ Validar o destino `next` de um link com startsWith('/') — é caminhoInterno (lib/origem; `/\x.com` e tab viram `//x.com`)
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
+❌ Tela nova que mostra dado clínico sem registrarAcessoAoProntuario (lib/prontuario/acessos.ts) — quem viu tem de ficar registrado
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
 ❌ Gravar config de integração sem cifrarSegredos (lib/integracoes/cofre.ts) — o token iria em texto ao banco
 ❌ Action que manda algo ao PACIENTE (mensagem, campanha, link, pedido de assinatura) sem bloqueioDoSuporte

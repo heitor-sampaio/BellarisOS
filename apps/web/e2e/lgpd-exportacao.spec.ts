@@ -152,6 +152,11 @@ test.describe.serial('LGPD: exportação de dados', () => {
       return data && data.export_json_path ? `${data.status}|${data.medical_status}|${!!data.medical_reviewed_by}` : null
     }, { message: 'liberar regera o pacote com a parte clínica', timeout: 30_000 }).toBe('completed|approved|true')
 
+    // Liberar o prontuário para fora da clínica fica no registro de acessos
+    // (2026-10-27): quem liberou, e para qual cliente.
+    const { data: acessos } = await db.from('prontuario_acessos').select('ponto, ator_nome').eq('client_id', cliente!.clientId)
+    expect(acessos, 'a liberação está no registro de acessos ao prontuário').toEqual([expect.objectContaining({ ponto: 'lgpd' })])
+
     const { data: row } = await db.from('lgpd_requests').select('export_json_path').eq('id', pedido).single()
     const pacote = await jsonDoPacote(row!.export_json_path)
     expect(pacote.solicitacao.incluiProntuario).toBe(true)

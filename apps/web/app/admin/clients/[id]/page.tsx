@@ -27,6 +27,7 @@ const SUBTITULO_DO_CANAL: Record<string, string> = {
   CLINICA: 'Na clínica', PAPEL: 'No papel', PORTAL: 'Pelo portal', LINK: 'Por link',
 }
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
+import { registrarAcessoAoProntuario, acessosAoProntuario } from '@/lib/prontuario/acessos'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
@@ -280,6 +281,10 @@ export default async function AdminClientProfilePage({
     !isOwnScope(ctx, 'medical_records') ||
     (appts ?? []).some((a: { professional_id?: string | null }) => a.professional_id === ctx.internalUserId)
   )
+  // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts) — só
+  // quando ele vai à tela; o admin da rede vê o registro na própria ficha.
+  if (canViewRecords) await registrarAcessoAoProntuario(ctx, id, 'ficha')
+  const acessosDoProntuario = await acessosAoProntuario(ctx, id)
   const recordForms  = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
   const generalAnamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
 
@@ -418,6 +423,7 @@ export default async function AdminClientProfilePage({
         allAppointments={allAppointments}
         recordForms={recordForms}
         podeVerProntuario={canViewRecords}
+        acessosAoProntuario={acessosDoProntuario}
         generalAnamnesis={generalAnamnesis}
         fidelidade={fidelidade}
         activePackage={activePackage}

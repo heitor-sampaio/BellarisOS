@@ -80,6 +80,7 @@ export const ISOLADOS = [
   'whatsapp-modo-oficial.spec.ts',
   'sdk-da-meta-so-onde-usa.spec.ts',
   'listas-sem-corte.spec.ts',
+  'prontuario-acessos.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',

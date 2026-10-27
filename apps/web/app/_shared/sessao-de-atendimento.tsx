@@ -12,6 +12,7 @@ import { paraAnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
+import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -191,6 +192,8 @@ export async function SessaoDeAtendimento({
   const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
     !isOwnScope(ctx, 'medical_records') || ctx.internalUserId === apptRaw.professional_id
   )
+  // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts).
+  if (canViewRecords && cli?.id) await registrarAcessoAoProntuario(ctx, cli.id, 'sessao', apptRaw.id as string)
   // A anamnese geral: as perguntas da ficha de pré-atendimento da rede (a
   // antiga, de campos fixos, convertida na hora).
   const fichaPreAtendimento = await fichaDePreAtendimento(admin, ctx.tenantId!)

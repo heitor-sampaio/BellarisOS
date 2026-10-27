@@ -32,6 +32,7 @@ import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import { Vender, type ProcedimentoAVenda } from '@/components/shared/vender'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
+import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
 
 // -- Types --------------------------------------------------------------------
 
@@ -165,6 +166,8 @@ interface Props {
   recordForms?:          ProfileRecordEntry[]
   /** Quem vê o prontuário: a aba aparece mesmo sem atendimento registrado. */
   podeVerProntuario?:    boolean
+  /** Quem abriu o prontuário — só para o admin da rede (nulo para os demais). */
+  acessosAoProntuario?:  { itens: AcessoNaFicha[]; total: number } | null
   generalAnamnesis?:     AnamneseGeral | null
   canGrantCredit:        boolean
   branches:              { id: string; name: string }[]
@@ -1086,7 +1089,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], prePagos = [], podeAgendar = false,
 }: Props) {
@@ -1650,6 +1653,8 @@ export function ClientProfile({
               />
             ))
           )}
+          {/* Quem abriu o prontuário — o servidor só manda ao admin da rede. */}
+          {acessosAoProntuario && <AcessosAoProntuario {...acessosAoProntuario} />}
         </div>
       )}
 

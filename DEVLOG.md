@@ -1493,6 +1493,19 @@ verificador do Supabase acusava três coisas:
 Sobra só `planos_do_site`, aberta de propósito (o site a lê sem login).
 Migration `20261023000002`; sem comportamento novo, sem teste novo.
 
+### 2026-10-27 — Quem abriu o prontuário fica registrado
+
+Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
+sensível na LGPD, e numa investigação a pergunta é "quem viu?". Decisões dele
+(todas as recomendadas): registra TODA leitura clínica — a ficha da cliente
+(com os anexos clínicos), a sessão de atendimento, o plano com a anotação ou a
+anamnese e a liberação do prontuário no pacote LGPD —, juntando releituras em
+30 min; quem vê é o admin da rede, no fim da aba Prontuário; a cliente não o
+recebe no pacote LGPD. Tabela `prontuario_acessos` (só o servidor; um acesso
+não se altera), migration `20261027000001`, `lib/prontuario/acessos.ts`.
+Regras em `docs/regras/atendimento.md` §9.4. Prova:
+`e2e/prontuario-acessos.spec.ts` e a liberação em `lgpd-exportacao`.
+
 ### 2026-10-23 — Quem tiver só o banco não leva as credenciais
 
 A conversa seguiu para "e se alguém tiver acesso ao banco em si?". Feito:
@@ -6728,8 +6741,8 @@ verdade. O que vale:
   etapas nas contas do Supabase, Railway, GitHub, Cloudflare e no e-mail
   delas. Em aberto, para decidir: verificação em duas etapas na equipe da
   clínica (obrigatória para o admin da rede e quem vê prontuário?), um
-  projeto Supabase só para o E2E antes da primeira clínica, e o registro de
-  quem abriu o prontuário.
+  projeto Supabase só para o E2E antes da primeira clínica. ~~O registro de
+  quem abriu o prontuário~~ **feito em 2026-10-27**.
 - **Buscadores** (2026-10-20): cadastrar o site no Google Search Console e no
   Bing Webmaster Tools com o `sitemap.xml`; os perfis da marca (para o
   `sameAs` dos dados estruturados).

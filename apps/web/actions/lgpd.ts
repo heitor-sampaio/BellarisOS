@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { LGPD_BUCKET } from '@/lib/lgpd/export'
 import { processExportRequest } from '@/lib/lgpd/processar'
 import { ler } from '@/lib/db'
+import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 
 /**
  * Pedido de acesso aos dados pessoais (LGPD art. 18).
@@ -193,7 +194,7 @@ export async function reviewMedicalData(
     const admin = createAdminClient()
     const row = await ler(admin
       .from('lgpd_requests')
-      .select('id, tenant_id, medical_status')
+      .select('id, tenant_id, client_id, medical_status')
       .eq('id', requestId)
       .maybeSingle(), 'buscar o pedido de LGPD')
 
@@ -221,7 +222,12 @@ export async function reviewMedicalData(
       return { error: error.message }
     }
 
-    if (decision === 'approved') after(() => processExportRequest(requestId))
+    if (decision === 'approved') {
+      // O prontuário sai da clínica por decisão de alguém: fica no registro de
+      // acessos (lib/prontuario/acessos.ts).
+      await registrarAcessoAoProntuario(ctx, row.client_id as string, 'lgpd', requestId)
+      after(() => processExportRequest(requestId))
+    }
 
     revalidatePath('/admin/settings')
     return { success: true }
