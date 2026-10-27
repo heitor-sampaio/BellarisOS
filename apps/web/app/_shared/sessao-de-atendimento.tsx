@@ -26,11 +26,13 @@ import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
  * chama resolve a filial, mas a consulta não abre mão do recorte.
  */
 export async function SessaoDeAtendimento({
-  branchId, slug, id,
+  branchId, slug, id, abrirRecebimento = false,
 }: {
   branchId: string
   slug:     string
   id:       string
+  /** `?receber=1`: abre a janela do pagamento (D5, 2026-10-27). */
+  abrirRecebimento?: boolean
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -457,6 +459,7 @@ export async function SessaoDeAtendimento({
         isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}
         pagamentoCombinado={canPayment ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, appointment.id) : null}
+        abrirRecebimento={abrirRecebimento}
         planoEmAberto={planoEmAberto}
         documentos={can(ctx, 'documents', 'VIEW')
           ? { itens: await documentosDoAgendamento(ctx.tenantId!, appointment.id), podeColher: can(ctx, 'documents', 'MANAGE'),

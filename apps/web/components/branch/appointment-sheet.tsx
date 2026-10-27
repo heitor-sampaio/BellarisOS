@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useActionState } from 'react'
+import { useState, useActionState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock, DoorOpen } from 'lucide-react'
+import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock, DoorOpen, HandCoins } from 'lucide-react'
 import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment } from '@/actions/appointments'
+import { situacaoDaCobranca } from '@/actions/a-receber'
 import { rotaAtendimento } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { toast } from 'sonner'
@@ -121,6 +122,17 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   // Falta é de quem não veio na hora: antes do início, ainda pode vir.
   const [abertaEm] = useState(() => Date.now())
   const jaComecou = new Date(appointment.start).getTime() <= abertaEm
+
+  // A cobrança do concluído vem do servidor (a conta de atendimentos_a_receber).
+  const [cobranca, setCobranca] = useState<Awaited<ReturnType<typeof situacaoDaCobranca>>>(null)
+  useEffect(() => {
+    if (appointment.status !== 'COMPLETED') return
+    let vivo = true
+    situacaoDaCobranca(appointment.id).then(r => { if (vivo) setCobranca(r) })
+      // Só leitura: sem ela a janela fica como era ("encerrado"), mas o motivo vai ao console.
+      .catch(e => console.error('[agenda] situação da cobrança:', e))
+    return () => { vivo = false }
+  }, [appointment.id, appointment.status])
 
   return (
     <JanelaModal onFechar={onClose} rotulo="Agendamento" largura={440}>
@@ -272,6 +284,27 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
           </div>
         )}
 
+        {/* O concluído a receber tem porta (D5, 2026-10-27): a janela só dizia
+            "encerrado", e o "Confirmar pagamento" morava numa URL que ninguém
+            achava. O de R$ 0 diz que não há cobrança (D9). */}
+        {appointment.status === 'COMPLETED' && cobranca?.situacao === 'A_RECEBER' && (
+          cobranca.podeReceber ? (
+            <Link href={`${rotaAtendimento(pathname, slug, appointment.id)}?receber=1`} onClick={onClose}
+              className="btn-primary"
+              style={{ width: '100%', justifyContent: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+              <HandCoins size={14} /> Receber pagamento
+            </Link>
+          ) : (
+            <p style={{ textAlign: 'center', color: 'var(--warning)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, marginBottom: 10 }}>
+              Pagamento a receber na recepção.
+            </p>
+          )
+        )}
+        {appointment.status === 'COMPLETED' && cobranca?.situacao === 'SEM_COBRANCA' && (
+          <p style={{ textAlign: 'center', color: 'var(--success)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, marginBottom: 10 }}>
+            Sem cobrança — atendimento de R$ 0,00.
+          </p>
+        )}
         {isDone && (
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-xs-sz)' }}>
             Este agendamento já foi encerrado.

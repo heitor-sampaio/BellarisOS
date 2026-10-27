@@ -15,9 +15,10 @@ import { SessaoDeAtendimento } from '@/app/_shared/sessao-de-atendimento'
  * actions da tela usam no `revalidatePath`.
  */
 export default async function AdminAppointmentSessionPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ receber?: string }>
 }) {
   const { id } = await params
   const ctx    = await getTenantContext()
@@ -36,5 +37,6 @@ export default async function AdminAppointmentSessionPage({
   const branch = appt?.branches as unknown as { slug: string; tenant_id: string } | null
   if (!appt?.branch_id || !branch?.slug || branch.tenant_id !== ctx.tenantId) notFound()
 
-  return <SessaoDeAtendimento branchId={appt.branch_id as string} slug={branch.slug} id={id} />
+  const { receber } = await searchParams
+  return <SessaoDeAtendimento branchId={appt.branch_id as string} slug={branch.slug} id={id} abrirRecebimento={receber === '1'} />
 }

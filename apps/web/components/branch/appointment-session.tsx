@@ -161,6 +161,11 @@ interface Props {
   planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null } | null
   /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
   documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean } | null
+  /**
+   * Abre a janela do pagamento ao chegar (`?receber=1`): é para onde levam o
+   * "Receber pagamento" da agenda, o Fechamento do dia e a ficha (D5, 2026-10-27).
+   */
+  abrirRecebimento?:     boolean
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -829,7 +834,7 @@ export function AppointmentSession({
   canCheckin, canManage, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
-  pagamentoCombinado = null,
+  pagamentoCombinado = null, abrirRecebimento = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -839,7 +844,12 @@ export function AppointmentSession({
 
   const [showCancel,    setShowCancel]    = useState(false)
   const [showFinish,    setShowFinish]    = useState(false)
-  const [showPayment,   setShowPayment]   = useState(false)
+  // O mesmo critério do botão "Confirmar pagamento", logo abaixo.
+  const aReceber = appointment.status === 'COMPLETED' && !paymentTransaction && canPayment
+    && !isPartOfPlan && !isPackageSession && !isPrePago && appointment.price > 0
+  // Atendimento de R$ 0 (a avaliação) não tem o que receber (D9, 2026-10-27).
+  const semCobranca = !(appointment.price > 0) && !isPartOfPlan && !isPackageSession && !isPrePago
+  const [showPayment,   setShowPayment]   = useState(() => abrirRecebimento && aReceber)
   const [starting,      setStarting]      = useState(false)
   const [erroAoIniciar, setErroAoIniciar] = useState<string | null>(null)
   const [checkingIn,    setCheckingIn]    = useState(false)
@@ -1299,8 +1309,7 @@ export function AppointmentSession({
                 mesmo em avaliação de R$ 0,00. E quando há plano fechado, o
                 rótulo diz de QUE valor se trata — o do plano já foi pago no
                 checkout, este é o do atendimento. */}
-            {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan && !isPackageSession && !isPrePago
-              && appointment.price > 0 && (
+            {aReceber && (
               <button type="button" onClick={() => setShowPayment(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} />
@@ -1483,6 +1492,11 @@ export function AppointmentSession({
                 ) : isPrePago ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
                     Procedimento pré-pago — pago na venda.
+                  </p>
+                ) : semCobranca ? (
+                  // R$ 0: nada a confirmar (D9). Ficava "aguardando" para sempre.
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
+                    Sem cobrança — atendimento de R$ 0,00, não há o que receber.
                   </p>
                 ) : (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>

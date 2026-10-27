@@ -1,8 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { ShoppingBag, X } from 'lucide-react'
+import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import { ShoppingBag, X, AlertTriangle } from 'lucide-react'
+import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
+import { rotaDoRecebimento } from '@/components/shared/atendimentos-a-receber'
 import { formatBRL } from '@estetica-os/utils'
 import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
@@ -23,7 +26,7 @@ export interface ProcedimentoAVenda { id: string; name: string; price: number }
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE'
 
-export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto = false, abrirSinal = 0, podeAgendar = false }: {
+export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [] }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
@@ -38,6 +41,11 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
   abrirSinal?:   number
   /** Depois de vender um procedimento, oferece "Agendar agora" (agenda: MANAGE). */
   podeAgendar?:  boolean
+  /**
+   * Os atendimentos concluídos e não pagos da cliente (D5, 2026-10-27): vender
+   * o mesmo procedimento de novo cobraria duas vezes — a venda avisa.
+   */
+  aReceber?:     AtendimentoAReceber[]
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -77,7 +85,7 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
               <SegSelect ariaLabel="O que vender" options={abas} value={aba} onSelect={k => setAba(k as Aba)} />
             )}
             {aba === 'PROCEDIMENTO' && procedimentos.length > 0
-              ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} />
+              ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} />
               : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} />}
           </div>
         </div>
@@ -91,10 +99,12 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
  * quantos dias valem; o desconto e como vai ser pago. As unidades ficam na
  * ficha, para agendar.
  */
-function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, podeAgendar }: {
+function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, podeAgendar, aReceber }: {
   clienteId: string; branchId: string; procedimentos: ProcedimentoAVenda[]; onFim: () => void; podeAgendar: boolean
+  aReceber: AtendimentoAReceber[]
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   // Depois da venda: a primeira unidade, para o "Agendar agora".
   const [vendida, setVendida] = useState<string | null>(null)
   const [procId, setProcId] = useState(procedimentos[0]!.id)
@@ -108,6 +118,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   const qtd = Math.max(0, Math.trunc(Number(quantidade) || 0))
   const tabela = Math.round(proc.price * 100) * qtd / 100
   const conta = contaDoDesconto(tabela, desconto)
+  // O mesmo procedimento já foi atendido e não foi pago: a venda nova cobraria de novo.
+  const jaAtendido = aReceber.find(a => a.procedureId === proc.id) ?? null
 
   function vender() {
     setErro(null)
@@ -162,6 +174,22 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
             placeholder="Sem validade" value={validade} onChange={e => setValidade(e.target.value)} />
         </label>
       </div>
+      {jaAtendido && (
+        <div data-aviso-a-receber role="note" style={{
+          display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 'var(--radius-field-token)',
+          background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+        }}>
+          <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} aria-hidden />
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.45 }}>
+            Esta cliente tem {jaAtendido.procedureName ?? 'este procedimento'} de {new Date(jaAtendido.scheduledAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} concluído
+            e <strong>a receber ({formatBRL(jaAtendido.price)})</strong>. Para cobrar esse atendimento, receba por ele —
+            vender de novo cobraria duas vezes.{' '}
+            <Link href={rotaDoRecebimento(pathname, jaAtendido.branchSlug, jaAtendido.appointmentId)} style={{ color: 'var(--brand)', fontWeight: 700 }}>
+              Receber o atendimento
+            </Link>
+          </p>
+        </div>
+      )}
       <p data-resumo-do-procedimento style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
         {qtd} × {formatBRL(proc.price)} = {formatBRL(tabela)} · as unidades ficam na ficha para agendar
       </p>

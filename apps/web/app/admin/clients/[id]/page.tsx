@@ -4,6 +4,7 @@ import { idadeEm } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
+import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { ehAnexoClinico } from '@/lib/clientes/anexos'
 import { format } from 'date-fns'
@@ -318,6 +319,10 @@ export default async function AdminClientProfilePage({
   // carregados para quem só tinha o cadastro, a aba Financeiro abria para o SDR
   // (simulação de um dia de clínica, 2026-10-20).
   const veFinanceiro = can(ctx, 'financial', 'VIEW') || podeReceber(ctx)
+  // Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27).
+  const aReceber: ListaAReceber = veFinanceiro
+    ? await getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: id })
+    : { itens: [], total: { n: 0, valor: 0 } }
   const transactions: ProfileTransaction[] = !veFinanceiro ? [] : [
     ...apptTransactions,
     ...checkoutTransactions.filter(t => !seenIds.has(t.id)),
@@ -447,6 +452,8 @@ export default async function AdminClientProfilePage({
         planProcedures={planoProcs.procedures}
         planProducts={planoProcs.products}
         podeReceber={podeReceber(ctx)}
+        aReceber={aReceber}
+        podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
         pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branchId || null) : []}
         procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branchId || null) : []}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}

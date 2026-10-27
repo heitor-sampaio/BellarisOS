@@ -7,6 +7,8 @@ import { CheckCircle2, Wallet } from 'lucide-react'
 import { fecharODia } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia } from '@/lib/metrics'
+import type { ListaAReceber } from '@/lib/metrics/a-receber'
+import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 
 export interface FechamentoFeito {
   id: string; esperado: number; contado: number; diferenca: number
@@ -33,7 +35,7 @@ function Diferenca({ valor }: { valor: number }) {
  * A tela do fechamento do dia (2026-10-21). Todo número vem do servidor
  * (metrics_fechamento_do_dia); aqui só se desenha e se manda o contado.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, podeReceberAtendimento = false }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -41,6 +43,9 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   resumo:    FechamentoDoDia
   feitos:    FechamentoFeito[]
   podeFechar: boolean
+  /** Os atendimentos concluídos e não pagos da unidade (D5, 2026-10-27). */
+  aReceber?: ListaAReceber
+  podeReceberAtendimento?: boolean
 }) {
   const router = useRouter()
   const [contado, setContado] = useState('')
@@ -120,6 +125,9 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           </table>
         </div>
       </div>
+
+      {/* O que foi atendido e ainda não foi pago — de qualquer dia. */}
+      {aReceber && <AtendimentosAReceber lista={aReceber} podeReceber={podeReceberAtendimento} />}
 
       {/* A conferência do dinheiro */}
       <div className="card" style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>

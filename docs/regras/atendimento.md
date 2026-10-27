@@ -325,6 +325,9 @@ O resto do fluxo:
 - A **receita não nasce no fechamento**: é `confirmPayment`, na recepção, que a
   lança já paga. Marcar "Concluído" na agenda (`completeAppointment`) exige o
   fechamento feito e só lança a conta a receber, se faltar — repetir é seguro.
+  O de **R$ 0 não tem o que receber** (D9, 2026-10-27): nem conta a receber,
+  nem "aguardando pagamento" — a tela diz "Sem cobrança". O concluído a
+  receber aparece na agenda, no Fechamento do dia e na ficha (§9.6).
 - **O insumo usado hoje se lança na tela do atendimento, em todo formato
   dela** (2026-10-20): o cartão "Insumos utilizados" (os do cadastro do
   procedimento, marcados, mais o "Adicionar insumo") aparece também no

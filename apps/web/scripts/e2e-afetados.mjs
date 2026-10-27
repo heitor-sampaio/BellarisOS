@@ -55,7 +55,7 @@ const AREAS = [
     chaves: ['agenda', 'appointment', 'agendamento', 'atendimento', 'sessao-de', 'pacote', 'package'],
     specs: /^(agenda|agendamento|agendar|atendimento|conclusao|fase2|pacote|abrangencia|portal-cliente|plano|pre-pago)/ },
   { nome: 'financeiro',
-    chaves: ['financ', 'cashier', 'transac', 'pagamento', 'payment', 'credito', 'credit', 'estorno', 'checkout', 'plano', 'plan', 'fechamento'],
+    chaves: ['financ', 'cashier', 'transac', 'pagamento', 'payment', 'credito', 'credit', 'estorno', 'checkout', 'plano', 'plan', 'fechamento', 'a-receber'],
     specs: /^(financeiro|fechamento|credito|fase1|checkout|plano|indicadores|relatorios|comissoes|vendas|pre-pago)/ },
   { nome: 'comissões',
     chaves: ['comiss', 'commission'],

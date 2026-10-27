@@ -13,6 +13,7 @@ import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { getDoCliente } from '@/lib/metrics/unidade'
+import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
@@ -242,6 +243,10 @@ export default async function ClientProfilePage({
   // carregados para quem só tinha o cadastro, a aba Financeiro abria para o SDR
   // (simulação de um dia de clínica, 2026-10-20).
   const veFinanceiro = can(ctx, 'financial', 'VIEW') || podeReceber(ctx)
+  // Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27).
+  const aReceber: ListaAReceber = veFinanceiro
+    ? await getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: id })
+    : { itens: [], total: { n: 0, valor: 0 } }
   const transactions: ProfileTransaction[] = !veFinanceiro ? [] : [
     ...apptTransactions,
     ...checkoutTransactions.filter(t => !seenIds.has(t.id)),
@@ -469,6 +474,8 @@ export default async function ClientProfilePage({
       planProcedures={planoProcs.procedures}
       planProducts={planoProcs.products}
       podeReceber={podeReceber(ctx)}
+      aReceber={aReceber}
+      podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
       pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branch.id as string) : []}
       procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branch.id as string) : []}
       prePagos={await prePagosDoCliente(ctx.tenantId!, id)}

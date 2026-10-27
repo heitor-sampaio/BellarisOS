@@ -33,6 +33,8 @@ import { Vender, type ProcedimentoAVenda } from '@/components/shared/vender'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
+import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
+import type { ListaAReceber } from '@/lib/metrics/a-receber'
 
 // -- Types --------------------------------------------------------------------
 
@@ -205,6 +207,10 @@ interface Props {
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
   termos?:               { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean } | null
+  /** Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27). */
+  aReceber?:             ListaAReceber
+  /** Receber o atendimento (o módulo de recebimentos, como `confirmPayment`). */
+  podeReceberAtendimento?: boolean
 }
 
 /** Uma oportunidade na ficha do cliente: só o que a leitura precisa. */
@@ -1092,6 +1098,7 @@ export function ClientProfile({
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], prePagos = [], podeAgendar = false,
+  aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1252,7 +1259,7 @@ export function ClientProfile({
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {podeReceber && currentBranchId && (
               <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda}
-                podeAgendar={podeAgendar} abrirSinal={sinalDaVenda} />
+                podeAgendar={podeAgendar} abrirSinal={sinalDaVenda} aReceber={aReceber.itens} />
             )}
             <button
               type="button"
@@ -1321,6 +1328,9 @@ export function ClientProfile({
           </div>
         ))}
       </div>
+
+      {/* O atendido e ainda não pago, com a porta para receber (D5). */}
+      <AtendimentosAReceber lista={aReceber} titulo="Atendimentos a receber" mostrarCliente={false} podeReceber={podeReceberAtendimento} />
 
       {/* A alergia em destaque (só chega aqui com o prontuário à vista). */}
       <AlertaDeAlergia alergias={alergiasDaAnamnese(generalAnamnesis)} />

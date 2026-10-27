@@ -341,7 +341,10 @@ async function completeAppointment(
     .eq('appointment_id', appointmentId)
     .maybeSingle(), 'conferir se o atendimento já foi lançado')
 
-  if (!existingTx && !alreadyCharged) {
+  // R$ 0 (a avaliação) não tem o que receber: sem conta a receber de zero (D9).
+  const semCobranca = !(Number(appt.price) > 0)
+
+  if (!existingTx && !alreadyCharged && !semCobranca) {
     const { error: txErr } = await admin.from('financial_transactions').insert({
       branch_id:      appt.branch_id,
       appointment_id: appointmentId,

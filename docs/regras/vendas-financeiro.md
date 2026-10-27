@@ -162,6 +162,27 @@ o procedimento avulso pago antes.
     resumo, refeito no servidor; a diferença é coluna gerada). Fechar de novo
     não apaga o anterior — vale o mais recente. Dia futuro não fecha.
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
+- **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
+  de 2026-10-27, decisões do Heitor). A conta é UMA, no banco
+  (`atendimentos_a_receber`, `getAtendimentosAReceber` em
+  `lib/metrics/a-receber.ts`): concluído, com preço, avulso (sem plano, sem
+  sessão de pacote, sem unidade pré-paga) e sem recebimento pago — o mesmo
+  conjunto que `confirmar_pagamento_do_atendimento` aceita. Ela alimenta:
+  - a janela da agenda (`situacaoDaCobranca`, `actions/a-receber.ts`):
+    "Receber pagamento", que leva à tela do atendimento com `?receber=1` (a
+    janela do pagamento já aberta), pelos dois portais (`lib/rotas`);
+  - o Fechamento do dia: "Concluídos a receber" da unidade, de QUALQUER dia
+    (cliente, procedimento, valor, "Receber"), com o total do banco;
+  - a ficha da cliente ("Atendimentos a receber") e o "Vender" da ficha, que
+    avisa quando há um a receber do MESMO procedimento (cobraria duas vezes).
+  O botão "Receber" é de quem tem `cashier` (o mesmo de `confirmPayment`).
+  Prova: `e2e/financeiro-a-receber-concluido.spec.ts`.
+- **Atendimento de R$ 0 conclui SEM cobrança** (D9, 2026-10-27): a tela diz
+  "Sem cobrança", não entra em "a receber", concluir não lança conta a
+  receber de zero, e `confirmar_pagamento_do_atendimento` recusa
+  ("Atendimento sem cobrança"). A avaliação de R$ 0 ficava "Aguardando
+  confirmação de pagamento" para sempre. (Não havia lançamento de zero preso
+  na produção: os dois concluídos de R$ 0 não tinham lançamento.)
 - O módulo `cashier` **sobreviveu com outro significado**: RECEBER o pagamento
   do atendimento e do plano, na recepção. Não abre tela nenhuma por si só — o
   financeiro da unidade e o da rede pedem `financial`. `podeReceber` (cashier OU
@@ -301,4 +322,5 @@ o procedimento avulso pago antes.
 ❌ Gravar "cartão de crédito em N vezes" como parcelas a receber (é pago na hora, com cartao_vezes) — entrada + parcelas é o crediário da clínica
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
+❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0
 ```

@@ -5,9 +5,10 @@ import { SessaoDeAtendimento } from '@/app/_shared/sessao-de-atendimento'
 import { ler } from '@/lib/db'
 
 export default async function AppointmentSessionPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ slug: string; id: string }>
+  searchParams: Promise<{ receber?: string }>
 }) {
   const { slug, id } = await params
   const ctx          = await getTenantContext()
@@ -21,5 +22,6 @@ export default async function AppointmentSessionPage({
     .single(), 'buscar a unidade')
   if (!branch) notFound()
 
-  return <SessaoDeAtendimento branchId={branch.id} slug={slug} id={id} />
+  const { receber } = await searchParams
+  return <SessaoDeAtendimento branchId={branch.id} slug={slug} id={id} abrirRecebimento={receber === '1'} />
 }

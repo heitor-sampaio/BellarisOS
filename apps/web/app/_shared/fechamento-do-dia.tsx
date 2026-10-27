@@ -3,6 +3,7 @@ import { podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics'
+import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { diaDoFechamento, janelaDoDia } from '@/lib/financeiro/fechamento'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/fechamento-do-dia-tela'
@@ -22,8 +23,11 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
 }) {
   const dia = diaDoFechamento(diaPedido)
   const janela = janelaDoDia(dia)!
-  const [resumo, feitos] = await Promise.all([
+  const [resumo, aReceber, feitos] = await Promise.all([
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
+    // Os concluídos a receber da unidade, de qualquer dia (D5, 2026-10-27):
+    // o que ficou sem pagamento ontem continua aqui até alguém receber.
+    getAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId }),
     ler(createAdminClient().from('fechamentos_do_dia')
       .select('id, esperado_dinheiro, contado_dinheiro, diferenca, observacao, fechado_por_nome, fechado_em')
       .eq('tenant_id', ctx.tenantId!).eq('branch_id', unidadeId).eq('dia', dia)
@@ -32,7 +36,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
 
   return (
     <>
-      <RealtimeRefresher tables={['financial_transactions']} />
+      <RealtimeRefresher tables={['financial_transactions', 'appointments']} />
       <FechamentoDoDiaTela
         basePath={basePath}
         dia={dia}
@@ -49,6 +53,9 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
           quando:    String(f.fechado_em),
         }) satisfies FechamentoFeito)}
         podeFechar={podeReceber(ctx)}
+        aReceber={aReceber}
+        // Receber o atendimento é do módulo de recebimentos (confirmPayment).
+        podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
       />
     </>
   )
