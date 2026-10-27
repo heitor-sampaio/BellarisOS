@@ -144,5 +144,13 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     — até 3 vezes, 20 s cada; gravação nunca (poderia gravar duas vezes).
     Leitura com `.single()` que o teste usa a seguir confere o `error`: sem
     isso, a queda vira um `null.id` mudo.
+  - **O log inteiro dos servidores está no artefato `playwright-falhas`**
+    (`servidor.log`, `servidor-sistema.log`, `servidor-suporte.log`, desde
+    2026-10-27). O passo "Log dos servidores" mostra só as últimas 300 linhas
+    — o erro de um teste do meio da rodada fica fora dele.
+  - Tela que quebra ("Algo deu errado") sem erro no Supabase: o
+    `query_logs` (`source = 'edge_logs'`, na janela do teste) mostra até onde
+    as consultas chegaram. Se pararam antes das da página, a leitura nem saiu
+    do runner.
   - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
     `<script>` sem nonce. Ele não existe no build.

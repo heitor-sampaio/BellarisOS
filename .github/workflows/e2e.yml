@@ -192,5 +192,13 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-falhas
-          path: apps/web/test-results/
+          # O log INTEIRO dos três servidores vai junto (2026-10-27): o passo
+          # acima mostra só as últimas 300 linhas, e o erro de uma falha do meio
+          # da rodada (o dashboard que quebrou às 14:47 da run 40520984065)
+          # ficava de fora — sem ele, não dava para provar a causa.
+          path: |
+            apps/web/test-results/
+            apps/web/servidor.log
+            apps/web/servidor-sistema.log
+            apps/web/servidor-suporte.log
           retention-days: 7

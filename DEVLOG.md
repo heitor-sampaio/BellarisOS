@@ -1506,6 +1506,14 @@ não se altera), migration `20261027000001`, `lib/prontuario/acessos.ts`.
 Regras em `docs/regras/atendimento.md` §9.4. Prova:
 `e2e/prontuario-acessos.spec.ts` e a liberação em `lgpd-exportacao`.
 
+A completa depois dele (run 40520984065, em `f257bee`): 898 verdes e 1 falha,
+fora da área — `menu-lateral` › "no celular", o `/admin/dashboard` da rede real
+quebrou ("Algo deu errado") e o botão do menu nunca apareceu. Pelo log do
+Supabase, a tela montou o layout e não pediu NENHUM indicador; o mesmo
+dashboard abriu um segundo antes no teste do desktop, e o spec passa 6 de 6
+aqui. Passageira do runner, mas sem prova: o CI guardava só as últimas 300
+linhas do log do servidor. Agora o log inteiro vai no artefato das falhas.
+
 ### 2026-10-23 — Quem tiver só o banco não leva as credenciais
 
 A conversa seguiu para "e se alguém tiver acesso ao banco em si?". Feito:
