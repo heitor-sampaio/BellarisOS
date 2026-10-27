@@ -32,6 +32,7 @@ import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/fotos-do-atendimento'
+import { lerRascunho, gravarRascunho, limparRascunho } from '@/lib/atendimento/rascunho'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
@@ -918,6 +919,8 @@ export function AppointmentSession({
       setGenError(res.error ?? 'Não foi possível gerar o plano.')
       return
     }
+    // A evolução da avaliação foi gravada junto: o rascunho não serve mais.
+    limparRascunho(appointment.id)
     if (!fecharAgora) {
       setGenerating(false)
       router.refresh()
@@ -958,6 +961,30 @@ export function AppointmentSession({
   const [notes,          setNotes]          = useState(appointment.savedNotes ?? '')
   const [intercurrences, setIntercurrences] = useState(appointment.savedIntercurrences ?? '')
   const fichaRef = useRef<AnamnesisFormHandle>(null)
+
+  // O rascunho das anotações (A31, 2026-10-27): recarregar a página perdia o
+  // que a profissional escreveu antes de finalizar. Vai para o
+  // sessionStorage, por agendamento — morre com a aba, não fica na máquina
+  // da recepção — e some ao encerrar ou salvar no servidor.
+  const podeRascunhar  = !editLocked && canEditRecords
+  const rascunhoPronto = useRef(false)
+  useEffect(() => {
+    if (!podeRascunhar) return
+    const r = lerRascunho(appointment.id)
+    /* eslint-disable react-hooks/set-state-in-effect -- o sessionStorage só existe no navegador: ler na renderização desencontraria a hidratação */
+    if (r?.notes !== undefined)          setNotes(r.notes)
+    if (r?.intercurrences !== undefined) setIntercurrences(r.intercurrences)
+    if (r?.evalNotes !== undefined)      setEvalSessionNotes(r.evalNotes)
+    if (r?.evalInterc !== undefined)     setEvalSessionInterc(r.evalInterc)
+    /* eslint-enable react-hooks/set-state-in-effect */
+    rascunhoPronto.current = true
+  }, [appointment.id, podeRascunhar])
+  useEffect(() => {
+    if (!rascunhoPronto.current || !podeRascunhar) return
+    gravarRascunho(appointment.id, { notes, intercurrences, evalNotes: evalSessionNotes, evalInterc: evalSessionInterc })
+  }, [appointment.id, podeRascunhar, notes, intercurrences, evalSessionNotes, evalSessionInterc])
+  useEffect(() => { if (isDone) limparRascunho(appointment.id) }, [isDone, appointment.id])
+
   const [savingAll,   setSavingAll]   = useState(false)
   const [saveAllError, setSaveAllError] = useState<string | null>(null)
   const [savedAllAt,  setSavedAllAt]  = useState<number | null>(null)
@@ -975,6 +1002,7 @@ export function AppointmentSession({
     setSavingAll(false)
     const err = results.find(r => (r as { error?: string })?.error) as { error?: string } | undefined
     if (err?.error) { setSaveAllError(err.error); return }
+    limparRascunho(appointment.id)
     setSavedAllAt(Date.now())
     router.refresh()
   }

@@ -374,6 +374,15 @@ O resto do fluxo:
 - **O "Finalizar" leva a evolução que está NA TELA**: o modal abre com o que a
   profissional escreveu na página (avaliação ou ficha), não com o gravado —
   sem "Salvar" antes, a evolução se perdia (simulação de 2026-10-20).
+- **A evolução escrita tem rascunho, e ele morre com a aba** (A31 da
+  simulação de 2026-10-27, decisão do Heitor): a evolução e a intercorrência
+  da tela do atendimento (dos dois formulários) vão para o SESSIONStorage,
+  por agendamento (`lib/atendimento/rascunho.ts`) — recarregar não as perde,
+  e fechar a aba as apaga: texto clínico não fica na máquina da recepção.
+  Nunca localStorage. Encerrar o atendimento, salvar no servidor ou gerar o
+  plano da avaliação apaga o rascunho; todo acesso ao armazenamento é
+  protegido (ele pode faltar ou lançar). Prova:
+  `e2e/atendimento-rascunho.spec.ts`, `tests/rascunho-do-atendimento.test.ts`.
 - **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
   (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
   aparecer no estoque, e a tela mostra o que faltou.

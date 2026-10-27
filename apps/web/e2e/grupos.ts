@@ -93,6 +93,7 @@ export const ISOLADOS = [
   'plano-dica-do-pacote.spec.ts',
   'ficha-documentos-um-cancelar.spec.ts',
   'atendimento-foto-clinica.spec.ts',
+  'atendimento-rascunho.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',
