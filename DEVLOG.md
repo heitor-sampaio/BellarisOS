@@ -6938,7 +6938,7 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   com os totais do banco (`metrics_financeiro_do_cliente`).
 - ~~**D7 (média)** "Não tenho alergias." dispara o alerta de alergia (a regex
   `NEGATIVA` de `lib/anamnese-geral.ts` exige a resposta inteira), e o aviso
-  sai com ponto duplo.~~ **feito em 2026-10-27** (HASH): `respostaDeAlergiaEhNegativa`
+  sai com ponto duplo.~~ **feito em 2026-10-27** (ff5d4cf): `respostaDeAlergiaEhNegativa`
   lê a resposta pelo COMEÇO (negação) e recua diante de ressalva ("não sei", "mas",
   "só") ou alergia nomeada; `avisoDeAlergia` tira a pontuação sobrando do aviso.
 - ~~**D8 (média, regressão de `e3ca7b0`)** trocar de dia na agenda herda a
@@ -7028,7 +7028,7 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   `setCurrentDate` de `agenda-calendar.tsx` chama `history.replaceState` dentro
   do updater do `setState` (o React reclama "Cannot update Router while
   rendering") — já era assim, não mexi.
-- Atritos feitos (frente 5, ficha de saúde e link): A27, A47, A48 (HASH).
+- Atritos feitos (frente 5, ficha de saúde e link): A27, A47, A48 (ff5d4cf).
   Decisões: na dúvida o alerta de alergia dispara ("não tenho alergia a
   dipirona" e "não sei, acho que…" são alerta); o foco da validação vale para
   TODO uso do `AnamnesisFormRenderer` (fichas de procedimento também); o contato
