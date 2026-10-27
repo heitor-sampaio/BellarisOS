@@ -4,7 +4,7 @@ import { useState, useActionState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock, DoorOpen, HandCoins } from 'lucide-react'
 import Link from 'next/link'
-import { updateAppointmentStatus, rescheduleAppointment } from '@/actions/appointments'
+import { updateAppointmentStatus, rescheduleAppointment, chegarEIniciar } from '@/actions/appointments'
 import { situacaoDaCobranca } from '@/actions/a-receber'
 import { rotaAtendimento } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -117,6 +117,18 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
     }
   }
 
+  async function chegarEComecar() {
+    setLoading(true)
+    setErro(null)
+    const r = await chegarEIniciar(appointment.id, slug).catch(() => ({ error: 'Não foi possível marcar a chegada.', chegou: false }))
+    setLoading(false)
+    // Chegou mas não começou (documento a assinar): a tela do atendimento diz o quê.
+    if (r?.error && !r.chegou) { setErro(r.error); return }
+    if (r?.error) toast.error(r.error)
+    onClose()
+    router.push(rotaAtendimento(pathname, slug, appointment.id))
+  }
+
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appointment.status)
   const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(appointment.status)
   // Falta é de quem não veio na hora: antes do início, ainda pode vir.
@@ -197,7 +209,15 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
                 <DoorOpen size={14} /> Chegou
               </button>
             )}
-            {(appointment.status === 'CONFIRMED' || appointment.status === 'ARRIVED') && (
+            {/* A profissional no agendamento que ainda não chegou: o mesmo
+                check-in e o mesmo início, num gesto (A21, 2026-10-27). Ela não
+                via "Iniciar" no "Agendado", e a janela não dizia por quê. */}
+            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && isProfessional && (
+              <button disabled={loading} onClick={chegarEComecar} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                <Play size={14} /> Marcar chegada e iniciar
+              </button>
+            )}
+            {(appointment.status === 'ARRIVED' || (appointment.status === 'CONFIRMED' && !isProfessional)) && (
               <button disabled={loading} onClick={() => changeStatus('IN_PROGRESS')} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                 <Play size={14} /> Iniciar atendimento
               </button>

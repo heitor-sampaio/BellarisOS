@@ -444,6 +444,7 @@ export async function SessaoDeAtendimento({
         slug={slug}
         canCheckin={canCheckin}
         canManage={canManage}
+        ehDaProfissional={isResponsibleProfessional}
         canReassign={canReassign}
         canPayment={canPayment}
         isProfessional={ctx.providesServices}

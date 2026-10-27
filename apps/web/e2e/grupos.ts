@@ -89,6 +89,7 @@ export const ISOLADOS = [
   'listas-sem-corte.spec.ts',
   'prontuario-acessos.spec.ts',
   'prontuario-evolucao.spec.ts',
+  'agenda-chegar-e-iniciar.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',

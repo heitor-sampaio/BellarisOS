@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale'
 import { formatDate, idadeEm, iniciaisDoNome } from '@estetica-os/utils'
 import {
   checkinAppointment,
+  chegarEIniciar,
   startAppointment,
   finishSession,
   confirmPayment,
@@ -129,6 +130,8 @@ interface Props {
   slug:               string
   canCheckin:         boolean
   canManage:          boolean
+  /** Quem vê é a profissional DESTE atendimento: a chegada e o início são um gesto só (A21). */
+  ehDaProfissional?:  boolean
   /** Escrever no prontuário exige o módulo, não só ser o responsável. */
   canEditRecords:     boolean
   /** Ver a evolução (prontuário). Sem o módulo, a tela nem recebe as anotações. */
@@ -839,7 +842,7 @@ function DorasCard({ value, onChange, readonly }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
-  canCheckin, canManage, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
@@ -997,6 +1000,17 @@ export function AppointmentSession({
     await checkinAppointment(appointment.id, slug)
     router.refresh()
     setCheckingIn(false)
+  }
+
+  // A profissional no agendamento que ainda não chegou: o mesmo check-in e o
+  // mesmo início, num clique (A21, 2026-10-27).
+  async function handleChegarEIniciar() {
+    setStarting(true)
+    setErroAoIniciar(null)
+    const r = await chegarEIniciar(appointment.id, slug).catch(() => ({ error: 'Não foi possível marcar a chegada.' }))
+    if (r?.error) setErroAoIniciar(r.error)
+    router.refresh()
+    setStarting(false)
   }
 
   async function handleStart() {
@@ -1280,7 +1294,23 @@ export function AppointmentSession({
               <ClipboardList size={14} /> Planejamento
             </button>
 
-            {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && (
+            {/* A profissional deste atendimento: chegada e início num gesto só (A21). */}
+            {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && canManage && ehDaProfissional && (
+              <button type="button" onClick={handleChegarEIniciar} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
+                title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
+                {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                {starting ? 'Iniciando…' : 'Marcar chegada e iniciar'}
+              </button>
+            )}
+            {/* Sem o check-in no cargo, a tela diz quem marca a chegada. */}
+            {status === 'SCHEDULED' && !canCheckin && canManage && (
+              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                A recepção marca a chegada; depois você inicia.
+              </span>
+            )}
+
+            {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && !(canManage && ehDaProfissional) && (
               <button type="button" onClick={handleCheckin} disabled={checkingIn}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--success)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
                 {checkingIn ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
@@ -1289,7 +1319,7 @@ export function AppointmentSession({
             )}
 
             {/* Iniciar (Confirmado ou Chegou + canManage) */}
-            {(status === 'CONFIRMED' || status === 'ARRIVED') && canManage && (
+            {(status === 'ARRIVED' || (status === 'CONFIRMED' && !(canCheckin && ehDaProfissional))) && canManage && (
               <button type="button" onClick={handleStart} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>

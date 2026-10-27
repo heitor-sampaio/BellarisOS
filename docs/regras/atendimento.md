@@ -31,6 +31,15 @@
   atendimento começa de Confirmado ou de Chegou. Chegar emite os documentos do
   início, como confirmar. Lista nova de status "em aberto" inclui ARRIVED.
   Prova: `e2e/agenda-check-in.spec.ts`.
+- **A profissional marca a chegada e inicia num gesto** (A21 da simulação de
+  2026-10-27): no agendamento DELA que ainda não chegou (Agendado ou
+  Confirmado), a tela do atendimento e a janela da agenda mostram "Marcar
+  chegada e iniciar" (`chegarEIniciar`, `actions/appointments.ts`) — o MESMO
+  `checkinCore` (documentos do início, e o plano em aberto aparece na tela
+  como em todo check-in) e depois o MESMO `startAppointment` (a trava dos
+  documentos). Com a agenda "só os meus", só no agendamento dela. Sem o
+  check-in no cargo, a tela diz que a recepção marca a chegada. Prova:
+  `e2e/agenda-chegar-e-iniciar.spec.ts`.
 - **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
   action recusa). `updateAppointmentStatus` devolve `{ error }` (só a trava de
   permissão lança): a folha mostra o erro e, no sucesso, a agenda dá o aviso

@@ -13,7 +13,7 @@ import {
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
-import { cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
+import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
@@ -400,6 +400,43 @@ async function checkinAppointmentInterno(
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+  }
+}
+
+// --- Marcar chegada e iniciar (a profissional, A21 de 2026-10-27) ---
+/**
+ * A profissional no agendamento que ainda não chegou ("Agendado" ou
+ * "Confirmado"): o MESMO check-in (`checkinCore`, com o aviso e os documentos
+ * do início que ele emite) e depois o MESMO início (`startAppointment`, com a
+ * trava dos documentos). Na simulação a Lívia não via "Iniciar" no "Agendado"
+ * e contornou pelo check-in da tela.
+ *
+ * Com a agenda "só os meus", só no agendamento DELA — o check-in comum não
+ * confere o profissional (é da recepção).
+ */
+export async function chegarEIniciar(appointmentId: string, slug: string): Promise<{ error?: string; chegou?: boolean }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    const admin = createAdminClient()
+    const ag = await agendamentoAoAlcance(admin, ctx, appointmentId)
+    if (!ag) return { error: 'Agendamento não encontrado.' }
+    if (isOwnScope(ctx, 'agenda') && ag.professional_id !== ctx.internalUserId) {
+      return { error: 'Apenas o profissional responsável pode marcar a chegada e iniciar este atendimento.' }
+    }
+
+    const chegada = await checkinCore(admin, ctx, appointmentId)
+    if ('error' in chegada) return { error: chegada.error }
+    // O aviso do check-in é para a profissional: quem marcou foi ela mesma.
+    if (ag.professional_id !== ctx.internalUserId) notifyCheckin(appointmentId)
+    revalidarAgendamento(ctx, appointmentId, slug || null)
+
+    const inicio = await startAppointmentInterno(appointmentId, slug)
+    if (inicio.error) return { error: `Chegada registrada, mas o atendimento não começou: ${inicio.error}`, chegou: true }
+    return {}
+  } catch (e) {
+    if (e && typeof e === 'object' && 'digest' in e) throw e
+    return { error: mensagemDoErro(e) }
   }
 }
 
