@@ -44,3 +44,17 @@ export function saldoDepoisDaSaida(e: EstadoDoEstoque, quantidade: number): Sald
   const embalagens = e.embalagens - quantidade
   return { embalagens, rendimento: null, saldoApos: embalagens }
 }
+
+/**
+ * A saída do produto de um voucher de fidelidade: UMA embalagem inteira, com o
+ * movimento na unidade de consumo (2026-10-27) — o frasco de 100 ml sai como
+ * −100 ml, e o saldo do movimento é o rendimento. Gravava −1 e o saldo em
+ * embalagens, e o histórico do produto misturava as duas unidades.
+ */
+export function saidaDoVoucher(e: EstadoDoEstoque): {
+  quantidade: number; saldo_apos: number; embalagens: number; rendimento: number | null
+} {
+  const umaEmbalagem = e.unidadesPorEmbalagem ?? 1
+  const depois = saldoDepoisDaSaida(e, umaEmbalagem)
+  return { quantidade: -umaEmbalagem, saldo_apos: depois.saldoApos, embalagens: depois.embalagens, rendimento: depois.rendimento }
+}

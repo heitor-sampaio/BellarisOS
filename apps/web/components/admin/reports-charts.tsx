@@ -234,17 +234,18 @@ export function MiniAreaChart({
 }
 
 // -- DreWaterfall --------------------------------------------------------------
+// Sem linha de custo de insumos: a compra do insumo já está nas despesas
+// ("Estoque"), e a linha ficava fixa em R$ 0,00 — confundia ao lado do KPI de
+// consumo (atrito da simulação de 2026-10-27).
 export function DreWaterfall({
-  receita, custoProdutos, despesas, lucro,
+  receita, despesas, lucro,
 }: {
   receita: number
-  custoProdutos: number
   despesas: number
   lucro: number
 }) {
   const rows = [
     { label: 'Receita Bruta',          v: receita,       color: 'var(--brand)', pct: 100 },
-    { label: '− Custo de Insumos',      v: custoProdutos, color: 'var(--danger)', pct: receita > 0 ? (custoProdutos / receita) * 100 : 0 },
     { label: '− Despesas Operacionais', v: despesas,      color: 'var(--warning)', pct: receita > 0 ? (despesas / receita) * 100 : 0 },
     {
       label: '= Lucro Operacional',
@@ -264,7 +265,7 @@ export function DreWaterfall({
             <span style={{
               fontSize: 'var(--text-sm-sz)',
               color: 'var(--text-muted)',
-              fontWeight: i === 3 ? 700 : 500,
+              fontWeight: i === rows.length - 1 ? 700 : 500,
             }}>
               {r.label}
             </span>
@@ -276,7 +277,7 @@ export function DreWaterfall({
             </span>
           </div>
           <div style={{
-            height: i === 3 ? 8 : 5,
+            height: i === rows.length - 1 ? 8 : 5,
             background: 'var(--hairline)', borderRadius: 4, overflow: 'hidden',
           }}>
             <div style={{
@@ -285,7 +286,7 @@ export function DreWaterfall({
               transition: 'width 0.85s cubic-bezier(0.16,1,0.3,1)',
             }} />
           </div>
-          {i < 3 && <div style={{ height: 1, background: 'var(--hairline)', marginTop: 14 }} />}
+          {i < rows.length - 1 && <div style={{ height: 1, background: 'var(--hairline)', marginTop: 14 }} />}
         </div>
       ))}
     </div>

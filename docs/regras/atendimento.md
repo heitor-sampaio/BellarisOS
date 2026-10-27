@@ -257,6 +257,34 @@ const procedures = await ler(
   lote saiu o que foi aplicado. Lote vencido é sinalizado, não bloqueado. Até
   2026-09-28 a tabela não tinha unidade, a entrada COM número de lote falhava
   inteira e o lote nunca baixava. Prova: `e2e/lotes-baixa.spec.ts`.
+- **Todo MOVIMENTO está na unidade de CONSUMO, e o custo também** (D1 da
+  simulação de 2026-10-27, decisões do Heitor; migration `20261027000011`).
+  O produto com unidade de consumo (`units_per_package` > 0 e
+  `consumption_unit`) conta o movimento nela: a entrada de 5 frascos de
+  100 ml grava `quantity` 500 e `balance_after` = o rendimento depois; o
+  ajuste e a transferência gravam o que o rendimento andou; o consumo do
+  atendimento já vinha em ml. `unit_cost` é o custo de UMA unidade de
+  consumo: R$ 90 o frasco = R$ 0,90 o ml. Antes, a compra gravava 5
+  (frascos), o consumo −5 com saldo 495 (ml), e a conclusão gravava o preço
+  do FRASCO por ml (5 ml custavam R$ 450).
+  - Continua em EMBALAGENS: o que a pessoa digita (entrada, ajuste,
+    transferência), `products.cost_price` (o preço da embalagem),
+    `branch_product_stock.current_stock`, o mínimo e os lotes — o gatilho do
+    lote converte toda saída pelo fator.
+  - **A regra é UMA, no banco**: `tem_unidade_de_consumo`, `fator_de_consumo`,
+    `custo_de_consumo` (o preço da embalagem ÷ o que ela rende; sem unidade de
+    consumo, ÷ 1), `saldo_de_consumo`, `valor_do_saldo` e
+    `custo_do_movimento` (|quantidade| × o custo do movimento, senão o de
+    consumo). A conclusão e a entrega do voucher NÃO mandam custo: o banco
+    grava o de consumo. Todo leitor de custo de movimento usa
+    `custo_do_movimento` — nunca `coalesce(m.unit_cost, p.cost_price)`, que é
+    o preço da embalagem.
+  - O histórico do estoque mostra o movimento na unidade dele e o saldo
+    também em embalagens ("saldo 495 ml · 4,95 frasco").
+  - Prova: `e2e/estoque-custo-de-consumo.spec.ts` (a entrada, o consumo de
+    5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
+    comissão com "descontar insumos", o valor em estoque, ajuste e
+    transferência, o histórico).
 
 ---
 
@@ -338,6 +366,8 @@ O resto do fluxo:
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
 ❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_inicial/estoque_ajuste (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
 ❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)
+❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
+❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409
 ```

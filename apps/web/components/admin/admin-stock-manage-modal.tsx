@@ -685,10 +685,13 @@ function HistoricoTab({ product, defaultBranchId }: {
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: entrada ? 'var(--success)' : 'var(--danger)' }}>
-                {entrada ? '+' : ''}{m.quantity.toLocaleString('pt-BR')} {product.unit}
+                {entrada ? '+' : ''}{m.quantity.toLocaleString('pt-BR')} {m.unidade}
               </p>
+              {/* O movimento está na unidade de consumo (ml, UI); o saldo
+                  mostra também a equivalência em embalagens. */}
               <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>
-                saldo {m.balanceAfter.toLocaleString('pt-BR')}
+                saldo {m.balanceAfter.toLocaleString('pt-BR')} {m.unidade}
+                {m.saldoEmEmbalagens != null ? ` · ${m.saldoEmEmbalagens.toLocaleString('pt-BR')} ${m.embalagem}` : ''}
               </p>
             </div>
           </div>

@@ -20,8 +20,6 @@ export interface Relatorio {
   receitaPorCategoria: { categoria: string; valor: number }[]
   /** Consumo de insumos no período, ao custo do movimento (= metrics_giro_estoque). */
   consumoTotal:        number
-  /** Consumo por hora ('0'…'23') ou por dia ('YYYY-MM-DD'), no fuso da clínica. */
-  consumoPorFatia:     Map<string, number>
   porProcedimento:     { nome: string; categoria: string; receita: number; execucoes: number }[]
   porProfissional:     { nome: string; receita: number; atendimentos: number }[]
   /** Receita dos atendimentos por categoria do procedimento (aba Procedimentos). */
@@ -85,7 +83,6 @@ export async function getRelatorio(args: {
     receitaPorForma:     lista(r.receita_por_forma).map(x => ({ forma: String(x.forma), valor: num(x.valor) })),
     receitaPorCategoria: lista(r.receita_por_categoria).map(x => ({ categoria: String(x.categoria), valor: num(x.valor) })),
     consumoTotal:        num(r.consumo_total),
-    consumoPorFatia:     new Map(lista(r.consumo_por_fatia).map(x => [String(x.chave), num(x.valor)])),
     porProcedimento:     lista(r.por_procedimento).map(x => ({ nome: String(x.nome), categoria: String(x.categoria), receita: num(x.receita), execucoes: num(x.execucoes) })),
     porProfissional:     lista(r.por_profissional).map(x => ({ nome: String(x.nome), receita: num(x.receita), atendimentos: num(x.atendimentos) })),
     receitaPorCategoriaDeProcedimento: lista(categorias).map(x => ({ categoria: String(x.categoria), receita: num(x.receita) })),

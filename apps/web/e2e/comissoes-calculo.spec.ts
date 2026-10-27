@@ -162,9 +162,13 @@ test.describe.serial('comissões — cálculo e extrato', () => {
     await configurar({ modo: 'PAGAMENTO', desconta_taxa: true, desconta_insumos: true })
     await taxas([{ metodo: 'CREDIT_CARD', parcelas: 1, taxa_pct: 3 }])
     const produto = await rede!.criarProduto('insumo', 10)
+    // O custo do insumo é lido pelo banco, do cadastro (custo de consumo;
+    // aqui a embalagem é a unidade) — o app não o manda mais (2026-10-27).
+    const { error: eCusto } = await db().from('products').update({ cost_price: 5 }).eq('id', produto)
+    expect(eCusto).toBeNull()
     const ap = await atendimento(200)
     // 2 unidades a R$ 5: R$ 10 de insumo.
-    await concluir(ap, 200, [{ produto, quantidade: -2, saldo_apos: 8, embalagens: 8, rendimento: null, custo: 5, minimo: 0 }])
+    await concluir(ap, 200, [{ produto, quantidade: -2, saldo_apos: 8, embalagens: 8, rendimento: null, minimo: 0 }])
     expect(await extrato(ap), 'no modo "quando paga" a conclusão não libera nada').toEqual([])
     const { data: linha } = await db().from('commission_lines').select('modo, custo_insumos').eq('appointment_id', ap).single()
     expect({ modo: linha!.modo, custo: Number(linha!.custo_insumos) }).toEqual({ modo: 'PAGAMENTO', custo: 10 })

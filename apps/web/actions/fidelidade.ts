@@ -10,7 +10,7 @@ import {
   type LinhaDoExtrato, type Recompensa, type VoucherDoCliente,
 } from '@/lib/fidelidade/leitura'
 import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
-import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
+import { saidaDoVoucher } from '@/lib/estoque/baixa'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { voucherEmitido } from '@/lib/events/fidelidade'
 
@@ -278,7 +278,7 @@ export async function entregarVoucherProduto(entrada: { voucherId: string; branc
   if (voucher.type !== 'PRODUTO' || !voucher.product_id) return { error: 'Este voucher não é de produto.' }
 
   const admin = createAdminClient()
-  const prod = await ler(admin.from('products').select('name, unit, units_per_package, consumption_unit, cost_price')
+  const prod = await ler(admin.from('products').select('name, unit, units_per_package, consumption_unit')
     .eq('id', voucher.product_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto')
   if (!prod) return { error: 'Produto não encontrado.' }
   const upp = prod.units_per_package && prod.consumption_unit ? Number(prod.units_per_package) : null
@@ -294,14 +294,15 @@ export async function entregarVoucherProduto(entrada: { voucherId: string; branc
         embalagens: Number(bps?.current_stock ?? 0),
         rendimento: bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
       }
-      // Uma embalagem inteira: em unidades de consumo, se o produto tem.
-      depois = saldoDepoisDaSaida({ ...antes, unidadesPorEmbalagem: upp }, upp ?? 1)
+      // Uma embalagem inteira, com o movimento em unidades de consumo (se o
+      // produto tem). O custo do movimento é o banco quem lê.
+      const saida = saidaDoVoucher({ ...antes, unidadesPorEmbalagem: upp })
+      depois = { embalagens: saida.embalagens, rendimento: saida.rendimento, saldoApos: saida.saldo_apos }
       return admin.rpc('entregar_voucher_produto', {
         p_tenant: ctx.tenantId!, p_voucher: entrada.voucherId, p_unidade: entrada.branchId,
         p_ator: ctx.internalUserId ?? 'sistema',
         p_dados: {
-          quantidade: -1, saldo_apos: depois.embalagens, embalagens: depois.embalagens, rendimento: depois.rendimento,
-          custo: prod.cost_price != null ? Number(prod.cost_price) : null, minimo: Number(bps?.min_stock ?? 0),
+          ...saida, minimo: Number(bps?.min_stock ?? 0),
           antes_embalagens: antes.embalagens, antes_rendimento: antes.rendimento,
         },
       })

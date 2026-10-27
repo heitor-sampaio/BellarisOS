@@ -6,7 +6,7 @@ import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
 import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 import { getGiroDeEstoque } from '@/lib/metrics/demografia'
-import { getValorEmEstoque } from '@/lib/metrics/unidade'
+import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 
@@ -136,16 +136,15 @@ export default async function AdminEstoquePage({
   // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
   // vencendo — os dois alertas quietos exatamente quando não deviam.
   // O recorte: a unidade escolhida, ou todas as unidades da rede.
-  const unidadesDoRecorte = unidadeId
-    ? [unidadeId]
-    : ((await ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!), 'listar as unidades da rede')) ?? [])
-        .map(b => b.id as string)
+  const todasAsUnidades = ((await ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!), 'listar as unidades da rede')) ?? [])
+    .map(b => b.id as string)
+  const unidadesDoRecorte = unidadeId ? [unidadeId] : todasAsUnidades
 
   // Valor em estoque e giro do mês somados no banco — a mesma conta da tela da
   // filial e do dashboard. Giro = consumo em procedimentos no mês (não qualquer
   // saída: transferência entre unidades não é consumo). Somar as linhas aqui
   // cortava em 1000 (§13.1). Fim do MÊS, não "agora" (relógio do Postgres).
-  const [valorEstoque, valorGiro, batchesRaw] = productIds.length > 0
+  const [valorEstoque, valorGiro, batchesRaw, valores] = productIds.length > 0
     ? await Promise.all([
         getValorEmEstoque(unidadesDoRecorte),
         getGiroDeEstoque({ branchIds: unidadesDoRecorte, from: monthStart, to: endOfMonthTZ(now) }),
@@ -157,8 +156,10 @@ export default async function AdminEstoquePage({
           .in('product_id', productIds)
           .gt('quantity', 0)
           .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
+        // O valor de cada linha: a consolidada soma as unidades da rede inteira.
+        getValorEmEstoquePorProduto(todasAsUnidades),
       ])
-    : [0, 0, []]
+    : [0, 0, [], new Map<string, number>()]
 
   // -- KPIs ------------------------------------------------------------
 
@@ -290,7 +291,13 @@ export default async function AdminEstoquePage({
       </div>
 
       <AdminStockView
-        products={products}
+        products={products.map(p => ({
+          ...p,
+          // O valor de cada linha vem do banco (saldo em consumo × custo de
+          // consumo), não da tela — A39, 2026-10-27.
+          valor:    valores.get(p.id) ?? 0,
+          branches: p.branches.map(b => ({ ...b, valor: valores.get(`${p.id}:${b.branchId}`) ?? 0 })),
+        }))}
         branches={branches}
         categories={stockCategories}
         productCategories={categories as { id: string; name: string }[]}

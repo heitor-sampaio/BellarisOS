@@ -17,6 +17,8 @@ type BranchStock = {
   currentStock:      number
   minStock:          number
   currentRendimento: number | null
+  /** Saldo em consumo × custo de consumo, do banco (metrics_valor_em_estoque_por_produto). */
+  valor:             number
 }
 
 type ProductStock = {
@@ -34,6 +36,8 @@ type ProductStock = {
   unitsPerPackage:  number | null
   totalStock:       number
   totalRendimento:  number | null  // soma de current_rendimento das filiais; null se produto sem consumptionUnit
+  /** O valor do produto nas unidades da linha, do banco (saldo em consumo × custo de consumo). */
+  valor:            number
   branches:         BranchStock[]
 }
 
@@ -408,7 +412,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                             {p.costPrice > 0
                               ? (
                                 <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
-                                  {(p.costPrice * p.totalStock).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  {p.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
                               ) : (
                                 <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>
@@ -548,7 +552,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                           {row.costPrice > 0
                             ? (
                               <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
-                                {(row.costPrice * row.branch.currentStock).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {row.branch.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </span>
                             ) : (
                               <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>

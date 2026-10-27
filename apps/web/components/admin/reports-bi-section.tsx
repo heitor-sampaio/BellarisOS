@@ -4,7 +4,8 @@ import { getTenantContext, podeVerRelatorio, can, isOwnScope } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
-import { addDaysTZ, startOfDayTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
+import { addDaysTZ } from '@/lib/datetime'
 import { getRelatorio } from '@/lib/metrics/relatorio'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
@@ -208,43 +209,13 @@ export async function ReportsBiSection({
 
   // -- Gráfico de evolução (mesmo padrão do dashboard) ---------------
 
-  // Os buckets vêm prontos do Postgres, com a MESMA regra do KPI: só pago,
-  // estorno fora dos dois lados, eixo em `paid_at`, fuso do negócio. Remontar
-  // as fatias aqui era o que fazia a legenda do gráfico dizer R$ 5.450 embaixo
-  // de um cartão escrito R$ 5.200 — a soma à mão não excluía o estorno.
-  //
-  // O custo do gráfico soma o consumo de insumos à despesa do período, que é a
-  // leitura de "custo" desta tela e não existe no núcleo. O que vinha do banco
-  // não se recalcula; só se acrescenta.
-  const seriesPorBucket = new Map(
-    seriesData.map(ponto => [
-      granularity === 'hour'
-        ? String(partsInTZ(new Date(ponto.bucket)).hour)
-        : dayKeyTZ(ponto.bucket),
-      ponto,
-    ]),
-  )
-
-  // O consumo de cada fatia vem somado do banco, com a chave da fatia
-  // ('0'…'23' por hora, 'YYYY-MM-DD' por dia, no fuso da clínica).
-  function pontoDoGrafico(chave: string, idx: number): ChartPoint {
-    const ponto   = seriesPorBucket.get(chave)
-    const revenue = ponto?.revenue ?? 0
-    const cost    = (ponto?.expenses ?? 0) + (relatorio.consumoPorFatia.get(chave) ?? 0)
-    return { day: idx, revenue, cost, profit: revenue - cost }
-  }
-
-  const evolutionData: ChartPoint[] =
-    granularity === 'hour'
-      ? Array.from({ length: 24 }, (_, i) => pontoDoGrafico(String(i), i))
-      : (() => {
-          const MS_DAY = 86_400_000
-          const days = Math.max(1, Math.floor((endDate.getTime() - startDate.getTime()) / MS_DAY) + 1)
-          return Array.from({ length: days }, (_, i) => {
-            const base = startOfDayTZ(addDaysTZ(startDate, i))
-            return pontoDoGrafico(dayKeyTZ(base), i + 1)
-          })
-        })()
+  // Os pontos vêm prontos de lib/metrics, com a MESMA regra do KPI: só pago,
+  // estorno fora dos dois lados, eixo em `paid_at`, fuso do negócio. O custo
+  // é a despesa paga — o consumo de insumos não entra, a compra já é despesa
+  // (D2, 2026-10-27: o gráfico somava os dois e divergia do cartão).
+  const evolutionData: ChartPoint[] = pontosDaEvolucao(seriesData, {
+    granularidade: granularity, de: startDate, ate: endDate,
+  })
 
   // -- Render --------------------------------------------------------
   return (

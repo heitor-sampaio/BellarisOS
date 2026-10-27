@@ -57,7 +57,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     procedimento valia sobre a sessão inteira, e o pacote usava o preço que o
     navegador mandou.
   - Os insumos da linha são o custo dos movimentos do atendimento (a conta de
-    `metrics_giro_estoque`), rateado pelo preço de cada procedimento.
+    `metrics_giro_estoque`, `custo_do_movimento`), rateado pelo preço de cada
+    procedimento. O custo é o da unidade de CONSUMO (§9.5): 5 ml de um frasco
+    de 100 ml a R$ 90 descontam R$ 4,50, não R$ 450 (D1, 2026-10-27).
 - **A conta mora no BANCO, e só lá**: `private.comissao_alvo` diz quanto a
   linha deve AGORA, e `private.comissao_acertar_linha` lança a diferença para o
   já lançado (trava por linha; chamar duas vezes não lança duas). Não há cópia

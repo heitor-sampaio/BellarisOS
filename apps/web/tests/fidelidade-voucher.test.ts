@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { descontoDoVoucher, situacaoDoVoucher, descricaoDoVoucher } from '@/lib/fidelidade/voucher'
 import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
-import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
+import { saldoDepoisDaSaida, saidaDoVoucher } from '@/lib/estoque/baixa'
 
 const agora  = new Date('2026-09-29T12:00:00Z')
 const futuro = '2026-10-29T12:00:00Z'
@@ -80,5 +80,19 @@ describe('saldoDepoisDaSaida', () => {
       .toEqual({ embalagens: 2, rendimento: 190, saldoApos: 190 })
     // Falta: −30 ml → −1 embalagem devida.
     expect(saldoDepoisDaSaida({ embalagens: 0, rendimento: 20, unidadesPorEmbalagem: 100 }, 50).embalagens).toBe(-1)
+  })
+})
+
+describe('saidaDoVoucher', () => {
+  // O movimento é na UNIDADE DE CONSUMO (2026-10-27): a embalagem entregue de
+  // um frasco de 100 ml sai como −100 ml, com o saldo em ml. Gravava −1 e o
+  // saldo em frascos, e o histórico misturava as duas unidades.
+  it('com unidade de consumo: uma embalagem inteira, em consumo', () => {
+    expect(saidaDoVoucher({ embalagens: 3, rendimento: 250, unidadesPorEmbalagem: 100 }))
+      .toEqual({ quantidade: -100, saldo_apos: 150, embalagens: 2, rendimento: 150 })
+  })
+  it('sem unidade de consumo: uma embalagem', () => {
+    expect(saidaDoVoucher({ embalagens: 5, rendimento: null, unidadesPorEmbalagem: null }))
+      .toEqual({ quantidade: -1, saldo_apos: 4, embalagens: 4, rendimento: null })
   })
 })

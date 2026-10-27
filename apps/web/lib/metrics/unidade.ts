@@ -1,6 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 
 /**
  * Contagens das telas da UNIDADE, agregadas no Postgres (migration
@@ -46,6 +46,22 @@ export async function getValorEmEstoque(branchIds: string[]): Promise<number> {
     p_branch_ids: branchIds,
   }), 'calcular o valor em estoque')
   return Number(data ?? 0)
+}
+
+/**
+ * O valor de cada produto em estoque (a coluna "Valor" da tela de estoque): o
+ * saldo em CONSUMO × o custo de consumo, a conta de metrics_valor_em_estoque
+ * (A39, 2026-10-27 — a tela multiplicava as embalagens pelo preço da
+ * embalagem, e 495 ml valiam R$ 450). Chave `produto` = nas unidades dadas;
+ * `produto:unidade` = numa unidade.
+ */
+export async function getValorEmEstoquePorProduto(branchIds: string[]): Promise<Map<string, number>> {
+  const linhas = await lerTodas<{ product_id: string; branch_id: string | null; valor: number | string | null }>(
+    (de, ate) => createAdminClient().rpc('metrics_valor_em_estoque_por_produto', { p_branch_ids: branchIds })
+      .order('product_id').order('branch_id', { nullsFirst: true }).range(de, ate),
+    'calcular o valor de cada produto em estoque',
+  )
+  return new Map(linhas.map(l => [l.branch_id ? `${l.product_id}:${l.branch_id}` : l.product_id, Number(l.valor ?? 0)]))
 }
 
 export interface ClientesParaReativar {

@@ -9,7 +9,7 @@ import { filiaisAtivas } from '@/lib/branches'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
 import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 import { getGiroDeEstoque } from '@/lib/metrics/demografia'
-import { getValorEmEstoque } from '@/lib/metrics/unidade'
+import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 
@@ -136,7 +136,7 @@ export default async function BranchStockPage({
   // dashboard (custo do movimento; o do cadastro só como reserva). Somar as
   // linhas aqui cortava em 1000 (§13.1). Fim do MÊS, não "agora": o consumo
   // lançado neste segundo nasce com o relógio do Postgres, à frente do app.
-  const [valorEstoque, valorGiro, batchesRaw] = productIds.length > 0
+  const [valorEstoque, valorGiro, batchesRaw, valores] = productIds.length > 0
     ? await Promise.all([
         getValorEmEstoque([branchId]),
         getGiroDeEstoque({ branchIds: [branchId], from: startOfMonthTZ(now), to: endOfMonthTZ(now) }),
@@ -150,8 +150,9 @@ export default async function BranchStockPage({
           .in('product_id', productIds)
           .gt('quantity', 0)
           .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
+        getValorEmEstoquePorProduto([branchId]),
       ])
-    : [0, 0, []]
+    : [0, 0, [], new Map<string, number>()]
 
   const abaixoMinimo = products.filter(p =>
     p.branches.some(b => b.minStock > 0 && b.currentStock <= b.minStock),
@@ -277,7 +278,13 @@ export default async function BranchStockPage({
       })()}
 
       <AdminStockView
-        products={products}
+        products={products.map(p => ({
+          ...p,
+          // O valor de cada linha vem do banco (saldo em consumo × custo de
+          // consumo), não da tela — A39, 2026-10-27.
+          valor:    valores.get(p.id) ?? 0,
+          branches: p.branches.map(b => ({ ...b, valor: valores.get(`${p.id}:${b.branchId}`) ?? 0 })),
+        }))}
         branches={branchData}
         unidadesDaRede={unidadesDaRede}
         categories={stockCategories}

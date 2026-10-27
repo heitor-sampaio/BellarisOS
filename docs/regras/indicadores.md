@@ -78,6 +78,17 @@
     giro de estoque é que usa o custo do movimento. Até então a página fazia a
     conta com o preço da embalagem inteira (a Toxina saía com −3858%). Prova:
     `e2e/indicadores-margem.spec.ts`.
+    **O custo do procedimento é UMA conta** (`metrics_custo_dos_procedimentos`,
+    2026-10-27): a margem do dashboard e a margem por faixa etária dos
+    relatórios (`metrics_relatorio`, aba Procedimentos — só procedimentos com
+    insumo) saem dela. A dos relatórios ainda usava o preço da embalagem e a
+    Limpeza de pele saía com −150% (D3 da simulação).
+  - **valor em estoque** = saldo em CONSUMO × custo de consumo
+    (`valor_do_saldo`: `metrics_valor_em_estoque`, a aba Estoque dos
+    relatórios e a coluna "Valor" da tela de estoque, que vem de
+    `metrics_valor_em_estoque_por_produto` — `getValorEmEstoquePorProduto`).
+    Contava embalagens inteiras: 495 ml de um frasco de 100 ml a R$ 90 valiam
+    R$ 450, e não R$ 445,50 (A39, 2026-10-27).
   - `retenção` = clientes atendidos no período que **já tinham sido atendidos
     antes dele** ÷ atendidos no período (`getRetention`). Não confundir com
     recorrência dentro da janela, que em períodos curtos dá zero por construção.
@@ -143,8 +154,16 @@ KPI que não fazia nenhum dos dois.
   (atendimentos, novos clientes, agenda, comissões, ticket) vêm de `getCore`, não
   de uma segunda conta. Listas curtas e com limite (lotes vencendo, parcelas)
   continuam listas.
-- **Consumo de insumo é uma conta só** (`metrics_giro_estoque`): custo do
-  MOVIMENTO, o do cadastro só como reserva. Dashboard, estoque e relatórios.
+- **Consumo de insumo é uma conta só** (`metrics_giro_estoque`, por
+  `custo_do_movimento`): custo do MOVIMENTO, que é o da unidade de CONSUMO
+  (§9.5); o de consumo do cadastro só como reserva. Dashboard, estoque e
+  relatórios. **É informativo: não entra no resultado** — a compra do insumo
+  já é despesa ("Estoque"). O gráfico "Evolução do Período" dos relatórios
+  somava o consumo à despesa e dizia CUSTO R$ 5.350 ao lado do cartão de
+  R$ 4.900 (D2, 2026-10-27): o ponto agora vem pronto de
+  `pontosDaEvolucao` (`lib/metrics/evolucao.ts`), com custo = a despesa paga.
+  O DRE não tem mais a linha "− Custo de Insumos" (era fixa em R$ 0,00); o
+  KPI de consumo diz que é informativo.
 - **`lib/metrics` para a tela quando o RPC falha** (`logRpcError` lança). Ele
   registrava e devolvia zero — "R$ 0,00" com cara de dado.
 - ⚠️ **Migration que cria função termina com `notify pgrst, 'reload schema'`.**

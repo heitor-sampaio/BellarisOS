@@ -409,16 +409,19 @@ function TabFinanceiro(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Receita Bruta"   value={revenue}   format="brl" delta={pctDelta(revenue, prevRevenue)}   showDelta hero />
-        <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="var(--danger)" />
+        {/* Informativo: a compra do insumo já é despesa ("Estoque"); o consumo não
+            entra no lucro nem no DRE, senão o mesmo custo contaria duas vezes. */}
+        <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="var(--danger)"
+          detalhe="Informativo: a compra já está nas despesas (Estoque)" />
         <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
         <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
         <KpiCard label="Margem"          value={margin}    format="pct" accent={margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={prevRevenue > 0 ? marginDeltaPp : null} showDelta deltaUnit="p.p." />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
-          {/* O consumo de insumos não entra no DRE: já está dentro das
-              despesas, na categoria "Estoque", pela compra. */}
-          <DreWaterfall receita={revenue} custoProdutos={0} despesas={opEx} lucro={profit} />
+          {/* Sem a linha de insumos (era fixa em R$ 0,00 e confundia): a compra
+              do insumo já está nas despesas, na categoria "Estoque". */}
+          <DreWaterfall receita={revenue} despesas={opEx} lucro={profit} />
         </SCard>
         <SCard title="Receita por Forma de Pagamento">
           <HBarChart data={byPayment} />

@@ -585,6 +585,14 @@ export interface MovimentoDeEstoque {
   notes:        string | null
   createdAt:    string
   branchName:   string
+  /** A unidade do movimento: a de CONSUMO quando o produto tem (ml, UI), senão a embalagem. */
+  unidade:      string
+  /** Quanto uma embalagem rende, quando o produto conta em consumo — para a equivalência. */
+  porEmbalagem: number | null
+  /** O nome da embalagem (frasco), para a equivalência. */
+  embalagem:    string
+  /** O saldo depois, em embalagens (4,95 frascos) — só quando o produto conta em consumo. */
+  saldoEmEmbalagens: number | null
 }
 
 /**
@@ -616,9 +624,21 @@ export async function getProductMovements(
   const recorte = ctx.branchId ?? branchId
   if (recorte) query = query.eq('branch_id', recorte)
 
-  const { data, error } = await query
+  const [{ data, error }, produto] = await Promise.all([
+    query,
+    ler(admin.from('products').select('unit, consumption_unit, units_per_package')
+      .eq('id', productId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'carregar o produto'),
+  ])
   // Histórico vazio é um fato; histórico que falhou é outra coisa.
   if (error) throw new Error(`Não foi possível carregar o histórico: ${error.message}`)
+
+  // Todo movimento está na unidade de CONSUMO desde 2026-10-27 (a entrada de
+  // 5 frascos de 100 ml grava 500 ml). A regra de "conta em consumo" é a de
+  // tem_unidade_de_consumo no banco.
+  const upp       = Number(produto?.units_per_package ?? 0)
+  const consumo   = (produto?.consumption_unit as string | null)?.trim() || null
+  const emConsumo = upp > 0 && !!consumo
+  const embalagem = (produto?.unit as string | null) ?? ''
 
   type Row = {
     id: string; type: string; quantity: number; balance_after: number
@@ -632,6 +652,10 @@ export async function getProductMovements(
     notes:        m.notes,
     createdAt:    m.created_at,
     branchName:   m.branches?.name ?? '—',
+    unidade:      emConsumo ? consumo! : embalagem,
+    porEmbalagem: emConsumo ? upp : null,
+    embalagem,
+    saldoEmEmbalagens: emConsumo ? Math.round(Number(m.balance_after) / upp * 100) / 100 : null,
   }))
 }
 

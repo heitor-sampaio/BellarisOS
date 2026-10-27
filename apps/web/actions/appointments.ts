@@ -702,7 +702,7 @@ async function finishSessionInterno(
 
     type Insumo = {
       produto: string; quantidade: number; saldo_apos: number
-      embalagens: number; rendimento: number | null; custo: number | null; minimo: number
+      embalagens: number; rendimento: number | null; minimo: number
       /** O saldo LIDO para a conta: o banco confere que ainda é este (PT409 se não). */
       antes_embalagens: number; antes_rendimento: number | null
     }
@@ -724,7 +724,7 @@ async function finishSessionInterno(
           // Da rede: o id vem do navegador (`products_used`), e um produto de
           // outra rede ganharia saldo e movimento nesta unidade.
           ler(admin.from('products')
-            .select('name, unit, units_per_package, consumption_unit, cost_price')
+            .select('name, unit, units_per_package, consumption_unit')
             .eq('id', productId)
             .eq('tenant_id', ctx.tenantId!)
             .maybeSingle(), 'buscar o insumo'),
@@ -742,10 +742,12 @@ async function finishSessionInterno(
           unidadesPorEmbalagem: upp,
         }, quantity)
 
+        // O custo não vai daqui: o banco grava o da unidade de CONSUMO
+        // (custo_de_consumo — o frasco ÷ o que ele rende). O app mandava o
+        // preço do frasco com a quantidade em ml (D1, 2026-10-27).
         insumos.push({
           produto: productId, quantidade: -quantity, saldo_apos: saldoApos,
           embalagens, rendimento,
-          custo:   prod.cost_price != null ? Number(prod.cost_price) : null,
           minimo:  Number(bps?.min_stock ?? 0),
           antes_embalagens: currentStock,
           antes_rendimento: bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
