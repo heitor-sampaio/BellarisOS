@@ -63,3 +63,37 @@ export const maskPhoneDigitando = (valor: string) => {
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
+
+/** O CNPJ ENQUANTO se digita: "12.345.678/0001-95" (2026-10-27, setup). */
+export const maskCNPJDigitando = (valor: string) => {
+  const d = valor.replace(/\D/g, '').slice(0, 14)
+  if (d.length <= 2) return d
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+}
+
+/** O CEP ENQUANTO se digita: "88010-400". */
+export const maskCEPDigitando = (valor: string) => {
+  const d = valor.replace(/\D/g, '').slice(0, 8)
+  return d.length <= 5 ? d : `${d.slice(0, 5)}-${d.slice(5)}`
+}
+
+/**
+ * O que a pessoa escreveu num campo de dinheiro, em reais: "180" = R$ 180,00
+ * (D10, 2026-10-27: o preço do procedimento lia "180" como R$ 1,80). Com
+ * vírgula, o ponto é milhar; sem vírgula, o ponto é decimal ("180.50" vindo
+ * do banco). NaN se não for número.
+ */
+export function parseDinheiro(texto: string): number {
+  const s = texto.replace(/R\$|\s/g, '')
+  if (!s) return NaN
+  return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
+}
+
+/** Reais no formato do campo: 1234.5 -> "1.234,50" (vazio se não for número). */
+export function formatDinheiroCampo(n: number): string {
+  if (!Number.isFinite(n)) return ''
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}

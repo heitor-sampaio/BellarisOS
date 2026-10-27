@@ -1,4 +1,4 @@
-export { formatBRL, formatDate, formatDateTime, formatTime, formatPercent, maskCPF, maskPhone, maskPhoneDigitando, maskCNPJ, formatDia, idadeEm } from './format'
+export { formatBRL, formatDate, formatDateTime, formatTime, formatPercent, maskCPF, maskPhone, maskPhoneDigitando, maskCNPJ, maskCNPJDigitando, maskCEPDigitando, parseDinheiro, formatDinheiroCampo, formatDia, idadeEm } from './format'
 export { iniciaisDoNome } from './iniciais'
 export {
   CLIENT_TAGS,

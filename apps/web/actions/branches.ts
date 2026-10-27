@@ -1,7 +1,7 @@
 'use server'
 
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
-import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
+import { lerHorarioDoForm } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -27,6 +27,10 @@ export async function createBranch(
   const city     = (formData.get('city') as string)?.trim() || null
   const state    = (formData.get('state') as string)?.trim().toUpperCase() || null
   const zipCode  = (formData.get('zip_code') as string)?.trim() || null
+  // O horário de funcionamento (o setup pergunta; a criação avulsa não manda = o padrão).
+  const horarioLido = lerHorarioDoForm(formData)
+  if (horarioLido && 'erro' in horarioLido) return { error: horarioLido.erro }
+  const horario = horarioLido ?? undefined
 
   if (!name) return { error: 'Nome é obrigatório.' }
   // O LIMITE de unidades do plano da rede (lib/planos/limites.ts).
@@ -61,6 +65,7 @@ export async function createBranch(
       city,
       state,
       zip_code: zipCode,
+      ...(horario ? { horario } : {}),
     })
     if (insertError?.code === '23505') continue
     if (insertError) return { error: 'Erro ao criar unidade. Tente novamente.' }
@@ -90,15 +95,9 @@ export async function updateBranch(
   const state             = (formData.get('state') as string)?.trim().toUpperCase() || null
   const zipCode           = (formData.get('zip_code') as string)?.trim() || null
   // O horário de funcionamento (2026-10-21): vazio = sem cadastro (o padrão).
-  const horarioBruto      = formData.get('horario')
-  let horario: Horario | null | undefined = undefined
-  if (typeof horarioBruto === 'string') {
-    if (!horarioBruto.trim()) horario = null
-    else {
-      try { horario = normalizarHorario(JSON.parse(horarioBruto)) } catch { horario = null }
-      if (!horario) return { error: 'Horário inválido: confira se cada período fecha depois de abrir e se não há períodos sobrepostos.' }
-    }
-  }
+  const horarioLido = lerHorarioDoForm(formData)
+  if (horarioLido && 'erro' in horarioLido) return { error: horarioLido.erro }
+  const horario = horarioLido
 
   if (!name) return { error: 'Nome é obrigatório.' }
   // Quem tem unidade fixa edita a dela; a da rede, todas (§11). Até 2026-09-28

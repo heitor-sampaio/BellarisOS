@@ -14,7 +14,8 @@ export async function updateTenantProfile(data: {
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const name     = data.name?.trim()
-  const document = data.document?.trim() || null
+  // Só os dígitos: com máscara, o mesmo CNPJ viraria dois documentos para qualquer busca.
+  const document = data.document?.replace(/\D/g, '') || null
   const phone    = data.phone?.trim() || null
   const website  = data.website?.trim() || null
 

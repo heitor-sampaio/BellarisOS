@@ -6,6 +6,8 @@ import { Check, Loader2 } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
+import { maskCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
+import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -99,8 +101,8 @@ function StepNetwork({
   onNext: (salvos: DadosDaRede) => void
 }) {
   const [name,     setName]     = useState(inicial.nome)
-  const [document, setDocument] = useState(inicial.documento)
-  const [phone,    setPhone]    = useState(inicial.telefone)
+  const [document, setDocument] = useState(maskCNPJDigitando(inicial.documento))
+  const [phone,    setPhone]    = useState(maskPhoneDigitando(inicial.telefone))
   const [website,  setWebsite]  = useState(inicial.site)
   const [error,    setError]    = useState<string | null>(null)
   const [pending,  startTransition] = useTransition()
@@ -156,7 +158,7 @@ function StepNetwork({
           className="field"
           placeholder="00.000.000/0001-00"
           value={document}
-          onChange={e => setDocument(e.target.value)}
+          onChange={e => setDocument(maskCNPJDigitando(e.target.value))}
         />
       </div>
 
@@ -169,7 +171,7 @@ function StepNetwork({
             className="field"
             placeholder="(11) 99999-9999"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={e => setPhone(maskPhoneDigitando(e.target.value))}
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -223,12 +225,15 @@ function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void
   const [error,      setError]      = useState<string | null>(null)
   const [pending,    startTransition] = useTransition()
 
-  async function handleCepBlur() {
-    const digits = zipCode.replace(/\D/g, '')
-    if (digits.length !== 8) return
+  // Busca o endereço assim que o CEP chega a 8 dígitos (sem esperar sair do campo).
+  const [cepBuscado, setCepBuscado] = useState('')
+  async function buscarCep(valor: string) {
+    const digits = valor.replace(/\D/g, '')
+    if (digits.length !== 8 || digits === cepBuscado) return
+    setCepBuscado(digits)
     setCepLoading(true)
     setCepError(null)
-    const result = await fetchCep(zipCode)
+    const result = await fetchCep(valor)
     setCepLoading(false)
     if (!result) { setCepError('CEP não encontrado.'); return }
     if (result.address) setAddress(result.address)
@@ -249,6 +254,9 @@ function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void
     formData.set('address',  address)
     formData.set('city',     city)
     formData.set('state',    uf)
+    // O horário vem do editor (campo oculto do formulário).
+    const horario = new FormData(e.currentTarget as HTMLFormElement).get('horario')
+    if (typeof horario === 'string') formData.set('horario', horario)
 
     startTransition(async () => {
       const result = await createBranch(undefined, formData)
@@ -320,7 +328,7 @@ function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void
             className="field"
             placeholder="(11) 99999-9999"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={e => setPhone(maskPhoneDigitando(e.target.value))}
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -350,8 +358,8 @@ function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void
             type="text"
             className="field"
             value={zipCode}
-            onChange={e => { setZipCode(e.target.value); setCepError(null) }}
-            onBlur={handleCepBlur}
+            onChange={e => { const v = maskCEPDigitando(e.target.value); setZipCode(v); setCepError(null); void buscarCep(v) }}
+            onBlur={() => void buscarCep(zipCode)}
             placeholder="01310-000"
             maxLength={9}
           />
@@ -399,6 +407,14 @@ function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void
             {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p className="overline">Horário de funcionamento</p>
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          O padrão é segunda a sábado, das 8h às 20h. Ajuste o que for diferente — dá para mudar depois em Configurações.
+        </span>
+        <EditorDeHorario nome="horario" valor={null} />
       </div>
 
       {error && (

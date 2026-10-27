@@ -56,6 +56,20 @@ export function normalizarHorario(v: unknown): Horario | null {
   return saida
 }
 
+/**
+ * O campo `horario` de um formulário (editor de horário da unidade e passo da
+ * unidade do setup): ausente = não mexe (undefined); vazio = sem cadastro
+ * (null); válido = normalizado; inválido = `{ erro }`.
+ */
+export function lerHorarioDoForm(formData: FormData): Horario | null | undefined | { erro: string } {
+  const bruto = formData.get('horario')
+  if (typeof bruto !== 'string') return undefined
+  if (!bruto.trim()) return null
+  let h: Horario | null = null
+  try { h = normalizarHorario(JSON.parse(bruto)) } catch { h = null }
+  return h ?? { erro: 'Horário inválido: confira se cada período fecha depois de abrir e se não há períodos sobrepostos.' }
+}
+
 /** Os períodos em que se atende naquele dia da semana: a unidade ∩ o profissional. */
 export function intervalosDoDia(unidade: Horario | null, profissional: Horario | null, dia: number): Intervalo[] {
   const daUnidade = doDia(unidade ?? HORARIO_PADRAO, dia) ?? (unidade ? [] : doDia(HORARIO_PADRAO, dia) ?? [])
