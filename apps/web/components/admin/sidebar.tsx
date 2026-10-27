@@ -12,7 +12,7 @@ import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { ADMIN_MENU, menuSectionsFor } from '@/lib/menu'
-import type { ResolvedPermissions } from '@estetica-os/types'
+import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 
 const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
@@ -42,7 +42,7 @@ const ICONS: Record<string, React.ReactNode> = {
   automations:  <Workflow   size={18} />,
 }
 
-export function AdminSidebar({ permissions, plano = null }: { permissions: ResolvedPermissions; plano?: { funcionalidades: readonly string[] } | null }) {
+export function AdminSidebar({ permissions, scopes, plano = null }: { permissions: ResolvedPermissions; scopes?: Partial<ResolvedScopes>; plano?: { funcionalidades: readonly string[] } | null }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
 
   // Recolhido = rosé; expandido = branco (original)
@@ -112,7 +112,7 @@ export function AdminSidebar({ permissions, plano = null }: { permissions: Resol
         >
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete que ainda separa os blocos. */}
-          {menuSectionsFor(ADMIN_MENU, permissions, plano).map(secao => (
+          {menuSectionsFor(ADMIN_MENU, permissions, plano, scopes).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries} icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}

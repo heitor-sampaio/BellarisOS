@@ -555,7 +555,7 @@ function PermissionMatrix({
         ))}
       </div>
 
-      <MenuPreview levels={levels} reportTabs={reportTabs} />
+      <MenuPreview levels={levels} scopes={scopes} reportTabs={reportTabs} />
 
       {state?.error && (
         <p style={{
@@ -791,7 +791,7 @@ function AbasDeRelatorio({
 
 // ─── Pré-visualização ────────────────────────────────────────────────────────
 
-function MenuPreview({ levels, reportTabs }: { levels: Levels; reportTabs: ReportTab[] }) {
+function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: Scopes; reportTabs: ReportTab[] }) {
   // A pré-visualização usa o estado NÃO salvo: é para conferir antes de gravar.
   // Relatórios sem nenhuma aba marcada não abre nada — o contexto de
   // autorização faz a mesma conta (`buildContext`), e aqui ela precisa
@@ -800,8 +800,8 @@ function MenuPreview({ levels, reportTabs }: { levels: Levels; reportTabs: Repor
     ...levels,
     reports: reportTabs.length === 0 ? 'NONE' : levels.reports,
   } as ResolvedPermissions
-  const network = menuLabelsFor(ADMIN_MENU, permissions)
-  const branch  = menuLabelsFor(BRANCH_MENU, permissions)
+  const network = menuLabelsFor(ADMIN_MENU, permissions, scopes)
+  const branch  = menuLabelsFor(BRANCH_MENU, permissions, scopes)
 
   return (
     <div style={{

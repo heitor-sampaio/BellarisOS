@@ -1,7 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPodeReceber, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPodeReceber, podeVerFechamento, alcancaUnidade } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics'
@@ -25,6 +26,8 @@ export async function fecharODia(
   try {
     const ctx = await getTenantContext()
     assertPodeReceber(ctx)
+    // Fecha quem recebe E vê a unidade inteira (D6): o financeiro "só os meus" não.
+    if (!podeVerFechamento(ctx)) throw semAcesso()
     const janela = janelaDoDia(dia)
     if (!janela) return { error: 'Dia inválido.' }
     if (!Number.isFinite(contado) || contado < 0) return { error: 'Informe o dinheiro contado.' }

@@ -1,4 +1,4 @@
-import type { ResolvedPermissions } from '@estetica-os/types'
+import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 
 /**
  * Definição única dos itens de menu e do que os libera.
@@ -40,7 +40,8 @@ export type MenuEntry = {
   label:   string | ((p: ResolvedPermissions) => string)
   /** Rota absoluta na rede; sufixo depois de `/[slug]` na filial. */
   href:    string
-  visible: (p: ResolvedPermissions) => boolean
+  /** `s`: o escopo de cada módulo, quando o item depende dele (o Fechamento do dia). */
+  visible: (p: ResolvedPermissions, s?: Partial<ResolvedScopes>) => boolean
   /**
    * A funcionalidade do PLANO a que o item pertence (lib/planos/recursos.ts),
    * quando ela é parte de um módulo: pacotes dentro de procedimentos, a inbox
@@ -58,6 +59,15 @@ const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== '
 /** Pode receber dinheiro do cliente — caixa ou financeiro. Igual a lib/auth. */
 /** Recebe pagamento (caixa ou financeiro em Gerenciar) — o `podeReceber` de lib/auth, pelas permissões. */
 export const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || p.financial === 'MANAGE'
+
+/**
+ * O Fechamento do dia é o dinheiro da UNIDADE inteira (D6 da simulação de
+ * 2026-10-27): quem recebe (`cashier`) ou o financeiro com escopo de TODOS.
+ * O `financial: Ver, só os próprios` da Profissional — para ver as comissões
+ * DELA — abria o saldo da unidade. O `podeVerFechamento` de lib/auth.
+ */
+export const veFechamento = (p: ResolvedPermissions, s?: Partial<ResolvedScopes>) =>
+  p.cashier === 'MANAGE' || (has(p, 'financial') && s?.financial !== 'OWN')
 
 // O CRM era uma tela só com abas "Funil" e "Inbox". Virou duas entradas: as
 // duas coisas têm ritmo diferente — a caixa de entrada se responde o dia
@@ -93,8 +103,8 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'templates', recurso: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
 
   { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
-  // O fechamento do dia (2026-10-21): quem recebe fecha; o financeiro vê.
-  { key: 'fechamento',   group: 'dinheiro',     label: 'Fechamento do dia', href: '/admin/fechamento', visible: p => recebe(p) || has(p, 'financial') },
+  // O fechamento do dia (2026-10-21): quem recebe fecha; o financeiro de TODOS vê (D6).
+  { key: 'fechamento',   group: 'dinheiro',     label: 'Fechamento do dia', href: '/admin/fechamento', visible: veFechamento },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
 
   // O funil comercial era uma entrada à parte (`/admin/comercial`). Virou a aba
@@ -132,8 +142,8 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // checkout do plano —, e desde que o caixa de abrir/fechar saiu não há mais
   // tela própria dele: quem só recebe entrava aqui e via a tela vazia.
   { key: 'financial',     group: 'dinheiro',    label: 'Financeiro',    href: '/financeiro',    visible: p => has(p, 'financial') },
-  // A tela de quem só RECEBE (cashier): o fechamento do dia (2026-10-21).
-  { key: 'fechamento',    group: 'dinheiro',    label: 'Fechamento do dia', href: '/fechamento', visible: p => recebe(p) || has(p, 'financial') },
+  // A tela de quem RECEBE (cashier): o fechamento do dia (2026-10-21) — e do financeiro de todos (D6).
+  { key: 'fechamento',    group: 'dinheiro',    label: 'Fechamento do dia', href: '/fechamento', visible: veFechamento },
   { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
@@ -152,9 +162,10 @@ export function menuEntriesFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
   plano?: PlanoDoMenu,
+  scopes?: Partial<ResolvedScopes>,
 ): { key: string; label: string; href: string }[] {
   return menu
-    .filter(e => e.visible(permissions) && noPlano(e, plano))
+    .filter(e => e.visible(permissions, scopes) && noPlano(e, plano))
     .map(e => ({
       key:   e.key,
       label: typeof e.label === 'function' ? e.label(permissions) : e.label,
@@ -179,8 +190,9 @@ export function menuSectionsFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
   plano?: PlanoDoMenu,
+  scopes?: Partial<ResolvedScopes>,
 ): MenuSection[] {
-  const visiveis = menu.filter(e => e.visible(permissions) && noPlano(e, plano))
+  const visiveis = menu.filter(e => e.visible(permissions, scopes) && noPlano(e, plano))
   const resolver = (e: MenuEntry) => ({
     key:   e.key,
     label: typeof e.label === 'function' ? e.label(permissions) : e.label,
@@ -204,6 +216,7 @@ export function menuSectionsFor(
 export function menuLabelsFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
+  scopes?: Partial<ResolvedScopes>,
 ): string[] {
-  return menuEntriesFor(menu, permissions).map(e => e.label)
+  return menuEntriesFor(menu, permissions, undefined, scopes).map(e => e.label)
 }

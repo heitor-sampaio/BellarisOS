@@ -1,18 +1,19 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, podeReceber, can, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, podeVerFechamento, alcancaUnidade } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { FechamentoDoDia } from '@/app/_shared/fechamento-do-dia'
 
-/** O fechamento do dia, no portal da unidade: quem recebe fecha; o financeiro vê. */
+/** O fechamento do dia, no portal da unidade: quem recebe fecha; o financeiro de todos vê. */
 export default async function FechamentoDaUnidadePage({ params, searchParams }: {
   params:       Promise<{ slug: string }>
   searchParams: Promise<{ dia?: string }>
 }) {
   const { slug } = await params
   const ctx = await getTenantContext()
-  if (!podeReceber(ctx) && !can(ctx, 'financial', 'VIEW')) throw semAcesso()
+  // A unidade inteira: quem recebe ou o financeiro de todos (D6, 2026-10-27).
+  if (!podeVerFechamento(ctx)) throw semAcesso()
   const sp = await searchParams
 
   const unidade = await ler(createAdminClient().from('branches').select('id, name')

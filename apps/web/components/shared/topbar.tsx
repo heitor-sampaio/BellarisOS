@@ -12,7 +12,7 @@ import { BannerDoSuporte } from '@/components/shared/banner-do-suporte'
 import { Ajuda } from '@/components/shared/ajuda'
 import { AvisoDaAssinatura } from '@/components/shared/aviso-da-assinatura'
 import type { AvisoDaAssinatura as AvisoDaAssinaturaDados } from '@/lib/redes/aviso'
-import type { ResolvedPermissions, SuporteNoContexto } from '@estetica-os/types'
+import type { ResolvedPermissions, ResolvedScopes, SuporteNoContexto } from '@estetica-os/types'
 
 interface TopbarProps {
   userName:       string
@@ -24,6 +24,8 @@ interface TopbarProps {
   slug:           string | null
   /** O que o cargo abre: decide as páginas que a busca oferece. */
   permissions:    ResolvedPermissions
+  /** O escopo de cada módulo (o Fechamento do dia pede o financeiro de todos). */
+  scopes?:        Partial<ResolvedScopes>
   /** O plano da rede (`ctx.plano`): a busca não oferece página de funcionalidade fora dele. */
   plano?:         { funcionalidades: readonly string[] } | null
   /** A agenda do cargo é "só a própria": a busca não oferece os atalhos de agendar. */
@@ -45,7 +47,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, plano = null, suporte = null, assinatura = null, agendaPropria = false }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false }: TopbarProps) {
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
   const { toggle } = useSidebar()
@@ -106,7 +108,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
-      <BuscaUniversal slug={slug} permissions={permissions} plano={plano} agendaPropria={agendaPropria} />
+      <BuscaUniversal slug={slug} permissions={permissions} scopes={scopes} plano={plano} agendaPropria={agendaPropria} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Ajuda: chamado com o suporte. No modo suporte quem está aqui é o atendente */}

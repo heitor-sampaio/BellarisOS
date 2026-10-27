@@ -49,6 +49,7 @@ export const ISOLADOS = [
   'documentos-verificacao.spec.ts',
   'estoque-custo-de-consumo.spec.ts',
   'estrutura-endereco-da-unidade.spec.ts',
+  'fechamento-escopo-proprio.spec.ts',
   'ficha-pre-atendimento.spec.ts',
   'financeiro-a-receber-concluido.spec.ts',
   'financeiro-parcelas.spec.ts',

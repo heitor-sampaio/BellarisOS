@@ -334,7 +334,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
       const admin = createAdminClient()
       const [
         appts, medRecord, pkgs, docsRaw,
-        txAppts, directTxRaw, credits, branchesRaw,
+        branchesRaw,
         activePlansRaw, allPlansHistRaw,
       ] = await Promise.all([
         admin
@@ -362,30 +362,6 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .eq('client_id', clientId)
           .order('created_at', { ascending: false }),
         admin
-          .from('appointments')
-          .select(`
-            scheduled_at,
-            procedures(name),
-            transaction:financial_transactions(
-              id, description, amount, payment_method, is_paid, paid_at, created_at, due_date
-            )
-          `)
-          .eq('client_id', clientId)
-          .not('transaction', 'is', null)
-          .order('scheduled_at', { ascending: false })
-          .limit(50),
-        admin
-          .from('financial_transactions')
-          .select('id, description, amount, payment_method, is_paid, paid_at, created_at, due_date')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
-          .limit(50),
-        admin
-          .from('internal_credits')
-          .select('id, amount, description, created_at')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false }),
-        admin
           .from('branches')
           .select('id, name')
           .eq('tenant_id', tenantId)
@@ -410,9 +386,6 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
         medRecord:      medRecord.data,
         pkgs:           pkgs.data,
         docsRaw:        docsRaw.data,
-        txAppts:        txAppts.data,
-        directTxRaw:    directTxRaw.data,
-        credits:        credits.data,
         branchesRaw:    branchesRaw.data,
         activePlansRaw: activePlansRaw.data,
         allPlansHistRaw: allPlansHistRaw.data,

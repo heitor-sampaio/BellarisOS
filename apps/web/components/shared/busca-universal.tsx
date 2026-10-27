@@ -9,7 +9,7 @@ import {
   ArrowRight, CalendarClock, CalendarPlus, Filter, Layers, Loader2, MessageCircle, Package,
   Search, ShoppingBag, Sparkles, User, UserPlus, UserRound, X,
 } from 'lucide-react'
-import type { ResolvedPermissions } from '@estetica-os/types'
+import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 import { buscarTudo } from '@/actions/busca'
 import { emitNavStart } from '@/components/shared/navigation-progress'
 import { paginasDaBusca, paginasQueCasam } from '@/lib/busca/paginas'
@@ -81,13 +81,14 @@ function ehCampoDeTexto(el: EventTarget | null): boolean {
   return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
 }
 
-export function BuscaUniversal({ slug, permissions, plano = null, agendaPropria = false }: {
+export function BuscaUniversal({ slug, permissions, scopes, plano = null, agendaPropria = false }: {
   plano?: { funcionalidades: readonly string[] } | null
   /** A agenda do cargo é "só a própria" (outra tela, sem o modal de criar): sem os atalhos de agendar. */
   agendaPropria?: boolean
   /** Slug do portal da unidade; nulo no portal da rede. */
   slug:        string | null
   permissions: ResolvedPermissions
+  scopes?: Partial<ResolvedScopes>
 }) {
   const pathname = usePathname()
   const router   = useRouter()
@@ -113,7 +114,7 @@ export function BuscaUniversal({ slug, permissions, plano = null, agendaPropria 
   const campoRef   = useRef<HTMLInputElement>(null)
   const campoCelRef = useRef<HTMLInputElement>(null)
 
-  const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano), [slug, permissions, plano])
+  const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano, scopes), [slug, permissions, plano, scopes])
   const quem = useMemo(() => ({ pathname, slug, permissoes: permissions, agendaPropria }), [pathname, slug, permissions, agendaPropria])
 
   // -- O que aparece -----------------------------------------------------------

@@ -106,6 +106,8 @@ export interface ProfileTransaction {
    */
   dueDate:       string | null
   isCheckout?:   boolean
+  /** Cartão de crédito em N vezes (2–12), pago na hora. */
+  cartaoVezes?:  number | null
 }
 
 export interface ProfileInternalCredit {
@@ -182,6 +184,10 @@ interface Props {
   podeAnexarComum?:      boolean
   /** O financeiro do cliente (pagamentos, crédito): `financial` ou quem recebe. */
   veFinanceiro?:         boolean
+  /** Os totais da aba Financeiro, do banco (lib/clientes/financeiro-da-ficha.ts). */
+  totaisFinanceiros?:    { pago: number; aReceber: number; credito: number | null }
+  /** A aba Financeiro recortada pelos atendimentos de quem vê (D6, 2026-10-27). */
+  financeiroSoOsProprios?: boolean
   isNetworkWide:         boolean
   /**
    * Cliente da REDE: `clients.branch_id` nulo. Os gestos que gravam por filial
@@ -907,6 +913,8 @@ function FinanceiroTab({
   branchId,
   slug,
   unidadesParaCredito = [],
+  totais,
+  soOsProprios = false,
 }: {
   transactions:    ProfileTransaction[]
   internalCredits: ProfileInternalCredit[]
@@ -916,12 +924,19 @@ function FinanceiroTab({
   slug:            string
   /** Preenchida so quando o cliente nao tem filial propria. */
   unidadesParaCredito?: { id: string; name: string }[]
+  /**
+   * Os totais vêm do banco (metrics_financeiro_do_cliente): a aba somava na
+   * tela as últimas 50 linhas. `credito` nulo = "só os próprios" (D6).
+   */
+  totais:          { pago: number; aReceber: number; credito: number | null }
+  /** Recortado pelos atendimentos de quem vê (o financeiro "só os meus"). */
+  soOsProprios?:   boolean
 }) {
   const [showGrantForm, setShowGrantForm] = useState(false)
 
-  const totalPago      = transactions.filter(t => t.isPaid).reduce((s, t) => s + t.amount, 0)
-  const totalPendente  = transactions.filter(t => !t.isPaid).reduce((s, t) => s + t.amount, 0)
-  const creditoTotal   = internalCredits.reduce((s, c) => s + c.amount, 0)
+  const totalPago      = totais.pago
+  const totalPendente  = totais.aReceber
+  const creditoTotal   = totais.credito
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -929,11 +944,11 @@ function FinanceiroTab({
       {/* KPIs */}
       <div className="rg-3" style={{ gap: 8 }}>
         {[
-          { label: 'TOTAL PAGO',       value: fmtBRL(totalPago),     accent: false },
-          { label: 'A RECEBER',        value: fmtBRL(totalPendente),  accent: totalPendente > 0 },
-          { label: 'CRÉDITO INTERNO',  value: fmtBRL(creditoTotal),   accent: creditoTotal > 0 },
+          { chave: 'pago', label: 'TOTAL PAGO',       value: fmtBRL(totalPago),     accent: false },
+          { chave: 'a-receber', label: 'A RECEBER',        value: fmtBRL(totalPendente),  accent: totalPendente > 0 },
+          ...(creditoTotal == null ? [] : [{ chave: 'credito', label: 'CRÉDITO INTERNO',  value: fmtBRL(creditoTotal),   accent: creditoTotal > 0 }]),
         ].map(k => (
-          <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
+          <div key={k.label} data-total={k.chave} className="card" style={{ padding: '14px 18px' }}>
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
               {k.label}
             </p>
@@ -943,6 +958,12 @@ function FinanceiroTab({
           </div>
         ))}
       </div>
+
+      {soOsProprios && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          Só os lançamentos dos atendimentos que você fez com esta cliente.
+        </p>
+      )}
 
       {/* Transações */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -976,7 +997,7 @@ function FinanceiroTab({
                 const isLast = i === transactions.length - 1
 
                 return (
-                  <tr key={t.id} style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
+                  <tr key={t.id} data-lancamento={t.id} style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
                     <td style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {!t.isPaid && t.dueDate
                         ? `Vence ${new Date(t.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
@@ -1023,8 +1044,8 @@ function FinanceiroTab({
         )}
       </div>
 
-      {/* Crédito interno */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Crédito interno — é da cliente, não de um atendimento: fora do "só os próprios" (D6). */}
+      {creditoTotal != null && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: (showGrantForm || internalCredits.length > 0) ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
           <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Crédito interno</h3>
           <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: creditoTotal > 0 ? 'var(--brand)' : 'var(--text-faint)', marginRight: 8 }}>
@@ -1085,7 +1106,7 @@ function FinanceiroTab({
             </div>
           ))
         )}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -1099,6 +1120,7 @@ export function ClientProfile({
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], prePagos = [], podeAgendar = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
+  totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1683,6 +1705,8 @@ export function ClientProfile({
           branchId={branchId}
           slug={slug}
           unidadesParaCredito={clienteSemFilial ? branches : []}
+          totais={totaisFinanceiros}
+          soOsProprios={financeiroSoOsProprios}
         />
       )}
 

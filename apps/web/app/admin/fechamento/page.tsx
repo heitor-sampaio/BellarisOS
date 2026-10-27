@@ -1,4 +1,4 @@
-import { getTenantContext, podeReceber, can } from '@/lib/auth'
+import { getTenantContext, podeVerFechamento } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
@@ -9,7 +9,8 @@ export default async function FechamentoDaRedePage({ searchParams }: {
   searchParams: Promise<{ dia?: string; unidade?: string }>
 }) {
   const ctx = await getTenantContext()
-  if (!podeReceber(ctx) && !can(ctx, 'financial', 'VIEW')) throw semAcesso()
+  // A unidade inteira: quem recebe ou o financeiro de todos (D6, 2026-10-27).
+  if (!podeVerFechamento(ctx)) throw semAcesso()
   const sp = await searchParams
 
   let q = createAdminClient().from('branches').select('id, name, slug')

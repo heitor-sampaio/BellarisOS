@@ -155,9 +155,15 @@ o procedimento avulso pago antes.
   `metrics_receitas_pagas`), saídas pagas e saldo, com o total, tudo de
   `metrics_fechamento_do_dia` (`getFechamentoDoDia`) —, o dinheiro em espécie
   esperado (o saldo de `CASH`), a contagem e quem fechou.
-  - Vê quem recebe ou tem `financial`; FECHA quem recebe (`podeReceber`,
-    `fecharODia` em `actions/fechamento.ts`). É a tela de quem só tem
-    `cashier`, que até aqui não tinha nenhuma.
+  - É o dinheiro da UNIDADE inteira (D6 da simulação de 2026-10-27): vê
+    quem recebe (`cashier`) ou o financeiro com escopo de TODOS
+    (`podeVerFechamento` em `lib/auth.ts`, `veFechamento` em `lib/menu.ts`
+    — a página, o menu e a busca); FECHA quem recebe e vê (`podeReceber` +
+    `podeVerFechamento`, `fecharODia` em `actions/fechamento.ts`). O
+    `financial: Ver, só os próprios` da Profissional (que existe para ela ver
+    as comissões DELA) abria o saldo da unidade. O menu recebe o escopo
+    (`menuSectionsFor(…, scopes)`). É a tela de quem só tem `cashier`.
+    Prova: `e2e/fechamento-escopo-proprio.spec.ts`.
   - Cada fechamento é um REGISTRO em `fechamentos_do_dia` (com o retrato do
     resumo, refeito no servidor; a diferença é coluna gerada). Fechar de novo
     não apaga o anterior — vale o mais recente. Dia futuro não fecha.
@@ -177,6 +183,15 @@ o procedimento avulso pago antes.
     avisa quando há um a receber do MESMO procedimento (cobraria duas vezes).
   O botão "Receber" é de quem tem `cashier` (o mesmo de `confirmPayment`).
   Prova: `e2e/financeiro-a-receber-concluido.spec.ts`.
+- **A aba Financeiro da ficha da cliente** é UMA leitura nos dois portais
+  (`financeiroDaFicha`, `lib/clientes/financeiro-da-ficha.ts`): os
+  lançamentos da cliente, os totais do banco (`metrics_financeiro_do_cliente`
+  — pago pela regra de receita, a receber = lançamentos em aberto + os
+  concluídos a receber sem lançamento, e o crédito interno) e os
+  atendimentos a receber. Com `financial` "só os próprios" e sem `cashier`,
+  só o que é dos atendimentos DELA, totais incluídos, e sem o crédito interno
+  (é da cliente, não de um atendimento) — D6, 2026-10-27. Quem recebe vê
+  tudo. A aba somava na tela as últimas 50 linhas.
 - **Atendimento de R$ 0 conclui SEM cobrança** (D9, 2026-10-27): a tela diz
   "Sem cobrança", não entra em "a receber", concluir não lança conta a
   receber de zero, e `confirmar_pagamento_do_atendimento` recusa

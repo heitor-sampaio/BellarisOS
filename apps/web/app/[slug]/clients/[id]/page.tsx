@@ -13,9 +13,9 @@ import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { getDoCliente } from '@/lib/metrics/unidade'
-import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
+import { financeiroDaFicha } from '@/lib/clientes/financeiro-da-ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
+import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import { paraAnamneseGeral } from '@/lib/anamnese-geral'
@@ -85,9 +85,6 @@ export default async function ClientProfilePage({
     medRecord,
     pkgs,
     docsRaw,
-    txAppts,
-    directTxRaw,
-    credits,
     branchesRaw,
     activePlansRaw,
     allPlansHistRaw,
@@ -100,8 +97,6 @@ export default async function ClientProfilePage({
   // atendimentos + lançamentos pagos sem agendamento" no JS: contava estorno,
   // contava atendimento que nunca foi pago, e dividia por outra base.
   const doCliente = await getDoCliente(ctx.tenantId!, id)
-  type DirectTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null }
-  const directTxList     = (directTxRaw as DirectTx[] | null) ?? []
   const age              = idadeEm(client.birthDate)
 
   const stats: ProfileStats = {
@@ -204,62 +199,11 @@ export default async function ClientProfilePage({
   const recordForms = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
   const generalAnamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
 
-  // Transactions
-  type RawTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null }
-  type RawTxAppt = { scheduled_at: string; procedures: { name: string } | null; transaction: RawTx | null }
-
-  const apptTransactions: ProfileTransaction[] = ((txAppts as RawTxAppt[] | null) ?? [])
-    .filter(a => a.transaction !== null)
-    .map(a => ({
-      id:            a.transaction!.id,
-      description:   a.transaction!.description,
-      amount:        parseFloat(a.transaction!.amount),
-      paymentMethod: a.transaction!.payment_method,
-      isPaid:        a.transaction!.is_paid,
-      paidAt:        a.transaction!.paid_at,
-      createdAt:     a.transaction!.created_at,
-      procedureName: (a.procedures as { name?: string } | null)?.name ?? null,
-      scheduledAt:   a.scheduled_at,
-      dueDate:       a.transaction!.due_date,
-    }))
-
-  const checkoutTransactions: ProfileTransaction[] = directTxList.map(t => ({
-    id:            t.id,
-    description:   t.description,
-    amount:        parseFloat(t.amount),
-    paymentMethod: t.payment_method,
-    isPaid:        t.is_paid,
-    paidAt:        t.paid_at,
-    createdAt:     t.created_at,
-    procedureName: null,
-    scheduledAt:   null,
-    dueDate:       t.due_date,
-    isCheckout:    true,
-  }))
-
-  // Mesclar e ordenar por data desc (mais recente primeiro)
-  const seenIds = new Set(apptTransactions.map(t => t.id))
-  // Os pagamentos e o crédito do cliente são do FINANCEIRO (ou de quem recebe):
-  // carregados para quem só tinha o cadastro, a aba Financeiro abria para o SDR
-  // (simulação de um dia de clínica, 2026-10-20).
-  const veFinanceiro = can(ctx, 'financial', 'VIEW') || podeReceber(ctx)
-  // Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27).
-  const aReceber: ListaAReceber = veFinanceiro
-    ? await getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: id })
-    : { itens: [], total: { n: 0, valor: 0 } }
-  const transactions: ProfileTransaction[] = !veFinanceiro ? [] : [
-    ...apptTransactions,
-    ...checkoutTransactions.filter(t => !seenIds.has(t.id)),
-  ].sort((a, b) => (b.paidAt ?? b.createdAt).localeCompare(a.paidAt ?? a.createdAt))
-
-  // Internal credits
-  type RawCredit = { id: string; amount: string; description: string; created_at: string }
-  const internalCredits: ProfileInternalCredit[] = !veFinanceiro ? [] : ((credits as RawCredit[] | null) ?? []).map(c => ({
-    id:          c.id,
-    amount:      parseFloat(c.amount),
-    description: c.description,
-    createdAt:   c.created_at,
-  }))
+  // O financeiro da cliente — lançamentos, totais, crédito e os atendimentos a
+  // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts), com o "só os
+  // próprios" do financeiro (D6, 2026-10-27).
+  const financeiro = await financeiroDaFicha(ctx, id)
+  const { veFinanceiro, transactions, internalCredits, aReceber } = financeiro
 
   // Documents — bucket privado: assinamos os paths (signed URLs, 1h) para download
   type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
@@ -457,6 +401,8 @@ export default async function ClientProfilePage({
       sessionNotes={sessionNotes}
       transactions={transactions}
         veFinanceiro={veFinanceiro}
+        totaisFinanceiros={financeiro.totais}
+        financeiroSoOsProprios={financeiro.soOsProprios}
       internalCredits={internalCredits}
       documents={documents}
       termos={can(ctx, 'documents', 'VIEW')

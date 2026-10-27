@@ -88,11 +88,12 @@ export default async function BranchLayout({
         slug={branch.slug}
         branchName={branch.name}
         permissions={permissions}
+        scopes={ctx.scopes}
         plano={ctx.plano ?? null}
         isNetworkAdmin={ctx.role === 'NETWORK_ADMIN'}
         allBranches={allBranches}
       />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',

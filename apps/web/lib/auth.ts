@@ -314,6 +314,16 @@ export function podeReceber(ctx: TenantContext): boolean {
   return can(ctx, 'cashier', 'MANAGE') || can(ctx, 'financial', 'MANAGE')
 }
 
+/**
+ * Vê o Fechamento do dia — o dinheiro da UNIDADE inteira (D6 da simulação de
+ * 2026-10-27): quem recebe (`cashier`) ou o financeiro com escopo de TODOS.
+ * O `financial: Ver, só os próprios` da Profissional (para as comissões dela)
+ * abria o saldo da unidade. O `veFechamento` de lib/menu, pelo contexto.
+ */
+export function podeVerFechamento(ctx: TenantContext): boolean {
+  return can(ctx, 'cashier', 'MANAGE') || (can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial'))
+}
+
 /** Barra quem não pode receber. */
 export function assertPodeReceber(ctx: TenantContext): void {
   if (!podeReceber(ctx)) throw semAcesso()

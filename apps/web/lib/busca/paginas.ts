@@ -1,4 +1,4 @@
-import type { ResolvedPermissions } from '@estetica-os/types'
+import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 import { ADMIN_MENU, BRANCH_MENU, menuEntriesFor } from '@/lib/menu'
 import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada } from '@/lib/configuracoes/abas'
 import { casaComTermo } from '@/lib/busca/texto'
@@ -67,12 +67,14 @@ export function paginasDaBusca(
   slug: string | null, permissions: ResolvedPermissions,
   /** O plano da rede (`ctx.plano`): página de funcionalidade fora dele não é oferecida. */
   plano?: { funcionalidades: readonly string[] } | null,
+  /** O escopo de cada módulo: o Fechamento do dia pede o financeiro de todos (D6). */
+  scopes?: Partial<ResolvedScopes>,
 ): PaginaDaBusca[] {
   const naRede = slug === null
   const prefixo = naRede ? '' : `/${slug}`
   const base = naRede ? '/admin' : `/${slug}`
 
-  const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions, plano)
+  const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions, plano, scopes)
   const paginas: PaginaDaBusca[] = menu.map(e => ({
     key:      e.key,
     titulo:   e.label,
