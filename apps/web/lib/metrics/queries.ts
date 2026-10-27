@@ -275,6 +275,37 @@ export async function getAPagar(args: Args): Promise<number> {
   return n(data)
 }
 
+/** O que vence num dia (Brasília): o próximo vencimento depois do período. */
+export interface ProximoVencimento { dia: string; valor: number }
+export interface EmAberto {
+  /** Em aberto no período, pelo VENCIMENTO (data de referência). */
+  aReceber: number
+  aPagar:   number
+  /** O primeiro vencimento DEPOIS do período, e quanto vence nele. */
+  proximoAReceber: ProximoVencimento | null
+  proximoAPagar:   ProximoVencimento | null
+}
+
+/**
+ * "A receber" e "A pagar" do período pelo vencimento, e o próximo vencimento
+ * de cada lado (`metrics_em_aberto`, A34 da simulação de 2026-10-27): "A pagar
+ * R$ 0" em "Este mês" com R$ 300 vencendo em 05/11 parecia conta sumida.
+ * `to` é o FIM do período (fullTo), como nas listas.
+ */
+export async function getEmAberto(args: Args): Promise<EmAberto> {
+  const { data, error } = await createAdminClient().rpc('metrics_em_aberto', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  })
+  logRpcError('metrics_em_aberto', error)
+  const r = ((data as Record<string, unknown>[] | null) ?? [])[0] ?? {}
+  const proximo = (dia: unknown, valor: unknown) => dia ? { dia: String(dia), valor: n(valor) } : null
+  return {
+    aReceber: n(r.a_receber), aPagar: n(r.a_pagar),
+    proximoAReceber: proximo(r.proximo_receber_dia, r.proximo_receber_valor),
+    proximoAPagar:   proximo(r.proximo_pagar_dia, r.proximo_pagar_valor),
+  }
+}
+
 export interface LinhaDoFechamento { forma: string; entradas: number; saidas: number; saldo: number; lancamentos: number }
 export interface FechamentoDoDia {
   /** Uma linha por forma de pagamento (CASH, PIX…; SEM_FORMA = pago com pontos/sem forma). */

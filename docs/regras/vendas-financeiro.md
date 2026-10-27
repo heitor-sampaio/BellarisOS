@@ -227,6 +227,14 @@ o procedimento avulso pago antes.
   O cliente é `financial_transactions.client_id` (embed
   `clients!financial_transactions_client_id_fkey`); sem ele, "—". Prova:
   `e2e/financeiro-rede-a-receber.spec.ts`.
+  - **"A receber" e "A pagar" valem pelo VENCIMENTO e dizem isso** (A34,
+    2026-10-27): os dois cartões (unidade e rede, e cada unidade no recorte da
+    rede) vêm de `getEmAberto` (`metrics_em_aberto`): em aberto com a data de
+    referência no período, até o FIM dele (o "A receber" ia só até agora), e o
+    PRÓXIMO vencimento depois do período. O cartão diz "Pelo vencimento, no
+    período." e, com zero, "Próximo: R$ 300,00 em 05/11"
+    (`NotaDoVencimento`). O "A pagar R$ 0" com a conta vencendo no mês
+    seguinte parecia conta sumida. Prova: `e2e/financeiro-a-pagar-vencimento.spec.ts`.
 - **O lançamento manual pago tem a DATA do pagamento** (2026-10-21, decisão
   do Heitor): "Data do pagamento" no Novo lançamento (hoje por padrão, nunca no
   futuro — a tela limita e `pagoNoDia`, em `lib/financeiro/lancamento.ts`,

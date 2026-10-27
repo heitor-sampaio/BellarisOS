@@ -15,6 +15,8 @@ import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import type { ProximoVencimento } from '@/lib/metrics/queries'
+import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 
 // --- Types -------------------------------------------------------------------
 
@@ -28,6 +30,9 @@ interface BranchStat {
   commissions: number
   aReceber:    number
   aPagar:      number
+  /** O próximo vencimento depois do período (A34): "R$ 300,00 em 05/11". */
+  proximoAReceber?: ProximoVencimento | null
+  proximoAPagar?:   ProximoVencimento | null
   txCount:     number
 }
 
@@ -65,6 +70,9 @@ interface Props {
   /** A receber e a pagar no período (lib/metrics: revenuePending, metrics_a_pagar). */
   totalAReceber:    number
   totalAPagar:      number
+  /** O próximo vencimento da rede depois do período, de cada lado (getEmAberto). */
+  totalProximoAReceber?: ProximoVencimento | null
+  totalProximoAPagar?:   ProximoVencimento | null
   /** O total de movimentações (metrics_movimentacoes), a mesma conta da coluna. */
   totalMovimentacoes: number
   prevRevenue:      number
@@ -116,10 +124,12 @@ function pctDelta(curr: number, prev: number) {
 // --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
-  label, value, delta, icon, brand = false, chave,
+  label, value, delta, icon, brand = false, chave, nota,
 }: {
   /** `data-kpi`, para o teste achar o cartão. */
   chave?: string
+  /** Uma linha a mais embaixo (o "pelo vencimento" e o próximo). */
+  nota?:  React.ReactNode
   label:  string
   value:  string
   delta?: { pct: number; up: boolean } | null
@@ -164,6 +174,7 @@ function KpiCard({
           </span>
         </div>
       )}
+      {nota && <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{nota}</div>}
     </div>
   )
 }
@@ -173,6 +184,7 @@ function KpiCard({
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAPagar, totalMovimentacoes,
+  totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
   canPay = false, canReverse = false, podeDarCredito = false, clients = [],
@@ -239,6 +251,8 @@ export function AdminFinancialView({
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
   const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
+  const proximoAReceber = statDaUnidade ? statDaUnidade.proximoAReceber ?? null : totalProximoAReceber
+  const proximoAPagar   = statDaUnidade ? statDaUnidade.proximoAPagar ?? null   : totalProximoAPagar
 
   const iconColor    = (brand: boolean) => brand ? 'var(--surface)' : 'var(--brand)'
   // Sem base de comparação por unidade, não se inventa delta: `prevRevenue` e
@@ -342,12 +356,14 @@ export function AdminFinancialView({
           chave="a-receber"
           label="A receber"
           value={fmtBRL(aReceber)}
+          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
         <KpiCard
           chave="a-pagar"
           label="A pagar"
           value={fmtBRL(aPagar)}
+          nota={<NotaDoVencimento valor={aPagar} proximo={proximoAPagar} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
       </div>

@@ -3,7 +3,7 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getAPagar } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
 import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
 
@@ -77,7 +77,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, aPagarPorUnidade] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -115,13 +115,14 @@ export default async function AdminFinanceiroPage({
     // período): a coluna da unidade e o total contam o mesmo (D34).
     getMovimentacoes({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
 
-    // "A pagar" por unidade (2026-10-21): a mesma conta do financeiro da
-    // unidade (metrics_a_pagar, até o fim do período). A rede é a soma no banco
-    // de cada uma — uma chamada por unidade, e a clínica típica tem uma.
-    Promise.all(branchIds.map(async id => [id, await getAPagar({ tenantId: ctx.tenantId!, branchIds: [id], from: start, to: fimDoPeriodo })] as const)),
+    // "A receber" e "A pagar" por unidade, pelo VENCIMENTO até o fim do
+    // período, com o próximo vencimento (getEmAberto, A34 de 2026-10-27) — a
+    // mesma conta do financeiro da unidade. Uma chamada por unidade, e a
+    // clínica típica tem uma.
+    Promise.all(branchIds.map(async id => [id, await getEmAberto({ tenantId: ctx.tenantId!, branchIds: [id], from: start, to: fimDoPeriodo })] as const)),
   ])
-  const aPagarDe = Object.fromEntries(aPagarPorUnidade)
-  const totalAPagar = await getAPagar({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
+  const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
+  const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
 
   const txs = (txsRaw ?? []) as unknown as LancamentoLido[]
 
@@ -150,8 +151,10 @@ export default async function AdminFinanceiroPage({
     expenses:    b.expensesCash,
     result:      resultadoDoPeriodo(b).lucro,
     commissions: b.commissionsOpen + b.commissionsPaid,
-    aReceber:    b.revenuePending,
-    aPagar:      aPagarDe[b.branchId] ?? 0,
+    aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
+    aPagar:      emAbertoDe[b.branchId]?.aPagar ?? 0,
+    proximoAReceber: emAbertoDe[b.branchId]?.proximoAReceber ?? null,
+    proximoAPagar:   emAbertoDe[b.branchId]?.proximoAPagar ?? null,
     txCount:     movimentacoes.porUnidade[b.branchId] ?? 0,
   }))
 
@@ -175,8 +178,10 @@ export default async function AdminFinanceiroPage({
         totalExpenses={totalExpenses}
         totalResult={resultadoDoPeriodo(core).lucro}
         totalCommissions={totalComm}
-        totalAReceber={core.revenuePending}
-        totalAPagar={totalAPagar}
+        totalAReceber={emAbertoDaRede.aReceber}
+        totalAPagar={emAbertoDaRede.aPagar}
+        totalProximoAReceber={emAbertoDaRede.proximoAReceber}
+        totalProximoAPagar={emAbertoDaRede.proximoAPagar}
         totalMovimentacoes={movimentacoes.total}
         prevRevenue={prevRevenue}
         prevExpenses={prevExpenses}

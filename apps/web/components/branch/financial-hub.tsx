@@ -16,6 +16,8 @@ import { FinancialTable, Transaction }                      from './financial-ta
 import { SegSelect }                                        from '@/components/shared/seg-select'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { resultadoDoPeriodo, ticketMedio } from '@/lib/metrics/resultado'
+import type { EmAberto } from '@/lib/metrics/queries'
+import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 
 // --- Types --------------------------------------------------------
 
@@ -66,7 +68,8 @@ interface Props {
   /** A série de receita × despesa do período (metrics_series). */
   serie:            PontoDaSerie[]
   /** A despesa a pagar do período e do anterior (metrics_a_pagar). */
-  aPagar:           number
+  /** A receber e a pagar do período, pelo vencimento, e o próximo vencimento (getEmAberto). */
+  emAberto:         EmAberto
   aPagarAnterior:   number
   commissions:      CommissionEntry[]
   canReverse:       boolean
@@ -117,8 +120,12 @@ function delta(curr: number, prev: number): { pct: number; up: boolean; neutral:
 // --- KPI Card -----------------------------------------------------
 
 function KpiCardFull({
-  label, curr, prev, icon, iconBg, valueColor, invertDelta = false, format = fmtBRL, highlight = false,
+  label, curr, prev, icon, iconBg, valueColor, invertDelta = false, format = fmtBRL, highlight = false, chave, nota,
 }: {
+  /** `data-kpi`, para o teste achar o cartão. */
+  chave?:        string
+  /** Uma linha a mais embaixo (o "pelo vencimento" e o próximo, no A receber/A pagar). */
+  nota?:         React.ReactNode
   label:         string
   curr:          number
   prev:          number
@@ -143,7 +150,7 @@ function KpiCardFull({
   const mutedColor = hl ? 'rgba(255,255,255,0.5)'   : 'var(--text-faint)'
 
   return (
-    <div className="card" style={{
+    <div className="card" data-kpi={chave} style={{
       padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
       background: cardBg,
       boxShadow: hl ? '0 4px 16px rgba(195,77,107,0.35)' : undefined,
@@ -177,6 +184,7 @@ function KpiCardFull({
       ) : (
         <span style={{ fontSize: 'var(--text-overline)', color: mutedColor }}>sem dados anteriores</span>
       )}
+      {nota && <div style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{nota}</div>}
     </div>
   )
 }
@@ -483,7 +491,7 @@ export function FinancialHub({
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
-  transactions, serie, aPagar, aPagarAnterior,
+  transactions, serie, emAberto, aPagarAnterior,
   commissions,
   canReverse,
   canWrite,
@@ -509,7 +517,8 @@ export function FinancialHub({
   // chamava de "ticket médio" uma divisão diferente da canônica.
   const income         = totais.revenueCash
   const expense        = totais.expensesCash
-  const pendingIncome  = totais.revenuePending
+  // Pelo vencimento, até o FIM do período (getEmAberto): ia só até agora.
+  const pendingIncome  = emAberto.aReceber
   const prevIncome     = totaisAnteriores.revenueCash
   const prevExpense    = totaisAnteriores.expensesCash
   const prevPendingIncome = totaisAnteriores.revenuePending
@@ -522,7 +531,7 @@ export function FinancialHub({
   const avgTicket = ticketMedio(totais) ?? 0
 
   // A despesa a pagar vem do banco (metrics_a_pagar): era somada na lista.
-  const pendingExpense     = aPagar
+  const pendingExpense     = emAberto.aPagar
   const prevPendingExpense = aPagarAnterior
 
   // O lucro do período vem de lib/metrics (resultadoDoPeriodo), como nos Relatórios.
@@ -656,6 +665,8 @@ export function FinancialHub({
           valueColor="var(--info)"
         />
         <KpiCardFull
+          chave="a-receber"
+          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} />}
           label="A Receber"
           curr={pendingIncome} prev={prevPendingIncome}
           icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
@@ -663,6 +674,8 @@ export function FinancialHub({
           valueColor={pendingIncome > 0 ? 'var(--success)' : 'var(--text)'}
         />
         <KpiCardFull
+          chave="a-pagar"
+          nota={<NotaDoVencimento valor={pendingExpense} proximo={emAberto.proximoAPagar} />}
           label="A Pagar"
           curr={pendingExpense} prev={prevPendingExpense}
           icon={<Clock size={13} style={{ color: 'var(--warning)' }} />}

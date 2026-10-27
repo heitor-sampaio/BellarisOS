@@ -5,7 +5,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto } from '@/lib/metrics'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
 
@@ -41,14 +41,16 @@ export default async function FinancialPage({
   // parcela criada num mês e paga no outro — e o checkout de plano cria
   // exatamente isso.
   const argsDoNucleo = { tenantId: ctx.tenantId!, branchIds: [branch.id as string] }
-  const [totais, totaisAnteriores, composicao, serie, aPagar, aPagarAnterior] = await Promise.all([
+  const [totais, totaisAnteriores, composicao, serie, emAberto, aPagarAnterior] = await Promise.all([
     getCore({ ...argsDoNucleo, from: start,     to: end }),
     getCore({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
     // Formas de pagamento e categorias: também do banco (a tela somava a lista).
     getComposicaoFinanceira({ ...argsDoNucleo, from: start, to: end }),
     // O gráfico e o "A pagar" também (2026-10-21): eram somados na lista.
     getSeries({ ...argsDoNucleo, from: start, to: end, granularity: granularidadeDoPeriodo(period) }),
-    getAPagar({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
+    // A receber e a pagar pelo VENCIMENTO, até o fim do período, e o próximo
+    // vencimento de cada lado (A34, 2026-10-27).
+    getEmAberto({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
     getAPagar({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
   ])
 
@@ -134,7 +136,7 @@ export default async function FinancialPage({
         customTo={sp.to}
         transactions={(transactions ?? []) as unknown as Props['transactions']}
         serie={serie}
-        aPagar={aPagar}
+        emAberto={emAberto}
         aPagarAnterior={aPagarAnterior}
         commissions={commissions}
         canReverse={canReverse}
