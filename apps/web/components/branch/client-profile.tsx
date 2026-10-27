@@ -4,7 +4,7 @@ import React, { useActionState, useEffect, useEffectEvent, useState, useRef } fr
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
@@ -126,6 +126,8 @@ export interface ClientHistoryEvent {
     | 'CLIENT_CREATED'
     | 'APP_ACCOUNT'
     | 'APPOINTMENT_SCHEDULED'
+    | 'APPOINTMENT_CONFIRMED'
+    | 'APPOINTMENT_ARRIVED'
     | 'APPOINTMENT_COMPLETED'
     | 'APPOINTMENT_CANCELLED'
     | 'APPOINTMENT_NO_SHOW'
@@ -355,6 +357,8 @@ const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
   CLIENT_CREATED:        { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: UserPlus },
   APP_ACCOUNT:           { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: Smartphone },
   APPOINTMENT_SCHEDULED: { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: CalendarPlus },
+  APPOINTMENT_CONFIRMED: { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: CalendarCheck },
+  APPOINTMENT_ARRIVED:   { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: DoorOpen },
   APPOINTMENT_COMPLETED: { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: CheckCircle2 },
   APPOINTMENT_CANCELLED: { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
   APPOINTMENT_NO_SHOW:   { dotColor: 'var(--danger)', bgColor: 'var(--danger-soft)', Icon: AlertCircle },

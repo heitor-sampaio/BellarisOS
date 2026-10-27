@@ -674,6 +674,7 @@ export function AdminAgendaView({
             professionalName: selecionado.users?.name ?? '—',
             price:            String(selecionado.price ?? 0),
             start:            selecionado.scheduled_at,
+            motivoDoCancelamento: selecionado.cancellation_reason ?? null,
           }}
           slug={todasUnidades.find(b => b.id === selecionado.branch_id)?.slug ?? ''}
           userRole=""

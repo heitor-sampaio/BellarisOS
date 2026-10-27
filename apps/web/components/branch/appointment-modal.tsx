@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar, clienteParaAgendar } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar } from '@/actions/appointments'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhoneDigitando } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
@@ -80,8 +80,12 @@ export function AppointmentModal({
   // handler do seletor, e o efeito só desliga quando os dados chegam.
   const [carregandoUnidade, setCarregandoUnidade] = useState(escolheUnidade && !!unidadeId)
 
+  const [profId, setProfId] = useState('')
+  const [procId, setProcId] = useState('')
+
   function trocarUnidade(id: string) {
     setUnidadeId(id)
+    setProfId(''); setProcId('')
     if (escolheUnidade && id) setCarregandoUnidade(true)
   }
 
@@ -180,6 +184,22 @@ export function AppointmentModal({
 
   // Controla o valor do input (exibe local) e o hidden UTC para envio
   const [localDT, setLocalDT] = useState(defaultDT)
+
+  // A20 (2026-10-27): sem horário clicado na grade, o horário sugerido é o
+  // próximo livre da profissional (hoje: a partir de agora). A hora que a
+  // pessoa digitou ela mesma não é trocada.
+  const horaEscolhida = useRef(!!defaultDate)
+  const duracaoMin = credito
+    ? (dados.procedures.find(p => p.id === credito.procedureId)?.duration_min ?? 30)
+    : (dados.procedures.find(p => p.id === procId)?.duration_min ?? 30)
+  useEffect(() => {
+    if (!profId || !unidadeId || horaEscolhida.current) return
+    let vivo = true
+    proximoHorarioLivre(unidadeId, profId, duracaoMin)
+      .then(r => { if (vivo && r && !horaEscolhida.current) setLocalDT(r) })
+      .catch(() => { /* fica a hora de antes */ })
+    return () => { vivo = false }
+  }, [profId, unidadeId, duracaoMin])
 
   // Ao mudar o defaultDate (novo clique no calendário), reseta — ajustado
   // durante o render, guardando o padrão anterior.
@@ -385,7 +405,7 @@ export function AppointmentModal({
             </Field>
           ) : (
           <Field label="Procedimento *">
-            <select name="procedure_id" required className="field" disabled={carregandoUnidade}>
+            <select name="procedure_id" required className="field" disabled={carregandoUnidade} value={procId} onChange={e => setProcId(e.target.value)}>
               <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione o procedimento…'}</option>
               {dados.procedures.map(p => (
                 <option key={p.id} value={p.id}>
@@ -398,7 +418,7 @@ export function AppointmentModal({
 
           <div className="form-2col">
             <Field label="Profissional *">
-              <select name="professional_id" required className="field" disabled={carregandoUnidade}>
+              <select name="professional_id" required className="field" disabled={carregandoUnidade} value={profId} onChange={e => setProfId(e.target.value)}>
                 <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione…'}</option>
                 {dados.professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -417,7 +437,7 @@ export function AppointmentModal({
               type="datetime-local" required className="field"
               value={localDT}
               min={minDT}
-              onChange={e => setLocalDT(e.target.value)}
+              onChange={e => { horaEscolhida.current = true; setLocalDT(e.target.value) }}
             />
             <input type="hidden" name="scheduled_at" value={scheduledAtUTC} />
           </Field>

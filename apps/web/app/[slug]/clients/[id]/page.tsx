@@ -8,6 +8,7 @@ import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
+import { eventosDeConfirmacaoEChegada } from '@/lib/clients/historico-do-agendamento'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
@@ -257,6 +258,8 @@ export default async function ClientProfilePage({
     const proc = (a.procedures as { name?: string } | null)?.name ?? '—'
     const prof = (a.professional as { name?: string } | null)?.name ?? '—'
     const label = proc
+    history.push(...eventosDeConfirmacaoEChegada(
+      { id: a.id, procedureName: proc, confirmed_at: a.confirmed_at ?? null, arrived_at: a.arrived_at ?? null }, `/${slug}/agenda/${a.id}`))
 
     if (a.status === 'COMPLETED' && a.completed_at) {
       history.push({

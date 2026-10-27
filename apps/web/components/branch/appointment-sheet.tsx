@@ -9,6 +9,7 @@ import { situacaoDaCobranca } from '@/actions/a-receber'
 import { rotaAtendimento } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { toast } from 'sonner'
+import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 
 interface AppointmentEvent {
@@ -19,6 +20,8 @@ interface AppointmentEvent {
   professionalName: string
   price:            string
   start:            string
+  /** Cancelado: o motivo, inteiro (o bloco da grade o corta). */
+  motivoDoCancelamento?: string | null
 }
 
 interface AppointmentSheetProps {
@@ -134,6 +137,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   // Falta é de quem não veio na hora: antes do início, ainda pode vir.
   const [abertaEm] = useState(() => Date.now())
   const jaComecou = new Date(appointment.start).getTime() <= abertaEm
+  // A chegada é do dia do agendamento (A18): a trava mora no servidor, e a
+  // janela não oferece o que ele recusaria.
+  const ehODia = ehODiaDoAgendamento(appointment.start, new Date(abertaEm))
 
   // A cobrança do concluído vem do servidor (a conta de atendimentos_a_receber).
   const [cobranca, setCobranca] = useState<Awaited<ReturnType<typeof situacaoDaCobranca>>>(null)
@@ -203,7 +209,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
               </button>
             )}
             {/* Chegou (o check-in): a recepção marca quem está na sala de espera. */}
-            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && !isProfessional && (
+            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && !isProfessional && ehODia && (
               <button disabled={loading} onClick={() => changeStatus('ARRIVED')}
                 className={appointment.status === 'CONFIRMED' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
                 <DoorOpen size={14} /> Chegou
@@ -212,7 +218,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
             {/* A profissional no agendamento que ainda não chegou: o mesmo
                 check-in e o mesmo início, num gesto (A21, 2026-10-27). Ela não
                 via "Iniciar" no "Agendado", e a janela não dizia por quê. */}
-            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && isProfessional && (
+            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && isProfessional && ehODia && (
               <button disabled={loading} onClick={chegarEComecar} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                 <Play size={14} /> Marcar chegada e iniciar
               </button>
@@ -268,6 +274,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
 
             {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
 
+            {/* Falta e cancelamento são do ciclo de vida do agendamento: quem tem a
+                agenda "só os meus" mexe no andamento do atendimento, e a action
+                recusa o resto — a janela mostra só o que ela deixa fazer. */}
+            {!isProfessional && (
             <div style={{ display: 'flex', gap: 8 }}>
               {jaComecou && (
                 <button disabled={loading} onClick={() => changeStatus('NO_SHOW')} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
@@ -278,8 +288,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
                 <Ban size={14} /> Cancelar
               </button>
             </div>
+            )}
 
-            {showCancelReason && (
+            {showCancelReason && !isProfessional && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning)' }}>
                 <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)' }}>
                   Motivo do cancelamento *
@@ -323,6 +334,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
         {appointment.status === 'COMPLETED' && cobranca?.situacao === 'SEM_COBRANCA' && (
           <p style={{ textAlign: 'center', color: 'var(--success)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, marginBottom: 10 }}>
             Sem cobrança — atendimento de R$ 0,00.
+          </p>
+        )}
+        {appointment.status === 'CANCELLED' && appointment.motivoDoCancelamento && (
+          <p data-motivo-do-cancelamento style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 10 }}>
+            <strong>Motivo:</strong> {appointment.motivoDoCancelamento}
           </p>
         )}
         {isDone && (

@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
+import { rolagemDaGrade } from '@/lib/agenda/grade'
 
 interface Professional { id: string; name: string }
 
@@ -18,6 +19,8 @@ interface Props {
   onDrop:        (eventId: string, newStart: Date, newProfId: string) => Promise<void>
   /** As horas da grade (o horário de funcionamento da unidade); sem ela, 07–21. */
   janela?:       { inicio: number; fim: number }
+  /** Minutos desde a meia-noite em que a unidade abre NESTE dia (nulo: fechada). */
+  aberturaDoDia?: number | null
 }
 
 // A janela da grade vem do horário de funcionamento (prop `janela`); o
@@ -153,7 +156,7 @@ function ProfColumn({
               data-agendamento={ev.id}
               data-cancelado=""
               onClick={e => { e.stopPropagation(); onEventClick(ev) }}
-              title={ev.motivoDoCancelamento ?? undefined}
+              title={`${ev.status === 'NO_SHOW' ? 'Não compareceu' : 'Cancelado'} · ${ev.clientName}${ev.motivoDoCancelamento ? `: ${ev.motivoDoCancelamento}` : ''}`}
               style={{
                 position: 'absolute', top: top + 2, height,
                 left: divide ? '50%' : 4, right: 4,
@@ -244,7 +247,7 @@ function ProfColumn({
   )
 }
 
-export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela }: Props) {
+export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela, aberturaDoDia }: Props) {
   const [draggingId,   setDraggingId]   = useState<string | null>(null)
   const [dropTarget,   setDropTarget]   = useState<{ profId: string; y: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -260,13 +263,22 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   }
   const g = gradeDe(inicio, Math.min(24, Math.max(fim, inicio + 1)))
 
-  // Hoje, a grade abre na hora de agora (uma hora antes), não no começo do dia.
+  // Hoje, a grade abre na hora de agora (uma hora antes); outro dia, no
+  // primeiro atendimento ou na abertura da unidade, o que vier antes (D8,
+  // 2026-10-27: sem isso a grade herdava a rolagem do dia anterior e a manhã
+  // sumia). Roda a cada troca de dia, e não a cada atualização dos eventos.
   const ehHoje = isSameDay(currentDate, new Date())
+  const diaChave = format(currentDate, 'yyyy-MM-dd')
+  const primeiroEmMin = todayEvents.length
+    ? Math.min(...todayEvents.map(e => { const d = new Date(e.start); return d.getHours() * 60 + d.getMinutes() }))
+    : null
   useEffect(() => {
-    if (!ehHoje || !scrollRef.current) return
-    const agora = new Date()
-    scrollRef.current.scrollTop = Math.max(0, (agora.getHours() - 1 - g.START_HOUR) * HOUR_PX)
-  }, [ehHoje, g.START_HOUR])
+    if (!scrollRef.current) return
+    scrollRef.current.scrollTop = rolagemDaGrade({
+      ehHoje, horaAgora: new Date().getHours(), startHour: g.START_HOUR, hourPx: HOUR_PX,
+      aberturaEmMin: aberturaDoDia ?? null, primeiroEmMin,
+    })
+  }, [diaChave, ehHoje, g.START_HOUR, aberturaDoDia, primeiroEmMin])
 
   function getRelY(e: React.DragEvent, colEl: HTMLElement): number {
     const rect      = colEl.getBoundingClientRect()

@@ -8,6 +8,7 @@ import { gravar, ler } from '@/lib/db'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { getUserName, logHistory } from '@/lib/appointments/avisos'
+import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 
 /**
  * REMARCAR e CANCELAR um agendamento — os núcleos que a agenda (actions/
@@ -158,6 +159,11 @@ export async function checkinCore(admin: Admin, ctx: TenantContext, appointmentI
   if (!existente) return { error: 'Agendamento não encontrado.' }
   if (existente.status !== 'SCHEDULED' && existente.status !== 'CONFIRMED') {
     return { error: 'Check-in só é possível em agendamentos Agendados ou Confirmados.' }
+  }
+  // A cliente chega no dia dela (A18, 2026-10-27): a chegada de amanhã ou de
+  // ontem é engano. Vale para a agenda, o Copilot e "Marcar chegada e iniciar".
+  if (!ehODiaDoAgendamento(existente.scheduled_at)) {
+    return { error: 'A chegada só se marca no dia do agendamento.' }
   }
   const agora = new Date().toISOString()
   const feitas = await gravar(admin.from('appointments')

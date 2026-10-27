@@ -80,7 +80,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
             Fechamento do dia
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4, textTransform: 'capitalize' }}>{diaLongo(dia)}</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>{diaLongo(dia)}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {unidades.length > 1 && (

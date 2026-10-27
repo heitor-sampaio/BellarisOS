@@ -10,6 +10,7 @@ import { ehAnexoClinico } from '@/lib/clientes/anexos'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
+import { eventosDeConfirmacaoEChegada } from '@/lib/clients/historico-do-agendamento'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
@@ -93,7 +94,7 @@ export default async function AdminClientProfilePage({
   ] = await Promise.all([
     ler(admin
       .from('appointments')
-      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, professional_id, procedures(name), professional:users!professional_id(name)')
+      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, confirmed_at, arrived_at, professional_id, procedures(name), professional:users!professional_id(name)')
       .eq('client_id', id)
       .order('scheduled_at', { ascending: false })
       .limit(60), 'carregar os agendamentos do cliente'),
@@ -291,6 +292,8 @@ export default async function AdminClientProfilePage({
     const proc   = (a.procedures as { name?: string } | null)?.name ?? '—'
     const prof   = (a.professional as { name?: string } | null)?.name ?? '—'
     const label  = proc
+    history.push(...eventosDeConfirmacaoEChegada(
+      { id: a.id, procedureName: proc, confirmed_at: a.confirmed_at ?? null, arrived_at: a.arrived_at ?? null }, `/admin/agenda/${a.id}`))
 
     if (a.status === 'COMPLETED' && a.completed_at) {
       history.push({ id: uid('ac'), date: a.completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/admin/agenda/${a.id}` })

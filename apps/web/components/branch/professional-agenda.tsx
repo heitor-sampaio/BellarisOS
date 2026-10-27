@@ -299,7 +299,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
               <button type="button" onClick={() => setSelected(d => addDays(d, -1))} className="btn-ghost" style={{ padding: '5px 8px' }}>
                 <ChevronLeft size={15} />
               </button>
-              <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', textTransform: 'capitalize' }}>
+              <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
                 {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
               </span>
               <button type="button" onClick={() => setSelected(d => addDays(d, 1))} className="btn-ghost" style={{ padding: '5px 8px' }}>

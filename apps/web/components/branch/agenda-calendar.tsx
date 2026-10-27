@@ -18,7 +18,8 @@ import { AgendaWeekView } from './agenda-week-view'
 import { AgendaMonthView } from './agenda-month-view'
 import { rescheduleAppointment } from '@/actions/appointments'
 import type { CalendarEvent } from './agenda-month-view'
-import { ocupacaoEmPct, janelaDaGrade, type Horario } from '@/lib/agenda/horario'
+import { ocupacaoEmPct, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario } from '@/lib/agenda/horario'
+import { atendimentosPorExtenso } from '@/lib/agenda/grade'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -41,6 +42,8 @@ interface AgendaCalendarProps {
   rooms:         Room[]
   canWrite:      boolean
   userRole:      string
+  /** Cargo com agenda "só os meus": a janela mostra só o que a action deixa fazer. */
+  escopoProprio?: boolean
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
   horarioDaUnidade?:          Horario | null
   horariosDosProfissionais?:  Record<string, Horario | null>
@@ -95,6 +98,15 @@ function calcKPIs(
   return { totalCount, waitingCount, occupancy }
 }
 
+/** Minutos desde a meia-noite em que a unidade abre neste dia; nulo se fechada. */
+function aberturaDaUnidade(horario: Horario | null, date: Date): number | null {
+  const intervalos = intervalosDoDia(horario, null, diaDaSemana(format(date, 'yyyy-MM-dd')))
+  const primeiro = intervalos[0]
+  if (!primeiro) return null
+  const [h = 0, m = 0] = primeiro.de.split(':').map(Number)
+  return h * 60 + m
+}
+
 // -- Label helpers ------------------------------------------------------------
 
 function navLabel(view: ViewMode, date: Date): string {
@@ -131,7 +143,7 @@ function todayDate(): Date {
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole,
+  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio,
   horarioDaUnidade = null, horariosDosProfissionais = {}, dataInicial = null, comCancelados = false,
 }: AgendaCalendarProps) {
   const router = useRouter()
@@ -221,7 +233,7 @@ export function AgendaCalendar({
             Agenda
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            <span style={{ fontWeight: 700, color: 'var(--text)' }}>{totalCount}</span> atendimentos
+            <span style={{ fontWeight: 700, color: 'var(--text)' }}>{totalCount}</span> {atendimentosPorExtenso(totalCount)}
             {' · '}
             <span style={{ fontWeight: 700, color: occupancy >= 80 ? 'var(--brand)' : 'var(--text)' }}>{occupancy}%</span> de ocupação
             {waitingCount > 0 && (
@@ -321,7 +333,7 @@ export function AgendaCalendar({
           {/* Week view: occupancy */}
           {view === 'semana' && totalCount > 0 && (
             <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {totalCount} atendimentos · {occupancy}% de ocupação
+              {totalCount} {atendimentosPorExtenso(totalCount)} · {occupancy}% de ocupação
             </span>
           )}
         </div>
@@ -330,6 +342,7 @@ export function AgendaCalendar({
         {view === 'dia' && (
           <AgendaDayView
             janela={janelaDaGrade([horarioDaUnidade])}
+            aberturaDoDia={aberturaDaUnidade(horarioDaUnidade ?? null, currentDate)}
             currentDate={currentDate}
             events={events}
             professionals={professionals}
@@ -377,6 +390,7 @@ export function AgendaCalendar({
           appointment={selectedEvent}
           slug={slug}
           userRole={userRole}
+          escopoProprio={escopoProprio}
           onClose={() => setSelectedEvent(null)}
         />
       )}

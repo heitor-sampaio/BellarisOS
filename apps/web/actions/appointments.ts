@@ -13,6 +13,7 @@ import {
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
@@ -1767,6 +1768,28 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
     rooms:         (rooms as { id: string; name: string }[]).map(r => ({ id: r.id, name: r.name })),
     slug:          branch.slug as string,
   }
+}
+
+/**
+ * O próximo horário livre da profissional (A20, 2026-10-27): o novo
+ * agendamento abria com a hora de agora, ocupada ou não. Hoje, a partir de
+ * agora; sem vaga hoje (ou fechado), o primeiro livre dos dias seguintes — a
+ * mesma conta da agenda (`computeAvailableSlots`: horário da unidade ∩ dela,
+ * sem os ocupados). Devolve o horário como a tela o escreve (AAAA-MM-DDTHH:mm,
+ * Brasília) ou `null`.
+ */
+export async function proximoHorarioLivre(branchId: string, professionalId: string, durationMin: number): Promise<string | null> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+  if (!branchId || !professionalId) return null
+  const admin = createAdminClient()
+  if (!alcancaUnidade(ctx, branchId)) return null
+  const recusa = await conferirPecasDoAgendamento(admin, ctx, { branchId, professionalId })
+  if (recusa) return null
+  const duracao = Number.isFinite(durationMin) && durationMin > 0 ? Math.min(Math.round(durationMin), 480) : 30
+  const achou = await procurarHorarioLivre(dayKeyTZ(new Date()), data =>
+    computeAvailableSlots(admin, branchId, professionalId, data, duracao))
+  return achou ? `${achou.data}T${achou.hora}` : null
 }
 
 /**
