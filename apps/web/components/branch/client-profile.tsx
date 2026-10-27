@@ -153,6 +153,9 @@ export interface ProfileRecordEntry {
   procedureName: string | null
   /** A ficha do procedimento — uma so desde 2026-09-25. */
   ficha:         ProfileFormSnapshot | null
+  /** A evolução e a intercorrência gravadas ao concluir (D4, 2026-10-27). */
+  evolucao:        string | null
+  intercorrencias: string | null
 }
 
 interface Props {
@@ -165,7 +168,6 @@ interface Props {
   /** Nulo = programa de fidelidade desligado ou cargo sem o módulo: nada de pontos na ficha. */
   fidelidade:            FidelidadeDoPerfil | null
   activePackage:         ProfilePackage | null
-  sessionNotes:          string
   transactions:          ProfileTransaction[]
   internalCredits:       ProfileInternalCredit[]
   documents:             ClientDocumentItem[]
@@ -1674,6 +1676,7 @@ export function ClientProfile({
                     />
                   ),
                 } : null}
+                evolucao={{ texto: entry.evolucao, intercorrencias: entry.intercorrencias }}
               />
             ))
           )}

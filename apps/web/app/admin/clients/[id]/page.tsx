@@ -103,7 +103,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('medical_records')
-      .select('id, general_anamnesis, entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
+      .select('id, general_anamnesis, entries:medical_record_entries(appointment_id, notes, intercurrences, form_data, created_at)')
       .eq('client_id', id)
       .maybeSingle(), 'carregar o prontuário'),
 
@@ -238,10 +238,6 @@ export default async function AdminClientProfilePage({
   }
 
   const mreEntries  = (medRecord?.entries as RawMreEntry[] | null) ?? []
-  const latestEntry = [...mreEntries].sort((a, b) =>
-    (b.created_at ?? '').localeCompare(a.created_at ?? '')
-  )[0]
-  const sessionNotes = latestEntry?.notes ?? ''
 
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
   // Prontuário é dado sensível de saúde: sem o módulo, nem carrega. E com
@@ -362,7 +358,6 @@ export default async function AdminClientProfilePage({
         generalAnamnesis={generalAnamnesis}
         fidelidade={fidelidade}
         activePackage={activePackage}
-        sessionNotes={sessionNotes}
         transactions={transactions}
         veFinanceiro={veFinanceiro}
         totaisFinanceiros={financeiro.totais}

@@ -34,6 +34,9 @@ interface Props {
   /** A ficha do procedimento. Eram duas seções — "de anamnese" e "de
    *  atendimento" —, que eram a mesma coisa com dois nomes (2026-09-25). */
   ficha?:           FormSection | null
+  /** A evolução e a intercorrência gravadas ao concluir — só no prontuário
+   *  (leitura). A avaliação sem ficha tinha só isso, e sumia (D4, 2026-10-27). */
+  evolucao?:        { texto: string | null; intercorrencias: string | null } | null
 }
 
 function maskCPF(doc: string | null): string | null {
@@ -69,7 +72,18 @@ function SectionOverline({ label, subtitle }: { label: string; subtitle?: string
   )
 }
 
-export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha }: Props) {
+function TextoClinico({ label, texto }: { label: string; texto: string }) {
+  return (
+    <div>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+        {label}
+      </p>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{texto}</p>
+    </div>
+  )
+}
+
+export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha, evolucao }: Props) {
   const age = idadeEm(client.birthDate)
   const birth = formatDia(client.birthDate)
 
@@ -108,6 +122,17 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
                 {insumos}
               </div>
             )}
+          </div>
+        )}
+
+        {/* A evolução do atendimento (prontuário) */}
+        {evolucao && (evolucao.texto || evolucao.intercorrencias) && (
+          <div style={sectionDivider} data-evolucao>
+            <SectionOverline label="Evolução do atendimento" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {evolucao.texto && <TextoClinico label="Evolução" texto={evolucao.texto} />}
+              {evolucao.intercorrencias && <TextoClinico label="Intercorrências" texto={evolucao.intercorrencias} />}
+            </div>
           </div>
         )}
 

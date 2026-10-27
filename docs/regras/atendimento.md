@@ -202,6 +202,13 @@ const procedures = await ler(
   profissional no plano e a anamnese no arquivo do tratamento (só `agenda`).
   Concluir o atendimento e salvar a evolução pedem `medical_records: MANAGE`
   (gravam prontuário). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
+- **A aba Prontuário lista TODO atendimento com registro clínico** (D4 da
+  simulação de 2026-10-27): a evolução (`medical_record_entries.notes`), a
+  intercorrência ou a ficha do procedimento — basta um dos três
+  (`buildRecordForms`, `lib/record-forms.ts`). Só entrava o que tinha FICHA, e
+  a avaliação (sem ficha ligada) sumia com a evolução gravada; o texto da
+  evolução nunca ia à tela. Prova: `e2e/prontuario-evolucao.spec.ts`,
+  `tests/prontuario-registros.test.ts`.
 - **Quem abriu o prontuário fica registrado** (2026-10-27, decisões do Heitor;
   `lib/prontuario/acessos.ts`, tabela `prontuario_acessos`). Toda leitura
   clínica: a ficha da cliente (com os anexos clínicos), a sessão de

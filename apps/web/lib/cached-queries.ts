@@ -345,7 +345,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .limit(60),
         admin
           .from('medical_records')
-          .select('id, general_anamnesis, entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
+          .select('id, general_anamnesis, entries:medical_record_entries(appointment_id, notes, intercurrences, form_data, created_at)')
           .eq('client_id', clientId)
           .maybeSingle(),
         admin

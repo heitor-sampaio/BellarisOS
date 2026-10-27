@@ -177,12 +177,7 @@ export default async function ClientProfilePage({
     }
   }
 
-  // Session notes from most recent MRE
   const mreEntries = (medRecord?.entries as RawMreEntry[] | null) ?? []
-  const latestEntry = [...mreEntries].sort((a, b) =>
-    (b.created_at ?? '').localeCompare(a.created_at ?? '')
-  )[0]
-  const sessionNotes = latestEntry?.notes ?? ''
 
   // Fichas preenchidas (anamnese + atendimento) por atendimento, read-only
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
@@ -398,7 +393,6 @@ export default async function ClientProfilePage({
       generalAnamnesis={generalAnamnesis}
       fidelidade={await fidelidadeDoPerfil(ctx, id)}
       activePackage={activePackage}
-      sessionNotes={sessionNotes}
       transactions={transactions}
         veFinanceiro={veFinanceiro}
         totaisFinanceiros={financeiro.totais}

@@ -16,6 +16,7 @@ interface FormBlob {
 export interface RawMreEntry {
   appointment_id?: string | null
   notes?:          string | null
+  intercurrences?: string | null
   form_data?:      { ficha?: FormBlob } | null
   created_at?:     string
 }
@@ -31,23 +32,36 @@ function toSnapshot(blob: FormBlob | undefined | null): ProfileFormSnapshot | nu
   }
 }
 
-/** Constrói a lista de fichas por atendimento (mais recente primeiro), ignorando entries sem ficha. */
+/** O texto clínico, ou nulo quando está vazio (só espaço conta como vazio). */
+function texto(v: string | null | undefined): string | null {
+  const t = (v ?? '').trim()
+  return t ? t : null
+}
+
+/**
+ * Os atendimentos com REGISTRO clínico, mais recente primeiro: a evolução, a
+ * intercorrência e a ficha do procedimento. Basta um dos três — a avaliação
+ * não tem ficha ligada, e a evolução dela sumia da aba Prontuário (D4 da
+ * simulação de 2026-10-27). Só a entrada sem nada fica de fora.
+ */
 export function buildRecordForms(
   entries: RawMreEntry[],
   procedureNameById: Map<string, string>,
 ): ProfileRecordEntry[] {
   return entries
-    // flatMap em vez de map+filter: com uma ficha só, a entrada sem ficha
-    // simplesmente não produz item, e o tipo sai certo sem predicado.
     .flatMap<ProfileRecordEntry>(e => {
-      const ficha = toSnapshot(e.form_data?.ficha)
-      if (!ficha) return []
+      const ficha           = toSnapshot(e.form_data?.ficha)
+      const evolucao        = texto(e.notes)
+      const intercorrencias = texto(e.intercurrences)
+      if (!ficha && !evolucao && !intercorrencias) return []
       const appointmentId = e.appointment_id ?? ''
       return [{
         appointmentId,
         createdAt:     e.created_at ?? '',
         procedureName: procedureNameById.get(appointmentId) ?? null,
         ficha,
+        evolucao,
+        intercorrencias,
       }]
     })
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
