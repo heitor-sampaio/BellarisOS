@@ -54,6 +54,7 @@ export const ISOLADOS = [
   'financeiro-a-pagar-vencimento.spec.ts',
   'financeiro-a-receber-concluido.spec.ts',
   'financeiro-credito-em-vezes.spec.ts',
+  'financeiro-estorno-motivo.spec.ts',
   'financeiro-parcelas.spec.ts',
   'fidelidade-desconto-no-pagamento.spec.ts',
   'fidelidade-ganho.spec.ts',

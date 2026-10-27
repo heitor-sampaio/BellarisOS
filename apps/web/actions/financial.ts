@@ -171,10 +171,14 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
  * cliente permitia estornar o lançamento de uma unidade e jogar a despesa em
  * outra.
  */
-export async function reverseTransaction(transactionId: string, slug: string) {
+export async function reverseTransaction(transactionId: string, slug: string, motivo?: string) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
+    // O motivo é obrigatório e fica gravado nas duas pontas (A36 da simulação
+    // de 2026-10-27): o estorno não perguntava por quê.
+    const porque = (motivo ?? '').trim().slice(0, 500)
+    if (!porque) return { error: 'Diga o motivo do estorno.' }
 
     const admin = createAdminClient()
     // A rede a função do banco confere; a UNIDADE é daqui (§11) — até
@@ -193,6 +197,7 @@ export async function reverseTransaction(transactionId: string, slug: string) {
         p_transacao: transactionId,
         p_tenant:    ctx.tenantId!,
         p_ator:      ctx.internalUserId,
+        p_motivo:    porque,
       }),
       'estornar o lançamento',
     )

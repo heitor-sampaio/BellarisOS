@@ -25,6 +25,8 @@ export interface Transaction {
   paid_at:        string | null
   due_date:       string | null
   notes:          string | null
+  /** Por que foi estornado (A36): na original e no estorno. */
+  estorno_motivo?: string | null
   created_at:     string
   appointment_id: string | null
   /** O pago, no dia do pagamento; o em aberto, no vencimento (ou na criação). */
@@ -85,9 +87,9 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
     })
   }
 
-  function handleReverse(id: string) {
+  function handleReverse(id: string, motivo: string) {
     startTx(async () => {
-      const r = await reverseTransaction(id, slug)
+      const r = await reverseTransaction(id, slug, motivo)
       if (r?.error) { toast.error(r.error); return }
       setAEstornar(null)
       toast.success('Lançamento estornado.')
@@ -127,7 +129,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
     <>
     {aEstornar && (
       <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
-        onConfirmar={() => handleReverse(aEstornar.id)} onVoltar={() => setAEstornar(null)} />
+        onConfirmar={motivo => handleReverse(aEstornar.id, motivo)} onVoltar={() => setAEstornar(null)} />
     )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Filtros */}
@@ -256,6 +258,9 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isReversed ? 'var(--text-muted)' : 'var(--text)', lineHeight: 1.3 }}>
                               {tx.description}
                             </p>
+                            {tx.estorno_motivo && (
+                              <p data-motivo-do-estorno style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Motivo: {tx.estorno_motivo}</p>
+                            )}
                             {tx.appointment_id && (
                               <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 1 }}>Atendimento</p>
                             )}

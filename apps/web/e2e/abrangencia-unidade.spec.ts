@@ -203,14 +203,14 @@ test.describe.serial('quem tem unidade fixa age só na dela', () => {
   test('financeiro: não dá baixa nem estorna lançamento da B', async ({ browser }) => {
     await como(browser, 'recepcaoA', async p => {
       await acao(p, 'recepcaoA', 'financial', 'markTransactionPaid', [f!.txAberto, f!.slugB])
-      await acao(p, 'recepcaoA', 'financial', 'reverseTransaction', [f!.txPago, f!.slugB])
+      await acao(p, 'recepcaoA', 'financial', 'reverseTransaction', [f!.txPago, f!.slugB, 'e2e: o motivo é obrigatório'])
     })
     expect((await linha('financial_transactions', f!.txAberto)).is_paid).toBe(false)
     expect((await linha('financial_transactions', f!.txPago)).notes ?? null).not.toBe('Estornada')
 
     await como(browser, 'rede', async p => {
       await acao(p, 'rede', 'financial', 'markTransactionPaid', [f!.txAberto, f!.slugB])
-      await acao(p, 'rede', 'financial', 'reverseTransaction', [f!.txPago, f!.slugB])
+      await acao(p, 'rede', 'financial', 'reverseTransaction', [f!.txPago, f!.slugB, 'e2e: o motivo é obrigatório'])
     })
     expect((await linha('financial_transactions', f!.txAberto)).is_paid, 'a rede dá baixa').toBe(true)
     expect((await linha('financial_transactions', f!.txPago)).notes, 'a rede estorna').toBe('Estornada')

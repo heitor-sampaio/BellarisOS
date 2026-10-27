@@ -337,6 +337,15 @@ o procedimento avulso pago antes.
   marcada `notes='Estornada'` (nunca deletar). Recusa lançamento **não pago**
   e o **próprio estorno**. A contra-transação não leva `appointment_id` (há
   UNIQUE nele — levar fazia todo estorno de atendimento falhar).
+  - **O estorno pede o MOTIVO e sai na forma da original** (A36,
+    2026-10-27): `financial_transactions.estorno_motivo`, gravado nas duas
+    pontas e mostrado na lista ("Motivo: …"); obrigatório na tela
+    (`ConfirmarEstorno`) e na action (`reverseTransaction`) — a função
+    aceita sem ele só pelos chamadores antigos. O contra-lançamento herda
+    `payment_method` e `cartao_vezes`: a linha do estorno ficava "—", e
+    quem conferia a gaveta não sabia que o dinheiro saiu do caixa em
+    espécie. Continua fora de toda conta e de todo gatilho de dinheiro
+    (categoria 'Estorno'). Prova: `e2e/financeiro-estorno-motivo.spec.ts`.
 
 ---
 

@@ -56,6 +56,8 @@ interface AdminTx {
   clienteNome?:   string | null
   /** `'Estornada'` marca a ponta estornada — o estorno sai dos dois lados. */
   notes:          string | null
+  /** Por que foi estornado (A36): na original e no estorno. */
+  estorno_motivo?: string | null
 }
 
 interface Props {
@@ -206,9 +208,9 @@ export function AdminFinancialView({
       else router.refresh()
     })
   }
-  function estornar(id: string, slug: string) {
+  function estornar(id: string, slug: string, motivo: string) {
     startT(async () => {
-      const r = await reverseTransaction(id, slug)
+      const r = await reverseTransaction(id, slug, motivo)
       if (r?.error) { toast.error(r.error); return }
       setAEstornar(null)
       toast.success('Lançamento estornado.')
@@ -268,7 +270,7 @@ export function AdminFinancialView({
 
       {aEstornar && (
         <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
-          onConfirmar={() => estornar(aEstornar.id, aEstornar.slug)} onVoltar={() => setAEstornar(null)} />
+          onConfirmar={motivo => estornar(aEstornar.id, aEstornar.slug, motivo)} onVoltar={() => setAEstornar(null)} />
       )}
 
       {/* Header: título (esquerda) + seletores e botão (direita) */}
@@ -528,6 +530,9 @@ export function AdminFinancialView({
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                         {t.description || '—'}
                       </span>
+                      {t.estorno_motivo && (
+                        <span data-motivo-do-estorno style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Motivo: {t.estorno_motivo}</span>
+                      )}
                     </td>
                     <td data-label="Cliente" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: t.clienteNome ? 'var(--text)' : 'var(--text-faint)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {t.clienteNome ?? '—'}

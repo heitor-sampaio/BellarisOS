@@ -71,6 +71,8 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   expect((await db.from('financial_transactions').select('notes').eq('id', original!.id).single()).data?.notes ?? null,
     'voltar não estorna').not.toBe('Estornada')
   await linha.getByTitle('Estornar').click()
+  // O motivo é obrigatório (A36, 2026-10-27).
+  await page.getByRole('dialog', { name: 'Estornar este lançamento?' }).getByLabel('Motivo do estorno').fill('teste e2e')
   await page.getByRole('dialog', { name: 'Estornar este lançamento?' }).getByRole('button', { name: 'Confirmar estorno' }).click()
 
   // O aviso é a prova de que a tela parou de descartar o resultado da action.
