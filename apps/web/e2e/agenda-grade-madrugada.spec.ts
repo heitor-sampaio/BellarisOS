@@ -135,3 +135,31 @@ test('/admin/agenda: sem atendimento fora do horário, a grade abre na abertura 
     expect(Math.max(...horas)).toBe(17)
   } finally { await ctx.close() }
 })
+
+/**
+ * Frente F (2026-10-28): na rede de DUAS unidades com horários diferentes, a
+ * grade de /admin/agenda vai do mais cedo ao mais tarde entre elas
+ * (`janelaDaGrade`). A frente D provou a conta só no Vitest. Regressão (o D5
+ * já estava corrigido quando este caso nasceu), não TDD.
+ */
+test('/admin/agenda: com duas unidades de horários diferentes, a grade vai do mais cedo ao mais tarde', async ({ browser }) => {
+  await apagar(); await agendar('g', '12:00')
+  // A segunda unidade abre 08–20 todo dia; a primeira segue 10–18.
+  const todoDia = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, [{ de: '08:00', ate: '20:00' }]]))
+  const { data: norte, error } = await db().from('branches')
+    .insert({ tenant_id: rede!.tenantId, name: `[e2e] Norte ${marca}`, slug: `e2e-gm-norte-${marca}`, horario: { dias: todoDia } })
+    .select('id').single<{ id: string }>()
+  expect(error, 'criar a segunda unidade').toBeNull()
+  const ctx = await browser.newContext({ storageState: gestor!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto('/admin/agenda')
+    await expect(p.locator(`[data-agendamento="${ids.g}"]`)).toBeVisible()
+    const horas = await rotulosDeHora(p)
+    expect(Math.min(...horas), 'abre na abertura mais cedo (a Norte, 08:00)').toBe(8)
+    expect(Math.max(...horas), 'fecha no fim mais tarde (a Norte, 20:00)').toBe(19)
+  } finally {
+    await ctx.close()
+    expect((await db().from('branches').delete().eq('id', norte!.id)).error, 'apagar a segunda unidade').toBeNull()
+  }
+})
