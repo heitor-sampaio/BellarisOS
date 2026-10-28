@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
-import { variacaoPercentual } from '@/lib/metrics/resultado'
+import { variacaoPercentual, mediaPorAtendimento } from '@/lib/metrics/resultado'
 import { rotulosDoPeriodo } from '@/lib/rotulos-do-periodo'
 import Link from 'next/link'
 import {
@@ -1276,7 +1276,8 @@ export function AdminDashboardView({
               </thead>
               <tbody>
                 {topClients.map((c, i) => {
-                  const ticketC = c.appointmentCount > 0 ? c.totalSpent / c.appointmentCount : 0
+                  // A conta mora em lib/metrics (§13.1); a tela só formata.
+                  const ticketC = mediaPorAtendimento({ totalSpent: c.totalSpent, appointments: c.appointmentCount }) ?? 0
                   return (
                     <tr key={c.id}
                       style={{ borderBottom: i < topClients.length - 1 ? '1px solid var(--hairline)' : 'none' }}

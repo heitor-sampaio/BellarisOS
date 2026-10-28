@@ -170,6 +170,9 @@ test.describe('D11: o rótulo do ticket médio acompanha a conta', () => {
       const ranking = cartao(p, 'Ranking — Valor gasto')
       await expect(ranking).toContainText('Média por atend.')
       await expect(ranking).not.toContainText('Ticket médio')
+      // O número não mudou quando a conta foi para lib/metrics (frente F): a Joana
+      // pagou R$ 180 em dois concluídos (um de R$ 0) — R$ 90 por atendimento.
+      await expect(ranking.locator('tr').filter({ hasText: `Joana uc${marca}` })).toContainText(/R\$\s*90,00/)
     })
   })
 
@@ -190,6 +193,10 @@ test.describe('D11: o rótulo do ticket médio acompanha a conta', () => {
       await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(180)
       // A coluna da tabela é por execução, e diz isso.
       await expect(p.getByText('Média por execução', { exact: true })).toBeVisible()
+      // A linha da limpeza: R$ 180 por execução e 100% da receita (a avaliação
+      // de R$ 0, R$ 0 e 0%). A conta mora em lib/metrics desde a frente F.
+      const limpeza = p.locator('tr').filter({ hasText: `Limpeza ${marca}` })
+      await expect(limpeza).toContainText(/R\$\s*180,00[\s\S]*R\$\s*180,00[\s\S]*100\.0%/)
     })
   })
 })

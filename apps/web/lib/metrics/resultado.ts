@@ -18,6 +18,30 @@ export function ticketMedio(n: { serviceRevenue: number; appointmentsCharged: nu
   return ratio(n.serviceRevenue, n.appointmentsCharged)
 }
 
+/**
+ * As médias das TABELAS, que a tela dividia por conta própria (frente F,
+ * 2026-10-28). Não são o ticket médio — dividem outro conjunto, e por isso
+ * têm outro nome na tela (D11):
+ * - "Média por atend." (ranking de clientes do dashboard da rede): o que a
+ *   cliente PAGOU no período ÷ os atendimentos concluídos dela
+ *   (`metrics_top_clients`); a ficha é que tem o ticket dela.
+ * - "Média por execução" (Relatórios → Procedimentos): a receita do
+ *   procedimento ÷ as execuções dele (`metrics_relatorio`), e o "% do Total",
+ *   a parte dele na receita de serviço do período.
+ * Sem denominador, nulo (a tela mostra "—" ou zero, como mostrava).
+ */
+export function mediaPorAtendimento(c: { totalSpent: number; appointments: number }): number | null {
+  return ratio(c.totalSpent, c.appointments)
+}
+
+export function mediaPorExecucao(p: { receita: number; execucoes: number }): number | null {
+  return ratio(p.receita, p.execucoes)
+}
+
+export function participacaoPct(parte: number, total: number): number | null {
+  return percent(parte, total)
+}
+
 export interface ResultadoDoPeriodo {
   /** Receita paga − despesa paga (as duas pelo caixa, sem estorno). */
   lucro:     number

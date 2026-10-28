@@ -69,7 +69,11 @@
     ranking do dashboard) e "Média por execução" (por procedimento, nos
     Relatórios). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a
     aba Procedimentos dividia pelos concluídos — R$ 90 ao lado dos R$ 180 da
-    Visão geral (D11).
+    Visão geral (D11). Essas duas médias, e o "% do Total" da tabela por
+    procedimento, também moram em `lib/metrics/resultado.ts`
+    (`mediaPorAtendimento`, `mediaPorExecucao`, `participacaoPct`): a tela
+    dividia por conta própria até a frente F (`tests/metrics-medias-das-tabelas`
+    trava).
   - **Lucro e margem também moram em lib/metrics** (`resultadoDoPeriodo`,
     `variacaoDaMargemPp` em `lib/metrics/resultado.ts`): lucro = receita paga
     − despesa paga; margem = lucro ÷ receita, nula sem receita; a variação da

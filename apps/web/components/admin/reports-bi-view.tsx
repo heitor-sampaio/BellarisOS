@@ -21,7 +21,7 @@ import {
   CHART_COLORS, fmtBRLShort, fmtBRLFull,
   type TableColumn,
 } from './reports-charts'
-import { resultadoDoPeriodo, ticketMedio, variacaoDaMargemPp } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo, ticketMedio, variacaoDaMargemPp, mediaPorExecucao, participacaoPct } from '@/lib/metrics/resultado'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -855,8 +855,9 @@ function TabProcedimentos(p: ReportsBiProps) {
     category: d.categoria,
     count:    d.execucoes,
     revenue:  d.receita,
-    ticket:   d.execucoes > 0 ? d.receita / d.execucoes : 0,
-    pct:      totalRev > 0 ? ((d.receita / totalRev) * 100).toFixed(1) : '0.0',
+    // As duas contas moram em lib/metrics (§13.1); a tela só formata.
+    ticket:   mediaPorExecucao(d) ?? 0,
+    pct:      (participacaoPct(d.receita, totalRev) ?? 0).toFixed(1),
   }))
 
   return (
