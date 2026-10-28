@@ -101,6 +101,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   sempre vazio). Regra do responsável em `crm-inbox.md`.
 - O node guarda o desfecho em português (`ganho`/`perdido`); a etapa, no
   código do banco (`WON`/`LOST`). Comparar os dois direto nunca acha etapa.
+- **O seletor mostra o que está NA CONFIG** (D16, 2026-10-28): o passo "Mandar mensagem" nasce
+  com `canal: 'whatsapp'` gravado (`configPadrao`, `lib/automacoes/ids.ts`); o salvo sem canal mostra
+  "Escolha o canal…" — nunca um WhatsApp que a config não tem (a validação continua exigindo o canal).
+  Prova: `e2e/automacoes-canal-gravado.spec.ts`.
 - Prova de ponta a ponta: `e2e/mensagens-saida.spec.ts` — webhook real →
   automação → resposta pela caixa falsa + os quatro efeitos no card.
 

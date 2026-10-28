@@ -280,3 +280,10 @@ describe('expressões no grafo', () => {
     expect(validarGrafo(g)).toEqual([])
   })
 })
+
+describe('D16: o passo "Mandar mensagem" nasce com o canal gravado', () => {
+  it('configPadrao grava o canal que a tela mostra', async () => {
+    const { configPadrao } = await import('@/lib/automacoes/ids')
+    expect(configPadrao('acao.mensagem')).toMatchObject({ canal: 'whatsapp' })
+  })
+})

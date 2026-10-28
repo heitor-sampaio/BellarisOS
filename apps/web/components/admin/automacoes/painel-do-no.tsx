@@ -258,10 +258,14 @@ export function PainelDoNo({
           <>
             <Campo rotulo="Canal">
               <select
-                className="field" value={(c.canal as string) ?? 'whatsapp'}
+                className="field" value={(c.canal as string) ?? ''}
                 disabled={somenteLeitura}
                 onChange={e => set({ canal: e.target.value })}
               >
+                {/* O seletor mostra o que está NA CONFIG (D16, 2026-10-28): o passo
+                    novo nasce com 'whatsapp' gravado (configPadrao); o salvo sem
+                    canal mostra isto, e não um WhatsApp que ninguém escolheu. */}
+                {!c.canal && <option value="" disabled>Escolha o canal…</option>}
                 <option value="whatsapp">WhatsApp</option>
                 <option value="instagram">Instagram</option>
                 <option value="messenger">Messenger</option>
