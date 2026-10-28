@@ -11,7 +11,7 @@ import type {
   AlertLowStock,
 } from '@/components/admin/admin-dashboard-view'
 import { AdminDashboardDynamic as AdminDashboardView } from '@/components/admin/admin-dashboard-dynamic'
-import { startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import { startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 import {
   resolvePeriod, percent, EMPTY_CORE,
   getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
@@ -21,6 +21,7 @@ import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, contar } from '@/lib/db'
 import { ticketMedio as ticketMedioDe } from '@/lib/metrics/resultado'
+import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 
 // -- Linhas como os selects as pedem ---------------------------------
 type Num = number | string | null
@@ -50,7 +51,7 @@ export default async function AdminDashboardPage({
   // da rede sem `assertPermission` (toda a equipe da rede o vê), então é ele
   // que precisa mandar embora quem não é da rede. Visto no E2E de portais: o
   // cliente final fazia esta página consultar o banco com `tenantId` nulo.
-  if (ctx.isClient) redirect('/login')
+  if (ctx.isClient) redirect('/auth/redirect') // a cliente volta à home dela (A43), não ao login
   if (ctx.branchId !== null && !ctx.isNetworkAdmin) redirect('/')
 
   const perm = ctx.permissions
@@ -279,31 +280,9 @@ export default async function AdminDashboardPage({
   // Buckets vêm prontos do Postgres, já no fuso do negócio. A soma das barras
   // fecha com o KPI do período — antes as fatias eram remontadas em JS sobre
   // o fuso do servidor e divergiam do total.
-  const granularity = period === 'today' ? 'hour' : 'day'
+  const granularity: 'hour' | 'day' = period === 'today' ? 'hour' : 'day'
 
-  const seriesByBucket = new Map(
-    seriesData.map(p => [
-      granularity === 'hour' ? String(partsInTZ(new Date(p.bucket)).hour) : dayKeyTZ(p.bucket),
-      p,
-    ]),
-  )
-
-  const evolutionData = granularity === 'hour'
-    ? Array.from({ length: 24 }, (_, i) => {
-        const point = seriesByBucket.get(String(i))
-        const revenue = point?.revenue ?? 0
-        const cost    = point?.expenses ?? 0
-        return { day: i, revenue, cost, profit: revenue - cost }
-      })
-    : (() => {
-        const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1)
-        return Array.from({ length: days }, (_, i) => {
-          const point   = seriesByBucket.get(dayKeyTZ(addDaysTZ(startDate, i)))
-          const revenue = point?.revenue ?? 0
-          const cost    = point?.expenses ?? 0
-          return { day: i + 1, revenue, cost, profit: revenue - cost }
-        })
-      })()
+  const evolutionData = pontosDaEvolucao(seriesData, { granularidade: granularity, de: startDate, ate: endDate })
 
   // -- Aproveitamento da agenda por filial ---------------------------
   // Renomeado de "ocupação": o denominador é o total marcado, não a

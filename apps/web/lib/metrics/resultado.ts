@@ -39,3 +39,15 @@ export function variacaoDaMargemPp(atual: ResultadoDoPeriodo, anterior: Resultad
   if (atual.margemPct === null || anterior.margemPct === null) return null
   return atual.margemPct - anterior.margemPct
 }
+
+/**
+ * A variação percentual contra o período anterior. SEM base de comparação
+ * (anterior = 0) não existe variação: nulo, e a tela diz "sem dados
+ * anteriores" — antes o dashboard inventava "100%" a partir do zero (A37 da
+ * simulação de 2026-10-27), enquanto os Relatórios diziam a verdade.
+ */
+export function variacaoPercentual(atual: number, anterior: number): { pct: number; up: boolean } | null {
+  if (anterior === 0) return null
+  const pct = ((atual - anterior) / anterior) * 100
+  return { pct: Math.abs(pct), up: pct >= 0 }
+}

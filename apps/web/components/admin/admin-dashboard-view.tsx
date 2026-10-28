@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
+import { variacaoPercentual } from '@/lib/metrics/resultado'
 import { rotulosDoPeriodo } from '@/lib/rotulos-do-periodo'
 import Link from 'next/link'
 import {
@@ -134,12 +135,7 @@ const fmtShort = (v: number) => {
   return fmtBRL(v)
 }
 
-function pctDelta(curr: number, prev: number) {
-  if (prev === 0 && curr === 0) return null
-  if (prev === 0) return { pct: 100, up: true }
-  const pct = ((curr - prev) / prev) * 100
-  return { pct: Math.abs(pct), up: pct >= 0 }
-}
+const pctDelta = variacaoPercentual
 
 const AGE_PIE_COLORS = ['var(--brand)', 'var(--cat-4)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--text-muted)']
 
@@ -284,8 +280,10 @@ function RatingBadge({ value, max = 5 }: { value: number; max?: number }) {
 // --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
-  label, value, format = 'brl', sub, delta, icon, brand = false, anterior = 'mês anterior',
+  label, value, format = 'brl', sub, delta, icon, brand = false, anterior = 'mês anterior', semBase = false,
 }: {
+  /** Não há período anterior com o que comparar: o cartão diz, em vez de calar. */
+  semBase?: boolean
   /** Com o que o delta compara ("ontem", "mês anterior"); nulo esconde o delta. */
   anterior?: string | null
   label:   string
@@ -331,6 +329,11 @@ function KpiCard({
         </span>
       )}
 
+      {delta == null && semBase && anterior && (
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, marginTop: -2, color: brand ? 'rgba(255,255,255,.65)' : 'var(--text-faint)' }}>
+          — sem dados anteriores
+        </span>
+      )}
       {delta != null && anterior && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: -2 }}>
           {delta.up
@@ -458,6 +461,7 @@ export function AdminDashboardView({
           value={totalRevenue}
           format="brl"
           delta={deltaRevenue}
+          semBase={prevRevenue === 0}
           anterior={rotulo.anterior}
           icon={<TrendingUp size={16} color="var(--surface)" />}
         />}
@@ -474,6 +478,7 @@ export function AdminDashboardView({
           format="int"
           sub={`concluídos ${rotulo.noPeriodo}`}
           delta={deltaAppointments}
+          semBase={prevAppointments === 0}
           anterior={rotulo.anterior}
           icon={<Calendar size={16} color="var(--brand)" />}
         />}
@@ -483,6 +488,7 @@ export function AdminDashboardView({
           format="int"
           sub={`${totalClientsEver.toLocaleString('pt-BR')} no total`}
           delta={deltaNewClients}
+          semBase={prevNewClients === 0}
           anterior={rotulo.anterior}
           icon={<Users size={16} color="var(--brand)" />}
         />}

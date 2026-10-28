@@ -97,6 +97,11 @@ export async function ReportsBiSection({
   // 1000 linhas e tinha uma segunda regra de faturamento ao lado do KPI
   // (§13.1). Aqui só sobram LISTAS curtas e com limite: lotes e parcelas.
   const granularity = period === 'today' ? 'hour' : 'day'
+  // A aba Agenda é uma LISTA do período: fecha no FIM dele (fullTo), com os
+  // agendamentos futuros e o cancelamento de amanhã. Fechar em "agora" deixava
+  // metade do mês de fora, sem aviso (A38). As outras abas seguem o dinheiro,
+  // que só existe até agora.
+  const fimDaJanela = tab === 'agenda' ? periodInfo.fullTo : endDate
   const needBatches = tab === 'estoque'
   const needInstall = tab === 'financeiro'
   const needClientes = tab === 'clientes'
@@ -113,7 +118,7 @@ export async function ReportsBiSection({
   ] = await Promise.all([
     getRelatorio({
       tenantId: ctx.tenantId!, branchIds,
-      from: startDate, to: endDate, prevFrom: prevStart, prevTo: prevEnd,
+      from: startDate, to: fimDaJanela, prevFrom: prevStart, prevTo: prevEnd,
       aba: tab, granularidade: granularity,
     }),
 
@@ -162,7 +167,7 @@ export async function ReportsBiSection({
     // O dinheiro e as contagens do período, agregados no Postgres — a mesma
     // conta do dashboard. Atendimentos, novos clientes, ticket, agenda e
     // comissões também saem daqui: recontar na tela era a segunda cópia.
-    getCore({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }),
+    getCore({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela }),
     getCore({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }),
     getSeries({
       tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,

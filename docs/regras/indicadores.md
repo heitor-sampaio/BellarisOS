@@ -210,5 +210,17 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - Quem já via a aba Financeiro ganhou a Vendas na migration; daí em diante ela
   se marca em Cargos. Prova: `e2e/relatorio-vendas.spec.ts`.
 
+**Variação contra o período anterior e a aba Agenda (2026-10-27)**
+- Sem período anterior (anterior = 0) não existe variação:
+  `variacaoPercentual` (`lib/metrics/resultado.ts`) devolve nulo e a tela diz
+  "sem dados anteriores" — dashboard e Relatórios, a mesma regra. Nunca "100%"
+  inventado a partir do zero.
+- A aba **Agenda** dos Relatórios é uma LISTA do período: o núcleo e
+  `metrics_relatorio` dela fecham no `fullTo`, com os agendamentos futuros e
+  os cancelados do período, e a tela avisa. As demais abas seguem o dinheiro
+  (até agora). Prova: `e2e/indicadores-dashboard-e-agenda.spec.ts`.
+- O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
+  dos Relatórios.
+
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).

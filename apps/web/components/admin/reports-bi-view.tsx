@@ -639,6 +639,9 @@ function TabAgenda(p: ReportsBiProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+        Inclui os agendamentos até o fim do período, com os futuros e os cancelados.
+      </p>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Total Agendamentos" value={total}     format="int" />
         <KpiCard label="Realizados"         value={completed} format="int" delta={pctDelta(completed, corePrev.appointmentsCompleted)} showDelta />
