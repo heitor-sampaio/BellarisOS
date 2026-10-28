@@ -164,6 +164,8 @@ export interface ProfileRecordEntry {
   /** A evolução e a intercorrência gravadas ao concluir (D4, 2026-10-27). */
   evolucao:        string | null
   intercorrencias: string | null
+  /** As dores do cliente registradas no atendimento (D3, 2026-10-28). */
+  queixas?:        string | null
 }
 
 interface Props {
@@ -1694,7 +1696,7 @@ export function ClientProfile({
                     />
                   ),
                 } : null}
-                evolucao={{ texto: entry.evolucao, intercorrencias: entry.intercorrencias }}
+                evolucao={{ texto: entry.evolucao, intercorrencias: entry.intercorrencias, queixas: entry.queixas ?? null }}
               />
             ))
           )}

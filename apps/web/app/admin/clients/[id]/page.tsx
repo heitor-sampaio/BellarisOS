@@ -104,7 +104,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('medical_records')
-      .select('id, general_anamnesis, entries:medical_record_entries(appointment_id, notes, intercurrences, form_data, created_at)')
+      .select('id, general_anamnesis, entries:medical_record_entries(appointment_id, notes, intercurrences, queixas, form_data, created_at)')
       .eq('client_id', id)
       .maybeSingle(), 'carregar o prontuário'),
 

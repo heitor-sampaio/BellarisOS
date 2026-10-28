@@ -31,6 +31,7 @@ import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
+import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 
@@ -693,6 +694,13 @@ async function finishSessionInterno(
     const notes          = (formData.get('notes') as string)?.trim() || null
     const intercurrences = (formData.get('intercurrences') as string)?.trim() || null
     const slug           = (formData.get('slug') as string)?.trim()
+    // As dores e a anamnese digitadas na tela (D3 da simulação de 2026-10-28):
+    // vão NA MESMA transação da conclusão. Sem o campo no formulário (a tela
+    // que não os tem), nada muda no que já estava gravado.
+    const temQueixas     = formData.has('queixas')
+    const queixas        = ((formData.get('queixas') as string | null) ?? '').trim() || null
+    let anamneseDigitada: unknown = null
+    try { anamneseDigitada = JSON.parse((formData.get('anamnese') as string | null) ?? 'null') } catch { /* JSON inválido → sem anamnese */ }
 
     const admin = createAdminClient()
 
@@ -817,6 +825,14 @@ async function finishSessionInterno(
       return { insumos, avisos }
     }
 
+    // A anamnese: montada aqui (a ficha atual, as respostas limpas); nula
+    // quando não há resposta ou nada mudou — aí a conclusão não a toca.
+    const anamnese = anamneseDigitada && typeof anamneseDigitada === 'object' && appt.client_id
+      ? await anamneseDaEquipeParaGravar(admin, {
+          tenantId: ctx.tenantId!, clientId: appt.client_id as string, respostas: anamneseDigitada, porUsuario: ctx.internalUserId,
+        })
+      : null
+
     // ─── Grava, tudo ou nada ──────────────────────────────────────────────
     const userName = ctx.userName || await getUserName(admin, ctx.userId)
     let avisos: string[] = []
@@ -828,7 +844,11 @@ async function finishSessionInterno(
         p_tenant:      ctx.tenantId!,
         p_ator:        ctx.internalUserId,
         p_ator_nome:   userName,
-        p_dados:       { notas: notes, intercorrencias: intercurrences, comissoes, insumos: m.insumos },
+        p_dados:       {
+          notas: notes, intercorrencias: intercurrences, comissoes, insumos: m.insumos,
+          ...(temQueixas ? { queixas } : {}),
+          ...(anamnese ? { anamnese } : {}),
+        },
       })
     })
     const gravado = await gravar(Promise.resolve(resposta), 'concluir o atendimento') as {

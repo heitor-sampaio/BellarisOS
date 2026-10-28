@@ -46,32 +46,38 @@ export function RespostasDaAnamnese({ rows, respostas }: { rows: AnamnesisRow[];
   )
 }
 
-export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, embedded = false }: {
+export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, embedded = false, rascunho = null, onMudou }: {
   anamnese:   AnamneseGeral | null
   fichaAtual: FichaDePreAtendimento
   clientId:   string
   canEdit:    boolean
   /** Dentro da ficha do atendimento: sem o card e o título próprios. */
   embedded?:  boolean
+  /** As respostas do rascunho do atendimento (D3): abre editando, com elas. */
+  rascunho?:  Record<string, unknown> | null
+  /** Cada resposta mudada (o rascunho e o "Finalizar"); `null` depois de salvar. */
+  onMudou?:   (respostas: Record<string, unknown> | null) => void
 }) {
   const router = useRouter()
   // Sem anamnese ainda (ou vazia), a ficha já abre para responder (quem pode editar).
   const respondida = anamneseRespondida(anamnese)
-  const [editando, setEditando] = useState(!respondida && canEdit)
+  const [editando, setEditando] = useState((!respondida || !!rascunho) && canEdit)
 
   const corpo = editando ? (
     <AnamnesisFormRenderer
       appointmentId="" slug=""
       formName={fichaAtual.nome}
       rows={fichaAtual.rows}
-      initial={(anamnese?.respostas ?? {}) as AnamnesisAnswers}
+      initial={(rascunho ?? anamnese?.respostas ?? {}) as AnamnesisAnswers}
       canEdit
       semInjetaveis
       rotuloSalvar="Salvar anamnese"
+      onAnswersChange={onMudou}
       saveAction={async ({ answers }) => {
         const r = await salvarAnamneseGeral({ clientId, respostas: answers })
         if ('error' in r) return { error: r.error }
         setEditando(false)
+        onMudou?.(null)
         router.refresh()
         return { ok: true }
       }}
@@ -130,7 +136,11 @@ export interface AnamneseNaAvaliacaoHandle {
 export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
   anamnese: AnamneseGeral | null
   fichaAtual: FichaDePreAtendimento
-}>(function AnamneseNaAvaliacao({ anamnese, fichaAtual }, ref) {
+  /** As respostas do rascunho do atendimento (D3): o formulário nasce com elas. */
+  rascunho?: Record<string, unknown> | null
+  /** Cada resposta mudada (o rascunho e o "Finalizar" — D3). */
+  onMudou?: (respostas: Record<string, unknown>) => void
+}>(function AnamneseNaAvaliacao({ anamnese, fichaAtual, rascunho = null, onMudou }, ref) {
   const renderer = useRef<AnamnesisFormHandle>(null)
   const colhidas = useRef<Record<string, unknown> | null>(null)
 
@@ -158,10 +168,11 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
           appointmentId="" slug=""
           formName={fichaAtual.nome}
           rows={fichaAtual.rows}
-          initial={(anamnese?.respostas ?? {}) as AnamnesisAnswers}
+          initial={(rascunho ?? anamnese?.respostas ?? {}) as AnamnesisAnswers}
           canEdit
           semInjetaveis
           hideSaveButton
+          onAnswersChange={onMudou}
           saveAction={async ({ answers }) => { colhidas.current = answers; return { ok: true } }}
         />
       </div>

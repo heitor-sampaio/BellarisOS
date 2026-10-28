@@ -437,7 +437,7 @@ O que a transação grava, na ordem:
 | # | O que grava | Onde |
 |---|---|---|
 | 1 | status `COMPLETED` + `completed_at` (agendamento TRAVADO, status conferido de novo) | `appointments` |
-| 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento | `medical_records`, `medical_record_entries` |
+| 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento — evolução, intercorrência e as DORES do cliente; e a anamnese digitada na tela, fechando o pré-atendimento pendente (D3, 2026-10-28) | `medical_records`, `medical_record_entries`, `pre_atendimentos` |
 | 3 | uma linha de comissão por procedimento (regra e configuração retratadas) e o primeiro acerto do extrato (§9.7) | `commission_lines`, `commissions` |
 | 4 | cada insumo — e, pelos gatilhos, evento, mínimo e baixa do lote | `stock_movements`, `branch_product_stock` |
 | 5 | a sessão do pacote usada e o contador (soma no banco) | `package_sessions`, `client_packages` |
@@ -476,9 +476,30 @@ O resto do fluxo:
 - **O "Finalizar" leva a evolução que está NA TELA**: o modal abre com o que a
   profissional escreveu na página (avaliação ou ficha), não com o gravado —
   sem "Salvar" antes, a evolução se perdia (simulação de 2026-10-20).
+- **E leva também as dores e a anamnese digitadas, na MESMA transação** (D3
+  da simulação de 2026-10-28, decisão do Heitor): só o "Enviar para a
+  recepção" (que exige plano) as mandava. `finishSession` recebe `queixas`
+  (só quando a tela tem o campo — sem ele, a dor gravada fica) e a anamnese
+  que alguém MEXEU (`anamneseDaEquipeParaGravar`, `lib/pre-atendimento/ficha.ts`:
+  a ficha atual, as respostas limpas; nula sem resposta ou sem mudança — a
+  ficha que a cliente respondeu não vira "pela equipe"), e
+  `concluir_atendimento` grava tudo e fecha o pré-atendimento pendente. O
+  "Finalizar" não exige as obrigatórias da ficha: a cliente já foi atendida.
+  Prova: `e2e/atendimento-finalizar-grava-tudo.spec.ts`,
+  `tests/rascunho-do-atendimento.test.ts`.
+- **As dores do cliente são do PRONTUÁRIO do atendimento**
+  (`medical_record_entries.queixas`, migration `20261028000302`), não
+  `appointments.notes` — que é a observação INTERNA do agendamento e
+  aparecia como dor na tela (A17). A dor nasce vazia; a observação aparece
+  à parte ("Observação do agendamento"). As dores só vão à tela com
+  `canViewRecords`, aparecem na aba Prontuário da ficha e no pacote LGPD
+  (parte clínica). O "Enviar para a recepção" grava nelas; o envio do plano
+  em rascunho aceita as dores OU a observação, como antes.
 - **A evolução escrita tem rascunho, e ele morre com a aba** (A31 da
   simulação de 2026-10-27, decisão do Heitor): a evolução e a intercorrência
-  da tela do atendimento (dos dois formulários) vão para o SESSIONStorage,
+  da tela do atendimento (dos dois formulários) — e, desde o D3 de 2026-10-28,
+  as dores, a anamnese digitada e os insumos (a dose e o marcado, depois que
+  alguém mexe) — vão para o SESSIONStorage,
   por agendamento (`lib/atendimento/rascunho.ts`) — recarregar não as perde,
   e fechar a aba as apaga: texto clínico não fica na máquina da recepção.
   Nunca localStorage. Encerrar o atendimento, salvar no servidor ou gerar o
@@ -500,7 +521,8 @@ O resto do fluxo:
 ❌ Atualizar currentStock diretamente sem criar StockMovement
 ❌ Alterar price de um procedimento sem criar ProcedurePriceHistory
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
-❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só)
+❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores e a anamnese do "Finalizar"
+❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts
 ❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)

@@ -17,6 +17,8 @@ export interface RawMreEntry {
   appointment_id?: string | null
   notes?:          string | null
   intercurrences?: string | null
+  /** As dores do cliente (D3, 2026-10-28). */
+  queixas?:        string | null
   form_data?:      { ficha?: FormBlob } | null
   created_at?:     string
 }
@@ -40,7 +42,7 @@ function texto(v: string | null | undefined): string | null {
 
 /**
  * Os atendimentos com REGISTRO clínico, mais recente primeiro: a evolução, a
- * intercorrência e a ficha do procedimento. Basta um dos três — a avaliação
+ * intercorrência, as dores (D3, 2026-10-28) e a ficha do procedimento. Basta um — a avaliação
  * não tem ficha ligada, e a evolução dela sumia da aba Prontuário (D4 da
  * simulação de 2026-10-27). Só a entrada sem nada fica de fora.
  */
@@ -53,7 +55,8 @@ export function buildRecordForms(
       const ficha           = toSnapshot(e.form_data?.ficha)
       const evolucao        = texto(e.notes)
       const intercorrencias = texto(e.intercurrences)
-      if (!ficha && !evolucao && !intercorrencias) return []
+      const queixas         = texto(e.queixas)
+      if (!ficha && !evolucao && !intercorrencias && !queixas) return []
       const appointmentId = e.appointment_id ?? ''
       return [{
         appointmentId,
@@ -62,6 +65,7 @@ export function buildRecordForms(
         ficha,
         evolucao,
         intercorrencias,
+        queixas,
       }]
     })
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))

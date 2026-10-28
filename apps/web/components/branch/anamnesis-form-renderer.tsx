@@ -35,10 +35,12 @@ interface Props {
   semInjetaveis?: boolean
   /** O texto do botão de salvar (padrão: "Salvar ficha"). */
   rotuloSalvar?: string
+  /** Avisa a cada resposta mudada (o rascunho do atendimento e o "Finalizar" a usam — D3). */
+  onAnswersChange?: (answers: AnamnesisAnswers) => void
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
-  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha' }, ref,
+  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha', onAnswersChange }, ref,
 ) {
   const doSave = saveAction ?? salvarFichaDoProcedimento
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
@@ -73,16 +75,17 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
   }, [fotosSalvas])
 
   function setAnswer(id: string, value: AnswerValue) {
-    setAnswers(a => ({ ...a, [id]: value }))
+    const next = { ...answers, [id]: value }
+    setAnswers(next)
+    onAnswersChange?.(next)
     setSavedAt(null)
     setInvalido(v => (v?.id === id ? null : v))
   }
   function toggleCheckbox(id: string, opt: string) {
-    setAnswers(a => {
-      const cur = Array.isArray(a[id]) ? (a[id] as string[]) : []
-      const next = cur.includes(opt) ? cur.filter(o => o !== opt) : [...cur, opt]
-      return { ...a, [id]: next }
-    })
+    const cur = Array.isArray(answers[id]) ? (answers[id] as string[]) : []
+    const next = { ...answers, [id]: cur.includes(opt) ? cur.filter(o => o !== opt) : [...cur, opt] }
+    setAnswers(next)
+    onAnswersChange?.(next)
     setSavedAt(null)
     setInvalido(v => (v?.id === id ? null : v))
   }

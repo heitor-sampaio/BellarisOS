@@ -794,14 +794,15 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
     return { error: 'Adicione ao menos uma sessão ao plano antes de enviar.' }
   }
 
-  // 3. Dores do cliente (appointment.notes)
+  // 3. Dores do cliente: no prontuário do atendimento (desde o D3 de
+  //    2026-10-28); a observação do agendamento continua valendo, como antes.
   if (plan.evaluation_appointment_id) {
-    const appt = await ler(admin
-      .from('appointments')
-      .select('notes')
-      .eq('id', plan.evaluation_appointment_id)
-      .single(), 'buscar o agendamento')
-    if (!appt?.notes?.trim()) {
+    const [appt, entrada] = await Promise.all([
+      ler(admin.from('appointments').select('notes').eq('id', plan.evaluation_appointment_id).single(), 'buscar o agendamento'),
+      ler(admin.from('medical_record_entries').select('queixas').eq('appointment_id', plan.evaluation_appointment_id).maybeSingle(),
+        'buscar as dores do atendimento'),
+    ])
+    if (!entrada?.queixas?.trim() && !appt?.notes?.trim()) {
       return { error: 'Registre as dores/queixas do cliente antes de enviar.' }
     }
   }
@@ -1058,8 +1059,9 @@ async function generateEvaluationPlanInterno(
   const appt = await agendamentoDoTenant(admin, appointmentId, ctx)
   if (!appt) return { error: 'Agendamento não encontrado.' }
 
-  // 1. Queixas do cliente → appointment.notes
-  await gravar(admin.from('appointments').update({ notes: complaints.trim() }).eq('id', appointmentId), 'salvar as queixas do cliente')
+  // 1. Queixas do cliente → o prontuário do atendimento (passo 4). Iam para
+  //    `appointments.notes`, a observação INTERNA do agendamento — que por
+  //    isso aparecia como dor na tela (A17/D3 da simulação de 2026-10-28).
 
   // 2. Anamnese → medical_records.general_anamnesis, no formato da ficha de
   //    pré-atendimento (e o pendente da cliente fecha).
@@ -1111,8 +1113,10 @@ async function generateEvaluationPlanInterno(
   }
   const count = sessions.length
 
-  // 4. Observações do atendimento → medical_record_entries
-  if (sessionNotes.trim() || sessionIntercurrences.trim()) {
+  // 4. Dores e observações do atendimento → medical_record_entries. As dores
+  //    sempre (são exigidas acima); a evolução só quando veio — sem ela, a que
+  //    já estava gravada fica.
+  {
     let medRecord = await ler(admin
       .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle(), 'buscar o prontuário do cliente')
     if (!medRecord) {
@@ -1120,13 +1124,17 @@ async function generateEvaluationPlanInterno(
       medRecord = newRec
     }
     if (medRecord) {
+      const comEvolucao = !!(sessionNotes.trim() || sessionIntercurrences.trim())
       await gravar(admin.from('medical_record_entries').upsert({
         medical_record_id: medRecord.id,
         appointment_id:    appointmentId,
         professional_id:   appt.professional_id,
-        notes:             sessionNotes.trim() || null,
-        intercurrences:    sessionIntercurrences.trim() || null,
-      }, { onConflict: 'appointment_id' }), 'salvar as observações do atendimento')
+        queixas:           complaints.trim(),
+        ...(comEvolucao ? {
+          notes:          sessionNotes.trim() || null,
+          intercurrences: sessionIntercurrences.trim() || null,
+        } : {}),
+      }, { onConflict: 'appointment_id' }), 'salvar as dores e as observações do atendimento')
     }
   }
 

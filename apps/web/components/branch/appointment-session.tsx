@@ -69,6 +69,8 @@ export interface SessionAppointment {
   savedNotes:          string | null
   savedIntercurrences: string | null
   complaints:          string | null
+  /** A observação INTERNA do agendamento (`appointments.notes`) — não é dor do cliente (A17). */
+  internalNotes?:      string | null
   clientConfirmedAt:   string | null
   /** A cliente tem o app (login): só então se espera a confirmação por ele. */
   clientTemApp?:       boolean
@@ -263,10 +265,15 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
 }
 
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
-function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, onClose }: {
+function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, onClose }: {
   appointmentId: string; slug: string
   initialNotes: string | null; initialIntercurrences: string | null
-  insumos: SessionProduct[]; onClose: () => void
+  insumos: SessionProduct[]
+  /** As dores da tela (D3): `undefined` = a tela não tem o campo, e nada muda. */
+  queixas?: string
+  /** A anamnese digitada na tela (D3); nula quando ninguém mexeu. */
+  anamnese?: Record<string, unknown> | null
+  onClose: () => void
 }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(finishSession, null)
@@ -315,6 +322,9 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="products_used" value={JSON.stringify(insumos)} />
+          {/* As dores e a anamnese da tela vão NA MESMA conclusão (D3, 2026-10-28). */}
+          {queixas !== undefined && <input type="hidden" name="queixas" value={queixas} />}
+          {anamnese && <input type="hidden" name="anamnese" value={JSON.stringify(anamnese)} />}
           <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
             <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600 }}>O procedimento foi realizado com sucesso?</p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 3 }}>Confirme para liberar o cliente. Adicione observações se necessário.</p>
@@ -786,7 +796,7 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
         ) : items.map((item, i) => {
           const checked = checkedIds.has(item.productId)
           return (
-            <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: i < items.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
+            <div key={item.productId} data-insumo={item.productId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: i < items.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
               {/* Checkbox */}
               <div
                 onClick={() => !readonly && onToggle(item.productId)}
@@ -813,6 +823,11 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <input type="number" step="0.001" min="0" defaultValue={item.quantity}
+                    // A dose vale ao digitar (o rascunho a guarda já), não só ao sair do campo (D3).
+                    onChange={e => {
+                      const v = parseFloat(e.target.value.replace(',', '.'))
+                      if (!isNaN(v) && v >= 0) onChangeQty(item.productId, v)
+                    }}
                     onBlur={e => {
                       const v = parseFloat(e.target.value.replace(',', '.'))
                       if (!isNaN(v) && v >= 0) onChangeQty(item.productId, v)
@@ -932,6 +947,11 @@ export function AppointmentSession({
   const [checkingIn,    setCheckingIn]    = useState(false)
   const [insumos,       setInsumos]       = useState<SessionProduct[]>(products)
   const [checkedIds,    setCheckedIds]    = useState<Set<string>>(() => new Set(products.map(p => p.productId)))
+  // Os insumos entram no rascunho só depois que alguém mexe neles (D3); a
+  // versão remonta o cartão quando o rascunho os devolve (a dose é um campo
+  // que só lê o valor ao nascer).
+  const [insumosAlterados, setInsumosAlterados] = useState(false)
+  const [versaoDosInsumos, setVersaoDosInsumos] = useState(0)
   const [editingProf,   setEditingProf]   = useState(false)
   const [savingProf,    setSavingProf]    = useState(false)
   const [selectedProfId, setSelectedProfId] = useState(appointment.professionalId)
@@ -942,6 +962,11 @@ export function AppointmentSession({
   const [evalComplaints,         setEvalComplaints]         = useState(appointment.complaints ?? '')
   // A anamnese da avaliação: a ficha de pré-atendimento, colhida ao gerar o plano.
   const anamneseDaAvaliacao = useRef<AnamneseNaAvaliacaoHandle>(null)
+  // A anamnese DIGITADA na tela (nula enquanto ninguém mexe): vai na conclusão
+  // e no rascunho (D3 da simulação de 2026-10-28). A do rascunho remonta o
+  // formulário com ela, que só lê o valor inicial ao nascer.
+  const [anamneseDigitada,   setAnamneseDigitada]   = useState<Record<string, unknown> | null>(null)
+  const [anamneseDoRascunho, setAnamneseDoRascunho] = useState<Record<string, unknown> | null>(null)
   const [evalPlanNotes,          setEvalPlanNotes]          = useState(existingPlan?.notes ?? '')
   const [evalSessionNotes,       setEvalSessionNotes]       = useState(appointment.savedNotes ?? '')
   const [evalSessionInterc,      setEvalSessionInterc]      = useState(appointment.savedIntercurrences ?? '')
@@ -983,6 +1008,7 @@ export function AppointmentSession({
     }
     // A evolução da avaliação foi gravada junto: o rascunho não serve mais.
     limparRascunho(appointment.id)
+    setAnamneseDigitada(null)
     if (!fecharAgora) {
       setGenerating(false)
       router.refresh()
@@ -1038,13 +1064,28 @@ export function AppointmentSession({
     if (r?.intercurrences !== undefined) setIntercurrences(r.intercurrences)
     if (r?.evalNotes !== undefined)      setEvalSessionNotes(r.evalNotes)
     if (r?.evalInterc !== undefined)     setEvalSessionInterc(r.evalInterc)
+    if (r?.queixas !== undefined)        setEvalComplaints(r.queixas)
+    if (r?.anamnese) { setAnamneseDoRascunho(r.anamnese); setAnamneseDigitada(r.anamnese) }
+    if (r?.insumos) {
+      setInsumos(r.insumos.map(i => ({ productId: i.productId, name: i.name, unit: i.unit, quantity: i.quantity })))
+      setCheckedIds(new Set(r.insumos.filter(i => i.marcado).map(i => i.productId)))
+      setInsumosAlterados(true)
+      setVersaoDosInsumos(v => v + 1)
+    }
     /* eslint-enable react-hooks/set-state-in-effect */
     rascunhoPronto.current = true
   }, [appointment.id, podeRascunhar])
   useEffect(() => {
     if (!rascunhoPronto.current || !podeRascunhar) return
-    gravarRascunho(appointment.id, { notes, intercurrences, evalNotes: evalSessionNotes, evalInterc: evalSessionInterc })
-  }, [appointment.id, podeRascunhar, notes, intercurrences, evalSessionNotes, evalSessionInterc])
+    gravarRascunho(appointment.id, {
+      notes, intercurrences, evalNotes: evalSessionNotes, evalInterc: evalSessionInterc,
+      // As dores, a anamnese e os insumos também (D3): recarregar apagava os três.
+      ...(evalComplaints !== (appointment.complaints ?? '') ? { queixas: evalComplaints } : {}),
+      ...(anamneseDigitada ? { anamnese: anamneseDigitada as Record<string, string | string[]> } : {}),
+      ...(insumosAlterados ? { insumos: insumos.map(i => ({ ...i, marcado: checkedIds.has(i.productId) })) } : {}),
+    })
+  }, [appointment.id, appointment.complaints, podeRascunhar, notes, intercurrences, evalSessionNotes, evalSessionInterc,
+      evalComplaints, anamneseDigitada, insumosAlterados, insumos, checkedIds])
   useEffect(() => { if (isDone) limparRascunho(appointment.id) }, [isDone, appointment.id])
 
   const [savingAll,   setSavingAll]   = useState(false)
@@ -1235,7 +1276,8 @@ export function AppointmentSession({
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
       generalAnamnesis={
-        <AnamneseGeralCartao embedded anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={canEditRecords} />
+        <AnamneseGeralCartao embedded anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={canEditRecords}
+          key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
       }
       procedureNode={procedureNode}
       insumos={insumosNode ?? null}
@@ -1256,22 +1298,33 @@ export function AppointmentSession({
     />
   )
 
+  // Mexer nos insumos os põe no rascunho (D3): a dose ajustada sobrevive ao recarregar.
   const insumoProps = {
     items:       insumos,
     available:   availableProducts,
     checkedIds,
     readonly:    isDone,
-    onToggle:    (id: string) => setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }),
-    onChangeQty: (id: string, qty: number) => setInsumos(prev => prev.map(i => i.productId === id ? { ...i, quantity: qty } : i)),
+    onToggle:    (id: string) => {
+      setInsumosAlterados(true)
+      setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+    },
+    onChangeQty: (id: string, qty: number) => {
+      setInsumosAlterados(true)
+      setInsumos(prev => prev.map(i => i.productId === id ? { ...i, quantity: qty } : i))
+    },
     // O adicionado já entra MARCADO: só o marcado baixa, e adicionar é dizer
     // "usei" — desmarcado, ele sumia da conclusão sem ninguém perceber.
     onAdd:       (p: AvailableProduct) => {
+      setInsumosAlterados(true)
       setInsumos(prev => [...prev, { productId: p.id, name: p.name, unit: p.unit, quantity: 1 }])
       setCheckedIds(prev => new Set(prev).add(p.id))
     },
-    onRemove:    (id: string) => { setInsumos(prev => prev.filter(i => i.productId !== id)); setCheckedIds(prev => { const n = new Set(prev); n.delete(id); return n }) },
+    onRemove:    (id: string) => {
+      setInsumosAlterados(true)
+      setInsumos(prev => prev.filter(i => i.productId !== id)); setCheckedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+    },
   }
-  const insumosSection = <InsumoCard embedded {...insumoProps} />
+  const insumosSection = <InsumoCard key={versaoDosInsumos} embedded {...insumoProps} />
 
   return (
     <>
@@ -1343,6 +1396,10 @@ export function AppointmentSession({
           initialNotes={usaFormularioDaAvaliacao ? evalSessionNotes : notes}
           initialIntercurrences={usaFormularioDaAvaliacao ? evalSessionInterc : intercurrences}
           insumos={confirmedInsumos}
+          // As dores e a anamnese da tela vão na conclusão (D3, 2026-10-28). As
+          // dores só existem no formulário da avaliação; a anamnese, onde foi digitada.
+          queixas={usaFormularioDaAvaliacao && canViewRecords ? evalComplaints : undefined}
+          anamnese={anamneseDigitada}
           onClose={() => setShowFinish(false)}
         />
       )}
@@ -1543,6 +1600,16 @@ export function AppointmentSession({
               <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Solicitação da cliente</p>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55 }}>{appointment.clientNotes}</p>
             </>
+          )}
+
+          {/* A observação interna do agendamento, à mostra como observação —
+              ela aparecia como "Dores do cliente" (A17 da simulação de 2026-10-28). */}
+          {appointment.internalNotes && (
+            <div data-observacao-do-agendamento>
+              <div style={{ height: 1, background: 'var(--hairline)', margin: '12px 0' }} />
+              <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Observação do agendamento</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{appointment.internalNotes}</p>
+            </div>
           )}
         </div>
 
@@ -1772,13 +1839,15 @@ export function AppointmentSession({
               // Plano ainda não gerado → formulário unificado
               return (
                 <>
-                  <DorasCard
+                  {/* As dores são prontuário (D3): sem o módulo, nem aparecem. */}
+                  {canViewRecords && <DorasCard
                     value={evalComplaints}
                     onChange={setEvalComplaints}
                     readonly={editLocked}
-                  />
+                  />}
 
-                  <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento} />
+                  <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento}
+                    key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
 
                   <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
@@ -1794,7 +1863,7 @@ export function AppointmentSession({
                   {/* O que foi USADO hoje. O formulário da avaliação não tinha
                       onde lançar: a profissional lançava no editor do plano e o
                       estoque nunca baixava (simulação de 2026-10-20). */}
-                  {canEditRecords && <InsumoCard {...insumoProps} />}
+                  {canEditRecords && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
 
                   {/* Observações do atendimento — controladas, sem save individual.
                       São prontuário: só para quem o escreve. */}

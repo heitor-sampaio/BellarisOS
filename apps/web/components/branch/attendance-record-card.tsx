@@ -36,7 +36,7 @@ interface Props {
   ficha?:           FormSection | null
   /** A evolução e a intercorrência gravadas ao concluir — só no prontuário
    *  (leitura). A avaliação sem ficha tinha só isso, e sumia (D4, 2026-10-27). */
-  evolucao?:        { texto: string | null; intercorrencias: string | null } | null
+  evolucao?:        { texto: string | null; intercorrencias: string | null; queixas?: string | null } | null
 }
 
 function maskCPF(doc: string | null): string | null {
@@ -126,10 +126,11 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
         )}
 
         {/* A evolução do atendimento (prontuário) */}
-        {evolucao && (evolucao.texto || evolucao.intercorrencias) && (
+        {evolucao && (evolucao.texto || evolucao.intercorrencias || evolucao.queixas) && (
           <div style={sectionDivider} data-evolucao>
             <SectionOverline label="Evolução do atendimento" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {evolucao.queixas && <TextoClinico label="Dores do cliente" texto={evolucao.queixas} />}
               {evolucao.texto && <TextoClinico label="Evolução" texto={evolucao.texto} />}
               {evolucao.intercorrencias && <TextoClinico label="Intercorrências" texto={evolucao.intercorrencias} />}
             </div>

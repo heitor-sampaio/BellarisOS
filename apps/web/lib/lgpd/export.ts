@@ -158,7 +158,7 @@ export async function buildClientExport(
   if (includeMedical) {
     const recordRes = await admin
       .from('medical_records')
-      .select('created_at, general_anamnesis, medical_record_entries(created_at, notes, intercurrences, products_used, form_data, appointment_id, users(name), record_photos(created_at, type, source))')
+      .select('created_at, general_anamnesis, medical_record_entries(created_at, notes, intercurrences, queixas, products_used, form_data, appointment_id, users(name), record_photos(created_at, type, source))')
       .eq('client_id', clientId)
       .maybeSingle()
 
@@ -335,7 +335,9 @@ export async function buildClientExport(
           const fotos = ((e.record_photos ?? []) as unknown[]).length
           const notas = String(e.notes ?? '').replace(/\s+/g, ' ').trim()
           const inter = String(e.intercurrences ?? '').replace(/\s+/g, ' ').trim()
+          const dores = String(e.queixas ?? '').replace(/\s+/g, ' ').trim()
           return `${fmtDate(e.created_at as string)} — profissional: ${prof} — fotos: ${fotos}`
+               + (dores ? ` — dores relatadas: ${dores}` : '')
                + (notas ? ` — observações: ${notas}` : '')
                + (inter ? ` — intercorrências: ${inter}` : '')
         }),

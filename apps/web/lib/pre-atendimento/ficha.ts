@@ -94,6 +94,31 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
 }
 
 /**
+ * A anamnese que a EQUIPE manda junto da conclusão do atendimento (D3 da
+ * simulação de 2026-10-28): montada aqui, no formato da ficha ATUAL da rede,
+ * e gravada por `concluir_atendimento`, na MESMA transação (que também fecha
+ * o pendente da cliente, como `gravarAnamneseGeral`). Nula quando não há o
+ * que gravar: nenhuma resposta (não apaga a ficha que existe), ou as mesmas
+ * de agora (a ficha que a cliente respondeu não vira "pela equipe" só porque
+ * a tela a mostrou).
+ */
+export async function anamneseDaEquipeParaGravar(admin: Admin, o: {
+  tenantId: string
+  clientId: string
+  respostas: unknown
+  porUsuario: string | null
+}): Promise<AnamneseGeral | null> {
+  const ficha = await fichaDePreAtendimento(admin, o.tenantId)
+  const respostas = respostasDaFicha(ficha.rows, o.respostas)
+  if (Object.keys(respostas).length === 0) return null
+  const atual = await ler(admin.from('medical_records').select('general_anamnesis')
+    .eq('client_id', o.clientId).maybeSingle(), 'buscar a anamnese atual') as { general_anamnesis: AnamneseGeral | null } | null
+  const antes = atual?.general_anamnesis
+  if (antes?.versao === 2 && mesmasRespostas(antes.respostas, respostas)) return null
+  return { versao: 2, ficha, respostas, respondidoEm: new Date().toISOString(), origem: 'EQUIPE', respondidoPor: o.porUsuario }
+}
+
+/**
  * A cliente respondeu a ficha: a profissional do agendamento é avisada (sino e
  * celular), e o aviso diz a alergia, se houver (2026-10-21, decisão do
  * Heitor). Acessório: falhar aqui não desfaz a resposta.

@@ -67,7 +67,7 @@ export async function SessaoDeAtendimento({
 
     ler(admin
       .from('medical_record_entries')
-      .select('notes, intercurrences, form_data')
+      .select('notes, intercurrences, form_data, queixas')
       .eq('appointment_id', id)
       .maybeSingle(), 'carregar a ficha do atendimento'),
   ])
@@ -355,7 +355,10 @@ export async function SessaoDeAtendimento({
     // A evolução é prontuário: sem o módulo, a tela não a recebe (2026-10-03).
     savedNotes:          canViewRecords ? (mreRaw?.notes ?? null) : null,
     savedIntercurrences: canViewRecords ? (mreRaw?.intercurrences ?? null) : null,
-    complaints:          apptRaw.notes ?? null,
+    // As dores são do prontuário do atendimento (D3 de 2026-10-28); a
+    // observação do agendamento é outra coisa e vai à parte (A17).
+    complaints:          canViewRecords ? (mreRaw?.queixas ?? null) : null,
+    internalNotes:       apptRaw.notes ?? null,
     clientConfirmedAt:   apptRaw.client_confirmed_at ?? null,
     clientTemApp:        !!(apptRaw.client as { auth_id?: string | null } | null)?.auth_id,
     clientRating:        apptRaw.client_rating ?? null,

@@ -54,6 +54,42 @@ describe('rascunho do atendimento', () => {
     expect(lerRascunho('ag-2', s)).toEqual({ evalNotes: 'ok' })
   })
 
+  // D3 da simulação de 2026-10-28: recarregar apagava as dores, a anamnese e
+  // a dose do insumo — o rascunho guardava só a evolução e a intercorrência.
+  it('guarda também as dores, a anamnese e os insumos (com a dose e o marcado)', () => {
+    const s = armazem()
+    const r = {
+      queixas: 'Manchas na testa',
+      anamnese: { allergies: 'Nega alergias', skinType: 'Mista', metodos: ['Pílula', 'DIU'] },
+      insumos: [{ productId: 'p1', name: 'Toxina', unit: 'UI', quantity: 32, marcado: true }],
+    }
+    gravarRascunho('ag-1', r, s)
+    expect(lerRascunho('ag-1', s)).toEqual(r)
+  })
+
+  it('só a anamnese ou só os insumos já é rascunho; o que não é do formato fica de fora', () => {
+    const s = armazem()
+    gravarRascunho('ag-1', { anamnese: { allergies: 'Látex' } }, s)
+    expect(lerRascunho('ag-1', s)).toEqual({ anamnese: { allergies: 'Látex' } })
+    gravarRascunho('ag-2', { insumos: [{ productId: 'p1', name: 'Gaze', unit: 'un', quantity: 2, marcado: false }] }, s)
+    expect(lerRascunho('ag-2', s)?.insumos).toHaveLength(1)
+    s.setItem(chaveDoRascunho('ag-3'), JSON.stringify({
+      queixas: 5,
+      anamnese: { allergies: 'ok', ruim: { x: 1 }, lista: ['a', 2] },
+      insumos: [{ productId: 'p1', name: 'X', unit: 'un', quantity: 'muito', marcado: true }, { productId: 'p2', name: 'Y', unit: 'ml', quantity: 3, marcado: true }],
+    }))
+    expect(lerRascunho('ag-3', s)).toEqual({
+      anamnese: { allergies: 'ok' },
+      insumos: [{ productId: 'p2', name: 'Y', unit: 'ml', quantity: 3, marcado: true }],
+    })
+  })
+
+  it('anamnese em branco não conta como rascunho', () => {
+    const s = armazem()
+    gravarRascunho('ag-1', { anamnese: { allergies: '  ' }, queixas: '' }, s)
+    expect(s.getItem(chaveDoRascunho('ag-1'))).toBeNull()
+  })
+
   it('armazenamento que lança ou falta não derruba a tela', () => {
     expect(() => gravarRascunho('ag-1', { notes: 'x' }, quebrado)).not.toThrow()
     expect(lerRascunho('ag-1', quebrado)).toBeNull()

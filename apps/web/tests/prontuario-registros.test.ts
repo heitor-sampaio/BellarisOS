@@ -26,6 +26,15 @@ describe('buildRecordForms', () => {
     })
   })
 
+  // D3 da simulação de 2026-10-28: as dores do cliente passaram a ser do
+  // prontuário do atendimento (`medical_record_entries.queixas`).
+  it('lista o atendimento só com as dores do cliente, com o texto delas', () => {
+    const r = buildRecordForms([
+      { appointment_id: 'a1', notes: null, intercurrences: null, queixas: 'Manchas na testa', form_data: null, created_at: '2026-10-28T17:19:28Z' },
+    ], nomes)
+    expect(r.map(e => e.queixas)).toEqual(['Manchas na testa'])
+  })
+
   it('lista o atendimento só com intercorrência', () => {
     const r = buildRecordForms([
       { appointment_id: 'a1', notes: null, intercurrences: 'Eritema leve', form_data: null, created_at: '2026-10-27T17:19:28Z' },
