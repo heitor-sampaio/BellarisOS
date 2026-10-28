@@ -7209,12 +7209,21 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   (1d85d64): um filtro só, `filtroDeQuemAtendeNaUnidade` (a unidade OU a
   rede, com `tenant_id`), na lista em cache, na conferência do app da
   cliente, no horário da agenda e na ocupação do dashboard da unidade.
-- **D2 (alta)** a ficha de saúde do app aceita o envio vazio e vira
+- ~~**D2 (alta)** a ficha de saúde do app aceita o envio vazio e vira
   "Anamnese revisada / respondida pela cliente" (a ficha padrão não tem campo
-  obrigatório; `responderPreAtendimento` grava `{}`). NOVO.
-- **D3 (alta)** dores e anamnese digitadas no atendimento se perdem no
+  obrigatório; `responderPreAtendimento` grava `{}`). NOVO.~~ **feito em
+  2026-10-28** (ec831a0): o servidor recusa a ficha da cliente vazia ou com
+  obrigatória em branco (app, "nada mudou" e link); a ficha padrão nasce com
+  alergia, gestação, medicamentos e condições de saúde obrigatórios (e as
+  fichas nunca editadas das redes existentes também); a ficha vazia não é
+  "respondida" em lugar nenhum (selo, agenda, "algo mudou?", janela de 30 dias).
+- ~~**D3 (alta)** dores e anamnese digitadas no atendimento se perdem no
   "Finalizar atendimento" (só seguem pelo "Enviar para a recepção"); recarregar
-  apaga também a dose do insumo. NOVO (limite do rascunho do A31, `2ad0072`).
+  apaga também a dose do insumo. NOVO (limite do rascunho do A31, `2ad0072`).~~
+  **feito em 2026-10-28** (142e89b): o "Finalizar" leva as dores e a anamnese
+  digitadas para `concluir_atendimento`, na mesma transação; as dores viraram
+  prontuário (`medical_record_entries.queixas`) e o rascunho guarda dores,
+  anamnese e insumos. Resolveu junto o A17 (a observação interna não vira dor).
 - ~~**D4 (alta)** a profissional OWN abre pela URL o atendimento de outra e faz
   o check-in (a página só pede `agenda: VIEW`; `checkinCore` não confere o
   dono). O clínico NÃO vazou. NOVO.~~ **feito em 2026-10-28** (c478445):
@@ -7258,9 +7267,13 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   "Lançar o custo como despesa paga hoje", marcada, e a despesa nasce na
   mesma transação (`estoque_compra`, que o cadastro também usa). Os R$ 1.800
   da Íris ficaram como estão.
-- **D14 (média)** mapa de injetáveis: "Confirmar aplicação" é só estado local
+- ~~**D14 (média)** mapa de injetáveis: "Confirmar aplicação" é só estado local
   e some ao recarregar (a aplicação congelada nasce só dentro do atendimento,
-  que na toxina não oferece o mapa). NOVO.
+  que na toxina não oferece o mapa). NOVO.~~ **feito em 2026-10-28** (6095dfd):
+  fora do atendimento o mapa não oferece "Confirmar aplicação" e diz que a
+  aplicação se registra no atendimento. A toxina sem mapa no atendimento é
+  configuração (o procedimento não tem ficha com o planejador; o mapa do
+  Planejamento estava lá) — ficou como está.
 - **D15 (baixa)** o chip de estoque por unidade usa a primeira palavra do
   nome ("Íris · 3 frasco" duas vezes). NOVO.
 - **D16 (baixa)** automação: o canal "WhatsApp" aparece no seletor sem estar
@@ -7319,6 +7332,41 @@ Decisões da frente B (D6, D9, D13), tomadas na correção:
 - `financeiro-a-receber-concluido` ("D5: a janela da agenda…", o clique no
   bloco da avaliação de R$ 0) falha também SEM as mudanças desta frente
   (conferido com stash): fica para a frente F.
+
+Decisões da frente C (D2, D3, D14), tomadas na correção:
+- **As obrigatórias da ficha padrão** são as quatro contraindicações clínicas
+  que ela tinha: alergias, gestação/amamentação, medicamentos em uso e
+  condições de saúde. Pele, protetor, procedimentos anteriores e observações
+  seguem opcionais.
+- **A obrigatória vale para a EQUIPE também** quando ela preenche a ficha
+  pelo construtor (salvar a anamnese, "Enviar para a recepção"): é o
+  comportamento de "obrigatório" que já existia (a Aurora tinha a alergia
+  obrigatória). O "Finalizar" não exige — a cliente já foi atendida.
+- **"Nada mudou" com resposta antiga incompleta** (anterior às obrigatórias)
+  é recusado com "Preencha X. Toque em Atualizar respostas" (no link,
+  "Atualize as respostas"): a confirmação passa a cobrir as obrigatórias.
+- **A ficha que a EQUIPE salva vazia** continua gravando a anamnese (a equipe
+  pode limpar), mas não fecha o pendente da cliente nem avisa a profissional.
+- **A linha já gravada vazia** (a Luíza da Íris, atendimento concluído) não
+  foi mexida: pela regra nova ela já não conta como respondida, e o próximo
+  agendamento dela pede a ficha.
+- **As dores mudaram de lugar** (`appointments.notes` →
+  `medical_record_entries.queixas`), e por isso o A17 foi feito junto: a
+  observação interna aparece como "Observação do agendamento" na faixa da
+  cliente. Só a avaliação da Bellaris Clinic (plano aceito) teve a dor
+  copiada; a da Aurora (plano em rascunho, nota de recepção) não. O envio do
+  plano em rascunho aceita as dores OU a observação, como antes. As dores
+  agora só vão à tela para quem vê o prontuário, aparecem na aba Prontuário
+  da ficha e no pacote LGPD (parte clínica).
+- **O "Finalizar" só grava a anamnese que alguém MEXEU**, e só se mudou: a
+  ficha que a cliente respondeu e ninguém tocou continua "pela cliente".
+- **O rascunho guarda os insumos só depois que alguém mexe neles**, e a dose
+  passa a valer ao digitar (antes, só ao sair do campo).
+- **Fora do atendimento** o mapa não confirma; dentro dele, "Confirmar
+  aplicação" segue (é onde se ajusta a dose aplicada antes de registrar).
+- **Arquivos compartilhados mexidos**: `lib/cached-queries.ts` (o select do
+  prontuário ganhou `queixas`) e `packages/nucleo/src/estilos/globals.css`
+  (o selo "Ficha de saúde vazia"). Vale uma completa, quando o Heitor quiser.
 
 ### Próximas fases já combinadas
 
