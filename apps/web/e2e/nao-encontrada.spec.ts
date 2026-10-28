@@ -23,6 +23,26 @@ test('no portal da rede: dentro do layout, com a barra lateral e a volta ao dash
   await expect(page.getByRole('link', { name: 'Voltar ao início' })).toHaveAttribute('href', '/admin/dashboard')
 })
 
+/**
+ * Frente F (2026-10-28): com o 404 de verdade (D18), o `notFound()` sai fora de
+ * Suspense e o Next responde com a casca de erro — a página é desenhada pelo
+ * navegador, e o `<script>` do layout raiz que dá ao navegador o endereço do
+ * Supabase não roda. Na produção (imagem buildada sem NEXT_PUBLIC_*) o sino e
+ * o Realtime do layout quebravam: "Algo deu errado" no lugar da tela. O
+ * `next dev` embute as NEXT_PUBLIC_* e não mostra a quebra; o que dá para
+ * provar aqui é a reserva no documento desenhado (as <meta> do layout), que é
+ * de onde `configDoSupabaseNoNavegador` lê (tests/supabase-config-do-navegador).
+ */
+test('no 404 de cada portal, a config do Supabase está no documento mesmo sem o script', async ({ page }) => {
+  const unidade = (await filiaisAtivas())[0]
+  for (const url of ['/admin/equipe-que-nao-existe', ...(unidade ? [`/${unidade.slug}/cashier`] : [])]) {
+    await page.goto(url)
+    await expect(page.getByRole('heading', { name: TITULO })).toBeVisible()
+    await expect(page.locator('meta[name="bellaris-supabase-url"]'), url).toHaveAttribute('content', /^https:\/\//)
+    await expect(page.locator('meta[name="bellaris-supabase-key"]'), url).toHaveAttribute('content', /.+/)
+  }
+})
+
 test('no portal da unidade: dentro do layout e a volta ao dashboard dela', async ({ page }) => {
   const unidade = (await filiaisAtivas())[0]
   test.skip(!unidade, 'nenhuma unidade ativa')

@@ -5,6 +5,7 @@ import { NavigationProgress }    from '@/components/shared/navigation-progress'
 import { NativeShell }           from '@/components/native-shell'
 import { ValidacaoEmPortugues }  from '@/components/shared/validacao-em-portugues'
 import { Toaster }               from 'sonner'
+import { META_SUPABASE_URL, META_SUPABASE_KEY } from '@estetica-os/nucleo/lib/supabase/config-do-navegador'
 
 // Garante renderização dinâmica em todas as páginas para que as env vars de
 // runtime (NEXT_PUBLIC_SUPABASE_URL, etc.) sejam lidas no servidor a cada
@@ -86,6 +87,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: staleActionGuard }} />
         {/* Injeta config em runtime antes de qualquer componente React */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
+        {/* A mesma config, para quando o script não roda: o 404 dos portais é
+            desenhado pelo navegador (lib/supabase/config-do-navegador). */}
+        <meta name={META_SUPABASE_URL} content={supabaseUrl} />
+        <meta name={META_SUPABASE_KEY} content={supabaseKey} />
         {/* Aplica o estado recolhido do sidebar antes do paint (evita flash) */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: "(function(){try{if(localStorage.getItem('sidebar-collapsed')==='1')document.documentElement.classList.add('sidebar-collapsed')}catch(e){}})()" }} />
         {/* Configura shell nativo (classe .capacitor + status bar rosé/branco) */}

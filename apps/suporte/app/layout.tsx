@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import '@estetica-os/nucleo/estilos/globals.css'
 import { Toaster } from 'sonner'
 import { headers } from 'next/headers'
+import { META_SUPABASE_URL, META_SUPABASE_KEY } from '@estetica-os/nucleo/lib/supabase/config-do-navegador'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="pt-BR">
       <body>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
+        {/* A mesma config, para quando o script não roda (a casca de erro do 404). */}
+        <meta name={META_SUPABASE_URL} content={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''} />
+        <meta name={META_SUPABASE_KEY} content={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''} />
         {children}
         <Toaster position="top-right" richColors toastOptions={{ style: { fontFamily: 'var(--font-sans)' } }} />
       </body>
