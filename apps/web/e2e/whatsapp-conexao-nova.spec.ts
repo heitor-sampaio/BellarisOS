@@ -71,7 +71,7 @@ test('"Adicionar número" cria uma instância nova e mostra o QR dela, não a co
 
   // A conexão nova começa do zero — não é a que já está no ar.
   await expect(page.getByRole('button', { name: 'Conectar WhatsApp' })).toBeVisible()
-  await expect(page.getByText('5511987650000')).toHaveCount(0)
+  await expect(page.getByText('(11) 98765-0000')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Conectar WhatsApp' }).click()
 
@@ -134,7 +134,7 @@ test('conectar traz o histórico do pareamento para o inbox, sozinho', async ({ 
 test('"Conexão" de uma caixa existente mostra ELA', async ({ page }) => {
   await abrirOCartao(page)
   await page.locator(`[data-numero="${conectada}"]`).getByRole('button', { name: 'Conexão' }).click()
-  await expect(page.getByText('5511987650000')).toBeVisible()
+  await expect(page.getByText('(11) 98765-0000')).toBeVisible()
   await expect(page.getByText('(Recepção E2E)')).toBeVisible()
 })
 

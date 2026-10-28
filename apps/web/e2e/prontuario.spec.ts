@@ -99,6 +99,10 @@ test.describe.serial('prontuário', () => {
     const anamneseGeral = page.locator('[data-anamnese-geral]').first()
     await anamneseGeral.locator('[data-campo="skinType"] select').selectOption({ index: 1 })
     await anamneseGeral.locator('[data-campo="allergies"] textarea').fill(`${PREFIXO} dipirona`)
+    // As obrigatórias da ficha padrão desde D2 (2026-10-28): sem elas a tela não envia.
+    await anamneseGeral.locator('[data-campo="isPregnantOrBreastfeeding"]').getByRole('radio', { name: 'Não' }).check()
+    await anamneseGeral.locator('[data-campo="medications"] textarea').fill('Nenhum')
+    await anamneseGeral.locator('[data-campo="healthConditions"] textarea').fill('Nenhuma')
     const anamnese = capturarAcao(page, corpo => corpo.includes(c!.cliente) && corpo.includes('dipirona'))
     await page.getByRole('button', { name: 'Salvar anamnese' }).click()
     chamadas.anamnese = await anamnese

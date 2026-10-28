@@ -293,7 +293,7 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
       // notFound() com streaming responde 200 e desenha a página de não encontrado:
       // o que importa é o documento alheio não aparecer.
       await page.goto(`/admin/documentos/${docAlheio!.id}/assinar`)
-      await expect(page.getByText(/could not be found/)).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Página não encontrada' })).toBeVisible()
       await expect(page.getByText(`${PREFIXO} Termo alheio ${marca}`)).toHaveCount(0)
     })
     expect((await documentos({ id: docAlheio!.id }))[0]!.status).not.toBe('ASSINADO')

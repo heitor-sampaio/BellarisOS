@@ -126,7 +126,7 @@ test.describe.serial('documentos: portal do cliente', () => {
       const tela = await page.goto(`/${slug}/cliente/documentos/${docAlheio}`)
       // Em produção a página com streaming responde 200 e o 404 chega depois:
       // espera a tela dizer, em vez de conferir antes de ela desenhar.
-      if (tela?.status() !== 404) await expect(page.getByText(/could not be found/)).toBeVisible()
+      if (tela?.status() !== 404) await expect(page.getByRole('heading', { name: 'Página não encontrada' })).toBeVisible()
       await expect(page.getByText(TITULO)).toHaveCount(0)
       await chamarAcao(page, 'actions/documentos-portal.ts', 'assinarNoPortal', `/${slug}/cliente/documentos/${doc}`, [{
         id: docAlheio, assinatura: 'data:image/png;base64,AAAA', hashExibido: 'x', aceite: 'invasão',
