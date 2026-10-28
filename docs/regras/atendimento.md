@@ -299,7 +299,9 @@ const procedures = await ler(
   A action confere que o atendimento é DESTA cliente, da rede e de unidade ao
   alcance. O cartão só existe para quem vê o prontuário do atendimento
   (`canViewRecords`, já registrado em `prontuario_acessos`); anexar, para
-  quem escreve nele. A foto aparece também na aba Documentos da ficha.
+  quem escreve nele. A foto aparece também na aba Documentos da ficha, com a
+  linha "Atendimento de dd/mm/aaaa · Procedimento" levando à tela dele
+  (`atendimentoDoAnexo`, `lib/clientes/anexos.ts`; o dia no fuso do negócio).
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um

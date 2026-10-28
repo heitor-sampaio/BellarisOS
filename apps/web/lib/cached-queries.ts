@@ -358,7 +358,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .limit(10),
         admin
           .from('client_documents')
-          .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
+          .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at, atendimento:appointments!client_documents_appointment_id_fkey(id, scheduled_at, procedures(name))')
           .eq('client_id', clientId)
           .is('apagado_em', null)
           .order('created_at', { ascending: false }),

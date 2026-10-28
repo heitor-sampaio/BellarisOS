@@ -3,7 +3,7 @@ import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from
 import { idadeEm } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
-import { ehAnexoClinico } from '@/lib/clientes/anexos'
+import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -202,7 +202,7 @@ export default async function ClientProfilePage({
   const { veFinanceiro, transactions, internalCredits, aReceber } = financeiro
 
   // Documents — bucket privado: assinamos os paths (signed URLs, 1h) para download
-  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
+  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
   // Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem sai daqui.
   const rawDocs = ((docsRaw as RawDoc[] | null) ?? []).filter(d => canViewRecords || !ehAnexoClinico(d.category))
   const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path))
@@ -216,6 +216,7 @@ export default async function ClientProfilePage({
     mimeType:    d.mime_type,
     uploadedBy:  d.uploaded_by?.name ?? null,
     createdAt:   d.created_at,
+    atendimento: atendimentoDoAnexo(d.atendimento),
   }))
 
   const canGrantCredit = ctx.permissions.financial === 'MANAGE'

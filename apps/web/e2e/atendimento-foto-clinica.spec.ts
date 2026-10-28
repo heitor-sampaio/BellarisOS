@@ -84,6 +84,22 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
     expect(anexadas[0]).toMatchObject({ category: 'foto_clinica', client_id: cliente })
   })
 
+  // Sobra da frente 8 (2026-10-27): na aba Documentos a foto aparecia sem
+  // dizer de qual atendimento veio. A linha diz o dia e o procedimento, com o
+  // link para a tela do atendimento.
+  test('na aba Documentos da ficha, a foto diz de qual atendimento veio', async ({ browser }) => {
+    const { data: ag } = await db().from('appointments').select('scheduled_at, procedures(name)').eq('id', atendimento).single()
+    const dia = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })
+      .format(new Date(ag!.scheduled_at as string))
+    const procedimento = (ag!.procedures as unknown as { name: string }).name
+    await como(profissional!, browser, async p => {
+      await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
+      const origem = p.locator('[data-documento-atendimento]')
+      await expect(origem, 'a linha da foto diz o atendimento').toHaveText(`Atendimento de ${dia} · ${procedimento}`)
+      await expect(origem).toHaveAttribute('href', `/${slug}/agenda/${atendimento}`)
+    })
+  })
+
   test('a ligação com o atendimento é conferida: o de outra cliente é recusado', async ({ browser }) => {
     await como(profissional!, browser, async p => {
       await p.goto(`/${slug}/agenda/${atendimento}`)

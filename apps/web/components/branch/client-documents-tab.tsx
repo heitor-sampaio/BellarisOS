@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Plus, Upload, FileText, FileImage, File, FileSpreadsheet,
   Download, Trash2, Loader2,
@@ -9,7 +10,8 @@ import {
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { uploadClientDocument, deleteClientDocument } from '@/actions/client-documents'
-import { ehAnexoClinico } from '@/lib/clientes/anexos'
+import { ehAnexoClinico, type AtendimentoDoAnexo } from '@/lib/clientes/anexos'
+import { rotaAtendimento } from '@/lib/rotas'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -23,6 +25,8 @@ export interface ClientDocumentItem {
   mimeType:    string | null
   uploadedBy:  string | null
   createdAt:   string
+  /** O atendimento de onde veio (a foto pela tela do atendimento); nulo = pela ficha. */
+  atendimento?: AtendimentoDoAnexo | null
 }
 
 interface Props {
@@ -218,6 +222,7 @@ function DocumentRow({
 }) {
   const [deleting, setDeleting] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const pathname = usePathname()
   const catColor = CATEGORY_COLOR[doc.category] ?? CATEGORY_COLOR['outro']!
 
   async function handleDelete() {
@@ -257,6 +262,15 @@ function DocumentRow({
           {` · ${format(new Date(doc.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
           {doc.uploadedBy && ` · por ${doc.uploadedBy}`}
         </p>
+        {doc.atendimento && (
+          <Link
+            data-documento-atendimento
+            href={rotaAtendimento(pathname, slug, doc.atendimento.id)}
+            style={{ display: 'inline-block', fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--brand)', marginTop: 2 }}
+          >
+            {doc.atendimento.rotulo}
+          </Link>
+        )}
       </div>
 
       {/* Category badge */}

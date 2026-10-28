@@ -6,7 +6,7 @@ import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
 import { financeiroDaFicha } from '@/lib/clientes/financeiro-da-ficha'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
-import { ehAnexoClinico } from '@/lib/clientes/anexos'
+import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
@@ -117,7 +117,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('client_documents')
-      .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
+      .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at, atendimento:appointments!client_documents_appointment_id_fkey(id, scheduled_at, procedures(name))')
       .eq('client_id', id)
       .is('apagado_em', null)
       .order('created_at', { ascending: false }), 'carregar os documentos'),
@@ -261,13 +261,14 @@ export default async function AdminClientProfilePage({
   const financeiro = await financeiroDaFicha(ctx, id)
   const { veFinanceiro, transactions, internalCredits, aReceber } = financeiro
 
-  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
+  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
   // Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem sai daqui.
   const rawDocs = ((docsRaw as RawDoc[] | null) ?? []).filter(d => canViewRecords || !ehAnexoClinico(d.category))
   const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path))
   const documents: ClientDocumentItem[] = rawDocs.map(d => ({
     id: d.id, name: d.name, category: d.category, fileUrl: docUrlMap[d.file_path] ?? '', fileName: d.file_name,
     fileSize: d.file_size, mimeType: d.mime_type, uploadedBy: d.uploaded_by?.name ?? null, createdAt: d.created_at,
+    atendimento: atendimentoDoAnexo(d.atendimento),
   }))
 
   const PAYMENT_METHOD_LABELS: Record<string, string> = {
