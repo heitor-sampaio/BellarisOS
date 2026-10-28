@@ -6827,10 +6827,24 @@ verdade. O que vale:
   - A Entrada de estoque vira despesa paga hoje (D13), marcada por padrão e só
     com custo informado. A entrada por código de barras e a do Copilot seguem
     sem a opção. Os R$ 1.800 já gravados na Íris ficaram como estavam.
-  - Ainda por fazer, decididas no roteiro: ficha de saúde vazia recusada, com
-    alergia e gestação obrigatórias só na ficha padrão nunca editada (D2);
-    "Finalizar" grava dores e anamnese (D3); fora do atendimento o mapa não
-    oferece "Confirmar aplicação" (D14); conversão de Oportunidades = a de
+  - Ficha de saúde (D2): o servidor recusa a vazia e a com obrigatória em
+    branco (app, "nada mudou" e link). Obrigatórias na ficha padrão: alergias,
+    gestação/amamentação, medicamentos e condições de saúde (pele, protetor,
+    procedimentos anteriores e observações seguem opcionais). Nas redes que
+    já existiam, mudou só a ficha padrão nunca editada (Íris, AgapeFlow,
+    Bellaris Clinic e uma [e2e]; a Aurora tinha editado e ficou). A
+    obrigatória vale também para a equipe ao salvar a anamnese e no "Enviar
+    para a recepção", não no "Finalizar" (a cliente já foi atendida). A ficha
+    vazia salva pela equipe grava, mas não fecha o pendente da cliente.
+  - "Finalizar" (D3): grava dores e anamnese na transação da conclusão; as
+    dores saíram de `appointments.notes` (que é a observação interna) para o
+    prontuário, e só quem vê o prontuário as vê. A anamnese só é gravada se
+    alguém a mudou (a respondida pela cliente não vira "pela equipe"). O
+    rascunho guarda dores, anamnese e insumos.
+  - Mapa (D14): fora do atendimento não há "Confirmar aplicação"; a frase
+    manda abrir o atendimento e usar "Registrar aplicação". A toxina da Íris
+    não oferecia o mapa por CONFIGURAÇÃO (procedimento sem ficha) — ficou assim.
+  - Ainda por fazer, decididas no roteiro: conversão de Oportunidades = a de
     `lib/metrics` (D10); se o Next 16.3.4 não deixar o 404 sem tirar o
     `loading` das telas, fica como limitação, sem subir o Next (D18).
 
