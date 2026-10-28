@@ -3,7 +3,8 @@
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, can, temRecurso } from '@/lib/auth'
+import { parseDinheiro } from '@estetica-os/utils'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
@@ -90,6 +91,12 @@ export async function createTeamMember(
   const branchId         = formData.get('branchId') as string | null
   const providesServices = formData.get('providesServices') === 'on'
   const redirectPath     = (formData.get('redirectPath') as string) ?? '/admin/team'
+  // O percentual padrão de comissão de quem atende (A10): só quem gere o financeiro grava.
+  const comissaoTexto    = ((formData.get('comissao_padrao') as string | null) ?? '').trim()
+  const comissaoPadrao   = providesServices && comissaoTexto ? parseDinheiro(comissaoTexto) : null
+  if (comissaoPadrao !== null && (!Number.isFinite(comissaoPadrao) || comissaoPadrao < 0 || comissaoPadrao > 100)) {
+    return { error: 'A comissão padrão é um percentual entre 0 e 100.' }
+  }
 
   if (!name || !email || !roleId || !password) return { error: 'Preencha todos os campos.' }
   if (password.length < 8) return { error: 'A senha deve ter pelo menos 8 caracteres.' }
@@ -152,9 +159,24 @@ export async function createTeamMember(
 
   await membroCriado(novo.id as string, ctx)
 
+  // A comissão é do financeiro, não da equipe: sem `financial: MANAGE` (e o
+  // recurso no plano) o campo é ignorado, mesmo que venha no pedido.
+  let avisoDaComissao: string | null = null
+  if (comissaoPadrao !== null && can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')) {
+    try {
+      await gravar(admin.rpc('comissao_regras_definir', {
+        p_tenant: ctx.tenantId!, p_profissional: novo.id as string,
+        p_padrao: { tipo: 'PERCENTAGE', valor: comissaoPadrao }, p_excecoes: [], p_ator: ctx.internalUserId ?? null,
+      }), 'salvar a comissão do membro')
+    } catch {
+      avisoDaComissao = 'O membro foi criado, mas a comissão não foi gravada: defina pelo chip de comissão na lista.'
+    }
+  }
+
   revalidatePath(redirectPath)
   revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
   revalidateTag(`user:${authId}`, { expire: 0 })
+  if (avisoDaComissao) return { error: avisoDaComissao }
   return { success: true }
 }
 

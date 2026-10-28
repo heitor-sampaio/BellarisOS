@@ -13,9 +13,12 @@ interface AdminTeamFormProps {
   branches:       Branch[]
   roles:          Role[]
   isNetworkAdmin: boolean
+  /** `financial: MANAGE` com comissões no plano: quem atende já nasce com o percentual padrão. */
+  podeComissao?:  boolean
 }
 
-export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamFormProps) {
+export function AdminTeamForm({ branches, roles, isNetworkAdmin, podeComissao = false }: AdminTeamFormProps) {
+  const [atende, setAtende] = useState(false)
   const [open, setOpen] = useState(false)
   const [scope, setScope] = useState<'branch' | 'network'>('branch')
   const [state, action, pending] = useActionState(createTeamMember, undefined)
@@ -118,11 +121,21 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamForm
 
                 {/* Atende clientes */}
                 <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" name="providesServices" style={{ width: 16, height: 16, accentColor: 'var(--brand)' }} />
+                  <input type="checkbox" name="providesServices" checked={atende} onChange={e => setAtende(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--brand)' }} />
                   <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
                     Atende clientes (aparece na agenda como profissional e gera comissão)
                   </span>
                 </label>
+
+                {atende && podeComissao && (
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
+                    <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
+                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                      Percentual sobre cada atendimento dela. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
+                    </span>
+                  </div>
+                )}
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <label className="overline" htmlFor="tm-password">Senha temporária</label>
