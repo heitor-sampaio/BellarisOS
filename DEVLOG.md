@@ -6958,8 +6958,8 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
 - ~~**D11 (média)** "Agendados pelo comercial" só conta o agendar pelo card do
   CRM (regra), e lá `isComercial = ctx.branchId === null`: SDR de unidade
   nunca conta.~~ **feito em 2026-10-27** (57a21f1): a origem COMMERCIAL é da cliente com oportunidade aberta, decidida no núcleo (card, ficha, agenda, Copilot; SDR de unidade conta).
-- **D12 (baixa)** não há `not-found.tsx`: rota inexistente cai no 404 do Next,
-  em inglês e sem layout.
+- ~~**D12 (baixa)** não há `not-found.tsx`: rota inexistente cai no 404 do Next,
+  em inglês e sem layout.~~ **feito em 2026-10-27** (f1e8414): `not-found.tsx` em português na raiz, em /admin, em /[slug] e no portal da cliente, com o link de volta; um catch-all `[...rota]` leva a tela para dentro do layout certo.
 - A rede "[sim] Clínica Aurora" (`e63779b9-…`) e os logins `sim-*` ficaram no
   banco para o Heitor ver; apagar quando ele pedir.
 - Atritos feitos: A39 e o "− Custo de Insumos R$ 0,00" do DRE (8ec9e9e).
@@ -7062,6 +7062,19 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   deixam) — o defeito era achar o botão ("Desativar" virou "Arquivar cliente") e
   a arquivada contar como cliente nova (migration 20261027000061). A25: `maskPhone`
   trata o 55 do WhatsApp e a ficha convertida grava mascarada.
+
+- Atritos feitos (frente 8, portal, públicas, dashboard e 404): A37, A38 (880f0ea),
+  A40 a A44 (308af38), A46 (a89c98e), a sobra do gráfico do dashboard da rede
+  (880f0ea) e do "Crédito 3x" no histórico do portal (308af38). Decisões: a
+  variação sem período anterior é nula e a tela diz "sem dados anteriores"
+  (`variacaoPercentual`, uma só); a aba Agenda dos Relatórios fecha no
+  `fullTo` e as outras seguem até agora; ao remarcar, o próprio agendamento
+  não ocupa horário (`computeAvailableSlots(…, ignorarAgendamentoId)`; remarcar
+  para o mesmo horário é inofensivo); períodos do dia: manhã até 11:59, tarde
+  até 17:59, noite depois; a cliente que abre /admin vai a `/auth/redirect`; o
+  aviso de documento incompleto da privacidade foi para Configurações do
+  sistema (dados do controlador agora no núcleo). A45 (primeiro toque no aviso
+  da ficha, o do sino) NÃO reproduzido — registrado, sem mudança.
 
 ### Próximas fases já combinadas
 
