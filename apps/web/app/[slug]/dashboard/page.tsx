@@ -214,7 +214,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     ? { value: rawDelta.value.toFixed(1).replace('.', ','), up: rawDelta.up }
     : null
 
-  // Ticket médio = receita dos atendimentos ÷ atendimentos concluídos.
+  // Ticket médio = receita dos atendimentos ÷ atendimentos concluídos COBRADOS.
   // Numerador e denominador do mesmo conjunto — antes o numerador era o caixa
   // (que inclui venda de produto e plano) sobre a contagem da agenda.
   // Dos concluídos COBRADOS (lib/metrics): a avaliação de R$ 0 não puxa a média.
@@ -403,7 +403,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             {avgTicket > 0 ? formatBRL(avgTicket) : '—'}
           </p>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-            {monthCompletedCount ?? 0} atendimentos concluídos
+            {/* O rótulo acompanha a conta (D11): o ticket divide pelos COBRADOS. */}
+            receita de serviço ÷ {core.appointmentsCharged} {core.appointmentsCharged === 1 ? 'atendimento cobrado' : 'atendimentos cobrados'}
           </p>
         </div>
         )}

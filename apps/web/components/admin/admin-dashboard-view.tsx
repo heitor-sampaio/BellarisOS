@@ -502,7 +502,7 @@ export function AdminDashboardView({
           label="Ticket médio"
           value={ticketMedio}
           format="brl"
-          sub="receita ÷ atendimentos"
+          sub="receita de serviço ÷ atendimentos cobrados"
           icon={<Zap size={16} color="var(--brand)" />}
         />}
       </div>
@@ -1261,7 +1261,9 @@ export function AdminDashboardView({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['#', 'Cliente', 'Valor gasto', 'Atend.', 'Ticket médio'].map((h, i) => (
+                  {/* Valor gasto ÷ atendimentos: o PAGO pelos concluídos, não o ticket médio
+                      (receita de serviço ÷ cobrados, que é o da ficha). Outra conta, outro nome (D11). */}
+                  {['#', 'Cliente', 'Valor gasto', 'Atend.', 'Média por atend.'].map((h, i) => (
                     <th key={h} style={{
                       padding: i === 0 ? '9px 8px 9px 18px' : '9px 16px',
                       textAlign: i <= 1 ? 'left' : 'right',

@@ -822,12 +822,14 @@ function TabProcedimentos(p: ReportsBiProps) {
   const topByAgeVolume = porFaixa(faixas.volume, l => `${l.n} exec.`, l => l.nome)
   const topByAgeMargin = porFaixa(faixas.margem, l => `${l.margem.toFixed(1).replace('.', ',')}%`, l => l.nome)
 
-  // Totais do NÚCLEO: atendimentos concluídos e a receita deles — o mesmo
-  // ticket médio do sistema inteiro (§13.1). Os rankings abaixo são por
-  // procedimento.
+  // Totais do NÚCLEO: atendimentos concluídos e a receita deles — e o MESMO
+  // ticket médio do sistema inteiro (§13.1, lib/metrics: receita de serviço ÷
+  // concluídos COBRADOS). A aba dividia pelos concluídos, e a avaliação de
+  // R$ 0 puxava a média: R$ 90 aqui e R$ 180 na Visão geral (D11, 2026-10-28).
+  // Os rankings abaixo são por procedimento.
   const totalExec   = core.appointmentsCompleted
   const totalRev    = core.serviceRevenue
-  const avgTicket   = totalExec > 0 ? totalRev / totalExec : 0
+  const avgTicket   = ticketMedio(core)
   const topByName   = [...r.porProcedimento].sort((a, b) => b.receita - a.receita)
   const topRevenue  = topByName.slice(0, 10).map(d => ({ name: d.nome, value: d.receita }))
   const topVolume   = [...r.porProcedimento]
@@ -843,7 +845,9 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
     { key: 'revenue',  label: 'Receita Total', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
-    { key: 'ticket',   label: 'Ticket Médio',  align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
+    // conta os cobrados), e o nome diz isso (D11).
+    { key: 'ticket',   label: 'Média por execução', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'pct',      label: '% do Total',    align: 'center', render: (v) => `${v}%` },
   ]
   const tableRows = topByName.slice(0, 20).map(d => ({

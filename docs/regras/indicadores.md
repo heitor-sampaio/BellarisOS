@@ -63,6 +63,13 @@
     nulo e a tela mostra "—", não R$ 0,00. Decisão do Heitor, 2026-10-27: a
     avaliação de R$ 0 entrava no denominador e a simulação viu "R$ 90" numa
     clínica de limpezas de R$ 180. Prova: `e2e/indicadores-ticket-medio.spec.ts`.
+    O subtítulo diz a conta ("receita de serviço ÷ atendimentos cobrados"; no
+    da unidade, quantos cobrados). Divisão parecida sobre OUTRO conjunto tem
+    outro nome: "Média por atend." (o pago da cliente ÷ os concluídos, no
+    ranking do dashboard) e "Média por execução" (por procedimento, nos
+    Relatórios). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a
+    aba Procedimentos dividia pelos concluídos — R$ 90 ao lado dos R$ 180 da
+    Visão geral (D11).
   - **Lucro e margem também moram em lib/metrics** (`resultadoDoPeriodo`,
     `variacaoDaMargemPp` em `lib/metrics/resultado.ts`): lucro = receita paga
     − despesa paga; margem = lucro ÷ receita, nula sem receita; a variação da
