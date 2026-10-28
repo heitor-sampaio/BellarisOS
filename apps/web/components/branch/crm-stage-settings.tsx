@@ -595,7 +595,7 @@ export function CRMStageSettings({
               </p>
             )}
             <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', lineHeight: 1.45 }}>
-              O funil novo já vem com quatro etapas, que você renomeia ou remove.
+              Este formulário cria um funil novo, com quatro etapas que você renomeia ou remove. Os funis que já existem, o padrão inclusive, ficam como estão.
             </p>
           </div>
 

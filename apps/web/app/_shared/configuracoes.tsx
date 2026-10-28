@@ -496,7 +496,7 @@ export async function Configuracoes({
 
       {activeTab === 'general' && (
         dadosDaRede
-          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE')} />
+          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE')} naRede={ctx.branchId === null} />
           : (
             <div className="card">
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

@@ -19,7 +19,7 @@ import { rotuloDaSituacao } from '@/lib/redes/situacao'
  *   campo de formulário quebraria tudo isso em silêncio;
  * - **o plano**, que quem define é a assinatura.
  */
-export function SettingsGeral({ rede, podeEditar }: { rede: DadosDaRede; podeEditar: boolean }) {
+export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: DadosDaRede; podeEditar: boolean; /** A aba Assinatura só existe no portal da rede. */ naRede?: boolean }) {
   const [estado, enviar, enviando] = useActionState(atualizarDadosDaRede, undefined)
   const [salvo, setSalvo] = useState(false)
 
@@ -89,7 +89,7 @@ export function SettingsGeral({ rede, podeEditar }: { rede: DadosDaRede; podeEdi
         <SoLeitura rotulo="Endereço do portal" valor={`/${rede.slug}`}
           porque="Está em links já enviados — mudar é migração, não edição." />
         <SoLeitura rotulo="Plano" valor={rede.planName ?? '—'}
-          porque={`${rotuloDaSituacao(rede.planStatus)}. Veja faturas e pagamento na aba Assinatura.`} />
+          porque={`${rotuloDaSituacao(rede.planStatus)}. ${naRede ? 'Veja faturas e pagamento na aba Assinatura.' : 'A assinatura fica com quem administra a rede.'}`} />
         <SoLeitura rotulo="Rede criada em"
           valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} />
       </div>

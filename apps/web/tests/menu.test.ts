@@ -68,6 +68,21 @@ describe('entradas com mais de uma porta', () => {
     expect(menuEntriesFor(BRANCH_MENU, com({ financial: 'MANAGE' })).map(e => e.key)).not.toContain('settings')
   })
 
+  it('quem só chega por Tags e Importações vê isso no rótulo, não "Configurações" seca (A11)', () => {
+    for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
+      for (const modulo of ['clients', 'crm'] as const) {
+        const e = menuEntriesFor(menu, com({ [modulo]: 'MANAGE' })).find(x => x.key === 'settings')
+        expect(e?.label).toBe('Configurações (Tags e Importações)')
+      }
+      // com um módulo de configuração de verdade, é Configurações
+      const completa = menuEntriesFor(menu, com({ clients: 'MANAGE', settings: 'MANAGE' })).find(x => x.key === 'settings')
+      expect(completa?.label).toBe('Configurações')
+    }
+    // o financeiro da rede abre a aba de comissões: também é Configurações
+    const fin = menuEntriesFor(ADMIN_MENU, com({ clients: 'MANAGE', financial: 'MANAGE' })).find(x => x.key === 'settings')
+    expect(fin?.label).toBe('Configurações')
+  })
+
   it('a unidade não tem mais uma entrada separada de modelos de ficha', () => {
     expect(BRANCH_MENU.map(e => e.key)).not.toContain('forms')
   })

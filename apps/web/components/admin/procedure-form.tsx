@@ -4,6 +4,9 @@ import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 import { parseDinheiro, formatDinheiroCampo } from '@estetica-os/utils'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { rotaNoPortal } from '@/lib/rotas'
 import {
   EditorDeComissao, entradaDaComissao, estadoInicialDaComissao, type DadosDaComissao,
 } from '@/components/admin/comissao-do-procedimento'
@@ -129,6 +132,7 @@ export function ProcedureForm(props: ProcedureFormProps) {
 }
 
 function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
+  const pathname = usePathname()
 
   // A comissão (2026-10-15): o mesmo editor do chip da tabela. Só vai ao
   // servidor se MUDOU — editar a descrição não regrava a comissão.
@@ -412,7 +416,11 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
 
         {products.length === 0 && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '8px 0' }}>
-            Nenhum produto cadastrado no estoque ainda.
+            Nenhum produto cadastrado no estoque ainda.{' '}
+            <Link href={rotaNoPortal(pathname, null, '/estoque')} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+              Cadastrar produto no Estoque
+            </Link>
+            {' '}— o insumo precisa existir lá antes de entrar aqui.
           </p>
         )}
 

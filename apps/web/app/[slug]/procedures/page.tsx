@@ -97,6 +97,7 @@ export default async function BranchProceduresPage({
         totalCount={totalCount}
         precoMedio={precoMedio}
         buscaInicial={busca}
+        podeCadastrar={ctx.permissions.procedures === 'MANAGE' && ctx.branchId === null}
       />
     </>
   )

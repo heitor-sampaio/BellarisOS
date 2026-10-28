@@ -45,6 +45,7 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
       <div className="card" style={{ padding: '20px 11px' }} data-pre-atendimento>
         <ConstrutorDeFicha
           existing={ficha}
+          onSaved={() => setAviso({ tipo: 'ok', texto: 'Ficha de pré-atendimento salva.' })}
           onDone={() => { setEditando(false); router.refresh() }}
           updateAction={salvarFichaDePreAtendimento}
           tiposFora={TIPOS_FORA_DO_PRE_ATENDIMENTO}

@@ -56,6 +56,17 @@ const noPlano = (e: MenuEntry, plano: PlanoDoMenu) => !e.recurso || !plano || pl
 
 const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== 'NONE'
 
+/**
+ * O rótulo de Configurações: quem só chega pelas abas Tags e Importações
+ * (clientes ou CRM em Gerenciar) não vê "Configurações" seca, que promete o
+ * que o cargo não tem (A11, simulação de 2026-10-27). `comFinanceiro`: na
+ * rede, o financeiro em Gerenciar também abre a tela (aba de comissões).
+ */
+const rotuloDeConfiguracoes = (comFinanceiro: boolean) => (p: ResolvedPermissions) =>
+  has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || (comFinanceiro && p.financial === 'MANAGE')
+    ? 'Configurações'
+    : 'Configurações (Tags e Importações)'
+
 /** Pode receber dinheiro do cliente — caixa ou financeiro. Igual a lib/auth. */
 /** Recebe pagamento (caixa ou financeiro em Gerenciar) — o `podeReceber` de lib/auth, pelas permissões. */
 export const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || p.financial === 'MANAGE'
@@ -117,7 +128,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // Uma tela, quatro módulos: quem só tem cargos ou fichas continua chegando lá,
   // e quem administra o financeiro da rede, à aba de comissões.
   {
-    key: 'settings', group: 'gestao', label: 'Configurações', href: '/admin/settings',
+    key: 'settings', group: 'gestao', label: rotuloDeConfiguracoes(true), href: '/admin/settings',
     // Importações abre também com clientes ou CRM em Gerenciar (a aba delas).
     visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || p.financial === 'MANAGE'
       || p.clients === 'MANAGE' || p.crm === 'MANAGE',
@@ -152,7 +163,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // módulos. Quem tem unidade fixa não entra em `/admin`, então sem esta linha
   // `settings`, `roles` ou `forms` em MANAGE não valiam nada numa gerente.
   {
-    key: 'settings', group: 'gestao', label: 'Configurações', href: '/settings',
+    key: 'settings', group: 'gestao', label: rotuloDeConfiguracoes(false), href: '/settings',
     visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms')
       || p.clients === 'MANAGE' || p.crm === 'MANAGE',
   },

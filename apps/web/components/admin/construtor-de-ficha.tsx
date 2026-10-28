@@ -26,6 +26,8 @@ type SaveResult = { error?: string; id?: string; ok?: true }
 interface Props {
   existing?: ExistingForm | null
   onDone:    () => void
+  /** Chamado quando a ficha foi GRAVADA (antes do `onDone`): quem quiser confirmar na tela. */
+  onSaved?:  () => void
   // Ações de persistência injetáveis — default: a ficha do procedimento.
   createAction?: (input: { name: string; schema: unknown }) => Promise<SaveResult>
   updateAction?: (input: { id: string; name: string; schema: unknown }) => Promise<SaveResult>
@@ -51,7 +53,7 @@ function newField(type: AnamnesisFieldType = 'text'): AnamnesisField {
   return { id: newId(), type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }
 }
 
-export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction, semInjetaveis = false, tiposFora = [], nomeFixo = false }: Props) {
+export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, updateAction, semInjetaveis = false, tiposFora = [], nomeFixo = false }: Props) {
   const tipos = FIELD_TYPES.filter(t => !tiposFora.includes(t.value) && !(semInjetaveis && t.value === 'injectable_map'))
   const createFn = createAction ?? criarFicha
   const updateFn = updateAction ?? atualizarFicha
@@ -204,6 +206,7 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
     const res = existing ? await updateFn({ id: existing.id, ...payload }) : await createFn(payload)
     setSaving(false)
     if (res.error) { setError(res.error); return }
+    onSaved?.()
     onDone()
   }
 

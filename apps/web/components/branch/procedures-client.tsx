@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Clock, Star, Smartphone, Search } from 'lucide-react'
 import { contemSemAcento } from '@/lib/texto'
+import { rotaNoPortal } from '@/lib/rotas'
 
 /**
  * Catálogo de procedimentos na unidade — só leitura.
@@ -34,6 +37,8 @@ interface Props {
   precoMedio: number
   /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
   buscaInicial?: string
+  /** Quem gere o catálogo (procedimentos em Gerenciar, com abrangência de rede): vê o botão que cadastra. */
+  podeCadastrar?: boolean
 }
 
 // -- Helper ---------------------------------------------------------------------
@@ -108,7 +113,8 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
 
 // -- Main ----------------------------------------------------------------------
 
-export function ProceduresClient({ procedures, categories, totalCount, precoMedio, buscaInicial = '' }: Props) {
+export function ProceduresClient({ procedures, categories, totalCount, precoMedio, buscaInicial = '', podeCadastrar = false }: Props) {
+  const pathname = usePathname()
   const [activeTab, setActiveTab] = useState('Todos')
   const [busca,     setBusca]     = useState(buscaInicial)
   // A busca universal pode trocar o `?q=` com a tela aberta.
@@ -176,7 +182,18 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
       </div>
 
       {/* Grid */}
-      {visible.length === 0 ? (
+      {totalCount === 0 ? (
+        <div className="card" style={{ padding: '56px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+            {podeCadastrar
+              ? 'O catálogo da rede ainda está vazio.'
+              : 'O catálogo é da rede: peça a quem administra.'}
+          </p>
+          {podeCadastrar && (
+            <Link href={rotaNoPortal(pathname, null, '/procedures')} className="btn-primary">Cadastrar procedimento</Link>
+          )}
+        </div>
+      ) : visible.length === 0 ? (
         <div className="card" style={{ padding: '56px 24px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
             {busca.trim()

@@ -310,7 +310,7 @@ test('as importações moram em Configurações: os botões de Clientes e de Opo
   // Quem só tem o CRM chega pelo menu: Configurações, só com a aba dele.
   await como(browser, soCrm, async p => {
     await p.goto('/admin/dashboard')
-    await expect(p.getByRole('navigation').getByText('Configurações', { exact: true })).toBeVisible()
+    await expect(p.getByRole('navigation').getByText('Configurações (Tags e Importações)', { exact: true })).toBeVisible()
     await p.goto('/admin/settings')
     await expect(p.getByRole('link', { name: 'Importações', exact: true })).toBeVisible()
     await expect(p.getByRole('link', { name: 'Integrações', exact: true })).toHaveCount(0)
