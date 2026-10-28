@@ -1511,9 +1511,35 @@ evolução gravada, foto clínica, "Chegou", cancelados, motivo da perda,
 horário de funcionamento, o registro de acessos ao prontuário). Achou 12
 defeitos — quatro de alta: o custo do insumo 100 vezes maior, o gráfico que o
 soma de novo, a margem que ficou na conta antiga e a evolução que grava mas
-não aparece — e 48 atritos. Nada corrigido: o Heitor escolhe.
+não aparece — e 48 atritos. Corrigidos na entrada seguinte.
 
-O que falta está em "5. Em aberto → Da simulação de 2026-10-27".
+### 2026-10-27/28 — Os defeitos e atritos da segunda simulação, corrigidos
+
+Pedido do Heitor: corrigir os 12 defeitos e os 48 atritos, com autorização
+para operar no Supabase e no Railway e tomar as decisões. Nove frentes, uma
+de cada vez (dividem o dev server, a memória da máquina e a `main`): Opus no
+dinheiro, no clínico e na permissão (custo do insumo; receber, caixa e
+permissão; prontuário e atendimento; sobras), Sonnet nas telas (agenda, ficha
+de saúde, setup e catálogo, CRM e clientes, portal/404/dashboard). Cada item
+com o teste visto falhando antes; 14 migrations aplicadas na produção.
+
+O que mais muda para quem usa: o custo do insumo é o da unidade de consumo em
+toda conta (uma regra no banco); o atendimento concluído a receber tem porta
+(agenda, ficha, Fechamento) e o de R$ 0 é "Sem cobrança"; o Fechamento do dia
+pede quem recebe; o ticket médio conta só os cobrados; a evolução aparece no
+Prontuário; a profissional marca a chegada e inicia; a foto clínica se anexa
+no atendimento e, apagada, fica marcada (soft delete); o agendamento de quem
+tem oportunidade aberta é do comercial e move o card; o 404 é em português.
+Sobras achadas no caminho e fechadas na frente 9: arquivar cliente confere a
+unidade, a limpeza do E2E voltou a apagar (o `.in()` de 1000 ids estourava a
+URL — 2.884 clientes [e2e] presos desde 23/10) e o funil padrão nasce numa
+transação.
+
+Ficaram: o A45 (não reproduziu) e uma decisão de produto — o portal da
+cliente lista todos os `client_documents` dela, foto clínica inclusive (§5).
+Mexeu em arquivo compartilhado (auth, layouts, menu, núcleo da agenda,
+`metrics_core`, a limpeza do E2E): vale uma completa, que o Heitor decide.
+Detalhe por item e as decisões em "5. Em aberto → Da simulação de 2026-10-27".
 
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
@@ -6891,7 +6917,7 @@ tempo). O que sobrou:
 - ~~A rede "[sim] Clínica Aurora" e os logins `sim-*`~~ **apagados em
   2026-10-21**, a pedido dele.
 
-### Da simulação de 2026-10-27 (nada corrigido ainda)
+### Da simulação de 2026-10-27 (D1–D12 e os atritos feitos em 27–28/10)
 
 O relatório inteiro (capturas, os 48 atritos A1–A48 por tela, o que ficou
 sem testar) está na máquina do Heitor, fora do git: `apps/web/.sim/relatorio.md`
