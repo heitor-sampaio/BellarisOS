@@ -1602,7 +1602,8 @@ rodar quando a máquina ficou sem memória (lista no scratchpad da sessão).
 - As outras quatro eram testes que não acompanharam D2 (anamnese com
   obrigatórias), D12 (404 em português) e A25 (telefone formatado), ajustados
   em `5d1961fe`.
-- O spec do WhatsApp só roda contra o build: a próxima completa o confere.
+- A completa seguinte (run 40785403989, em `662653aa`) ficou **toda verde**:
+  1035 verdes (485 isolados, 550 compartilhados) e 1 pulado.
 
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
