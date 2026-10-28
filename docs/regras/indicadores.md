@@ -115,6 +115,11 @@
     `metrics_valor_em_estoque_por_produto` — `getValorEmEstoquePorProduto`).
     Contava embalagens inteiras: 495 ml de um frasco de 100 ml a R$ 90 valiam
     R$ 450, e não R$ 445,50 (A39, 2026-10-27).
+    O gráfico "Valor em estoque por categoria" (aba Estoque) tem uma fatia
+    **"Sem categoria"** para o produto sem categoria ou com ela em branco, e
+    as fatias somam o valor em estoque da aba. Até 2026-10-28 esse produto
+    sumia, e a tela dizia "Sem dados no período" com R$ 5.562 em estoque (D17,
+    migration `20261028000502`). Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
   - **conversão de leads** = os que viraram cliente (`client_id`, o
     `converted` de `metrics_lead_funnel`) ÷ os leads do funil — UMA conta,
     `resumoDoFunil` (`lib/metrics/resultado.ts`), no dashboard, nos Relatórios
