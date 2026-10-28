@@ -236,6 +236,12 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   `metrics_relatorio` dela fecham no `fullTo`, com os agendamentos futuros e
   os cancelados do período, e a tela avisa. As demais abas seguem o dinheiro
   (até agora). Prova: `e2e/indicadores-dashboard-e-agenda.spec.ts`.
+- O card **"Clientes no mês"** do dashboard da unidade também é contagem de
+  agendamentos do mês: um núcleo próprio até o `fullTo` (D12, 2026-10-28 —
+  dizia 0 agendamentos com 3 marcados para hoje). Os cartões de dinheiro
+  seguem até agora. A "Taxa de aproveitamento" da rede fica até agora de
+  propósito: é "horários PASSADOS concluídos ÷ total marcado".
+  Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios.
 

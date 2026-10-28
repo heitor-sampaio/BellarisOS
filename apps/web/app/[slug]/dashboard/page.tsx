@@ -144,6 +144,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     profissionaisDaUnidade,
     procedureStats,
     paraReativar,
+    coreDoMes,
   ] = await Promise.all([
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
     // novos clientes e comissões saem coerentes entre si por construção.
@@ -204,6 +205,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           tenantId: ctx.tenantId!, branchId, tag: unitTag(branch.name), desde: ninetyDaysAgo,
         })
       : Promise.resolve({ total: 0, lista: [] }),
+
+    // "Clientes no mês" é uma CONTAGEM de agendamentos do mês: fecha no FIM
+    // do mês (fullTo), com os horários de mais tarde e o cancelado de amanhã.
+    // Fechava em "agora" (period.to) e dizia 0 agendamentos com 3 hoje (D12
+    // da simulação de 2026-10-28, a mesma classe do A38 dos Relatórios). O
+    // núcleo de cima segue em "agora": é o dinheiro, comparado com o mês
+    // anterior de mesma duração decorrida.
+    canClients
+      ? getCore({ ...metricArgs, to: period.fullTo })
+      : Promise.resolve({ ...EMPTY_CORE }),
   ])
 
   // -- KPIs ------------------------------------------------------
@@ -258,10 +269,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // funil misturava "novos no mês" com "agendados hoje", e a barra usava
   // "novos clientes" como base — o que estourava 100%.
   const funnel = [
-    { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
-    { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },
-    { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
-    { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
+    { label: 'Novos clientes',    count: coreDoMes.newClients,            color: 'var(--brand)' },
+    { label: 'Agendamentos',      count: coreDoMes.appointmentsTotal,     color: 'var(--brand-2)' },
+    { label: 'Concluídos',        count: coreDoMes.appointmentsCompleted, color: 'var(--brand-3)' },
+    { label: 'Cancelados/faltas', count: coreDoMes.appointmentsCancelled + coreDoMes.appointmentsNoShow, color: 'var(--border)' },
   ]
   const funnelMax = Math.max(1, ...funnel.map(f => f.count))
 
