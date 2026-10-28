@@ -60,7 +60,7 @@ export const NEW_FUNNEL_STAGES: { name: string; color: string; outcome: StageOut
 
 export const OUTCOME_COPY: Record<StageOutcome, { label: string; hint: string }> = {
   OPEN: { label: 'Em aberto', hint: 'O lead continua em negociação.' },
-  WON:  { label: 'Ganho',     hint: 'Conta como conversão deste funil.' },
+  WON:  { label: 'Ganho',     hint: 'Fecha o lead como ganho. A conversão conta quem virou cliente.' },
   LOST: { label: 'Perdido',   hint: 'Encerra o lead sem conversão.' },
 }
 
@@ -68,39 +68,4 @@ export const OUTCOME_VALUES: StageOutcome[] = ['OPEN', 'WON', 'LOST']
 
 export function isStageOutcome(v: unknown): v is StageOutcome {
   return typeof v === 'string' && (OUTCOME_VALUES as string[]).includes(v)
-}
-
-/**
- * Estatística do topo do quadro, por funil.
- *
- * A conversão saía de `client_id != null` ("o lead virou cliente"). Num funil de
- * pós-venda isso nasce 100%, porque todo mundo ali já é cliente. Agora ela sai
- * das etapas marcadas como ganho — e só volta ao critério antigo em funil que
- * ainda não marcou nenhuma, para um funil recém-criado não exibir 0%.
- */
-export function funnelStats(
-  leads:  { crm_stage_id: string | null; client_id: string | null }[],
-  stages: CRMStage[],
-) {
-  const won  = new Set(stages.filter(s => s.outcome === 'WON').map(s => s.id))
-  const lost = new Set(stages.filter(s => s.outcome === 'LOST').map(s => s.id))
-  const porResultado = won.size > 0
-
-  const total = leads.length
-  const ganhos = porResultado
-    ? leads.filter(l => l.crm_stage_id !== null && won.has(l.crm_stage_id)).length
-    : leads.filter(l => l.client_id !== null).length
-  const perdidos = leads.filter(l => l.crm_stage_id !== null && lost.has(l.crm_stage_id)).length
-
-  return {
-    total,
-    ganhos,
-    perdidos,
-    // Virar cliente e estar numa etapa de ganho são fatos diferentes: dá para
-    // converter o lead sem arrastar o card. Como este número era o que a tela
-    // mostrava antes, ele continua visível em vez de sumir na troca de critério.
-    clientes: leads.filter(l => l.client_id !== null).length,
-    conversao: total > 0 ? Math.round((ganhos / total) * 100) : 0,
-    porResultado,
-  }
 }

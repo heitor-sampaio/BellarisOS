@@ -482,6 +482,28 @@ export async function getLeadFunnel(
     ...baseArgs(args), p_funnel: args.funnelId ?? null,
   })
   logRpcError('metrics_lead_funnel', error)
+  return etapasDoFunil(data)
+}
+
+/**
+ * O funil de AGORA, como o quadro de Oportunidades o mostra: todos os leads
+ * nas etapas do funil, sem período, e com "só os meus" (`ownerId`) os da
+ * pessoa e os sem dono — o mesmo recorte da lista do quadro. A mesma função
+ * (e a mesma conta de `converted`) do dashboard e dos Relatórios: o quadro
+ * contava só a etapa de ganho e somava no navegador (D10, 2026-10-28).
+ */
+export async function getFunilDoQuadro(args: {
+  tenantId: string; funnelId: string; ownerId?: string | null
+}): Promise<FunnelStage[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_lead_funnel', {
+    p_tenant: args.tenantId, p_branch_ids: null, p_from: null, p_to: null,
+    p_funnel: args.funnelId, p_owner: args.ownerId ?? null,
+  })
+  logRpcError('metrics_lead_funnel', error)
+  return etapasDoFunil(data)
+}
+
+function etapasDoFunil(data: unknown): FunnelStage[] {
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
     stageId:   String(r.stage_id),
     name:      String(r.stage_name),

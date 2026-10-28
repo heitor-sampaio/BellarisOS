@@ -108,6 +108,16 @@
     `metrics_valor_em_estoque_por_produto` — `getValorEmEstoquePorProduto`).
     Contava embalagens inteiras: 495 ml de um frasco de 100 ml a R$ 90 valiam
     R$ 450, e não R$ 445,50 (A39, 2026-10-27).
+  - **conversão de leads** = os que viraram cliente (`client_id`, o
+    `converted` de `metrics_lead_funnel`) ÷ os leads do funil — UMA conta,
+    `resumoDoFunil` (`lib/metrics/resultado.ts`), no dashboard, nos Relatórios
+    e no quadro de Oportunidades. O quadro a chama no recorte que mostra
+    (`getFunilDoQuadro`): o funil de AGORA, sem período, e com o CRM "só os
+    meus" os leads da pessoa e os sem dono; o dashboard, os criados no período.
+    A etapa de GANHO é outra coisa (o card fechado), e o quadro a mostra como
+    "ganhos". Até 2026-10-28 o quadro contava só o ganho e somava no navegador:
+    "0% de conversão · 2 viraram clientes" ao lado de 66,7% no dashboard (D10).
+    Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
   - `retenção` = clientes atendidos no período que **já tinham sido atendidos
     antes dele** ÷ atendidos no período (`getRetention`). Não confundir com
     recorrência dentro da janela, que em períodos curtos dá zero por construção.

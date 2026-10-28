@@ -50,7 +50,7 @@ const AREAS = [
     specs: /^(inbox|contato|mensagens|whatsapp|templates|oportunidade-da-pessoa|eventos-webhook|crm-alcance)/ },
   { nome: 'CRM',
     chaves: ['crm', 'lead', 'oportunidade', 'funil', 'funnel', 'quadro'],
-    specs: /^(crm|lead|oportunidade|quadro|inbox-visibilidade|contato-propaga)/ },
+    specs: /^(crm|lead|oportunidade|quadro|inbox-visibilidade|contato-propaga|indicadores-uma-conta-so)/ },
   { nome: 'agenda e atendimento',
     chaves: ['agenda', 'appointment', 'agendamento', 'atendimento', 'sessao-de', 'pacote', 'package'],
     specs: /^(agenda|agendamento|agendar|atendimento|conclusao|fase2|pacote|abrangencia|portal-cliente|plano|pre-pago)/ },

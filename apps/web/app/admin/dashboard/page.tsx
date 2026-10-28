@@ -20,7 +20,7 @@ import {
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, contar } from '@/lib/db'
-import { ticketMedio as ticketMedioDe } from '@/lib/metrics/resultado'
+import { ticketMedio as ticketMedioDe, resumoDoFunil } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 
 /** Sem membro (não acontece com sessão de equipe): o recorte não acha nada, em vez de achar tudo. */
@@ -454,9 +454,11 @@ export default async function AdminDashboardPage({
     : []
 
   const leadFunnel     = funnelStages.map(s => ({ name: s.name, count: s.leads }))
-  const leadsTotal     = funnelStages.reduce((s, st) => s + st.leads, 0)
-  const leadsConverted = funnelStages.reduce((s, st) => s + st.converted, 0)
-  const conversionRate = percent(leadsConverted, leadsTotal) ?? 0
+  // A conta da conversão é UMA (lib/metrics), a mesma do quadro de Oportunidades (D10).
+  const resumoFunil    = resumoDoFunil(funnelStages)
+  const leadsTotal     = resumoFunil.total
+  const leadsConverted = resumoFunil.convertidos
+  const conversionRate = resumoFunil.conversaoPct ?? 0
 
   // -- Marketing: alcance/gasto (Meta Ads, tempo real) + campanhas (gate marketing) --
   let marketing: {

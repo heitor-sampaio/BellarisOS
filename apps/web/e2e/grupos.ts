@@ -107,6 +107,7 @@ export const ISOLADOS = [
   'crm-funil-padrao.spec.ts',
   'prontuario-acessos.spec.ts',
   'indicadores-dashboard-e-agenda.spec.ts',
+  'indicadores-uma-conta-so.spec.ts',
   'prontuario-evolucao.spec.ts',
   'agenda-chegar-e-iniciar.spec.ts',
   'plano-dica-do-pacote.spec.ts',

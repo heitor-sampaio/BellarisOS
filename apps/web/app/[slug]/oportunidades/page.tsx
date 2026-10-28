@@ -4,7 +4,9 @@ import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } f
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
-import { funnelStats } from '@/lib/crm'
+import { getFunilDoQuadro } from '@/lib/metrics/queries'
+import { resumoDoFunil } from '@/lib/metrics/resultado'
+import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -133,10 +135,12 @@ export default async function BranchOportunidadesPage({
     }, 'carregar os leads')) as unknown as LeadLido[]
   }
 
-  const stats = funnelStats(
-    leads as unknown as { crm_stage_id: string | null; client_id: string | null }[],
-    stages,
-  )
+  // Os números do topo vêm de lib/metrics — a mesma conta do dashboard e dos
+  // Relatórios (D10, 2026-10-28) —, no recorte do quadro: o funil de agora e,
+  // com "só os meus", os da pessoa e os sem dono. Contados no banco, não na lista.
+  const stats = resumoDoFunil(selecionado && stageIds.length > 0
+    ? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id, ownerId: leadOwner })
+    : [])
 
   // Métricas de atendimento da PESSOA dona de cada lead — de todas as threads
   // dela, não só da que a oportunidade nasceu (ver `atividadeDasPessoas`).
@@ -172,10 +176,7 @@ export default async function BranchOportunidadesPage({
             Oportunidades
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {stats.total} leads · {stats.ganhos} ganhos
-            {stats.porResultado && ` · ${stats.perdidos} perdidos`}
-            {' · '}{stats.conversao}% de conversão
-            {stats.porResultado && ` · ${stats.clientes} viraram clientes`}
+            <ResumoDoQuadro stats={stats} />
           </p>
         </div>
 

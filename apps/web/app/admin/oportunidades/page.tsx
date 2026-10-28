@@ -3,7 +3,8 @@ import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
-import { funnelStats } from '@/lib/crm'
+import { getFunilDoQuadro } from '@/lib/metrics/queries'
+import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
@@ -11,6 +12,7 @@ import type { ComponentProps } from 'react'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
+import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { UserPlus } from 'lucide-react'
 import { lerTodas } from '@/lib/db'
@@ -120,10 +122,12 @@ export default async function AdminOportunidadesPage({
     }
   })
 
-  const stats = funnelStats(
-    leads as unknown as { crm_stage_id: string | null; client_id: string | null }[],
-    stages,
-  )
+  // Os números do topo vêm de lib/metrics — a mesma conta do dashboard e dos
+  // Relatórios (D10, 2026-10-28) —, no recorte do quadro: o funil de agora e,
+  // com "só os meus", os da pessoa e os sem dono. Contados no banco, não na lista.
+  const stats = resumoDoFunil(selecionado && stageIds.length > 0
+    ? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id, ownerId: leadOwner })
+    : [])
 
   return (
     <div className="crm-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -138,10 +142,7 @@ export default async function AdminOportunidadesPage({
             Oportunidades
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {stats.total} leads · {stats.ganhos} ganhos
-            {stats.porResultado && ` · ${stats.perdidos} perdidos`}
-            {' · '}{stats.conversao}% de conversão
-            {stats.porResultado && ` · ${stats.clientes} viraram clientes`}
+            <ResumoDoQuadro stats={stats} />
             {' · '}{branches.length} {branches.length === 1 ? 'unidade' : 'unidades'}
           </p>
         </div>

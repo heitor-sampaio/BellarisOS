@@ -1,4 +1,5 @@
-import { ratio } from './period'
+import { ratio, percent } from './period'
+import type { FunnelStage } from './queries'
 
 /**
  * Ticket médio, lucro e margem — as contas que as telas faziam cada uma
@@ -50,4 +51,28 @@ export function variacaoPercentual(atual: number, anterior: number): { pct: numb
   if (anterior === 0) return null
   const pct = ((atual - anterior) / anterior) * 100
   return { pct: Math.abs(pct), up: pct >= 0 }
+}
+
+/**
+ * O resumo de UM funil, a partir das etapas que o banco contou
+ * (`metrics_lead_funnel`): o total, os que viraram cliente (`converted`), os
+ * nas etapas de ganho e de perda, e a conversão = convertidos ÷ total (nula
+ * sem lead). É a conta do dashboard, dos Relatórios e do quadro de
+ * Oportunidades — o quadro dizia "0% de conversão" ao lado de "2 viraram
+ * clientes", contando só a etapa de ganho (D10 da simulação de 2026-10-28).
+ */
+export function resumoDoFunil(etapas: FunnelStage[]) {
+  const soma = (f: (e: FunnelStage) => number) => etapas.reduce((s, e) => s + f(e), 0)
+  const total = soma(e => e.leads)
+  const convertidos = soma(e => e.converted)
+  return {
+    total,
+    convertidos,
+    ganhos:   soma(e => (e.outcome === 'WON' ? e.leads : 0)),
+    perdidos: soma(e => (e.outcome === 'LOST' ? e.leads : 0)),
+    /** O funil marca etapa de ganho / de perda (senão não há o que mostrar). */
+    temGanho: etapas.some(e => e.outcome === 'WON'),
+    temPerda: etapas.some(e => e.outcome === 'LOST'),
+    conversaoPct: percent(convertidos, total),
+  }
 }
