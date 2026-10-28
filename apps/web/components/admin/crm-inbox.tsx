@@ -871,6 +871,8 @@ interface CRMInboxProps {
   slug?:                string
   /** Canais que a rede realmente conectou — decide o aviso de integração. */
   canaisConectados?:    InboxChannel[]
+  /** Quem pode abrir Configurações → Integrações vê o atalho; os outros, a quem pedir (A16). */
+  podeConfigurarIntegracoes?: boolean
   /**
    * As caixas de WhatsApp ATIVAS da rede.
    *
@@ -968,7 +970,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 export function CRMInbox({
   initialConversations, initialTemMais = false, initialCursor = null, opcoesDosFiltros = null,
   leads, canEdit, branches,
-  slug = '', initialSelectedId = null, canaisConectados = [],
+  slug = '', initialSelectedId = null, canaisConectados = [], podeConfigurarIntegracoes = false,
   numeroDoUsuario = null, telaCheia = false,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
@@ -1745,7 +1747,10 @@ export function CRMInbox({
                 {/* Sem canal nenhum, a caixa fica vazia para sempre: diz o porquê. */}
                 {!search && !filtrosAtivos && canaisConectados.length === 0 && (
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-                    Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado em Configurações → Integrações.
+                    {podeConfigurarIntegracoes
+                      ? <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado.{' '}
+                          <Link href={`${slug ? `/${slug}` : '/admin'}/settings?tab=integrations`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Conectar o WhatsApp</Link></>
+                      : <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado. Peça a quem administra a clínica para conectar o WhatsApp.</>}
                   </p>
                 )}
                 {/* Lista vazia por causa de filtro tem saída à mão: sem isto a

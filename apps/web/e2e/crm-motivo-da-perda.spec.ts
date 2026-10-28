@@ -30,6 +30,17 @@ async function leadNaPrimeira(nome: string) {
   expect(error).toBeNull()
   return data!.id
 }
+/** O arraste nativo do HTML5 por eventos: o quadro rola na horizontal, e o dragTo do mouse perde o card quando a coluna "Perdido" está fora da tela. */
+async function arrastarParaPerdido(p: Page, id: string) {
+  const card = p.locator(`[data-lead-id="${id}"]`).first()
+  const coluna = p.locator('[data-coluna-desfecho="LOST"]').first()
+  await expect(card).toBeVisible()
+  const dt = await p.evaluateHandle(() => new DataTransfer())
+  await card.dispatchEvent('dragstart', { dataTransfer: dt })
+  await coluna.dispatchEvent('dragenter', { dataTransfer: dt })
+  await coluna.dispatchEvent('dragover', { dataTransfer: dt })
+  await coluna.dispatchEvent('drop', { dataTransfer: dt })
+}
 const etapaPerdida = async () => (await db().from('crm_stages').select('id').eq('tenant_id', rede!.tenantId).eq('outcome', 'LOST').limit(1).single<{ id: string }>()).data!.id
 
 test.beforeAll(async () => {
@@ -87,6 +98,21 @@ test.describe.serial('o motivo da perda', () => {
     })
   })
 
+  test('sem escolher o motivo, o botão diz o que falta (A14) e nada é gravado', async ({ browser }) => {
+    const id = await leadNaPrimeira(`${PREFIXO} Sem escolher ${marca}`)
+    await como(browser, async p => {
+      await p.goto(`/${slug}/oportunidades`)
+      await arrastarParaPerdido(p, id)
+      const janela = p.getByRole('dialog', { name: 'Por que perdeu?' })
+      await expect(janela).toBeVisible()
+      await janela.getByRole('button', { name: 'Marcar como perdido' }).click()
+      await expect(janela.getByRole('alert')).toContainText('Escolha o motivo da perda')
+      await janela.getByLabel('Motivo').selectOption({ label: 'Preço' })
+      await expect(janela.getByRole('alert')).toHaveCount(0)
+    })
+    expect((await db().from('leads').select('crm_stage_id').eq('id', id).single()).data?.crm_stage_id).not.toBe(await etapaPerdida())
+  })
+
   test('pela action, sem o motivo, não perde', async ({ browser }) => {
     const id = await leadNaPrimeira(`${PREFIXO} Sem motivo ${marca}`)
     const perdida = await etapaPerdida()
@@ -115,6 +141,17 @@ test.describe.serial('o motivo da perda', () => {
       await p.getByLabel('Novo motivo').fill('Distância')
       await p.getByRole('button', { name: 'Adicionar motivo' }).click()
       await expect.poll(async () => (await db().from('crm_motivos_perda').select('nome').eq('tenant_id', rede!.tenantId).eq('nome', 'Distância')).data?.length).toBe(1)
+    })
+  })
+
+  test('"Outro" fica por último, mesmo com motivo criado depois dele (A15)', async ({ browser }) => {
+    const id = await leadNaPrimeira(`${PREFIXO} Ordem ${marca}`)
+    await como(browser, async p => {
+      await p.goto(`/${slug}/oportunidades`)
+      await arrastarParaPerdido(p, id)
+      const opcoes = p.getByRole('dialog', { name: 'Por que perdeu?' }).getByLabel('Motivo').locator('option')
+      await expect(opcoes.last()).toHaveText('Outro')
+      expect(await opcoes.allTextContents()).toContain('Distância')
     })
   })
 })

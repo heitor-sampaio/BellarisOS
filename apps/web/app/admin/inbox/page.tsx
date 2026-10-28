@@ -87,6 +87,7 @@ export default async function AdminInboxPage({
         branches={branches}
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}
+        podeConfigurarIntegracoes={can(ctx, 'settings', 'MANAGE')}
         numerosDaRede={canais.numeros}
         numeroDoUsuario={canais.numeroDoUsuario}
       />

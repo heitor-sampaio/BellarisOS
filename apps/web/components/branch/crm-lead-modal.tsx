@@ -467,7 +467,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               {vaiPerder && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <MotivoDaPerdaCampos motivos={motivos ?? []} motivoId={motivoId} obs={motivoObs}
-                    onMotivo={setMotivoId} onObs={setMotivoObs}
+                    onMotivo={setMotivoId} onObs={setMotivoObs} lembrete
                     nomes={{ motivo: 'motivo_perda_id', obs: 'motivo_perda_obs' }} />
                 </div>
               )}

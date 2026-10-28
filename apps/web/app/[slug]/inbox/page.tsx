@@ -104,6 +104,7 @@ export default async function BranchInboxPage({
         slug={slug}
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}
+        podeConfigurarIntegracoes={can(ctx, 'settings', 'MANAGE')}
         numerosDaRede={canais.numeros}
         numeroDoUsuario={canais.numeroDoUsuario}
       />

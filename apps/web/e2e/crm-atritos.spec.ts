@@ -18,6 +18,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let sdr: MembroDeTeste | null = null
+let admin: MembroDeTeste | null = null
 let slug = ''
 
 async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
@@ -31,6 +32,10 @@ test.beforeAll(async () => {
   sdr = await criarMembro(`crs${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
+  admin = await criarMembro(`cra${marca}`, {
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Admin',
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
+  })
 })
 test.afterAll(async () => {
   if (rede) {
@@ -42,7 +47,7 @@ test.afterAll(async () => {
     }
     await db().from('contacts').delete().eq('tenant_id', rede.tenantId)
   }
-  await sdr?.limpar(); await rede?.limpar()
+  await sdr?.limpar(); await admin?.limpar(); await rede?.limpar()
 })
 
 test.describe.serial('o CRM', () => {
@@ -89,6 +94,17 @@ test.describe.serial('o CRM', () => {
       await p.goto(`/${slug}/inbox`)
       await expect(p.getByText(/Nenhum canal ligado/)).toBeVisible()
       await expect(p.getByRole('button', { name: 'Iniciar primeira conversa' })).toHaveCount(0)
+      // A16: o SDR não vê Configurações → Integrações; o aviso manda pedir a quem administra.
+      await expect(p.getByText('Peça a quem administra a clínica para conectar o WhatsApp.')).toBeVisible()
+      await expect(p.getByRole('link', { name: /Conectar o WhatsApp/ })).toHaveCount(0)
     })
+    // Quem pode configurar vê o atalho.
+    const ctx = await browser.newContext({ storageState: admin!.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/${slug}/inbox`)
+      await expect(p.getByRole('link', { name: /Conectar o WhatsApp/ })).toHaveAttribute('href', `/${slug}/settings?tab=integrations`)
+      await expect(p.getByText('Peça a quem administra')).toHaveCount(0)
+    } finally { await ctx.close() }
   })
 })

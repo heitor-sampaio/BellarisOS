@@ -2,6 +2,7 @@ import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { LeadChange } from '@/lib/lead-events'
+import { motivosComOutroPorUltimo } from '@/lib/crm/motivos-ordem'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -20,7 +21,8 @@ export interface PerdaInformada { motivoId: string; obs?: string | null }
 export async function motivosDaRede(admin: Admin, tenantId: string, incluirInativos = false): Promise<MotivoDePerda[]> {
   let q = admin.from('crm_motivos_perda').select('id, nome, ativo').eq('tenant_id', tenantId)
   if (!incluirInativos) q = q.eq('ativo', true)
-  return ((await ler(q.order('posicao').order('nome'), 'carregar os motivos de perda')) ?? []) as MotivoDePerda[]
+  // "Outro" sempre por último, também quando a clínica cria motivo depois dele.
+  return motivosComOutroPorUltimo(((await ler(q.order('posicao').order('nome'), 'carregar os motivos de perda')) ?? []) as MotivoDePerda[])
 }
 
 /**
