@@ -6854,8 +6854,19 @@ verdade. O que vale:
     `loading` no topo, o Next manda o status 200 antes do `notFound()`. Seção
     nova com tela precisa do seu `loading.tsx` (um teste cobra). Provado só no
     `next dev`; falta conferir no build ou na produção.
-  - Ainda por fazer, decidida no roteiro: conversão de Oportunidades = a de
-    `lib/metrics` (D10).
+  - Conversão (D10): uma conta só, "viraram cliente ÷ leads no funil", em
+    Oportunidades, Relatórios e dashboard. Num funil de pós-venda ela nasce
+    100% (era por isso que o quadro contava a etapa de ganho). "Ganhos" e
+    "perdidos" ficam no resumo do quadro só se o funil tiver essas etapas; a
+    dica da etapa de ganho diz que ela fecha o lead, não que conta conversão.
+  - Ticket (D11): além do rótulo, o NÚMERO do cartão de Relatórios →
+    Procedimentos mudou (dividia pelos concluídos: R$ 90 contra R$ 180 na
+    Visão geral; agora é o `ticketMedio`).
+  - "Clientes no mês" (D12): conta até o fim do mês; os cartões de dinheiro
+    seguem até agora. A "Taxa de aproveitamento" da rede segue em "horários
+    passados", de propósito.
+  - Estoque sem categoria (D17): a categoria em branco também vai a "Sem
+    categoria".
 
 - **Para decidir (2026-10-28): o que a cliente vê dos documentos no portal.**
   `/[slug]/cliente/historico` lista TODO `client_documents` dela — foto
