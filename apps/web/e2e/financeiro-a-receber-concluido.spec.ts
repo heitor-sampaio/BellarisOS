@@ -100,12 +100,21 @@ test.describe.serial('o atendimento concluído a receber', () => {
   })
 
   test('D5: a janela da agenda leva ao recebimento do concluído', async ({ browser }) => {
+    // A grade de hoje rola sozinha para agora: o clique de mouse pode cair
+    // noutro horário (e abrir o "Novo agendamento"). O evento vai direto ao
+    // bloco — e, no next dev, pode chegar antes da hidratação da grade e se
+    // perder (nem a leitura da cobrança sai): repete até a janela abrir.
+    async function abrirJanela(p: Page, agendamento: string) {
+      const janela = p.getByRole('dialog', { name: 'Agendamento' })
+      await expect(async () => {
+        if (!(await janela.isVisible())) await p.locator(`[data-agendamento="${agendamento}"]`).first().dispatchEvent('click')
+        await expect(janela).toBeVisible({ timeout: 2_000 })
+      }).toPass({ timeout: 30_000 })
+      return janela
+    }
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/agenda?date=${HOJE}`)
-      // A grade de hoje rola sozinha para agora: o clique de mouse pode cair
-      // noutro horário (e abrir o "Novo agendamento"). O evento vai direto ao bloco.
-      await p.locator(`[data-agendamento="${limpeza}"]`).first().dispatchEvent('click')
-      const receber = p.getByRole('link', { name: 'Receber pagamento' })
+      const receber = (await abrirJanela(p, limpeza)).getByRole('link', { name: 'Receber pagamento' })
       await expect(receber).toBeVisible()
       await receber.click()
       await expect(p).toHaveURL(new RegExp(`/${slug}/agenda/${limpeza}\\?receber=1`))
@@ -113,8 +122,7 @@ test.describe.serial('o atendimento concluído a receber', () => {
 
       // A avaliação de R$ 0, na mesma janela: nada a receber.
       await p.goto(`/${slug}/agenda?date=${HOJE}`)
-      await p.locator(`[data-agendamento="${avaliacao}"]`).first().dispatchEvent('click')
-      await expect(p.getByText('Sem cobrança').first()).toBeVisible()
+      await expect((await abrirJanela(p, avaliacao)).getByText('Sem cobrança')).toBeVisible()
       await expect(p.getByRole('link', { name: 'Receber pagamento' })).toHaveCount(0)
     })
   })
