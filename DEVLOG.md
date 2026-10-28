@@ -1591,6 +1591,19 @@ do Supabase no navegador, os dois dashboards): vale uma completa, que o
 Heitor decide — e ela também cobre os 129 specs afetados que ficaram sem
 rodar quando a máquina ficou sem memória (lista no scratchpad da sessão).
 
+**A completa (run 40776342522, em `2a229f31`): 1024 verdes e 7 falhas.**
+- Três eram uma regressão de D12, que também estava na produção. O
+  `[slug]/[...rota]` pegava `/api/rota-velha` como "unidade api". Sem
+  sessão (o proxy não a exige em `/api/*`), o layout da unidade lançava
+  "Unauthenticated" e a resposta era HTTP 500, não 404.
+- Correção em `45b50646`: endereço reservado (`ENDERECOS_RESERVADOS`) dá
+  `notFound()` no layout antes de pedir a sessão. Prova:
+  `e2e/nao-encontrada.spec.ts`, "sem sessão".
+- As outras quatro eram testes que não acompanharam D2 (anamnese com
+  obrigatórias), D12 (404 em português) e A25 (telefone formatado), ajustados
+  em `5d1961fe`.
+- O spec do WhatsApp só roda contra o build: a próxima completa o confere.
+
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
 Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
