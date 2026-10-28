@@ -6955,9 +6955,9 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   mão de obra, outros custos e o preço por unidade são texto livre, formatado
   ao sair do campo, e a action lê pelo mesmo `parseDinheiro` (utils); não havia
   outro campo com máscara de centavos.
-- **D11 (média)** "Agendados pelo comercial" só conta o agendar pelo card do
+- ~~**D11 (média)** "Agendados pelo comercial" só conta o agendar pelo card do
   CRM (regra), e lá `isComercial = ctx.branchId === null`: SDR de unidade
-  nunca conta.
+  nunca conta.~~ **feito em 2026-10-27** (57a21f1): a origem COMMERCIAL é da cliente com oportunidade aberta, decidida no núcleo (card, ficha, agenda, Copilot; SDR de unidade conta).
 - **D12 (baixa)** não há `not-found.tsx`: rota inexistente cai no 404 do Next,
   em inglês e sem layout.
 - A rede "[sim] Clínica Aurora" (`e63779b9-…`) e os logins `sim-*` ficaram no
@@ -7051,6 +7051,17 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   no chip) e só vale com `financial: MANAGE`. A11: o rótulo do menu vira
   "Configurações (Tags e Importações)" (menu e resumo do cargo leem o mesmo
   `menu.ts`).
+
+- Atritos feitos (frente 7, CRM e clientes): A12 (57a21f1), A13 (9194bc1), A14, A15,
+  A16 (06d740f), A24 (42d88fc), A25 (16d4f61). Decisões: a etapa de agendado se
+  acha pela MARCA `crm_stages.marca = 'AGENDADO'` (migration 20261027000060; as 3
+  etapas "Agendado" existentes foram marcadas; funil sem marca não move o card, e
+  não há tela para marcar etapa própria ainda); o card nunca recua nem sai de
+  ganho/perdido; sem oportunidade aberta o agendamento segue INTERNAL e a cliente
+  pelo app, CLIENT_APP. A24: a recepção já podia arquivar (action e RLS
+  deixam) — o defeito era achar o botão ("Desativar" virou "Arquivar cliente") e
+  a arquivada contar como cliente nova (migration 20261027000061). A25: `maskPhone`
+  trata o 55 do WhatsApp e a ficha convertida grava mascarada.
 
 ### Próximas fases já combinadas
 
