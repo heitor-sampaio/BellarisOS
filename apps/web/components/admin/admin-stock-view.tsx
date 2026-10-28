@@ -104,11 +104,15 @@ function BranchPills({ branches, unit }: { branches: BranchStock[]; unit: string
         const color   = isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--success)'
         const bg      = isZero ? 'var(--danger-soft)' : isBaixo ? 'var(--warning-soft)' : 'var(--success-bg)'
         return (
-          <span key={b.branchId} title={b.branchName} style={{
+          // O nome INTEIRO da unidade (D15, 2026-10-28): a primeira palavra dava
+          // "Íris · 3" para o Centro e para o Kobrasol. Se não couber, o CSS
+          // trunca com reticências e o title diz tudo.
+          <span key={b.branchId} title={`${b.branchName} · ${b.currentStock.toLocaleString('pt-BR')} ${unit}`} style={{
             fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
             background: bg, color, whiteSpace: 'nowrap',
+            display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom',
           }}>
-            {b.branchName.split(' ')[0]} · {b.currentStock.toLocaleString('pt-BR')} {unit}
+            {b.branchName} · {b.currentStock.toLocaleString('pt-BR')} {unit}
           </span>
         )
       })}
