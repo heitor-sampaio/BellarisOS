@@ -7284,12 +7284,23 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   (`atendimento_abater_do_pacote`, uma transação): a sessão do mesmo
   procedimento é usada, o atendimento sai de "a receber" sem cobrança, e a
   comissão passa à regra da sessão de pacote.
-- **D10 (média)** conversão de leads: 0% em Oportunidades × 66,7% em
-  Relatórios — a tela soma no navegador (`lib/crm.ts:81`, contra o §13.1). NOVO.
-- **D11 (baixa)** o rótulo do ticket médio diz "receita ÷ atendimentos" e a
-  conta (certa) é serviço ÷ cobrados. SOBRA de `695dd11`.
-- **D12 (média)** dashboard da unidade, "Clientes no mês": agendamentos e
-  cancelados 0 — usa `period.to`, não `fullTo`. SOBRA do A38 (`880f0ea`).
+- ~~**D10 (média)** conversão de leads: 0% em Oportunidades × 66,7% em
+  Relatórios — a tela soma no navegador (`lib/crm.ts:81`, contra o §13.1). NOVO.~~
+  **feito em 2026-10-28** (5981d50): a conversão é uma conta só,
+  `resumoDoFunil` (lib/metrics) sobre `metrics_lead_funnel` — dashboard e
+  quadro; o quadro a pede no recorte dele (o funil de agora, e "só os meus"
+  com os sem dono, pelo `p_owner` novo) e diz "66,7% de conversão (2 de 3
+  viraram clientes)".
+- ~~**D11 (baixa)** o rótulo do ticket médio diz "receita ÷ atendimentos" e a
+  conta (certa) é serviço ÷ cobrados. SOBRA de `695dd11`.~~ **feito em
+  2026-10-28** (2197e34): "receita de serviço ÷ atendimentos cobrados" na
+  rede, "÷ N atendimentos cobrados" na unidade; o cartão de Relatórios →
+  Procedimentos passou ao ticket de lib/metrics (dividia pelos concluídos:
+  R$ 90 × R$ 180); outras divisões ganharam outro nome.
+- ~~**D12 (média)** dashboard da unidade, "Clientes no mês": agendamentos e
+  cancelados 0 — usa `period.to`, não `fullTo`. SOBRA do A38 (`880f0ea`).~~
+  **feito em 2026-10-28** (214f6ac): o card tem um núcleo próprio até o
+  `fullTo`; os cartões de dinheiro seguem até agora.
 - ~~**D13 (média)** a compra pela "Entrada" de estoque não vira despesa (só a do
   cadastro do produto oferece): R$ 1.800 no Kobrasol sem despesa. NOVO.~~
   **feito em 2026-10-28** (1b54c53): a Entrada (unidade e rede) oferece
@@ -7311,8 +7322,11 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   gravado, e a validação diz "Falta o canal". NOVO.~~ **feito em 2026-10-28**
   (fde885d): o passo nasce com `canal: 'whatsapp'` gravado; o salvo sem canal
   mostra "Escolha o canal…".
-- **D17 (baixa)** Relatórios → Estoque por categoria: produto sem categoria
-  some ("Sem dados" com R$ 5.562 em estoque). NOVO.
+- ~~**D17 (baixa)** Relatórios → Estoque por categoria: produto sem categoria
+  some ("Sem dados" com R$ 5.562 em estoque). NOVO.~~ **feito em 2026-10-28**
+  (cbcde34): fatia "Sem categoria" (também a categoria em branco); as fatias
+  somam o valor em estoque (`metrics_relatorio` trocada a partir do corpo da
+  produção, migration 20261028000502).
 - ~~**D18 (baixa, provável)** a rota inexistente nos portais mostra o 404 mas
   responde HTTP 200 (`notFound()` sob `loading.tsx`, com streaming).
   REGRESSÃO parcial de `f1e8414`.~~ **feito em 2026-10-28** (4003e71):
@@ -7425,6 +7439,33 @@ Decisões da frente D (D5, D8, D15, D16, D18), tomadas na correção — para o 
   `loading.tsx` — `tests/loading-fora-do-catch-all` cobra. (3) Provado no
   `next dev`; falta olhar o BUILD/produção (a suíte contra o build ou um GET em
   app.bellarisos.com): vale a completa, pois mexeu em rotas/layout.
+
+Decisões da frente E (D10, D11, D12, D17), tomadas na correção — para o Heitor revisar:
+- **D10:** a conversão do quadro é "viraram cliente ÷ leads no funil". Num
+  funil de pós-venda (todo mundo já é cliente) ela nasce 100% — era o motivo
+  de o quadro contar a etapa de ganho; a decisão de uma conta só vale mais.
+  "Ganhos" e "perdidos" seguem no resumo (as etapas de ganho e de perda) e só
+  aparecem quando o funil as tem. O texto passou a "N leads no funil · … ·
+  66,7% de conversão (2 de 3 viraram clientes)"; sem lead, sem percentual. O
+  dashboard também passou a usar `resumoDoFunil` (era um `reduce` na
+  página). A dica da etapa de ganho dizia "conta como conversão" e mudou.
+- **D10, banco:** `metrics_lead_funnel` ganhou `p_owner` e aceita período
+  nulo; a assinatura antiga saiu. O `apply_migration` do MCP recusou essa
+  ("Invalid or expired requestState", três vezes): foi aplicada pelo
+  `execute_sql` numa transação e registrada em
+  `supabase_migrations.schema_migrations` com o mesmo nome (o `statements`
+  guarda só um aviso, não o SQL). A do D17 foi pelo `apply_migration`.
+- **D11:** além do subtítulo, o cartão "Ticket Médio" de Relatórios →
+  Procedimentos mudou de NÚMERO (era receita ÷ concluídos, feito na tela;
+  agora o `ticketMedio` de lib/metrics). A coluna "Ticket médio" do ranking
+  de clientes do dashboard virou "Média por atend." e a da tabela por
+  procedimento, "Média por execução" — só o nome; as duas divisões continuam
+  na tela (dívida pequena do §13.1, uma linha cada).
+- **D12:** o card "Clientes no mês" ganhou uma chamada a mais do núcleo (até
+  o `fullTo`) em vez de mudar o núcleo de cima, que alimenta o delta do
+  dinheiro. A "Taxa de aproveitamento" da rede ficou até agora (o rótulo diz
+  "horários passados").
+- **D17:** a categoria em branco (`''`) também vira "Sem categoria".
 
 ### Próximas fases já combinadas
 
