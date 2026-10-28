@@ -2,7 +2,7 @@ import 'server-only'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
-import { alcancaUnidade } from '@/lib/auth'
+import { alcancaUnidade, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
@@ -31,6 +31,19 @@ export interface AgendamentoAoAlcance {
   professional_id: string | null; duration_min: number; room_id: string | null
 }
 
+/** A recusa de quem tem a agenda "só os meus" num agendamento de outro profissional. */
+export const DE_OUTRO_PROFISSIONAL = 'Este agendamento é de outro profissional.'
+
+/**
+ * Com a agenda "só os meus" (OWN), o agendamento de OUTRO profissional está
+ * fora do escopo também pelo id (§11; D4 da simulação de 2026-10-28: a
+ * profissional abria pela URL o atendimento de outra e marcava o check-in).
+ * Quem tem ALL — a recepção — segue mexendo no de todos.
+ */
+export function deOutroProfissional(ctx: TenantContext, professionalId: string | null | undefined): boolean {
+  return isOwnScope(ctx, 'agenda') && (!ctx.internalUserId || professionalId !== ctx.internalUserId)
+}
+
 /** O agendamento, se for da rede E de uma unidade ao alcance. */
 export async function agendamentoAoAlcance(admin: Admin, ctx: TenantContext, id: string): Promise<AgendamentoAoAlcance | null> {
   const a = await ler(admin.from('appointments')
@@ -50,6 +63,7 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
 }): Promise<{ ok: true; deAgendadoPara: string } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
+  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (FINALIZADOS.includes(existente.status)) return { error: 'Este agendamento já foi finalizado.' }
   const inicio = new Date(input.scheduledAt)
   if (Number.isNaN(inicio.getTime())) return { error: 'Data inválida.' }
@@ -101,6 +115,7 @@ export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
   if (!motivo) return { error: 'Informe o motivo do cancelamento.' }
   const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
+  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (FINALIZADOS.includes(existente.status)) return { error: 'Agendamento já finalizado.' }
 
   const canceladas = await gravar(admin.from('appointments').update({
@@ -121,6 +136,7 @@ export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
 export async function confirmarCore(admin: Admin, ctx: TenantContext, appointmentId: string): Promise<{ ok: true } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
+  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   const confirmadas = await gravar(admin.from('appointments')
     .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
     .eq('id', existente.id).eq('status', 'SCHEDULED').select('id'), 'confirmar o agendamento') as { id: string }[] | null
@@ -157,6 +173,9 @@ export function revalidarAgendamento(ctx: TenantContext, appointmentId: string, 
 export async function checkinCore(admin: Admin, ctx: TenantContext, appointmentId: string): Promise<{ ok: true } | { error: string }> {
   const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
+  // A recepção (ALL) marca a chegada de todos; quem é "só os meus", só a dos
+  // dela (D4, 2026-10-28) — antes, "o check-in comum não confere o profissional".
+  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (existente.status !== 'SCHEDULED' && existente.status !== 'CONFIRMED') {
     return { error: 'Check-in só é possível em agendamentos Agendados ou Confirmados.' }
   }

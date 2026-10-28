@@ -14,7 +14,10 @@ import {
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
-import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
+import {
+  agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento,
+  deOutroProfissional, DE_OUTRO_PROFISSIONAL,
+} from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
@@ -135,6 +138,13 @@ async function updateAppointmentStatusInterno(
   // (iniciar/concluir), não no ciclo de vida do agendamento.
   if (isOwnScope(ctx, 'agenda') && !(['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)) {
     throw semAcesso()
+  }
+  // E só no agendamento DELE (D4, 2026-10-28): o iniciar pelo status mexia no
+  // de qualquer profissional da unidade, pelo id.
+  if (isOwnScope(ctx, 'agenda')) {
+    const dono = await ler(createAdminClient().from('appointments').select('professional_id')
+      .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento')
+    if (deOutroProfissional(ctx, dono?.professional_id as string | null | undefined)) throw new Error(DE_OUTRO_PROFISSIONAL)
   }
 
   if (status === 'CANCELLED' && !cancellationReason?.trim()) {
@@ -539,6 +549,8 @@ async function reassignProfessionalInterno(
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
+    // "Só os meus" não puxa para si o agendamento de outra (D4, 2026-10-28).
+    if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) {
       return { error: 'Não é possível reatribuir um atendimento já finalizado.' }
     }
@@ -1045,6 +1057,8 @@ async function saveDraftNotesInterno(
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
+    // A evolução do atendimento de OUTRA, com a agenda "só os meus" (D4, 2026-10-28).
+    if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
 
     // Profissional não pode editar registro já finalizado
     const isFinalised = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)

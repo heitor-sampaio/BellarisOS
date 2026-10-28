@@ -111,6 +111,11 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   manifesto do `next dev`, como a pessoa logada, sem montar a tela. Só
   argumentos JSON (FormData, por `acao.ts`). Toda recusa testada assim tem o
   admin como CONTROLE: argumento errado também "não muda nada".
+  A action de `useActionState` (`(anterior, formData)`) vai por
+  `chamarAcaoComFormulario` (2026-10-28): a codificação do `encodeReply` —
+  os campos com o prefixo `_1_` e a raiz (`0`, com `$K1`) POR ÚLTIMO, num
+  `FormData` (num objeto, a chave `0` sai primeiro e o formulário chega
+  vazio). Só texto; arquivo continua por `acao.ts`.
   A action só existe nas rotas cujas PÁGINAS a usam; em outra, o Next responde
   200 com "Server action not found" — e `chamarAcao` lança, para a recusa não
   "passar" sem ter chegado à action.

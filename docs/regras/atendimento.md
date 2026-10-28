@@ -51,6 +51,19 @@
   documentos). Com a agenda "só os meus", só no agendamento dela. Sem o
   check-in no cargo, a tela diz que a recepção marca a chegada. Prova:
   `e2e/agenda-chegar-e-iniciar.spec.ts`.
+- **A agenda "só os meus" vale também pelo ID** (D4 da simulação de
+  2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
+  (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
+  agendamento de OUTRO profissional é `semAcesso()`, e as actions pelo id o
+  recusam — check-in (`checkinCore`), confirmar, remarcar, cancelar
+  (`confirmarCore`/`remarcarCore`/`cancelarCore`, logo também o Copilot),
+  iniciar pelo status (`updateAppointmentStatus`), trocar o profissional e
+  salvar a evolução. A regra é UMA, `deOutroProfissional`
+  (`lib/appointments/alteracoes.ts`); `startAppointment`, `finishSession` e
+  `chegarEIniciar` já conferiam. A recepção (ALL) faz o de todos. Antes a
+  profissional abria pela URL o atendimento de outra e marcava o check-in ("o
+  check-in comum não confere o profissional"). Prova:
+  `e2e/agenda-so-os-meus-pelo-id.spec.ts`.
 - **A chegada é do DIA do agendamento** (A18, 2026-10-27): `checkinCore`
   recusa fora do dia (Brasília, `ehODiaDoAgendamento`) — vale para a agenda, o
   Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". Com a
@@ -464,6 +477,7 @@ O resto do fluxo:
 ❌ Gravar a anamnese geral fora de gravarAnamneseGeral (o pendente fica aberto e a cliente responde de novo)
 ❌ Ler general_anamnesis direto, sem paraAnamneseGeral (há dois formatos no banco)
 ❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
+❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem

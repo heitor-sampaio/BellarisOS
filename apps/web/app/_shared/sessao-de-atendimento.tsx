@@ -14,6 +14,8 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
+import { deOutroProfissional } from '@/lib/appointments/alteracoes'
+import { semAcesso } from '@/lib/sem-acesso'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -70,6 +72,10 @@ export async function SessaoDeAtendimento({
   ])
 
   if (!apptRaw) notFound()
+  // A agenda "só os meus" vale também para o id (§11; D4 da simulação de
+  // 2026-10-28): a profissional abria pela URL o atendimento de outra e
+  // marcava o check-in. A recepção (ALL) abre o de todos.
+  if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) throw semAcesso()
 
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
   type RawProf   = { id: string; name: string }

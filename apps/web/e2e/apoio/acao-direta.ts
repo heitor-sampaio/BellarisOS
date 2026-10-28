@@ -69,6 +69,43 @@ export interface RespostaDeAcao { status: number; texto: string }
 export async function chamarAcao(
   page: Page, arquivo: string, funcao: string, rota: string, args: unknown[],
 ): Promise<RespostaDeAcao> {
+  const { id, destino } = await acaoNaRota(page, arquivo, funcao, rota)
+  const corpo = JSON.stringify(args.map(a => (a === undefined ? '$undefined' : a)))
+  const r = await page.request.post(destino, {
+    headers: { 'next-action': id, accept: 'text/x-component', 'content-type': 'text/plain;charset=UTF-8' },
+    data: corpo,
+  })
+  return respostaDe(r, arquivo, funcao, rota)
+}
+
+/**
+ * A action que recebe um `FormData` como ÚLTIMO argumento (as de
+ * `useActionState`: `(anterior, formData)`), chamada direto — `campos` é o
+ * formulário. É a codificação do `encodeReply` do React: o argumento
+ * FormData vira a referência `$K1` na raiz (campo `0`) e cada campo dele vai
+ * no corpo multipart com o prefixo `_1_`. Só campos de texto (arquivo, por
+ * `apoio/acao.ts`).
+ */
+export async function chamarAcaoComFormulario(
+  page: Page, arquivo: string, funcao: string, rota: string, antes: unknown[], campos: Record<string, string>,
+): Promise<RespostaDeAcao> {
+  const { id, destino } = await acaoNaRota(page, arquivo, funcao, rota)
+  const raiz = JSON.stringify([...antes.map(a => (a === undefined ? '$undefined' : a)), '$K1'])
+  // A raiz vai POR ÚLTIMO, como no navegador: o servidor resolve o `$K1` ao
+  // ler o campo `0`, com os campos que já chegaram — antes deles, o
+  // formulário chegava vazio. Num objeto comum a chave '0' (numérica) seria
+  // enumerada primeiro: por isso um FormData, que guarda a ordem.
+  const multipart = new FormData()
+  for (const [k, v] of Object.entries(campos)) multipart.append(`_1_${k}`, v)
+  multipart.append('0', raiz)
+  const r = await page.request.post(destino, {
+    headers: { 'next-action': id, accept: 'text/x-component' },
+    multipart,
+  })
+  return respostaDe(r, arquivo, funcao, rota)
+}
+
+async function acaoNaRota(page: Page, arquivo: string, funcao: string, rota: string): Promise<{ id: string; destino: string }> {
   const app = appDaRota(rota)
   let id = idDa(arquivo, funcao, app)
   if (!id) {
@@ -77,13 +114,12 @@ export async function chamarAcao(
     id = idDa(arquivo, funcao, app)
   }
   if (!id) throw new Error(`action ${arquivo}#${funcao} não está em manifesto nenhum depois de abrir ${rota}`)
+  return { id, destino: app === 'web' ? new URL(rota, 'http://localhost').pathname : rota }
+}
 
-  const corpo = JSON.stringify(args.map(a => (a === undefined ? '$undefined' : a)))
-  const destino = app === 'web' ? new URL(rota, 'http://localhost').pathname : rota
-  const r = await page.request.post(destino, {
-    headers: { 'next-action': id, accept: 'text/x-component', 'content-type': 'text/plain;charset=UTF-8' },
-    data: corpo,
-  })
+async function respostaDe(
+  r: { status(): number; text(): Promise<string> }, arquivo: string, funcao: string, rota: string,
+): Promise<RespostaDeAcao> {
   const texto = await r.text()
   // O Next responde 200 com este texto quando a rota não tem a action (ela só
   // existe nas rotas cujas PÁGINAS a usam). Uma recusa testada assim "passa"
