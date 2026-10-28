@@ -14,3 +14,9 @@ describe('o funil padrão da rede nova', () => {
     expect(DEFAULT_STAGES.find(s => s.name === 'Em negociação')?.outcome).toBe('OPEN')
   })
 })
+
+describe('a etapa de agendado do funil padrão', () => {
+  it('leva a marca AGENDADO — o código acha a etapa por ela, não pelo nome (A12)', () => {
+    expect(DEFAULT_STAGES.filter(s => s.marca === 'AGENDADO').map(s => s.name)).toEqual(['Agendado'])
+  })
+})

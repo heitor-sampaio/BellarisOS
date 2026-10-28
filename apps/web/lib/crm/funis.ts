@@ -53,7 +53,7 @@ export async function seedDefaultFunnel(tenantId: string): Promise<CRMFunnel[]> 
   const { error: erroEtapas } = await admin.from('crm_stages').insert(
     DEFAULT_STAGES.map((s, i) => ({
       tenant_id: tenantId, funnel_id: funil!.id,
-      name: s.name, color: s.color, position: i, outcome: s.outcome,
+      name: s.name, color: s.color, position: i, outcome: s.outcome, marca: s.marca ?? null,
     })),
   )
   if (erroEtapas) throw new Error(`Falha ao criar as etapas padrão: ${erroEtapas.message}`)

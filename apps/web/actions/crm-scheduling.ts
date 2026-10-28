@@ -7,7 +7,6 @@
 
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { registrarEventoLead } from '@/lib/lead-events'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
@@ -218,7 +217,9 @@ export async function createCrmAppointment(
     revalidatePath('/admin/inbox')
   }
 
-  const isComercial = ctx.branchId === null
+  // Agendar pelo CRM é comercial, de qualquer abrangência: o SDR de unidade
+  // contava como INTERNAL (D11, 2026-10-27). O núcleo liga a oportunidade, move
+  // o card e escreve a linha do tempo.
   const res = await createAppointmentCore(admin, ctx, {
     branchId:       input.branchId,
     clientId,
@@ -228,44 +229,11 @@ export async function createCrmAppointment(
     roomId:         input.roomId ?? null,
     notes:          input.notes ?? null,
     credito:        lerCredito(input.credito),
-    source:         isComercial ? 'COMMERCIAL' : 'INTERNAL',
+    source:         'COMMERCIAL',
+    leadId:         input.leadId || null,
   })
 
   if ('error' in res) return { error: res.error }
-
-  // Agendar é uma ação sobre o lead e entra na linha do tempo dele — senão o
-  // card salta de "Em contato" para "Agendado" sem dizer o que aconteceu.
-  // Sem oportunidade não há linha do tempo a escrever: agendar pelo contato é
-  // legítimo e não inventa um negócio que ninguém abriu.
-  if (input.leadId) {
-    // O agendamento JÁ EXISTE aqui: o nome do procedimento só enfeita a linha
-    // do tempo. Lançar faria a tela dizer "falhou" para um agendamento criado,
-    // e quem agenda tentaria de novo — então a falha é registrada e segue.
-    const { data: proc, error: erroProc } = input.procedureId
-      ? await admin.from('procedures').select('name').eq('id', input.procedureId).maybeSingle()
-      : { data: null, error: null }
-    if (erroProc) console.error('[createCrmAppointment] nome do procedimento:', erroProc.message)
-
-    await registrarEventoLead({
-      tenantId:    ctx.tenantId!,
-      leadId:      input.leadId,
-      type:        'APPOINTMENT_CREATED',
-      actorUserId: ctx.internalUserId,
-      actorName:   ctx.userName || null,
-      changes: [{
-        campo: 'Agendamento',
-        de:    null,
-        para:  [
-          (proc as { name: string } | null)?.name,
-          new Date(input.scheduledAt).toLocaleString('pt-BR', {
-            timeZone: 'America/Sao_Paulo',
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit',
-          }),
-        ].filter(Boolean).join(' · '),
-      }],
-    })
-  }
 
   notifyAppointmentCreated(res.id)
   revalidatePath('/admin/oportunidades')

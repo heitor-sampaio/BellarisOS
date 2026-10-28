@@ -64,7 +64,20 @@
   de rótulo "alerg…", sem "não"/"nenhuma"), só para quem vê o prontuário.
   "Aguardando confirmação do cliente pelo app" só para quem TEM o app.
   Prova: `e2e/prontuario-atritos.spec.ts`.
-- Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
+- Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o agendamento do COMERCIAL, abaixo). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
+- **A origem COMMERCIAL é da cliente com oportunidade ABERTA, não de quem agenda** (D11/A12 da
+  simulação de 2026-10-27): `createAppointmentCore` procura a oportunidade aberta da cliente
+  (`oportunidadeDoAgendamento`, `lib/crm/liga-agendamento.ts`; o card passa o `leadId` já
+  conferido por `leadAoAlcance`) e, havendo, grava `COMMERCIAL` — agendando pelo card, pela ficha,
+  pela agenda ou pelo Copilot, e seja o SDR da rede ou de UNIDADE (o `isComercial` antigo
+  era `ctx.branchId === null`). Pelo card o agendamento é sempre COMMERCIAL. A cliente que agenda
+  sozinha pelo app segue `CLIENT_APP`. Sem oportunidade aberta (nenhuma, ganha ou perdida) é
+  `INTERNAL`. Fora do plano `oportunidades` não se liga nada.
+  Agendar também move o card para a etapa de agendado do funil, achada pela MARCA
+  (`crm_stages.marca = 'AGENDADO'`, nunca pelo nome: a clínica renomeia), sem recuar quem já
+  passou dela nem mexer em ganho/perdido (`etapaParaAgendar`), e escreve `APPOINTMENT_CREATED`
+  na linha do tempo (o núcleo, não a action). O funil padrão nasce com a marca; funil sem etapa
+  marcada não move o card. Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`.
 - **A cliente cancela e remarca pelo portal até o prazo da rede**
   (`tenants.portal_prazo_alteracao_horas`, 24h por padrão, Configurações →
   Geral; decisão do Heitor, 2026-10-21): o cartão da agenda abre o detalhe

@@ -144,7 +144,7 @@ export async function moverEtapaCore(
    * O motivo da perda, quando o destino é uma etapa de desfecho LOST. A TELA
    * exige (`exigirMotivo`); o Copilot e as automações movem sem ele.
    */
-  opcoes: { perda?: PerdaInformada | null; exigirMotivo?: boolean } = {},
+  opcoes: { perda?: PerdaInformada | null; exigirMotivo?: boolean; semAlcance?: boolean } = {},
 ): Promise<{ ok: true } | { error: string }> {
   if (!(await etapaDaRede(ctx.tenantId!, stageId))) return { error: 'Etapa não encontrada.' }
 
@@ -159,7 +159,7 @@ export async function moverEtapaCore(
   const patch = etapaAnterior === stageId ? { crm_stage_id: stageId } : { crm_stage_id: stageId, ...perda.patch }
 
   let q = admin.from('leads').update(patch).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
-  const owner = ownerFilter(ctx, 'crm')
+  const owner = opcoes.semAlcance ? null : ownerFilter(ctx, 'crm')
   if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
   const { data, error } = await q.select('id')
   if (error) { console.error('[moverEtapaCore]', error.message); return { error: 'Não foi possível mover a oportunidade.' } }

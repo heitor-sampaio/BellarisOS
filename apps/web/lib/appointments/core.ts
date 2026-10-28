@@ -17,6 +17,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { ler, tentar } from '@/lib/db'
 import { conferirCredito, ligarCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
 import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
+import { oportunidadeDoAgendamento, ligarAgendamentoAOportunidade } from '@/lib/crm/liga-agendamento'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -34,6 +35,11 @@ export interface CreateAppointmentInput {
    * crédito decide o procedimento e o preço, e fica ligado ao agendamento.
    */
   credito?:       CreditoDeAgendamento | null
+  /**
+   * A oportunidade de onde o agendamento saiu (o card). Já conferida por quem
+   * chama (`leadAoAlcance`). Sem ela, vale a oportunidade ABERTA da cliente.
+   */
+  leadId?:        string | null
 }
 
 const IGNORED_STATUS = '("CANCELLED","NO_SHOW")'
@@ -189,6 +195,13 @@ export async function createAppointmentCore(
     return { error: 'Este profissional já tem agendamento nesse horário.' }
   }
 
+  // A cliente tem oportunidade aberta? Então o agendamento é do comercial
+  // (D11, 2026-10-27): a origem não depende de quem agenda nem de por onde — o
+  // SDR de unidade e a recepção que agenda pela ficha também contam. A cliente
+  // que agenda sozinha pelo app segue CLIENT_APP.
+  const oportunidade = await oportunidadeDoAgendamento(admin, ctx, input.clientId, input.leadId)
+  const origem = oportunidade?.aberta && (input.source ?? 'INTERNAL') === 'INTERNAL' ? 'COMMERCIAL' : (input.source ?? 'INTERNAL')
+
   const { data, error } = await admin
     .from('appointments')
     .insert({
@@ -203,7 +216,7 @@ export async function createAppointmentCore(
       price:           doCredito ? doCredito.preco : (procedure?.price ?? 0),
       notes:           input.notes ?? null,
       status:          'SCHEDULED',
-      source:          input.source ?? 'INTERNAL',
+      source:          origem,
       created_by_id:   ctx.internalUserId,
     })
     .select('id')
@@ -220,6 +233,11 @@ export async function createAppointmentCore(
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
+
+  // O card anda para "agendado" e a linha do tempo dele diz o que houve.
+  if (oportunidade) {
+    await ligarAgendamentoAOportunidade(admin, ctx, oportunidade, { procedureId: input.procedureId, scheduledAt: input.scheduledAt })
+  }
 
   // A corrente de eventos. Sai daqui, e não das actions que chamam este core,
   // porque são quatro caminhos de criação (agenda, inbox, checkout de plano,
