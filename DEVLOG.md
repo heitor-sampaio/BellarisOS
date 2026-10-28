@@ -7245,9 +7245,12 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   check-in, confirmar, remarcar, cancelar (os núcleos, logo também o
   Copilot), iniciar pelo status, trocar o profissional e salvar a evolução
   recusam o agendamento de outro com a agenda OWN.
-- **D5 (alta)** "Minha agenda" e `/admin/agenda` começam fixas às 07:00
+- ~~**D5 (alta)** "Minha agenda" e `/admin/agenda` começam fixas às 07:00
   (`DAY_START`/`GRID_START`); o de madrugada empilha na primeira linha. NOVO
-  (o D8 de `8f4e92f` tratou só a grade da unidade).
+  (o D8 de `8f4e92f` tratou só a grade da unidade).~~ **feito em 2026-10-28**
+  (5ca6a5f): as duas grades abrem no horário de funcionamento e se estendem
+  pelos agendamentos de fora dele, pela mesma função da grade da unidade
+  (`estenderJanela`); na rede, o mais cedo e o mais tarde entre as unidades.
 - ~~**D6 (alta)** o estorno não reabre a cobrança: o atendimento não volta aos
   "a receber", e o portal mostra o estornado como "Pago". SOBRA de `f063c6f`.~~
   **feito em 2026-10-28** (df0e6db): o estornado sai do "pago" e da
@@ -7261,8 +7264,11 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   chega como envolvido); com agenda ou financeiro OWN, os dois dashboards
   passam o profissional ao núcleo e escondem o dinheiro da rede (e o da
   unidade, o gráfico dos 6 meses).
-- **D8 (média)** "Adicionar membro" (rede) herda "Atende clientes" e a
-  abrangência do cadastro anterior. REGRESSÃO de `4e5bef5`.
+- ~~**D8 (média)** "Adicionar membro" (rede) herda "Atende clientes" e a
+  abrangência do cadastro anterior. REGRESSÃO de `4e5bef5`.~~ **feito em
+  2026-10-28** (2594e15): o formulário (cadastro e edição) só existe com a
+  janela aberta, então o estado nasce limpo a cada abertura; na edição, nasce
+  com os valores do membro.
 - ~~**D9 (média)** o pacote vendido depois não reconhece a sessão avulsa já
   concluída — nenhuma action liga uma à outra. NOVO.~~ **feito em 2026-10-28**
   (045c922): "Abater do pacote" na janela do "Confirmar pagamento"
@@ -7288,15 +7294,22 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   aplicação se registra no atendimento. A toxina sem mapa no atendimento é
   configuração (o procedimento não tem ficha com o planejador; o mapa do
   Planejamento estava lá) — ficou como está.
-- **D15 (baixa)** o chip de estoque por unidade usa a primeira palavra do
-  nome ("Íris · 3 frasco" duas vezes). NOVO.
-- **D16 (baixa)** automação: o canal "WhatsApp" aparece no seletor sem estar
-  gravado, e a validação diz "Falta o canal". NOVO.
+- ~~**D15 (baixa)** o chip de estoque por unidade usa a primeira palavra do
+  nome ("Íris · 3 frasco" duas vezes). NOVO.~~ **feito em 2026-10-28**
+  (f9f7ca2): o chip leva o nome inteiro da unidade (truncado por CSS, com tudo
+  no `title`); não havia o mesmo corte de nome de unidade em outra tela.
+- ~~**D16 (baixa)** automação: o canal "WhatsApp" aparece no seletor sem estar
+  gravado, e a validação diz "Falta o canal". NOVO.~~ **feito em 2026-10-28**
+  (fde885d): o passo nasce com `canal: 'whatsapp'` gravado; o salvo sem canal
+  mostra "Escolha o canal…".
 - **D17 (baixa)** Relatórios → Estoque por categoria: produto sem categoria
   some ("Sem dados" com R$ 5.562 em estoque). NOVO.
-- **D18 (baixa, provável)** a rota inexistente nos portais mostra o 404 mas
+- ~~**D18 (baixa, provável)** a rota inexistente nos portais mostra o 404 mas
   responde HTTP 200 (`notFound()` sob `loading.tsx`, com streaming).
-  REGRESSÃO parcial de `f1e8414`.
+  REGRESSÃO parcial de `f1e8414`.~~ **feito em 2026-10-28** (4003e71):
+  confirmado no dev (200 nos três portais); o portal deixou de ter
+  `loading.tsx` no topo e cada seção tem o seu — as telas seguem com o
+  esqueleto e o 404 sai de verdade.
 
 O dinheiro bateu em todas as telas, por unidade e no total (receita R$ 2.480,
 despesas R$ 4.912,50, estoque R$ 5.562, consumo R$ 288); a mesma cliente nas
@@ -7381,6 +7394,28 @@ Decisões da frente C (D2, D3, D14), tomadas na correção:
 - **Arquivos compartilhados mexidos**: `lib/cached-queries.ts` (o select do
   prontuário ganhou `queixas`) e `packages/nucleo/src/estilos/globals.css`
   (o selo "Ficha de saúde vazia"). Vale uma completa, quando o Heitor quiser.
+
+Decisões da frente D (D5, D8, D15, D16, D18), tomadas na correção — para o Heitor revisar:
+- **D5:** a janela da "Minha agenda" é a da UNIDADE (não a do próprio
+  profissional); fecha na hora do fim da unidade (a última linha não tem
+  rótulo, como era). Atendimento que termina depois da meia-noite fecha a
+  grade em 24. O E2E `agenda-clique-no-horario` supunha 07:00 e passou a ler
+  a primeira hora da grade. Não testei a rede com DUAS unidades de horários
+  diferentes pela tela (a conta do mais cedo/mais tarde é `janelaDaGrade`,
+  já usada pela unidade, e está no Vitest).
+- **D8:** além do cadastro, a EDIÇÃO também ganhou o formulário que só existe
+  aberto: a abrangência guardava o que se mexeu antes de cancelar.
+- **D15:** o `title` do chip diz nome, saldo e unidade.
+- **D16:** o seletor sem canal ganhou a opção desabilitada "Escolha o canal…";
+  nada muda para quem já tem canal gravado.
+- **D18:** (1) a causa é a documentada do Next (loading#status-codes), não um
+  bug: o 404 num Suspense sai com 200. (2) Em vez de tirar o `loading` das
+  telas, ele saiu do TOPO dos portais (`app/admin`, `app/[slug]`) e foi para
+  cada seção (25 arquivos de uma linha, mesmo esqueleto em
+  `components/shared/esqueleto-de-tela`). Seção nova com tela precisa do seu
+  `loading.tsx` — `tests/loading-fora-do-catch-all` cobra. (3) Provado no
+  `next dev`; falta olhar o BUILD/produção (a suíte contra o build ou um GET em
+  app.bellarisos.com): vale a completa, pois mexeu em rotas/layout.
 
 ### Próximas fases já combinadas
 
