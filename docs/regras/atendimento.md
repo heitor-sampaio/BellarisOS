@@ -236,6 +236,26 @@ const procedures = await ler(
     respondida" mostra o telefone/WhatsApp da UNIDADE para corrigir algo. Erro
     de validação (no link e nas fichas): rola ao primeiro campo obrigatório
     vazio, foca, destaca e escreve a mensagem junto dele.
+  - **A ficha não se responde vazia** (D2 da simulação de 2026-10-28,
+    decisões do Heitor): a cliente (app e link) não envia sem resposta
+    nenhuma nem com pergunta obrigatória em branco — `oQueFaltaNaFicha`
+    (`lib/anamnese-geral.ts`), conferido no SERVIDOR
+    (`responderPreAtendimento`, `confirmarQueNadaMudou`, `responderPorLink`);
+    a tela diz o que falta junto do campo. A ficha padrão nasce com alergia,
+    gestação, medicamentos e condições de saúde obrigatórios
+    (`private.ficha_de_pre_atendimento_padrao`, migration `20261028000301`);
+    nas redes que já existiam, só a ficha padrão nunca editada mudou.
+    A obrigatória vale para todo preenchimento pelo construtor: a equipe
+    também a preenche ao salvar a anamnese ou mandar a avaliação.
+  - **A ficha gravada vazia não é "respondida" em lugar nenhum**
+    (`anamneseRespondida`): sem "Anamnese revisada" nem "Respondida…" no
+    atendimento (a tela diz "Ficha de saúde vazia"), sem "algo mudou?", sem
+    selo de respondida na agenda, e o gatilho do envio não a conta como
+    última resposta (nem a anamnese de `respostas` vazias, nem o pendente
+    respondido sem resposta). `gravarAnamneseGeral` com respostas vazias não
+    fecha o pendente nem avisa a profissional. Prova:
+    `e2e/ficha-pre-atendimento-obrigatoria.spec.ts`,
+    `tests/pre-atendimento-obrigatoria.test.ts`.
   - **O alerta de alergia** (`alergiasDaAnamnese`) trata como NEGATIVA a
     resposta que começa por negação ("não", "nenhuma", "sem", "nego", "nunca
     tive"; caixa, acento e pontuação ignorados) — salvo ressalva ("não sei",
@@ -488,6 +508,8 @@ O resto do fluxo:
 ❌ Action ou lista de ficha de procedimento sem .eq('tipo', 'PROCEDIMENTO') (edita e apaga a ficha de pré-atendimento)
 ❌ Gravar a anamnese geral fora de gravarAnamneseGeral (o pendente fica aberto e a cliente responde de novo)
 ❌ Ler general_anamnesis direto, sem paraAnamneseGeral (há dois formatos no banco)
+❌ Dizer "respondida" (selo, "algo mudou?", janela de 30 dias) sem anamneseRespondida / respostas não vazias — a ficha gravada vazia não é respondida
+❌ Aceitar a ficha da CLIENTE (app ou link) sem oQueFaltaNaFicha no servidor
 ❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
 ❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)

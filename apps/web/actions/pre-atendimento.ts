@@ -141,7 +141,8 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
   const [pendente, deste, cliente, pelaConversa] = await Promise.all([
     ler(admin.from('pre_atendimentos').select('modo').eq('client_id', ap.client_id).eq('tenant_id', ctx.tenantId!)
       .eq('status', 'PENDENTE').maybeSingle(), 'buscar o pré-atendimento pendente'),
-    ler(admin.from('pre_atendimentos').select('respondido_em').eq('appointment_id', ap.id).eq('status', 'RESPONDIDO')
+    // A ficha gravada vazia não é respondida (D2 da simulação de 2026-10-28).
+    ler(admin.from('pre_atendimentos').select('respondido_em').eq('appointment_id', ap.id).eq('status', 'RESPONDIDO').neq('respostas', '{}')
       .order('respondido_em', { ascending: false }).limit(1).maybeSingle(), 'buscar o pré-atendimento do agendamento'),
     ler(admin.from('clients').select('document, birth_date').eq('id', ap.client_id).maybeSingle(), 'buscar a cliente'),
     envioPelaConversaLigado(ctx.tenantId!),

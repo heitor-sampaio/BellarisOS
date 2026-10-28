@@ -59,6 +59,7 @@ export const ISOLADOS = [
   'estrutura-endereco-da-unidade.spec.ts',
   'fechamento-escopo-proprio.spec.ts',
   'ficha-pre-atendimento.spec.ts',
+  'ficha-pre-atendimento-obrigatoria.spec.ts',
   'financeiro-a-pagar-vencimento.spec.ts',
   'financeiro-a-receber-concluido.spec.ts',
   'financeiro-credito-em-vezes.spec.ts',

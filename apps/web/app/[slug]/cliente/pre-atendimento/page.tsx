@@ -3,7 +3,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { paraAnamneseGeral } from '@/lib/anamnese-geral'
+import { paraAnamneseGeral, anamneseRespondida } from '@/lib/anamnese-geral'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { PreAtendimentoDaCliente } from '@/components/client-portal/pre-atendimento'
 
@@ -36,8 +36,8 @@ export default async function PreAtendimentoPage({ params }: { params: Promise<{
 
   return (
     <PreAtendimentoDaCliente
-      // Sem resposta anterior, "nada mudou" não tem o que confirmar: a ficha inteira.
-      modo={pendente.modo === 'CONFIRMAR' && atual ? 'CONFIRMAR' : 'COMPLETO'}
+      // Sem resposta anterior (ou com a ficha gravada vazia), "nada mudou" não tem o que confirmar: a ficha inteira.
+      modo={pendente.modo === 'CONFIRMAR' && anamneseRespondida(atual) ? 'CONFIRMAR' : 'COMPLETO'}
       ficha={pendente.ficha}
       respostasAnteriores={atual?.respostas ?? {}}
       voltar={voltar}

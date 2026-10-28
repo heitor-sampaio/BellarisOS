@@ -14,7 +14,8 @@ const LOTE = 150
  * a mesma regra da janela do agendamento (`situacaoDoPreAtendimento`) —
  * PENDENTE quando a cliente tem a ficha esperando resposta (a dela, aberta
  * por qualquer horário) e o agendamento ainda vai acontecer; RESPONDIDA
- * quando foi respondida para ESTE agendamento. Só o estado: nada das
+ * quando foi respondida para ESTE agendamento — com ao menos uma resposta: a
+ * ficha gravada vazia não é respondida (D2 da simulação de 2026-10-28). Só o estado: nada das
  * respostas, que são do prontuário.
  *
  * Quem chama já conferiu a rede e o alcance dos agendamentos.
@@ -34,7 +35,7 @@ export async function selosDaFicha(
     Promise.all(lotes(clientes).map(l => ler(admin.from('pre_atendimentos').select('client_id')
       .eq('tenant_id', tenantId).eq('status', 'PENDENTE').in('client_id', l), 'buscar as fichas pendentes da agenda'))),
     Promise.all(lotes(ids).map(l => ler(admin.from('pre_atendimentos').select('appointment_id')
-      .eq('tenant_id', tenantId).eq('status', 'RESPONDIDO').in('appointment_id', l), 'buscar as fichas respondidas da agenda'))),
+      .eq('tenant_id', tenantId).eq('status', 'RESPONDIDO').neq('respostas', '{}').in('appointment_id', l), 'buscar as fichas respondidas da agenda'))),
   ])
   const comPendente = new Set(pendentes.flatMap(r => (r ?? []).map(p => p.client_id as string)))
   const respondidos = new Set(respondidas.flatMap(r => (r ?? []).map(p => p.appointment_id as string)))

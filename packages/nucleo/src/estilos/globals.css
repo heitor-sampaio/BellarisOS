@@ -2624,6 +2624,8 @@ a.suporte-link-forte:hover { color: var(--brand); }
   font-size: var(--text-2xs); font-weight: var(--weight-bold); padding: 3px 10px; border-radius: var(--radius-chip-token);
   background: var(--success-soft); color: var(--success);
 }
+/* A ficha gravada sem resposta nenhuma (D2, 2026-10-28): não é "respondida", é pendência. */
+.anamnese-geral-selo-vazia { background: var(--warning-soft); color: var(--warning); }
 .anamnese-geral-respostas { display: grid; grid-template-columns: 1fr; gap: 14px 28px; }
 @media (min-width: 640px) { .anamnese-geral-respostas { grid-template-columns: 1fr 1fr; } }
 .anamnese-geral-secao { grid-column: 1 / -1; font-size: var(--text-sm-sz); font-weight: var(--weight-extrabold); color: var(--brand); text-transform: uppercase; letter-spacing: 0.05em; }

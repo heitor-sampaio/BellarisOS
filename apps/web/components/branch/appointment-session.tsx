@@ -27,7 +27,7 @@ import { CheckoutWizard } from '@/components/branch/checkout-wizard'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle } from '@/components/branch/anamnese-geral'
-import { alergiasDaAnamnese, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
+import { alergiasDaAnamnese, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
@@ -1523,7 +1523,8 @@ export function AppointmentSession({
 
             {/* Right badges */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-              {anamnesis && (
+              {/* Só com resposta: a ficha gravada vazia não é "revisada" (D2, 2026-10-28). */}
+              {anamneseRespondida(anamnesis) && (
                 <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: 'var(--success-soft)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Check size={11} strokeWidth={3} /> Anamnese revisada
                 </span>

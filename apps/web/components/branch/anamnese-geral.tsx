@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ClipboardList, Edit2, X } from 'lucide-react'
 import { AnamnesisFormRenderer, type AnamnesisFormHandle, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
 import { salvarAnamneseGeral } from '@/actions/pre-atendimento'
-import { quemRespondeu, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
+import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 
 /**
@@ -15,6 +15,17 @@ import type { AnamnesisRow } from '@/lib/anamnesis'
  * equipe edita com as perguntas ATUAIS, e salvar fecha o pré-atendimento
  * pendente da cliente (`salvarAnamneseGeral`).
  */
+
+/**
+ * O selo de quem respondeu — ou, com a ficha gravada sem resposta nenhuma, que
+ * ela está VAZIA (D2 da simulação de 2026-10-28: a tela dizia "Respondida pela
+ * cliente" com os campos em branco).
+ */
+function SeloDaAnamnese({ anamnese }: { anamnese: AnamneseGeral }) {
+  return anamneseRespondida(anamnese)
+    ? <span className="anamnese-geral-selo">{quemRespondeu(anamnese)}</span>
+    : <span className="anamnese-geral-selo anamnese-geral-selo-vazia">Ficha de saúde vazia — nenhuma pergunta respondida</span>
+}
 
 /** O que foi respondido, pergunta por pergunta (só leitura). */
 export function RespostasDaAnamnese({ rows, respostas }: { rows: AnamnesisRow[]; respostas: AnamneseGeral['respostas'] }) {
@@ -44,8 +55,9 @@ export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, e
   embedded?:  boolean
 }) {
   const router = useRouter()
-  // Sem anamnese ainda, a ficha já abre para responder (quem pode editar).
-  const [editando, setEditando] = useState(!anamnese && canEdit)
+  // Sem anamnese ainda (ou vazia), a ficha já abre para responder (quem pode editar).
+  const respondida = anamneseRespondida(anamnese)
+  const [editando, setEditando] = useState(!respondida && canEdit)
 
   const corpo = editando ? (
     <AnamnesisFormRenderer
@@ -64,15 +76,15 @@ export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, e
         return { ok: true }
       }}
     />
-  ) : anamnese ? (
+  ) : respondida ? (
     <RespostasDaAnamnese rows={anamnese.ficha.rows} respostas={anamnese.respostas} />
   ) : (
-    <p className="anamnese-geral-vazio">A cliente ainda não respondeu a anamnese.</p>
+    <p className="anamnese-geral-vazio">{anamnese ? 'A ficha de saúde está vazia: nenhuma pergunta foi respondida.' : 'A cliente ainda não respondeu a anamnese.'}</p>
   )
 
   const acoes = canEdit && (
     editando
-      ? anamnese && (
+      ? respondida && (
           <button type="button" className="btn-ghost" onClick={() => setEditando(false)} style={{ fontSize: 'var(--text-sm-sz)', gap: 5 }}>
             <X size={12} /> Cancelar
           </button>
@@ -88,7 +100,7 @@ export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, e
     return (
       <div data-anamnese-geral className="anamnese-geral">
         <div className="anamnese-geral-topo">
-          {anamnese && !editando && <span className="anamnese-geral-selo">{quemRespondeu(anamnese)}</span>}
+          {anamnese && (!editando || !respondida) && <SeloDaAnamnese anamnese={anamnese} />}
           <span style={{ flex: 1 }} />
           {acoes}
         </div>
@@ -102,7 +114,7 @@ export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, e
       <div className="anamnese-geral-cabeca">
         <ClipboardList size={15} style={{ color: 'var(--brand)' }} aria-hidden="true" />
         <h3 className="anamnese-geral-titulo">Anamnese</h3>
-        {anamnese && !editando && <span className="anamnese-geral-selo">{quemRespondeu(anamnese)}</span>}
+        {anamnese && (!editando || !respondida) && <SeloDaAnamnese anamnese={anamnese} />}
         {acoes}
       </div>
       <div style={{ padding: '18px 20px' }}>{corpo}</div>
@@ -136,8 +148,9 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
       <div className="anamnese-geral-cabeca" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
         <h3 className="anamnese-geral-titulo">Anamnese</h3>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-          {anamnese ? quemRespondeu(anamnese) : 'As perguntas da ficha de pré-atendimento da clínica'}
+          {anamnese && anamneseRespondida(anamnese) ? quemRespondeu(anamnese) : 'As perguntas da ficha de pré-atendimento da clínica'}
         </p>
+        {anamnese && !anamneseRespondida(anamnese) && <SeloDaAnamnese anamnese={anamnese} />}
       </div>
       <div style={{ padding: '18px 20px' }}>
         <AnamnesisFormRenderer

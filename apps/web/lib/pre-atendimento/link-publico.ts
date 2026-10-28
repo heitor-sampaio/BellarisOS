@@ -3,7 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { hashDoToken, tokenValido, soDigitos, dataIso } from '@/lib/documentos/link'
 import { ipEAparelho } from '@/lib/documentos/assinar'
-import { paraAnamneseGeral, type FichaDePreAtendimento, type RespostaDaAnamnese } from '@/lib/anamnese-geral'
+import {
+  paraAnamneseGeral, respostasDaFicha, oQueFaltaNaFicha, anamneseRespondida,
+  type FichaDePreAtendimento, type RespostaDaAnamnese,
+} from '@/lib/anamnese-geral'
 import { gravarAnamneseGeral, preAtendimentoPendente } from './ficha'
 
 /**
@@ -98,8 +101,8 @@ export async function abrirFichaPorLink(input: IdentidadeDaFicha): Promise<{ err
   if (!p) return { erro: ERRO.indisponivel, status: 410 }
   return {
     ficha: {
-      // Sem resposta anterior, "nada mudou" não tem o que confirmar.
-      modo: p.pendente.modo === 'CONFIRMAR' && p.atual ? 'CONFIRMAR' : 'COMPLETO',
+      // Sem resposta anterior (ou com a ficha gravada vazia), "nada mudou" não tem o que confirmar.
+      modo: p.pendente.modo === 'CONFIRMAR' && anamneseRespondida(p.atual) ? 'CONFIRMAR' : 'COMPLETO',
       ficha: p.pendente.ficha,
       respostasAnteriores: p.atual?.respostas ?? {},
     },
@@ -117,12 +120,17 @@ export async function responderPorLink(input: IdentidadeDaFicha & { respostas?: 
   const p = await pendenteConferido(c)
   if (!p) return { erro: ERRO.indisponivel, status: 410 }
   const nadaMudou = input.nadaMudou === true
-  if (nadaMudou && !p.atual) return { erro: 'Não há respostas anteriores para confirmar. Responda a ficha.', status: 400 }
+  if (nadaMudou && !anamneseRespondida(p.atual)) return { erro: 'Não há respostas anteriores para confirmar. Responda a ficha.', status: 400 }
+  // Vazia, ou com obrigatória em branco, não passa (D2 da simulação de
+  // 2026-10-28) — a mesma conta do app.
+  const respostas = nadaMudou ? p.atual!.respostas : input.respostas
+  const falta = oQueFaltaNaFicha(p.pendente.ficha.rows, respostasDaFicha(p.pendente.ficha.rows, respostas))
+  if (falta) return { erro: nadaMudou ? `${falta} Atualize as respostas.` : falta, status: 400 }
   const admin = createAdminClient()
   await gravarAnamneseGeral(admin, {
     tenantId: p.pendente.tenantId, clientId: c.cliente, origem: 'CLIENTE_LINK', porUsuario: null,
     ficha: p.pendente.ficha,
-    respostas: nadaMudou ? p.atual!.respostas : input.respostas,
+    respostas,
   })
   await gravar(admin.from('pre_atendimento_links').update({ used_at: new Date().toISOString() }).eq('id', c.link), 'fechar o link da ficha')
   return {}

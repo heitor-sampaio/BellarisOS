@@ -61,6 +61,32 @@ export function respostasDaFicha(rows: AnamnesisRow[], bruto: unknown): Record<s
 }
 
 /**
+ * A anamnese conta como RESPONDIDA? Só com ao menos uma resposta (D2 da
+ * simulação de 2026-10-28): a cliente enviava a ficha vazia pelo app, e a
+ * tela do atendimento dizia "Anamnese revisada" e "Respondida pela cliente"
+ * com os campos em branco. A ficha gravada vazia não é respondida em lugar
+ * nenhum — nem selo, nem "algo mudou?", nem a janela de 30 dias.
+ */
+export function anamneseRespondida(a: AnamneseGeral | null | undefined): a is AnamneseGeral {
+  return !!a && Object.keys(a.respostas ?? {}).length > 0
+}
+
+/**
+ * O que falta para a CLIENTE enviar a ficha (app e link; D2): nenhuma
+ * resposta, ou a primeira pergunta obrigatória vazia, na ordem da ficha — a
+ * mesma mensagem que a tela escreve junto do campo. Nulo quando pode enviar.
+ * O servidor confere com isto: a tela sozinha não segura um envio direto.
+ * `respostas` já limpas (`respostasDaFicha`).
+ */
+export function oQueFaltaNaFicha(rows: AnamnesisRow[], respostas: Record<string, RespostaDaAnamnese>): string | null {
+  const vazia = (v: RespostaDaAnamnese | undefined) => v === undefined || (Array.isArray(v) ? v.length === 0 : String(v).trim() === '')
+  if (Object.values(respostas).every(vazia)) return 'Responda a ficha antes de enviar.'
+  const falta = flattenFields({ rows }).find(f =>
+    f.required && f.type !== 'section' && !TIPOS_FORA_DO_PRE_ATENDIMENTO.includes(f.type) && vazia(respostas[f.id]))
+  return falta ? `Preencha "${falta.label}".` : null
+}
+
+/**
  * O que está gravado → a anamnese no formato novo (ou null, se não há).
  * O formato novo passa como está; o antigo (campos fixos) é convertido para a
  * ficha atual da rede, como `anamnese_do_legado` faz no banco.

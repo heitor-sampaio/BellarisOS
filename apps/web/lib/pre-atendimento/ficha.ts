@@ -45,6 +45,9 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
 }): Promise<AnamneseGeral> {
   const ficha = o.ficha ?? await fichaDePreAtendimento(admin, o.tenantId)
   const respostas = respostasDaFicha(ficha.rows, o.respostas)
+  // Sem resposta nenhuma, a ficha NÃO conta como respondida (D2 da simulação
+  // de 2026-10-28): o pendente da cliente continua aberto, e ninguém é avisado.
+  const temResposta = Object.keys(respostas).length > 0
   // A EQUIPE regravando as MESMAS respostas não troca quem respondeu nem
   // quando: mandar a avaliação regravava a ficha que a cliente respondeu pelo
   // link como "pela equipe" (simulação de um dia de clínica, 2026-10-20). A
@@ -53,7 +56,7 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
     .eq('client_id', o.clientId).maybeSingle(), 'buscar a anamnese atual') as { general_anamnesis: AnamneseGeral | null } | null
   const antes = atual?.general_anamnesis
   if (antes?.versao === 2 && mesmasRespostas(antes.respostas, respostas)) {
-    await gravar(admin.from('pre_atendimentos')
+    if (temResposta) await gravar(admin.from('pre_atendimentos')
       .update({
         status: 'RESPONDIDO', respostas, respondido_em: new Date().toISOString(),
         origem: o.origem, respondido_por: o.porUsuario, updated_at: new Date().toISOString(),
@@ -63,7 +66,7 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
   }
   // O agendamento do pendente que esta resposta fecha: é a profissional dele
   // que recebe o aviso, quando quem responde é a cliente.
-  const daCliente = o.origem === 'CLIENTE_APP' || o.origem === 'CLIENTE_LINK'
+  const daCliente = temResposta && (o.origem === 'CLIENTE_APP' || o.origem === 'CLIENTE_LINK')
   const pendenteAntes = daCliente ? await ler(admin.from('pre_atendimentos').select('appointment_id')
     .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE').maybeSingle(),
     'buscar o pré-atendimento pendente') as { appointment_id: string | null } | null : null
@@ -79,6 +82,7 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
     { client_id: o.clientId, general_anamnesis: anamnese },
     { onConflict: 'client_id' },
   ), 'salvar a anamnese')
+  if (!temResposta) return anamnese
   await gravar(admin.from('pre_atendimentos')
     .update({
       status: 'RESPONDIDO', respostas: anamnese.respostas, respondido_em: anamnese.respondidoEm,

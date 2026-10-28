@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
-import { test, expect, type Browser } from '@playwright/test'
+import { test, expect, type Browser, type Page, type Locator } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
@@ -35,6 +35,16 @@ async function agendar(clienteId: string): Promise<string> {
 
 const pendentes = async (clienteId: string) => (await db().from('pre_atendimentos')
   .select('id, status, modo, appointment_id, ficha').eq('client_id', clienteId).eq('status', 'PENDENTE')).data ?? []
+
+/**
+ * As obrigatórias da ficha padrão além da alergia (D2 da simulação de
+ * 2026-10-28): gestação, medicamentos e condições de saúde.
+ */
+async function preencherObrigatorias(escopo: Page | Locator) {
+  await escopo.locator('[data-campo="isPregnantOrBreastfeeding"]').getByLabel('Não').check()
+  await escopo.locator('[data-campo="medications"] textarea').fill('Nenhum')
+  await escopo.locator('[data-campo="healthConditions"] textarea').fill('Nenhuma')
+}
 
 const ligarEnvio = (ligado: boolean) => db().from('tenants').update({ pre_atendimento_envio: ligado }).eq('id', A.tenantId)
 
@@ -131,7 +141,7 @@ test.describe('o pré-atendimento: a ficha da rede e o pendente do agendamento',
     }, { onConflict: 'client_id' })).error).toBeNull()
     expect((await db().from('pre_atendimentos').insert({
       tenant_id: A.tenantId, client_id: pelaFicha, status: 'RESPONDIDO', modo: 'CONFIRMAR', origem: 'CLIENTE_APP',
-      ficha: { formId: null, nome: 'Pré-atendimento', rows: [] }, respostas: {}, respondido_em: ha(5),
+      ficha: { formId: null, nome: 'Pré-atendimento', rows: [] }, respostas: { allergies: 'nenhuma' }, respondido_em: ha(5),
     })).error).toBeNull()
     await agendar(pelaAnamnese)
     await agendar(pelaFicha)
@@ -263,6 +273,7 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
 
       await cartao.getByRole('button', { name: 'Editar anamnese' }).click()
       await cartao.locator('[data-campo="allergies"] textarea').fill(`látex ${marca}`)
+      await preencherObrigatorias(cartao)
       await cartao.getByRole('button', { name: 'Salvar anamnese' }).click()
       await expect.poll(async () => {
         const { data } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
@@ -371,6 +382,7 @@ test.describe('o pré-atendimento: a cliente responde no app', () => {
       await page.getByTestId('pre-atendimento-pendente').click()
       await expect(page).toHaveURL(new RegExp(`${portal()}/pre-atendimento`))
       await page.locator('[data-campo="allergies"] textarea').fill(`pólen ${marca}`)
+      await preencherObrigatorias(page)
       await page.getByRole('button', { name: 'Enviar respostas' }).click()
       await expect(page.getByText('Respostas enviadas')).toBeVisible()
       expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente.clientId)).data)
@@ -505,6 +517,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await page.getByLabel('CPF').fill(cpf)
       await page.getByRole('button', { name: 'Continuar' }).click()
       await page.locator('[data-campo="allergies"] textarea').fill(`látex ${marca}`)
+      await preencherObrigatorias(page)
       await page.getByRole('button', { name: 'Enviar respostas' }).click()
       await expect(page.getByText('Respostas enviadas')).toBeVisible()
       expect(await pendenteDe(cliente)).toMatchObject({ status: 'RESPONDIDO', origem: 'CLIENTE_LINK' })
@@ -584,7 +597,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     const pendente = await agendada('Selo pendente')
     const respondida = await agendada('Selo respondida')
     const semFicha = await agendada('Selo sem ficha')
-    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respondido_em: new Date().toISOString() })
+    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respondido_em: new Date().toISOString(), respostas: { allergies: 'nenhuma' } })
       .eq('id', (await pendenteDe(respondida.cliente)).id)).error).toBeNull()
     expect((await db().from('pre_atendimentos').update({ status: 'CANCELADO' })
       .eq('id', (await pendenteDe(semFicha.cliente)).id)).error).toBeNull()
@@ -652,7 +665,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     expect((await db().from('branches').update({ phone: '(47) 99999-1234' }).eq('id', D.branchId)).error).toBeNull()
     const { cliente, agendamento } = await agendada('Ja respondida')
     const { token } = await gerarLink(browser, agendamento)
-    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respondido_em: new Date().toISOString() })
+    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respondido_em: new Date().toISOString(), respostas: { allergies: 'nenhuma' } })
       .eq('id', (await pendenteDe(cliente)).id)).error).toBeNull()
     const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
     const page = await ctx.newPage()
@@ -671,7 +684,8 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     const { data: ficha } = await db().from('forms').select('id, schema').eq('tenant_id', D.tenantId).eq('tipo', 'PRE_ATENDIMENTO')
       .single<{ id: string; schema: { rows: { fields: { id: string; required?: boolean }[] }[] } }>()
     const comObrigatorio = JSON.parse(JSON.stringify(ficha!.schema))
-    for (const r of comObrigatorio.rows) for (const f of r.fields) if (f.id === 'allergies') f.required = true
+    // Só a alergia obrigatória: a ficha padrão tem outras antes dela (D2), e o teste é do foco no campo de texto.
+    for (const r of comObrigatorio.rows) for (const f of r.fields) f.required = f.id === 'allergies'
     expect((await db().from('forms').update({ schema: comObrigatorio }).eq('id', ficha!.id)).error).toBeNull()
     const { agendamento, cpf } = await agendada('Validacao')
     const { token } = await gerarLink(browser, agendamento)
