@@ -22,13 +22,17 @@ test('clicar num horário vazio abre o agendamento naquele horário e unidade', 
   const caixa = await coluna.boundingBox()
   if (!caixa) throw new Error('não achei a coluna da grade')
 
-  // Duas horas abaixo do topo da grade (07:00) → 09:00. HOUR_H é 72px.
+  // Duas horas abaixo do topo da grade → a primeira hora + 2. HOUR_H é 72px.
+  // A grade abre no horário de funcionamento (D5, 2026-10-28), não em 07:00.
+  await expect(page.getByText(/^\d\d:00$/).first()).toBeVisible()
+  const horas = (await page.getByText(/^\d\d:00$/).allTextContents()).map(t => Number(t.slice(0, 2)))
+  const esperada = String(Math.min(...horas) + 2).padStart(2, '0')
   await page.mouse.click(caixa.x + caixa.width / 2, caixa.y + 2 * 72)
 
   await expect(page.getByRole('heading', { name: 'Novo agendamento' })).toBeVisible()
 
   // O horário do clique chegou ao campo, em vez de o modal abrir vazio.
-  await expect(page.locator('input[type="datetime-local"]').first()).toHaveValue(/T09:00$/)
+  await expect(page.locator('input[type="datetime-local"]').first()).toHaveValue(new RegExp(`T${esperada}:00$`))
 
   // E a unidade é a COLUNA clicada, não a do filtro do topo — com "Toda a rede"
   // escolhido o modal abriria pedindo de novo o que o clique já disse.

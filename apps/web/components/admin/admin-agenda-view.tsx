@@ -8,6 +8,7 @@ import { AppointmentModal } from '@/components/branch/appointment-modal'
 import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
+import { estenderJanela } from '@/lib/agenda/grade'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 
 // -- Tipos ---------------------------------------------------------------------
@@ -44,6 +45,8 @@ interface Props {
   /** Unidade do recorte atual; vazio = rede inteira. */
   unidadeId:    string
   appointments: Appointment[]
+  /** O horário de funcionamento das unidades mostradas: a grade do dia abre nele. */
+  janela: { inicio: number; fim: number }
   /** Marcar horário daqui. Falso para quem só tem agenda em "Ver". */
   podeAgendar:  boolean
   /** Cargo com alcance "só a própria agenda": não muda status do agendamento. */
@@ -51,22 +54,21 @@ interface Props {
 }
 
 // -- Constantes visuais --------------------------------------------------------
-const GRID_START = 7    // 07:00
-const GRID_END   = 21   // 21:00
+// A grade do dia abre no horário de funcionamento das unidades (a mais cedo e a
+// mais tarde) e se estende pelos agendamentos de fora dele (D5, 2026-10-28):
+// é a regra da grade da unidade, em `estenderJanela`. Nada de 07–21 fixo.
 const HOUR_H     = 72   // px por hora
-const HOURS      = Array.from({ length: GRID_END - GRID_START }, (_, i) => i + GRID_START)
-const GRID_H     = HOURS.length * HOUR_H
 
 /**
  * Posição vertical do clique → 'YYYY-MM-DDTHH:mm' local, em passos de 15 min.
  * Preso à faixa da grade: clique meio pixel abaixo do fim não pode virar 21:07.
  */
-function horarioNoY(dia: string, y: number): string {
+function horarioNoY(dia: string, y: number, inicio: number, fim: number): string {
   const minutosDoTopo = (y / HOUR_H) * 60
   const passo = Math.round(minutosDoTopo / 15) * 15
-  const limite = (GRID_END - GRID_START) * 60 - 15
+  const limite = (fim - inicio) * 60 - 15
   const min = Math.min(Math.max(passo, 0), limite)
-  const hh = String(GRID_START + Math.floor(min / 60)).padStart(2, '0')
+  const hh = String(inicio + Math.floor(min / 60)).padStart(2, '0')
   const mm = String(min % 60).padStart(2, '0')
   return `${dia}T${hh}:${mm}`
 }
@@ -122,10 +124,10 @@ function apptDuration(a: Appointment): number {
 }
 
 // Top/height em px para o grid de dia
-function apptTop(a: Appointment): number {
+function apptTop(a: Appointment, inicio: number): number {
   const d = new Date(a.scheduled_at)
   const h = d.getHours() + d.getMinutes() / 60
-  return Math.max(0, (h - GRID_START) * HOUR_H)
+  return Math.max(0, (h - inicio) * HOUR_H)
 }
 
 function apptHeight(a: Appointment): number {
@@ -144,8 +146,10 @@ function apptHeight(a: Appointment): number {
  * é grosseiro demais para uma agenda de estética, e o minuto exato do pixel
  * não significa nada.
  */
-function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: {
+function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioVazio }: {
   branches: Branch[]
+  /** O horário de funcionamento das unidades mostradas (horas cheias). */
+  janela: { inicio: number; fim: number }
   appointments: Appointment[]
   /** 'YYYY-MM-DD' do dia mostrado. */
   dia: string
@@ -153,14 +157,12 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
   /** Nulo quando quem olha não pode agendar. */
   onHorarioVazio: ((branchId: string, quando: string) => void) | null
 }) {
+  const { inicio, fim } = estenderJanela(janela, appointments.map(a => ({ start: a.scheduled_at, durationMin: apptDuration(a) })))
+  const HOURS  = Array.from({ length: fim - inicio }, (_, i) => i + inicio)
+  const GRID_H = HOURS.length * HOUR_H
   const byBranch: Record<string, Appointment[]> = {}
   for (const b of branches) byBranch[b.id] = []
-  for (const a of appointments) {
-    const h = new Date(a.scheduled_at).getHours()
-    if (h >= GRID_START && h < GRID_END) {
-      byBranch[a.branch_id]?.push(a)
-    }
-  }
+  for (const a of appointments) byBranch[a.branch_id]?.push(a)
 
   const TIME_COL = 52  // px
 
@@ -227,16 +229,16 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
             // e dividimos a largura
             const positioned: { appt: Appointment; col: number; totalCols: number }[] = []
             for (const a of appts) {
-              const aStart = apptTop(a)
+              const aStart = apptTop(a, inicio)
               const aEnd   = aStart + apptHeight(a)
               // Encontra quantos outros agendamentos sobrepõem este
               const overlaps = appts.filter(other => {
                 if (other.id === a.id) return false
-                const oStart = apptTop(other)
+                const oStart = apptTop(other, inicio)
                 const oEnd   = oStart + apptHeight(other)
                 return aStart < oEnd && aEnd > oStart
               })
-              const col       = overlaps.filter(o => apptTop(o) < apptTop(a) || (apptTop(o) === apptTop(a) && o.id < a.id)).length
+              const col       = overlaps.filter(o => apptTop(o, inicio) < apptTop(a, inicio) || (apptTop(o, inicio) === apptTop(a, inicio) && o.id < a.id)).length
               const totalCols = overlaps.length + 1
               positioned.push({ appt: a, col, totalCols })
             }
@@ -251,7 +253,7 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
                   // esta guarda abrir uma ficha marcaria um horário novo junto.
                   if (e.target !== e.currentTarget) return
                   const y = e.clientY - e.currentTarget.getBoundingClientRect().top
-                  onHorarioVazio(b.id, horarioNoY(dia, y))
+                  onHorarioVazio(b.id, horarioNoY(dia, y, inicio, fim))
                 } : undefined}
                 style={{
                   position: 'relative',
@@ -284,7 +286,7 @@ function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: 
                 {/* Agendamentos */}
                 {positioned.map(({ appt: a, col, totalCols }) => {
                   const st  = STATUS_STYLE[a.status] ?? STATUS_STYLE.SCHEDULED!
-                  const top = apptTop(a)
+                  const top = apptTop(a, inicio)
                   const h   = apptHeight(a)
                   const w   = `calc(${100 / totalCols}% - 6px)`
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
@@ -480,7 +482,7 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, podeAgendar, escopoProprio,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio,
 }: Props) {
   const router = useRouter()
   // `true` = veio do botão "Agendar" (sem hora nem unidade);
@@ -643,6 +645,7 @@ export function AdminAgendaView({
         <DayGrid
           branches={branches}
           appointments={appointments}
+          janela={janela}
           dia={selectedDate}
           onSelecionar={setSelecionado}
           onHorarioVazio={podeAgendar ? (branchId, quando) => setAgendando({ branchId, quando }) : null}

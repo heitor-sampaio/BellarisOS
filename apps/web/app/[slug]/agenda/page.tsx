@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
+import { normalizarHorario, janelaDaGrade, type Horario } from '@/lib/agenda/horario'
 import { ler, lerTodas } from '@/lib/db'
 import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
@@ -140,6 +140,7 @@ export default async function AgendaPage({ params, searchParams }: {
           branchName={branch.name}
           professionalId={ctx.internalUserId ?? ''}
           branchId={branchId}
+          janela={janelaDaGrade([horarioDaUnidade])}
         />
       </div>
     )

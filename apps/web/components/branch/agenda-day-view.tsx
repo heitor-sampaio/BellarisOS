@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
-import { rolagemDaGrade } from '@/lib/agenda/grade'
+import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 
 interface Professional { id: string; name: string }
 
@@ -255,13 +255,8 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   const todayEvents = events.filter(e => isSameDay(new Date(e.start), currentDate))
   // A grade do horário da unidade, estendida pelos agendamentos do dia que
   // caem fora dele (um encaixe às 21 h não pode sumir da tela).
-  let inicio = janela?.inicio ?? START_PADRAO, fim = janela?.fim ?? END_PADRAO
-  for (const ev of todayEvents) {
-    const a = new Date(ev.start), b = new Date(a.getTime() + ev.durationMin * 60000)
-    inicio = Math.min(inicio, a.getHours())
-    fim    = Math.max(fim, b.getHours() + (b.getMinutes() > 0 ? 1 : 0))
-  }
-  const g = gradeDe(inicio, Math.min(24, Math.max(fim, inicio + 1)))
+  const { inicio, fim } = estenderJanela({ inicio: janela?.inicio ?? START_PADRAO, fim: janela?.fim ?? END_PADRAO }, todayEvents)
+  const g = gradeDe(inicio, fim)
 
   // Hoje, a grade abre na hora de agora (uma hora antes); outro dia, no
   // primeiro atendimento ou na abertura da unidade, o que vier antes (D8,

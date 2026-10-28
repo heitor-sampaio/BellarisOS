@@ -15,6 +15,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { estenderJanela } from '@/lib/agenda/grade'
 import type { CalendarEvent } from './agenda-month-view'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
@@ -34,8 +35,6 @@ const STATUS_COLORS: Record<string, {
 }
 
 const PX_PER_HOUR = 80
-const DAY_START   = 7
-const DAY_END     = 21
 const WORK_MIN    = 8 * 60
 
 function initials(name: string) {
@@ -55,9 +54,11 @@ interface Props {
   branchName:       string
   professionalId:   string
   branchId:         string
+  /** O horário de funcionamento da unidade (horas cheias): a grade abre nele. */
+  janela:           { inicio: number; fim: number }
 }
 
-export function ProfessionalAgendaView({ events, slug, professionalName, branchName, professionalId }: Props) {
+export function ProfessionalAgendaView({ events, slug, professionalName, branchName, professionalId, janela }: Props) {
   const router = useRouter()
   const today  = useMemo(() => new Date(), [])
 
@@ -158,6 +159,9 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
   const monthCells = Array.from({ length: totalCell }, (_, i) => addDays(mStart, i - firstDow))
 
   // -- Time grid (dia) -----------------------------------------------
+  // A mesma regra da grade da unidade (§9.1, D5 de 2026-10-28): abre no
+  // horário de funcionamento e se estende pelos atendimentos de fora dele.
+  const { inicio: DAY_START, fim: DAY_END } = estenderJanela(janela, dayEvents)
   const gridHeight = (DAY_END - DAY_START) * PX_PER_HOUR
   const hourLines  = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => i + DAY_START)
 

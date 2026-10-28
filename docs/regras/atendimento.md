@@ -16,7 +16,9 @@
     dentro de unidade ∩ profissional, inteiros num período (não atravessam a
     pausa) e, hoje, nunca antes de agora;
   - a grade da agenda (dia) abre e fecha no horário da unidade, estendida pelos
-    agendamentos que caem fora dele;
+    agendamentos que caem fora dele — a MESMA regra (`estenderJanela`, `lib/agenda/grade.ts`) na
+    agenda da unidade, na "Minha agenda" e em `/admin/agenda` (na rede, o mais cedo e o mais
+    tarde entre as unidades; D5 de 2026-10-28, era 07–21 fixo nas duas últimas);
   - a capacidade da ocupação (`capacidadeEmMinutos`, §13.1).
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
   das sessões do plano continuam livres. Prova:

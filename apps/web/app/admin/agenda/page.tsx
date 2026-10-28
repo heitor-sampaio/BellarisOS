@@ -4,6 +4,7 @@ import { lerTodas } from '@/lib/db'
 import type { ComponentProps } from 'react'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { janelaDaGrade, normalizarHorario } from '@/lib/agenda/horario'
 import { selosDaFicha } from '@/lib/pre-atendimento/selos'
 import { dayKeyTZ, weekdayTZ, addDaysTZ, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 
@@ -49,7 +50,7 @@ export default async function AdminAgendaPage({
   // -- Filiais -------------------------------------------------------
   const { data: branchesRaw, error: branchesError } = await admin
     .from('branches')
-    .select('id, name, slug')
+    .select('id, name, slug, horario')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
     .order('name')
@@ -65,7 +66,8 @@ export default async function AdminAgendaPage({
     )
   }
 
-  const todasUnidades = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  const todasUnidadesComHorario = (branchesRaw ?? []) as { id: string; name: string; slug: string; horario: unknown }[]
+  const todasUnidades = todasUnidadesComHorario.map(({ id, name, slug }) => ({ id, name, slug }))
 
   // `?unidade=` recorta a rede a uma filial — é para onde o dashboard aponta ao
   // se olhar uma unidade, em vez de mandar a pessoa para o portal dela. Aceita
@@ -75,6 +77,9 @@ export default async function AdminAgendaPage({
   const unidadeId = todasUnidades.find(b => b.id === unidade || b.slug === unidade)?.id ?? ''
   const branches  = unidadeId ? todasUnidades.filter(b => b.id === unidadeId) : todasUnidades
   const branchIds = branches.map(b => b.id)
+  // A grade do dia abre no horário de funcionamento: o mais cedo e o mais tarde
+  // entre as unidades mostradas, estendido pelos agendamentos (D5, 2026-10-28).
+  const janela = janelaDaGrade(todasUnidadesComHorario.filter(b => branchIds.includes(b.id)).map(b => normalizarHorario(b.horario)))
 
   if (branchIds.length === 0) {
     return (
@@ -125,6 +130,7 @@ export default async function AdminAgendaPage({
         todasUnidades={todasUnidades}
         unidadeId={unidadeId}
         appointments={appointments}
+        janela={janela}
         podeAgendar={ctx.permissions.agenda === 'MANAGE'}
         escopoProprio={agendaOwner !== null}
       />
