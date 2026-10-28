@@ -1541,6 +1541,29 @@ Mexeu em arquivo compartilhado (auth, layouts, menu, núcleo da agenda,
 `metrics_core`, a limpeza do E2E): vale uma completa, que o Heitor decide.
 Detalhe por item e as decisões em "5. Em aberto → Da simulação de 2026-10-27".
 
+### 2026-10-28 — Terceira simulação: uma rede de duas unidades
+
+Pedido do Heitor: outra rodada, com outro cenário. Rede nova "[sim] Clínica
+Íris" com Centro e Kobrasol, no relógio real de madrugada (a rede abre 00:00–
+23:30). Onze agentes (Sonnet nos papéis, Opus no consolidador): a dona, a
+recepção, um gerente só do Kobrasol, uma profissional da REDE que atende nas
+duas, a esteticista do Centro, o financeiro da rede, a Mariana (já cliente da
+Aurora, ligada à Íris pelo mesmo login) e a Luíza (nova, termo de injetáveis
+por link), com pacote, pré-pago, pontos, desconto, crédito 5x, estorno,
+transferência de estoque, conta a pagar no mês seguinte, automação, LGPD e
+404. A Aurora continua no banco.
+
+O dinheiro bateu em todas as telas, por unidade e consolidado, e a mesma
+cliente nas duas clínicas ficou isolada. Achou 18 defeitos — seis de alta: a
+profissional da rede não aparece em unidade nenhuma, a ficha de saúde vazia
+conta como respondida, a anamnese do atendimento se perde no "Finalizar", a
+profissional "só os meus" faz check-in no atendimento de outra pela URL, a
+agenda dela começa às 07:00 e o estorno não reabre a cobrança. Duas
+regressões das correções de 27–28/10 (D8, D18) e quatro sobras. E 49
+atritos. Nada corrigido: o Heitor escolhe. Também trouxe evidência para a
+decisão do portal (§5, "Depende do Heitor"). Detalhe em "5. Em aberto → Da
+simulação de 2026-10-28".
+
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
 Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
@@ -6788,6 +6811,11 @@ verdade. O que vale:
   só a foto clínica; ou manter e corrigir a regra (o comentário no código fala
   em "arquivos enviados pela clínica para o cliente"). Achado pela frente 9
   das correções da simulação de 27/10; nada mexido até ele decidir.
+  **Evidência da simulação de 28/10**: a Luíza viu no app "Foto clínica —
+  28/10/2026", com o botão de baixar (rotulada "Documento"). Desde o A30
+  (`f1f2fae`) a foto anexada NO ATENDIMENTO entra em `client_documents` —
+  então toda foto clínica tirada no atendimento chega ao app sem ninguém
+  mandar; antes só entrava por Clientes → Documentos.
 
 - ~~O DNS do site~~ — **no ar desde 2026-10-20**: o DNS passou da GoDaddy
   para o Cloudflare (a GoDaddy não aceita CNAME na raiz; o domínio segue
@@ -7135,6 +7163,65 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   (`/[slug]/cliente/historico`) lista todo `client_documents` dela, inclusive
   foto clínica, exame e laudo — e o §9.4 diz que a cliente não vê foto nem
   prontuário pelo app. Precisa de decisão (esconder o clínico, ou só a foto).
+
+### Da simulação de 2026-10-28 (rede de duas unidades — nada corrigido ainda)
+
+O relatório inteiro (capturas, os 49 atritos A1–A49 por tela, os 14 achados
+que eram regra ou engano, o dinheiro esperado × sistema, o que ficou sem
+testar) está fora do git: `apps/web/.sim/relatorio.md` (o de 27/10 em
+`.sim/arquivo-2026-10-27/`). Os defeitos, conferidos no código ou no banco
+pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
+- **D1 (alta)** quem atende e é da REDE (`provides_services`, `branch_id`
+  nulo) não aparece como profissional em unidade nenhuma — agenda, agendar,
+  app da cliente (`getCachedBranchProfessionals` e mais três lugares com
+  `.eq('branch_id', …)`; o núcleo já aceita). NOVO.
+- **D2 (alta)** a ficha de saúde do app aceita o envio vazio e vira
+  "Anamnese revisada / respondida pela cliente" (a ficha padrão não tem campo
+  obrigatório; `responderPreAtendimento` grava `{}`). NOVO.
+- **D3 (alta)** dores e anamnese digitadas no atendimento se perdem no
+  "Finalizar atendimento" (só seguem pelo "Enviar para a recepção"); recarregar
+  apaga também a dose do insumo. NOVO (limite do rascunho do A31, `2ad0072`).
+- **D4 (alta)** a profissional OWN abre pela URL o atendimento de outra e faz
+  o check-in (a página só pede `agenda: VIEW`; `checkinCore` não confere o
+  dono). O clínico NÃO vazou. NOVO.
+- **D5 (alta)** "Minha agenda" e `/admin/agenda` começam fixas às 07:00
+  (`DAY_START`/`GRID_START`); o de madrugada empilha na primeira linha. NOVO
+  (o D8 de `8f4e92f` tratou só a grade da unidade).
+- **D6 (alta)** o estorno não reabre a cobrança: o atendimento não volta aos
+  "a receber", e o portal mostra o estornado como "Pago". SOBRA de `f063c6f`.
+- **D7 (média)** a profissional OWN recebe no sino os agendamentos das outras
+  (`responsaveisPeloModulo` ignora o escopo) e vê no dashboard da REDE a
+  receita e o custo. Sino NOVO; dashboard SOBRA de `28e5aa4`.
+- **D8 (média)** "Adicionar membro" (rede) herda "Atende clientes" e a
+  abrangência do cadastro anterior. REGRESSÃO de `4e5bef5`.
+- **D9 (média)** o pacote vendido depois não reconhece a sessão avulsa já
+  concluída — nenhuma action liga uma à outra. NOVO.
+- **D10 (média)** conversão de leads: 0% em Oportunidades × 66,7% em
+  Relatórios — a tela soma no navegador (`lib/crm.ts:81`, contra o §13.1). NOVO.
+- **D11 (baixa)** o rótulo do ticket médio diz "receita ÷ atendimentos" e a
+  conta (certa) é serviço ÷ cobrados. SOBRA de `695dd11`.
+- **D12 (média)** dashboard da unidade, "Clientes no mês": agendamentos e
+  cancelados 0 — usa `period.to`, não `fullTo`. SOBRA do A38 (`880f0ea`).
+- **D13 (média)** a compra pela "Entrada" de estoque não vira despesa (só a do
+  cadastro do produto oferece): R$ 1.800 no Kobrasol sem despesa. NOVO.
+- **D14 (média)** mapa de injetáveis: "Confirmar aplicação" é só estado local
+  e some ao recarregar (a aplicação congelada nasce só dentro do atendimento,
+  que na toxina não oferece o mapa). NOVO.
+- **D15 (baixa)** o chip de estoque por unidade usa a primeira palavra do
+  nome ("Íris · 3 frasco" duas vezes). NOVO.
+- **D16 (baixa)** automação: o canal "WhatsApp" aparece no seletor sem estar
+  gravado, e a validação diz "Falta o canal". NOVO.
+- **D17 (baixa)** Relatórios → Estoque por categoria: produto sem categoria
+  some ("Sem dados" com R$ 5.562 em estoque). NOVO.
+- **D18 (baixa, provável)** a rota inexistente nos portais mostra o 404 mas
+  responde HTTP 200 (`notFound()` sob `loading.tsx`, com streaming).
+  REGRESSÃO parcial de `f1e8414`.
+
+O dinheiro bateu em todas as telas, por unidade e no total (receita R$ 2.480,
+despesas R$ 4.912,50, estoque R$ 5.562, consumo R$ 288); a mesma cliente nas
+duas clínicas ficou isolada nos dois sentidos; o termo de injetáveis travou e
+liberou o início como devia. A comissão "sem taxa nem insumo" está certa: a
+rede nunca ligou os descontos (vira atrito: a dona achou que estavam ligados).
 
 ### Próximas fases já combinadas
 
