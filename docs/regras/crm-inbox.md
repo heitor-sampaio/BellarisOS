@@ -365,7 +365,12 @@ compara o DIA da criação no fuso do negócio (`dayKeyTZ`).
 acesso por `seedDefaultFunnel`): Novo, Em contato, Avaliação, Em negociação,
 Agendado, Fechado, Perdido. "Em negociação" entrou em 2026-10-21 (decisão do
 Heitor) — as redes que já existiam não mudaram. Prova:
-`tests/crm-etapas-padrao.test.ts`.
+`tests/crm-etapas-padrao.test.ts`. O funil e as etapas nascem numa transação
+só, com a rede travada (`crm_funil_padrao`, só `service_role`, migration
+`20261027000071`; 2026-10-27): o primeiro acesso de vários ao mesmo tempo dava
+"duplicate key uq_crm_funnels_default", e quem caísse entre as duas idas ao
+banco deixava funil sem etapa. Prova: `e2e/crm-funil-padrao.spec.ts`,
+`tests/crm-funil-padrao.test.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um

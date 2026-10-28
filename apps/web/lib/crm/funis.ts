@@ -16,6 +16,12 @@ const STAGE_COLS  = 'id, funnel_id, name, color, position, outcome'
 /**
  * Funis da rede, criando o primeiro se ainda não houver nenhum.
  *
+ * A criação é UMA transação, no banco (`crm_funil_padrao`, 2026-10-27): a
+ * rede fica travada, o funil e as etapas nascem juntos, e o primeiro acesso
+ * de vários ao mesmo tempo (quadro, dashboard, inbox) não bate mais no índice
+ * `uq_crm_funnels_default` nem deixa funil sem etapa. A leitura comum (a
+ * rede já tem funil) não passa pela trava.
+ *
  * Erro de consulta sobe como exceção de propósito: o `app/error.tsx` mostra
  * falha, enquanto devolver lista vazia viraria "esta rede não tem funil" — que
  * é outra coisa.
@@ -23,42 +29,19 @@ const STAGE_COLS  = 'id, funnel_id, name, color, position, outcome'
 export async function seedDefaultFunnel(tenantId: string): Promise<CRMFunnel[]> {
   const admin = createAdminClient()
 
-  const { data: existentes, error } = await admin
+  const existentes = await ler(admin
     .from('crm_funnels')
     .select(FUNNEL_COLS)
     .eq('tenant_id', tenantId)
-    .order('position')
-
-  if (error) throw new Error(`Falha ao carregar os funis: ${error.message}`)
+    .order('position'), 'carregar os funis')
   if (existentes && existentes.length > 0) return existentes as CRMFunnel[]
 
-  const { data: funil, error: erroFunil } = await admin
-    .from('crm_funnels')
-    .insert({ tenant_id: tenantId, name: DEFAULT_FUNNEL_NAME, is_default: true, position: 0 })
-    .select(FUNNEL_COLS)
-    .single()
-
-  // Dois primeiros acessos simultâneos: o índice único parcial de padrão por
-  // rede derruba o segundo insert. Nesse caso o funil do vencedor já existe.
-  if (erroFunil) {
-    const recarregado = await ler(admin
-      .from('crm_funnels')
-      .select(FUNNEL_COLS)
-      .eq('tenant_id', tenantId)
-      .order('position'), 'carregar os funis')
-    if (recarregado && recarregado.length > 0) return recarregado as CRMFunnel[]
-    throw new Error(`Falha ao criar o funil padrão: ${erroFunil.message}`)
-  }
-
-  const { error: erroEtapas } = await admin.from('crm_stages').insert(
-    DEFAULT_STAGES.map((s, i) => ({
-      tenant_id: tenantId, funnel_id: funil!.id,
-      name: s.name, color: s.color, position: i, outcome: s.outcome, marca: s.marca ?? null,
-    })),
-  )
-  if (erroEtapas) throw new Error(`Falha ao criar as etapas padrão: ${erroEtapas.message}`)
-
-  return [funil as CRMFunnel]
+  const funis = await ler(admin.rpc('crm_funil_padrao', {
+    p_tenant: tenantId,
+    p_nome:   DEFAULT_FUNNEL_NAME,
+    p_etapas: DEFAULT_STAGES.map((s, i) => ({ name: s.name, color: s.color, position: i, outcome: s.outcome, marca: s.marca ?? null })),
+  }).select(FUNNEL_COLS), 'criar o funil padrão')
+  return (funis ?? []) as CRMFunnel[]
 }
 
 /** Etapas de um funil, na ordem do quadro. */

@@ -93,6 +93,7 @@ export const ISOLADOS = [
   'sdk-da-meta-so-onde-usa.spec.ts',
   'listas-sem-corte.spec.ts',
   'listas-sem-corte-limpeza.spec.ts',
+  'crm-funil-padrao.spec.ts',
   'prontuario-acessos.spec.ts',
   'indicadores-dashboard-e-agenda.spec.ts',
   'prontuario-evolucao.spec.ts',
