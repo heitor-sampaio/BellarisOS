@@ -85,6 +85,10 @@ test.beforeAll(async () => {
     file_path: `${outra.branchId}/${clienteId}/inexistente.pdf`, file_name: 'laudo.pdf',
   }).select('id').single<{ id: string }>()
   expect(eDoc, 'criar o laudo').toBeNull()
+  // O arquivo existe de verdade: apagar o laudo não pode levá-lo (soft delete).
+  const { error: eArq } = await b.storage.from('client-documents')
+    .upload(`${outra.branchId}/${clienteId}/inexistente.pdf`, Buffer.from('%PDF-1.4 e2e'), { contentType: 'application/pdf', upsert: true })
+  expect(eArq, 'subir o arquivo do laudo').toBeNull()
 
   const { data: num, error: eNum } = await b.from('whatsapp_numbers').insert({
     tenant_id: outra.tenantId, provider: 'uazapi', label: `Caixa ${marca}`, is_active: false,
@@ -154,8 +158,9 @@ test.describe.serial('dado clínico só com prontuário', () => {
       await chamarAcao(p, 'actions/client-documents.ts', 'deleteClientDocument', `/admin/clients/${f!.clienteId}`,
         [f!.laudoId, 'x', f!.clienteId])
     })
-    const { data } = await db().from('client_documents').select('id').eq('id', f!.laudoId).maybeSingle()
+    const { data } = await db().from('client_documents').select('id, apagado_em').eq('id', f!.laudoId).maybeSingle()
     expect(data, 'a recepção não apaga anexo clínico').not.toBeNull()
+    expect(data!.apagado_em, 'nem marca como apagado').toBeNull()
 
     // Controle: a MESMA chamada, pelo admin, apaga — a recusa acima não era
     // argumento errado.
@@ -163,8 +168,21 @@ test.describe.serial('dado clínico só com prontuário', () => {
       await chamarAcao(p, 'actions/client-documents.ts', 'deleteClientDocument', `/admin/clients/${f!.clienteId}`,
         [f!.laudoId, 'x', f!.clienteId])
     })
-    const { data: depois } = await db().from('client_documents').select('id').eq('id', f!.laudoId).maybeSingle()
-    expect(depois, 'o admin apaga').toBeNull()
+    // Anexo clínico é prontuário (§14: nunca se deleta): sai da ficha, mas a
+    // linha e o arquivo ficam, com quem apagou e quando.
+    const { data: depois } = await db().from('client_documents')
+      .select('id, apagado_em, apagado_por, apagado_por_nome').eq('id', f!.laudoId).maybeSingle()
+    expect(depois, 'a linha do laudo continua no banco').not.toBeNull()
+    expect(depois!.apagado_em, 'marcada como apagada').not.toBeNull()
+    expect(depois!.apagado_por, 'por quem').toBe(f!.admin.userId)
+    expect(depois!.apagado_por_nome, 'com o nome de quem apagou').toBeTruthy()
+    const { data: arquivo } = await db().storage.from('client-documents').download(`${f!.outra.branchId}/${f!.clienteId}/inexistente.pdf`)
+    expect(arquivo, 'o arquivo continua no bucket').not.toBeNull()
+    await comSessao(browser, f!.admin.estado, async p => {
+      const html = await conteudo(p, `/admin/clients/${f!.clienteId}?aba=documentos`)
+      expect(html).toContain('Paciente Clinico')
+      expect(html, 'o apagado sai da ficha').not.toContain(LAUDO)
+    })
   })
 
   test('a profissional (prontuário, sem cadastro) anexa foto clínica de quem ela atende (2026-10-20)', async ({ browser }) => {

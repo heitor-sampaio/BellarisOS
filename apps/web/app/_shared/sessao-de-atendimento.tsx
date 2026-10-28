@@ -432,7 +432,7 @@ export async function SessaoDeAtendimento({
   const fotosRaw = canViewRecords && cli
     ? ((await ler(admin.from('client_documents')
         .select('id, name, file_path, file_name, mime_type, created_at')
-        .eq('appointment_id', appointment.id).eq('client_id', cli.id)
+        .eq('appointment_id', appointment.id).eq('client_id', cli.id).is('apagado_em', null)
         .order('created_at'), 'carregar as fotos do atendimento')) ?? []) as RawFoto[]
     : []
   const urlsDasFotos = await getSignedUrls(CLIENT_DOCS_BUCKET, fotosRaw.map(f => f.file_path))

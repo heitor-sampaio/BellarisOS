@@ -147,9 +147,10 @@ export async function deleteClientDocument(
   // Verify ownership via branch → tenant
   const doc = await ler(admin
     .from('client_documents')
-    .select('id, file_path, branch_id, category, client_id, branches!inner(tenant_id)')
+    .select('id, file_path, branch_id, category, client_id, appointment_id, branches!inner(tenant_id)')
     .eq('id', documentId)
-    .single(), 'buscar o documento')
+    .is('apagado_em', null)
+    .maybeSingle(), 'buscar o documento')
 
   if (!doc) return { error: 'Documento não encontrado.' }
 
@@ -157,6 +158,23 @@ export async function deleteClientDocument(
   // E a unidade onde o documento foi posto, ao alcance de quem apaga (§11).
   if (tenantId !== ctx.tenantId || !alcancaUnidade(ctx, doc.branch_id as string)) return { error: 'Acesso negado.' }
   if (await recusaDoAnexo(ctx, admin, doc.category as string, doc.client_id as string)) return { error: 'Acesso negado.' }
+
+  // Anexo CLÍNICO é prontuário, e prontuário não se deleta (§14): sai das
+  // telas, e a linha e o arquivo ficam, com quem apagou e quando. O nome é o
+  // do ctx — leva a marca "via suporte". O comum (RG, comprovante) se apaga.
+  if (ehAnexoClinico(doc.category as string)) {
+    await gravar(admin.from('client_documents')
+      .update({ apagado_em: new Date().toISOString(), apagado_por: ctx.internalUserId, apagado_por_nome: ctx.userName || null })
+      .eq('id', documentId).is('apagado_em', null)
+      .select('id'), 'apagar o documento')
+    revalidatePath(`/${slug}/clients/${clientId}`)
+    revalidatePath(`/admin/clients/${clientId}`)
+    if (doc.appointment_id) {
+      revalidatePath(`/${slug}/agenda/${doc.appointment_id}`)
+      revalidatePath(`/admin/agenda/${doc.appointment_id}`)
+    }
+    return {}
+  }
 
   if (doc.file_path) {
     await gravar(admin.storage.from(BUCKET).remove([doc.file_path]), 'apagar o arquivo do documento')

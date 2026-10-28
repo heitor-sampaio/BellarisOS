@@ -147,14 +147,36 @@ test.describe.serial('prontuário', () => {
     await expect(baixar).toBeVisible()
     expect(await baixar.getAttribute('href'), 'baixa por link assinado do bucket privado').toMatch(/client-documents.*token=/)
 
+    // O termo é anexo CLÍNICO: excluir o tira da ficha, mas não do banco nem
+    // do bucket (prontuário não se deleta — §14; 2026-10-27).
     page.once('dialog', d => d.accept())
     await page.getByTitle('Excluir').first().click()
     await expect.poll(async () => {
-      const { data } = await db.from('client_documents').select('id').eq('client_id', c!.cliente)
+      const { data } = await db.from('client_documents').select('apagado_em').eq('client_id', c!.cliente)
+      return (data ?? []).map(d => d.apagado_em !== null)
+    }, { message: 'excluir o clínico só o marca' }).toEqual([true])
+    await expect(page.getByText(`${PREFIXO} Termo ${marca}`), 'e ele sai da ficha').toHaveCount(0)
+    const { data: guardados } = await db.storage.from('client-documents').list(`${c!.unidade}/${c!.cliente}`)
+    expect(guardados ?? [], 'o arquivo fica').toHaveLength(1)
+
+    // O anexo COMUM (aqui, "outro") se apaga de verdade: linha e arquivo.
+    await page.getByRole('button', { name: /Adicionar (primeiro )?documento/ }).first().click()
+    await page.locator('input[name="name"]').fill(`${PREFIXO} Comum ${marca}`)
+    await page.locator('select[name="category"]').selectOption('outro')
+    await page.locator('input[name="file"]').setInputFiles({ name: 'comum.txt', mimeType: 'text/plain', buffer: Buffer.from('comum e2e') })
+    await page.getByRole('button', { name: 'Anexar documento' }).click()
+    await expect.poll(async () => {
+      const { data } = await db.from('client_documents').select('id').eq('client_id', c!.cliente).eq('category', 'outro')
       return data?.length ?? 0
-    }, { message: 'excluir tira a linha' }).toBe(0)
+    }, { message: 'o comum é gravado' }).toBe(1)
+    page.once('dialog', d => d.accept())
+    await page.getByTitle('Excluir').first().click()
+    await expect.poll(async () => {
+      const { data } = await db.from('client_documents').select('id').eq('client_id', c!.cliente).eq('category', 'outro')
+      return data?.length ?? 0
+    }, { message: 'excluir o comum tira a linha' }).toBe(0)
     const { data: restos } = await db.storage.from('client-documents').list(`${c!.unidade}/${c!.cliente}`)
-    expect(restos ?? [], 'e o arquivo').toHaveLength(0)
+    expect(restos ?? [], 'e o arquivo dele (fica só o do termo)').toHaveLength(1)
   })
 
   // Com ARQUIVO no corpo, o Playwright não expõe a requisição para reenvio

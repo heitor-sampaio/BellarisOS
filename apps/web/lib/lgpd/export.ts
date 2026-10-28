@@ -103,7 +103,7 @@ export async function buildClientExport(
       .select('purchased_at, expires_at, total_sessions, used_sessions, service_packages(name)')
       .eq('client_id', clientId),
     admin.from('client_documents')
-      .select('created_at, name, category, file_name, mime_type, file_size').eq('client_id', clientId),
+      .select('created_at, name, category, file_name, mime_type, file_size, apagado_em').eq('client_id', clientId),
     // TODAS (2026-10-22): tinha teto de 200, e o pacote do titular saía
     // incompleto parecendo completo. Em páginas — o PostgREST corta em 1000.
     lerTodas((de, ate) => admin.from('client_notifications')
@@ -287,7 +287,7 @@ export async function buildClientExport(
     {
       title: `Documentos anexados (${(documents ?? []).length})`,
       emptyLabel: 'Nenhum documento anexado.',
-      lines: (documents ?? []).map(d => `${fmtDate(d.created_at)} — ${String(d.name ?? d.file_name)} (${String(d.category ?? 'sem categoria')})`),
+      lines: (documents ?? []).map(d => `${fmtDate(d.created_at)} — ${String(d.name ?? d.file_name)} (${String(d.category ?? 'sem categoria')})${d.apagado_em ? ` — apagado da ficha em ${fmtDate(d.apagado_em)}` : ''}`),
     },
     {
       title: `Termos e contratos (${(termos ?? []).length})`,

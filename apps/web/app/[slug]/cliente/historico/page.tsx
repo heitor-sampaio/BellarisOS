@@ -88,6 +88,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     ler(admin.from('client_documents')
       .select('id, name, category, file_path, created_at')
       .eq('client_id', ctx.clientId!)
+      .is('apagado_em', null)
       .order('created_at', { ascending: false })
       .limit(30), 'carregar os documentos'),
 

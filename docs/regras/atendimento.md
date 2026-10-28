@@ -281,6 +281,15 @@ const procedures = await ler(
   `clients: MANAGE`. A ficha oferece a cada um só as categorias dele. Antes
   tudo pedia o cadastro, e a profissional não tinha onde anexar a foto
   clínica (simulação de um dia de clínica).
+- **Apagar anexo CLÍNICO só o marca** (2026-10-27, migration
+  `20261027000070`): `deleteClientDocument` grava `apagado_em`,
+  `apagado_por` (users.id, sem chave estrangeira) e `apagado_por_nome` (o do
+  ctx, com a marca "via suporte"); a linha e o arquivo do bucket ficam. Toda
+  leitura de tela filtra `apagado_em is null` (a ficha nos dois portais, as
+  fotos do atendimento, o portal da cliente); o pacote LGPD lista o apagado,
+  com a data. O anexo COMUM (RG, comprovante, "outro") continua se apagando
+  de verdade — não é prontuário. Prova: `e2e/clinico-so-com-prontuario.spec.ts`
+  e `e2e/prontuario.spec.ts`.
 - **A foto clínica entra pela tela do ATENDIMENTO, ligada a ele** (A30 da
   simulação de 2026-10-27; migration `20261027000030`): o cartão "Fotos do
   atendimento" (`components/branch/fotos-do-atendimento.tsx`) usa o MESMO
@@ -450,5 +459,6 @@ O resto do fluxo:
 ❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
+❌ Deletar anexo clínico de client_documents pela tela (é apagado_em), ou ler client_documents numa tela sem .is('apagado_em', null)
 ❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409
 ```

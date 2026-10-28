@@ -119,6 +119,7 @@ export default async function AdminClientProfilePage({
       .from('client_documents')
       .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
       .eq('client_id', id)
+      .is('apagado_em', null)
       .order('created_at', { ascending: false }), 'carregar os documentos'),
 
     ler(admin
