@@ -110,6 +110,12 @@ export interface ProfileTransaction {
   isCheckout?:   boolean
   /** Cartão de crédito em N vezes (2–12), pago na hora. */
   cartaoVezes?:  number | null
+  /** O recebimento estornado (`notes = 'Estornada'`) — não é "Pago" (D6, 2026-10-28). */
+  estornada?:    boolean
+  /** A contra-transação do estorno (`category = 'Estorno'`). */
+  estorno?:      boolean
+  /** Dinheiro que SAIU (EXPENSE): o estorno devolvido à cliente, com o sinal de menos. */
+  saida?:        boolean
 }
 
 export interface ProfileInternalCredit {
@@ -1025,12 +1031,17 @@ function FinanceiroTab({
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                      {fmtBRL(t.amount)}
+                    <td style={{
+                      padding: '12px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 800, whiteSpace: 'nowrap',
+                      color: t.saida ? 'var(--danger)' : t.estornada ? 'var(--text-faint)' : 'var(--text)',
+                      textDecoration: t.estornada ? 'line-through' : undefined,
+                    }}>
+                      {/* O estorno é dinheiro que saiu: com o sinal (D6, 2026-10-28). */}
+                      {t.saida ? `− ${fmtBRL(t.amount)}` : fmtBRL(t.amount)}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span className={t.isPaid ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
-                        {t.isPaid ? 'Pago' : 'Pendente'}
+                      <span className={t.estornada || t.estorno ? 'chip chip-muted' : t.isPaid ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
+                        {t.estornada ? 'Estornado' : t.estorno ? 'Estorno' : t.isPaid ? 'Pago' : 'Pendente'}
                       </span>
                     </td>
                   </tr>

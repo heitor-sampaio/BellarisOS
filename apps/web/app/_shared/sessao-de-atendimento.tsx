@@ -131,9 +131,12 @@ export async function SessaoDeAtendimento({
 
     ler(admin
       .from('financial_transactions')
-      .select('id, payment_method, amount, cartao_vezes')
+      // Todos os lançamentos do atendimento: o estornado fica no histórico e o
+      // recebimento de depois é outro lançamento (D6 da simulação de 2026-10-28).
+      .select('id, payment_method, amount, cartao_vezes, is_paid, notes, estorno_motivo, created_at')
       .eq('appointment_id', id)
-      .maybeSingle(), 'carregar o pagamento do atendimento'),
+      .eq('type', 'INCOME')
+      .order('created_at', { ascending: false }), 'carregar o pagamento do atendimento'),
 
     // Todos os procedimentos ativos da rede (para o plano de tratamento) — com
     // insumos embutidos.
@@ -403,10 +406,17 @@ export async function SessaoDeAtendimento({
   // recusado depois de a pessoa digitar tudo.
   const canEditRecords = canManage && can(ctx, 'medical_records', 'MANAGE')
 
-  type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null } | null
-  const paymentRawTyped = paymentRaw as RawPayment
-  const paymentTransaction = paymentRawTyped
-    ? { id: paymentRawTyped.id, paymentMethod: paymentRawTyped.payment_method, amount: Number(paymentRawTyped.amount), cartaoVezes: paymentRawTyped.cartao_vezes }
+  type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null; is_paid: boolean; notes: string | null; estorno_motivo: string | null }
+  const lancamentos = (paymentRaw ?? []) as RawPayment[]
+  // "Pagamento confirmado" é o recebimento PAGO e vivo. O estornado reabre a
+  // cobrança (D6, 2026-10-28): a tela diz que foi estornado e oferece receber.
+  const pago      = lancamentos.find(l => l.is_paid && l.notes !== 'Estornada') ?? null
+  const estornado = pago ? null : (lancamentos.find(l => l.notes === 'Estornada') ?? null)
+  const paymentTransaction = pago
+    ? { id: pago.id, paymentMethod: pago.payment_method, amount: Number(pago.amount), cartaoVezes: pago.cartao_vezes }
+    : null
+  const pagamentoEstornado = estornado
+    ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, motivo: estornado.estorno_motivo }
     : null
 
   // A ficha do procedimento (construtor) + as respostas já salvas.
@@ -472,6 +482,7 @@ export async function SessaoDeAtendimento({
         canPayment={canPayment}
         isProfessional={ctx.providesServices}
         paymentTransaction={paymentTransaction}
+        pagamentoEstornado={pagamentoEstornado}
         treatmentProcedures={treatmentProcedures}
         treatmentPackages={treatmentPackages}
         existingPlan={existingPlan}

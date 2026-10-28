@@ -31,7 +31,7 @@ export interface FinanceiroDaFicha {
 const VAZIO: ListaAReceber = { itens: [], total: { n: 0, valor: 0 } }
 
 type Linha = {
-  id: string; description: string; amount: number | string; payment_method: string | null
+  id: string; type: string; description: string; amount: number | string; payment_method: string | null
   cartao_vezes: number | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null
   notes: string | null; category: string | null; appointment_id: string | null
   appointment: { scheduled_at: string; professional_id: string | null; procedures: { name: string } | null } | null
@@ -49,7 +49,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   const [linhas, totaisRaw, aReceber, creditos] = await Promise.all([
     lerTodas<unknown>((de, ate) => {
       let q = admin.from('financial_transactions')
-        .select(`id, description, amount, payment_method, cartao_vezes, is_paid, paid_at, created_at, due_date, notes, category, appointment_id,
+        .select(`id, type, description, amount, payment_method, cartao_vezes, is_paid, paid_at, created_at, due_date, notes, category, appointment_id,
           branches!inner(tenant_id),
           appointment:appointments!financial_transactions_appointment_id_fkey${meu ? '!inner' : ''}(scheduled_at, professional_id, procedures(name))`)
         .eq('client_id', clientId).eq('branches.tenant_id', ctx.tenantId!)
@@ -77,7 +77,11 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     procedureName: l.appointment?.procedures?.name ?? null,
     scheduledAt:   l.appointment?.scheduled_at ?? null,
     dueDate:       l.due_date,
-    isCheckout:    !l.appointment_id,
+    isCheckout:    !l.appointment_id && l.category !== 'Estorno',
+    // O estorno com o sinal certo e o original marcado (D6, 2026-10-28).
+    estornada:     l.notes === 'Estornada',
+    estorno:       l.category === 'Estorno',
+    saida:         l.type === 'EXPENSE',
   })).sort((a, b) => (b.paidAt ?? b.createdAt).localeCompare(a.paidAt ?? a.createdAt))
 
   return {

@@ -75,7 +75,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     insumos e desconto comercial não. No pacote e no plano o desconto já está
     no preço da sessão e do procedimento (§9.6).
   - ATENDIMENTO: devida desde a conclusão; o pagamento acerta (taxa, base com
-    pontos) e o estorno do pagamento a zera.
+    pontos) e o estorno do pagamento a zera; o recebimento novo depois do
+    estorno (§9.6, D6 de 2026-10-28) a devolve UMA vez — a conta lê o
+    lançamento vivo do atendimento, e o estornado só quando não há outro.
   - PAGAMENTO: avulso só vale pago; plano e pacote liberam na proporção do que
     receberam (receita paga, sem estorno ÷ soma dos procedimentos do plano, ou ÷
     preço da venda do pacote). Pacote vendido antes de 2026-09-30 (sem venda no

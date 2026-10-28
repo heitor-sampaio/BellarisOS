@@ -34,7 +34,9 @@ export async function atendimentoDeHojeDoPlano(admin: SupabaseClient, planId: st
   const [ap, pago, pacote, prePago] = await Promise.all([
     ler(admin.from('appointments').select('status, price, treatment_plan_id, procedures(name)').eq('id', apId).maybeSingle(),
       'buscar o atendimento de origem'),
-    ler(admin.from('financial_transactions').select('id').eq('appointment_id', apId).eq('type', 'INCOME').eq('is_paid', true).limit(1),
+    ler(admin.from('financial_transactions').select('id').eq('appointment_id', apId).eq('type', 'INCOME').eq('is_paid', true)
+      // O estornado não está recebido: a cobrança reabriu (D6, 2026-10-28).
+      .or('notes.is.null,notes.neq.Estornada').limit(1),
       'conferir se o atendimento já foi recebido'),
     ler(admin.from('package_sessions').select('id').eq('appointment_id', apId).limit(1), 'conferir a sessão de pacote'),
     ler(admin.from('procedure_sale_units').select('id').eq('appointment_id', apId).neq('status', 'CANCELADA').limit(1),

@@ -144,6 +144,8 @@ interface Props {
   canPayment:         boolean
   isProfessional:     boolean
   paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null } | null
+  /** O último recebimento ESTORNADO, quando não há outro vivo: a cobrança reabriu (D6, 2026-10-28). */
+  pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; motivo: string | null } | null
   treatmentProcedures:   TreatmentProcedure[]
   treatmentPackages:     TreatmentPackage[]
   existingPlan:          ExistingPlan | null
@@ -846,7 +848,7 @@ function DorasCard({ value, onChange, readonly }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction,
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
@@ -1569,9 +1571,19 @@ export function AppointmentSession({
                     Sem cobrança — atendimento de R$ 0,00, não há o que receber.
                   </p>
                 ) : (
-                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
-                    ⏳ Aguardando confirmação de pagamento pela recepcionista
-                  </p>
+                  <>
+                    {pagamentoEstornado && (
+                      // O estorno reabre a cobrança (D6, 2026-10-28): diz o que
+                      // foi estornado, e o "Confirmar pagamento" volta a valer.
+                      <p data-pagamento-estornado style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                        Pagamento estornado — {rotuloDaForma(pagamentoEstornado.paymentMethod, pagamentoEstornado.cartaoVezes)} · {fmtBRL(pagamentoEstornado.amount)}
+                        {pagamentoEstornado.motivo ? ` (${pagamentoEstornado.motivo})` : ''}. O atendimento voltou a receber.
+                      </p>
+                    )}
+                    <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+                      ⏳ Aguardando confirmação de pagamento pela recepcionista
+                    </p>
+                  </>
                 )}
 
                 {/* Confirmação do cliente pelo app (prova que substitui a ficha de papel) */}

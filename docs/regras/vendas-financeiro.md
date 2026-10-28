@@ -355,6 +355,23 @@ o procedimento avulso pago antes.
     quem conferia a gaveta não sabia que o dinheiro saiu do caixa em
     espécie. Continua fora de toda conta e de todo gatilho de dinheiro
     (categoria 'Estorno'). Prova: `e2e/financeiro-estorno-motivo.spec.ts`.
+  - **O estorno REABRE a cobrança do atendimento** (D6 da simulação de
+    2026-10-28, decisão do Heitor; migration `20261028000201`): estornada a
+    receita de um atendimento avulso, ele volta aos concluídos a receber
+    (`atendimentos_a_receber` e a guarda de
+    `confirmar_pagamento_do_atendimento` só contam como pago o lançamento
+    VIVO, sem `notes = 'Estornada'`), e o "Confirmar pagamento" vale de novo —
+    um lançamento NOVO, com cliente, pontos e comissão pelos gatilhos de
+    sempre. A unicidade de `financial_transactions.appointment_id` é só do
+    lançamento vivo (índice parcial): o estornado fica no histórico ao lado.
+    Nada duplica: o estorno já devolveu a comissão (ESTORNO) e os pontos
+    (ESTORNO_GANHO), e a comissão do avulso (`comissao_alvo`) e a venda
+    (`metrics_vendas`) leem o lançamento vivo (sem ele, o último estornado).
+    Quem lê "o pagamento do atendimento" filtra o estornado (a tela do
+    atendimento diz "Pagamento estornado — … O atendimento voltou a receber").
+    O portal da cliente mostra o estornado como "Estornado" (não "Pago"), e a
+    ficha mostra o original "Estornado" e o estorno com o sinal de saída.
+    Prova: `e2e/financeiro-estorno-reabre.spec.ts`.
 
 ---
 
@@ -377,4 +394,5 @@ o procedimento avulso pago antes.
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0
+❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
 ```

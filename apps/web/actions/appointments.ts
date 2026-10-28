@@ -350,6 +350,8 @@ async function completeAppointment(
     .from('financial_transactions')
     .select('id')
     .eq('appointment_id', appointmentId)
+    // O estornado fica no histórico ao lado do lançamento vivo (D6, 2026-10-28).
+    .or('notes.is.null,notes.neq.Estornada')
     .maybeSingle(), 'conferir se o atendimento já foi lançado')
 
   // R$ 0 (a avaliação) não tem o que receber: sem conta a receber de zero (D9).
