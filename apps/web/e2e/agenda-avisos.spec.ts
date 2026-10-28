@@ -76,10 +76,18 @@ test.describe.serial('a agenda avisa', () => {
   test('na agenda da unidade: as setas têm nome, a data vai para a URL e o bloco de 30 min diz quem é', async ({ browser }) => {
     const id = await agendar('Curto', new Date(`${AMANHA}T12:00:00-03:00`))
     await como(browser, async p => {
+      // Trocar o dia não pode atualizar o router DURANTE a renderização (o
+      // `replaceState` morava dentro do updater do setState — frente 9).
+      const avisos: string[] = []
+      p.on('console', m => { if (m.type() === 'error' && /Cannot update a component/.test(m.text())) avisos.push(m.text()) })
       await p.goto(`/${slug}/agenda`)
       await expect(p.getByRole('button', { name: 'Dia anterior' })).toBeVisible()
       await p.getByRole('button', { name: 'Próximo dia' }).click()
       await expect(p).toHaveURL(new RegExp(`date=${AMANHA}`))
+      await p.getByRole('button', { name: 'Dia anterior' }).click()
+      await p.getByRole('button', { name: 'Próximo dia' }).click()
+      await expect(p).toHaveURL(new RegExp(`date=${AMANHA}`))
+      expect(avisos, 'o React não avisa de atualização do router durante a renderização').toEqual([])
       await p.reload()
       await expect(p.locator(`[data-agendamento="${id}"]`), 'a data ficou na URL, e o bloco curto mostra a cliente').toContainText(`Curto av${marca}`)
     })

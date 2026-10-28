@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
@@ -159,16 +159,21 @@ export function AgendaCalendar({
 
   const [view,          setView]          = useState<ViewMode>('dia')
   const [currentDate,   setCurrentDateState] = useState(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : new Date())
-  // O dia aberto vai para a URL sem nova navegação (o servidor já trouxe a janela).
-  const setCurrentDate = useCallback((v: Date | ((d: Date) => Date)) => {
-    setCurrentDateState(prev => {
-      const prox = typeof v === 'function' ? v(prev) : v
-      const url = new URL(window.location.href)
-      url.searchParams.set('date', format(prox, 'yyyy-MM-dd'))
-      window.history.replaceState(null, '', url)
-      return prox
-    })
-  }, [])
+  // O dia aberto vai para a URL sem nova navegação (o servidor já trouxe a
+  // janela). Num EFEITO, depois de pintar: o `replaceState` é integrado ao
+  // router do Next e o atualiza — dentro do updater do setState era atualizar
+  // o Router durante a renderização da agenda (o React avisava). A URL só
+  // ganha o `?date=` quando o dia muda (abrir em hoje não a toca).
+  const setCurrentDate = setCurrentDateState
+  const diaNaUrl = format(currentDate, 'yyyy-MM-dd')
+  const diaInicial = useRef(diaNaUrl)
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('date') === diaNaUrl) return
+    if (!url.searchParams.has('date') && diaNaUrl === diaInicial.current) return
+    url.searchParams.set('date', diaNaUrl)
+    window.history.replaceState(null, '', url)
+  }, [diaNaUrl])
   const [showCreate,    setShowCreate]    = useState(false)
   const [defaultDate,   setDefaultDate]   = useState('')
   const [clienteInicial, setClienteInicial] = useState<string | null>(null)
