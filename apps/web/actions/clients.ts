@@ -6,7 +6,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
-import { unitTag } from '@estetica-os/utils'
+import { unitTag, maskPhone } from '@estetica-os/utils'
 import { after } from 'next/server'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
@@ -148,7 +148,7 @@ export async function addClient(
   // 2) Cliente — completa a ficha rápida quando ela existe, senão cria.
   const dadosDoCliente = {
     tenant_id: ctx.tenantId!, branch_id: branchId,
-    name, phone, email, document,
+    name, phone: maskPhone(phone), email, document,
     birth_date: birthDate, gender, notes, tags,
     is_active: true, auth_id: authId,
   }

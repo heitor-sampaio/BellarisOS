@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
+import { maskPhone } from '@estetica-os/utils'
 import { useRouter } from 'next/navigation'
 import { HistoricoDaCaixa } from './historico-da-caixa'
 import Image from 'next/image'
@@ -236,7 +237,7 @@ export function UazapiConnect({ numeroId, nomeDoNumero }: {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Aviso tom="ok">
-          Conectado{estado.phone ? <> · <strong>{estado.phone}</strong></> : null}
+          Conectado{estado.phone ? <> · <strong>{maskPhone(estado.phone)}</strong></> : null}
           {estado.name ? ` (${estado.name})` : ''}
         </Aviso>
 

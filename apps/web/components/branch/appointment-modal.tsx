@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar } from '@/actions/appointments'
 import { creditosParaAgendar } from '@/actions/creditos'
-import { formatBRL, maskPhoneDigitando } from '@estetica-os/utils'
+import { formatBRL, maskPhone, maskPhoneDigitando } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -292,7 +292,7 @@ export function AppointmentModal({
                 }}>
                   <div>
                     <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-sm-sz)', color: 'var(--brand)' }}>{selectedClient.name}</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginLeft: 8 }}>{selectedClient.phone}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginLeft: 8 }}>{maskPhone(selectedClient.phone)}</span>
                   </div>
                   <button type="button" onClick={() => setSelectedClient(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', lineHeight: 0 }}>
                     <X size={14} />
@@ -336,7 +336,7 @@ export function AppointmentModal({
                             onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                           >
                             <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{c.name}</span>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginLeft: 8 }}>{c.phone}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginLeft: 8 }}>{maskPhone(c.phone)}</span>
                           </button>
                         ))
                       ) : (

@@ -138,6 +138,11 @@ dela — e vê Configurações só com essa aba.
   ou tabulação, aspas RFC 4180; `campos.ts` sugere a coluna pelo cabeçalho);
   **o servidor valida cada linha de novo** com o MESMO `normalizar.ts` — a
   prévia não é confiável. Até 5 MB e 10 mil linhas.
+- **O telefone se EXIBE formatado em toda tela, seja qual for o formato gravado** (A25, 2026-10-27):
+  `maskPhone` (`@estetica-os/utils`) aceita só dígitos, máscara, "+55" e o 55 do WhatsApp, e devolve
+  como veio o que não é número nacional. Tela nova que mostra telefone passa por ele; a ficha
+  criada (cadastro, conversão do lead) grava `(48) 99000-0011`, como a de balcão. Prova:
+  `e2e/telefone-formatado.spec.ts`, `packages/utils/tests/format.test.ts`.
 - **Telefone no formato do WhatsApp** (só dígitos, 55 + DDD + número): é o que
   `contacts.identifiers` guarda e o webhook manda. Sem DDD é erro (não se
   adivinha a cidade). ⚠️ Para ACHAR a pessoa, as duas formas do celular

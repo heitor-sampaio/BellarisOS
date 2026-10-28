@@ -11,7 +11,7 @@ import {
 } from '@/actions/integrations'
 import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 import { TABELA_DA_META, ROTULO_DA_CATEGORIA, type CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, maskPhone } from '@estetica-os/utils'
 
 /**
  * As caixas de WhatsApp da rede, uma por linha.
@@ -209,7 +209,7 @@ function LinhaDoNumero({ numero, opcoes, ocupadas, onMudou, onConfigurar }: {
 
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3 }}>
             {nomeDoProvedor(numero.provider)}
-            {numero.phone ? ` · ${numero.phone}` : ''}
+            {numero.phone ? ` · ${maskPhone(numero.phone)}` : ''}
             {numero.managed ? ' · gerenciada por nós' : ''}
           </p>
 

@@ -64,6 +64,18 @@ describe('máscaras', () => {
     expect(maskPhone('(47) 99123-4567')).toBe('(47) 99123-4567')
   })
 
+  it('telefone no formato do WhatsApp (55 + DDD + número) sai sem o 55 (A25)', () => {
+    expect(maskPhone('5548990000011')).toBe('(48) 99000-0011')
+    expect(maskPhone('554833224567')).toBe('(48) 3322-4567')
+    expect(maskPhone('+55 48 99000-0011')).toBe('(48) 99000-0011')
+  })
+
+  it('telefone que não é nacional ou está incompleto volta como veio, nunca mutilado (A25)', () => {
+    expect(maskPhone('+1 415 555 0100')).toBe('+1 415 555 0100')
+    expect(maskPhone('48990')).toBe('48990')
+    expect(maskPhone('')).toBe('')
+  })
+
   it('CNPJ', () => {
     expect(maskCNPJ('12345678000199')).toBe('12.345.678/0001-99')
   })

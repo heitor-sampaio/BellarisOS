@@ -19,6 +19,7 @@ import {
   sourceStyle,
   secondsSince, agingLevel, AGING_STYLE,
   AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort, iniciaisDoNome,
+  maskPhone,
 } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { FunnelSelect } from '@/components/shared/funnel-select'
@@ -785,7 +786,7 @@ function LeadCard({
         {lead.phone && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
             <Phone size={10} color="var(--text-faint)" />
-            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{lead.phone}</span>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{maskPhone(lead.phone)}</span>
           </div>
         )}
         {lead.email && (
@@ -938,7 +939,7 @@ function LeadCard({
               slug={slug}
               branchName={lead.branch_name ?? undefined}
               leadId={lead.id}
-              prefill={{ name: lead.name, phone: lead.phone ?? undefined, email: lead.email ?? undefined }}
+              prefill={{ name: lead.name, phone: lead.phone ? maskPhone(lead.phone) : undefined, email: lead.email ?? undefined }}
               onSuccess={(clientId) => {
                 setConvertOpen(false)
                 if (clientId) router.push(rotaCliente(pathname, lead.branch_slug ?? slug, clientId))

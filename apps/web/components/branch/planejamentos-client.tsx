@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import { maskPhone } from '@estetica-os/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
@@ -183,7 +184,7 @@ export function PlanejamentosClient({
                   </div>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
                     {p.cliente ? (
-                      <><User size={12} /> {p.cliente.name}{p.cliente.phone ? ` · ${p.cliente.phone}` : ''}</>
+                      <><User size={12} /> {p.cliente.name}{p.cliente.phone ? ` · ${maskPhone(p.cliente.phone)}` : ''}</>
                     ) : (
                       <span style={{ color: 'var(--text-faint)' }}>Sem cliente ligado</span>
                     )}

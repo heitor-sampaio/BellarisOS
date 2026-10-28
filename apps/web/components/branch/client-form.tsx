@@ -7,7 +7,7 @@ import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
-import { isUnitTag, unitTagName } from '@estetica-os/utils'
+import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 
@@ -77,7 +77,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // mesma coisa deixava esta aqui sem nenhuma página que a montasse.
   const [state, formAction, pending] = useActionState(addClient, undefined)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [phone, setPhone] = useState(prefill?.phone ?? '')
+  const [phone, setPhone] = useState(prefill?.phone ? telefoneParaExibir(prefill.phone) : '')
   const [document, setDocument] = useState('')
   const [email, setEmail] = useState(prefill?.email ?? '')
   // O acesso ao app é escolha (2026-10-21): só com e-mail e CPF.

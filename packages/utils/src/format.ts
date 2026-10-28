@@ -20,11 +20,21 @@ export const formatPercent = (value: number, decimals = 1) =>
 export const maskCPF = (cpf: string) =>
   cpf.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 
+/**
+ * O telefone para EXIBIR, seja qual for o formato gravado (A25, 2026-10-27): a
+ * cliente de balcão guarda "(48) 99000-0011", mas a convertida do lead guarda o
+ * número do WhatsApp ("5548990000011") e aparecia crua. Aceita só dígitos,
+ * máscara, "+55" e o 55 do WhatsApp. O que não é número nacional completo
+ * (10 ou 11 dígitos) volta como veio — nunca mutilado.
+ */
 export const maskPhone = (phone: string) => {
   const digits = phone.replace(/\D/g, '')
-  return digits.length === 11
-    ? digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
-    : digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  // "+" de outro país não é número nacional.
+  if (/^\s*\+/.test(phone) && !digits.startsWith('55')) return phone
+  const nacional = (digits.length === 12 || digits.length === 13) && digits.startsWith('55') ? digits.slice(2) : digits
+  if (nacional.length === 11) return nacional.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  if (nacional.length === 10) return nacional.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  return phone
 }
 
 export const maskCNPJ = (cnpj: string) =>

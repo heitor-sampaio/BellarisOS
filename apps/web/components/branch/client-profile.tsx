@@ -21,7 +21,7 @@ import { LeadTimeline } from './lead-timeline'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { rotaAgenda, rotaClientes } from '@/lib/rotas'
 import { rotaComParams } from '@/lib/query-params'
-import { isUnitTag, unitTag, unitTagName, iniciaisDoNome } from '@estetica-os/utils'
+import { isUnitTag, unitTag, unitTagName, iniciaisDoNome, maskPhone } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { format, isSameDay, subDays } from 'date-fns'
@@ -462,7 +462,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
   const [nome,       setNome]       = useState(client.name ?? '')
   const [gender,     setGender]     = useState(client.gender ?? '')
   const [cpf,        setCpf]        = useState(client.document ? applyDocMask(client.document) : '')
-  const [phone,      setPhone]      = useState(client.phone ?? '')
+  const [phone,      setPhone]      = useState(maskPhone(client.phone ?? ''))
   const [email,      setEmail]      = useState(client.email ?? '')
   const [birthDate,  setBirthDate]  = useState(client.birthDate ? client.birthDate.slice(0, 10) : '')
   const [zipCode,    setZipCode]    = useState(client.zipCode   ? applyCepMask(client.zipCode) : '')
@@ -1260,7 +1260,7 @@ export function ClientProfile({
                 {client.phone && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                     <Phone size={11} style={{ color: 'var(--text-faint)' }} />
-                    {client.phone}
+                    {maskPhone(client.phone)}
                   </span>
                 )}
                 {client.email && (

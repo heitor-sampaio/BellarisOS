@@ -39,6 +39,7 @@ import { useAnexos, PainelDeAnexo, BotoesDeAnexo } from '@/components/admin/inbo
 import {
   secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
   formatDurationShort, formatDurationLong, iniciaisDoNome,
+  maskPhone,
 } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 
@@ -1873,7 +1874,7 @@ export function CRMInbox({
                     <ChannelBadge ch={selectedConv.channel} />
                     {selectedConv.contact_phone && (
                       <span className="hide-mobile" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-                        {selectedConv.contact_phone}
+                        {maskPhone(selectedConv.contact_phone)}
                       </span>
                     )}
                     {selectedConv.branch_name && (

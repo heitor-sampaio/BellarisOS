@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { maskPhone } from '@estetica-os/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -360,7 +361,7 @@ function BuscaDeCliente({ onEscolher }: { onEscolher: (id: string, nome: string)
             border: '1px solid var(--border)', background: 'var(--surface)',
           }}>
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{c.name}</span>
-          {c.phone && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginLeft: 8 }}>{c.phone}</span>}
+          {c.phone && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginLeft: 8 }}>{maskPhone(c.phone)}</span>}
         </button>
       ))}
     </div>

@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { idadeEm } from '@estetica-os/utils'
+import { idadeEm, maskPhone } from '@estetica-os/utils'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaAtendimento } from '@/lib/rotas'
 import { X, User, Stethoscope, Calendar, CheckCircle2, Play, ChevronRight, Loader2, Settings } from 'lucide-react'
@@ -428,7 +428,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                       {client.phone && (
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>Telefone</span>
-                          {client.phone}
+                          {maskPhone(client.phone)}
                         </p>
                       )}
                       {client.email && (
