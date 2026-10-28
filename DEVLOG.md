@@ -6844,9 +6844,18 @@ verdade. O que vale:
   - Mapa (D14): fora do atendimento não há "Confirmar aplicação"; a frase
     manda abrir o atendimento e usar "Registrar aplicação". A toxina da Íris
     não oferecia o mapa por CONFIGURAÇÃO (procedimento sem ficha) — ficou assim.
-  - Ainda por fazer, decididas no roteiro: conversão de Oportunidades = a de
-    `lib/metrics` (D10); se o Next 16.3.4 não deixar o 404 sem tirar o
-    `loading` das telas, fica como limitação, sem subir o Next (D18).
+  - Grade da agenda (D5): "Minha agenda" usa o horário da UNIDADE (não o do
+    próprio profissional); a da rede, o mais cedo e o mais tarde entre as
+    unidades; atendimento que passa da meia-noite fecha a grade em 24h.
+  - Cadastro de membro (D8): a EDIÇÃO também nasce limpa a cada abertura.
+  - Automação (D16): a opção "Escolha o canal…" fica desabilitada.
+  - 404 (D18): o `loading.tsx` saiu do topo de `/admin` e `/[slug]` e foi
+    para cada seção (26 arquivos de uma linha, um esqueleto só) — com o
+    `loading` no topo, o Next manda o status 200 antes do `notFound()`. Seção
+    nova com tela precisa do seu `loading.tsx` (um teste cobra). Provado só no
+    `next dev`; falta conferir no build ou na produção.
+  - Ainda por fazer, decidida no roteiro: conversão de Oportunidades = a de
+    `lib/metrics` (D10).
 
 - **Para decidir (2026-10-28): o que a cliente vê dos documentos no portal.**
   `/[slug]/cliente/historico` lista TODO `client_documents` dela — foto
