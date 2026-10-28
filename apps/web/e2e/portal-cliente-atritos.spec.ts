@@ -48,6 +48,36 @@ test('a cliente que abre uma tela da equipe vai ao portal dela (a tela de sem ac
   }
 })
 
+test('A43: a cliente que abre /admin vai ao portal dela, não ao login', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: cliente!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto('/admin/dashboard')
+    await expect(p).toHaveURL(new RegExp(`/${slug}/cliente`))
+  } finally {
+    await ctx.close()
+  }
+})
+
+test('o histórico de pagamentos diz as vezes do crédito ("Crédito 3x")', async ({ browser }) => {
+  const { error } = await banco().from('financial_transactions').insert({
+    branch_id: rede!.branchId, client_id: cliente!.clientId, type: 'INCOME', category: 'Serviços',
+    description: `[e2e] Crédito parcelado ${marca}`, amount: 300, is_paid: true, paid_at: new Date().toISOString(),
+    payment_method: 'CREDIT_CARD', cartao_vezes: 3, created_by: 'e2e',
+  })
+  expect(error).toBeNull()
+  const ctx = await browser.newContext({ storageState: cliente!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/${slug}/cliente/historico`)
+    await p.getByRole('button', { name: /Pagamentos/ }).click()
+    await expect(p.getByText(/Crédito 3x/)).toBeVisible()
+  } finally {
+    await ctx.close()
+    await banco().from('financial_transactions').delete().eq('client_id', cliente!.clientId)
+  }
+})
+
 test('a equipe, na tela de sem acesso aberta direto, vai ao início — não a about:blank', async ({ browser }) => {
   const { criarMembro } = await import('./apoio/sessao')
   const membro = await criarMembro(`pam${marca}`, { tenant: rede!.tenantId, rotulo: 'Sem financeiro', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })

@@ -46,6 +46,14 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
     .eq('client_id', ctx.clientId!)
     .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
+  const ficha = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).single(),
+    'ler a ficha') as { tenant_id: string } | null
+  const rede = ficha
+    ? await ler(admin.from('tenants').select('portal_prazo_alteracao_horas').eq('id', ficha.tenant_id).single(),
+        'ler o prazo do portal') as { portal_prazo_alteracao_horas: number } | null
+    : null
+  const prazoHoras = rede?.portal_prazo_alteracao_horas ?? 24
+
   const appointments = (data ?? []) as unknown as Appt[]
   const upcoming = appointments.filter(a => ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status))
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
@@ -83,6 +91,9 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
       {upcoming.length > 0 && (
         <section style={{ marginBottom: 28 }}>
           <GroupLabel>Próximos</GroupLabel>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
+            Cancele ou remarque até {prazoHoras} horas antes do horário. Depois disso, fale com a clínica.
+          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight />)}
           </div>

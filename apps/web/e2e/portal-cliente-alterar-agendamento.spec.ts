@@ -108,7 +108,7 @@ test.describe.serial('o agendamento no portal', () => {
       // Com o loading.tsx da pasta, a resposta já começou em streaming (200): o
       // notFound() aparece no CONTEÚDO.
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
-      await expect(p.getByText(/could not be found|404/i).first(), 'não existe para ela').toBeVisible()
+      await expect(p.getByText(/não encontrada|could not be found|404/i).first(), 'não existe para ela').toBeVisible()
       await expect(p.getByRole('button', { name: 'Cancelar agendamento' })).toHaveCount(0)
       const r = await chamarAcao(p, 'actions/portal-agendamentos.ts', 'cancelarPelaCliente', `/${slug}/cliente/agendamentos/${id}`, [id, 'x'])
       expect(r.texto).toContain('não encontrado')
@@ -128,5 +128,60 @@ test.describe.serial('o agendamento no portal', () => {
     })
     expect((await linha(id)).status).toBe('CANCELLED')
     expect((await db().from('treatment_plan_sessions').select('appointment_id').eq('id', se!.id).single()).data?.appointment_id).toBeNull()
+  })
+})
+
+test.describe('atritos da remarcação (frente 8)', () => {
+  test('A40: a regra do prazo aparece já na lista de agendamentos', async ({ browser }) => {
+    await agendado(cliente!.clientId, new Date(`${dia(7)}T10:00:00-03:00`))
+    await como(browser, cliente!, async p => {
+      await p.goto(`/${slug}/cliente/agendamentos`)
+      await expect(p.getByText(/cancele ou remarque até 24 horas antes/i)).toBeVisible()
+    })
+  })
+
+  test('A41: dentro do prazo, o agendamento diz por quê e mostra o contato da clínica', async ({ browser }) => {
+    expect((await db().from('branches').update({ phone: '11987654321' }).eq('id', rede!.branchId)).error).toBeNull()
+    const id = await agendado(cliente!.clientId, new Date(Date.now() + 4 * 3600_000))
+    await como(browser, cliente!, async p => {
+      await p.goto(`/${slug}/cliente/agendamentos/${id}`)
+      await expect(p.getByText(/só até 24 horas antes/i)).toBeVisible()
+      await expect(p.getByText('(11) 98765-4321')).toBeVisible()
+    })
+  })
+
+  test('A42: atalhos Hoje/Amanhã e horários agrupados em Manhã, Tarde e Noite', async ({ browser }) => {
+    const id = await agendado(cliente!.clientId, new Date(`${dia(8)}T10:00:00-03:00`))
+    await como(browser, cliente!, async p => {
+      await p.goto(`/${slug}/cliente/agendamentos/${id}`)
+      await expect(async () => {
+        await p.getByRole('button', { name: 'Remarcar' }).click({ timeout: 1000 })
+        await expect(p.getByLabel('Novo dia')).toBeVisible({ timeout: 1000 })
+      }).toPass()
+      await p.getByRole('button', { name: 'Amanhã' }).click()
+      const amanha = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 86_400_000))
+      await expect(p.getByLabel('Novo dia')).toHaveValue(amanha)
+      await expect(p.getByRole('button', { name: 'Hoje' })).toBeVisible()
+      await p.getByLabel('Novo dia').fill(dia(9))
+      await expect(p.getByRole('group', { name: 'Manhã' })).toBeVisible()
+      await expect(p.getByRole('group', { name: 'Tarde' })).toBeVisible()
+    })
+  })
+
+  test('A44: ao remarcar, o próprio agendamento não bloqueia os horários vizinhos', async ({ browser }) => {
+    const id = await agendado(cliente!.clientId, new Date(`${dia(10)}T10:00:00-03:00`), { duration_min: 60 })
+    await como(browser, cliente!, async p => {
+      await p.goto(`/${slug}/cliente/agendamentos/${id}`)
+      await expect(async () => {
+        await p.getByRole('button', { name: 'Remarcar' }).click({ timeout: 1000 })
+        await expect(p.getByLabel('Novo dia')).toBeVisible({ timeout: 1000 })
+      }).toPass()
+      await p.getByLabel('Novo dia').fill(dia(10))
+      await expect(p.getByRole('button', { name: '10:30' }), 'o 10:30 só se sobrepõe a ele mesmo').toBeVisible()
+      await p.getByRole('button', { name: '10:30' }).click()
+      await p.getByRole('button', { name: 'Confirmar novo horário' }).click()
+      await expect.poll(async () => new Date((await linha(id)).scheduled_at).toISOString())
+        .toBe(new Date(`${dia(10)}T10:30:00-03:00`).toISOString())
+    })
   })
 })

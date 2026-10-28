@@ -21,6 +21,7 @@ export type PagamentoItem = {
   description:    string
   amount:         number
   payment_method: string | null
+  cartao_vezes:   number | null
   is_paid:        boolean
   paid_at:        string | null
   procedure_name: string | null
@@ -47,7 +48,7 @@ type AtendimentoLido = {
   procedures: { name: string } | null; professionals: { name: string } | null
 }
 type PagamentoLido = {
-  id: string; description: string; amount: number | string; payment_method: string | null
+  id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
   is_paid: boolean; paid_at: string | null
   appointments: { procedures: { name: string } | null } | null
 }
@@ -73,7 +74,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     // Pagamentos = transações financeiras ligadas ao cliente
     ler(admin.from('financial_transactions')
       .select(`
-        id, description, amount, payment_method, is_paid, paid_at,
+        id, description, amount, payment_method, cartao_vezes, is_paid, paid_at,
         appointments(procedures(name))
       `)
       // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
@@ -111,6 +112,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     description:    r.description,
     amount:         Number(r.amount),
     payment_method: r.payment_method,
+    cartao_vezes:   r.cartao_vezes,
     is_paid:        Boolean(r.is_paid),
     paid_at:        r.paid_at,
     procedure_name: r.appointments?.procedures?.name ?? null,

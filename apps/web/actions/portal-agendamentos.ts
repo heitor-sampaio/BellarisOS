@@ -91,7 +91,7 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
     if (Number.isNaN(inicio.getTime()) || inicio.getTime() <= Date.now()) return { error: 'Escolha um horário a partir de agora.' }
     const p = partsInTZ(inicio)
     const hora = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
-    const livres = await computeAvailableSlots(admin, a.branch_id, a.professional_id, dayKeyTZ(inicio), a.duration_min || 30)
+    const livres = await computeAvailableSlots(admin, a.branch_id, a.professional_id, dayKeyTZ(inicio), a.duration_min || 30, a.id)
     if (p.second !== 0 || !livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
 
     const remarcadas = await gravar(admin.from('appointments').update({
@@ -121,7 +121,7 @@ export async function horariosParaRemarcar(appointmentId: string, dia: string): 
     if (!achado) return { error: 'Agendamento não encontrado.' }
     const { admin, a } = achado
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || !a.professional_id) return { slots: [] }
-    return { slots: await computeAvailableSlots(admin, a.branch_id, a.professional_id, dia, a.duration_min || 30) }
+    return { slots: await computeAvailableSlots(admin, a.branch_id, a.professional_id, dia, a.duration_min || 30, a.id) }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

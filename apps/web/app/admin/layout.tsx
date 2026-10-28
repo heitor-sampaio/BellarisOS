@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const ctx = await getTenantContext()
 
   // Portal da rede: apenas usuários de abrangência de rede (branch_id null) ou o admin.
-  if (ctx.isClient) redirect('/login')
+  if (ctx.isClient) redirect('/auth/redirect') // a cliente volta à home dela (A43), não ao login
   if (ctx.branchId !== null && !ctx.isNetworkAdmin) redirect('/')
 
   const admin = createAdminClient()

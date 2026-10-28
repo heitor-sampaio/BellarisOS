@@ -283,6 +283,8 @@ export async function computeAvailableSlots(
   professionalId: string,
   date: string,
   durationMin: number,
+  /** Ao REMARCAR, o próprio agendamento não ocupa o horário que vai deixar (A44). */
+  ignorarAgendamentoId?: string,
 ): Promise<string[]> {
   const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
@@ -303,13 +305,13 @@ export async function computeAvailableSlots(
   // começo do dia (2026-10-08).
   const booked = await ler(admin
     .from('appointments')
-    .select('scheduled_at, duration_min')
+    .select('id, scheduled_at, duration_min')
     .eq('professional_id', professionalId)
     .gte('scheduled_at', new Date(new Date(dayStart).getTime() - DURACAO_MAXIMA_MS).toISOString())
     .lt('scheduled_at', dayEnd)
     .not('status', 'in', IGNORED_STATUS), 'carregar os agendamentos')
 
-  const occupied = (booked ?? []).map((b) => ({
+  const occupied = (booked ?? []).filter((b) => b.id !== ignorarAgendamentoId).map((b) => ({
     start: new Date(b.scheduled_at as string).getTime(),
     end:   new Date(b.scheduled_at as string).getTime() + (Number(b.duration_min) || 60) * 60000,
   }))

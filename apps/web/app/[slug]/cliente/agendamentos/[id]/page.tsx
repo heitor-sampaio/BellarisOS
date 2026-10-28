@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, Clock3, User, MapPin } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { formatarTelefone } from '@/lib/documentos/valores'
 import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamento'
 
 /**
@@ -66,6 +67,7 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           appointmentId={a.id}
           scheduledAt={a.scheduled_at}
           prazoHoras={prazoHoras}
+          telefone={formatarTelefone(telefone)}
           whatsapp={telefone ? `https://wa.me/${telefone.startsWith('55') ? telefone : `55${telefone}`}` : null}
         />
       )}

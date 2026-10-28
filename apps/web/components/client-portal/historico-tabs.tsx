@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState } from 'react'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
 import type { ProcedimentoItem, PagamentoItem } from '@/app/[slug]/cliente/historico/page'
@@ -51,14 +52,6 @@ function MiniStars({ label, value }: { label: string; value: number }) {
 }
 
 type Tab = 'procedimentos' | 'pagamentos' | 'documentos'
-
-const METHOD_LABEL: Record<string, string> = {
-  CASH:            'Dinheiro',
-  PIX:             'Pix',
-  DEBIT_CARD:      'Débito',
-  CREDIT_CARD:     'Crédito',
-  INTERNAL_CREDIT: 'Crédito interno',
-}
 
 const DOC_CATEGORY: Record<string, string> = {
   anamnese:  'Anamnese',
@@ -196,7 +189,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                   {p.paid_at
                     ? new Date(p.paid_at).toLocaleDateString('pt-BR')
                     : 'Pendente'}
-                  {p.payment_method && ` · ${METHOD_LABEL[p.payment_method] ?? p.payment_method}`}
+                  {p.payment_method && ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}`}
                 </p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
