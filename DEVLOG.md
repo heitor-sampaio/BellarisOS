@@ -1560,9 +1560,36 @@ conta como respondida, a anamnese do atendimento se perde no "Finalizar", a
 profissional "só os meus" faz check-in no atendimento de outra pela URL, a
 agenda dela começa às 07:00 e o estorno não reabre a cobrança. Duas
 regressões das correções de 27–28/10 (D8, D18) e quatro sobras. E 49
-atritos. Nada corrigido: o Heitor escolhe. Também trouxe evidência para a
-decisão do portal (§5, "Depende do Heitor"). Detalhe em "5. Em aberto → Da
-simulação de 2026-10-28".
+atritos. Também trouxe evidência para a decisão do portal (§5, "Depende do
+Heitor"). Detalhe em "5. Em aberto → Da simulação de 2026-10-28".
+
+### 2026-10-28 — Os 18 defeitos da terceira simulação, corrigidos
+
+Pedido do Heitor: "arrumar todos defeitos" (os atritos ficam para depois).
+Seis frentes, uma de cada vez: Opus em quem atende e no escopo (D1, D4, D7),
+no dinheiro (D6, D9, D13), no clínico (D2, D3, D14) e nos indicadores (D10–12,
+D17); Sonnet nas telas (D5, D8, D15, D16, D18); e uma de sobras e conferência
+na produção. Cada caso com o teste visto falhando antes; sete migrations
+(20261028000201–502) na produção.
+
+O que muda para quem usa: quem é da rede e atende aparece em todas as
+unidades; "só os meus" vale também pelo id (atendimento, check-in, remarcar,
+cancelar, evolução) e no sino e no dashboard; o estorno reabre a cobrança; o
+avulso concluído abate do pacote; a Entrada de estoque vira despesa; a ficha
+de saúde não se envia vazia e tem as contraindicações obrigatórias; o
+"Finalizar" grava dores e anamnese (que saíram da observação interna); as
+grades da profissional e da rede abrem no horário de funcionamento; a
+conversão de leads é uma conta só; o 404 dos portais responde 404. A frente
+de conferência achou na produção uma regressão da do 404 (a tela virava
+"Algo deu errado": sem o `loading` no topo, o script que entrega a config do
+Supabase não rodava) e a fechou com a config também em `<meta>`.
+
+As decisões tomadas pelas frentes estão anotadas para o Heitor revisar (§5,
+"Depende do Heitor" → "Para revisar"). Mexeu em arquivo compartilhado (cache
+de profissionais, núcleo da agenda, os layouts raiz dos três apps, o cliente
+do Supabase no navegador, os dois dashboards): vale uma completa, que o
+Heitor decide — e ela também cobre os 129 specs afetados que ficaram sem
+rodar quando a máquina ficou sem memória (lista no scratchpad da sessão).
 
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
@@ -6867,6 +6894,17 @@ verdade. O que vale:
     passados", de propósito.
   - Estoque sem categoria (D17): a categoria em branco também vai a "Sem
     categoria".
+  - O 404 sem o `loading` no topo (frente F): ele vem na casca de erro do
+    Next, onde o script do layout raiz não roda — sem `window.__SUPABASE_URL__`
+    a tela virava "Algo deu errado" na produção. A config do Supabase do
+    navegador passou a ir também em `<meta>` no layout raiz dos TRÊS apps
+    (não voltou o `loading` ao topo nem embutiu as `NEXT_PUBLIC_*` no Docker).
+    Os outros scripts do layout raiz (polyfill, recarga por action velha,
+    barra recolhida) também não rodam nesse 404 — ficou assim, é uma tela de
+    um botão.
+  - Divisões que ainda são feitas na tela de Relatórios (taxa de conclusão da
+    agenda, retenção, giro do estoque, conversão por origem): não mexidas; as
+    do dashboard e da tabela por procedimento foram para `lib/metrics`.
 
 - **Para decidir (2026-10-28): o que a cliente vê dos documentos no portal.**
   `/[slug]/cliente/historico` lista TODO `client_documents` dela — foto
@@ -7229,7 +7267,7 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   foto clínica, exame e laudo — e o §9.4 diz que a cliente não vê foto nem
   prontuário pelo app. Precisa de decisão (esconder o clínico, ou só a foto).
 
-### Da simulação de 2026-10-28 (rede de duas unidades — nada corrigido ainda)
+### Da simulação de 2026-10-28 (D1–D18 feitos em 28/10; os atritos A1–A49 em aberto)
 
 O relatório inteiro (capturas, os 49 atritos A1–A49 por tela, os 14 achados
 que eram regra ou engano, o dinheiro esperado × sistema, o que ficou sem
