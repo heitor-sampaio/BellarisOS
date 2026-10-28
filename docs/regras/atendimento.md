@@ -21,6 +21,17 @@
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
   das sessões do plano continuam livres. Prova:
   `e2e/agenda-horario-de-funcionamento.spec.ts`, `tests/agenda-horario.test.ts`.
+- **Quem atende e é da REDE atende em TODAS as unidades** (D1 da simulação de
+  2026-10-28, decisão do Heitor): o membro com `provides_services` e
+  `branch_id` nulo aparece na agenda de cada unidade, no agendar (equipe e app
+  da cliente), no horário dos profissionais e na ocupação do dashboard da
+  unidade; o de uma unidade, só na dele. O filtro é UM,
+  `filtroDeQuemAtendeNaUnidade` (`lib/cached-queries.ts`, com a rede), usado
+  por `getCachedBranchProfessionals` e por toda lista ou conferência de "quem
+  atende aqui" — nunca `branch_id = unidade`. A tag da lista é da rede
+  (`professionals:<rede>`): mexer num membro da rede expira todas as unidades.
+  Escolher em QUAIS unidades ele atende fica para depois. Prova:
+  `e2e/agenda-profissional-da-rede.spec.ts`.
 - Status: `SCHEDULED → CONFIRMED → ARRIVED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `arrivedAt`, `startedAt`, `completedAt`, `cancelledAt`
 - **Confirmar e chegar são passos diferentes** (2026-10-21, decisão do Heitor;
@@ -453,6 +464,7 @@ O resto do fluxo:
 ❌ Gravar a anamnese geral fora de gravarAnamneseGeral (o pendente fica aberto e a cliente responde de novo)
 ❌ Ler general_anamnesis direto, sem paraAnamneseGeral (há dois formatos no banco)
 ❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
+❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro

@@ -11,7 +11,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 import { selosDaFicha } from '@/lib/pre-atendimento/selos'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
-  getCachedBranchProfessionals, getCachedRoomsByBranch,
+  getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
 } from '@/lib/cached-queries'
 
 export default async function AgendaPage({ params, searchParams }: {
@@ -87,7 +87,9 @@ export default async function AgendaPage({ params, searchParams }: {
     // O horário de funcionamento (2026-10-21): a grade e a ocupação da agenda.
     Promise.all([
       ler(createAdminClient().from('branches').select('horario').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade'),
-      ler(createAdminClient().from('users').select('id, horario').eq('branch_id', branchId).eq('provides_services', true), 'buscar o horário dos profissionais'),
+      // Os da unidade e os da rede, que atendem em todas (D1, 2026-10-28).
+      ler(createAdminClient().from('users').select('id, horario').eq('tenant_id', ctx.tenantId!)
+        .or(filtroDeQuemAtendeNaUnidade(branchId)).eq('provides_services', true), 'buscar o horário dos profissionais'),
     ]),
   ])
   const horarioDaUnidade = normalizarHorario((horarioRaw[0] as { horario?: unknown } | null)?.horario)

@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario } from '@/lib/agenda/horario'
 import { getTenantContext, isOwnScope, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCachedBranchBySlug } from '@/lib/cached-queries'
+import { getCachedBranchBySlug, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
 import type { AppModule } from '@estetica-os/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -178,7 +178,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     (canAgenda && !professionalOnly)
       // Os profissionais e o horário de cada um: a capacidade da ocupação.
       ? ler(admin.from('users').select('horario')
-          .eq('branch_id', branchId).eq('provides_services', true).eq('is_active', true), 'carregar os profissionais')
+          // Os da unidade e os da rede, que atendem em todas (D1, 2026-10-28).
+          .eq('tenant_id', ctx.tenantId!).or(filtroDeQuemAtendeNaUnidade(branchId))
+          .eq('provides_services', true).eq('is_active', true), 'carregar os profissionais')
       : Promise.resolve([]),
 
     canProcedures

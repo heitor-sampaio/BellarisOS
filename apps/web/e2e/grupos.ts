@@ -26,6 +26,7 @@
  */
 export const ISOLADOS = [
   'abrangencia-unidade.spec.ts',
+  'agenda-profissional-da-rede.spec.ts',
   'agendar-com-credito.spec.ts',
   'anuncios-integracao.spec.ts',
   'autenticacao.spec.ts',

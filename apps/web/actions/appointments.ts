@@ -9,7 +9,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
 import {
-  getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
+  getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
@@ -1530,12 +1530,14 @@ export async function createClientAppointment(params: {
     // Quem atende é marcado por `provides_services`. A validação antiga filtrava
     // por `users.role`, coluna removida na migração de cargos dinâmicos: a query
     // falhava com 42703, `prof` vinha null e TODO agendamento pelo app do cliente
-    // era recusado com "Profissional não disponível".
+    // era recusado com "Profissional não disponível". A da REDE atende em toda
+    // unidade (D1, 2026-10-28): a lista da tela e esta conferência são a mesma.
     const { data: prof, error: profErr } = await admin
       .from('users')
       .select('id')
       .eq('id', params.professionalId)
-      .eq('branch_id', params.branchId)
+      .eq('tenant_id', branch.tenant_id as string)
+      .or(filtroDeQuemAtendeNaUnidade(params.branchId))
       .eq('provides_services', true)
       .eq('is_active', true)
       .maybeSingle()

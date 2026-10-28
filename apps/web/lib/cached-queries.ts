@@ -272,6 +272,17 @@ export function getCachedNetworkProcedures(tenantId: string) {
 }
 
 // ─── Profissionais da filial (quem atende clientes: provides_services) ────────
+/**
+ * Quem atende NA unidade: os dela e os da REDE (`branch_id` nulo), que atendem
+ * em todas (D1 da simulação de 2026-10-28; a abrangência de rede alcança todas,
+ * §11). Era `branch_id = unidade`, e a profissional da rede não aparecia em
+ * unidade nenhuma. Toda lista de "quem atende aqui" usa este filtro. A tag é da
+ * REDE: mexer num membro da rede expira a lista de todas as unidades.
+ */
+export function filtroDeQuemAtendeNaUnidade(branchId: string): string {
+  return `branch_id.eq.${branchId},branch_id.is.null`
+}
+
 export function getCachedBranchProfessionals(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
@@ -279,13 +290,14 @@ export function getCachedBranchProfessionals(branchId: string, tenantId: string)
       const data = await ler(admin
         .from('users')
         .select('id, name')
-        .eq('branch_id', branchId)
+        .eq('tenant_id', tenantId)
+        .or(filtroDeQuemAtendeNaUnidade(branchId))
         .eq('provides_services', true)
         .eq('is_active', true)
         .order('name'), 'carregar a equipe')
       return data ?? []
     },
-    [`branch-professionals-${branchId}`],
+    [`branch-professionals-da-unidade-${branchId}`],
     { revalidate: 300, tags: [`professionals:${tenantId}`] },
   )()
 }
