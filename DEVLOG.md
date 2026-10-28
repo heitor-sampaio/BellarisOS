@@ -7194,8 +7194,12 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
 - **D5 (alta)** "Minha agenda" e `/admin/agenda` começam fixas às 07:00
   (`DAY_START`/`GRID_START`); o de madrugada empilha na primeira linha. NOVO
   (o D8 de `8f4e92f` tratou só a grade da unidade).
-- **D6 (alta)** o estorno não reabre a cobrança: o atendimento não volta aos
-  "a receber", e o portal mostra o estornado como "Pago". SOBRA de `f063c6f`.
+- ~~**D6 (alta)** o estorno não reabre a cobrança: o atendimento não volta aos
+  "a receber", e o portal mostra o estornado como "Pago". SOBRA de `f063c6f`.~~
+  **feito em 2026-10-28** (df0e6db): o estornado sai do "pago" e da
+  unicidade de `appointment_id` (índice parcial); o "Confirmar pagamento" vale
+  de novo e grava um lançamento NOVO, com cliente, pontos e comissão uma vez
+  só; portal "Estornado", ficha com o estorno negativo.
 - ~~**D7 (média)** a profissional OWN recebe no sino os agendamentos das outras
   (`responsaveisPeloModulo` ignora o escopo) e vê no dashboard da REDE a
   receita e o custo. Sino NOVO; dashboard SOBRA de `28e5aa4`.~~ **feito em
@@ -7205,16 +7209,24 @@ pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
   unidade, o gráfico dos 6 meses).
 - **D8 (média)** "Adicionar membro" (rede) herda "Atende clientes" e a
   abrangência do cadastro anterior. REGRESSÃO de `4e5bef5`.
-- **D9 (média)** o pacote vendido depois não reconhece a sessão avulsa já
-  concluída — nenhuma action liga uma à outra. NOVO.
+- ~~**D9 (média)** o pacote vendido depois não reconhece a sessão avulsa já
+  concluída — nenhuma action liga uma à outra. NOVO.~~ **feito em 2026-10-28**
+  (045c922): "Abater do pacote" na janela do "Confirmar pagamento"
+  (`atendimento_abater_do_pacote`, uma transação): a sessão do mesmo
+  procedimento é usada, o atendimento sai de "a receber" sem cobrança, e a
+  comissão passa à regra da sessão de pacote.
 - **D10 (média)** conversão de leads: 0% em Oportunidades × 66,7% em
   Relatórios — a tela soma no navegador (`lib/crm.ts:81`, contra o §13.1). NOVO.
 - **D11 (baixa)** o rótulo do ticket médio diz "receita ÷ atendimentos" e a
   conta (certa) é serviço ÷ cobrados. SOBRA de `695dd11`.
 - **D12 (média)** dashboard da unidade, "Clientes no mês": agendamentos e
   cancelados 0 — usa `period.to`, não `fullTo`. SOBRA do A38 (`880f0ea`).
-- **D13 (média)** a compra pela "Entrada" de estoque não vira despesa (só a do
-  cadastro do produto oferece): R$ 1.800 no Kobrasol sem despesa. NOVO.
+- ~~**D13 (média)** a compra pela "Entrada" de estoque não vira despesa (só a do
+  cadastro do produto oferece): R$ 1.800 no Kobrasol sem despesa. NOVO.~~
+  **feito em 2026-10-28** (1b54c53): a Entrada (unidade e rede) oferece
+  "Lançar o custo como despesa paga hoje", marcada, e a despesa nasce na
+  mesma transação (`estoque_compra`, que o cadastro também usa). Os R$ 1.800
+  da Íris ficaram como estão.
 - **D14 (média)** mapa de injetáveis: "Confirmar aplicação" é só estado local
   e some ao recarregar (a aplicação congelada nasce só dentro do atendimento,
   que na toxina não oferece o mapa). NOVO.
@@ -7249,6 +7261,33 @@ Decisões da frente A (D1, D4, D7), tomadas na correção:
   como no da unidade.
 - Apoio do E2E: `chamarAcaoComFormulario` chama direto a action que recebe
   `FormData` (docs/regras/e2e.md).
+
+Decisões da frente B (D6, D9, D13), tomadas na correção:
+- **O recebimento depois do estorno é um lançamento NOVO** — o estornado fica
+  intacto no histórico. Por isso `financial_transactions.appointment_id` deixou
+  de ser UNIQUE e virou índice parcial (só o lançamento vivo, sem `notes =
+  'Estornada'`). Quem lê "o lançamento do atendimento" tira o estornado
+  (`comissao_alvo` e `metrics_vendas` preferem o vivo; sem ele, o último
+  estornado — o de antes). O recebimento de novo manda outro "Purchase" à API
+  de Conversões (o estorno nunca mandou o negativo): fica como está.
+- O A46 ("Confirmar e avaliar" no concluído estornado) NÃO é o mesmo trecho:
+  é a confirmação da cliente, não o pagamento — e o histórico do portal é
+  decisão pendente. Ficou de fora.
+- **"Abater do pacote"**: o preço do atendimento passa a ser a parte da
+  sessão no rateio (a base da comissão dela, como na sessão agendada); a
+  linha de comissão AVULSO é CANCELADA (o acerto lança um AJUSTE negativo) e
+  nasce a PACOTE. A conta a receber que existisse (o "Concluído" antigo da
+  agenda) vira R$ 0 com a nota "Substituído pela sessão do pacote", como o
+  check-in do plano faz — registro financeiro não se apaga. Vale o pacote de
+  qualquer unidade da rede (como o crédito ao agendar); a unidade conferida é
+  a do atendimento.
+- **A despesa da Entrada** tem o padrão do cadastro (marcada) e o mesmo
+  texto; o Copilot e a "Entrada por código de barras" seguem sem a opção (a do
+  código de barras sugere o custo por unidade de CONSUMO, e a despesa sairia
+  errada — vale olhar à parte).
+- `financeiro-a-receber-concluido` ("D5: a janela da agenda…", o clique no
+  bloco da avaliação de R$ 0) falha também SEM as mudanças desta frente
+  (conferido com stash): fica para a frente F.
 
 ### Próximas fases já combinadas
 
