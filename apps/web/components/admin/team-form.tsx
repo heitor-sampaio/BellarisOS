@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -17,30 +17,40 @@ interface AdminTeamFormProps {
   podeComissao?:  boolean
 }
 
-export function AdminTeamForm({ branches, roles, isNetworkAdmin, podeComissao = false }: AdminTeamFormProps) {
-  const [atende, setAtende] = useState(false)
+export function AdminTeamForm(props: AdminTeamFormProps) {
   const [open, setOpen] = useState(false)
-  const [scope, setScope] = useState<'branch' | 'network'>('branch')
-  const [state, action, pending] = useActionState(createTeamMember, undefined)
-  const stateError = state && 'error' in state ? state.error : null
-
-  // Fecha quando chega um resultado NOVO de sucesso — no render, com o
-  // resultado anterior guardado, e não num efeito.
-  const [resultadoVisto, setResultadoVisto] = useState(state)
-  if (resultadoVisto !== state) {
-    setResultadoVisto(state)
-    if (state && 'success' in state && state.success) setOpen(false)
-  }
-
   return (
     <>
       <button className="btn-primary" onClick={() => setOpen(true)}>
         <Plus size={15} />
         Adicionar membro
       </button>
+      {open && <NovoMembro {...props} onFechar={() => setOpen(false)} />}
+    </>
+  )
+}
 
-      {open && (
-        <JanelaModal onFechar={() => setOpen(false)} rotulo="Novo membro da equipe" largura={460} fechaNoFundo={false}>
+/**
+ * O formulário só existe com a janela aberta: todo o estado (atende,
+ * abrangência, o resultado da última tentativa) nasce limpo a cada abertura.
+ * Até 2026-10-28 ele vivia FORA do modal e o cadastro seguinte herdava o
+ * "Atende clientes" e a abrangência do anterior — o Marcos (Financeiro) nasceu
+ * profissional (D8, regressão de 4e5bef5).
+ */
+function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onFechar }: AdminTeamFormProps & { onFechar: () => void }) {
+  const [atende, setAtende] = useState(false)
+  const [scope, setScope] = useState<'branch' | 'network'>('branch')
+  const [state, action, pending] = useActionState(createTeamMember, undefined)
+  const stateError = state && 'error' in state ? state.error : null
+
+  // Fecha quando chega o resultado de sucesso.
+  const sucesso = !!(state && 'success' in state && state.success)
+  useEffect(() => { if (sucesso) onFechar() }, [sucesso, onFechar])
+
+  return (
+    <>
+      {(
+        <JanelaModal onFechar={onFechar} rotulo="Novo membro da equipe" largura={460} fechaNoFundo={false}>
           <div style={{ padding: 'var(--card-pad)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <div>
@@ -51,7 +61,7 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin, podeComissao = 
                   A senha temporária deve ser trocada no primeiro acesso.
                 </p>
               </div>
-              <button className="btn-ghost" onClick={() => setOpen(false)} style={{ padding: 6 }}>
+              <button className="btn-ghost" onClick={onFechar} style={{ padding: 6 }}>
                 <X size={16} />
               </button>
             </div>
@@ -154,7 +164,7 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin, podeComissao = 
               )}
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
-                <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Cancelar</button>
+                <button type="button" className="btn-secondary" onClick={onFechar}>Cancelar</button>
                 <button type="submit" disabled={pending} className="btn-primary">
                   {pending ? 'Criando…' : 'Criar membro'}
                 </button>

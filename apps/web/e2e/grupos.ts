@@ -55,6 +55,7 @@ export const ISOLADOS = [
   'documentos-portal.spec.ts',
   'documentos-verificacao.spec.ts',
   'equipe-comissao-ao-criar.spec.ts',
+  'equipe-formulario-limpo.spec.ts',
   'estoque-custo-de-consumo.spec.ts',
   'estoque-entrada-despesa.spec.ts',
   'estrutura-endereco-da-unidade.spec.ts',

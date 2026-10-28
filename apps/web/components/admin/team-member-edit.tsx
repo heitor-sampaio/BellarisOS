@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { normalizarHorario } from '@/lib/agenda/horario'
 import { Pencil, X } from 'lucide-react'
@@ -38,20 +38,9 @@ interface Props {
  * nunca teve tela — sem isso não havia como trocar o cargo de ninguém, o que
  * deixava o modelo de permissões inoperante na prática.
  */
-export function TeamMemberEdit({ member, branches, roles, canChooseScope, redirectPath }: Props) {
+export function TeamMemberEdit(props: Props) {
+  const { member } = props
   const [open, setOpen] = useState(false)
-  const [scope, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
-  const [state, action, pending] = useActionState(updateTeamMember, undefined)
-  const stateError = state && 'error' in state ? state.error : null
-
-  // Fecha quando chega um resultado NOVO de sucesso — no render, com o
-  // resultado anterior guardado, e não num efeito.
-  const [resultadoVisto, setResultadoVisto] = useState(state)
-  if (resultadoVisto !== state) {
-    setResultadoVisto(state)
-    if (state && 'success' in state && state.success) setOpen(false)
-  }
-
   return (
     <>
       <button
@@ -64,8 +53,29 @@ export function TeamMemberEdit({ member, branches, roles, canChooseScope, redire
         <Pencil size={15} />
       </button>
 
-      {open && (
-        <JanelaModal onFechar={() => setOpen(false)} rotulo={`Editar ${member.name}`} largura={460} fechaNoFundo={false}>
+      {open && <EdicaoDoMembro {...props} onFechar={() => setOpen(false)} />}
+    </>
+  )
+}
+
+/**
+ * O formulário só existe com a janela aberta (D8, 2026-10-28): a abrangência e
+ * o resultado da última tentativa nascem dos valores do membro a cada abertura,
+ * e não do que se mexeu antes de cancelar.
+ */
+function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, onFechar }: Props & { onFechar: () => void }) {
+  const [scope, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
+  const [state, action, pending] = useActionState(updateTeamMember, undefined)
+  const stateError = state && 'error' in state ? state.error : null
+
+  // Fecha quando chega o resultado de sucesso.
+  const sucesso = !!(state && 'success' in state && state.success)
+  useEffect(() => { if (sucesso) onFechar() }, [sucesso, onFechar])
+
+  return (
+    <>
+      {(
+        <JanelaModal onFechar={onFechar} rotulo={`Editar ${member.name}`} largura={460} fechaNoFundo={false}>
           <div style={{ padding: 'var(--card-pad)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
               <div>
@@ -76,7 +86,7 @@ export function TeamMemberEdit({ member, branches, roles, canChooseScope, redire
                   {member.email}
                 </p>
               </div>
-              <button type="button" className="btn-ghost" onClick={() => setOpen(false)} style={{ padding: 6 }}>
+              <button type="button" className="btn-ghost" onClick={onFechar} style={{ padding: 6 }}>
                 <X size={16} />
               </button>
             </div>
@@ -166,7 +176,7 @@ export function TeamMemberEdit({ member, branches, roles, canChooseScope, redire
               )}
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
-                <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Cancelar</button>
+                <button type="button" className="btn-secondary" onClick={onFechar}>Cancelar</button>
                 <button type="submit" disabled={pending} className="btn-primary">
                   {pending ? 'Salvando…' : 'Salvar'}
                 </button>
