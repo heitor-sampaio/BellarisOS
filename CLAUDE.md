@@ -588,6 +588,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Lançar new Error('Forbidden') à mão — use semAcesso() (em produção só o digest chega à tela)
 ❌ Contar com a MENSAGEM de um erro lançado no servidor na tela — em produção ela chega trocada; devolva { error } ou use erroParaTela
 ❌ loading.tsx no topo de um portal (app/admin, app/[slug]): envolve o [...rota] num Suspense e o 404 sai com HTTP 200 — cada seção tem o seu (tests/loading-fora-do-catch-all trava)
+❌ Dar ao navegador config de runtime SÓ por <script> no layout raiz — o 404 dos portais vem na casca de erro do Next, desenhado pelo navegador, e o script não roda; vai também em <meta> (configDoSupabaseNoNavegador, docs/regras/infra.md)
 ❌ Subir o Next sem rodar a suíte contra o build (16.3.5+ quebra o refresh; abaixo de 16.3.0 trava a action)
 ❌ Update pela sessão sem conferir a linha devolvida (sem policy de UPDATE, atinge zero linhas sem erro)
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)

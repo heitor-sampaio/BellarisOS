@@ -122,6 +122,20 @@ ninguém precisa (e pularia um muro na frente do domínio, se um dia houver).
 No Supabase (Auth → URL Configuration) entram os dois hosts novos nas
 Redirect URLs.
 
+**A imagem é buildada SEM as `NEXT_PUBLIC_*`**: o navegador as recebe do
+layout raiz em runtime, de dois jeitos — o `<script>` que põe
+`window.__SUPABASE_URL__`/`__SUPABASE_KEY__` e as
+`<meta name="bellaris-supabase-url|key">`. Quem lê é
+`configDoSupabaseNoNavegador` (`lib/supabase/config-do-navegador`, no
+núcleo): janela → `<meta>` → `NEXT_PUBLIC_*`. A `<meta>` é a reserva da
+página desenhada pelo NAVEGADOR — o 404 dos portais (o `notFound()` fora de
+Suspense, D18) vem na casca de erro do Next (`<html id="__next_error__">`), e
+nela o React não executa script de `dangerouslySetInnerHTML`. Até 2026-10-28
+o 404 da produção dizia "Algo deu errado" (`supabaseUrl is required`). O
+`next dev` e o build local embutem as `NEXT_PUBLIC_*` do `.env.local` e não
+mostram a quebra: só a produção. Config nova que o navegador precise ler em
+runtime segue o mesmo caminho (as duas formas no layout), nunca só o script.
+
 **O Site** (2026-10-17, `docs/regras/site.md`) é a exceção ao comum: é
 página de apresentação, não opera nada, e leva só a chave PÚBLICA (lê os
 planos por `planos_do_site()`). As duas chaves do Supabase e o

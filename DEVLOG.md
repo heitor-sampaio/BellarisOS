@@ -7478,6 +7478,36 @@ Decisões da frente E (D10, D11, D12, D17), tomadas na correção — para o Hei
   "horários passados").
 - **D17:** a categoria em branco (`''`) também vira "Sem categoria".
 
+Frente F (sobras): (1) `financeiro-a-receber-concluido` ("D5: a janela da
+agenda…") não era regressão: o clique no bloco saía antes de a grade
+hidratar e se perdia — o teste repete até a janela abrir (3ecd531). (2) O
+D18 na PRODUÇÃO: 404 nos três portais e o esqueleto nas telas de verdade,
+mas a página dizia "Algo deu errado" — REGRESSÃO da frente D (4003e71): o
+404 fora de Suspense vem na casca de erro do Next, desenhada pelo
+navegador, e o `<script>` do layout que dá o endereço do Supabase não roda
+(a imagem não embute as `NEXT_PUBLIC_*`). O layout raiz dos três apps dá a
+config também em `<meta>` (b4df52e); conferido na produção depois do
+deploy: "Página não encontrada", 404, sem erro no console. (3) O D5 na rede
+de duas unidades de horários diferentes ganhou o caso E2E (2171f4e;
+regressão, não TDD — conferido ao contrário). (4) "Média por atend.",
+"Média por execução" e o "% do Total" da tabela por procedimento saíram da
+tela para `lib/metrics/resultado.ts`, sem mudar o número (48f079a). (5) As
+migrations 20261028000201–502 estão todas em `schema_migrations` da
+produção; `metrics_lead_funnel` (seis argumentos, só `service_role`) tem o
+corpo idêntico ao do arquivo (md5) e `metrics_relatorio` tem a fatia "Sem
+categoria" sem o recorte antigo — nada reaplicado. O deploy do Suporte que
+falhou em três commits da frente E foi do builder do Railway (buildkit),
+não do código; os seguintes passaram. (6) Fechamento: `pnpm typecheck`,
+`pnpm lint` e `pnpm test` (1151 no web) verdes. Dos E2E afetados desde
+e865b81 que nenhuma frente rodou (169 — a lista esbarra nos arquivos
+compartilhados), 40 specs passaram (116 testes); o resto parou por falta
+de memória da máquina (o worker do Playwright morreu no lote 3, e o
+Claude Code encerrou a rodada) — 129 specs sem rodar. Mexeu nos layouts
+raiz dos três apps: vale uma completa.
+- Ainda dividem na tela de Relatórios (fora do pedido da frente F): a taxa
+  de conclusão da agenda, a retenção, o giro do estoque e a conversão por
+  origem do comercial.
+
 ### Próximas fases já combinadas
 
 - ~~Busca universal, fase 2 — ações~~ **feita em 2026-10-08** (ver a linha do tempo).
