@@ -224,7 +224,8 @@ export async function addClient(
 
   revalidatePath(`/${slug}/clients`)
   revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
-  return { success: true, clientId: client.id as string }
+  // `acessoCriado`: a tela confirma o login e lembra a senha inicial (A13).
+  return { success: true, clientId: client.id as string, acessoCriado: !!login }
 }
 
 // `updateClient` foi removida: a aba Dados da ficha (updateClientContactData)

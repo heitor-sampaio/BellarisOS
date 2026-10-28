@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { addClient } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
@@ -89,6 +90,13 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
 
   const aoCadastrar = useEffectEvent(() => {
     const clientId = (state as unknown as { clientId?: string }).clientId
+    // A confirmação sai antes de a tela mudar: o formulário some no modal ou na navegação.
+    if ((state as unknown as { acessoCriado?: boolean }).acessoCriado) {
+      toast.success('Acesso ao app criado', {
+        description: `O login é o e-mail${email.trim() ? ` (${email.trim().toLowerCase()})` : ''} e a senha inicial é o CPF; a cliente a troca no primeiro acesso.`,
+        duration: 9000,
+      })
+    }
     if (onSuccess) {
       onSuccess(clientId)
     } else if (clientId) {

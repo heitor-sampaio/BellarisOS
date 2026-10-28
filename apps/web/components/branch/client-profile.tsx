@@ -1243,6 +1243,9 @@ export function ClientProfile({
                 <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
                   {client.name}
                 </h1>
+                {client.temAcesso && (
+                  <TagBadge label="Tem acesso ao app" size="xs" style={{ bg: 'var(--success-soft)', color: 'var(--success)' }} />
+                )}
                 {client.tags.map(tag => {
                   if (isUnitTag(tag)) {
                     return <TagBadge key={tag} label={unitTagName(tag)} size="xs" style={{ bg: 'var(--info-soft)', color: 'var(--info)' }} />

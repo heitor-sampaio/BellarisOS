@@ -89,11 +89,17 @@ test.describe.serial('a cliente de balcão', () => {
       await expect(p.getByRole('checkbox', { name: 'Criar o acesso ao app' })).not.toBeChecked()
       await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
       await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
+      await expect(p.getByText('Tem acesso ao app', { exact: true })).toHaveCount(0)
 
       await preencher(p, nome('marcado'), { email: `e2e-bc2${marca}@bellaris.invalid`, cpf: cpfDeTeste() })
       await p.getByRole('checkbox', { name: 'Criar o acesso ao app' }).check()
       await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
       await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
+      // A13 (simulação de 2026-10-27): o cadastro confirma o acesso e lembra a regra,
+      // e a ficha ganha o selo — antes não dizia nada.
+      await expect(p.getByText(/Acesso ao app criado/)).toBeVisible()
+      await expect(p.getByText(/senha inicial é o CPF/i)).toBeVisible()
+      await expect(p.getByText('Tem acesso ao app', { exact: true })).toBeVisible()
     })
     const semMarcar = await fichaDe(nome('sem marcar'))
     expect(semMarcar?.document, 'o CPF fica').toMatch(/^\d{11}$/)

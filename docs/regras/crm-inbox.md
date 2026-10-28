@@ -15,7 +15,9 @@
 - **A cliente de balcão** (2026-10-21, decisão do Heitor): "Novo cliente"
   pede só nome e telefone; e-mail e CPF são opcionais (preenchidos, válidos).
   O acesso ao app é a caixa "Criar o acesso ao app", que só se marca com os
-  dois — sem ela, nenhum login nasce. Depois, a aba Dados da ficha dá o acesso
+  dois — sem ela, nenhum login nasce. Criado o acesso, a tela
+  CONFIRMA (toast: login = e-mail, senha inicial = CPF, trocada no primeiro acesso) e a ficha
+  ganha o selo "Tem acesso ao app" ao lado do nome (A13, 2026-10-27). Depois, a aba Dados da ficha dá o acesso
   (`darAcessoAoApp`, com o e-mail e o CPF SALVOS; o núcleo é
   `darAcessoAoCliente`). Prova: `e2e/ficha-cadastro-de-balcao.spec.ts`.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
