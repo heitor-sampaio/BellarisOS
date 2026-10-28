@@ -77,3 +77,19 @@ test('a rota inexistente responde HTTP 404 (e não 200) em cada lugar', async ({
     } finally { await ctx.close() }
   } finally { await cliente.limpar() }
 })
+
+/**
+ * A completa de 2026-10-28: o `[slug]/[...rota]` (D12) também pega o que não
+ * existe sob um endereço RESERVADO — `/api/rota-velha` é "unidade api, tela
+ * rota-velha". O proxy deixa `/api/*` passar sem sessão, o layout da unidade
+ * pedia a sessão e lançava "Unauthenticated": HTTP 500 no lugar do 404.
+ */
+test.describe('sem sessão', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('rota inexistente sob um endereço reservado (/api, /assinar) responde 404, não 500', async ({ request }) => {
+    expect.soft((await request.get('/api/rota-que-nao-existe')).status(), 'GET /api/…').toBe(404)
+    expect.soft((await request.post('/api/suporte/entrar', { form: { motivo: 'x' }, maxRedirects: 0 })).status(), 'POST /api/…').toBe(404)
+    expect.soft((await request.get('/assinar/abc/def/ghi', { maxRedirects: 0 })).status(), 'GET /assinar/…').toBe(404)
+  })
+})

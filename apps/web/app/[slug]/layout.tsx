@@ -11,6 +11,7 @@ import { Copilot } from '@/components/copilot/copilot'
 import { copilotNaTela } from '@/lib/copilot/disponivel'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
+import { ENDERECOS_RESERVADOS } from '@/lib/unidades/endereco'
 
 export default async function BranchLayout({
   children,
@@ -20,6 +21,10 @@ export default async function BranchLayout({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  // Endereço reservado não é unidade: `/api/rota-velha` cai no [...rota] como
+  // "unidade api". Sem isto o layout pedia a sessão — que o proxy não exige em
+  // /api/* — e o 404 virava 500 (a completa de 2026-10-28).
+  if (ENDERECOS_RESERVADOS.includes(slug)) notFound()
   const ctx = await getTenantContext()
 
   // Portal do cliente: valida vínculo com a filial e devolve children sem chrome de staff.
