@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
@@ -443,6 +443,18 @@ export async function updateClientSelf(
 export async function toggleClientStatus(clientId: string, isActive: boolean, slug: string) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
+
+  // A abrangência (§11) se confere AQUI, não só na RLS: a unidade da cliente é
+  // a do cadastro (a tag "Unidade: …" é frequência, não abrangência), e quem
+  // tem unidade fixa só arquiva a dela. Ficha sem unidade é da rede.
+  const ficha = await ler(createAdminClient()
+    .from('clients')
+    .select('branch_id')
+    .eq('id', clientId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle(), 'buscar o cliente')
+  if (!ficha) return { error: 'Cliente não encontrado.' }
+  if (!alcancaUnidade(ctx, ficha.branch_id as string | null)) return { error: 'Esta cliente é de outra unidade.' }
 
   const supabase = await createSupabase()
   const { data, error } = await supabase

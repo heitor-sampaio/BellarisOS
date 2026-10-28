@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { apagarClientes } from './apoio/limpeza'
 
 /**
  * A ABRANGÊNCIA do membro (§11): quem tem unidade fixa age só na dela.
@@ -25,12 +26,12 @@ const PERMISSOES = (['agenda', 'cashier', 'financial', 'stock', 'team', 'setting
 interface Fx {
   outra: OutraRede; unidadeA: { id: string; slug: string }; slugB: string
   recepcaoA: MembroDeTeste; rede: MembroDeTeste
-  cliente: string; apptA: string; apptB: string; txAberto: string; txPago: string
+  cliente: string; clienteDaA: string; apptA: string; apptB: string; txAberto: string; txPago: string
   plano: string; nomePlano: string; planoA: string; mapa: string; mapaA: string; membroB: MembroDeTeste
 }
 let f: Fx | null = null
 // O que já foi criado, para o afterAll limpar mesmo se o beforeAll quebrar no meio.
-const criado: { outra?: OutraRede; unidadeA?: string; membros: MembroDeTeste[] } = { membros: [] }
+const criado: { outra?: OutraRede; unidadeA?: string; membros: MembroDeTeste[]; clientes: string[] } = { membros: [], clientes: [] }
 
 test.beforeAll(async ({ browser }) => {
   const b = db()
@@ -66,6 +67,8 @@ test.beforeAll(async ({ browser }) => {
     outra, unidadeA: { id: idA, slug: slugA }, slugB: unB!.slug as string,
     recepcaoA: await membro(`abrA${marca}`, { tenant: outra.tenantId, branchId: idA, rotulo: 'Recepção A', permissoes: PERMISSOES }),
     rede:      await membro(`abrR${marca}`, { tenant: outra.tenantId, rotulo: 'Gestão da rede', permissoes: PERMISSOES }),
+    // A cliente CADASTRADA na A (a outra, `cliente`, é da B).
+    clienteDaA: await ins('clients', { tenant_id: outra.tenantId, branch_id: idA, name: `${PREFIXO} Cliente da A ${marca}`, phone: '5548' + String(Date.now()).slice(-9) }),
     cliente, apptA: await agendamento(idA), apptB: await agendamento(outra.branchId),
     txAberto: await lancamento(false), txPago: await lancamento(true),
     plano: planId, nomePlano: pl!.name as string,
@@ -85,6 +88,7 @@ test.beforeAll(async ({ browser }) => {
     }),
     membroB: await membro(`abrB${marca}`, { tenant: outra.tenantId, branchId: outra.branchId, rotulo: 'Membro B', permissoes: [] }),
   }
+  criado.clientes.push(f.clienteDaA)
 
   // Compila as telas que usam as actions, para o id delas estar no manifesto
   // quando a recepção A (que não abre /admin) for chamá-las.
@@ -112,6 +116,7 @@ test.afterAll(async () => {
   const { data: daA } = await b.from('appointments').select('id').in('branch_id', unidades)
   if (daA?.length) olhar('histórico', await b.from('appointment_history').delete().in('appointment_id', daA.map(a => a.id)))
   if (ids.length) olhar('lançamentos', await b.from('financial_transactions').delete().in('id', ids))
+  for (const x of await apagarClientes(criado.clientes)) falhas.push(`cliente da A: ${x.o_que}: ${x.erro}`)
   await criado.outra.limpar()   // clientes → agendamentos, lançamentos do cliente, planos
   if (criado.unidadeA) olhar('unidade A', await b.from('branches').delete().eq('id', criado.unidadeA))
   // A rede só sai depois da unidade A — o limpar() dela tentou antes, com a A no caminho.
@@ -143,6 +148,7 @@ const TELA: Record<string, (x: Fx) => string> = {
   getPlanejamentoInjetavel:     x => `injetaveis/${x.mapaA}`,
   renomearPlanejamentoInjetavel: x => `injetaveis/${x.mapaA}`,
   deactivateTeamMember:         () => 'team',
+  toggleClientStatus:           x => `clients/${x.cliente}`,
 }
 
 /** A action, chamada pela pessoa, postando na tela do portal dela. */
@@ -262,5 +268,38 @@ test.describe.serial('quem tem unidade fixa age só na dela', () => {
       await acao(p, 'rede', 'team', 'deactivateTeamMember', [f!.membroB.userId, '/admin/team'])
     })
     expect((await linha('users', f!.membroB.userId)).is_active, 'a rede desativa').toBe(false)
+  })
+
+  // A unidade da cliente é a do CADASTRO (clients.branch_id) — a mesma que a
+  // RLS de clients confere. A tag "Unidade: …" (que o agendamento põe) é
+  // métrica de frequência, não abrangência: não dá à A a cliente da B.
+  test('clientes: não arquiva a cliente da B (nem com a tag da A); arquiva a da A', async ({ browser }) => {
+    expect((await linha('clients', f!.cliente)).tags as string[], 'o agendamento na A pôs a tag da A')
+      .toContain(`Unidade: ${PREFIXO} Unidade A ${marca}`)
+    await como(browser, 'recepcaoA', async p => {
+      const r = await acao(p, 'recepcaoA', 'clients', 'toggleClientStatus', [f!.cliente, false, f!.unidadeA.slug])
+      // A action recusa por si (a RLS é a segunda linha), e diz o porquê.
+      expect(devolvido(r.texto), 'a recusa é da action').toEqual({ error: 'Esta cliente é de outra unidade.' })
+    })
+    expect((await linha('clients', f!.cliente)).is_active, 'a cliente da B segue ativa').toBe(true)
+
+    // A da A, a recepção da A arquiva — e reativa.
+    await como(browser, 'recepcaoA', async p => {
+      await acao(p, 'recepcaoA', 'clients', 'toggleClientStatus', [f!.clienteDaA, false, f!.unidadeA.slug])
+    })
+    expect((await linha('clients', f!.clienteDaA)).is_active, 'a A arquiva a da A').toBe(false)
+    await como(browser, 'recepcaoA', async p => {
+      await acao(p, 'recepcaoA', 'clients', 'toggleClientStatus', [f!.clienteDaA, true, f!.unidadeA.slug])
+    })
+    expect((await linha('clients', f!.clienteDaA)).is_active, 'e reativa').toBe(true)
+
+    // Controle: a rede arquiva a da B — e reativa.
+    await como(browser, 'rede', async p => {
+      await acao(p, 'rede', 'clients', 'toggleClientStatus', [f!.cliente, false, ''])
+    })
+    expect((await linha('clients', f!.cliente)).is_active, 'a rede arquiva').toBe(false)
+    await como(browser, 'rede', async p => {
+      await acao(p, 'rede', 'clients', 'toggleClientStatus', [f!.cliente, true, ''])
+    })
   })
 })

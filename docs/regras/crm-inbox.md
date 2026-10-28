@@ -52,6 +52,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **Arquivar a cliente** (menu "Mais ações" da ficha, `clients: MANAGE`; era "Desativar") a tira das
   listas e da conta de CLIENTE NOVA do dashboard (`is_active` nas três contas: `metrics_core`,
   `metrics_by_branch`, `metrics_new_clients_series`, A24). Prova: `e2e/clientes-arquivar.spec.ts`.
+  Quem tem unidade fixa só arquiva a cliente CADASTRADA na unidade dela (`clients.branch_id`, a
+  mesma que a RLS confere; a tag "Unidade: …" é frequência, não abrangência; ficha sem unidade é da
+  rede): `toggleClientStatus` confere com `alcancaUnidade` antes de gravar (2026-10-27). Prova:
+  `e2e/abrangencia-unidade.spec.ts`.
 - **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
   mostra marcada. Não há apagar.
 - Rede nova nasce com as oito padrão (`trg_rede_ganha_tags`,
