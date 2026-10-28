@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { CONTROLADOR, ATUALIZADA_EM, faltaPreencher } from './dados-do-controlador'
+import { CONTROLADOR, ATUALIZADA_EM } from './dados-do-controlador'
 
 /**
  * Política de privacidade — PÚBLICA.
@@ -26,8 +26,6 @@ export const metadata: Metadata = {
 }
 
 export default function PoliticaDePrivacidade() {
-  const pendentes = faltaPreencher()
-
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-app)' }}>
       <Cabecalho />
@@ -47,8 +45,6 @@ export default function PoliticaDePrivacidade() {
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 32 }}>
           Última atualização: {formatarData(ATUALIZADA_EM)}
         </p>
-
-        {pendentes.length > 0 && <AvisoDePendencia campos={pendentes} />}
 
         <Secao titulo="1. Em uma frase">
           <P>
@@ -507,30 +503,6 @@ function BlocoDeContato() {
           </span>
         </div>
       ))}
-    </div>
-  )
-}
-
-/**
- * Enquanto faltar dado de identificação, a página avisa — em vez de publicar um
- * documento que parece completo e não é.
- */
-function AvisoDePendencia({ campos }: { campos: string[] }) {
-  return (
-    <div style={{
-      background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
-      borderRadius: 'var(--radius-card-token)', padding: '14px 16px', marginBottom: 28,
-    }}>
-      <p style={{
-        fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
-        color: 'var(--warning)', marginBottom: 4,
-      }}>
-        Documento ainda incompleto
-      </p>
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 'var(--leading-normal)' }}>
-        Falta preencher: {campos.join(', ')}. Sem o canal do encarregado, o titular não tem
-        a quem recorrer — e é justamente isso que a LGPD exige que esteja publicado.
-      </p>
     </div>
   )
 }

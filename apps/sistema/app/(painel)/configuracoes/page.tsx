@@ -3,6 +3,7 @@ import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
 import { configDoAsaas } from '@/lib/asaas/cliente'
 import { ConfiguracoesDaPlataforma } from '@/components/sistema/configuracoes-da-plataforma'
+import { faltaPreencher } from '@estetica-os/nucleo/lib/privacidade/controlador'
 import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 
 /**
@@ -23,6 +24,7 @@ export default async function ConfiguracoesDoSistemaPage() {
   ])
   const asaas = configDoAsaas()
   const c = (cfg ?? { dias_de_teste: 14, dias_de_carencia: 7, exigir_verificacao: false }) as { dias_de_teste: number; dias_de_carencia: number; exigir_verificacao: boolean }
+  const faltaNaPolitica = faltaPreencher()
   const u = ultimo as { recebido_em: string; evento: string } | null
 
   return (
@@ -51,6 +53,20 @@ export default async function ConfiguracoesDoSistemaPage() {
           No painel do Asaas, o webhook vai para <code>{urlDoHost('sistema')}/api/webhooks/asaas</code>, com envio sequencial,
           os eventos de cobrança e de assinatura, e o mesmo token de <code>ASAAS_WEBHOOK_TOKEN</code>.
         </p>
+      </section>
+      <section className="card suporte-secao">
+        <h2 className="overline">Política de privacidade</h2>
+        {faltaNaPolitica.length === 0
+          ? <p className="suporte-texto-fraco">Os dados do controlador estão preenchidos.</p>
+          : (
+            <>
+              <p><span className="suporte-alerta">Documento ainda incompleto.</span> Falta preencher: {faltaNaPolitica.join(', ')}.</p>
+              <p className="suporte-texto-fraco">
+                A página pública omite o que falta. Sem o canal do encarregado, o titular não tem a quem recorrer —
+                e é isso que a LGPD exige publicado. Preencha em <code>packages/nucleo/src/lib/privacidade/controlador.ts</code>.
+              </p>
+            </>
+          )}
       </section>
     </div>
   )

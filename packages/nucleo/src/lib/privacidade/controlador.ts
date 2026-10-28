@@ -6,7 +6,8 @@
  * encarregado são fatos do mundo — inventar qualquer um deles tornaria o
  * documento falso, e uma política de privacidade falsa é pior que nenhuma.
  *
- * Enquanto algum campo estiver vazio, a página mostra um aviso em vez do dado —
+ * Enquanto algum campo estiver vazio, a página pública o OMITE (sem aviso ao
+ * público, A46); quem administra vê o que falta em Configurações do sistema —
  * ela não finge que a informação existe.
  */
 export const CONTROLADOR = {

@@ -59,3 +59,10 @@ test('cabe no celular sem rolagem lateral', async ({ page }) => {
     document.documentElement.scrollWidth > window.innerWidth + 1)
   expect(estoura, 'a página rolou para o lado em 360px').toBe(false)
 })
+
+test('o público não vê o aviso interno de documento incompleto (A46)', async ({ page }) => {
+  await page.goto('/privacidade')
+  await expect(page.getByRole('heading', { name: 'Política de Privacidade', level: 1 })).toBeVisible()
+  await expect(page.getByText('Documento ainda incompleto')).toHaveCount(0)
+  await expect(page.getByText(/Falta preencher/)).toHaveCount(0)
+})
