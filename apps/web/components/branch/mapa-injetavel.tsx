@@ -237,6 +237,8 @@ export function MapaInjetavel({
         products={produtos}
         canEdit={podeEditar}
         onChange={v => { setMapa(v); setMsg(null) }}
+        // Confirmar a aplicação só no atendimento, onde ela se registra (D14).
+        confirmaAqui={!!appointmentId}
       />
 
       {totais.length > 0 && (

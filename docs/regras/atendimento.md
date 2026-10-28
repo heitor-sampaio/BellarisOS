@@ -347,6 +347,18 @@ const procedures = await ler(
   linha "Atendimento de dd/mm/aaaa · Procedimento" levando à tela dele
   (`atendimentoDoAnexo`, `lib/clientes/anexos.ts`; o dia no fuso do negócio).
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
+- **A aplicação de injetáveis se CONFIRMA e se REGISTRA só no atendimento**
+  (D14 da simulação de 2026-10-28, decisão do Heitor): a aplicação congelada
+  (`injectable_applications`) só nasce por "Registrar aplicação", dentro de um
+  atendimento (Planejamento → Injetáveis). Fora dele (a tela de Injetáveis, a
+  ficha da cliente), o mapa não oferece "Confirmar aplicação" — dizia
+  "Aplicação confirmada" sem gravar nada (`salvarPlanejamentoInjetavel` grava
+  só a vista e os pontos) — e mostra no lugar a linha "A aplicação se
+  registra no atendimento…" (`InjectableMapField confirmaAqui`). O mapa no
+  corpo do atendimento depende de CONFIGURAÇÃO: só aparece quando o
+  procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
+  (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do
+  Planejamento. Prova: `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`.
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um
   rascunho que existe só na tela; o plano nasce no primeiro "Salvar plano"

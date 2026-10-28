@@ -26,6 +26,14 @@ interface Props {
   products: string[]
   canEdit:  boolean
   onChange: (v: InjectableMapValue) => void
+  /**
+   * A aplicação se confirma AQUI? Só dentro de um atendimento (D14 da
+   * simulação de 2026-10-28): no planejamento aberto fora dele, "Confirmar
+   * aplicação" dizia "confirmada" sem gravar nada — a aplicação congelada só
+   * nasce por "Registrar aplicação" no atendimento. Falso: no lugar do botão,
+   * a linha que diz onde se registra.
+   */
+  confirmaAqui?: boolean
 }
 
 const ZOOM_MIN  = 1
@@ -34,7 +42,7 @@ const ZOOM_STEP = 1.5
 /** Arrasto abaixo disso (em unidades do viewBox) conta como clique, não pan. */
 const PAN_LIMIAR = 1.5
 
-export function InjectableMapField({ value, products, canEdit, onChange }: Props) {
+export function InjectableMapField({ value, products, canEdit, onChange, confirmaAqui = true }: Props) {
   const map = value ?? emptyInjectableMap()
   const svgRef = useRef<SVGSVGElement>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -535,7 +543,12 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             </div>
           )}
 
-          {canEdit && map.points.length > 0 && (
+          {canEdit && map.points.length > 0 && !confirmaAqui && (
+            <p data-aplicacao-no-atendimento style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+              A aplicação se registra no atendimento: abra o atendimento da cliente e use “Registrar aplicação” no Planejamento.
+            </p>
+          )}
+          {canEdit && map.points.length > 0 && confirmaAqui && (
             confirmed ? (
               <p style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
