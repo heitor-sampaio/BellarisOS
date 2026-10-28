@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Os roteiros da simulação de um dia de clínica: fora do git (tem
+    // credenciais), rascunho que não é código do app.
+    ".sim/**",
   ]),
 ]);
 
