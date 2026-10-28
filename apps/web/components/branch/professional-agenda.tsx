@@ -190,7 +190,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
         label: `${format(endDate, 'HH:mm')} – ${format(nextDate, 'HH:mm')}`,
       }]
     })
-  }, [dayEvents])
+  }, [dayEvents, DAY_START])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
