@@ -7171,27 +7171,38 @@ que eram regra ou engano, o dinheiro esperado × sistema, o que ficou sem
 testar) está fora do git: `apps/web/.sim/relatorio.md` (o de 27/10 em
 `.sim/arquivo-2026-10-27/`). Os defeitos, conferidos no código ou no banco
 pelo consolidador — o Heitor escolhe o que atacar, cada um com TDD:
-- **D1 (alta)** quem atende e é da REDE (`provides_services`, `branch_id`
+- ~~**D1 (alta)** quem atende e é da REDE (`provides_services`, `branch_id`
   nulo) não aparece como profissional em unidade nenhuma — agenda, agendar,
   app da cliente (`getCachedBranchProfessionals` e mais três lugares com
-  `.eq('branch_id', …)`; o núcleo já aceita). NOVO.
+  `.eq('branch_id', …)`; o núcleo já aceita). NOVO.~~ **feito em 2026-10-28**
+  (1d85d64): um filtro só, `filtroDeQuemAtendeNaUnidade` (a unidade OU a
+  rede, com `tenant_id`), na lista em cache, na conferência do app da
+  cliente, no horário da agenda e na ocupação do dashboard da unidade.
 - **D2 (alta)** a ficha de saúde do app aceita o envio vazio e vira
   "Anamnese revisada / respondida pela cliente" (a ficha padrão não tem campo
   obrigatório; `responderPreAtendimento` grava `{}`). NOVO.
 - **D3 (alta)** dores e anamnese digitadas no atendimento se perdem no
   "Finalizar atendimento" (só seguem pelo "Enviar para a recepção"); recarregar
   apaga também a dose do insumo. NOVO (limite do rascunho do A31, `2ad0072`).
-- **D4 (alta)** a profissional OWN abre pela URL o atendimento de outra e faz
+- ~~**D4 (alta)** a profissional OWN abre pela URL o atendimento de outra e faz
   o check-in (a página só pede `agenda: VIEW`; `checkinCore` não confere o
-  dono). O clínico NÃO vazou. NOVO.
+  dono). O clínico NÃO vazou. NOVO.~~ **feito em 2026-10-28** (c478445):
+  `deOutroProfissional` — a tela do atendimento dá "sem acesso", e
+  check-in, confirmar, remarcar, cancelar (os núcleos, logo também o
+  Copilot), iniciar pelo status, trocar o profissional e salvar a evolução
+  recusam o agendamento de outro com a agenda OWN.
 - **D5 (alta)** "Minha agenda" e `/admin/agenda` começam fixas às 07:00
   (`DAY_START`/`GRID_START`); o de madrugada empilha na primeira linha. NOVO
   (o D8 de `8f4e92f` tratou só a grade da unidade).
 - **D6 (alta)** o estorno não reabre a cobrança: o atendimento não volta aos
   "a receber", e o portal mostra o estornado como "Pago". SOBRA de `f063c6f`.
-- **D7 (média)** a profissional OWN recebe no sino os agendamentos das outras
+- ~~**D7 (média)** a profissional OWN recebe no sino os agendamentos das outras
   (`responsaveisPeloModulo` ignora o escopo) e vê no dashboard da REDE a
-  receita e o custo. Sino NOVO; dashboard SOBRA de `28e5aa4`.
+  receita e o custo. Sino NOVO; dashboard SOBRA de `28e5aa4`.~~ **feito em
+  2026-10-28** (ef3bffa): o cargo OWN não é "responsável" no sino (o dele
+  chega como envolvido); com agenda ou financeiro OWN, os dois dashboards
+  passam o profissional ao núcleo e escondem o dinheiro da rede (e o da
+  unidade, o gráfico dos 6 meses).
 - **D8 (média)** "Adicionar membro" (rede) herda "Atende clientes" e a
   abrangência do cadastro anterior. REGRESSÃO de `4e5bef5`.
 - **D9 (média)** o pacote vendido depois não reconhece a sessão avulsa já
@@ -7222,6 +7233,22 @@ despesas R$ 4.912,50, estoque R$ 5.562, consumo R$ 288); a mesma cliente nas
 duas clínicas ficou isolada nos dois sentidos; o termo de injetáveis travou e
 liberou o início como devia. A comissão "sem taxa nem insumo" está certa: a
 rede nunca ligou os descontos (vira atrito: a dona achou que estavam ligados).
+
+Decisões da frente A (D1, D4, D7), tomadas na correção:
+- **Sugestão para depois (não feita):** escolher em QUAIS unidades o
+  profissional da rede atende. Hoje ele atende em todas.
+- Na ocupação do dashboard de cada unidade, o profissional da rede entra com
+  o horário inteiro dele — somar as unidades conta a capacidade dele mais de
+  uma vez. Resolve-se com a sugestão acima.
+- "Só os meus" pelo id recusa o agendamento de OUTRO; no DELE, segue tudo
+  como antes (inclusive cancelar pela tela do atendimento e trocar o próprio
+  agendamento para outra profissional).
+- O dashboard recorta com a agenda OU o financeiro em OWN (o da unidade
+  recortava só pela agenda). Os rankings que só contam (procedimentos
+  realizados, mais solicitados, recorrência, faixa etária) seguem da rede,
+  como no da unidade.
+- Apoio do E2E: `chamarAcaoComFormulario` chama direto a action que recebe
+  `FormData` (docs/regras/e2e.md).
 
 ### Próximas fases já combinadas
 
