@@ -6780,6 +6780,15 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
+- **Para decidir (2026-10-28): o que a cliente vê dos documentos no portal.**
+  `/[slug]/cliente/historico` lista TODO `client_documents` dela — foto
+  clínica, exame e laudo inclusive (anexo clínico apagado já fica de fora) —,
+  e o §9.4 (`docs/regras/atendimento.md`) diz que a cliente não vê foto nem
+  prontuário pelo app. Opções: esconder todo anexo clínico do portal; esconder
+  só a foto clínica; ou manter e corrigir a regra (o comentário no código fala
+  em "arquivos enviados pela clínica para o cliente"). Achado pela frente 9
+  das correções da simulação de 27/10; nada mexido até ele decidir.
+
 - ~~O DNS do site~~ — **no ar desde 2026-10-20**: o DNS passou da GoDaddy
   para o Cloudflare (a GoDaddy não aceita CNAME na raiz; o domínio segue
   registrado lá), com os registros em "DNS only" (nuvem cinza).
