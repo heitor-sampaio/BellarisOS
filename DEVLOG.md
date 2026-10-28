@@ -6950,8 +6950,11 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   (f063c6f): "Sem cobrança" na tela e na janela da agenda, concluir não lança
   conta a receber de zero e o banco recusa receber R$ 0. Não havia dado preso:
   os dois concluídos de R$ 0 da produção não tinham lançamento.
-- **D10 (média)** o preço do procedimento é máscara de centavos: "180" vira
-  R$ 1,80 — só nesse formulário.
+- ~~**D10 (média)** o preço do procedimento é máscara de centavos: "180" vira
+  R$ 1,80 — só nesse formulário.~~ **feito em 2026-10-27** (0fc3fdf): preço,
+  mão de obra, outros custos e o preço por unidade são texto livre, formatado
+  ao sair do campo, e a action lê pelo mesmo `parseDinheiro` (utils); não havia
+  outro campo com máscara de centavos.
 - **D11 (média)** "Agendados pelo comercial" só conta o agendar pelo card do
   CRM (regra), e lá `isComercial = ctx.branchId === null`: SDR de unidade
   nunca conta.
@@ -7035,6 +7038,19 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   da clínica no link é o telefone da UNIDADE do agendamento (migration
   `20261027000050`, `pre_atendimento_link_espiar` devolve `telefone`), só no
   estado "Ficha já respondida"; sem telefone cadastrado a frase fica sem número.
+
+- Atritos feitos (frente 6, setup, configuração e catálogo): A1, A2, A3
+  (639ebd5), A4, A5, A7, A8, A9, A11 (765fa2e), A6 (8461c8b), A10 (4e5bef5).
+  Decisões: o CNPJ do setup passa a ir só com os dígitos (como a aba Geral); o
+  CEP busca ao chegar a 8 dígitos; o horário do setup é o `EditorDeHorario` da
+  unidade (`lerHorarioDoForm`, a mesma leitura de `updateBranch`). A4: "quem
+  pode gerir o catálogo" é `procedures: MANAGE` com abrangência de rede (quem
+  tem unidade fixa não entra em `/admin`), e o botão vai a `/admin/procedures`
+  por `rotaNoPortal`. A6: a caixa da despesa já existia; agora diz o valor
+  (quantidade × custo). A10: o campo é só o percentual padrão (exceções seguem
+  no chip) e só vale com `financial: MANAGE`. A11: o rótulo do menu vira
+  "Configurações (Tags e Importações)" (menu e resumo do cargo leem o mesmo
+  `menu.ts`).
 
 ### Próximas fases já combinadas
 

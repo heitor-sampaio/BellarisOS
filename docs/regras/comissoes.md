@@ -40,6 +40,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
   (MENSAL | QUINZENAL | SEMANAL). **Taxas da maquininha** em `payment_fees`
   (Pix, débito, crédito 1–12x), gravadas por `comissao_taxas_definir`.
+- **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
+  oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
+  chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`
+  ignora o campo sem isso — e grava por `comissao_regras_definir`. Prova:
+  `e2e/equipe-comissao-ao-criar.spec.ts`.
 - A comissão de cada membro se define na **Equipe** (chip "Comissão …" na
   linha, `ComissaoDoMembro`), só com `financial: MANAGE` — gerir a equipe não
   dá acesso a quanto cada um ganha. Quem é de unidade só mexe nos da unidade.
