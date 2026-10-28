@@ -96,3 +96,24 @@ test('na tela, a despesa do estoque inicial é uma caixa visível — e desmarca
   const { data: despesas } = await db().from('financial_transactions').select('id').eq('branch_id', rede!.branchId).eq('description', `Compra: ${PREFIXO} Pela tela ${marca}`)
   expect(despesas, 'desmarcada, nenhuma despesa').toEqual([])
 })
+
+test('A6: antes de salvar, a caixa diz quanto vira despesa paga (quantidade × custo)', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: gestor!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/${slug}/estoque`)
+    await expect(async () => {
+      await p.getByRole('button', { name: 'Novo produto' }).click({ timeout: 1000 })
+      await expect(p.getByRole('switch', { name: /Adicionar estoque inicial/ })).toBeVisible({ timeout: 1000 })
+    }).toPass()
+    const modal = p.locator('dialog[open]')
+    await modal.getByRole('switch', { name: /Adicionar estoque inicial/ }).click()
+    await modal.locator('input[name="initial_qty"]').fill('3')
+    await modal.locator('input[name="initial_cost"]').fill('10')
+    await expect(modal.getByRole('checkbox', { name: /despesa paga hoje: R\$\s*30,00/ })).toBeVisible()
+    await modal.locator('input[name="initial_qty"]').fill('4')
+    await expect(modal.getByRole('checkbox', { name: /despesa paga hoje: R\$\s*40,00/ })).toBeVisible()
+  } finally {
+    await ctx.close()
+  }
+})

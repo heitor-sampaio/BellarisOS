@@ -7,6 +7,7 @@ import {
 import { X, Package, Building2, ChevronDown, Barcode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
+import { formatBRL } from '@estetica-os/utils'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -151,6 +152,7 @@ function ProductFields({
   const [categoryId,       setCategoryId]       = useState(product?.category_id ?? '')
   const [barcodeValue,     setBarcodeValue]     = useState(product?.barcode ?? '')
   const [barcodeReady,     setBarcodeReady]     = useState(false)
+  const [initialQtyStr,    setInitialQtyStr]    = useState('')
   const [costPriceStr,     setCostPriceStr]     = useState(product?.cost_price != null ? String(product.cost_price) : '')
   const [unitsPerPkgStr,   setUnitsPerPkgStr]   = useState(product?.units_per_package != null ? String(product.units_per_package) : '')
   const [consumptionUnit,  setConsumptionUnit]  = useState(product?.consumption_unit ?? '')
@@ -162,6 +164,13 @@ function ProductFields({
     () => selectedCat ? `${skuPrefix(selectedCat.name)}-NNN` : null,
     [selectedCat],
   )
+
+  // O que a despesa lança: quantidade × custo por embalagem (o que `estoque_inicial` grava).
+  const valorDaCompra = useMemo(() => {
+    const qtd = parseFloat(initialQtyStr)
+    const custo = parseFloat(costPriceStr)
+    return qtd > 0 && custo > 0 ? Math.round(qtd * custo * 100) / 100 : null
+  }, [initialQtyStr, costPriceStr])
 
   const costPerUnit = useMemo(() => {
     const cost = parseFloat(costPriceStr)
@@ -446,6 +455,8 @@ function ProductFields({
                     name="initial_qty"
                     type="number" step="0.001" min="0.001"
                     required
+                    value={initialQtyStr}
+                    onChange={e => setInitialQtyStr(e.target.value)}
                     className="field"
                     placeholder="0"
                   />
@@ -478,7 +489,9 @@ function ProductFields({
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, cursor: 'pointer' }}>
                   <input type="checkbox" name="initial_expense" defaultChecked style={{ marginTop: 2, accentColor: 'var(--brand)' }} />
                   <span>
-                    <strong style={{ color: 'var(--text)' }}>Lançar o custo como despesa paga hoje</strong> — no financeiro da unidade, categoria Estoque. Desmarque se esse estoque já tinha sido pago antes.
+                    <strong style={{ color: 'var(--text)' }}>
+                      Lançar o custo como despesa paga hoje{valorDaCompra !== null ? `: ${formatBRL(valorDaCompra)}` : ''}
+                    </strong> — no financeiro da unidade, categoria Estoque. Desmarque se esse estoque já tinha sido pago antes.
                   </span>
                 </label>
               )}
