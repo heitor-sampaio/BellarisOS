@@ -7076,6 +7076,31 @@ código pelo consolidador — ele escolhe o que atacar, cada um com TDD:
   sistema (dados do controlador agora no núcleo). A45 (primeiro toque no aviso
   da ficha, o do sino) NÃO reproduzido — registrado, sem mudança.
 
+- Sobras feitas (frente 9): arquivar a cliente confere a unidade (e9d6ae3);
+  anexo clínico só se marca apagado (45d1aa9, migration 20261027000070); a
+  limpeza do E2E em lotes (3bfc58d); o funil padrão numa transação
+  (3ff5865, migration 20261027000071); a foto na aba Documentos diz o
+  atendimento (6664c69); o `replaceState` da agenda num efeito (5c4aac4);
+  `.sim/` fora do eslint (4f2db2d). Decisões: a unidade da cliente é a do
+  CADASTRO (`clients.branch_id`, a mesma da RLS — a tag "Unidade: …" é
+  frequência, não abrangência; a RLS já barrava a recepção da A, agora a
+  action recusa antes e diz o porquê); o soft delete vale só para o anexo
+  CLÍNICO — o comum (RG, "outro") segue apagado de verdade, linha e arquivo;
+  o apagado sai de toda tela e vai ao pacote LGPD com a data. Na produção,
+  antes: `client_documents` tinha 1 linha (a foto da [sim]); a categoria do
+  que já saiu não fica em lugar nenhum, mas pelos edge logs (de 2026-10-12 até
+  agora) todo DELETE por id veio do E2E (GitHub Actions e a máquina do Heitor),
+  nenhum do servidor da produção — nada restaurado. A "FK" da varredura não era
+  tabela nova: eram mil ids no `.in()` (a URL estourava, "Bad Request" em cada
+  passo), com 2.883 clientes [e2e] de três redes do `listas-sem-corte` de
+  23/10 presos desde então; a varredura nova os levou. O `seedDefaultFunnel`
+  já relia o funil na corrida: o que ficava era o "duplicate key" no log e o
+  risco de funil sem etapa; agora `crm_funil_padrao` trava a rede e grava os
+  dois juntos. Achado e NÃO mexido: o portal da cliente
+  (`/[slug]/cliente/historico`) lista todo `client_documents` dela, inclusive
+  foto clínica, exame e laudo — e o §9.4 diz que a cliente não vê foto nem
+  prontuário pelo app. Precisa de decisão (esconder o clínico, ou só a foto).
+
 ### Próximas fases já combinadas
 
 - ~~Busca universal, fase 2 — ações~~ **feita em 2026-10-08** (ver a linha do tempo).
