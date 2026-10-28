@@ -20,6 +20,12 @@
     `branch_id` nulo). É a abrangência do §11, não uma regra nova.
   - `VIEW` **não entra**: ver o módulo é poder consultar, não responder
     pelo que acontece nele. Quem só olha não precisa ser interrompido.
+  - **O escopo também conta** (D7 da simulação de 2026-10-28): quem tem o
+    módulo (escopável) em "só os meus" NÃO é responsável — só recebe o aviso
+    do registro DELE, que já chega como envolvido direto (o profissional do
+    agendamento). A profissional da rede recebia "Novo agendamento" de todas
+    as clientes da colega. Módulo sem escopo (estoque) segue como antes.
+    Prova: `e2e/notificacoes-so-os-meus.spec.ts`.
   - **Quem causou o fato sai da lista.** Sino avisando a pessoa do que ela
     acabou de fazer é ruído, e ruído treina a ignorar o sino.
   - A exceção é o **check-in**: ali a parte interessada é uma só, quem vai

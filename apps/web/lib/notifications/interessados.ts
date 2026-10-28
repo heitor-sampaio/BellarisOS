@@ -4,7 +4,7 @@ import { modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notifyUser, type NotifyPayload } from '@/lib/notifications/notify'
 import { ler } from '@/lib/db'
-import type { AppModule } from '@/lib/permissions'
+import { isScoped, type AppModule } from '@/lib/permissions'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -52,7 +52,7 @@ export async function interessadosNoFato(admin: Admin, params: {
   return [...todos]
 }
 
-/** Usuários ativos com MANAGE no módulo e alcance sobre a unidade. */
+/** Usuários ativos com MANAGE (escopo ALL) no módulo e alcance sobre a unidade. */
 async function responsaveisPeloModulo(
   admin: Admin,
   modulo: AppModule,
@@ -74,12 +74,19 @@ async function responsaveisPeloModulo(
 
   const cargos = await ler(admin
     .from('role_permissions')
-    .select('role_id')
+    .select('role_id, scope')
     .eq('tenant_id', tenantId)
     .eq('module', modulo)
     .eq('level', 'MANAGE'), 'listar os cargos responsáveis')
 
-  const roleIds = (cargos ?? []).map(c => c.role_id as string)
+  // O ESCOPO também conta (D7 da simulação de 2026-10-28): quem tem o módulo
+  // "só os meus" responde só pelo registro DELE — e esse já chega pelos
+  // envolvidos diretos (o profissional do agendamento). A profissional da rede
+  // recebia "Novo agendamento" de todas as clientes da colega. Em módulo sem
+  // escopo (estoque…) o escopo gravado não vale (`resolveScopes`).
+  const roleIds = (cargos ?? [])
+    .filter(c => !(isScoped(modulo) && c.scope === 'OWN'))
+    .map(c => c.role_id as string)
   if (roleIds.length === 0) return []
 
   // `branch_id` nulo é quem alcança a rede inteira (§11) — e o PostgREST não

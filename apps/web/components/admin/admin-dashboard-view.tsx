@@ -105,6 +105,12 @@ export interface AdminDashboardProps {
   topProfessionalsByCommission:  { name: string; amount: number; pct: number }[]
   /** Ver quanto cada um ganha: financeiro com escopo de todos (o ranking vem vazio sem). */
   verComissoesDaEquipe: boolean
+  /**
+   * "Só os meus" na agenda ou no financeiro (D7, 2026-10-28): os números são
+   * os da pessoa, e o dinheiro da rede (custo, evolução, filiais, receita e
+   * margem por procedimento, vendas, gasto das clientes) não aparece.
+   */
+  recorteProprio?: boolean
   procedureMargins:   { name: string; price: number; cost: number; marginPct: number }[]
 
   bestRatedPros:      { name: string; avgRating: number; count: number }[]
@@ -391,7 +397,7 @@ export function AdminDashboardView({
   pendingPlans, lowStockItems, stockStatus, zeroStockCount, lowStockCount, stockTurnover,
   evolutionData,
   branchOccupancy,
-  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, procedureMargins,
+  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, recorteProprio = false, procedureMargins,
   bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
   hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
@@ -457,7 +463,7 @@ export function AdminDashboardView({
       <div className="kpi-grid-auto" style={{ gap: 16 }}>
         {can('financial') && <KpiCard
           brand
-          label={`Receita bruta ${rotulo.doPeriodo}`}
+          label={recorteProprio ? `Minha receita ${rotulo.doPeriodo}` : `Receita bruta ${rotulo.doPeriodo}`}
           value={totalRevenue}
           format="brl"
           delta={deltaRevenue}
@@ -465,7 +471,7 @@ export function AdminDashboardView({
           anterior={rotulo.anterior}
           icon={<TrendingUp size={16} color="var(--surface)" />}
         />}
-        {can('financial') && <KpiCard
+        {can('financial') && !recorteProprio && <KpiCard
           label={`Custo ${rotulo.doPeriodo}`}
           value={totalCost}
           format="brl"
@@ -504,10 +510,11 @@ export function AdminDashboardView({
 
       {/* -- Middle: ranking + hoje -- */}
       {(can('reports') || can('financial') || can('agenda') || can('stock')) && (
-      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16 }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: recorteProprio ? '1fr' : '7fr 3fr', gap: 16 }}>
 
-        {/* Ranking de filiais + gráfico de evolução */}
-        {(can('reports') || can('financial')) && (
+        {/* Ranking de filiais + gráfico de evolução (com o lucro): o dinheiro
+            da rede, fora do "só os meus" (D7). */}
+        {(can('reports') || can('financial')) && !recorteProprio && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Gráfico animado */}
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} />
@@ -839,7 +846,7 @@ export function AdminDashboardView({
       {/* ══════════════════════════════════════════════════════════════
           SEÇÃO: OCUPAÇÃO
       ══════════════════════════════════════════════════════════════ */}
-      {can('agenda') && (<>
+      {can('agenda') && !recorteProprio && (<>
       <SectionHeader title="Ocupação por filial" />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -971,6 +978,8 @@ export function AdminDashboardView({
           )}
         </div>
 
+        {/* Receita e margem por procedimento: dinheiro da rede, fora do "só os meus" (D7). */}
+        {!recorteProprio && (<>
         {/* Ranking - Procedimentos por receita bruta */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
@@ -1044,6 +1053,7 @@ export function AdminDashboardView({
             </div>
           )}
         </div>
+        </>)}
 
       </div>
 
@@ -1134,8 +1144,8 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Ranking — Vendas */}
-        <div className="card" style={{ padding: '18px 20px' }}>
+        {/* Ranking — Vendas (a receita de cada um; fora do "só os meus", D7) */}
+        {!recorteProprio && <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Vendas</span>
           </div>
@@ -1152,7 +1162,7 @@ export function AdminDashboardView({
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Ranking — Comissão: é do financeiro de todos, não da equipe. */}
         {verComissoesDaEquipe && <div className="card" style={{ padding: '18px 20px' }}>
@@ -1239,8 +1249,8 @@ export function AdminDashboardView({
 
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16 }}>
 
-        {/* Ranking — Valor gasto */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Ranking — Valor gasto (o dinheiro das clientes; fora do "só os meus", D7) */}
+        {!recorteProprio && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Valor gasto</span>
           </div>
@@ -1286,7 +1296,7 @@ export function AdminDashboardView({
             </table>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Ranking — Recorrência */}
         <div className="card" style={{ padding: '18px 20px' }}>

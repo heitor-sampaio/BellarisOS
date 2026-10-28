@@ -111,6 +111,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // Escopo do cargo, não mais heurística sobre o nível de agenda.
   const professionalOnly = isOwnScope(ctx, 'agenda')
   const proId = ownerFilter(ctx, 'agenda')
+  // O faturamento da UNIDADE (o gráfico dos 6 meses) não é de quem vê "só os
+  // meus" na agenda ou no financeiro (D7 da simulação de 2026-10-28, com o
+  // dashboard da rede): o cartão já era o dela, e o gráfico dizia "▲ R$ 420
+  // no semestre" da unidade inteira.
+  const faturamentoDaUnidade = canFinancial && !professionalOnly && !isOwnScope(ctx, 'financial')
 
   const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
 
@@ -126,7 +131,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // Profissional que atende e não gerencia a agenda vê só os próprios números.
   const metricArgs = {
     tenantId: ctx.tenantId!, branchIds: [branchId],
-    from: period.from, to: period.to, professionalId: proId,
+    // O financeiro "só os meus" também recorta o dinheiro (como no da rede).
+    from: period.from, to: period.to, professionalId: proId ?? ownerFilter(ctx, 'financial'),
   }
 
   const [
@@ -149,7 +155,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       ? getCore({ ...metricArgs, from: period.prevFrom, to: period.prevTo })
       : Promise.resolve({ ...EMPTY_CORE }),
 
-    canFinancial
+    faturamentoDaUnidade
       ? getSeries({
           tenantId: ctx.tenantId!, branchIds: [branchId],
           from: sixMonthsAgo, to: period.to, granularity: 'month',
@@ -409,7 +415,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       <div className="rg-2">
 
         {/* Gráfico */}
-        {canFinancial && (
+        {faturamentoDaUnidade && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>

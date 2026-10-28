@@ -23,6 +23,9 @@ import { ler, contar } from '@/lib/db'
 import { ticketMedio as ticketMedioDe } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 
+/** Sem membro (não acontece com sessão de equipe): o recorte não acha nada, em vez de achar tudo. */
+const NINGUEM = '00000000-0000-0000-0000-000000000000'
+
 // -- Linhas como os selects as pedem ---------------------------------
 type Num = number | string | null
 type AgendamentoDeHoje = { id: string; status: string; branch_id: string }
@@ -66,6 +69,16 @@ export default async function AdminDashboardPage({
   const canMarketing  = perm.marketing  !== 'NONE'
   // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
   const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports
+
+  // "Só os meus" (D7 da simulação de 2026-10-28): o mesmo recorte do dashboard
+  // da unidade — com a agenda ou o financeiro em OWN, os números são os DELA
+  // (`professionalId` no núcleo), e o dinheiro da REDE (custo, evolução com
+  // lucro, ranking de filiais, receita e margem por procedimento, vendas por
+  // profissional, gasto das clientes) não é consultado nem mostrado. A
+  // profissional da rede via a receita de todas e o custo do mês.
+  const recorteProprio = isOwnScope(ctx, 'agenda') || isOwnScope(ctx, 'financial')
+  const proId = recorteProprio ? (ctx.internalUserId ?? NINGUEM) : null
+  const agendaDela = isOwnScope(ctx, 'agenda') ? (ctx.internalUserId ?? NINGUEM) : null
 
   const admin = createAdminClient()
   const now   = new Date()
@@ -115,8 +128,8 @@ export default async function AdminDashboardPage({
   }
 
   // -- Queries paralelas ---------------------------------------------
-  const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }
-  const prevArgs   = { tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }
+  const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: proId }
+  const prevArgs   = { tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, professionalId: proId }
 
   const [
     core,
@@ -139,8 +152,9 @@ export default async function AdminDashboardPage({
     // comissões e minutos agendados numa chamada só e coerentes entre si.
     getCore(metricArgs),
     getCore(prevArgs),
-    getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate }),
-    getSeries({ ...metricArgs, granularity: period === 'today' ? 'hour' : 'day' }),
+    // Por unidade e a série (receita × despesa) são o dinheiro da rede.
+    recorteProprio ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate }),
+    recorteProprio ? Promise.resolve([]) : getSeries({ ...metricArgs, granularity: period === 'today' ? 'hour' : 'day' }),
     getTopProcedures({ ...metricArgs, limit: 5 }),
     getTopProfessionals({ ...metricArgs, limit: 5 }),
     getTopClients({ ...metricArgs, limit: 10 }),
@@ -151,14 +165,19 @@ export default async function AdminDashboardPage({
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true), 'contar os clientes da rede'),
 
-    // Agendamentos de hoje (exceto cancelados e no-show)
-    ler(admin.from('appointments')
-      .select('id, status, branch_id')
-      .in('branch_id', branchIds)
-      .gte('scheduled_at', startOfToday.toISOString())
-      .lte('scheduled_at', endOfToday.toISOString())
-      .neq('status', 'CANCELLED')
-      .neq('status', 'NO_SHOW'), 'carregar os agendamentos de hoje'),
+    // Agendamentos de hoje (exceto cancelados e no-show) — com a agenda "só
+    // os meus", os dela, como o "Meus agendamentos hoje" da unidade.
+    (() => {
+      let q = admin.from('appointments')
+        .select('id, status, branch_id')
+        .in('branch_id', branchIds)
+        .gte('scheduled_at', startOfToday.toISOString())
+        .lte('scheduled_at', endOfToday.toISOString())
+        .neq('status', 'CANCELLED')
+        .neq('status', 'NO_SHOW')
+      if (agendaDela) q = q.eq('professional_id', agendaDela)
+      return ler(q, 'carregar os agendamentos de hoje')
+    })(),
 
     // Planos de tratamento aguardando checkout
     ler(admin.from('treatment_plans')
@@ -177,7 +196,7 @@ export default async function AdminDashboardPage({
 
     // Margem por procedimento — contada no banco, com o custo da unidade de
     // consumo do insumo (era o da embalagem, feito aqui na página).
-    getMargemPorProcedimento({ tenantId: ctx.tenantId!, limit: 5 }),
+    recorteProprio ? Promise.resolve([]) : getMargemPorProcedimento({ tenantId: ctx.tenantId!, limit: 5 }),
 
     // Giro do período: consumo em procedimentos, ao custo do MOVIMENTO (não
     // ao custo atual do produto, que mudaria o giro a cada compra). Fim do
@@ -412,7 +431,7 @@ export default async function AdminDashboardPage({
   const hotmapRawCepLtv: Record<string, number> = {}
   for (const c of demografia.ceps) {
     hotmapRawCepCounts[c.cep] = c.n
-    if (c.ltv > 0) hotmapRawCepLtv[c.cep] = c.ltv
+    if (c.ltv > 0 && !recorteProprio) hotmapRawCepLtv[c.cep] = c.ltv
   }
 
   // -- Comercial: funil de leads por estágio + conversão (gate crm) --------
@@ -514,6 +533,7 @@ export default async function AdminDashboardPage({
         topProfessionalsByRevenue={topProfessionalsByRevenue}
         topProfessionalsByCommission={topProfessionalsByCommission}
         verComissoesDaEquipe={verComissoesDaEquipe}
+        recorteProprio={recorteProprio}
         procedureMargins={procedureMargins}
 
         bestRatedPros={bestRatedPros}

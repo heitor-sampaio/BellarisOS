@@ -222,5 +222,15 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios.
 
+**Dashboard com "só os meus" (D7 da simulação de 2026-10-28)**: com a agenda
+OU o financeiro em OWN, os dois dashboards (rede e unidade) passam o
+`professionalId` ao núcleo — a receita, os atendimentos e o ticket são os
+DELA — e o dinheiro da rede não é consultado nem mostrado: no da rede, o
+custo, a evolução (com o lucro), o ranking e a ocupação por filial, a receita
+e a margem por procedimento, as vendas por profissional e o gasto das
+clientes (`recorteProprio`); no da unidade, o faturamento dos 6 meses. A
+profissional da rede via a receita de todas e o custo do mês. Prova:
+`e2e/indicadores-dashboard-da-rede-so-os-meus.spec.ts`.
+
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).
