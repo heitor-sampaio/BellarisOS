@@ -49,6 +49,9 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (Ativos, Novos, Inativos — escolha única) e Tags (várias, todas valem juntas,
   sem caixa) no `PickerCompacto`, como o quadro. O segmento fixo "Todos / VIP /
   Novos / Inativos" saiu: VIP é uma tag como as outras.
+- **Arquivar a cliente** (menu "Mais ações" da ficha, `clients: MANAGE`; era "Desativar") a tira das
+  listas e da conta de CLIENTE NOVA do dashboard (`is_active` nas três contas: `metrics_core`,
+  `metrics_by_branch`, `metrics_new_clients_series`, A24). Prova: `e2e/clientes-arquivar.spec.ts`.
 - **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
   mostra marcada. Não há apagar.
 - Rede nova nasce com as oito padrão (`trg_rede_ganha_tags`,
@@ -373,6 +376,10 @@ escolher a etapa) e no modal do lead.
 - Relatórios → Comercial → "Motivos de perda": `metrics_motivos_de_perda`
   (`getMotivosDePerda`), pelo `perdido_em` no período, da rede inteira. O
   quadro filtra por "Motivo da perda".
+- Sem escolher o motivo o botão não fica apagado: diz "Escolha o motivo da perda" (A14), e "Outro" vem
+  sempre por último na escolha (`motivosComOutroPorUltimo`, A15). O inbox vazio manda ligar o
+  WhatsApp com atalho só para quem tem Configurações em Gerenciar; os outros leem "Peça a quem
+  administra a clínica para conectar o WhatsApp" (A16).
 - Rede nova nasce com Preço, Sem retorno, Fechou com outra clínica, Sem
   horário que sirva, Desistiu, Outro (gatilho `trg_motivos_perda_na_rede_nova`).
 Prova: `e2e/crm-motivo-da-perda.spec.ts`.

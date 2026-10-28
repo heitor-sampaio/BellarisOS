@@ -1315,11 +1315,11 @@ export function ClientProfile({
                         color: client.isActive ? 'var(--warning)' : 'var(--success)',
                         display: 'flex', alignItems: 'center', gap: 8,
                       }}>
-                      {client.isActive ? <><XCircle size={14} /> Desativar cliente</> : <><CheckCircle2 size={14} /> Reativar cliente</>}
+                      {client.isActive ? <><XCircle size={14} /> Arquivar cliente</> : <><CheckCircle2 size={14} /> Reativar cliente</>}
                     </button>
                     <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
                       {client.isActive
-                        ? 'Some das listas e da busca. O histórico e o prontuário ficam.'
+                        ? 'Some das listas e da busca e deixa de contar como cliente nova. O histórico e o prontuário ficam.'
                         : 'Volta a aparecer nas listas e na busca.'}
                     </p>
                     {erroStatus && (

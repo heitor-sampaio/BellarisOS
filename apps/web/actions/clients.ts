@@ -445,13 +445,16 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
   assertPermission(ctx, 'clients', 'MANAGE')
 
   const supabase = await createSupabase()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('clients')
     .update({ is_active: isActive })
     .eq('id', clientId)
     .eq('tenant_id', ctx.tenantId!)
+    .select('id')
 
-  if (error) return { error: `Não foi possível ${isActive ? 'reativar' : 'desativar'} o cliente: ${error.message}` }
+  if (error) return { error: `Não foi possível ${isActive ? 'reativar' : 'arquivar'} o cliente: ${error.message}` }
+  // Update pela sessão que atinge zero linhas não dá erro (RLS): sem isto a tela dizia que arquivou.
+  if (!data?.length) return { error: `Não foi possível ${isActive ? 'reativar' : 'arquivar'} o cliente.` }
 
   await emitirEventoDeCliente(
     isActive ? EVENTOS.CLIENTE_REATIVADO : EVENTOS.CLIENTE_DESATIVADO,

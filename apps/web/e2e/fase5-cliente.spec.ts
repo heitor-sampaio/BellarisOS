@@ -60,7 +60,7 @@ test('editar nome e gênero, depois desativar e reativar — sem sair do /admin'
   // -- Desativar -------------------------------------------------------------
   await page.reload()
   await abrirMenuDeAcoes(page)
-  await page.getByRole('button', { name: 'Desativar cliente' }).click()
+  await page.getByRole('button', { name: 'Arquivar cliente' }).click()
 
   await expect.poll(async () => {
     const { data } = await db.from('clients').select('is_active').eq('id', clientId!).single()

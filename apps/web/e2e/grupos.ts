@@ -37,6 +37,7 @@ export const ISOLADOS = [
   'comissoes-configuracao.spec.ts',
   'comissoes-fechamento.spec.ts',
   'configuracoes-textos-e-estados-vazios.spec.ts',
+  'clientes-arquivar.spec.ts',
   'conclusao-atomica.spec.ts',
   'crm-agendar-liga-oportunidade.spec.ts',
   'contato-propaga.spec.ts',
