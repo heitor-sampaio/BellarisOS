@@ -446,6 +446,8 @@ async function adminAddStockInterno(
       observacao:    str(formData, 'notes'),
       lote:          str(formData, 'batch_number'),
       validade:      str(formData, 'expires_at'),
+      // A mesma opção do cadastro do produto (D13, 2026-10-28).
+      despesa:       formData.get('expense') === 'on',
     })
     if ('error' in r) return { error: r.error }
 

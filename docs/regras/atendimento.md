@@ -389,6 +389,18 @@ const procedures = await ler(
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e
     transferência, o histórico).
+- **A compra vira despesa pelas DUAS portas** (D13 da simulação de
+  2026-10-28, decisão do Heitor; migration `20261028000203`): o cadastro do
+  produto (estoque inicial) e a "Entrada" (unidade e rede, `EntradaForm` do
+  "Gerenciar estoque") oferecem "Lançar o custo como despesa paga hoje",
+  marcada por padrão e só com custo informado, com o valor (quantidade ×
+  custo da embalagem). A despesa é PAGA hoje, categoria Estoque, na unidade,
+  "Compra: <produto>", e nasce na MESMA transação do movimento:
+  `estoque_compra` (`estoque_entrada` + a despesa), que `estoque_inicial` e
+  `entradaDeEstoqueCore` usam. Desmarcada (a compra já foi lançada ou paga
+  antes), só o movimento. O Copilot e a "Entrada por código de barras" não
+  oferecem a opção (seguem sem despesa). Prova:
+  `e2e/estoque-entrada-despesa.spec.ts`.
 
 ---
 
@@ -482,7 +494,7 @@ O resto do fluxo:
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
-❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_inicial/estoque_ajuste (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
+❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_compra/estoque_inicial/estoque_ajuste (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
 ❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)
 ❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão

@@ -10,6 +10,7 @@ import {
   getProductMovements, type MovimentoDeEstoque,
 } from '@/actions/stock'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { formatBRL } from '@estetica-os/utils'
 
 type BranchStock = {
   branchId:     string
@@ -104,6 +105,13 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
 }) {
   const [error, setError]     = useState<string>()
   const [pending, setPending] = useState(false)
+  // A despesa da compra (D13, 2026-10-28): a mesma opção do cadastro do
+  // produto, com o mesmo padrão (marcada) — o valor é quantidade × custo.
+  const [qtdStr, setQtdStr]     = useState('')
+  const [custoStr, setCustoStr] = useState('')
+  const custo = Number(custoStr.replace(',', '.')) || 0
+  const qtd   = Number(qtdStr.replace(',', '.')) || 0
+  const valorDaCompra = custo > 0 && qtd > 0 ? Math.round(custo * qtd * 100) / 100 : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true); setError(undefined)
@@ -131,6 +139,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
           <Label>Quantidade *</Label>
           <div style={{ position: 'relative' }}>
             <input name="quantity" type="number" step="0.001" min="0.001" required className="field"
+              value={qtdStr} onChange={e => setQtdStr(e.target.value)}
               placeholder="0" style={{ paddingRight: 36 }} />
             <UnitSuffix unit={product.unit} />
           </div>
@@ -143,10 +152,24 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
               fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
             }}>R$</span>
             <input name="unit_cost" type="number" step="0.01" min="0" className="field"
+              value={custoStr} onChange={e => setCustoStr(e.target.value)}
               placeholder="0,00" style={{ paddingLeft: 28 }} />
           </div>
         </FieldWrap>
       </div>
+
+      {/* A compra vira despesa, como no cadastro do produto (D13, 2026-10-28):
+          sem isto, a Entrada lançava R$ 1.800 de insumo com despesa de R$ 0. */}
+      {custo > 0 && (
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, cursor: 'pointer' }}>
+          <input type="checkbox" name="expense" defaultChecked style={{ marginTop: 2, accentColor: 'var(--brand)' }} />
+          <span>
+            <strong style={{ color: 'var(--text)' }}>
+              Lançar o custo como despesa paga hoje{valorDaCompra !== null ? `: ${formatBRL(valorDaCompra)}` : ''}
+            </strong> — no financeiro da unidade, categoria Estoque. Desmarque se essa compra já foi lançada ou paga antes.
+          </span>
+        </label>
+      )}
 
       <div className="form-2col">
         <FieldWrap>
