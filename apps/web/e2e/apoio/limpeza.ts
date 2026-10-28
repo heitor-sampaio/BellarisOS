@@ -35,6 +35,21 @@ async function ids(q: PromiseLike<{ data: { id: string }[] | null }>): Promise<s
   return (data ?? []).map(r => r.id)
 }
 
+/**
+ * Quantos ids vão num `.in()` de cada vez. O `.in()` viaja na URL, e com mil
+ * ids ela passa do limite: o PostgREST responde "Bad Request" a CADA passo, e
+ * o `ids()` dos selects volta vazio (2026-10-27 — a varredura falhava em toda
+ * rodada com as 2.883 sobras do listas-sem-corte). 150 é o lote que o
+ * listas-sem-corte já usava.
+ */
+const LOTE = 150
+
+/** Roda `fn` em lotes de `LOTE` ids, juntando as falhas. */
+async function emLotes(lista: string[], falhas: Falha[], fn: (lote: string[], falhas: Falha[]) => Promise<Falha[]>): Promise<Falha[]> {
+  for (let i = 0; i < lista.length; i += LOTE) await fn(lista.slice(i, i + LOTE), falhas)
+  return falhas
+}
+
 /** Agendamentos e o que pende deles. Dado de TESTE: aqui se apaga até lançamento. */
 /**
  * Termos e contratos emitidos, com a assinatura e a digitalização do papel.
@@ -44,6 +59,7 @@ async function ids(q: PromiseLike<{ data: { id: string }[] | null }>): Promise<s
  */
 export async function apagarDocumentosEmitidos(docs: string[], falhas: Falha[] = []): Promise<Falha[]> {
   if (docs.length === 0) return falhas
+  if (docs.length > LOTE) return emLotes(docs, falhas, apagarDocumentosEmitidos)
   const db = banco()
   const { data: scans } = await db.from('document_signatures').select('scan_path').in('issued_document_id', docs)
   const { data: pdfs } = await db.from('issued_documents').select('signed_pdf_path').in('id', docs)
@@ -64,6 +80,7 @@ export async function apagarDocumentosEmitidos(docs: string[], falhas: Falha[] =
 
 export async function apagarAgendamentos(agendamentos: string[], falhas: Falha[] = []): Promise<Falha[]> {
   if (agendamentos.length === 0) return falhas
+  if (agendamentos.length > LOTE) return emLotes(agendamentos, falhas, apagarAgendamentos)
   const db = banco()
 
   await apagarDocumentosEmitidos(await ids(db.from('issued_documents').select('id').in('appointment_id', agendamentos)), falhas)
@@ -101,6 +118,7 @@ export async function apagarAgendamentos(agendamentos: string[], falhas: Falha[]
 /** Clientes e tudo que só existe por causa deles. */
 export async function apagarClientes(clientes: string[], falhas: Falha[] = []): Promise<Falha[]> {
   if (clientes.length === 0) return falhas
+  if (clientes.length > LOTE) return emLotes(clientes, falhas, apagarClientes)
   const db = banco()
 
   await apagarDocumentosEmitidos(await ids(db.from('issued_documents').select('id').in('client_id', clientes)), falhas)
@@ -229,9 +247,16 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   const convs = await ids(db.from('conversations').select('id').like('contact_name', like).lt('created_at', antes))
   if (convs.length) { await apagarConversas(convs); apagou.conversas = convs.length }
 
-  // 4. Clientes.
-  const clientes = await ids(db.from('clients').select('id').like('name', like).lt('created_at', antes))
-  if (clientes.length) { await apagarClientes(clientes, falhas); apagou.clientes = clientes.length }
+  // 4. Clientes. O select para em 1000: volta até esvaziar — ou até uma volta
+  //    não tirar ninguém (a sobra teimosa fica nas falhas, sem laço eterno).
+  for (let volta = 0; volta < 20; volta++) {
+    const clientes = await ids(db.from('clients').select('id').like('name', like).lt('created_at', antes).order('id').limit(1000))
+    if (clientes.length === 0) break
+    const antesDaVolta = falhas.length
+    await apagarClientes(clientes, falhas)
+    apagou.clientes = (apagou.clientes ?? 0) + clientes.length
+    if (falhas.length > antesDaVolta) break
+  }
 
   // 4b. Gente de teste da PLATAFORMA (o /suporte): a linha, o que ela
   //     registrou e o login. Um atendente que sobra é um login com acesso a

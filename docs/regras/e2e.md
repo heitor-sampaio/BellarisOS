@@ -83,6 +83,11 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   de UMA HORA (`E2E_IDADE_DA_SOBRA_MIN`): o mais novo pode ser de uma rodada
   em curso ao lado. Por isso uma rodada local durante o CI não derruba mais o
   CI (derrubava até 2026-09-30).
+  ⚠️ Lista de ids vai no `.in()`, que viaja na URL: a limpeza manda no máximo
+  150 de cada vez (`LOTE`, `emLotes`), e a varredura volta até esvaziar. Com
+  mil ids o PostgREST responde "Bad Request" a cada passo — de 2026-10-23 a
+  10-27 a varredura falhou em toda rodada com 2.883 clientes de três redes
+  do `listas-sem-corte`. Prova: `e2e/listas-sem-corte-limpeza.spec.ts`.
 - `acao.ts` — `capturarAcao` / `reenviarAcao`: pega uma server action feita
   pela tela e a reenvia trocando o id. É o teste de "o endpoint recusa", que a
   tela sozinha não prova.
