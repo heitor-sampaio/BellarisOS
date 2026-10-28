@@ -36,6 +36,7 @@ import { lerRascunho, gravarRascunho, limparRascunho } from '@/lib/atendimento/r
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
+import { abaterDoPacote } from '@/actions/a-receber'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
@@ -146,6 +147,8 @@ interface Props {
   paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null } | null
   /** O último recebimento ESTORNADO, quando não há outro vivo: a cobrança reabriu (D6, 2026-10-28). */
   pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; motivo: string | null } | null
+  /** Sessões livres de pacote da cliente, do mesmo procedimento: "Abater do pacote" (D9). */
+  pacotesParaAbater?: PacoteParaAbater[]
   treatmentProcedures:   TreatmentProcedure[]
   treatmentPackages:     TreatmentPackage[]
   existingPlan:          ExistingPlan | null
@@ -339,10 +342,63 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
 }
 
 // Modal 2: Recepcionista/admin confirma pagamento
-function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose }: {
+/** Uma sessão livre de pacote da cliente, do mesmo procedimento do atendimento. */
+export interface PacoteParaAbater { sessaoId: string; pacote: string; restantes: number; preco: number }
+
+/**
+ * "Abater do pacote" (D9 da simulação de 2026-10-28): a cliente tem pacote
+ * com sessão sobrando do MESMO procedimento — o atendimento vira uma sessão
+ * dele, sem cobrança nova. Fica no topo da janela do pagamento: é a primeira
+ * pergunta (cobrar ou não), antes da forma de pagamento.
+ */
+function AbaterDoPacote({ appointmentId, pacotes, onFeito }: {
+  appointmentId: string; pacotes: PacoteParaAbater[]; onFeito: () => void
+}) {
+  const [gravando, setGravando] = useState<string | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+  async function abater(sessaoId: string) {
+    setGravando(sessaoId); setErro(null)
+    const r = await abaterDoPacote(appointmentId, sessaoId)
+    setGravando(null)
+    if (r.error) { setErro(r.error); return }
+    onFeito()
+  }
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {pacotes.map(p => (
+        <div key={p.sessaoId} data-abater-do-pacote style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
+          borderRadius: 'var(--radius-row)', padding: '12px 14px',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.pacote}</p>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              {p.restantes} {p.restantes === 1 ? 'sessão sobrando' : 'sessões sobrando'} deste procedimento · a sessão vale {brl(p.preco)} no pacote
+            </p>
+          </div>
+          <button type="button" className="btn-primary" disabled={gravando !== null} onClick={() => abater(p.sessaoId)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {gravando === p.sessaoId ? <Loader2 size={13} className="animate-spin" /> : null}
+            Abater do pacote
+          </button>
+        </div>
+      ))}
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
+      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+        Abater usa uma sessão do pacote e não cobra nada. Para cobrar avulso, siga abaixo.
+      </p>
+    </div>
+  )
+}
+
+function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], onClose }: {
   appointmentId: string; slug: string; price: number
   /** O pagamento combinado no contrato do procedimento: o meio (e o desconto) já vêm escolhidos. */
   pagamentoCombinado?: { metodo: string | null; rotulo: string; desconto?: number } | null
+  /** Sessões de pacote da cliente que podem pagar este atendimento (D9). */
+  pacotesParaAbater?: PacoteParaAbater[]
   onClose: () => void
 }) {
   const metodoInicial = PAYMENT_METHODS.some(m => m.value === pagamentoCombinado?.metodo) ? pagamentoCombinado!.metodo! : 'PIX'
@@ -390,6 +446,10 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
         <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
+          {pacotesParaAbater.length > 0 && (
+            <AbaterDoPacote appointmentId={appointmentId} pacotes={pacotesParaAbater}
+              onFeito={() => { onClose(); router.refresh() }} />
+          )}
           {pedidoDeDesconto && <input type="hidden" name="desconto_tipo" value={pedidoDeDesconto.tipo} />}
           {pedidoDeDesconto && <input type="hidden" name="desconto_valor" value={String(pedidoDeDesconto.valor)} />}
           <CampoDoDesconto estado={descontoEstado} aoMudar={e => { setDescontoEstado(e); setPontos('') }} total={aposVoucher} />
@@ -848,7 +908,7 @@ function DorasCard({ value, onChange, readonly }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null,
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
@@ -1289,6 +1349,7 @@ export function AppointmentSession({
       {showPayment && (
         <PaymentModal
           appointmentId={appointment.id} slug={slug} price={appointment.price} pagamentoCombinado={pagamentoCombinado}
+          pacotesParaAbater={pacotesParaAbater}
           onClose={() => setShowPayment(false)}
         />
       )}

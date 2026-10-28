@@ -73,6 +73,7 @@ export const ISOLADOS = [
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',
   'lotes-baixa.spec.ts',
+  'pacote-abater-avulso.spec.ts',
   'pacote-agendar.spec.ts',
   'pacotes-venda.spec.ts',
   'portal-cliente-varias-clinicas.spec.ts',

@@ -74,6 +74,21 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
     vencimento do "a receber" é OPCIONAL (aqui e no pagamento do contrato):
     sem data, o lançamento nasce sem `due_date` e o contrato diz "a receber"
     sem o dia.
+- **"Abater do pacote": o pacote vendido DEPOIS paga o avulso já concluído**
+  (D9 da simulação de 2026-10-28, decisão do Heitor). Na janela do
+  "Confirmar pagamento" de um avulso CONCLUÍDO e a receber, se a cliente tem
+  pacote (na validade) com sessão livre do MESMO procedimento, a tela oferece
+  "Abater do pacote" (`abaterDoPacote`, `actions/a-receber.ts`, quem recebe —
+  `cashier` — e unidade ao alcance; a sessão é conferida como crédito,
+  `conferirCredito`). Uma transação, `atendimento_abater_do_pacote`, que
+  confere tudo de novo sob trava: a sessão é ligada e USADA, o contador soma,
+  o preço do atendimento vira a parte da sessão no rateio, a conta a receber
+  que existisse é substituída (valor zero e nota), e a comissão passa à regra
+  da sessão de pacote — a linha AVULSO é CANCELADA (o acerto devolve o que
+  ela liberou) e nasce a linha PACOTE (base = a parte da sessão; no modo
+  "quando paga", na proporção do que a venda recebeu). O estoque já baixou na
+  conclusão. Sem cobrança nova; o atendimento sai de "a receber" e vira
+  "Sessão de pacote". Prova: `e2e/pacote-abater-avulso.spec.ts`.
 - A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
 - Comissão da sessão: §9.7.

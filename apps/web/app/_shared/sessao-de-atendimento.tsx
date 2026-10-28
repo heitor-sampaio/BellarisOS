@@ -16,6 +16,7 @@ import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { deOutroProfissional } from '@/lib/appointments/alteracoes'
 import { semAcesso } from '@/lib/sem-acesso'
+import { creditosDoCliente } from '@/lib/creditos/credito'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -419,6 +420,17 @@ export async function SessaoDeAtendimento({
     ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, motivo: estornado.estorno_motivo }
     : null
 
+  // "Abater do pacote" (D9, 2026-10-28): o avulso concluído e a receber, com
+  // pacote da cliente que tem sessão livre do MESMO procedimento. Só para quem
+  // recebe — é a mesma janela do "Confirmar pagamento".
+  const avulsoAReceber = canPayment && apptRaw.status === 'COMPLETED' && !pago && !isPartOfPlan
+    && !sessaoDePacote && !unidadePrePaga && Number(apptRaw.price) > 0 && !!procedureId
+  const pacotesParaAbater = avulsoAReceber
+    ? (await creditosDoCliente(admin, ctx.tenantId!, cli.id))
+        .filter(c => c.tipo === 'PACOTE' && c.procedureId === procedureId)
+        .map(c => ({ sessaoId: c.id, pacote: c.origem, restantes: c.restantes, preco: c.preco }))
+    : []
+
   // A ficha do procedimento (construtor) + as respostas já salvas.
   // Eram DUAS consultas, para dois modelos que eram a mesma coisa com nomes
   // diferentes — "de anamnese" e "de atendimento" (2026-09-25).
@@ -483,6 +495,7 @@ export async function SessaoDeAtendimento({
         isProfessional={ctx.providesServices}
         paymentTransaction={paymentTransaction}
         pagamentoEstornado={pagamentoEstornado}
+        pacotesParaAbater={pacotesParaAbater}
         treatmentProcedures={treatmentProcedures}
         treatmentPackages={treatmentPackages}
         existingPlan={existingPlan}
