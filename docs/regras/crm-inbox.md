@@ -20,6 +20,12 @@
   ganha o selo "Tem acesso ao app" ao lado do nome (A13, 2026-10-27). Depois, a aba Dados da ficha dá o acesso
   (`darAcessoAoApp`, com o e-mail e o CPF SALVOS; o núcleo é
   `darAcessoAoCliente`). Prova: `e2e/ficha-cadastro-de-balcao.spec.ts`.
+- **O portal fala com a pessoa pelo sexo da ficha** (`clients.gender`: F, M,
+  O ou vazio; D17 da simulação de 2026-10-29): "Bem-vinda"/"Bem-vindo" e, sem
+  sexo ou "Outro", "Boas-vindas" (`boasVindas`, `lib/saudacao.ts`). O que a
+  CLÍNICA diz (o fim da ficha, a assinatura recebida) é neutro ("Tudo certo!",
+  não "Obrigada!"). Texto novo do portal no feminino fixo é o defeito de
+  volta. Prova: `e2e/portal-cliente-tratamento.spec.ts`.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
 - Tags como `String[]` no registro; o VOCABULÁRIO é da rede (`tags`, abaixo).
   `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a

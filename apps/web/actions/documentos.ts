@@ -37,6 +37,7 @@ import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { TenantContext } from '@estetica-os/types'
+import { mensagemDoLink } from '@/lib/saudacao'
 
 type Resultado = { error?: string; codigo?: string | null }
 
@@ -400,10 +401,11 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
   ])
   const clinica = (unidade?.name as string) || (rede?.name as string) || 'a clínica'
   const url = `${origemPublicaDe(await headers())}/assinar/${token}`
-  const primeiroNome = ((cliente?.name as string) ?? '').trim().split(/\s+/)[0] ?? ''
   // Genérica de propósito: a prévia do WhatsApp aparece na tela de bloqueio.
-  const mensagem = `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! ${clinica} pediu a sua assinatura em um documento. `
-    + `Para ler e assinar, abra o link abaixo e confirme o seu ${temCpf ? 'CPF' : 'data de nascimento'}. O link vale por ${VALIDADE_DO_LINK_DIAS} dias.\n\n${url}`
+  const mensagem = mensagemDoLink({
+    nome: cliente?.name as string | null, pedido: `${clinica} pediu a sua assinatura em um documento.`,
+    acao: 'Para ler e assinar', temCpf, dias: VALIDADE_DO_LINK_DIAS, url,
+  })
   const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
   const whatsapp = `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(mensagem)}`
 

@@ -17,6 +17,7 @@ import { conversaDoCliente, envioPelaConversaLigado } from '@/lib/documentos/lin
 import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
+import { mensagemDoLink } from '@/lib/saudacao'
 
 /**
  * O pré-atendimento pela equipe (2026-10-20, decisões do Heitor): a ficha
@@ -261,9 +262,10 @@ async function criarLinkDaFicha(
   const unidade = await ler(admin.from('branches').select('name').eq('id', ap.branch_id).maybeSingle(), 'buscar a unidade')
   const clinica = (unidade?.name as string) || 'A clínica'
   const url = `${origemPublicaDe(await headers())}/pre-atendimento/${token}`
-  const primeiroNome = ((cliente?.name as string) ?? '').trim().split(/\s+/)[0] ?? ''
-  const mensagem = `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! ${clinica} mandou a sua ficha de pré-atendimento. `
-    + `Para responder, abra o link abaixo e confirme o seu ${temCpf ? 'CPF' : 'data de nascimento'}. O link vale por ${VALIDADE_DO_LINK_DIAS} dias.\n\n${url}`
+  const mensagem = mensagemDoLink({
+    nome: cliente?.name as string | null, pedido: `${clinica} mandou a sua ficha de pré-atendimento.`,
+    acao: 'Para responder', temCpf, dias: VALIDADE_DO_LINK_DIAS, url,
+  })
   const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
   return { link: { url, expiraEm, mensagem, whatsapp: `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(mensagem)}` } }
 }

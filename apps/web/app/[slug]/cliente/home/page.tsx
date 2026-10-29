@@ -6,6 +6,7 @@ import { CalendarDays, ChevronRight, ClipboardList, FileSignature, Sparkles } fr
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
+import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -53,7 +54,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const admin = createAdminClient()
 
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
-    ler(admin.from('clients').select('name, tenant_id').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
+    ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
     ler(admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
@@ -92,7 +93,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   ])
 
   const clientName   = (clientRes as { name: string } | null)?.name ?? 'você'
-  const firstName    = clientName.split(' ')[0] ?? clientName
+  // Sem o tratamento ("Dona Ivone" é Ivone) e com as boas-vindas pelo sexo (D17/D19).
+  const firstName    = nomeParaSaudar(clientName) || 'você'
+  const bemVinda     = boasVindas((clientRes as { gender: string | null } | null)?.gender)
   const nextAppt     = nextApptRes as NextAppt | null
   const pendingConfirm = (pendingConfirmRes ?? []) as unknown as NextAppt[]
   const allPackages  = (packagesRes ?? []) as unknown as ActivePackage[]
@@ -132,7 +135,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           Olá, {firstName}!
         </h1>
         <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-          Bem-vinda ao seu espaço pessoal.
+          {bemVinda} ao seu espaço pessoal.
         </p>
       </div>
 

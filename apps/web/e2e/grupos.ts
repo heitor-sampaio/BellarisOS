@@ -84,6 +84,7 @@ export const ISOLADOS = [
   'pacote-abater-avulso.spec.ts',
   'pacote-agendar.spec.ts',
   'pacotes-venda.spec.ts',
+  'portal-cliente-tratamento.spec.ts',
   'portal-cliente-varias-clinicas.spec.ts',
   'pre-pago.spec.ts',
   'quadro-tempo-real.spec.ts',

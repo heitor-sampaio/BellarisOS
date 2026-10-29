@@ -23,7 +23,7 @@ export type EstadoDoLinkDaFicha = 'valido' | 'invalido' | 'usado' | 'revogado' |
 
 export const MENSAGEM_DO_LINK_DA_FICHA: Record<Exclude<EstadoDoLinkDaFicha, 'valido'>, string> = {
   invalido:     'Este link não existe. Confira se ele foi copiado inteiro, ou peça um novo à clínica.',
-  usado:        'A sua ficha já chegou à clínica. Obrigada!',
+  usado:        'Tudo certo: a sua ficha já chegou à clínica.',
   revogado:     'Este link não vale mais. Peça um novo à clínica.',
   vencido:      'Este link venceu. Peça um novo à clínica.',
   indisponivel: 'Esta ficha não está mais esperando resposta. Fale com a clínica.',

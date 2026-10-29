@@ -10,6 +10,7 @@ import { SignaturePad } from '@/components/shared/signature-pad'
 import { lerConteudo, type DocumentoResolvido } from '@/lib/documentos/arvore'
 import { assinarNaClinica, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
 import { assinarNoPortal } from '@/actions/documentos-portal'
+import { nomeParaSaudar } from '@/lib/saudacao'
 
 /**
  * Colher a assinatura na clínica.
@@ -180,7 +181,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 760, margin: '0 auto' }}>
         <div className="card-brand" style={{ padding: '14px 18px', borderRadius: 'var(--radius-card-token)' }}>
-          <p style={{ fontWeight: 'var(--weight-extrabold)' }}>{noPortal ? `${doc.cliente.nome.split(' ')[0]}, leia` : `${doc.cliente.nome}, leia`} o documento e assine no fim.</p>
+          <p style={{ fontWeight: 'var(--weight-extrabold)' }}>{noPortal ? `${nomeParaSaudar(doc.cliente.nome) || doc.cliente.nome}, leia` : `${doc.cliente.nome}, leia`} o documento e assine no fim.</p>
         </div>
         {documento}
         <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -214,7 +215,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documento assinado</h2>
         {codigo && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Código de verificação <strong style={{ color: 'var(--text)' }}>{codigo}</strong></p>}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          {noPortal ? 'Obrigado! A clínica já recebeu o documento assinado.' : 'Devolva o aparelho à equipe.'}
+          {noPortal ? 'Tudo certo! A clínica já recebeu o documento assinado.' : 'Devolva o aparelho à equipe.'}
         </p>
         {canal === 'LINK'
           ? codigo && <Link href={`/verificar/${codigo}`} className="btn-secondary" style={{ marginTop: 8 }}>Conferir a assinatura</Link>

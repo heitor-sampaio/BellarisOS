@@ -20,3 +20,42 @@ export function primeiroNome(nome: string): string {
   if (partes.length >= 2 && TITULOS.test(partes[0]!)) return `${partes[0]} ${partes[1]}`
   return partes[0] ?? nome
 }
+
+/**
+ * O tratamento que vem antes do nome no cadastro ("Dona Ivone Becker", "Sr.
+ * João"). Na saudação à CLIENTE ele não é nome: o link da ficha dizia "Olá,
+ * Dona!" (D19 da simulação de 2026-10-29). A palavra inteira, com ou sem
+ * ponto — "Donato" e "Drauzio" são nomes.
+ */
+const TRATAMENTOS = /^(dona|dom|seu|sr|sra|srta|senhor|senhora|dr|dra|doutor|doutora|prof|profa|professor|professora)\.?$/i
+
+/** O primeiro nome para saudar a CLIENTE ("Olá, Ivone!"), sem o tratamento; vazio se não houver nome. */
+export function nomeParaSaudar(nome: string | null | undefined): string {
+  const partes = (nome ?? '').trim().split(/\s+/).filter(p => p && !/^\(.*\)?$/.test(p))
+  return partes.find(p => !TRATAMENTOS.test(p)) ?? ''
+}
+
+/**
+ * O texto do link mandado à cliente (a ficha de pré-atendimento, a
+ * assinatura de documento): a MESMA frase nos dois, saudando pelo nome e com
+ * a concordância do que ela confirma — "o seu CPF", "a sua data de
+ * nascimento" (era "o seu data de nascimento", D19).
+ */
+export function mensagemDoLink(p: {
+  nome: string | null | undefined; pedido: string; acao: string; temCpf: boolean; dias: number; url: string
+}): string {
+  const nome = nomeParaSaudar(p.nome)
+  return `Olá${nome ? `, ${nome}` : ''}! ${p.pedido} `
+    + `${p.acao}, abra o link abaixo e confirme ${p.temCpf ? 'o seu CPF' : 'a sua data de nascimento'}. O link vale por ${p.dias} dias.\n\n${p.url}`
+}
+
+/**
+ * As boas-vindas do portal pelo sexo da ficha (`clients.gender`: F, M, O ou
+ * vazio). O portal dizia "Bem-vinda" ao Gabriel, cadastrado como Masculino
+ * (D17 da simulação de 2026-10-29). Sem sexo (ou "Outro"), o neutro.
+ */
+export function boasVindas(sexo: string | null | undefined): 'Bem-vinda' | 'Bem-vindo' | 'Boas-vindas' {
+  if (sexo === 'F') return 'Bem-vinda'
+  if (sexo === 'M') return 'Bem-vindo'
+  return 'Boas-vindas'
+}

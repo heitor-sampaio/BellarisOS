@@ -179,6 +179,14 @@ DEVLOG ("Termos e contratos").
     cada tentativa furaria o limite (`ipEAparelho`).
   - WhatsApp mínimo: mensagem pronta (genérica) + `wa.me`; não depende de
     caixa conectada nem da janela de 24h.
+  - **O texto do link é UM** (`mensagemDoLink`, `lib/saudacao.ts`), o mesmo
+    da ficha de pré-atendimento: saúda pelo nome SEM o tratamento
+    (`nomeParaSaudar`: "Dona Ivone Becker" é "Olá, Ivone!"; só o tratamento,
+    "Olá!") e concorda com o que se confirma — "o seu CPF", "a sua data de
+    nascimento". Dizia "Olá, Dona! … confirme o seu data de nascimento" (D19
+    da simulação de 2026-10-29). O `{{first_name}}` das campanhas e a
+    saudação da home do portal usam o mesmo `nomeParaSaudar`. Prova:
+    `tests/saudacao-da-cliente.test.ts`.
   - **Pela conversa do inbox é escolha da REDE**, desligada de nascença
     (`tenants.documentos_link_pela_conversa`, Configurações → Documentos;
     muda só quem tem `forms: MANAGE` e abrangência de rede). Ligada, a ficha

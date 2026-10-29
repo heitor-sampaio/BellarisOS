@@ -38,7 +38,7 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
       <div className="card pre-atendimento-cliente-fim" role="status">
         <CheckCircle2 size={28} color="var(--success)" aria-hidden="true" />
         <p className="pre-atendimento-cliente-titulo">Respostas enviadas</p>
-        <p className="pre-atendimento-cliente-texto">Obrigada! A clínica vai conferir com você no atendimento.</p>
+        <p className="pre-atendimento-cliente-texto">Tudo certo! A clínica vai conferir com você no atendimento.</p>
         {voltar && <Link href={voltar} className="btn-secondary">Voltar ao início</Link>}
       </div>
     )

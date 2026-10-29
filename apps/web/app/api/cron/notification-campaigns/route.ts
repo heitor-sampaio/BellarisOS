@@ -9,6 +9,7 @@ import { lerPublico } from '@/lib/clientes/publico'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
+import { nomeParaSaudar } from '@/lib/saudacao'
 
 /** Cliente de uma campanha: quem recebe, e o nome para o {{first_name}}. */
 type Destinatario = { id: string; name: string }
@@ -407,7 +408,8 @@ async function sendWebPushBatch(
 }
 
 function applyTemplate(text: string, clientName: string): string {
-  const firstName = clientName.split(' ')[0] ?? clientName
+  // Sem o tratamento: "Dona Ivone" é Ivone (D19).
+  const firstName = nomeParaSaudar(clientName) || clientName
   return text.replace(/\{\{first_name\}\}/g, firstName)
 }
 

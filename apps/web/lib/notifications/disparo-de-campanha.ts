@@ -6,6 +6,7 @@ import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { lerPublico } from '@/lib/clientes/publico'
+import { nomeParaSaudar } from '@/lib/saudacao'
 
 /**
  * O DISPARO de uma campanha (notificação + Web Push + FCM) para o público dela.
@@ -126,7 +127,8 @@ async function sendWebPush(
 }
 
 function applyTemplate(text: string, clientName: string): string {
-  const firstName = clientName.split(' ')[0] ?? clientName
+  // Sem o tratamento: "Dona Ivone" é Ivone (D19).
+  const firstName = nomeParaSaudar(clientName) || clientName
   return text.replace(/\{\{first_name\}\}/g, firstName)
 }
 
