@@ -7974,6 +7974,12 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
 6. **D8:** a grade nova vale também nas sessões de plano, pacote e pré-pago, com o campo de encaixe livre.
 7. **D16:** quando chega dado novo, o "Ver mais" do extrato volta à primeira página.
 
+**Revisto pelo Heitor (2026-10-29):**
+- (1), (2), (4), (6) e (7) confirmados.
+- **(3) Aceitar número internacional**: o que começa com "+" (ex.: +351 …) passa no cadastro e na aba Dados.
+- **(5) A ficha rápida de mesmo telefone não é mais completada calada.** A tela pergunta "Já existe a ficha de <nome> com este telefone. É a mesma pessoa?". Com Sim, completa a ficha; com Não, nasce uma ficha nova.
+- A FAZER: (3) e (5), na frente de cadastro.
+
 ~~**Sobra do D13 revisto (`e46e27b`).**~~ **Feita pela frente H em 7ebdd975**, que agora diz "Informativo: não entra no lucro". O spec velho e o comentário foram ajustados em 08cc969b. O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
 
 **Atritos (A1–A50, no relatório).** Os de mais peso:
