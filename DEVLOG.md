@@ -7047,30 +7047,61 @@ verdade. O que vale:
     obrigatória vale também para a equipe ao salvar a anamnese e no "Enviar
     para a recepção", não no "Finalizar" (a cliente já foi atendida). A ficha
     vazia salva pela equipe grava, mas não fecha o pendente da cliente.
+    **Revisto pelo Heitor (2026-10-29):** confirmado, com um acréscimo. A
+    pergunta da gestação ganha a opção "Não se aplica", porque o cliente do
+    sexo masculino era obrigado a responder Sim ou Não. A mudança vale para a
+    ficha padrão: a das redes novas e a nunca editada das redes que já
+    existem (EM ANDAMENTO).
+    Ele reforçou que a ficha precisa poder ser customizada. Ela já é: em
+    Configurações → Fichas, quem é da rede e tem Fichas MANAGE muda as
+    perguntas, as opções e as obrigatórias.
   - "Finalizar" (D3): grava dores e anamnese na transação da conclusão; as
     dores saíram de `appointments.notes` (que é a observação interna) para o
     prontuário, e só quem vê o prontuário as vê. A anamnese só é gravada se
     alguém a mudou (a respondida pela cliente não vira "pela equipe"). O
-    rascunho guarda dores, anamnese e insumos.
+    rascunho guarda dores, anamnese e insumos. **Confirmado pelo Heitor
+    (2026-10-29).**
   - Mapa (D14): fora do atendimento não há "Confirmar aplicação"; a frase
     manda abrir o atendimento e usar "Registrar aplicação". A toxina da Íris
     não oferecia o mapa por CONFIGURAÇÃO (procedimento sem ficha) — ficou assim.
+    **Confirmado pelo Heitor (2026-10-29), com um pedido:** na ficha de
+    atendimento personalizada do procedimento, o campo "planejador de
+    injetáveis" precisa ser o planejador de verdade. Nele dá para abrir um
+    planejamento que a cliente já tem ou criar um do zero. Hoje o campo é
+    um mapa solto, guardado só na resposta da ficha, sem ligação com os
+    planejamentos nomeados (Planejamento → Injetáveis). **Plano aprovado:**
+    - o campo lista os planejamentos da cliente para abrir um, ou cria um novo;
+    - a aplicação se registra ali mesmo, dentro do atendimento;
+    - a ficha guarda o planejamento usado e o retrato dos pontos do dia;
+    - o mapa solto das fichas antigas continua legível.
+
+    A FAZER (depois da frente do "Não se aplica").
   - ~~Grade da agenda (D5): "Minha agenda" usa o horário da UNIDADE (não o do
     próprio profissional); a da rede, o mais cedo e o mais tarde entre as
     unidades; atendimento que passa da meia-noite fecha a grade em 24h.~~
     **Confirmado pelo Heitor (2026-10-28).**
-  - Cadastro de membro (D8): a EDIÇÃO também nasce limpa a cada abertura.
-  - Automação (D16): a opção "Escolha o canal…" fica desabilitada.
+  - Cadastro de membro (D8): a EDIÇÃO também nasce limpa a cada abertura. **Confirmado pelo Heitor
+    (2026-10-29).**
+  - Automação (D16): a opção "Escolha o canal…" fica desabilitada. **Confirmado pelo
+    Heitor (2026-10-29).**
   - 404 (D18): o `loading.tsx` saiu do topo de `/admin` e `/[slug]` e foi
     para cada seção (26 arquivos de uma linha, um esqueleto só) — com o
     `loading` no topo, o Next manda o status 200 antes do `notFound()`. Seção
     nova com tela precisa do seu `loading.tsx` (um teste cobra). Conferido
-    na produção e na completa contra o build (run 40785403989).
+    na produção e na completa contra o build (run 40785403989). **Confirmado
+    pelo Heitor (2026-10-29)**, junto com o 404 sem o `loading` no topo (frente F).
   - Conversão (D10): uma conta só, "viraram cliente ÷ leads no funil", em
     Oportunidades, Relatórios e dashboard. Num funil de pós-venda ela nasce
     100% (era por isso que o quadro contava a etapa de ganho). "Ganhos" e
     "perdidos" ficam no resumo do quadro só se o funil tiver essas etapas; a
     dica da etapa de ganho diz que ela fecha o lead, não que conta conversão.
+    **Revisto pelo Heitor (2026-10-29): a conversão é da OPORTUNIDADE, não
+    da pessoa.** "O objeto é a oportunidade": conversão do funil =
+    oportunidades na etapa de ganho (desfecho WON) ÷ oportunidades do funil,
+    sem importar se a pessoa já é cliente. É o mesmo número no quadro, nos
+    Relatórios e no dashboard; onde a tela junta funis, junta as oportunidades
+    deles. Funil sem etapa de ganho mostra "—". "Já é cliente" fica só como
+    filtro do quadro. A FAZER (fila: depois do planejador na ficha).
   - Ticket (D11): além do rótulo, o NÚMERO do cartão de Relatórios →
     Procedimentos mudou (dividia pelos concluídos: R$ 90 contra R$ 180 na
     Visão geral; agora é o `ticketMedio`).
@@ -7086,7 +7117,7 @@ verdade. O que vale:
     (não voltou o `loading` ao topo nem embutiu as `NEXT_PUBLIC_*` no Docker).
     Os outros scripts do layout raiz (polyfill, recarga por action velha,
     barra recolhida) também não rodam nesse 404 — ficou assim, é uma tela de
-    um botão.
+    um botão. **Confirmado pelo Heitor (2026-10-29).**
   - Divisões que ainda são feitas na tela de Relatórios (taxa de conclusão da
     agenda, retenção, giro do estoque, conversão por origem): não mexidas; as
     do dashboard e da tabela por procedimento foram para `lib/metrics`.
