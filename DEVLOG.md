@@ -6847,8 +6847,8 @@ verdade. O que vale:
 - **Para revisar (2026-10-28): as decisões das correções da terceira
   simulação.** O Heitor pediu para anotar e revisar depois; tudo já está no ar
   assim, e qualquer uma muda se ele quiser. (A lista cresce a cada frente.)
-  - Quem é da rede e atende aparece em TODAS as unidades (D1). Escolher em
-    quais unidades ele atende não foi feito.
+  - ~~Quem é da rede e atende aparece em TODAS as unidades (D1).~~
+    **Confirmado pelo Heitor (2026-10-28): é assim mesmo.**
   - A ocupação de cada unidade conta a agenda inteira dessa profissional:
     somadas as unidades, a capacidade dela entra mais de uma vez.
   - "Só os meus" (D4): no próprio agendamento tudo segue igual, inclusive
