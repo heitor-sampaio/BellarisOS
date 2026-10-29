@@ -7901,6 +7901,10 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
     1. Os cargos já gravados com NONE+OWN ficaram como estavam, porque o contexto já os lê certo.
     2. Quem desliga e religa um módulo precisa marcar o "só os meus" de novo.
     3. Quem não tem agenda nem financeiro vê os números da unidade dos módulos que tem, e o dinheiro continua preso ao Financeiro.
+  - **Revisto pelo Heitor (2026-10-29):**
+    - (1) confirmado.
+    - (2) **volta ao jeito antigo.** O cargo salvo GUARDA o "só os meus" do módulo desligado, e religar devolve o que estava. O sistema continua ignorando esse escopo enquanto o módulo está em NONE. Sai o `escopoParaGravar`. A FAZER, na frente de permissões.
+    - (3) é a regra "cada número segue o seu módulo" (revisão da frente G).
 - **D7.** Para a recepção, Planejamento → Injetáveis responde 500 e fica em "Carregando…" sem fim.
   - Causa: a sub-aba não confere a permissão, e o `useEffect` não trata o `semAcesso()` da action.
   - Arquivos: `components/branch/painel-planejamento.tsx:78-86` e `planejamento-injetaveis.tsx:54-58`.
@@ -7909,7 +7913,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
     - A sub-aba só aparece para quem vê o clínico daquela cliente, a mesma regra da aba Prontuário, também pela URL.
     - Se a action falhar, a tela diz "Não foi possível carregar…" em vez de ficar em "Carregando…".
     - Prova: `e2e/injetaveis-sem-prontuario.spec.ts`.
-  - **Decisão para revisar:** com o prontuário em "só os meus", a sub-aba só aparece na cliente que ela atende.
+  - **Decisão para revisar:** com o prontuário em "só os meus", a sub-aba só aparece na cliente que ela atende. **Confirmado pelo Heitor (2026-10-29).** "A cliente dela" é a que tem um agendamento com ela, mesmo que seja futuro: marcar a cliente com ela já abre o que é da cliente.
 - **D8.** A grade do checkout do plano é fixa das 08:00 às 20:00 (`TIME_SLOTS` em `checkout-wizard.tsx:54-59`). Ela oferece a pausa da unidade e corta a noite. O encaixe livre é regra do §9.1, mas a grade nem cobre a janela da unidade. NOVO. **Feito em 2026-10-29** (4a0538d1). `gradeDoCheckout` cobre a janela da unidade de 30 em 30 minutos, sem a pausa. Os horários da profissional aparecem destacados e o encaixe continua possível, até pelo "Outro horário". A mesma grade passou a valer nas sessões de plano, pacote e pré-pago (`SessionScheduler`).
 - **D9.** No plano, o insumo aparece como "5 frasco", e no atendimento como "5 ml". `procedimentosParaPlano` devolve `products.unit` cru (`lib/checkout/procedimentos-do-plano.ts`). SOBRA da unidade de consumo (D1 de 27/10).
   **Feito em 2026-10-29** (be8f522d).
