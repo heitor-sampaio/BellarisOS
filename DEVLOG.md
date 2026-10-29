@@ -6954,6 +6954,12 @@ verdade. O que vale:
     "sumiu" é da UNIDADE (voltou com outra, não aparece); (3) planos
     aguardando checkout = os em que ela é a profissional; (4) só o financeiro
     OWN (agenda ALL) recorta todos os números do dashboard, como no D7.
+    **Revisto pelo Heitor (2026-10-29):** (1), (2) e (3) confirmados. O (4)
+    muda: **cada número segue o escopo do SEU módulo.** Agenda e clientes
+    seguem o escopo da agenda, dinheiro segue o do financeiro e funil segue
+    o do CRM. Exemplo: com a agenda ALL e o financeiro OWN, os atendimentos
+    são os da clínica e o faturamento é o dela. Vale nos dois dashboards, nos
+    Relatórios e no Copilot. A FAZER, na frente de indicadores.
     **"Em qualquer lugar" — ainda vazando** (achados da frente G, só leitura):
     em módulo COM escopo — mapas de injetáveis (`listarMapasDeInjetaveis`
     ignora o prontuário OWN: dado clínico), planejamentos (`listarPlanejamentos`
@@ -6985,6 +6991,18 @@ verdade. O que vale:
     5. No Copilot, a comissão dela aparece.
     6. Na retenção dela, "voltou" é a cliente que já tinha sido atendida
        por ela, não pela clínica.
+
+    **Revisto pelo Heitor (2026-10-29):** confirmados o (1), o (2), o (4) e
+    o (5). Mudam:
+    - **(3) "O plano é da cliente, não da profissional."** Com a agenda em
+      "só os meus", ela vê os planos de toda cliente que atende (que tem
+      agendamento com ela), quem quer que tenha montado o plano. É a mesma
+      regra do prontuário: quem cobre uma sessão precisa ver o que foi feito e
+      o que falta. A FAZER.
+    - **(6) "A cliente é da clínica; o atendimento é da profissional."** Na
+      retenção dela entram as clientes que ela atendeu no período, e "voltou" é
+      quem já tinha sido atendida pela CLÍNICA antes, por qualquer
+      profissional. A FAZER, na frente de indicadores.
 
     Mexeu em `metrics_receitas_pagas` (fechamento do dia, financeiro da
     cliente) e em `planoDoTenant`: vale uma completa, que o Heitor decide.
