@@ -372,6 +372,18 @@ const procedures = await ler(
   é no banco (`!inner` mapa → cliente → agendamento com ela). Antes a lista
   conferia só `medical_records: VIEW` e mostrava os mapas de todas. Prova:
   `e2e/injetaveis-so-os-meus.spec.ts`.
+- **Os planos de tratamento seguem a agenda "só os meus"** (decisão do Heitor,
+  2026-10-28). Com `agenda` OWN, a tela Planejamentos (`listarPlanejamentos`),
+  os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
+  atendimento) e TODA action pelo id do plano que passa por `planoDoTenant`
+  (cabeçalho, editar, salvar, renomear, ligar cliente, enviar à recepção,
+  fechar o checkout, o arquivo do tratamento), mais `getTreatmentPlanSessions`
+  e `cancelTreatmentPlan`, só valem para o plano DELA:
+  `treatment_plans.professional_id` (`planoDaProfissional` — o recorte dos
+  planos aguardando checkout no dashboard). O filtro da lista é no banco.
+  Ficam de fora os gestos de quem RECEBE (`getCheckoutPlan`, `cancelCheckout`,
+  `receberDoPlano`, que pedem `cashier`/fechar plano, não a agenda). Prova:
+  `e2e/planejamentos-so-os-meus.spec.ts`.
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um
   rascunho que existe só na tela; o plano nasce no primeiro "Salvar plano"

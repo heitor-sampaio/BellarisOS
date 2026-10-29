@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
-import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter } from '@/lib/auth'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -127,21 +127,36 @@ async function gravarSessoes(
   return {}
 }
 
-/** Confere que o plano é do tenant de quem chama e devolve o essencial dele. */
+/**
+ * Com a agenda "só os meus", o plano é DELA (`treatment_plans.professional_id`
+ * — o recorte dos planos aguardando checkout no dashboard)? Decisão do Heitor,
+ * 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar" — e o
+ * escopo vale pelo id (§11). Sem o OWN, todo plano ao alcance.
+ */
+function planoDaProfissional(ctx: TenantContext, professionalId: string | null | undefined): boolean {
+  if (!isOwnScope(ctx, 'agenda')) return true
+  return !!ctx.internalUserId && professionalId === ctx.internalUserId
+}
+
+/**
+ * Confere que o plano é do tenant de quem chama, da unidade ao alcance e, com
+ * a agenda "só os meus", dela; devolve o essencial dele.
+ */
 async function planoDoTenant(
   admin: ReturnType<typeof createAdminClient>,
   planId: string,
-  ctx: Pick<TenantContext, 'tenantId' | 'branchId'>,
+  ctx: TenantContext,
 ) {
   const data = await ler(admin
     .from('treatment_plans')
-    .select('id, status, client_id, branch_id, evaluation_appointment_id, branches!branch_id(slug, tenant_id)')
+    .select('id, status, client_id, branch_id, professional_id, evaluation_appointment_id, branches!branch_id(slug, tenant_id)')
     .eq('id', planId)
     .maybeSingle(), 'buscar o plano')
   const branch = data?.branches as unknown as { slug: string; tenant_id: string } | null
   // A rede, e a unidade ao alcance de quem age (§11): o plano da unidade B não
   // se mexe pela recepção da A.
-  if (!data || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx as TenantContext, data.branch_id as string)) return null
+  if (!data || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, data.branch_id as string)) return null
+  if (!planoDaProfissional(ctx, data.professional_id as string | null)) return null
   return { ...data, slug: branch!.slug }
 }
 
@@ -237,7 +252,11 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const data = await ler(admin
+  // Agenda "só os meus": só os planos dela (`planoDaProfissional`).
+  const dela = ownerFilter(ctx, 'agenda')
+  if (isOwnScope(ctx, 'agenda') && !dela) return { planos: [] }
+
+  let consulta = admin
     .from('treatment_plans')
     .select(`
       id, status, professional_notes, professional_id, created_at, evaluation_appointment_id,
@@ -245,7 +264,8 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
       treatment_plan_sessions(treatment_plan_session_procedures(price))
     `)
     .eq('client_id', clientId)
-    .order('created_at', { ascending: false }), 'carregar os planos do cliente')
+  if (dela) consulta = consulta.eq('professional_id', dela)
+  const data = await ler(consulta.order('created_at', { ascending: false }), 'carregar os planos do cliente')
 
   type RawSess = { treatment_plan_session_procedures: { price: number }[] }
 
@@ -531,6 +551,10 @@ export async function listarPlanejamentos(opcoes?: {
     ? doTenant.filter(b => b.id === opcoes.branchId)
     : doTenant
 
+  // Agenda "só os meus": só os planos dela (`planoDaProfissional`), no banco.
+  const dela = ownerFilter(ctx, 'agenda')
+  if (isOwnScope(ctx, 'agenda') && !dela) return { planos: [] }
+
   // Todos, em páginas (2026-10-22): tinha teto de 200, sem "ver mais" — os
   // planejamentos mais antigos sumiam da lista.
   const data = await lerTodas((de, ate) => {
@@ -542,6 +566,7 @@ export async function listarPlanejamentos(opcoes?: {
         treatment_plan_sessions(treatment_plan_session_procedures(price))
       `)
       .in('branch_id', alcance.map(b => b.id))
+    if (dela) query = query.eq('professional_id', dela)
     if (opcoes?.status) query = query.eq('status', opcoes.status)
     return query.order('created_at', { ascending: false }).order('id').range(de, ate)
   }, 'carregar os planejamentos')
@@ -707,10 +732,10 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
 
   const plan = await ler(admin
     .from('treatment_plans')
-    .select('branch_id')
+    .select('branch_id, professional_id')
     .eq('id', planId)
     .maybeSingle(), 'buscar o plano')
-  if (!plan) return { sessions: [], total: 0 }
+  if (!plan || !planoDaProfissional(ctx, plan.professional_id as string | null)) return { sessions: [], total: 0 }
 
   const branch = await ler(admin
     .from('branches')
@@ -920,10 +945,10 @@ async function cancelTreatmentPlanInterno(
 
   const plan = await ler(admin
     .from('treatment_plans')
-    .select('id, status, branch_id, client_id, evaluation_appointment_id')
+    .select('id, status, branch_id, client_id, professional_id, evaluation_appointment_id')
     .eq('id', planId)
     .maybeSingle(), 'buscar o plano')
-  if (!plan) return { error: 'Plano não encontrado.' }
+  if (!plan || !planoDaProfissional(ctx, plan.professional_id as string | null)) return { error: 'Plano não encontrado.' }
 
   const branch = await ler(admin
     .from('branches')

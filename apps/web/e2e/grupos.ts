@@ -117,6 +117,7 @@ export const ISOLADOS = [
   'atendimento-finalizar-grava-tudo.spec.ts',
   'injetaveis-confirmar-so-no-atendimento.spec.ts',
   'injetaveis-so-os-meus.spec.ts',
+  'planejamentos-so-os-meus.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',
