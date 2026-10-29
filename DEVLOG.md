@@ -7711,6 +7711,25 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
 
 **Alta**
 - **D1.** A ficha própria do procedimento (`procedures.form_id`) não aparece no atendimento avulso. O ramo "plano ainda não gerado → formulário unificado" não chama `renderFichaCard` (`components/branch/appointment-session.tsx:1838-1870`). Só o plano já gerado e a sessão de plano a mostram. O atendimento é concluído sem a ficha, e o prontuário fica sem esses campos. NOVO (latente desde 2026-09-25).
+
+  **Feito em 2026-10-29** (495f514e, migration `20261029000401`).
+
+  Eram dois defeitos:
+  1. O ramo "plano ainda não gerado" não mostrava a ficha.
+  2. Em nenhum ramo o "Finalizar" a gravava. Ela só chegava ao prontuário pelo "Salvar", e quem finalizava sem salvar perdia o que tinha preenchido.
+
+  O que mudou:
+  - A ficha aparece em todo ramo.
+  - O "Finalizar" leva as respostas para `concluir_atendimento`, na mesma transação, em `form_data.ficha`. O servidor monta a ficha pelo procedimento, não pelo que o navegador manda.
+  - Prova: `e2e/atendimento-ficha-do-procedimento.spec.ts`.
+
+  Junto saiu o **A30**. No atendimento concluído e bloqueado, a anamnese fica só para leitura e "Fechar agora" e "Enviar para a recepção" somem. Quem destrava em "Editar registro" tem tudo de volta.
+
+  **Decisões para revisar:**
+  1. O "Finalizar" não exige as obrigatórias da ficha, como já valia no §10. Elas barram só o "Salvar ficha" e o "Enviar para a recepção".
+  2. A ficha não entra no rascunho.
+  3. O plano depois da avaliação concluída sai pelo "Novo plano" do Planejamento.
+  4. A ficha salva no "Enviar para a recepção" não fica na mesma transação do plano.
 - **D2.** A dona (Admin da rede) não consegue ser profissional:
   - `assignableRoles` tira o NETWORK_ADMIN da lista, e por isso a edição dela abre com o primeiro cargo, "Financeiro";
   - `updateTeamMember` grava o cargo junto e recusa cargo de sistema, então não há caminho para `provides_services` num admin;
