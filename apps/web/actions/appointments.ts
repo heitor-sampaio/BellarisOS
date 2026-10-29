@@ -32,6 +32,7 @@ import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resg
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
+import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 
@@ -701,6 +702,11 @@ async function finishSessionInterno(
     const queixas        = ((formData.get('queixas') as string | null) ?? '').trim() || null
     let anamneseDigitada: unknown = null
     try { anamneseDigitada = JSON.parse((formData.get('anamnese') as string | null) ?? 'null') } catch { /* JSON inválido → sem anamnese */ }
+    // A ficha própria do procedimento, como está NA TELA (D1 da simulação de
+    // 2026-10-29): também vai na transação da conclusão. Sem ela no
+    // formulário, a ficha já gravada (o "Salvar ficha") fica como está.
+    let fichaDigitada: unknown = null
+    try { fichaDigitada = JSON.parse((formData.get('ficha') as string | null) ?? 'null') } catch { /* JSON inválido → sem ficha */ }
 
     const admin = createAdminClient()
 
@@ -833,6 +839,19 @@ async function finishSessionInterno(
         })
       : null
 
+    // A ficha do procedimento: o retrato da ficha ligada a ELE, da rede (não a
+    // que o navegador diz), com só as respostas dos campos dela.
+    let ficha: ReturnType<typeof fichaParaConcluir> = null
+    if (fichaDigitada && typeof fichaDigitada === 'object' && appt.procedure_id) {
+      const proc = await ler(admin.from('procedures').select('form_id')
+        .eq('id', appt.procedure_id as string).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento')
+      const form = proc?.form_id
+        ? await ler(admin.from('forms').select('id, name, schema')
+            .eq('id', proc.form_id as string).eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha do procedimento')
+        : null
+      ficha = fichaParaConcluir(form as { id: string; name: string; schema: unknown } | null, fichaDigitada)
+    }
+
     // ─── Grava, tudo ou nada ──────────────────────────────────────────────
     const userName = ctx.userName || await getUserName(admin, ctx.userId)
     let avisos: string[] = []
@@ -848,6 +867,7 @@ async function finishSessionInterno(
           notas: notes, intercorrencias: intercurrences, comissoes, insumos: m.insumos,
           ...(temQueixas ? { queixas } : {}),
           ...(anamnese ? { anamnese } : {}),
+          ...(ficha ? { ficha } : {}),
         },
       })
     })

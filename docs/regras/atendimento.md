@@ -192,6 +192,16 @@ const procedures = await ler(
     mesmos campos possíveis e o mesmo momento de preenchimento. Quem cadastrava
     um procedimento tinha de escolher em qual das duas pôr cada pergunta, e a
     escolha não mudava nada. Unificadas em 2026-09-25.
+  - **A ficha aparece em TODO ramo da tela do atendimento** (D1 da simulação
+    de 2026-10-29): o formulário da avaliação (todo atendimento fora de plano,
+    inclusive o de pacote, na rede que monta plano) tem o cartão "Ficha do
+    procedimento" (`data-ficha-do-procedimento`); o plano já gerado e a sessão
+    de plano (ou a rede sem planos) a têm dentro da "Ficha de atendimento".
+    Faltava no primeiro desde 2026-09-25, e a profissional concluía sem ela.
+    Só vai à tela com `canViewRecords` (o acesso já é registrado na sessão).
+    A obrigatória barra o "Salvar ficha" e o "Enviar para a recepção" (que
+    salva a ficha antes), não o "Finalizar" (§10). Prova:
+    `e2e/atendimento-ficha-do-procedimento.spec.ts`.
   - **Não confundir com `medical_records.general_anamnesis`**: aquilo é o
     questionário de saúde do CLIENTE, preenchido uma vez, que alimenta o termo
     de consentimento e o planejamento. Esse continua existindo e é outra coisa.
@@ -504,7 +514,7 @@ O que a transação grava, na ordem:
 | # | O que grava | Onde |
 |---|---|---|
 | 1 | status `COMPLETED` + `completed_at` (agendamento TRAVADO, status conferido de novo) | `appointments` |
-| 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento — evolução, intercorrência e as DORES do cliente; e a anamnese digitada na tela, fechando o pré-atendimento pendente (D3, 2026-10-28) | `medical_records`, `medical_record_entries`, `pre_atendimentos` |
+| 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento — evolução, intercorrência, as DORES do cliente e a ficha do procedimento da tela (D1, 2026-10-29); e a anamnese digitada na tela, fechando o pré-atendimento pendente (D3, 2026-10-28) | `medical_records`, `medical_record_entries`, `pre_atendimentos` |
 | 3 | uma linha de comissão por procedimento (regra e configuração retratadas) e o primeiro acerto do extrato (§9.7) | `commission_lines`, `commissions` |
 | 4 | cada insumo — e, pelos gatilhos, evento, mínimo e baixa do lote | `stock_movements`, `branch_product_stock` |
 | 5 | a sessão do pacote usada e o contador (soma no banco) | `package_sessions`, `client_packages` |
@@ -554,6 +564,26 @@ O resto do fluxo:
   "Finalizar" não exige as obrigatórias da ficha: a cliente já foi atendida.
   Prova: `e2e/atendimento-finalizar-grava-tudo.spec.ts`,
   `tests/rascunho-do-atendimento.test.ts`.
+- **E a ficha própria do procedimento também** (D1 da simulação de
+  2026-10-29; migration `20261029000401`): o "Finalizar" leva as respostas
+  que alguém MEXEU na tela (campo `ficha`), em qualquer ramo, e
+  `finishSession` monta o retrato com a ficha ligada ao PROCEDIMENTO, da
+  rede e `tipo = 'PROCEDIMENTO'` (`fichaParaConcluir`,
+  `lib/atendimento/ficha-do-procedimento.ts`: só as respostas dos campos
+  dela) — o navegador não escolhe a ficha. `concluir_atendimento` grava em
+  `form_data.ficha` (o formato do `salvarFichaDoProcedimento`), mantendo o
+  resto de `form_data`; sem `ficha`, a salva antes fica. Antes, só o
+  "Salvar" a gravava, e finalizar sem salvar a perdia. Como a anamnese, o
+  "Finalizar" não exige as obrigatórias da ficha. A ficha não está no
+  rascunho (A31): o "Salvar ficha" é o caminho para guardar antes.
+  Prova: `e2e/atendimento-ficha-do-procedimento.spec.ts`,
+  `tests/ficha-do-procedimento-na-conclusao.test.ts`.
+- **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
+  simulação de 2026-10-29): sem "Fechar agora" nem "Enviar para a recepção"
+  (gerar o plano regravaria as dores e a evolução do registro fechado), a
+  evolução só se lê e a anamnese aparece como leitura — não em branco com as
+  obrigatórias marcadas. O Planejamento volta a oferecer "Novo plano". Quem
+  desbloqueia ("Editar registro") tem tudo de volta.
 - **As dores do cliente são do PRONTUÁRIO do atendimento**
   (`medical_record_entries.queixas`, migration `20261028000302`), não
   `appointments.notes` — que é a observação INTERNA do agendamento e
@@ -588,7 +618,9 @@ O resto do fluxo:
 ❌ Atualizar currentStock diretamente sem criar StockMovement
 ❌ Alterar price de um procedimento sem criar ProcedurePriceHistory
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
-❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores e a anamnese do "Finalizar"
+❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores, a anamnese e a ficha do procedimento do "Finalizar"
+❌ Ramo da tela do atendimento sem a ficha própria do procedimento (o avulso da rede que monta plano ficou sem ela de 2026-09-25 a 2026-10-29)
+❌ Gravar a ficha do procedimento com o form_id que veio do navegador (é a ficha ligada ao procedimento do agendamento, da rede: fichaParaConcluir)
 ❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts

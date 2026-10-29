@@ -118,6 +118,7 @@ export const ISOLADOS = [
   'atendimento-foto-clinica.spec.ts',
   'atendimento-rascunho.spec.ts',
   'atendimento-finalizar-grava-tudo.spec.ts',
+  'atendimento-ficha-do-procedimento.spec.ts',
   'injetaveis-confirmar-so-no-atendimento.spec.ts',
   'injetaveis-so-os-meus.spec.ts',
   'planejamentos-so-os-meus.spec.ts',

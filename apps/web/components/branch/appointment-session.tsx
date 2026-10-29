@@ -265,7 +265,7 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
 }
 
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
-function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, onClose }: {
+function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, onClose }: {
   appointmentId: string; slug: string
   initialNotes: string | null; initialIntercurrences: string | null
   insumos: SessionProduct[]
@@ -273,6 +273,8 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
   queixas?: string
   /** A anamnese digitada na tela (D3); nula quando ninguém mexeu. */
   anamnese?: Record<string, unknown> | null
+  /** As respostas da ficha do procedimento na tela (D1, 2026-10-29); nulas quando ninguém mexeu. */
+  ficha?: Record<string, unknown> | null
   onClose: () => void
 }) {
   const router = useRouter()
@@ -325,6 +327,8 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
           {/* As dores e a anamnese da tela vão NA MESMA conclusão (D3, 2026-10-28). */}
           {queixas !== undefined && <input type="hidden" name="queixas" value={queixas} />}
           {anamnese && <input type="hidden" name="anamnese" value={JSON.stringify(anamnese)} />}
+          {/* E a ficha do procedimento, também na mesma conclusão (D1, 2026-10-29). */}
+          {ficha && <input type="hidden" name="ficha" value={JSON.stringify(ficha)} />}
           <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
             <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600 }}>O procedimento foi realizado com sucesso?</p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 3 }}>Confirme para liberar o cliente. Adicione observações se necessário.</p>
@@ -967,6 +971,9 @@ export function AppointmentSession({
   // formulário com ela, que só lê o valor inicial ao nascer.
   const [anamneseDigitada,   setAnamneseDigitada]   = useState<Record<string, unknown> | null>(null)
   const [anamneseDoRascunho, setAnamneseDoRascunho] = useState<Record<string, unknown> | null>(null)
+  // As respostas da ficha do PROCEDIMENTO na tela (nulas enquanto ninguém
+  // mexe): o "Finalizar" as leva na conclusão (D1 da simulação de 2026-10-29).
+  const [fichaDigitada, setFichaDigitada] = useState<Record<string, unknown> | null>(null)
   const [evalPlanNotes,          setEvalPlanNotes]          = useState(existingPlan?.notes ?? '')
   const [evalSessionNotes,       setEvalSessionNotes]       = useState(appointment.savedNotes ?? '')
   const [evalSessionInterc,      setEvalSessionInterc]      = useState(appointment.savedIntercurrences ?? '')
@@ -993,6 +1000,10 @@ export function AppointmentSession({
    */
   async function gerarPlano(fecharAgora: boolean) {
     setGenerating(true); setGenError(null)
+    // A ficha do procedimento se salva antes, com a regra do "Salvar ficha"
+    // (as obrigatórias barram) — D1 da simulação de 2026-10-29.
+    const daFicha = await fichaRef.current?.save()
+    if (daFicha?.error) { setGenerating(false); setGenError(daFicha.error); return }
     const currentSessions = evalEditorRef.current?.getSessions() ?? []
     const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
     const anamnese = await anamneseDaAvaliacao.current?.coletar()
@@ -1292,11 +1303,38 @@ export function AppointmentSession({
             saveAction={salvarFichaDoProcedimento}
             hideSaveButton={unified}
             semInjetaveis={!podeInjetaveis}
+            onAnswersChange={setFichaDigitada}
           />
         ),
       } : null}
     />
   )
+
+  // A ficha própria do procedimento no formulário da avaliação (D1 da simulação
+  // de 2026-10-29): todo atendimento fora de plano, na rede que monta plano,
+  // abre neste formulário — e ele nunca mostrou a ficha. A profissional
+  // concluía sem ela ser pedida. Cartão próprio: a anamnese e os insumos já
+  // têm os deles aqui. O "Finalizar" leva as respostas (fichaDigitada); o
+  // "Salvar ficha" e o "Enviar para a recepção" a gravam pela action dela.
+  const fichaNaAvaliacao = ficha && ficha.rows.length > 0 ? (
+    <section data-ficha-do-procedimento aria-label="Ficha do procedimento" className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Ficha do procedimento</h3>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>{ficha.name}</p>
+      </div>
+      <div style={{ padding: '18px 20px' }}>
+        <AnamnesisFormRenderer
+          ref={fichaRef}
+          appointmentId={appointment.id} slug={slug}
+          formName={ficha.name} rows={ficha.rows}
+          initial={respostasDaFicha as AnamnesisAnswers} canEdit={canEditRecords && !editLocked}
+          saveAction={salvarFichaDoProcedimento}
+          semInjetaveis={!podeInjetaveis}
+          onAnswersChange={setFichaDigitada}
+        />
+      </div>
+    </section>
+  ) : null
 
   // Mexer nos insumos os põe no rascunho (D3): a dose ajustada sobrevive ao recarregar.
   const insumoProps = {
@@ -1356,7 +1394,9 @@ export function AppointmentSession({
               // Injetáveis é prontuário: o clínico desta sessão.
               podeVerInjetaveis={canViewRecords}
               podeReceber={podeReceber}
-              planoNaTela={!isPartOfPlan && podeMontarPlano && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
+              // Registro bloqueado: a avaliação não monta mais o plano na tela
+              // (A30), então o "Novo plano" volta a ser o caminho.
+              planoNaTela={!isPartOfPlan && podeMontarPlano && !editLocked && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
             />
           </div>
         </JanelaModal>
@@ -1402,6 +1442,7 @@ export function AppointmentSession({
           // dores só existem no formulário da avaliação; a anamnese, onde foi digitada.
           queixas={usaFormularioDaAvaliacao && canViewRecords ? evalComplaints : undefined}
           anamnese={anamneseDigitada}
+          ficha={fichaDigitada}
           onClose={() => setShowFinish(false)}
         />
       )}
@@ -1848,8 +1889,16 @@ export function AppointmentSession({
                     readonly={editLocked}
                   />}
 
-                  <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento}
-                    key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
+                  {/* Registro bloqueado (concluído): a anamnese se LÊ, não abre
+                      em branco com as obrigatórias marcadas (A30). */}
+                  {editLocked ? (
+                    canViewRecords && <AnamneseGeralCartao anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={false} />
+                  ) : (
+                    <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento}
+                      key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
+                  )}
+
+                  {fichaNaAvaliacao}
 
                   <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
@@ -1877,7 +1926,7 @@ export function AppointmentSession({
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <label className="field-label">Anotações clínicas</label>
                         <textarea
-                          rows={4} value={evalSessionNotes}
+                          rows={4} value={evalSessionNotes} readOnly={editLocked}
                           onChange={e => setEvalSessionNotes(e.target.value)}
                           placeholder="Técnicas utilizadas, regiões tratadas, evolução do cliente…"
                           className="field" style={{ resize: 'vertical' }}
@@ -1886,7 +1935,7 @@ export function AppointmentSession({
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <label className="field-label">Intercorrências</label>
                         <textarea
-                          rows={2} value={evalSessionInterc}
+                          rows={2} value={evalSessionInterc} readOnly={editLocked}
                           onChange={e => setEvalSessionInterc(e.target.value)}
                           placeholder="Reações, intercorrências ou observações…"
                           className="field" style={{ resize: 'vertical' }}
@@ -1898,8 +1947,10 @@ export function AppointmentSession({
                   {/* Fim da avaliação.
                       Quem pode receber fecha a venda aqui mesmo, com o cliente
                       na sala — antes o plano saía da tela e ficava esperando a
-                      recepção, mesmo quando era a mesma pessoa. */}
-                  {canManage && (
+                      recepção, mesmo quando era a mesma pessoa.
+                      Com o registro bloqueado (concluído), não: gerar o plano
+                      regravaria as dores e a evolução do registro fechado (A30). */}
+                  {canManage && !editLocked && (
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {genError && (
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 12, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
