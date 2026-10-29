@@ -10,8 +10,8 @@ import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 function fmtDateTime(iso: string) {
   const d = new Date(iso)
   return {
-    date: d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }),
-    time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    date: d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }),
+    time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }),
   }
 }
 
@@ -289,7 +289,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     </span>
                     {pkg.expires_at && (
                       <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-                        válido até {new Date(pkg.expires_at).toLocaleDateString('pt-BR')}
+                        válido até {new Date(pkg.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                       </span>
                     )}
                   </div>

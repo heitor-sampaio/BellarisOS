@@ -7,7 +7,7 @@ import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { PeriodSelector, type Period } from './period-selector'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FunnelSelect } from '@/components/shared/funnel-select'
-import type { LinhaLote, LinhaParcela } from './reports-linhas'
+import { validadeDoLote, type LinhaLote, type LinhaParcela } from './reports-linhas'
 import type { Relatorio } from '@/lib/metrics/relatorio'
 import type { MetricsCore } from '@/lib/metrics'
 import type { DadosDeVendas } from './reports-bi-section'
@@ -1046,13 +1046,16 @@ function TabEstoque(p: ReportsBiProps) {
       render: (v) => <Badge label={`${v}d`} color={Number(v) <= 7 ? 'red' : Number(v) <= 15 ? 'amber' : 'gray'} />,
     },
   ]
-  const batchRows = productBatches.map(b => ({
-    product: b.products?.name ?? '—',
-    batch:   b.batch_number ?? '—',
-    expires: new Date(b.expires_at).toLocaleDateString('pt-BR'),
-    qty:     Number(b.quantity),
-    days:    Math.max(0, Math.ceil((new Date(b.expires_at).getTime() - today.getTime()) / 86_400_000)),
-  }))
+  const batchRows = productBatches.map(b => {
+    const validade = validadeDoLote(b.expires_at, today)
+    return {
+      product: b.products?.name ?? '—',
+      batch:   b.batch_number ?? '—',
+      expires: validade.dia,
+      qty:     Number(b.quantity),
+      days:    validade.dias,
+    }
+  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
