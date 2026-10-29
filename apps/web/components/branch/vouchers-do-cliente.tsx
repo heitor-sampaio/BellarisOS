@@ -31,6 +31,10 @@ export function VouchersDoCliente({
   onMudouSaldo:  () => void
 }) {
   const [vouchers, setVouchers] = useState(inicial)
+  // A lista nova do servidor (`router.refresh` depois de um pagamento que usou
+  // o voucher) vale sobre a cópia — o mesmo defeito do saldo (D16).
+  const [daProp, setDaProp] = useState(inicial)
+  if (daProp !== inicial) { setDaProp(inicial); setVouchers(inicial) }
   const [trocando, setTrocando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)

@@ -31,6 +31,19 @@ export function FidelidadeDoCliente({
   const [ajustando, setAjustando] = useState(false)
   const [erroDaLista, setErroDaLista] = useState<string | null>(null)
 
+  // Props novas do servidor (o `router.refresh` depois de uma venda, de um
+  // pagamento) valem sobre o estado copiado delas: sem isto, o cartão "Pontos"
+  // da ficha dizia 800 e este painel "Nenhum ponto ainda" até recarregar (D16
+  // da simulação de 2026-10-29). Compara a REFERÊNCIA: só muda com dado novo do
+  // servidor, e o "Ver mais" carregado continua enquanto ele não chega.
+  const [daProp, setDaProp] = useState(fidelidade)
+  if (daProp !== fidelidade) {
+    setDaProp(fidelidade)
+    setSaldo(fidelidade.saldo)
+    setLinhas(fidelidade.extrato.linhas)
+    setTemMais(fidelidade.extrato.temMais)
+  }
+
   function recarregar() {
     iniciarCarga(async () => {
       try {

@@ -107,6 +107,12 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     **Teste que as chama com data escolhida à mão passa a rede `[e2e]`** — sem
     o recorte, "e se hoje fosse 2027?" vence pontos e dá bônus de clientes
     reais na produção.
+- **O painel Fidelidade da ficha segue as props do servidor** (D16 da
+  simulação de 2026-10-29): o saldo, o extrato e os vouchers copiados para o
+  estado são trocados pelos novos quando o `router.refresh` (da venda, do
+  pagamento) traz outra referência de `fidelidade`. O cartão "Pontos" dizia
+  800 e o painel "Nenhum ponto ainda" até recarregar. Prova:
+  `e2e/fidelidade-painel-atualiza.spec.ts`.
 
 ---
 
