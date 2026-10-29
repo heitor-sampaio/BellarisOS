@@ -7105,11 +7105,24 @@ verdade. O que vale:
   - Ticket (D11): além do rótulo, o NÚMERO do cartão de Relatórios →
     Procedimentos mudou (dividia pelos concluídos: R$ 90 contra R$ 180 na
     Visão geral; agora é o `ticketMedio`).
+    **Revisto pelo Heitor (2026-10-29): o ticket médio é a média de quanto
+    cada CLIENTE gasta na clínica, não a média por atendimento.** A conta é
+    o que as clientes pagaram no período ÷ as clientes que pagaram. Pelo
+    eixo da receita paga, entra tudo: atendimento, pacote, plano (entrada e
+    parcelas), pré-pago e, quando existir, produto. Quem não pagou nada não
+    entra. É um indicador só com o "Gasto médio" de Relatórios → Clientes,
+    com o nome "Ticket médio". Vale em toda tela e, com "só os meus", é o
+    dela. A FAZER (na frente de indicadores, com a conversão). Muda a regra de 27/10 em
+    `indicadores.md`.
   - "Clientes no mês" (D12): conta até o fim do mês; os cartões de dinheiro
     seguem até agora. A "Taxa de aproveitamento" da rede segue em "horários
     passados", de propósito.
+    **Revisto pelo Heitor (2026-10-29): "Clientes no mês" conta até AGORA**,
+    porque não se sabe se o que está agendado vai acontecer. Volta o corte
+    em "agora". A "Taxa de aproveitamento" segue como está. A FAZER, na
+    frente de indicadores junto com a conversão e o ticket médio.
   - Estoque sem categoria (D17): a categoria em branco também vai a "Sem
-    categoria".
+    categoria". **Confirmado pelo Heitor (2026-10-29).**
   - O 404 sem o `loading` no topo (frente F): ele vem na casca de erro do
     Next, onde o script do layout raiz não roda — sem `window.__SUPABASE_URL__`
     a tela virava "Algo deu errado" na produção. A config do Supabase do
@@ -7121,6 +7134,9 @@ verdade. O que vale:
   - Divisões que ainda são feitas na tela de Relatórios (taxa de conclusão da
     agenda, retenção, giro do estoque, conversão por origem): não mexidas; as
     do dashboard e da tabela por procedimento foram para `lib/metrics`.
+    **Decidido pelo Heitor (2026-10-29): as quatro vão para `lib/metrics`**, na
+    frente de indicadores. A conversão por origem já sai pela oportunidade
+    (item 15). A FAZER.
 
 - **Para decidir (2026-10-28): o que a cliente vê dos documentos no portal.**
   `/[slug]/cliente/historico` lista TODO `client_documents` dela — foto
