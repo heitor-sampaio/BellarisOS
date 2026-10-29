@@ -684,6 +684,23 @@ O resto do fluxo:
     `tests/obrigatorias-do-atendimento.test.ts`. Spec que finaliza sem ser
     sobre isto responde a ficha de saúde antes (`responderAnamnese`,
     `e2e/apoio/anamnese.ts`).
+- **O plano da avaliação é UMA gravação** (revisão do Heitor, 2026-10-29;
+  migration `20261029000801`). O "Enviar para a recepção" e o "Fechar agora"
+  salvavam a ficha do procedimento numa action e depois geravam o plano em
+  outra — e o plano gravava a anamnese, o plano, as sessões e as dores em
+  passos soltos: o plano que falhava deixava a ficha, a anamnese e um plano
+  PROPOSTO sem procedimento. Agora `generateEvaluationPlan` CALCULA (a
+  anamnese no formato da ficha atual com `anamneseDaEquipeParaGravar`, o
+  retrato da ficha do procedimento com `fichaParaConcluir` e
+  `retratarInjetaveis` — a ficha que a tela manda no 9º argumento —, as
+  obrigatórias) e `gerar_plano_da_avaliacao` GRAVA tudo numa transação: o
+  plano (PROPOSED, ligado por `evaluation_appointment_id`) e as sessões, a
+  ficha em `form_data.ficha`, as dores, a evolução (quando veio), a anamnese,
+  o pré-atendimento pendente que fecha e o histórico. Falhou um passo, nada
+  fica. A função confere que todo procedimento do plano é da rede, recusa o
+  agendamento cancelado e o plano já fechado (ACCEPTED/COMPLETED), e só o
+  servidor a chama. A action confere também a agenda "só os meus" pelo id
+  (`deOutroProfissional`). Prova: `e2e/atendimento-ficha-e-plano-juntos.spec.ts`.
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
   simulação de 2026-10-29): sem "Fechar agora" nem "Enviar para a recepção"
   (gerar o plano regravaria as dores e a evolução do registro fechado), a
@@ -733,6 +750,7 @@ O resto do fluxo:
 ❌ Ramo da tela do atendimento sem a ficha própria do procedimento (o avulso da rede que monta plano ficou sem ela de 2026-09-25 a 2026-10-29)
 ❌ Concluir o atendimento ou gerar o plano da avaliação sem oQueFaltaParaSeguir (a obrigatória barra; a trava não é só da tela)
 ❌ Decidir "campo vazio" por conta própria (é campoVazio/primeiraObrigatoriaVazia, lib/anamnesis.ts — a tela e o servidor dividem)
+❌ Gravar o plano da avaliação (ficha, anamnese, plano, sessões, dores) fora de gerar_plano_da_avaliacao — é uma transação só, como a conclusão
 ❌ Gravar a ficha do procedimento com o form_id que veio do navegador (é a ficha ligada ao procedimento do agendamento, da rede: fichaParaConcluir)
 ❌ Gravar na ficha os pontos do planejador de injetáveis que vieram do navegador (o retrato é do planejamento gravado: retratarInjetaveis), ou um planejamento de outra cliente
 ❌ Um segundo planejador de injetáveis: o campo da ficha é o PlanejamentoInjetaveis de Planejamento → Injetáveis

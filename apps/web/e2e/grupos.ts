@@ -127,6 +127,7 @@ export const ISOLADOS = [
   'atendimento-ficha-planejador-injetaveis.spec.ts',
   'atendimento-obrigatorias-barram.spec.ts',
   'atendimento-rascunho-da-ficha.spec.ts',
+  'atendimento-ficha-e-plano-juntos.spec.ts',
   'injetaveis-confirmar-so-no-atendimento.spec.ts',
   'injetaveis-so-os-meus.spec.ts',
   'planejamentos-so-os-meus.spec.ts',

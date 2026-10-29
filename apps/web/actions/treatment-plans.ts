@@ -1083,6 +1083,11 @@ async function generateEvaluationPlanInterno(
   sessionNotes:          string,
   sessionIntercurrences: string,
   slug:                  string,
+  /**
+   * As respostas da ficha do PROCEDIMENTO na tela (revisão do Heitor,
+   * 2026-10-29): vão na MESMA gravação do plano. Nulas = a salva antes fica.
+   */
+  fichaDaTela:           Record<string, unknown> | null = null,
 ): Promise<{ error?: string; planId?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
@@ -1090,120 +1095,109 @@ async function generateEvaluationPlanInterno(
   assertRecurso(ctx, 'planos_de_tratamento')
   const admin = createAdminClient()
 
-  if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
   if (sessions.length === 0) return { error: 'Adicione ao menos uma sessão ao plano antes de enviar.' }
 
   // Grava anamnese e prontuário do cliente DESTE agendamento: de outra rede,
   // seria escrever no prontuário de uma clínica alheia.
   const appt = await agendamentoDoTenant(admin, appointmentId, ctx)
   if (!appt) return { error: 'Agendamento não encontrado.' }
+  // A agenda "só os meus" vale pelo id (D4 de 2026-10-28).
+  if (deOutroProfissional(ctx, appt.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
 
-  // A obrigatória sem resposta (anamnese ou ficha do procedimento) barra o
-  // plano, como barra o "Finalizar" (revisão do Heitor, 2026-10-29). Vale o
-  // que fica gravado: a anamnese da tela, senão a gravada; a ficha salva.
-  {
-    const anamneseNaTela = anamnesis
-      ? await anamneseDaEquipeParaGravar(admin, { tenantId: ctx.tenantId!, clientId: appt.client_id, respostas: anamnesis, porUsuario: ctx.internalUserId })
-      : null
+  // A avaliação CONCLUÍDA também gera o plano ("é preciso avaliar primeiro pra
+  // depois decidir o que fazer" — revisão do Heitor, 2026-10-29), mas o
+  // registro dela está travado (A30): as dores, a evolução, a ficha e a
+  // anamnese daquele dia ficam como estão — só o plano nasce, ligado a ela.
+  // Por isso nada do registro é lido da tela nem conferido de novo.
+  const concluida = appt.status === 'COMPLETED'
+
+  let anamnese: AnamneseGeral | null = null
+  let pendente: Record<string, unknown> | null = null
+  let ficha: ReturnType<typeof fichaParaConcluir> = null
+  if (!concluida) {
+    if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
+    // A anamnese no formato da ficha ATUAL (nula sem mudança: a que a cliente
+    // respondeu não vira "pela equipe"); as respostas, limpas, fecham o
+    // pré-atendimento pendente — a equipe a revisou.
+    if (anamnesis) {
+      const fichaDeSaude = await fichaDePreAtendimento(admin, ctx.tenantId!)
+      const limpas = respostasDaFicha(fichaDeSaude.rows, anamnesis)
+      pendente = Object.keys(limpas).length ? limpas : null
+      anamnese = await anamneseDaEquipeParaGravar(admin, {
+        tenantId: ctx.tenantId!, clientId: appt.client_id, respostas: anamnesis, porUsuario: ctx.internalUserId,
+      })
+    }
+    // A ficha do procedimento da tela: o retrato da ficha ligada a ELE (não a
+    // que o navegador diz), com o planejador retratado no servidor.
+    if (fichaDaTela && appt.procedure_id) {
+      const proc = await ler(admin.from('procedures').select('form_id')
+        .eq('id', appt.procedure_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento')
+      const form = proc?.form_id
+        ? await ler(admin.from('forms').select('id, name, schema')
+            .eq('id', proc.form_id as string).eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha do procedimento')
+        : null
+      ficha = fichaParaConcluir(form as { id: string; name: string; schema: unknown } | null, fichaDaTela)
+      if (ficha) {
+        const retratadas = await retratarInjetaveis(admin, ctx, { rows: ficha.rows, answers: ficha.answers, clientId: appt.client_id })
+        if ('error' in retratadas) return { error: retratadas.error }
+        ficha = { ...ficha, answers: retratadas.answers }
+      }
+    }
+    // A obrigatória sem resposta (anamnese ou ficha do procedimento) barra o
+    // plano, como barra o "Finalizar" (revisão do Heitor, 2026-10-29). Vale o
+    // que fica gravado: o da tela, senão o gravado.
     const falta = await oQueFaltaParaSeguir(admin, {
       tenantId: ctx.tenantId!, appointmentId, procedureId: appt.procedure_id, clientId: appt.client_id,
-      semInjetaveis: !temRecurso(ctx, 'injetaveis'), anamneseNaTela, fichaNaTela: null,
+      semInjetaveis: !temRecurso(ctx, 'injetaveis'), anamneseNaTela: anamnese, fichaNaTela: ficha?.answers ?? null,
     })
     if (falta) return { error: falta }
   }
 
-  // 1. Queixas do cliente → o prontuário do atendimento (passo 4). Iam para
-  //    `appointments.notes`, a observação INTERNA do agendamento — que por
-  //    isso aparecia como dor na tela (A17/D3 da simulação de 2026-10-28).
-
-  // 2. Anamnese → medical_records.general_anamnesis, no formato da ficha de
-  //    pré-atendimento (e o pendente da cliente fecha).
-  if (anamnesis) {
-    await gravarAnamneseGeral(admin, {
-      tenantId: ctx.tenantId!, clientId: appt.client_id as string, respostas: anamnesis,
-      origem: 'EQUIPE', porUsuario: ctx.internalUserId,
-    })
-  }
-
-  // 3. Upsert plano + salvar sessões enviadas pelo editor → PROPOSED
-  const { data: plan, error: planErr } = await admin
-    .from('treatment_plans')
-    .upsert({
-      evaluation_appointment_id: appointmentId,
-      client_id:                 appt.client_id,
-      branch_id:                 appt.branch_id,
-      professional_id:           ctx.internalUserId!,
-      professional_notes:        planNotes.trim() || null,
-      status:                    'PROPOSED',
-      updated_at:                new Date().toISOString(),
-    }, { onConflict: 'evaluation_appointment_id' })
-    .select('id')
-    .single()
-  if (planErr || !plan) return { error: `Erro ao gerar plano: ${planErr?.message}` }
-
-  // Salva as sessões do editor (sobrescreve o que havia no banco)
-  await gravar(admin.from('treatment_plan_sessions').delete().eq('plan_id', plan.id), 'limpar as sessões do plano')
-  for (let i = 0; i < sessions.length; i++) {
-    const sess = sessions[i]!
-    const { data: newSess, error: sessErr } = await admin
-      .from('treatment_plan_sessions')
-      .insert({ plan_id: plan.id, sort_order: i })
-      .select('id').single()
-    if (sessErr || !newSess) return { error: `Erro ao salvar sessão ${i + 1}: ${sessErr?.message}` }
-    if (sess.procedures.length > 0) {
-      await gravar(admin.from('treatment_plan_session_procedures').insert(
-        sess.procedures.map((p, j) => ({
-          session_id:   newSess.id,
+  // ─── Grava, tudo ou nada ──────────────────────────────────────────────
+  // A ficha, a anamnese, o plano com as sessões, as dores, a evolução e o
+  // histórico numa transação só (`gerar_plano_da_avaliacao`). Eram passos
+  // soltos — e a ficha numa action à parte, antes —: o plano que falhava
+  // deixava a ficha e a anamnese gravadas e um plano proposto sem procedimento.
+  const comEvolucao = !!(sessionNotes.trim() || sessionIntercurrences.trim())
+  const userName = ctx.userName || ctx.roleLabel || 'Profissional'
+  const planId = await gravar(admin.rpc('gerar_plano_da_avaliacao', {
+    p_agendamento: appointmentId,
+    p_tenant:      ctx.tenantId!,
+    p_ator:        ctx.internalUserId,
+    p_ator_nome:   userName,
+    p_dados: {
+      profissional:   ctx.internalUserId,
+      notas_do_plano: planNotes,
+      sessoes: sessions.map(s => ({
+        procedimentos: s.procedures.map((p, j) => ({
           procedure_id: p.procedureId,
           price:        p.price,
           sort_order:   p.sortOrder ?? j,
-          products:     (p.products ?? []).map(pr => ({
-            product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity,
-          })),
+          products:     (p.products ?? []).map(pr => ({ product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity })),
         })),
-      ), 'salvar os procedimentos da sessão')
-    }
-  }
-  const count = sessions.length
+      })),
+      ...(!concluida ? {
+        queixas: complaints.trim(),
+        ...(comEvolucao ? { notas: sessionNotes.trim() || null, intercorrencias: sessionIntercurrences.trim() || null } : {}),
+        ...(anamnese ? { anamnese } : {}),
+        ...(pendente ? { pendente } : {}),
+        ...(ficha ? { ficha } : {}),
+      } : {}),
+    },
+  }), 'gerar o plano da avaliação') as string | null
+  if (!planId) return { error: 'Não foi possível gerar o plano.' }
 
-  // 4. Dores e observações do atendimento → medical_record_entries. As dores
-  //    sempre (são exigidas acima); a evolução só quando veio — sem ela, a que
-  //    já estava gravada fica.
-  {
-    let medRecord = await ler(admin
-      .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle(), 'buscar o prontuário do cliente')
-    if (!medRecord) {
-      const newRec = await ler(admin.from('medical_records').insert({ client_id: appt.client_id }).select('id').single(), 'abrir o prontuário do cliente')
-      medRecord = newRec
-    }
-    if (medRecord) {
-      const comEvolucao = !!(sessionNotes.trim() || sessionIntercurrences.trim())
-      await gravar(admin.from('medical_record_entries').upsert({
-        medical_record_id: medRecord.id,
-        appointment_id:    appointmentId,
-        professional_id:   appt.professional_id,
-        queixas:           complaints.trim(),
-        ...(comEvolucao ? {
-          notes:          sessionNotes.trim() || null,
-          intercurrences: sessionIntercurrences.trim() || null,
-        } : {}),
-      }, { onConflict: 'appointment_id' }), 'salvar as dores e as observações do atendimento')
-    }
+  // Depois: o aviso de que a ficha foi preenchida (o que o "Salvar ficha" emitia).
+  if (ficha) {
+    await emitirEventoClinico(EVENTOS.ANAMNESE_RESPONDIDA, appointmentId, ctx, {
+      clientId: appt.client_id, agendamentoId: appointmentId, referencia: 'form_data',
+    })
   }
-
-  // 5. Log
-  await tentar(admin.from('appointment_history').insert({
-    appointment_id:  appointmentId,
-    changed_by_id:   ctx.internalUserId,
-    changed_by_name: ctx.userName || ctx.roleLabel || 'Profissional',
-    action:          'PLAN_PROPOSED',
-    description:     `Plano de tratamento enviado para recepção — ${count} sessão(ões)`,
-  }), 'registrar no histórico do agendamento')
 
   revalidatePath(`/${slug}/agenda`)
   revalidatePath(`/${slug}/agenda/${appointmentId}`)
   revalidatePath(`/${slug}/checkout`)
-  return { planId: plan.id as string }
+  return { planId }
 }
 
 /**
@@ -1255,8 +1249,13 @@ import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto } from '@/lib/vendas/desconto'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
-import { paraAnamneseGeral, type AnamneseGeral } from '@/lib/anamnese-geral'
-import { fichaDePreAtendimento, gravarAnamneseGeral, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
+import { paraAnamneseGeral, respostasDaFicha, type AnamneseGeral } from '@/lib/anamnese-geral'
+import { fichaDePreAtendimento, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
+import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
+import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
+import { deOutroProfissional, DE_OUTRO_PROFISSIONAL } from '@/lib/appointments/alteracoes'
+import { emitirEventoClinico } from '@/lib/events/clinico'
+import { EVENTOS } from '@estetica-os/types'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 

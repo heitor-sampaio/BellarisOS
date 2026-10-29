@@ -1015,26 +1015,26 @@ export function AppointmentSession({
     const falta = conferirObrigatorias()
     if (falta) { setGenError(falta); return }
     setGenerating(true)
-    // A ficha do procedimento se salva antes, com a regra do "Salvar ficha"
-    // (as obrigatórias barram) — D1 da simulação de 2026-10-29.
-    const daFicha = await fichaRef.current?.save()
-    if (daFicha?.error) { setGenerating(false); setGenError(daFicha.error); return }
     const currentSessions = evalEditorRef.current?.getSessions() ?? []
     const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
     const anamnese = await anamneseDaAvaliacao.current?.coletar()
     if (anamnese?.error) { setGenerating(false); setGenError(anamnese.error); return }
+    // A ficha do procedimento vai NA MESMA gravação do plano (revisão do
+    // Heitor, 2026-10-29): era salva antes, numa action à parte, e o plano que
+    // falhava a deixava gravada pela metade. Sem mexer nela, a salva fica.
     const res = await generateEvaluationPlan(
       appointment.id, evalComplaints, anamnese?.respostas ?? null, currentSessions, currentNotes,
-      evalSessionNotes, evalSessionInterc, slug,
+      evalSessionNotes, evalSessionInterc, slug, fichaDigitada,
     )
     if (res.error || !res.planId) {
       setGenerating(false)
       setGenError(res.error ?? 'Não foi possível gerar o plano.')
       return
     }
-    // A evolução da avaliação foi gravada junto: o rascunho não serve mais.
+    // A evolução e a ficha da avaliação foram gravadas junto: o rascunho não serve mais.
     limparRascunho(appointment.id)
     setAnamneseDigitada(null)
+    setFichaDigitada(null)
     if (!fecharAgora) {
       setGenerating(false)
       router.refresh()
