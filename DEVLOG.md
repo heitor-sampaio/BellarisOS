@@ -7115,7 +7115,31 @@ verdade. O que vale:
     - a ficha guarda o planejamento usado e o retrato dos pontos do dia;
     - o mapa solto das fichas antigas continua legível.
 
-    A FAZER (depois da frente do "Não se aplica").
+    **Feito em 2026-10-29** (812a79f0, sem migration).
+    - O campo abre o MESMO planejador de Planejamento → Injetáveis: lista os
+      planejamentos da cliente, cria um novo e registra a aplicação ali.
+    - A ficha guarda o id e o retrato dos pontos, lidos do planejamento salvo
+      pelo servidor, também pelo "Finalizar", na transação.
+    - Na aba Prontuário, o retrato aparece para leitura, com "Abrir
+      planejamento".
+    - "O plano é da cliente" vale aqui: com "só os meus", ela usa os
+      planejamentos das clientes que atende.
+    - Prova: `e2e/atendimento-ficha-planejador-injetaveis.spec.ts`.
+
+    **Decisões para revisar:**
+    1. O retrato é o planejamento SALVO: a mudança no mapa sem "Salvar
+       planejamento" não entra, e o campo avisa.
+    2. Voltar à lista tira o planejamento da ficha.
+    3. O "Finalizar" refaz o retrato com o planejamento daquele momento.
+    4. Escolher um planejamento já preenche o campo obrigatório, mesmo sem
+       ponto.
+    5. Os produtos sugeridos são as opções do campo, não o estoque (texto
+       livre).
+    6. O mapa solto antigo numa ficha editável fica só para leitura.
+    7. No atendimento travado, o retrato fica sem o link.
+
+    Mexeu no renderizador de fichas (que também desenha a anamnese e o
+    portal) e no `finishSession`: vale uma completa.
   - ~~Grade da agenda (D5): "Minha agenda" usa o horário da UNIDADE (não o do
     próprio profissional); a da rede, o mais cedo e o mais tarde entre as
     unidades; atendimento que passa da meia-noite fecha a grade em 24h.~~
