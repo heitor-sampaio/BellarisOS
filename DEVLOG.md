@@ -7866,6 +7866,16 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   3. Quem é da rede e edita a Equipe também marca "atende" e muda o horário da admin.
   4. Os membros da rede aparecem na Equipe da unidade só para leitura, sem e-mail e sem comissão, e só os que atendem.
   5. O contador "N membros" passa a contar esses membros.
+
+  **Revisto pelo Heitor (2026-10-29):** (2), (4) e (5) confirmados. Mudam:
+  - **(1) "Somente um admin pode promover alguém a admin."** Quem tem o cargo
+    de Admin da rede pode dar esse cargo a outro membro, por exemplo uma
+    sócia. Ninguém mais pode, nem quem tem a Equipe em MANAGE. A última admin
+    ativa continua sem poder ser rebaixada.
+  - **(3) "Somente admin pode alterar admin."** Cargo, "atende", horário,
+    comissão e desativação de um Admin da rede só por outro Admin da rede
+    (ou por ela mesma, no que já pode). A gerente da rede deixa de poder.
+  - A FAZER, na frente de permissões.
 - **D3.** "1.400" no preço vira R$ 1,40, sem aviso. `parseDinheiro` lê o ponto como decimal quando não há vírgula (`packages/utils/src/format.ts:99-103`), e isso vale para todo campo de dinheiro. NOVO, uma ambiguidade da regra de `639ebd5`.
 
   **Feito em 2026-10-29** (7cd98962).
