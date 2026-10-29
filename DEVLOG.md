@@ -6893,8 +6893,8 @@ verdade. O que vale:
   - 404 (D18): o `loading.tsx` saiu do topo de `/admin` e `/[slug]` e foi
     para cada seção (26 arquivos de uma linha, um esqueleto só) — com o
     `loading` no topo, o Next manda o status 200 antes do `notFound()`. Seção
-    nova com tela precisa do seu `loading.tsx` (um teste cobra). Provado só no
-    `next dev`; falta conferir no build ou na produção.
+    nova com tela precisa do seu `loading.tsx` (um teste cobra). Conferido
+    na produção e na completa contra o build (run 40785403989).
   - Conversão (D10): uma conta só, "viraram cliente ÷ leads no funil", em
     Oportunidades, Relatórios e dashboard. Num funil de pós-venda ela nasce
     100% (era por isso que o quadro contava a etapa de ganho). "Ganhos" e
