@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * A31 da simulação de 2026-10-27: as anotações escritas antes de finalizar se
@@ -39,6 +40,9 @@ test.beforeAll(async () => {
   })
   expect((await db().from('users').update({ provides_services: true }).eq('id', profissional.userId)).error).toBeNull()
   const cliente = await rede.criarCliente('Mariana')
+  // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+  // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+  await responderAnamnese(cliente, rede.tenantId)
   const { data, error } = await db().from('appointments').insert({
     branch_id: rede.branchId, client_id: cliente, procedure_id: rede.procedureId, professional_id: profissional.userId,
     status: 'IN_PROGRESS', source: 'INTERNAL', duration_min: 30, price: 0,

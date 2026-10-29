@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarAgendamentos } from './apoio/limpeza'
 import { chamarAcao } from './apoio/acao-direta'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * O planejador de injetáveis da ficha do procedimento (pedido do Heitor,
@@ -87,6 +88,9 @@ test.afterAll(async () => {
 async function cliente(rotulo: string): Promise<string> {
   const id = await rede!.criarCliente(rotulo)
   clientes.push(id)
+  // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+  // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+  await responderAnamnese(id, rede!.tenantId)
   return id
 }
 

@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * D3 da simulação de 2026-10-28: as "Dores do cliente" e a anamnese digitadas
@@ -36,8 +37,15 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
-async function atendimentoEmCurso(rotulo: string, extra: Record<string, unknown> = {}): Promise<{ id: string; cliente: string }> {
+/**
+ * A cliente já chega com a ficha de saúde respondida (as obrigatórias): desde a
+ * revisão do Heitor de 2026-10-29, a obrigatória sem resposta barra o
+ * "Finalizar" — e o que se prova aqui é o que a tela leva, não a trava
+ * (`atendimento-obrigatorias-barram.spec.ts`).
+ */
+async function atendimentoEmCurso(rotulo: string, extra: Record<string, unknown> = {}): Promise<{ id: string; cliente: string; respostas: Record<string, string | string[]> }> {
   const cliente = await rede!.criarCliente(rotulo)
+  const respostas = await responderAnamnese(cliente, rede!.tenantId)
   const { data, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: profissional!.userId,
     status: 'IN_PROGRESS', source: 'INTERNAL', duration_min: 30, price: 0,
@@ -45,7 +53,7 @@ async function atendimentoEmCurso(rotulo: string, extra: Record<string, unknown>
     ...extra,
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
-  return { id: data!.id, cliente }
+  return { id: data!.id, cliente, respostas }
 }
 
 const dores = (p: Page) => p.getByPlaceholder('Anote o que o cliente relatou: queixas estéticas, objetivos, histórico de tratamentos anteriores…')
@@ -135,11 +143,11 @@ test('recarregar não perde as dores, a anamnese nem a dose do insumo — e a do
 })
 
 test('a anamnese que a cliente respondeu, sem ninguém mexer, não vira "pela equipe" ao finalizar', async ({ browser }) => {
-  const { id, cliente } = await atendimentoEmCurso('Intacta')
+  const { id, cliente, respostas } = await atendimentoEmCurso('Intacta')
   const respondidoEm = new Date(Date.now() - 2 * 86_400_000).toISOString()
   const daCliente = {
     versao: 2, ficha: { formId: null, nome: 'Pré-atendimento', rows: [] },
-    respostas: { allergies: `dipirona ${marca}` }, respondidoEm, origem: 'CLIENTE_APP', respondidoPor: null,
+    respostas: { ...respostas, allergies: `dipirona ${marca}` }, respondidoEm, origem: 'CLIENTE_APP', respondidoPor: null,
   }
   expect((await db().from('medical_records').upsert({ client_id: cliente, general_anamnesis: daCliente }, { onConflict: 'client_id' })).error).toBeNull()
   await como(browser, async p => {

@@ -234,6 +234,34 @@ export function flattenFields(schema: AnamnesisFormSchema): AnamnesisField[] {
   return schema.rows.flatMap(r => r.fields)
 }
 
+/**
+ * A resposta de um campo está VAZIA? A regra única da obrigatória — a tela
+ * (`AnamnesisFormRenderer`) e o servidor (`lib/atendimento/obrigatorias.ts`)
+ * usam esta. O planejador de injetáveis vale com o planejamento escolhido,
+ * mesmo sem ponto (2026-10-29); sem este caso, o objeto viraria
+ * "[object Object]", que não é texto em branco.
+ */
+export function campoVazio(v: unknown): boolean {
+  if (v == null) return true
+  if (Array.isArray(v)) return v.length === 0
+  if (isInjectableMap(v)) return v.points.length === 0 && !planejamentoDoValor(v)
+  if (typeof v === 'object') return true
+  return String(v).trim() === ''
+}
+
+/**
+ * A primeira pergunta OBRIGATÓRIA sem resposta, na ordem da ficha (ou nula).
+ * `ignorar`: os tipos que quem preenche não consegue responder ali — a foto
+ * e o planejador na ficha de saúde (a cliente responde pelo celular), o
+ * planejador na rede sem o recurso de injetáveis (o campo fica só para ver).
+ */
+export function primeiraObrigatoriaVazia(
+  rows: AnamnesisRow[], respostas: Record<string, unknown>, ignorar: AnamnesisFieldType[] = [],
+): AnamnesisField | null {
+  return flattenFields({ rows }).find(f =>
+    f.required && f.type !== 'section' && !ignorar.includes(f.type) && campoVazio(respostas[f.id])) ?? null
+}
+
 /** Retorna mensagem de erro se o schema for inválido; null se ok. */
 export function validateFormSchema(schema: AnamnesisFormSchema): string | null {
   const fields = flattenFields(schema)

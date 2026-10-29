@@ -1,12 +1,13 @@
 'use client'
 
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, Edit2, X } from 'lucide-react'
 import { AnamnesisFormRenderer, type AnamnesisFormHandle, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
 import { salvarAnamneseGeral } from '@/actions/pre-atendimento'
 import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import type { AnamnesisRow } from '@/lib/anamnesis'
+import { faltaNaAnamnese } from '@/lib/atendimento/obrigatorias'
 
 /**
  * A anamnese geral da cliente (2026-10-20): as perguntas da FICHA DE
@@ -46,7 +47,14 @@ export function RespostasDaAnamnese({ rows, respostas }: { rows: AnamnesisRow[];
   )
 }
 
-export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, embedded = false, rascunho = null, onMudou }: {
+/**
+ * Conferir as obrigatórias da anamnese sem salvar (o "Finalizar" do
+ * atendimento — revisão do Heitor, 2026-10-29). Com a ficha só para ler e uma
+ * obrigatória sem resposta, o cartão abre para editar e aponta o campo.
+ */
+export interface AnamneseGeralCartaoHandle { validar: () => { error?: string } }
+
+export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
   anamnese:   AnamneseGeral | null
   fichaAtual: FichaDePreAtendimento
   clientId:   string
@@ -57,14 +65,33 @@ export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, e
   rascunho?:  Record<string, unknown> | null
   /** Cada resposta mudada (o rascunho e o "Finalizar"); `null` depois de salvar. */
   onMudou?:   (respostas: Record<string, unknown> | null) => void
-}) {
+}>(function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, embedded = false, rascunho = null, onMudou }, ref) {
   const router = useRouter()
   // Sem anamnese ainda (ou vazia), a ficha já abre para responder (quem pode editar).
   const respondida = anamneseRespondida(anamnese)
   const [editando, setEditando] = useState((!respondida || !!rascunho) && canEdit)
+  const renderer = useRef<AnamnesisFormHandle>(null)
+  // Abriu para editar por causa de uma obrigatória: aponta o campo depois de montar.
+  const [apontar, setApontar] = useState(false)
+  useEffect(() => {
+    if (!apontar || !editando) return
+    renderer.current?.validar()
+    setApontar(false) // eslint-disable-line react-hooks/set-state-in-effect -- um pedido só, cumprido depois de o formulário existir
+  }, [apontar, editando])
+
+  useImperativeHandle(ref, () => ({
+    validar() {
+      if (editando) return renderer.current?.validar() ?? {}
+      const falta = faltaNaAnamnese(fichaAtual.rows, anamnese?.respostas ?? {})
+      if (!falta) return {}
+      if (canEdit) { setEditando(true); setApontar(true) }
+      return { error: falta.mensagem }
+    },
+  }))
 
   const corpo = editando ? (
     <AnamnesisFormRenderer
+      ref={renderer}
       appointmentId="" slug=""
       formName={fichaAtual.nome}
       rows={fichaAtual.rows}
@@ -126,11 +153,13 @@ export function AnamneseGeralCartao({ anamnese, fichaAtual, clientId, canEdit, e
       <div style={{ padding: '18px 20px' }}>{corpo}</div>
     </div>
   )
-}
+})
 
 /** Na AVALIAÇÃO a anamnese é salva junto com o plano: o handle colhe as respostas. */
 export interface AnamneseNaAvaliacaoHandle {
   coletar: () => Promise<{ respostas?: Record<string, unknown>; error?: string }>
+  /** Aponta a primeira obrigatória vazia, sem colher (o "Finalizar" — 2026-10-29). */
+  validar: () => { error?: string }
 }
 
 export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
@@ -151,6 +180,7 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
       if (r?.error) return { error: r.error }
       return { respostas: colhidas.current ?? {} }
     },
+    validar: () => renderer.current?.validar() ?? {},
   }))
 
   return (

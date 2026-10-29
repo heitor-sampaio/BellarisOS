@@ -197,6 +197,10 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
   })
 
   const fichaDaRede = async () => (await db().from('forms').select('id, schema').eq('tenant_id', B.tenantId).eq('tipo', 'PRE_ATENDIMENTO').single<{ id: string; schema: { rows: { fields: { id: string }[] }[] } }>()).data!
+  // As outras obrigatórias da ficha padrão (gestação, medicamentos, condições):
+  // desde a revisão do Heitor de 2026-10-29, a obrigatória sem resposta barra o
+  // "Enviar para a recepção" — a avaliação daqui manda a ficha inteira.
+  const OUTRAS_OBRIGATORIAS = { isPregnantOrBreastfeeding: 'Não', medications: 'Nenhum', healthConditions: 'Nenhuma' }
   const idsDaFicha = async () => (await fichaDaRede()).schema.rows.flatMap(r => r.fields.map(f => f.id))
   const comCampo = async (campo: Record<string, unknown>) => {
     const atual = await fichaDaRede()
@@ -297,13 +301,13 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
     const page = await ctx.newPage()
     try {
       await chamarAcao(page, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/admin/agenda/${ap!.id}`, [
-        ap!.id, 'Quer tratar manchas', { allergies: `pólen ${marca}`, campoQueNaoExiste: 'x' },
+        ap!.id, 'Quer tratar manchas', { allergies: `pólen ${marca}`, ...OUTRAS_OBRIGATORIAS, campoQueNaoExiste: 'x' },
         [{ procedures: [{ procedureId: B.procedureId, price: 100 }] }], '', '', '', `e2e-un-pb${marca}`,
       ])
       const { data } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
       const g = data?.general_anamnesis as { versao?: number; respostas?: Record<string, string> }
       expect(g?.versao).toBe(2)
-      expect(g?.respostas, 'só as perguntas da ficha').toEqual({ allergies: `pólen ${marca}` })
+      expect(g?.respostas, 'só as perguntas da ficha').toEqual({ allergies: `pólen ${marca}`, ...OUTRAS_OBRIGATORIAS })
     } finally {
       await ctx.close()
       // O plano nasce com o membro como profissional: sai antes dele (afterAll).
@@ -319,7 +323,7 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
     const respondidoEm = '2026-10-19T15:00:00.000Z'
     const { error: eR } = await db().from('medical_records').upsert({ client_id: cliente, general_anamnesis: {
       versao: 2, ficha: { formId: null, nome: 'Pré-atendimento', rows: (await fichaDaRede()).schema.rows },
-      respostas: { allergies: `dipirona ${marca}` }, respondidoEm, origem: 'CLIENTE_LINK', respondidoPor: null,
+      respostas: { allergies: `dipirona ${marca}`, ...OUTRAS_OBRIGATORIAS }, respondidoEm, origem: 'CLIENTE_LINK', respondidoPor: null,
     } }, { onConflict: 'client_id' })
     expect(eR).toBeNull()
     const { data: ap } = await db().from('appointments').insert({
@@ -330,7 +334,7 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
     const page = await ctx.newPage()
     try {
       await chamarAcao(page, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/admin/agenda/${ap!.id}`, [
-        ap!.id, 'Quer tratar manchas', { allergies: `dipirona ${marca}` },
+        ap!.id, 'Quer tratar manchas', { allergies: `dipirona ${marca}`, ...OUTRAS_OBRIGATORIAS },
         [{ procedures: [{ procedureId: B.procedureId, price: 100 }] }], '', '', '', `e2e-un-pb${marca}`,
       ])
       const { data: plano } = await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', ap!.id).maybeSingle()

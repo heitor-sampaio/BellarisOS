@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco, tenantId, unidadeQueAtende, PREFIXO } from './apoio/banco'
 import { capturarAcao, reenviarAcao } from './apoio/acao'
 import { apagarClientes } from './apoio/limpeza'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * O atendimento de ponta a ponta, pela tela: check-in, iniciar, finalizar e
@@ -51,6 +52,9 @@ test.describe.serial('fechar um atendimento', () => {
       .insert({ tenant_id: tenant, branch_id: unidade!.id, name: `${PREFIXO} Cliente atendimento ${marca}`, phone: '5548' + String(Date.now()).slice(-9) })
       .select('id').single())
     await db.from('loyalty_accounts').upsert({ client_id: cli.id }, { onConflict: 'client_id' })
+    // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+    // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+    await responderAnamnese(cli.id, tenant)
     const proc = await passo<{ id: string }>('procedimento', db.from('procedures')
       .insert({ tenant_id: tenant, name: `${PREFIXO} Proc atendimento ${marca}`, category: 'e2e', duration_min: 30, price: PRECO, is_active: true })
       .select('id').single())

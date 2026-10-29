@@ -5,6 +5,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarClientes } from './apoio/limpeza'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * Pacotes (2026-09-30): o catálogo em Procedimentos, a venda na ficha do
@@ -30,6 +31,9 @@ const NOME = `${PREFIXO} Pacote ${marca}`
 test.beforeAll(async () => {
   rede = await criarOutraRede(`pv${marca}`)
   cliente = await rede.criarCliente('Pacote')
+  // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+  // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+  await responderAnamnese(cliente, rede.tenantId)
   // Um pacote é um conjunto de procedimentos: A (tabela R$ 300) e B (R$ 100).
   await db().from('procedures').update({ price: 300 }).eq('id', rede.procedureId)
   const { data: b, error: eB } = await db().from('procedures').insert({

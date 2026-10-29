@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarAgendamentos } from './apoio/limpeza'
+import { responderAnamnese } from './apoio/anamnese'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
@@ -89,6 +90,9 @@ async function desmontar(c: Cenario | null) {
 
 async function atendimentoAvulsoEmCurso(c: Cenario, rotulo: string): Promise<string> {
   const cliente = await c.rede.criarCliente(rotulo)
+  // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+  // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+  await responderAnamnese(cliente, c.rede.tenantId)
   const { data, error } = await db().from('appointments').insert({
     branch_id: c.rede.branchId, client_id: cliente, procedure_id: c.procedimento, professional_id: c.profissional.userId,
     status: 'IN_PROGRESS', source: 'INTERNAL', duration_min: 30, price: 0,

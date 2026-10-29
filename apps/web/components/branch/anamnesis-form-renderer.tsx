@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Save, Upload, X, ImageIcon, CheckCircle2, Syringe, ExternalLink } from 'lucide-react'
 import {
-  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor,
+  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor, primeiraObrigatoriaVazia,
   type AnamnesisField, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
@@ -19,8 +19,15 @@ export type AnamnesisAnswers = Record<string, AnswerValue>
 
 type SaveArgs = { appointmentId: string; slug: string; answers: Record<string, unknown> }
 
-/** Handle imperativo para salvar via um botão externo ("salvar tudo"). */
-export interface AnamnesisFormHandle { save: () => Promise<{ error?: string }> }
+/**
+ * Handle imperativo: salvar via um botão externo ("salvar tudo") e CONFERIR as
+ * obrigatórias sem salvar (o "Finalizar" e o "Enviar para a recepção" — revisão
+ * do Heitor, 2026-10-29): aponta o primeiro campo vazio, como o salvar.
+ */
+export interface AnamnesisFormHandle {
+  save:    () => Promise<{ error?: string }>
+  validar: () => { error?: string }
+}
 
 interface Props {
   appointmentId: string
@@ -105,12 +112,25 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
     setInvalido(v => (v?.id === id ? null : v))
   }
 
+  /**
+   * A primeira obrigatória vazia, apontada na tela (rola, foca, destaca). O
+   * planejador sem o recurso de injetáveis fica só para ver: não barra.
+   */
+  function validar(): { error?: string } {
+    if (!canEdit) return {}
+    setError(null); setInvalido(null)
+    const missing = primeiraObrigatoriaVazia(rows, answers, semInjetaveis ? ['injectable_map'] : [])
+    if (!missing) return {}
+    const msg = `Preencha "${missing.label}".`
+    setError(msg); setInvalido({ id: missing.id, msg })
+    return { error: msg }
+  }
+
   async function save(): Promise<{ error?: string }> {
     if (!canEdit) return {}
-    setSaving(true); setError(null); setInvalido(null)
-    // valida obrigatórios
-    const missing = flattenFields({ rows }).find(f => f.required && f.type !== 'section' && isEmpty(answers[f.id]))
-    if (missing) { const msg = `Preencha "${missing.label}".`; setError(msg); setInvalido({ id: missing.id, msg }); setSaving(false); return { error: msg } }
+    const v = validar()
+    if (v.error) return v
+    setSaving(true)
     const res = await doSave({ appointmentId, slug, answers })
     setSaving(false)
     if (res.error) { setError(res.error); return { error: res.error } }
@@ -118,7 +138,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
     return {}
   }
 
-  useImperativeHandle(ref, () => ({ save }))
+  useImperativeHandle(ref, () => ({ save, validar }))
 
   return (
     <div ref={raiz} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -157,15 +177,6 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
     </div>
   )
 })
-
-function isEmpty(v: AnswerValue | undefined): boolean {
-  if (v == null) return true
-  if (Array.isArray(v)) return v.length === 0
-  // Sem este caso, um planejador obrigatório passava vazio: `String(objeto)`
-  // vira "[object Object]", que não é string em branco.
-  if (isInjectableMap(v)) return v.points.length === 0 && !planejamentoDoValor(v)
-  return String(v).trim() === ''
-}
 
 const labelStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block',

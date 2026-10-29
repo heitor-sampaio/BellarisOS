@@ -26,7 +26,7 @@ import { generateEvaluationPlan, getCheckoutPlan, receberDoPlano } from '@/actio
 import { CheckoutWizard } from '@/components/branch/checkout-wizard'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
-import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle } from '@/components/branch/anamnese-geral'
+import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle, type AnamneseGeralCartaoHandle } from '@/components/branch/anamnese-geral'
 import { alergiasDaAnamnese, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
@@ -966,6 +966,8 @@ export function AppointmentSession({
   const [evalComplaints,         setEvalComplaints]         = useState(appointment.complaints ?? '')
   // A anamnese da avaliação: a ficha de pré-atendimento, colhida ao gerar o plano.
   const anamneseDaAvaliacao = useRef<AnamneseNaAvaliacaoHandle>(null)
+  // A anamnese dos outros formatos da tela (o cartão da ficha de atendimento).
+  const anamneseDoCartao = useRef<AnamneseGeralCartaoHandle>(null)
   // A anamnese DIGITADA na tela (nula enquanto ninguém mexe): vai na conclusão
   // e no rascunho (D3 da simulação de 2026-10-28). A do rascunho remonta o
   // formulário com ela, que só lê o valor inicial ao nascer.
@@ -999,7 +1001,11 @@ export function AppointmentSession({
    * já está na fila de qualquer jeito.
    */
   async function gerarPlano(fecharAgora: boolean) {
-    setGenerating(true); setGenError(null)
+    setGenError(null)
+    // A obrigatória sem resposta barra o plano (revisão do Heitor, 2026-10-29).
+    const falta = conferirObrigatorias()
+    if (falta) { setGenError(falta); return }
+    setGenerating(true)
     // A ficha do procedimento se salva antes, com a regra do "Salvar ficha"
     // (as obrigatórias barram) — D1 da simulação de 2026-10-29.
     const daFicha = await fichaRef.current?.save()
@@ -1060,6 +1066,22 @@ export function AppointmentSession({
   const [notes,          setNotes]          = useState(appointment.savedNotes ?? '')
   const [intercurrences, setIntercurrences] = useState(appointment.savedIntercurrences ?? '')
   const fichaRef = useRef<AnamnesisFormHandle>(null)
+
+  /**
+   * "Tudo que for obrigatório é obrigatório e barra qualquer progressão"
+   * (revisão do Heitor, 2026-10-29): antes de abrir o "Finalizar" ou de gerar
+   * o plano, a tela aponta a primeira obrigatória vazia — a anamnese, depois a
+   * ficha do procedimento (a ordem da página) — e não segue. O servidor
+   * confere de novo. Quem não vê o clínico não tem os campos na tela: aí quem
+   * decide é o servidor, e a recusa dele aparece na janela.
+   */
+  function conferirObrigatorias(): string | null {
+    if (!canViewRecords) return null
+    const anamnese = (anamneseDaAvaliacao.current ?? anamneseDoCartao.current)?.validar()
+    if (anamnese?.error) return anamnese.error
+    const daFicha = fichaRef.current?.validar()
+    return daFicha?.error ?? null
+  }
 
   // O rascunho das anotações (A31, 2026-10-27): recarregar a página perdia o
   // que a profissional escreveu antes de finalizar. Vai para o
@@ -1287,7 +1309,7 @@ export function AppointmentSession({
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
       generalAnamnesis={
-        <AnamneseGeralCartao embedded anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={canEditRecords}
+        <AnamneseGeralCartao ref={anamneseDoCartao} embedded anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={canEditRecords}
           key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
       }
       procedureNode={procedureNode}
@@ -1296,7 +1318,7 @@ export function AppointmentSession({
         name: ficha.name,
         node: (
           <AnamnesisFormRenderer
-            ref={unified ? fichaRef : null}
+            ref={fichaRef}
             appointmentId={appointment.id} slug={slug}
             formName={ficha.name} rows={ficha.rows}
             initial={respostasDaFicha as AnamnesisAnswers} canEdit={canEditRecords}
@@ -1533,7 +1555,7 @@ export function AppointmentSession({
               </span>
             )}
             {status === 'IN_PROGRESS' && canManage && canEditRecords && (
-              <button type="button" onClick={() => setShowFinish(true)}
+              <button type="button" onClick={() => { if (!conferirObrigatorias()) setShowFinish(true) }}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} /> Finalizar atendimento
               </button>

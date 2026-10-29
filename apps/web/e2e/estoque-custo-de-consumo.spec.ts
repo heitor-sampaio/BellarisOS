@@ -2,6 +2,7 @@ import { test, expect, type Browser } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * O custo do insumo é o da UNIDADE DE CONSUMO, em todo lugar (D1, D2, D3 e
@@ -65,6 +66,9 @@ test.beforeAll(async () => {
   expect(eC).toBeNull()
 
   cliente = await rede.criarCliente('Insumo')
+  // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+  // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+  await responderAnamnese(cliente, rede.tenantId)
   const { data: b2, error: eB } = await db().from('branches')
     .insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Segunda ${marca}`, slug: `e2e-cq2-${marca}` })
     .select('id').single<{ id: string }>()

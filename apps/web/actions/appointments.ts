@@ -4,7 +4,7 @@ import { ligarCredito } from '@/lib/creditos/credito'
 import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
-import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can, temRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
@@ -36,6 +36,7 @@ import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
+import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
@@ -880,6 +881,18 @@ async function finishSessionInterno(
         ficha = null
       } else ficha = { ...ficha, answers: retratadas.answers }
     }
+
+    // A obrigatória sem resposta barra o "Finalizar" (revisão do Heitor,
+    // 2026-10-29: "tudo que for obrigatório é obrigatório e barra qualquer
+    // progressão"). Era o contrário — "a cliente já foi atendida" —, e o
+    // prontuário ficava sem o que a clínica marcou como obrigatório. Vale o
+    // que FICA gravado: a anamnese e a ficha da tela, senão as já gravadas.
+    const falta = await oQueFaltaParaSeguir(admin, {
+      tenantId: ctx.tenantId!, appointmentId, procedureId: (appt.procedure_id as string | null) ?? null,
+      clientId: (appt.client_id as string | null) ?? null, semInjetaveis: !temRecurso(ctx, 'injetaveis'),
+      anamneseNaTela: anamnese, fichaNaTela: daTela && ficha ? ficha.answers : null,
+    })
+    if (falta) return { error: falta }
 
     // ─── Grava, tudo ou nada ──────────────────────────────────────────────
     const userName = ctx.userName || await getUserName(admin, ctx.userId)

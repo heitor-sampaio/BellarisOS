@@ -125,6 +125,7 @@ export const ISOLADOS = [
   'atendimento-finalizar-grava-tudo.spec.ts',
   'atendimento-ficha-do-procedimento.spec.ts',
   'atendimento-ficha-planejador-injetaveis.spec.ts',
+  'atendimento-obrigatorias-barram.spec.ts',
   'injetaveis-confirmar-so-no-atendimento.spec.ts',
   'injetaveis-so-os-meus.spec.ts',
   'planejamentos-so-os-meus.spec.ts',

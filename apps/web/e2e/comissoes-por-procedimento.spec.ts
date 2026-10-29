@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * A comissão pelo PROCEDIMENTO (pedido do Heitor, 2026-10-15): cada
@@ -48,6 +49,9 @@ test.beforeAll(async () => {
   ])
   expect(regras.error).toBeNull()
   cliente = await rede.criarCliente('Comissão do procedimento')
+  // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+  // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+  await responderAnamnese(cliente, rede.tenantId)
   gestor = await criarMembro(`cppg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestor',
     permissoes: [

@@ -2,6 +2,7 @@ import { test, expect, type Browser } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * Comissões, fase 2 (2026-09-30): uma LINHA por procedimento executado e o
@@ -40,6 +41,9 @@ test.beforeAll(async () => {
   ])
   expect(eR).toBeNull()
   cliente = await rede.criarCliente('Comissão')
+  // A ficha de saúde respondida (as obrigatórias): desde a revisão do Heitor de
+  // 2026-10-29, a obrigatória sem resposta barra o "Finalizar atendimento".
+  await responderAnamnese(cliente, rede.tenantId)
   gestor = await criarMembro(`ccg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Atende comissões',
     permissoes: [

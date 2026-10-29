@@ -217,8 +217,8 @@ const procedures = await ler(
     de plano (ou a rede sem planos) a têm dentro da "Ficha de atendimento".
     Faltava no primeiro desde 2026-09-25, e a profissional concluía sem ela.
     Só vai à tela com `canViewRecords` (o acesso já é registrado na sessão).
-    A obrigatória barra o "Salvar ficha" e o "Enviar para a recepção" (que
-    salva a ficha antes), não o "Finalizar" (§10). Prova:
+    A obrigatória barra o "Salvar ficha", o "Enviar para a recepção" e,
+    desde a revisão do Heitor de 2026-10-29, também o "Finalizar" (§10). Prova:
     `e2e/atendimento-ficha-do-procedimento.spec.ts`.
   - **Não confundir com `medical_records.general_anamnesis`**: aquilo é o
     questionário de saúde do CLIENTE, preenchido uma vez, que alimenta o termo
@@ -294,7 +294,8 @@ const procedures = await ler(
     Copilot não lê a anamnese, e a conversão do legado (`simNao`) só diz
     "Sim" do verdadeiro e deixa um texto como está.
     A obrigatória vale para todo preenchimento pelo construtor: a equipe
-    também a preenche ao salvar a anamnese ou mandar a avaliação.
+    também a preenche ao salvar a anamnese, mandar a avaliação ou FINALIZAR
+    o atendimento (§10, "Tudo que é obrigatório barra").
   - **A ficha gravada vazia não é "respondida" em lugar nenhum**
     (`anamneseRespondida`): sem "Anamnese revisada" nem "Respondida…" no
     atendimento (a tela diz "Ficha de saúde vazia"), sem "algo mudou?", sem
@@ -625,9 +626,8 @@ O resto do fluxo:
   que alguém MEXEU (`anamneseDaEquipeParaGravar`, `lib/pre-atendimento/ficha.ts`:
   a ficha atual, as respostas limpas; nula sem resposta ou sem mudança — a
   ficha que a cliente respondeu não vira "pela equipe"), e
-  `concluir_atendimento` grava tudo e fecha o pré-atendimento pendente. O
-  "Finalizar" não exige as obrigatórias da ficha: a cliente já foi atendida.
-  Prova: `e2e/atendimento-finalizar-grava-tudo.spec.ts`,
+  `concluir_atendimento` grava tudo e fecha o pré-atendimento pendente. As
+  obrigatórias, desde 2026-10-29, barram (abaixo). Prova: `e2e/atendimento-finalizar-grava-tudo.spec.ts`,
   `tests/rascunho-do-atendimento.test.ts`.
 - **E a ficha própria do procedimento também** (D1 da simulação de
   2026-10-29; migration `20261029000401`): o "Finalizar" leva as respostas
@@ -638,14 +638,52 @@ O resto do fluxo:
   dela) — o navegador não escolhe a ficha. `concluir_atendimento` grava em
   `form_data.ficha` (o formato do `salvarFichaDoProcedimento`), mantendo o
   resto de `form_data`; sem `ficha`, a salva antes fica. Antes, só o
-  "Salvar" a gravava, e finalizar sem salvar a perdia. Como a anamnese, o
-  "Finalizar" não exige as obrigatórias da ficha. A ficha não está no
+  "Salvar" a gravava, e finalizar sem salvar a perdia. A ficha não está no
   rascunho (A31): o "Salvar ficha" é o caminho para guardar antes.
   O planejador de injetáveis da ficha entra com o RETRATO do planejamento
   da cliente lido no servidor (`retratarInjetaveis`, §9.4) — também quando a
   ficha salva não foi tocada na tela.
   Prova: `e2e/atendimento-ficha-do-procedimento.spec.ts`,
   `tests/ficha-do-procedimento-na-conclusao.test.ts`.
+- **Tudo que é obrigatório barra** (revisão do Heitor, 2026-10-29: "tudo que
+  for obrigatório é obrigatório e barra qualquer progressão se não for
+  feito"). A pergunta obrigatória sem resposta — na ANAMNESE (a ficha de
+  pré-atendimento da rede) ou na FICHA DO PROCEDIMENTO — barra o "Finalizar
+  atendimento", o "Enviar para a recepção" e o "Fechar agora". Era o
+  contrário ("a cliente já foi atendida", D2/D3 de 28/10 e D1 de 29/10).
+  - **A tela aponta** a primeira que falta — a anamnese antes da ficha, a
+    ordem da página — rolando até o campo, com o foco e a mensagem junto dele
+    (`validar()` do `AnamnesisFormRenderer`; com a anamnese só para ler, o
+    cartão abre para editar e aponta). A janela de concluir nem abre.
+  - **O servidor recusa** (`oQueFaltaParaSeguir`,
+    `lib/atendimento/obrigatorias-no-servidor.ts`) em `finishSession` e em
+    `generateEvaluationPlan` — a trava não é só do navegador. A conta é UMA,
+    pura (`campoVazio`/`primeiraObrigatoriaVazia` em `lib/anamnesis.ts`,
+    `faltaNaAnamnese`/`faltaNaFichaDoProcedimento` em
+    `lib/atendimento/obrigatorias.ts`): a tela e o servidor usam a mesma.
+    Fica no app, não em `concluir_atendimento` (o app calcula, a função
+    grava): a função chamada direto, sem o app, não confere.
+  - **Vale o que FICA gravado**: a anamnese que a tela manda gravar
+    (`anamneseDaEquipeParaGravar`), senão a gravada — a que a cliente
+    respondeu pelo app ou pelo link vale, e a obrigatória só falta quando não
+    tem resposta em lugar nenhum; a ficha da tela, senão a salva antes. As
+    perguntas são as da ficha ATUAL (a de pré-atendimento da rede; a ligada ao
+    procedimento). Resposta antiga, fora da validade da rede, ainda conta como
+    resposta.
+  - Sem ficha ligada ao procedimento, ou ficha sem obrigatória, nada barra.
+    A foto e o planejador ficam fora da anamnese (a cliente responde pelo
+    celular); o planejador da ficha, na rede sem o recurso de injetáveis (o
+    campo é só para ver), não barra. O planejamento escolhido vale mesmo sem
+    ponto.
+  - **Quem não vê o clínico** (prontuário "só os meus" num atendimento de
+    outra, com a agenda de todas): a tela não tem os campos e não aponta nada;
+    o servidor recusa do mesmo jeito, com só o NOME da pergunta na mensagem.
+    Quem responde é quem atende. A recepção não conclui (concluir pede
+    `medical_records: MANAGE`), então não é barrada por isto.
+  - Prova: `e2e/atendimento-obrigatorias-barram.spec.ts`,
+    `tests/obrigatorias-do-atendimento.test.ts`. Spec que finaliza sem ser
+    sobre isto responde a ficha de saúde antes (`responderAnamnese`,
+    `e2e/apoio/anamnese.ts`).
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
   simulação de 2026-10-29): sem "Fechar agora" nem "Enviar para a recepção"
   (gerar o plano regravaria as dores e a evolução do registro fechado), a
@@ -688,6 +726,8 @@ O resto do fluxo:
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores, a anamnese e a ficha do procedimento do "Finalizar"
 ❌ Ramo da tela do atendimento sem a ficha própria do procedimento (o avulso da rede que monta plano ficou sem ela de 2026-09-25 a 2026-10-29)
+❌ Concluir o atendimento ou gerar o plano da avaliação sem oQueFaltaParaSeguir (a obrigatória barra; a trava não é só da tela)
+❌ Decidir "campo vazio" por conta própria (é campoVazio/primeiraObrigatoriaVazia, lib/anamnesis.ts — a tela e o servidor dividem)
 ❌ Gravar a ficha do procedimento com o form_id que veio do navegador (é a ficha ligada ao procedimento do agendamento, da rede: fichaParaConcluir)
 ❌ Gravar na ficha os pontos do planejador de injetáveis que vieram do navegador (o retrato é do planejamento gravado: retratarInjetaveis), ou um planejamento de outra cliente
 ❌ Um segundo planejador de injetáveis: o campo da ficha é o PlanejamentoInjetaveis de Planejamento → Injetáveis

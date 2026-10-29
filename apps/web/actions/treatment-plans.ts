@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
-import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -169,12 +169,15 @@ async function agendamentoDoTenant(
 ) {
   const data = await ler(admin
     .from('appointments')
-    .select('id, branch_id, client_id, professional_id, branches!inner(tenant_id)')
+    .select('id, status, branch_id, client_id, professional_id, procedure_id, branches!inner(tenant_id)')
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   const rede = (data?.branches as unknown as { tenant_id: string } | null)?.tenant_id
   if (!data || rede !== ctx.tenantId || !alcancaUnidade(ctx as TenantContext, data.branch_id as string)) return null
-  return { id: data.id as string, branch_id: data.branch_id as string, client_id: data.client_id as string, professional_id: data.professional_id as string }
+  return {
+    id: data.id as string, status: data.status as string, branch_id: data.branch_id as string, client_id: data.client_id as string,
+    professional_id: data.professional_id as string, procedure_id: (data.procedure_id as string | null) ?? null,
+  }
 }
 
 // -- Salvar rascunho do plano (profissional) -----------------------------------
@@ -1095,6 +1098,20 @@ async function generateEvaluationPlanInterno(
   const appt = await agendamentoDoTenant(admin, appointmentId, ctx)
   if (!appt) return { error: 'Agendamento não encontrado.' }
 
+  // A obrigatória sem resposta (anamnese ou ficha do procedimento) barra o
+  // plano, como barra o "Finalizar" (revisão do Heitor, 2026-10-29). Vale o
+  // que fica gravado: a anamnese da tela, senão a gravada; a ficha salva.
+  {
+    const anamneseNaTela = anamnesis
+      ? await anamneseDaEquipeParaGravar(admin, { tenantId: ctx.tenantId!, clientId: appt.client_id, respostas: anamnesis, porUsuario: ctx.internalUserId })
+      : null
+    const falta = await oQueFaltaParaSeguir(admin, {
+      tenantId: ctx.tenantId!, appointmentId, procedureId: appt.procedure_id, clientId: appt.client_id,
+      semInjetaveis: !temRecurso(ctx, 'injetaveis'), anamneseNaTela, fichaNaTela: null,
+    })
+    if (falta) return { error: falta }
+  }
+
   // 1. Queixas do cliente → o prontuário do atendimento (passo 4). Iam para
   //    `appointments.notes`, a observação INTERNA do agendamento — que por
   //    isso aparecia como dor na tela (A17/D3 da simulação de 2026-10-28).
@@ -1239,7 +1256,8 @@ import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkou
 import { EntradaDoDesconto } from '@/lib/vendas/desconto'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { paraAnamneseGeral, type AnamneseGeral } from '@/lib/anamnese-geral'
-import { fichaDePreAtendimento, gravarAnamneseGeral } from '@/lib/pre-atendimento/ficha'
+import { fichaDePreAtendimento, gravarAnamneseGeral, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
+import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 
 /**
