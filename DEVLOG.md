@@ -1651,6 +1651,34 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-29 — Os defeitos da quarta simulação, corrigidos (17 de 19)
+
+Pedido do Heitor: corrigir os defeitos. Os atritos ficam para depois. O D4 (venda de produto) e o D5 (tela de salas) são recursos novos e esperam a decisão dele.
+
+Foram cinco frentes, uma de cada vez, todas em Opus:
+1. escopo (D6, D7);
+2. a dona que atende (D2);
+3. dinheiro (D3, D9, D18);
+4. a ficha do procedimento no avulso (D1, e o A30 junto);
+5. telas e cadastro (D8, D10–D17, D19, e o spec velho do estoque).
+
+Cada caso nasceu com o teste visto falhando. Duas migrations foram para a produção (`20261029000301` e `0401`).
+
+**O que muda para quem usa:**
+- **A dona.** A Admin da rede se marca como quem atende sem trocar de cargo. O cargo de admin não se troca pela Equipe: a action antiga deixava rebaixar a admin. A última admin ativa não se desativa.
+- **Escopo.** Quem não tem um módulo não fica recortado por ele.
+- **Dinheiro.** "1.400" é R$ 1.400. O ambíguo é recusado, e a regra copiada em seis campos também foi corrigida.
+- **Ficha do procedimento.** Aparece em todo atendimento e é gravada no "Finalizar". Antes, nenhum ramo a gravava ali.
+- **Cadastro.** CPF pelos dígitos, telefone completo, aviso de telefone repetido, e os erros do Auth em português.
+- **Datas e números.** Validade sem a véspera; a ocupação da "Minha agenda" pela conta do `lib/metrics`.
+- **Rotas.** Id inválido na URL dá 404 nos três portais.
+- **Grade de horários.** A do checkout e a das sessões cobrem a janela da unidade.
+- **Portal.** Trata a pessoa pelo sexo da ficha. Os links não saúdam mais por "Dona".
+
+As decisões das frentes estão em §5, "Da simulação de 2026-10-28/29 (4ª)", para o Heitor revisar.
+
+Mexeu em arquivos compartilhados: `buildContext`, `parseDinheiro` (utils), as 20 páginas `[id]`, `actions/auth.ts`, `actions/team.ts` e o formulário de cliente. **Vale uma completa**, que o Heitor decide.
+
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
 Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
@@ -7703,7 +7731,7 @@ raiz dos três apps: vale uma completa.
   de conclusão da agenda, a retenção, o giro do estoque e a conversão por
   origem do comercial.
 
-### Da simulação de 2026-10-28/29 (4ª: D1–D19 e os atritos A1–A50 em aberto)
+### Da simulação de 2026-10-28/29 (4ª: 17 defeitos feitos em 29/10; D4, D5 e os atritos A1–A50 em aberto)
 
 O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. Ele traz as capturas, os 50 atritos A1–A50 por tela, os 13 achados que eram regra ou engano, o dinheiro esperado × sistema, a seção "clínica de uma unidade só" e o que ficou sem testar. O de 28/10 está em `.sim/arquivo-2026-10-28/`.
 
@@ -7798,30 +7826,39 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
     - Se a action falhar, a tela diz "Não foi possível carregar…" em vez de ficar em "Carregando…".
     - Prova: `e2e/injetaveis-sem-prontuario.spec.ts`.
   - **Decisão para revisar:** com o prontuário em "só os meus", a sub-aba só aparece na cliente que ela atende.
-- **D8.** A grade do checkout do plano é fixa das 08:00 às 20:00 (`TIME_SLOTS` em `checkout-wizard.tsx:54-59`). Ela oferece a pausa da unidade e corta a noite. O encaixe livre é regra do §9.1, mas a grade nem cobre a janela da unidade. NOVO.
+- **D8.** A grade do checkout do plano é fixa das 08:00 às 20:00 (`TIME_SLOTS` em `checkout-wizard.tsx:54-59`). Ela oferece a pausa da unidade e corta a noite. O encaixe livre é regra do §9.1, mas a grade nem cobre a janela da unidade. NOVO. **Feito em 2026-10-29** (4a0538d1). `gradeDoCheckout` cobre a janela da unidade de 30 em 30 minutos, sem a pausa. Os horários da profissional aparecem destacados e o encaixe continua possível, até pelo "Outro horário". A mesma grade passou a valer nas sessões de plano, pacote e pré-pago (`SessionScheduler`).
 - **D9.** No plano, o insumo aparece como "5 frasco", e no atendimento como "5 ml". `procedimentosParaPlano` devolve `products.unit` cru (`lib/checkout/procedimentos-do-plano.ts`). SOBRA da unidade de consumo (D1 de 27/10).
   **Feito em 2026-10-29** (be8f522d).
   - O helper novo é `unidadeDoInsumo` (`lib/estoque/unidade-de-consumo.ts`). Ele substitui as quatro cópias da regra no atendimento e é usado pelo plano.
   - O plano já gravado guarda a unidade velha, e por isso a tela lê a unidade do produto na hora. Nada foi reescrito no banco.
   - Prova: `e2e/plano-unidade-de-consumo.spec.ts`.
-- **D10.** Em Relatórios → Estoque, a validade do lote aparece um dia antes, porque `new Date(...).toLocaleDateString` fere o §14 (`components/admin/reports-bi-view.tsx:1030-1032`). NOVO.
-- **D11.** A ocupação da "Minha agenda" é calculada sobre um dia fixo de 8 h (`WORK_MIN`), numa conta feita na tela que fere o §13.1 (`components/branch/professional-agenda.tsx:38, 131`). Dá 32% em vez de 47% para quem tem horário próprio. NOVO.
-- **D12.** O CPF 11111111111 passa, porque só o tamanho é conferido, e o erro do Auth aparece em inglês (`actions/clients.ts:90`, `lib/clients/acesso.ts:53`). NOVO.
-- **D13.** O cadastro completo aceita telefone incompleto ("(41) 9920") e telefone repetido de outra cliente, sem aviso (`actions/clients.ts:88`). NOVO.
+- **D10.** Em Relatórios → Estoque, a validade do lote aparece um dia antes, porque `new Date(...).toLocaleDateString` fere o §14 (`components/admin/reports-bi-view.tsx:1030-1032`). NOVO. **Feito em 2026-10-29** (9b8ca5e5). A data é escrita com `formatDia` e os dias restantes contam no calendário de Brasília. O "válido até" do pacote e a home do portal também passaram a usar o fuso do negócio.
+- **D11.** A ocupação da "Minha agenda" é calculada sobre um dia fixo de 8 h (`WORK_MIN`), numa conta feita na tela que fere o §13.1 (`components/branch/professional-agenda.tsx:38, 131`). Dá 32% em vez de 47% para quem tem horário próprio. NOVO. **Feito em 2026-10-29** (e9f9dfd4). `ocupacaoDoDia` (`lib/metrics/ocupacao.ts`) faz a conta pela mesma `ocupacaoEmPct` da agenda da unidade, com o `ocupadoFora`.
+- **D12.** O CPF 11111111111 passa, porque só o tamanho é conferido, e o erro do Auth aparece em inglês (`actions/clients.ts:90`, `lib/clients/acesso.ts:53`). NOVO. **Feito em 2026-10-29** (114af842). `cpfValido` (utils) confere os dígitos verificadores e recusa a sequência repetida; as duas cópias da conta (Copilot e importação) passaram a usá-la. `lib/erro-do-auth.ts` traduz os erros do Auth na cliente, na Equipe e na troca de senha.
+- **D13.** O cadastro completo aceita telefone incompleto ("(41) 9920") e telefone repetido de outra cliente, sem aviso (`actions/clients.ts:88`). NOVO. **Feito em 2026-10-29** (114af842). `telefoneNacional` exige 10 ou 11 dígitos. Com o telefone de outra cliente da rede, a tela avisa e oferece "Cadastrar mesmo assim". O formulário não se apaga mais quando dá erro.
 
 **Baixa**
-- **D14.** No portal, a Agenda mostra em "Próximos" um atendimento que já passou (ARRIVED de ontem), enquanto a home diz que não há próximo (`app/[slug]/cliente/agendamentos/page.tsx:58`).
-- **D15.** `/[slug]/agenda/<não-uuid>` dá tela de erro em vez de 404, porque o 22P02 chega antes do `notFound()` (`app/_shared/sessao-de-atendimento.tsx:49-75`). Provavelmente acontece em outras rotas `[id]`. É a mesma classe de `45b5064`.
-- **D16.** O painel de Fidelidade da ficha mostra 0 até recarregar, porque o `useState` copia as props (`components/branch/fidelidade-do-cliente.tsx:27-29`).
-- **D17.** O portal diz "Bem-vinda" e "Obrigada!" a um cliente do sexo masculino, com textos fixos.
+- **D14.** No portal, a Agenda mostra em "Próximos" um atendimento que já passou (ARRIVED de ontem), enquanto a home diz que não há próximo (`app/[slug]/cliente/agendamentos/page.tsx:58`). **Feito em 2026-10-29** (31d22c62). A regra fica numa só (`lib/clientes/agenda-do-portal.ts`), igual à da home: em "Próximos" entra só o que ainda está em aberto e não passou da hora; o resto vai ao Histórico.
+- **D15.** `/[slug]/agenda/<não-uuid>` dá tela de erro em vez de 404, porque o 22P02 chega antes do `notFound()` (`app/_shared/sessao-de-atendimento.tsx:49-75`). Provavelmente acontece em outras rotas `[id]`. É a mesma classe de `45b5064`. **Feito em 2026-10-29** (d6011f66). `idOu404` (`lib/id-da-rota.ts`) roda antes da consulta nas 20 páginas com id dos três portais. A regra entrou no §14 do CLAUDE.md.
+- **D16.** O painel de Fidelidade da ficha mostra 0 até recarregar, porque o `useState` copia as props (`components/branch/fidelidade-do-cliente.tsx:27-29`). **Feito em 2026-10-29** (b3dd0bee). O painel e os vouchers acompanham o dado novo do servidor.
+- **D17.** O portal diz "Bem-vinda" e "Obrigada!" a um cliente do sexo masculino, com textos fixos. **Feito em 2026-10-29** (fa69b27d). `boasVindas` escolhe pelo sexo da ficha; sem sexo, fica "Boas-vindas". Quando é a clínica que fala, "Obrigada!" virou "Tudo certo!".
 - **D18.** O histórico do pagamento sai em inglês ("via CREDIT_CARD", "via CASH"), porque `v_metodo` vai cru na `confirmar_pagamento_do_atendimento` (migration `20261028000201`). **Feito em 2026-10-29** (5c09c05e, migration `20261029000301`).
   - A descrição agora diz "via Crédito 3x", com o nome curto que a tela usa, pela função `private.rotulo_da_forma`.
   - O checkout do plano ("3x em CREDIT_CARD") e o recebimento do plano no check-in também foram traduzidos.
   - Prova: `e2e/financeiro-historico-forma-em-portugues.spec.ts`.
   - O histórico já gravado ficou como estava: seis linhas nas redes [sim] e três na Bellaris Clinic.
-- **D19.** O link da ficha e o link de assinatura dizem "Olá, Dona!" e "confirme o seu data de nascimento" (`actions/pre-atendimento.ts:264-266`, `actions/documentos.ts:406`).
+- **D19.** O link da ficha e o link de assinatura dizem "Olá, Dona!" e "confirme o seu data de nascimento" (`actions/pre-atendimento.ts:264-266`, `actions/documentos.ts:406`). **Feito em 2026-10-29** (fa69b27d). `nomeParaSaudar` pula o tratamento (Dona, Seu, Sr., Dra.…) também na home do portal, na assinatura e no `{{first_name}}` das campanhas. Os links têm uma frase só, com a concordância certa.
 
-~~**Sobra do D13 revisto (`e46e27b`).**~~ **Feita pela frente H em 7ebdd975**, que agora diz "Informativo: não entra no lucro". O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
+**Decisões da frente 5, para revisar:**
+1. **D14:** o atendimento que está acontecendo agora vai para o Histórico do portal, como a home já fazia.
+2. **D17:** o agradecimento ficou neutro ("Tudo certo!").
+3. **D13:** o telefone estrangeiro (+1, +351…) passa a ser recusado no cadastro.
+4. **D13:** o aviso de telefone repetido compara os 8 últimos dígitos, então pode avisar de um número de outro DDD. É só aviso.
+5. **D13:** quando a ficha rápida sem CPF tem o mesmo telefone, o cadastro completo a COMPLETA em vez de criar outra. É a regra antiga, mas no caso de mãe e filha isso sobrescreve a ficha da mãe. **Vale decidir.**
+6. **D8:** a grade nova vale também nas sessões de plano, pacote e pré-pago, com o campo de encaixe livre.
+7. **D16:** quando chega dado novo, o "Ver mais" do extrato volta à primeira página.
+
+~~**Sobra do D13 revisto (`e46e27b`).**~~ **Feita pela frente H em 7ebdd975**, que agora diz "Informativo: não entra no lucro". O spec velho e o comentário foram ajustados em 08cc969b. O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
 
 **Atritos (A1–A50, no relatório).** Os de mais peso:
 - A4: o horário próprio nasce no padrão comercial, não no da unidade;
