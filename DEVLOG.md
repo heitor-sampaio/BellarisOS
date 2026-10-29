@@ -7733,6 +7733,25 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   4. Os membros da rede aparecem na Equipe da unidade só para leitura, sem e-mail e sem comissão, e só os que atendem.
   5. O contador "N membros" passa a contar esses membros.
 - **D3.** "1.400" no preço vira R$ 1,40, sem aviso. `parseDinheiro` lê o ponto como decimal quando não há vírgula (`packages/utils/src/format.ts:99-103`), e isso vale para todo campo de dinheiro. NOVO, uma ambiguidade da regra de `639ebd5`.
+
+  **Feito em 2026-10-29** (7cd98962).
+  - **A regra de `parseDinheiro`:**
+    - com vírgula, a vírgula marca os centavos e o ponto é milhar;
+    - sem vírgula, o ponto seguido de grupos de 3 dígitos é milhar ("1.400", "12.500");
+    - o ponto seguido de 1 ou 2 dígitos é decimal;
+    - o ambíguo ("0.012", "1,500") é recusado com "use vírgula para os centavos".
+  - **A mesma regra copiada**, com o mesmo defeito, saiu de seis lugares:
+    - pacote;
+    - desconto;
+    - entrada do contrato e do checkout ("1.400,00" dava 0);
+    - comissões;
+    - dinheiro contado no fechamento ("180.50" virava 18.050);
+    - valor da oportunidade.
+  - **Prova:** `tests/dinheiro-do-formulario.test.ts` e `e2e/procedimento-preco-em-reais.spec.ts`.
+  - **Decisões para revisar:**
+    1. O valor ambíguo é recusado, não adivinhado.
+    2. "12.500" no percentual de comissão dá 12500 e é recusado pelo limite.
+    3. A entrada do contrato com texto ambíguo continua virando 0, sem aviso, como qualquer texto inválido de antes.
 - **D4.** Não existe venda de produto. O cadastro tem "Venda direta" e preço de venda, mas o "Vender" da ficha só oferece Procedimento e Pacote. A única saída é o ajuste, que não gera receita, pontos nem caixa. NOVO, como caminho que falta, e grande o bastante para ser decisão de escopo.
 
 **Média**
@@ -7762,6 +7781,10 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - **Decisão para revisar:** com o prontuário em "só os meus", a sub-aba só aparece na cliente que ela atende.
 - **D8.** A grade do checkout do plano é fixa das 08:00 às 20:00 (`TIME_SLOTS` em `checkout-wizard.tsx:54-59`). Ela oferece a pausa da unidade e corta a noite. O encaixe livre é regra do §9.1, mas a grade nem cobre a janela da unidade. NOVO.
 - **D9.** No plano, o insumo aparece como "5 frasco", e no atendimento como "5 ml". `procedimentosParaPlano` devolve `products.unit` cru (`lib/checkout/procedimentos-do-plano.ts`). SOBRA da unidade de consumo (D1 de 27/10).
+  **Feito em 2026-10-29** (be8f522d).
+  - O helper novo é `unidadeDoInsumo` (`lib/estoque/unidade-de-consumo.ts`). Ele substitui as quatro cópias da regra no atendimento e é usado pelo plano.
+  - O plano já gravado guarda a unidade velha, e por isso a tela lê a unidade do produto na hora. Nada foi reescrito no banco.
+  - Prova: `e2e/plano-unidade-de-consumo.spec.ts`.
 - **D10.** Em Relatórios → Estoque, a validade do lote aparece um dia antes, porque `new Date(...).toLocaleDateString` fere o §14 (`components/admin/reports-bi-view.tsx:1030-1032`). NOVO.
 - **D11.** A ocupação da "Minha agenda" é calculada sobre um dia fixo de 8 h (`WORK_MIN`), numa conta feita na tela que fere o §13.1 (`components/branch/professional-agenda.tsx:38, 131`). Dá 32% em vez de 47% para quem tem horário próprio. NOVO.
 - **D12.** O CPF 11111111111 passa, porque só o tamanho é conferido, e o erro do Auth aparece em inglês (`actions/clients.ts:90`, `lib/clients/acesso.ts:53`). NOVO.
@@ -7772,7 +7795,11 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
 - **D15.** `/[slug]/agenda/<não-uuid>` dá tela de erro em vez de 404, porque o 22P02 chega antes do `notFound()` (`app/_shared/sessao-de-atendimento.tsx:49-75`). Provavelmente acontece em outras rotas `[id]`. É a mesma classe de `45b5064`.
 - **D16.** O painel de Fidelidade da ficha mostra 0 até recarregar, porque o `useState` copia as props (`components/branch/fidelidade-do-cliente.tsx:27-29`).
 - **D17.** O portal diz "Bem-vinda" e "Obrigada!" a um cliente do sexo masculino, com textos fixos.
-- **D18.** O histórico do pagamento sai em inglês ("via CREDIT_CARD", "via CASH"), porque `v_metodo` vai cru na `confirmar_pagamento_do_atendimento` (migration `20261028000201`).
+- **D18.** O histórico do pagamento sai em inglês ("via CREDIT_CARD", "via CASH"), porque `v_metodo` vai cru na `confirmar_pagamento_do_atendimento` (migration `20261028000201`). **Feito em 2026-10-29** (5c09c05e, migration `20261029000301`).
+  - A descrição agora diz "via Crédito 3x", com o nome curto que a tela usa, pela função `private.rotulo_da_forma`.
+  - O checkout do plano ("3x em CREDIT_CARD") e o recebimento do plano no check-in também foram traduzidos.
+  - Prova: `e2e/financeiro-historico-forma-em-portugues.spec.ts`.
+  - O histórico já gravado ficou como estava: seis linhas nas redes [sim] e três na Bellaris Clinic.
 - **D19.** O link da ficha e o link de assinatura dizem "Olá, Dona!" e "confirme o seu data de nascimento" (`actions/pre-atendimento.ts:264-266`, `actions/documentos.ts:406`).
 
 ~~**Sobra do D13 revisto (`e46e27b`).**~~ **Feita pela frente H em 7ebdd975**, que agora diz "Informativo: não entra no lucro". O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
