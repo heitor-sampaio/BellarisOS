@@ -6873,6 +6873,16 @@ verdade. O que vale:
     do mesmo procedimento; vale pacote de qualquer unidade da rede; a conta a
     receber que já existisse vira R$ 0 com nota (nada é apagado); a comissão
     avulsa vira um ajuste negativo e nasce a de pacote.
+    **Em aberto — o Heitor vai consultar (2026-10-28):** a comissão de PACOTE
+    muda de modelo. O que ele já disse: o pacote é um conjunto pré-montado,
+    mais barato, não personalizado, e "normalmente" pago integral antes; a
+    comissão é sobre o VALOR TOTAL do pacote, não por procedimento nem por
+    sessão, e liberada no pagamento; o percentual vem do CADASTRO do pacote;
+    a sessão atendida não gera comissão própria; não travar a venda com valor
+    a receber (a comissão sai quando pago). Falta: quem recebe — ele marcou
+    "quem vendeu E quem executa", o que não fecha com "a sessão não gera
+    comissão" (a executora é definida na venda? por sessão? só quem vende?).
+    Nada mexido até ele decidir; hoje vale a regra por sessão (comissoes.md).
   - A Entrada de estoque vira despesa paga hoje (D13), marcada por padrão e só
     com custo informado. A entrada por código de barras e a do Copilot seguem
     sem a opção. Os R$ 1.800 já gravados na Íris ficaram como estavam.
