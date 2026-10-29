@@ -8111,6 +8111,18 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 | D-18 | O plano proposto no app | 3ª A45 |
 | D-19 | O vocabulário de rede numa clínica de uma unidade só | 3ª A26, seção da 4ª |
 
+**Respostas do Heitor (2026-10-29):**
+- **D-1:** criar e editar funis, etapas e motivos de perda exige Configurações MANAGE, como as tags. Mover os cards segue com quem opera o quadro.
+- **D-2: fica só na rede.** "A automação é da clínica, mesmo que o alvo seja a unidade." A tela de Cargos passa a avisar que Marketing e Automações valem para quem é da rede.
+- **D-3:** a campanha de hoje é aviso no celular (push). A tela passa a dizer isso claramente. O WhatsApp fica para o futuro.
+- **D-4:** modelos prontos entram como opção. "Nova automação" continua começando vazia, e o procedimento continua no passo "Se" (condicional), sem ir para o gatilho.
+- **D-5:** um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto. Fica o fluxo de trocar; sai o de criar outro e desativar o atual antes.
+- **D-6:** o cadastro do produto diz o uso: Insumo, Revenda ou Os dois. O insumo aparece no atendimento, e a revenda na venda de produto.
+- **D-7:** cria a saída por perda, com motivo (vencido, quebrou, amostra, uso interno), sem gerar despesa, e um relatório de perdas.
+- **D-8:** fica como está; só quem tem o produto envia.
+- **D-9:** ao cadastrar com o telefone de um lead, a tela pergunta "É a mesma pessoa do lead X?" e liga os dois.
+- **D-10:** a importação aceita a linha que só tem e-mail. Com o telefone repetido, junta tags e origem ao contato que já existe, sem sobrescrever.
+
 **Ajustes, sem decisão (J-1…J-68).** Vão para frentes de correção, com TDD.
 
 - **Setup e Configurações**
