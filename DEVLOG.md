@@ -6859,10 +6859,36 @@ verdade. O que vale:
     cancelar pela tela do atendimento e passar para outra profissional.~~
     **Confirmado pelo Heitor (2026-10-28):** a profissional (no que é dela) ou
     quem gerencia a agenda cancela e passa o atendimento a outra pessoa.
-  - Dashboard da rede (D7): recorta quando agenda OU financeiro é "só os
+  - ~~Dashboard da rede (D7): recorta quando agenda OU financeiro é "só os
     meus"; os rankings que só contam (procedimentos, mais pedidos,
     recorrência, faixa de idade) seguem da rede inteira, como no da unidade. E
-    o gráfico de 6 meses do dashboard da unidade some para quem é OWN.
+    o gráfico de 6 meses do dashboard da unidade some para quem é OWN.~~
+    **Revisto pelo Heitor (2026-10-28): "quem tem 'só os meus' vê 'só os
+    meus', em qualquer lugar."** Feito nos dois dashboards (frente G,
+    `b07e8532`, migration `20261028000601`: sete `metrics_*` ganharam
+    `p_professional_id`): evolução só da receita dela, rankings, mais
+    solicitados, vendas, gasto e recorrência, demografia e mapa, total e novos
+    clientes, giro do estoque, planos aguardando checkout, clientes a reativar;
+    o gráfico de 6 meses da unidade volta como "Meu faturamento"; com o CRM
+    OWN, o funil é o dos leads dela e dos sem dono. Segue escondido o que não
+    é atribuível: custo, lucro, margem do catálogo, ranking e ocupação por
+    filial, e o ranking de comissão (agora com QUALQUER "só os meus").
+    Decisões da frente para revisar: (1) "cliente dela" = quem tem agendamento
+    não cancelado com ela — a falta conta; os novos clientes do núcleo, que
+    davam 0 com profissional, passam a contar (o `indicadores-cenario` mudou
+    de 0 para 1, com o porquê); (2) "a reativar" = as clientes dela, mas o
+    "sumiu" é da UNIDADE (voltou com outra, não aparece); (3) planos
+    aguardando checkout = os em que ela é a profissional; (4) só o financeiro
+    OWN (agenda ALL) recorta todos os números do dashboard, como no D7.
+    **"Em qualquer lugar" — ainda vazando** (achados da frente G, só leitura):
+    em módulo COM escopo — mapas de injetáveis (`listarMapasDeInjetaveis`
+    ignora o prontuário OWN: dado clínico), planejamentos (`listarPlanejamentos`
+    com a agenda OWN), Copilot (`lib/copilot/ferramentas/indicadores.ts`:
+    "quanto faturamos" dá a rede) e Relatórios (`reports-bi-section.tsx`: nada
+    recebe o profissional; o funil sem o `p_owner`) — vão para a frente H.
+    Em módulo SEM escopo — lista de clientes, documentos emitidos, caixa e
+    fechamento do dia, giro do estoque, checkout: **precisa da decisão do
+    Heitor** (o módulo não tem "só os meus" para respeitar).
   - ~~O estorno reabre a cobrança (D6): o atendimento volta a "a receber" e o
     novo recebimento é um lançamento NOVO (o estornado fica intacto), com
     pontos e comissão uma vez só. Efeito: vai outro "Purchase" à API de
