@@ -256,6 +256,22 @@ o procedimento avulso pago antes.
   recusa). Hoje é o instante de agora; antes de hoje, o meio-dia daquele dia
   em Brasília. Era sempre "agora": a conta paga na semana passada caía no caixa
   de hoje. Prova: `e2e/financeiro-data-do-lancamento.spec.ts`.
+- **O dinheiro DIGITADO tem UMA leitura** (`parseDinheiro`,
+  `@estetica-os/utils`; D10 de 2026-10-27 e D3 de 2026-10-29): "180" é
+  R$ 180,00; com vírgula, ela é a dos centavos (até dois dígitos) e o ponto é
+  milhar ("1.400,50"); sem vírgula, o ponto seguido de grupos de EXATAMENTE
+  três dígitos é milhar ("1.400", "12.500") e com um ou dois é decimal
+  ("180.50"). O ambíguo ("0.012", "1.4000", "1,400.50", centavos com três
+  dígitos) é NaN — não se adivinha: a tela mantém o que foi escrito e mostra
+  `DINHEIRO_INVALIDO` ("use vírgula para os centavos") junto do campo, e a
+  action recusa com a mesma frase. "1.400" no preço da Toxina gravava
+  R$ 1,40, sem aviso. Valem por ela o cadastro do procedimento (preço, mão de
+  obra, outros custos, preço por unidade), a comissão padrão do membro, as
+  regras de comissão, o preço do pacote, o desconto, a entrada (contrato e
+  checkout), o dinheiro contado do fechamento e o valor da oportunidade. Os
+  campos `type="number"` (lançamento manual, crédito, custo do insumo) o
+  navegador já lê. Prova: `tests/dinheiro-do-formulario.test.ts`,
+  `e2e/procedimento-preco-em-reais.spec.ts`.
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
 - **Cartão de crédito em N vezes é PAGO na hora** (decisão do Heitor,
   2026-10-20): quem paga a clínica é a maquininha, então para o cliente está
@@ -413,5 +429,6 @@ o procedimento avulso pago antes.
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0
+❌ Ler dinheiro digitado com uma regra própria (Number(s.replace…), parseFloat em campo de texto) — é parseDinheiro, e o NaN dele é recusa, não zero
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
 ```

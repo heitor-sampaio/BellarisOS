@@ -1,5 +1,6 @@
 'use client'
 
+import { parseDinheiro } from '@estetica-os/utils'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -66,8 +67,8 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
   }
   if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo, vencimento: e.vencimento ? iso(e.vencimento) : null }
   const dataIso = iso(e.data)
-  const s = e.entrada.trim()
-  const valorEntrada = Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s) || 0
+  // A regra de todo campo de dinheiro ("1.400" é mil e quatrocentos — D3).
+  const valorEntrada = parseDinheiro(e.entrada) || 0
   return { forma: 'PARCELADO', metodo: e.metodo, entrada: valorEntrada, parcelas: e.parcelas, primeiroVencimento: dataIso }
 }
 

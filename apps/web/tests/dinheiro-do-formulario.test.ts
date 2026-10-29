@@ -27,6 +27,40 @@ describe('parseDinheiro', () => {
     expect(parseDinheiro('')).toBeNaN()
     expect(parseDinheiro('abc')).toBeNaN()
   })
+
+  /**
+   * D3 (simulação de 2026-10-29): a dona digitou "1.400" no preço da Toxina e
+   * gravou R$ 1,40, sem aviso. Sem vírgula, o ponto seguido de grupos de
+   * EXATAMENTE três dígitos é milhar; com um ou dois dígitos depois, decimal.
+   */
+  it('ponto de milhar sem vírgula (grupos de três dígitos)', () => {
+    expect(parseDinheiro('1.400')).toBe(1400)
+    expect(parseDinheiro('12.500')).toBe(12500)
+    expect(parseDinheiro('1.400.000')).toBe(1400000)
+    expect(parseDinheiro('R$ 1.400')).toBe(1400)
+  })
+  it('ponto com um ou dois dígitos depois continua decimal', () => {
+    expect(parseDinheiro('1.5')).toBe(1.5)
+    expect(parseDinheiro('1400.00')).toBe(1400)
+    expect(parseDinheiro('0.50')).toBe(0.5)
+  })
+  it('milhar e vírgula juntos', () => {
+    expect(parseDinheiro('1.400,50')).toBe(1400.5)
+    expect(parseDinheiro('12.500,5')).toBe(12500.5)
+  })
+  it('o ambíguo é recusado (NaN), não adivinhado', () => {
+    // começa com zero: não é milhar, e três casas não são centavos
+    expect(parseDinheiro('0.012')).toBeNaN()
+    // grupo que não é de três dígitos
+    expect(parseDinheiro('1.4000')).toBeNaN()
+    expect(parseDinheiro('12.34.56')).toBeNaN()
+    expect(parseDinheiro('1.400.5')).toBeNaN()
+    // formato americano
+    expect(parseDinheiro('1,400.50')).toBeNaN()
+    // mais de dois dígitos de centavos
+    expect(parseDinheiro('1,500')).toBeNaN()
+    expect(parseDinheiro('1.400,505')).toBeNaN()
+  })
 })
 
 describe('formatDinheiroCampo', () => {

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, X } from 'lucide-react'
+import { parseDinheiro } from '@estetica-os/utils'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarRegrasDoProfissional } from '@/actions/comissoes'
 import { rotuloDaRegra, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
@@ -28,11 +29,8 @@ const TIPOS = [
 ]
 
 export const paraTexto = (n: number) => String(n).replace('.', ',')
-/** "1.250,50" e "12.5" valem: com vírgula, o ponto é de milhar; sem ela, é decimal. */
-export const paraNumero = (t: string) => {
-  const s = t.trim()
-  return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
-}
+/** "1.250,50", "1.400" e "12.5" valem — a regra de todo campo de dinheiro (`parseDinheiro`, D3). */
+export const paraNumero = (t: string) => parseDinheiro(t)
 
 export function ComissaoDoMembro({ membro, regras, procedimentos, atende }: {
   membro:        { id: string; nome: string }

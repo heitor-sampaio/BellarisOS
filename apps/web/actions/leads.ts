@@ -10,7 +10,7 @@ import {
   registrarEventoLead, estadoAtualDoLead,
   diferencas, listaLegivel,
 } from '@/lib/lead-events'
-import { isUnitTag, unitTagName } from '@estetica-os/utils'
+import { isUnitTag, unitTagName, parseDinheiro } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa, digitosDoTelefone } from '@/lib/contatos/propagar'
@@ -175,7 +175,8 @@ export async function updateLead(
     // NULO e não zero — zero seria "fechado por nada" e sujaria o ticket médio.
     if (formData.has('value')) {
       const bruto = str(formData, 'value')
-      const numero = bruto ? Number(bruto.replace(/\./g, '').replace(',', '.')) : null
+      // A regra de todo campo de dinheiro (D3): "180.50" lia R$ 18.050,00.
+      const numero = bruto ? parseDinheiro(bruto) : null
       patch.value = numero !== null && Number.isFinite(numero) ? numero : null
     }
     // Etapa só entra no patch quando o form mandou uma: gravar null aqui tirava

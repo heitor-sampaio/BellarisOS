@@ -92,15 +92,33 @@ export const maskCEPDigitando = (valor: string) => {
 
 /**
  * O que a pessoa escreveu num campo de dinheiro, em reais: "180" = R$ 180,00
- * (D10, 2026-10-27: o preço do procedimento lia "180" como R$ 1,80). Com
- * vírgula, o ponto é milhar; sem vírgula, o ponto é decimal ("180.50" vindo
- * do banco). NaN se não for número.
+ * (D10, 2026-10-27: o preço do procedimento lia "180" como R$ 1,80).
+ *
+ * - Com vírgula, ela é a dos centavos (até dois dígitos) e o ponto é milhar:
+ *   "1.400,50", "180,5".
+ * - Sem vírgula, o ponto seguido de grupos de EXATAMENTE três dígitos é milhar
+ *   ("1.400", "12.500", "1.400.000" — D3 da simulação de 2026-10-29: "1.400"
+ *   gravava R$ 1,40, sem aviso); com um ou dois dígitos depois, é decimal
+ *   ("180.50", "1.5").
+ * - O resto não se adivinha: NaN ("0.012", "1.4000", "1,400.50", "1,500" —
+ *   centavos com três dígitos). Quem chama recusa com `DINHEIRO_INVALIDO`.
  */
 export function parseDinheiro(texto: string): number {
   const s = texto.replace(/R\$|\s/g, '')
-  if (!s) return NaN
-  return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
+  const sinal = s.startsWith('-') ? -1 : 1
+  const corpo = sinal < 0 ? s.slice(1) : s
+  if (!/\d/.test(corpo)) return NaN
+  // Milhar com ponto (ou nenhum) e, opcional, a vírgula dos centavos.
+  if (/^(\d*|[1-9]\d{0,2}(\.\d{3})+)(,\d{0,2})?$/.test(corpo)) {
+    return sinal * Number(corpo.replace(/\./g, '').replace(',', '.'))
+  }
+  // Ponto decimal: um ou dois dígitos depois dele.
+  if (/^\d*\.\d{1,2}$/.test(corpo)) return sinal * Number(corpo)
+  return NaN
 }
+
+/** A recusa de um valor que `parseDinheiro` não lê — a mesma frase em toda tela. */
+export const DINHEIRO_INVALIDO = 'Valor não entendido: use vírgula para os centavos (ex.: 1.400,00 ou 0,50).'
 
 /** Reais no formato do campo: 1234.5 -> "1.234,50" (vazio se não for número). */
 export function formatDinheiroCampo(n: number): string {

@@ -6,7 +6,7 @@ import { comissaoDoFormulario, gravarComissaoDoProcedimento } from '@/lib/comiss
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { parseDinheiro } from '@estetica-os/utils'
+import { parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
 
 /**
@@ -62,6 +62,30 @@ async function idsDoFormularioDaRede(
   return null
 }
 
+/**
+ * Os campos de dinheiro do formulário (D3, 2026-10-29): o que `parseDinheiro`
+ * não lê sem adivinhar ("0.012") é RECUSADO com a frase de sempre — antes
+ * virava zero nos custos, em silêncio. Custo vazio é zero.
+ */
+function dinheiroDoFormulario(formData: FormData): { price: number; laborCost: number; otherCosts: number } | { error: string } {
+  const lerCampo = (campo: string, rotulo: string): number | { error: string } => {
+    const texto = String(formData.get(campo) ?? '').trim()
+    if (!texto) return 0
+    const n = parseDinheiro(texto)
+    if (Number.isNaN(n)) return { error: `${rotulo}: ${DINHEIRO_INVALIDO}` }
+    return n
+  }
+  const precoTexto = String(formData.get('price') ?? '').trim()
+  const price = lerCampo('price', 'Preço')
+  if (typeof price !== 'number') return price
+  if (!precoTexto || price < 0) return { error: 'Preço inválido.' }
+  const laborCost = lerCampo('labor_cost', 'Mão de obra')
+  if (typeof laborCost !== 'number') return laborCost
+  const otherCosts = lerCampo('other_costs', 'Outros custos')
+  if (typeof otherCosts !== 'number') return otherCosts
+  return { price, laborCost, otherCosts }
+}
+
 function assertRede(ctx: { branchId: string | null }) {
   if (ctx.branchId !== null) {
     throw new Error('Procedimentos são do catálogo da rede: só quem tem abrangência de rede pode alterá-los.')
@@ -100,9 +124,9 @@ async function addProcedureInterno(
   const description = (formData.get('description') as string)?.trim() || null
   const durationMin = parseInt(formData.get('duration_min') as string, 10)
   // Dinheiro como no resto do sistema: "180" é R$ 180,00 (D10).
-  const price       = parseDinheiro(String(formData.get('price') ?? ''))
-  const laborCost   = parseDinheiro(String(formData.get('labor_cost') ?? '')) || 0
-  const otherCosts  = parseDinheiro(String(formData.get('other_costs') ?? '')) || 0
+  const dinheiro = dinheiroDoFormulario(formData)
+  if ('error' in dinheiro) return { error: dinheiro.error }
+  const { price, laborCost, otherCosts } = dinheiro
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null
@@ -240,9 +264,9 @@ async function updateProcedureInterno(
   const description = (formData.get('description') as string)?.trim() || null
   const durationMin = parseInt(formData.get('duration_min') as string, 10)
   // Dinheiro como no resto do sistema: "180" é R$ 180,00 (D10).
-  const price       = parseDinheiro(String(formData.get('price') ?? ''))
-  const laborCost   = parseDinheiro(String(formData.get('labor_cost') ?? '')) || 0
-  const otherCosts  = parseDinheiro(String(formData.get('other_costs') ?? '')) || 0
+  const dinheiro = dinheiroDoFormulario(formData)
+  if ('error' in dinheiro) return { error: dinheiro.error }
+  const { price, laborCost, otherCosts } = dinheiro
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null

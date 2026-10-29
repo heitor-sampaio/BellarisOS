@@ -10,6 +10,7 @@ import type { FechamentoDoDia } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 import { rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { parseDinheiro } from '@estetica-os/utils'
 
 export interface FechamentoFeito {
   id: string; esperado: number; contado: number; diferenca: number
@@ -59,7 +60,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
 
   function fechar(e: React.FormEvent) {
     e.preventDefault()
-    const valor = Number(contado.replace(/\./g, '').replace(',', '.'))
+    // A regra de todo campo de dinheiro (D3): "180.50" lia R$ 18.050,00.
+    const valor = parseDinheiro(contado)
     if (contado.trim() === '' || !Number.isFinite(valor) || valor < 0) { setErro('Informe o dinheiro contado.'); return }
     setErro(null)
     start(async () => {

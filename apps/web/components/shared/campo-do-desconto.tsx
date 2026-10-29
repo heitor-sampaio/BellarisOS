@@ -1,6 +1,6 @@
 'use client'
 
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, parseDinheiro } from '@estetica-os/utils'
 import { SegSelect } from '@/components/shared/seg-select'
 import { descontoEmReais, recusaDoDesconto, type Desconto } from '@/lib/vendas/desconto'
 
@@ -20,12 +20,11 @@ export function estadoDoDesconto(reais: number | null | undefined): EstadoDoDesc
   return reais && reais > 0 ? { tipo: 'VALOR', texto: reais.toFixed(2).replace('.', ',') } : SEM_DESCONTO
 }
 
-/** "1.234,56", "40,5" ou "40.5" → número; vazio → 0. */
+/** "1.234,56", "1.400", "40,5" ou "40.5" → número (`parseDinheiro`, D3); vazio → 0; ambíguo → NaN. */
 function numero(texto: string): number {
   const s = texto.trim()
   if (!s) return 0
-  const n = Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
-  return Number.isFinite(n) ? n : NaN
+  return parseDinheiro(s)
 }
 
 /** O estado → o que a action recebe (nulo = sem desconto). */

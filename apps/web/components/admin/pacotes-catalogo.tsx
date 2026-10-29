@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, parseDinheiro } from '@estetica-os/utils'
 import { salvarPacote } from '@/actions/pacotes'
 import { contemSemAcento } from '@/lib/texto'
 
@@ -25,7 +25,8 @@ interface Rascunho { id?: string; name: string; itens: ItemDoRascunho[]; preco: 
 
 // Sem número de sessões escolhido por nós (2026-10-21: nascia com 5).
 const vazio = (procedureId: string): Rascunho => ({ name: '', itens: [{ procedureId, quantidade: '' }], preco: '', validade: '', ativo: true })
-const numero = (t: string) => { const s = t.trim(); return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s) }
+// O dinheiro como em todo campo (`parseDinheiro`: "1.400" é mil e quatrocentos — D3).
+const numero = (t: string) => parseDinheiro(t)
 
 export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInicial = '' }: {
   pacotes: PacoteDoCatalogo[]

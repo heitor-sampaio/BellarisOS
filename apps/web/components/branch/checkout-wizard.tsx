@@ -12,6 +12,7 @@ import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/tre
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
 import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
+import { parseDinheiro } from '@estetica-os/utils'
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -146,7 +147,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const contaDesc = contaDoDesconto(total, desconto)
   const liquido   = contaDesc.liquido
 
-  const entradaNum = Math.max(0, Math.min(Number(entrada.replace(',', '.')) || 0, liquido))
+  // A regra de todo campo de dinheiro (D3): "1.400,00" dava NaN e "1.400", R$ 1,40.
+  const entradaNum = Math.max(0, Math.min(parseDinheiro(entrada) || 0, liquido))
   const saldo      = Math.round((liquido - entradaNum) * 100) / 100
   const valorParcela = parcelas > 0 ? saldo / parcelas : 0
 

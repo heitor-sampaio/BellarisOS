@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
-import { parseDinheiro, formatDinheiroCampo } from '@estetica-os/utils'
+import { parseDinheiro, formatDinheiroCampo, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
@@ -103,10 +103,26 @@ function Field({ label, children, hint }: { label: string; children: React.React
 
 /** O que cabe num campo de dinheiro enquanto se digita: dígitos, vírgula e ponto. */
 const soDinheiro = (v: string) => v.replace(/[^\d.,]/g, '')
-/** Ao sair do campo: o valor em reais no formato do sistema ("180" -> "180,00"); vazio fica vazio. */
+/**
+ * Ao sair do campo: o valor em reais no formato do sistema ("180" -> "180,00",
+ * "1.400" -> "1.400,00"); vazio fica vazio. O que não se lê sem adivinhar
+ * ("0.012") fica como foi escrito, com o aviso (D3, 2026-10-29): apagar ou
+ * formatar escondia o erro.
+ */
 function fechaDinheiro(v: string) {
   const n = parseDinheiro(v)
-  return Number.isFinite(n) ? formatDinheiroCampo(n) : ''
+  return Number.isFinite(n) ? formatDinheiroCampo(n) : v.trim()
+}
+/** O campo tem texto que não é dinheiro. */
+const dinheiroInvalido = (v: string) => v.trim() !== '' && !Number.isFinite(parseDinheiro(v))
+
+function AvisoDoDinheiro({ valor }: { valor: string }) {
+  if (!dinheiroInvalido(valor)) return null
+  return (
+    <p role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+      {DINHEIRO_INVALIDO}
+    </p>
+  )
 }
 
 function formatPrice(raw: string | number) {
@@ -278,6 +294,9 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
       onSubmit={e => {
+        // Dinheiro que não se lê (D3): o aviso já está junto do campo; não envia
+        // (o preço por unidade iria como R$ 0).
+        if ([price, laborCost, otherCosts, ...branchPricing.map(b => b.price)].some(dinheiroInvalido)) { e.preventDefault(); return }
         // Valor faltando na comissão: barra aqui, antes de criar o procedimento.
         if (lidaComissao && 'erro' in lidaComissao) { e.preventDefault(); setErroComissao(lidaComissao.erro) }
         else setErroComissao(null)
@@ -506,6 +525,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
               <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
               <input name="labor_cost" type="text" className="field" value={laborCost} onChange={handleLaborCostInput} onBlur={e => setLaborCost(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30 }} />
             </div>
+            <AvisoDoDinheiro valor={laborCost} />
           </Field>
 
           {/* Insumos — calculado da lista de insumos */}
@@ -524,6 +544,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
               <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
               <input name="other_costs" type="text" className="field" value={otherCosts} onChange={handleOtherCostsInput} onBlur={e => setOtherCosts(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30 }} />
             </div>
+            <AvisoDoDinheiro valor={otherCosts} />
           </Field>
         </div>
 
@@ -549,6 +570,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
           <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
           <input name="price" type="text" required className="field" value={price} onChange={handlePriceCalcInput} onBlur={e => setPrice(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30, fontWeight: 700 }} />
         </div>
+        <AvisoDoDinheiro valor={price} />
       </Field>
 
       {/* -- Personalizar valores por filial (acordeão) -- */}
@@ -606,6 +628,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
                         onChange={branchOverrideInput(b.id, 'price')} onBlur={branchOverrideBlur(b.id, 'price')} inputMode="decimal"
                         placeholder={price || '—'}
                         style={{ paddingLeft: 26, fontSize: 'var(--text-sm-sz)', height: 32 }} />
+                      <AvisoDoDinheiro valor={ov.price} />
                     </div>
                   </div>
                 )
