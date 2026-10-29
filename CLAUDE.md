@@ -513,6 +513,14 @@ Regras:
   mais uma requisição, e o `updateTag` se mostrou instável no `unstable_cache`
   (2026-10-21). Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
   desativa a si mesmo. Prova: `e2e/membro-desativado.spec.ts`.
+- **O cargo de Admin da rede não se troca pela Equipe** (D2, 2026-10-29): o
+  editor o mostra travado (com a abrangência), e `updateTeamMember` grava só
+  "atende" e horário de quem mantém o MESMO cargo de sistema — é assim que a
+  dona que atende se marca profissional. Trocar de ou para o Admin da rede é
+  recusado, e a última Admin da rede ATIVA não se desativa
+  (`deactivateTeamMember` devolve `{ error }`). Seletor de cargo com valor
+  fora das opções fica em "Selecione…", nunca no primeiro da lista (era o que
+  rebaixava a dona). Prova: `e2e/equipe-dona-que-atende.spec.ts`.
 - **A abrangência se confere na ACTION, não só no layout.** Registro de
   unidade que chega por id (agendamento, lançamento, plano, mapa, membro,
   unidade) passa por `alcancaUnidade` / `assertUnidade` (`lib/auth.ts`)

@@ -34,6 +34,15 @@
   (`professionals:<rede>`): mexer num membro da rede expira todas as unidades.
   Escolher em QUAIS unidades ele atende fica para depois. Prova:
   `e2e/agenda-profissional-da-rede.spec.ts`.
+- **A dona que atende** (D2 da simulação de 2026-10-29): o Admin da rede
+  marca "Atende clientes", a comissão e o horário na Equipe da rede com o
+  cargo TRAVADO (CLAUDE.md §11) e entra na agenda, no agendar e na comissão
+  como qualquer profissional da rede. A **Equipe da unidade** lista também
+  quem é da rede e atende ali (ativo), com o chip "Da rede", só o nome e o
+  cargo, e SEM ações: cargo, comissão e acesso se mexem na Equipe da rede
+  (quem é da rede vê o lápis que leva para lá). A sessão de unidade não lê
+  membros da rede (RLS): essa lista vem pelo servidor. Prova:
+  `e2e/equipe-dona-que-atende.spec.ts`.
 - Status: `SCHEDULED → CONFIRMED → ARRIVED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `arrivedAt`, `startedAt`, `completedAt`, `cancelledAt`
 - **Confirmar e chegar são passos diferentes** (2026-10-21, decisão do Heitor;

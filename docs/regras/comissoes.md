@@ -47,7 +47,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `e2e/equipe-comissao-ao-criar.spec.ts`.
 - A comissão de cada membro se define na **Equipe** (chip "Comissão …" na
   linha, `ComissaoDoMembro`), só com `financial: MANAGE` — gerir a equipe não
-  dá acesso a quanto cada um ganha. Quem é de unidade só mexe nos da unidade.
+  dá acesso a quanto cada um ganha. Quem é de unidade só mexe nos da unidade
+  (a Equipe da unidade mostra quem é da rede e atende ali, mas sem o chip: a
+  comissão dele é da Equipe da rede). Vale para o Admin da rede que atende
+  (D2, 2026-10-29): o chip aparece quando ele marca "Atende clientes".
 - **A comissão DEVIDA é uma linha por procedimento executado**
   (`commission_lines`), e `commissions` é o EXTRATO dela: cada lançamento
   (`kind` LIBERACAO | AJUSTE | ESTORNO, com `motivo`, `released_at` e a

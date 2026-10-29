@@ -90,6 +90,9 @@ export default async function AdminTeamPage({
   const allRoles = tenantRoles ?? []
   // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
+  // O Admin da rede edita "atende", comissão e horário com o cargo TRAVADO (D2,
+  // 2026-10-29): fora das opções, o seletor marcava o primeiro cargo da lista.
+  const cargoDeAdmin = allRoles.find(r => r.key === 'NETWORK_ADMIN')
   // Mapa id → label (inclui sistema, para exibir o Admin da rede)
   const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
   // Filtro por cargo: value = role_id
@@ -261,6 +264,7 @@ export default async function AdminTeamPage({
                         roles={assignableRoles}
                         canChooseScope={ctx.branchId === null}
                         redirectPath="/admin/team"
+                        cargoFixo={cargoDeAdmin && m.role_id === cargoDeAdmin.id ? { id: cargoDeAdmin.id, label: cargoDeAdmin.label } : undefined}
                       />}
                       {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
                           (a action também recusa). */}
@@ -268,7 +272,7 @@ export default async function AdminTeamPage({
                         <BotaoComConfirmacao
                           acao={async () => {
                             'use server'
-                            await deactivateTeamMember(m.id, '/admin/team')
+                            return await deactivateTeamMember(m.id, '/admin/team')
                           }}
                           titulo="Desativar membro?"
                           explicacao={<><strong style={{ color: 'var(--text)' }}>{m.name}</strong> não entra mais no sistema, e sai da agenda. Dá para reativar depois.</>}

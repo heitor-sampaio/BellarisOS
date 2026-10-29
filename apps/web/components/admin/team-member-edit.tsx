@@ -29,6 +29,13 @@ interface Props {
   /** Só quem tem abrangência de rede escolhe entre filial e rede. */
   canChooseScope: boolean
   redirectPath:   string
+  /**
+   * O cargo de SISTEMA do membro (o Admin da rede), que não se troca pela
+   * Equipe (D2, 2026-10-29): aparece travado, e a abrangência também. Sem
+   * isto o seletor recebia um valor fora das opções e o navegador marcava o
+   * primeiro cargo da lista — salvar o "atende" rebaixava a dona da clínica.
+   */
+  cargoFixo?:     Role
 }
 
 /**
@@ -63,8 +70,10 @@ export function TeamMemberEdit(props: Props) {
  * o resultado da última tentativa nascem dos valores do membro a cada abertura,
  * e não do que se mexeu antes de cancelar.
  */
-function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, onFechar }: Props & { onFechar: () => void }) {
+function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, onFechar }: Props & { onFechar: () => void }) {
   const [scope, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
+  // Cargo fora das opções nunca vira "o primeiro da lista": fica em "Selecione…".
+  const cargoInicial = member.roleId && roles.some(r => r.id === member.roleId) ? member.roleId : ''
   const [state, action, pending] = useActionState(updateTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
 
@@ -99,21 +108,36 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
               <div className="form-2col">
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <label className="overline" htmlFor={`tme-role-${member.id}`}>Cargo</label>
-                  <select
-                    id={`tme-role-${member.id}`} name="roleId" required className="field"
-                    defaultValue={member.roleId ?? ''}
-                  >
-                    <option value="" disabled>Selecione…</option>
-                    {roles.map(r => (
-                      <option key={r.id} value={r.id}>{r.label}</option>
-                    ))}
-                  </select>
-                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    A troca de cargo vale no próximo carregamento — não é preciso sair e entrar.
-                  </span>
+                  {cargoFixo ? (
+                    <>
+                      {/* O select desabilitado não vai no formulário: o cargo segue no oculto. */}
+                      <input type="hidden" name="roleId" value={cargoFixo.id} />
+                      <select id={`tme-role-${member.id}`} className="field" value={cargoFixo.id} disabled>
+                        <option value={cargoFixo.id}>{cargoFixo.label}</option>
+                      </select>
+                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                        O cargo {cargoFixo.label} e a abrangência dele não se trocam pela Equipe.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <select
+                        id={`tme-role-${member.id}`} name="roleId" required className="field"
+                        defaultValue={cargoInicial}
+                      >
+                        <option value="" disabled>Selecione…</option>
+                        {roles.map(r => (
+                          <option key={r.id} value={r.id}>{r.label}</option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                        A troca de cargo vale no próximo carregamento — não é preciso sair e entrar.
+                      </span>
+                    </>
+                  )}
                 </div>
 
-                {canChooseScope && (
+                {!cargoFixo && canChooseScope && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline">Abrangência</label>
                     <SegSelect
@@ -128,7 +152,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                   </div>
                 )}
 
-                {scope === 'branch' && (
+                {!cargoFixo && scope === 'branch' && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline" htmlFor={`tme-branch-${member.id}`}>Filial</label>
                     <select
@@ -142,7 +166,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                     </select>
                   </div>
                 )}
-                {scope === 'network' && (
+                {!cargoFixo && scope === 'network' && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     Acesso a todas as unidades, sem filial fixa.
                   </span>

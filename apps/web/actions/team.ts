@@ -210,18 +210,9 @@ export async function updateTeamMember(
 
   const admin = createAdminClient()
 
-  const roleCheck = await assertRoleInTenant(admin, ctx.tenantId!, roleId)
-  if ('error' in roleCheck) return roleCheck
-
-  const scoped = resolveScope(ctx, scope, branchId)
-  if ('error' in scoped) return scoped
-  const effectiveBranchId = scoped.branchId
-  const branchCheck = await assertBranchInTenant(admin, ctx.tenantId!, effectiveBranchId)
-  if ('error' in branchCheck) return branchCheck
-
   const member = await ler(admin
     .from('users')
-    .select('auth_id, branch_id')
+    .select('auth_id, branch_id, role_id')
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar o usuário')
@@ -229,9 +220,41 @@ export async function updateTeamMember(
   // A editava — e puxava para a A — gente da B e até da rede.
   if (!member || !alcancaUnidade(ctx, member.branch_id as string | null)) return { error: 'Membro não encontrado.' }
 
+  // O cargo de SISTEMA de quem já o tem (D2 da simulação de 2026-10-29): a dona
+  // da clínica (Admin da rede) que também atende marca o "atende", a comissão e
+  // o horário sem passar pelo cargo. Antes a action recusava o cargo de sistema
+  // — e a tela mandava o primeiro cargo da lista, que a rebaixaria. Mantido o
+  // mesmo cargo de sistema, cargo e abrangência ficam como estão; trocar de ou
+  // para o Admin da rede não se faz pela Equipe (assim ninguém rebaixa a
+  // última admin).
+  const cargoAtual = member.role_id
+    ? await ler(admin.from('tenant_roles').select('key, is_system')
+        .eq('id', member.role_id as string).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cargo do membro')
+    : null
+  if (cargoAtual?.key === 'NETWORK_ADMIN' && roleId !== member.role_id) {
+    return { error: 'O cargo de Admin da rede não se troca pela Equipe.' }
+  }
+  const mantemCargoDoSistema = !!cargoAtual?.is_system && roleId === member.role_id
+
+  let effectiveBranchId = member.branch_id as string | null
+  if (!mantemCargoDoSistema) {
+    const roleCheck = await assertRoleInTenant(admin, ctx.tenantId!, roleId)
+    if ('error' in roleCheck) return roleCheck
+
+    const scoped = resolveScope(ctx, scope, branchId)
+    if ('error' in scoped) return scoped
+    effectiveBranchId = scoped.branchId
+    const branchCheck = await assertBranchInTenant(admin, ctx.tenantId!, effectiveBranchId)
+    if ('error' in branchCheck) return branchCheck
+  }
+
   const { error } = await admin
     .from('users')
-    .update({ role_id: roleId, branch_id: effectiveBranchId, provides_services: providesServices, ...(horario !== undefined ? { horario } : {}) })
+    .update({
+      ...(mantemCargoDoSistema ? {} : { role_id: roleId, branch_id: effectiveBranchId }),
+      provides_services: providesServices,
+      ...(horario !== undefined ? { horario } : {}),
+    })
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
   if (error) return { error: 'Erro ao atualizar membro.' }
@@ -239,12 +262,15 @@ export async function updateTeamMember(
   // Reemite os claims do JWT. O app já lê cargo e abrangência do banco (com a
   // invalidação de `user:` logo abaixo), então a mudança vale na hora; os claims
   // continuam sendo reescritos porque é deles que o RLS do Postgres depende.
-  await gravar(admin.rpc('set_user_claims', {
-    p_auth_id:   member.auth_id,
-    p_tenant_id: ctx.tenantId!,
-    p_branch_id: effectiveBranchId,
-    p_role_id:   roleId,
-  }), 'atualizar o acesso do membro')
+  // Com o cargo de sistema mantido, cargo e abrangência não mudaram.
+  if (!mantemCargoDoSistema) {
+    await gravar(admin.rpc('set_user_claims', {
+      p_auth_id:   member.auth_id,
+      p_tenant_id: ctx.tenantId!,
+      p_branch_id: effectiveBranchId,
+      p_role_id:   roleId,
+    }), 'atualizar o acesso do membro')
+  }
 
   revalidatePath(redirectPath)
   revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
@@ -266,15 +292,35 @@ async function membroDaRede(
   userId: string,
 ) {
   const membro = await ler(admin
-    .from('users').select('id, auth_id, branch_id, is_active')
+    .from('users').select('id, auth_id, branch_id, is_active, role_id')
     .eq('id', userId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o membro')
   // E ao alcance (§11): a gerente da unidade A desativava — e bania do login —
   // gente da B e admins da rede.
   if (!membro || !alcancaUnidade(ctx, membro.branch_id as string | null)) throw new Error('Membro não encontrado.')
-  return membro as { id: string; auth_id: string | null; is_active: boolean }
+  return membro as { id: string; auth_id: string | null; is_active: boolean; role_id: string | null }
 }
 
-export async function deactivateTeamMember(userId: string, redirectPath: string = '/admin/team') {
+/**
+ * Desativar a ÚLTIMA Admin da rede ativa deixa a rede sem ninguém de cargo de
+ * sistema — e o cargo não se dá pela Equipe (D2, 2026-10-29). Quem desativa é
+ * outra pessoa (ninguém se desativa), com a equipe MANAGE.
+ */
+async function ehAUltimaAdminAtiva(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  membro: { id: string; is_active: boolean; role_id: string | null },
+): Promise<boolean> {
+  if (!membro.is_active || !membro.role_id) return false
+  const cargo = await ler(admin.from('tenant_roles').select('key')
+    .eq('id', membro.role_id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o cargo do membro')
+  if (cargo?.key !== 'NETWORK_ADMIN') return false
+  const outras = await ler(admin.from('users').select('id')
+    .eq('tenant_id', tenantId).eq('role_id', membro.role_id).eq('is_active', true).neq('id', membro.id)
+    .limit(1), 'contar as admins da rede')
+  return (outras ?? []).length === 0
+}
+
+export async function deactivateTeamMember(userId: string, redirectPath: string = '/admin/team'): Promise<{ error: string } | undefined> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'team', 'MANAGE')
   // Desativar a si mesmo tranca a pessoa do lado de fora sem ninguém para
@@ -283,6 +329,9 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
 
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
+  if (await ehAUltimaAdminAtiva(admin, ctx.tenantId!, membro)) {
+    return { error: 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.' }
+  }
   await gravar(admin.from('users').update({ is_active: false }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'desativar o membro')
 
   // Desativar TIRA o acesso — até 2026-09-27 era só uma coluna que nada lia.

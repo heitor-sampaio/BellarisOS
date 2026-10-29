@@ -6,7 +6,9 @@ import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
-import { UserMinus, UserCheck } from 'lucide-react'
+import { UserMinus, UserCheck, Pencil } from 'lucide-react'
+import Link from 'next/link'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
@@ -54,7 +56,7 @@ export default async function TeamPage({
 
   const branchId = branch?.id ?? ctx.branchId!
 
-  const [todosOsMembros, tenantRoles] = await Promise.all([
+  const [todosOsMembros, tenantRoles, daRedeQueAtendem] = await Promise.all([
     ler(supabase
       .from('users')
       .select('id, name, email, role_id, is_active, provides_services, horario')
@@ -65,9 +67,23 @@ export default async function TeamPage({
       .select('id, key, label, is_system')
       .eq('tenant_id', ctx.tenantId!)
       .order('label'), 'carregar os cargos'),
+    // Quem é da REDE e atende atende nesta unidade também (§9.1) — a dona da
+    // clínica que atende é o caso típico (A5/D2, 2026-10-29). A sessão de
+    // unidade não lê os membros da rede (RLS): o servidor lê só estes, só o
+    // nome e o cargo, e a linha vai sem e-mail nem ações.
+    ler(createAdminClient()
+      .from('users')
+      .select('id, name, role_id')
+      .eq('tenant_id', ctx.tenantId!)
+      .is('branch_id', null)
+      .eq('provides_services', true)
+      .eq('is_active', true)
+      .order('name'), 'carregar quem é da rede e atende'),
   ])
 
   const members  = (todosOsMembros ?? []).filter(m => contemSemAcento([m.name, m.email], termo))
+  const daRede   = (daRedeQueAtendem ?? []).filter(m => contemSemAcento([m.name], termo))
+  const total    = members.length + daRede.length
   const allRoles = tenantRoles ?? []
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
   const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
@@ -91,7 +107,7 @@ export default async function TeamPage({
             Equipe
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {members.length} {members.length === 1 ? 'membro' : 'membros'} {termo ? 'encontrados' : 'cadastrados'}
+            {total} {total === 1 ? 'membro' : 'membros'} {termo ? 'encontrados' : 'cadastrados'}
           </p>
         </div>
         {canManage && (
@@ -99,7 +115,7 @@ export default async function TeamPage({
         )}
       </div>
 
-      {(todosOsMembros?.length ?? 0) > 0 && (
+      {((todosOsMembros?.length ?? 0) + (daRedeQueAtendem?.length ?? 0)) > 0 && (
         <div className="filtros-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
           <BuscaNaUrl inicial={termo} placeholder="Buscar por nome ou e-mail…" rotulo="Buscar membro" />
         </div>
@@ -107,7 +123,7 @@ export default async function TeamPage({
 
       {/* Lista */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {!members?.length ? (
+        {!total ? (
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
               {termo ? <>Nenhum membro encontrado para “{termo}”.</> : 'Nenhum membro cadastrado ainda.'}
@@ -134,7 +150,7 @@ export default async function TeamPage({
                 <tr
                   key={m.id}
                   style={{
-                    borderBottom: i < members.length - 1 ? '1px solid var(--hairline)' : undefined,
+                    borderBottom: i < total - 1 ? '1px solid var(--hairline)' : undefined,
                     transition: 'background 80ms',
                   }}
                 >
@@ -199,7 +215,7 @@ export default async function TeamPage({
                       <BotaoComConfirmacao
                         acao={async () => {
                           'use server'
-                          await deactivateTeamMember(m.id, `/${slug}/team`)
+                          return await deactivateTeamMember(m.id, `/${slug}/team`)
                         }}
                         titulo="Desativar membro?"
                         explicacao={<><strong style={{ color: 'var(--text)' }}>{m.name}</strong> não entra mais no sistema, e sai da agenda. Dá para reativar depois.</>}
@@ -225,6 +241,51 @@ export default async function TeamPage({
                       </form>
                     ))}
                     </div>
+                  </td>
+                </tr>
+              ))}
+              {/* Quem é da rede e atende aqui: só leitura. Cargo, comissão e
+                  acesso se mexem na Equipe da rede — a unidade não alcança
+                  quem é da rede (§11), e a action recusaria. */}
+              {daRede.map((m, i) => (
+                <tr
+                  key={m.id}
+                  style={{ borderBottom: members.length + i < total - 1 ? '1px solid var(--hairline)' : undefined }}
+                >
+                  <td style={{ padding: '14px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <Initials name={m.name} />
+                      <div>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+                          {m.name}
+                        </p>
+                        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
+                          Atende em todas as unidades
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <span className="chip chip-brand">
+                      {(m.role_id ? roleLabel[m.role_id] : null) ?? '—'}
+                    </span>
+                    <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
+                    <span className="chip chip-info" style={{ marginLeft: 6 }}>Da rede</span>
+                  </td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <span className="chip chip-success">Ativo</span>
+                  </td>
+                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                    {canManage && ctx.branchId === null && (
+                      <Link
+                        href={`/admin/team?q=${encodeURIComponent(m.name)}`}
+                        className="btn-ghost"
+                        style={{ padding: '5px 8px', color: 'var(--brand)', display: 'inline-flex' }}
+                        title="Editar na Equipe da rede"
+                      >
+                        <Pencil size={15} />
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}
