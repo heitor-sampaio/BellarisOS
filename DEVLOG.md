@@ -6883,9 +6883,14 @@ verdade. O que vale:
     "quem vendeu E quem executa", o que não fecha com "a sessão não gera
     comissão" (a executora é definida na venda? por sessão? só quem vende?).
     Nada mexido até ele decidir; hoje vale a regra por sessão (comissoes.md).
-  - A Entrada de estoque vira despesa paga hoje (D13), marcada por padrão e só
+  - ~~A Entrada de estoque vira despesa paga hoje (D13), marcada por padrão e só
     com custo informado. A entrada por código de barras e a do Copilot seguem
-    sem a opção. Os R$ 1.800 já gravados na Íris ficaram como estavam.
+    sem a opção. Os R$ 1.800 já gravados na Íris ficaram como estavam.~~
+    **Revisto pelo Heitor (2026-10-28): movimentação de estoque — entrada OU
+    saída — NUNCA gera despesa.** O valor informado serve só de base para
+    insumos, custo, margem e lucro. A opção "lançar como despesa" da Entrada
+    (1b54c531, `estoque_compra`) SAI. A FAZER (fila: depois da frente do "só
+    os meus", que divide o servidor de testes).
   - Ficha de saúde (D2): o servidor recusa a vazia e a com obrigatória em
     branco (app, "nada mudou" e link). Obrigatórias na ficha padrão: alergias,
     gestação/amamentação, medicamentos e condições de saúde (pele, protetor,
