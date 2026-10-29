@@ -4,6 +4,7 @@ import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { tagDasFichasDoLogin } from '@/lib/cached-queries'
+import { erroDoAuth, SENHA_FRACA } from '@/lib/erro-do-auth'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -50,7 +51,14 @@ export async function criarLoginDoCliente(
   if (error || !data?.user) {
     // Entre a conferência e a criação, outro caminho criou o login.
     const ja = /already|registered|exists/i.test(error?.message ?? '')
-    return { error: ja ? RECUSA.equipe! : `Erro ao criar login do cliente: ${error?.message ?? 'desconhecido'}` }
+    if (ja) return { error: RECUSA.equipe! }
+    // O Auth fala inglês, e a tela mostrava "Password is known to be weak…"
+    // cru (D12, 2026-10-29). A senha inicial é o CPF: a fraca é o CPF.
+    console.error('[acesso] criar o login da cliente:', error?.code, error?.message)
+    const texto = erroDoAuth(error)
+    return { error: texto === SENHA_FRACA
+      ? 'O sistema de login recusou o CPF como senha inicial (fácil de adivinhar). Confira o CPF; se estiver certo, cadastre sem o acesso ao app e avise quem administra a rede.'
+      : texto }
   }
   return { authId: data.user.id, novo: true }
 }

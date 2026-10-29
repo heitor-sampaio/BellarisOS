@@ -1,6 +1,7 @@
 'use server'
 
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
+import { erroDoAuth } from '@/lib/erro-do-auth'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, can, temRecurso } from '@/lib/auth'
@@ -127,7 +128,9 @@ export async function createTeamMember(
     if (authError?.message?.includes('already registered')) {
       return { error: 'Esse e-mail já está cadastrado.' }
     }
-    return { error: 'Erro ao criar usuário. Tente novamente.' }
+    // Em português (D12): a senha fraca, o e-mail inválido… o Auth fala inglês.
+    console.error('[equipe] criar o login:', authError?.code, authError?.message)
+    return { error: erroDoAuth(authError) }
   }
 
   const authId = authData.user.id

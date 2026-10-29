@@ -1,5 +1,6 @@
 import type { ChaveDeCampo, Destino } from './campos'
 import { camposDoDestino } from './campos'
+import { cpfValido } from '@estetica-os/utils'
 
 /**
  * Cada valor do CSV no formato que o sistema grava, e a linha validada
@@ -42,17 +43,10 @@ export function variantesDoTelefone(fone: string): string[] {
   return [fone]
 }
 
-/** CPF: 11 dígitos, com os verificadores conferidos. */
+/** CPF: 11 dígitos, com os verificadores conferidos (a conta é UMA, `cpfValido`). */
 export function normalizarCpf(bruto: string): string | null {
   const c = soDigitos(bruto)
-  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return null
-  const dv = (n: number) => {
-    let s = 0
-    for (let i = 0; i < n; i++) s += Number(c[i]) * (n + 1 - i)
-    const r = (s * 10) % 11
-    return r === 10 ? 0 : r
-  }
-  return dv(9) === Number(c[9]) && dv(10) === Number(c[10]) ? c : null
+  return cpfValido(c) ? c : null
 }
 
 /** dd/mm/aaaa, dd/mm/aa ou aaaa-mm-dd → aaaa-mm-dd (a data existe de verdade). */

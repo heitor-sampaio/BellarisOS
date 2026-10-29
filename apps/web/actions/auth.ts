@@ -1,5 +1,6 @@
 'use server'
 import { origemPublicaDe } from '@/lib/origem'
+import { erroDoAuth } from '@/lib/erro-do-auth'
 import { headers } from 'next/headers'
 import { emSessaoDeSuporte } from '@/lib/suporte/sessao'
 
@@ -184,9 +185,9 @@ export async function updatePasswordAction(
   if (await emSessaoDeSuporte()) return { error: 'No modo suporte, a senha desta conta não muda.' }
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
   if (error) {
-    // A mensagem do Auth é em inglês; a mais comum é repetir a senha atual.
-    if (/different from the old/i.test(error.message)) return { error: 'A nova senha precisa ser diferente da atual.' }
-    return { error: 'Não consegui trocar a senha. Tente novamente.' }
+    // A mensagem do Auth é em inglês: a senha igual à atual, a fraca, muitas
+    // tentativas — em português (lib/erro-do-auth, D12 de 2026-10-29).
+    return { error: erroDoAuth(error) }
   }
 
   // Trocada, a senha deixa de ser provisória: a marca sai (só o servidor

@@ -20,6 +20,25 @@
   ganha o selo "Tem acesso ao app" ao lado do nome (A13, 2026-10-27). Depois, a aba Dados da ficha dá o acesso
   (`darAcessoAoApp`, com o e-mail e o CPF SALVOS; o núcleo é
   `darAcessoAoCliente`). Prova: `e2e/ficha-cadastro-de-balcao.spec.ts`.
+- **O cadastro confere o que se digita** (D12 e D13 da simulação de
+  2026-10-29; cadastro, aba Dados e "Dar acesso ao app"):
+  - o CPF pelos dígitos verificadores, recusando a sequência repetida —
+    `cpfValido` (`@estetica-os/utils`), a MESMA conta do Copilot e da
+    importação. O 11111111111 passava e virava a senha inicial do login;
+  - o telefone com 10 ou 11 dígitos nacionais (`telefoneNacional`: o 55 do
+    WhatsApp é tirado); "(41) 9920" passava;
+  - o telefone que já é de OUTRA cliente da rede (`cliente_por_telefone`)
+    AVISA e deixa confirmar ("Cadastrar mesmo assim", que vale para aquele
+    número) — mãe e filha dividem número. A ficha rápida sem CPF do mesmo
+    telefone não é "outra": é a que o cadastro completa, como sempre;
+  - o erro do Auth vai à tela em português (`erroDoAuth`,
+    `lib/erro-do-auth.ts`; também na Equipe e na troca de senha). A senha
+    fraca, na cliente, é o CPF: a tela diz isso. Nunca a mensagem crua do
+    Supabase.
+  - O formulário não se apaga com o erro nem com o aviso (`onSubmit` em vez
+    do reset automático da action).
+  Prova: `e2e/ficha-cadastro-validacao.spec.ts`,
+  `packages/utils/tests/validacao.test.ts`, `tests/erro-do-auth.test.ts`.
 - **O portal fala com a pessoa pelo sexo da ficha** (`clients.gender`: F, M,
   O ou vazio; D17 da simulação de 2026-10-29): "Bem-vinda"/"Bem-vindo" e, sem
   sexo ou "Outro", "Boas-vindas" (`boasVindas`, `lib/saudacao.ts`). O que a

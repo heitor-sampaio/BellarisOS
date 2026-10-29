@@ -1,4 +1,5 @@
 export { formatBRL, formatDate, formatDateTime, formatTime, formatPercent, maskCPF, maskPhone, maskPhoneDigitando, maskCNPJ, maskCNPJDigitando, maskCEPDigitando, parseDinheiro, DINHEIRO_INVALIDO, formatDinheiroCampo, formatDia, idadeEm } from './format'
+export { cpfValido, telefoneNacional } from './validacao'
 export { iniciaisDoNome } from './iniciais'
 export {
   CLIENT_TAGS,

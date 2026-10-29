@@ -6,7 +6,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
-import { unitTag, maskPhone } from '@estetica-os/utils'
+import { unitTag, maskPhone, cpfValido, telefoneNacional } from '@estetica-os/utils'
 import { after } from 'next/server'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
@@ -17,6 +17,9 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
+
+const TELEFONE_INCOMPLETO = 'Telefone incompleto: informe o DDD e o número (10 ou 11 dígitos).'
+const CPF_INVALIDO = 'CPF inválido: confira os números.'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -36,10 +39,16 @@ async function resolveBranch(tenantId: string, branchId: string) {
 // que o comercial olha antes de responder.
 
 // --- Criar cliente ------------------------------------------------
+/**
+ * O telefone da ficha nova já é de OUTRA cliente da rede (D13): a tela avisa
+ * e deixa confirmar — mãe e filha dividem número. Não bloqueia de vez.
+ */
+export type AvisoDeTelefone = { nome: string; telefone: string }
+
 export async function addClient(
-  _prev: { error?: string; success?: boolean; clientId?: string } | undefined,
+  _prev: { error?: string; success?: boolean; clientId?: string; avisoTelefone?: AvisoDeTelefone } | undefined,
   formData: FormData,
-) {
+): Promise<{ error?: string; success?: boolean; clientId?: string; acessoCriado?: boolean; avisoTelefone?: AvisoDeTelefone }> {
   const ctx     = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
 
@@ -86,8 +95,12 @@ export async function addClient(
 
   // Regra de negócio de CRIAR CLIENTE — idêntica no cadastro manual e na conversão de lead.
   if (!name || !phone)                     return { error: 'Nome e telefone são obrigatórios.' }
+  // D13 (2026-10-29): "(41) 9920" passava e a ficha mostrava "(41) 9920-".
+  const foneNacional = telefoneNacional(phone)
+  if (!foneNacional) return { error: TELEFONE_INCOMPLETO }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'E-mail inválido.' }
-  if (document && document.length !== 11)  return { error: 'CPF inválido: são 11 dígitos.' }
+  // D12: pelos dígitos verificadores — o 11111111111 passava e virava a senha inicial do login.
+  if (document && !cpfValido(document))    return { error: CPF_INVALIDO }
   if (comAcesso && (!email || !document))  return { error: 'O acesso ao app precisa do e-mail e do CPF.' }
 
   const admin = createAdminClient()
@@ -133,6 +146,20 @@ export async function addClient(
   // telefone — e o histórico de atendimento ficaria dividido entre os dois.
   const jaExiste = await clienteRapidoDoTelefone(admin, ctx.tenantId!, phone)
 
+  // O telefone de OUTRA cliente (D13): avisa, e a recepção confirma — o
+  // `_telefoneConfirmado` vale para ESTE número (trocou o número, avisa de
+  // novo). A ficha rápida sem CPF do mesmo telefone não é "outra": é ela que
+  // o cadastro completa.
+  if (formData.get('_telefoneConfirmado') !== foneNacional) {
+    const outra = await ler(admin.rpc('cliente_por_telefone', { p_tenant: ctx.tenantId!, p_digitos: foneNacional }),
+      'conferir se o telefone já é de outra cliente') as string | null
+    if (outra && outra !== jaExiste?.id) {
+      const dela = await ler(admin.from('clients').select('name').eq('id', outra).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+        'buscar a cliente do telefone') as { name: string } | null
+      if (dela) return { avisoTelefone: { nome: dela.name, telefone: foneNacional } }
+    }
+  }
+
   // 1) Conta de login PRIMEIRO (login = e-mail, senha = CPF) — ou a que ela já
   // tem em outra clínica, quando o e-mail e o CPF batem (a senha fica a dela).
   // E-mail de equipe ou CPF que não bate → aborta sem criar cliente órfão.
@@ -148,7 +175,7 @@ export async function addClient(
   // 2) Cliente — completa a ficha rápida quando ela existe, senão cria.
   const dadosDoCliente = {
     tenant_id: ctx.tenantId!, branch_id: branchId,
-    name, phone: maskPhone(phone), email, document,
+    name, phone: maskPhone(foneNacional), email, document,
     birth_date: birthDate, gender, notes, tags,
     is_active: true, auth_id: authId,
   }
@@ -250,6 +277,7 @@ export async function darAcessoAoApp(clientId: string): Promise<{ ok: true } | {
     if (!ficha) return { error: 'Cliente não encontrado.' }
     const cpf = (ficha.document ?? '').replace(/\D/g, '')
     if (!ficha.email || cpf.length !== 11) return { error: 'Para o acesso ao app, salve antes o e-mail e o CPF da cliente.' }
+    if (!cpfValido(cpf)) return { error: CPF_INVALIDO }
     const r = await darAcessoAoCliente(admin, ctx, ficha.id, ficha.email.toLowerCase(), cpf)
     if ('error' in r) return r
     revalidatePath('/admin/clients/[id]', 'page')
@@ -355,6 +383,9 @@ export async function updateClientContactData(
   if (data.name !== undefined && data.name.trim().length < 2) {
     return { error: 'Informe o nome do cliente.' }
   }
+  // As mesmas regras do cadastro (D12, D13).
+  if (data.phone?.trim() && !telefoneNacional(data.phone)) return { error: TELEFONE_INCOMPLETO }
+  if (data.document?.replace(/\D/g, '') && !cpfValido(data.document)) return { error: CPF_INVALIDO }
 
   // O núcleo que a ficha e o Copilot dividem (lib/clients/atualizar.ts).
   return atualizarClienteCore(admin, ctx, clientId, {

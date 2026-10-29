@@ -1,13 +1,13 @@
 'use client'
 
-import { useActionState, useEffect, useEffectEvent, useState } from 'react'
+import { startTransition, useActionState, useEffect, useEffectEvent, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { addClient } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
-import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir } from '@estetica-os/utils'
+import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, telefoneNacional } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 
@@ -88,6 +88,21 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const router   = useRouter()
   const pathname = usePathname()
 
+  // O telefone já é de outra cliente (D13): o aviso vale para ESTE número —
+  // trocou o número, ele some (e o servidor confere de novo).
+  const aviso = state?.avisoTelefone && state.avisoTelefone.telefone === telefoneNacional(phone)
+    ? state.avisoTelefone : null
+
+  // Sem o reset automático do formulário: com ele, o aviso do telefone (e todo
+  // erro) apagava o nome, o nascimento e as observações já digitados, e
+  // confirmar pedia para digitar tudo de novo. O botão que enviou vai junto
+  // (o "Cadastrar mesmo assim" leva a confirmação do telefone).
+  function enviar(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const dados = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter)
+    startTransition(() => formAction(dados))
+  }
+
   const aoCadastrar = useEffectEvent(() => {
     const clientId = (state as unknown as { clientId?: string }).clientId
     // A confirmação sai antes de a tela mudar: o formulário some no modal ou na navegação.
@@ -114,7 +129,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   }
 
   return (
-    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <form onSubmit={enviar} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <input type="hidden" name="_branchId" value={branches && branches.length > 0 ? unitId : branchId} />
       <input type="hidden" name="_slug" value={slug} />
       {leadId && <input type="hidden" name="_leadId" value={leadId} />}
@@ -246,6 +261,22 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         }}>
           {state.error}
         </p>
+      )}
+      {aviso && (
+        <div role="alert" style={{
+          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
+          color: 'var(--warning)', background: 'var(--warning-soft)',
+          borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+        }}>
+          <span>
+            O telefone {telefoneParaExibir(aviso.telefone)} já é de <b style={{ color: 'var(--text)' }}>{aviso.nome}</b> nesta
+            clínica. Se é o mesmo número mesmo (mãe e filha, por exemplo), confirme.
+          </span>
+          <button type="submit" name="_telefoneConfirmado" value={aviso.telefone} className="btn-secondary" disabled={pending}>
+            Cadastrar mesmo assim
+          </button>
+        </div>
       )}
       {state?.success && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>

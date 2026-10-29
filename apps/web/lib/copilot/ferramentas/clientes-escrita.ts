@@ -1,5 +1,6 @@
 import 'server-only'
 import { z } from 'zod/v4'
+import { cpfValido } from '@estetica-os/utils'
 import { revalidateTag } from 'next/cache'
 import { ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
@@ -23,17 +24,7 @@ import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/
  * (`lib/clients/acesso.ts`).
  */
 
-function cpfValido(cpf: string): boolean {
-  const d = cpf.replace(/\D/g, '')
-  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false
-  const dig = (n: number) => {
-    let soma = 0
-    for (let i = 0; i < n; i++) soma += Number(d[i]) * (n + 1 - i)
-    const r = (soma * 10) % 11
-    return r === 10 ? 0 : r
-  }
-  return dig(9) === Number(d[9]) && dig(10) === Number(d[10])
-}
+// O CPF pelos dígitos verificadores: a conta é UMA, `cpfValido` (@estetica-os/utils).
 
 const EMAIL = z.string().max(160).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'e-mail inválido')
 
