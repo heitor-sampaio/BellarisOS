@@ -7845,6 +7845,20 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   2. A ficha não entra no rascunho.
   3. O plano depois da avaliação concluída sai pelo "Novo plano" do Planejamento.
   4. A ficha salva no "Enviar para a recepção" não fica na mesma transação do plano.
+
+  **Revisto pelo Heitor (2026-10-29):**
+  1. **"Tudo que for obrigatório é obrigatório e barra qualquer progressão."**
+     A pergunta obrigatória sem resposta, na ficha do procedimento OU na
+     anamnese, barra o "Finalizar", o "Enviar para a recepção" e gerar o
+     plano, e a tela aponta o que falta. Isso muda também a regra do D2 de
+     28/10 (item 9), em que a anamnese não barrava o "Finalizar".
+  2. A ficha entra no rascunho.
+  3. **"É preciso avaliar primeiro pra depois decidir o que fazer."** Gerar o
+     plano volta a valer na avaliação concluída, sem regravar o registro
+     travado (as dores e a evolução do dia ficam como estão).
+  4. A ficha e o plano numa gravação só ("como achar que fica melhor").
+
+  A FAZER, na frente clínica, depois do planejador na ficha.
 - **D2.** A dona (Admin da rede) não consegue ser profissional:
   - `assignableRoles` tira o NETWORK_ADMIN da lista, e por isso a edição dela abre com o primeiro cargo, "Financeiro";
   - `updateTeamMember` grava o cargo junto e recusa cargo de sistema, então não há caminho para `provides_services` num admin;
