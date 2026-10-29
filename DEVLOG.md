@@ -8056,7 +8056,8 @@ A sugestão: com uma unidade ativa, esconder o vocabulário de rede, sem mudar o
 5. **Ficha de saúde (D2 de 28/10, para revisar).** "Grávida ou amamentando?" é obrigatória também para cliente do sexo masculino, porque a ficha não olha o sexo cadastrado.
 6. **Ocupação (D12 e a ocupação revista, para revisar).** Na mesma unidade única, o dashboard da unidade dá 12% e o da rede dá 80%, com o mesmo nome e outra definição (aproveitamento). A da "Minha agenda" é um terceiro número, e esse é defeito (D11).
 7. **Grade pela unidade (D5, confirmado).** A tela mostra como "livre" um horário em que a profissional de horário próprio não atende. É só para o Heitor saber.
-8. **Decisão nova:** a cliente ganha pontos sobre a entrada de um plano parcelado antes de qualquer sessão, e as parcelas pontuam quando pagas. É coerente com "1 ponto por R$ pago", mas vale confirmar.
+8. **Decisão nova:** a cliente ganha pontos sobre a entrada de um plano parcelado antes de qualquer sessão, e as parcelas pontuam quando pagas. É coerente com "1 ponto por R$ pago", mas vale confirmar. **Confirmado pelo Heitor (2026-10-29):** o ponto acompanha o pagamento, e a clínica configura quantos pontos dá por real. Isso já existe em Fidelidade → Configurações (`points_per_real`).
+   - **Defeito achado na conferência:** `components/admin/fidelidade-config.tsx:72` tira todos os pontos antes de trocar a vírgula. Com isso, "0.5" vira 5, a mesma classe do D3. A FAZER, com o aviso "use vírgula".
 
 ### Próximas fases já combinadas
 
