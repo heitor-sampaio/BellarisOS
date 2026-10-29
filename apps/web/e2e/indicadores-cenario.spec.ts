@@ -187,7 +187,11 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     const r = data![0]!
     expect(num(r.revenue_cash), 't3 pendente e as despesas não têm atendimento').toBe(300)
     expect(num(r.revenue_pending), 'o pendente não tem atendimento').toBe(0)
-    expect(num(r.new_clients), 'clientes novos não são do profissional').toBe(0)
+    // "Só os meus" em qualquer lugar (decisão do Heitor, 2026-10-28): o novo
+    // cliente DELE é o novo cliente com agendamento não cancelado com ele —
+    // C2. Era 0 por construção ("clientes novos não são do profissional"), e o
+    // card "Novos clientes" de quem tem "só os meus" dizia sempre 0.
+    expect(num(r.new_clients), 'C2, novo e atendido por ele').toBe(1)
   })
 
   test('séries: por mês e por dia, receita e despesa pagas', async () => {

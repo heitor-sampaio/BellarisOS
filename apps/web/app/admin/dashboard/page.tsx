@@ -1,4 +1,4 @@
-import { getTenantContext, isOwnScope, temRecurso } from '@/lib/auth'
+import { getTenantContext, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
@@ -70,12 +70,14 @@ export default async function AdminDashboardPage({
   // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
   const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports
 
-  // "Só os meus" (D7 da simulação de 2026-10-28): o mesmo recorte do dashboard
-  // da unidade — com a agenda ou o financeiro em OWN, os números são os DELA
-  // (`professionalId` no núcleo), e o dinheiro da REDE (custo, evolução com
-  // lucro, ranking de filiais, receita e margem por procedimento, vendas por
-  // profissional, gasto das clientes) não é consultado nem mostrado. A
-  // profissional da rede via a receita de todas e o custo do mês.
+  // "Só os meus" (D7 da simulação de 2026-10-28; "em qualquer lugar", decisão
+  // do Heitor no mesmo dia): com a agenda ou o financeiro em OWN, TODO número
+  // é o DELA (`professionalId` em lib/metrics) — a receita, a evolução da
+  // receita, os rankings, as clientes (as que ela atendeu: total, demografia,
+  // recorrência, gasto), o giro dos atendimentos dela e os planos dela. O que
+  // não se atribui a ela não é consultado nem mostrado: o custo e o lucro, a
+  // margem do catálogo, o ranking e a ocupação por filial, e a comissão das
+  // outras.
   const recorteProprio = isOwnScope(ctx, 'agenda') || isOwnScope(ctx, 'financial')
   const proId = recorteProprio ? (ctx.internalUserId ?? NINGUEM) : null
   const agendaDela = isOwnScope(ctx, 'agenda') ? (ctx.internalUserId ?? NINGUEM) : null
@@ -139,7 +141,6 @@ export default async function AdminDashboardPage({
     procedureStats,
     professionalStats,
     clientStats,
-    totalClientsEver,
     todayApptsRaw,
     pendingPlansRaw,
     bpsRaw,
@@ -152,18 +153,13 @@ export default async function AdminDashboardPage({
     // comissões e minutos agendados numa chamada só e coerentes entre si.
     getCore(metricArgs),
     getCore(prevArgs),
-    // Por unidade e a série (receita × despesa) são o dinheiro da rede.
+    // Por unidade é o dinheiro da rede. A série, com "só os meus", é a
+    // receita DELA (a tela mostra só a receita, sem custo nem lucro).
     recorteProprio ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate }),
-    recorteProprio ? Promise.resolve([]) : getSeries({ ...metricArgs, granularity: period === 'today' ? 'hour' : 'day' }),
+    getSeries({ ...metricArgs, granularity: period === 'today' ? 'hour' : 'day' }),
     getTopProcedures({ ...metricArgs, limit: 5 }),
     getTopProfessionals({ ...metricArgs, limit: 5 }),
     getTopClients({ ...metricArgs, limit: 10 }),
-
-    // Total de clientes da rede (all time)
-    contar(admin.from('clients')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true), 'contar os clientes da rede'),
 
     // Agendamentos de hoje (exceto cancelados e no-show) — com a agenda "só
     // os meus", os dela, como o "Meus agendamentos hoje" da unidade.
@@ -179,13 +175,15 @@ export default async function AdminDashboardPage({
       return ler(q, 'carregar os agendamentos de hoje')
     })(),
 
-    // Planos de tratamento aguardando checkout
-    ler(admin.from('treatment_plans')
-      .select('id, branch_id, created_at, clients(name), branches(name, slug)')
-      .in('branch_id', branchIds)
-      .eq('status', 'PROPOSED')
-      .order('created_at', { ascending: true })
-      .limit(20), 'carregar os planos aguardando checkout'),
+    // Planos de tratamento aguardando checkout — com "só os meus", os dela.
+    (() => {
+      let q = admin.from('treatment_plans')
+        .select('id, branch_id, created_at, clients(name), branches(name, slug)')
+        .in('branch_id', branchIds)
+        .eq('status', 'PROPOSED')
+      if (proId) q = q.eq('professional_id', proId)
+      return ler(q.order('created_at', { ascending: true }).limit(20), 'carregar os planos aguardando checkout')
+    })(),
 
     // Estoque: produtos com min_stock configurado OU zerados (para indicador de saúde)
     ler(admin.from('branch_product_stock')
@@ -203,15 +201,20 @@ export default async function AdminDashboardPage({
     // PERÍODO e não "agora": o consumo que acabou de ser baixado nasce com o
     // relógio do Postgres, que está à frente do relógio do app. Somado no
     // banco: em JS, passando de 1000 movimentos, subcontava.
-    getGiroDeEstoque({ branchIds, from: startDate, to: periodInfo.fullTo }),
+    // Com "só os meus", o gasto nos atendimentos dela.
+    getGiroDeEstoque({ branchIds, from: startDate, to: periodInfo.fullTo, professionalId: proId }),
 
-    // Demografia — todos os clientes da rede, contada no banco (idade, cidade,
-    // CEP e LTV por CEP). Antes vinha a base inteira e era cortada em 1000.
-    getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate }),
+    // Demografia — os clientes da rede (com "só os meus", os que ela atendeu),
+    // contada no banco: o total, idade, cidade, CEP e LTV por CEP. Antes vinha
+    // a base inteira e era cortada em 1000.
+    getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: proId }),
   ]) : [
     { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [],
-    0, [], [], [], [], 0, { idades: [], cidades: [], ceps: [] } as Demografia,
+    [], [], [], [], 0, { total: 0, idades: [], cidades: [], ceps: [] } as Demografia,
   ]
+
+  // Total de clientes (todo o período): o da demografia, a mesma contagem.
+  const totalClientsEver = demografia.total
 
   const todayAppts = (todayApptsRaw ?? []) as AgendamentoDeHoje[]
 
@@ -355,7 +358,8 @@ export default async function AdminDashboardPage({
   // todos: o ranking vivia dentro da seção de equipe, e quem só via a equipe
   // (ou só as próprias comissões) via o de todo mundo. E ordena pela comissão
   // de verdade — antes era o top 5 por atendimentos, reordenado.
-  const verComissoesDaEquipe = canFinancial && !isOwnScope(ctx, 'financial')
+  // Com qualquer "só os meus", a comissão das outras também não aparece.
+  const verComissoesDaEquipe = canFinancial && !recorteProprio
   const rankingDeComissao = verComissoesDaEquipe && needsCore
     ? await getRankingDeComissao({ ...metricArgs, limit: 5 })
     : []
@@ -431,7 +435,8 @@ export default async function AdminDashboardPage({
   const hotmapRawCepLtv: Record<string, number> = {}
   for (const c of demografia.ceps) {
     hotmapRawCepCounts[c.cep] = c.n
-    if (c.ltv > 0 && !recorteProprio) hotmapRawCepLtv[c.cep] = c.ltv
+    // Com "só os meus", o LTV é o que as clientes dela pagaram pelos atendimentos dela.
+    if (c.ltv > 0) hotmapRawCepLtv[c.cep] = c.ltv
   }
 
   // -- Comercial: funil de leads por estágio + conversão (gate crm) --------
@@ -450,6 +455,8 @@ export default async function AdminDashboardPage({
         tenantId: ctx.tenantId!, branchIds: null,
         from: startDate, to: endDate,
         funnelId: funilAtivo?.id ?? null,
+        // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
+        ownerId: ownerFilter(ctx, 'crm'),
       })
     : []
 

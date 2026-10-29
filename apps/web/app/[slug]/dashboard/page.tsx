@@ -111,11 +111,12 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // Escopo do cargo, não mais heurística sobre o nível de agenda.
   const professionalOnly = isOwnScope(ctx, 'agenda')
   const proId = ownerFilter(ctx, 'agenda')
-  // O faturamento da UNIDADE (o gráfico dos 6 meses) não é de quem vê "só os
-  // meus" na agenda ou no financeiro (D7 da simulação de 2026-10-28, com o
-  // dashboard da rede): o cartão já era o dela, e o gráfico dizia "▲ R$ 420
-  // no semestre" da unidade inteira.
-  const faturamentoDaUnidade = canFinancial && !professionalOnly && !isOwnScope(ctx, 'financial')
+  // "Só os meus" na agenda OU no financeiro (D7 da simulação de 2026-10-28;
+  // "em qualquer lugar", decisão do Heitor no mesmo dia): todo número é o
+  // DELA — a receita e o gráfico dos 6 meses (só a receita dela; mostrava
+  // "▲ R$ 420 no semestre" da unidade inteira, e depois sumia), os
+  // procedimentos, as clientes do mês e a reativar, os planos a receber.
+  const recorteDela = proId ?? ownerFilter(ctx, 'financial')
 
   const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
 
@@ -132,7 +133,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const metricArgs = {
     tenantId: ctx.tenantId!, branchIds: [branchId],
     // O financeiro "só os meus" também recorta o dinheiro (como no da rede).
-    from: period.from, to: period.to, professionalId: proId ?? ownerFilter(ctx, 'financial'),
+    from: period.from, to: period.to, professionalId: recorteDela,
   }
 
   const [
@@ -156,16 +157,20 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       ? getCore({ ...metricArgs, from: period.prevFrom, to: period.prevTo })
       : Promise.resolve({ ...EMPTY_CORE }),
 
-    faturamentoDaUnidade
+    canFinancial
       ? getSeries({
           tenantId: ctx.tenantId!, branchIds: [branchId],
-          from: sixMonthsAgo, to: period.to, granularity: 'month',
+          from: sixMonthsAgo, to: period.to, granularity: 'month', professionalId: recorteDela,
         })
       : Promise.resolve([]),
 
     canCheckout
-      ? contar(admin.from('treatment_plans').select('id', { count: 'exact', head: true })
-          .eq('branch_id', branchId).eq('status', 'PROPOSED'), 'contar os planos a receber')
+      ? (() => {
+          let q = admin.from('treatment_plans').select('id', { count: 'exact', head: true })
+            .eq('branch_id', branchId).eq('status', 'PROPOSED')
+          if (recorteDela) q = q.eq('professional_id', recorteDela)
+          return contar(q, 'contar os planos a receber')
+        })()
       : Promise.resolve(0),
 
     // Agenda do dia: a lista em si, não uma agregação.
@@ -193,7 +198,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canProcedures
       ? getTopProcedures({
           tenantId: ctx.tenantId!, branchIds: [branchId],
-          from: thirtyDaysAgo, to: now, limit: 4,
+          from: thirtyDaysAgo, to: now, limit: 4, professionalId: recorteDela,
         })
       : Promise.resolve([]),
 
@@ -203,6 +208,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canClients
       ? getClientesParaReativar({
           tenantId: ctx.tenantId!, branchId, tag: unitTag(branch.name), desde: ninetyDaysAgo,
+          professionalId: recorteDela,
         })
       : Promise.resolve({ total: 0, lista: [] }),
 
@@ -445,11 +451,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       <div className="rg-2">
 
         {/* Gráfico */}
-        {faturamentoDaUnidade && (
+        {canFinancial && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>
-              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Faturamento</h2>
+              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{recorteDela ? 'Meu faturamento' : 'Faturamento'}</h2>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 6 meses</p>
             </div>
             {semesterDelta > 0 && (
@@ -563,7 +569,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               Clientes no mês
             </h2>
           </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Novos clientes e agendamentos da unidade neste mês</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>{recorteDela ? 'As suas novas clientes e os seus agendamentos neste mês' : 'Novos clientes e agendamentos da unidade neste mês'}</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {funnel.map((f, i) => {

@@ -258,14 +258,34 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios.
 
-**Dashboard com "só os meus" (D7 da simulação de 2026-10-28)**: com a agenda
-OU o financeiro em OWN, os dois dashboards (rede e unidade) passam o
-`professionalId` ao núcleo — a receita, os atendimentos e o ticket são os
-DELA — e o dinheiro da rede não é consultado nem mostrado: no da rede, o
-custo, a evolução (com o lucro), o ranking e a ocupação por filial, a receita
-e a margem por procedimento, as vendas por profissional e o gasto das
-clientes (`recorteProprio`); no da unidade, o faturamento dos 6 meses. A
-profissional da rede via a receita de todas e o custo do mês. Prova:
+**Dashboard com "só os meus" (D7 da simulação de 2026-10-28; "quem tem 'só os
+meus' vê 'só os meus', em qualquer lugar", decisão do Heitor no mesmo dia)**:
+com a agenda OU o financeiro em OWN, TODO número dos dois dashboards (rede e
+unidade) é o DELA — o `professionalId` vai a cada função de `lib/metrics`
+(`metrics_core`, `_series`, `_top_procedures`, `_top_professionals`,
+`_top_clients`, `_demografia`, `_giro_estoque`, `_clientes_para_reativar`, com
+`p_professional_id default null`; migration `20261028000601`). O recorte é
+UM, o de `metrics_core`:
+- **atendimento dela**: `appointments.professional_id = ela`;
+- **dinheiro dela**: a transação ligada a um atendimento dela
+  (`appointment_id`) — a evolução e o gráfico dos 6 meses batem com o cartão;
+- **cliente dela**: quem tem agendamento NÃO CANCELADO com ela numa unidade
+  do recorte (o total, os novos clientes, a demografia, a recorrência e o
+  gasto). Até 2026-10-28 os novos clientes com profissional eram 0 por
+  construção.
+
+Mostram o dela: receita, atendimentos, ticket, a evolução SÓ DA RECEITA (sem
+custo nem lucro — `EvolutionChart soReceita`), os rankings de procedimentos
+(feitos, recorrência, receita bruta), de profissionais (só a linha dela) e de
+clientes (gasto, recorrência), faixa etária, cidades e mapa, o total e os
+novos clientes, o giro (o insumo dos atendimentos dela), os planos aguardando
+checkout (`treatment_plans.professional_id`), as clientes a reativar (as dela
+que sumiram da UNIDADE — sem visita nela com qualquer profissional) e, no da
+unidade, o "Meu faturamento" dos 6 meses. Fica escondido o que não se atribui
+a ela: o custo e o lucro, a margem por procedimento (custo do catálogo), o
+ranking e a ocupação por filial, e o ranking de comissão (de todas). Com o
+**CRM** "só os meus", o funil do dashboard conta os leads dela e os sem dono
+(`p_owner`, o recorte do quadro). Prova:
 `e2e/indicadores-dashboard-da-rede-so-os-meus.spec.ts`.
 
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`

@@ -159,6 +159,7 @@ export async function getSeries(
 ): Promise<SeriesPoint[]> {
   const { data, error } = await createAdminClient().rpc('metrics_series', {
     ...baseArgs(args), p_granularity: args.granularity ?? 'day',
+    p_professional_id: args.professionalId ?? null,
   })
   logRpcError('metrics_series', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
@@ -171,6 +172,7 @@ export async function getSeries(
 export async function getTopProcedures(args: Args & { limit?: number }): Promise<ProcedureMetrics[]> {
   const { data, error } = await createAdminClient().rpc('metrics_top_procedures', {
     ...baseArgs(args), p_limit: args.limit ?? 5,
+    p_professional_id: args.professionalId ?? null,
   })
   logRpcError('metrics_top_procedures', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
@@ -187,6 +189,7 @@ export async function getTopProcedures(args: Args & { limit?: number }): Promise
 export async function getTopProfessionals(args: Args & { limit?: number }): Promise<ProfessionalMetrics[]> {
   const { data, error } = await createAdminClient().rpc('metrics_top_professionals', {
     ...baseArgs(args), p_limit: args.limit ?? 5,
+    p_professional_id: args.professionalId ?? null,
   })
   logRpcError('metrics_top_professionals', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
@@ -203,6 +206,7 @@ export async function getTopProfessionals(args: Args & { limit?: number }): Prom
 export async function getTopClients(args: Args & { limit?: number }): Promise<ClientMetrics[]> {
   const { data, error } = await createAdminClient().rpc('metrics_top_clients', {
     ...baseArgs(args), p_limit: args.limit ?? 10,
+    p_professional_id: args.professionalId ?? null,
   })
   logRpcError('metrics_top_clients', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
@@ -476,10 +480,11 @@ export async function getMotivosDePerda(args: { tenantId: string; from: Date; to
  * se sucedem — "Novo" de vendas somado com "Novo" de recuperação.
  */
 export async function getLeadFunnel(
-  args: Args & { funnelId?: string | null },
+  args: Args & { funnelId?: string | null; ownerId?: string | null },
 ): Promise<FunnelStage[]> {
   const { data, error } = await createAdminClient().rpc('metrics_lead_funnel', {
-    ...baseArgs(args), p_funnel: args.funnelId ?? null,
+    // `ownerId`: o CRM "só os meus" — os leads da pessoa e os sem dono, como o quadro.
+    ...baseArgs(args), p_funnel: args.funnelId ?? null, p_owner: args.ownerId ?? null,
   })
   logRpcError('metrics_lead_funnel', error)
   return etapasDoFunil(data)

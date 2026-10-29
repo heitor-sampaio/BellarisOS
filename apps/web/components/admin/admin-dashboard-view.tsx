@@ -510,10 +510,17 @@ export function AdminDashboardView({
 
       {/* -- Middle: ranking + hoje -- */}
       {(can('reports') || can('financial') || can('agenda') || can('stock')) && (
-      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: recorteProprio ? '1fr' : '7fr 3fr', gap: 16 }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16 }}>
 
-        {/* Ranking de filiais + gráfico de evolução (com o lucro): o dinheiro
-            da rede, fora do "só os meus" (D7). */}
+        {/* "Só os meus": a evolução só da receita DELA — sem o custo, o lucro
+            e o ranking de filiais, que são o dinheiro da rede (D7). */}
+        {(can('reports') || can('financial')) && recorteProprio && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} soReceita />
+        </div>
+        )}
+
+        {/* Ranking de filiais + gráfico de evolução (com o lucro). */}
         {(can('reports') || can('financial')) && !recorteProprio && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Gráfico animado */}
@@ -978,8 +985,7 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Receita e margem por procedimento: dinheiro da rede, fora do "só os meus" (D7). */}
-        {!recorteProprio && (<>
+        {/* Receita por procedimento: com "só os meus", a dos atendimentos dela. */}
         {/* Ranking - Procedimentos por receita bruta */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
@@ -999,7 +1005,9 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Ranking - Procedimentos por margem */}
+        {/* Ranking - Procedimentos por margem: o custo do catálogo, da rede —
+            fora do "só os meus" (D7). */}
+        {!recorteProprio && (<>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por margem</span>
@@ -1144,8 +1152,8 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Ranking — Vendas (a receita de cada um; fora do "só os meus", D7) */}
-        {!recorteProprio && <div className="card" style={{ padding: '18px 20px' }}>
+        {/* Ranking — Vendas (a receita de cada um; com "só os meus", só a linha dela) */}
+        <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Vendas</span>
           </div>
@@ -1162,7 +1170,7 @@ export function AdminDashboardView({
               ))}
             </div>
           )}
-        </div>}
+        </div>
 
         {/* Ranking — Comissão: é do financeiro de todos, não da equipe. */}
         {verComissoesDaEquipe && <div className="card" style={{ padding: '18px 20px' }}>
@@ -1249,8 +1257,8 @@ export function AdminDashboardView({
 
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16 }}>
 
-        {/* Ranking — Valor gasto (o dinheiro das clientes; fora do "só os meus", D7) */}
-        {!recorteProprio && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Ranking — Valor gasto (com "só os meus", o que as clientes dela pagaram pelos atendimentos dela) */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Valor gasto</span>
           </div>
@@ -1299,7 +1307,7 @@ export function AdminDashboardView({
             </table>
             </div>
           )}
-        </div>}
+        </div>
 
         {/* Ranking — Recorrência */}
         <div className="card" style={{ padding: '18px 20px' }}>

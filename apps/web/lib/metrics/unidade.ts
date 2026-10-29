@@ -79,10 +79,13 @@ export interface ClientesParaReativar {
 
 export async function getClientesParaReativar(args: {
   tenantId: string; branchId: string; tag: string; desde: Date; limite?: number
+  /** "Só os meus": só as clientes que ela atendeu (agendamento não cancelado na unidade). */
+  professionalId?: string | null
 }): Promise<ClientesParaReativar> {
   const data = await ler(createAdminClient().rpc('metrics_clientes_para_reativar', {
     p_tenant: args.tenantId, p_branch_id: args.branchId, p_tag: args.tag,
     p_desde: args.desde.toISOString(), p_limite: args.limite ?? 3,
+    p_professional_id: args.professionalId ?? null,
   }), 'buscar os clientes para reativar')
   const d = (data ?? {}) as {
     total?: number

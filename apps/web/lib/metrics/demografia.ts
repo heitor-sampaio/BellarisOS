@@ -15,6 +15,8 @@ import { ler } from '@/lib/db'
  */
 
 export interface Demografia {
+  /** Clientes ativos no recorte (da rede, ou os DELA com "só os meus"). */
+  total:   number
   /** Faixas com pelo menos um cliente. */
   idades:  { faixa: string; n: number }[]
   /** As 5 cidades com mais clientes, da maior para a menor. */
@@ -25,12 +27,16 @@ export interface Demografia {
 
 export async function getDemografia(args: {
   tenantId: string; branchIds: string[] | null; to: Date
+  /** "Só os meus": as clientes que ela atendeu (agendamento não cancelado no recorte). */
+  professionalId?: string | null
 }): Promise<Demografia> {
   const data = await ler(createAdminClient().rpc('metrics_demografia', {
     p_tenant: args.tenantId, p_branch_ids: args.branchIds, p_to: args.to.toISOString(),
+    p_professional_id: args.professionalId ?? null,
   }), 'calcular a demografia dos clientes')
   const d = (data ?? {}) as Partial<Demografia>
   return {
+    total:   Number(d.total ?? 0),
     idades:  (d.idades ?? []).map(i => ({ faixa: i.faixa, n: Number(i.n) })),
     cidades: (d.cidades ?? []).map(c => ({ cidade: c.cidade, n: Number(c.n) })),
     ceps:    (d.ceps ?? []).map(c => ({ cep: c.cep, n: Number(c.n), ltv: Number(c.ltv) })),
@@ -40,9 +46,12 @@ export async function getDemografia(args: {
 /** Consumo em procedimentos no período, ao custo do movimento. */
 export async function getGiroDeEstoque(args: {
   branchIds: string[]; from: Date; to: Date
+  /** "Só os meus": o insumo gasto nos atendimentos dela. */
+  professionalId?: string | null
 }): Promise<number> {
   const data = await ler(createAdminClient().rpc('metrics_giro_estoque', {
     p_branch_ids: args.branchIds, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+    p_professional_id: args.professionalId ?? null,
   }), 'calcular o giro de estoque')
   return Number(data ?? 0)
 }

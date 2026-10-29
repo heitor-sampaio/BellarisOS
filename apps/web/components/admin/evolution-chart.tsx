@@ -17,6 +17,8 @@ interface Props {
   data:         ChartPoint[]
   monthLabel:   string
   granularity?: 'hour' | 'day'
+  /** "Só os meus": só a receita DELA — o custo e o lucro são da rede (D7). */
+  soReceita?:   boolean
 }
 
 const COLORS = {
@@ -74,7 +76,8 @@ function CustomTooltip({ active, payload, label }: {
   )
 }
 
-export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props) {
+export function EvolutionChart({ data, monthLabel, granularity = 'day', soReceita = false }: Props) {
+  const series = soReceita ? (['revenue'] as const) : (['revenue', 'cost', 'profit'] as const)
   if (!data.length) {
     return (
       <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
@@ -86,7 +89,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
   const totalRevenue = data.reduce((s, d) => s + d.revenue, 0)
   const totalCost    = data.reduce((s, d) => s + d.cost,    0)
   const totals = { revenue: totalRevenue, cost: totalCost, profit: totalRevenue - totalCost }
-  const yAxisW = numericAxisWidth(data.flatMap(d => [d.revenue, d.cost, d.profit]), fmtAxis)
+  const yAxisW = numericAxisWidth(data.flatMap(d => series.map(k => d[k])), fmtAxis)
 
   return (
     <div style={{ padding: '18px 20px 8px' }}>
@@ -98,7 +101,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
             ela estourava 11px da tela do celular. Quebra em duas linhas quando
             não cabe, e o vão encolhe antes disso. */}
         <div style={{ display: 'flex', gap: '10px 20px', flexWrap: 'wrap', minWidth: 0 }}>
-          {(['revenue', 'cost', 'profit'] as const).map(k => (
+          {series.map(k => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 20, height: 3, borderRadius: 2, background: COLORS[k] }} />
               <div>
@@ -163,21 +166,21 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
             dot={false} activeDot={{ r: 5, fill: COLORS.revenue, stroke: 'var(--surface)', strokeWidth: 2 }}
             animationDuration={1000} animationEasing="ease-out"
           />
-          <Area
+          {!soReceita && <Area
             type="monotone" dataKey="cost"
             stroke={COLORS.cost} strokeWidth={2}
             fill="url(#gradCost)"
             strokeDasharray="6 3"
             dot={false} activeDot={{ r: 4, fill: COLORS.cost, stroke: 'var(--surface)', strokeWidth: 2 }}
             animationDuration={1100} animationEasing="ease-out"
-          />
-          <Area
+          />}
+          {!soReceita && <Area
             type="monotone" dataKey="profit"
             stroke={COLORS.profit} strokeWidth={2.5}
             fill="url(#gradProfit)"
             dot={false} activeDot={{ r: 5, fill: COLORS.profit, stroke: 'var(--surface)', strokeWidth: 2 }}
             animationDuration={1200} animationEasing="ease-out"
-          />
+          />}
         </AreaChart>
       </ResponsiveContainer>
     </div>
