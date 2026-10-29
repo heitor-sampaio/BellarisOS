@@ -7215,6 +7215,17 @@ verdade. O que vale:
   (`f1f2fae`) a foto anexada NO ATENDIMENTO entra em `client_documents` —
   então toda foto clínica tirada no atendimento chega ao app sem ninguém
   mandar; antes só entrava por Clientes → Documentos.
+  **Decidido pelo Heitor (2026-10-29): no app aparece só o que a clínica
+  ENVIA.** Ele lembrou que os documentos também são da cliente. Isso está
+  coberto: ela tem direito de acesso e de cópia, e o pedido pelo app
+  (exportação LGPD com o prontuário) continua. O que muda é que nada aparece
+  sozinho:
+  - foto clínica, exame e laudo ficam só com a equipe até alguém enviar à
+    cliente;
+  - o contrato ou termo que ela assinou conta como enviado.
+
+  A FAZER: uma marca "enviado à cliente" por arquivo, com o gesto de enviar
+  na ficha, e o portal filtra por ela. A regra do §9.4 fica como está.
 
 - ~~O DNS do site~~ — **no ar desde 2026-10-20**: o DNS passou da GoDaddy
   para o Cloudflare (a GoDaddy não aceita CNAME na raiz; o domínio segue
