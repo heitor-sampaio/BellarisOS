@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso, isOwnScope } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -74,7 +74,43 @@ function mapaAoAlcance(ctx: TenantContext, branchId: string | null): boolean {
   return branchId === null || alcancaUnidade(ctx, branchId)
 }
 
-/** Confere que o planejamento é da rede de quem chama, e da unidade ao alcance. */
+/**
+ * Com o prontuário "só os meus", o mapa é DELA? (Decisão do Heitor,
+ * 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar".)
+ *
+ * A regra do resto do prontuário OWN (a ficha, `recusaDoAnexo`): a cliente
+ * que ela atende — um agendamento com ela. O planejamento avulso (sem
+ * cliente) é dela quando foi ela quem o mexeu por último (`updated_by`). Sem
+ * o escopo OWN, todo mapa ao alcance.
+ */
+async function mapaDaProfissional(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: TenantContext,
+  mapa: { client_id: string | null; updated_by: string | null },
+): Promise<boolean> {
+  if (!isOwnScope(ctx, 'medical_records')) return true
+  if (!ctx.internalUserId) return false
+  if (!mapa.client_id) return mapa.updated_by === ctx.internalUserId
+  return clienteDaProfissional(admin, ctx, mapa.client_id)
+}
+
+/** A cliente é atendida por ela (o "dela" do prontuário OWN)? */
+async function clienteDaProfissional(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: TenantContext,
+  clientId: string,
+): Promise<boolean> {
+  if (!isOwnScope(ctx, 'medical_records')) return true
+  if (!ctx.internalUserId) return false
+  const meu = await ler(admin.from('appointments').select('id')
+    .eq('client_id', clientId).eq('professional_id', ctx.internalUserId).limit(1), 'conferir se a cliente é atendida por você')
+  return (meu ?? []).length > 0
+}
+
+/**
+ * Confere que o planejamento é da rede de quem chama, da unidade ao alcance
+ * e, com o prontuário "só os meus", dela (§11: o escopo vale pelo id).
+ */
 async function mapaDoTenant(
   admin: ReturnType<typeof createAdminClient>,
   mapId: string,
@@ -82,10 +118,11 @@ async function mapaDoTenant(
 ) {
   const data = await ler(admin
     .from('injectable_maps')
-    .select('id, tenant_id, client_id, branch_id, name')
+    .select('id, tenant_id, client_id, branch_id, name, updated_by')
     .eq('id', mapId)
     .maybeSingle(), 'carregar o planejamento')
-  return data && data.tenant_id === ctx.tenantId && mapaAoAlcance(ctx, data.branch_id as string | null) ? data : null
+  if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)) return null
+  return (await mapaDaProfissional(admin, ctx, data as { client_id: string | null; updated_by: string | null })) ? data : null
 }
 
 /** Confere que o cliente é do tenant de quem chama. */
@@ -169,12 +206,13 @@ export async function getPlanejamentoInjetavel(mapId: string): Promise<{
 
   const { data, error } = await admin
     .from('injectable_maps')
-    .select('id, tenant_id, branch_id, name, client_id, view, points, clients(name), branches(name)')
+    .select('id, tenant_id, branch_id, name, client_id, updated_by, view, points, clients(name), branches(name)')
     .eq('id', mapId)
     .maybeSingle()
 
   if (error) return { error: `Não foi possível abrir o planejamento: ${error.message}` }
-  if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)) {
+  if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)
+    || !(await mapaDaProfissional(admin, ctx, data as { client_id: string | null; updated_by: string | null }))) {
     return { error: 'Planejamento não encontrado.' }
   }
 
@@ -415,6 +453,8 @@ export async function listarPlanejamentosDoCliente(clientId: string): Promise<{
   if (!(await clienteDoTenant(admin, clientId, ctx.tenantId!))) {
     return { mapas: [], error: 'Cliente não encontrado.' }
   }
+  // Prontuário "só os meus": só da cliente que ela atende (a regra da ficha).
+  if (!(await clienteDaProfissional(admin, ctx, clientId))) return { mapas: [] }
 
   const { data, error } = await admin
     .from('injectable_maps')
@@ -451,16 +491,40 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
 
   // Todos, em páginas (2026-10-22): tinha teto de 300, e os mapas editados há
   // mais tempo sumiam da lista.
+  // Prontuário "só os meus" (decisão do Heitor, 2026-10-28): só os mapas das
+  // clientes que ela atende e os avulsos que ela mexeu por último — a regra
+  // de `mapaDaProfissional`, aqui no banco (a lista cresce: o filtro não
+  // pode ser depois de ler).
+  const dela = isOwnScope(ctx, 'medical_records') ? ctx.internalUserId : null
+  if (isOwnScope(ctx, 'medical_records') && !dela) return { mapas: [] }
+
   let linhas: MapaLido[]
   try {
-    linhas = await lerTodas((de, ate) => {
+    const pagina = (deCliente: boolean | null) => lerTodas((de, ate) => {
       let q = admin
         .from('injectable_maps')
-        .select('id, name, client_id, points, updated_at, clients(name, phone), branches(name)')
+        .select(deCliente
+          // O `!inner` em cadeia (mapa → cliente → agendamento com ela) recorta o
+          // mapa; o agendamento vem limitado a um, só para existir.
+          ? 'id, name, client_id, points, updated_at, clients!inner(name, phone, appointments!inner(id)), branches(name)'
+          : 'id, name, client_id, points, updated_at, clients(name, phone), branches(name)')
         .eq('tenant_id', ctx.tenantId!)
       if (recorte) q = q.or(`branch_id.eq.${recorte},branch_id.is.null`)
+      if (deCliente === true) {
+        q = q.eq('clients.appointments.professional_id', dela!)
+          .limit(1, { referencedTable: 'clients.appointments' })
+      }
+      if (deCliente === false) q = q.is('client_id', null).eq('updated_by', dela!)
       return q.order('updated_at', { ascending: false }).order('id').range(de, ate)
-    }, 'carregar os planejamentos') as unknown as MapaLido[]
+    }, 'carregar os planejamentos') as unknown as Promise<MapaLido[]>
+
+    if (!dela) linhas = await pagina(null)
+    else {
+      const [deCliente, avulsos] = await Promise.all([pagina(true), pagina(false)])
+      // As duas listas já vêm na ordem da tela; aqui só se intercalam.
+      linhas = [...deCliente, ...avulsos].sort((a, b) =>
+        (b.updated_at ?? '').localeCompare(a.updated_at ?? '') || a.id.localeCompare(b.id))
+    }
   } catch (e) {
     return { mapas: [], error: `Não foi possível carregar os planejamentos: ${e instanceof Error ? e.message : String(e)}` }
   }

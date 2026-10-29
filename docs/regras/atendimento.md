@@ -361,6 +361,17 @@ const procedures = await ler(
   procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
   (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do
   Planejamento. Prova: `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`.
+- **Os mapas de injetáveis seguem o prontuário "só os meus"** (decisão do
+  Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer
+  lugar"). Com `medical_records` OWN, a lista de Injetáveis
+  (`listarMapasDeInjetaveis`), os planejamentos da cliente e TODA action pelo
+  id do mapa (abrir, salvar, renomear, ligar cliente, registrar aplicação —
+  `mapaDoTenant`) só valem para o mapa DELA: da cliente que ela atende (um
+  agendamento com ela — a regra da ficha e de `recusaDoAnexo`) ou, avulso
+  (sem cliente), o que ela mexeu por último (`updated_by`). O filtro da lista
+  é no banco (`!inner` mapa → cliente → agendamento com ela). Antes a lista
+  conferia só `medical_records: VIEW` e mostrava os mapas de todas. Prova:
+  `e2e/injetaveis-so-os-meus.spec.ts`.
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um
   rascunho que existe só na tela; o plano nasce no primeiro "Salvar plano"
