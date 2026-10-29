@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
-import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
@@ -10,23 +9,17 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  *   contra a regra do estoque (entrada só por estoque_entrada);
  * - o custo virar despesa PAGA de hoje sem a tela dizer nada.
  *
- * Agora é uma função só (estoque_inicial, sobre estoque_entrada) e a despesa
- * é uma caixa visível, marcada por padrão (o que já acontecia), que dá para
- * desmarcar.
+ * Agora é uma função só (estoque_inicial, sobre estoque_entrada). A despesa SAIU
+ * (D13 revisto, 2026-10-28: movimentação de estoque nunca gera despesa; a tela
+ * está em estoque-nunca-gera-despesa.spec.ts).
  */
 
 const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
-let gestor: MembroDeTeste | null = null
-let slug = ''
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`ei${marca}`)
-  slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
-  gestor = await criarMembro(`eig${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Estoque', permissoes: [{ modulo: 'stock', nivel: 'MANAGE' }],
-  })
 })
 test.afterAll(async () => {
   if (rede) {
@@ -40,7 +33,7 @@ test.afterAll(async () => {
       await db().from('products').delete().in('id', ids)
     }
   }
-  await gestor?.limpar(); await rede?.limpar()
+  await rede?.limpar()
 })
 
 async function produto(nome: string) {
@@ -49,71 +42,19 @@ async function produto(nome: string) {
   return data!.id
 }
 
-test('estoque_inicial grava tudo junto: movimento, saldo com o mínimo, lote, custo — e a despesa só se pedida', async () => {
-  const com = await produto(`${PREFIXO} Com despesa ${marca}`)
-  const sem = await produto(`${PREFIXO} Sem despesa ${marca}`)
-  for (const [id, despesa] of [[com, true], [sem, false]] as const) {
-    const { error } = await db().rpc('estoque_inicial', {
-      p_produto: id, p_unidade: rede!.branchId, p_quantidade: 4, p_custo: 25, p_observacao: 'Estoque inicial',
-      p_lote: `L-${marca}`, p_validade: null, p_autor: 'e2e', p_minimo: 2, p_despesa: despesa, p_descricao: 'Compra: teste',
-    })
-    expect(error, 'a função existe e grava').toBeNull()
-  }
-  const saldo = (await db().from('branch_product_stock').select('current_stock, min_stock').eq('product_id', com).single()).data
+test('estoque_inicial grava tudo junto: movimento, saldo com o mínimo, lote, custo — e nenhuma despesa', async () => {
+  // Movimentação de estoque nunca gera despesa (D13 revisto, 2026-10-28): a
+  // função não tem mais p_despesa; o custo fica no movimento (base da margem).
+  const id = await produto(`${PREFIXO} Inicial ${marca}`)
+  const { error } = await db().rpc('estoque_inicial', {
+    p_produto: id, p_unidade: rede!.branchId, p_quantidade: 4, p_custo: 25, p_observacao: 'Estoque inicial',
+    p_lote: `L-${marca}`, p_validade: null, p_autor: 'e2e', p_minimo: 2,
+  })
+  expect(error, 'a função existe e grava').toBeNull()
+  const saldo = (await db().from('branch_product_stock').select('current_stock, min_stock').eq('product_id', id).single()).data
   expect(saldo).toEqual({ current_stock: 4, min_stock: 2 })
-  expect((await db().from('stock_movements').select('quantity').eq('product_id', com)).data).toEqual([{ quantity: 4 }])
-  expect((await db().from('product_batches').select('quantity').eq('product_id', com)).data).toEqual([{ quantity: 4 }])
-  const { data: despesas } = await db().from('financial_transactions').select('amount, is_paid, category').eq('branch_id', rede!.branchId).eq('type', 'EXPENSE')
-  expect(despesas, 'uma despesa só: a do produto que pediu').toEqual([{ amount: 100, is_paid: true, category: 'Estoque' }])
-})
-
-test('na tela, a despesa do estoque inicial é uma caixa visível — e desmarcada não lança', async ({ browser }) => {
-  const ctx = await browser.newContext({ storageState: gestor!.estado })
-  try {
-    const p = await ctx.newPage()
-    await p.goto(`/${slug}/estoque`)
-    await expect(async () => {
-      await p.getByRole('button', { name: 'Novo produto' }).click({ timeout: 1000 })
-      await expect(p.getByRole('switch', { name: /Adicionar estoque inicial/ })).toBeVisible({ timeout: 1000 })
-    }).toPass()
-    const nome = `${PREFIXO} Pela tela ${marca}`
-    const modal = p.locator('dialog[open]')
-    await modal.locator('input[name="name"]').fill(nome)
-    await modal.locator('select[name="unit"]').selectOption({ index: 1 })
-    await modal.getByRole('switch', { name: /Adicionar estoque inicial/ }).click()
-    await modal.locator('input[name="initial_qty"]').fill('3')
-    await modal.locator('input[name="initial_cost"]').fill('10')
-    const caixa = modal.getByRole('checkbox', { name: 'Lançar o custo como despesa paga hoje' })
-    await expect(caixa, 'marcada por padrão: é o que já acontecia').toBeChecked()
-    await caixa.uncheck()
-    await modal.getByRole('button', { name: 'Criar produto' }).click()
-    await expect.poll(async () => (await db().from('products').select('id').eq('name', nome)).data?.length ?? 0).toBe(1)
-  } finally {
-    await ctx.close()
-  }
-  const { data: prod } = await db().from('products').select('id').eq('name', `${PREFIXO} Pela tela ${marca}`).single<{ id: string }>()
-  await expect.poll(async () => (await db().from('branch_product_stock').select('current_stock').eq('product_id', prod!.id).maybeSingle()).data?.current_stock).toBe(3)
-  const { data: despesas } = await db().from('financial_transactions').select('id').eq('branch_id', rede!.branchId).eq('description', `Compra: ${PREFIXO} Pela tela ${marca}`)
-  expect(despesas, 'desmarcada, nenhuma despesa').toEqual([])
-})
-
-test('A6: antes de salvar, a caixa diz quanto vira despesa paga (quantidade × custo)', async ({ browser }) => {
-  const ctx = await browser.newContext({ storageState: gestor!.estado })
-  try {
-    const p = await ctx.newPage()
-    await p.goto(`/${slug}/estoque`)
-    await expect(async () => {
-      await p.getByRole('button', { name: 'Novo produto' }).click({ timeout: 1000 })
-      await expect(p.getByRole('switch', { name: /Adicionar estoque inicial/ })).toBeVisible({ timeout: 1000 })
-    }).toPass()
-    const modal = p.locator('dialog[open]')
-    await modal.getByRole('switch', { name: /Adicionar estoque inicial/ }).click()
-    await modal.locator('input[name="initial_qty"]').fill('3')
-    await modal.locator('input[name="initial_cost"]').fill('10')
-    await expect(modal.getByRole('checkbox', { name: /despesa paga hoje: R\$\s*30,00/ })).toBeVisible()
-    await modal.locator('input[name="initial_qty"]').fill('4')
-    await expect(modal.getByRole('checkbox', { name: /despesa paga hoje: R\$\s*40,00/ })).toBeVisible()
-  } finally {
-    await ctx.close()
-  }
+  expect((await db().from('stock_movements').select('quantity, unit_cost').eq('product_id', id)).data).toEqual([{ quantity: 4, unit_cost: 25 }])
+  expect((await db().from('product_batches').select('quantity').eq('product_id', id)).data).toEqual([{ quantity: 4 }])
+  const { data: despesas } = await db().from('financial_transactions').select('id').eq('branch_id', rede!.branchId)
+  expect(despesas, 'nenhum lançamento').toEqual([])
 })

@@ -7,7 +7,6 @@ import {
 import { X, Package, Building2, ChevronDown, Barcode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
-import { formatBRL } from '@estetica-os/utils'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -164,13 +163,6 @@ function ProductFields({
     () => selectedCat ? `${skuPrefix(selectedCat.name)}-NNN` : null,
     [selectedCat],
   )
-
-  // O que a despesa lança: quantidade × custo por embalagem (o que `estoque_inicial` grava).
-  const valorDaCompra = useMemo(() => {
-    const qtd = parseFloat(initialQtyStr)
-    const custo = parseFloat(costPriceStr)
-    return qtd > 0 && custo > 0 ? Math.round(qtd * custo * 100) / 100 : null
-  }, [initialQtyStr, costPriceStr])
 
   const costPerUnit = useMemo(() => {
     const cost = parseFloat(costPriceStr)
@@ -483,18 +475,9 @@ function ProductFields({
                 </div>
               </div>
 
-              {/* A despesa da compra: era lançada PAGA, hoje, sem a tela dizer
-                  (simulação de 2026-10-20). Agora é escolha visível. */}
-              {Number(costPriceStr) > 0 && (
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, cursor: 'pointer' }}>
-                  <input type="checkbox" name="initial_expense" defaultChecked style={{ marginTop: 2, accentColor: 'var(--brand)' }} />
-                  <span>
-                    <strong style={{ color: 'var(--text)' }}>
-                      Lançar o custo como despesa paga hoje{valorDaCompra !== null ? `: ${formatBRL(valorDaCompra)}` : ''}
-                    </strong> — no financeiro da unidade, categoria Estoque. Desmarque se esse estoque já tinha sido pago antes.
-                  </span>
-                </label>
-              )}
+              {/* Sem "lançar como despesa": movimentação de estoque nunca gera
+                  despesa (D13 revisto, decisão do Heitor, 2026-10-28). O custo
+                  é base de insumo, custo e margem. */}
 
               {/* Lote + Validade */}
               <div className="form-2col">

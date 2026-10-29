@@ -423,18 +423,19 @@ const procedures = await ler(
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e
     transferência, o histórico).
-- **A compra vira despesa pelas DUAS portas** (D13 da simulação de
-  2026-10-28, decisão do Heitor; migration `20261028000203`): o cadastro do
-  produto (estoque inicial) e a "Entrada" (unidade e rede, `EntradaForm` do
-  "Gerenciar estoque") oferecem "Lançar o custo como despesa paga hoje",
-  marcada por padrão e só com custo informado, com o valor (quantidade ×
-  custo da embalagem). A despesa é PAGA hoje, categoria Estoque, na unidade,
-  "Compra: <produto>", e nasce na MESMA transação do movimento:
-  `estoque_compra` (`estoque_entrada` + a despesa), que `estoque_inicial` e
-  `entradaDeEstoqueCore` usam. Desmarcada (a compra já foi lançada ou paga
-  antes), só o movimento. O Copilot e a "Entrada por código de barras" não
-  oferecem a opção (seguem sem despesa). Prova:
-  `e2e/estoque-entrada-despesa.spec.ts`.
+- **Movimentação de estoque NUNCA gera despesa** (D13 revisto, decisão do
+  Heitor, 2026-10-28: "tanto entrada quanto saída, não gera despesa. Os
+  valores são informados apenas para base de cálculo de insumos, custo,
+  margem e lucro"). Nenhuma porta — a "Entrada" (unidade e rede), o estoque
+  inicial do cadastro do produto, a entrada por código de barras, o Copilot,
+  o ajuste/perda, a transferência, o consumo do atendimento — cria
+  `financial_transactions`; o custo informado fica no movimento
+  (`unit_cost`, a base do custo de consumo, do giro e da margem). A compra
+  que a clínica PAGOU, se ela quiser no financeiro, é um lançamento manual
+  (Financeiro → Novo lançamento). Por 28/10 a Entrada e o cadastro tiveram
+  "Lançar o custo como despesa paga hoje" (`estoque_compra`, 1b54c531): saiu
+  (migrations `20261028000801`/`802`; `estoque_inicial` perdeu
+  `p_despesa`). Prova: `e2e/estoque-nunca-gera-despesa.spec.ts`.
 
 ---
 
@@ -552,7 +553,8 @@ O resto do fluxo:
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
-❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_compra/estoque_inicial/estoque_ajuste (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
+❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_inicial/estoque_ajuste (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
+❌ Lançar despesa (ou qualquer financial_transactions) a partir de uma movimentação de estoque — entrada, cadastro, ajuste, perda, transferência ou consumo (D13 revisto, 2026-10-28)
 ❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)
 ❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão

@@ -206,8 +206,10 @@ KPI que não fazia nenhum dos dois.
 - **Consumo de insumo é uma conta só** (`metrics_giro_estoque`, por
   `custo_do_movimento`): custo do MOVIMENTO, que é o da unidade de CONSUMO
   (§9.5); o de consumo do cadastro só como reserva. Dashboard, estoque e
-  relatórios. **É informativo: não entra no resultado** — a compra do insumo
-  já é despesa ("Estoque"). O gráfico "Evolução do Período" dos relatórios
+  relatórios. **É informativo: não entra no resultado** — o resultado é
+  receita paga − despesa paga, e movimentação de estoque NUNCA gera despesa
+  (D13 revisto, 2026-10-28; a compra paga, se a clínica quiser no caixa, é um
+  lançamento manual). O gráfico "Evolução do Período" dos relatórios
   somava o consumo à despesa e dizia CUSTO R$ 5.350 ao lado do cartão de
   R$ 4.900 (D2, 2026-10-27): o ponto agora vem pronto de
   `pontosDaEvolucao` (`lib/metrics/evolucao.ts`), com custo = a despesa paga.

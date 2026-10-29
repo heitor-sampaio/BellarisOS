@@ -137,8 +137,9 @@ async function createProductInterno(
 
     if (initialQty && initialQty > 0 && filialEstoque && newProduct) {
       // Numa transação só (estoque_inicial, sobre estoque_entrada — 2026-10-21):
-      // movimento, saldo com o mínimo, lote, custo e, SE marcada na tela, a
-      // despesa paga de hoje. Eram quatro gravações soltas.
+      // movimento, saldo com o mínimo, lote e custo. Eram quatro gravações
+      // soltas. Sem despesa: movimentação de estoque nunca gera despesa (D13
+      // revisto, decisão do Heitor, 2026-10-28).
       if (ctx.branchId !== null && filialEstoque !== ctx.branchId) return { error: 'Produto criado, mas o estoque inicial é só da sua unidade.' }
       const unidadeDaRede = await produtoEUnidadesDaRede(admin, ctx.tenantId!, newProduct.id, [filialEstoque])
       if (!unidadeDaRede) return { error: 'Produto criado, mas a unidade do estoque inicial não é desta rede.' }
@@ -149,7 +150,6 @@ async function createProductInterno(
           p_observacao: str(formData, 'initial_notes') ?? 'Estoque inicial',
           p_lote: str(formData, 'initial_batch'), p_validade: str(formData, 'initial_expires_at'),
           p_autor: ctx.internalUserId, p_minimo: minStock,
-          p_despesa: formData.get('initial_expense') === 'on', p_descricao: `Compra: ${name}`,
         }), 'registrar o estoque inicial')
       } catch (e) {
         return { error: `Produto criado, mas o estoque inicial não entrou: ${mensagemDoErro(e)} Lance a entrada pela tela de estoque.` }
@@ -446,8 +446,6 @@ async function adminAddStockInterno(
       observacao:    str(formData, 'notes'),
       lote:          str(formData, 'batch_number'),
       validade:      str(formData, 'expires_at'),
-      // A mesma opção do cadastro do produto (D13, 2026-10-28).
-      despesa:       formData.get('expense') === 'on',
     })
     if ('error' in r) return { error: r.error }
 

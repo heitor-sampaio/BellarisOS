@@ -49,12 +49,6 @@ export interface EntradaDeEstoque {
   observacao?: string | null
   lote?: string | null
   validade?: string | null
-  /**
-   * Lançar o custo (quantidade × custo da embalagem) como despesa PAGA hoje,
-   * categoria Estoque — na mesma transação do movimento (`estoque_compra`).
-   * A opção do cadastro do produto, também na "Entrada" (D13, 2026-10-28).
-   */
-  despesa?: boolean
 }
 
 export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: EntradaDeEstoque): Promise<{ ok: true; saldo: number } | { error: string }> {
@@ -64,20 +58,14 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
     return { error: 'Produto ou filial não encontrado.' }
   }
 
-  // A despesa, quando pedida, leva o nome do produto ("Compra: …", como no cadastro).
-  const lancaDespesa = !!e.despesa && (e.custoUnitario ?? 0) > 0
-  const produto = lancaDespesa
-    ? await ler(admin.from('products').select('name').eq('id', e.productId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto')
-    : null
-
-  // Numa transação só, com a linha do saldo travada (estoque_compra, sobre
-  // estoque_entrada): duas entradas ao mesmo tempo (a tela e o Copilot) não se
-  // perdem, e a despesa nasce com o movimento ou não nasce.
-  const saldo = await gravar(admin.rpc('estoque_compra', {
+  // Numa transação só, com a linha do saldo travada (estoque_entrada): duas
+  // entradas ao mesmo tempo (a tela e o Copilot) não se perdem mais.
+  // Movimentação de estoque NUNCA gera despesa (D13 revisto, decisão do Heitor,
+  // 2026-10-28): o custo fica no movimento, base do insumo, do custo e da margem.
+  const saldo = await gravar(admin.rpc('estoque_entrada', {
     p_produto: e.productId, p_unidade: e.branchId, p_quantidade: e.quantidade,
     p_custo: e.custoUnitario ?? null, p_observacao: e.observacao ?? null,
     p_lote: e.lote || null, p_validade: e.validade || null, p_autor: ctx.internalUserId,
-    p_despesa: lancaDespesa, p_descricao: `Compra: ${(produto?.name as string | undefined) ?? 'estoque'}`,
   }), 'registrar a entrada de estoque') as number
   return { ok: true, saldo: Number(saldo) }
 }

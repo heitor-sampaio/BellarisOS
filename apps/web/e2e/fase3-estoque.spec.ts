@@ -6,7 +6,7 @@ import { banco, filiaisAtivas, nomeDeTeste } from './apoio/banco'
  *
  * O defeito que isto guarda era mudo: quem é da rede preenchia quantidade,
  * custo, lote e validade, salvava, recebia "sucesso" — e o produto nascia sem
- * movimento, sem saldo na unidade, sem lote e sem a despesa, porque a gravação
+ * movimento, sem saldo na unidade e sem lote, porque a gravação
  * dependia de um `ctx.branchId` que a rede não tem. Agora a unidade é
  * perguntada no formulário, e é isso que as asserções conferem.
  */
@@ -27,7 +27,7 @@ test.afterAll(async () => {
   await db.from('products').delete().eq('id', productId)
 })
 
-test('produto com estoque inicial grava movimento, saldo, lote e despesa', async ({ page }) => {
+test('produto com estoque inicial grava movimento, saldo, lote e custo — sem despesa', async ({ page }) => {
   const db = banco()
   const unidades = await filiaisAtivas()
   const unidade  = unidades[0]!
@@ -79,13 +79,14 @@ test('produto com estoque inicial grava movimento, saldo, lote e despesa', async
     .from('product_batches').select('batch_number').eq('product_id', productId!)
   expect(lotes?.map(l => l.batch_number)).toContain('LOT-E2E')
 
-  // -- Despesa da compra -----------------------------------------------------
+  // -- Sem despesa: movimentação de estoque nunca gera despesa (D13 revisto,
+  //    decisão do Heitor, 2026-10-28). O custo fica no movimento.
+  const { data: custo } = await db
+    .from('stock_movements').select('unit_cost').eq('product_id', productId!).single()
+  expect(Number(custo!.unit_cost)).toBe(CUSTO)
   const { data: despesas } = await db
     .from('financial_transactions')
-    .select('type, amount, branch_id')
+    .select('id')
     .ilike('description', `%${nomeProduto}%`)
-  expect(despesas, 'a compra do estoque inicial deveria virar despesa').not.toHaveLength(0)
-  expect(despesas![0]!.type).toBe('EXPENSE')
-  expect(Number(despesas![0]!.amount)).toBeCloseTo(QTD * CUSTO, 2)
-  expect(despesas![0]!.branch_id).toBe(unidade.id)
+  expect(despesas, 'o estoque inicial não vira despesa').toEqual([])
 })

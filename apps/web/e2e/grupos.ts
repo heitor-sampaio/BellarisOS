@@ -58,7 +58,7 @@ export const ISOLADOS = [
   'equipe-formulario-limpo.spec.ts',
   'estoque-chip-da-unidade.spec.ts',
   'estoque-custo-de-consumo.spec.ts',
-  'estoque-entrada-despesa.spec.ts',
+  'estoque-nunca-gera-despesa.spec.ts',
   'estrutura-endereco-da-unidade.spec.ts',
   'fechamento-escopo-proprio.spec.ts',
   'ficha-pre-atendimento.spec.ts',
