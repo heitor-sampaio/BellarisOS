@@ -1632,6 +1632,25 @@ Onze agentes fizeram os papéis:
 
 Detalhe em "5. Em aberto → Da simulação de 2026-10-28/29 (4ª)".
 
+### 2026-10-28/29 — Estoque sem despesa e "só os meus" no resto (frente H)
+
+Fecha duas revisões do Heitor:
+
+- **D13 revisto.** Nenhuma movimentação de estoque gera despesa (e46e27bf).
+- **D7 revisto, "só os meus em qualquer lugar".** Valem nos módulos que têm escopo:
+  - mapas de injetáveis (c02d9b82);
+  - planejamentos (cdb155cb);
+  - Copilot (8ed28a2a);
+  - Relatórios (7ebdd975).
+
+Cada um nasceu com o teste visto falhando. Foram quatro migrations (`20261028000801–804`), todas na produção.
+
+Ficam para o Heitor revisar, no §5:
+- as decisões tomadas pela frente;
+- as duas despesas de estoque que já existiam na Íris.
+
+Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
+
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
 Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
@@ -6912,7 +6931,35 @@ verdade. O que vale:
     ignora o prontuário OWN: dado clínico), planejamentos (`listarPlanejamentos`
     com a agenda OWN), Copilot (`lib/copilot/ferramentas/indicadores.ts`:
     "quanto faturamos" dá a rede) e Relatórios (`reports-bi-section.tsx`: nada
-    recebe o profissional; o funil sem o `p_owner`) — vão para a frente H.
+    recebe o profissional; o funil sem o `p_owner`) — ~~vão para a frente H~~
+    **feitos pela frente H (2026-10-29):**
+    - **Mapas de injetáveis** (c02d9b82). Com o prontuário OWN, a lista mostra
+      os mapas das clientes dela (agendamento com ela) e os sem cliente que
+      ela editou por último. Pelo id, o mapa de outra é recusado.
+    - **Planejamentos** (cdb155cb). Com a agenda OWN, a lista, a aba da
+      cliente e o id seguem `treatment_plans.professional_id`.
+    - **Copilot** (8ed28a2a, migration `20261028000803`). Com a agenda ou o
+      financeiro OWN, todos os números da ferramenta `indicadores` são dela;
+      despesas, estoque e itens críticos não vão ao modelo.
+    - **Relatórios** (7ebdd975, migration `20261028000804`). Todas as abas
+      e o CSV de vendas recebem a profissional, e o Comercial recebe o dono.
+      Ficam escondidos dela: despesas, lucro, margem, DRE, parcelas a vencer e
+      saldo do estoque.
+
+    **Decisões da frente H, para revisar:**
+    1. O mapa sem cliente é dela quando ela o editou por último.
+    2. O recebimento do plano (`getCheckoutPlan`, `cancelCheckout`,
+       `receberDoPlano`) não segue a agenda OWN, porque é gesto de caixa.
+    3. Quem fez a sessão de um plano de outra profissional não vê esse plano
+       em Planejamento.
+    4. A venda "dela" é a da coluna Profissional: quem fez o avulso, quem
+       vendeu o pacote ou o pré-pago, e a dona do plano.
+    5. No Copilot, a comissão dela aparece.
+    6. Na retenção dela, "voltou" é a cliente que já tinha sido atendida
+       por ela, não pela clínica.
+
+    Mexeu em `metrics_receitas_pagas` (fechamento do dia, financeiro da
+    cliente) e em `planoDoTenant`: vale uma completa, que o Heitor decide.
     Em módulo SEM escopo — lista de clientes, documentos emitidos, caixa e
     fechamento do dia, giro do estoque, checkout: **precisa da decisão do
     Heitor** (o módulo não tem "só os meus" para respeitar).
@@ -6942,8 +6989,27 @@ verdade. O que vale:
     **Revisto pelo Heitor (2026-10-28): movimentação de estoque — entrada OU
     saída — NUNCA gera despesa.** O valor informado serve só de base para
     insumos, custo, margem e lucro. A opção "lançar como despesa" da Entrada
-    (1b54c531, `estoque_compra`) SAI. A FAZER (fila: depois da frente do "só
-    os meus", que divide o servidor de testes).
+    (1b54c531, `estoque_compra`) SAI. **Feito em 2026-10-28** (e46e27bf,
+    frente H, migrations `20261028000801/802`):
+    - A opção saiu da Entrada (rede e unidade) e do cadastro do produto.
+    - `estoque_compra` e o `estoque_inicial` antigo foram apagados do banco.
+    - Nenhuma função de estoque grava em `financial_transactions`, e a prova é
+      `e2e/estoque-nunca-gera-despesa.spec.ts`.
+
+    **Decisão da frente H, para revisar:** o estoque inicial do cadastro do
+    produto também deixou de lançar despesa. Antes de D13 ele já lançava;
+    deixá-lo seria a mesma porta aberta.
+
+    **Despesas que já tinham nascido assim** (nada apagado, o Heitor decide):
+    - pela opção da Entrada: nenhuma;
+    - pelo estoque inicial do cadastro, as duas da [sim] Íris, Íris Centro,
+      em 28/10:
+      - R$ 2.700,00, "Compra: Toxina botulínica", `c43fff92-d38b-49a9-bb12-f1cc4c79a19e`;
+      - R$ 1.800,00, "Compra: Ácido hialurônico", `e4d68afd-5326-4cac-a236-e594fde2b636`.
+
+    O lucro agora não conta custo de insumo nenhum, a menos que a clínica
+    lance a compra à mão. Se o consumo deve entrar no resultado continua com
+    o Heitor (o item 1 do "Reforça" da 4ª simulação).
   - Ficha de saúde (D2): o servidor recusa a vazia e a com obrigatória em
     branco (app, "nada mudou" e link). Obrigatórias na ficha padrão: alergias,
     gestação/amamentação, medicamentos e condições de saúde (pele, protetor,
@@ -7679,7 +7745,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
 - **D18.** O histórico do pagamento sai em inglês ("via CREDIT_CARD", "via CASH"), porque `v_metodo` vai cru na `confirmar_pagamento_do_atendimento` (migration `20261028000201`).
 - **D19.** O link da ficha e o link de assinatura dizem "Olá, Dona!" e "confirme o seu data de nascimento" (`actions/pre-atendimento.ts:264-266`, `actions/documentos.ts:406`).
 
-**Sobra do D13 revisto (`e46e27b`).** O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
+~~**Sobra do D13 revisto (`e46e27b`).**~~ **Feita pela frente H em 7ebdd975**, que agora diz "Informativo: não entra no lucro". O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
 
 **Atritos (A1–A50, no relatório).** Os de mais peso:
 - A4: o horário próprio nasce no padrão comercial, não no da unidade;
@@ -7704,7 +7770,7 @@ A sugestão: com uma unidade ativa, esconder o vocabulário de rede, sem mudar o
 **O que reforça a revisão pendente do Heitor** (evidência desta rodada, sem decisão nova tomada):
 1. **D13 revisto: os valores do estoque como base de "insumos, custo, margem e lucro".** O lucro de hoje não desconta o insumo consumido. A regra escrita diz que o consumo "é informativo" (`docs/regras/indicadores.md`). Já a margem por procedimento desconta, e o procedimento sem insumo mostra margem de 100%. **O lucro deve descontar o insumo consumido?**
 2. **"Só os meus em qualquer lugar" (D7):**
-   - A Camila tem três números de faturamento no mesmo mês: "Meu faturamento" R$ 280 (só o pagamento atribuído a ela), o ticket R$ 343 e os Relatórios R$ 685. Os Relatórios estão com a frente H.
+   - A Camila tem três números de faturamento no mesmo mês: "Meu faturamento" R$ 280 (só o pagamento atribuído a ela), o ticket R$ 343 e os Relatórios R$ 685. Desde 7ebdd975, os Relatórios dela recortam.
    - Com Clientes sem escopo, ela lista e abre todas as clientes, inclusive a do Rafael. Esse é o item dos módulos sem escopo, que é decisão do Heitor.
 3. **Documentos no portal (Para decidir).** É a segunda rodada seguida: a foto clínica anexada pela dona no atendimento apareceu para a cliente em Histórico → Documentos, com download, sem que ninguém a mandasse.
 4. **Comissão de pacote (Em aberto).** A venda do pacote (R$ 800) não gerou comissão, porque hoje a regra é por sessão. Fica de referência para o modelo "sobre o valor total, no pagamento".
