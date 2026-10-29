@@ -90,6 +90,35 @@ test.describe('a ficha de saúde não se responde vazia (D2)', () => {
     }
   })
 
+  /*
+   * Revisto pelo Heitor (2026-10-29): a gestação continua obrigatória, mas
+   * ganha "Não se aplica" — o cliente do sexo masculino era obrigado a
+   * responder Sim ou Não.
+   */
+  test('a gestação da ficha padrão tem "Sim", "Não" e "Não se aplica", e continua obrigatória', async () => {
+    const { data } = await db().from('forms').select('schema').eq('tenant_id', R.tenantId).eq('tipo', 'PRE_ATENDIMENTO')
+      .single<{ schema: { rows: { fields: { id: string; required?: boolean; options?: string[] }[] }[] } }>()
+    const gestacao = data!.schema.rows.flatMap(r => r.fields).find(f => f.id === 'isPregnantOrBreastfeeding')
+    expect(gestacao?.options, 'as três opções, nesta ordem').toEqual(['Sim', 'Não', 'Não se aplica'])
+    expect(gestacao?.required, 'continua obrigatória').toBe(true)
+  })
+
+  test('na tela do app, a cliente envia a ficha com "Não se aplica" na gestação', async ({ browser }) => {
+    await abrirFichaPendente()
+    await comoCliente(browser, async page => {
+      await page.goto(`${portal()}/pre-atendimento`)
+      await page.locator('[data-campo="isPregnantOrBreastfeeding"]').getByLabel('Não se aplica', { exact: true }).check()
+      await page.locator('[data-campo="allergies"] textarea').fill('Nenhuma')
+      await page.locator('[data-campo="medications"] textarea').fill('Nenhum')
+      await page.locator('[data-campo="healthConditions"] textarea').fill('Nenhuma')
+      await page.getByRole('button', { name: 'Enviar respostas' }).click()
+      await expect(page.getByText('Respostas enviadas')).toBeVisible()
+    })
+    expect(await pendentes(cliente.clientId), 'respondida, fecha').toHaveLength(0)
+    expect((await anamnese(cliente.clientId))?.respostas?.isPregnantOrBreastfeeding, 'grava a resposta como foi dada')
+      .toBe('Não se aplica')
+  })
+
   test('no app, o servidor recusa o envio vazio e o que falta obrigatório — e aceita o completo', async ({ browser }) => {
     await abrirFichaPendente()
     await comoCliente(browser, async page => {

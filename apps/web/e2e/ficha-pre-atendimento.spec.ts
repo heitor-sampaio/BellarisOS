@@ -41,7 +41,7 @@ const pendentes = async (clienteId: string) => (await db().from('pre_atendimento
  * 2026-10-28): gestação, medicamentos e condições de saúde.
  */
 async function preencherObrigatorias(escopo: Page | Locator) {
-  await escopo.locator('[data-campo="isPregnantOrBreastfeeding"]').getByLabel('Não').check()
+  await escopo.locator('[data-campo="isPregnantOrBreastfeeding"]').getByLabel('Não', { exact: true }).check()
   await escopo.locator('[data-campo="medications"] textarea').fill('Nenhum')
   await escopo.locator('[data-campo="healthConditions"] textarea').fill('Nenhuma')
 }

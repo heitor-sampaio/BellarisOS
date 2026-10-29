@@ -284,6 +284,15 @@ const procedures = await ler(
     gestação, medicamentos e condições de saúde obrigatórios
     (`private.ficha_de_pre_atendimento_padrao`, migration `20261028000301`);
     nas redes que já existiam, só a ficha padrão nunca editada mudou.
+    **A gestação tem "Não se aplica"** (revisão do Heitor, 2026-10-29;
+    migration `20261029000601`): "Sim", "Não" e "Não se aplica", e continua
+    obrigatória — o cliente do sexo masculino era obrigado a responder Sim ou
+    Não. Mudou a semente e, nas redes que já existiam, a ficha igual à semente
+    de 28/10 (a editada é da rede); a resposta antiga guarda o retrato da
+    ficha dela e não foi reescrita. Nada lê a resposta como booleano: o alerta
+    da tela é só o de alergia, o PDF e o pacote LGPD escrevem o texto, o
+    Copilot não lê a anamnese, e a conversão do legado (`simNao`) só diz
+    "Sim" do verdadeiro e deixa um texto como está.
     A obrigatória vale para todo preenchimento pelo construtor: a equipe
     também a preenche ao salvar a anamnese ou mandar a avaliação.
   - **A ficha gravada vazia não é "respondida" em lugar nenhum**

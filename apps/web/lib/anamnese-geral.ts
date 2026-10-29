@@ -40,7 +40,16 @@ export const TIPOS_FORA_DO_PRE_ATENDIMENTO: AnamnesisFieldType[] = ['photo', 'in
 
 /** O que a anamnese antiga (campos fixos) dizia, nos mesmos ids da ficha padrão. */
 const PELES: Record<string, string> = { normal: 'Normal', seca: 'Seca', oleosa: 'Oleosa', mista: 'Mista', sensivel: 'Sensível' }
-const simNao = (v: unknown) => (v === true || v === 'true' ? 'Sim' : 'Não')
+/**
+ * O booleano do legado em palavras: só o verdadeiro é "Sim". Um TEXTO que não
+ * é booleano passa como está — a gestação tem "Não se aplica" desde
+ * 2026-10-29, e nada aqui pode trocá-lo por "Sim" nem por "Não".
+ */
+const simNao = (v: unknown) => {
+  if (v === true || v === 'true') return 'Sim'
+  if (typeof v === 'string' && v !== 'false' && v.trim()) return v
+  return 'Não'
+}
 
 /** As respostas, limpas: só os ids da ficha, só texto ou lista de texto, sem vazio. */
 export function respostasDaFicha(rows: AnamnesisRow[], bruto: unknown): Record<string, RespostaDaAnamnese> {
