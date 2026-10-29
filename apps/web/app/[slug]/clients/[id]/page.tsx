@@ -20,6 +20,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
+import { planejamentosAbriveisDasFichas } from '@/lib/injetaveis/alcance'
 import { paraAnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { createAdminClient as clienteDeServico } from '@/lib/supabase/admin'
@@ -196,6 +197,11 @@ export default async function ClientProfilePage({
   if (canViewRecords) await registrarAcessoAoProntuario(ctx, id, 'ficha')
   const acessosDoProntuario = await acessosAoProntuario(ctx, id)
   const recordForms = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
+  // O planejador de injetáveis retratado na ficha leva ao planejamento — se
+  // ele existe e quem vê pode abri-lo (2026-10-29).
+  const planejamentosQueAbrem = canViewRecords
+    ? await planejamentosAbriveisDasFichas(admin, ctx, id, recordForms.map(r => r.ficha))
+    : []
   const generalAnamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
 
   // O financeiro da cliente — lançamentos, totais, crédito e os atendimentos a
@@ -396,6 +402,7 @@ export default async function ClientProfilePage({
       allAppointments={allAppointments}
       recordForms={recordForms}
       podeVerProntuario={canViewRecords}
+      planejamentosQueAbrem={planejamentosQueAbrem}
       acessosAoProntuario={acessosDoProntuario}
       generalAnamnesis={generalAnamnesis}
       fidelidade={await fidelidadeDoPerfil(ctx, id)}

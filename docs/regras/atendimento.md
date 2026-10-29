@@ -407,6 +407,44 @@ const procedures = await ler(
   procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
   (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do
   Planejamento. Prova: `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`.
+- **O campo "Planejador de injetáveis" da ficha abre o planejamento DA
+  CLIENTE** (pedido do Heitor, 2026-10-29). Era um mapa SOLTO, só na resposta
+  da ficha. No atendimento, o campo (`CampoDoPlanejador`,
+  `anamnesis-form-renderer.tsx`, com `injetaveis={{ clientId, branchId }}`) é
+  o MESMO `PlanejamentoInjetaveis` de Planejamento → Injetáveis: lista os
+  planejamentos dela para abrir, cria um novo (nasce ligado a ela) e abre o
+  planejador com o "Registrar aplicação". Não há segundo planejador.
+  - **A resposta guarda o id e um RETRATO**: `{ view, points, planejamento:
+    { id, nome }, retratoEm }` — os pontos do planejamento GRAVADO no momento
+    do "Salvar ficha" (`salvarFichaDoProcedimento`) ou do "Finalizar"
+    (`finishSession`, na transação de `concluir_atendimento`, em
+    `form_data.ficha`). O navegador diz QUAL planejamento; os pontos o
+    servidor lê (`retratarInjetaveis`, `lib/injetaveis/alcance.ts`; a conta
+    pura em `lib/atendimento/retrato-dos-injetaveis.ts`). Edição do mapa não
+    salva no planejamento não entra no retrato (a tela diz isso no campo).
+  - O planejamento tem de ser da cliente DO ATENDIMENTO, da rede, da unidade ao
+    alcance e, no prontuário "só os meus", de cliente que ela atende — senão o
+    salvar e o finalizar recusam ("Planejamento de injetáveis não encontrado
+    para esta cliente."). O plano é da CLIENTE: quem a atende vê e usa os
+    planejamentos dela, quem quer que os tenha desenhado (`mapaDaProfissional`).
+  - Finalizar sem mexer na ficha já salva com planejamento: o retrato se
+    refaz com o planejamento de agora (o resto da ficha fica como foi salvo);
+    se o planejamento saiu do alcance, a ficha salva fica como está.
+  - Voltar à lista no campo é tirar o planejamento da ficha. A obrigatória
+    aceita o planejamento escolhido, mesmo sem ponto.
+  - **Na leitura** (aba Prontuário da ficha, o atendimento bloqueado), o
+    retrato aparece com o nome e a data ("como estava em…") e, se o
+    planejamento existe e quem vê pode abri-lo (`planejamentosAbriveisDasFichas`,
+    calculado na página), o link "Abrir planejamento" para Planejamento →
+    Injetáveis da ficha. Nada de confirmar ou registrar aplicação fora do
+    atendimento. O pacote LGPD leva o retrato no JSON, como levava o mapa.
+  - **A ficha antiga, de mapa solto** (sem `planejamento`), continua como
+    está, só para ler — também no atendimento.
+  - As regras do mapa (`mapaAoAlcance`, `mapaDaProfissional`,
+    `clienteDaProfissional`, `mapaDoTenant`) moram em `lib/injetaveis/alcance.ts`
+    — fora do `'use server'`, onde todo export é endpoint.
+  Prova: `e2e/atendimento-ficha-planejador-injetaveis.spec.ts`,
+  `tests/retrato-dos-injetaveis.test.ts`.
 - **Os mapas de injetáveis seguem o prontuário "só os meus"** (decisão do
   Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer
   lugar"). Com `medical_records` OWN, a lista de Injetáveis
@@ -603,6 +641,9 @@ O resto do fluxo:
   "Salvar" a gravava, e finalizar sem salvar a perdia. Como a anamnese, o
   "Finalizar" não exige as obrigatórias da ficha. A ficha não está no
   rascunho (A31): o "Salvar ficha" é o caminho para guardar antes.
+  O planejador de injetáveis da ficha entra com o RETRATO do planejamento
+  da cliente lido no servidor (`retratarInjetaveis`, §9.4) — também quando a
+  ficha salva não foi tocada na tela.
   Prova: `e2e/atendimento-ficha-do-procedimento.spec.ts`,
   `tests/ficha-do-procedimento-na-conclusao.test.ts`.
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
@@ -648,6 +689,9 @@ O resto do fluxo:
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores, a anamnese e a ficha do procedimento do "Finalizar"
 ❌ Ramo da tela do atendimento sem a ficha própria do procedimento (o avulso da rede que monta plano ficou sem ela de 2026-09-25 a 2026-10-29)
 ❌ Gravar a ficha do procedimento com o form_id que veio do navegador (é a ficha ligada ao procedimento do agendamento, da rede: fichaParaConcluir)
+❌ Gravar na ficha os pontos do planejador de injetáveis que vieram do navegador (o retrato é do planejamento gravado: retratarInjetaveis), ou um planejamento de outra cliente
+❌ Um segundo planejador de injetáveis: o campo da ficha é o PlanejamentoInjetaveis de Planejamento → Injetáveis
+❌ Exportar de actions/injectable-map.ts ('use server') uma regra de alcance do mapa — ela mora em lib/injetaveis/alcance.ts
 ❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts

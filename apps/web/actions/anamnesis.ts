@@ -8,6 +8,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } from '@/lib/storage'
 import { ler } from '@/lib/db'
+import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 
 
 // A anamnese GERAL da cliente saiu daqui em 2026-10-20: é a ficha de
@@ -144,6 +145,15 @@ export async function salvarFichaDoProcedimento(params: {
 
     const rows = normalizeFormSchema(form.schema).rows
 
+    // O planejador de injetáveis guarda o planejamento da cliente usado e o
+    // RETRATO dos pontos dele agora, lido do banco (2026-10-29) — nunca os
+    // pontos que o navegador mandou. Planejamento de outra cliente, de outra
+    // rede ou fora do alcance: recusa.
+    const retratadas = await retratarInjetaveis(admin, ctx, {
+      rows, answers: params.answers ?? {}, clientId: (appt.client_id as string | null) ?? null,
+    })
+    if ('error' in retratadas) return { error: retratadas.error }
+
     // medical_records (get or create)
     let medRecord = await ler(admin
       .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle(), 'buscar o prontuário do cliente')
@@ -164,7 +174,7 @@ export async function salvarFichaDoProcedimento(params: {
 
     const merged = {
       ...existing,
-      ficha: { formId: form.id, name: form.name, rows, answers: params.answers },
+      ficha: { formId: form.id, name: form.name, rows, answers: retratadas.answers },
     }
 
     const { error } = await admin.from('medical_record_entries').upsert({

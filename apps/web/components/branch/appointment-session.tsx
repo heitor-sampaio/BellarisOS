@@ -1304,6 +1304,7 @@ export function AppointmentSession({
             hideSaveButton={unified}
             semInjetaveis={!podeInjetaveis}
             onAnswersChange={setFichaDigitada}
+            injetaveis={{ clientId: client.id, branchId }}
           />
         ),
       } : null}
@@ -1331,6 +1332,7 @@ export function AppointmentSession({
           saveAction={salvarFichaDoProcedimento}
           semInjetaveis={!podeInjetaveis}
           onAnswersChange={setFichaDigitada}
+          injetaveis={{ clientId: client.id, branchId }}
         />
       </div>
     </section>

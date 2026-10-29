@@ -184,6 +184,8 @@ interface Props {
   recordForms?:          ProfileRecordEntry[]
   /** Quem vê o prontuário: a aba aparece mesmo sem atendimento registrado. */
   podeVerProntuario?:    boolean
+  /** Os planejamentos de injetáveis retratados nas fichas que quem vê pode abrir (2026-10-29). */
+  planejamentosQueAbrem?: string[]
   /** Quem abriu o prontuário — só para o admin da rede (nulo para os demais). */
   acessosAoProntuario?:  { itens: AcessoNaFicha[]; total: number } | null
   generalAnamnesis?:     AnamneseGeral | null
@@ -1127,7 +1129,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], prePagos = [], podeAgendar = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
@@ -1196,6 +1198,15 @@ export function ClientProfile({
     // planejamento: levá-los para outra aba deixaria lixo na URL e reabriria o
     // plano errado ao voltar.
     return rotaComParams(pathname, params, { aba: key === 'visao' ? null : key, planejamento: null, aberto: null })
+  }
+
+  /**
+   * O planejamento retratado numa ficha abre na aba Planejamento → Injetáveis
+   * desta mesma ficha (2026-10-29) — só o que existe e quem vê pode abrir.
+   */
+  function linkDoPlanejamento(mapId: string): string | null {
+    if (!planejamentosQueAbrem.includes(mapId)) return null
+    return rotaComParams(pathname, params, { aba: 'planejamento', planejamento: 'injetaveis', aberto: mapId })
   }
 
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
@@ -1695,6 +1706,7 @@ export function ClientProfile({
                       appointmentId={entry.appointmentId} slug={slug}
                       formName={entry.ficha.name} rows={entry.ficha.rows}
                       initial={entry.ficha.answers as AnamnesisAnswers} canEdit={false}
+                      injetaveis={{ linkDoPlanejamento: linkDoPlanejamento }}
                     />
                   ),
                 } : null}

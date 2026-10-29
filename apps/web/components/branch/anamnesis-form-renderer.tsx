@@ -2,13 +2,15 @@
 
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import Image from 'next/image'
-import { Save, Upload, X, ImageIcon, CheckCircle2 } from 'lucide-react'
+import Link from 'next/link'
+import { Save, Upload, X, ImageIcon, CheckCircle2, Syringe, ExternalLink } from 'lucide-react'
 import {
-  flattenFields, isInjectableMap, emptyInjectableMap,
+  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor,
   type AnamnesisField, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
+import { PlanejamentoInjetaveis } from '@/components/branch/planejamento-injetaveis'
 
 // O planejador de injetáveis é o primeiro campo com valor estruturado — até
 // aqui tudo era escalar.
@@ -37,10 +39,23 @@ interface Props {
   rotuloSalvar?: string
   /** Avisa a cada resposta mudada (o rascunho do atendimento e o "Finalizar" a usam — D3). */
   onAnswersChange?: (answers: AnamnesisAnswers) => void
+  /**
+   * O planejador de injetáveis ligado à CLIENTE (2026-10-29). No atendimento
+   * (`clientId` e `branchId`), o campo abre os planejamentos dela — o mesmo
+   * planejador de Planejamento → Injetáveis. Na leitura, `linkDoPlanejamento`
+   * diz para onde leva o planejamento retratado (nulo: sem link).
+   */
+  injetaveis?: ContextoDosInjetaveis
+}
+
+export interface ContextoDosInjetaveis {
+  clientId?: string
+  branchId?: string
+  linkDoPlanejamento?: (mapId: string) => string | null
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
-  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha', onAnswersChange }, ref,
+  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha', onAnswersChange, injetaveis }, ref,
 ) {
   const doSave = saveAction ?? salvarFichaDoProcedimento
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
@@ -113,7 +128,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
             {row.fields.map(f => (
               <FieldView
                 key={f.id} field={f} value={answers[f.id]} canEdit={canEdit && !(semInjetaveis && f.type === 'injectable_map')}
-                appointmentId={appointmentId}
+                appointmentId={appointmentId} slug={slug} injetaveis={injetaveis}
                 erro={invalido?.id === f.id ? invalido.msg : undefined}
                 photoUrl={typeof answers[f.id] === 'string' ? photoUrls[answers[f.id] as string] : undefined}
                 onPhotoUploaded={(path, url) => setPhotoUrls(m => ({ ...m, [path]: url }))}
@@ -148,7 +163,7 @@ function isEmpty(v: AnswerValue | undefined): boolean {
   if (Array.isArray(v)) return v.length === 0
   // Sem este caso, um planejador obrigatório passava vazio: `String(objeto)`
   // vira "[object Object]", que não é string em branco.
-  if (isInjectableMap(v)) return v.points.length === 0
+  if (isInjectableMap(v)) return v.points.length === 0 && !planejamentoDoValor(v)
   return String(v).trim() === ''
 }
 
@@ -156,11 +171,13 @@ const labelStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block',
 }
 
-function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, erro, onPhotoUploaded, onChange, onToggle }: {
+function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, photoUrl, erro, onPhotoUploaded, onChange, onToggle }: {
   field: AnamnesisField
   value: AnswerValue | undefined
   canEdit: boolean
   appointmentId: string
+  slug: string
+  injetaveis?: ContextoDosInjetaveis
   photoUrl?: string
   /** A mensagem de validação deste campo (o primeiro obrigatório vazio). */
   erro?: string
@@ -184,7 +201,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, erro, on
     return (
       <div data-campo={f.id}>
         <span style={labelStyle}>{f.label}</span>
-        <ReadOnlyValue field={f} value={value} photoUrl={photoUrl} />
+        <ReadOnlyValue field={f} value={value} photoUrl={photoUrl} linkDoPlanejamento={injetaveis?.linkDoPlanejamento} />
       </div>
     )
   }
@@ -246,12 +263,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, erro, on
         </div>
       )}
       {f.type === 'injectable_map' && (
-        <InjectableMapField
-          value={isInjectableMap(value) ? value : emptyInjectableMap()}
-          products={f.options ?? []}
-          canEdit
-          onChange={onChange}
-        />
+        <CampoDoPlanejador field={f} value={value} appointmentId={appointmentId} slug={slug} injetaveis={injetaveis} onChange={onChange} />
       )}
       {f.type === 'photo' && (
         <PhotoField path={str} displayUrl={photoUrl} appointmentId={appointmentId} onChange={onChange} onUploaded={onPhotoUploaded} />
@@ -260,7 +272,10 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, erro, on
   )
 }
 
-function ReadOnlyValue({ field: f, value, photoUrl }: { field: AnamnesisField; value: AnswerValue | undefined; photoUrl?: string }) {
+function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento }: {
+  field: AnamnesisField; value: AnswerValue | undefined; photoUrl?: string
+  linkDoPlanejamento?: (mapId: string) => string | null
+}) {
   if (f.type === 'photo') {
     if (typeof value === 'string' && value && photoUrl) {
       return <Image unoptimized src={photoUrl} alt={f.label} width={220} height={220} style={{ width: 'auto', height: 'auto', maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)' }} />
@@ -270,6 +285,12 @@ function ReadOnlyValue({ field: f, value, photoUrl }: { field: AnamnesisField; v
   // Antes do fallback: sem este caso o mapa virava "[object Object]" na aba
   // Fichas do perfil do cliente e no pacote de LGPD.
   if (f.type === 'injectable_map') {
+    // O retrato do planejamento da cliente (2026-10-29): o que foi planejado
+    // naquele dia, mesmo que o planejamento tenha mudado depois.
+    const plan = planejamentoDoValor(value)
+    if (plan && isInjectableMap(value)) {
+      return <RetratoDoPlanejamento valor={value} nome={plan.nome} link={linkDoPlanejamento?.(plan.id) ?? null} products={f.options ?? []} />
+    }
     if (!isInjectableMap(value) || value.points.length === 0) {
       return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
     }
@@ -286,6 +307,101 @@ function ReadOnlyValue({ field: f, value, photoUrl }: { field: AnamnesisField; v
     <p style={{ fontSize: 'var(--text-base-sz)', color: text ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
       {text || 'Não informado'}
     </p>
+  )
+}
+
+const dicaStyle: React.CSSProperties = { fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }
+
+/**
+ * O campo "Planejador de injetáveis" no atendimento (pedido do Heitor,
+ * 2026-10-29): a porta para o planejador de VERDADE. Lista os planejamentos
+ * da cliente para abrir um já feito, cria um novo (nasce ligado a ela) e abre
+ * o MESMO planejador de Planejamento → Injetáveis — com o "Registrar
+ * aplicação", porque está no atendimento. A resposta guarda só QUAL
+ * planejamento está aberto; o retrato dos pontos o servidor tira ao salvar a
+ * ficha ou finalizar (`retratarInjetaveis`). Voltar à lista é tirar o
+ * planejamento da ficha.
+ *
+ * A ficha antiga, com o mapa SOLTO, continua como está, só para ler. Sem a
+ * cliente (um renderizador fora do atendimento), o mapa solto de antes.
+ */
+function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, onChange }: {
+  field: AnamnesisField
+  value: AnswerValue | undefined
+  appointmentId: string
+  slug: string
+  injetaveis?: ContextoDosInjetaveis
+  onChange: (v: AnswerValue) => void
+}) {
+  const plan = planejamentoDoValor(value)
+  if (!plan && isInjectableMap(value) && value.points.length > 0 && injetaveis?.clientId) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={dicaStyle}>Mapa registrado antes de o planejador abrir os planejamentos da cliente. Fica como está, só para ler.</p>
+        <InjectableMapField value={value} products={f.options ?? []} canEdit={false} onChange={() => {}} />
+      </div>
+    )
+  }
+  if (!injetaveis?.clientId || !injetaveis.branchId) {
+    return (
+      <InjectableMapField
+        value={isInjectableMap(value) ? value : emptyInjectableMap()}
+        products={f.options ?? []}
+        canEdit
+        onChange={onChange}
+      />
+    )
+  }
+  return (
+    <div data-planejador-da-ficha style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <p style={dicaStyle}>
+        {plan
+          ? 'A ficha guarda este planejamento como ele estiver salvo ao salvar a ficha ou finalizar o atendimento.'
+          : 'Abra um planejamento da cliente ou crie um novo: ele fica ligado a esta ficha.'}
+      </p>
+      <PlanejamentoInjetaveis
+        clientId={injetaveis.clientId}
+        branchId={injetaveis.branchId}
+        slug={slug}
+        appointmentId={appointmentId}
+        produtos={f.options ?? []}
+        podeEditar
+        abertoId={plan?.id ?? null}
+        onAbrir={id => onChange(id ? { ...emptyInjectableMap(), planejamento: { id, nome: '' } } : emptyInjectableMap())}
+      />
+    </div>
+  )
+}
+
+/** O retrato do planejamento na ficha lida: o nome, de quando, o link (se a pessoa pode abri-lo) e os pontos. */
+function RetratoDoPlanejamento({ valor, nome, link, products }: {
+  valor: InjectableMapValue; nome: string; link: string | null; products: string[]
+}) {
+  const quando = valor.retratoEm ? new Date(valor.retratoEm) : null
+  return (
+    <div data-retrato-do-planejamento style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Syringe size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+        <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+          {nome || 'Planejamento sem nome'}
+        </span>
+        {quando && !Number.isNaN(quando.getTime()) && (
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+            como estava em {quando.toLocaleDateString('pt-BR')}
+          </span>
+        )}
+        <span style={{ flex: 1 }} />
+        {link && (
+          <Link href={link} className="btn-ghost"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', padding: '5px 10px', textDecoration: 'none' }}>
+            <ExternalLink size={12} /> Abrir planejamento
+          </Link>
+        )}
+      </div>
+      {valor.points.length === 0
+        ? <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
+        : <InjectableMapField value={valor} products={products} canEdit={false} onChange={() => {}} />}
+    </div>
   )
 }
 

@@ -55,6 +55,23 @@ export interface InjectableMapValue {
   view:         InjectableView | 'front'
   points:       InjectablePoint[]
   confirmedAt?: string | null
+  /**
+   * O planejamento da cliente usado no campo da ficha do procedimento
+   * (2026-10-29). Com ele, `points` é o RETRATO do planejamento de quando a
+   * ficha foi salva ou o atendimento finalizado (`retratoEm`) — feito no
+   * servidor (`lib/atendimento/retrato-dos-injetaveis.ts`). Sem ele, é o mapa
+   * solto das fichas de antes, só para ler.
+   */
+  planejamento?: { id: string; nome: string } | null
+  retratoEm?:    string | null
+}
+
+/** O planejamento que a resposta do campo usa, se usa. */
+export function planejamentoDoValor(v: unknown): { id: string; nome: string } | null {
+  const p = (v && typeof v === 'object') ? (v as { planejamento?: unknown }).planejamento : null
+  if (!p || typeof p !== 'object') return null
+  const { id, nome } = p as { id?: unknown; nome?: unknown }
+  return typeof id === 'string' && id ? { id, nome: typeof nome === 'string' ? nome : '' } : null
 }
 
 export function emptyInjectableMap(): InjectableMapValue {

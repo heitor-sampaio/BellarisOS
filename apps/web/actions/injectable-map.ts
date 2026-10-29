@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso, isOwnScope } from '@/lib/auth'
-import type { TenantContext } from '@estetica-os/types'
+import { mapaAoAlcance, mapaDaProfissional, clienteDaProfissional, mapaDoTenant } from '@/lib/injetaveis/alcance'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
@@ -64,66 +64,6 @@ export interface MapaNaLista {
 }
 
 const SEM_NOME = 'Planejamento sem nome'
-
-/**
- * O planejamento está ao alcance de quem age? Planejamento avulso (sem unidade)
- * aparece em qualquer recorte — é a regra da lista —; o de uma unidade, só para
- * ela e para a rede (§11).
- */
-function mapaAoAlcance(ctx: TenantContext, branchId: string | null): boolean {
-  return branchId === null || alcancaUnidade(ctx, branchId)
-}
-
-/**
- * Com o prontuário "só os meus", o mapa é DELA? (Decisão do Heitor,
- * 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar".)
- *
- * A regra do resto do prontuário OWN (a ficha, `recusaDoAnexo`): a cliente
- * que ela atende — um agendamento com ela. O planejamento avulso (sem
- * cliente) é dela quando foi ela quem o mexeu por último (`updated_by`). Sem
- * o escopo OWN, todo mapa ao alcance.
- */
-async function mapaDaProfissional(
-  admin: ReturnType<typeof createAdminClient>,
-  ctx: TenantContext,
-  mapa: { client_id: string | null; updated_by: string | null },
-): Promise<boolean> {
-  if (!isOwnScope(ctx, 'medical_records')) return true
-  if (!ctx.internalUserId) return false
-  if (!mapa.client_id) return mapa.updated_by === ctx.internalUserId
-  return clienteDaProfissional(admin, ctx, mapa.client_id)
-}
-
-/** A cliente é atendida por ela (o "dela" do prontuário OWN)? */
-async function clienteDaProfissional(
-  admin: ReturnType<typeof createAdminClient>,
-  ctx: TenantContext,
-  clientId: string,
-): Promise<boolean> {
-  if (!isOwnScope(ctx, 'medical_records')) return true
-  if (!ctx.internalUserId) return false
-  const meu = await ler(admin.from('appointments').select('id')
-    .eq('client_id', clientId).eq('professional_id', ctx.internalUserId).limit(1), 'conferir se a cliente é atendida por você')
-  return (meu ?? []).length > 0
-}
-
-/**
- * Confere que o planejamento é da rede de quem chama, da unidade ao alcance
- * e, com o prontuário "só os meus", dela (§11: o escopo vale pelo id).
- */
-async function mapaDoTenant(
-  admin: ReturnType<typeof createAdminClient>,
-  mapId: string,
-  ctx: TenantContext,
-) {
-  const data = await ler(admin
-    .from('injectable_maps')
-    .select('id, tenant_id, client_id, branch_id, name, updated_by')
-    .eq('id', mapId)
-    .maybeSingle(), 'carregar o planejamento')
-  if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)) return null
-  return (await mapaDaProfissional(admin, ctx, data as { client_id: string | null; updated_by: string | null })) ? data : null
-}
 
 /** Confere que o cliente é do tenant de quem chama. */
 async function clienteDoTenant(

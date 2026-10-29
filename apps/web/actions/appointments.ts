@@ -33,6 +33,9 @@ import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/vou
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
+import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
+import type { AnamnesisRow } from '@/lib/anamnesis'
+import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
@@ -851,6 +854,31 @@ async function finishSessionInterno(
             .eq('id', proc.form_id as string).eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha do procedimento')
         : null
       ficha = fichaParaConcluir(form as { id: string; name: string; schema: unknown } | null, fichaDigitada)
+    }
+    // O planejador de injetáveis da ficha: o RETRATO do planejamento usado,
+    // lido agora do banco (2026-10-29). Sem a ficha na tela, a já salva
+    // ganha o retrato de agora — é o "momento em que o atendimento é
+    // finalizado" — e o resto dela fica como foi salvo.
+    const daTela = !!ficha
+    if (!ficha && appt.client_id) {
+      const salva = (await ler(admin.from('medical_record_entries').select('form_data')
+        .eq('appointment_id', appointmentId).maybeSingle(), 'buscar a ficha salva'))?.form_data as { ficha?: unknown } | null
+      const f = salva?.ficha as { formId?: unknown; name?: unknown; rows?: unknown; answers?: unknown } | undefined
+      if (f && typeof f.formId === 'string' && Array.isArray(f.rows) && f.answers && typeof f.answers === 'object'
+        && planejamentosDaFicha(f.rows as AnamnesisRow[], f.answers as Record<string, unknown>).length > 0) {
+        ficha = { formId: f.formId, name: String(f.name ?? ''), rows: f.rows as AnamnesisRow[], answers: f.answers as Record<string, unknown> }
+      }
+    }
+    if (ficha) {
+      const retratadas = await retratarInjetaveis(admin, ctx, {
+        rows: ficha.rows, answers: ficha.answers, clientId: (appt.client_id as string | null) ?? null,
+      })
+      // A da tela com planejamento que não é desta cliente: recusa. A salva
+      // antes, cujo planejamento saiu do alcance: fica como foi salva.
+      if ('error' in retratadas) {
+        if (daTela) return { error: retratadas.error }
+        ficha = null
+      } else ficha = { ...ficha, answers: retratadas.answers }
     }
 
     // ─── Grava, tudo ou nada ──────────────────────────────────────────────
