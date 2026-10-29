@@ -7011,6 +7011,15 @@ verdade. O que vale:
     Em módulo SEM escopo — lista de clientes, documentos emitidos, caixa e
     fechamento do dia, giro do estoque, checkout: **precisa da decisão do
     Heitor** (o módulo não tem "só os meus" para respeitar).
+    **Decidido pelo Heitor (2026-10-29):**
+    - **Clientes:** a lista mostra todas para quem tem o módulo, porque "a
+      cliente é da clínica". O que é dela (prontuário, planos, financeiro) já
+      segue o "só os meus".
+    - **Documentos emitidos:** seguem o prontuário. Com ele em "só os meus",
+      só os das clientes que ela atende. A FAZER.
+    - **Caixa, fechamento do dia e checkout:** são da recepção e do caixa, e
+      quem tem o módulo vê tudo.
+    - **Giro do estoque:** é da clínica e fica inteiro.
   - ~~O estorno reabre a cobrança (D6): o atendimento volta a "a receber" e o
     novo recebimento é um lançamento NOVO (o estornado fica intacto), com
     pontos e comissão uma vez só. Efeito: vai outro "Purchase" à API de
