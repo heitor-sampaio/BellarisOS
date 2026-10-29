@@ -121,6 +121,12 @@
   novo é um dos livres do self-service, para o mesmo profissional. Dentro do
   prazo, só "Falar com a clínica" (WhatsApp da unidade). Prova:
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
+- **"Próximo" no portal da cliente é UMA regra** (D14 da simulação de
+  2026-10-29; `lib/clientes/agenda-do-portal.ts`): em aberto (agendado,
+  confirmado ou na clínica) E com o horário ainda por vir — os "Próximos" da
+  Agenda e o "Próximo agendamento" da home. O que passou sem ser fechado vai
+  ao histórico. A Agenda filtrava só o status, e o "Na clínica" de ontem
+  aparecia em "Próximos". Prova: `tests/agenda-do-portal.test.ts`.
 - **"Mostrar cancelados"** (2026-10-21, decisão do Heitor): a agenda da
   unidade deixa o cancelado e a falta fora da grade; o botão do cabeçalho
   (`?cancelados=1`, a consulta do servidor) os traz de volta, apagados, riscados

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { CalendarDays, ChevronRight, ClipboardList, FileSignature, Sparkles } from 'lucide-react'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
+import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -56,7 +57,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
     ler(admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
-      .in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED'])
+      // A mesma regra dos "Próximos" da Agenda (D14).
+      .in('status', [...STATUS_DO_PROXIMO])
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at')
       .limit(1)

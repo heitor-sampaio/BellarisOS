@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, Clock3, User, Plus } from 'lucide-react'
 import { ler } from '@/lib/db'
+import { separarAgendaDoPortal } from '@/lib/clientes/agenda-do-portal'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -55,9 +56,8 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   const prazoHoras = rede?.portal_prazo_alteracao_horas ?? 24
 
   const appointments = (data ?? []) as unknown as Appt[]
-  const upcoming = appointments.filter(a => ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status))
-    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-  const past = appointments.filter(a => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status))
+  // A mesma regra da home (D14): o que ainda vai acontecer, em aberto.
+  const { proximos: upcoming, historico: past } = separarAgendaDoPortal(appointments)
 
   return (
     <div>
