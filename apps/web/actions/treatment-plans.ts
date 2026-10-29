@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { clienteAtendidaPor } from '@/lib/clientes/atendida-por'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
@@ -129,14 +130,24 @@ async function gravarSessoes(
 }
 
 /**
- * Com a agenda "só os meus", o plano é DELA (`treatment_plans.professional_id`
- * — o recorte dos planos aguardando checkout no dashboard)? Decisão do Heitor,
- * 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar" — e o
- * escopo vale pelo id (§11). Sem o OWN, todo plano ao alcance.
+ * Com a agenda "só os meus", o plano é DELA? "O plano é da cliente, não da
+ * profissional" (revisão do Heitor, 2026-10-29): é dela o plano de toda
+ * cliente que ela atende — um agendamento com ela, qualquer um, inclusive
+ * futuro (`clienteAtendidaPor`, a regra do prontuário OWN) —, quem quer que o
+ * tenha montado; e o plano que ELA montou (`professional_id`), mesmo de cliente
+ * sem agendamento com ela. Quem cobre uma sessão precisa ver o que foi feito e
+ * o que falta. O escopo vale pelo id (§11). Sem o OWN, todo plano ao alcance.
  */
-function planoDaProfissional(ctx: TenantContext, professionalId: string | null | undefined): boolean {
+async function planoDaProfissional(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: TenantContext,
+  plano: { professional_id?: unknown; client_id?: unknown },
+): Promise<boolean> {
   if (!isOwnScope(ctx, 'agenda')) return true
-  return !!ctx.internalUserId && professionalId === ctx.internalUserId
+  if (!ctx.internalUserId) return false
+  if (plano.professional_id === ctx.internalUserId) return true
+  const cliente = (plano.client_id as string | null | undefined) ?? null
+  return !!cliente && clienteAtendidaPor(admin, ctx.internalUserId, cliente)
 }
 
 /**
@@ -157,7 +168,7 @@ async function planoDoTenant(
   // A rede, e a unidade ao alcance de quem age (§11): o plano da unidade B não
   // se mexe pela recepção da A.
   if (!data || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, data.branch_id as string)) return null
-  if (!planoDaProfissional(ctx, data.professional_id as string | null)) return null
+  if (!(await planoDaProfissional(admin, ctx, data))) return null
   return { ...data, slug: branch!.slug }
 }
 
@@ -256,9 +267,11 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  // Agenda "só os meus": só os planos dela (`planoDaProfissional`).
-  const dela = ownerFilter(ctx, 'agenda')
-  if (isOwnScope(ctx, 'agenda') && !dela) return { planos: [] }
+  // Agenda "só os meus" (`planoDaProfissional`): a cliente que ela atende tem
+  // todos os planos à vista, de quem quer que seja; a outra, só os que ela montou.
+  const ownerAgenda = ownerFilter(ctx, 'agenda')
+  if (isOwnScope(ctx, 'agenda') && !ownerAgenda) return { planos: [] }
+  const dela = ownerAgenda && !(await clienteAtendidaPor(admin, ownerAgenda, clientId)) ? ownerAgenda : null
 
   let consulta = admin
     .from('treatment_plans')
@@ -555,25 +568,47 @@ export async function listarPlanejamentos(opcoes?: {
     ? doTenant.filter(b => b.id === opcoes.branchId)
     : doTenant
 
-  // Agenda "só os meus": só os planos dela (`planoDaProfissional`), no banco.
+  // Agenda "só os meus" (`planoDaProfissional`), no banco — a lista cresce, o
+  // filtro não pode vir depois de ler: os planos das clientes que ela atende
+  // (o `!inner` em cadeia plano → cliente → agendamento com ela) e os que ela
+  // montou, juntos.
   const dela = ownerFilter(ctx, 'agenda')
   if (isOwnScope(ctx, 'agenda') && !dela) return { planos: [] }
 
   // Todos, em páginas (2026-10-22): tinha teto de 200, sem "ver mais" — os
   // planejamentos mais antigos sumiam da lista.
-  const data = await lerTodas((de, ate) => {
+  type Recorte = 'todos' | 'daCliente' | 'montadoPorEla'
+  const pagina = (recorte: Recorte) => lerTodas((de, ate) => {
     let query = admin
       .from('treatment_plans')
-      .select(`
-        id, name, status, created_at, branch_id,
-        clients(id, name, phone, document),
-        treatment_plan_sessions(treatment_plan_session_procedures(price))
-      `)
+      .select(recorte === 'daCliente'
+        // O agendamento vem limitado a um, só para existir.
+        ? `id, name, status, created_at, branch_id,
+           clients!inner(id, name, phone, document, appointments!inner(id)),
+           treatment_plan_sessions(treatment_plan_session_procedures(price))`
+        : `id, name, status, created_at, branch_id,
+           clients(id, name, phone, document),
+           treatment_plan_sessions(treatment_plan_session_procedures(price))`)
       .in('branch_id', alcance.map(b => b.id))
-    if (dela) query = query.eq('professional_id', dela)
+    if (recorte === 'daCliente') {
+      query = query.eq('clients.appointments.professional_id', dela!)
+        .limit(1, { referencedTable: 'clients.appointments' })
+    }
+    if (recorte === 'montadoPorEla') query = query.eq('professional_id', dela!)
     if (opcoes?.status) query = query.eq('status', opcoes.status)
     return query.order('created_at', { ascending: false }).order('id').range(de, ate)
   }, 'carregar os planejamentos')
+
+  let data: Awaited<ReturnType<typeof pagina>>
+  if (!dela) data = await pagina('todos')
+  else {
+    const [daCliente, montados] = await Promise.all([pagina('daCliente'), pagina('montadoPorEla')])
+    // As duas já vêm na ordem da tela; aqui se juntam sem repetir.
+    const vistos = new Set<string>()
+    data = [...daCliente, ...montados]
+      .filter(p => !vistos.has(p.id as string) && !!vistos.add(p.id as string))
+      .sort((a, b) => (b.created_at as string).localeCompare(a.created_at as string) || (a.id as string).localeCompare(b.id as string))
+  }
 
   type RawCli  = { id: string; name: string; phone: string | null; document: string | null }
   type RawSess = { treatment_plan_session_procedures: { price: number }[] }
@@ -742,10 +777,10 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
 
   const plan = await ler(admin
     .from('treatment_plans')
-    .select('branch_id, professional_id')
+    .select('branch_id, professional_id, client_id')
     .eq('id', planId)
     .maybeSingle(), 'buscar o plano')
-  if (!plan || !planoDaProfissional(ctx, plan.professional_id as string | null)) return { sessions: [], total: 0 }
+  if (!plan || !(await planoDaProfissional(admin, ctx, plan))) return { sessions: [], total: 0 }
 
   const branch = await ler(admin
     .from('branches')
@@ -962,7 +997,7 @@ async function cancelTreatmentPlanInterno(
     .select('id, status, branch_id, client_id, professional_id, evaluation_appointment_id')
     .eq('id', planId)
     .maybeSingle(), 'buscar o plano')
-  if (!plan || !planoDaProfissional(ctx, plan.professional_id as string | null)) return { error: 'Plano não encontrado.' }
+  if (!plan || !(await planoDaProfissional(admin, ctx, plan))) return { error: 'Plano não encontrado.' }
 
   const branch = await ler(admin
     .from('branches')

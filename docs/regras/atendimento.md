@@ -472,11 +472,21 @@ const procedures = await ler(
   atendimento) e TODA action pelo id do plano que passa por `planoDoTenant`
   (cabeçalho, editar, salvar, renomear, ligar cliente, enviar à recepção,
   fechar o checkout, o arquivo do tratamento), mais `getTreatmentPlanSessions`
-  e `cancelTreatmentPlan`, só valem para o plano DELA:
-  `treatment_plans.professional_id` (`planoDaProfissional` — o recorte dos
-  planos aguardando checkout no dashboard). O filtro da lista é no banco.
-  Ficam de fora os gestos de quem RECEBE (`getCheckoutPlan`, `cancelCheckout`,
-  `receberDoPlano`, que pedem `cashier`/fechar plano, não a agenda). Prova:
+  e `cancelTreatmentPlan`, só valem para o plano DELA (`planoDaProfissional`).
+  **"O plano é da cliente, não da profissional"** (revisão do Heitor,
+  2026-10-29): dela é o plano de toda cliente que ela atende — um agendamento
+  com ela, qualquer um, inclusive futuro (`clienteAtendidaPor`,
+  `lib/clientes/atendida-por.ts`, a regra do prontuário OWN) —, quem quer que o
+  tenha montado, e o plano que ELA montou (`professional_id`), mesmo de
+  cliente sem agendamento com ela. Quem cobre uma sessão precisa ver o que foi
+  feito e o que falta. Até a revisão era só `professional_id`. O filtro da
+  lista é no banco (o `!inner` plano → cliente → agendamento com ela, mais os
+  montados por ela). A anotação do profissional no plano continua do
+  prontuário (`podeVerClinico` com quem montou). Ficam de fora os gestos de
+  quem RECEBE (`getCheckoutPlan`, `cancelCheckout`, `receberDoPlano`, que
+  pedem `cashier`/fechar plano, não a agenda — confirmado pelo Heitor). O
+  recorte dos planos aguardando checkout no dashboard segue
+  `professional_id` (indicador, §13.1). Prova:
   `e2e/planejamentos-so-os-meus.spec.ts`.
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um

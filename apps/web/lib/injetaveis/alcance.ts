@@ -3,6 +3,7 @@ import { alcancaUnidade, can, isOwnScope } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import {
   planejamentosDaFicha, comRetratos, type PlanejamentoParaRetrato,
@@ -28,11 +29,7 @@ export function mapaAoAlcance(ctx: TenantContext, branchId: string | null): bool
 
 /** A cliente é atendida por ela (o "dela" do prontuário OWN)? */
 export async function clienteDaProfissional(admin: Admin, ctx: TenantContext, clientId: string): Promise<boolean> {
-  if (!isOwnScope(ctx, 'medical_records')) return true
-  if (!ctx.internalUserId) return false
-  const meu = await ler(admin.from('appointments').select('id')
-    .eq('client_id', clientId).eq('professional_id', ctx.internalUserId).limit(1), 'conferir se a cliente é atendida por você')
-  return (meu ?? []).length > 0
+  return clienteNoEscopo(admin, ctx, 'medical_records', clientId)
 }
 
 /**
