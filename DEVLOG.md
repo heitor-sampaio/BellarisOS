@@ -6855,8 +6855,10 @@ verdade. O que vale:
     agenda da unidade.** A capacidade desconta o que a profissional tem
     agendado em outra unidade, na agenda e no dashboard da unidade
     (`ocupadoFora`, lib/agenda/horario).
-  - "Só os meus" (D4): no próprio agendamento tudo segue igual, inclusive
-    cancelar pela tela do atendimento e passar para outra profissional.
+  - ~~"Só os meus" (D4): no próprio agendamento tudo segue igual, inclusive
+    cancelar pela tela do atendimento e passar para outra profissional.~~
+    **Confirmado pelo Heitor (2026-10-28):** a profissional (no que é dela) ou
+    quem gerencia a agenda cancela e passa o atendimento a outra pessoa.
   - Dashboard da rede (D7): recorta quando agenda OU financeiro é "só os
     meus"; os rankings que só contam (procedimentos, mais pedidos,
     recorrência, faixa de idade) seguem da rede inteira, como no da unidade. E
