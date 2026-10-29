@@ -34,8 +34,12 @@ describe('o pagamento no contrato', () => {
     expect(v['pagamento.valor_parcela']).toMatch(/133,33/)
   })
 
-  it('a linha do tempo continua com o rótulo curto de antes', () => {
-    expect(rotuloDoPagamento(parcelado)).toBe('entrada de R$ 100,00 + 3x em CREDIT_CARD')
+  // D18 (simulação de 2026-10-29): a linha do tempo dizia "3x em CREDIT_CARD".
+  // A forma vai com o nome da tela (rotuloDaForma).
+  it('a linha do tempo diz a forma em português, como a tela', () => {
+    expect(rotuloDoPagamento(parcelado)).toBe('entrada de R$ 100,00 + 3x em Crédito')
+    expect(rotuloDoPagamento({ forma: 'AVISTA', metodo: 'PIX' })).toBe('Pix à vista')
+    expect(rotuloDoPagamento({ forma: 'AVISTA', metodo: 'CASH' })).toBe('Dinheiro à vista')
   })
 })
 
@@ -69,7 +73,7 @@ describe('cartão de crédito em N vezes (2026-10-20)', () => {
   it('a frase do contrato diz em quantas vezes', () => {
     expect(valoresDoPagamento(tresVezes, 600)['pagamento.forma']).toMatch(/^R\$\s600,00 no cartão de crédito em 3x$/)
     expect(valoresDoPagamento(tresVezes, 600)['pagamento.parcelas']).toBe('3')
-    expect(rotuloDoPagamento(tresVezes)).toBe('CREDIT_CARD em 3x')
+    expect(rotuloDoPagamento(tresVezes)).toBe('Crédito 3x')
   })
 
   it('1x é o à vista de sempre, e o retrato de antes não muda', () => {

@@ -292,6 +292,16 @@ o procedimento avulso pago antes.
     a comissão usa a da maior parcela cadastrada abaixo (`taxaQueVale`, o
     espelho de `private.comissao_taxa_pct`) ou nenhuma. As taxas vão de
     à vista a 12x em Configurações → Comissões.
+  - **A linha do tempo também diz a forma pelo nome** (D18 da simulação de
+    2026-10-29; migration `20261029000301`): "Pagamento confirmado via
+    Crédito 3x", "via Dinheiro" — era "via CREDIT_CARD em 3x". No banco,
+    `private.rotulo_da_forma` é o espelho de `rotuloDaForma` (os nomes
+    curtos), usado por `confirmar_pagamento_do_atendimento`; no app, o
+    checkout do plano (`rotuloDoPagamento`) e o recebimento do plano no
+    check-in usam `rotuloDaForma`. Forma nova entra NOS DOIS. O histórico
+    gravado antes ficou como estava. Prova:
+    `e2e/financeiro-historico-forma-em-portugues.spec.ts`,
+    `tests/checkout-pagamento.test.ts`.
   - **"Sem forma (pontos)" só para o que os pontos pagaram** (A35): no
     Fechamento do dia, a receita sem forma com `loyalty_discount` é `PONTOS`;
     todo o resto sem forma (a compra de estoque) é "Sem forma de pagamento".
@@ -429,6 +439,7 @@ o procedimento avulso pago antes.
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0
+❌ Gravar texto para pessoas (histórico, descrição) com o código da forma (CASH, CREDIT_CARD) — é rotuloDaForma no app e private.rotulo_da_forma no banco
 ❌ Ler dinheiro digitado com uma regra própria (Number(s.replace…), parseFloat em campo de texto) — é parseDinheiro, e o NaN dele é recusa, não zero
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
 ```

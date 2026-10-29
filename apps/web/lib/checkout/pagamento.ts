@@ -1,4 +1,5 @@
 import { formatBRL, formatDate } from '@estetica-os/utils'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 /**
  * Como o plano foi pago — e as três leituras dele que o sistema faz.
@@ -22,15 +23,18 @@ export type PagamentoDoPlano =
   /** Vencimento opcional: "a receber" sem data combinada é válido. */
   | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string | null }
 
-/** A linha do tempo do atendimento: curta, com o método como a tela o guarda. */
+/**
+ * A linha do tempo do atendimento: curta, com a forma pelo nome da tela
+ * (`rotuloDaForma` — D18, 2026-10-29: dizia "3x em CREDIT_CARD").
+ */
 export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
   if (!p)                      return 'em aberto, a receber no atendimento'
-  if (p.forma === 'AVISTA')    return vezesNoCartao(p) > 1 ? `${p.metodo} em ${vezesNoCartao(p)}x` : `${p.metodo} à vista`
+  if (p.forma === 'AVISTA')    return vezesNoCartao(p) > 1 ? rotuloDaForma(p.metodo, vezesNoCartao(p)) : `${rotuloDaForma(p.metodo)} à vista`
   if (p.forma === 'A_RECEBER') return 'a receber'
   const entrada = p.entrada > 0
     ? `entrada de R$ ${p.entrada.toFixed(2).replace('.', ',')} + `
     : ''
-  return `${entrada}${p.parcelas}x em ${p.metodo}`
+  return `${entrada}${p.parcelas}x em ${rotuloDaForma(p.metodo)}`
 }
 
 const METODO: Record<string, string> = {

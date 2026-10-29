@@ -1233,6 +1233,7 @@ export type SessionScheduleInput = {
 // (lib/documentos) também o lê, e aqui todo export é endpoint público.
 export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { rotuloDoPagamento, vezesNoCartao, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto } from '@/lib/vendas/desconto'
@@ -1723,10 +1724,11 @@ async function receberDoPlanoInterno(
       changed_by_id:   ctx.internalUserId,
       changed_by_name: ctx.userName || ctx.roleLabel || 'Recepção',
       action:          'PAYMENT_CONFIRMED',
+      // A forma pelo nome da tela (D18, 2026-10-29: dizia "PIX à vista").
       description:     `Plano de tratamento recebido — R$ ${saldo.emAberto.toFixed(2).replace('.', ',')} — ${
         recebimento.forma === 'AVISTA'
-          ? (vezesNoCartao(recebimento) > 1 ? `${recebimento.metodo} em ${vezesNoCartao(recebimento)}x` : `${recebimento.metodo} à vista`)
-          : `entrada + ${recebimento.parcelas}x em ${recebimento.metodo}`
+          ? (vezesNoCartao(recebimento) > 1 ? rotuloDaForma(recebimento.metodo, vezesNoCartao(recebimento)) : `${rotuloDaForma(recebimento.metodo)} à vista`)
+          : `entrada + ${recebimento.parcelas}x em ${rotuloDaForma(recebimento.metodo)}`
       }`,
     }), 'registrar no histórico do agendamento')
   }
