@@ -6891,9 +6891,10 @@ verdade. O que vale:
   - Mapa (D14): fora do atendimento não há "Confirmar aplicação"; a frase
     manda abrir o atendimento e usar "Registrar aplicação". A toxina da Íris
     não oferecia o mapa por CONFIGURAÇÃO (procedimento sem ficha) — ficou assim.
-  - Grade da agenda (D5): "Minha agenda" usa o horário da UNIDADE (não o do
+  - ~~Grade da agenda (D5): "Minha agenda" usa o horário da UNIDADE (não o do
     próprio profissional); a da rede, o mais cedo e o mais tarde entre as
-    unidades; atendimento que passa da meia-noite fecha a grade em 24h.
+    unidades; atendimento que passa da meia-noite fecha a grade em 24h.~~
+    **Confirmado pelo Heitor (2026-10-28).**
   - Cadastro de membro (D8): a EDIÇÃO também nasce limpa a cada abertura.
   - Automação (D16): a opção "Escolha o canal…" fica desabilitada.
   - 404 (D18): o `loading.tsx` saiu do topo de `/admin` e `/[slug]` e foi
