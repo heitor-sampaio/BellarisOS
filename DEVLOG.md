@@ -8081,6 +8081,125 @@ A sugestão: com uma unidade ativa, esconder o vocabulário de rede, sem mudar o
 8. **Decisão nova:** a cliente ganha pontos sobre a entrada de um plano parcelado antes de qualquer sessão, e as parcelas pontuam quando pagas. É coerente com "1 ponto por R$ pago", mas vale confirmar. **Confirmado pelo Heitor (2026-10-29):** o ponto acompanha o pagamento, e a clínica configura quantos pontos dá por real. Isso já existe em Fidelidade → Configurações (`points_per_real`).
    - **Defeito achado na conferência:** `components/admin/fidelidade-config.tsx:72` tira todos os pontos antes de trocar a vírgula. Com isso, "0.5" vira 5, a mesma classe do D3. A FAZER, com o aviso "use vírgula".
 
+### Os atritos da 3ª e da 4ª simulação: a lista única (triagem de 2026-10-29)
+
+Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrigidos direto e as decisões levadas a ele. Os 99 atritos (3ª A1–A49, 4ª A1–A50) foram conferidos contra o código de 29/10, só com leitura. Os ids do relatório de cada rodada continuam valendo.
+
+**Contagem.** 19 decisões, 68 ajustes, 11 já resolvidos e 12 fora (engano, regra ou não reproduzido).
+
+**Decisões, para o Heitor (D-1…D-19).**
+
+| Item | Pergunta | Atritos |
+|---|---|---|
+| D-1 | Quem configura os funis? | 4ª A6 |
+| D-2 | Campanhas e Automações também na unidade? | 4ª A7 |
+| D-3 | Quem a campanha alcança, e o aviso de "só no app"? | 4ª A19 |
+| D-4 | Modelos prontos de automação e o procedimento no gatilho? | 3ª A10, 4ª A20 |
+| D-5 | Um contrato de plano ativo só; salvar inativo e trocar? | 4ª A8 |
+| D-6 | O uso do produto: insumo, revenda ou os dois? | 4ª A10 |
+| D-7 | Saída de estoque por perda, com motivo? | 3ª A26 |
+| D-8 | Pedir transferência a outra unidade? | 3ª A25 |
+| D-9 | O lead perdido que volta e é cadastrado: "é a mesma pessoa?" | 3ª A11 |
+| D-10 | A importação: linha só com e-mail, e o telefone repetido | 4ª A15 |
+| D-11 | Documento que não é CPF (passaporte) | 4ª A22 |
+| D-12 | O retorno em N dias vira lembrete? | 3ª A21 |
+| D-13 | Medicamento que contraindica o procedimento | 4ª A28 |
+| D-14 | O "A receber" do mês com as parcelas futuras | 3ª A32, 4ª A33 |
+| D-15 | Até quantas parcelas no crédito | 4ª A32 |
+| D-16 | "Sem preferência" de profissional no app | 3ª A39, 4ª A44 |
+| D-17 | O crédito interno aparece no app? | 3ª A44 |
+| D-18 | O plano proposto no app | 3ª A45 |
+| D-19 | O vocabulário de rede numa clínica de uma unidade só | 3ª A26, seção da 4ª |
+
+**Ajustes, sem decisão (J-1…J-68).** Vão para frentes de correção, com TDD.
+
+- **Setup e Configurações**
+  - J-1: o DDI no telefone do setup.
+  - J-2: as máscaras de CNPJ e telefone na aba Geral.
+  - J-3: o setup volta ao passo 1.
+  - J-4: o horário de funcionamento na "Nova unidade".
+  - J-5: o CEP na "Nova unidade".
+  - J-6: a unidade herda o CNPJ.
+  - J-7: "Teste grátis: tudo, menos o Copilot".
+- **Equipe**
+  - J-8: "1 membro cadastrados".
+  - J-9: o horário próprio nasce do horário da unidade.
+- **Catálogo, fidelidade e busca**
+  - J-10: um rótulo só para o self-service.
+  - J-11: a medida "U".
+  - J-12: o texto do catálogo de fidelidade.
+  - J-13: a busca universal acha as telas.
+- **Automações**
+  - J-14: os nós soltos e o deslocamento.
+  - J-15: "1 dias" e "sim/nao".
+  - J-16: o rótulo cortado no menu.
+- **CRM**
+  - J-17: as tags que repetem as origens.
+  - J-18: os nomes acessíveis dos botões de etapa.
+  - J-19: o telefone cru no modal.
+  - J-20: os labels dos selects.
+  - J-21: o Esc no seletor de tags.
+- **Clientes**
+  - J-22: o aviso falso de "a senha é o CPF" para quem já tem conta.
+  - J-23: arquivar pede confirmação e ganha marca e filtro.
+  - J-24: o texto "qualquer unidade".
+  - J-25: o nome do "+".
+  - J-26: o histórico de avaliação e o cancelado.
+  - J-27: quem fez cada ação.
+- **Agenda**
+  - J-28: o modal não perde os campos no conflito.
+  - J-29: o aviso ao abrir outra unidade.
+  - J-30: o aviso de encaixe fora do horário e o sombreado.
+  - J-31: o label do motivo.
+  - J-32: o atendimento de ontem ainda aberto.
+  - J-33: as setas e o `?date=` da "Minha agenda".
+  - J-34: a hora real do concluído.
+- **Atendimento e plano**
+  - J-35: o nome do "Enviar para a recepção".
+  - J-36: a foto no histórico.
+  - J-37: um nome só para PROPOSED.
+  - J-38: o ponto nasce com o primeiro produto.
+  - J-39: o "Novo plano" sem busca de cliente.
+  - J-40: "será confirmado pela recepcionista" no que já foi pago.
+  - J-41: o título da foto.
+  - J-42: a tela do plano mostra a entrada, as parcelas e as sessões.
+- **Estoque**
+  - J-43: "abaixo do mín." quando é igual, e a unidade de consumo.
+  - J-44: a unidade do histórico e o "TOTAL REDE".
+  - J-45: lote, validade e custo na tela.
+- **Caixa e financeiro**
+  - J-46: comissão "base cheia" escrito.
+  - J-47: o motivo do desconto.
+  - J-48: o sinal do total.
+  - J-49: os quatro avisos do Fechamento do dia.
+  - J-50: a categoria "Contas", que deve casar com "Compra de estoque".
+  - J-51: os labels de "Conceder crédito".
+  - J-52: "faltam N pontos".
+  - J-53: o nome do CSV.
+- **Dashboard e Relatórios**
+  - J-54: o `?unidade=`.
+  - J-55: as dicas de aproveitamento e conclusão.
+  - J-56: qual data cada número usa.
+  - J-57: o "Status" com os abertos.
+  - J-58: o empate do "Mais realizado".
+- **Portal da cliente, login e acesso**
+  - J-59: Hoje/Amanhã e os turnos.
+  - J-60: o horário da profissional.
+  - J-61: o prazo com data e hora.
+  - J-62: o que falta para assinar.
+  - J-63: o termo no detalhe do agendamento.
+  - J-64: "Motivo (opcional)".
+  - J-65: a exportação LGPD (último acesso, "Pronto" com "em análise", o JSON técnico).
+  - J-66: o cartão "A clínica".
+  - J-67: `/admin`, `/setup` e `/login` com a cliente logada.
+  - J-68: o "acesso desativado" no login.
+
+**Já resolvidos.** R-1…R-11, por `b61c8481`, `114af842`, `142e89b`, `495f514e`, `812a79f0` e `df0e6db`.
+
+**Fora.** F-1…F-12. Uma dívida pequena, do F-9: apagar a coluna legada `leads.stage`, que não vale mais (a etapa é `crm_stage_id`).
+
+A triagem completa, com o arquivo provável de cada ajuste e a tabela de conferência atrito × item, está fora do git, em `apps/web/.sim/atritos-triagem.md`.
+
 ### Próximas fases já combinadas
 
 - ~~Busca universal, fase 2 — ações~~ **feita em 2026-10-08** (ver a linha do tempo).
