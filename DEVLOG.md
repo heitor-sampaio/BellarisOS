@@ -7966,6 +7966,12 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
 
 **Média**
 - **D5.** Não há tela para cadastrar salas. A tabela `rooms` e a conferência de conflito de sala existem, mas nenhum código do app insere sala. NOVO.
+  **Decidido pelo Heitor (2026-10-29): fazer.**
+  - Em Configurações → Unidade, as salas da unidade, com criar, renomear e desativar.
+  - Ao agendar, escolhe-se a sala, e o conflito de sala vale.
+  - O procedimento pode ser ligado às salas em que é feito (ligação OPCIONAL: sem salas marcadas, aceita qualquer uma). Com a ligação, o agendar oferece só as salas certas e sugere uma livre.
+
+  A FAZER.
 - **D6.** A contadora, sem agenda, vê "Meu faturamento R$ 0".
   - Causa: o cargo criado com agenda "Nenhum" guardou `scope = OWN`. `resolveScopes` (`lib/permissions.ts:141-150`) guarda o escopo sem olhar o nível, e o dashboard recorta por `isOwnScope(ctx,'agenda')`.
   - É defeito, não a decisão D7.
