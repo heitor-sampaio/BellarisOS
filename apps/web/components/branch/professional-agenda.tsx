@@ -16,6 +16,8 @@ import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { estenderJanela } from '@/lib/agenda/grade'
+import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
+import type { Horario, BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
@@ -35,7 +37,6 @@ const STATUS_COLORS: Record<string, {
 }
 
 const PX_PER_HOUR = 80
-const WORK_MIN    = 8 * 60
 
 function initials(name: string) {
   return iniciaisDoNome(name)
@@ -56,9 +57,16 @@ interface Props {
   branchId:         string
   /** O horário de funcionamento da unidade (horas cheias): a grade abre nele. */
   janela:           { inicio: number; fim: number }
+  /** A ocupação de hoje (D11): o horário da unidade, o dela e o que ela tem em outra unidade. */
+  horarioDaUnidade:      Horario | null
+  horarioDaProfissional: Horario | null
+  ocupadoFora:           BlocoOcupado[]
 }
 
-export function ProfessionalAgendaView({ events, slug, professionalName, branchName, professionalId, janela }: Props) {
+export function ProfessionalAgendaView({
+  events, slug, professionalName, branchName, professionalId, janela,
+  horarioDaUnidade, horarioDaProfissional, ocupadoFora,
+}: Props) {
   const router = useRouter()
   const today  = useMemo(() => new Date(), [])
 
@@ -125,10 +133,16 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
     return null
   }, [todayEvents, today])
 
+  // As horas marcadas hoje ("· 2h35" no cartão Hoje).
   const todayDuration = useMemo(() =>
-    todayEvents.reduce((s, e) => s + e.durationMin, 0), [todayEvents])
+    todayEvents.filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status)).reduce((s, e) => s + e.durationMin, 0), [todayEvents])
 
-  const occupancyPct = Math.min(100, Math.round(todayDuration / WORK_MIN * 100))
+  // A conta de lib/metrics, a mesma da agenda da unidade e do dashboard
+  // (§13.1): sobre o horário dela — era um dia fixo de 8 h, na tela (D11 da
+  // simulação de 2026-10-29). Nulo = sem expediente hoje: a tela mostra "—".
+  const occupancyPct = useMemo(() => ocupacaoDoDia(todayEvents,
+    { unidade: horarioDaUnidade, profissional: horarioDaProfissional, ocupadoFora }, today),
+  [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, today])
 
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const weekEnd   = endOfWeek(today, { weekStartsOn: 1 })
@@ -283,10 +297,10 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
         <div className="card" style={{ padding: '18px 20px' }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>Ocupação hoje</p>
           <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1, marginBottom: 10 }}>
-            {occupancyPct}%
+            {occupancyPct === null ? '—' : `${occupancyPct}%`}
           </p>
           <div style={{ height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 3, background: 'var(--brand)', width: `${occupancyPct}%`, transition: 'width 0.4s' }} />
+            <div style={{ height: '100%', borderRadius: 3, background: 'var(--brand)', width: `${occupancyPct ?? 0}%`, transition: 'width 0.4s' }} />
           </div>
         </div>
       </div>

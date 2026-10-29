@@ -100,9 +100,13 @@ export default async function AgendaPage({ params, searchParams }: {
   // O que esses profissionais têm agendado em OUTRA unidade (o da rede atende
   // em todas — D1): sai da capacidade da ocupação daqui (decisão do Heitor,
   // 2026-10-28). Só o horário, sem cliente nem procedimento.
-  const idsDosProfissionais = Object.keys(horariosDosProfissionais)
+  // Na "Minha agenda" (escopo próprio), só o dela: a ocupação de hoje desconta
+  // o que ela tem em outra unidade, como a da agenda da unidade (D11).
+  const idsDosProfissionais = professionalOnly
+    ? (ctx.internalUserId ? [ctx.internalUserId] : [])
+    : Object.keys(horariosDosProfissionais)
   const ocupadoFora: Record<string, BlocoOcupado[]> = {}
-  if (!professionalOnly && idsDosProfissionais.length) {
+  if (idsDosProfissionais.length) {
     const fora = await lerTodas((de, ate) => createAdminClient().from('appointments')
       .select('id, professional_id, scheduled_at, duration_min')
       .in('professional_id', idsDosProfissionais)
@@ -160,6 +164,9 @@ export default async function AgendaPage({ params, searchParams }: {
           professionalId={ctx.internalUserId ?? ''}
           branchId={branchId}
           janela={janelaDaGrade([horarioDaUnidade])}
+          horarioDaUnidade={horarioDaUnidade}
+          horarioDaProfissional={horariosDosProfissionais[ctx.internalUserId ?? ''] ?? null}
+          ocupadoFora={ocupadoFora[ctx.internalUserId ?? ''] ?? []}
         />
       </div>
     )

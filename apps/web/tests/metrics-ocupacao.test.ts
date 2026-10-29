@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { occupancyPct } from '@/lib/metrics'
+import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
 import { zonedToUtc } from '@/lib/datetime'
 
 // A ocupação usa a capacidade do HORÁRIO de funcionamento (2026-10-21): até
@@ -79,5 +80,35 @@ describe('occupancyPct com o que a profissional tem agendado em OUTRA unidade', 
 
   it('toda a agenda dela fora: sem capacidade aqui', () => {
     expect(occupancyPct(0, { ...padrao, ocupadoFora: [[as('08:00', 720)]] }, seg, fimDaSeg)).toBeNull()
+  })
+})
+
+// D11 da simulação de 2026-10-29: a "Minha agenda" dividia por um dia fixo de
+// 8 h, na tela. A Camila atende 18:00–23:30 (330 min) e tinha 155 min: 47%, não 32%.
+describe('ocupacaoDoDia (a "Minha agenda")', () => {
+  const noite = { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, [{ de: '18:00', ate: '23:30' }]])) }
+  const unidade = { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, [{ de: '08:00', ate: '23:30' }]])) }
+  const ev = (hhmm: string, min: number, status = 'SCHEDULED') =>
+    ({ start: new Date(`2026-10-28T${hhmm}:00-03:00`).toISOString(), durationMin: min, status })
+  const dia = new Date('2026-10-28T15:00:00-03:00')
+
+  it('sobre o horário dela, no dia de Brasília', () => {
+    expect(ocupacaoDoDia([ev('18:00', 90), ev('20:00', 65)], { unidade, profissional: noite }, dia)).toBe(47)
+  })
+  it('cancelado e falta não ocupam; outro dia não entra', () => {
+    const lista = [ev('18:00', 90), ev('20:00', 65), ev('22:00', 60, 'CANCELLED'), ev('22:30', 30, 'NO_SHOW'),
+      { start: new Date('2026-10-29T18:00:00-03:00').toISOString(), durationMin: 120, status: 'SCHEDULED' }]
+    expect(ocupacaoDoDia(lista, { unidade, profissional: noite }, dia)).toBe(47)
+  })
+  it('o agendado dela em outra unidade sai da capacidade', () => {
+    // 330 − 30 = 300; 150 ÷ 300 = 50%.
+    expect(ocupacaoDoDia([ev('18:00', 150)], {
+      unidade, profissional: noite, ocupadoFora: [{ inicio: new Date('2026-10-28T23:00:00-03:00').toISOString(), minutos: 30 }],
+    }, dia)).toBe(50)
+  })
+  it('dia em que ela não atende: sem capacidade (a tela mostra "—")', () => {
+    // 28/10/2026 é quarta (3): folga marcada no horário dela.
+    const soSegunda = { dias: { 1: [{ de: '18:00', ate: '23:30' }], 3: [] } }
+    expect(ocupacaoDoDia([], { unidade, profissional: soSegunda }, dia)).toBeNull()
   })
 })

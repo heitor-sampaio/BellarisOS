@@ -97,6 +97,13 @@
     na capacidade com o horário dele MENOS o que tem agendado em outra
     unidade (`ocupadoFora`; o da rede atende em todas — decisão do Heitor,
     2026-10-28). Sem isso ele aparecia livre em duas unidades ao mesmo tempo.
+    A **"Minha agenda"** (agenda "só os meus") usa a MESMA conta para a
+    "Ocupação hoje": `ocupacaoDoDia` (`lib/metrics/ocupacao.ts`, puro, roda no
+    navegador) — os minutos dela no dia de Brasília ÷ o horário unidade ∩
+    dela, menos o que ela tem em outra unidade; sem expediente, "—". Era um
+    dia fixo de 8 h, dividido na tela: a Camila (18:00–23:30) via 32% em vez
+    de 47% (D11 da simulação de 2026-10-29). Prova:
+    `e2e/agenda-minha-ocupacao.spec.ts`, `tests/metrics-ocupacao.test.ts`.
   - **composição do financeiro** (receita por forma de pagamento, receita e
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.
