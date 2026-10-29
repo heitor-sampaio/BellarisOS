@@ -290,5 +290,15 @@ ranking e a ocupação por filial, e o ranking de comissão (de todas). Com o
 (`p_owner`, o recorte do quadro). Prova:
 `e2e/indicadores-dashboard-da-rede-so-os-meus.spec.ts`.
 
+O mesmo recorte vale no **Copilot** (`copilot.md`) e nas funções dos
+Relatórios, que ganharam `p_professional_id default null` com os MESMOS
+predicados (migration `20261028000803`): `metrics_receitas_pagas` (o dinheiro
+dela), `metrics_gasto_por_cliente`, `metrics_receita_por_categoria_de_procedimento`,
+`metrics_relatorio` (cada aba: o dinheiro, os atendimentos, as clientes e o
+consumo dela; a comissão dela; o saldo do estoque segue o da unidade — quem
+mostra o esconde) e `metrics_vendas` (+ `_pagina`, `_resumo`). **Venda dela**
+é a pessoa da coluna "Profissional" da venda: quem atendeu o avulso, quem
+vendeu o pacote e o pré-pago, a dona do plano.
+
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).

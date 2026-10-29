@@ -22,6 +22,11 @@ interface Recorte {
   branchIds: string[] | null
   from:      Date
   to:        Date
+  /**
+   * "Só os meus" (2026-10-28): as vendas DELA — quem atendeu o avulso, quem
+   * vendeu o pacote e o pré-pago, a dona do plano (a coluna "Profissional").
+   */
+  professionalId?: string | null
 }
 
 type Linha = {
@@ -41,6 +46,7 @@ export async function getVendas(r: Recorte & { tipo?: TipoDeVenda | null; limite
     p_tenant: r.tenantId, p_branch_ids: r.branchIds,
     p_from: r.from.toISOString(), p_to: r.to.toISOString(),
     p_tipo: r.tipo ?? null, p_limite: r.limite ?? POR_PAGINA, p_offset: r.offset ?? 0,
+    p_professional_id: r.professionalId ?? null,
   }), 'carregar as vendas do período') as Linha[] | null
   return (linhas ?? []).map(daLinha)
 }
@@ -59,6 +65,7 @@ export async function getResumoDeVendas(r: Recorte): Promise<ResumoDeVendas> {
   const linhas = await ler(createAdminClient().rpc('metrics_vendas_resumo', {
     p_tenant: r.tenantId, p_branch_ids: r.branchIds,
     p_from: r.from.toISOString(), p_to: r.to.toISOString(),
+    p_professional_id: r.professionalId ?? null,
   }), 'resumir as vendas do período') as { tipo: string | null; quantidade: number | string; total: number | string }[] | null
 
   const vazio = { quantidade: 0, total: 0 }

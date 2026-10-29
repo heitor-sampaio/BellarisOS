@@ -113,6 +113,17 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   - **A cobrança da Meta** (`cobranca_do_whatsapp`): o mês de cada número
     oficial (`getCobrancaDoWhatsapp`), com a trava da tela (Configurações em
     Gerenciar).
+- **"Só os meus" vale também no Copilot** (decisão do Heitor, 2026-10-28:
+  "quem tem 'só os meus' vê 'só os meus', em qualquer lugar"). A ferramenta
+  `indicadores` usa o recorte do dashboard (`indicadores.md`): com a agenda OU
+  o financeiro em OWN, todo número é o DELA — o `professionalId` vai a
+  `getCore`, `getRelatorio` e às vendas (`p_professional_id`, migration
+  `20261028000803`) — e o cabeçalho diz o recorte; com o CRM em OWN, o funil
+  conta os leads dela e os sem dono (`ownerId`). Não vai ao modelo o que não
+  se atribui a ela: a despesa, o saldo e o valor do estoque, os itens
+  críticos (o consumo dos atendimentos dela vai). A comissão do núcleo, com
+  o recorte, é a dela e vai. Prova: `e2e/copilot-indicadores-so-os-meus.spec.ts`
+  (contra o build, como todo `copilot-*`).
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,

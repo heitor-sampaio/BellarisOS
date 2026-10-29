@@ -1,7 +1,7 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
-import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
+import { can, isOwnScope, ownerFilter, podeVerRelatorio } from '@/lib/auth'
 import { resolvePeriod } from '@/lib/metrics/period'
 import { getCore, getLeadFunnel } from '@/lib/metrics/queries'
 import { getRelatorio } from '@/lib/metrics/relatorio'
@@ -16,7 +16,17 @@ import { ticketMedio } from '@/lib/metrics/resultado'
  * Todo número vem de `lib/metrics` (§13.1) — a ferramenta só escolhe o que
  * mostrar. A aba de relatório segue a do cargo (`podeVerRelatorio`), e o
  * escopo "só a minha unidade" dos relatórios obriga a escolher uma unidade.
+ *
+ * "Só os meus" (decisão do Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só
+ * os meus', em qualquer lugar"): o recorte do dashboard. Com a agenda OU o
+ * financeiro em OWN, todo número é o DELA (`professionalId` em lib/metrics);
+ * com o CRM em OWN, o funil conta os leads dela e os sem dono (`ownerId`). O
+ * que não se atribui a ela (a despesa, o saldo e o valor do estoque, a
+ * comissão das outras) não vai ao modelo.
  */
+
+/** Ninguém: com OWN e sem membro interno, nenhum número (nunca a rede). */
+const NINGUEM = '00000000-0000-0000-0000-000000000000'
 
 export const procedimentos: FerramentaDeLeitura<{ busca?: string; unidade?: string }> = {
   nome: 'procedimentos',
@@ -69,20 +79,28 @@ export const indicadores: FerramentaDeLeitura<{
       ? resolvePeriod('custom', args.de, args.ate)
       : resolvePeriod(args.periodo ?? 'month')
     // Como o dashboard e os Relatórios: até AGORA, contra o anterior equivalente.
-    const base = { tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to }
-    const cabecalho = { periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades' }
+    const recorteProprio = isOwnScope(c.ctx, 'agenda') || isOwnScope(c.ctx, 'financial')
+    const professionalId = recorteProprio ? (c.ctx.internalUserId ?? NINGUEM) : null
+    const base = { tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to, professionalId }
+    const cabecalho = {
+      periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades',
+      ...(recorteProprio ? { recorte: 'só os seus atendimentos e o dinheiro deles (o seu cargo vê "só os meus")' } : {}),
+    }
 
     if (aba === 'overview') {
       const [atual, anterior] = await Promise.all([
         getCore(base),
         getCore({ ...base, from: periodo.prevFrom, to: periodo.prevTo }),
       ])
-      const comissoes = can(c.ctx, 'financial', 'VIEW') && !isOwnScope(c.ctx, 'financial')
+      // Com "só os meus", a comissão do núcleo já é a DELA.
+      const comissoes = can(c.ctx, 'financial', 'VIEW') && (!isOwnScope(c.ctx, 'financial') || recorteProprio)
       return {
         dados: {
           ...cabecalho,
           faturamento: dinheiro(atual.revenueCash), faturamentoAnterior: dinheiro(anterior.revenueCash),
-          aReceber: dinheiro(atual.revenuePending), despesas: dinheiro(atual.expensesCash),
+          aReceber: dinheiro(atual.revenuePending),
+          // A despesa não se atribui a ela (o dashboard esconde o custo).
+          ...(recorteProprio ? {} : { despesas: dinheiro(atual.expensesCash) }),
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
           agendamentos: atual.appointmentsTotal, cancelados: atual.appointmentsCancelled, faltas: atual.appointmentsNoShow,
@@ -96,7 +114,8 @@ export const indicadores: FerramentaDeLeitura<{
     }
 
     if (aba === 'comercial') {
-      const funil = await getLeadFunnel(base)
+      // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
+      const funil = await getLeadFunnel({ ...base, ownerId: ownerFilter(c.ctx, 'crm') })
       return { dados: { ...cabecalho, funil: funil.map(e => ({ etapa: e.name, desfecho: e.outcome, oportunidades: e.leads, convertidas: e.converted })) } }
     }
 
@@ -141,12 +160,14 @@ export const indicadores: FerramentaDeLeitura<{
       },
       profissionais: {
         porProfissional: top(r.porProfissional).map(x => ({ ...x, receita: dinheiro(x.receita) })),
-        ...(can(c.ctx, 'financial', 'VIEW') && !isOwnScope(c.ctx, 'financial')
+        ...(can(c.ctx, 'financial', 'VIEW') && (!isOwnScope(c.ctx, 'financial') || recorteProprio)
           ? { comissoes: r.comissoesPorProfissional.map(x => ({ ...x, aberta: dinheiro(x.aberta), paga: dinheiro(x.paga) })) }
           : {}),
       },
       estoque: {
-        valorEmEstoque: dinheiro(r.estoque.valorEmEstoque), itensCriticos: r.estoque.criticos, zerados: r.estoque.zerados,
+        // O saldo e o valor do estoque não se atribuem a ela: com "só os meus",
+        // só o insumo dos atendimentos dela.
+        ...(recorteProprio ? {} : { valorEmEstoque: dinheiro(r.estoque.valorEmEstoque), itensCriticos: r.estoque.criticos, zerados: r.estoque.zerados }),
         consumoNoPeriodo: dinheiro(r.consumoTotal),
         maisConsumidos: top(r.estoque.maisConsumidos, 10).map(x => ({ ...x, valor: dinheiro(x.valor) })),
       },
