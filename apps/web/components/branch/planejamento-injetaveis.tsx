@@ -7,6 +7,18 @@ import {
   listarPlanejamentosDoCliente, criarPlanejamentoInjetavel, type MapaNaLista,
 } from '@/actions/injectable-map'
 
+const FALHA_AO_CARREGAR = 'Não foi possível carregar os planejamentos de injetáveis.'
+
+/**
+ * A lista, sem promessa rejeitada solta: a action LANÇA quando a sessão não tem
+ * o prontuário (`semAcesso()`) ou quando a rede cai, e o efeito sem `catch`
+ * deixava a tela em "Carregando…" para sempre (D7, 2026-10-29). A falha vira
+ * o aviso da própria tela — a mensagem do servidor chega trocada em produção.
+ */
+function buscarPlanejamentos(clientId: string): ReturnType<typeof listarPlanejamentosDoCliente> {
+  return listarPlanejamentosDoCliente(clientId).catch(() => ({ mapas: [], error: FALHA_AO_CARREGAR }))
+}
+
 /**
  * Planejamentos de injetáveis do CLIENTE.
  *
@@ -46,14 +58,14 @@ export function PlanejamentoInjetaveis({
   }, [])
 
   const carregar = useCallback(async () => {
-    aplicar(await listarPlanejamentosDoCliente(clientId))
+    aplicar(await buscarPlanejamentos(clientId))
   }, [clientId, aplicar])
 
   // A busca inicial aplica no `.then`: o efeito só dispara, quem grava estado é
   // a resposta.
   useEffect(() => {
     let vivo = true
-    listarPlanejamentosDoCliente(clientId).then(res => { if (vivo) aplicar(res) })
+    buscarPlanejamentos(clientId).then(res => { if (vivo) aplicar(res) })
     return () => { vivo = false }
   }, [clientId, aplicar])
 
@@ -72,6 +84,7 @@ export function PlanejamentoInjetaveis({
     // frente, e renomear leva um clique no cabeçalho depois.
     const nome = `Injetáveis — ${new Date().toLocaleDateString('pt-BR')}`
     const res = await criarPlanejamentoInjetavel({ nome, clientId, branchId: branchId || null })
+      .catch(() => ({ id: undefined, error: 'Não foi possível criar o planejamento.' }))
     setCriando(false)
     if (res.error || !res.id) { setErro(res.error ?? 'Não foi possível criar.'); return }
     await carregar()
@@ -97,7 +110,8 @@ export function PlanejamentoInjetaveis({
       {erro && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
 
       {mapas === null ? (
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>
+        // Falhou antes da primeira lista: o aviso acima é o estado, não um "Carregando…" sem fim.
+        erro ? null : <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>
       ) : mapas.length === 0 ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
           Nenhum planejamento de injetáveis ainda.

@@ -120,6 +120,7 @@ export const ISOLADOS = [
   'planejamentos-so-os-meus.spec.ts',
   'relatorios-so-os-meus.spec.ts',
   'permissoes-escopo-sem-modulo.spec.ts',
+  'injetaveis-sem-prontuario.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',

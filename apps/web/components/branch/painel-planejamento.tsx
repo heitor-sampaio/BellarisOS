@@ -27,7 +27,7 @@ type Aba = 'tratamento' | 'injetaveis'
 export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
-  podeEditar, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
+  podeEditar, podeVerInjetaveis, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
 }: {
   clientId:       string
   branchId:       string
@@ -36,6 +36,13 @@ export function PainelPlanejamento({
   procedures:     TreatmentProcedure[]
   availableProducts?: AvailableProduct[]
   podeEditar:     boolean
+  /**
+   * O mapa de injetáveis é PRONTUÁRIO (§9.4): sem `medical_records: VIEW` — e,
+   * no "só os meus", fora da cliente dela — a sub-aba nem aparece. É a decisão
+   * clínica da tela que monta o painel (`canViewRecords`). Sem isto, a
+   * recepção abria a sub-aba e ficava em "Carregando…" (D7, 2026-10-29).
+   */
+  podeVerInjetaveis: boolean
   podeReceber?:   boolean
   /** Guarda a aba e o item aberto na URL, em vez de em estado local. */
   navegarPorUrl?: boolean
@@ -50,9 +57,11 @@ export function PainelPlanejamento({
   const [abertoLocal, setAbertoLocal] = useState<string | null>(null)
 
   const abaDaUrl = params.get('planejamento')
-  const aba: Aba = navegarPorUrl
+  const abaPedida: Aba = navegarPorUrl
     ? (abaDaUrl === 'injetaveis' ? 'injetaveis' : 'tratamento')
     : abaLocal
+  // Sem o prontuário, nem pela URL: fica no plano de tratamento.
+  const aba: Aba = podeVerInjetaveis ? abaPedida : 'tratamento'
   const aberto = navegarPorUrl ? params.get('aberto') : abertoLocal
 
   function trocarAba(k: Aba) {
@@ -75,6 +84,7 @@ export function PainelPlanejamento({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {podeVerInjetaveis && (
       <div style={{ display: 'flex', gap: 6 }}>
         <SegSelect
           options={[
@@ -86,6 +96,7 @@ export function PainelPlanejamento({
           ariaLabel="Seção do planejamento"
         />
       </div>
+      )}
 
       {aba === 'tratamento' ? (
         <PlanejamentoTratamento

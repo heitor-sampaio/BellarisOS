@@ -1586,6 +1586,8 @@ export function ClientProfile({
             procedures={planProcedures}
             availableProducts={planProducts}
             podeEditar={canManageProcedures}
+            // Injetáveis é prontuário: a mesma decisão da aba Prontuário.
+            podeVerInjetaveis={podeVerProntuario}
             podeReceber={podeReceber}
             // A ficha já é uma rota: o plano aberto cabe na URL dela.
             navegarPorUrl

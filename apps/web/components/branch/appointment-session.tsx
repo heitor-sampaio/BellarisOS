@@ -1353,6 +1353,8 @@ export function AppointmentSession({
               procedures={treatmentProcedures}
               availableProducts={availableProducts}
               podeEditar={canEditRecords}
+              // Injetáveis é prontuário: o clínico desta sessão.
+              podeVerInjetaveis={canViewRecords}
               podeReceber={podeReceber}
               planoNaTela={!isPartOfPlan && podeMontarPlano && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
             />

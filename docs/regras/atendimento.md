@@ -372,6 +372,15 @@ const procedures = await ler(
   é no banco (`!inner` mapa → cliente → agendamento com ela). Antes a lista
   conferia só `medical_records: VIEW` e mostrava os mapas de todas. Prova:
   `e2e/injetaveis-so-os-meus.spec.ts`.
+- **A sub-aba Planejamento → Injetáveis só existe para quem vê o clínico**
+  (D7 da simulação de 2026-10-29): `PainelPlanejamento podeVerInjetaveis` é a
+  decisão clínica da tela que o monta — `podeVerProntuario` na ficha,
+  `canViewRecords` no atendimento. Sem ela, nem pela URL
+  (`?planejamento=injetaveis` cai no plano de tratamento). E a lista nunca
+  fica em "Carregando…": a action LANÇA sem o módulo (`semAcesso()`), e a
+  promessa rejeitada vira o aviso "Não foi possível carregar…"
+  (`buscarPlanejamentos`). A recepção abria a sub-aba, recebia 500 e ficava
+  carregando para sempre. Prova: `e2e/injetaveis-sem-prontuario.spec.ts`.
 - **Os planos de tratamento seguem a agenda "só os meus"** (decisão do Heitor,
   2026-10-28). Com `agenda` OWN, a tela Planejamentos (`listarPlanejamentos`),
   os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
