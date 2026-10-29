@@ -457,9 +457,11 @@ para alguém da rede.
 
 **O escopo só vale em módulo que o cargo TEM** (D6, 2026-10-29): módulo NONE —
 no cargo, no plano da rede ou Relatórios sem aba — é ALL no contexto
-(`resolveScopes` + `escoposDoQueTem`, no fim do `buildContext`) e grava ALL ao
-salvar o cargo (`escopoParaGravar`). A contadora sem agenda tinha o OWN
-esmaecido da agenda gravado, e o dashboard a recortava ("Meu faturamento R$ 0").
+(`resolveScopes` + `escoposDoQueTem`, no fim do `buildContext`). A contadora
+sem agenda tinha o OWN esmaecido da agenda gravado, e o dashboard a recortava
+("Meu faturamento R$ 0"). O cargo salvo GUARDA o escopo do módulo desligado
+(revisão do Heitor, 2026-10-29): religar devolve o "só os meus" que estava —
+quem lê o escopo é que o ignora enquanto o módulo está em NONE.
 Prova: `e2e/permissoes-escopo-sem-modulo.spec.ts`.
 
 Os 18 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,

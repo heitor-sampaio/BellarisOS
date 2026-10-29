@@ -168,17 +168,6 @@ export function escoposDoQueTem(scopes: ResolvedScopes, permissions: ResolvedPer
   ) as ResolvedScopes
 }
 
-/**
- * O escopo que se GRAVA na linha do cargo: o escolhido só no módulo escopável
- * e com acesso. Módulo não escopável grava ALL (um OWN ali seria valor sem
- * leitor); módulo NONE também — o editor mostra o escopo esmaecido dele, e o
- * OWN guardado ali foi o D6 de 2026-10-29.
- */
-export function escopoParaGravar(module: AppModule, level: PermissionLevel, rawScope: string | null | undefined): PermissionScope {
-  if (!isScoped(module) || level === 'NONE') return 'ALL'
-  return rawScope === 'OWN' ? 'OWN' : 'ALL'
-}
-
 // ─── Abas de Relatórios ──────────────────────────────────────────────────────
 
 export const ALL_REPORT_TABS: readonly ReportTab[] = REPORT_TABS

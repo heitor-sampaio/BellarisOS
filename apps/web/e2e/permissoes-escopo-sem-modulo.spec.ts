@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste, type Permissao } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { chamarAcaoComFormulario } from './apoio/acao-direta'
 
 /**
  * D6 da simulação de 2026-10-29 (Clínica Lótus): a contadora — cargo
@@ -94,4 +95,41 @@ test('sem a agenda, o dashboard da rede mostra a receita e o custo da rede, sem 
     await expect.soft(p.getByText('Custo do mês'), 'o custo aparece: não há recorte').toBeVisible()
     await expect.soft(corpo, 'a despesa da rede').toContainText('77,00')
   })
+})
+
+/**
+ * Revisão do Heitor (2026-10-29), decisão (2) do D6: o cargo salvo GUARDA o
+ * "só os meus" do módulo desligado, e religar devolve o que estava. Quem lê
+ * continua ignorando esse escopo enquanto o módulo está em NONE (os dois
+ * testes acima). A frente 1 gravava ALL ali (`escopoParaGravar`).
+ */
+test('salvar o cargo guarda o "só os meus" do módulo desligado', async ({ browser }) => {
+  const dona = await criarMembro(`esmd${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  expect((await db().from('tenants').update({ onboarding_completed_at: agora }).eq('id', rede!.tenantId)).error).toBeNull()
+  const { data: cargo, error } = await db().from('tenant_roles')
+    .insert({ tenant_id: rede!.tenantId, key: `ESM_${marca}`.toUpperCase(), label: `Cargo esm ${marca}`, is_system: false })
+    .select('id').single<{ id: string }>()
+  expect(error, 'cargo do teste').toBeNull()
+  const escopoDaAgenda = async () => (await db().from('role_permissions').select('level, scope')
+    .eq('role_id', cargo!.id).eq('module', 'agenda').single<{ level: string; scope: string }>()).data
+  try {
+    await como(browser, dona, async p => {
+      const salvar = (nivel: string) => chamarAcaoComFormulario(p, 'actions/permissions.ts', 'saveRolePermissions',
+        '/admin/settings?tab=permissions', [undefined], {
+          roleId: cargo!.id, 'level:agenda': nivel, 'scope:agenda': 'OWN',
+          'level:financial': 'VIEW', 'scope:financial': 'ALL',
+        })
+      const r = await salvar('NONE')
+      expect(r.texto, 'chegou à action').not.toContain('Server action not found')
+      expect(await escopoDaAgenda(), 'desligada, a agenda guarda o "só os meus"').toEqual({ level: 'NONE', scope: 'OWN' })
+      await salvar('VIEW')
+      expect(await escopoDaAgenda(), 'religada, o "só os meus" está lá').toEqual({ level: 'VIEW', scope: 'OWN' })
+    })
+  } finally {
+    await db().from('role_report_tabs').delete().eq('role_id', cargo!.id)
+    await db().from('role_permissions').delete().eq('role_id', cargo!.id)
+    await db().from('tenant_roles').delete().eq('id', cargo!.id)
+    await db().from('domain_events').delete().eq('tenant_id', rede!.tenantId)
+    await dona.limpar()
+  }
 })

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  hasLevel, resolvePermissions, resolveScopes, isScoped, escoposDoQueTem, escopoParaGravar,
+  hasLevel, resolvePermissions, resolveScopes, isScoped, escoposDoQueTem,
   MODULE_LEVELS, ALL_MODULES, NO_PERMISSIONS, ALL_PERMISSIONS,
   resolveReportTabs, ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
@@ -103,21 +103,6 @@ describe('escoposDoQueTem', () => {
     expect(s.agenda).toBe('OWN')
     expect(s.reports).toBe('ALL')
     expect(s.crm).toBe('ALL')
-  })
-})
-
-describe('escopoParaGravar', () => {
-  it('módulo sem acesso grava ALL, mesmo com OWN no formulário', () => {
-    expect(escopoParaGravar('agenda', 'NONE', 'OWN')).toBe('ALL')
-  })
-  it('módulo com acesso grava o escopo escolhido', () => {
-    expect(escopoParaGravar('agenda', 'VIEW', 'OWN')).toBe('OWN')
-    expect(escopoParaGravar('crm', 'MANAGE', 'ALL')).toBe('ALL')
-  })
-  it('módulo não escopável e valor fora da lista gravam ALL', () => {
-    expect(escopoParaGravar('stock', 'MANAGE', 'OWN')).toBe('ALL')
-    expect(escopoParaGravar('agenda', 'MANAGE', 'QUALQUER')).toBe('ALL')
-    expect(escopoParaGravar('agenda', 'MANAGE', null)).toBe('ALL')
   })
 })
 

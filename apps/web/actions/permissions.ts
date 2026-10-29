@@ -3,12 +3,14 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { ALL_MODULES, MODULE_LEVELS, ALL_REPORT_TABS, escopoParaGravar } from '@/lib/permissions'
+import { ALL_MODULES, MODULE_LEVELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
-import type { PermissionLevel } from '@estetica-os/types'
+import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
 import { ler } from '@/lib/db'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
+
+const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
 
 /**
  * Salva a matriz de um único cargo: por módulo, um nível (NONE/VIEW/MANAGE) e,
@@ -49,11 +51,16 @@ export async function saveRolePermissions(
     const allowed = MODULE_LEVELS[module]
     const level = (allowed.includes(raw as PermissionLevel) ? raw : 'NONE') as PermissionLevel
 
-    // Módulo não escopável, ou sem acesso, grava sempre ALL: guardar OWN ali
-    // seria um valor sem leitor, esperando alguém interpretá-lo como restrição
-    // de verdade (foi o D6 de 2026-10-29: a agenda NONE com OWN recortava o
-    // dashboard da contadora).
-    const scope = escopoParaGravar(module, level, formData.get(`scope:${module}`) as string | null)
+    // Módulo não escopável grava sempre ALL: guardar OWN ali seria um valor sem
+    // leitor, esperando alguém interpretá-lo como restrição de verdade. O
+    // módulo DESLIGADO guarda o escopo escolhido (revisão do Heitor,
+    // 2026-10-29): religar devolve o "só os meus" que estava. Quem lê o ignora
+    // enquanto o módulo está em NONE (`resolveScopes`/`escoposDoQueTem`, D6).
+    const rawScope = (formData.get(`scope:${module}`) as string) ?? 'ALL'
+    const scope: PermissionScope =
+      isScoped(module) && VALID_SCOPES.includes(rawScope as PermissionScope)
+        ? (rawScope as PermissionScope)
+        : 'ALL'
 
     return { tenant_id: ctx.tenantId!, role_id: roleId, module, level, scope }
   })
