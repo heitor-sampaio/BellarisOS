@@ -8122,6 +8122,17 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 - **D-8:** fica como está; só quem tem o produto envia.
 - **D-9:** ao cadastrar com o telefone de um lead, a tela pergunta "É a mesma pessoa do lead X?" e liga os dois.
 - **D-10:** a importação aceita a linha que só tem e-mail. Com o telefone repetido, junta tags e origem ao contato que já existe, sem sobrescrever.
+- **D-11:** o campo vira "Documento" com tipo (CPF, Passaporte, RNE). Sem CPF, a cliente fica sem acesso ao app por enquanto.
+- **D-12:** fazer o campo "Retorno em N dias" no atendimento. Ele vira lembrete à recepção e gatilho de automação.
+- **D-13: deixar como está.** A ficha já é customizável.
+- **D-14:** o card mantém o número do mês, e abaixo vem a linha "Em aberto, todos os vencimentos: R$ X".
+- **D-15:** a clínica configura "parcela até Nx". O padrão é o maior número de parcelas com taxa cadastrada.
+- **D-16:** "Sem preferência" no app junta os horários de todas que fazem o procedimento. O sistema escolhe quem está livre, com menos atendimentos no dia.
+- **D-17:** o saldo do crédito interno aparece no Financeiro do app.
+- **D-18:** o plano proposto no app mostra procedimentos, valor e validade, com "Falar com a clínica". O aceite continua na clínica.
+- **D-19:** com UMA unidade ativa, somem os termos e gráficos de rede ("TOTAL REDE", "por filial", os rankings de filial, "Voltar para a rede") e o seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda unidade.
+
+Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
 
 **Ajustes, sem decisão (J-1…J-68).** Vão para frentes de correção, com TDD.
 
