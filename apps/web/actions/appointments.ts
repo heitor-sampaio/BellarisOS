@@ -35,6 +35,7 @@ import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
+import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 
 import {
   getUserName, logHistory, fmtDateTime, loadApptCtx, notifyNewAppointment, notifyCancelledAppointment, notifyRescheduledAppointment, notifyCheckin, notifyCompleted, notifyPayment,
@@ -1672,14 +1673,19 @@ export async function getSchedulingDaySlots(
   branchId: string,
   professionalId: string,
   date: string,
-): Promise<{ slots: { scheduledAt: string; durationMin: number; clientName: string | null }[] }> {
+): Promise<{
+  slots: { scheduledAt: string; durationMin: number; clientName: string | null }[]
+  /** Os horários de funcionamento: a grade do checkout e das sessões do plano cobre a janela da unidade e marca a do profissional (D8). */
+  horarioDaUnidade?: Horario | null
+  horarioDoProfissional?: Horario | null
+}> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const branch = await ler(admin
     .from('branches')
-    .select('id')
+    .select('id, horario')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar a unidade')
@@ -1699,12 +1705,18 @@ export async function getSchedulingDaySlots(
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .order('scheduled_at'), 'carregar os agendamentos')
 
+  // O horário do profissional (da rede): sem ele, segue a unidade.
+  const prof = await ler(admin.from('users').select('horario')
+    .eq('id', professionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o horário do profissional') as { horario: unknown } | null
+
   return {
     slots: ((data ?? []) as unknown as { scheduled_at: string; duration_min: number; clients: { name: string } | null }[]).map(d => ({
       scheduledAt: d.scheduled_at,
       durationMin: d.duration_min,
       clientName:  d.clients?.name ?? null,
     })),
+    horarioDaUnidade:      normalizarHorario((branch as { horario?: unknown }).horario),
+    horarioDoProfissional: normalizarHorario(prof?.horario),
   }
 }
 

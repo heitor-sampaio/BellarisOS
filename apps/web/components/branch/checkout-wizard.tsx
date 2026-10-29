@@ -10,6 +10,8 @@ import type { ResumoDeDocumento } from '@/lib/documentos/leitura'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
+import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
+import type { Horario } from '@/lib/agenda/horario'
 import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
 import { parseDinheiro } from '@estetica-os/utils'
@@ -51,13 +53,6 @@ interface DaySlot {
   durationMin: number
   clientName:  string | null
 }
-
-// Slots de 30min das 08:00 às 20:00 (hora local)
-const TIME_SLOTS: string[] = Array.from({ length: 25 }, (_, i) => {
-  const h = String(8 + Math.floor(i / 2)).padStart(2, '0')
-  const m = i % 2 === 0 ? '00' : '30'
-  return `${h}:${m}`
-})
 
 interface Props {
   plan: CheckoutPlan
@@ -173,7 +168,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const chaveDosSlots = schedBranchId && schedProfId && activeDate
     ? `${schedBranchId}|${schedProfId}|${activeDate}|${activeSession}`
     : ''
-  const [slotsLidos, setSlotsLidos] = useState<{ chave: string; slots: DaySlot[] }>({ chave: '', slots: [] })
+  // Com os horários da unidade e do profissional: a grade cobre a janela da unidade (D8).
+  const [slotsLidos, setSlotsLidos] = useState<{
+    chave: string; slots: DaySlot[]; unidade: Horario | null; profissional: Horario | null
+  }>({ chave: '', slots: [], unidade: null, profissional: null })
   const daySlots     = chaveDosSlots && slotsLidos.chave === chaveDosSlots ? slotsLidos.slots : []
   const loadingSlots = !!chaveDosSlots && slotsLidos.chave !== chaveDosSlots
 
@@ -211,7 +209,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   useEffect(() => {
     if (!chaveDosSlots || !schedBranchId) return
     getSchedulingDaySlots(schedBranchId, schedProfId, activeDate).then(res => {
-      setSlotsLidos({ chave: chaveDosSlots, slots: res.slots })
+      setSlotsLidos({ chave: chaveDosSlots, slots: res.slots, unidade: res.horarioDaUnidade ?? null, profissional: res.horarioDoProfissional ?? null })
     })
   }, [chaveDosSlots, schedBranchId, schedProfId, activeDate])
 
@@ -842,30 +840,16 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           {/* Grade de horários */}
           {activeDate && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Horários</p>
-                {loadingSlots && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>carregando…</p>}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-                {TIME_SLOTS.map(t => {
-                  const booked = isSlotBooked(t)
-                  const sel    = activeTime === t
-                  return (
-                    <button key={t} type="button" disabled={!!booked} onClick={() => setActiveTime(t)}
-                      style={{
-                        padding: '8px 4px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700,
-                        cursor:     booked ? 'not-allowed' : 'pointer',
-                        background: sel ? 'var(--brand)' : booked ? 'var(--bg-app)' : 'var(--surface)',
-                        color:      sel ? 'var(--on-brand)'         : booked ? 'var(--text-faint)' : 'var(--text)',
-                        border:     sel ? '2px solid var(--brand)' : booked ? '1px solid var(--hairline)' : '1.5px solid var(--border)',
-                        textDecoration: booked ? 'line-through' : 'none',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
-                      }}>
-                      {sel && <Check size={10} />}{t}
-                    </button>
-                  )
-                })}
-              </div>
+              <GradeDeHorarios
+                data={activeDate}
+                horarioDaUnidade={slotsLidos.unidade}
+                horarioDoProfissional={slotsLidos.profissional}
+                nomeDoProfissional={schedProfs.find(p => p.id === schedProfId)?.name}
+                ocupado={isSlotBooked}
+                selecionado={activeTime}
+                onEscolher={setActiveTime}
+                carregando={loadingSlots}
+              />
 
               {activeTime && (
                 <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--brand-soft)' }}>

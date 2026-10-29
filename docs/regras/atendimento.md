@@ -23,6 +23,18 @@
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
   das sessões do plano continuam livres. Prova:
   `e2e/agenda-horario-de-funcionamento.spec.ts`, `tests/agenda-horario.test.ts`.
+  - **Livre não é fixo** (D8 da simulação de 2026-10-29): a grade desses
+    seletores (`GradeDeHorarios`, `components/shared/grade-de-horarios.tsx` —
+    o checkout do plano, as sessões do plano/pacote e o "Agendar" do pré-pago)
+    é a janela da UNIDADE naquele dia, de 30 em 30 min, sem a pausa e até o
+    último início antes do fechamento (`gradeDoCheckout`,
+    `lib/checkout/grade-de-horarios.ts`). Os horários da profissional (unidade
+    ∩ dela) ficam em destaque; os outros, tracejados, são encaixe e se
+    escolhem; o que nem a unidade oferece (madrugada, dia fechado) vai pelo
+    "Outro horário (encaixe)". Era 08:00–20:00 fixo: oferecia a pausa e
+    cortava a noite. A action `getSchedulingDaySlots` devolve os dois
+    horários. Prova: `e2e/checkout-grade-de-horarios.spec.ts`,
+    `tests/checkout-grade-de-horarios.test.ts`.
 - **Quem atende e é da REDE atende em TODAS as unidades** (D1 da simulação de
   2026-10-28, decisão do Heitor): o membro com `provides_services` e
   `branch_id` nulo aparece na agenda de cada unidade, no agendar (equipe e app

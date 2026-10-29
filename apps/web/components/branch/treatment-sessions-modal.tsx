@@ -17,6 +17,8 @@ import {
 import { cancelTreatmentPlan } from '@/actions/treatment-plans'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
+import type { Horario } from '@/lib/agenda/horario'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -57,12 +59,6 @@ interface Props {
 
 // -- Helpers -------------------------------------------------------------------
 
-const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
-  const h = Math.floor(i / 2) + 8
-  const m = i % 2 === 0 ? '00' : '30'
-  return `${String(h).padStart(2, '0')}:${m}`
-})
-
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   AVAILABLE:   { label: 'Não agendado',  color: 'var(--text-faint)' },
   SCHEDULED:   { label: 'Agendado',      color: 'var(--info)' },
@@ -100,6 +96,8 @@ export function SessionScheduler({
   const [profId,       setProfId]       = useState('')
   const [date,         setDate]         = useState('')
   const [slots,        setSlots]        = useState<{ scheduledAt: string; durationMin: number; clientName: string | null }[]>([])
+  // Os horários da unidade e do profissional: a grade cobre a janela da unidade (D8).
+  const [horarios,     setHorarios]     = useState<{ unidade: Horario | null; profissional: Horario | null }>({ unidade: null, profissional: null })
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [time,         setTime]         = useState('')
   const [saving,       setSaving]       = useState(false)
@@ -138,6 +136,7 @@ export function SessionScheduler({
     if (!branchId || !profId || !date) return
     getSchedulingDaySlots(branchId, profId, date).then(res => {
       setSlots(res.slots)
+      setHorarios({ unidade: res.horarioDaUnidade ?? null, profissional: res.horarioDoProfissional ?? null })
       setLoadingSlots(false)
     })
   }, [branchId, profId, date])
@@ -206,27 +205,16 @@ export function SessionScheduler({
 
       {profId && date && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>
-            HORÁRIO {loadingSlots && <Loader2 size={10} style={{ display: 'inline', animation: 'spin 1s linear infinite' }} />}
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
-            {TIME_SLOTS.map(t => {
-              const booked = isBooked(t)
-              const sel    = time === t
-              return (
-                <button key={t} type="button" disabled={!!booked} onClick={() => setTime(t)}
-                  style={{
-                    padding: '6px 0', borderRadius: 6, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: booked ? 'not-allowed' : 'pointer',
-                    background: sel ? 'var(--brand)' : booked ? 'var(--bg-app)' : 'var(--surface)',
-                    color: sel ? 'var(--on-brand)' : booked ? 'var(--text-faint)' : 'var(--text)',
-                    border: `1px solid ${sel ? 'var(--brand)' : 'var(--border)'}`,
-                    textDecoration: booked ? 'line-through' : 'none',
-                  }}>
-                  {t}
-                </button>
-              )
-            })}
-          </div>
+          <GradeDeHorarios
+            data={date}
+            horarioDaUnidade={horarios.unidade}
+            horarioDoProfissional={horarios.profissional}
+            nomeDoProfissional={profs.find(p => p.id === profId)?.name}
+            ocupado={isBooked}
+            selecionado={time}
+            onEscolher={setTime}
+            carregando={loadingSlots}
+          />
         </div>
       )}
 

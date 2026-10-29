@@ -1,5 +1,6 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO, apagarConversas } from './apoio/banco'
+import { diaEmQueAUnidadeAbre } from './apoio/datas'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
@@ -79,7 +80,8 @@ async function prePago(cliente: string, qtd: number) {
 
 /** Um horário livre amanhã, às `hora` de Brasília. */
 function amanha(hora: string) {
-  const d = new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  // O dia em que a unidade abre: a grade da sessão segue o horário dela (D8, 2026-10-29), e domingo não tem horário.
+  const d = diaEmQueAUnidadeAbre(1)
   return { dia: d, iso: new Date(`${d}T${hora}:00-03:00`).toISOString() }
 }
 
