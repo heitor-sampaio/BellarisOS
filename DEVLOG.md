@@ -7911,7 +7911,31 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
      travado (as dores e a evolução do dia ficam como estão).
   4. A ficha e o plano numa gravação só ("como achar que fica melhor").
 
-  A FAZER, na frente clínica, depois do planejador na ficha.
+  **Feito em 2026-10-29 (frente clínica):**
+  - **A obrigatória barra tudo** (43de9626). A tela aponta o campo, e o
+    servidor recusa em `finishSession` e no plano. A anamnese respondida pelo
+    app vale como resposta.
+  - **A ficha no rascunho** (5de0ccb1).
+  - **A ficha e o plano numa gravação só** (ad6f1763, migration
+    `20261029000801`).
+  - **O plano a partir da avaliação concluída** (81ab3719). A avaliação
+    concluída grava só o plano, ligado a ela, sem regravar o registro.
+
+  **Decisões da frente, para revisar:**
+  1. A trava fica no app, não dentro de `concluir_atendimento`.
+  2. A resposta fora da validade ainda conta como respondida.
+  3. Foto e planejador nunca barram na anamnese. O planejador da ficha não
+     barra na rede sem injetáveis.
+  4. Quem não vê o clínico não tem os campos; o servidor recusa e cita só o
+     nome da pergunta.
+  5. A recepção não conclui atendimento, então nada muda para ela.
+  6. Na avaliação concluída, as obrigatórias não são conferidas de novo.
+  7. Travas novas no plano: recusa agendamento cancelado ou falta, recusa
+     regerar um plano aceito ou concluído, recusa procedimento de outra rede.
+  8. O "Enviar" com a anamnese igual não a regrava, mas fecha o pendente
+     "pela equipe".
+
+  Vale uma completa.
 - **D2.** A dona (Admin da rede) não consegue ser profissional:
   - `assignableRoles` tira o NETWORK_ADMIN da lista, e por isso a edição dela abre com o primeiro cargo, "Financeiro";
   - `updateTeamMember` grava o cargo junto e recusa cargo de sistema, então não há caminho para `provides_services` num admin;
