@@ -7040,6 +7040,15 @@ verdade. O que vale:
     "quem vendeu E quem executa", o que não fecha com "a sessão não gera
     comissão" (a executora é definida na venda? por sessão? só quem vende?).
     Nada mexido até ele decidir; hoje vale a regra por sessão (comissoes.md).
+    **Decidido pelo Heitor (2026-10-29): a comissão de pacote é CONFIGURÁVEL
+    no cadastro de cada pacote**, para cobrir todos os casos ("consultei mas
+    não ficou decidido"). São duas comissões, cada uma ligada ou não:
+    - **de VENDA**, para quem vendeu: percentual sobre o valor total do
+      pacote ou valor fixo, liberada no pagamento;
+    - **de EXECUÇÃO**, para quem atende cada sessão: percentual, valor fixo ou
+      nenhuma, liberada a cada sessão.
+
+    A FAZER (na fila, uma frente própria).
   - ~~A Entrada de estoque vira despesa paga hoje (D13), marcada por padrão e só
     com custo informado. A entrada por código de barras e a do Copilot seguem
     sem a opção. Os R$ 1.800 já gravados na Íris ficaram como estavam.~~
