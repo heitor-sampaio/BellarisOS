@@ -8,6 +8,8 @@ import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
+import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
+import { unidadeDoInsumo } from '@/lib/estoque/unidade-de-consumo'
 import { paraAnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -217,7 +219,7 @@ export async function SessaoDeAtendimento({
     .filter(pp => pp.products !== null)
     .map(pp => {
       const p = pp.products!
-      const displayUnit = (p.consumption_unit && p.units_per_package) ? p.consumption_unit : p.unit
+      const displayUnit = unidadeDoInsumo(p)
       return {
         productId: pp.product_id,
         name:      p.name,
@@ -225,6 +227,16 @@ export async function SessaoDeAtendimento({
         quantity:  pp.quantity,
       }
     })
+
+  // O plano GRAVADO guarda a unidade que a tela mandou — até 2026-10-29, a da
+  // embalagem ("frasco") para quantidades em ml (D9). A unidade mostrada é a
+  // de consumo do produto, lida agora.
+  type ComProdutos = { products: { product_id: string }[] | null }
+  const unidadesGravadas = await unidadesDosInsumos(ctx.tenantId!, [
+    ...(((planSessionRaw as unknown as { treatment_plan_session_procedures: ComProdutos[] | null } | null)?.treatment_plan_session_procedures) ?? []),
+    ...(((planRaw?.treatment_plan_sessions as unknown as { treatment_plan_session_procedures: ComProdutos[] | null }[] | null) ?? [])
+      .flatMap(s => s.treatment_plan_session_procedures ?? [])),
+  ].flatMap(sp => (sp.products ?? []).map(p => p.product_id)))
 
   // Produtos da sessão do plano de tratamento (sobrepõem os padrão quando presentes)
   type RawSessProduct = { product_id: string; name: string; unit: string; quantity: number }
@@ -234,7 +246,7 @@ export async function SessaoDeAtendimento({
         .flatMap(sp => (sp.products ?? []).map(p => ({
           productId: p.product_id,
           name:      p.name,
-          unit:      p.unit,
+          unit:      unidadesGravadas.get(p.product_id) ?? p.unit,
           quantity:  Number(p.quantity),
         })))
     : []
@@ -246,7 +258,7 @@ export async function SessaoDeAtendimento({
   const availableProducts: AvailableProduct[] = ((branchProductsRaw ?? []) as RawBranchProduct[]).map(p => ({
     id:   p.id,
     name: p.name,
-    unit: (p.consumption_unit && p.units_per_package) ? p.consumption_unit : p.unit,
+    unit: unidadeDoInsumo(p),
   }))
 
   const professionals: SessionProfessional[] = ((professionalsRaw ?? []) as { id: string; name: string }[]).map(p => ({
@@ -290,7 +302,7 @@ export async function SessaoDeAtendimento({
       .filter(pp => pp.products !== null)
       .map(pp => {
         const pr   = pp.products!
-        const unit = (pr.consumption_unit && pr.units_per_package) ? pr.consumption_unit : pr.unit
+        const unit = unidadeDoInsumo(pr)
         return { productId: pp.product_id, name: pr.name, unit, quantity: Number(pp.quantity) }
       }),
   }))
@@ -302,7 +314,7 @@ export async function SessaoDeAtendimento({
       .filter(pp => pp.products !== null)
       .map(pp => {
         const p    = pp.products!
-        const unit = (p.consumption_unit && p.units_per_package) ? p.consumption_unit : p.unit
+        const unit = unidadeDoInsumo(p)
         return { productId: pp.product_id, name: p.name, unit, quantity: Number(pp.quantity) }
       })
   }
@@ -330,7 +342,7 @@ export async function SessaoDeAtendimento({
             name:        (p.procedures as { name?: string } | null)?.name ?? '—',
             price:       Number(p.price),
             products:    (p.products ?? []).map((pr: RawPlanProcProduct) => ({
-              productId: pr.product_id, name: pr.name, unit: pr.unit, quantity: Number(pr.quantity),
+              productId: pr.product_id, name: pr.name, unit: unidadesGravadas.get(pr.product_id) ?? pr.unit, quantity: Number(pr.quantity),
             })),
           })),
       })),

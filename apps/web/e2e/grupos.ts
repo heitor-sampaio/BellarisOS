@@ -112,6 +112,7 @@ export const ISOLADOS = [
   'prontuario-evolucao.spec.ts',
   'agenda-chegar-e-iniciar.spec.ts',
   'plano-dica-do-pacote.spec.ts',
+  'plano-unidade-de-consumo.spec.ts',
   'ficha-documentos-um-cancelar.spec.ts',
   'atendimento-foto-clinica.spec.ts',
   'atendimento-rascunho.spec.ts',

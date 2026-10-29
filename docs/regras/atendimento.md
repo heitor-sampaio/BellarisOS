@@ -460,6 +460,17 @@ const procedures = await ler(
     o preço da embalagem.
   - O histórico do estoque mostra o movimento na unidade dele e o saldo
     também em embalagens ("saldo 495 ml · 4,95 frasco").
+  - **O insumo se mostra na unidade de consumo em toda tela** — a regra é UMA,
+    `unidadeDoInsumo` (`lib/estoque/unidade-de-consumo.ts`): o cadastro, o
+    atendimento, o editor do plano e o checkout (D9 da simulação de
+    2026-10-29: o plano dizia "5 frasco" para os 5 ml do Peeling, porque
+    `procedimentosParaPlano` lia `products.unit`). O plano GRAVADO guarda a
+    unidade que a tela mandou (`treatment_plan_session_procedures.products`),
+    e os de antes guardam a da embalagem para quantidades em ml: quem lê um
+    plano gravado (`getPlanoParaEditar`, `getTreatmentPlanSessions`, a sessão
+    de atendimento) mostra a unidade do PRODUTO, lida na hora
+    (`unidadesDosInsumos`); o texto gravado só vale se o produto não existe
+    mais. Nada foi reescrito no banco. Prova: `e2e/plano-unidade-de-consumo.spec.ts`.
   - Prova: `e2e/estoque-custo-de-consumo.spec.ts` (a entrada, o consumo de
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e

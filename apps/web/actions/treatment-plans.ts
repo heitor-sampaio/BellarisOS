@@ -8,6 +8,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
+import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -638,7 +639,13 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   type RawProc = { procedure_id: string; price: number; sort_order: number; products: RawProd[]; procedures: { name: string } | null }
   type RawSess = { sort_order: number; treatment_plan_session_procedures: RawProc[] }
 
-  const sessions = ((data.treatment_plan_sessions as unknown as RawSess[]) ?? [])
+  // A unidade do insumo é a de consumo do produto, lida agora (D9): o plano
+  // gravado guarda a da embalagem ("frasco") para quantidades em ml.
+  const brutas = (data.treatment_plan_sessions as unknown as RawSess[]) ?? []
+  const unidades = await unidadesDosInsumos(ctx.tenantId!,
+    brutas.flatMap(s => (s.treatment_plan_session_procedures ?? []).flatMap(p => (p.products ?? []).map(pr => pr.product_id))))
+
+  const sessions = brutas
     .sort((a, b) => a.sort_order - b.sort_order)
     .map(s => ({
       procedures: (s.treatment_plan_session_procedures ?? [])
@@ -648,7 +655,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
           name:        p.procedures?.name ?? '—',
           price:       Number(p.price),
           products:    (p.products ?? []).map(pr => ({
-            productId: pr.product_id, name: pr.name, unit: pr.unit, quantity: Number(pr.quantity),
+            productId: pr.product_id, name: pr.name, unit: unidades.get(pr.product_id) ?? pr.unit, quantity: Number(pr.quantity),
           })),
         })),
     }))
@@ -757,6 +764,10 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   type RawProc = { procedure_id: string; price: number; sort_order: number; products: RawProcProduct[]; procedures: { name: string; duration_min: number } | null }
   type RawSess = { id: string; sort_order: number; appointment_id: string | null; treatment_plan_session_procedures: RawProc[] }
 
+  // A unidade do insumo é a de consumo do produto, lida agora (D9).
+  const unidades = await unidadesDosInsumos(ctx.tenantId!, ((rawSessions ?? []) as unknown as RawSess[])
+    .flatMap(s => (s.treatment_plan_session_procedures ?? []).flatMap(p => (p.products ?? []).map(pr => pr.product_id))))
+
   const sessions: PlanSessionForCheckout[] = ((rawSessions ?? []) as unknown as RawSess[]).map(s => {
     const procs = (s.treatment_plan_session_procedures ?? [])
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -766,7 +777,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
         price:       Number(p.price),
         durationMin: p.procedures?.duration_min ?? 60,
         products:    (p.products ?? []).map((pr: RawProcProduct) => ({
-          productId: pr.product_id, name: pr.name, unit: pr.unit, quantity: Number(pr.quantity),
+          productId: pr.product_id, name: pr.name, unit: unidades.get(pr.product_id) ?? pr.unit, quantity: Number(pr.quantity),
         })),
       }))
     const totalPrice = procs.reduce((sum, p) => sum + p.price, 0)
