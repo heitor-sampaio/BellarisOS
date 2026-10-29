@@ -149,7 +149,10 @@ test.describe('a rede que monta plano: o atendimento avulso (ramo da avaliação
     expect(ficha!.answers).toMatchObject({ fototipo: 'III', acido: ACIDO, tempo: '4', reacao: REACAO })
   })
 
-  test('concluído, o registro bloqueado não abre a anamnese em branco nem oferece gerar o plano (A30)', async ({ browser }) => {
+  // A30, revisto pelo Heitor em 2026-10-29: o registro continua bloqueado (a
+  // anamnese se lê), mas a avaliação concluída voltou a gerar o plano — só o
+  // plano, sem regravar o registro (atendimento-plano-da-avaliacao-concluida).
+  test('concluído, o registro bloqueado não abre a anamnese em branco e oferece gerar o plano', async ({ browser }) => {
     const id = await atendimentoAvulsoEmCurso(c!, 'Concluida')
     expect((await db().from('appointments').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', id)).error).toBeNull()
     await como(browser, c!, async p => {
@@ -157,8 +160,8 @@ test.describe('a rede que monta plano: o atendimento avulso (ramo da avaliação
       await expect(p.getByText('Registro bloqueado para edição')).toBeVisible()
       await expect(p.getByText(FICHA).first(), 'a ficha do procedimento continua à vista').toBeVisible()
       await expect(p.locator('[data-anamnese-geral] textarea, [data-anamnese-geral] input'), 'a anamnese se lê, não se preenche').toHaveCount(0)
-      await expect(p.getByRole('button', { name: 'Enviar para a recepção' })).toHaveCount(0)
-      await expect(p.getByRole('button', { name: 'Fechar agora' })).toHaveCount(0)
+      await expect(p.getByRole('button', { name: 'Enviar para a recepção' })).toBeVisible()
+      await expect(p.locator('[data-plano-da-avaliacao-concluida]'), 'a tela diz que o registro fica como está').toBeVisible()
     })
   })
 })

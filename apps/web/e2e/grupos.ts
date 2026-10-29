@@ -128,6 +128,7 @@ export const ISOLADOS = [
   'atendimento-obrigatorias-barram.spec.ts',
   'atendimento-rascunho-da-ficha.spec.ts',
   'atendimento-ficha-e-plano-juntos.spec.ts',
+  'atendimento-plano-da-avaliacao-concluida.spec.ts',
   'injetaveis-confirmar-so-no-atendimento.spec.ts',
   'injetaveis-so-os-meus.spec.ts',
   'planejamentos-so-os-meus.spec.ts',

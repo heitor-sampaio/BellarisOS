@@ -1011,21 +1011,28 @@ export function AppointmentSession({
    */
   async function gerarPlano(fecharAgora: boolean) {
     setGenError(null)
+    // A avaliação CONCLUÍDA também gera o plano (revisão do Heitor, 2026-10-29:
+    // "é preciso avaliar primeiro pra depois decidir o que fazer") — só o
+    // plano: o registro daquele dia está travado e nada dele vai junto (o
+    // servidor também não o regrava). As obrigatórias já passaram no "Finalizar".
+    const concluida = appointment.status === 'COMPLETED'
     // A obrigatória sem resposta barra o plano (revisão do Heitor, 2026-10-29).
-    const falta = conferirObrigatorias()
+    const falta = concluida ? null : conferirObrigatorias()
     if (falta) { setGenError(falta); return }
     setGenerating(true)
     const currentSessions = evalEditorRef.current?.getSessions() ?? []
     const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
-    const anamnese = await anamneseDaAvaliacao.current?.coletar()
+    const anamnese = concluida ? null : await anamneseDaAvaliacao.current?.coletar()
     if (anamnese?.error) { setGenerating(false); setGenError(anamnese.error); return }
     // A ficha do procedimento vai NA MESMA gravação do plano (revisão do
     // Heitor, 2026-10-29): era salva antes, numa action à parte, e o plano que
     // falhava a deixava gravada pela metade. Sem mexer nela, a salva fica.
-    const res = await generateEvaluationPlan(
-      appointment.id, evalComplaints, anamnese?.respostas ?? null, currentSessions, currentNotes,
-      evalSessionNotes, evalSessionInterc, slug, fichaDigitada,
-    )
+    const res = concluida
+      ? await generateEvaluationPlan(appointment.id, '', null, currentSessions, currentNotes, '', '', slug, null)
+      : await generateEvaluationPlan(
+          appointment.id, evalComplaints, anamnese?.respostas ?? null, currentSessions, currentNotes,
+          evalSessionNotes, evalSessionInterc, slug, fichaDigitada,
+        )
     if (res.error || !res.planId) {
       setGenerating(false)
       setGenError(res.error ?? 'Não foi possível gerar o plano.')
@@ -1434,7 +1441,8 @@ export function AppointmentSession({
               podeReceber={podeReceber}
               // Registro bloqueado: a avaliação não monta mais o plano na tela
               // (A30), então o "Novo plano" volta a ser o caminho.
-              planoNaTela={!isPartOfPlan && podeMontarPlano && !editLocked && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
+              // A avaliação concluída voltou a montar o plano na tela (2026-10-29).
+              planoNaTela={!isPartOfPlan && podeMontarPlano && (status === 'COMPLETED' || !isDone) && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
             />
           </div>
         </JanelaModal>
@@ -1986,10 +1994,18 @@ export function AppointmentSession({
                       Quem pode receber fecha a venda aqui mesmo, com o cliente
                       na sala — antes o plano saía da tela e ficava esperando a
                       recepção, mesmo quando era a mesma pessoa.
-                      Com o registro bloqueado (concluído), não: gerar o plano
-                      regravaria as dores e a evolução do registro fechado (A30). */}
-                  {canManage && !editLocked && (
+                      Também na avaliação CONCLUÍDA (revisão do Heitor,
+                      2026-10-29: "é preciso avaliar primeiro pra depois decidir
+                      o que fazer"): o A30 tirou os botões porque gerar o plano
+                      regravava o registro fechado — agora o plano nasce sozinho,
+                      ligado a ela, e o registro fica como está. */}
+                  {canManage && (status === 'COMPLETED' || !isDone) && (
                     <div className="card" style={{ padding: '20px 24px' }}>
+                      {status === 'COMPLETED' && (
+                        <p data-plano-da-avaliacao-concluida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
+                          A avaliação está concluída: o plano nasce ligado a ela, e o registro daquele dia (dores, evolução, ficha e anamnese) fica como está.
+                        </p>
+                      )}
                       {genError && (
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 12, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
                           {genError}
@@ -2045,9 +2061,13 @@ export function AppointmentSession({
                       </div>
 
                       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
-                        {podeReceber
-                          ? 'Salva a avaliação e o plano. "Fechar agora" abre o checkout aqui mesmo; enviar deixa o plano na fila da recepção.'
-                          : 'Salva todas as informações e envia o plano para a recepção realizar o checkout.'}
+                        {status === 'COMPLETED'
+                          ? (podeReceber
+                              ? 'Salva o plano. "Fechar agora" abre o checkout aqui mesmo; enviar deixa o plano na fila da recepção.'
+                              : 'Salva o plano e o envia para a recepção realizar o checkout.')
+                          : podeReceber
+                            ? 'Salva a avaliação e o plano. "Fechar agora" abre o checkout aqui mesmo; enviar deixa o plano na fila da recepção.'
+                            : 'Salva todas as informações e envia o plano para a recepção realizar o checkout.'}
                       </p>
                     </div>
                   )}

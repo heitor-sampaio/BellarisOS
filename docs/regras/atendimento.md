@@ -702,11 +702,21 @@ O resto do fluxo:
   servidor a chama. A action confere também a agenda "só os meus" pelo id
   (`deOutroProfissional`). Prova: `e2e/atendimento-ficha-e-plano-juntos.spec.ts`.
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
-  simulação de 2026-10-29): sem "Fechar agora" nem "Enviar para a recepção"
-  (gerar o plano regravaria as dores e a evolução do registro fechado), a
-  evolução só se lê e a anamnese aparece como leitura — não em branco com as
-  obrigatórias marcadas. O Planejamento volta a oferecer "Novo plano". Quem
-  desbloqueia ("Editar registro") tem tudo de volta.
+  simulação de 2026-10-29): a evolução só se lê e a anamnese aparece como
+  leitura — não em branco com as obrigatórias marcadas. Quem desbloqueia
+  ("Editar registro") tem os campos de volta.
+- **A avaliação concluída gera o plano** (revisão do Heitor, 2026-10-29: "é
+  preciso avaliar primeiro pra depois decidir o que fazer"). O A30 tinha tirado
+  o "Fechar agora" e o "Enviar para a recepção" porque gerar o plano regravava
+  o registro fechado; os botões VOLTARAM, e gerar o plano ali grava SÓ o plano,
+  ligado à avaliação (`evaluation_appointment_id`): as dores, a evolução, a
+  ficha e a anamnese daquele dia ficam como estão — a tela não as manda e
+  `gerar_plano_da_avaliacao` não as grava com o atendimento COMPLETED, nem
+  desbloqueado. As obrigatórias não são conferidas de novo (passaram no
+  "Finalizar"); as dores não são exigidas. A tela diz que o registro fica
+  como está (`data-plano-da-avaliacao-concluida`), e o Planejamento por cima
+  volta a não oferecer "Novo plano" (o plano se monta na tela, A29). Prova:
+  `e2e/atendimento-plano-da-avaliacao-concluida.spec.ts`.
 - **As dores do cliente são do PRONTUÁRIO do atendimento**
   (`medical_record_entries.queixas`, migration `20261028000302`), não
   `appointments.notes` — que é a observação INTERNA do agendamento e
