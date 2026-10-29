@@ -121,3 +121,13 @@ comissões, no checkout, nas automações e nos injetáveis.
   `clientes_do_publico` (consertada em `20261023000001`).
 - Prova: `e2e/listas-sem-corte.spec.ts` (uma rede com mais de 1000 linhas em
   cada lista, e o alvo depois da linha 1000).
+
+### O id que vem da URL — conferido antes do banco (2026-10-29)
+
+Toda rota `[id]` (`[planId]`, `[mapId]`) da clínica chama `idOu404(id)`
+(`lib/id-da-rota.ts`) logo depois de ler os `params`, ANTES de qualquer
+consulta. As colunas são uuid: o id que não é uuid (`/agenda/comissoes`) fazia o
+Postgres responder 22P02, e `ler` lançava — "A tela não conseguiu carregar" no
+lugar do 404 (D15 da simulação de 2026-10-29). Prova:
+`e2e/nao-encontrada.spec.ts` (todas as rotas `[id]` dos três portais),
+`tests/id-da-rota.test.ts`.

@@ -637,6 +637,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
 ❌ Script, imagem, iframe, mídia ou conexão de fora nova na clínica sem liberar no CSP (lib/seguranca/csp.ts) — ele BLOQUEIA desde 2026-10-22, e só no build
 ❌ Route handler que AGE pela sessão (POST) sem conferir o Origin — os hosts *.bellarisos.com são o mesmo SITE, e o cookie lax vai junto
+❌ Rota [id] que leva o id da URL ao banco sem idOu404 (lib/id-da-rota) — o que não é uuid dá 22P02 e a tela de erro no lugar do 404
 ❌ Validar o destino `next` de um link com startsWith('/') — é caminhoInterno (lib/origem; `/\x.com` e tab viram `//x.com`)
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
 ❌ Tela nova que mostra dado clínico sem registrarAcessoAoProntuario (lib/prontuario/acessos.ts) — quem viu tem de ficar registrado

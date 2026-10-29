@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { idOu404 } from '@/lib/id-da-rota'
 import { ArrowLeft } from 'lucide-react'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { getCampaignDetail } from '@/actions/meta-campaign'
@@ -82,6 +83,8 @@ export default async function CampaignDetailPage({
   searchParams: Promise<{ period?: string }>
 }) {
   const { id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const { period: rawPeriod } = await searchParams
   const period = (rawPeriod as DatePreset) ?? '30d'
 

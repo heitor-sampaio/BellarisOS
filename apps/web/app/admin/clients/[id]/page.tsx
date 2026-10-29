@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { idadeEm } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -39,6 +40,8 @@ export default async function AdminClientProfilePage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx     = await getTenantContext()
   assertPermission(ctx, 'clients', 'VIEW')
 

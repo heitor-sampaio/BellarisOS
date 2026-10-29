@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { documentoDoClienteParaExibir } from '@/lib/documentos/leitura'
 import { TelaDeAssinatura } from '@/components/shared/tela-de-assinatura'
@@ -9,6 +10,8 @@ import { TelaDeAssinatura } from '@/components/shared/tela-de-assinatura'
  */
 export default async function DocumentoDoClientePage({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx = await getTenantContext()
   assertClient(ctx)
 

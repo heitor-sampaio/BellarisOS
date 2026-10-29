@@ -1,4 +1,5 @@
 ﻿import Link from 'next/link'
+import { idOu404 } from '@/lib/id-da-rota'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Zap, Clock, RefreshCw, Users, Send, BookOpen, Pencil } from 'lucide-react'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
@@ -33,6 +34,8 @@ const TRIGGER_LABELS: Record<TriggerType, string> = {
 
 export default async function CampanhaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'campanhas')

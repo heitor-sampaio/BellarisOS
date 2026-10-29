@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { getAutomacao } from '@/actions/automacoes'
 import { EditorDeAutomacao } from '@/components/admin/automacoes/editor'
@@ -10,6 +11,8 @@ export default async function AutomacaoPage({
   assertPermission(ctx, 'automations', 'VIEW')
 
   const { id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const { automacao, error } = await getAutomacao(id)
 
   // Automação de outra rede e automação inexistente dão o mesmo 404, de

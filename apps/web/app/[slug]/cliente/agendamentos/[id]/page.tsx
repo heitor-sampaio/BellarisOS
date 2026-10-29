@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { idOu404 } from '@/lib/id-da-rota'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Clock3, User, MapPin } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
@@ -14,6 +15,8 @@ import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamen
  */
 export default async function AgendamentoDaClientePage({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx = await getTenantContext()
   assertClient(ctx)
   if (!/^[0-9a-f-]{36}$/i.test(id) || !ctx.clientId) notFound()

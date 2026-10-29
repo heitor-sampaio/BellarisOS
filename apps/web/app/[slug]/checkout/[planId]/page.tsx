@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CheckoutDePlano } from '@/app/_shared/checkout-de-plano'
@@ -10,6 +11,8 @@ export default async function CheckoutPage({
   params: Promise<{ slug: string; planId: string }>
 }) {
   const { slug, planId } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(planId)
   const ctx              = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'planos_de_tratamento')

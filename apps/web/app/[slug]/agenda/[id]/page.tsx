@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { SessaoDeAtendimento } from '@/app/_shared/sessao-de-atendimento'
@@ -11,6 +12,8 @@ export default async function AppointmentSessionPage({
   searchParams: Promise<{ receber?: string }>
 }) {
   const { slug, id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx          = await getTenantContext()
 
   const supabase = await createSupabase()

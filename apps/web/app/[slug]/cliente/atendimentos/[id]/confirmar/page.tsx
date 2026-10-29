@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
@@ -14,6 +15,8 @@ export default async function ConfirmAppointmentPage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx = await getTenantContext()
   assertClient(ctx)
 

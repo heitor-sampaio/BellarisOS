@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import Link from 'next/link'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
@@ -14,6 +15,8 @@ interface Props {
 
 export default async function BranchDetailPage({ params }: Props) {
   const { id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 

@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { documentosDoAgendamento, pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
@@ -42,6 +43,8 @@ export async function SessaoDeAtendimento({
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
 
   const admin = createAdminClient()
 

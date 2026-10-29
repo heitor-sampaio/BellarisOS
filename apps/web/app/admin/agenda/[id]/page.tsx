@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SessaoDeAtendimento } from '@/app/_shared/sessao-de-atendimento'
@@ -21,6 +22,8 @@ export default async function AdminAppointmentSessionPage({
   searchParams: Promise<{ receber?: string }>
 }) {
   const { id } = await params
+  // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
+  idOu404(id)
   const ctx    = await getTenantContext()
 
   // `appointments` NÃO tem `tenant_id` — o recorte de rede é pela filial. Com um
