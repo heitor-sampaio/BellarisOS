@@ -52,7 +52,8 @@ type Modulo =
 
 export interface Permissao {
   modulo: Modulo
-  nivel:  'VIEW' | 'MANAGE'
+  /** 'NONE' grava a linha sem acesso — o caso do escopo guardado num módulo que o cargo não tem (D6, 2026-10-29). */
+  nivel:  'NONE' | 'VIEW' | 'MANAGE'
   escopo?: 'OWN' | 'ALL'
 }
 

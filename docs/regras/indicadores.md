@@ -262,7 +262,9 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 
 **Dashboard com "só os meus" (D7 da simulação de 2026-10-28; "quem tem 'só os
 meus' vê 'só os meus', em qualquer lugar", decisão do Heitor no mesmo dia)**:
-com a agenda OU o financeiro em OWN, TODO número dos dois dashboards (rede e
+com a agenda OU o financeiro em OWN — e o módulo ABERTO no cargo: o OWN de um
+módulo NONE não vale (D6 de 2026-10-29, CLAUDE.md §11; a contadora sem agenda
+via "Meu faturamento R$ 0") —, TODO número dos dois dashboards (rede e
 unidade) é o DELA — o `professionalId` vai a cada função de `lib/metrics`
 (`metrics_core`, `_series`, `_top_procedures`, `_top_professionals`,
 `_top_clients`, `_demografia`, `_giro_estoque`, `_clientes_para_reativar`, com

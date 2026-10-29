@@ -455,6 +455,13 @@ Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrang
 é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma filial e
 para alguém da rede.
 
+**O escopo só vale em módulo que o cargo TEM** (D6, 2026-10-29): módulo NONE —
+no cargo, no plano da rede ou Relatórios sem aba — é ALL no contexto
+(`resolveScopes` + `escoposDoQueTem`, no fim do `buildContext`) e grava ALL ao
+salvar o cargo (`escopoParaGravar`). A contadora sem agenda tinha o OWN
+esmaecido da agenda gravado, e o dashboard a recortava ("Meu faturamento R$ 0").
+Prova: `e2e/permissoes-escopo-sem-modulo.spec.ts`.
+
 Os 18 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
 `procedures`, `stock`, `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`,
 `forms`, `roles`, `settings`, `automations`, `copilot`. Módulo novo entra num grupo

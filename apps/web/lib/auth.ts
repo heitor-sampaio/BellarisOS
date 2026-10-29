@@ -11,7 +11,7 @@ import { clinicaAbreParaCliente, fichasQueAbrem } from '@/lib/clientes/disponibi
 import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
-  resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
+  resolvePermissions, resolveScopes, resolveReportTabs, hasLevel, escoposDoQueTem,
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -137,6 +137,10 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     reportTabs = reportTabs.filter(t => !abasFora.includes(t))
     if (reportTabs.length === 0) permissions = { ...permissions, reports: 'NONE' }
   }
+
+  // O recorte "só os meus" só de módulo que a pessoa TEM (D6, 2026-10-29): o
+  // que ficou NONE acima (plano, Relatórios sem aba) não recorta nada.
+  scopes = escoposDoQueTem(scopes, permissions)
 
   return {
     userId: authId,

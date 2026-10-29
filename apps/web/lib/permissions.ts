@@ -137,16 +137,46 @@ export function resolvePermissions(
  * Resolve o escopo por módulo. Módulo sem linha, ou não escopável, fica em ALL:
  * o escopo restringe, e restringir por omissão esconderia dado sem o admin ter
  * pedido isso.
+ *
+ * Módulo com nível NONE também fica em ALL (D6 da simulação de 2026-10-29): o
+ * recorte "só os meus" não nasce de um módulo que o cargo não tem. A contadora
+ * (financeiro todo, sem agenda) tinha o OWN esmaecido da agenda gravado, e o
+ * dashboard a tratava como "só os meus" — R$ 0 com R$ 1.759 no Financeiro.
  */
 export function resolveScopes(
   overrides: PermissionRow[],
   opts?: { allAccess?: boolean },
 ): ResolvedScopes {
   if (opts?.allAccess) return { ...ALL_SCOPES }
-  const map = new Map(overrides.map(o => [o.module, o.scope ?? 'ALL']))
+  const map = new Map(overrides
+    .filter(o => (o.level ?? 'NONE') !== 'NONE')
+    .map(o => [o.module, o.scope ?? 'ALL']))
   return Object.fromEntries(
     APP_MODULES.map(m => [m, (isScoped(m) ? map.get(m) : 'ALL') ?? 'ALL'] as const),
   ) as ResolvedScopes
+}
+
+/**
+ * O escopo só do que a pessoa TEM: o módulo que vale NONE depois do cargo — o
+ * PLANO da rede, Relatórios sem aba nenhuma (`buildContext`) — perde o OWN.
+ * É o último passo do contexto, para nenhum recorte (`isOwnScope`,
+ * `ownerFilter`) sair de um módulo fechado.
+ */
+export function escoposDoQueTem(scopes: ResolvedScopes, permissions: ResolvedPermissions): ResolvedScopes {
+  return Object.fromEntries(
+    APP_MODULES.map(m => [m, permissions[m] === 'NONE' ? 'ALL' : scopes[m]] as const),
+  ) as ResolvedScopes
+}
+
+/**
+ * O escopo que se GRAVA na linha do cargo: o escolhido só no módulo escopável
+ * e com acesso. Módulo não escopável grava ALL (um OWN ali seria valor sem
+ * leitor); módulo NONE também — o editor mostra o escopo esmaecido dele, e o
+ * OWN guardado ali foi o D6 de 2026-10-29.
+ */
+export function escopoParaGravar(module: AppModule, level: PermissionLevel, rawScope: string | null | undefined): PermissionScope {
+  if (!isScoped(module) || level === 'NONE') return 'ALL'
+  return rawScope === 'OWN' ? 'OWN' : 'ALL'
 }
 
 // ─── Abas de Relatórios ──────────────────────────────────────────────────────
