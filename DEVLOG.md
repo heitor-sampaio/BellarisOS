@@ -1605,6 +1605,33 @@ rodar quando a máquina ficou sem memória (lista no scratchpad da sessão).
 - A completa seguinte (run 40785403989, em `662653aa`) ficou **toda verde**:
   1035 verdes (485 isolados, 550 compartilhados) e 1 pulado.
 
+### 2026-10-28/29 — Quarta simulação: a clínica de uma unidade só, com a dona que atende
+
+Pedido do Heitor, antes de se ausentar: um time novo, uma clínica nova e um cenário de uso o mais completo possível. A rede nova é a "[sim] Clínica Lótus", com uma unidade só, a Lótus Batel, em Curitiba. Ela rodou em produção das 22:15 de 28/10 até a 01:05 de 29/10, atravessando a meia-noite.
+
+Onze agentes fizeram os papéis:
+- a dona biomédica, que também atende;
+- a recepção e o caixa;
+- uma recepcionista temporária, desligada no fim;
+- uma profissional de horário próprio, só à noite;
+- um fisioterapeuta com cargo próprio;
+- uma contadora com cargo só de leitura;
+- quatro clientes, com plano de tratamento, pacote, voucher, cliente sem e-mail, estrangeira sem CPF e LGPD.
+
+**Dinheiro:** bateu em todas as telas e no CSV, e nenhuma entrada de estoque virou despesa. O D13 revisto entrou no ar no meio da rodada.
+
+**Defeitos:** 19, todos confirmados no código ou no banco. Nenhum é regressão direta. Quatro são de alta:
+- a ficha do procedimento não aparece no atendimento avulso;
+- a dona não consegue se marcar como quem atende;
+- "1.400" vira R$ 1,40;
+- não existe venda de produto.
+
+**Atritos:** 50.
+
+**Revisão:** sete achados reforçam itens que já esperam o Heitor, e há uma decisão nova sobre os pontos na entrada do plano.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-10-28/29 (4ª)".
+
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
 Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
@@ -7609,6 +7636,82 @@ raiz dos três apps: vale uma completa.
 - Ainda dividem na tela de Relatórios (fora do pedido da frente F): a taxa
   de conclusão da agenda, a retenção, o giro do estoque e a conversão por
   origem do comercial.
+
+### Da simulação de 2026-10-28/29 (4ª: D1–D19 e os atritos A1–A50 em aberto)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. Ele traz as capturas, os 50 atritos A1–A50 por tela, os 13 achados que eram regra ou engano, o dinheiro esperado × sistema, a seção "clínica de uma unidade só" e o que ficou sem testar. O de 28/10 está em `.sim/arquivo-2026-10-28/`.
+
+O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e não corrigiu nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a `apps/web/`:
+
+**Alta**
+- **D1.** A ficha própria do procedimento (`procedures.form_id`) não aparece no atendimento avulso. O ramo "plano ainda não gerado → formulário unificado" não chama `renderFichaCard` (`components/branch/appointment-session.tsx:1838-1870`). Só o plano já gerado e a sessão de plano a mostram. O atendimento é concluído sem a ficha, e o prontuário fica sem esses campos. NOVO (latente desde 2026-09-25).
+- **D2.** A dona (Admin da rede) não consegue ser profissional:
+  - `assignableRoles` tira o NETWORK_ADMIN da lista, e por isso a edição dela abre com o primeiro cargo, "Financeiro";
+  - `updateTeamMember` grava o cargo junto e recusa cargo de sistema, então não há caminho para `provides_services` num admin;
+  - a avaliação que ela fez ficou com a Camila no histórico, na comissão e nos relatórios.
+
+  Arquivos: `app/admin/team/page.tsx:92`, `components/admin/team-member-edit.tsx:101-108` e `actions/team.ts:47-52, 183-234`. É o caso típico da clínica única. NOVO. Liga-se ao A7 de 28/10: a Equipe da unidade não lista quem é da rede.
+- **D3.** "1.400" no preço vira R$ 1,40, sem aviso. `parseDinheiro` lê o ponto como decimal quando não há vírgula (`packages/utils/src/format.ts:99-103`), e isso vale para todo campo de dinheiro. NOVO, uma ambiguidade da regra de `639ebd5`.
+- **D4.** Não existe venda de produto. O cadastro tem "Venda direta" e preço de venda, mas o "Vender" da ficha só oferece Procedimento e Pacote. A única saída é o ajuste, que não gera receita, pontos nem caixa. NOVO, como caminho que falta, e grande o bastante para ser decisão de escopo.
+
+**Média**
+- **D5.** Não há tela para cadastrar salas. A tabela `rooms` e a conferência de conflito de sala existem, mas nenhum código do app insere sala. NOVO.
+- **D6.** A contadora, sem agenda, vê "Meu faturamento R$ 0".
+  - Causa: o cargo criado com agenda "Nenhum" guardou `scope = OWN`. `resolveScopes` (`lib/permissions.ts:141-150`) guarda o escopo sem olhar o nível, e o dashboard recorta por `isOwnScope(ctx,'agenda')`.
+  - É defeito, não a decisão D7.
+  - NOVO, agravado pela frente G (`b07e8532`). Vale conferir todo `isOwnScope`/`ownerFilter` de módulo com nível NONE.
+- **D7.** Para a recepção, Planejamento → Injetáveis responde 500 e fica em "Carregando…" sem fim.
+  - Causa: a sub-aba não confere a permissão, e o `useEffect` não trata o `semAcesso()` da action.
+  - Arquivos: `components/branch/painel-planejamento.tsx:78-86` e `planejamento-injetaveis.tsx:54-58`.
+  - NOVO, no caminho da frente H.
+- **D8.** A grade do checkout do plano é fixa das 08:00 às 20:00 (`TIME_SLOTS` em `checkout-wizard.tsx:54-59`). Ela oferece a pausa da unidade e corta a noite. O encaixe livre é regra do §9.1, mas a grade nem cobre a janela da unidade. NOVO.
+- **D9.** No plano, o insumo aparece como "5 frasco", e no atendimento como "5 ml". `procedimentosParaPlano` devolve `products.unit` cru (`lib/checkout/procedimentos-do-plano.ts`). SOBRA da unidade de consumo (D1 de 27/10).
+- **D10.** Em Relatórios → Estoque, a validade do lote aparece um dia antes, porque `new Date(...).toLocaleDateString` fere o §14 (`components/admin/reports-bi-view.tsx:1030-1032`). NOVO.
+- **D11.** A ocupação da "Minha agenda" é calculada sobre um dia fixo de 8 h (`WORK_MIN`), numa conta feita na tela que fere o §13.1 (`components/branch/professional-agenda.tsx:38, 131`). Dá 32% em vez de 47% para quem tem horário próprio. NOVO.
+- **D12.** O CPF 11111111111 passa, porque só o tamanho é conferido, e o erro do Auth aparece em inglês (`actions/clients.ts:90`, `lib/clients/acesso.ts:53`). NOVO.
+- **D13.** O cadastro completo aceita telefone incompleto ("(41) 9920") e telefone repetido de outra cliente, sem aviso (`actions/clients.ts:88`). NOVO.
+
+**Baixa**
+- **D14.** No portal, a Agenda mostra em "Próximos" um atendimento que já passou (ARRIVED de ontem), enquanto a home diz que não há próximo (`app/[slug]/cliente/agendamentos/page.tsx:58`).
+- **D15.** `/[slug]/agenda/<não-uuid>` dá tela de erro em vez de 404, porque o 22P02 chega antes do `notFound()` (`app/_shared/sessao-de-atendimento.tsx:49-75`). Provavelmente acontece em outras rotas `[id]`. É a mesma classe de `45b5064`.
+- **D16.** O painel de Fidelidade da ficha mostra 0 até recarregar, porque o `useState` copia as props (`components/branch/fidelidade-do-cliente.tsx:27-29`).
+- **D17.** O portal diz "Bem-vinda" e "Obrigada!" a um cliente do sexo masculino, com textos fixos.
+- **D18.** O histórico do pagamento sai em inglês ("via CREDIT_CARD", "via CASH"), porque `v_metodo` vai cru na `confirmar_pagamento_do_atendimento` (migration `20261028000201`).
+- **D19.** O link da ficha e o link de assinatura dizem "Olá, Dona!" e "confirme o seu data de nascimento" (`actions/pre-atendimento.ts:264-266`, `actions/documentos.ts:406`).
+
+**Sobra do D13 revisto (`e46e27b`).** O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
+
+**Atritos (A1–A50, no relatório).** Os de mais peso:
+- A4: o horário próprio nasce no padrão comercial, não no da unidade;
+- A7: Campanhas e Automações só existem em `/admin`;
+- A8: um único contrato de plano ativo, e o texto novo se perde;
+- A21: o encaixe fora do horário não avisa;
+- A24: a cliente que "Chegou" às 23:50 some depois da meia-noite;
+- A33: "A receber R$ 0" com R$ 1.200 em parcelas;
+- A36: o fechamento é um retrato e não avisa do movimento posterior;
+- A37: nenhum rótulo diz qual data conta o atendimento que vira a meia-noite;
+- A43: o portal não tem o endereço nem o WhatsApp da clínica;
+- A50: a pessoa desativada vê "E-mail ou senha incorretos".
+
+**A clínica de uma unidade só.** O relatório tem uma seção sobre o que é coisa de rede atrapalhando:
+- os dois portais com dois dashboards, e ocupações de 12% e 80% com o mesmo nome;
+- "TOTAL REDE", "por filial" e rankings de uma filial só;
+- a unidade nasce sem o CNPJ da rede;
+- a dona "da rede" fora da Equipe e da agenda (D2).
+
+A sugestão: com uma unidade ativa, esconder o vocabulário de rede, sem mudar o modelo.
+
+**O que reforça a revisão pendente do Heitor** (evidência desta rodada, sem decisão nova tomada):
+1. **D13 revisto: os valores do estoque como base de "insumos, custo, margem e lucro".** O lucro de hoje não desconta o insumo consumido. A regra escrita diz que o consumo "é informativo" (`docs/regras/indicadores.md`). Já a margem por procedimento desconta, e o procedimento sem insumo mostra margem de 100%. **O lucro deve descontar o insumo consumido?**
+2. **"Só os meus em qualquer lugar" (D7):**
+   - A Camila tem três números de faturamento no mesmo mês: "Meu faturamento" R$ 280 (só o pagamento atribuído a ela), o ticket R$ 343 e os Relatórios R$ 685. Os Relatórios estão com a frente H.
+   - Com Clientes sem escopo, ela lista e abre todas as clientes, inclusive a do Rafael. Esse é o item dos módulos sem escopo, que é decisão do Heitor.
+3. **Documentos no portal (Para decidir).** É a segunda rodada seguida: a foto clínica anexada pela dona no atendimento apareceu para a cliente em Histórico → Documentos, com download, sem que ninguém a mandasse.
+4. **Comissão de pacote (Em aberto).** A venda do pacote (R$ 800) não gerou comissão, porque hoje a regra é por sessão. Fica de referência para o modelo "sobre o valor total, no pagamento".
+5. **Ficha de saúde (D2 de 28/10, para revisar).** "Grávida ou amamentando?" é obrigatória também para cliente do sexo masculino, porque a ficha não olha o sexo cadastrado.
+6. **Ocupação (D12 e a ocupação revista, para revisar).** Na mesma unidade única, o dashboard da unidade dá 12% e o da rede dá 80%, com o mesmo nome e outra definição (aproveitamento). A da "Minha agenda" é um terceiro número, e esse é defeito (D11).
+7. **Grade pela unidade (D5, confirmado).** A tela mostra como "livre" um horário em que a profissional de horário próprio não atende. É só para o Heitor saber.
+8. **Decisão nova:** a cliente ganha pontos sobre a entrada de um plano parcelado antes de qualquer sessão, e as parcelas pontuam quando pagas. É coerente com "1 ponto por R$ pago", mas vale confirmar.
 
 ### Próximas fases já combinadas
 
