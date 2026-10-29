@@ -7058,6 +7058,19 @@ verdade. O que vale:
     O lucro agora não conta custo de insumo nenhum, a menos que a clínica
     lance a compra à mão. Se o consumo deve entrar no resultado continua com
     o Heitor (o item 1 do "Reforça" da 4ª simulação).
+    **Revisto pelo Heitor (2026-10-29):**
+    - O estoque inicial sem despesa: confirmado.
+    - As duas despesas da Íris: em vez de estornar, ele mandou **apagar a rede
+      [sim] Íris inteira** (EM ANDAMENTO).
+    - **O lucro desconta o insumo consumido.** Nas palavras dele, o consumo
+      "serve pra controle de estoque e aferimento de métricas de
+      custo/margem/lucro". O financeiro pode lançar uma despesa de compra de
+      estoque, e a movimentação do estoque não gera outra ("pagar 2x").
+    - **O desenho adotado** (ele não fechou; muda se quiser):
+      - o lucro desconta o insumo consumido, pelo custo do lote;
+      - a despesa da categoria "Compra de estoque" conta no CAIXA (o que saiu)
+        e não no lucro, para o produto não ser descontado duas vezes.
+    - A FAZER, na frente de indicadores.
   - Ficha de saúde (D2): o servidor recusa a vazia e a com obrigatória em
     branco (app, "nada mudou" e link). Obrigatórias na ficha padrão: alergias,
     gestação/amamentação, medicamentos e condições de saúde (pele, protetor,
@@ -7071,7 +7084,11 @@ verdade. O que vale:
     pergunta da gestação ganha a opção "Não se aplica", porque o cliente do
     sexo masculino era obrigado a responder Sim ou Não. A mudança vale para a
     ficha padrão: a das redes novas e a nunca editada das redes que já
-    existem (EM ANDAMENTO).
+    existem. **Feito em 2026-10-29** (b0fa600f, migration
+    `20261029000601`): "Sim", "Não" e "Não se aplica", ainda obrigatória e
+    para qualquer cliente. A ficha mudou em todas as redes que nunca a tinham
+    editado (Lótus, AgapeFlow, Bellaris Clinic e as [e2e]); a Aurora ficou
+    como estava. As respostas antigas não foram reescritas.
     Ele reforçou que a ficha precisa poder ser customizada. Ela já é: em
     Configurações → Fichas, quem é da rede e tem Fichas MANAGE muda as
     perguntas, as opções e as obrigatórias.
