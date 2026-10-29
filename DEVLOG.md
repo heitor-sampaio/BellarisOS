@@ -6849,8 +6849,12 @@ verdade. O que vale:
   assim, e qualquer uma muda se ele quiser. (A lista cresce a cada frente.)
   - ~~Quem é da rede e atende aparece em TODAS as unidades (D1).~~
     **Confirmado pelo Heitor (2026-10-28): é assim mesmo.**
-  - A ocupação de cada unidade conta a agenda inteira dessa profissional:
-    somadas as unidades, a capacidade dela entra mais de uma vez.
+  - ~~A ocupação de cada unidade conta a agenda inteira dessa profissional:
+    somadas as unidades, a capacidade dela entra mais de uma vez.~~
+    **Revisto pelo Heitor (2026-10-28): a ocupação da unidade conta só a
+    agenda da unidade.** A capacidade desconta o que a profissional tem
+    agendado em outra unidade, na agenda e no dashboard da unidade
+    (`ocupadoFora`, lib/agenda/horario).
   - "Só os meus" (D4): no próprio agendamento tudo segue igual, inclusive
     cancelar pela tela do atendimento e passar para outra profissional.
   - Dashboard da rede (D7): recorta quando agenda OU financeiro é "só os

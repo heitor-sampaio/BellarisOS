@@ -18,7 +18,7 @@ import { AgendaWeekView } from './agenda-week-view'
 import { AgendaMonthView } from './agenda-month-view'
 import { rescheduleAppointment } from '@/actions/appointments'
 import type { CalendarEvent } from './agenda-month-view'
-import { ocupacaoEmPct, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario } from '@/lib/agenda/horario'
+import { ocupacaoEmPct, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { atendimentosPorExtenso } from '@/lib/agenda/grade'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
@@ -47,6 +47,8 @@ interface AgendaCalendarProps {
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
   horarioDaUnidade?:          Horario | null
   horariosDosProfissionais?:  Record<string, Horario | null>
+  /** O que cada profissional tem agendado em OUTRA unidade: sai da capacidade da ocupação. */
+  ocupadoForaDosProfissionais?: Record<string, BlocoOcupado[]>
   /** O dia da URL (`?date=AAAA-MM-DD`); sem ele, hoje. */
   dataInicial?:  string | null
   /** `?cancelados=1`: a grade traz os cancelados e as faltas, apagados. */
@@ -62,6 +64,7 @@ function calcKPIs(
   date: Date,
   horarioDaUnidade: Horario | null,
   horariosDosProfissionais: Record<string, Horario | null>,
+  ocupadoForaDosProfissionais: Record<string, BlocoOcupado[]>,
 ) {
   let from: Date, to: Date, workDays: number
 
@@ -93,7 +96,8 @@ function calcKPIs(
     .filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status))
     .reduce((s, e) => s + e.durationMin, 0)
   const occupancy    = ocupacaoEmPct(bookedMin, horarioDaUnidade,
-    professionals.map(p => horariosDosProfissionais[p.id] ?? null), from, to) ?? 0
+    professionals.map(p => horariosDosProfissionais[p.id] ?? null), from, to,
+    professionals.map(p => ocupadoForaDosProfissionais[p.id] ?? [])) ?? 0
 
   return { totalCount, waitingCount, occupancy }
 }
@@ -144,7 +148,7 @@ function todayDate(): Date {
 
 export function AgendaCalendar({
   branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio,
-  horarioDaUnidade = null, horariosDosProfissionais = {}, dataInicial = null, comCancelados = false,
+  horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
 }: AgendaCalendarProps) {
   const router = useRouter()
 
@@ -182,7 +186,7 @@ export function AgendaCalendar({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [dropError,     setDropError]     = useState<string | null>(null)
 
-  const { totalCount, waitingCount, occupancy } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais)
+  const { totalCount, waitingCount, occupancy } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais)
 
   // -- Drag-and-drop ----------------------------------------------------------
   const handleDrop = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {

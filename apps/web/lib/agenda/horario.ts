@@ -102,20 +102,78 @@ export function diaDaSemana(data: string): number {
 }
 
 const diaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d)
+const proximoDia = (dia: string) => new Date(new Date(`${dia}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10)
+
+/** Um agendamento de OUTRA unidade da profissional: o início (instante) e a duração. */
+export interface BlocoOcupado { inicio: string; minutos: number }
+
+/** Os blocos, recortados por dia de Brasília: `dia → [de, ate)` em minutos do dia, fundidos. */
+function ocupadoPorDia(blocos: BlocoOcupado[]): Map<string, [number, number][]> {
+  const porDia = new Map<string, [number, number][]>()
+  const hora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  for (const b of blocos) {
+    const inicio = new Date(b.inicio)
+    if (Number.isNaN(inicio.getTime()) || !(b.minutos > 0)) continue
+    let dia = diaEmBrasilia(inicio)
+    let de = minutos(hora.format(inicio))
+    let resta = b.minutos
+    // Passa da meia-noite: o resto cai no dia seguinte.
+    for (let guarda = 0; resta > 0 && guarda < 400; guarda++) {
+      const ate = Math.min(de + resta, 24 * 60)
+      const lista = porDia.get(dia) ?? []
+      lista.push([de, ate])
+      porDia.set(dia, lista)
+      resta -= ate - de
+      dia = proximoDia(dia); de = 0
+    }
+  }
+  for (const [dia, lista] of porDia) {
+    lista.sort((a, b) => a[0] - b[0])
+    const fundidos: [number, number][] = []
+    for (const [de, ate] of lista) {
+      const ultimo = fundidos[fundidos.length - 1]
+      if (ultimo && de <= ultimo[1]) ultimo[1] = Math.max(ultimo[1], ate)
+      else fundidos.push([de, ate])
+    }
+    porDia.set(dia, fundidos)
+  }
+  return porDia
+}
+
+/** Os minutos dos períodos de atendimento que um bloco ocupado cobre. */
+function minutosCobertos(intervalos: Intervalo[], ocupados: [number, number][]): number {
+  let total = 0
+  for (const i of intervalos) for (const [de, ate] of ocupados) {
+    total += Math.max(0, Math.min(minutos(i.ate), ate) - Math.max(minutos(i.de), de))
+  }
+  return total
+}
 
 /**
  * A capacidade de atendimento, em minutos, entre duas datas (os dias do
  * calendário de Brasília, inclusivos): a soma, por profissional e por dia, dos
  * minutos em que ele atende na unidade.
+ *
+ * `ocupadoFora[i]` são os agendamentos do profissional `i` em OUTRAS unidades
+ * (o da rede atende em todas — D1): o tempo deles sai da capacidade daqui.
+ * Sem isso ela aparecia livre em duas unidades ao mesmo tempo, e somadas as
+ * unidades a capacidade dela entrava em dobro (decisão do Heitor, 2026-10-28).
  */
-export function capacidadeEmMinutos(unidade: Horario | null, profissionais: (Horario | null)[], de: Date, ate: Date): number {
+export function capacidadeEmMinutos(
+  unidade: Horario | null, profissionais: (Horario | null)[], de: Date, ate: Date,
+  ocupadoFora: BlocoOcupado[][] = [],
+): number {
+  const fora = profissionais.map((_, i) => ocupadoPorDia(ocupadoFora[i] ?? []))
   const fim = diaEmBrasilia(ate)
   let dia = diaEmBrasilia(de)
   let total = 0
   for (let guarda = 0; dia <= fim && guarda < 400; guarda++) {
     const semana = diaDaSemana(dia)
-    for (const p of profissionais) total += minutosDoDia(intervalosDoDia(unidade, p, semana))
-    dia = new Date(new Date(`${dia}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10)
+    profissionais.forEach((p, i) => {
+      const intervalos = intervalosDoDia(unidade, p, semana)
+      total += minutosDoDia(intervalos) - minutosCobertos(intervalos, fora[i]!.get(dia) ?? [])
+    })
+    dia = proximoDia(dia)
   }
   return total
 }
@@ -136,9 +194,12 @@ export function janelaDaGrade(horarios: (Horario | null)[]): { inicio: number; f
  * mostra "—" em vez de 0%. A definição é a de lib/metrics (`occupancyPct`),
  * que chama esta; mora aqui para a agenda (no navegador) usar a mesma conta.
  */
-export function ocupacaoEmPct(minutosAgendados: number, unidade: Horario | null, profissionais: (Horario | null)[], de: Date, ate: Date): number | null {
+export function ocupacaoEmPct(
+  minutosAgendados: number, unidade: Horario | null, profissionais: (Horario | null)[], de: Date, ate: Date,
+  ocupadoFora: BlocoOcupado[][] = [],
+): number | null {
   if (!profissionais.length) return null
-  const capacidade = capacidadeEmMinutos(unidade, profissionais, de, ate)
+  const capacidade = capacidadeEmMinutos(unidade, profissionais, de, ate, ocupadoFora)
   if (!capacidade) return null
   return Math.min(Math.round((minutosAgendados / capacidade) * 100), 100)
 }

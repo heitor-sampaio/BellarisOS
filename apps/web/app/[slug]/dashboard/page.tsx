@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { capacidadeEmMinutos, normalizarHorario } from '@/lib/agenda/horario'
+import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { getTenantContext, isOwnScope, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
@@ -184,7 +184,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
     (canAgenda && !professionalOnly)
       // Os profissionais e o horário de cada um: a capacidade da ocupação.
-      ? ler(admin.from('users').select('horario')
+      ? ler(admin.from('users').select('id, horario')
           // Os da unidade e os da rede, que atendem em todas (D1, 2026-10-28).
           .eq('tenant_id', ctx.tenantId!).or(filtroDeQuemAtendeNaUnidade(branchId))
           .eq('provides_services', true).eq('is_active', true), 'carregar os profissionais')
@@ -240,11 +240,29 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // A capacidade do DIA (a agenda mostrada é a de hoje), pelo HORÁRIO da
   // unidade e de cada profissional — a mesma conta da agenda (lib/agenda/horario).
   const professionalsCount = (profissionaisDaUnidade ?? []).length
+  const profissionais = (profissionaisDaUnidade ?? []) as { id: string; horario: unknown }[]
+  // O que eles têm agendado HOJE em outra unidade (o da rede atende em todas —
+  // D1) sai da capacidade daqui (decisão do Heitor, 2026-10-28). Desde a
+  // véspera, para o atendimento que atravessa a meia-noite.
+  const ocupadoFora: Record<string, BlocoOcupado[]> = {}
+  if (profissionais.length) {
+    const fora = await ler(admin.from('appointments')
+      .select('professional_id, scheduled_at, duration_min')
+      .in('professional_id', profissionais.map(p => p.id))
+      .neq('branch_id', branchId)
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
+      .gte('scheduled_at', addDaysTZ(todayStart, -1).toISOString())
+      .lte('scheduled_at', todayEnd.toISOString()), 'carregar a agenda dos profissionais nas outras unidades')
+    for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number }[]) {
+      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min })
+    }
+  }
   const horarios = {
     unidade:       normalizarHorario((await ler(admin.from('branches').select('horario').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade') as { horario?: unknown } | null)?.horario),
-    profissionais: ((profissionaisDaUnidade ?? []) as { horario: unknown }[]).map(p => normalizarHorario(p.horario)),
+    profissionais: profissionais.map(p => normalizarHorario(p.horario)),
+    ocupadoFora:   profissionais.map(p => ocupadoFora[p.id] ?? []),
   }
-  const capacityMin = capacidadeEmMinutos(horarios.unidade, horarios.profissionais, todayStart, todayEnd)
+  const capacityMin = capacidadeEmMinutos(horarios.unidade, horarios.profissionais, todayStart, todayEnd, horarios.ocupadoFora)
   const occupancy   = occupancyPct(scheduledMin, horarios, todayStart, todayEnd) ?? 0
 
   // -- Gráfico dos últimos 6 meses -------------------------------

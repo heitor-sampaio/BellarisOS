@@ -21,7 +21,7 @@
  */
 
 export * from './period'
-import { ocupacaoEmPct, type Horario } from '@/lib/agenda/horario'
+import { ocupacaoEmPct, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 export * from './queries'
 export * from './resultado'
 
@@ -30,7 +30,8 @@ export * from './resultado'
  * agendamentos que não foram cancelados nem faltas (os concluídos contam) ÷ a
  * capacidade do HORÁRIO de funcionamento: a soma, por profissional e por dia,
  * dos minutos em que ele atende na unidade (`capacidadeEmMinutos`,
- * lib/agenda/horario.ts). Percentual inteiro, até 100.
+ * lib/agenda/horario.ts), menos o que ele tem agendado em OUTRA unidade
+ * (`ocupadoFora`: o da rede atende em todas). Percentual inteiro, até 100.
  *
  * Era 8 h por profissional (seg–sáb) aqui e 12 h na agenda, que fazia a conta
  * na tela: as duas davam números diferentes (D12 da simulação de 2026-10-20).
@@ -39,9 +40,9 @@ export * from './resultado'
  */
 export function occupancyPct(
   scheduledMinutes: number,
-  horarios: { unidade: Horario | null; profissionais: (Horario | null)[] },
+  horarios: { unidade: Horario | null; profissionais: (Horario | null)[]; ocupadoFora?: BlocoOcupado[][] },
   from: Date,
   to: Date,
 ): number | null {
-  return ocupacaoEmPct(scheduledMinutes, horarios.unidade, horarios.profissionais, from, to)
+  return ocupacaoEmPct(scheduledMinutes, horarios.unidade, horarios.profissionais, from, to, horarios.ocupadoFora)
 }

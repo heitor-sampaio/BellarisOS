@@ -144,3 +144,39 @@ test('desativar e reativar a profissional da rede tira e põe de volta nas unida
     expect(await quemAtendeNa(p, unidadeB), 'reativada: volta a B').toContain(nomeDaRede)
   })
 })
+
+/**
+ * A ocupação da unidade conta só a agenda DA unidade (decisão do Heitor,
+ * 2026-10-28): a profissional da rede entra na capacidade de B com o horário
+ * dela MENOS o que já está agendado em A. Antes ela aparecia livre nas duas
+ * ao mesmo tempo, e somadas as unidades a capacidade dela entrava em dobro.
+ */
+test('a ocupação de B desconta o que a profissional da rede tem agendado em A', async ({ browser }) => {
+  const agendar = async (branchId: string, dia: string, hhmm: string, min: number) => {
+    const { error } = await db().from('appointments').insert({
+      branch_id: branchId, client_id: cliente!.clientId, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      scheduled_at: new Date(`${dia}T${hhmm}:00-03:00`).toISOString(), duration_min: min, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+    })
+    expect(error, `agendar ${hhmm} (${min} min)`).toBeNull()
+  }
+  // Um dia aberto, longe do que os outros testes agendam. A unidade B segue o
+  // horário padrão (seg–sáb, 08–20: 720 min), e a da rede é a única de B.
+  const dia = diaEmQueAUnidadeAbre(3)
+  await agendar(unidadeB, dia, '10:00', 60)
+  await agendar(rede!.branchId, dia, '14:00', 360)   // 14–20 em A: sobram 360 min para B
+  await como(browser, gestora!.estado, async p => {
+    await p.goto(`/${slugB}/agenda?date=${dia}`)
+    // 60 ÷ 360 = 17% (sem o desconto: 60 ÷ 720 = 8%).
+    await expect(p.getByText(/de ocupação/).first()).toContainText('17%')
+  })
+
+  // O dashboard é o de HOJE: a capacidade que ele mostra também desconta.
+  const hoje = diaEmQueAUnidadeAbre(0)
+  test.skip(hoje !== new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()), 'hoje B está fechada')
+  await agendar(rede!.branchId, hoje, '09:00', 120)
+  await como(browser, gestora!.estado, async p => {
+    await p.goto(`/${slugB}/dashboard`)
+    const ocupacao = p.locator('.card', { has: p.getByText('Taxa de ocupação') })
+    await expect(ocupacao).toContainText(/de 600min disponíveis/)
+  })
+})

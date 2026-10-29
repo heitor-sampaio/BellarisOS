@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalizarHorario, janelaDaGrade, type Horario } from '@/lib/agenda/horario'
+import { normalizarHorario, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { ler, lerTodas } from '@/lib/db'
 import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
@@ -97,6 +97,25 @@ export default async function AgendaPage({ params, searchParams }: {
     ((horarioRaw[1] ?? []) as { id: string; horario: unknown }[]).map(p => [p.id, normalizarHorario(p.horario)]),
   )
 
+  // O que esses profissionais têm agendado em OUTRA unidade (o da rede atende
+  // em todas — D1): sai da capacidade da ocupação daqui (decisão do Heitor,
+  // 2026-10-28). Só o horário, sem cliente nem procedimento.
+  const idsDosProfissionais = Object.keys(horariosDosProfissionais)
+  const ocupadoFora: Record<string, BlocoOcupado[]> = {}
+  if (!professionalOnly && idsDosProfissionais.length) {
+    const fora = await lerTodas((de, ate) => createAdminClient().from('appointments')
+      .select('id, professional_id, scheduled_at, duration_min')
+      .in('professional_id', idsDosProfissionais)
+      .neq('branch_id', branchId)
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
+      .gte('scheduled_at', from)
+      .lte('scheduled_at', to)
+      .order('scheduled_at').order('id').range(de, ate), 'carregar a agenda dos profissionais nas outras unidades')
+    for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number }[]) {
+      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min })
+    }
+  }
+
   // Agenda vazia é um fato; agenda que falhou é outra coisa. `appointments` tem
   // duas chaves para `users` (`professional_id` e `created_by_id`), então o
   // embed precisa dizer qual — sem isso o PostgREST recusa, o erro era
@@ -159,6 +178,7 @@ export default async function AgendaPage({ params, searchParams }: {
         professionals={professionals ?? []}
         horarioDaUnidade={horarioDaUnidade}
         horariosDosProfissionais={horariosDosProfissionais}
+        ocupadoForaDosProfissionais={ocupadoFora}
         rooms={rooms ?? []}
         canWrite={canManageAgenda}
         userRole={ctx.role}

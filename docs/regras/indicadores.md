@@ -93,6 +93,10 @@
     `lib/agenda/horario.ts`; 2026-10-21). Percentual inteiro. A agenda e o
     dashboard da unidade usam a MESMA função: eram 12 h na agenda (sem os
     concluídos) e 8 h no dashboard, e as duas davam números diferentes.
+    A ocupação da unidade conta só a agenda DA unidade: o profissional entra
+    na capacidade com o horário dele MENOS o que tem agendado em outra
+    unidade (`ocupadoFora`; o da rede atende em todas — decisão do Heitor,
+    2026-10-28). Sem isso ele aparecia livre em duas unidades ao mesmo tempo.
   - **composição do financeiro** (receita por forma de pagamento, receita e
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.

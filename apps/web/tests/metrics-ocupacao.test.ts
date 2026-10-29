@@ -45,3 +45,39 @@ describe('occupancyPct', () => {
     expect(occupancyPct(0, padrao, seg, dom)).toBe(0)
   })
 })
+
+// A profissional da REDE atende em todas as unidades (D1): na capacidade de
+// uma, entra o horário dela MENOS o que já está agendado em outra (decisão do
+// Heitor, 2026-10-28). Sem isso ela aparecia livre em duas unidades ao mesmo
+// tempo, e somadas as unidades a capacidade dela entrava em dobro.
+describe('occupancyPct com o que a profissional tem agendado em OUTRA unidade', () => {
+  const as = (hhmm: string, min: number, dia = '2026-10-19') => ({ inicio: `${dia}T${hhmm}:00-03:00`, minutos: min })
+
+  it('desconta da capacidade o tempo agendado fora', () => {
+    // 720 − 120 = 600 de capacidade; 300 agendados aqui = 50%.
+    expect(occupancyPct(300, { ...padrao, ocupadoFora: [[as('10:00', 120)]] }, seg, fimDaSeg)).toBe(50)
+  })
+
+  it('agendamentos sobrepostos fora contam uma vez', () => {
+    // 10:00–11:00 e 10:30–11:30 = 90 min; 720 − 90 = 630; 315 = 50%.
+    expect(occupancyPct(315, { ...padrao, ocupadoFora: [[as('10:00', 60), as('10:30', 60)]] }, seg, fimDaSeg)).toBe(50)
+  })
+
+  it('o que está fora do horário dela NESTA unidade não desconta', () => {
+    const manha = { unidade: { dias: { 1: [{ de: '08:00', ate: '12:00' }] } }, profissionais: [null] }
+    // 240 de capacidade; o de 14h na outra unidade não tira nada; 11:00–13:00 tira 60.
+    expect(occupancyPct(120, { ...manha, ocupadoFora: [[as('14:00', 60)]] }, seg, fimDaSeg)).toBe(50)
+    expect(occupancyPct(90, { ...manha, ocupadoFora: [[as('11:00', 120)]] }, seg, fimDaSeg)).toBe(50)
+  })
+
+  it('cada bloco desconta só da profissional dele, e no dia dele', () => {
+    // Duas profissionais (1440); a segunda tem 240 fora na terça — fora da janela de segunda.
+    expect(occupancyPct(720, { unidade: null, profissionais: [null, null], ocupadoFora: [[], [as('09:00', 240, '2026-10-20')]] }, seg, fimDaSeg)).toBe(50)
+    // Na semana inteira (6 × 720 × 2 = 8640), os 240 da terça descontam: 8400.
+    expect(occupancyPct(4200, { unidade: null, profissionais: [null, null], ocupadoFora: [[], [as('09:00', 240, '2026-10-20')]] }, seg, dom)).toBe(50)
+  })
+
+  it('toda a agenda dela fora: sem capacidade aqui', () => {
+    expect(occupancyPct(0, { ...padrao, ocupadoFora: [[as('08:00', 720)]] }, seg, fimDaSeg)).toBeNull()
+  })
+})
