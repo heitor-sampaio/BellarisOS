@@ -7061,7 +7061,10 @@ verdade. O que vale:
     **Revisto pelo Heitor (2026-10-29):**
     - O estoque inicial sem despesa: confirmado.
     - As duas despesas da Íris: em vez de estornar, ele mandou **apagar a rede
-      [sim] Íris inteira** (EM ANDAMENTO).
+      [sim] Íris inteira**. **Feito em 2026-10-29:** cerca de 435 linhas, 5
+      arquivos do Storage e 8 logins, numa transação só, com Aurora, Lótus,
+      Bellaris Clinic e AgapeFlow conferidas antes e depois. O login da
+      Mariana ficou e entra só na Aurora.
     - **O lucro desconta o insumo consumido.** Nas palavras dele, o consumo
       "serve pra controle de estoque e aferimento de métricas de
       custo/margem/lucro". O financeiro pode lançar uma despesa de compra de
