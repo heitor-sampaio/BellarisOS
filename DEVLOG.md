@@ -7717,6 +7717,21 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - a avaliação que ela fez ficou com a Camila no histórico, na comissão e nos relatórios.
 
   Arquivos: `app/admin/team/page.tsx:92`, `components/admin/team-member-edit.tsx:101-108` e `actions/team.ts:47-52, 183-234`. É o caso típico da clínica única. NOVO. Liga-se ao A7 de 28/10: a Equipe da unidade não lista quem é da rede.
+
+  **Feito em 2026-10-29** (b61c8481):
+  - **A admin se marca como profissional.** Ela pode marcar "Atende clientes" e mudar o horário sem trocar o cargo, e a comissão vem pelo chip.
+  - **O cargo de Admin da rede não se troca pela Equipe.** A action antiga aceitava rebaixar a admin a qualquer cargo, um furo que o teste provou.
+  - **A última admin ativa não se desativa.**
+  - **O editor trava o cargo de sistema** e nunca cai no primeiro cargo da lista.
+  - **A Equipe da unidade lista quem é da rede e atende ali**, só para leitura e com o chip "Da rede". O A7 de 28/10, nessa parte, também está feito.
+  - **Prova:** `e2e/equipe-dona-que-atende.spec.ts`.
+
+  **Decisões para revisar:**
+  1. Pela tela, ninguém dá nem tira o cargo de Admin da rede.
+  2. A última admin ativa não pode ser desativada.
+  3. Quem é da rede e edita a Equipe também marca "atende" e muda o horário da admin.
+  4. Os membros da rede aparecem na Equipe da unidade só para leitura, sem e-mail e sem comissão, e só os que atendem.
+  5. O contador "N membros" passa a contar esses membros.
 - **D3.** "1.400" no preço vira R$ 1,40, sem aviso. `parseDinheiro` lê o ponto como decimal quando não há vírgula (`packages/utils/src/format.ts:99-103`), e isso vale para todo campo de dinheiro. NOVO, uma ambiguidade da regra de `639ebd5`.
 - **D4.** Não existe venda de produto. O cadastro tem "Venda direta" e preço de venda, mas o "Vender" da ficha só oferece Procedimento e Pacote. A única saída é o ajuste, que não gera receita, pontos nem caixa. NOVO, como caminho que falta, e grande o bastante para ser decisão de escopo.
 
