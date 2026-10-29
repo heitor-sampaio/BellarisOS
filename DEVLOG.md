@@ -7896,6 +7896,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
     1. O valor ambíguo é recusado, não adivinhado.
     2. "12.500" no percentual de comissão dá 12500 e é recusado pelo limite.
     3. A entrada do contrato com texto ambíguo continua virando 0, sem aviso, como qualquer texto inválido de antes.
+  - **Revisto pelo Heitor (2026-10-29):** (1) e (2) confirmados. (3): a entrada do contrato ganha o MESMO aviso dos outros campos e deixa de aceitar R$ 0 calado. A FAZER.
 - **D4.** Não existe venda de produto. O cadastro tem "Venda direta" e preço de venda, mas o "Vender" da ficha só oferece Procedimento e Pacote. A única saída é o ajuste, que não gera receita, pontos nem caixa. NOVO, como caminho que falta, e grande o bastante para ser decisão de escopo.
 
 **Média**
@@ -7947,7 +7948,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - A descrição agora diz "via Crédito 3x", com o nome curto que a tela usa, pela função `private.rotulo_da_forma`.
   - O checkout do plano ("3x em CREDIT_CARD") e o recebimento do plano no check-in também foram traduzidos.
   - Prova: `e2e/financeiro-historico-forma-em-portugues.spec.ts`.
-  - O histórico já gravado ficou como estava: seis linhas nas redes [sim] e três na Bellaris Clinic.
+  - O histórico já gravado ficou como estava: seis linhas nas redes [sim] e três na Bellaris Clinic. **Revisto pelo Heitor (2026-10-29): traduzir também as antigas**, para o histórico ficar todo igual. A FAZER. Confirmados o nome curto da forma ("via Crédito 3x"), o "180.50" no fechamento e na oportunidade, e a unidade do plano lida na hora (D9).
 - **D19.** O link da ficha e o link de assinatura dizem "Olá, Dona!" e "confirme o seu data de nascimento" (`actions/pre-atendimento.ts:264-266`, `actions/documentos.ts:406`). **Feito em 2026-10-29** (fa69b27d). `nomeParaSaudar` pula o tratamento (Dona, Seu, Sr., Dra.…) também na home do portal, na assinatura e no `{{first_name}}` das campanhas. Os links têm uma frase só, com a concordância certa.
 
 **Decisões da frente 5, para revisar:**
