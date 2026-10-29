@@ -7957,6 +7957,13 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - **Revisto pelo Heitor (2026-10-29):** (1) e (2) confirmados. (3): a entrada do contrato ganha o MESMO aviso dos outros campos e deixa de aceitar R$ 0 calado. A FAZER.
 - **D4.** Não existe venda de produto. O cadastro tem "Venda direta" e preço de venda, mas o "Vender" da ficha só oferece Procedimento e Pacote. A única saída é o ajuste, que não gera receita, pontos nem caixa. NOVO, como caminho que falta, e grande o bastante para ser decisão de escopo.
 
+  **Decidido pelo Heitor (2026-10-29): fazer.** "Produto" entra no "Vender" da ficha da cliente, com quantidade, desconto e forma de pagamento. O estoque baixa pelo lote que vence primeiro. A venda vai para o caixa, para as vendas e para o faturamento.
+  - **Os pontos são configuráveis pela clínica**: se a venda de produto pontua.
+  - **A comissão de venda de produto é configurável pela clínica.**
+  - **Exige cliente cadastrada**, mesmo que pelo cadastro rápido.
+
+  A FAZER.
+
 **Média**
 - **D5.** Não há tela para cadastrar salas. A tabela `rooms` e a conferência de conflito de sala existem, mas nenhum código do app insere sala. NOVO.
 - **D6.** A contadora, sem agenda, vê "Meu faturamento R$ 0".
