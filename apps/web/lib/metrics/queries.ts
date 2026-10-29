@@ -407,7 +407,8 @@ export type Retention = {
  * construção, e não mede retenção.
  */
 export async function getRetention(args: Args): Promise<Retention> {
-  const { data, error } = await createAdminClient().rpc('metrics_retention', baseArgs(args))
+  // `professionalId` ("só os meus"): as clientes que ELA atendeu, e que já tinham vindo a ela.
+  const { data, error } = await createAdminClient().rpc('metrics_retention', { ...baseArgs(args), p_professional_id: args.professionalId ?? null })
   logRpcError('metrics_retention', error)
   const row = (data as Record<string, unknown>[] | null)?.[0]
   return {
@@ -423,6 +424,8 @@ export async function getNewClientsSeries(
 ): Promise<{ bucket: string; count: number }[]> {
   const { data, error } = await createAdminClient().rpc('metrics_new_clients_series', {
     ...baseArgs(args), p_granularity: args.granularity ?? 'day',
+    // "Só os meus": as novas que têm agendamento não cancelado com ela.
+    p_professional_id: args.professionalId ?? null,
   })
   logRpcError('metrics_new_clients_series', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
@@ -443,9 +446,11 @@ export type PainelComercial = {
   porDono: { dono: string | null; leads: number; convertidos: number; agendamentos: number }[]
 }
 
-export async function getPainelComercial(args: { tenantId: string; branchIds: string[]; from: Date; to: Date }): Promise<PainelComercial> {
+export async function getPainelComercial(args: { tenantId: string; branchIds: string[]; from: Date; to: Date; ownerId?: string | null }): Promise<PainelComercial> {
   const { data, error } = await createAdminClient().rpc('metrics_comercial', {
     p_tenant: args.tenantId, p_branch_ids: args.branchIds, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+    // CRM "só os meus": os leads dela e os sem dono (o recorte do quadro); os agendamentos que ela marcou.
+    p_owner: args.ownerId ?? null,
   })
   logRpcError('metrics_comercial', error)
   const r = (data ?? {}) as Record<string, unknown>
@@ -464,9 +469,10 @@ export async function getPainelComercial(args: { tenantId: string; branchIds: st
  * rede inteira — os leads são da rede, como no funil. Perdida sem motivo (o
  * Copilot e as automações movem sem perguntar) vem como "Sem motivo".
  */
-export async function getMotivosDePerda(args: { tenantId: string; from: Date; to: Date }): Promise<{ motivo: string; total: number }[]> {
+export async function getMotivosDePerda(args: { tenantId: string; from: Date; to: Date; ownerId?: string | null }): Promise<{ motivo: string; total: number }[]> {
   const { data, error } = await createAdminClient().rpc('metrics_motivos_de_perda', {
     p_tenant: args.tenantId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+    p_owner: args.ownerId ?? null,
   })
   logRpcError('metrics_motivos_de_perda', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({ motivo: String(r.motivo), total: n(r.total) }))

@@ -91,6 +91,13 @@ export interface ReportsBiProps {
   relatorio: Relatorio
   /** Vê a comissão da equipe (financeiro com escopo de todos). Sem, a aba Profissionais não a mostra. */
   verComissoes: boolean
+  /**
+   * "Só os meus" (agenda ou financeiro OWN — decisão do Heitor, 2026-10-28):
+   * os números já chegam DELA; some o que não se atribui a ela — a despesa, o
+   * lucro, a margem (do período e do catálogo), o saldo do estoque e as
+   * parcelas a receber —, como no dashboard.
+   */
+  soOsMeus?: boolean
   installments: LinhaParcela[]
   productBatches: LinhaLote[]
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
@@ -318,8 +325,11 @@ function TabOverview(p: ReportsBiProps) {
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero />
-        <KpiCard label="Despesas"       value={expenses}          format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta />
-        <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
+        {/* A despesa e o lucro não se atribuem a ela ("só os meus"). */}
+        {!p.soOsMeus && <>
+          <KpiCard label="Despesas"       value={expenses}          format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta />
+          <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
+        </>}
         <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Novos Clientes" value={core.newClients}            format="int" delta={pctDelta(core.newClients, corePrev.newClients)}                       showDelta />
         {/* Sem delta: a receita de serviço do período anterior não é carregada,
@@ -329,7 +339,7 @@ function TabOverview(p: ReportsBiProps) {
       {/* Charts grid */}
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Evolução do Período" style={{ gridColumn: '1 / -1' }}>
-          <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} />
+          <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} soReceita={p.soOsMeus} />
         </SCard>
         <SCard title="Faturamento por Unidade">
           <HBarChart data={byBranch} />
@@ -412,20 +422,26 @@ function TabFinanceiro(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Receita Bruta"   value={revenue}   format="brl" delta={pctDelta(revenue, prevRevenue)}   showDelta hero />
-        {/* Informativo: a compra do insumo já é despesa ("Estoque"); o consumo não
-            entra no lucro nem no DRE, senão o mesmo custo contaria duas vezes. */}
+        {/* Informativo: o consumo não entra no lucro nem no DRE. Movimentação
+            de estoque nunca gera despesa (D13 revisto, 2026-10-28): a compra
+            paga entra no financeiro por um lançamento, se a clínica quiser. */}
         <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="var(--danger)"
-          detalhe="Informativo: a compra já está nas despesas (Estoque)" />
-        <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
-        <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
-        <KpiCard label="Margem"          value={margin}    format="pct" accent={margin == null ? undefined : margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={marginDeltaPp} showDelta deltaUnit="p.p." />
+          detalhe="Informativo: não entra no lucro" />
+        {/* A despesa, o lucro e a margem não se atribuem a ela ("só os meus"). */}
+        {!p.soOsMeus && <>
+          <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
+          <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
+          <KpiCard label="Margem"          value={margin}    format="pct" accent={margin == null ? undefined : margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={marginDeltaPp} showDelta deltaUnit="p.p." />
+        </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
-        <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
-          {/* Sem a linha de insumos (era fixa em R$ 0,00 e confundia): a compra
-              do insumo já está nas despesas, na categoria "Estoque". */}
-          <DreWaterfall receita={revenue} despesas={opEx} lucro={profit} />
-        </SCard>
+        {!p.soOsMeus && (
+          <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
+            {/* Sem a linha de insumos (era fixa em R$ 0,00 e confundia): o
+                consumo é informativo e não entra no resultado. */}
+            <DreWaterfall receita={revenue} despesas={opEx} lucro={profit} />
+          </SCard>
+        )}
         <SCard title="Receita por Forma de Pagamento">
           <HBarChart data={byPayment} />
         </SCard>
@@ -442,13 +458,16 @@ function TabFinanceiro(p: ReportsBiProps) {
         <SCard title="Faturamento por Unidade — Período Anterior">
           <HBarChart data={branchComparePrev} color={CHART_COLORS[5]} />
         </SCard>
-        <SCard title="Parcelas Pendentes" style={{ gridColumn: '1 / -1' }}>
-          <SimpleTable
-            columns={installCols}
-            rows={installRows}
-            emptyMsg="Sem parcelas pendentes."
-          />
-        </SCard>
+        {/* As parcelas a receber são da unidade, não dos atendimentos dela. */}
+        {!p.soOsMeus && (
+          <SCard title="Parcelas Pendentes" style={{ gridColumn: '1 / -1' }}>
+            <SimpleTable
+              columns={installCols}
+              rows={installRows}
+              emptyMsg="Sem parcelas pendentes."
+            />
+          </SCard>
+        )}
       </div>
     </div>
   )
@@ -898,14 +917,17 @@ function TabProcedimentos(p: ReportsBiProps) {
         <SCard title="Top 3 por Faixa de Idade — Volume">
           <AgeRankCard data={topByAgeVolume} />
         </SCard>
-        <SCard title="Top 3 por Faixa de Idade — Margem">
-          {!faixas.temCustos
-            ? <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', margin: 0 }}>
-                Configure o custo dos insumos em Procedimentos para visualizar a margem por faixa etária.
-              </p>
-            : <AgeRankCard data={topByAgeMargin} />
-          }
-        </SCard>
+        {/* A margem é do custo do CATÁLOGO: não se atribui a ela ("só os meus"). */}
+        {!p.soOsMeus && (
+          <SCard title="Top 3 por Faixa de Idade — Margem">
+            {!faixas.temCustos
+              ? <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', margin: 0 }}>
+                  Configure o custo dos insumos em Procedimentos para visualizar a margem por faixa etária.
+                </p>
+              : <AgeRankCard data={topByAgeMargin} />
+            }
+          </SCard>
+        )}
         <SCard title="Detalhamento por Procedimento" style={{ gridColumn: '1 / -1' }}>
           <SimpleTable columns={tableCols} rows={tableRows} />
         </SCard>
@@ -1035,22 +1057,28 @@ function TabEstoque(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />
+        {/* "Só os meus": o saldo do estoque não se atribui a ela — só o insumo
+            dos atendimentos dela (o consumo e os mais consumidos). */}
+        {!p.soOsMeus && <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />}
         <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" />
-        <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
-        <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
-        <KpiCard label="Itens Zerados"  value={zerados}  format="int" accent="var(--danger)" />
+        {!p.soOsMeus && <>
+          <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
+          <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
+          <KpiCard label="Itens Zerados"  value={zerados}  format="int" accent="var(--danger)" />
+        </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Top 10 Produtos Mais Consumidos (custo)">
           <HBarChart data={topConsumed} color="var(--warning)" />
         </SCard>
-        <SCard title="Valor em Estoque por Categoria">
-          <DonutChart data={byCategory} />
-        </SCard>
-        <SCard title="Saúde do Estoque por Unidade" style={{ gridColumn: '1 / -1' }}>
-          <SimpleTable columns={branchHealthCols} rows={branchHealthRows} />
-        </SCard>
+        {!p.soOsMeus && <>
+          <SCard title="Valor em Estoque por Categoria">
+            <DonutChart data={byCategory} />
+          </SCard>
+          <SCard title="Saúde do Estoque por Unidade" style={{ gridColumn: '1 / -1' }}>
+            <SimpleTable columns={branchHealthCols} rows={branchHealthRows} />
+          </SCard>
+        </>}
         {batchRows.length > 0 && (
           <SCard title="Validades Próximas (≤ 30 dias)" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={batchCols} rows={batchRows} emptyMsg="Sem lotes vencendo em breve." />

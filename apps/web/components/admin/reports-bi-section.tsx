@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { getTenantContext, podeVerRelatorio, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, podeVerRelatorio, can, isOwnScope, ownerFilter } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
@@ -17,6 +17,9 @@ import type { LinhaLote, LinhaParcela } from '@/components/admin/reports-linhas'
 import {
   getVendas, getResumoDeVendas, ehTipoDeVenda, POR_PAGINA, type Venda, type ResumoDeVendas, type TipoDeVenda,
 } from '@/lib/metrics/vendas'
+
+/** Ninguém: com "só os meus" e sem membro interno, nenhum número (nunca a rede). */
+const NINGUEM = '00000000-0000-0000-0000-000000000000'
 
 export type ReportsTab    = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 export type ReportsPeriod = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
@@ -80,6 +83,17 @@ export async function ReportsBiSection({
   // A regra é a de `podeVerRelatorio` (módulo E aba), a mesma testada em tests/auth.
   if (!podeVerRelatorio(ctxDoCargo, tab)) tab = abasPermitidas[0]!
 
+  // -- "Só os meus" (decisão do Heitor, 2026-10-28: "quem tem 'só os meus' vê
+  // 'só os meus', em qualquer lugar") ---------------------------------------
+  // O recorte do dashboard: com a agenda OU o financeiro em OWN, todo número é
+  // o DELA (`professionalId` em lib/metrics — os predicados de metrics_core);
+  // com o CRM em OWN, o comercial é o dos leads dela e dos sem dono. O que não
+  // se atribui a ela (a despesa, o lucro, a margem, o saldo do estoque, as
+  // parcelas a receber) nem é consultado: a tela o esconde (`soOsMeus`).
+  const soOsMeus = isOwnScope(ctxDoCargo, 'agenda') || isOwnScope(ctxDoCargo, 'financial')
+  const professionalId = soOsMeus ? (ctxDoCargo.internalUserId ?? NINGUEM) : null
+  const donoNoCrm = isOwnScope(ctxDoCargo, 'crm') ? (ownerFilter(ctxDoCargo, 'crm') ?? NINGUEM) : null
+
   // -- Período -------------------------------------------------------
   // Janela no fuso do negócio, com período anterior de mesma duração decorrida.
   const periodInfo  = resolvePeriod(period, rawFrom, rawTo, now)
@@ -102,8 +116,8 @@ export async function ReportsBiSection({
   // metade do mês de fora, sem aviso (A38). As outras abas seguem o dinheiro,
   // que só existe até agora.
   const fimDaJanela = tab === 'agenda' ? periodInfo.fullTo : endDate
-  const needBatches = tab === 'estoque'
-  const needInstall = tab === 'financeiro'
+  const needBatches = tab === 'estoque' && !soOsMeus
+  const needInstall = tab === 'financeiro' && !soOsMeus
   const needClientes = tab === 'clientes'
 
   const [
@@ -119,7 +133,7 @@ export async function ReportsBiSection({
     getRelatorio({
       tenantId: ctx.tenantId!, branchIds,
       from: startDate, to: fimDaJanela, prevFrom: prevStart, prevTo: prevEnd,
-      aba: tab, granularidade: granularity,
+      aba: tab, granularidade: granularity, professionalId,
     }),
 
     // Lotes vencendo em ≤ 30 dias.
@@ -153,32 +167,33 @@ export async function ReportsBiSection({
 
     // Retenção real (quem já era cliente antes do período e voltou)
     needClientes
-      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate })
+      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId })
       : Promise.resolve({ clientsServed: 0, returningClients: 0, firstTimeClients: 0 }),
 
     // Novos clientes por dia, dentro da janela e no fuso do negócio
     needClientes
       ? getNewClientsSeries({
           tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-          granularity: period === 'all' ? 'month' : 'day',
+          granularity: period === 'all' ? 'month' : 'day', professionalId,
         })
       : Promise.resolve([]),
 
     // O dinheiro e as contagens do período, agregados no Postgres — a mesma
     // conta do dashboard. Atendimentos, novos clientes, ticket, agenda e
     // comissões também saem daqui: recontar na tela era a segunda cópia.
-    getCore({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela }),
-    getCore({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }),
+    getCore({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela, professionalId }),
+    getCore({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, professionalId }),
     getSeries({
       tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-      granularity,
+      granularity, professionalId,
     }),
   ])
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
   // relatórios, e mostrava a comissão da equipe inteira a quem não vê o
   // financeiro (ou só vê as próprias). O dado nem sai do servidor.
-  const verComissoes = can(ctxDoCargo, 'financial', 'VIEW') && !isOwnScope(ctxDoCargo, 'financial')
+  // Com "só os meus", a comissão que chega já é a DELA (o recorte no banco).
+  const verComissoes = can(ctxDoCargo, 'financial', 'VIEW') && (!isOwnScope(ctxDoCargo, 'financial') || soOsMeus)
   if (!verComissoes) {
     relatorio.comissoesPorProfissional = []
     for (const nucleo of [core, corePrev]) { nucleo.commissionsOpen = 0; nucleo.commissionsPaid = 0 }
@@ -192,7 +207,7 @@ export async function ReportsBiSection({
   // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil
   // e a conversão são relatório, e estavam numa entrada de menu só deles.
   const comercial = tab === 'comercial'
-    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil })
+    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil, ownerId: donoNoCrm })
     : undefined
 
   // -- Aba Vendas ----------------------------------------------------
@@ -202,7 +217,7 @@ export async function ReportsBiSection({
   const vendas = tab === 'vendas'
     ? await (async (): Promise<DadosDeVendas> => {
         const tipo   = ehTipoDeVenda(rawTipo) ? rawTipo : null
-        const recorte = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo }
+        const recorte = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, professionalId }
         const resumo = await getResumoDeVendas(recorte)
         const totalDoFiltro = tipo ? resumo.porTipo[tipo].quantidade : resumo.geral.quantidade
         const paginas = Math.max(1, Math.ceil(totalDoFiltro / POR_PAGINA))
@@ -262,6 +277,7 @@ export async function ReportsBiSection({
         core={core}
         corePrev={corePrev}
         verComissoes={verComissoes}
+        soOsMeus={soOsMeus}
         comercial={comercial}
         vendas={vendas}
       />
@@ -287,7 +303,7 @@ export interface DadosDeVendas {
  * de unidade escolhido no topo da tela.
  */
 async function painelComercial({
-  tenantId, branchIds, from, to, rawFunil,
+  tenantId, branchIds, from, to, rawFunil, ownerId,
 }: {
   tenantId:  string
   branchIds: string[]
@@ -295,6 +311,8 @@ async function painelComercial({
   /** Fim natural do período, não "agora": avaliação marcada para amanhã conta. */
   to:        Date
   rawFunil?: string
+  /** CRM "só os meus": os leads dela e os sem dono (o recorte do quadro). */
+  ownerId?:  string | null
 }): Promise<DadosComerciais> {
   const admin    = createAdminClient()
 
@@ -311,14 +329,14 @@ async function painelComercial({
   // cada uma em 1000.
   const [etapasRaw, painel, usersRaw, motivosDePerda] = await Promise.all([
     getLeadFunnel({
-      tenantId, branchIds: null, from, to, funnelId: funilAtivo?.id ?? null,
+      tenantId, branchIds: null, from, to, funnelId: funilAtivo?.id ?? null, ownerId,
     }),
 
-    getPainelComercial({ tenantId, branchIds, from, to }),
+    getPainelComercial({ tenantId, branchIds, from, to, ownerId }),
 
     ler(admin.from('users').select('id, name').eq('tenant_id', tenantId), 'carregar a equipe'),
 
-    getMotivosDePerda({ tenantId, from, to }),
+    getMotivosDePerda({ tenantId, from, to, ownerId }),
   ])
 
   const nomeDe = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))

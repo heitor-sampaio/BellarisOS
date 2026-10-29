@@ -58,6 +58,10 @@ export async function GET(req: NextRequest) {
   const vendas = await getTodasAsVendas({
     tenantId: ctx.tenantId, branchIds, from: periodo.from, to: periodo.fullTo,
     tipo: ehTipoDeVenda(tipo) ? tipo : null,
+    // "Só os meus" (agenda ou financeiro OWN, 2026-10-28): as vendas DELA, o
+    // mesmo recorte da aba — a exportação não abre o que a tela fecha.
+    professionalId: isOwnScope(ctx, 'agenda') || isOwnScope(ctx, 'financial')
+      ? (ctx.internalUserId ?? '00000000-0000-0000-0000-000000000000') : null,
   })
 
   // `;` e BOM: é como o Excel brasileiro abre sem perguntar nada.

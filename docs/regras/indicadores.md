@@ -300,5 +300,22 @@ mostra o esconde) e `metrics_vendas` (+ `_pagina`, `_resumo`). **Venda dela**
 é a pessoa da coluna "Profissional" da venda: quem atendeu o avulso, quem
 vendeu o pacote e o pré-pago, a dona do plano.
 
+**Os Relatórios com "só os meus"** (`reports-bi-section`, os dois portais):
+com a agenda OU o financeiro em OWN, cada aba é a DELA — o `professionalId`
+vai a `getCore`, `getSeries`, `getRelatorio`, às vendas (e ao CSV de
+`/api/relatorios/vendas`), a `getRetention` e a `getNewClientsSeries`
+(`metrics_retention`/`metrics_new_clients_series`, migration
+`20261028000804`: as clientes que ELA atendeu; "voltou" = já tinha vindo a
+ELA antes — decisão nova). Com o CRM em OWN, a aba Comercial é a dos leads
+dela e dos sem dono: o funil (`ownerId`), o painel (`metrics_comercial`:
+também os agendamentos que ela marcou) e os motivos de perda
+(`metrics_motivos_de_perda`), todos com `p_owner`. Some da tela (`soOsMeus`)
+o que não se atribui a ela: despesa, lucro, margem e DRE (visão geral e
+financeiro; a evolução só com a receita), as parcelas a receber, a margem por
+faixa etária (custo do catálogo) e o saldo do estoque (valor, giro, críticos,
+zerados, por categoria, por unidade, validades) — fica o consumo dos
+atendimentos dela. A comissão que chega já é a dela e aparece. Prova:
+`e2e/relatorios-so-os-meus.spec.ts`.
+
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).
