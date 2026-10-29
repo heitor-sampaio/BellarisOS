@@ -32,7 +32,7 @@ import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/fotos-do-atendimento'
-import { lerRascunho, gravarRascunho, limparRascunho } from '@/lib/atendimento/rascunho'
+import { lerRascunho, gravarRascunho, limparRascunho, type RespostaDaFicha } from '@/lib/atendimento/rascunho'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
@@ -976,6 +976,15 @@ export function AppointmentSession({
   // As respostas da ficha do PROCEDIMENTO na tela (nulas enquanto ninguém
   // mexe): o "Finalizar" as leva na conclusão (D1 da simulação de 2026-10-29).
   const [fichaDigitada, setFichaDigitada] = useState<Record<string, unknown> | null>(null)
+  // A ficha também vai ao rascunho (revisão do Heitor, 2026-10-29): a do
+  // rascunho remonta o formulário com ela, como a anamnese.
+  const [fichaDoRascunho, setFichaDoRascunho] = useState<Record<string, unknown> | null>(null)
+  // Salvar a ficha no servidor tira a ficha do rascunho: o "Finalizar" leva a salva.
+  const salvarFicha: typeof salvarFichaDoProcedimento = async args => {
+    const r = await salvarFichaDoProcedimento(args)
+    if (!r.error) setFichaDigitada(null)
+    return r
+  }
   const [evalPlanNotes,          setEvalPlanNotes]          = useState(existingPlan?.notes ?? '')
   const [evalSessionNotes,       setEvalSessionNotes]       = useState(appointment.savedNotes ?? '')
   const [evalSessionInterc,      setEvalSessionInterc]      = useState(appointment.savedIntercurrences ?? '')
@@ -1099,6 +1108,7 @@ export function AppointmentSession({
     if (r?.evalInterc !== undefined)     setEvalSessionInterc(r.evalInterc)
     if (r?.queixas !== undefined)        setEvalComplaints(r.queixas)
     if (r?.anamnese) { setAnamneseDoRascunho(r.anamnese); setAnamneseDigitada(r.anamnese) }
+    if (r?.ficha)    { setFichaDoRascunho(r.ficha); setFichaDigitada(r.ficha) }
     if (r?.insumos) {
       setInsumos(r.insumos.map(i => ({ productId: i.productId, name: i.name, unit: i.unit, quantity: i.quantity })))
       setCheckedIds(new Set(r.insumos.filter(i => i.marcado).map(i => i.productId)))
@@ -1116,9 +1126,11 @@ export function AppointmentSession({
       ...(evalComplaints !== (appointment.complaints ?? '') ? { queixas: evalComplaints } : {}),
       ...(anamneseDigitada ? { anamnese: anamneseDigitada as Record<string, string | string[]> } : {}),
       ...(insumosAlterados ? { insumos: insumos.map(i => ({ ...i, marcado: checkedIds.has(i.productId) })) } : {}),
+      // E a ficha do procedimento (2026-10-29), com o planejamento escolhido no planejador.
+      ...(fichaDigitada ? { ficha: fichaDigitada as Record<string, RespostaDaFicha> } : {}),
     })
   }, [appointment.id, appointment.complaints, podeRascunhar, notes, intercurrences, evalSessionNotes, evalSessionInterc,
-      evalComplaints, anamneseDigitada, insumosAlterados, insumos, checkedIds])
+      evalComplaints, anamneseDigitada, insumosAlterados, insumos, checkedIds, fichaDigitada])
   useEffect(() => { if (isDone) limparRascunho(appointment.id) }, [isDone, appointment.id])
 
   const [savingAll,   setSavingAll]   = useState(false)
@@ -1321,8 +1333,9 @@ export function AppointmentSession({
             ref={fichaRef}
             appointmentId={appointment.id} slug={slug}
             formName={ficha.name} rows={ficha.rows}
-            initial={respostasDaFicha as AnamnesisAnswers} canEdit={canEditRecords}
-            saveAction={salvarFichaDoProcedimento}
+            key={fichaDoRascunho ? 'rascunho' : 'gravada'}
+            initial={(fichaDoRascunho ?? respostasDaFicha) as AnamnesisAnswers} canEdit={canEditRecords}
+            saveAction={salvarFicha}
             hideSaveButton={unified}
             semInjetaveis={!podeInjetaveis}
             onAnswersChange={setFichaDigitada}
@@ -1350,8 +1363,9 @@ export function AppointmentSession({
           ref={fichaRef}
           appointmentId={appointment.id} slug={slug}
           formName={ficha.name} rows={ficha.rows}
-          initial={respostasDaFicha as AnamnesisAnswers} canEdit={canEditRecords && !editLocked}
-          saveAction={salvarFichaDoProcedimento}
+          key={fichaDoRascunho ? 'rascunho' : 'gravada'}
+          initial={(fichaDoRascunho ?? respostasDaFicha) as AnamnesisAnswers} canEdit={canEditRecords && !editLocked}
+          saveAction={salvarFicha}
           semInjetaveis={!podeInjetaveis}
           onAnswersChange={setFichaDigitada}
           injetaveis={{ clientId: client.id, branchId }}

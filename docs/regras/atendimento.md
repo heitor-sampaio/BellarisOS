@@ -638,8 +638,8 @@ O resto do fluxo:
   dela) — o navegador não escolhe a ficha. `concluir_atendimento` grava em
   `form_data.ficha` (o formato do `salvarFichaDoProcedimento`), mantendo o
   resto de `form_data`; sem `ficha`, a salva antes fica. Antes, só o
-  "Salvar" a gravava, e finalizar sem salvar a perdia. A ficha não está no
-  rascunho (A31): o "Salvar ficha" é o caminho para guardar antes.
+  "Salvar" a gravava, e finalizar sem salvar a perdia. Desde 2026-10-29 a
+  ficha também está no rascunho (A31, abaixo).
   O planejador de injetáveis da ficha entra com o RETRATO do planejamento
   da cliente lido no servidor (`retratarInjetaveis`, §9.4) — também quando a
   ficha salva não foi tocada na tela.
@@ -702,13 +702,18 @@ O resto do fluxo:
   simulação de 2026-10-27, decisão do Heitor): a evolução e a intercorrência
   da tela do atendimento (dos dois formulários) — e, desde o D3 de 2026-10-28,
   as dores, a anamnese digitada e os insumos (a dose e o marcado, depois que
-  alguém mexe) — vão para o SESSIONStorage,
+  alguém mexe) e, desde a revisão do Heitor de 2026-10-29, a ficha do
+  PROCEDIMENTO (as respostas da tela; o planejador de injetáveis volta com o
+  planejamento escolhido aberto — os pontos, o servidor retrata ao gravar) —
+  vão para o SESSIONStorage,
   por agendamento (`lib/atendimento/rascunho.ts`) — recarregar não as perde,
   e fechar a aba as apaga: texto clínico não fica na máquina da recepção.
   Nunca localStorage. Encerrar o atendimento, salvar no servidor ou gerar o
   plano da avaliação apaga o rascunho; todo acesso ao armazenamento é
-  protegido (ele pode faltar ou lançar). Prova:
-  `e2e/atendimento-rascunho.spec.ts`, `tests/rascunho-do-atendimento.test.ts`.
+  protegido (ele pode faltar ou lançar). Salvar a ficha no servidor ("Salvar
+  ficha") a tira do rascunho: o "Finalizar" leva a salva. Prova:
+  `e2e/atendimento-rascunho.spec.ts`, `e2e/atendimento-rascunho-da-ficha.spec.ts`,
+  `tests/rascunho-do-atendimento.test.ts`.
 - **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
   (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
   aparecer no estoque, e a tela mostra o que faltou.

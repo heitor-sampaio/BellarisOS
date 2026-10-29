@@ -90,6 +90,35 @@ describe('rascunho do atendimento', () => {
     expect(s.getItem(chaveDoRascunho('ag-1'))).toBeNull()
   })
 
+  // Revisão do Heitor, 2026-10-29: a ficha do procedimento entra no rascunho —
+  // recarregar a página a trazia em branco. O planejador de injetáveis guarda
+  // QUAL planejamento está aberto (os pontos o servidor retrata ao gravar).
+  it('guarda a ficha do procedimento: texto, lista e o planejamento escolhido', () => {
+    const s = armazem()
+    const ficha = {
+      fototipo: 'III', acido: 'Mandélico 30%', areas: ['Testa', 'Malar'],
+      mapa: { view: 'rosto_f', points: [], planejamento: { id: 'mapa-1', nome: '' } },
+    }
+    gravarRascunho('ag-1', { ficha }, s)
+    expect(lerRascunho('ag-1', s)).toEqual({ ficha })
+  })
+
+  it('da ficha fica só o que é resposta (texto, lista de texto, o planejador)', () => {
+    const s = armazem()
+    s.setItem(chaveDoRascunho('ag-1'), JSON.stringify({
+      ficha: { acido: 'ok', numero: 3, ruim: { x: 1 }, lista: ['a', 2], mapa: { view: 'rosto_f', points: [{ id: 'p' }], planejamento: { id: 'm', nome: 'M' }, extra: 'x' } },
+    }))
+    expect(lerRascunho('ag-1', s)).toEqual({
+      ficha: { acido: 'ok', mapa: { view: 'rosto_f', points: [{ id: 'p' }], planejamento: { id: 'm', nome: 'M' } } },
+    })
+  })
+
+  it('ficha em branco não conta como rascunho', () => {
+    const s = armazem()
+    gravarRascunho('ag-1', { ficha: { acido: ' ', areas: [] } }, s)
+    expect(s.getItem(chaveDoRascunho('ag-1'))).toBeNull()
+  })
+
   it('armazenamento que lança ou falta não derruba a tela', () => {
     expect(() => gravarRascunho('ag-1', { notes: 'x' }, quebrado)).not.toThrow()
     expect(lerRascunho('ag-1', quebrado)).toBeNull()

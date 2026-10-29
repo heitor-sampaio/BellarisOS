@@ -11,7 +11,13 @@
  * Desde o D3 da simulação de 2026-10-28 guarda também as dores, a anamnese
  * digitada e os insumos (a dose ajustada e o marcado): recarregar apagava os
  * três.
+ *
+ * E desde a revisão do Heitor de 2026-10-29, a ficha do PROCEDIMENTO (as
+ * respostas da tela, depois que alguém mexe) — com o planejador de injetáveis
+ * no planejamento escolhido. Recarregar a trazia em branco.
  */
+
+import { campoVazio, isInjectableMap } from '@/lib/anamnesis'
 
 export interface InsumoDoRascunho {
   productId: string
@@ -34,6 +40,16 @@ export interface RascunhoDoAtendimento {
   anamnese?:       Record<string, string | string[]>
   /** Os insumos da tela (só quando alguém mexeu): a lista inteira, com a dose e o marcado. */
   insumos?:        InsumoDoRascunho[]
+  /**
+   * As respostas da ficha do procedimento na tela (só quando alguém mexeu):
+   * texto, lista de texto ou o valor do planejador (vista, pontos e o
+   * planejamento escolhido — os pontos que valem o servidor retrata).
+   */
+  ficha?:          Record<string, RespostaDaFicha>
+}
+
+export type RespostaDaFicha = string | string[] | {
+  view: string; points: unknown[]; planejamento?: { id: string; nome: string } | null
 }
 
 const TEXTOS = ['notes', 'intercurrences', 'evalNotes', 'evalInterc', 'queixas'] as const
@@ -53,6 +69,25 @@ function anamneseLimpa(v: unknown): Record<string, string | string[]> | null {
   for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
     if (typeof x === 'string') saida[k] = x
     else if (Array.isArray(x) && x.every(i => typeof i === 'string')) saida[k] = x as string[]
+  }
+  return Object.keys(saida).length ? saida : null
+}
+
+/** Só o que é resposta da ficha: texto, lista de texto e o planejador (sem chave de fora). */
+function fichaLimpa(v: unknown): Record<string, RespostaDaFicha> | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const saida: Record<string, RespostaDaFicha> = {}
+  for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof x === 'string') saida[k] = x
+    else if (Array.isArray(x)) { if (x.every(i => typeof i === 'string')) saida[k] = x as string[] }
+    else if (isInjectableMap(x)) {
+      const plan = (x as { planejamento?: unknown }).planejamento as { id?: unknown; nome?: unknown } | null | undefined
+      saida[k] = {
+        view: typeof x.view === 'string' ? x.view : 'rosto_f',
+        points: x.points,
+        ...(plan && typeof plan.id === 'string' ? { planejamento: { id: plan.id, nome: typeof plan.nome === 'string' ? plan.nome : '' } } : {}),
+      }
+    }
   }
   return Object.keys(saida).length ? saida : null
 }
@@ -80,6 +115,8 @@ export function lerRascunho(appointmentId: string, armazem: Storage | null = daS
     if (anamnese) r.anamnese = anamnese
     const insumos = insumosLimpos(lido.insumos)
     if (insumos) r.insumos = insumos
+    const ficha = fichaLimpa(lido.ficha)
+    if (ficha) r.ficha = ficha
     return Object.keys(r).length ? r : null
   } catch {
     return null
@@ -96,7 +133,9 @@ export function gravarRascunho(appointmentId: string, r: RascunhoDoAtendimento, 
     if (anamnese && Object.values(anamnese).some(temTexto)) limpo.anamnese = anamnese
     const insumos = insumosLimpos(r.insumos)
     if (insumos) limpo.insumos = insumos
-    const comAlgo = TEXTOS.some(c => (limpo[c] ?? '').trim() !== '') || !!limpo.anamnese || !!limpo.insumos
+    const ficha = fichaLimpa(r.ficha)
+    if (ficha && Object.values(ficha).some(v => !campoVazio(v))) limpo.ficha = ficha
+    const comAlgo = TEXTOS.some(c => (limpo[c] ?? '').trim() !== '') || !!limpo.anamnese || !!limpo.insumos || !!limpo.ficha
     if (!comAlgo) { armazem.removeItem(chave); return }
     armazem.setItem(chave, JSON.stringify(limpo))
   } catch {
