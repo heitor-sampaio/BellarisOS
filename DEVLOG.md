@@ -1679,6 +1679,8 @@ As decisões das frentes estão em §5, "Da simulação de 2026-10-28/29 (4ª)",
 
 Mexeu em arquivos compartilhados: `buildContext`, `parseDinheiro` (utils), as 20 páginas `[id]`, `actions/auth.ts`, `actions/team.ts` e o formulário de cliente. **Vale uma completa**, que o Heitor decide.
 
+**A completa (run 40948234042, em `a1b0d124`) passou toda verde:** 1069 testes (517 isolados e 552 compartilhados) e 1 pulado.
+
 ### 2026-10-27 — Quem abriu o prontuário fica registrado
 
 Pedido do Heitor, da conversa sobre vazamento de dados: dado de saúde é
