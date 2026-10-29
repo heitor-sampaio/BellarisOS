@@ -234,9 +234,9 @@ export function MiniAreaChart({
 }
 
 // -- DreWaterfall --------------------------------------------------------------
-// Sem linha de custo de insumos: a compra do insumo já está nas despesas
-// ("Estoque"), e a linha ficava fixa em R$ 0,00 — confundia ao lado do KPI de
-// consumo (atrito da simulação de 2026-10-27).
+// Sem linha de custo de insumos: o consumo é informativo e não entra no
+// resultado (movimentação de estoque nunca gera despesa — D13 revisto,
+// 2026-10-28). A linha ficava fixa em R$ 0,00 ao lado do KPI de consumo.
 export function DreWaterfall({
   receita, despesas, lucro,
 }: {

@@ -16,7 +16,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * Regra (decisões do Heitor): custo por unidade de consumo = custo da
  * embalagem ÷ o que ela rende; todo movimento e todo saldo do movimento na
  * unidade de consumo; o valor em estoque é o saldo em consumo × esse custo; o
- * gráfico de evolução não soma o consumo à despesa (a compra já é despesa).
+ * gráfico de evolução não soma o consumo à despesa (o consumo é informativo, e
+ * movimentação de estoque nunca gera despesa — D13 revisto, 2026-10-28).
  *
  * Numa rede [e2e] própria: a configuração de comissão é da rede.
  */
@@ -239,12 +240,14 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       await expect.poll(async () => brl(await cartao.innerText()), { timeout: 10_000 }).toBe(0)
       const grafico = p.locator('div.card').filter({ hasText: 'Evolução do Período' }).first()
       const custo = grafico.getByText('Custo', { exact: true }).locator('xpath=following-sibling::p[1]')
-      expect(brl(await custo.innerText()), 'o custo do gráfico é a despesa — o consumo já está na compra').toBe(0)
+      expect(brl(await custo.innerText()), 'o custo do gráfico é a despesa paga — o consumo não entra').toBe(0)
 
       await p.goto('/admin/reports?period=month&tab=financeiro')
       await expect(p.getByText('Consumo de insumos', { exact: true })).toBeVisible()
       await expect(p.getByText(/Custo de Insumos/)).toHaveCount(0)
-      await expect(p.getByText(/a compra já está nas despesas/i)).toBeVisible()
+      // O consumo é informativo: o estoque não gera despesa (D13 revisto).
+      await expect(p.getByText('Informativo: não entra no lucro', { exact: true })).toBeVisible()
+      await expect(p.getByText(/a compra já está nas despesas/i)).toHaveCount(0)
     } finally { await ctx.close() }
   })
 
