@@ -386,6 +386,10 @@ o procedimento avulso pago antes.
     atendimento diz "Pagamento estornado — … O atendimento voltou a receber").
     O portal da cliente mostra o estornado como "Estornado" (não "Pago"), e a
     ficha mostra o original "Estornado" e o estorno com o sinal de saída.
+    O pagamento de novo NÃO manda outro "Purchase" à Meta (decisão do
+    Heitor, 2026-10-28; `on_transaction_paid`, migration `20261028000701`):
+    a Meta não sabe do estorno e contaria duas compras. O evento interno
+    `pagamento.recebido` continua.
     Prova: `e2e/financeiro-estorno-reabre.spec.ts`.
 
 ---

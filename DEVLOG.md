@@ -6863,10 +6863,12 @@ verdade. O que vale:
     meus"; os rankings que só contam (procedimentos, mais pedidos,
     recorrência, faixa de idade) seguem da rede inteira, como no da unidade. E
     o gráfico de 6 meses do dashboard da unidade some para quem é OWN.
-  - O estorno reabre a cobrança (D6): o atendimento volta a "a receber" e o
+  - ~~O estorno reabre a cobrança (D6): o atendimento volta a "a receber" e o
     novo recebimento é um lançamento NOVO (o estornado fica intacto), com
     pontos e comissão uma vez só. Efeito: vai outro "Purchase" à API de
-    Conversões da Meta.
+    Conversões da Meta.~~ **Revisto pelo Heitor (2026-10-28):** o resto
+    confirmado; o pagamento de novo, depois do estorno, NÃO manda outro
+    "Purchase" (migration `20261028000701`).
   - "Abater do pacote" (D9): no Receber do avulso concluído, quando há pacote
     do mesmo procedimento; vale pacote de qualquer unidade da rede; a conta a
     receber que já existisse vira R$ 0 com nota (nada é apagado); a comissão

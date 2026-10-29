@@ -188,3 +188,45 @@ test.describe('o estorno reabre a cobrança', () => {
     expect(((vendas ?? []) as { id: string }[]).filter(v => v.id === ap)).toHaveLength(1)
   })
 })
+
+/**
+ * O segundo pagamento depois do estorno NÃO manda outro "Purchase" à Meta
+ * (decisão do Heitor, 2026-10-28). A Meta não sabe do estorno: com o novo
+ * recebimento ela contaria duas compras para uma venda. O evento interno
+ * `pagamento.recebido` continua (é o fato da clínica).
+ */
+test('pagar de novo depois do estorno não manda outro "Purchase" à Meta', async () => {
+  // A cliente veio de um anúncio de clique para o WhatsApp.
+  expect((await db().from('clients').update({ ctwa_clid: `e2e-clid-${marca}` }).eq('id', cliente!.clientId)).error).toBeNull()
+  const { data: a, error: eA } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente!.clientId, professional_id: rede!.professionalId, procedure_id: proc,
+    scheduled_at: new Date().toISOString(), duration_min: 30, price: PRECO, status: 'IN_PROGRESS', source: 'INTERNAL',
+  }).select('id').single<{ id: string }>()
+  expect(eA).toBeNull()
+  const outro = a!.id
+  expect((await db().rpc('concluir_atendimento', {
+    p_agendamento: outro, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { insumos: [], comissoes: [] },
+  })).error, 'concluir').toBeNull()
+  const pagar = () => db().rpc('confirmar_pagamento_do_atendimento', {
+    p_agendamento: outro, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { metodo: 'PIX', pontos: 0, desconto: 0, valor_final: PRECO },
+  })
+  const purchases = async () => {
+    const { data: lancs } = await db().from('financial_transactions').select('id').eq('appointment_id', outro).eq('type', 'INCOME')
+    const ids = (lancs ?? []).map(l => `purchase:${l.id}`)
+    const { data, error } = await db().from('meta_capi_events').select('event_id').eq('tenant_id', rede!.tenantId).in('event_id', ids)
+    expect(error).toBeNull()
+    return (data ?? []).length
+  }
+
+  const primeiro = await pagar()
+  expect(primeiro.error, 'o primeiro pagamento').toBeNull()
+  expect(await purchases(), 'o primeiro pagamento manda o "Purchase"').toBe(1)
+  expect((await db().rpc('estornar_transacao', { p_transacao: primeiro.data as string, p_tenant: rede!.tenantId, p_ator: 'e2e', p_motivo: 'Pix devolvido' })).error, 'estornar').toBeNull()
+  const segundo = await pagar()
+  expect(segundo.error, 'o segundo pagamento').toBeNull()
+  expect(await purchases(), 'o segundo, depois do estorno, não manda outro').toBe(1)
+  const { data: evento } = await db().from('domain_events').select('id').eq('chave', `pagamento.recebido:${segundo.data as string}`)
+  expect(evento ?? [], 'o pagamento.recebido continua').toHaveLength(1)
+})
