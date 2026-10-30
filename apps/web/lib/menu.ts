@@ -61,11 +61,13 @@ const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== '
  * (clientes ou CRM em Gerenciar) não vê "Configurações" seca, que promete o
  * que o cargo não tem (A11, simulação de 2026-10-27). `comFinanceiro`: na
  * rede, o financeiro em Gerenciar também abre a tela (aba de comissões).
+ * "Configurações (Tags e Importações)" saía cortado na barra lateral (J-16):
+ * o rótulo é só o que a pessoa alcança.
  */
 const rotuloDeConfiguracoes = (comFinanceiro: boolean) => (p: ResolvedPermissions) =>
   has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || (comFinanceiro && p.financial === 'MANAGE')
     ? 'Configurações'
-    : 'Configurações (Tags e Importações)'
+    : 'Tags e importações'
 
 /** Pode receber dinheiro do cliente — caixa ou financeiro. Igual a lib/auth. */
 /** Recebe pagamento (caixa ou financeiro em Gerenciar) — o `podeReceber` de lib/auth, pelas permissões. */
