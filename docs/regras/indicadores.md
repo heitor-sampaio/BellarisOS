@@ -366,6 +366,13 @@ mostrava 80% concluídos e 20% cancelados, sem os 2 por vir. As fatias são
 Agenda; cada uma diz quantos e o percentual. Prova:
 `e2e/relatorios-status-com-os-abertos.spec.ts`.
 
+**O "Mais realizado"** (Relatórios → Procedimentos, J-58, 2026-10-30) é
+`maisRealizado` (`lib/metrics/resultado.ts`): o de mais execuções; no empate,
+o de maior RECEITA ("empatou em execuções; desempate pela receita"); e,
+empatando também nela, todos os empatados ("A e B · Empate: 3 execuções
+cada"). Era a ordem alfabética, calada. Prova:
+`e2e/relatorios-mais-realizado-empate.spec.ts`, `tests/metrics-status-e-mais-realizado.test.ts`.
+
 **O dashboard da rede recorta a unidade do `?unidade=<id|slug>`** (J-54,
 2026-10-30; o drill-down do CLAUDE.md §6, que ele ignorava): o título é a
 unidade, os números são os dela (o núcleo, as séries, os rankings, o hoje, o

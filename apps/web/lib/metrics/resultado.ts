@@ -204,3 +204,23 @@ export function statusDosAgendamentos(n: { total: number; concluidos: number; ca
     { status: 'ABERTO',    n: Math.max(0, n.total - n.concluidos - n.cancelados - n.faltas) },
   ]
 }
+
+/**
+ * O "Mais realizado" dos Relatórios → Procedimentos (J-58, 2026-10-30): o de
+ * mais execuções; no empate, o de MAIOR RECEITA (desempatePelaReceita); e,
+ * empatando também nela, todos os empatados — a tela diz que houve empate.
+ * Escolhia pela ordem em que o banco devolvia (alfabética), calado.
+ */
+export function maisRealizado(lista: { nome: string; execucoes: number; receita: number }[]): { nomes: string[]; execucoes: number; desempatePelaReceita: boolean } | null {
+  const centavos = (v: number) => Math.round(v * 100)
+  const ordem = [...lista].sort((a, b) => b.execucoes - a.execucoes || centavos(b.receita) - centavos(a.receita))
+  const primeiro = ordem[0]
+  if (!primeiro || primeiro.execucoes <= 0) return null
+  const mesmasExecucoes = ordem.filter(x => x.execucoes === primeiro.execucoes)
+  const empatados = mesmasExecucoes.filter(x => centavos(x.receita) === centavos(primeiro.receita))
+  return {
+    nomes: empatados.map(x => x.nome).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    execucoes: primeiro.execucoes,
+    desempatePelaReceita: mesmasExecucoes.length > 1 && empatados.length === 1,
+  }
+}

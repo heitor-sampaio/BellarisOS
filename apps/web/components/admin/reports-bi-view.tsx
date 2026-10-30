@@ -26,7 +26,7 @@ import {
   type TableColumn,
 } from './reports-charts'
 import {
-  resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque, statusDosAgendamentos,
+  resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque, statusDosAgendamentos, maisRealizado,
   type EstoqueNoResultado,
 } from '@/lib/metrics/resultado'
 
@@ -891,7 +891,9 @@ function TabProcedimentos(p: ReportsBiProps) {
   const topVolume   = [...r.porProcedimento]
     .sort((a, b) => b.execucoes - a.execucoes).slice(0, 10)
     .map(d => ({ name: d.nome, value: d.execucoes }))
-  const maisRealizado = topVolume[0]?.name ?? '—'
+  // No empate em execuções, a receita desempata; empatando também nela, a
+  // tela diz que houve empate (J-58 — era a ordem alfabética, calada).
+  const oMaisRealizado = maisRealizado(r.porProcedimento)
 
   // Receita por categoria, somada no banco (nenhuma tela soma dinheiro).
   const byCategory = r.receitaPorCategoriaDeProcedimento.map(c => ({ name: c.categoria, value: c.receita }))
@@ -931,9 +933,18 @@ function TabProcedimentos(p: ReportsBiProps) {
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
             Mais Realizado
           </p>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', margin: 0, lineHeight: 1.3 }}>
-            {maisRealizado}
+          <p data-mais-realizado style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', margin: 0, lineHeight: 1.3 }}>
+            {oMaisRealizado ? oMaisRealizado.nomes.join(' e ') : '—'}
           </p>
+          {oMaisRealizado && (
+            <p data-mais-realizado-detalhe style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: '4px 0 0' }}>
+              {oMaisRealizado.nomes.length > 1
+                ? `Empate: ${oMaisRealizado.execucoes} ${oMaisRealizado.execucoes === 1 ? 'execução' : 'execuções'} cada, e a mesma receita`
+                : oMaisRealizado.desempatePelaReceita
+                  ? `${oMaisRealizado.execucoes} execuções — empatou em execuções; desempate pela receita`
+                  : `${oMaisRealizado.execucoes} ${oMaisRealizado.execucoes === 1 ? 'execução' : 'execuções'}`}
+            </p>
+          )}
         </div>
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
