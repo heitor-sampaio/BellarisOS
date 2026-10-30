@@ -26,6 +26,11 @@ import { Check, Search } from 'lucide-react'
  *   baixo, senão para cima. Dentro da coluna da lista de clientes ele era
  *   cortado e a coluna do meio era desenhada por cima; antes disso, o foco na
  *   busca ROLAVA a coluna e empurrava a lista para a esquerda.
+ *
+ * E fecha como todo painel (J-21, 2026-10-30): o Esc fecha só ele (dentro de
+ * um modal, sem fechar o modal), e o clique FORA fecha e segue para onde foi —
+ * o fundo invisível que fechava o painel engolia o clique, e o "Próximo" da
+ * campanha só avançava no segundo.
  */
 
 /** Onde o painel cabe: abaixo (ou acima) do gatilho, inteiro na tela. */
@@ -77,6 +82,8 @@ export function PickerCompacto({
   const [busca,  setBusca]  = useState('')
   const campoRef = useRef<HTMLInputElement>(null)
   const ancoraRef = useRef<HTMLDivElement>(null)
+  const painelRef = useRef<HTMLDivElement>(null)
+  const gatilhoRef = useRef<HTMLButtonElement>(null)
   const [pos, setPos] = useState<Posicao | null>(null)
   const [destino, setDestino] = useState<Element | null>(null)
 
@@ -126,6 +133,31 @@ export function PickerCompacto({
     }
   }, [aberto, larguraPainel])
 
+  // Aberto: o Esc fecha (e devolve o foco ao gatilho), e o clique fora fecha
+  // sem ser engolido. Na captura, antes de quem está embaixo: o Esc não chega
+  // ao <dialog> (que fecharia o modal inteiro).
+  useEffect(() => {
+    if (!aberto) return
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      setAberto(false)
+      gatilhoRef.current?.focus({ preventScroll: true })
+    }
+    const aoTocar = (e: PointerEvent) => {
+      const alvo = e.target as Node | null
+      if (alvo && (ancoraRef.current?.contains(alvo) || painelRef.current?.contains(alvo))) return
+      setAberto(false)
+    }
+    document.addEventListener('keydown', aoTeclar, true)
+    document.addEventListener('pointerdown', aoTocar, true)
+    return () => {
+      document.removeEventListener('keydown', aoTeclar, true)
+      document.removeEventListener('pointerdown', aoTocar, true)
+    }
+  }, [aberto])
+
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase()
     const base = q
@@ -148,7 +180,9 @@ export function PickerCompacto({
   return (
     <div ref={ancoraRef} style={{ position: 'relative' }}>
       <button
+        ref={gatilhoRef}
         type="button"
+        aria-expanded={aberto}
         onClick={abrirOuFechar}
         className={classeBotao === 'btn-ghost' ? 'btn-ghost picker-gatilho' : classeBotao}
         style={estiloBotao}
@@ -159,9 +193,7 @@ export function PickerCompacto({
 
       {aberto && pos && destino && createPortal(
         <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-popover)' }} onClick={() => setAberto(false)} />
-
-          <div data-painel-picker style={{
+          <div ref={painelRef} data-painel-picker style={{
             position: 'fixed', zIndex: 'calc(var(--z-popover) + 1)',
             left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.largura,
             background: 'var(--surface)', boxShadow: 'var(--shadow-popover)',
