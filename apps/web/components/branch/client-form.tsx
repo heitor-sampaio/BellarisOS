@@ -354,7 +354,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             </button>
           </span>
           <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
-            Sim liga a oportunidade e a conversa à ficha nova (o card passa a "Já é cliente"). Não cadastra sem ligar.
+            Sim liga a oportunidade e a conversa à ficha nova (o card passa a &ldquo;Já é cliente&rdquo;). Não cadastra sem ligar.
           </span>
         </div>
       )}
