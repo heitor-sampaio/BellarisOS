@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { Gift, Loader2, Pencil, Plus } from 'lucide-react'
 import { catalogoDeRecompensas, salvarRecompensa } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { formatarPontos } from '@/lib/fidelidade/formato'
+import { explicacaoDoCatalogo, formatarPontos } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, TIPOS_DE_RECOMPENSA, descricaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa } from '@/lib/fidelidade/leitura'
 
@@ -14,11 +14,16 @@ type Catalogo = Awaited<ReturnType<typeof catalogoDeRecompensas>>
  * Configurações → Fidelidade → Catálogo de recompensas.
  *
  * A rede cadastra o que o cliente pode ganhar trocando pontos. Trocar é na
- * ficha do cliente (a equipe troca; o cliente só vê pelo portal). Editar uma
+ * ficha do cliente (a equipe troca) e, com a troca pelo app ligada, pelo
+ * portal (a própria cliente). Editar uma
  * recompensa não muda os vouchers já emitidos — eles guardam o retrato de
  * quando foram trocados.
  */
-export function FidelidadeCatalogo({ inicial, podeEditar }: { inicial: Catalogo; podeEditar: boolean }) {
+export function FidelidadeCatalogo({ inicial, podeEditar, trocaPeloPortal = false }: {
+  inicial: Catalogo; podeEditar: boolean
+  /** A cliente troca pelo app (`client_redeem`): o texto diz isso (J-12). */
+  trocaPeloPortal?: boolean
+}) {
   const [catalogo, setCatalogo] = useState(inicial)
   const [editando, setEditando] = useState<Recompensa | 'nova' | null>(null)
 
@@ -35,7 +40,7 @@ export function FidelidadeCatalogo({ inicial, podeEditar }: { inicial: Catalogo;
             Catálogo de recompensas
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3, maxWidth: 520 }}>
-            O que o cliente pode ganhar trocando pontos. A troca vira um voucher com validade, feita pela equipe na ficha do cliente.
+            {explicacaoDoCatalogo(trocaPeloPortal)}
           </p>
         </div>
         {podeEditar && editando === null && (

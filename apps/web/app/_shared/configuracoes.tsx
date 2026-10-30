@@ -485,7 +485,8 @@ export async function Configuracoes({
           <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
             temLancamentos={temLancamentos} />
           {catalogo && (
-            <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null} />
+            <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
+              trocaPeloPortal={configFidelidade.client_redeem} />
           )}
         </div>
       )}

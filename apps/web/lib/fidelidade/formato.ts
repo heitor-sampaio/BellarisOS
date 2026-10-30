@@ -48,3 +48,15 @@ export function faltamPontos(saldo: number, custo: number): string | null {
   if (!(falta > 0)) return null
   return `${falta === 1 ? 'Falta' : 'Faltam'} ${formatarPontos(falta)}`
 }
+
+/**
+ * A explicação do catálogo de recompensas (Configurações → Fidelidade), pela
+ * troca pelo app da rede (`client_redeem`). Dizia "feita pela equipe" mesmo
+ * com a troca pelo app ligada (J-12).
+ */
+export function explicacaoDoCatalogo(trocaPeloPortal: boolean): string {
+  const base = 'O que o cliente pode ganhar trocando pontos. A troca vira um voucher com validade'
+  return trocaPeloPortal
+    ? base + ': a própria cliente troca pelo app, e a equipe também troca na ficha do cliente.'
+    : base + ', feita pela equipe na ficha do cliente.'
+}
