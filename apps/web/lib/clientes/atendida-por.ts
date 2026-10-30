@@ -32,3 +32,16 @@ export async function clienteNoEscopo(admin: Admin, ctx: TenantContext, modulo: 
   if (!ctx.internalUserId) return false
   return clienteAtendidaPor(admin, ctx.internalUserId, clientId)
 }
+
+/** O id que nunca casa com ninguém: o OWN sem membro interno não vê nada. */
+const NINGUEM = '00000000-0000-0000-0000-000000000000'
+
+/**
+ * O recorte para uma função do banco que filtra por "cliente atendida por":
+ * nulo sem o OWN (sem recorte); com o OWN, o membro — ou um id que não casa
+ * com ninguém, se faltar o membro (nunca "tudo").
+ */
+export function profissionalDoRecorte(ctx: TenantContext, modulo: AppModule): string | null {
+  if (!isOwnScope(ctx, modulo)) return null
+  return ctx.internalUserId ?? NINGUEM
+}

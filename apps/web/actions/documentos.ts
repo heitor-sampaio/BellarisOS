@@ -38,10 +38,16 @@ import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vend
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { TenantContext } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 
 type Resultado = { error?: string; codigo?: string | null }
 
-/** O documento, se for da rede da sessão e da unidade que ela alcança. */
+/**
+ * O documento, se for da rede da sessão, da unidade que ela alcança e — com o
+ * prontuário "só os meus" — de cliente que ela atende (decisão do Heitor,
+ * 2026-10-29: os documentos emitidos seguem o prontuário). É o portão de toda
+ * action pelo id: abrir, colher, gerar link, reenviar, dispensar, a trilha.
+ */
 async function documentoAoAlcance(ctx: TenantContext, id: string): Promise<DocumentoAssinavel | null> {
   if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return null
   const admin = createAdminClient()
@@ -49,6 +55,7 @@ async function documentoAoAlcance(ctx: TenantContext, id: string): Promise<Docum
     .select(COLUNAS_ASSINAVEIS)
     .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o documento')
   if (!doc || !alcancaUnidade(ctx, (doc as unknown as DocumentoAssinavel).branch_id)) return null
+  if (!(await clienteNoEscopo(admin, ctx, 'medical_records', (doc as unknown as DocumentoAssinavel).client_id))) return null
   return doc as unknown as DocumentoAssinavel
 }
 

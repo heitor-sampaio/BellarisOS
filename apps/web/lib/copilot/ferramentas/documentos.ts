@@ -6,6 +6,7 @@ import {
   ROTULO_DA_SITUACAO, ROTULO_DO_CANAL, ROTULO_DO_ENVIO, ROTULO_DO_TIPO_DE_DOCUMENTO, type SituacaoDoDocumento, type TipoDeDocumento,
 } from '@/lib/documentos/situacao'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
+import { profissionalDoRecorte } from '@/lib/clientes/atendida-por'
 import { DATA, quandoLegivel, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
 
 /**
@@ -50,7 +51,11 @@ export const documentos: FerramentaDeLeitura<{
     const periodo = args.periodo === 'custom' || (args.de && args.ate)
       ? resolvePeriod('custom', args.de, args.ate)
       : resolvePeriod(args.periodo ?? 'month')
-    const recorte = { tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo }
+    // Como a tela: com o prontuário "só os meus", só as clientes que ela atende.
+    const recorte = {
+      tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo,
+      professionalId: profissionalDoRecorte(c.ctx, 'medical_records'),
+    }
     const [lista, resumo] = await Promise.all([
       getDocumentosDoPainel({
         ...recorte,

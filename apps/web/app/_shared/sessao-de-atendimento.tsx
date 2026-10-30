@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { documentosDoAgendamento, pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
@@ -528,7 +529,11 @@ export async function SessaoDeAtendimento({
         abrirRecebimento={abrirRecebimento}
         planoEmAberto={planoEmAberto}
         documentos={can(ctx, 'documents', 'VIEW')
-          ? { itens: await documentosDoAgendamento(ctx.tenantId!, appointment.id), podeColher: can(ctx, 'documents', 'MANAGE'),
+          // Os documentos seguem o prontuário "só os meus" (2026-10-29): de
+          // cliente que ela não atende, nenhum.
+          ? { itens: cli?.id && await clienteNoEscopo(admin, ctx, 'medical_records', cli.id as string)
+                ? await documentosDoAgendamento(ctx.tenantId!, appointment.id) : [],
+              podeColher: can(ctx, 'documents', 'MANAGE'),
             pelaConversa: await envioPelaConversaLigado(ctx.tenantId!) }
           : null}
       />

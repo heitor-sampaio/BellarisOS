@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, alcancaUnidade, can } from '@/lib/auth'
 import { documentoParaExibir } from '@/lib/documentos/leitura'
 import { TelaDeAssinatura } from '@/components/shared/tela-de-assinatura'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * Corpo da tela de um termo ou contrato do cliente — nos dois portais.
@@ -26,6 +28,8 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
   const doc = await documentoParaExibir(ctx.tenantId!, id, { montarDeNovo: podeColher })
   // Fora da rede ou da unidade que a pessoa alcança: como se não existisse.
   if (!doc || !alcancaUnidade(ctx, doc.branchId)) notFound()
+  // Com o prontuário "só os meus", só de cliente que ela atende (2026-10-29).
+  if (!(await clienteNoEscopo(createAdminClient(), ctx, 'medical_records', doc.clienteId))) notFound()
 
   const rotaDoCliente = `${base}/clients/${doc.clienteId}`
   // Só caminho interno: um `?voltar=https://…` levaria para fora do sistema,

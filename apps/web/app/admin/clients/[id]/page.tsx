@@ -21,6 +21,7 @@ import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, C
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import { planejamentosAbriveisDasFichas } from '@/lib/injetaveis/alcance'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { paraAnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { createAdminClient as clienteDeServico } from '@/lib/supabase/admin'
@@ -342,7 +343,10 @@ export default async function AdminClientProfilePage({
   }
 
   // Termos e contratos assinados (os novos e o legado do checkout antigo).
-  for (const doc of await assinadosDoCliente(ctx.tenantId, id)) {
+  // Os documentos seguem o prontuário "só os meus" (decisão do Heitor,
+  // 2026-10-29): da cliente que ela não atende, nem a lista nem o histórico.
+  const veDocumentos = await clienteNoEscopo(admin, ctx, 'medical_records', id)
+  for (const doc of veDocumentos ? await assinadosDoCliente(ctx.tenantId, id) : []) {
     history.push({ id: uid('ct'), date: doc.assinadoEm, type: 'CONSENT_SIGNED', title: `Assinado: ${doc.titulo}`, subtitle: doc.canal ? SUBTITULO_DO_CANAL[doc.canal] ?? null : null, amount: null, link: null })
   }
 
@@ -380,7 +384,7 @@ export default async function AdminClientProfilePage({
         internalCredits={internalCredits}
         documents={documents}
         termos={can(ctx, 'documents', 'VIEW')
-          ? { itens: await documentosDoCliente(ctx.tenantId!, id), podeColher: can(ctx, 'documents', 'MANAGE'),
+          ? { itens: veDocumentos ? await documentosDoCliente(ctx.tenantId!, id) : [], podeColher: can(ctx, 'documents', 'MANAGE'),
             pelaConversa: await envioPelaConversaLigado(ctx.tenantId!) }
           : null}
         canGrantCredit={ctx.permissions.financial === 'MANAGE'}

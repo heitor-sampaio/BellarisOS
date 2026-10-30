@@ -46,7 +46,12 @@ export interface ResumoDosDocumentos {
   assinados: number; dispensados: number; cancelados: number
 }
 
-interface Recorte { tenantId: string; branchIds: string[] | null; from: Date; to: Date }
+/**
+ * `professionalId`: o prontuário "só os meus" (decisão do Heitor, 2026-10-29)
+ * — só os documentos das clientes que ela atende (um agendamento com ela).
+ * Nulo = sem recorte. Obrigatório de propósito: quem chama decide.
+ */
+interface Recorte { tenantId: string; branchIds: string[] | null; from: Date; to: Date; professionalId: string | null }
 
 type Linha = Record<string, unknown> & { total?: number | string }
 
@@ -68,6 +73,7 @@ export async function getDocumentosDoPainel(r: Recorte & {
 }): Promise<{ linhas: DocumentoNoPainel[]; total: number }> {
   const linhas = await ler(createAdminClient().rpc('documentos_emitidos_pagina', {
     p_tenant: r.tenantId, p_branch_ids: r.branchIds, p_from: r.from.toISOString(), p_to: r.to.toISOString(),
+    p_professional_id: r.professionalId,
     p_situacao: r.situacao ?? null, p_tipo: r.tipo ?? null, p_busca: r.busca?.trim() || null,
     p_limite: DOCUMENTOS_POR_PAGINA, p_offset: r.offset ?? 0,
   }), 'carregar os documentos') as Linha[] | null
@@ -77,6 +83,7 @@ export async function getDocumentosDoPainel(r: Recorte & {
 export async function getResumoDosDocumentos(r: Recorte): Promise<ResumoDosDocumentos> {
   const linhas = await ler(createAdminClient().rpc('documentos_emitidos_resumo', {
     p_tenant: r.tenantId, p_branch_ids: r.branchIds, p_from: r.from.toISOString(), p_to: r.to.toISOString(),
+    p_professional_id: r.professionalId,
   }), 'resumir os documentos') as Record<string, number | string>[] | null
   const l = linhas?.[0] ?? {}
   const n = (k: string) => Number(l[k] ?? 0)

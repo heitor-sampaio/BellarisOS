@@ -218,6 +218,24 @@ DEVLOG ("Termos e contratos").
   - Canal de envio novo grava o seu evento em `issued_document_events` e
     entra na lista de envios da função — senão o documento fica "a enviar".
   - Prova: `e2e/documentos-painel.spec.ts`.
+- **Os documentos emitidos seguem o prontuário "só os meus"** (decisão do
+  Heitor, 2026-10-29). Com `medical_records` OWN, só os documentos das
+  clientes que ela atende — um agendamento com ela, qualquer um, inclusive
+  futuro (`clienteNoEscopo`, `lib/clientes/atendida-por.ts`, a regra do
+  prontuário OWN):
+  - a tela de Documentos e a ferramenta `documentos` do Copilot recortam no
+    banco (`p_professional_id` em `documentos_emitidos_pagina`/`_resumo`,
+    migration `20261029000901`; `profissionalDoRecorte`);
+  - a ficha da cliente que ela não atende não lista os documentos nem os
+    "Assinado: …" do histórico; a sessão de atendimento, idem;
+  - pelo id: `documentoAoAlcance` (toda action de `actions/documentos.ts` —
+    abrir, colher, papel, gerar link, pela conversa, revogar, pedir no portal,
+    dispensar, montar de novo, a trilha), a tela `/documentos/[id]/assinar` e o
+    PDF (`/api/documentos/[id]/pdf`) respondem como se o documento não
+    existisse.
+  - Sem o prontuário no cargo (NONE), o escopo não vale (CLAUDE.md §11): quem
+    tem só os Termos vê todos. O checkout do plano (quem recebe) segue como
+    estava. Prova: `e2e/documentos-so-os-meus.spec.ts`.
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado

@@ -7,6 +7,7 @@ import { ehSituacao, ehTipoDeDocumento } from '@/lib/documentos/situacao'
 import { renderizarPendentes, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from '@/lib/documentos/renderizar'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { PainelDeDocumentos } from '@/components/shared/painel-de-documentos'
+import { profissionalDoRecorte } from '@/lib/clientes/atendida-por'
 
 export interface ParamsDosDocumentos {
   period?: string; from?: string; to?: string
@@ -43,7 +44,12 @@ export async function DocumentosEmitidos({
   const branchIds = ctx.branchId ? [ctx.branchId] : escolhida ? [escolhida.id] : null
 
   const periodo = resolvePeriod(params.period ?? 'month', params.from, params.to)
-  const recorte = { tenantId: ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo }
+  // Prontuário "só os meus" (decisão do Heitor, 2026-10-29): os documentos das
+  // clientes que ela atende, recortados no banco.
+  const recorte = {
+    tenantId: ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo,
+    professionalId: profissionalDoRecorte(ctx, 'medical_records'),
+  }
   const filtros = {
     situacao: ehSituacao(params.situacao) ? params.situacao : null,
     tipo:     ehTipoDeDocumento(params.tipo) ? params.tipo : null,
