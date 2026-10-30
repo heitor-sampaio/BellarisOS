@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import {
   Plus, Upload, FileText, FileImage, File, FileSpreadsheet,
-  Download, Trash2, Loader2,
+  Download, Trash2, Loader2, Send, Smartphone, EyeOff,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { uploadClientDocument, deleteClientDocument } from '@/actions/client-documents'
+import { uploadClientDocument, deleteClientDocument, enviarDocumentoACliente } from '@/actions/client-documents'
 import { ehAnexoClinico, type AtendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { rotaAtendimento } from '@/lib/rotas'
 
@@ -27,6 +27,9 @@ export interface ClientDocumentItem {
   createdAt:   string
   /** O atendimento de onde veio (a foto pela tela do atendimento); nulo = pela ficha. */
   atendimento?: AtendimentoDoAnexo | null
+  /** Quando a clínica o enviou ao app da cliente; nulo = só a equipe vê (2026-10-30). */
+  enviadoEm?:   string | null
+  enviadoPor?:  string | null
 }
 
 interface Props {
@@ -221,8 +224,20 @@ function DocumentRow({
   doc: ClientDocumentItem; slug: string; clientId: string; podeApagar: boolean; onDelete: (id: string) => void
 }) {
   const [deleting, setDeleting] = useState(false)
+  const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const pathname = usePathname()
+  const router = useRouter()
+
+  // O app da cliente só mostra o arquivo que a clínica ENVIA (2026-10-30).
+  async function alternarEnvio(enviar: boolean) {
+    setEnviando(true)
+    setErro(null)
+    const res = await enviarDocumentoACliente(doc.id, enviar)
+    setEnviando(false)
+    if (res.error) { setErro(res.error); return }
+    router.refresh()
+  }
   const catColor = CATEGORY_COLOR[doc.category] ?? CATEGORY_COLOR['outro']!
 
   async function handleDelete() {
@@ -237,7 +252,7 @@ function DocumentRow({
   }
 
   return (
-    <div style={{
+    <div data-documento-da-ficha={doc.id} style={{
       display: 'flex', alignItems: 'center', gap: 14,
       padding: '13px 20px',
       borderBottom: '1px solid var(--hairline)',
@@ -271,6 +286,29 @@ function DocumentRow({
             {doc.atendimento.rotulo}
           </Link>
         )}
+        <p data-envio-a-cliente style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 'var(--text-2xs)', marginTop: 4 }}>
+          {doc.enviadoEm ? (
+            <span style={{ color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Smartphone size={12} /> No app da cliente desde {format(new Date(doc.enviadoEm), 'dd/MM/yyyy', { locale: ptBR })}
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <EyeOff size={12} /> Só a equipe vê
+            </span>
+          )}
+          {podeApagar && (
+            <button
+              type="button"
+              onClick={() => alternarEnvio(!doc.enviadoEm)}
+              disabled={enviando}
+              className="btn-ghost"
+              style={{ padding: '2px 6px', fontSize: 'var(--text-2xs)', fontWeight: 700, color: doc.enviadoEm ? 'var(--text-muted)' : 'var(--brand)' }}
+            >
+              {enviando ? <Loader2 size={12} className="animate-spin" /> : !doc.enviadoEm && <Send size={12} />}
+              {doc.enviadoEm ? 'Tirar do app' : 'Enviar à cliente'}
+            </button>
+          )}
+        </p>
       </div>
 
       {/* Category badge */}

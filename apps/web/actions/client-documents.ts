@@ -1,7 +1,9 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, alcancaUnidade, can, isOwnScope } from '@/lib/auth'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
+import { notifyClient } from '@/lib/notifications/notify'
 import type { TenantContext } from '@estetica-os/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ehAnexoClinico } from '@/lib/clientes/anexos'
@@ -133,6 +135,63 @@ export async function uploadClientDocument(
     revalidatePath(`/admin/agenda/${appointmentId}`)
   }
   return {}
+}
+
+/**
+ * Envia (ou tira) um arquivo do app da cliente (decisão do Heitor, 2026-10-30):
+ * o portal só lista o que a clínica ENVIOU (`enviado_em`). Quem pode é quem
+ * pode mexer no anexo — o clínico é prontuário, com o "só os meus" — e a
+ * unidade ao alcance. Mandar algo ao paciente: o suporte não faz.
+ */
+export async function enviarDocumentoACliente(
+  documentId: string,
+  enviar: boolean,
+): Promise<{ error?: string; ok?: true }> {
+  const ctx = await getTenantContext()
+  const travado = bloqueioDoSuporte(ctx, 'enviar documento ao cliente')
+  if (travado) return { error: travado }
+  if (typeof documentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(documentId)) return { error: 'Documento não encontrado.' }
+
+  const admin = createAdminClient()
+  const doc = await ler(admin
+    .from('client_documents')
+    .select('id, branch_id, category, client_id, enviado_em, branches!inner(tenant_id, slug, name)')
+    .eq('id', documentId)
+    .is('apagado_em', null)
+    .maybeSingle(), 'buscar o documento')
+  if (!doc) return { error: 'Documento não encontrado.' }
+  const unidade = doc.branches as unknown as { tenant_id: string; slug: string; name: string }
+  if (unidade.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, doc.branch_id as string)) return { error: 'Documento não encontrado.' }
+  const recusa = await recusaDoAnexo(ctx, admin, doc.category as string, doc.client_id as string)
+  if (recusa) return { error: recusa }
+
+  const jaEnviado = doc.enviado_em != null
+  if (enviar !== jaEnviado) {
+    await gravar(admin.from('client_documents')
+      .update(enviar
+        ? { enviado_em: new Date().toISOString(), enviado_por: ctx.internalUserId, enviado_por_nome: ctx.userName || null }
+        : { enviado_em: null, enviado_por: null, enviado_por_nome: null })
+      .eq('id', documentId)
+      .select('id'), enviar ? 'enviar o documento à cliente' : 'tirar o documento do app')
+
+    // Aviso GENÉRICO: o push aparece na tela de bloqueio, e o nome do arquivo
+    // pode dizer o procedimento ("Foto antes — toxina").
+    if (enviar) {
+      await notifyClient(admin, doc.client_id as string, {
+        type:  'document_shared',
+        title: 'Documento novo',
+        body:  `${unidade.name || 'A clínica'} enviou um documento para você.`,
+        data:  { link: `/${unidade.slug}/cliente/historico` },
+      })
+    }
+  }
+
+  const clientId = doc.client_id as string
+  revalidateTag(`client:${clientId}`, { expire: 0 })
+  revalidatePath(`/${unidade.slug}/clients/${clientId}`)
+  revalidatePath(`/admin/clients/${clientId}`)
+  revalidatePath(`/${unidade.slug}/cliente/historico`)
+  return { ok: true }
 }
 
 export async function deleteClientDocument(

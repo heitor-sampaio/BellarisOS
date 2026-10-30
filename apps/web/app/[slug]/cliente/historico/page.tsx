@@ -84,12 +84,16 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
       .order('created_at', { ascending: false })
       .limit(50), 'carregar os pagamentos'),
 
-    // Documentos = arquivos enviados pela clínica para o cliente
+    // Documentos = só os arquivos que a clínica ENVIOU à cliente (decisão do
+    // Heitor, 2026-10-30). A foto clínica, o exame e o laudo anexados ficam
+    // com a equipe até alguém enviar pela ficha (`enviado_em`). A data é a
+    // do envio.
     ler(admin.from('client_documents')
-      .select('id, name, category, file_path, created_at')
+      .select('id, name, category, file_path, created_at:enviado_em')
       .eq('client_id', ctx.clientId!)
       .is('apagado_em', null)
-      .order('created_at', { ascending: false })
+      .not('enviado_em', 'is', null)
+      .order('enviado_em', { ascending: false })
       .limit(30), 'carregar os documentos'),
 
     // Termos e contratos assinados (os de agora e o legado do checkout antigo).

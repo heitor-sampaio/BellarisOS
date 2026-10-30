@@ -397,6 +397,22 @@ const procedures = await ler(
   linha "Atendimento de dd/mm/aaaa · Procedimento" levando à tela dele
   (`atendimentoDoAnexo`, `lib/clientes/anexos.ts`; o dia no fuso do negócio).
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
+- **No app da cliente aparece só o arquivo que a clínica ENVIA** (decisão do
+  Heitor, 2026-10-30; migration `20261029001201`). Anexar (pela ficha ou pela
+  foto do atendimento) não manda nada à cliente: o arquivo nasce "Só a equipe
+  vê". Na aba Documentos da ficha, "Enviar à cliente"
+  (`enviarDocumentoACliente`, `actions/client-documents.ts`) grava
+  `client_documents.enviado_em`/`enviado_por`/`enviado_por_nome` e avisa a
+  cliente com texto GENÉRICO ("A clínica enviou um documento para você" — o
+  nome do arquivo pode dizer o procedimento); "Tirar do app" desfaz. Pode
+  quem pode mexer no anexo (`recusaDoAnexo`: o clínico pede o prontuário,
+  com o "só os meus"), com a unidade ao alcance; o suporte não envia
+  (`bloqueioDoSuporte`). O Histórico do portal filtra `enviado_em` não nulo.
+  O termo e o contrato que ela ASSINOU (`issued_documents`) continuam no
+  portal como sempre; dos anexos de antes, só o termo/contrato anexado nasceu
+  enviado (0 na produção), e as 2 fotos clínicas que existiam ficaram ocultas.
+  O direito de acesso continua pelo pacote LGPD, que leva tudo. Prova:
+  `e2e/portal-cliente-documento-enviado.spec.ts`.
 - **A aplicação de injetáveis se CONFIRMA e se REGISTRA só no atendimento**
   (D14 da simulação de 2026-10-28, decisão do Heitor): a aplicação congelada
   (`injectable_applications`) só nasce por "Registrar aplicação", dentro de um
@@ -801,5 +817,6 @@ O resto do fluxo:
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Deletar anexo clínico de client_documents pela tela (é apagado_em), ou ler client_documents numa tela sem .is('apagado_em', null)
+❌ Mostrar no portal da cliente um client_documents sem enviado_em (a clínica decide o que vai ao app)
 ❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409
 ```
