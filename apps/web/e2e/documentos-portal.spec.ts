@@ -104,7 +104,6 @@ test.describe.serial('documentos: portal do cliente', () => {
       await page.mouse.move(caixa.x + 40, caixa.y + 60); await page.mouse.down()
       for (const [x, y] of [[140, 40], [240, 110], [360, 50]]) await page.mouse.move(caixa.x + x!, caixa.y + y!, { steps: 5 })
       await page.mouse.up()
-      await page.getByRole('button', { name: 'Confirmar assinatura' }).click()
       await page.getByRole('button', { name: 'Assinar documento' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
       await expect(page.getByText('A clínica já recebeu o documento assinado.', { exact: false })).toBeVisible()

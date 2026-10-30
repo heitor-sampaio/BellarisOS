@@ -1,19 +1,22 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { Pencil, RotateCcw, Check } from 'lucide-react'
+import { Pencil, RotateCcw } from 'lucide-react'
 
 interface Props {
-  onConfirm: (dataUrl: string) => void
+  /**
+   * O desenho a cada traço terminado (PNG), ou nulo ao limpar. Não há
+   * "Confirmar assinatura" (J-62): o ato de assinar é o botão da tela, que
+   * leva o desenho, o aceite e o hash juntos a `documento_assinar`.
+   */
+  onChange: (dataUrl: string | null) => void
   disabled?: boolean
-  confirmedAt?: string | null
 }
 
-export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
+export function SignaturePad({ onChange, disabled }: Props) {
   const canvasRef  = useRef<HTMLCanvasElement>(null)
   const [drawing, setDrawing]     = useState(false)
   const [hasLines, setHasLines]   = useState(false)
-  const [confirmed, setConfirmed] = useState(!!confirmedAt)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
   }
 
   function startDraw(e: React.MouseEvent | React.TouchEvent) {
-    if (disabled || confirmed) return
+    if (disabled) return
     e.preventDefault()
     const canvas = canvasRef.current!
     setDrawing(true)
@@ -48,7 +51,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
   }
 
   function draw(e: React.MouseEvent | React.TouchEvent) {
-    if (!drawing || disabled || confirmed) return
+    if (!drawing || disabled) return
     e.preventDefault()
     const canvas = canvasRef.current!
     const ctx    = canvas.getContext('2d')!
@@ -63,6 +66,8 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
   }
 
   function stopDraw() {
+    // O traço terminou: a tela passa a ter o desenho como está agora.
+    if (drawing && hasLines && canvasRef.current) onChange(canvasRef.current.toDataURL('image/png'))
     setDrawing(false)
     lastPos.current = null
   }
@@ -72,38 +77,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
     const ctx    = canvas.getContext('2d')!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     setHasLines(false)
-    setConfirmed(false)
-  }
-
-  function confirm() {
-    const canvas  = canvasRef.current!
-    const dataUrl = canvas.toDataURL('image/png')
-    setConfirmed(true)
-    onConfirm(dataUrl)
-  }
-
-  if (confirmed) {
-    return (
-      <div style={{
-        border: '1px solid var(--hairline)', borderRadius: 'var(--radius-field-token)', padding: '16px 20px',
-        background: 'var(--success-bg)', display: 'flex', alignItems: 'center', gap: 12,
-      }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: '50%', background: 'var(--success)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Check size={18} color="var(--surface)" />
-        </div>
-        <div>
-          <p style={{ fontWeight: 700, fontSize: 'var(--text-base-sz)', color: 'var(--success)' }}>Assinatura confirmada</p>
-          {confirmedAt && (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
-              {new Date(confirmedAt).toLocaleString('pt-BR')}
-            </p>
-          )}
-        </div>
-      </div>
-    )
+    onChange(null)
   }
 
   return (
@@ -152,24 +126,6 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
           }}
         >
           <RotateCcw size={14} /> Limpar
-        </button>
-
-        <button
-          type="button"
-          onClick={confirm}
-          disabled={!hasLines}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', borderRadius: 8,
-            border: hasLines ? 'none' : '1px solid var(--border)',
-            background: hasLines ? 'var(--brand)' : 'var(--bg-app)',
-            color: hasLines ? 'var(--on-brand)' : 'var(--text-faint)',
-            fontSize: 'var(--text-base-sz)', fontWeight: 700,
-            cursor: hasLines ? 'pointer' : 'not-allowed',
-            boxShadow: hasLines ? '0 1px 8px rgba(195,77,107,0.25)' : 'none',
-          }}
-        >
-          <Check size={14} /> Confirmar assinatura
         </button>
       </div>
     </div>

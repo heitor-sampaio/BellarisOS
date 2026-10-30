@@ -151,7 +151,6 @@ test.describe.serial('documentos: editor rico de ponta a ponta', () => {
       await page.mouse.move(caixa.x + 30, caixa.y + 50); await page.mouse.down()
       for (const [x, y] of [[120, 30], [200, 90], [280, 40]]) await page.mouse.move(caixa.x + x!, caixa.y + y!, { steps: 5 })
       await page.mouse.up()
-      await page.getByRole('button', { name: 'Confirmar assinatura' }).click()
       await page.getByRole('button', { name: 'Assinar documento' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
     })

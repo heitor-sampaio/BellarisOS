@@ -104,6 +104,15 @@ DEVLOG ("Termos e contratos").
   confere hash, grava a evidência (`document_signatures`, imutável, sem
   cascade) e o status numa transação. `termo.assinado` sai depois, em TS;
   `termo.emitido` sai do banco.
+- **A tela de assinar tem UM gesto** (J-62, 2026-10-30): marcar "li e
+  concordo", desenhar no quadro e "Assinar documento". O "Confirmar
+  assinatura" do quadro saiu (`SignaturePad` entrega o desenho a cada traço,
+  `onChange`, e "Limpar" o tira): era um segundo clique que não provava nada
+  — o ato de assinar é o "Assinar documento", que leva o desenho, o texto do
+  aceite e o SHA-256 do que se viu juntos a `documento_assinar`, como antes.
+  Com o botão apagado, a tela diz o que falta ("Para assinar, falta marcar
+  que leu e concorda e assinar no quadro."). Prova:
+  `e2e/documentos-assinar-sem-passo-extra.spec.ts`.
 - ⚠️ **Releitura na mesma renderização: `abortSignal`.** O React memoriza
   `fetch` GET idênticos numa renderização — a releitura do documento depois de
   montá-lo devolvia a resposta velha. `lerDocumento` passa um sinal novo.

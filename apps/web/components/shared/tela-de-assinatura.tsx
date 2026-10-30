@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, BadgeCheck, FileSignature, Printer, RotateCcw, ShieldCheck, Tablet, Upload } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, FileSignature, Printer, ShieldCheck, Tablet, Upload } from 'lucide-react'
 import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { VisualizadorDePdf } from '@/components/shared/visualizador-de-pdf'
 import { SignaturePad } from '@/components/shared/signature-pad'
@@ -80,8 +80,6 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   const [conferido, setConferido] = useState(false)
   const [aceite, setAceite] = useState(false)
   const [assinatura, setAssinatura] = useState<string | null>(null)
-  // Trocar a key remonta o quadro vazio — só no "Assinar de novo".
-  const [quadro, setQuadro] = useState(0)
   const [digitalizacao, setDigitalizacao] = useState<File | null>(null)
   const [hash, setHash] = useState<string | null>(null)
   const [pdf, setPdf] = useState<ArrayBuffer | null>(null)
@@ -111,6 +109,10 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
 
   const aberto = doc.status === 'PENDENTE'
   const textoDoAceite = `Eu, ${doc.cliente.nome}, li e concordo com este documento.`
+  const faltaParaAssinar = [
+    ...(aceite ? [] : ['marcar que leu e concorda']),
+    ...(assinatura ? [] : ['assinar no quadro']),
+  ]
 
   function assinar() {
     if (!hash || !assinatura) return
@@ -190,14 +192,15 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
               style={{ accentColor: 'var(--brand)', width: 18, height: 18, marginTop: 2 }} />
             <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>{textoDoAceite}</span>
           </label>
-          <SignaturePad key={quadro} onConfirm={setAssinatura} confirmedAt={null} />
-          {assinatura && (
-            <button type="button" className="btn-ghost" onClick={() => { setAssinatura(null); setQuadro(q => q + 1) }} style={{ alignSelf: 'flex-start', display: 'flex', gap: 6, alignItems: 'center' }}>
-              <RotateCcw size={13} /> Assinar de novo
-            </button>
-          )}
+          <SignaturePad onChange={setAssinatura} />
           {erro && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
-          <button type="button" className="btn-primary" disabled={!aceite || !assinatura || !hash || enviando} onClick={assinar}>
+          {/* O que falta para liberar o botão (J-62): ficava apagado, sem dizer por quê. */}
+          {faltaParaAssinar.length > 0 && (
+            <p data-falta-para-assinar style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              Para assinar, falta {faltaParaAssinar.join(' e ')}.
+            </p>
+          )}
+          <button type="button" className="btn-primary" disabled={faltaParaAssinar.length > 0 || !hash || enviando} onClick={assinar}>
             {enviando ? 'Registrando…' : 'Assinar documento'}
           </button>
         </div>

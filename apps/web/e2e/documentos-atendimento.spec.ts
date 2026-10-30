@@ -100,7 +100,6 @@ async function rabiscar(page: Page) {
   await page.mouse.down()
   for (const [x, y] of [[120, 40], [200, 120], [300, 50], [420, 110]]) await page.mouse.move(caixa.x + x!, caixa.y + y!, { steps: 5 })
   await page.mouse.up()
-  await page.getByRole('button', { name: 'Confirmar assinatura' }).click()
 }
 
 test.describe.serial('documentos: emissão pelo atendimento e assinatura na clínica', () => {
