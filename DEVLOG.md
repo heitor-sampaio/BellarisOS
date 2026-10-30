@@ -1651,6 +1651,65 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Frente de comissão de pacote e financeiro: a comissão no cadastro do pacote e os ajustes do caixa
+
+A decisão do Heitor sobre a comissão de pacote e sete ajustes, com o teste
+escrito antes (migrations `20261029001501`–`1504`, aplicadas por `execute_sql`
+porque o `apply_migration` expirou; arquivos idênticos, histórico registrado):
+
+- **A comissão do pacote no cadastro** (782e661a). Vendas → Pacotes → seção
+  "Comissão": de VENDA (Nenhuma, Percentual ou Valor fixo, para quem registrou a
+  venda, liberada no pagamento) e de EXECUÇÃO por sessão (Regra do profissional,
+  Percentual, Valor fixo ou Nenhuma). A lista mostra "Venda: 10% · Execução:
+  R$ 25,00 fixo por sessão". Pacote de R$ 800 com 10% em 2 parcelas: R$ 40 a
+  cada parcela paga; o estorno devolve a parte. O extrato diz "Venda do pacote
+  X" e "Sessão do pacote X".
+- **"Base cheia (sem taxa nem insumo descontados)"** na configuração, no extrato
+  e no CSV, de uma função só (21c7aeca, J-46).
+- **Motivo do desconto (opcional)** no "Receber", gravado no lançamento e na
+  linha do tempo (6a47d848, J-47).
+- **O total da lista do financeiro com o sinal** ("resultado −R$ 2.400,00"),
+  contado em `lib/metrics` (5b768d6e, J-48).
+- **Os avisos do Fechamento do dia**: a receber de concluídos sem pagamento,
+  lançamento depois do fechamento, espécie saindo a mais e as taxas estimadas
+  (5bb152c5, J-49).
+- **"Conceder crédito" com os rótulos ligados aos campos** e o exemplo "valor
+  pago a mais, que fica para a próxima" (7220a402, J-51).
+- **"Faltam N pontos"** embaixo do "Trocar" desabilitado, no app e na ficha
+  (5c2119ca, J-52).
+- **O CSV de outubro se chama "vendas-2026-10-01-a-2026-10-31.csv"** (968c093e,
+  J-53).
+
+**Decisões da frente, para revisar:**
+1. Venda a receber: a comissão de venda sai na proporção do pago, parcela a
+   parcela (também o valor fixo); o estorno devolve a parte. A venda nunca é
+   travada.
+2. A de execução segue o modo da rede ("no atendimento" × "quando o cliente
+   paga"), como hoje.
+3. Pacotes e vendas de antes: execução pela regra do profissional, sem comissão
+   de venda (o comportamento de hoje).
+4. A venda guarda a comissão do dia: mudar o cadastro vale para as próximas.
+5. A base da de venda é o valor vendido com desconto; a taxa da maquininha sai
+   só se a rede marcou; insumo nunca. Sem quem registrou a venda, não há
+   comissão.
+6. O percentual de execução é sobre a parte da sessão no preço do pacote.
+7. "Abater do pacote": o avulso é cancelado e nasce uma linha só, pela regra do
+   pacote (ou nenhuma).
+8. A seção e o resumo só aparecem para quem tem o financeiro em Gerenciar, é da
+   rede e tem comissões no plano.
+9. Fechamento: "a receber" conta concluídos sem pagamento, não parcelas de
+   crediário do dia; "dinheiro a mais" é o saldo em espécie negativo (não há
+   fundo de troco); as taxas são estimativa pela tabela de Comissões.
+10. O motivo do desconto ainda não aparece na lista do financeiro.
+11. O total da lista acompanha o filtro e se chama "resultado".
+12. **A conferir:** não há cancelamento de pacote no sistema; a comissão de
+    venda só volta pelo estorno do pagamento.
+
+Mexeu em `lib/comissoes/leitura.ts`, `confirmPayment` e
+`confirmar_pagamento_do_atendimento`, nas funções de comissão e de pacote do
+banco, em `lib/metrics`, na sessão de atendimento, na ficha, no Fechamento do
+dia e em `e2e/grupos.ts`: vale uma completa.
+
 ### 2026-10-30 — Frente de salas e agenda: as salas da unidade e os ajustes da agenda
 
 A decisão D5 e dez ajustes, com o teste escrito antes (migration
@@ -7366,7 +7425,7 @@ verdade. O que vale:
     - **de EXECUÇÃO**, para quem atende cada sessão: percentual, valor fixo ou
       nenhuma, liberada a cada sessão.
 
-    A FAZER (na fila, uma frente própria).
+    **Feito em 2026-10-30** (782e661a, migrations `20261029001501`–`1504`).
   - ~~A Entrada de estoque vira despesa paga hoje (D13), marcada por padrão e só
     com custo informado. A entrada por código de barras e a do Copilot seguem
     sem a opção. Os R$ 1.800 já gravados na Íris ficaram como estavam.~~
@@ -8537,14 +8596,14 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-44: a unidade do histórico e o "TOTAL REDE". Feito (e6f105d4).
   - J-45: lote, validade e custo na tela. Feito (e6f105d4).
 - **Caixa e financeiro**
-  - J-46: comissão "base cheia" escrito.
-  - J-47: o motivo do desconto.
-  - J-48: o sinal do total.
-  - J-49: os quatro avisos do Fechamento do dia.
+  - J-46: comissão "base cheia" escrito. Feito (21c7aeca).
+  - J-47: o motivo do desconto. Feito (6a47d848).
+  - J-48: o sinal do total. Feito (5b768d6e).
+  - J-49: os quatro avisos do Fechamento do dia. Feito (5bb152c5).
   - J-50: a categoria "Contas", que deve casar com "Compra de estoque". Feito (83452f65).
-  - J-51: os labels de "Conceder crédito".
-  - J-52: "faltam N pontos".
-  - J-53: o nome do CSV.
+  - J-51: os labels de "Conceder crédito". Feito (7220a402).
+  - J-52: "faltam N pontos". Feito (5c2119ca).
+  - J-53: o nome do CSV. Feito (968c093e).
 - **Dashboard e Relatórios**
   - J-54: o `?unidade=`.
   - J-55: as dicas de aproveitamento e conclusão.
