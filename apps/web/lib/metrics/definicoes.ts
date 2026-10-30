@@ -42,11 +42,11 @@ export const DEFINICOES = {
     rotulo: 'Como o ticket médio é contado',
     texto: 'O que as clientes pagaram no período ÷ quantas clientes pagaram, pelo dia do PAGAMENTO (horário de Brasília).',
   },
-  /** Relatórios → Visão geral: o status dos agendamentos, até agora. */
-  statusAteAgora: {
+  /** Relatórios → Visão geral: o status dos agendamentos do período inteiro (J-57). */
+  statusDoPeriodo: {
     rotulo: 'O que o gráfico de status conta',
-    texto: 'Os agendamentos com horário do início do período até agora, pela hora marcada (horário de Brasília) — '
-      + 'concluídos, cancelados, faltas e os que ainda estão abertos. Os marcados para mais tarde no período não '
-      + 'entram: estão na aba Agenda, que vai até o fim do período.',
+    texto: 'Todos os agendamentos do período, até o fim dele, pela hora marcada (horário de Brasília). "Em aberto" '
+      + 'são os agendados, confirmados ou em atendimento — inclusive os que ainda vão acontecer. Os cartões de '
+      + 'cima contam só até agora.',
   },
 } satisfies Record<string, DefinicaoDoNumero>

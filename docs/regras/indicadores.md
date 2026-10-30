@@ -358,6 +358,14 @@ ticket contam pelo dia do PAGAMENTO; os atendimentos, pela hora MARCADA (ou a
 conclusão, quando veio antes) — dicas nos cartões do dashboard da rede, do da
 unidade e da Visão geral dos Relatórios. Prova: `e2e/indicadores-dicas-das-taxas.spec.ts`.
 
+**O "Status dos agendamentos do período" da Visão geral** (J-57, 2026-10-30)
+conta o período INTEIRO, até o fim dele (o núcleo com `fullTo`, a janela da
+aba Agenda), com a fatia "Em aberto" — era só até agora, e com 7 no mês
+mostrava 80% concluídos e 20% cancelados, sem os 2 por vir. As fatias são
+`statusDosAgendamentos` (`lib/metrics/resultado.ts`), as mesmas da aba
+Agenda; cada uma diz quantos e o percentual. Prova:
+`e2e/relatorios-status-com-os-abertos.spec.ts`.
+
 **O dashboard da rede recorta a unidade do `?unidade=<id|slug>`** (J-54,
 2026-10-30; o drill-down do CLAUDE.md §6, que ele ignorava): o título é a
 unidade, os números são os dela (o núcleo, as séries, os rankings, o hoje, o

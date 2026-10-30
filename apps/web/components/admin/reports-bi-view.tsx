@@ -26,7 +26,7 @@ import {
   type TableColumn,
 } from './reports-charts'
 import {
-  resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque,
+  resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque, statusDosAgendamentos,
   type EstoqueNoResultado,
 } from '@/lib/metrics/resultado'
 
@@ -122,6 +122,8 @@ export interface ReportsBiProps {
    */
   core:     MetricsCore
   corePrev: MetricsCore
+  /** Visão geral: o núcleo até o FIM do período, para o status dos agendamentos (J-57). */
+  agendaDoPeriodo?: MetricsCore | null
   /** Ticket médio do período: o pago pelas clientes ÷ as que pagaram (lib/metrics, 2026-10-29). Nulo = "—". */
   ticketMedio: number | null
   /** A compra de estoque paga e o insumo consumido, no período e no anterior: o lucro desconta o insumo, não a compra (2026-10-29). */
@@ -248,9 +250,11 @@ function KpiCard({
 
 // -- Section card --------------------------------------------------------------
 function SCard({
-  title, children, style,
+  title, children, style, dica,
 }: {
   title: string
+  /** O que o gráfico conta (J-57). */
+  dica?: DefinicaoDoNumero
   children: ReactNode
   style?: CSSProperties
 }) {
@@ -263,6 +267,7 @@ function SCard({
       }}>
         <span style={{ color: 'var(--brand)', fontSize: 'var(--text-2xs)' }}>✦</span>
         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{title}</span>
+        {dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}
       </div>
       <div style={{ padding: '16px 18px' }}>{children}</div>
     </div>
@@ -301,7 +306,7 @@ const SRC_LABELS: Record<string, string> = {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não Compareceu',
+  COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não Compareceu', ABERTO: 'Em aberto',
   SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Chegou', IN_PROGRESS: 'Em Andamento',
 }
 
@@ -341,7 +346,13 @@ function TabOverview(p: ReportsBiProps) {
     .map(x => ({ name: x.nome, value: x.receita })).sort(porValor).slice(0, 5)
   const topProfs = r.porProfissional
     .map(x => ({ name: x.nome, value: x.receita })).sort(porValor).slice(0, 5)
-  const byStatus = r.agendamentosPorStatus.map(x => ({ name: STATUS_LABELS[x.status] ?? x.status, value: x.n }))
+  // O período inteiro, com os ainda em aberto (J-57): era só até agora, e os 2
+  // marcados para mais tarde sumiam do gráfico (80% / 20% com 7 no mês).
+  const agendaDoPeriodo = p.agendaDoPeriodo ?? core
+  const byStatus = statusDosAgendamentos({
+    total: agendaDoPeriodo.appointmentsTotal, concluidos: agendaDoPeriodo.appointmentsCompleted,
+    cancelados: agendaDoPeriodo.appointmentsCancelled, faltas: agendaDoPeriodo.appointmentsNoShow,
+  }).map(x => ({ name: STATUS_LABELS[x.status] ?? x.status, value: x.n }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -377,8 +388,12 @@ function TabOverview(p: ReportsBiProps) {
         <SCard title="Forma de Pagamento">
           <DonutChart data={byPayment} />
         </SCard>
-        <SCard title="Status dos Agendamentos">
-          <DonutChart data={byStatus} colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, 'var(--danger)', CHART_COLORS[2]!, CHART_COLORS[0]!, CHART_COLORS[5]!]} />
+        <SCard title="Status dos agendamentos do período" dica={DEFINICOES.statusDoPeriodo}>
+          <DonutChart
+            data={byStatus}
+            colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, 'var(--danger)', CHART_COLORS[5]!]}
+            formatLabel={(v, t) => `${v} (${((v / t) * 100).toFixed(0)}%)`}
+          />
         </SCard>
       </div>
     </div>
@@ -649,12 +664,9 @@ function TabAgenda(p: ReportsBiProps) {
   // A divisão mora em lib/metrics (§13.1, 2026-10-29); a tela só formata.
   const rate       = taxaDeConclusao({ concluidos: completed, total }) ?? 0
 
-  const byStatus = [
-    { name: 'Concluído',      value: completed },
-    { name: 'Cancelado',      value: cancelled },
-    { name: 'Não Compareceu', value: noShow    },
-    { name: 'Outros',         value: Math.max(0, total - completed - cancelled - noShow) },
-  ]
+  // As fatias são as de lib/metrics (J-57) — a mesma conta da Visão geral.
+  const byStatus = statusDosAgendamentos({ total, concluidos: completed, cancelados: cancelled, faltas: noShow })
+    .map(x => ({ name: STATUS_LABELS[x.status] ?? x.status, value: x.n }))
 
   // Dia da semana no fuso do negócio (0 = domingo), contado no banco.
   const byWeekday = r.porDiaDaSemana.map(d => ({ day: d.dia, count: d.n }))

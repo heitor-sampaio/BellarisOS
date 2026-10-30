@@ -142,6 +142,7 @@ export async function ReportsBiSection({
     estoqueAnterior,
     seriesDoResultado,
     perdas,
+    agendaDoPeriodo,
   ] = await Promise.all([
     getRelatorioDosModulos({
       tenantId: ctx.tenantId!, branchIds,
@@ -215,6 +216,12 @@ export async function ReportsBiSection({
     // As perdas do período (D-7): do estoque da unidade, como o saldo — com o
     // financeiro "só os meus" não se atribuem a ela e nem são consultadas.
     needBatches ? getPerdas({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : Promise.resolve(undefined),
+    // O "Status dos agendamentos" da Visão geral conta o PERÍODO inteiro, com
+    // os que ainda vão acontecer (J-57): o núcleo até o fim dele, a janela da
+    // aba Agenda. As outras contas da Visão geral seguem o dinheiro (até agora).
+    tab === 'overview'
+      ? getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo, recorte })
+      : Promise.resolve(null),
   ])
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
@@ -305,6 +312,7 @@ export async function ReportsBiSection({
         newClientsSeries={newClientsSeries}
         evolutionData={evolutionData}
         core={core}
+        agendaDoPeriodo={agendaDoPeriodo}
         corePrev={corePrev}
         ticketMedio={ticket?.total.valor ?? null}
         estoqueNoResultado={{ atual: estoque?.total ?? SEM_ESTOQUE_NO_RESULTADO, anterior: estoqueAnterior?.total ?? SEM_ESTOQUE_NO_RESULTADO }}

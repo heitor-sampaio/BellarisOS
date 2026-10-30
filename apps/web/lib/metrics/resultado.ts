@@ -189,3 +189,18 @@ export function resultadoDaLista(linhas: {
   }
   return centavos / 100
 }
+
+/**
+ * As fatias do "Status dos agendamentos" (J-57, 2026-10-30): concluídos,
+ * cancelados, faltas e EM ABERTO (agendados, confirmados, na clínica, em
+ * atendimento — inclusive os que ainda vão acontecer), sobre o núcleo do
+ * período. O gráfico da Visão geral deixava os abertos de fora.
+ */
+export function statusDosAgendamentos(n: { total: number; concluidos: number; cancelados: number; faltas: number }): { status: 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'ABERTO'; n: number }[] {
+  return [
+    { status: 'COMPLETED', n: n.concluidos },
+    { status: 'CANCELLED', n: n.cancelados },
+    { status: 'NO_SHOW',   n: n.faltas },
+    { status: 'ABERTO',    n: Math.max(0, n.total - n.concluidos - n.cancelados - n.faltas) },
+  ]
+}
