@@ -18,6 +18,8 @@ import { ler, tentar } from '@/lib/db'
 import { conferirCredito, ligarCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
 import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { oportunidadeDoAgendamento, ligarAgendamentoAOportunidade } from '@/lib/crm/liga-agendamento'
+import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
+import type { CandidataDoHorario } from '@/lib/appointments/sem-preferencia'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -323,6 +325,37 @@ export async function computeAvailableSlots(
     if (slotStart <= agora) return false
     return !occupied.some((o) => slotStart < o.end && slotEnd > o.start)
   })
+}
+
+/**
+ * As profissionais que atendem na unidade (a da rede atende em todas:
+ * `filtroDeQuemAtendeNaUnidade`), cada uma com os livres do dia e quantos
+ * atendimentos já tem nele — a base do "Sem preferência" do app (D-16). Os
+ * livres são os de `computeAvailableSlots`, a mesma conta da escolhida.
+ */
+export async function candidatasDoDia(
+  admin: Admin, tenantId: string, branchId: string, date: string, durationMin: number,
+): Promise<CandidataDoHorario[]> {
+  const equipe = ((await ler(admin.from('users').select('id, name')
+    .eq('tenant_id', tenantId)
+    .or(filtroDeQuemAtendeNaUnidade(branchId))
+    .eq('provides_services', true)
+    .eq('is_active', true)
+    .order('name'), 'carregar quem atende na unidade')) ?? []) as { id: string; name: string }[]
+  if (!equipe.length) return []
+
+  const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
+  const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
+  const [livres, doDia] = await Promise.all([
+    Promise.all(equipe.map(p => computeAvailableSlots(admin, branchId, p.id, date, durationMin))),
+    ler(admin.from('appointments').select('professional_id')
+      .in('professional_id', equipe.map(p => p.id))
+      .gte('scheduled_at', dayStart).lte('scheduled_at', dayEnd)
+      .not('status', 'in', IGNORED_STATUS), 'contar os atendimentos do dia'),
+  ])
+  const conta = new Map<string, number>()
+  for (const a of (doDia ?? []) as { professional_id: string }[]) conta.set(a.professional_id, (conta.get(a.professional_id) ?? 0) + 1)
+  return equipe.map((p, i) => ({ id: p.id, nome: p.name, livres: livres[i] ?? [], atendimentosNoDia: conta.get(p.id) ?? 0 }))
 }
 
 /** Notifica cliente + profissional de um novo agendamento (via after()). */

@@ -12,7 +12,8 @@ import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
-import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia } from '@/lib/appointments/core'
+import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-preferencia'
 import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
 import {
   agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento,
@@ -1554,7 +1555,8 @@ async function schedulePlanSessionInterno(params: {
 // --- Portal do cliente: slots disponíveis ------------------------
 export async function getClientAvailableSlots(
   branchId: string,
-  professionalId: string,
+  /** Nulo = "Sem preferência" (D-16): os horários de todas as que atendem na unidade, juntos. */
+  professionalId: string | null,
   date: string,
   durationMin: number,
 ): Promise<{ slots: string[] }> {
@@ -1575,6 +1577,10 @@ export async function getClientAvailableSlots(
     .maybeSingle(), 'buscar a unidade')
   if (!branch) return { slots: [] }
 
+  if (!professionalId) {
+    const candidatas = await candidatasDoDia(admin, cliente!.tenant_id as string, branchId, date, durationMin)
+    return { slots: juntarHorarios(candidatas.map(c => c.livres)) }
+  }
   const slots = await computeAvailableSlots(admin, branchId, professionalId, date, durationMin)
   return { slots }
 }
@@ -1583,7 +1589,8 @@ export async function getClientAvailableSlots(
 export async function createClientAppointment(params: {
   branchId:       string
   procedureId:    string
-  professionalId: string
+  /** Nulo = "Sem preferência" (D-16): o sistema escolhe quem está livre, com menos atendimentos no dia. */
+  professionalId: string | null
   scheduledAt:    string
   slug:           string
 }): Promise<{ error?: string; id?: string; documentosParaAssinar?: number }> {
@@ -1625,23 +1632,6 @@ export async function createClientAppointment(params: {
       .maybeSingle(), 'buscar o procedimento')
     if (!procedure) return { error: 'Procedimento não disponível.' }
 
-    // Quem atende é marcado por `provides_services`. A validação antiga filtrava
-    // por `users.role`, coluna removida na migração de cargos dinâmicos: a query
-    // falhava com 42703, `prof` vinha null e TODO agendamento pelo app do cliente
-    // era recusado com "Profissional não disponível". A da REDE atende em toda
-    // unidade (D1, 2026-10-28): a lista da tela e esta conferência são a mesma.
-    const { data: prof, error: profErr } = await admin
-      .from('users')
-      .select('id')
-      .eq('id', params.professionalId)
-      .eq('tenant_id', branch.tenant_id as string)
-      .or(filtroDeQuemAtendeNaUnidade(params.branchId))
-      .eq('provides_services', true)
-      .eq('is_active', true)
-      .maybeSingle()
-    if (profErr) return { error: `Erro ao validar o profissional: ${profErr.message}` }
-    if (!prof)   return { error: 'Profissional não disponível.' }
-
     // O horário tem de ser um dos que a tela ofereceu: futuro e livre na grade
     // de `computeAvailableSlots` — que já desconta os agendamentos existentes,
     // e por isso também é a guarda contra dois clientes no mesmo horário.
@@ -1651,10 +1641,40 @@ export async function createClientAppointment(params: {
     }
     const p = partsInTZ(inicio)
     const hora = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
+    if (p.second !== 0) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+
+    // "Sem preferência" (D-16): quem está livre neste horário, com menos
+    // atendimentos no dia — entre as que atendem na unidade, a mesma lista e
+    // os mesmos livres da tela. Depois, a escolhida passa pelas MESMAS
+    // conferências de quem foi escolhida pela cliente.
+    let professionalId = params.professionalId
+    if (!professionalId) {
+      const candidatas = await candidatasDoDia(admin, branch.tenant_id as string, params.branchId, dayKeyTZ(inicio), Number(procedure.duration_min))
+      professionalId = escolherQuemAtende(candidatas, hora)
+      if (!professionalId) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+    }
+
+    // Quem atende é marcado por `provides_services`. A validação antiga filtrava
+    // por `users.role`, coluna removida na migração de cargos dinâmicos: a query
+    // falhava com 42703, `prof` vinha null e TODO agendamento pelo app do cliente
+    // era recusado com "Profissional não disponível". A da REDE atende em toda
+    // unidade (D1, 2026-10-28): a lista da tela e esta conferência são a mesma.
+    const { data: prof, error: profErr } = await admin
+      .from('users')
+      .select('id')
+      .eq('id', professionalId)
+      .eq('tenant_id', branch.tenant_id as string)
+      .or(filtroDeQuemAtendeNaUnidade(params.branchId))
+      .eq('provides_services', true)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (profErr) return { error: `Erro ao validar o profissional: ${profErr.message}` }
+    if (!prof)   return { error: 'Profissional não disponível.' }
+
     const livres = await computeAvailableSlots(
-      admin, params.branchId, params.professionalId, dayKeyTZ(inicio), Number(procedure.duration_min),
+      admin, params.branchId, professionalId, dayKeyTZ(inicio), Number(procedure.duration_min),
     )
-    if (p.second !== 0 || !livres.includes(hora)) {
+    if (!livres.includes(hora)) {
       return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
 
@@ -1669,7 +1689,7 @@ export async function createClientAppointment(params: {
         branch_id:       params.branchId,
         client_id:       ctx.clientId!,
         procedure_id:    params.procedureId,
-        professional_id: params.professionalId,
+        professional_id: professionalId,
         scheduled_at:    params.scheduledAt,
         duration_min:    procedure.duration_min,
         price:           pago ? pago.preco : procedure.price,

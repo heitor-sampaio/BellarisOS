@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Check, Calendar, Clock, User, Sparkles } from 'lucide-react'
+import { ChevronLeft, Check, Calendar, Clock, User, Users, Sparkles } from 'lucide-react'
 import { getClientAvailableSlots, createClientAppointment } from '@/actions/appointments'
 import { iniciaisDoNome } from '@estetica-os/utils'
 
@@ -26,6 +26,9 @@ interface Props {
 }
 
 type Step = 1 | 2 | 3 | 4
+
+/** "Sem preferência" (D-16): o id vazio vai ao servidor como nulo, e ele escolhe quem está livre. */
+const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 
 
 export function NewAppointmentWizard({ slug, branchId, procedures, professionals }: Props) {
@@ -64,7 +67,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
     setSlots([])
     if (!newDate || !prof || !procedure) return
     startTransition(async () => {
-      const res = await getClientAvailableSlots(branchId, prof.id, newDate, procedure.duration_min)
+      const res = await getClientAvailableSlots(branchId, prof.id || null, newDate, procedure.duration_min)
       setSlots(res.slots)
     })
   }
@@ -84,7 +87,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
 
     startTransition(async () => {
       const res = await createClientAppointment({
-        branchId, procedureId: procedure.id, professionalId: prof.id, scheduledAt, slug,
+        branchId, procedureId: procedure.id, professionalId: prof.id || null, scheduledAt, slug,
       })
       if (res.error) {
         setError(res.error)
@@ -229,6 +232,29 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
             </p>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {professionals.length > 1 && (
+              <button
+                type="button"
+                onClick={() => handleSelectProfessional(SEM_PREFERENCIA)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 12,
+                  border: `1.5px solid ${prof === SEM_PREFERENCIA ? 'var(--brand)' : 'var(--border)'}`,
+                  background: prof === SEM_PREFERENCIA ? 'var(--brand-soft)' : 'var(--surface)',
+                  cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 120ms',
+                }}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%', background: 'var(--brand-soft)', color: 'var(--brand)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <Users size={16} />
+                </div>
+                <div>
+                  <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Sem preferência</p>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Mostra os horários de todas as profissionais</p>
+                </div>
+              </button>
+            )}
             {professionals.map(p => (
               <button
                 key={p.id}
@@ -272,10 +298,11 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
           </p>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 6 }}>
-              DATA
+            <label htmlFor="novo-agendamento-data" style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>
+              Data
             </label>
             <input
+              id="novo-agendamento-data"
               type="date"
               className="field"
               min={today}
@@ -340,7 +367,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
 
           <div className="card" style={{ padding: '20px 22px', marginBottom: 24 }}>
             <Row label="Procedimento" value={procedure.name} />
-            <Row label="Profissional"  value={prof.name} />
+            <Row label="Profissional"  value={prof.id ? prof.name : 'A clínica escolhe quem estiver livre'} />
             <Row label="Data"          value={fmtDate(date)} />
             <Row label="Horário"       value={time} />
             <Row label="Duração"       value={`${procedure.duration_min} min`} />

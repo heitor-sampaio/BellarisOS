@@ -134,6 +134,20 @@
   novo é um dos livres do self-service, para o mesmo profissional. Dentro do
   prazo, só "Falar com a clínica" (WhatsApp da unidade). Prova:
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
+- **"Sem preferência" de profissional no app** (D-16, decisão do Heitor,
+  2026-10-30): com mais de uma profissional na unidade, o passo
+  "Profissional" do agendamento oferece "Sem preferência". A data mostra os
+  horários de TODAS, juntos (`juntarHorarios`); ao confirmar,
+  `createClientAppointment` (com `professionalId` nulo) escolhe no servidor
+  quem está livre naquele horário, com menos atendimentos no dia (qualquer
+  unidade, fora cancelado e falta) e, no empate, a primeira pelo nome
+  (`escolherQuemAtende`, `lib/appointments/sem-preferencia.ts`). As
+  candidatas e os livres são `candidatasDoDia` (`lib/appointments/core.ts`):
+  quem atende na unidade (`filtroDeQuemAtendeNaUnidade`) e os livres de
+  `computeAvailableSlots` — a escolhida passa depois pelas mesmas
+  conferências de quem a cliente escolheu. Não há cadastro de "quem faz qual
+  procedimento": são todas as que atendem na unidade. Prova:
+  `e2e/portal-cliente-sem-preferencia.spec.ts`, `tests/sem-preferencia.test.ts`.
 - **"Próximo" no portal da cliente é UMA regra** (D14 da simulação de
   2026-10-29; `lib/clientes/agenda-do-portal.ts`): em aberto (agendado,
   confirmado ou na clínica) E com o horário ainda por vir — os "Próximos" da
