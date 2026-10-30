@@ -347,6 +347,14 @@ faz sentido com duas. Seletor de unidade que já some com `length > 1` (agenda
 da rede, filtro dos Relatórios, estoque) segue a mesma regra. Prova:
 `e2e/rede-de-uma-unidade.spec.ts`.
 
+**O número diz o que conta** (J-55/J-56, 2026-10-30): a dica `<Dica>`
+(`components/shared/dica.tsx`, o "i" que abre a definição) fica ao lado do
+número, e o texto mora UM lugar, `lib/metrics/definicoes.ts` (`DEFINICOES`) —
+mudou a conta, muda o texto junto. A "Taxa de aproveitamento" (dashboard da
+rede: concluídos ÷ marcados ATÉ AGORA) e a "Taxa de Conclusão" (Relatórios →
+Agenda: o período inteiro, até o FIM dele, com os que ainda vão acontecer)
+dizem por que diferem. Prova: `e2e/indicadores-dicas-das-taxas.spec.ts`.
+
 **O dashboard da rede recorta a unidade do `?unidade=<id|slug>`** (J-54,
 2026-10-30; o drill-down do CLAUDE.md §6, que ele ignorava): o título é a
 unidade, os números são os dela (o núcleo, as séries, os rankings, o hoje, o

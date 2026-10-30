@@ -1,5 +1,7 @@
 ﻿'use client'
 
+import { Dica } from '@/components/shared/dica'
+import { DEFINICOES, type DefinicaoDoNumero } from '@/lib/metrics/definicoes'
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { mesclarParams } from '@/lib/query-params'
@@ -164,8 +166,10 @@ function AnimatedNum({ value, format = 'brl' }: {
 
 // -- KPI card ------------------------------------------------------------------
 function KpiCard({
-  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false, detalhe,
+  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false, detalhe, dica,
 }: {
+  /** O que o número conta e qual data usa (J-55/J-56). */
+  dica?: DefinicaoDoNumero
   label: string
   /** Nulo = não há o número (ticket sem atendimento cobrado, margem sem receita): "—". */
   value: number | null
@@ -201,8 +205,10 @@ function KpiCard({
         fontSize: 'var(--text-overline)', fontWeight: 700,
         color: hero ? 'color-mix(in srgb, var(--on-brand) 78%, transparent)' : 'var(--text-muted)',
         textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px',
+        display: 'flex', alignItems: 'center', gap: 4,
       }}>
         {label}
+        {dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}
       </p>
       <p style={{
         fontSize: 'var(--text-name)', fontWeight: 800,
@@ -685,7 +691,7 @@ function TabAgenda(p: ReportsBiProps) {
         <KpiCard label="Realizados"         value={completed} format="int" delta={pctDelta(completed, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Cancelados"         value={cancelled} format="int" accent="var(--warning)" />
         <KpiCard label="Não Compareceu"     value={noShow}    format="int" accent="var(--danger)" />
-        <KpiCard label="Taxa de Conclusão"  value={rate}      format="pct" accent={rate >= 70 ? 'var(--success)' : 'var(--warning)'} />
+        <KpiCard label="Taxa de Conclusão"  value={rate}      format="pct" accent={rate >= 70 ? 'var(--success)' : 'var(--warning)'} dica={DEFINICOES.conclusao} />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Distribuição por Status">

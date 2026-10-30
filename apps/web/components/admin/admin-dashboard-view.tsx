@@ -4,6 +4,8 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { variacaoPercentual, mediaPorAtendimento } from '@/lib/metrics/resultado'
 import { rotulosDoPeriodo } from '@/lib/rotulos-do-periodo'
 import Link from 'next/link'
+import { Dica } from '@/components/shared/dica'
+import { DEFINICOES, type DefinicaoDoNumero } from '@/lib/metrics/definicoes'
 import {
   TrendingUp, TrendingDown, Users, Calendar,
   ArrowUpRight, ArrowDownRight, ExternalLink,
@@ -307,8 +309,10 @@ function RatingBadge({ value, max = 5 }: { value: number; max?: number }) {
 // --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
-  label, value, format = 'brl', sub, delta, icon, brand = false, anterior = 'mês anterior', semBase = false,
+  label, value, format = 'brl', sub, delta, icon, brand = false, anterior = 'mês anterior', semBase = false, dica,
 }: {
+  /** O que o número conta e qual data usa (J-56). */
+  dica?:   DefinicaoDoNumero
   /** Não há período anterior com o que comparar: o cartão diz, em vez de calar. */
   semBase?: boolean
   /** Com o que o delta compara ("ontem", "mês anterior"); nulo esconde o delta. */
@@ -332,7 +336,8 @@ function KpiCard({
         <span style={{
           fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
           color: brand ? 'rgba(255,255,255,.72)' : 'var(--text-muted)',
-        }}>{label}</span>
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+        }}>{label}{dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}</span>
         <div style={{
           width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: brand ? 'rgba(255,255,255,.18)' : 'var(--brand-soft)',
@@ -889,7 +894,10 @@ export function AdminDashboardView({
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Taxa de aproveitamento</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Taxa de aproveitamento
+              <Dica rotulo={DEFINICOES.aproveitamento.rotulo}>{DEFINICOES.aproveitamento.texto}</Dica>
+            </span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginLeft: 10 }}>
               horários passados concluídos ÷ total marcado
             </span>
