@@ -12,6 +12,8 @@ import { copilotNaTela } from '@/lib/copilot/disponivel'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { ENDERECOS_RESERVADOS } from '@/lib/unidades/endereco'
+import { comAviso } from '@/lib/aviso-da-url'
+import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
 
 export default async function BranchLayout({
   children,
@@ -60,7 +62,8 @@ export default async function BranchLayout({
       .select('slug')
       .eq('id', ctx.branchId)
       .single(), 'buscar a unidade')
-    redirect(`/${userBranch?.slug ?? ''}/dashboard`)
+    // Com o aviso (J-29): sem ele, o link "quebrado" voltava calado ao dashboard.
+    redirect(comAviso(`/${userBranch?.slug ?? ''}/dashboard`, 'outra-unidade'))
   }
 
   // Filiais (NETWORK_ADMIN) + não-lidas em paralelo. Nome e permissões já vêm no ctx.
@@ -89,6 +92,7 @@ export default async function BranchLayout({
 
   return (
     <SidebarProvider>
+      <Suspense fallback={null}><AvisoDaUrl /></Suspense>
       <BranchSidebar
         slug={branch.slug}
         branchName={branch.name}

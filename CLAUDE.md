@@ -294,6 +294,10 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   aberta ao cliente final. Prova em `e2e/portais-isolamento.spec.ts`.
   Desde 2026-10-21 o layout também LEVA a cliente que abre uma tela da equipe
   ao portal dela (`/[slug]/cliente`) — a trava da página continua valendo.
+- Redirecionamento por abrangência (outra unidade pela URL, `/admin` de quem
+  tem unidade fixa) leva o motivo: `comAviso(…)` → `?aviso=`, que o
+  `<AvisoDaUrl>` dos layouts mostra e tira da URL (`lib/aviso-da-url.ts`,
+  J-29). Prova: `e2e/abrangencia-aviso-ao-redirecionar.spec.ts`.
 - **Rota PÚBLICA se declara em `lib/supabase/middleware.ts`**, não só deixando
   de chamar `getTenantContext`. O proxy manda para `/login` tudo que
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser

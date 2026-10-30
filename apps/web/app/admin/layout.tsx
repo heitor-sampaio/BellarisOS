@@ -9,13 +9,20 @@ import { SidebarProvider } from '@/components/shared/sidebar-context'
 import { Suspense } from 'react'
 import { Copilot } from '@/components/copilot/copilot'
 import { copilotNaTela } from '@/lib/copilot/disponivel'
+import { comAviso } from '@/lib/aviso-da-url'
+import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getTenantContext()
 
   // Portal da rede: apenas usuários de abrangência de rede (branch_id null) ou o admin.
   if (ctx.isClient) redirect('/auth/redirect') // a cliente volta à home dela (A43), não ao login
-  if (ctx.branchId !== null && !ctx.isNetworkAdmin) redirect('/')
+  // Quem tem unidade fixa vai à dela, com o aviso (J-29: voltava calado).
+  if (ctx.branchId !== null && !ctx.isNetworkAdmin) {
+    const unidade = await ler(createAdminClient().from('branches').select('slug')
+      .eq('id', ctx.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+    redirect(unidade?.slug ? comAviso(`/${unidade.slug}/dashboard`, 'portal-da-rede') : '/')
+  }
 
   const admin = createAdminClient()
 
@@ -40,6 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <SidebarProvider>
+      <Suspense fallback={null}><AvisoDaUrl /></Suspense>
       <AdminSidebar permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} />
       <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
       <main style={{

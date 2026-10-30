@@ -25,6 +25,7 @@
  * roda neste banco (DEVLOG, "O cron de produção e o banco do E2E").
  */
 export const ISOLADOS = [
+  'abrangencia-aviso-ao-redirecionar.spec.ts',
   'abrangencia-unidade.spec.ts',
   'agenda-encaixe-avisa.spec.ts',
   'agenda-grade-madrugada.spec.ts',
