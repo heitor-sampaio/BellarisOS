@@ -51,3 +51,22 @@ test('J-55: aproveitamento (dashboard) e conclusão (Relatórios) dizem a conta 
     await expect(conclusao).toContainText('aproveitamento')
   })
 })
+
+test('J-56: a receita diz que conta pelo pagamento, e os atendimentos, pela hora marcada', async ({ browser }) => {
+  await como(browser, async p => {
+    await p.goto('/admin/dashboard')
+    await expect(await abrirDica(p, 'Qual data a receita usa')).toContainText('PAGAMENTO')
+    await p.keyboard.press('Escape')
+    await expect(await abrirDica(p, 'Qual data os atendimentos usam')).toContainText('hora MARCADA')
+
+    await p.goto('/admin/reports?tab=overview&period=month')
+    await expect(await abrirDica(p, 'Qual data a receita usa')).toContainText('PAGAMENTO')
+    await p.keyboard.press('Escape')
+    await expect(await abrirDica(p, 'Qual data os atendimentos usam')).toContainText('hora MARCADA')
+
+    // O dashboard da unidade também.
+    const slug = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
+    await p.goto(`/${slug}/dashboard`)
+    await expect(await abrirDica(p, 'Qual data a receita usa')).toContainText('PAGAMENTO')
+  })
+})

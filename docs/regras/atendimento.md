@@ -425,7 +425,9 @@ const procedures = await ler(
   intercorrência ou a ficha do procedimento — basta um dos três
   (`buildRecordForms`, `lib/record-forms.ts`). Só entrava o que tinha FICHA, e
   a avaliação (sem ficha ligada) sumia com a evolução gravada; o texto da
-  evolução nunca ia à tela. Prova: `e2e/prontuario-evolucao.spec.ts`,
+  evolução nunca ia à tela. Cada entrada diz o dia do ATENDIMENTO (a hora marcada, em
+  Brasília — `diaDoAtendimento`), o mesmo da aba Documentos; era o da gravação, e
+  o das 23:30 concluído à meia-noite aparecia no dia seguinte (J-56). Prova: `e2e/prontuario-evolucao.spec.ts`,
   `tests/prontuario-registros.test.ts`.
 - **Quem abriu o prontuário fica registrado** (2026-10-27, decisões do Heitor;
   `lib/prontuario/acessos.ts`, tabela `prontuario_acessos`). Toda leitura

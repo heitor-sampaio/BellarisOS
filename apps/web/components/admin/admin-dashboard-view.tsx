@@ -493,6 +493,7 @@ export function AdminDashboardView({
         {can('financial') && <KpiCard
           brand
           label={recorteProprio ? `Minha receita ${rotulo.doPeriodo}` : `Receita bruta ${rotulo.doPeriodo}`}
+          dica={DEFINICOES.receita}
           value={totalRevenue}
           format="brl"
           delta={deltaRevenue}
@@ -502,6 +503,7 @@ export function AdminDashboardView({
         />}
         {can('financial') && !recorteProprio && <KpiCard
           label={`Custo ${rotulo.doPeriodo}`}
+          dica={DEFINICOES.despesa}
           value={totalCost}
           format="brl"
           sub="despesas pagas (o caixa)"
@@ -509,6 +511,7 @@ export function AdminDashboardView({
         />}
         {can('agenda') && <KpiCard
           label="Atendimentos"
+          dica={DEFINICOES.atendimentos}
           value={totalAppointments}
           format="int"
           sub={`concluídos ${rotulo.noPeriodo}`}
@@ -529,6 +532,7 @@ export function AdminDashboardView({
         />}
         {can('financial') && <KpiCard
           label="Ticket médio"
+          dica={DEFINICOES.ticket}
           value={ticketMedio}
           format="brl"
           sub={`pago pelas clientes ÷ ${clientesQuePagaram} ${clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}`}

@@ -353,7 +353,10 @@ número, e o texto mora UM lugar, `lib/metrics/definicoes.ts` (`DEFINICOES`) —
 mudou a conta, muda o texto junto. A "Taxa de aproveitamento" (dashboard da
 rede: concluídos ÷ marcados ATÉ AGORA) e a "Taxa de Conclusão" (Relatórios →
 Agenda: o período inteiro, até o FIM dele, com os que ainda vão acontecer)
-dizem por que diferem. Prova: `e2e/indicadores-dicas-das-taxas.spec.ts`.
+dizem por que diferem. E a data de cada número (J-56): a receita, a despesa e o
+ticket contam pelo dia do PAGAMENTO; os atendimentos, pela hora MARCADA (ou a
+conclusão, quando veio antes) — dicas nos cartões do dashboard da rede, do da
+unidade e da Visão geral dos Relatórios. Prova: `e2e/indicadores-dicas-das-taxas.spec.ts`.
 
 **O dashboard da rede recorta a unidade do `?unidade=<id|slug>`** (J-54,
 2026-10-30; o drill-down do CLAUDE.md §6, que ele ignorava): o título é a

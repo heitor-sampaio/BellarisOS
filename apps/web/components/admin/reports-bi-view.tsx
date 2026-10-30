@@ -347,16 +347,16 @@ function TabOverview(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero />
+        <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero dica={DEFINICOES.receita} />
         {/* A despesa e o lucro não se atribuem a ela ("só os meus"). */}
         {!p.soOsMeus && <>
-          <KpiCard label="Despesas"       value={expenses}          format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta />
+          <KpiCard label="Despesas"       value={expenses}          format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta dica={DEFINICOES.despesa} />
           <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
         </>}
-        <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta />
+        <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta dica={DEFINICOES.atendimentos} />
         <KpiCard label="Novos Clientes" value={core.newClients}            format="int" delta={pctDelta(core.newClients, corePrev.newClients)}                       showDelta />
         {/* Sem delta: o ticket do período anterior não é carregado. */}
-        <KpiCard label="Ticket médio"   value={avgTicket}         format="brl" />
+        <KpiCard label="Ticket médio"   value={avgTicket}         format="brl" dica={DEFINICOES.ticket} />
       </div>
       {/* Charts grid */}
       <div className="rg-2" style={{ gap: 16 }}>

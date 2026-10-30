@@ -1,4 +1,6 @@
 ﻿import Link from 'next/link'
+import { Dica } from '@/components/shared/dica'
+import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { getTenantContext, isOwnScope } from '@/lib/auth'
@@ -390,8 +392,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {/* Faturamento — brand card */}
         {canFinancial && (
         <div style={{ background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8, display: 'flex', alignItems: 'center', gap: 4 }}>
             Faturamento do mês
+            <Dica rotulo={DEFINICOES.receita.rotulo}>{DEFINICOES.receita.texto}</Dica>
           </p>
           <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>
             {formatBRL(monthRevenue)}
@@ -421,7 +424,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {/* Ocupação (filial) OU Meus atendimentos (profissional) */}
         {canAgenda && (professionalOnly ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <p className="overline">Meus atendimentos</p>
+          <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            Meus atendimentos
+            <Dica rotulo={DEFINICOES.atendimentos.rotulo}>{DEFINICOES.atendimentos.texto}</Dica>
+          </p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {monthCompletedCount ?? 0}
           </p>

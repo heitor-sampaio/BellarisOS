@@ -167,6 +167,8 @@ export interface ProfileFormSnapshot {
 export interface ProfileRecordEntry {
   appointmentId: string
   createdAt:     string
+  /** O dia do atendimento (hora marcada), dd/mm/aaaa em Brasília (J-56). */
+  diaDoAtendimento?: string
   procedureName: string | null
   /** A ficha do procedimento — uma so desde 2026-09-25. */
   ficha:         ProfileFormSnapshot | null
@@ -1786,7 +1788,7 @@ export function ClientProfile({
               <AttendanceRecordCard
                 key={entry.appointmentId}
                 client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
-                subtitle={`${entry.procedureName ?? 'Atendimento'} · ${format(new Date(entry.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
+                subtitle={`${entry.procedureName ?? 'Atendimento'} · ${entry.diaDoAtendimento || format(new Date(entry.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
                 generalAnamnesis={
                   <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Pré-atendimento', rows: [] }} clientId={client.id} canEdit={false} />
                 }

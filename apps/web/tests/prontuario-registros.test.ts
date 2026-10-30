@@ -66,4 +66,22 @@ describe('buildRecordForms', () => {
     ], nomes)
     expect(r.map(e => e.appointmentId)).toEqual(['a2', 'a1'])
   })
+
+  // J-56 (ajustes J, 2026-10-30): o atendimento das 23:30 de 29/10 concluído às
+  // 00:22 de 30/10 aparecia no Prontuário em 30/10 (a criação da entrada) e nos
+  // Documentos em 29/10 (o dia do atendimento). O Prontuário diz o dia do
+  // ATENDIMENTO, no fuso do negócio — o mesmo da aba Documentos.
+  it('diz o dia do atendimento (a hora marcada, em Brasília), não o da gravação', () => {
+    const r = buildRecordForms([
+      { appointment_id: 'a1', notes: 'Evolução', intercurrences: null, form_data: null, created_at: '2026-10-30T03:22:00Z' },
+    ], nomes, new Map([['a1', '2026-10-30T02:30:00Z']]))
+    expect(r[0]!.diaDoAtendimento).toBe('29/10/2026')
+  })
+
+  it('sem o agendamento, cai no dia da gravação, também no fuso do negócio', () => {
+    const r = buildRecordForms([
+      { appointment_id: 'a9', notes: 'Evolução', intercurrences: null, form_data: null, created_at: '2026-10-30T02:10:00Z' },
+    ], nomes)
+    expect(r[0]!.diaDoAtendimento).toBe('29/10/2026')
+  })
 })

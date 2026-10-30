@@ -41,7 +41,8 @@ export function Dica({ rotulo, children }: {
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           padding: 2, border: 'none', background: 'transparent', cursor: 'pointer',
-          color: aberta ? 'var(--brand)' : 'var(--text-faint)', lineHeight: 0,
+          // A cor do rótulo em que mora: no cartão rosé, o branco dele.
+          color: 'currentColor', opacity: aberta ? 1 : 0.7, lineHeight: 0,
         }}
       >
         <Info size={13} />

@@ -5,6 +5,7 @@
 // mesma coisa com dois nomes. Viraram uma em 2026-09-25.
 
 import { normalizeFormSchema } from '@/lib/anamnesis'
+import { dayKeyTZ } from '@/lib/datetime'
 import type { ProfileRecordEntry, ProfileFormSnapshot } from '@/components/branch/client-profile'
 
 interface FormBlob {
@@ -34,6 +35,13 @@ function toSnapshot(blob: FormBlob | undefined | null): ProfileFormSnapshot | nu
   }
 }
 
+/** dd/mm/aaaa no fuso do negócio, ou vazio. */
+function diaNoFuso(iso: string | null): string {
+  if (!iso) return ''
+  const [ano, mes, dia] = dayKeyTZ(iso).split('-')
+  return `${dia}/${mes}/${ano}`
+}
+
 /** O texto clínico, ou nulo quando está vazio (só espaço conta como vazio). */
 function texto(v: string | null | undefined): string | null {
   const t = (v ?? '').trim()
@@ -49,6 +57,8 @@ function texto(v: string | null | undefined): string | null {
 export function buildRecordForms(
   entries: RawMreEntry[],
   procedureNameById: Map<string, string>,
+  /** A hora marcada de cada atendimento (J-56): o dia que a entrada mostra. */
+  horaMarcadaPorId: Map<string, string> = new Map(),
 ): ProfileRecordEntry[] {
   return entries
     .flatMap<ProfileRecordEntry>(e => {
@@ -61,6 +71,10 @@ export function buildRecordForms(
       return [{
         appointmentId,
         createdAt:     e.created_at ?? '',
+        // O dia do ATENDIMENTO, no fuso do negócio (J-56) — o mesmo da aba
+        // Documentos (atendimentoDoAnexo). Era o da gravação: o das 23:30
+        // concluído à meia-noite e pouco aparecia no dia seguinte.
+        diaDoAtendimento: diaNoFuso(horaMarcadaPorId.get(appointmentId) ?? e.created_at ?? null),
         procedureName: procedureNameById.get(appointmentId) ?? null,
         ficha,
         evolucao,
