@@ -22,6 +22,27 @@ const OPERADOR_TEXTO: Record<OperadorDeCondicao, string> = {
   nao_em:     'não é nenhum de',
 }
 
+/** "1 dia", "2 dias": o card é lido por quem opera, e "1 dias" salta aos olhos (J-15). */
+const UNIDADES: Record<string, [string, string]> = {
+  dias:    ['dia', 'dias'],
+  horas:   ['hora', 'horas'],
+  minutos: ['minuto', 'minutos'],
+}
+function quantos(n: unknown, unidade: string): string {
+  const [um, varios] = UNIDADES[unidade] ?? [unidade, unidade]
+  return `${n} ${Number(n) === 1 ? um : varios}`
+}
+
+/**
+ * O rótulo de uma alça de saída. O grafo guarda a chave (`sim`, `nao`,
+ * `padrao`), e a alça mostrava a chave crua (J-15). O caso que a clínica
+ * escreveu no "Escolher por" passa como ela escreveu.
+ */
+const ROTULO_DA_SAIDA: Record<string, string> = { sim: 'Sim', nao: 'Não', padrao: 'Padrão' }
+export function rotuloDaSaida(saida: string): string {
+  return ROTULO_DA_SAIDA[saida] ?? saida
+}
+
 function descreverGrupo(grupo?: GrupoDeCondicao): string {
   const regras = grupo?.regras ?? []
   if (!regras.length) return 'sem filtro'
@@ -61,10 +82,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
       if (frequencia === 'minutos' || frequencia === 'horas') {
         const n = Number(c.intervalo ?? 0)
         if (!n) return 'escolha de quanto em quanto'
-        const unidade = frequencia === 'horas'
-          ? (n === 1 ? 'hora' : 'horas')
-          : 'minutos'
-        return `a cada ${n} ${unidade}`
+        return `a cada ${quantos(n, frequencia)}`
       }
 
       const freq = { diaria: 'Todo dia', semanal: 'Toda semana', mensal: 'Todo mês' }[frequencia]
@@ -74,7 +92,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
 
     case NODES.BUSCAR_CLIENTES: {
       const partes: string[] = []
-      if (c.semRetornoHaDias) partes.push(`sem retorno há ${c.semRetornoHaDias} dias`)
+      if (c.semRetornoHaDias) partes.push(`sem retorno há ${quantos(c.semRetornoHaDias, 'dias')}`)
       if (c.aniversarioHoje)  partes.push('aniversariantes de hoje')
       if (Array.isArray(c.tags) && c.tags.length) partes.push(`tags: ${(c.tags as string[]).join(', ')}`)
       return partes.length ? partes.join(' · ') : 'todos os clientes'
@@ -89,7 +107,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
     }
 
     case NODES.ESPERA_DURACAO:
-      return `${c.quantidade ?? '?'} ${(c.unidade as string) ?? 'dias'}`
+      return quantos(c.quantidade ?? '?', (c.unidade as string) ?? 'dias')
 
     case NODES.ESPERA_ATE: {
       const min = Number(c.minutos ?? 0)

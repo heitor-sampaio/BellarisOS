@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { NODES, type TipoDeNo } from '@estetica-os/types'
 import { ROTULOS } from '@/lib/automacoes/validar'
+import { rotuloDaSaida } from '@/lib/automacoes/resumo'
 
 /**
  * Um node no quadro.
@@ -120,7 +121,7 @@ function NoDoQuadroBase({ data, selected }: NodeProps) {
                 color: 'var(--text-muted)', whiteSpace: 'nowrap',
                 paddingLeft: 10,
               }}>
-                {saida}
+                {rotuloDaSaida(saida)}
               </span>
             </div>
           )
