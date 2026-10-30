@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { SetupWizard } from '@/components/setup/setup-wizard'
 import { ler } from '@/lib/db'
 
-export default async function SetupPage() {
+export default async function SetupPage({ searchParams }: { searchParams: Promise<{ passo?: string }> }) {
+  const { passo } = await searchParams
   const ctx = await getTenantContext()
   // A cliente que abre /setup vai ao portal dela (J-67): era a tela de "sem
   // acesso", com HTTP 500. Quem é da equipe segue a trava de sempre.
@@ -36,6 +37,7 @@ export default async function SetupPage() {
         site:      (tenant?.website as string | null) ?? '',
       }}
       temUnidade={(unidades ?? []).length > 0}
+      noPassoDaUnidade={passo === 'unidade'}
     />
   )
 }

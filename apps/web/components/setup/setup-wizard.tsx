@@ -6,7 +6,7 @@ import { Check, Loader2 } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
-import { maskCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
+import { maskCNPJDigitando, maskCPFouCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 
 const ESTADOS = [
@@ -208,8 +208,13 @@ function StepNetwork({
 
 // -- Step 2 — Primeira unidade -------------------------------------------------
 
-function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+function StepBranch({ onNext, onBack, documentoDaRede }: {
+  onNext: () => void; onBack: () => void
+  /** O CNPJ da rede: a primeira unidade o herda, editável (J-6). */
+  documentoDaRede: string
+}) {
   const [name,       setName]       = useState('')
+  const [document,   setDocument]   = useState(maskCPFouCNPJDigitando(documentoDaRede))
   const [slugDigitado, setSlug]     = useState('')
   const [slugTouched,setSlugTouched]= useState(false)
   // Até a pessoa mexer no endereço, ele acompanha o nome — derivado, não copiado.
@@ -248,6 +253,7 @@ function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void
     const formData = new FormData()
     formData.set('name',     name)
     formData.set('slug',     slug)
+    formData.set('document', document)
     formData.set('phone',    phone)
     formData.set('email',    email)
     formData.set('zip_code', zipCode)
@@ -316,6 +322,22 @@ function StepBranch({ onNext, onBack }: { onNext: () => void; onBack: () => void
         />
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           O endereço é único entre todas as clínicas: se já estiver em uso, o sistema completa com o nome da sua.
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <label className="overline" htmlFor="br-doc">CNPJ da unidade</label>
+        <input
+          id="br-doc"
+          type="text"
+          className="field"
+          inputMode="numeric"
+          placeholder="00.000.000/0001-00"
+          value={document}
+          onChange={e => setDocument(maskCPFouCNPJDigitando(e.target.value))}
+        />
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          O mesmo da rede, já preenchido. Troque se a unidade tiver CNPJ próprio.
         </span>
       </div>
 
@@ -508,9 +530,16 @@ function StepDone({ tenantName }: { tenantName: string }) {
 
 // -- Wizard root ---------------------------------------------------------------
 
-export function SetupWizard({ rede: inicial, temUnidade }: { rede: DadosDaRede; temUnidade: boolean }) {
-  // A rede que já tem unidade (saiu no meio e voltou) vai direto ao fim.
-  const [step, setStep] = useState(temUnidade ? 2 : 0)
+export function SetupWizard({ rede: inicial, temUnidade, noPassoDaUnidade = false }: {
+  rede: DadosDaRede; temUnidade: boolean
+  /** A rede já foi salva neste setup (`?passo=unidade`): recarregar fica na unidade (J-3). */
+  noPassoDaUnidade?: boolean
+}) {
+  const router = useRouter()
+  // A rede que já tem unidade (saiu no meio e voltou) vai direto ao fim; a
+  // que já salvou a rede e recarregou fica no passo da unidade (J-3: voltava
+  // ao passo 1). O passo mora na URL, que o recarregar mantém.
+  const [step, setStep] = useState(temUnidade ? 2 : noPassoDaUnidade ? 1 : 0)
   const [rede, setRede] = useState(inicial)
 
   return (
@@ -520,11 +549,12 @@ export function SetupWizard({ rede: inicial, temUnidade }: { rede: DadosDaRede; 
       {step === 0 && (
         <StepNetwork
           inicial={rede}
-          onNext={(salvos) => { setRede(salvos); setStep(1) }}
+          onNext={(salvos) => { setRede(salvos); setStep(1); router.replace('/setup?passo=unidade', { scroll: false }) }}
         />
       )}
       {step === 1 && (
-        <StepBranch onNext={() => setStep(2)} onBack={() => setStep(0)} />
+        <StepBranch documentoDaRede={rede.documento}
+          onNext={() => setStep(2)} onBack={() => { setStep(0); router.replace('/setup', { scroll: false }) }} />
       )}
       {step === 2 && (
         <StepDone tenantName={rede.nome} />

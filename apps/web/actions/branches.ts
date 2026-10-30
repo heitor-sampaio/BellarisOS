@@ -20,7 +20,9 @@ export async function createBranch(
 
   const name     = (formData.get('name') as string)?.trim()
   const slugRaw  = (formData.get('slug') as string)?.trim()
-  const document = (formData.get('document') as string)?.trim() || null
+  // Sem o campo, a unidade herda o CNPJ da rede (J-6: a primeira nascia sem
+  // nenhum). Com o campo, vale o que veio — vazio inclusive.
+  const documentoDoForm = formData.has('document') ? (formData.get('document') as string)?.trim() || null : undefined
   const email    = (formData.get('email') as string)?.trim().toLowerCase() || null
   const phone    = (formData.get('phone') as string)?.trim() || null
   const address  = (formData.get('address') as string)?.trim() || null
@@ -46,8 +48,9 @@ export async function createBranch(
   // ocupado — por outra clínica ou por uma rota do sistema —, o nome com a
   // clínica no fim; depois, numerado. Sem erro na tela. Dois cadastros ao mesmo
   // tempo batem no índice (23505): procura de novo.
-  const rede = await ler(supabase.from('tenants').select('name').eq('id', ctx.tenantId!).single(), 'buscar a rede')
+  const rede = await ler(supabase.from('tenants').select('name, document').eq('id', ctx.tenantId!).single(), 'buscar a rede')
   const nomeDaClinica = (rede?.name as string | undefined) ?? ''
+  const document = documentoDoForm !== undefined ? documentoDoForm : ((rede?.document as string | null) ?? null)
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     const candidatos = candidatosDeEndereco(base, nomeDaClinica)
     const ocupados = await ler(supabase.from('branches').select('slug').in('slug', candidatos), 'conferir os endereços') as { slug: string }[] | null
