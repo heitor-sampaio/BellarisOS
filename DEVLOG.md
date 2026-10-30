@@ -1651,6 +1651,70 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Frente do portal da cliente: só o que a clínica envia, "Sem preferência" e os dez ajustes do app
+
+As cinco decisões do Heitor e os ajustes J-59…J-68, com o teste escrito antes
+(migrations `20261029001201`–`1204`; `8dd00442` pôs os 11 specs novos na
+metade isolada e nas áreas do E2E):
+
+- **No app, só o documento que a clínica envia** (0fc6f2d5). A ficha diz "Só a
+  equipe vê" ou "No app da cliente desde …"; o termo assinado pelo sistema
+  continua aparecendo.
+- **"Sem preferência" de profissional** (2527cbfa, D-16). Junta os horários; o
+  servidor escolhe quem está livre, com menos atendimentos no dia (empate: o
+  nome).
+- **Crédito interno no Financeiro do app** (031fca85, D-17), só com saldo.
+- **Plano proposto no app** (f000ae80, D-18): sessões, valor, validade e
+  "Falar com a clínica", sem aceitar. A validade não existia: nasceu
+  `tenants.plano_validade_dias` (30), em Configurações → Geral.
+- **Cartão "A clínica"** (ad2d2d1f, J-66): endereço, telefone, horário,
+  WhatsApp e Ligar.
+- **O agendar do app** (e96a048f, J-59/J-60): o horário de cada profissional,
+  Hoje/Amanhã e Manhã/Tarde/Noite. O "hoje" do campo de data dava o dia
+  seguinte depois das 21h.
+- **O prazo em dia e hora** (535f6f67, J-61/J-64), o cartão tocável e "Motivo
+  (opcional)". A hora do cartão da agenda saía no fuso do servidor (10:00
+  aparecia 13:00 na produção).
+- **Os documentos do atendimento no detalhe** (879702bd, J-63).
+- **A assinatura diz o que falta e perde o "Confirmar assinatura"** (7522b219,
+  J-62), nos três canais; a prova gravada é a mesma.
+- **A exportação LGPD legível** (9fee5207, J-65): grava o último acesso, não diz
+  "Pronto" com o prontuário em análise, e o JSON sem ids nem colunas.
+- **"Seu acesso foi desativado pela clínica"** (d37e906d, J-68), só para quem
+  acerta a senha.
+- **`/admin`, `/setup` e `/login` com a sessão aberta** (6bcdef1e, J-67) levam ao
+  destino de cada um.
+
+**Decisões da frente, para revisar:**
+1. Enviar documento manda um aviso genérico à cliente e pode ser desfeito
+   ("Tirar do app"). Termo ou contrato anexado nasce enviado só nos arquivos de
+   antes; nos novos, quem anexa decide.
+2. "Sem preferência" usa todas as que atendem na unidade (não há cadastro de
+   quem faz qual procedimento) e só aparece com mais de uma profissional.
+3. Crédito no app: só o saldo, só quando é maior que zero.
+4. A validade do plano conta de quando foi proposto e é só informação: o
+   checkout aceita o plano vencido.
+5. O WhatsApp do cartão é o telefone da unidade (ou da rede), não o número do
+   inbox.
+6. Com o prontuário em análise, a cliente não faz outro pedido LGPD; o dinheiro
+   vai no JSON como número.
+7. O "Confirmar assinatura" saiu de todos os canais (clínica e link também); o
+   "Limpar" substitui o "Assinar de novo".
+8. **A conferir com cuidado:** para dizer "desativado" só a quem acerta a senha,
+   nasceu `senha_da_conta_confere` (migration `20261029001204`), que confere a
+   senha no banco, só pelo servidor. Ela responde à conta já bloqueada sem
+   passar pelo limite de tentativas do Auth, e o login não tem limite próprio:
+   dá para testar senhas de uma conta desativada. Alternativa mais simples:
+   dizer "desativado" sempre que o Auth responder `user_banned` (revela só que o
+   e-mail desativado existe) e apagar a função.
+9. O agendamento pelo app continua com conferências próprias, equivalentes às
+   de `conferirPecasDoAgendamento`, fora de `createAppointmentCore` (já era
+   assim).
+
+Mexeu no login (`actions/auth.ts`, a página de `/login`, `lib/destino-da-sessao.ts`),
+na entrada do portal, em `lib/appointments/core.ts`, `lib/cached-queries.ts`, na
+assinatura e no CLAUDE.md §6/§11: vale uma completa.
+
 ### 2026-10-30 — Frente de indicadores: conversão da oportunidade, ticket por cliente, cada número no seu módulo
 
 Oito decisões da revisão do Heitor, com o teste escrito antes (migrations
@@ -7394,8 +7458,10 @@ verdade. O que vale:
     cliente;
   - o contrato ou termo que ela assinou conta como enviado.
 
-  A FAZER: uma marca "enviado à cliente" por arquivo, com o gesto de enviar
-  na ficha, e o portal filtra por ela. A regra do §9.4 fica como está.
+  **Feito em 2026-10-30** (0fc6f2d5, migration `20261029001201`): a marca
+  "enviado à cliente" por arquivo, com "Enviar à cliente" e "Tirar do app" na
+  ficha; o portal filtra por ela. Os 2 arquivos que já existiam (fotos
+  clínicas) ficaram ocultos.
 
 - ~~O DNS do site~~ — **no ar desde 2026-10-20**: o DNS passou da GoDaddy
   para o Cloudflare (a GoDaddy não aceita CNAME na raiz; o domínio segue
@@ -8304,9 +8370,9 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 - **D-13: deixar como está.** A ficha já é customizável.
 - **D-14:** o card mantém o número do mês, e abaixo vem a linha "Em aberto, todos os vencimentos: R$ X". **Feito em 2026-10-30** (004576f0).
 - **D-15:** a clínica configura "parcela até Nx". O padrão é o maior número de parcelas com taxa cadastrada.
-- **D-16:** "Sem preferência" no app junta os horários de todas que fazem o procedimento. O sistema escolhe quem está livre, com menos atendimentos no dia.
-- **D-17:** o saldo do crédito interno aparece no Financeiro do app.
-- **D-18:** o plano proposto no app mostra procedimentos, valor e validade, com "Falar com a clínica". O aceite continua na clínica.
+- **D-16:** "Sem preferência" no app junta os horários de todas que fazem o procedimento. O sistema escolhe quem está livre, com menos atendimentos no dia. **Feito em 2026-10-30** (2527cbfa).
+- **D-17:** o saldo do crédito interno aparece no Financeiro do app. **Feito em 2026-10-30** (031fca85).
+- **D-18:** o plano proposto no app mostra procedimentos, valor e validade, com "Falar com a clínica". O aceite continua na clínica. **Feito em 2026-10-30** (f000ae80).
 - **D-19:** com UMA unidade ativa, somem os termos e gráficos de rede ("TOTAL REDE", "por filial", os rankings de filial, "Voltar para a rede") e o seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda unidade.
 
 Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
@@ -8383,16 +8449,16 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-57: o "Status" com os abertos.
   - J-58: o empate do "Mais realizado".
 - **Portal da cliente, login e acesso**
-  - J-59: Hoje/Amanhã e os turnos.
-  - J-60: o horário da profissional.
-  - J-61: o prazo com data e hora.
-  - J-62: o que falta para assinar.
-  - J-63: o termo no detalhe do agendamento.
-  - J-64: "Motivo (opcional)".
-  - J-65: a exportação LGPD (último acesso, "Pronto" com "em análise", o JSON técnico).
-  - J-66: o cartão "A clínica".
-  - J-67: `/admin`, `/setup` e `/login` com a cliente logada.
-  - J-68: o "acesso desativado" no login.
+  - J-59: Hoje/Amanhã e os turnos. Feito (e96a048f).
+  - J-60: o horário da profissional. Feito (e96a048f).
+  - J-61: o prazo com data e hora. Feito (535f6f67).
+  - J-62: o que falta para assinar. Feito (7522b219).
+  - J-63: o termo no detalhe do agendamento. Feito (879702bd).
+  - J-64: "Motivo (opcional)". Feito (535f6f67).
+  - J-65: a exportação LGPD (último acesso, "Pronto" com "em análise", o JSON técnico). Feito (9fee5207).
+  - J-66: o cartão "A clínica". Feito (ad2d2d1f).
+  - J-67: `/admin`, `/setup` e `/login` com a cliente logada. Feito (6bcdef1e).
+  - J-68: o "acesso desativado" no login. Feito (d37e906d).
 
 **Já resolvidos.** R-1…R-11, por `b61c8481`, `114af842`, `142e89b`, `495f514e`, `812a79f0` e `df0e6db`.
 
