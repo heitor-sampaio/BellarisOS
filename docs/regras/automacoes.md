@@ -105,6 +105,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   com `canal: 'whatsapp'` gravado (`configPadrao`, `lib/automacoes/ids.ts`); o salvo sem canal mostra
   "Escolha o canal…" — nunca um WhatsApp que a config não tem (a validação continua exigindo o canal).
   Prova: `e2e/automacoes-canal-gravado.spec.ts`.
+- **O passo novo nasce LIGADO ao anterior** (J-14, 2026-10-30): o anterior é o
+  passo aberto no painel ou, sem nenhum, o último que entrou; a ligação sai da
+  primeira saída livre dele (no "Se", a Sim, depois a Não), e o passo nasce na
+  altura dela (`encaixarPasso`, `lib/automacoes/encaixe.ts`). Gatilho e saída
+  já usada não se ligam: o passo nasce solto, sem desfazer nada. O quadro
+  enquadra o passo novo com o anterior (nunca atrás do painel) e só se
+  reenquadra quando a LARGURA muda — a faixa de problemas encolhendo depois
+  da primeira ligação deslocava tudo. Prova: `e2e/automacoes-quadro-encaixe.spec.ts`.
 - **Automações e Campanhas são da clínica, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
   alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa

@@ -74,42 +74,9 @@ test('monta o fluxo no quadro, só liga quando fica válido, e o grafo salvo é 
   await painel.getByLabel('Título').fill(`${nome} · {{cliente.nome}}`)
   await painel.getByLabel('Mensagem').fill('Conferir o cadastro.')
 
-  // Ainda desligado: o node existe mas não está ligado ao gatilho.
-  await expect(ligar, 'node solto não deveria deixar ligar').toBeDisabled()
-  await expect(page.getByText(/não está ligado ao fluxo/)).toBeVisible()
-
-  // -- Ligar os dois no quadro ------------------------------------------------
-  const nos = page.locator('.react-flow__node')
-  await expect(nos).toHaveCount(2)
-
-  // Por texto, não por índice: a ordem no DOM não é a ordem do grafo.
-  const gatilho = page.locator('.react-flow__node', { hasText: 'Quando acontecer' })
-  const acao    = page.locator('.react-flow__node', { hasText: 'Avisar a equipe' })
-
-  const saida   = gatilho.locator('.react-flow__handle-right')
-  const entrada = acao.locator('.react-flow__handle-left')
-
-  // Fechar o painel primeiro: ele cobre 320px do quadro, e a alça de entrada
-  // do node de destino fica embaixo dele.
-  await painel.getByLabel('Fechar').click()
-  await expect(page.getByLabel('Configuração do node')).toBeHidden()
-  // Fechar o painel devolve 320px ao quadro, e o reenquadramento é animado:
-  // medir durante a animação dá coordenadas que já mudaram quando o arrasto
-  // começa.
-  await page.waitForTimeout(600)
-
-  const a = (await saida.boundingBox())!
-  const b = (await entrada.boundingBox())!
-
-  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2)
-  await page.mouse.down()
-  // Em etapas e com uma parada no meio: o React Flow precisa de movimento
-  // contínuo para entender que é uma conexão, não um clique.
-  await page.mouse.move(a.x + 40, a.y, { steps: 5 })
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 10 })
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
-  await page.mouse.up()
-
+  // O passo nasce LIGADO ao anterior (J-14): sem arrasto de alça a alça. O
+  // arrasto à mão continua valendo, e é provado em automacoes-quadro-encaixe.
+  await expect(page.locator('.react-flow__node')).toHaveCount(2)
   await expect(page.locator('.react-flow__edge')).toHaveCount(1)
   await expect(page.getByText('O fluxo está pronto para ligar.')).toBeVisible()
   await expect(ligar).toBeEnabled()

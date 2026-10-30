@@ -20,7 +20,8 @@ import { PainelDeLimites } from './painel-de-limites'
 import { PainelDeExecucoes } from './painel-de-execucoes'
 import { PainelDeVersoes } from './painel-de-versoes'
 import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/validar'
-import { novoIdDeNo, configPadrao } from '@/lib/automacoes/ids'
+import { novoIdDeNo, novoIdDeLigacao, configPadrao } from '@/lib/automacoes/ids'
+import { encaixarPasso } from '@/lib/automacoes/encaixe'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
@@ -95,14 +96,15 @@ export function EditorDeAutomacao({
 
   function adicionar(tipo: TipoDeNo) {
     const id = novoIdDeNo()
-    // Nasce à direita do último, para não empilhar tudo na origem do quadro.
-    const ultimo = grafo.nos[grafo.nos.length - 1]
-    const pos = ultimo
-      ? { x: ultimo.pos.x + 280, y: ultimo.pos.y }
-      : { x: 80, y: 120 }
+    // Nasce à direita do anterior — o aberto no painel ou, sem nenhum, o
+    // último que entrou — e já LIGADO a ele pela primeira saída livre (J-14).
+    // Solto, cada passo pedia um arrasto de alça a alça.
+    const { pos, ligacao } = encaixarPasso(grafo, tipo, selecionado)
 
     mudarGrafo({
-      ...grafo,
+      ligacoes: ligacao
+        ? [...grafo.ligacoes, { id: novoIdDeLigacao(), de: ligacao.de, para: id, saida: ligacao.saida }]
+        : grafo.ligacoes,
       // Com os padrões do tipo: um node que nasce vazio mostra "A unidade do
       // fato" no painel e grava `alvo: undefined` — a tela dizendo uma coisa e
       // o banco guardando outra.

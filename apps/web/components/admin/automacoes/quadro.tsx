@@ -8,11 +8,12 @@ import {
   BackgroundVariant, MarkerType,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { NODES, SAIDAS_DE, TIPOS_DE_GATILHO } from '@estetica-os/types'
-import type { GrafoDeAutomacao, TipoDeNo, ConfigCondicaoEscolha } from '@estetica-os/types'
+import { TIPOS_DE_GATILHO } from '@estetica-os/types'
+import type { GrafoDeAutomacao } from '@estetica-os/types'
 import { NoDoQuadro, type DadosDoNo } from './no-do-quadro'
 import { resumoDoNo } from '@/lib/automacoes/resumo'
 import { novoIdDeLigacao } from '@/lib/automacoes/ids'
+import { saidasDoNo } from '@/lib/automacoes/encaixe'
 
 /**
  * O quadro infinito.
@@ -25,17 +26,6 @@ import { novoIdDeLigacao } from '@/lib/automacoes/ids'
 
 const TIPOS_DE_NO = { bellaris: NoDoQuadro }
 
-/** As saídas deste node: fixas no catálogo, ou os casos do SWITCH. */
-export function saidasDoNo(tipo: TipoDeNo, config: Record<string, unknown>): string[] {
-  if (tipo === NODES.CONDICAO_ESCOLHA) {
-    const casos = (config as unknown as ConfigCondicaoEscolha).casos ?? []
-    // 'padrao' sempre existe: um valor que ninguém previu não pode fazer o
-    // fluxo sumir sem deixar rastro.
-    return [...casos.map(c => c.chave), 'padrao']
-  }
-  return [...(SAIDAS_DE[tipo] ?? [])]
-}
-
 interface Props {
   grafo:       GrafoDeAutomacao
   onChange:    (grafo: GrafoDeAutomacao) => void
@@ -43,7 +33,10 @@ interface Props {
   onSelecionar: (id: string | null) => void
   /** ids com problema, para destacar. */
   comProblema: Set<string>
-  /** Muda de valor para pedir um reenquadramento (node novo entrou). */
+  /**
+   * Muda de valor para pedir um reenquadramento: um node novo entrou (e está
+   * selecionado: o quadro mostra ele e o anterior) ou uma versão foi carregada.
+   */
   enquadrarEm?: number
   somenteLeitura?: boolean
 }
@@ -63,8 +56,14 @@ export function Quadro(props: Props) {
 function QuadroInterno({
   grafo, onChange, selecionado, onSelecionar, comProblema, enquadrarEm, somenteLeitura,
 }: Props) {
-  const { fitView } = useReactFlow()
+  const { fitView, getNodesBounds, getInternalNode } = useReactFlow()
   const caixa = useRef<HTMLDivElement>(null)
+
+  // O enquadramento lê o grafo e a seleção do momento, sem ser recriado a cada
+  // mudança. Recriado, ele refazia o ResizeObserver — e a primeira medida de
+  // cada observer novo reenquadrava o quadro inteiro a cada arrasto.
+  const atual = useRef({ grafo, selecionado })
+  useEffect(() => { atual.current = { grafo, selecionado } })
 
   /**
    * Enquadra o fluxo — e num quadro estreito começa pelo GATILHO.
@@ -75,9 +74,9 @@ function QuadroInterno({
    * lado arrastar. Começando no gatilho, o caminho é sempre o mesmo: seguir as
    * setas para a direita.
    */
-  const enquadrar = useCallback((duracao: number) => {
+  const enquadrarFluxo = useCallback((duracao: number) => {
     const estreito = (caixa.current?.clientWidth ?? 0) < 700
-    const gatilho = grafo.nos.find(
+    const gatilho = atual.current.grafo.nos.find(
       n => (TIPOS_DE_GATILHO as readonly string[]).includes(n.tipo),
     )
 
@@ -86,43 +85,92 @@ function QuadroInterno({
       return
     }
     fitView({ padding: 0.2, maxZoom: 1, minZoom: 0.65, duration: duracao })
-  }, [fitView, grafo.nos])
+  }, [fitView])
 
-  // Os nodes precisam estar MEDIDOS para o enquadramento valer: chamado antes
-  // disso, o React Flow calcula sobre caixas de tamanho zero e o quadro abre
-  // com o fluxo fora da vista.
+  /**
+   * Enquadra o passo aberto no painel, com o que leva a ele (J-14).
+   *
+   * Com o painel aberto o quadro fica estreito, e o enquadramento pelo gatilho
+   * deixava o passo que acabou de nascer — sempre à direita — fora da vista,
+   * "atrás do painel". O anterior entra junto quando os dois cabem legíveis;
+   * senão, só o passo, inteiro.
+   */
+  const enquadrarPasso = useCallback((id: string, duracao: number) => {
+    const largura = caixa.current?.clientWidth ?? 0
+    const altura  = caixa.current?.clientHeight ?? 0
+    const anterior = atual.current.grafo.ligacoes.find(l => l.para === id)?.de
+    const ids = anterior ? [anterior, id] : [id]
+    const caixaDosDois = getNodesBounds(ids)
+    const zoomQueCabe = Math.min(
+      largura / Math.max(caixaDosDois.width * 1.6, 1),
+      altura / Math.max(caixaDosDois.height * 1.6, 1),
+    )
+    const alvo = zoomQueCabe >= 0.65 ? ids : [id]
+    fitView({ nodes: alvo.map(i => ({ id: i })), padding: 0.3, maxZoom: 1, minZoom: 0.65, duration: duracao })
+  }, [fitView, getNodesBounds])
+
+  const enquadrar = useCallback((duracao: number) => {
+    const { grafo: g, selecionado: sel } = atual.current
+    if (sel && g.nos.some(n => n.id === sel)) enquadrarPasso(sel, duracao)
+    else enquadrarFluxo(duracao)
+  }, [enquadrarPasso, enquadrarFluxo])
+
+  /**
+   * Roda `fn` quando todos os nodes estiverem MEDIDOS. Chamado antes disso, o
+   * React Flow calcula sobre caixas de tamanho zero: o node que acabou de
+   * nascer ficava de fora do enquadramento e caía atrás do painel.
+   */
+  const quandoMedidos = useCallback((fn: () => void) => {
+    let tentativas = 0
+    const passo = () => {
+      const faltam = atual.current.grafo.nos.some(n => !getInternalNode(n.id)?.measured?.width)
+      if (!faltam || ++tentativas > 60) fn()
+      else requestAnimationFrame(passo)
+    }
+    requestAnimationFrame(passo)
+  }, [getInternalNode])
+
+  // A abertura: enquadra uma vez, quando os nodes já têm tamanho.
   const medidos = useNodesInitialized()
-  useEffect(() => { if (medidos) enquadrar(0) }, [medidos, enquadrar])
+  const abriu = useRef(false)
+  useEffect(() => {
+    if (!medidos || abriu.current) return
+    abriu.current = true
+    enquadrarFluxo(0)
+  }, [medidos, enquadrarFluxo])
 
   useEffect(() => {
     if (!enquadrarEm) return
-    // O node novo nasce à direita do último e cairia fora da área visível. O
-    // quadro é infinito: sem reenquadrar, "não aconteceu nada" é o que a
+    // O node novo nasce à direita do anterior e cairia fora da área visível.
+    // O quadro é infinito: sem reenquadrar, "não aconteceu nada" é o que a
     // pessoa vê ao clicar na paleta.
-    fitView({ padding: 0.2, maxZoom: 1, minZoom: 0.65, duration: 260 })
-  }, [enquadrarEm, fitView])
+    abriu.current = true
+    quandoMedidos(() => enquadrar(260))
+  }, [enquadrarEm, quandoMedidos, enquadrar])
 
   useEffect(() => {
     const alvo = caixa.current
     if (!alvo) return
 
-    // Reenquadra quando a ÁREA do quadro muda de tamanho. Cobre de uma vez os
-    // três casos em que o fluxo sairia de vista: o painel de configuração
-    // abrindo e comendo 320px, a barra lateral recolhendo, e a janela mudando
-    // de tamanho. Tentar acertar isso com um `setTimeout` depois de abrir o
+    // Reenquadra quando a LARGURA do quadro muda. Cobre de uma vez os três
+    // casos em que o fluxo sairia de vista: o painel de configuração abrindo e
+    // comendo 320px, a barra lateral recolhendo, e a janela mudando de
+    // tamanho. Tentar acertar isso com um `setTimeout` depois de abrir o
     // painel é cravar um número que a máquina lenta desmente.
-    // A PRIMEIRA medida também enquadra, só que sem animação. Ela chegava a ser
-    // ignorada — fazia sentido enquanto a prop `fitView` do React Flow cuidava
-    // da abertura. Sem ela, ignorar a primeira deixava o fluxo enquadrado para
-    // um quadro que ainda não tinha o tamanho final: os cards apareciam
-    // transbordando por cima da paleta.
-    let primeira = true
-    const obs = new ResizeObserver(() => {
-      // Pelo mesmo caminho do enquadramento inicial: girar o aparelho atravessa
-      // a fronteira do estreito, e reenquadrar "tudo" ali devolveria o fluxo
-      // cortado pelo meio que este ajuste resolveu.
+    // A PRIMEIRA medida também enquadra, só que sem animação: sem ela, o fluxo
+    // ficava enquadrado para um quadro que ainda não tinha o tamanho final, e
+    // os cards apareciam transbordando por cima da paleta.
+    // Só a ALTURA mudando não reenquadra (J-14): a faixa de problemas do
+    // rodapé perde uma linha quando a primeira ligação resolve um erro, o
+    // quadro ganha 24 px, e o reenquadramento deslocava o fluxo inteiro 12 px
+    // debaixo do mouse de quem acabou de ligar.
+    let largura = -1
+    const obs = new ResizeObserver(entradas => {
+      const w = Math.round(entradas[0]?.contentRect.width ?? 0)
+      if (w === largura) return
+      const primeira = largura < 0
+      largura = w
       enquadrar(primeira ? 0 : 200)
-      primeira = false
     })
     obs.observe(alvo)
     return () => obs.disconnect()
