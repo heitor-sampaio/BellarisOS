@@ -44,6 +44,7 @@ export async function ListaDePlanejamentos({
       basePath={basePath}
       unidades={unidades as { id: string; name: string }[]}
       podeEditar={can(ctx, 'medical_records', 'MANAGE')}
+      podeBuscarCliente={can(ctx, 'clients', 'VIEW')}
     />
   )
 }
