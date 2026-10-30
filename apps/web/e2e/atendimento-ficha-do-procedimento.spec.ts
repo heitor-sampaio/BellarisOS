@@ -160,7 +160,7 @@ test.describe('a rede que monta plano: o atendimento avulso (ramo da avaliação
       await expect(p.getByText('Registro bloqueado para edição')).toBeVisible()
       await expect(p.getByText(FICHA).first(), 'a ficha do procedimento continua à vista').toBeVisible()
       await expect(p.locator('[data-anamnese-geral] textarea, [data-anamnese-geral] input'), 'a anamnese se lê, não se preenche').toHaveCount(0)
-      await expect(p.getByRole('button', { name: 'Enviar para a recepção' })).toBeVisible()
+      await expect(p.getByRole('button', { name: 'Gerar plano e enviar à recepção' })).toBeVisible()
       await expect(p.locator('[data-plano-da-avaliacao-concluida]'), 'a tela diz que o registro fica como está').toBeVisible()
     })
   })

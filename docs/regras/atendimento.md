@@ -859,6 +859,13 @@ O resto do fluxo:
   agendamento cancelado e o plano já fechado (ACCEPTED/COMPLETED), e só o
   servidor a chama. A action confere também a agenda "só os meus" pelo id
   (`deOutroProfissional`). Prova: `e2e/atendimento-ficha-e-plano-juntos.spec.ts`.
+- **O botão é "Gerar plano e enviar à recepção"** (J-35, 2026-10-30): era
+  "Enviar para a recepção" e, no atendimento avulso, parecia um segundo
+  "concluir". Ele gera o plano; a tela diz que, sem plano, basta o "Finalizar
+  atendimento". E a janela do "Finalizar" diz de onde vem o pagamento (J-40):
+  sessão do plano, de pacote, pré-pago, sem cobrança — ou "O pagamento será
+  confirmado pela recepção" no avulso com preço (dizia isso na sessão do plano
+  já pago). Prova: `e2e/atendimento-textos-do-fechamento.spec.ts`.
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
   simulação de 2026-10-29): a evolução só se lê e a anamnese aparece como
   leitura — não em branco com as obrigatórias marcadas. Quem desbloqueia

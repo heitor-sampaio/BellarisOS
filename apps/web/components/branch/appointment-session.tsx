@@ -265,9 +265,24 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
   )
 }
 
+/**
+ * De onde vem o pagamento, dito na janela do "Finalizar" (J-40, 2026-10-30).
+ * Dizia sempre "O pagamento será confirmado pela recepcionista" — também na
+ * sessão do plano já pago, ao lado do "Nada a cobrar agora" do plano.
+ */
+function textoDoPagamentoAoFinalizar(t: { plano: boolean; pacote: boolean; prePago: boolean; semCobranca: boolean }): string {
+  if (t.plano)       return 'Sessão do plano de tratamento: o pagamento é o do plano, nada a receber neste atendimento.'
+  if (t.pacote)      return 'Sessão de pacote: paga na venda do pacote, nada a receber.'
+  if (t.prePago)     return 'Procedimento pré-pago: pago na venda, nada a receber.'
+  if (t.semCobranca) return 'Sem cobrança: atendimento de R$ 0,00.'
+  return 'O pagamento será confirmado pela recepção.'
+}
+
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
-function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, onClose }: {
+function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, pagamento, onClose }: {
   appointmentId: string; slug: string
+  /** De onde vem o pagamento deste atendimento (J-40). */
+  pagamento: string
   initialNotes: string | null; initialIntercurrences: string | null
   insumos: SessionProduct[]
   /** As dores da tela (D3): `undefined` = a tela não tem o campo, e nada muda. */
@@ -317,7 +332,7 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
           <CheckCircle2 size={16} style={{ color: 'var(--success)' }} />
           <div style={{ flex: 1 }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Finalizar atendimento</h2>
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 1 }}>O pagamento será confirmado pela recepcionista.</p>
+            <p data-pagamento-ao-finalizar style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 1 }}>{pagamento}</p>
           </div>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
         </div>
@@ -1508,6 +1523,7 @@ export function AppointmentSession({
           queixas={usaFormularioDaAvaliacao && canViewRecords ? evalComplaints : undefined}
           anamnese={anamneseDigitada}
           ficha={fichaDigitada}
+          pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, prePago: isPrePago, semCobranca })}
           onClose={() => setShowFinish(false)}
         />
       )}
@@ -2075,10 +2091,17 @@ export function AppointmentSession({
                         >
                           {generating
                             ? <><Loader2 size={16} className="animate-spin" /> Gerando plano…</>
-                            : <><Send size={16} /> Enviar para a recepção</>}
+                            : <><Send size={16} /> Gerar plano e enviar à recepção</>}
                         </button>
                       </div>
 
+                      {/* J-35: o "Gerar plano…" parecia um segundo "concluir".
+                          Sem plano, o avulso termina no "Finalizar". */}
+                      {status !== 'COMPLETED' && (
+                        <p data-dica-do-avulso style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', textAlign: 'center', marginTop: 10 }}>
+                          Sem plano a propor? Para encerrar este atendimento, basta o &quot;Finalizar atendimento&quot;, no alto da tela.
+                        </p>
+                      )}
                       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
                         {status === 'COMPLETED'
                           ? (podeReceber

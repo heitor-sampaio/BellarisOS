@@ -103,7 +103,7 @@ test('a avaliação concluída gera o plano pela tela, e o registro daquele dia 
     await p.getByRole('button', { name: 'Nova sessão' }).click()
     await p.getByRole('button', { name: 'Adicionar procedimento' }).click()
     await p.locator('select').filter({ hasText: 'Selecionar procedimento…' }).selectOption({ label: `[e2e] Peeling ${marca}` })
-    await p.getByRole('button', { name: 'Enviar para a recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
     await expect.poll(async () => (await plano(id))?.status, { timeout: 30_000 }).toBe('PROPOSED')
   })
   const pl = await plano(id)

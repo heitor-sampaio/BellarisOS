@@ -188,6 +188,8 @@ export const ISOLADOS = [
   'crm-modal-do-lead.spec.ts',
   'campanha-seletor-de-tags.spec.ts',
   'ficha-historico-autor-e-avaliacao.spec.ts',
+  // A 2ª rodada (atendimento, plano, dashboard e relatórios).
+  'atendimento-textos-do-fechamento.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */
