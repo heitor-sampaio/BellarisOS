@@ -83,3 +83,24 @@ test('o prazo do portal (cancelar e remarcar pelo app) se configura aqui', async
     await db.from('tenants').update({ portal_prazo_alteracao_horas: original }).eq('id', antes!.id)
   }
 })
+
+// D-18 (2026-10-30): o plano proposto aparece no app com "Válido até"; a
+// validade é da rede e se configura aqui.
+test('a validade do plano proposto (o "Válido até" do app) se configura aqui', async ({ page }) => {
+  const db = banco()
+  const { data: antes } = await db.from('tenants').select('id, plano_validade_dias').eq('id', await tenantId()).single()
+  const original = Number(antes!.plano_validade_dias ?? 30)
+  try {
+    await page.goto('/admin/settings?tab=general')
+    await page.waitForLoadState('networkidle')
+    const validade = page.locator('input[name="plano_validade_dias"]')
+    await expect(validade).toHaveValue(String(original))
+    await validade.fill('15')
+    await page.getByRole('button', { name: 'Salvar' }).click()
+    await expect(page.getByText('Salvo', { exact: true })).toBeVisible()
+    const { data: depois } = await db.from('tenants').select('plano_validade_dias').eq('id', antes!.id).single()
+    expect(depois?.plano_validade_dias).toBe(15)
+  } finally {
+    await db.from('tenants').update({ plano_validade_dias: original }).eq('id', antes!.id)
+  }
+})

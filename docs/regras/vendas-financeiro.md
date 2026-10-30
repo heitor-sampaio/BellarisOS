@@ -399,6 +399,18 @@ o procedimento avulso pago antes.
   `internal_credits.amount` — concessão positiva, uso NEGATIVO com o
   `transaction_id` que o consumiu. Estornar um pagamento feito com crédito
   devolve o crédito.
+- **O plano PROPOSTO no app** (D-18, decisão do Heitor, 2026-10-30): a home
+  do portal mostra o plano proposto (`data-plano-proposto`) com as sessões e
+  os procedimentos, o valor (a soma dos preços das sessões, em centavos), a
+  validade e "Falar com a clínica" (o WhatsApp da unidade do endereço,
+  `aClinicaDoEndereco`). O app NÃO aceita: o texto diz "O aceite é feito na
+  clínica". A anotação do profissional (`professional_notes`) e a da sessão
+  (`treatment_plan_sessions.notes`) são clínicas e nem são lidas pela tela.
+  A validade é da REDE (`tenants.plano_validade_dias`, 30 por padrão, 1–365,
+  Configurações → Geral; migration `20261029001202`), contada de quando o
+  plano foi proposto; vencida, o app diz "Proposta vencida em …". É só
+  informação: o checkout na clínica não recusa o plano vencido. Prova:
+  `e2e/portal-cliente-plano-proposto.spec.ts`, `e2e/configuracoes-geral.spec.ts`.
 - **A cliente vê o saldo do crédito no app** (D-17, decisão do Heitor,
   2026-10-30): o Financeiro do portal mostra "Crédito na clínica" com o saldo
   da ficha da clínica do ENDEREÇO (`ctx.clientId`), só quando é maior que

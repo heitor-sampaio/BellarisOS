@@ -79,6 +79,11 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
           <input name="portal_prazo_alteracao_horas" type="number" min={0} max={720} step={1} className="field"
             defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
         </Campo>
+
+        <Campo rotulo="Validade do plano proposto (dias)" dica="O app da cliente mostra o plano proposto com “Válido até”, contando desde quando foi proposto.">
+          <input name="plano_validade_dias" type="number" min={1} max={365} step={1} className="field"
+            defaultValue={rede.validadeDoPlanoDias} disabled={!podeEditar} inputMode="numeric" />
+        </Campo>
       </div>
 
       {/* O que não se edita, à vista. */}

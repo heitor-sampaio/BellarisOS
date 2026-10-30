@@ -2,7 +2,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
-import { CalendarDays, ChevronRight, ClipboardList, FileSignature, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MessageCircle, Sparkles } from 'lucide-react'
+import { formatBRL } from '@estetica-os/utils'
+import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
@@ -40,8 +42,11 @@ type ActivePlan = {
   // Os procedimentos vêm das SESSÕES. `treatment_plan_items` é legado: nenhum
   // código escreve nela desde que o plano passou a ser por sessão, e a lista
   // aqui aparecia sem nenhum procedimento.
+  // Só o que a cliente pode ver: procedimento e preço. A anotação do
+  // profissional (`professional_notes`) e a da sessão são clínicas (D-18).
   treatment_plan_sessions: Array<{
-    treatment_plan_session_procedures: Array<{ procedures: { name: string } | null }>
+    sort_order: number | null
+    treatment_plan_session_procedures: Array<{ price: number | string | null; procedures: { name: string } | null }>
   }>
 }
 
@@ -77,7 +82,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, treatment_plan_sessions(treatment_plan_session_procedures(procedures(name)))')
+      .select('id, status, created_at, treatment_plan_sessions(sort_order, treatment_plan_session_procedures(price, procedures(name)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -113,6 +118,19 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
     .filter(v => v.disponiveis > 0)
 
   const hasActiveTreatments = activePkgs.length > 0 || activePlans.length > 0 || prePagos.length > 0
+
+  // O plano PROPOSTO (D-18): validade da rede e o caminho para falar com a
+  // clínica do endereço — o aceite é na clínica.
+  const temProposto = activePlans.some(p => p.status === 'PROPOSED')
+  const [validadeDias, aClinica] = temProposto
+    ? await Promise.all([
+        redeDoCliente
+          ? ler(admin.from('tenants').select('plano_validade_dias').eq('id', redeDoCliente).maybeSingle(), 'ler a validade do plano proposto')
+              .then(t => Number((t as { plano_validade_dias?: number } | null)?.plano_validade_dias ?? 30))
+          : Promise.resolve(30),
+        aClinicaDoEndereco(slug),
+      ])
+    : [30, null]
 
   // Termos e contratos esperando a assinatura dele (§9.4.1).
   const paraAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
@@ -319,7 +337,11 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
               </div>
             ))}
 
-            {activePlans.map(plan => {
+            {activePlans.filter(p => p.status === 'PROPOSED').map(plan => (
+              <PlanoProposto key={plan.id} plano={plan} validadeDias={validadeDias} whatsapp={aClinica?.whatsapp ?? null} telefone={aClinica?.telefone ?? null} />
+            ))}
+
+            {activePlans.filter(p => p.status !== 'PROPOSED').map(plan => {
               const procs = (plan.treatment_plan_sessions ?? [])
                 .flatMap(s => s.treatment_plan_session_procedures ?? [])
                 .map(p => p.procedures?.name)
@@ -372,6 +394,58 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 }
 
 // -- Sub-components ------------------------------------------------
+
+/**
+ * O plano proposto como a cliente o vê (D-18): as sessões com os
+ * procedimentos, o valor e a validade, e "Falar com a clínica". O app não
+ * aceita: o aceite (e o pagamento) é na clínica.
+ */
+function PlanoProposto({ plano, validadeDias, whatsapp, telefone }: {
+  plano: ActivePlan; validadeDias: number; whatsapp: string | null; telefone: string | null
+}) {
+  const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  const itens = sessoes.flatMap(s => s.treatment_plan_session_procedures ?? [])
+  const valor = itens.reduce((t, i) => t + Math.round(Number(i.price ?? 0) * 100), 0) / 100
+  const validoAte = new Date(new Date(plano.created_at).getTime() + validadeDias * 86_400_000)
+  const vencido = validoAte.getTime() < Date.now()
+  const dia = validoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  return (
+    <div data-plano-proposto className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Sparkles size={15} color="var(--brand)" />
+        <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Plano de tratamento proposto</p>
+        <span style={{
+          marginLeft: 'auto', fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--info)', background: 'var(--info-soft)',
+          padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', flexShrink: 0,
+        }}>Proposto</span>
+      </div>
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {sessoes.map((s, i) => (
+          <li key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
+            <span style={{ color: 'var(--text-faint)', fontWeight: 700, flexShrink: 0 }}>Sessão {i + 1}</span>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              {(s.treatment_plan_session_procedures ?? []).map(x => x.procedures?.name ?? 'Procedimento').join(' + ') || '—'}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
+        <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{sessoes.length} {sessoes.length === 1 ? 'sessão' : 'sessões'}</span>
+        <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>{formatBRL(valor)}</span>
+      </div>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: vencido ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
+        {vencido ? `Proposta vencida em ${dia} — fale com a clínica para atualizar.` : `Válido até ${dia}.`} O aceite é feito na clínica.
+      </p>
+      {whatsapp ? (
+        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center' }}>
+          <MessageCircle size={14} aria-hidden="true" /> Falar com a clínica
+        </a>
+      ) : telefone ? (
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>Telefone da clínica: {telefone}</p>
+      ) : null}
+    </div>
+  )
+}
 
 function SectionHeader({ label }: { label: string }) {
   return (

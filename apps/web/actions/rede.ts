@@ -17,6 +17,8 @@ export interface DadosDaRede {
   website:   string | null
   /** Até quantas horas antes a cliente cancela ou remarca pelo portal (2026-10-21). */
   prazoPortalHoras: number
+  /** Por quantos dias o plano PROPOSTO vale (o "Válido até" do app, D-18). */
+  validadeDoPlanoDias: number
   /** Somente leitura — quem muda isso é a assinatura, não esta tela. */
   planName:   string | null
   planStatus: string | null
@@ -30,7 +32,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
   const t = await ler(
     createAdminClient()
       .from('tenants')
-      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at, portal_prazo_alteracao_horas')
+      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at, portal_prazo_alteracao_horas, plano_validade_dias')
       .eq('id', ctx.tenantId!)
       .maybeSingle(),
     'carregar os dados da rede',
@@ -46,6 +48,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
     phone:      (t.phone as string | null) ?? null,
     website:    (t.website as string | null) ?? null,
     prazoPortalHoras: Number(t.portal_prazo_alteracao_horas ?? 24),
+    validadeDoPlanoDias: Number((t as { plano_validade_dias?: number }).plano_validade_dias ?? 30),
     planName:   (t.plan_name as string | null) ?? null,
     planStatus: (t.plan_status as string | null) ?? null,
     criadaEm:   t.created_at as string,
@@ -91,6 +94,11 @@ export async function atualizarDadosDaRede(
     return { error: 'O prazo do portal vai de 0 a 720 horas.' }
   }
 
+  const validadeDoPlano = Number(texto('plano_validade_dias') ?? 30)
+  if (!Number.isInteger(validadeDoPlano) || validadeDoPlano < 1 || validadeDoPlano > 365) {
+    return { error: 'A validade do plano proposto vai de 1 a 365 dias.' }
+  }
+
   let website = texto('website')
   if (website && !/^https?:\/\//i.test(website)) website = `https://${website}`
 
@@ -104,6 +112,7 @@ export async function atualizarDadosDaRede(
         phone:    texto('phone'),
         website,
         portal_prazo_alteracao_horas: prazo,
+        plano_validade_dias: validadeDoPlano,
         updated_at: new Date().toISOString(),
       })
       .eq('id', ctx.tenantId!)
