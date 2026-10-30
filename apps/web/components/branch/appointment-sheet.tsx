@@ -6,6 +6,7 @@ import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock, DoorOpen
 import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment, chegarEIniciar } from '@/actions/appointments'
 import { situacaoDaCobranca } from '@/actions/a-receber'
+import { historicoDoAgendamento, type PassoDoHistorico } from '@/actions/historico-do-agendamento'
 import { rotaAtendimento } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { toast } from 'sonner'
@@ -152,6 +153,16 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
     situacaoDaCobranca(appointment.id).then(r => { if (vivo) setCobranca(r) })
       // Só leitura: sem ela a janela fica como era ("encerrado"), mas o motivo vai ao console.
       .catch(e => console.error('[agenda] situação da cobrança:', e))
+    return () => { vivo = false }
+  }, [appointment.id, appointment.status])
+
+  // Quem fez cada ação (J-27): o histórico do agendamento, lido ao abrir.
+  const [historico, setHistorico] = useState<PassoDoHistorico[]>([])
+  useEffect(() => {
+    let vivo = true
+    historicoDoAgendamento(appointment.id).then(h => { if (vivo) setHistorico(h) })
+      // Só leitura: sem ela a janela fica como era, mas o motivo vai ao console.
+      .catch(e => console.error('[agenda] histórico do agendamento:', e))
     return () => { vivo = false }
   }, [appointment.id, appointment.status])
 
@@ -353,6 +364,21 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-xs-sz)' }}>
             Este agendamento já foi encerrado.
           </p>
+        )}
+
+        {historico.length > 0 && (
+          <section aria-label="Histórico do agendamento" style={{ marginTop: 18, borderTop: '1px solid var(--hairline)', paddingTop: 12 }}>
+            <p className="overline" style={{ marginBottom: 6 }}>Histórico</p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {historico.map((h, i) => (
+                <li key={i} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  <strong style={{ color: 'var(--text)' }}>{h.oQue}</strong>
+                  {h.quem && <> · {h.quem}</>}
+                  {' · '}{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(h.quando))}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </div>
     </JanelaModal>

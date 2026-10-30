@@ -14,6 +14,8 @@ export type ProcedimentoItem = {
   confirmed:           boolean
   procedure_rating:    number | null
   professional_rating: number | null
+  /** O comentário que ela deixou ao avaliar (J-26: não voltava ao histórico). */
+  feedback:            string | null
 }
 
 export type PagamentoItem = {
@@ -44,7 +46,7 @@ export type DocumentoItem = {
 // -- Linhas como os selects as pedem ------------------------------
 type AtendimentoLido = {
   id: string; scheduled_at: string; client_confirmed_at: string | null
-  procedure_rating: number | null; client_rating: number | null
+  procedure_rating: number | null; client_rating: number | null; client_feedback: string | null
   procedures: { name: string } | null; professionals: { name: string } | null
 }
 type PagamentoLido = {
@@ -65,7 +67,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   const [procedimentosRes, pagamentosRes, docsRes, consentRes] = await Promise.all([
     // Procedimentos = appointments concluídos
     ler(admin.from('appointments')
-      .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .order('scheduled_at', { ascending: false })
@@ -109,6 +111,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     confirmed:           r.client_confirmed_at != null,
     procedure_rating:    r.procedure_rating != null ? Number(r.procedure_rating) : null,
     professional_rating: r.client_rating != null ? Number(r.client_rating) : null,
+    feedback:            r.client_feedback?.trim() || null,
   }))
 
   // -- Pagamentos -------------------------------------------------

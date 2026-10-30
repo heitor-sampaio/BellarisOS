@@ -351,7 +351,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
       ] = await Promise.all([
         admin
           .from('appointments')
-          .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, confirmed_at, arrived_at, professional_id, procedures(name), professional:users!professional_id(name)')
+          .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, confirmed_at, arrived_at, professional_id, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professional:users!professional_id(name)')
           .eq('client_id', clientId)
           .order('scheduled_at', { ascending: false })
           .limit(60),

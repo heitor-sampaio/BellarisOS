@@ -130,7 +130,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
             <EmptyState message="Nenhum procedimento realizado ainda." />
           )}
           {procedimentos.map(p => {
-            const hasRating = p.procedure_rating != null || p.professional_rating != null
+            const hasRating = p.procedure_rating != null || p.professional_rating != null || !!p.feedback
             return (
               <div key={p.id} className="card" style={{ padding: '13px 18px' }}>
                 <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 3 }}>
@@ -161,6 +161,11 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 }}>
                     {p.procedure_rating != null && <MiniStars label="Procedimento" value={p.procedure_rating} />}
                     {p.professional_rating != null && <MiniStars label="Profissional" value={p.professional_rating} />}
+                    {p.feedback && (
+                      <p style={{ flexBasis: '100%', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        “{p.feedback}”
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 'var(--text-xs-sz)', color: 'var(--success)', fontWeight: 700 }}>

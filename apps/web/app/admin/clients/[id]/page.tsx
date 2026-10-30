@@ -11,7 +11,8 @@ import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
-import { eventosDeConfirmacaoEChegada } from '@/lib/clients/historico-do-agendamento'
+import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
+import { historicoDosAgendamentos } from '@/lib/clients/autores-do-historico'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { produtosAVenda } from '@/lib/produtos/leitura'
@@ -102,7 +103,7 @@ export default async function AdminClientProfilePage({
   ] = await Promise.all([
     ler(admin
       .from('appointments')
-      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, confirmed_at, arrived_at, professional_id, procedures(name), professional:users!professional_id(name)')
+      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, confirmed_at, arrived_at, professional_id, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professional:users!professional_id(name)')
       .eq('client_id', id)
       .order('scheduled_at', { ascending: false })
       .limit(60), 'carregar os agendamentos do cliente'),
@@ -189,8 +190,10 @@ export default async function AdminClientProfilePage({
   const upcomingAppointments = allAppointments
     .filter(a => UPCOMING_STATUSES.includes(a.status))
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+  // O "Histórico de procedimentos" é o que ela FEZ (J-26): o cancelado (o
+  // em duplicidade, inclusive) e a falta ficam na linha do tempo.
   const recentAppointments   = allAppointments
-    .filter(a => !UPCOMING_STATUSES.includes(a.status))
+    .filter(a => a.status === 'COMPLETED')
     .slice(0, 30)
 
   let activePackage: ProfilePackage | null = null
@@ -311,6 +314,10 @@ export default async function AdminClientProfilePage({
     const label  = proc
     history.push(...eventosDeConfirmacaoEChegada(
       { id: a.id, procedureName: proc, confirmed_at: a.confirmed_at ?? null, arrived_at: a.arrived_at ?? null }, `/admin/agenda/${a.id}`))
+    // A avaliação que a cliente deixou no app, com o comentário (J-26).
+    const avaliacao = eventoDaAvaliacao({ id: a.id, procedureName: proc, client_confirmed_at: a.client_confirmed_at,
+      procedure_rating: a.procedure_rating, client_rating: a.client_rating, client_feedback: a.client_feedback }, `/admin/agenda/${a.id}`)
+    if (avaliacao) history.push(avaliacao)
 
     if (a.status === 'COMPLETED' && a.completed_at) {
       history.push({ id: uid('ac'), date: a.completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/admin/agenda/${a.id}` })
@@ -355,7 +362,9 @@ export default async function AdminClientProfilePage({
     history.push({ id: uid('ct'), date: doc.assinadoEm, type: 'CONSENT_SIGNED', title: `Assinado: ${doc.titulo}`, subtitle: doc.canal ? SUBTITULO_DO_CANAL[doc.canal] ?? null : null, amount: null, link: null })
   }
 
-  const clientHistory = history.sort((a, b) => b.date.localeCompare(a.date))
+  // Quem fez cada ação (J-27): o nome que appointment_history guardou.
+  const clientHistory = comAutores(history, await historicoDosAgendamentos(admin, (appts ?? []).map(a => a.id as string)))
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
   // plano do cliente sem depender de nenhum atendimento.

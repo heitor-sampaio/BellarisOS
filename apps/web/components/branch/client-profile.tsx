@@ -4,7 +4,7 @@ import React, { useActionState, useEffect, useEffectEvent, useState, useRef } fr
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
@@ -149,10 +149,13 @@ export interface ClientHistoryEvent {
     | 'PLAN_CANCELLED'
     | 'PACKAGE_PURCHASED'
     | 'CONSENT_SIGNED'
+    | 'APPOINTMENT_RATED'
   title:    string
   subtitle: string | null
   amount:   number | null
   link:     string | null
+  /** Quem fez (appointment_history, J-27) — com a marca "via suporte", quando foi o suporte. */
+  autor?:   string | null
 }
 
 export interface ProfileFormSnapshot {
@@ -386,6 +389,7 @@ const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
   PLAN_CANCELLED:        { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
   PACKAGE_PURCHASED:     { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: Package },
   CONSENT_SIGNED:        { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: FileCheck },
+  APPOINTMENT_RATED:     { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: Star },
 }
 
 function fmtHistoryDate(dateStr: string): string {
@@ -425,6 +429,12 @@ function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boole
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
           <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{fmtHistoryDate(ev.date)}</span>
+          {ev.autor && (
+            <>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--hairline)' }}>·</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>por {ev.autor}</span>
+            </>
+          )}
           {ev.subtitle && (
             <>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--hairline)' }}>·</span>
