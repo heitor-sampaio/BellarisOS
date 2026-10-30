@@ -57,6 +57,8 @@ export type PerguntaDaFichaRapida = { id: string; nome: string; telefone: string
 
 export type ResultadoDoCadastro = {
   error?: string; success?: boolean; clientId?: string; acessoCriado?: boolean
+  /** O acesso entrou na conta que ela JÁ tinha em outra clínica: a senha continua a dela (J-22). */
+  contaLigada?: boolean
   avisoTelefone?: AvisoDeTelefone
   mesmaPessoa?: PerguntaDaFichaRapida
   mesmaPessoaDoLead?: PerguntaDoLead
@@ -315,8 +317,10 @@ export async function addClient(
 
   revalidatePath(`/${slug}/clients`)
   revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
-  // `acessoCriado`: a tela confirma o login e lembra a senha inicial (A13).
-  return { success: true, clientId: client.id as string, acessoCriado: !!login }
+  // `acessoCriado`: a tela confirma o login e lembra a senha inicial (A13) —
+  // ou, na conta que ela já tinha (`contaLigada`), que a senha é a dela (J-22).
+  const contaLigada = !!login && !('error' in login) && !login.novo
+  return { success: true, clientId: client.id as string, acessoCriado: !!login, contaLigada }
 }
 
 // `updateClient` foi removida: a aba Dados da ficha (updateClientContactData)
@@ -329,7 +333,7 @@ export async function addClient(
  * aba Dados da ficha: login = o e-mail da ficha, senha inicial = o CPF — o
  * núcleo de sempre (`darAcessoAoCliente`, o mesmo do Copilot).
  */
-export async function darAcessoAoApp(clientId: string): Promise<{ ok: true } | { error: string }> {
+export async function darAcessoAoApp(clientId: string): Promise<{ ok: true; contaLigada: boolean } | { error: string }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'clients', 'MANAGE')
@@ -347,7 +351,7 @@ export async function darAcessoAoApp(clientId: string): Promise<{ ok: true } | {
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
-    return { ok: true }
+    return { ok: true, contaLigada: r.contaLigada }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
+import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
@@ -830,7 +831,7 @@ function AcessoAoApp({ clientId, pronto, semCpf }: {
   const router = useRouter()
   const [dando, setDando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const [feito, setFeito] = useState(false)
+  const [feito, setFeito] = useState<string | null>(null)
 
   async function dar() {
     setErro(null)
@@ -838,7 +839,8 @@ function AcessoAoApp({ clientId, pronto, semCpf }: {
     const r = await darAcessoAoApp(clientId)
     setDando(false)
     if ('error' in r) { setErro(r.error); return }
-    setFeito(true)
+    // Na conta que ela já tinha (outra clínica), a senha é a dela, não o CPF (J-22).
+    setFeito(avisoDoAcessoCriado({ contaLigada: r.contaLigada, email: '' }).descricao)
     router.refresh()
   }
 
@@ -860,7 +862,7 @@ function AcessoAoApp({ clientId, pronto, semCpf }: {
     }}>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 460 }}>
         {feito
-          ? 'Acesso criado: login = e-mail, senha = CPF.'
+          ? feito
           : pronto
             ? 'Esta cliente ainda não tem acesso ao app. O login é o e-mail, e a senha inicial, o CPF.'
             : 'Esta cliente ainda não tem acesso ao app. Para dar, salve o e-mail e o CPF dela.'}

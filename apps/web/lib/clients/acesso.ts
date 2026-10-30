@@ -88,7 +88,7 @@ export async function desfazerLogin(admin: Admin, login: { authId: string; novo:
  */
 export async function darAcessoAoCliente(
   admin: Admin, ctx: TenantContext, clientId: string, email: string, cpf: string,
-): Promise<{ ok: true } | { error: string }> {
+): Promise<{ ok: true; contaLigada: boolean } | { error: string }> {
   const ficha = await ler(admin.from('clients').select('id, auth_id')
     .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente') as { id: string; auth_id: string | null } | null
   if (!ficha) return { error: 'Cliente não encontrado.' }
@@ -110,5 +110,6 @@ export async function darAcessoAoCliente(
     await desfazerLogin(admin, login)
     throw e
   }
-  return { ok: true }
+  // `contaLigada`: a conta que ela já tinha (outra clínica) — a senha é a dela, não o CPF (J-22).
+  return { ok: true, contaLigada: !login.novo }
 }

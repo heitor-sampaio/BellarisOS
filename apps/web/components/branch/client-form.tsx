@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 
 const GENDERS = [
@@ -33,6 +34,11 @@ interface ClientFormProps {
   onSuccess?:         (clientId?: string) => void
   showCancelButton?:  boolean
   onCancel?:          () => void
+  /**
+   * A rede tem mais de uma unidade ativa: só então se explica onde a cliente
+   * aparece (J-24). Sem a prop, vale o número de unidades do seletor.
+   */
+  variasUnidades?:    boolean
 }
 
 function maskCPF(v: string) {
@@ -66,7 +72,8 @@ function Field({ label, children, grupo }: { label: string; children: React.Reac
   )
 }
 
-export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, conversationId, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
+export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, conversationId, onSuccess, showCancelButton, onCancel, variasUnidades }: ClientFormProps) {
+  const textoDaUnidade = avisoDaUnidadeDeCadastro(variasUnidades ?? (branches?.length ?? 0) > 1)
   // Só cadastro. A edição mora na aba Dados da ficha: manter duas telas para a
   // mesma coisa deixava esta aqui sem nenhuma página que a montasse.
   const [state, formAction, pending] = useActionState(addClient, undefined)
@@ -121,11 +128,11 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const aoCadastrar = useEffectEvent(() => {
     const clientId = (state as unknown as { clientId?: string }).clientId
     // A confirmação sai antes de a tela mudar: o formulário some no modal ou na navegação.
-    if ((state as unknown as { acessoCriado?: boolean }).acessoCriado) {
-      toast.success('Acesso ao app criado', {
-        description: `O login é o e-mail${email.trim() ? ` (${email.trim().toLowerCase()})` : ''} e a senha inicial é o CPF; a cliente a troca no primeiro acesso.`,
-        duration: 9000,
-      })
+    const r = state as unknown as { acessoCriado?: boolean; contaLigada?: boolean }
+    if (r.acessoCriado) {
+      // Quem já tinha conta em outra clínica NÃO tem a senha = CPF (J-22).
+      const aviso = avisoDoAcessoCriado({ contaLigada: !!r.contaLigada, email })
+      toast.success(aviso.titulo, { description: aviso.descricao, duration: 9000 })
     }
     if (onSuccess) {
       onSuccess(clientId)
@@ -156,9 +163,11 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           <select className="field" value={unitId} onChange={e => setUnitId(e.target.value)} required>
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
-          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 4, display: 'block' }}>
-            O cliente pode ser atendido em qualquer unidade.
-          </span>
+          {textoDaUnidade && (
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 4, display: 'block' }}>
+              {textoDaUnidade}
+            </span>
+          )}
         </Field>
       ) : branchName ? (
         <div style={{
@@ -167,7 +176,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           borderRadius: 10, padding: '8px 12px', display: 'flex', gap: 6, alignItems: 'center',
         }}>
           <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade de cadastro:</span> {branchName}
-          <span style={{ color: 'var(--text-faint)' }}>— o cliente pode ser atendido em qualquer unidade</span>
+          {textoDaUnidade && <span style={{ color: 'var(--text-faint)' }}>— {textoDaUnidade}</span>}
         </div>
       ) : null}
 

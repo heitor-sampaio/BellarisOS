@@ -196,6 +196,12 @@ test.describe('a mesma cliente em duas clínicas', () => {
       await expect(page.getByText('Este e-mail já está em uso por outra conta.'), 'e-mail da equipe: recusado').toBeVisible()
 
       await cadastrar(emailDela, cpf)
+      // J-22 (2026-10-30): o aviso dizia "a senha inicial é o CPF" — falso para
+      // quem já tem conta. Diz que a ficha entrou na conta dela, com a senha dela.
+      await expect(page).toHaveURL(/\/clients\/[0-9a-f-]{36}/)
+      await expect(page.getByText('Ficha ligada à conta que ela já tem'), 'J-22: o aviso certo').toBeVisible()
+      await expect(page.getByText(/senha continua a dela/)).toBeVisible()
+      await expect(page.getByText(/a senha inicial é o CPF/), 'e não o da conta nova').toHaveCount(0)
       await expect.poll(fichaNaB, { message: 'a ficha da B nasce ligada à conta dela' })
         .toMatchObject({ auth_id: loginP!.auth_id })
 

@@ -127,7 +127,9 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     if (p.criarAcesso && p.email && p.cpf) {
       const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, p.cpf)
       if ('error' in acesso) return { mensagem: `${p.nome} cadastrado, mas o acesso ao app não saiu: ${acesso.error}`, ...ficha }
-      return { mensagem: `${p.nome} cadastrado, com acesso ao app.`, ...ficha }
+      return { mensagem: acesso.contaLigada
+        ? `${p.nome} cadastrado, e a ficha entrou na conta que ela já tem no app (a senha continua a dela).`
+        : `${p.nome} cadastrado, com acesso ao app.`, ...ficha }
     }
     return { mensagem: `${p.nome} cadastrado.`, ...ficha }
   },
@@ -303,6 +305,6 @@ export const criarAcessoAoApp: FerramentaDeEscrita<ArgsAcesso, PayloadAcesso> = 
     const r = await darAcessoAoCliente(c.admin, c.ctx, p.clientId, p.email, p.cpf)
     if ('error' in r) return { erro: r.error }
     revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
-    return { mensagem: 'Acesso ao app criado.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+    return { mensagem: r.contaLigada ? 'A ficha entrou na conta que ela já tem no app (a senha continua a dela).' : 'Acesso ao app criado.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
   },
 }
