@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cpfValido, telefoneNacional } from '../src/validacao'
+import { cpfValido, telefoneNacional, telefoneDoCadastro } from '../src/validacao'
 
 // D12 da simulação de 2026-10-29: o CPF 11111111111 passava no cadastro com
 // acesso ao app (só o TAMANHO era conferido), e o login nascia com ele de senha.
@@ -39,5 +39,29 @@ describe('o telefone nacional', () => {
     expect(telefoneNacional('419920012345')).toBeNull()
     expect(telefoneNacional('')).toBeNull()
     expect(telefoneNacional(null)).toBeNull()
+  })
+})
+
+// Decisão do Heitor (frente de cadastro, 2026-10-29): o telefone que começa com
+// "+" é de outro país e passa; o brasileiro segue a regra nacional.
+describe('o telefone do cadastro (nacional ou de outro país)', () => {
+  it('o brasileiro segue o nacional: a chave são os dígitos, e grava com a máscara', () => {
+    expect(telefoneDoCadastro('(41) 99200-1234')).toEqual({ digitos: '41992001234', gravar: '(41) 99200-1234' })
+    expect(telefoneDoCadastro('+55 41 99200-1234')).toEqual({ digitos: '41992001234', gravar: '(41) 99200-1234' })
+    expect(telefoneDoCadastro('(41) 9920')).toBeNull()
+  })
+  it('com "+" e o código do país, passa como foi escrito', () => {
+    expect(telefoneDoCadastro('+351 912 345 678')).toEqual({ digitos: '351912345678', gravar: '+351 912 345 678' })
+    expect(telefoneDoCadastro(' +1 (415) 555-0100 ')).toEqual({ digitos: '14155550100', gravar: '+1 (415) 555-0100' })
+    expect(telefoneDoCadastro('+44  20   7946 0958')?.gravar).toBe('+44 20 7946 0958')
+  })
+  it('de outro país, curto, longo ou com letra não é telefone', () => {
+    expect(telefoneDoCadastro('+351 91')).toBeNull()
+    expect(telefoneDoCadastro('+1234567890123456')).toBeNull()
+    expect(telefoneDoCadastro('+351 912 abc 678')).toBeNull()
+    expect(telefoneDoCadastro('+')).toBeNull()
+  })
+  it('sem o "+", o número de outro país é lido como nacional (não se adivinha o país)', () => {
+    expect(telefoneDoCadastro('351912345678')).toBeNull()
   })
 })

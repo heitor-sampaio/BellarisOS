@@ -7,7 +7,7 @@ import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
-import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, telefoneNacional } from '@estetica-os/utils'
+import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 
@@ -33,12 +33,6 @@ interface ClientFormProps {
   onSuccess?:         (clientId?: string) => void
   showCancelButton?:  boolean
   onCancel?:          () => void
-}
-
-function maskPhone(v: string) {
-  const d = v.replace(/\D/g, '').slice(0, 11)
-  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3')
-  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3')
 }
 
 function maskCPF(v: string) {
@@ -90,7 +84,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
 
   // O telefone já é de outra cliente (D13): o aviso vale para ESTE número —
   // trocou o número, ele some (e o servidor confere de novo).
-  const aviso = state?.avisoTelefone && state.avisoTelefone.telefone === telefoneNacional(phone)
+  const aviso = state?.avisoTelefone && state.avisoTelefone.telefone === telefoneDoCadastro(phone)?.digitos
     ? state.avisoTelefone : null
 
   // Sem o reset automático do formulário: com ele, o aviso do telefone (e todo
@@ -172,9 +166,12 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           <input
             name="phone" type="tel" required className="field"
             value={phone}
-            onChange={e => setPhone(maskPhone(e.target.value))}
+            onChange={e => setPhone(maskTelefoneDigitando(e.target.value))}
             placeholder="(11) 99999-9999"
           />
+          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+            De outro país? Comece com + e o código (ex.: +351 912 345 678).
+          </span>
         </Field>
 
         <Field label="E-mail">
@@ -270,7 +267,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
         }}>
           <span>
-            O telefone {telefoneParaExibir(aviso.telefone)} já é de <b style={{ color: 'var(--text)' }}>{aviso.nome}</b> nesta
+            O telefone {aviso.exibir} já é de <b style={{ color: 'var(--text)' }}>{aviso.nome}</b> nesta
             clínica. Se é o mesmo número mesmo (mãe e filha, por exemplo), confirme.
           </span>
           <button type="submit" name="_telefoneConfirmado" value={aviso.telefone} className="btn-secondary" disabled={pending}>

@@ -26,7 +26,12 @@
     `cpfValido` (`@estetica-os/utils`), a MESMA conta do Copilot e da
     importação. O 11111111111 passava e virava a senha inicial do login;
   - o telefone com 10 ou 11 dígitos nacionais (`telefoneNacional`: o 55 do
-    WhatsApp é tirado); "(41) 9920" passava;
+    WhatsApp é tirado); "(41) 9920" passava. **O de outro país começa com
+    "+"** e o código (8 a 15 dígitos, não o +55) e passa como foi escrito
+    ("+351 912 345 678"; decisão do Heitor, frente de cadastro de
+    2026-10-29) — a conta é `telefoneDoCadastro` (`@estetica-os/utils`), no
+    cadastro e na aba Dados; o campo do cadastro não o mascara
+    (`maskTelefoneDigitando`). Sem o "+" não se adivinha o país;
   - o telefone que já é de OUTRA cliente da rede (`cliente_por_telefone`)
     AVISA e deixa confirmar ("Cadastrar mesmo assim", que vale para aquele
     número) — mãe e filha dividem número. A ficha rápida sem CPF do mesmo

@@ -31,12 +31,14 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
 
 /** Preenche o cadastro (repetindo até a hidratação: antes dela, o estado dos campos controlados fica vazio). */
 async function preencher(p: Page, dados: { nome: string; telefone: string; email?: string; cpf?: string }) {
+  // O de outro país ("+351 …") fica como foi escrito; o brasileiro ganha a máscara.
+  const foneNoCampo = dados.telefone.startsWith('+') ? dados.telefone : /\(\d\d\)/
   await p.goto('/admin/clients/new')
   await expect(async () => {
     await p.locator('input[name="name"]').fill(dados.nome)
     await p.locator('input[name="phone"]').fill('')
     await p.locator('input[name="phone"]').fill(dados.telefone)
-    await expect(p.locator('input[name="phone"]')).toHaveValue(/\(\d\d\)/, { timeout: 1000 })
+    await expect(p.locator('input[name="phone"]')).toHaveValue(foneNoCampo, { timeout: 1000 })
     if (dados.email && dados.cpf) {
       await p.locator('input[name="email"]').fill('')
       await p.locator('input[name="email"]').fill(dados.email)
@@ -113,4 +115,51 @@ test('D13: o telefone de outra cliente AVISA, e a recepção confirma (mãe e fi
   expect(await fichasDe(nome('filha'))).toHaveLength(1)
   const [daMae] = await fichasDe(nome('mãe'))
   expect(daMae?.id, 'a ficha da mãe continua a dela').toBe(mae!.id)
+})
+
+// Decisão do Heitor (frente de cadastro, 2026-10-29): o telefone que começa
+// com "+" é de outro país e passa — no cadastro e na aba Dados. O D13 passou a
+// recusar todo número que não fosse brasileiro.
+const foneDeFora = (fim: string) => `+351 91${String(Date.now()).slice(-1)} ${String(Date.now()).slice(-6, -3)} ${fim}`
+
+test('o telefone de outro país (com +) passa no cadastro e na aba Dados, como foi escrito', async ({ browser }) => {
+  const fone = foneDeFora('601')
+  await como(browser, async p => {
+    await preencher(p, { nome: nome('de fora'), telefone: fone })
+    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
+  })
+  const [ficha] = await fichasDe(nome('de fora'))
+  expect(ficha?.phone, 'grava o número como foi escrito').toBe(fone)
+
+  await como(browser, async p => {
+    await p.goto(`/admin/clients/${ficha!.id}?aba=dados`)
+    const campo = p.locator('xpath=//p[normalize-space()="Telefone"]/following::input[1]')
+    await expect(campo).toHaveValue(fone)
+    await campo.fill('+1 415 555 0100')
+    await p.getByRole('button', { name: /Salvar dados/ }).click()
+    await expect(p.getByRole('button', { name: 'Salvo' })).toBeVisible()
+    await expect(p.getByText(/Telefone incompleto/)).toHaveCount(0)
+  })
+  const [depois] = await fichasDe(nome('de fora'))
+  expect(depois?.phone).toBe('+1 415 555 0100')
+})
+
+test('o telefone de outro país de outra cliente também AVISA', async ({ browser }) => {
+  const fone = foneDeFora('602')
+  const { error } = await db().from('clients').insert({
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('tia de fora'), phone: fone, document: '11144477735', is_active: true,
+  })
+  expect(error).toBeNull()
+
+  await como(browser, async p => {
+    await preencher(p, { nome: nome('sobrinha de fora'), telefone: fone })
+    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    const aviso = p.getByRole('alert').filter({ hasText: 'já é de' })
+    await expect(aviso).toContainText(nome('tia de fora'))
+    await expect(aviso).toContainText(fone)
+    await aviso.getByRole('button', { name: 'Cadastrar mesmo assim' }).click()
+    await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
+  })
+  expect(await fichasDe(nome('sobrinha de fora'))).toHaveLength(1)
 })

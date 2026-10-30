@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatBRL, formatDate, formatDateTime, formatTime, formatPercent,
-  maskCPF, maskPhone, maskCNPJ,
+  maskCPF, maskPhone, maskCNPJ, maskTelefoneDigitando,
 } from '../src/format'
 
 describe('formatBRL', () => {
@@ -78,5 +78,16 @@ describe('máscaras', () => {
 
   it('CNPJ', () => {
     expect(maskCNPJ('12345678000199')).toBe('12.345.678/0001-99')
+  })
+})
+
+// O telefone de outro país (frente de cadastro, 2026-10-29): com "+", o campo não o mutila.
+describe('maskTelefoneDigitando', () => {
+  it('o brasileiro ganha a máscara de sempre', () => {
+    expect(maskTelefoneDigitando('41992001234')).toBe('(41) 99200-1234')
+  })
+  it('com "+", fica como se escreve (sem letras)', () => {
+    expect(maskTelefoneDigitando('+351 912 345 678')).toBe('+351 912 345 678')
+    expect(maskTelefoneDigitando('+1 (415) 555-0100x')).toBe('+1 (415) 555-0100')
   })
 })

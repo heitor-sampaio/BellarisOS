@@ -74,6 +74,18 @@ export const maskPhoneDigitando = (valor: string) => {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
 
+/**
+ * O telefone do CADASTRO da cliente enquanto se digita: o brasileiro com a
+ * máscara de `maskPhoneDigitando`; o que começa com "+" (outro país, decisão
+ * do Heitor de 2026-10-29) fica como se escreve — só dígitos, espaço, hífen e
+ * parênteses depois do "+". A conferência é `telefoneDoCadastro`.
+ */
+export const maskTelefoneDigitando = (valor: string) => {
+  const s = valor.trimStart()
+  if (!s.startsWith('+')) return maskPhoneDigitando(valor)
+  return '+' + s.slice(1).replace(/[^\d\s().-]/g, '').slice(0, 24)
+}
+
 /** O CNPJ ENQUANTO se digita: "12.345.678/0001-95" (2026-10-27, setup). */
 export const maskCNPJDigitando = (valor: string) => {
   const d = valor.replace(/\D/g, '').slice(0, 14)
