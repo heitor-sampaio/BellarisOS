@@ -22,6 +22,8 @@ import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
+import { abertosDeAntes } from '@/lib/agenda/abertos-de-antes'
+import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 
 // --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
@@ -323,6 +325,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     .filter(m => BRANCH_ROUTES[m] && perm[m] !== 'NONE')
     .map(m => ({ label: MODULE_LABELS[m], href: BRANCH_ROUTES[m]! }))
 
+  // Os atendimentos de dias anteriores ainda abertos (J-32): quem vê a agenda,
+  // com o "só os meus" dela.
+  const abertos = canAgenda ? await abertosDeAntes(ctx, branchId, now) : { total: 0, itens: [] }
+
   // -------------------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -339,6 +345,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       </div>
 
       {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts} />}
+
+      <AbertosDeAntes slug={slug} total={abertos.total} itens={abertos.itens} />
 
       {/* -- Checkout pendente ----------------------------------- */}
       {canCheckout && (pendingCheckouts ?? 0) > 0 && (

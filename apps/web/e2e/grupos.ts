@@ -26,6 +26,7 @@
  */
 export const ISOLADOS = [
   'abrangencia-aviso-ao-redirecionar.spec.ts',
+  'agenda-abertos-de-dias-anteriores.spec.ts',
   'abrangencia-unidade.spec.ts',
   'agenda-encaixe-avisa.spec.ts',
   'agenda-grade-madrugada.spec.ts',

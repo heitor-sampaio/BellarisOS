@@ -114,6 +114,20 @@
   livre da profissional (A20, `proximoHorarioLivre`, a conta de
   `computeAvailableSlots`) quando a hora não veio de um clique na grade.
   A linha do tempo da cliente registra confirmação e chegada (A23).
+- **Os atendimentos de dias anteriores ainda ABERTOS avisam** (J-32,
+  2026-10-30): a agenda e o dashboard da unidade mostram "N atendimentos de
+  dias anteriores ainda abertos" — quem CHEGOU ou está EM ATENDIMENTO num dia
+  que já passou (últimos 30 dias), com o link para a tela do atendimento
+  (`abertosDeAntes`, `lib/agenda/abertos-de-antes.ts`; o aviso em
+  `components/branch/abertos-de-antes.tsx`). A cliente das 23:50 sumia da
+  agenda à meia-noite. O agendado/confirmado que passou sem ninguém mexer não
+  entra (decisão para o Heitor). Respeita o "só os meus" da agenda. Prova:
+  `e2e/agenda-abertos-de-dias-anteriores.spec.ts`.
+- **O concluído mostra a hora REAL** ao lado da agendada (J-34): "23:30 ·
+  concluído em 29/10 às 00:22" na grade do dia, na janela, na agenda da rede e
+  no cartão da Agenda do app da cliente (`textoDoConcluido`,
+  `lib/agenda/hora-real.ts`, Brasília). Prova:
+  `e2e/agenda-concluido-hora-real.spec.ts`, `tests/agenda-hora-real.test.ts`.
 - **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
   action recusa). `updateAppointmentStatus` devolve `{ error }` (só a trava de
   permissão lança): a folha mostra o erro e, no sucesso, a agenda dá o aviso
