@@ -64,9 +64,14 @@ export function idadeEm(nascimento: string | null | undefined, hoje: Date = new 
  * A máscara do telefone ENQUANTO se digita: "(48", "(48) 9912", "(48) 99123-4567".
  * `maskPhone` só formata o número inteiro (2026-10-21: o telefone da unidade e
  * o cadastro rápido da agenda ficavam sem máscara nenhuma).
+ *
+ * O número com o DDI ("5548999990000", o do WhatsApp) perde o 55 como em
+ * `maskPhone` — só com 12 ou 13 dígitos, que o DDD 55 de 11 continua DDD.
+ * Sem isso, o telefone gravado assim voltava ao setup cortado (J-1).
  */
 export const maskPhoneDigitando = (valor: string) => {
-  const d = valor.replace(/\D/g, '').slice(0, 11)
+  const todos = valor.replace(/\D/g, '')
+  const d = ((todos.length === 12 || todos.length === 13) && todos.startsWith('55') ? todos.slice(2) : todos).slice(0, 11)
   if (d.length === 0) return ''
   if (d.length <= 2) return `(${d}`
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`

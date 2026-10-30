@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { maskCNPJDigitando, maskCEPDigitando } from '@estetica-os/utils'
+import { maskCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
 import { lerHorarioDoForm, HORARIO_PADRAO } from '@/lib/agenda/horario'
 
 /**
@@ -20,6 +20,21 @@ describe('máscara de CNPJ enquanto se digita', () => {
   it('ignora o que não é dígito e corta no 14º', () => {
     expect(maskCNPJDigitando('12.345.678/0001-95999')).toBe('12.345.678/0001-95')
     expect(maskCNPJDigitando('ab')).toBe('')
+  })
+})
+
+// J-1 (2026-10-30): o telefone gravado com o DDI ("5548999990000", o do
+// WhatsApp) voltava ao setup cortado em 11 dígitos — "(55) 48999-9900". O 55
+// sai como em `maskPhone`: só com 12 ou 13 dígitos (o DDD 55 de 11 fica).
+describe('máscara de telefone enquanto se digita, com o DDI', () => {
+  it('tira o 55 do número com DDI', () => {
+    expect(maskPhoneDigitando('5548999990000')).toBe('(48) 99999-0000')
+    expect(maskPhoneDigitando('+55 48 99999-0000')).toBe('(48) 99999-0000')
+    expect(maskPhoneDigitando('554833334444')).toBe('(48) 3333-4444')
+  })
+  it('o DDD 55 sem DDI continua sendo DDD', () => {
+    expect(maskPhoneDigitando('55999990000')).toBe('(55) 99999-0000')
+    expect(maskPhoneDigitando('559')).toBe('(55) 9')
   })
 })
 
