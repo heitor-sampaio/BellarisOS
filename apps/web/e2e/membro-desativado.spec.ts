@@ -98,6 +98,35 @@ test.describe.serial('membro desativado', () => {
     }
   })
 
+  // J-68 das simulações: com a conta desativada, o login dizia "E-mail ou
+  // senha incorretos" — a pessoa achava que errou a senha. O Auth responde
+  // `user_banned`, e a tela diz o porquê.
+  test('o login da pessoa desativada diz que o acesso foi desativado', async ({ browser, page: admin }) => {
+    const email = `e2e-membro-desat${marca}@bellaris.invalid`
+    const senha = `E2e-${marca}-Senha!`
+    expect((await db().auth.admin.updateUserById(await authIdDe(alvo!.userId), { password: senha })).error).toBeNull()
+    await chamarAcao(admin, 'actions/team.ts', 'deactivateTeamMember', '/admin/team', [alvo!.userId, '/admin/team'])
+    await expect.poll(async () => (await bloqueadoAte(alvo!.userId))?.getTime() ?? 0).toBeGreaterThan(Date.now())
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    try {
+      const p = await ctx.newPage()
+      await p.goto('/login')
+      await p.getByLabel('E-mail').fill(email)
+      await p.getByLabel('Senha').fill(senha)
+      await p.getByRole('button', { name: 'Entrar' }).click()
+      await expect(p.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toBeVisible()
+      await expect(p.getByText('E-mail ou senha incorretos')).toHaveCount(0)
+      // Com a senha ERRADA, nada diz que a conta existe nem que foi desativada.
+      await p.getByLabel('E-mail').fill(email)
+      await p.getByLabel('Senha').fill('senha-errada-de-proposito')
+      await p.getByRole('button', { name: 'Entrar' }).click()
+      await expect(p.getByText('E-mail ou senha incorretos')).toBeVisible()
+    } finally {
+      await ctx.close()
+      await chamarAcao(admin, 'actions/team.ts', 'reactivateTeamMember', '/admin/team', [alvo!.userId, '/admin/team'])
+    }
+  })
+
   test('ninguém desativa a si mesmo, nem chamando a action direto', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: gestor!.estado })
     try {

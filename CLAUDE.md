@@ -514,7 +514,9 @@ Regras:
   com `revalidateTag(tag, { expire: 0 })` — o `'max'` serviria o valor velho em
   mais uma requisição, e o `updateTag` se mostrou instável no `unstable_cache`
   (2026-10-21). Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
-  desativa a si mesmo. Prova: `e2e/membro-desativado.spec.ts`.
+  desativa a si mesmo. O login diz "Seu acesso foi desativado pela clínica"
+  (o `user_banned` do Auth) só a quem acertou a senha
+  (`senha_da_conta_confere`, J-68). Prova: `e2e/membro-desativado.spec.ts`.
 - **Só a Admin da rede dá e altera o cargo de Admin da rede** (revisão do
   Heitor, 2026-10-29: "somente um admin pode promover alguém a admin" e
   "somente admin pode alterar admin"). Quem tem o cargo de SISTEMA Admin da

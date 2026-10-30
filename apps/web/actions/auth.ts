@@ -81,6 +81,16 @@ export async function loginAction(
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
+  // A conta desativada pela clínica (`ban_duration`, §11) responde
+  // `user_banned`: dizer "senha incorreta" fazia a pessoa tentar de novo e
+  // pedir outra senha (J-68). Mas o Auth diz `user_banned` ANTES de conferir a
+  // senha — só quem acertou a senha ouve "desativado" (senha_da_conta_confere),
+  // senão qualquer um descobriria que o e-mail tem conta.
+  if (error?.code === 'user_banned') {
+    const { data: confere } = await createAdminClient()
+      .rpc('senha_da_conta_confere', { p_email: parsed.data.email, p_senha: parsed.data.password })
+    if (confere === true) return { error: 'Seu acesso foi desativado pela clínica. Fale com o responsável.' }
+  }
   if (error) return { error: 'E-mail ou senha incorretos' }
 
   // Cliente final: o primeiro login marca o primeiro acesso e, se a rede
