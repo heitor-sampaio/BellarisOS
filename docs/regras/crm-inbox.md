@@ -165,6 +165,20 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   mesmo clique liberava), e a aba mostra os pedidos esperando: "LGPD (n)".
   A lista pede Clientes (Ver): sem o módulo, a aba diz o porquê (era a tela
   inteira em "sem acesso").
+- **O pacote é legível para o titular** (J-65, 2026-10-30): o JSON fala
+  português — situações por extenso ("Concluído", "Receita", "Pago", "Pix"),
+  a unidade pelo nome, os valores em número — e não leva id nem nome de
+  coluna: as listas são montadas campo a campo e `paraOTitular`
+  (`lib/lgpd/export.ts`) é a rede de segurança (tira `id`/`…_id`/`…Id`,
+  `snake_case` → camelCase, em qualquer nível). O id do pedido saiu.
+  `contaNoApp.ultimoAcesso` é `clients.last_app_login_at`, gravado na entrada
+  do portal junto com `portal_ultima_entrada_em` (`registrarEntradaNoPortal`;
+  as fichas de antes herdaram a última entrada, migration `20261029001203`).
+  **Com o prontuário em análise, o pedido continua em andamento**: o cartão
+  do perfil diz "Parte geral pronta" + "Prontuário em análise" (não
+  "Pronto"), deixa baixar a parte geral e NÃO oferece "Solicitar meus dados";
+  `requestDataExport` recusa o segundo pedido. Prova:
+  `e2e/lgpd-portal-pacote-legivel.spec.ts`.
 - **A ficha de saúde (pré-atendimento) no pacote** (2026-10-21): o
   HISTÓRICO (`fichasDeSaude`: quando foi mandada, ficha completa ou
   confirmação, a situação, quando e por onde foi respondida) vai na parte

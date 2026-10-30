@@ -86,6 +86,11 @@ export function DataRequestCard({ requests }: Props) {
 
   const openRequest = requests.find(r => r.status === 'pending' || r.status === 'processing')
   const latestDone  = requests.find(r => r.status === 'completed' && r.has_files)
+  // Pronto o pacote GERAL e o prontuário ainda em análise (J-65): o pedido
+  // continua em andamento — quando a clínica decidir, o MESMO pacote é
+  // refeito. Não é "Pronto", e pedir de novo não cabe.
+  const prontuarioEmAnalise = !!latestDone && latestDone.include_medical && latestDone.medical_status === 'pending'
+  const emAndamento = !!openRequest || prontuarioEmAnalise
 
   return (
     <div className="card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -122,7 +127,7 @@ export function DataRequestCard({ requests }: Props) {
               : '.'}
           </p>
         </div>
-      ) : (
+      ) : prontuarioEmAnalise ? null : (
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <label style={{
             display: 'flex', alignItems: 'flex-start', gap: 9,
@@ -170,7 +175,9 @@ export function DataRequestCard({ requests }: Props) {
       {latestDone && (
         <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Chip {...STATUS_CHIP.completed!} />
+            {prontuarioEmAnalise
+              ? <Chip label="Parte geral pronta" color="var(--success)" bg="var(--success-soft)" />
+              : <Chip {...STATUS_CHIP.completed!} />}
             {latestDone.include_medical && MEDICAL_CHIP[latestDone.medical_status] && (
               <Chip {...MEDICAL_CHIP[latestDone.medical_status]!} />
             )}
@@ -178,11 +185,16 @@ export function DataRequestCard({ requests }: Props) {
               Solicitado em {fmt(latestDone.requested_at)}
             </span>
           </div>
+          {prontuarioEmAnalise && (
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
+              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da clínica: quando ela decidir, o arquivo é refeito aqui.
+            </p>
+          )}
           <DownloadRow request={latestDone} />
         </div>
       )}
 
-      {requests.some(r => r.status === 'failed') && !openRequest && (
+      {requests.some(r => r.status === 'failed') && !emAndamento && (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
           A última tentativa não foi concluída. Você pode solicitar novamente.
         </p>

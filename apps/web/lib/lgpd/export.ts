@@ -8,6 +8,7 @@ import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@este
 import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
 import { flattenFields, type AnamnesisRow } from '@/lib/anamnesis'
 import { lerTodas } from '@/lib/db'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -28,6 +29,75 @@ type Json = Record<string, unknown>
 const fmtDate     = (v: string | null | undefined) => (v ? formatDate(v) : '—')
 const fmtDateTime = (v: string | null | undefined) => (v ? formatDateTime(v) : '—')
 const fmtMoney    = (v: unknown) => formatBRL(Number(v ?? 0))
+
+const ORIGEM_DO_AGENDAMENTO: Record<string, string> = {
+  INTERNAL: 'A clínica', CLIENT_APP: 'Você, pelo app', COMMERCIAL: 'A equipe comercial', ONLINE: 'Online',
+}
+const SITUACAO_DA_UNIDADE: Record<string, string> = { DISPONIVEL: 'Disponível', USADA: 'Usada', CANCELADA: 'Cancelada' }
+const CATEGORIA_DO_ANEXO: Record<string, string> = {
+  termo_consentimento: 'Termo de consentimento', exame: 'Exame', laudo: 'Laudo médico', contrato: 'Contrato',
+  foto_clinica: 'Foto clínica', receita: 'Receita', outro: 'Outro',
+}
+const TIPO_DO_DOCUMENTO: Record<string, string> = { TERMO: 'Termo', CONTRATO: 'Contrato', CONTRATO_PLANO: 'Contrato do plano' }
+const SITUACAO_DO_DOCUMENTO: Record<string, string> = {
+  PENDENTE: 'Aguardando assinatura', INCOMPLETO: 'Em preparação', ASSINADO: 'Assinado', DISPENSADO: 'Dispensado',
+  CANCELADO: 'Cancelado', SUBSTITUIDO: 'Substituído',
+}
+const CANAL_DA_ASSINATURA: Record<string, string> = { CLINICA: 'Na clínica', PORTAL: 'Pelo app', LINK: 'Por link', PAPEL: 'No papel' }
+const IDENTIFICACAO: Record<string, string> = {
+  SESSAO_PORTAL: 'Pela sua conta no app', PRESENCIAL: 'Na clínica, com o documento conferido pela equipe',
+  CPF: 'Pelo CPF', NASCIMENTO: 'Pela data de nascimento', LEGADO: 'Registro antigo',
+}
+const SITUACAO_DO_PLANO: Record<string, string> = {
+  DRAFT: 'Rascunho', PROPOSED: 'Proposto', ACCEPTED: 'Aceito', COMPLETED: 'Concluído', CANCELLED: 'Cancelado', REJECTED: 'Recusado',
+}
+
+/**
+ * A rede de segurança do JSON do titular (J-65): tira o que é id (`id`,
+ * `…_id`, `…Id`) e troca o nome de coluna (`snake_case`) por camelCase, em
+ * qualquer nível — o conteúdo do prontuário e da ficha vem do banco como foi
+ * gravado.
+ */
+export function paraOTitular(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(paraOTitular)
+  if (!v || typeof v !== 'object') return v
+  const saida: Record<string, unknown> = {}
+  for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+    if (k === 'id' || /_id$/.test(k) || /[a-z]Id$/.test(k)) continue
+    saida[k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase())] = paraOTitular(x)
+  }
+  return saida
+}
+
+/** O prontuário liberado, legível: cada atendimento por extenso, a ficha pergunta a pergunta. */
+function prontuarioLegivel(medical: Json | null): Json | null {
+  if (!medical) return null
+  const anamnese = medical.anamneseGeral as Record<string, unknown> | null
+  const entradas = (medical.atendimentos ?? []) as Record<string, unknown>[]
+  return {
+    ...medical,
+    anamneseGeral: anamnese && anamnese.versao === 2
+      ? {
+          ficha: (anamnese.ficha as { nome?: string } | null)?.nome ?? 'Pré-atendimento',
+          respondidaEm: anamnese.respondidoEm ?? null,
+          respostas: respostasLegiveis(anamnese.ficha, anamnese.respostas),
+        }
+      : anamnese,
+    atendimentos: entradas.map(e => {
+      const f = (e.form_data as { ficha?: { nome?: string; rows?: unknown; respostas?: unknown } } | null)?.ficha
+      return {
+        data: e.created_at,
+        profissional: (e.users as { name?: string } | null)?.name ?? null,
+        observacoes: e.notes ?? null,
+        intercorrencias: e.intercurrences ?? null,
+        doresRelatadas: e.queixas ?? null,
+        insumos: e.products_used ?? null,
+        fichaDoProcedimento: f ? { ficha: f.nome ?? 'Ficha do procedimento', respostas: respostasLegiveis(f, f.respostas) } : null,
+        fotos: ((e.record_photos ?? []) as unknown[]).length,
+      }
+    }),
+  }
+}
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Chegou', IN_PROGRESS: 'Em atendimento',
@@ -184,10 +254,13 @@ export async function buildClientExport(
   }
 
   // ─── JSON (portabilidade) ──────────────────────────────────────────────────
-  const payload: Json = {
+  // Legível para o titular (J-65): nomes em português, situações por extenso
+  // e a unidade pelo nome — sem ids nem códigos internos. `paraOTitular` no
+  // fim é a rede de segurança: tira o que for id e renomeia o que for coluna.
+  const payload = paraOTitular({
     geradoEm: new Date().toISOString(),
     aviso: 'Documento gerado a pedido do titular, nos termos da Lei 13.709/2018 (LGPD).',
-    solicitacao: { id: requestId, incluiProntuario: includeMedical },
+    solicitacao: { incluiProntuario: includeMedical },
     cadastro: {
       nome: client.name, cpf: client.document, email: client.email, telefone: client.phone,
       dataNascimento: client.birth_date, genero: client.gender,
@@ -204,20 +277,95 @@ export async function buildClientExport(
         ultimoAcesso: client.last_app_login_at,
       },
     },
-    agendamentos: appointments ?? [],
-    financeiro:   { transacoes: transactions ?? [], creditos: credits ?? [] },
-    fidelidade:   loyalty ?? null,
-    pacotes:      packages ?? [],
-    procedimentosPrePagos: prePagos ?? [],
-    documentos:   documents ?? [],
+    agendamentos: (appointments ?? []).map(a => ({
+      data:                 a.scheduled_at,
+      procedimento:         (a.procedures as { name?: string } | null)?.name ?? 'Procedimento',
+      profissional:         (a.users as { name?: string } | null)?.name ?? null,
+      unidade:              unit(a.branch_id),
+      situacao:             STATUS_LABEL[a.status as string] ?? String(a.status),
+      valor:                Number(a.price ?? 0),
+      duracaoEmMinutos:     a.duration_min,
+      agendadoPor:          ORIGEM_DO_AGENDAMENTO[a.source as string] ?? null,
+      suasObservacoes:      a.client_notes ?? null,
+      motivoDoCancelamento: a.cancellation_reason ?? null,
+      concluidoEm:          a.completed_at ?? null,
+    })),
+    financeiro: {
+      transacoes: (transactions ?? []).map(t => ({
+        data:             t.created_at,
+        pagoEm:           t.paid_at ?? null,
+        tipo:             t.type === 'INCOME' ? 'Receita' : 'Despesa',
+        categoria:        t.category ?? null,
+        descricao:        t.description ?? null,
+        valor:            Number(t.amount ?? 0),
+        formaDePagamento: t.payment_method ? rotuloDaForma(t.payment_method as string) : null,
+        situacao:         t.is_paid ? 'Pago' : 'Em aberto',
+        unidade:          unit(t.branch_id),
+      })),
+      creditos: (credits ?? []).map(c => ({ data: c.created_at, valor: Number(c.amount ?? 0), descricao: c.description ?? null, unidade: unit(c.branch_id) })),
+    },
+    fidelidade: loyalty ? {
+      contaDesde: loyalty.created_at,
+      saldo: ((loyalty.loyalty_transactions ?? []) as { points: number }[]).reduce((s, l) => s + Number(l.points), 0),
+      lancamentos: ((loyalty.loyalty_transactions ?? []) as unknown as { created_at: string; kind: string; points: number; description: string | null; branches: { name: string } | null }[])
+        .map(l => ({ data: l.created_at, tipo: rotuloDoLancamento(l.kind, l.description), pontos: Number(l.points), descricao: l.description, unidade: l.branches?.name ?? null })),
+    } : null,
+    pacotes: (packages ?? []).map(p => ({
+      pacote:        (p.service_packages as { name?: string } | null)?.name ?? 'Pacote',
+      compradoEm:    p.purchased_at,
+      validoAte:     p.expires_at ?? null,
+      sessoes:       p.total_sessions,
+      sessoesUsadas: p.used_sessions,
+    })),
+    procedimentosPrePagos: (prePagos ?? []).map(v => ({
+      procedimento:  (v.procedures as { name?: string } | null)?.name ?? 'Procedimento',
+      vendidoEm:     v.sold_at,
+      validoAte:     v.expires_at ?? null,
+      quantidade:    v.quantity,
+      precoDeTabela: Number(v.preco_tabela ?? 0),
+      desconto:      Number(v.desconto ?? 0),
+      valor:         Number(v.price ?? 0),
+      unidades: ((v.procedure_sale_units ?? []) as { numero: number; status: string; used_at: string | null; cancelled_at: string | null }[])
+        .map(u => ({ numero: u.numero, situacao: SITUACAO_DA_UNIDADE[u.status] ?? u.status, usadaEm: u.used_at, canceladaEm: u.cancelled_at })),
+    })),
+    documentos: (documents ?? []).map(d => ({
+      data: d.created_at, nome: d.name, categoria: CATEGORIA_DO_ANEXO[d.category as string] ?? 'Outro',
+      arquivo: d.file_name, apagadoDaFichaEm: d.apagado_em ?? null,
+    })),
     // O que o titular assinou: o texto, o hash e as evidências. O PDF assinado
     // de cada um vai junto no pacote (pasta documentos/).
-    termosEContratos: (termos ?? []).map(t => Object.fromEntries(Object.entries(t).filter(([k]) => k !== 'signed_pdf_path'))),
-    planosDeTratamento: plans ?? [],
+    termosEContratos: (termos ?? []).map(t => {
+      const s = t.document_signatures as unknown as {
+        channel?: string; identity_method?: string; signed_at?: string; ip?: string; user_agent?: string; accepted_text?: string
+      } | null
+      return {
+        data:                 t.created_at,
+        titulo:               t.title,
+        tipo:                 TIPO_DO_DOCUMENTO[t.kind as string] ?? 'Documento',
+        situacao:             SITUACAO_DO_DOCUMENTO[t.status as string] ?? String(t.status).toLowerCase(),
+        assinadoEm:           t.signed_at ?? null,
+        codigoDeVerificacao:  t.verification_code ?? null,
+        sha256DoTexto:        t.content_sha256 ?? null,
+        sha256DoPdfAssinado:  t.signed_pdf_sha256 ?? null,
+        texto:                t.content_text ?? null,
+        motivoDoEncerramento: t.closed_reason ?? null,
+        assinatura: s ? {
+          canal:         (s.channel && CANAL_DA_ASSINATURA[s.channel]) ?? s.channel ?? null,
+          identificacao: (s.identity_method && IDENTIFICACAO[s.identity_method]) ?? s.identity_method ?? null,
+          em:            s.signed_at ?? null,
+          ip:            s.ip ?? null,
+          aparelho:      s.user_agent ?? null,
+          aceite:        s.accepted_text ?? null,
+        } : null,
+      }
+    }),
+    planosDeTratamento: (plans ?? []).map(p => ({
+      data: p.created_at, situacao: SITUACAO_DO_PLANO[p.status as string] ?? String(p.status), unidade: unit(p.branch_id),
+    })),
     fichasDeSaude,
-    comunicacoes: notifications ?? [],
-    prontuario:   includeMedical ? medical : foraDoPacote.json,
-  }
+    comunicacoes: (notifications ?? []).map(n => ({ data: n.created_at, titulo: n.title, mensagem: n.body, lida: Boolean(n.is_read) })),
+    prontuario:   includeMedical ? prontuarioLegivel(medical) : foraDoPacote.json,
+  }) as Json
 
   // ─── PDF (leitura) ─────────────────────────────────────────────────────────
   const sections: PdfSection[] = [

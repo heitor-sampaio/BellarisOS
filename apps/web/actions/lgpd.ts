@@ -54,6 +54,16 @@ export async function requestDataExport(
       .from('clients').select('tenant_id').eq('id', ctx.clientId).single(), 'buscar o cliente')
     if (!client) return { error: 'Cliente não encontrado.' }
 
+    // O pacote geral pronto com o prontuário em análise ainda é o pedido em
+    // andamento (J-65): a clínica refaz o MESMO pacote quando decidir. Pedir
+    // de novo abriria um segundo pedido do prontuário.
+    const emAnalise = await ler(admin.from('lgpd_requests').select('id')
+      .eq('client_id', ctx.clientId).eq('include_medical', true).eq('medical_status', 'pending')
+      .limit(1), 'conferir o prontuário em análise')
+    if ((emAnalise ?? []).length) {
+      return { error: 'Você já tem uma solicitação em andamento: o prontuário está em análise na clínica.' }
+    }
+
     const { data: created, error } = await admin.from('lgpd_requests').insert({
       client_id:       ctx.clientId,
       tenant_id:       client.tenant_id,

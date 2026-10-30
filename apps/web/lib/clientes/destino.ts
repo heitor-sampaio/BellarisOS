@@ -38,8 +38,11 @@ export async function destinoDaCliente(authId: string): Promise<string | null> {
  */
 export async function registrarEntradaNoPortal(clientId: string, opcoes: { escolheuAgora?: boolean } = {}): Promise<void> {
   const dezMinutos = new Date(Date.now() - 10 * 60_000).toISOString()
+  // `last_app_login_at` é o "último acesso" do pacote LGPD (J-65: nada o
+  // gravava, e o titular via sempre nulo) — a mesma entrada, por clínica.
+  const agora = new Date().toISOString()
   let consulta = createAdminClient().from('clients')
-    .update({ portal_ultima_entrada_em: new Date().toISOString() })
+    .update({ portal_ultima_entrada_em: agora, last_app_login_at: agora })
     .eq('id', clientId)
   // Escolher no seletor sempre conta: é a "última clínica usada" de agora.
   if (!opcoes.escolheuAgora) consulta = consulta.or(`portal_ultima_entrada_em.is.null,portal_ultima_entrada_em.lt.${dezMinutos}`)
