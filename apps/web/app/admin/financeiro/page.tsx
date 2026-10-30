@@ -3,7 +3,7 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 
@@ -77,7 +77,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, aReceberEmAbertoPorUnidade] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -124,6 +124,10 @@ export default async function AdminFinanceiroPage({
     // caixa (2026-10-29): o total das ativas e cada unidade (as de getByBranch).
     getResultadoDoEstoque(metricArgs),
     getResultadoDoEstoque({ ...metricArgs, branchIds: null }),
+    // D-14: todo o a receber em aberto, de qualquer vencimento — o total das
+    // ativas (como o cartão do mês) e cada unidade (as de getByBranch).
+    getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds }),
+    getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds: null }),
   ])
   const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
@@ -156,6 +160,7 @@ export default async function AdminFinanceiroPage({
     result:      resultadoDoPeriodo({ ...b, ...(estoquePorUnidade.porUnidade[b.branchId] ?? SEM_ESTOQUE_NO_RESULTADO) }).lucro,
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
+    aReceberEmAberto: aReceberEmAbertoPorUnidade.porUnidade[b.branchId] ?? 0,
     aPagar:      emAbertoDe[b.branchId]?.aPagar ?? 0,
     proximoAReceber: emAbertoDe[b.branchId]?.proximoAReceber ?? null,
     proximoAPagar:   emAbertoDe[b.branchId]?.proximoAPagar ?? null,
@@ -183,6 +188,7 @@ export default async function AdminFinanceiroPage({
         totalResult={resultadoDoPeriodo({ ...core, ...estoqueNoResultado.total }).lucro}
         totalCommissions={totalComm}
         totalAReceber={emAbertoDaRede.aReceber}
+        totalAReceberEmAberto={aReceberEmAberto.total}
         totalAPagar={emAbertoDaRede.aPagar}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}
         totalProximoAPagar={emAbertoDaRede.proximoAPagar}

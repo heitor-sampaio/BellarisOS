@@ -244,6 +244,25 @@ export async function getTicketMedio(args: Args): Promise<{ total: TicketMedio; 
 }
 
 /**
+ * "Em aberto, todos os vencimentos" (D-14, decisão do Heitor de 2026-10-29):
+ * TODO o a receber em aberto, de qualquer vencimento — o conjunto do "A
+ * receber" de `metrics_em_aberto`, sem a janela (`metrics_a_receber_em_aberto`).
+ * No total e por unidade; com `professionalId` (o financeiro "só os meus"),
+ * o ligado aos atendimentos dela.
+ */
+export async function getAReceberEmAberto(args: { tenantId: string; branchIds?: string[] | null; professionalId?: string | null }): Promise<{ total: number; porUnidade: Record<string, number> }> {
+  const { data, error } = await createAdminClient().rpc('metrics_a_receber_em_aberto', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null, p_professional_id: args.professionalId ?? null,
+  })
+  logRpcError('metrics_a_receber_em_aberto', error)
+  const linhas = (data as Record<string, unknown>[] | null) ?? []
+  return {
+    total: n(linhas.find(r => r.branch_id == null)?.valor),
+    porUnidade: Object.fromEntries(linhas.filter(r => r.branch_id != null).map(r => [String(r.branch_id), n(r.valor)])),
+  }
+}
+
+/**
  * As parcelas do estoque no resultado (`metrics_resultado`, decisão do Heitor
  * de 2026-10-29): a compra de estoque paga (fica no caixa, sai do lucro) e o
  * insumo consumido (custo do movimento, entra no lucro), no total e por

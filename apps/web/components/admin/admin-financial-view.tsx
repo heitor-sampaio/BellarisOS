@@ -29,6 +29,8 @@ interface BranchStat {
   result:      number
   commissions: number
   aReceber:    number
+  /** D-14: todo o a receber em aberto da unidade, de qualquer vencimento. */
+  aReceberEmAberto?: number
   aPagar:      number
   /** O próximo vencimento depois do período (A34): "R$ 300,00 em 05/11". */
   proximoAReceber?: ProximoVencimento | null
@@ -71,6 +73,8 @@ interface Props {
   totalCommissions: number
   /** A receber e a pagar no período (lib/metrics: revenuePending, metrics_a_pagar). */
   totalAReceber:    number
+  /** D-14: todo o a receber em aberto da rede, de qualquer vencimento (getAReceberEmAberto). */
+  totalAReceberEmAberto: number
   totalAPagar:      number
   /** O próximo vencimento da rede depois do período, de cada lado (getEmAberto). */
   totalProximoAReceber?: ProximoVencimento | null
@@ -185,7 +189,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAPagar, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAReceberEmAberto, totalAPagar, totalMovimentacoes,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
@@ -252,6 +256,7 @@ export function AdminFinancialView({
   const result      = statDaUnidade ? statDaUnidade.result      : totalResult
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
   const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
+  const aReceberEmAberto = statDaUnidade ? statDaUnidade.aReceberEmAberto ?? 0 : totalAReceberEmAberto
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
   const proximoAReceber = statDaUnidade ? statDaUnidade.proximoAReceber ?? null : totalProximoAReceber
   const proximoAPagar   = statDaUnidade ? statDaUnidade.proximoAPagar ?? null   : totalProximoAPagar
@@ -358,7 +363,7 @@ export function AdminFinancialView({
           chave="a-receber"
           label="A receber"
           value={fmtBRL(aReceber)}
-          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} />}
+          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
         <KpiCard

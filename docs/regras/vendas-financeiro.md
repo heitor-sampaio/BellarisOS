@@ -250,6 +250,14 @@ o procedimento avulso pago antes.
     período." e, com zero, "Próximo: R$ 300,00 em 05/11"
     (`NotaDoVencimento`). O "A pagar R$ 0" com a conta vencendo no mês
     seguinte parecia conta sumida. Prova: `e2e/financeiro-a-pagar-vencimento.spec.ts`.
+  - **O "A receber" diz também todo o crediário** (D-14, decisão do Heitor,
+    2026-10-29): o cartão mantém o número do mês e, abaixo, "Em aberto, todos
+    os vencimentos: R$ X" — todas as parcelas e recebíveis em aberto, de
+    qualquer vencimento (`metrics_a_receber_em_aberto` → `getAReceberEmAberto`:
+    o conjunto do "a receber" de `metrics_em_aberto`, sem a janela; migration
+    `20261029001105`). Nos dois financeiros (a rede, cada unidade no recorte e
+    a unidade), no escopo do financeiro ("só os meus": o ligado aos
+    atendimentos dela). Prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
 - **O lançamento manual pago tem a DATA do pagamento** (2026-10-21, decisão
   do Heitor): "Data do pagamento" no Novo lançamento (hoje por padrão, nunca no
   futuro — a tela limita e `pagoNoDia`, em `lib/financeiro/lancamento.ts`,

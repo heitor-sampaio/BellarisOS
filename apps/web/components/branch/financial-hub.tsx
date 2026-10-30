@@ -61,6 +61,8 @@ interface Props {
   /** A compra de estoque paga e o insumo consumido do período (o lucro desconta o insumo, não a compra). */
   estoqueNoResultado:         EstoqueNoResultado
   estoqueNoResultadoAnterior: EstoqueNoResultado
+  /** D-14: todo o a receber em aberto, de qualquer vencimento (lib/metrics). */
+  aReceberEmAberto: number
   branchId:         string
   branchName:       string
   slug:             string
@@ -492,7 +494,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, composicao,
+  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -672,7 +674,7 @@ export function FinancialHub({
         />
         <KpiCardFull
           chave="a-receber"
-          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} />}
+          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} />}
           label="A Receber"
           curr={pendingIncome} prev={prevPendingIncome}
           icon={<Clock size={13} style={{ color: 'var(--success)' }} />}

@@ -41,7 +41,9 @@
   - `revenuePending` — a receber, pelo VENCIMENTO (`data_de_referencia`;
     sem vencimento, a criação). Era pela criação: o parcelado inteiro caía no
     mês da venda. O de cada unidade (`metrics_by_branch`) ainda contava pela
-    criação até 2026-10-27 (A34): agora também pelo vencimento.
+    criação até 2026-10-27 (A34): agora também pelo vencimento. O cartão
+    "A receber" do financeiro diz embaixo todo o em aberto, de qualquer
+    vencimento (D-14, `getAReceberEmAberto` — `vendas-financeiro.md`).
   - `serviceRevenue` — preço dos atendimentos concluídos, no eixo
     `appointments.aconteceu_em`
   - **O atendimento conta quando ACONTECEU** (D13, decisão do Heitor,
