@@ -134,6 +134,12 @@
   novo é um dos livres do self-service, para o mesmo profissional. Dentro do
   prazo, só "Falar com a clínica" (WhatsApp da unidade). Prova:
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
+  O prazo aparece em DIA E HORA (J-61, `limiteParaAlterar`,
+  `lib/clientes/agenda-do-portal.ts`, Brasília): "Pelo app, você cancela ou
+  remarca até ter, 03/11 às 10:00 (24 horas antes do horário)", "O prazo …
+  terminou em …", e no cartão da agenda "Alterar até …", com a seta de que o
+  cartão abre. O motivo do cancelamento é "Motivo (opcional)" (J-64). Prova:
+  `e2e/portal-cliente-prazo-na-tela.spec.ts`, `tests/agenda-do-portal.test.ts`.
 - **"Sem preferência" de profissional no app** (D-16, decisão do Heitor,
   2026-10-30): com mais de uma profissional na unidade, o passo
   "Profissional" do agendamento oferece "Sem preferência". A data mostra os

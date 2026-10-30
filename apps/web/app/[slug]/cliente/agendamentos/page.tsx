@@ -1,9 +1,9 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import { CalendarDays, Clock3, User, Plus } from 'lucide-react'
+import { CalendarDays, ChevronRight, Clock3, User, Plus } from 'lucide-react'
 import { ler } from '@/lib/db'
-import { separarAgendaDoPortal } from '@/lib/clientes/agenda-do-portal'
+import { separarAgendaDoPortal, limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -92,10 +92,10 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         <section style={{ marginBottom: 28 }}>
           <GroupLabel>Próximos</GroupLabel>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
-            Cancele ou remarque até {prazoHoras} horas antes do horário. Depois disso, fale com a clínica.
+            Toque no agendamento para cancelar ou remarcar — pelo app, até {prazoHoras} horas antes. Depois disso, fale com a clínica.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight />)}
+            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} />)}
           </div>
         </section>
       )}
@@ -152,7 +152,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 // O cartão abre o agendamento (2026-10-21: não abria — nem detalhe, nem cancelar).
-function AppointmentCard({ appt, slug, highlight = false }: { appt: Appt; slug: string; highlight?: boolean }) {
+function AppointmentCard({ appt, slug, highlight = false, prazoHoras }: { appt: Appt; slug: string; highlight?: boolean; prazoHoras?: number }) {
   const dt    = new Date(appt.scheduled_at)
   const color = STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
   const price = appt.price
@@ -192,6 +192,8 @@ function AppointmentCard({ appt, slug, highlight = false }: { appt: Appt; slug: 
         }}>
           {STATUS_LABEL[appt.status] ?? appt.status}
         </span>
+        {/* A seta diz que o cartão abre (J-61). */}
+        <ChevronRight data-abre-detalhe size={16} color="var(--text-faint)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
       </div>
 
       {/* Details row */}
@@ -202,11 +204,11 @@ function AppointmentCard({ appt, slug, highlight = false }: { appt: Appt; slug: 
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <CalendarDays size={11} />
-          {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+          {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <Clock3 size={11} />
-          {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
         </span>
         {appt.price > 0 && (
           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto' }}>
@@ -214,6 +216,11 @@ function AppointmentCard({ appt, slug, highlight = false }: { appt: Appt; slug: 
           </span>
         )}
       </div>
+      {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && new Date(appt.scheduled_at).getTime() - Date.now() >= prazoHoras * 3600_000 && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          Alterar até {limiteParaAlterar(appt.scheduled_at, prazoHoras)}
+        </p>
+      )}
     </Link>
   )
 }

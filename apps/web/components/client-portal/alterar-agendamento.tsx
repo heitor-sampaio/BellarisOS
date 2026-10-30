@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarClock, XCircle, MessageCircle } from 'lucide-react'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
+import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar } from '@/actions/portal-agendamentos'
 
 const diaNoFuso = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(ms))
@@ -26,6 +27,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const router = useRouter()
   const [abertoEm] = useState(() => Date.now())
   const podeAlterar = new Date(scheduledAt).getTime() - abertoEm >= prazoHoras * 3600_000
+  // O dia e a hora em que o prazo acaba (J-61): era só "até 24 horas antes".
+  const limite = limiteParaAlterar(scheduledAt, prazoHoras)
   const [modo, setModo] = useState<'nada' | 'remarcar' | 'cancelar'>('nada')
   const [dia, setDia] = useState('')
   const [slots, setSlots] = useState<string[] | null>(null)
@@ -39,7 +42,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     return (
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          Pelo app, só até {prazoHoras} horas antes do horário — e faltam menos que isso. Para cancelar ou remarcar, fale com a clínica.
+          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário). Para cancelar ou remarcar, fale com a clínica.
         </p>
         {telefone && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
@@ -87,7 +90,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        Pelo app, você cancela ou remarca até {prazoHoras} horas antes do horário.
+        Pelo app, você cancela ou remarca até {limite} ({prazoHoras} horas antes do horário).
       </p>
       {feito && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>{feito}</p>}
 
@@ -140,8 +143,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
       {modo === 'cancelar' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
-            Motivo
-            <input className="field" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Opcional: conte para a clínica o porquê" />
+            Motivo (opcional)
+            <input className="field" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Conte para a clínica o porquê, se quiser" />
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn-secondary" disabled={enviando} onClick={() => setModo('nada')}>Voltar</button>

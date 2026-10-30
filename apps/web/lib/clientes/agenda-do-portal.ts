@@ -27,3 +27,19 @@ export function separarAgendaDoPortal<T extends { status: string; scheduled_at: 
   const historico = agendamentos.filter(a => !ehProximo(a, agora))
   return { proximos, historico }
 }
+
+/** "ter, 03/11 às 10:00" — o dia e a hora em Brasília (o servidor roda em UTC). */
+export function diaEHoraNoPortal(d: Date): string {
+  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', ...o }).format(d)
+  const semana = f({ weekday: 'short' }).replace('.', '')
+  return `${semana}, ${f({ day: '2-digit', month: '2-digit' })} às ${f({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`
+}
+
+/**
+ * Até quando a cliente cancela ou remarca pelo app (J-61): o horário menos o
+ * prazo da rede, em dia e hora — "ter, 03/11 às 10:00". Era só "até 24 horas
+ * antes", e ela fazia a conta.
+ */
+export function limiteParaAlterar(scheduledAt: string, prazoHoras: number): string {
+  return diaEHoraNoPortal(new Date(new Date(scheduledAt).getTime() - prazoHoras * 3600_000))
+}

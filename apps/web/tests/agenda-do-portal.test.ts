@@ -28,3 +28,17 @@ describe('a agenda do portal da cliente', () => {
     expect(proximos.length + historico.length).toBe(lista.length)
   })
 })
+
+// J-61 das simulações: o prazo aparecia genérico ("até 24 horas antes"), sem
+// o dia e a hora em que ele acaba. A data é a de Brasília.
+describe('o prazo para alterar pelo app, em dia e hora', () => {
+  it('24 horas antes de quarta 04/11 às 10:00 é terça 03/11 às 10:00', async () => {
+    const { limiteParaAlterar } = await import('@/lib/clientes/agenda-do-portal')
+    expect(limiteParaAlterar('2026-11-04T13:00:00Z', 24)).toBe('ter, 03/11 às 10:00')
+  })
+  it('atravessa o dia em Brasília (o servidor roda em UTC)', async () => {
+    const { limiteParaAlterar } = await import('@/lib/clientes/agenda-do-portal')
+    // 02/11 01:30 em Brasília, 6 horas antes = 01/11 19:30 (domingo).
+    expect(limiteParaAlterar('2026-11-02T04:30:00Z', 6)).toBe('dom, 01/11 às 19:30')
+  })
+})

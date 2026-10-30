@@ -136,7 +136,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
     await agendado(cliente!.clientId, new Date(`${dia(7)}T10:00:00-03:00`))
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos`)
-      await expect(p.getByText(/cancele ou remarque até 24 horas antes/i)).toBeVisible()
+      await expect(p.getByText(/pelo app, até 24 horas antes/i)).toBeVisible()
     })
   })
 
@@ -145,7 +145,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
     const id = await agendado(cliente!.clientId, new Date(Date.now() + 4 * 3600_000))
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
-      await expect(p.getByText(/só até 24 horas antes/i)).toBeVisible()
+      await expect(p.getByText(/terminou em .* \(24 horas antes do horário\)/i)).toBeVisible()
       await expect(p.getByText('(11) 98765-4321')).toBeVisible()
     })
   })
