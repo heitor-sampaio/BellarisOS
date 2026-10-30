@@ -40,6 +40,19 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
   (MENSAL | QUINZENAL | SEMANAL). **Taxas da maquininha** em `payment_fees`
   (Pix, débito, crédito 1–12x), gravadas por `comissao_taxas_definir`.
+- **A comissão da VENDA DE PRODUTO** (D4, decisão do Heitor, 2026-10-29: "é
+  configurável pela clínica"; migration `20261029001306`): Configurações →
+  Comissões → "Venda de produto", `commission_configs.produto_pct` (vazio = sem
+  comissão; mesma permissão e abrangência da configuração). Vale para QUEM
+  REGISTROU a venda (`product_sales.sold_by`, como o pacote e o pré-pago), sobre
+  o VENDIDO (com o desconto). A linha (`commission_lines.origem = 'PRODUTO'`,
+  `product_sale_id`, sem atendimento — `appointment_id` e o do extrato aceitam
+  nulo) nasce em `produto_vender`, antes do dinheiro, e é SEMPRE do modo
+  "quando paga": à vista libera na hora, a receber quando entrar, o estorno
+  devolve (`comissao_alvo`, o mesmo ramo do pré-pago). Retrata a taxa da
+  maquininha da rede; não desconta insumos. O extrato (`comissoes_extrato`)
+  diz a cliente e o produto; o fechamento é o de sempre. Prova:
+  `e2e/vendas-produto.spec.ts` ("a comissão da venda de produto").
 - **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
   oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
   chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`

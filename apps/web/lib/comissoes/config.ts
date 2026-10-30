@@ -20,10 +20,16 @@ export interface ConfigDeComissao {
   desconta_taxa:    boolean
   base_com_pontos:  BaseComPontos
   periodo:          PeriodoDaComissao
+  /**
+   * A comissão da VENDA DE PRODUTO (D4, 2026-10-30): % do vendido para quem
+   * vendeu, liberada quando a venda é paga. Nulo = sem comissão.
+   */
+  produto_pct:      number | null
 }
 
 export const CONFIG_PADRAO: ConfigDeComissao = {
   modo: 'ATENDIMENTO', desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
+  produto_pct: null,
 }
 
 export const EntradaDaConfigDeComissao = z.object({
@@ -32,6 +38,8 @@ export const EntradaDaConfigDeComissao = z.object({
   desconta_taxa:    z.boolean(),
   base_com_pontos:  z.enum(BASES_COM_PONTOS),
   periodo:          z.enum(PERIODOS),
+  // Sem o campo (um chamador antigo), sem comissão de produto.
+  produto_pct:      z.number().min(0, 'A comissão não pode ser negativa.').max(100, 'A comissão é de no máximo 100%.').nullable().optional().default(null),
 })
 
 /** Uma linha do banco (ou nenhuma) → a configuração, com os padrões no que faltar. */
@@ -43,6 +51,7 @@ export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unkn
     desconta_taxa:    l.desconta_taxa === true,
     base_com_pontos:  l.base_com_pontos === 'VALOR_PAGO' ? 'VALOR_PAGO' : 'PRECO',
     periodo:          l.periodo === 'QUINZENAL' || l.periodo === 'SEMANAL' ? l.periodo : 'MENSAL',
+    produto_pct:      l.produto_pct == null || !(Number(l.produto_pct) > 0) ? null : Number(l.produto_pct),
   }
 }
 
@@ -134,7 +143,7 @@ export function regraAplicavel(
 
 // ─── As linhas de um atendimento ─────────────────────────────────────────────
 
-export type OrigemDaComissao = 'AVULSO' | 'PLANO' | 'PACOTE' | 'PRE_PAGO'
+export type OrigemDaComissao = 'AVULSO' | 'PLANO' | 'PACOTE' | 'PRE_PAGO' | 'PRODUTO'
 
 /** Um procedimento executado e o preço que serve de base à comissão dele. */
 export interface ItemExecutado { procedure_id: string | null; preco: number }

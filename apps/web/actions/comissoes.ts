@@ -45,7 +45,7 @@ export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultad
     const admin = createAdminClient()
     await gravar(admin.from('commission_configs').upsert({
       tenant_id: ctx.tenantId!, modo: c.modo, desconta_insumos: c.desconta_insumos, desconta_taxa: c.desconta_taxa,
-      base_com_pontos: c.base_com_pontos, periodo: c.periodo,
+      base_com_pontos: c.base_com_pontos, periodo: c.periodo, produto_pct: c.produto_pct && c.produto_pct > 0 ? c.produto_pct : null,
       updated_at: new Date().toISOString(), updated_by: ctx.internalUserId ?? null,
     }, { onConflict: 'tenant_id' }).select('tenant_id').single(), 'salvar a configuração de comissões')
     revalidar()

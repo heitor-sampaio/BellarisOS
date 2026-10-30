@@ -21,6 +21,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let recepcao: MembroDeTeste | null = null
 let dona: MembroDeTeste | null = null
+let financeiro: MembroDeTeste | null = null
 let cliente = ''
 let serum = ''
 let luva = ''
@@ -90,6 +91,9 @@ test.beforeAll(async () => {
   dona = await criarMembro(`vpd${marca}`, {
     tenant: rede.tenantId, rotulo: 'Configurações', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
   })
+  financeiro = await criarMembro(`vpf${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Financeiro', permissoes: [{ modulo: 'financial', nivel: 'MANAGE' }],
+  })
   recepcao = await criarMembro(`vpr${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção',
     permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' }],
@@ -103,6 +107,9 @@ test.afterAll(async () => {
     const { data } = await b.from('product_sales').select('id').eq('tenant_id', rede.tenantId)
     const ids = (data ?? []).map(v => v.id as string)
     if (ids.length) {
+      // As linhas de comissão (e o extrato delas, em cascata) saem antes da venda.
+      const rl = await b.from('commission_lines').delete().in('product_sale_id', ids)
+      if (rl.error) falhas.push(`comissão: ${rl.error.message}`)
       for (const t of ['financial_transactions']) {
         const r = await b.from(t).update({ product_sale_id: null }).in('product_sale_id', ids)
         if (r.error) falhas.push(`${t}: ${r.error.message}`)
@@ -131,7 +138,8 @@ test.afterAll(async () => {
       if (r.error) falhas.push(`produto: ${r.error.message}`)
     }
   }
-  await recepcao?.limpar(); await dona?.limpar(); await rede?.limpar()
+  if (rede) await db().from('commission_configs').delete().eq('tenant_id', rede.tenantId)
+  await recepcao?.limpar(); await dona?.limpar(); await financeiro?.limpar(); await rede?.limpar()
   expect(falhas).toEqual([])
 })
 
@@ -229,5 +237,58 @@ test.describe.serial('a venda de produto', () => {
     expect(e2).toBeNull()
     const soma = (pagas as { amount: number }[]).reduce((s, r) => s + n(r.amount), 0)
     expect(soma, 'as duas vendas pagas, no faturamento').toBe(549)
+  })
+
+  test('a comissão da venda de produto é da clínica configurar: 10% para quem vendeu, quando a venda é paga', async ({ browser }) => {
+    // Sem a configuração, as vendas de antes não geraram comissão.
+    const { data: antes } = await db().from('commission_lines').select('id').eq('tenant_id', rede!.tenantId)
+    expect(antes ?? []).toEqual([])
+
+    const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
+    try {
+      const p = await ctxFin.newPage()
+      await p.goto('/admin/settings?tab=comissoes')
+      const como = p.locator('[aria-label="Como a comissão acontece"]')
+      await como.getByLabel('Comissão na venda de produto (%)').fill('10')
+      await como.getByRole('button', { name: 'Salvar' }).click()
+      await expect(como.getByRole('status')).toHaveText('Salvo.')
+    } finally { await ctxFin.close() }
+    const { data: cfg } = await db().from('commission_configs').select('produto_pct').eq('tenant_id', rede!.tenantId).single()
+    expect(n(cfg?.produto_pct)).toBe(10)
+
+    // Mais estoque (sobrou 1 sérum) e uma venda à vista (R$ 149) e uma a receber (R$ 149).
+    const mais = await db().rpc('estoque_entrada', { p_produto: serum, p_unidade: rede!.branchId, p_quantidade: 5, p_custo: 70, p_observacao: 'e2e', p_lote: 'C', p_validade: null, p_autor: 'e2e' })
+    expect(mais.error).toBeNull()
+    await como(browser, async p => {
+      for (const forma of ['À vista', 'A receber']) {
+        const dlg = await abrirVendaDeProduto(p)
+        await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
+        await dlg.getByLabel('Quantidade').fill('1')
+        await dlg.getByRole('button', { name: forma, exact: true }).click()
+        await dlg.getByRole('button', { name: /^Vender por R\$\s149,00$/ }).click()
+        await expect(dlg).toBeHidden()
+      }
+    })
+    const { data: linhas } = await db().from('commission_lines')
+      .select('id, origem, professional_id, product_sale_id, regra_valor, preco').eq('tenant_id', rede!.tenantId).order('created_at')
+    expect(linhas!.map(l => ({ origem: l.origem, quem: l.professional_id, pct: n(l.regra_valor), preco: n(l.preco), venda: !!l.product_sale_id })))
+      .toEqual([
+        { origem: 'PRODUTO', quem: recepcao!.userId, pct: 10, preco: 149, venda: true },
+        { origem: 'PRODUTO', quem: recepcao!.userId, pct: 10, preco: 149, venda: true },
+      ])
+    const devido = async (linha: string) => ((await db().from('commissions').select('amount').eq('line_id', linha)).data ?? [])
+      .reduce((s, c) => Math.round((s + n(c.amount)) * 100) / 100, 0)
+    expect(await devido(linhas![0]!.id as string), 'a paga: 10% de R$ 149').toBe(14.9)
+    expect(await devido(linhas![1]!.id as string), 'a receber: nada até pagar').toBe(0)
+
+    // O extrato da equipe diz o produto e a cliente.
+    const dia = hojeBR()
+    const { data: extrato, error } = await db().rpc('comissoes_extrato', {
+      p_tenant: rede!.tenantId, p_branch_ids: null, p_inicio: `${dia}T00:00:00-03:00`, p_fim: `${dia}T23:59:59-03:00`, p_profissional: recepcao!.userId,
+    })
+    expect(error).toBeNull()
+    expect((extrato as { procedimento: string | null; cliente: string | null; origem: string }[])
+      .map(e => ({ o: e.origem, produto: e.procedimento, cliente: !!e.cliente })))
+      .toEqual([{ o: 'PRODUTO', produto: nomeSerum, cliente: true }])
   })
 })

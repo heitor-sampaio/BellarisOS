@@ -18,8 +18,8 @@ describe('configDaLinha', () => {
     expect(configDaLinha({ modo: 'OUTRO', periodo: 'ANUAL', base_com_pontos: 'X' })).toEqual(CONFIG_PADRAO)
   })
   it('lê o que foi salvo', () => {
-    expect(configDaLinha({ modo: 'PAGAMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL' }))
-      .toEqual({ modo: 'PAGAMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL' })
+    expect(configDaLinha({ modo: 'PAGAMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: '7.50' }))
+      .toEqual({ modo: 'PAGAMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: 7.5 })
   })
   it('a entrada recusa campo faltando', () => {
     expect(EntradaDaConfigDeComissao.safeParse({ modo: 'ATENDIMENTO' }).success).toBe(false)

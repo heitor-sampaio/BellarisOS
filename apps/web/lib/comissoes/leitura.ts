@@ -10,7 +10,7 @@ import {
 /** A configuração de comissões da rede (os padrões, se ela nunca salvou). */
 export async function configDeComissaoDaRede(tenantId: string): Promise<ConfigDeComissao> {
   const linha = await ler(createAdminClient().from('commission_configs')
-    .select('modo, desconta_insumos, desconta_taxa, base_com_pontos, periodo')
+    .select('modo, desconta_insumos, desconta_taxa, base_com_pontos, periodo, produto_pct')
     .eq('tenant_id', tenantId).maybeSingle(), 'ler a configuração de comissões')
   return configDaLinha(linha)
 }

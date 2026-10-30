@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarTaxasDaMaquininha } from '@/actions/comissoes'
 import type { ConfigDeComissao, TaxaDePagamento, MetodoComTaxa } from '@/lib/comissoes/config'
+import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
 
 /**
  * Configurações → Comissões: como a comissão acontece na rede, a tabela de
@@ -83,11 +84,17 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
   const [salvo, setSalvo] = useState(false)
   const [salvando, iniciar] = useTransition()
   const mudar = <K extends keyof ConfigDeComissao>(k: K, v: ConfigDeComissao[K]) => { setC(atual => ({ ...atual, [k]: v })); setSalvo(false) }
+  // A comissão da venda de produto (D4): texto do campo, lido como os outros
+  // números com casas ("10" ou "7,5"); vazio = sem comissão.
+  const [pctProduto, setPctProduto] = useState(inicial.produto_pct != null ? String(inicial.produto_pct).replace('.', ',') : '')
 
   function salvar() {
     setErro(null)
+    const texto = pctProduto.trim()
+    const produto = texto ? parseDecimal(texto, 2) : null
+    if (produto != null && Number.isNaN(produto)) { setErro(`Comissão na venda de produto: ${NUMERO_INVALIDO}`); return }
     iniciar(async () => {
-      const r = await salvarConfigDeComissao(c)
+      const r = await salvarConfigDeComissao({ ...c, produto_pct: produto })
       if (r.error) { setErro(r.error); return }
       setSalvo(true)
       router.refresh()
@@ -143,6 +150,20 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
             <p style={texto}>{BASES[c.base_com_pontos].explicacao}</p>
           </>
         )}
+      </Bloco>
+
+      <Bloco titulo="Venda de produto">
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 260 }}>
+          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Comissão na venda de produto (%)</span>
+          <input className="field" inputMode="decimal" value={pctProduto} disabled={!podeEditar} placeholder="Sem comissão"
+            aria-label="Comissão na venda de produto (%)"
+            onChange={e => { setPctProduto(e.target.value); setSalvo(false) }} />
+        </label>
+        <p style={texto}>
+          {pctProduto.trim()
+            ? 'Quem registra a venda na ficha ganha esse percentual do valor vendido (com o desconto), quando a cliente paga: à vista, na hora; a receber, quando entrar. O estorno devolve.'
+            : 'Vazio: a venda de produto não gera comissão.'}
+        </p>
       </Bloco>
 
       <Bloco titulo="Fechamento das comissões">
