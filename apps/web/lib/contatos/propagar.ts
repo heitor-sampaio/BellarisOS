@@ -11,6 +11,19 @@ export const digitosDoTelefone = (t: string | null | undefined): string | null =
   (t ?? '').replace(/\D/g, '') || null
 
 /**
+ * O MESMO número, com ou sem máscara e com ou sem o 55 do país (J-19): a tela
+ * mostra "(41) 99200-0040" para o "5541992000040" do WhatsApp gravado.
+ */
+export function mesmoTelefone(a: string | null | undefined, b: string | null | undefined): boolean {
+  const nacional = (t: string | null | undefined) => {
+    const d = digitosDoTelefone(t) ?? ''
+    return (d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d
+  }
+  const x = nacional(a)
+  return x !== '' && x === nacional(b)
+}
+
+/**
  * Nome e telefone são da PESSOA (§9.2.1), e quem guarda cópia deles — cada
  * conversa e cada oportunidade — tem de acompanhar. Até 2026-09-28 corrigir o
  * nome numa thread não mudava a outra thread da mesma pessoa, nem a própria

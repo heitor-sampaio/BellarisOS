@@ -1236,7 +1236,8 @@ export function CRMBoard({
                 initialStageId={stage.id}
                 onLeadCreated={handleLeadCreated}
                 trigger={
-                  <button type="button" aria-label="Novo lead nesta etapa" title="Novo lead nesta etapa" style={{
+                  // O nome diz a ETAPA (J-18): eram sete "Novo lead nesta etapa" iguais.
+                  <button type="button" aria-label={`Novo lead em ${stage.name}`} title={`Novo lead em ${stage.name}`} style={{
                     width: 24, height: 24, borderRadius: 7,
                     background: 'var(--bg-app)', border: '1px solid var(--border)',
                     color: 'var(--text-muted)',

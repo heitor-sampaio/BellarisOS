@@ -56,7 +56,7 @@ test.describe.serial('o CRM', () => {
       await p.goto(`/${slug}/oportunidades`)
       for (const nome of [`${PREFIXO} Lead A ${marca}`, `${PREFIXO} Lead B ${marca}`]) {
         await expect(async () => {
-          await p.getByRole('button', { name: 'Novo lead nesta etapa' }).first().click({ timeout: 1000 })
+          await p.getByRole('button', { name: /^Novo lead em / }).first().click({ timeout: 1000 })
           await expect(p.locator('dialog[open] input[name="name"]')).toBeVisible({ timeout: 1000 })
         }).toPass()
         const modal = p.locator('dialog[open]')
@@ -84,7 +84,7 @@ test.describe.serial('o CRM', () => {
       await p.goto(`/${slug}/oportunidades`)
       const card = p.locator('[data-lead-card]').filter({ hasText: nome })
       await expect(card.getByText('Instagram', { exact: true })).toHaveCount(1)
-      await p.getByRole('button', { name: 'Novo lead nesta etapa' }).first().click()
+      await p.getByRole('button', { name: /^Novo lead em / }).first().click()
       await expect(p.locator('dialog[open] select[name="source"] option', { hasText: 'Telefone' })).toHaveCount(1)
     })
   })

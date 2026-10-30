@@ -15,7 +15,7 @@ import { MotivoDaPerdaCampos, type OpcaoDeMotivo } from './pergunta-da-perda'
 import { listarMotivosDePerda } from '@/actions/crm-motivos'
 import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
-import { LEAD_SOURCES, unitTag } from '@estetica-os/utils'
+import { LEAD_SOURCES, unitTag, maskPhone as telefoneParaExibir, maskTelefoneDigitando } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 
@@ -70,15 +70,16 @@ interface CRMLeadModalProps {
   onLeadCreated?:  (lead: Lead) => void
 }
 
-function maskPhone(v: string) {
-  const d = v.replace(/\D/g, '').slice(0, 11)
-  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3')
-  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3')
-}
+/**
+ * O telefone gravado, para o campo (J-19): o do WhatsApp ("5541992000040")
+ * aparecia cru. Com a máscara de exibição; o que não é número nacional fica.
+ */
+const telefoneDoCampo = (v: string | null | undefined) => (v ? telefoneParaExibir(v) : '')
 
-function Label({ children }: { children: React.ReactNode }) {
+/** O rótulo LIGADO ao campo pelo id (J-20: "Origem" e "Etapa" eram soltos). */
+function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label style={{
+    <label htmlFor={htmlFor} style={{
       fontSize: 'var(--text-xs-sz)', fontWeight: 700,
       color: 'var(--text-muted)', letterSpacing: '0.04em',
     }}>
@@ -112,7 +113,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       },
       undefined,
     )
-    const [phone,           setPhone]           = useState(existing?.phone ?? '')
+    const [phone,           setPhone]           = useState(telefoneDoCampo(existing?.phone))
     const [selectedProcs,   setSelectedProcs]   = useState<string[]>(
       existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [],
     )
@@ -144,6 +145,10 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [responsaveis, setResponsaveis] = useState<Responsaveis | null>(null)
     const [ownerId,      setOwnerId]      = useState(existing?.owner_id ?? '')
     const idResponsavel = useId()
+    const idNome        = useId()
+    const idOrigem      = useId()
+    const idEtapa       = useId()
+    const idObservacoes = useId()
 
     /** Origem gravada que não existe na lista canônica (base legada). */
     const origemForaDaLista =
@@ -162,7 +167,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
     /**
      * Sugestões de tag: as da rede (Configurações → Tags — lidas só ao abrir:
-     * o quadro monta um modal por card), as origens canônicas e as unidades.
+     * o quadro monta um modal por card) e as unidades. As ORIGENS saíram
+     * (J-17, 2026-10-30): repetiam o campo Origem logo acima, e a mesma coisa
+     * virava tag e origem ao mesmo tempo.
      *
      * A unidade é uma tag como outra qualquer — não é dona do lead e não decide
      * quem o enxerga. Ela existe como sugestão só para não virar texto digitado
@@ -173,7 +180,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const vocabulario = useTagsDaRede(aberto)
     const suggestedTags = useMemo(() => [...new Set([
       ...(vocabulario ?? []),
-      ...LEAD_SOURCES.map(s => s.key),
       ...(unidades ?? []).map(u => unitTag(u.name)),
     ])], [unidades, vocabulario])
 
@@ -188,7 +194,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [erroConversa,    setErroConversa]    = useState<string | null>(null)
 
     const open = useCallback(() => {
-      setPhone(existing?.phone ?? '')
+      setPhone(telefoneDoCampo(existing?.phone))
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
       setMotivoId(''); setMotivoObs('')
@@ -366,8 +372,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
               {/* Nome */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label>Nome *</Label>
-                <input name="name" type="text" required className="field"
+                <Label htmlFor={idNome}>Nome *</Label>
+                <input id={idNome} name="name" type="text" required className="field"
                   defaultValue={existing?.name} placeholder="Nome do contato" />
               </div>
 
@@ -383,17 +389,18 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>Telefone</span>
                     <input name="phone" type="tel" className="field" style={{ flex: 1 }}
-                      value={phone} onChange={e => setPhone(maskPhone(e.target.value))}
+                      aria-label="Telefone"
+                      value={phone} onChange={e => setPhone(maskTelefoneDigitando(e.target.value))}
                       placeholder="(11) 99999-9999" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>E-mail</span>
-                    <input name="email" type="email" className="field" style={{ flex: 1 }}
+                    <input name="email" type="email" className="field" style={{ flex: 1 }} aria-label="E-mail"
                       defaultValue={existing?.email ?? ''} placeholder="contato@email.com" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>Rede social</span>
-                    <input name="social_media" type="text" className="field" style={{ flex: 1 }}
+                    <input name="social_media" type="text" className="field" style={{ flex: 1 }} aria-label="Rede social"
                       defaultValue={existing?.social_media ?? ''} placeholder="@usuario ou link do perfil" />
                   </div>
                 </div>
@@ -439,8 +446,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               {/* Origem + Etapa */}
               <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Origem</Label>
-                  <select name="source" className="field" defaultValue={existing?.source ?? ''}>
+                  <Label htmlFor={idOrigem}>Origem</Label>
+                  <select id={idOrigem} name="source" className="field" defaultValue={existing?.source ?? ''}>
                     <option value="">Não informado</option>
                     {/*
                       Origem fora da lista canônica vira opção própria. As chaves
@@ -456,8 +463,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Etapa</Label>
-                  <select name="crm_stage_id" className="field"
+                  <Label htmlFor={idEtapa}>Etapa</Label>
+                  <select id={idEtapa} name="crm_stage_id" className="field"
                     value={stageId} onChange={e => setStageId(e.target.value)}>
                     <StageOptions funnels={funnels ?? []} stages={stages} />
                   </select>
@@ -568,8 +575,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
               {/* Observações */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label>Observações</Label>
-                <textarea name="notes" rows={3} className="field"
+                <Label htmlFor={idObservacoes}>Observações</Label>
+                <textarea id={idObservacoes} name="notes" rows={3} className="field"
                   defaultValue={existing?.notes ?? ''}
                   placeholder="Interesse, contexto, próximos passos…"
                   style={{ resize: 'vertical' }} />

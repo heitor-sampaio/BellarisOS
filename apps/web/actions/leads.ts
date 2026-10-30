@@ -13,7 +13,7 @@ import {
 import { isUnitTag, unitTagName, parseDinheiro } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
-import { propagarDadosDaPessoa, digitosDoTelefone } from '@/lib/contatos/propagar'
+import { propagarDadosDaPessoa, digitosDoTelefone, mesmoTelefone } from '@/lib/contatos/propagar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 
 function str(fd: FormData, key: string) {
@@ -157,7 +157,7 @@ export async function updateLead(
     if (!leadId) return { error: 'Lead não identificado.' }
 
     const name   = str(formData, 'name')
-    const phone  = str(formData, 'phone')
+    let   phone  = str(formData, 'phone')
     const email  = str(formData, 'email')
     const social = str(formData, 'social_media')
     const source = str(formData, 'source')
@@ -194,6 +194,14 @@ export async function updateLead(
     // registraria "de Y para Y".
     const antes = await estadoAtualDoLead(ctx.tenantId!, leadId)
     const etapaAnterior = antes?.crm_stage_id ?? null
+
+    // O modal mostra o telefone com a máscara (J-19): "(41) 99200-0040" é o
+    // MESMO número que o "5541992000040" do WhatsApp gravado. Salvar sem mexer
+    // não troca o número (nem propaga, nem vira "mudou" no histórico).
+    if (antes && mesmoTelefone(phone, antes.campos.phone ?? null)) {
+      phone = antes.campos.phone ?? null
+      patch.phone = phone
+    }
 
     // Mudou de etapa pelo modal: a perdida pede o motivo (2026-10-21), e sair
     // dela limpa o motivo — a mesma regra do quadro (camposDaPerda).
