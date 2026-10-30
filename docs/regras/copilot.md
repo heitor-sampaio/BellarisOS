@@ -115,12 +115,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     Gerenciar).
 - **"Só os meus" vale também no Copilot** (decisão do Heitor, 2026-10-28:
   "quem tem 'só os meus' vê 'só os meus', em qualquer lugar"). A ferramenta
-  `indicadores` usa o recorte do dashboard (`indicadores.md`): com a agenda OU
-  o financeiro em OWN, todo número é o DELA — o `professionalId` vai a
-  `getCore`, `getRelatorio` e às vendas (`p_professional_id`, migration
-  `20261028000803`) — e o cabeçalho diz o recorte; com o CRM em OWN, o funil
-  conta os leads dela e os sem dono (`ownerId`). Não vai ao modelo o que não
-  se atribui a ela: a despesa, o saldo e o valor do estoque, os itens
+  `indicadores` usa o recorte do dashboard (`indicadores.md`), com CADA número
+  no escopo do seu módulo (2026-10-29): a agenda e as clientes pelo da agenda,
+  o dinheiro (e as vendas) pelo do financeiro — `getCoreDosModulos`,
+  `getRelatorioDosModulos`, `p_professional_id` (migration `20261028000803`)
+  — e o cabeçalho diz qual recorte vale; com o CRM em OWN, o funil conta os
+  leads dela e os sem dono. Com o FINANCEIRO em OWN, não vai ao modelo o que
+  não se atribui a ela: a despesa, o saldo e o valor do estoque, os itens
   críticos (o consumo dos atendimentos dela vai). A comissão do núcleo, com
   o recorte, é a dela e vai. Prova: `e2e/copilot-indicadores-so-os-meus.spec.ts`
   (contra o build, como todo `copilot-*`).

@@ -112,11 +112,13 @@ export interface AdminDashboardProps {
   /** Ver quanto cada um ganha: financeiro com escopo de todos (o ranking vem vazio sem). */
   verComissoesDaEquipe: boolean
   /**
-   * "Só os meus" na agenda ou no financeiro (D7, 2026-10-28): os números são
-   * os da pessoa, e o dinheiro da rede (custo, evolução, filiais, receita e
-   * margem por procedimento, vendas, gasto das clientes) não aparece.
+   * O FINANCEIRO "só os meus" (cada número segue o seu módulo, 2026-10-29): o
+   * dinheiro é o da pessoa, e o que não se atribui a ela (custo, lucro, margem
+   * do catálogo, o ranking de filiais) não aparece.
    */
   recorteProprio?: boolean
+  /** A AGENDA "só os meus": a ocupação e o ranking por filial (a agenda de cada unidade) não aparecem. */
+  agendaPropria?: boolean
   procedureMargins:   { name: string; price: number; cost: number; marginPct: number }[]
 
   bestRatedPros:      { name: string; avgRating: number; count: number }[]
@@ -403,7 +405,7 @@ export function AdminDashboardView({
   pendingPlans, lowStockItems, stockStatus, zeroStockCount, lowStockCount, stockTurnover,
   evolutionData,
   branchOccupancy,
-  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, recorteProprio = false, procedureMargins,
+  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, recorteProprio = false, agendaPropria = false, procedureMargins,
   bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
   hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
@@ -532,6 +534,9 @@ export function AdminDashboardView({
           {/* Gráfico animado */}
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} />
 
+          {/* O ranking de filiais mistura o dinheiro e a AGENDA de cada unidade:
+              com a agenda "só os meus", fica de fora (a evolução segue). */}
+          {!agendaPropria && (<>
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de filiais</span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
@@ -614,6 +619,7 @@ export function AdminDashboardView({
             </div>
           )}
           </div>
+          </>)}
         </div>
         )}
 
@@ -859,7 +865,7 @@ export function AdminDashboardView({
       {/* ══════════════════════════════════════════════════════════════
           SEÇÃO: OCUPAÇÃO
       ══════════════════════════════════════════════════════════════ */}
-      {can('agenda') && !recorteProprio && (<>
+      {can('agenda') && !agendaPropria && (<>
       <SectionHeader title="Ocupação por filial" />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

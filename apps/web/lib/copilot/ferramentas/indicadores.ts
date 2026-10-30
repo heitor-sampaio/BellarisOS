@@ -1,10 +1,11 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
-import { can, isOwnScope, ownerFilter, podeVerRelatorio } from '@/lib/auth'
+import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
 import { resolvePeriod } from '@/lib/metrics/period'
-import { getCore, getLeadFunnel, getTicketMedio } from '@/lib/metrics/queries'
-import { getRelatorio } from '@/lib/metrics/relatorio'
+import { getLeadFunnel, getTicketMedio } from '@/lib/metrics/queries'
+import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
+import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
@@ -18,15 +19,13 @@ import { resumoDoFunil } from '@/lib/metrics/resultado'
  * escopo "só a minha unidade" dos relatórios obriga a escolher uma unidade.
  *
  * "Só os meus" (decisão do Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só
- * os meus', em qualquer lugar"): o recorte do dashboard. Com a agenda OU o
- * financeiro em OWN, todo número é o DELA (`professionalId` em lib/metrics);
- * com o CRM em OWN, o funil conta os leads dela e os sem dono (`ownerId`). O
- * que não se atribui a ela (a despesa, o saldo e o valor do estoque, a
- * comissão das outras) não vai ao modelo.
+ * os meus', em qualquer lugar"), com CADA número no escopo do seu módulo
+ * (2026-10-29, lib/metrics/escopo): a agenda e as clientes pelo da agenda, o
+ * dinheiro pelo do financeiro, o funil pelo do CRM (os leads dela e os sem
+ * dono). O que não se atribui a ela com o financeiro OWN (a despesa, o saldo
+ * e o valor do estoque, a comissão das outras) não vai ao modelo.
  */
 
-/** Ninguém: com OWN e sem membro interno, nenhum número (nunca a rede). */
-const NINGUEM = '00000000-0000-0000-0000-000000000000'
 
 export const procedimentos: FerramentaDeLeitura<{ busca?: string; unidade?: string }> = {
   nome: 'procedimentos',
@@ -79,22 +78,31 @@ export const indicadores: FerramentaDeLeitura<{
       ? resolvePeriod('custom', args.de, args.ate)
       : resolvePeriod(args.periodo ?? 'month')
     // Como o dashboard e os Relatórios: até AGORA, contra o anterior equivalente.
-    const recorteProprio = isOwnScope(c.ctx, 'agenda') || isOwnScope(c.ctx, 'financial')
-    const professionalId = recorteProprio ? (c.ctx.internalUserId ?? NINGUEM) : null
-    const base = { tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to, professionalId }
+    // Cada número no escopo do SEU módulo (2026-10-29, lib/metrics/escopo): a
+    // agenda e as clientes pela agenda, o dinheiro pelo financeiro, o funil
+    // pelo CRM. O que não se atribui a ela com o FINANCEIRO "só os meus" (a
+    // despesa, o saldo e o valor do estoque) não vai ao modelo.
+    const recorte = recorteDosModulos(c.ctx)
+    const recorteProprio = recorte.financeiro !== null
+    const janela = { tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.to }
+    const doDinheiro = { ...janela, professionalId: recorte.financeiro }
+    const partes = [
+      recorte.agenda ? 'só os seus atendimentos e as suas clientes' : null,
+      recorte.financeiro ? 'só o dinheiro dos seus atendimentos' : null,
+    ].filter(Boolean)
     const cabecalho = {
       periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades',
-      ...(recorteProprio ? { recorte: 'só os seus atendimentos e o dinheiro deles (o seu cargo vê "só os meus")' } : {}),
+      ...(partes.length ? { recorte: `${partes.join('; ')} (o seu cargo vê "só os meus" nesse módulo)` } : {}),
     }
 
     if (aba === 'overview') {
       const [atual, anterior, ticket] = await Promise.all([
-        getCore(base),
-        getCore({ ...base, from: periodo.prevFrom, to: periodo.prevTo }),
-        getTicketMedio(base),
+        getCoreDosModulos({ ...janela, recorte }),
+        getCoreDosModulos({ ...janela, from: periodo.prevFrom, to: periodo.prevTo, recorte }),
+        getTicketMedio(doDinheiro),
       ])
-      // Com "só os meus", a comissão do núcleo já é a DELA.
-      const comissoes = can(c.ctx, 'financial', 'VIEW') && (!isOwnScope(c.ctx, 'financial') || recorteProprio)
+      // Com o financeiro "só os meus", a comissão do núcleo já é a DELA.
+      const comissoes = can(c.ctx, 'financial', 'VIEW')
       return {
         dados: {
           ...cabecalho,
@@ -117,7 +125,7 @@ export const indicadores: FerramentaDeLeitura<{
 
     if (aba === 'comercial') {
       // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
-      const funil = await getLeadFunnel({ ...base, ownerId: ownerFilter(c.ctx, 'crm') })
+      const funil = await getLeadFunnel({ ...janela, ownerId: recorte.crm })
       // A conversão é da OPORTUNIDADE (ganhas ÷ do funil), a conta das telas.
       const resumo = resumoDoFunil(funil)
       return {
@@ -135,8 +143,9 @@ export const indicadores: FerramentaDeLeitura<{
 
     if (aba === 'vendas') {
       // A lista fecha no FIM do período, como na tela; o total vem do banco.
-      const recorte = { ...base, to: periodo.fullTo }
-      const [resumo, ultimas] = await Promise.all([getResumoDeVendas(recorte), getVendas({ ...recorte, limite: 30 })])
+      // A venda é dinheiro: segue o financeiro.
+      const vendas = { ...doDinheiro, to: periodo.fullTo }
+      const [resumo, ultimas] = await Promise.all([getResumoDeVendas(vendas), getVendas({ ...vendas, limite: 30 })])
       return {
         dados: {
           ...cabecalho,
@@ -149,8 +158,8 @@ export const indicadores: FerramentaDeLeitura<{
     }
 
     const [r, ticket] = await Promise.all([
-      getRelatorio({ ...base, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day' }),
-      aba === 'clientes' ? getTicketMedio(base) : Promise.resolve(null),
+      getRelatorioDosModulos({ ...janela, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day', recorte }),
+      aba === 'clientes' ? getTicketMedio(doDinheiro) : Promise.resolve(null),
     ])
     const nomesDasUnidades = await nomesPorId(c, 'branches', [...r.receitaPorUnidade.map(x => x.branchId), ...r.agendaPorUnidade.map(x => x.branchId), ...r.estoque.porUnidade.map(x => x.branchId)])
     const unidade = (id: string) => nomesDasUnidades.get(id) ?? id
@@ -179,7 +188,7 @@ export const indicadores: FerramentaDeLeitura<{
       },
       profissionais: {
         porProfissional: top(r.porProfissional).map(x => ({ ...x, receita: dinheiro(x.receita) })),
-        ...(can(c.ctx, 'financial', 'VIEW') && (!isOwnScope(c.ctx, 'financial') || recorteProprio)
+        ...(can(c.ctx, 'financial', 'VIEW')
           ? { comissoes: r.comissoesPorProfissional.map(x => ({ ...x, aberta: dinheiro(x.aberta), paga: dinheiro(x.paga) })) }
           : {}),
       },

@@ -1,7 +1,7 @@
 ﻿import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
-import { getTenantContext, isOwnScope, ownerFilter } from '@/lib/auth'
+import { getTenantContext, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
@@ -18,6 +18,8 @@ import {
   resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
 } from '@/lib/metrics'
+import { recorteDosModulos } from '@/lib/metrics/escopo'
+import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
 
@@ -109,13 +111,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // Profissional que atende e não gerencia a agenda: dashboard escopado a ele.
   // Escopo do cargo, não mais heurística sobre o nível de agenda.
   const professionalOnly = isOwnScope(ctx, 'agenda')
-  const proId = ownerFilter(ctx, 'agenda')
-  // "Só os meus" na agenda OU no financeiro (D7 da simulação de 2026-10-28;
-  // "em qualquer lugar", decisão do Heitor no mesmo dia): todo número é o
-  // DELA — a receita e o gráfico dos 6 meses (só a receita dela; mostrava
-  // "▲ R$ 420 no semestre" da unidade inteira, e depois sumia), os
-  // procedimentos, as clientes do mês e a reativar, os planos a receber.
-  const recorteDela = proId ?? ownerFilter(ctx, 'financial')
+  // Cada número segue o escopo do SEU módulo (decisão do Heitor, 2026-10-29;
+  // lib/metrics/escopo): a agenda e as clientes — agendamentos, atendimentos,
+  // "Clientes no mês", procedimentos mais procurados, a reativar, planos
+  // aguardando checkout — pelo da agenda; o dinheiro — faturamento, o gráfico
+  // dos 6 meses, o ticket — pelo do financeiro. Até aqui qualquer "só os
+  // meus" recortava tudo (D7 de 2026-10-28).
+  const recorte = recorteDosModulos(ctx)
+  const proId = recorte.agenda
+  const dinheiroDela = recorte.financeiro
 
   const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
 
@@ -128,12 +132,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const thirtyDaysAgo = addDaysTZ(now, -30)
   const ninetyDaysAgo = addDaysTZ(now, -90)
 
-  // Profissional que atende e não gerencia a agenda vê só os próprios números.
-  const metricArgs = {
-    tenantId: ctx.tenantId!, branchIds: [branchId],
-    // O financeiro "só os meus" também recorta o dinheiro (como no da rede).
-    from: period.from, to: period.to, professionalId: recorteDela,
-  }
+  // O mês até agora; o núcleo junta o dinheiro de um recorte e a agenda do outro.
+  const janela = { tenantId: ctx.tenantId!, branchIds: [branchId], from: period.from, to: period.to }
+  const doDinheiro = { ...janela, professionalId: dinheiroDela }
 
   const [
     core,
@@ -149,17 +150,18 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
     // novos clientes e comissões saem coerentes entre si por construção.
     (canFinancial || canAgenda || canClients)
-      ? getCore(metricArgs)
+      ? getCoreDosModulos({ ...janela, recorte })
       : Promise.resolve({ ...EMPTY_CORE }),
 
-    (canFinancial || canAgenda || canClients)
-      ? getCore({ ...metricArgs, from: period.prevFrom, to: period.prevTo })
+    // O anterior só serve à variação do FATURAMENTO: o recorte do dinheiro.
+    canFinancial
+      ? getCore({ ...doDinheiro, from: period.prevFrom, to: period.prevTo })
       : Promise.resolve({ ...EMPTY_CORE }),
 
     canFinancial
       ? getSeries({
           tenantId: ctx.tenantId!, branchIds: [branchId],
-          from: sixMonthsAgo, to: period.to, granularity: 'month', professionalId: recorteDela,
+          from: sixMonthsAgo, to: period.to, granularity: 'month', professionalId: dinheiroDela,
         })
       : Promise.resolve([]),
 
@@ -167,7 +169,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       ? (() => {
           let q = admin.from('treatment_plans').select('id', { count: 'exact', head: true })
             .eq('branch_id', branchId).eq('status', 'PROPOSED')
-          if (recorteDela) q = q.eq('professional_id', recorteDela)
+          if (proId) q = q.eq('professional_id', proId)
           return contar(q, 'contar os planos a receber')
         })()
       : Promise.resolve(0),
@@ -197,7 +199,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canProcedures
       ? getTopProcedures({
           tenantId: ctx.tenantId!, branchIds: [branchId],
-          from: thirtyDaysAgo, to: now, limit: 4, professionalId: recorteDela,
+          from: thirtyDaysAgo, to: now, limit: 4, professionalId: proId,
         })
       : Promise.resolve([]),
 
@@ -207,13 +209,13 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canClients
       ? getClientesParaReativar({
           tenantId: ctx.tenantId!, branchId, tag: unitTag(branch.name), desde: ninetyDaysAgo,
-          professionalId: recorteDela,
+          professionalId: proId,
         })
       : Promise.resolve({ total: 0, lista: [] }),
 
-    // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29).
+    // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): dinheiro.
     canFinancial
-      ? getTicketMedio(metricArgs)
+      ? getTicketMedio(doDinheiro)
       : Promise.resolve(null),
   ])
 
@@ -453,7 +455,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>
-              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{recorteDela ? 'Meu faturamento' : 'Faturamento'}</h2>
+              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{dinheiroDela ? 'Meu faturamento' : 'Faturamento'}</h2>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 6 meses</p>
             </div>
             {semesterDelta > 0 && (
@@ -567,7 +569,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               Clientes no mês
             </h2>
           </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>{recorteDela ? 'As suas novas clientes e os seus agendamentos neste mês, até agora' : 'Novos clientes e agendamentos da unidade neste mês, até agora'}</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>{proId ? 'As suas novas clientes e os seus agendamentos neste mês, até agora' : 'Novos clientes e agendamentos da unidade neste mês, até agora'}</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {funnel.map((f, i) => {

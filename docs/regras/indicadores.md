@@ -294,12 +294,39 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios.
 
+**Cada número segue o escopo do SEU módulo** (decisão do Heitor, 2026-10-29 —
+revê o "qualquer OWN recorta tudo" de 28/10): a AGENDA e as CLIENTES seguem o
+escopo da agenda (atendimentos, agendamentos, minutos, novos clientes, a
+base e a demografia, a retenção, as clientes a reativar, os planos aguardando
+checkout, os rankings que CONTAM — procedimentos feitos, recorrência,
+profissionais, clientes por recorrência —, a ocupação e o "Clientes no mês");
+o DINHEIRO segue o do financeiro (receita, a receber, despesa, receita de
+serviço, ticket, comissões, vendas e o CSV, a evolução, os rankings de VALOR,
+o gasto das clientes, o LTV por CEP e o consumo de insumo, que é custo); o
+FUNIL segue o do CRM. "Com a agenda ALL e o financeiro OWN, os atendimentos
+são os da clínica e o faturamento é o dela." Vale nos dois dashboards, nos
+Relatórios e no Copilot. A regra mora em `lib/metrics/escopo.ts`
+(`recorteDosModulos(ctx)` → `{ agenda, financeiro, crm }`, `juntarNucleos`,
+`juntarPorNome`) e em `lib/metrics/dos-modulos.ts`: as funções do banco
+recebem UM profissional, e com os dois recortes diferentes pedem-se os dois e
+juntam-se (`getCoreDosModulos`, `getRelatorioDosModulos`: as tabelas por
+procedimento e por profissional casam pelo nome — execuções da agenda, receita
+do dinheiro). Escondido: com o FINANCEIRO dela, o que não se atribui a ela
+(custo, lucro, margem, DRE, parcelas a receber, saldo e valor do estoque, a
+comissão das outras); com a AGENDA dela, a ocupação por filial; com qualquer
+dos dois, o ranking de filiais (mistura o dinheiro e a agenda de cada
+unidade). Módulo NONE vale ALL (D6) — com o financeiro NONE, a aba de
+dinheiro dos Relatórios que o cargo tiver marcada mostra a clínica. Prova:
+`e2e/indicadores-cada-numero-no-seu-modulo.spec.ts`, `tests/metrics-escopo.test.ts`.
+Os parágrafos abaixo (28/10) descrevem os PREDICADOS de cada recorte, que não
+mudaram; o que mudou é qual módulo decide cada número.
+
 **Dashboard com "só os meus" (D7 da simulação de 2026-10-28; "quem tem 'só os
 meus' vê 'só os meus', em qualquer lugar", decisão do Heitor no mesmo dia)**:
-com a agenda OU o financeiro em OWN — e o módulo ABERTO no cargo: o OWN de um
-módulo NONE não vale (D6 de 2026-10-29, CLAUDE.md §11; a contadora sem agenda
-via "Meu faturamento R$ 0") —, TODO número dos dois dashboards (rede e
-unidade) é o DELA — o `professionalId` vai a cada função de `lib/metrics`
+com o módulo em OWN — e ABERTO no cargo: o OWN de um módulo NONE não vale (D6
+de 2026-10-29, CLAUDE.md §11; a contadora sem agenda via "Meu faturamento
+R$ 0") —, os números DAQUELE módulo nos dois dashboards (rede e
+unidade) são os DELA — o `professionalId` vai a cada função de `lib/metrics`
 (`metrics_core`, `_series`, `_top_procedures`, `_top_professionals`,
 `_top_clients`, `_demografia`, `_giro_estoque`, `_clientes_para_reativar`, com
 `p_professional_id default null`; migration `20261028000601`). O recorte é
@@ -337,16 +364,17 @@ mostra o esconde) e `metrics_vendas` (+ `_pagina`, `_resumo`). **Venda dela**
 vendeu o pacote e o pré-pago, a dona do plano.
 
 **Os Relatórios com "só os meus"** (`reports-bi-section`, os dois portais):
-com a agenda OU o financeiro em OWN, cada aba é a DELA — o `professionalId`
-vai a `getCore`, `getSeries`, `getRelatorio`, às vendas (e ao CSV de
-`/api/relatorios/vendas`), a `getRetention` e a `getNewClientsSeries`
+cada número da aba no recorte do seu módulo (acima) — o da agenda a
+`getRetention` e `getNewClientsSeries`, o do dinheiro a `getSeries`, ao ticket
+e às vendas (e ao CSV de `/api/relatorios/vendas`), os dois a
+`getCoreDosModulos` e `getRelatorioDosModulos`
 (`metrics_retention`/`metrics_new_clients_series`, migration
 `20261028000804`: as clientes que ELA atendeu; "voltou" = já tinha vindo a
 ELA antes — decisão nova). Com o CRM em OWN, a aba Comercial é a dos leads
 dela e dos sem dono: o funil (`ownerId`), o painel (`metrics_comercial`:
 também os agendamentos que ela marcou) e os motivos de perda
-(`metrics_motivos_de_perda`), todos com `p_owner`. Some da tela (`soOsMeus`)
-o que não se atribui a ela: despesa, lucro, margem e DRE (visão geral e
+(`metrics_motivos_de_perda`), todos com `p_owner`. Com o FINANCEIRO em OWN,
+some da tela (`soOsMeus`) o que não se atribui a ela: despesa, lucro, margem e DRE (visão geral e
 financeiro; a evolução só com a receita), as parcelas a receber, a margem por
 faixa etária (custo do catálogo) e o saldo do estoque (valor, giro, críticos,
 zerados, por categoria, por unidade, validades) — fica o consumo dos

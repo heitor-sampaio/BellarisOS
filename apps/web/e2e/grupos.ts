@@ -119,6 +119,7 @@ export const ISOLADOS = [
   'prontuario-acessos.spec.ts',
   'indicadores-dashboard-e-agenda.spec.ts',
   'indicadores-uma-conta-so.spec.ts',
+  'indicadores-cada-numero-no-seu-modulo.spec.ts',
   'prontuario-evolucao.spec.ts',
   'agenda-chegar-e-iniciar.spec.ts',
   'plano-dica-do-pacote.spec.ts',

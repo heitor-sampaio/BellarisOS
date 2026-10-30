@@ -1,15 +1,16 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { getTenantContext, podeVerRelatorio, can, isOwnScope, ownerFilter } from '@/lib/auth'
+import { getTenantContext, podeVerRelatorio, can } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { addDaysTZ } from '@/lib/datetime'
-import { getRelatorio } from '@/lib/metrics/relatorio'
+import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
+import { recorteDosModulos } from '@/lib/metrics/escopo'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
-  getCore, getSeries, getTicketMedio,
+  getSeries, getTicketMedio,
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
@@ -18,8 +19,6 @@ import {
   getVendas, getResumoDeVendas, ehTipoDeVenda, POR_PAGINA, type Venda, type ResumoDeVendas, type TipoDeVenda,
 } from '@/lib/metrics/vendas'
 
-/** Ninguém: com "só os meus" e sem membro interno, nenhum número (nunca a rede). */
-const NINGUEM = '00000000-0000-0000-0000-000000000000'
 
 export type ReportsTab    = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 export type ReportsPeriod = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
@@ -83,16 +82,20 @@ export async function ReportsBiSection({
   // A regra é a de `podeVerRelatorio` (módulo E aba), a mesma testada em tests/auth.
   if (!podeVerRelatorio(ctxDoCargo, tab)) tab = abasPermitidas[0]!
 
-  // -- "Só os meus" (decisão do Heitor, 2026-10-28: "quem tem 'só os meus' vê
-  // 'só os meus', em qualquer lugar") ---------------------------------------
-  // O recorte do dashboard: com a agenda OU o financeiro em OWN, todo número é
-  // o DELA (`professionalId` em lib/metrics — os predicados de metrics_core);
-  // com o CRM em OWN, o comercial é o dos leads dela e dos sem dono. O que não
-  // se atribui a ela (a despesa, o lucro, a margem, o saldo do estoque, as
-  // parcelas a receber) nem é consultado: a tela o esconde (`soOsMeus`).
-  const soOsMeus = isOwnScope(ctxDoCargo, 'agenda') || isOwnScope(ctxDoCargo, 'financial')
-  const professionalId = soOsMeus ? (ctxDoCargo.internalUserId ?? NINGUEM) : null
-  const donoNoCrm = isOwnScope(ctxDoCargo, 'crm') ? (ownerFilter(ctxDoCargo, 'crm') ?? NINGUEM) : null
+  // -- "Só os meus": cada número no escopo do SEU módulo (decisão do Heitor,
+  // 2026-10-29; lib/metrics/escopo) ------------------------------------------
+  // A agenda e as clientes (atendimentos, agendamentos, retenção, novos
+  // clientes, a base) seguem o escopo da agenda; o dinheiro (faturamento,
+  // ticket, evolução, vendas, comissões, o consumo de insumo) segue o do
+  // financeiro; o comercial, o do CRM (os leads dela e os sem dono). O que não
+  // se atribui a ela quando o FINANCEIRO é "só os meus" (a despesa, o lucro, a
+  // margem, o saldo do estoque, as parcelas a receber) nem é consultado: a tela
+  // o esconde (`soOsMeus`). Até aqui qualquer "só os meus" recortava tudo.
+  const recorte = recorteDosModulos(ctxDoCargo)
+  const soOsMeus = recorte.financeiro !== null
+  const profAgenda = recorte.agenda
+  const profDinheiro = recorte.financeiro
+  const donoNoCrm = recorte.crm
 
   // -- Período -------------------------------------------------------
   // Janela no fuso do negócio, com período anterior de mesma duração decorrida.
@@ -131,10 +134,10 @@ export async function ReportsBiSection({
     seriesData,
     ticket,
   ] = await Promise.all([
-    getRelatorio({
+    getRelatorioDosModulos({
       tenantId: ctx.tenantId!, branchIds,
       from: startDate, to: fimDaJanela, prevFrom: prevStart, prevTo: prevEnd,
-      aba: tab, granularidade: granularity, professionalId,
+      aba: tab, granularidade: granularity, recorte,
     }),
 
     // Lotes vencendo em ≤ 30 dias.
@@ -168,39 +171,40 @@ export async function ReportsBiSection({
 
     // Retenção real (quem já era cliente antes do período e voltou)
     needClientes
-      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId })
+      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda })
       : Promise.resolve({ clientsServed: 0, returningClients: 0, firstTimeClients: 0 }),
 
     // Novos clientes por dia, dentro da janela e no fuso do negócio
     needClientes
       ? getNewClientsSeries({
           tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-          granularity: period === 'all' ? 'month' : 'day', professionalId,
+          granularity: period === 'all' ? 'month' : 'day', professionalId: profAgenda,
         })
       : Promise.resolve([]),
 
     // O dinheiro e as contagens do período, agregados no Postgres — a mesma
     // conta do dashboard. Atendimentos, novos clientes, ticket, agenda e
     // comissões também saem daqui: recontar na tela era a segunda cópia.
-    getCore({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela, professionalId }),
-    getCore({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, professionalId }),
+    getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: fimDaJanela, recorte }),
+    getCoreDosModulos({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, recorte }),
     getSeries({
       tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-      granularity, professionalId,
+      granularity, professionalId: profDinheiro,
     }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): a
     // Visão geral, Clientes e Procedimentos mostram o MESMO número.
     ['overview', 'clientes', 'procedimentos'].includes(tab)
-      ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId })
+      ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro })
       : Promise.resolve(null),
   ])
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
   // relatórios, e mostrava a comissão da equipe inteira a quem não vê o
   // financeiro (ou só vê as próprias). O dado nem sai do servidor.
-  // Com "só os meus", a comissão que chega já é a DELA (o recorte no banco).
-  const verComissoes = can(ctxDoCargo, 'financial', 'VIEW') && (!isOwnScope(ctxDoCargo, 'financial') || soOsMeus)
+  // Com o financeiro "só os meus", a comissão que chega já é a DELA (o recorte
+  // do dinheiro, no banco).
+  const verComissoes = can(ctxDoCargo, 'financial', 'VIEW')
   if (!verComissoes) {
     relatorio.comissoesPorProfissional = []
     for (const nucleo of [core, corePrev]) { nucleo.commissionsOpen = 0; nucleo.commissionsPaid = 0 }
@@ -224,12 +228,13 @@ export async function ReportsBiSection({
   const vendas = tab === 'vendas'
     ? await (async (): Promise<DadosDeVendas> => {
         const tipo   = ehTipoDeVenda(rawTipo) ? rawTipo : null
-        const recorte = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, professionalId }
-        const resumo = await getResumoDeVendas(recorte)
+        // A venda é dinheiro: segue o financeiro (com ele "só os meus", as dela).
+        const doPeriodo = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, professionalId: profDinheiro }
+        const resumo = await getResumoDeVendas(doPeriodo)
         const totalDoFiltro = tipo ? resumo.porTipo[tipo].quantidade : resumo.geral.quantidade
         const paginas = Math.max(1, Math.ceil(totalDoFiltro / POR_PAGINA))
         const pagina  = Math.min(paginas, Math.max(1, Number.parseInt(rawPagina ?? '1', 10) || 1))
-        const linhas  = await getVendas({ ...recorte, tipo, offset: (pagina - 1) * POR_PAGINA })
+        const linhas  = await getVendas({ ...doPeriodo, tipo, offset: (pagina - 1) * POR_PAGINA })
         return { tipo, pagina, paginas, linhas, resumo }
       })()
     : undefined

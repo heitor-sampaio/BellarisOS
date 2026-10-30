@@ -1,4 +1,4 @@
-import { getTenantContext, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
+import { getTenantContext, temRecurso } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
@@ -14,7 +14,7 @@ import { AdminDashboardDynamic as AdminDashboardView } from '@/components/admin/
 import { startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 import {
   resolvePeriod, percent, EMPTY_CORE,
-  getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
+  getByBranch, getSeries, getTopProcedures, getTopProfessionals,
   getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento, getTicketMedio,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
@@ -22,9 +22,11 @@ import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, contar } from '@/lib/db'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
+import { recorteDosModulos } from '@/lib/metrics/escopo'
+import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 
-/** Sem membro (não acontece com sessão de equipe): o recorte não acha nada, em vez de achar tudo. */
-const NINGUEM = '00000000-0000-0000-0000-000000000000'
+
+
 
 // -- Linhas como os selects as pedem ---------------------------------
 type Num = number | string | null
@@ -70,17 +72,23 @@ export default async function AdminDashboardPage({
   // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
   const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports
 
-  // "Só os meus" (D7 da simulação de 2026-10-28; "em qualquer lugar", decisão
-  // do Heitor no mesmo dia): com a agenda ou o financeiro em OWN, TODO número
-  // é o DELA (`professionalId` em lib/metrics) — a receita, a evolução da
-  // receita, os rankings, as clientes (as que ela atendeu: total, demografia,
-  // recorrência, gasto), o giro dos atendimentos dela e os planos dela. O que
-  // não se atribui a ela não é consultado nem mostrado: o custo e o lucro, a
-  // margem do catálogo, o ranking e a ocupação por filial, e a comissão das
-  // outras.
-  const recorteProprio = isOwnScope(ctx, 'agenda') || isOwnScope(ctx, 'financial')
-  const proId = recorteProprio ? (ctx.internalUserId ?? NINGUEM) : null
-  const agendaDela = isOwnScope(ctx, 'agenda') ? (ctx.internalUserId ?? NINGUEM) : null
+  // Cada número segue o escopo do SEU módulo (decisão do Heitor, 2026-10-29;
+  // lib/metrics/escopo). Com a agenda "só os meus", a agenda e as clientes
+  // são as DELA — atendimentos, novos clientes, hoje, os rankings que contam
+  // (procedimentos, recorrência, profissionais, clientes por recorrência), a
+  // demografia e os planos aguardando checkout. Com o financeiro "só os meus",
+  // o dinheiro é o DELA — a receita, a evolução (só a receita), o ticket, os
+  // rankings de valor, o gasto das clientes, o LTV por CEP e o giro (o insumo
+  // é custo). O que não se atribui a ela não é consultado nem mostrado: com o
+  // financeiro dela, o custo, o lucro, a margem do catálogo e a comissão das
+  // outras; com a agenda dela, a ocupação por filial; com qualquer dos dois, o
+  // ranking de filiais (que mistura o dinheiro e a agenda de cada unidade).
+  // Até aqui qualquer "só os meus" recortava tudo (D7 de 2026-10-28).
+  const recorte        = recorteDosModulos(ctx)
+  const agendaDela     = recorte.agenda
+  const dinheiroDela   = recorte.financeiro
+  const recorteProprio = dinheiroDela !== null
+  const mesmoRecorte   = agendaDela === dinheiroDela
 
   const admin = createAdminClient()
   const now   = new Date()
@@ -130,8 +138,16 @@ export default async function AdminDashboardPage({
   }
 
   // -- Queries paralelas ---------------------------------------------
-  const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: proId }
-  const prevArgs   = { tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, professionalId: proId }
+  const janela       = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }
+  const daAgenda     = { ...janela, professionalId: agendaDela }
+  const doDinheiro   = { ...janela, professionalId: dinheiroDela }
+  /** O ranking pedido no recorte do dinheiro — o mesmo da agenda quando os dois são iguais. */
+  const noDinheiro = <T,>(daAgendaJa: Promise<T>, pedir: () => Promise<T>) => (mesmoRecorte ? daAgendaJa : pedir())
+
+  const topProceduresDaAgenda     = needsCore ? getTopProcedures({ ...daAgenda, limit: 5 }) : Promise.resolve([])
+  const topProfessionalsDaAgenda  = needsCore ? getTopProfessionals({ ...daAgenda, limit: 5 }) : Promise.resolve([])
+  const topClientsDaAgenda        = needsCore ? getTopClients({ ...daAgenda, limit: 10 }) : Promise.resolve([])
+  const demografiaDaAgenda        = needsCore ? getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: agendaDela }) : Promise.resolve({ total: 0, idades: [], cidades: [], ceps: [] } as Demografia)
 
   const [
     core,
@@ -139,7 +155,10 @@ export default async function AdminDashboardPage({
     branchMetrics,
     seriesData,
     procedureStats,
+    procedureStatsDoDinheiro,
     professionalStats,
+    professionalStatsDoDinheiro,
+    clientStatsDaAgenda,
     clientStats,
     todayApptsRaw,
     pendingPlansRaw,
@@ -147,20 +166,26 @@ export default async function AdminDashboardPage({
     margensDosProcedimentos,
     stockTurnover,
     demografia,
+    demografiaDoDinheiro,
     ticket,
   ] = needsCore ? await Promise.all([
 
-    // Núcleo agregado no Postgres: receita, atendimentos, novos clientes,
-    // comissões e minutos agendados numa chamada só e coerentes entre si.
-    getCore(metricArgs),
-    getCore(prevArgs),
-    // Por unidade é o dinheiro da rede. A série, com "só os meus", é a
-    // receita DELA (a tela mostra só a receita, sem custo nem lucro).
-    recorteProprio ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate }),
-    getSeries({ ...metricArgs, granularity: period === 'today' ? 'hour' : 'day' }),
-    getTopProcedures({ ...metricArgs, limit: 5 }),
-    getTopProfessionals({ ...metricArgs, limit: 5 }),
-    getTopClients({ ...metricArgs, limit: 10 }),
+    // Núcleo agregado no Postgres: o dinheiro do recorte do financeiro e a
+    // agenda (atendimentos, novos clientes, minutos) do recorte da agenda.
+    getCoreDosModulos({ ...janela, recorte }),
+    getCoreDosModulos({ ...janela, from: prevStart, to: prevEnd, recorte }),
+    // Por unidade: o ranking de filiais (dinheiro e agenda de cada unidade, só
+    // sem "só os meus") e a ocupação por filial (a agenda: sem a agenda dela).
+    agendaDela ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate }),
+    // A série é dinheiro: com o financeiro dela, a receita DELA (só a receita).
+    getSeries({ ...doDinheiro, granularity: period === 'today' ? 'hour' : 'day' }),
+    // Os rankings que CONTAM seguem a agenda; os de VALOR, o dinheiro.
+    topProceduresDaAgenda,
+    noDinheiro(topProceduresDaAgenda, () => getTopProcedures({ ...doDinheiro, limit: 5 })),
+    topProfessionalsDaAgenda,
+    noDinheiro(topProfessionalsDaAgenda, () => getTopProfessionals({ ...doDinheiro, limit: 5 })),
+    topClientsDaAgenda,
+    noDinheiro(topClientsDaAgenda, () => getTopClients({ ...doDinheiro, limit: 10 })),
 
     // Agendamentos de hoje (exceto cancelados e no-show) — com a agenda "só
     // os meus", os dela, como o "Meus agendamentos hoje" da unidade.
@@ -176,13 +201,13 @@ export default async function AdminDashboardPage({
       return ler(q, 'carregar os agendamentos de hoje')
     })(),
 
-    // Planos de tratamento aguardando checkout — com "só os meus", os dela.
+    // Planos de tratamento aguardando checkout — com a agenda "só os meus", os dela.
     (() => {
       let q = admin.from('treatment_plans')
         .select('id, branch_id, created_at, clients(name), branches(name, slug)')
         .in('branch_id', branchIds)
         .eq('status', 'PROPOSED')
-      if (proId) q = q.eq('professional_id', proId)
+      if (agendaDela) q = q.eq('professional_id', agendaDela)
       return ler(q.order('created_at', { ascending: true }).limit(20), 'carregar os planos aguardando checkout')
     })(),
 
@@ -202,20 +227,24 @@ export default async function AdminDashboardPage({
     // PERÍODO e não "agora": o consumo que acabou de ser baixado nasce com o
     // relógio do Postgres, que está à frente do relógio do app. Somado no
     // banco: em JS, passando de 1000 movimentos, subcontava.
-    // Com "só os meus", o gasto nos atendimentos dela.
-    getGiroDeEstoque({ branchIds, from: startDate, to: periodInfo.fullTo, professionalId: proId }),
+    // O insumo é CUSTO: segue o financeiro — com ele "só os meus", o gasto
+    // nos atendimentos dela.
+    getGiroDeEstoque({ branchIds, from: startDate, to: periodInfo.fullTo, professionalId: dinheiroDela }),
 
-    // Demografia — os clientes da rede (com "só os meus", os que ela atendeu),
-    // contada no banco: o total, idade, cidade, CEP e LTV por CEP. Antes vinha
-    // a base inteira e era cortada em 1000.
-    getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: proId }),
+    // Demografia — os clientes da rede (com a agenda "só os meus", os que ela
+    // atendeu), contada no banco: o total, idade, cidade e CEP. O LTV por CEP é
+    // dinheiro: vem do recorte do financeiro. Antes vinha a base inteira e era
+    // cortada em 1000.
+    demografiaDaAgenda,
+    noDinheiro(demografiaDaAgenda, () => getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: dinheiroDela })),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): o
-    // total e o de cada unidade, numa chamada.
-    getTicketMedio(metricArgs),
+    // total e o de cada unidade, numa chamada — dinheiro.
+    getTicketMedio(doDinheiro),
   ]) : [
-    { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [],
-    [], [], [], [], 0, { total: 0, idades: [], cidades: [], ceps: [] } as Demografia, null,
+    { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [], [], [], [],
+    [], [], [], [], 0, { total: 0, idades: [], cidades: [], ceps: [] } as Demografia,
+    { total: 0, idades: [], cidades: [], ceps: [] } as Demografia, null,
   ]
 
   // Total de clientes (todo o período): o da demografia, a mesma contagem.
@@ -337,7 +366,7 @@ export default async function AdminDashboardPage({
   }))
 
   // 1a. Top procedimentos por receita de serviço
-  const byProcRevenue    = [...procedureStats].sort((a, b) => b.revenue - a.revenue)
+  const byProcRevenue    = [...procedureStatsDoDinheiro].sort((a, b) => b.revenue - a.revenue)
   const maxProcRevenue   = byProcRevenue[0]?.revenue ?? 0
   const topProceduresByRevenue = byProcRevenue.map(p => ({
     name: p.name, revenue: p.revenue, pct: barPct(p.revenue, maxProcRevenue),
@@ -354,7 +383,7 @@ export default async function AdminDashboardPage({
     name: p.name, count: p.appointments, pct: barPct(p.appointments, maxProfCount),
   }))
 
-  const byProfRevenue  = [...professionalStats].sort((a, b) => b.revenue - a.revenue)
+  const byProfRevenue  = [...professionalStatsDoDinheiro].sort((a, b) => b.revenue - a.revenue)
   const maxProfRevenue = byProfRevenue[0]?.revenue ?? 0
   const topProfessionalsByRevenue = byProfRevenue.map(p => ({
     name: p.name, revenue: p.revenue, pct: barPct(p.revenue, maxProfRevenue),
@@ -367,7 +396,7 @@ export default async function AdminDashboardPage({
   // Com qualquer "só os meus", a comissão das outras também não aparece.
   const verComissoesDaEquipe = canFinancial && !recorteProprio
   const rankingDeComissao = verComissoesDaEquipe && needsCore
-    ? await getRankingDeComissao({ ...metricArgs, limit: 5 })
+    ? await getRankingDeComissao({ ...janela, limit: 5 })
     : []
   const maxProfComm = rankingDeComissao[0]?.commission ?? 0
   const topProfessionalsByCommission = rankingDeComissao.map(p => ({
@@ -401,7 +430,7 @@ export default async function AdminDashboardPage({
     id: c.clientId, name: c.name, totalSpent: c.totalSpent, appointmentCount: c.appointments,
   }))
 
-  const byRecurrence   = [...clientStats].sort((a, b) => b.appointments - a.appointments).slice(0, 5)
+  const byRecurrence   = [...clientStatsDaAgenda].sort((a, b) => b.appointments - a.appointments).slice(0, 5)
   const maxClientCount = byRecurrence[0]?.appointments ?? 0
   const topClientsByRecurrence = byRecurrence.map(c => ({
     name: c.name, count: c.appointments, pct: barPct(c.appointments, maxClientCount),
@@ -439,11 +468,10 @@ export default async function AdminDashboardPage({
   // segunda cópia dela.
   const hotmapRawCepCounts: Record<string, number> = {}
   const hotmapRawCepLtv: Record<string, number> = {}
-  for (const c of demografia.ceps) {
-    hotmapRawCepCounts[c.cep] = c.n
-    // Com "só os meus", o LTV é o que as clientes dela pagaram pelos atendimentos dela.
-    if (c.ltv > 0) hotmapRawCepLtv[c.cep] = c.ltv
-  }
+  // Quantas clientes por CEP: a agenda (as clientes); o LTV: o dinheiro — com o
+  // financeiro "só os meus", o que as clientes pagaram pelos atendimentos dela.
+  for (const c of demografia.ceps) hotmapRawCepCounts[c.cep] = c.n
+  for (const c of demografiaDoDinheiro.ceps) if (c.ltv > 0) hotmapRawCepLtv[c.cep] = c.ltv
 
   // -- Comercial: funil de leads por estágio + conversão (gate crm) --------
   // O funil vem do banco e inclui os leads da REDE (branch_id null). A rede
@@ -462,7 +490,7 @@ export default async function AdminDashboardPage({
         from: startDate, to: endDate,
         funnelId: funilAtivo?.id ?? null,
         // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
-        ownerId: ownerFilter(ctx, 'crm'),
+        ownerId: recorte.crm,
       })
     : []
 
@@ -551,6 +579,7 @@ export default async function AdminDashboardPage({
         topProfessionalsByCommission={topProfessionalsByCommission}
         verComissoesDaEquipe={verComissoesDaEquipe}
         recorteProprio={recorteProprio}
+        agendaPropria={agendaDela !== null}
         procedureMargins={procedureMargins}
 
         bestRatedPros={bestRatedPros}

@@ -48,8 +48,12 @@ test.beforeAll(async () => {
   expect((await db.from('users').update({ branch_id: o.branchId, provides_services: true }).eq('id', o.professionalId)).error).toBeNull()
   const produto = await o.criarProduto('Insumo', 100)
 
+  // Cada número segue o escopo do SEU módulo (2026-10-29): o dinheiro, o do
+  // financeiro — sem o módulo financeiro (NONE vale ALL), a receita seria a da
+  // clínica. Aqui ela tem os dois "só os meus".
   const matriz = (escopo: 'OWN' | 'ALL'): Permissao[] => [
     { modulo: 'agenda', nivel: 'VIEW', escopo },
+    { modulo: 'financial', nivel: 'VIEW', escopo },
     { modulo: 'crm', nivel: 'VIEW', escopo },
     { modulo: 'reports', nivel: 'VIEW' },
   ]
