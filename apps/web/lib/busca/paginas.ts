@@ -31,6 +31,7 @@ const APELIDOS: Record<string, readonly string[]> = {
   clients:       ['pacientes', 'fichas de clientes'],
   planejamentos: ['planos', 'planejamento', 'checkout'],
   injetaveis:    ['toxina', 'botox', 'preenchimento'],
+  documentos:    ['termos', 'contratos', 'assinaturas'],
   inbox:         ['conversas', 'mensagens', 'whatsapp', 'instagram', 'caixa de entrada'],
   oportunidades: ['negócios', 'funil', 'crm', 'leads', 'quadro', 'vendas'],
   procedures:    ['serviços', 'catálogo'],
@@ -39,6 +40,7 @@ const APELIDOS: Record<string, readonly string[]> = {
   marketing:     ['anúncios', 'campanhas', 'meta ads'],
   templates:     ['modelos de mensagem'],
   financial:     ['contas', 'pagamentos', 'receitas', 'despesas', 'lançamentos'],
+  fechamento:    ['caixa', 'fechar o caixa', 'conferência do dia'],
   stock:         ['produtos', 'insumos', 'lotes'],
   reports:       ['indicadores', 'métricas'],
   team:          ['usuários', 'membros', 'funcionários', 'profissionais'],
@@ -46,16 +48,26 @@ const APELIDOS: Record<string, readonly string[]> = {
   settings:      ['ajustes', 'preferências'],
 }
 
+/**
+ * As abas também carregam o que mora DENTRO delas (J-13, 2026-10-30): "sala" só
+ * oferecia "Cadastrar sala como cliente", e as salas ficam na página de cada
+ * unidade (Configurações → Unidades).
+ */
 const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
+  unidades:     ['salas', 'filiais', 'horário de funcionamento'],
   permissions:  ['permissões', 'acessos', 'perfis'],
   fichas:       ['anamnese', 'formulários'],
   documentos:   ['termos', 'contratos', 'assinatura'],
   integrations: ['whatsapp', 'meta', 'instagram', 'conexões'],
   fidelidade:   ['pontos', 'recompensas', 'vouchers'],
-  comissoes:    ['taxas', 'maquininha'],
+  comissoes:    ['taxas', 'maquininha', 'comissão'],
   lgpd:         ['privacidade', 'exportação'],
   suporte:      ['ajuda', 'acesso do suporte', 'autorizar suporte', 'bellarisos'],
   eventos:      ['log'],
+  assinatura:   ['plano do sistema', 'fatura', 'mensalidade'],
+  lotes:        ['histórico do whatsapp', 'tarefas em segundo plano'],
+  tags:         ['etiquetas', 'marcadores'],
+  importacoes:  ['importar', 'planilha', 'csv'],
   general:      ['dados da clínica', 'cnpj', 'endereço'],
 }
 
@@ -103,19 +115,29 @@ export function paginasDaBusca(
       key:      'financial:comissoes',
       titulo:   'Financeiro → Comissões',
       href:     `${base}/financeiro/comissoes`,
-      apelidos: ['fechamento', 'pagar comissão', 'minhas comissões'],
+      apelidos: ['fechamento', 'comissão', 'pagar comissão', 'minhas comissões'],
     })
   }
 
   return paginas
 }
 
-/** As páginas que casam com o termo, como resultado da busca. */
+/**
+ * As páginas que casam com o termo, como resultado da busca. Achada só pelo
+ * apelido, a linha diz qual ("Configurações → Unidades" · "Salas"): sem isso,
+ * a pessoa que procurou a sala não entende por que a tela de unidades apareceu.
+ */
 export function paginasQueCasam(
   paginas: readonly PaginaDaBusca[], termo: string, limite = 6,
 ): ResultadoDaBusca[] {
   return paginas
     .filter(p => casaComTermo(termo, [p.titulo, ...p.apelidos]))
     .slice(0, limite)
-    .map(p => ({ tipo: 'pagina', id: p.key, titulo: p.titulo, subtitulo: null, href: p.href }))
+    .map(p => ({ tipo: 'pagina', id: p.key, titulo: p.titulo, subtitulo: apelidoQueCasou(p, termo), href: p.href }))
+}
+
+function apelidoQueCasou(p: PaginaDaBusca, termo: string): string | null {
+  if (casaComTermo(termo, [p.titulo])) return null
+  const a = p.apelidos.find(x => casaComTermo(termo, [x]))
+  return a ? a.charAt(0).toUpperCase() + a.slice(1) : null
 }

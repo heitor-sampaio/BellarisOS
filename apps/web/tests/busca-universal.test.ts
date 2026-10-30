@@ -92,6 +92,27 @@ describe('paginasQueCasam', () => {
   it('o resultado já leva o endereço', () => {
     expect(paginasQueCasam(paginas, 'estoque')[0]).toMatchObject({ tipo: 'pagina', href: '/admin/estoque' })
   })
+
+  // J-13 (2026-10-30): "sala" só oferecia "Cadastrar sala como cliente". As
+  // telas que moram DENTRO de outra (as salas, na página de cada unidade) são
+  // achadas pelo nome do que elas têm — com a mesma regra de quem as abre.
+  it('acha as telas que moram dentro de outra: salas, caixa, comissão', () => {
+    expect(paginasQueCasam(paginas, 'sala')).toEqual([
+      expect.objectContaining({ id: 'settings:unidades', href: '/admin/settings?tab=unidades', subtitulo: 'Salas' }),
+    ])
+    expect(paginasQueCasam(paginas, 'caixa').map(r => r.id)).toContain('fechamento')
+    expect(paginasQueCasam(paginas, 'comissao').map(r => r.id)).toContain('financial:comissoes')
+    expect(paginasQueCasam(paginas, 'importar').map(r => r.id)).toContain('settings:importacoes')
+  })
+
+  it('o apelido não abre tela que a pessoa não abre: na unidade, "sala" não acha nada', () => {
+    expect(paginasQueCasam(paginasDaBusca('centro', ALL_PERMISSIONS), 'sala')).toEqual([])
+    expect(paginasQueCasam(paginasDaBusca(null, com({ settings: 'VIEW' })), 'sala')).toEqual([])
+  })
+
+  it('achada pelo próprio nome, a página não leva subtítulo', () => {
+    expect(paginasQueCasam(paginas, 'estoque')[0]!.subtitulo).toBeNull()
+  })
 })
 
 describe('destinoDoResultado — o portal é onde a pessoa está', () => {
