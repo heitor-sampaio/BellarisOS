@@ -26,6 +26,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - `pagamento.*`, `estoque.*`, `comissao.liberada` e `comissao.paga` saem de GATILHO ou função no banco (`origem: 'banco'`, sem
   ator), porque esses fatos nascem em cinco ou seis lugares do código e
   instrumentar um a um é garantir esquecer o próximo.
+- **A campanha é AVISO NO CELULAR (push), e a tela diz isso** (D-3, decisão do
+  Heitor, 2026-10-29: "O WhatsApp fica para o futuro."). Ela chega a quem tem
+  um aparelho registrado (`push_tokens`, o app; `web_push_subscriptions`, o
+  navegador) e fica no sino do portal. A lista, a criação e o detalhe mostram
+  `<CanalDaCampanha>` ("não vai pelo WhatsApp"), e o público mostra os dois
+  números — quantas no público e quantas RECEBEM (`publico_com_aparelho`, o
+  mesmo critério do disparo). Prova: `e2e/campanha-aviso-no-celular.spec.ts`.
 - **Campanha ≠ automação.** Campanha é disparo em massa por público; automação
   é reação a um fato. São dois produtos, e nada migra de um para o outro.
 - **A fila do motor é `automation_runs`**, no Postgres — não há broker no

@@ -42,6 +42,7 @@ export const ISOLADOS = [
   'automacoes-ensaio.spec.ts',
   'automacoes-quadro-encaixe.spec.ts',
   'automacoes-modelos.spec.ts',
+  'campanha-aviso-no-celular.spec.ts',
   'busca-universal.spec.ts',
   'checkout-de-plano.spec.ts',
   'checkout-grade-de-horarios.spec.ts',

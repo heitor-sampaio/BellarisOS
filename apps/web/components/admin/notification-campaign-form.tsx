@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { createCampaign, updateCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import { AudiencePreview } from '@/components/admin/audience-preview'
+import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
@@ -162,6 +163,9 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      {/* O canal, antes de qualquer passo (D-3): a campanha é aviso no celular. */}
+      <div style={{ marginBottom: 20 }}><CanalDaCampanha /></div>
+
       {/* -- Step indicator --------------------------------------- */}
       <StepIndicator current={step} total={4} labels={['Tipo', 'Conteúdo', 'Público', 'Revisar']} />
 
@@ -524,7 +528,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
           )}
           <ReviewRow label="Título"     value={previewTitle} />
           <ReviewRow label="Mensagem"   value={body} />
-          <ReviewRow label="Canal"      value="In-app (sino do portal do cliente)" />
+          <ReviewRow label="Canal"      value="Aviso no celular (push) · fica no sino do portal · não vai pelo WhatsApp" />
 
           <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>

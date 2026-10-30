@@ -56,3 +56,14 @@ export function contarPublico(tenantId: string, filtros: FiltrosDoPublico): Prom
     'contar o público da campanha',
   )
 }
+
+/**
+ * Quantas do público têm um aparelho para receber o aviso no celular — o app
+ * (`push_tokens`) ou os avisos do navegador (`web_push_subscriptions`). É o
+ * mesmo critério do disparo da campanha (D-3, 2026-10-30). Contado no banco.
+ */
+export async function contarPublicoComAparelho(tenantId: string, filtros: FiltrosDoPublico): Promise<number> {
+  const { data, error } = await createAdminClient().rpc('publico_com_aparelho', argumentos(tenantId, filtros))
+  if (error) throw new Error(`Não consegui contar quem tem o app: ${error.message}`)
+  return Number(data ?? 0)
+}

@@ -7,6 +7,7 @@ import { getCampaign, activateCampaign, pauseCampaign, archiveCampaign, deleteCa
 import type { CampaignStatus, CampaignType, TriggerType } from '@/actions/notification-campaigns'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { DeleteCampaignButton } from '@/components/admin/delete-campaign-button'
+import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,6 +123,9 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
           )}
         </div>
       </div>
+
+      {/* O canal, junto do "Enviar agora" (D-3). */}
+      <CanalDaCampanha />
 
       {/* Stats row */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>

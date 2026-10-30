@@ -1,6 +1,7 @@
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { listCampaigns } from '@/actions/notification-campaigns'
 import { NotificationCampaignsList } from '@/components/admin/notification-campaigns-list'
+import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,9 +23,11 @@ export default async function AdminNotificacoesPage() {
           Notificações
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          Campanhas de notificação para clientes · in-app
+          Campanhas de aviso no celular para as clientes
         </p>
       </div>
+
+      <div style={{ marginBottom: 20 }}><CanalDaCampanha /></div>
 
       <NotificationCampaignsList
         campaigns={campaigns}

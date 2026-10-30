@@ -6,7 +6,7 @@ import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
-import { contarPublico } from '@/lib/clientes/publico'
+import { contarPublico, contarPublicoComAparelho } from '@/lib/clientes/publico'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 
 // -- Types --------------------------------------------------------------
@@ -315,7 +315,7 @@ export async function deleteCampaign(id: string): Promise<{ error?: string }> {
 
 export async function previewAudienceCount(
   rules: AudienceRules,
-): Promise<{ count: number }> {
+): Promise<{ count: number; comAparelho: number }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'marketing', 'MANAGE')
 
@@ -323,10 +323,16 @@ export async function previewAudienceCount(
   // Com procedimento, a conta era o mínimo entre o público e os 400 primeiros
   // de quem fez o procedimento — nunca passava de 400. Contagem que falha não
   // vira "0 clientes": `contar` para o fluxo.
-  const count = await contarPublico(ctx.tenantId!, {
+  const filtros = {
     branch_ids: rules.branch_ids, genders: rules.genders, tags: rules.tags,
     has_app_account: rules.has_app_account === true, procedure_ids: rules.procedure_ids,
-  })
-  return { count }
+  }
+  // E quantas RECEBEM: a campanha é aviso no celular (D-3), e só chega a quem
+  // tem um aparelho registrado — o mesmo critério do disparo.
+  const [count, comAparelho] = await Promise.all([
+    contarPublico(ctx.tenantId!, filtros),
+    contarPublicoComAparelho(ctx.tenantId!, filtros),
+  ])
+  return { count, comAparelho }
 }
 
