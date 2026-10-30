@@ -299,7 +299,11 @@ o procedimento avulso pago antes.
     curtos), usado por `confirmar_pagamento_do_atendimento`; no app, o
     checkout do plano (`rotuloDoPagamento`) e o recebimento do plano no
     check-in usam `rotuloDaForma`. Forma nova entra NOS DOIS. O histórico
-    gravado antes ficou como estava. Prova:
+    gravado antes foi TRADUZIDO em todas as redes (pedido do Heitor, frente
+    de cadastro de 2026-10-29; migration `20261029001002`, 6 linhas → 0) por
+    `historico_forma_em_portugues`, que troca o código só nos formatos que o
+    sistema gravava; o E2E confere que nenhuma linha do histórico guarda o
+    código. Prova:
     `e2e/financeiro-historico-forma-em-portugues.spec.ts`,
     `tests/checkout-pagamento.test.ts`.
   - **"Sem forma (pontos)" só para o que os pontos pagaram** (A35): no
