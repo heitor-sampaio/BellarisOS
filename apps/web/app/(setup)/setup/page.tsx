@@ -6,6 +6,9 @@ import { ler } from '@/lib/db'
 
 export default async function SetupPage() {
   const ctx = await getTenantContext()
+  // A cliente que abre /setup vai ao portal dela (J-67): era a tela de "sem
+  // acesso", com HTTP 500. Quem é da equipe segue a trava de sempre.
+  if (ctx.isClient) redirect('/auth/redirect')
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()

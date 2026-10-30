@@ -7,11 +7,9 @@ import { emSessaoDeSuporte } from '@/lib/suporte/sessao'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema, ResetPasswordSchema, UpdatePasswordSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
-import { ler } from '@/lib/db'
-import { destinoDaCliente } from '@/lib/clientes/destino'
+import { destinoPelosClaims } from '@/lib/destino-da-sessao'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
 
@@ -121,26 +119,8 @@ export async function loginAction(
  * mágicos, erro inesperado).
  */
 async function destinoDaSessao(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
-  let dest = '/auth/redirect'
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const claims = (user.app_metadata ?? {}) as JwtClaims
-      const admin  = createAdminClient()
-
-      if (claims.client_id) {
-        // Uma clínica, várias, o seletor ou a última usada (lib/clientes/entrada.ts).
-        dest = (await destinoDaCliente(user.id)) ?? dest
-      } else if (claims.branch_id) {
-        const br = await ler(admin.from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')
-        dest = getRedirectPath(claims.role, br?.slug ?? null)
-      } else {
-        dest = getRedirectPath(claims.role, null)
-      }
-    }
-  } catch { /* mantém fallback /auth/redirect */ }
-
-  return dest
+  // A mesma conta do /login com a sessão aberta (J-67); sem destino, a reserva.
+  return (await destinoPelosClaims(supabase)) ?? '/auth/redirect'
 }
 
 export async function logoutAction() {

@@ -258,6 +258,11 @@ NETWORK_ADMIN  → /admin/dashboard
 outros         → /[branch.slug]/dashboard
 ```
 
+Com a sessão aberta, `/login` leva ao destino (`destinoPelosClaims`,
+`lib/destino-da-sessao.ts` — o mesmo do login; com `?acesso=` não, que é a
+volta de um portão), `/admin` vai ao painel pelo layout e a cliente em
+`/setup` vai ao portal (J-67). Prova: `e2e/rotas-com-sessao-levam-ao-destino.spec.ts`.
+
 ### Portal não é filial
 
 O `slug` que um componente recebe é a **filial do registro**; o portal é **onde a

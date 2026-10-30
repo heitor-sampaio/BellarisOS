@@ -1,131 +1,20 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { destinoPelosClaims } from '@/lib/destino-da-sessao'
+import { FormularioDeLogin } from './formulario-de-login'
 
-import { useActionState, useEffect, useState } from 'react'
-import { loginAction } from '@/actions/auth'
-import Link from 'next/link'
-
-/** Por que a pessoa voltou ao login (`?acesso=`) — dito na tela, não só na URL. */
-const AVISOS_DE_ACESSO: Record<string, string> = {
-  desativado: 'Seu acesso foi desativado pela clínica. Fale com o responsável.',
-  // A sessão de alguém da equipe da plataforma (proxy, buildContext): os apps dela são outros.
-  plataforma: 'A equipe da plataforma entra por admin.bellarisos.com ou suporte.bellarisos.com.',
-}
-
-export default function LoginPage() {
-  const [state, action, pending] = useActionState(loginAction, undefined)
-  const [avisoDeAcesso, setAvisoDeAcesso] = useState<string | null>(null)
-  useEffect(() => {
-    const motivo = new URLSearchParams(window.location.search).get('acesso')
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- lido do endereço uma vez, depois de montar (a página é estática)
-    if (motivo && AVISOS_DE_ACESSO[motivo]) setAvisoDeAcesso(AVISOS_DE_ACESSO[motivo])
-  }, [])
-
-  useEffect(() => {
-    if (!(state && 'redirectTo' in state && state.redirectTo)) return
-    // A sessão já está nos cookies (httpOnly), gravados pela action.
-    window.location.href = state.redirectTo
-  }, [state])
-
-  return (
-    <div className="card">
-      <h1 style={{
-        fontSize: 'var(--text-title)',
-        fontWeight: 'var(--weight-extrabold)',
-        letterSpacing: 'var(--tracking-tight)',
-        color: 'var(--text)',
-        marginBottom: 6,
-      }}>
-        Entrar
-      </h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 28 }}>
-        Equipe da clínica ou cliente: entre com o seu e-mail e a sua senha.
-      </p>
-      <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: -20, marginBottom: 24 }}>
-        Cliente: no primeiro acesso, a senha é o seu CPF (só os números).
-      </p>
-
-      <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label htmlFor="email" className="overline">E-mail</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            className="field"
-            placeholder="seu@email.com"
-          />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label htmlFor="password" className="overline">Senha</label>
-            <Link
-              href="/reset-password"
-              style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-semibold)' }}
-            >
-              Esqueci a senha
-            </Link>
-          </div>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            className="field"
-            placeholder="••••••••"
-          />
-        </div>
-
-        {avisoDeAcesso && !state?.error && (
-          <p role="status" style={{
-            color: 'var(--warning)',
-            background: 'var(--warning-soft)',
-            borderRadius: 'var(--radius-field-token)',
-            padding: '8px 12px',
-            fontSize: 'var(--text-xs-sz)',
-            fontWeight: 'var(--weight-semibold)',
-          }}>
-            {avisoDeAcesso}
-          </p>
-        )}
-
-        {state?.error && (
-          <p style={{
-            color: 'var(--warning)',
-            background: 'var(--warning-soft)',
-            borderRadius: 'var(--radius-field-token)',
-            padding: '8px 12px',
-            fontSize: 'var(--text-xs-sz)',
-            fontWeight: 'var(--weight-semibold)',
-          }}>
-            {state.error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn-primary"
-          style={{ justifyContent: 'center', marginTop: 4 }}
-        >
-          {pending ? 'Entrando…' : 'Entrar'}
-        </button>
-
-        {/* Onde quem ainda não entrou consegue achar: a política tem de ser
-            alcançável SEM sessão. */}
-        <Link
-          href="/privacidade"
-          style={{
-            fontSize: 'var(--text-2xs)', color: 'var(--text-faint)',
-            textAlign: 'center', marginTop: 4,
-          }}
-        >
-          Política de Privacidade
-        </Link>
-      </form>
-    </div>
-  )
+/**
+ * O login. Com a sessão ABERTA (J-67), quem abre `/login` vai ao destino dele
+ * — a cliente ao portal, a equipe ao painel — em vez de ver o formulário de
+ * novo, como se ninguém tivesse entrado.
+ *
+ * Com `?acesso=` não: é a volta DELIBERADA de um portão (desativado,
+ * plataforma) com a sessão ainda nos cookies; redirecionar daria volta.
+ */
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ acesso?: string }> }) {
+  const { acesso } = await searchParams
+  if (!acesso) {
+    const destino = await destinoPelosClaims()
+    if (destino) redirect(destino)
+  }
+  return <FormularioDeLogin />
 }
