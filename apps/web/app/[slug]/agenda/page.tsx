@@ -167,6 +167,7 @@ export default async function AgendaPage({ params, searchParams }: {
           horarioDaUnidade={horarioDaUnidade}
           horarioDaProfissional={horariosDosProfissionais[ctx.internalUserId ?? ''] ?? null}
           ocupadoFora={ocupadoFora[ctx.internalUserId ?? ''] ?? []}
+          dataInicial={dataInicial}
         />
       </div>
     )

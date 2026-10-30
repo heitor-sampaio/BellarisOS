@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { iniciaisDoNome } from '@estetica-os/utils'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   format, isSameDay, isSameMonth,
@@ -61,11 +61,13 @@ interface Props {
   horarioDaUnidade:      Horario | null
   horarioDaProfissional: Horario | null
   ocupadoFora:           BlocoOcupado[]
+  /** O dia do `?date=` (AAAA-MM-DD), conferido pela página (J-33). */
+  dataInicial?:          string | null
 }
 
 export function ProfessionalAgendaView({
   events, slug, professionalName, branchName, professionalId, janela,
-  horarioDaUnidade, horarioDaProfissional, ocupadoFora,
+  horarioDaUnidade, horarioDaProfissional, ocupadoFora, dataInicial = null,
 }: Props) {
   const router = useRouter()
   const today  = useMemo(() => new Date(), [])
@@ -92,9 +94,20 @@ export function ProfessionalAgendaView({
   }, [professionalId, router])
 
   const [view,         setView]    = useState<ViewMode>('dia')
-  const [selectedDate, setSelected] = useState<Date>(today)
-  const [weekBase,     setWeekBase] = useState<Date>(today)
-  const [monthBase,    setMonthBase] = useState<Date>(today)
+  // O dia vem do `?date=` (J-33: o link do aviso ou da ficha abria sempre em
+  // hoje) e volta para a URL quando muda — como a agenda da unidade.
+  const [selectedDate, setSelected] = useState<Date>(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : today)
+  const [weekBase,     setWeekBase] = useState<Date>(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : today)
+  const [monthBase,    setMonthBase] = useState<Date>(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : today)
+  const diaNaUrl = format(selectedDate, 'yyyy-MM-dd')
+  const diaInicial = useRef(diaNaUrl)
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('date') === diaNaUrl) return
+    if (!url.searchParams.has('date') && diaNaUrl === diaInicial.current) return
+    url.searchParams.set('date', diaNaUrl)
+    window.history.replaceState(null, '', url)
+  }, [diaNaUrl])
 
   // -- Lookup por dia --------------------------------------------------
   const eventsByDay = useMemo(() => {
@@ -314,13 +327,13 @@ export function ProfessionalAgendaView({
           {/* Nav de data */}
           <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--hairline)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button type="button" onClick={() => setSelected(d => addDays(d, -1))} className="btn-ghost" style={{ padding: '5px 8px' }}>
+              <button type="button" onClick={() => setSelected(d => addDays(d, -1))} className="btn-ghost" style={{ padding: '5px 8px' }} aria-label="Dia anterior">
                 <ChevronLeft size={15} />
               </button>
               <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
                 {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
               </span>
-              <button type="button" onClick={() => setSelected(d => addDays(d, 1))} className="btn-ghost" style={{ padding: '5px 8px' }}>
+              <button type="button" onClick={() => setSelected(d => addDays(d, 1))} className="btn-ghost" style={{ padding: '5px 8px' }} aria-label="Próximo dia">
                 <ChevronRight size={15} />
               </button>
               {!isSameDay(selectedDate, today) && (

@@ -292,11 +292,13 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
 
             {showCancelReason && !isProfessional && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning)' }}>
-                <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)' }}>
+                {/* O rótulo LIGADO ao campo (J-31, design.md). */}
+                <label htmlFor="motivo-do-cancelamento" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)' }}>
                   Motivo do cancelamento *
                 </label>
                 <input
-                  type="text" className="field"
+                  id="motivo-do-cancelamento"
+                  type="text" className="field" required
                   value={cancelReason}
                   onChange={e => setCancelReason(e.target.value)}
                   placeholder="Descreva o motivo…"
