@@ -105,6 +105,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   com `canal: 'whatsapp'` gravado (`configPadrao`, `lib/automacoes/ids.ts`); o salvo sem canal mostra
   "Escolha o canal…" — nunca um WhatsApp que a config não tem (a validação continua exigindo o canal).
   Prova: `e2e/automacoes-canal-gravado.spec.ts`.
+- **Automações e Campanhas são da clínica, e ficam só no portal da rede**
+  (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
+  alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa
+  não as alcança, tenha o módulo que tiver. A tela de Cargos diz isso na linha
+  de Marketing e de Automações, ligadas ou não (`SO_NA_REDE_NOTE`,
+  `lib/permissions-copy.ts`; os dois em `NETWORK_ONLY`). Prova:
+  `e2e/permissoes-config-atritos.spec.ts`.
 - Prova de ponta a ponta: `e2e/mensagens-saida.spec.ts` — webhook real →
   automação → resposta pela caixa falsa + os quatro efeitos no card.
 

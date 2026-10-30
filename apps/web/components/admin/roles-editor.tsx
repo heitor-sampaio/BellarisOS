@@ -12,7 +12,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, NETWORK_ONLY_NOTE,
+  NETWORK_ONLY, NETWORK_ONLY_NOTE, SO_NA_REDE_NOTE,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
@@ -609,9 +609,10 @@ function ModuleRow({
   const enabled     = level !== 'NONE'
   const sensitive   = SENSITIVE_NOTE[module]
   const networkOnly = NETWORK_ONLY.includes(module)
+  const soNaRede    = SO_NA_REDE_NOTE[module]
 
   return (
-    <div style={{
+    <div data-modulo={module} style={{
       padding: '12px 4px',
       borderBottom: last ? undefined : '1px solid var(--hairline)',
     }}>
@@ -640,12 +641,14 @@ function ModuleRow({
           }}>
             {LEVEL_COPY[module][level] ?? ''}
           </div>
-          {networkOnly && enabled && (
+          {/* Campanhas e Automações dizem sempre que são da rede (D-2,
+              2026-10-29); os outros de rede, só quando ligados. */}
+          {(soNaRede || (networkOnly && enabled)) && (
             <div style={{
               fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 4,
               fontStyle: 'italic',
             }}>
-              {NETWORK_ONLY_NOTE}
+              {soNaRede ?? NETWORK_ONLY_NOTE}
             </div>
           )}
           {sensitive && enabled && (

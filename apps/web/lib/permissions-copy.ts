@@ -178,7 +178,18 @@ export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
 
 export const NETWORK_ONLY_NOTE = 'Só funciona para quem tem abrangência de rede.'
 
-export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'roles', 'settings']
+export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'automations', 'roles', 'settings']
+
+/**
+ * Campanhas e Automações ficam SÓ no portal da rede (D-2, decisão do Heitor,
+ * 2026-10-29: "a automação é da clínica, mesmo que o alvo seja a unidade").
+ * A linha do módulo diz isso sempre — ligado ou não —, para quem monta o cargo
+ * de alguém da unidade não esperar uma tela que ela não vai ter.
+ */
+export const SO_NA_REDE_NOTE: Partial<Record<AppModule, string>> = {
+  marketing:   'É da clínica: as telas ficam no portal da rede e valem só para quem é da rede.',
+  automations: 'É da clínica: as automações ficam no portal da rede e valem só para quem é da rede.',
+}
 
 // ─── Cargos sensíveis ────────────────────────────────────────────────────────
 // Dois caminhos de auto-elevação. O aviso é uma linha na própria opção, não um

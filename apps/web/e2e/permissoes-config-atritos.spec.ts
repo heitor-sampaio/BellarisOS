@@ -57,6 +57,21 @@ test('a matriz de Cargos não oferece o Copilot à rede que não o tem', async (
   })
 })
 
+// D-2 dos atritos (decisão do Heitor, 2026-10-29): Campanhas e Automações
+// ficam só no portal da rede — "a automação é da clínica" —, e a tela de
+// Cargos passa a dizer isso na linha dos dois módulos, ligados ou não.
+test('a matriz de Cargos avisa que Marketing e Automações valem só para quem é da rede', async ({ browser }) => {
+  await como(browser, dona!, async p => {
+    await p.goto('/admin/settings?tab=permissions')
+    await expect(p.getByText(/Agendamentos, check-in e atendimentos/).first(), 'a matriz carregou').toBeVisible()
+    for (const modulo of ['marketing', 'automations']) {
+      await expect(p.locator(`[data-modulo="${modulo}"]`).first(), modulo).toContainText(/só para quem é da rede/)
+    }
+    // Controle: um módulo da unidade não leva o aviso.
+    await expect(p.locator('[data-modulo="agenda"]').first()).not.toContainText(/só para quem é da rede/)
+  })
+})
+
 test('o topo das Configurações diz o que a pessoa vê, não "cargos e integrações"', async ({ browser }) => {
   await como(browser, sdr!, async p => {
     await p.goto(`/${slug}/settings`)
