@@ -737,7 +737,7 @@ O que a transação grava, na ordem:
 
 | # | O que grava | Onde |
 |---|---|---|
-| 1 | status `COMPLETED` + `completed_at` (agendamento TRAVADO, status conferido de novo) | `appointments` |
+| 1 | status `COMPLETED` + `completed_at` (agendamento TRAVADO, status conferido de novo) e o retorno pedido (D-12: `retorno_em_dias` e o dia, `retorno_para`) | `appointments` |
 | 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento — evolução, intercorrência, as DORES do cliente e a ficha do procedimento da tela (D1, 2026-10-29); e a anamnese digitada na tela, fechando o pré-atendimento pendente (D3, 2026-10-28) | `medical_records`, `medical_record_entries`, `pre_atendimentos` |
 | 3 | uma linha de comissão por procedimento (regra e configuração retratadas) e o primeiro acerto do extrato (§9.7) | `commission_lines`, `commissions` |
 | 4 | cada insumo — e, pelos gatilhos, evento, mínimo e baixa do lote | `stock_movements`, `branch_product_stock` |
@@ -899,6 +899,26 @@ O resto do fluxo:
   ficha") a tira do rascunho: o "Finalizar" leva a salva. Prova:
   `e2e/atendimento-rascunho.spec.ts`, `e2e/atendimento-rascunho-da-ficha.spec.ts`,
   `tests/rascunho-do-atendimento.test.ts`.
+- **O "Retorno em N dias"** (D-12, decisão do Heitor, 2026-10-29: "Ele vira
+  lembrete à recepção e gatilho de automação."): campo OPCIONAL na janela do
+  "Finalizar atendimento" ("Retorno em (dias)", 1 a 730 — `lerRetornoEmDias`,
+  `lib/atendimento/retorno.ts`, na tela e em `finishSession`). Vai em
+  `p_dados.retorno_dias` e `concluir_atendimento` grava os dias e o DIA do
+  retorno (a conclusão + N, em Brasília) na mesma transação (migration
+  `20261029001604`); a linha do tempo diz "· retorno em 15 dias".
+  - **A recepção vê** no dashboard da unidade "Retornos a marcar"
+    (`retornosAMarcar`, `lib/agenda/retornos.ts` → `retornos_a_marcar`, lista
+    e total do banco): os que vencem até 7 dias à frente e os vencidos há até
+    60 dias, enquanto a cliente não tem agendamento DEPOIS do atendimento
+    (fora cancelado e falta, em qualquer unidade). Cada linha leva à ficha.
+    Quem vê a agenda, com o "só os meus" dela.
+  - **No dia, o cron emite `agendamento.retorno_vencendo`** ("Retorno
+    vencendo", `/api/cron/retornos`, de hora em hora): uma vez por
+    atendimento — reivindica `retorno_avisado_em` antes de emitir, e a chave
+    do evento é a segunda trava. É gatilho de automação, com o procedimento
+    do atendimento no payload para o "Se" (`automacoes.md`). Nada sai à
+    cliente sem uma automação montada pela clínica.
+  - Prova: `e2e/atendimento-retorno.spec.ts`, `tests/retorno-do-atendimento.test.ts`.
 - **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
   (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
   aparecer no estoque, e a tela mostra o que faltou.

@@ -26,6 +26,8 @@ export async function emitirEventoDeAgendamento(
     motivo?: string | null
     /** Remarcação: de quando para quando. */
     deAgendadoPara?: string | null
+    /** Retorno vencendo (D-12): os dias pedidos e o dia do retorno (AAAA-MM-DD). */
+    retorno?: { emDias: number | null; para: string }
     /** Quando quem agiu não é o usuário logado (cliente pelo app, cron). */
     ator?: AtorDoEvento
     origem?: 'app' | 'webhook' | 'cron'
@@ -67,6 +69,10 @@ export async function emitirEventoDeAgendamento(
     }
     if (extras?.motivo)         dados.motivo         = extras.motivo
     if (extras?.deAgendadoPara) dados.deAgendadoPara = extras.deAgendadoPara
+    if (extras?.retorno) {
+      dados.retornoEmDias = extras.retorno.emDias
+      dados.retornoPara   = extras.retorno.para
+    }
 
     await emitirEvento(nome, {
       tenantId:   ctx.tenantId,

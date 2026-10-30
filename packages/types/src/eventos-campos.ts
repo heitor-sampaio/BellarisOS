@@ -148,6 +148,13 @@ export const CAMPOS_DO_EVENTO: Record<NomeDeEvento, CampoDeEvento[]> = {
     ...AGENDAMENTO,
     campo('deAgendadoPara', 'Data anterior', 'data'),
   ],
+  // O atendimento CONCLUÍDO que pediu retorno (D-12): o procedimento é o
+  // dele, e é por ele que o "Se" decide (o gatilho não filtra procedimento).
+  [EVENTOS.AGENDAMENTO_RETORNO_VENCENDO]: [
+    ...AGENDAMENTO,
+    campo('retornoEmDias', 'Retorno em (dias)', 'numero'),
+    campo('retornoPara', 'Dia do retorno', 'data'),
+  ],
 
   // ── Clientes ──────────────────────────────────────────────────────────
   [EVENTOS.CLIENTE_CRIADO]:          CLIENTE,

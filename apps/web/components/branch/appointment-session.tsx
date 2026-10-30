@@ -342,6 +342,14 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
             <label className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
             <textarea name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
           </div>
+          {/* D-12: quando a cliente deve voltar. Vira lembrete à recepção e
+              gatilho de automação ("Retorno vencendo"); nada sai à cliente
+              sozinho. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label className="field-label" htmlFor="retorno-dias">Retorno em (dias) <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
+            <input id="retorno-dias" name="retorno_dias" type="number" inputMode="numeric" min={1} max={730} step={1} placeholder="ex.: 15" className="field" style={{ maxWidth: 140 }} />
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>A recepção vê quando vencer, para marcar o retorno.</span>
+          </div>
           {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>

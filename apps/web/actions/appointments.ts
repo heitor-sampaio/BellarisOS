@@ -5,6 +5,7 @@ import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can, temRecurso } from '@/lib/auth'
+import { lerRetornoEmDias } from '@/lib/atendimento/retorno'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -716,6 +717,10 @@ async function finishSessionInterno(
     // formulário, a ficha já gravada (o "Salvar ficha") fica como está.
     let fichaDigitada: unknown = null
     try { fichaDigitada = JSON.parse((formData.get('ficha') as string | null) ?? 'null') } catch { /* JSON inválido → sem ficha */ }
+    // O "Retorno em N dias" (D-12): opcional; vai na MESMA transação da
+    // conclusão, e concluir_atendimento grava o dia (a conclusão + N, Brasília).
+    const retorno = lerRetornoEmDias(formData.get('retorno_dias'))
+    if ('erro' in retorno) return { error: retorno.erro }
 
     const admin = createAdminClient()
 
@@ -914,6 +919,7 @@ async function finishSessionInterno(
           ...(temQueixas ? { queixas } : {}),
           ...(anamnese ? { anamnese } : {}),
           ...(ficha ? { ficha } : {}),
+          ...(retorno.dias ? { retorno_dias: retorno.dias } : {}),
         },
       })
     })

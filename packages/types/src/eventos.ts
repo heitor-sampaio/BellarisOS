@@ -33,6 +33,11 @@ export const EVENTOS = {
   AGENDAMENTO_CANCELADO:      'agendamento.cancelado',
   AGENDAMENTO_NAO_COMPARECEU: 'agendamento.nao_compareceu',
   AGENDAMENTO_REMARCADO:      'agendamento.remarcado',
+  // O "Retorno em N dias" do atendimento concluído chegou ao dia (D-12,
+  // 2026-10-29). Sai do CRON (`/api/cron/retornos`), uma vez por
+  // atendimento: é o gatilho para a automação avisar ou convidar — nada sai
+  // à cliente sem uma automação montada pela clínica.
+  AGENDAMENTO_RETORNO_VENCENDO: 'agendamento.retorno_vencendo',
 
   // ── Clientes ──────────────────────────────────────────────────────────
   CLIENTE_CRIADO:          'cliente.criado',
@@ -206,6 +211,9 @@ export interface DadosDeAgendamento extends DadosDeEvento {
   motivo?:         string | null
   /** Só em remarcação: de quando para quando. */
   deAgendadoPara?: string | null
+  /** Só no retorno vencendo (D-12): os dias pedidos ao finalizar e o dia do retorno (AAAA-MM-DD). */
+  retornoEmDias?: number | null
+  retornoPara?:   string | null
 }
 
 /**
@@ -434,6 +442,7 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
   'agendamento.cancelado':       'Agendamento cancelado',
   'agendamento.nao_compareceu':  'Cliente não compareceu',
   'agendamento.remarcado':       'Agendamento remarcado',
+  'agendamento.retorno_vencendo': 'Retorno vencendo',
 
   // Clientes
   'cliente.criado':          'Cliente cadastrado',
