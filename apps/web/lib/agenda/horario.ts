@@ -101,6 +101,34 @@ export function diaDaSemana(data: string): number {
   return new Date(`${data.slice(0, 10)}T12:00:00Z`).getUTCDay()
 }
 
+const NOME_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+/** Segunda primeiro, domingo no fim — a semana de quem agenda. */
+const ORDEM_DA_SEMANA = [1, 2, 3, 4, 5, 6, 0]
+
+/**
+ * Quando a profissional atende, em texto curto, para quem agenda (J-60): a
+ * unidade ∩ ela, dia a dia, com os dias SEGUIDOS de mesmo horário juntos —
+ * "Seg a sex, 18:00–22:00", "Sáb, 09:00–13:00". Dia fechado não aparece.
+ */
+export function resumoDoHorario(unidade: Horario | null, profissional: Horario | null): string[] {
+  const texto = (ints: Intervalo[]) => ints.map(i => `${i.de}–${i.ate}`).join(' e ')
+  const grupos: { dias: number[]; texto: string }[] = []
+  let anterior: string | null = null
+  for (const d of ORDEM_DA_SEMANA) {
+    const ints = intervalosDoDia(unidade, profissional, d)
+    const t = ints.length ? texto(ints) : null
+    if (t && t === anterior) grupos[grupos.length - 1]!.dias.push(d)
+    else if (t) grupos.push({ dias: [d], texto: t })
+    anterior = t
+  }
+  return grupos.map(g => {
+    const primeiro = NOME_CURTO[g.dias[0]!]!
+    const ultimo = NOME_CURTO[g.dias[g.dias.length - 1]!]!.toLowerCase()
+    const dias = g.dias.length === 1 ? primeiro : g.dias.length === 2 ? `${primeiro} e ${ultimo}` : `${primeiro} a ${ultimo}`
+    return `${dias}, ${g.texto}`
+  })
+}
+
 const diaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d)
 const proximoDia = (dia: string) => new Date(new Date(`${dia}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10)
 

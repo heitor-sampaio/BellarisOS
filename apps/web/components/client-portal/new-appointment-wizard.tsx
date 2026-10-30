@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, Check, Calendar, Clock, User, Users, Sparkles } from 'lucide-react'
 import { getClientAvailableSlots, createClientAppointment } from '@/actions/appointments'
 import { iniciaisDoNome } from '@estetica-os/utils'
+import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
+
+const diaNoFuso = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(ms))
 
 interface Procedure {
   id:           string
@@ -16,6 +19,8 @@ interface Procedure {
 interface Professional {
   id:   string
   name: string
+  /** Quando ela atende, em texto (`resumoDoHorario`, J-60). */
+  horario?: string[]
 }
 
 interface Props {
@@ -42,7 +47,9 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
   const [error,      setError]      = useState('')
   const [isPending,  startTransition] = useTransition()
 
-  const today = new Date().toISOString().split('T')[0]!
+  // O dia de hoje em Brasília (o toISOString dava o de amanhã depois das 21h).
+  const today = diaNoFuso(Date.now())
+  const tomorrow = diaNoFuso(Date.now() + 86_400_000)
 
   function handleSelectProcedure(p: Procedure) {
     setProcedure(p)
@@ -281,9 +288,16 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                 }}>
                   {iniciaisDoNome(p.name, 1)}
                 </div>
-                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
-                  {p.name}
-                </p>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
+                    {p.name}
+                  </p>
+                  {p.horario && p.horario.length > 0 && (
+                    <p data-horario-da-profissional style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                      {p.horario.join(' · ')}
+                    </p>
+                  )}
+                </div>
               </button>
             ))}
           </div>
@@ -310,6 +324,15 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
               onChange={e => handleDateChange(e.target.value)}
               style={{ maxWidth: 220 }}
             />
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              <button type="button" aria-pressed={date === today} className={date === today ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => handleDateChange(today)}>Hoje</button>
+              <button type="button" aria-pressed={date === tomorrow} className={date === tomorrow ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => handleDateChange(tomorrow)}>Amanhã</button>
+            </div>
+            {prof?.id && prof.horario && prof.horario.length > 0 && (
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 10 }}>
+                {prof.name} atende: {prof.horario.join(' · ')}
+              </p>
+            )}
           </div>
 
           {date && (
@@ -322,8 +345,12 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                   Carregando horários…
                 </p>
               ) : slots.length > 0 ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {slots.map(slot => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {gruposDeHorario(slots).map(g => (
+                  <div key={g.periodo} role="group" aria-label={g.periodo} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span className="overline">{g.periodo}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {g.horarios.map(slot => (
                     <button
                       key={slot}
                       type="button"
@@ -346,6 +373,9 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                       <Clock size={12} />
                       {slot}
                     </button>
+                  ))}
+                  </div>
+                  </div>
                   ))}
                 </div>
               ) : (

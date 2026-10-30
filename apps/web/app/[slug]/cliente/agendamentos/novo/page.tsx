@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { NewAppointmentWizard } from '@/components/client-portal/new-appointment-wizard'
 import { ler } from '@/lib/db'
+import { normalizarHorario, resumoDoHorario } from '@/lib/agenda/horario'
 
 export default async function NewClientAppointmentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -24,7 +25,7 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
 
   const branch = await ler(admin
     .from('branches')
-    .select('id, name, tenant_id, slug')
+    .select('id, name, tenant_id, slug, horario')
     .eq('id', clientRecord.branch_id)
     .single(), 'buscar a unidade')
 
@@ -47,7 +48,18 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
   ])
 
   const procedures    = (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[]
-  const professionals = (rawProfessionals ?? []) as { id: string; name: string }[]
+  const equipe        = (rawProfessionals ?? []) as { id: string; name: string }[]
+
+  // Quando cada uma atende (J-60): a unidade ∩ ela, em texto — a cliente vê
+  // que a profissional só atende à noite antes de procurar de manhã.
+  const horarios = equipe.length
+    ? ((await ler(admin.from('users').select('id, horario').in('id', equipe.map(p => p.id)), 'buscar o horário das profissionais')) ?? []) as { id: string; horario: unknown }[]
+    : []
+  const daUnidade = normalizarHorario((branch as { horario?: unknown }).horario)
+  const professionals = equipe.map(p => ({
+    ...p,
+    horario: resumoDoHorario(daUnidade, normalizarHorario(horarios.find(h => h.id === p.id)?.horario)),
+  }))
 
   return (
     <NewAppointmentWizard

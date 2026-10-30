@@ -148,6 +148,13 @@
   conferências de quem a cliente escolheu. Não há cadastro de "quem faz qual
   procedimento": são todas as que atendem na unidade. Prova:
   `e2e/portal-cliente-sem-preferencia.spec.ts`, `tests/sem-preferencia.test.ts`.
+- **O agendar do app diz QUANDO cada profissional atende** (J-60) e tem
+  "Hoje"/"Amanhã" e os horários por Manhã/Tarde/Noite (J-59, o mesmo
+  `gruposDeHorario` do remarcar). O texto é `resumoDoHorario`
+  (`lib/agenda/horario.ts`: a unidade ∩ ela, dias seguidos de mesmo horário
+  juntos — "Seg a sex, 18:00–22:00"), no cartão da profissional e no passo da
+  data. O "hoje" é o de Brasília. Prova:
+  `e2e/portal-cliente-agendar-horarios.spec.ts`, `tests/resumo-do-horario.test.ts`.
 - **"Próximo" no portal da cliente é UMA regra** (D14 da simulação de
   2026-10-29; `lib/clientes/agenda-do-portal.ts`): em aberto (agendado,
   confirmado ou na clínica) E com o horário ainda por vir — os "Próximos" da
