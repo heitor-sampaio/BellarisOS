@@ -5,6 +5,7 @@ import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 
 /** Lançamento como o select pede. */
@@ -196,6 +197,7 @@ export default async function AdminFinanceiroPage({
         prevRevenue={prevRevenue}
         prevExpenses={prevExpenses}
         branchStats={branchStats}
+        umaUnidade={await redeTemUmaUnidade(ctx.tenantId!)}
         transactions={transactions}
         branchSlugMap={branchSlugMap}
         branches={branches}

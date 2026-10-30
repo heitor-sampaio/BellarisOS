@@ -110,10 +110,10 @@ test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
   test('dashboard da rede: "Minha receita" R$ 120 e os atendimentos da clínica (3), com a ocupação por filial', async ({ browser }) => {
     await como(browser, fernanda!, async p => {
       await p.goto('/admin/dashboard?period=month')
-      await expect(p.getByRole('heading', { name: 'Visão geral da rede' })).toBeVisible()
+      await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
       await expect(card(p, 'Minha receita do mês')).toContainText(/R\$\s*120/)
       await expect.soft(card(p, 'Atendimentos')).toContainText(/atendimentos\s*3\s*concluídos/i)
-      await expect.soft(p.getByText('Ocupação por filial', { exact: true }), 'a ocupação é da agenda: de todos').toBeVisible()
+      await expect.soft(p.getByText('Ocupação', { exact: true }), 'a ocupação é da agenda: de todos').toBeVisible()
       await expect.soft(p.getByText('Custo do mês'), 'o custo não se atribui a ela').toHaveCount(0)
     })
   })
@@ -145,11 +145,11 @@ test.describe('agenda "só os meus", financeiro de todos (a Agnes)', () => {
   test('dashboard da rede: a receita da clínica (R$ 470) com o custo; os atendimentos dela (1), sem a ocupação por filial', async ({ browser }) => {
     await como(browser, agnes!, async p => {
       await p.goto('/admin/dashboard?period=month')
-      await expect(p.getByRole('heading', { name: 'Visão geral da rede' })).toBeVisible()
+      await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
       await expect(card(p, 'Receita bruta do mês')).toContainText(/R\$\s*470/)
       await expect.soft(p.getByText('Custo do mês'), 'o financeiro é de todos').toBeVisible()
       await expect.soft(card(p, 'Atendimentos')).toContainText(/atendimentos\s*1\s*concluídos/i)
-      await expect.soft(p.getByText('Ocupação por filial', { exact: true }), 'a ocupação é da agenda: só a dela').toHaveCount(0)
+      await expect.soft(p.getByText('Ocupação', { exact: true }), 'a ocupação é da agenda: só a dela').toHaveCount(0)
     })
   })
 

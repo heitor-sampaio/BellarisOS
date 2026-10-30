@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import {
   ReportsBiSection, type ReportsTab, type ReportsPeriod,
 } from '@/components/admin/reports-bi-section'
@@ -53,6 +54,9 @@ export default async function AdminReportsPage({
   // cai na primeira unidade em vez de numa tela vazia.
   const selecionada = branches.find(b => b.id === rawBranch)
     ?? (podeVerRede ? undefined : branches[0])
+  // D-19: com UMA unidade, o cabeçalho diz o nome dela, não "Rede", e os
+  // quadros por unidade somem.
+  const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
 
   return (
     <ReportsBiSection
@@ -69,7 +73,8 @@ export default async function AdminReportsPage({
       rawFunil={rawFunil}
       rawTipo={rawTipo}
       rawPagina={rawPagina}
-      scopeLabel={selecionada?.name ?? 'Rede'}
+      scopeLabel={selecionada?.name ?? (umaUnidade ? branches[0]!.name : 'Rede')}
+      umaUnidade={umaUnidade}
     />
   )
 }

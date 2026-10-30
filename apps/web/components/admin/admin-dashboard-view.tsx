@@ -86,6 +86,11 @@ export interface AdminDashboardProps {
   clientesQuePagaram: number
   totalClientsEver: number
   branchCount:      number
+  /**
+   * A rede tem UMA unidade ativa (D-19): somem o ranking de filiais e os
+   * termos de rede ("da rede", "por filial"). Volta com a segunda unidade.
+   */
+  umaUnidade?:      boolean
   prevRevenue:      number
   prevAppointments: number
   prevNewClients:   number
@@ -403,7 +408,7 @@ export function AdminDashboardView({
   leadsTotal, leadsGanhos, conversionRate, funilTemGanho, marketing,
   monthLabel,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio, clientesQuePagaram,
-  totalClientsEver, branchCount,
+  totalClientsEver, branchCount, umaUnidade = false,
   prevRevenue, prevAppointments, prevNewClients,
   branchStats, todayTotal, todayByBranch,
   pendingPlans, lowStockItems, stockStatus, zeroStockCount, lowStockCount, stockTurnover,
@@ -447,10 +452,10 @@ export function AdminDashboardView({
             fontSize: 'var(--text-title)', fontWeight: 800,
             letterSpacing: '-0.022em', color: 'var(--text)', lineHeight: 1.1,
           }}>
-            Visão geral da rede
+            {umaUnidade ? 'Visão geral' : 'Visão geral da rede'}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
-            {monthLabel} · {branchCount} {branchCount === 1 ? 'unidade' : 'unidades'} · {totalClientsEver.toLocaleString('pt-BR')} clientes
+            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`} · {totalClientsEver.toLocaleString('pt-BR')} clientes
           </p>
           {!hasAlerts && (
             <div style={{
@@ -540,7 +545,7 @@ export function AdminDashboardView({
 
           {/* O ranking de filiais mistura o dinheiro e a AGENDA de cada unidade:
               com a agenda "só os meus", fica de fora (a evolução segue). */}
-          {!agendaPropria && (<>
+          {!agendaPropria && !umaUnidade && (<>
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de filiais</span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
@@ -637,7 +642,7 @@ export function AdminDashboardView({
           <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={14} color="var(--text-muted)" />
-              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Hoje na rede</span>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{umaUnidade ? 'Hoje' : 'Hoje na rede'}</span>
             </div>
             <AnimatedNum
               value={todayTotal}
@@ -870,7 +875,7 @@ export function AdminDashboardView({
           SEÇÃO: OCUPAÇÃO
       ══════════════════════════════════════════════════════════════ */}
       {can('agenda') && !agendaPropria && (<>
-      <SectionHeader title="Ocupação por filial" />
+      <SectionHeader title={umaUnidade ? 'Ocupação' : 'Ocupação por filial'} />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

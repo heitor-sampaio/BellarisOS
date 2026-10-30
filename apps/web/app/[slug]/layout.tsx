@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { getTenantContext, isOwnScope, caminhoDaRequisicao } from '@/lib/auth'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { BranchSidebar } from '@/components/branch/sidebar'
@@ -101,6 +102,7 @@ export default async function BranchLayout({
         plano={ctx.plano ?? null}
         isNetworkAdmin={ctx.role === 'NETWORK_ADMIN'}
         allBranches={allBranches}
+        umaUnidade={ctx.tenantId ? await redeTemUmaUnidade(ctx.tenantId) : true}
       />
       <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
       <main style={{

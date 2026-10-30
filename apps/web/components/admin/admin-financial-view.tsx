@@ -84,6 +84,8 @@ interface Props {
   prevRevenue:      number
   prevExpenses:     number
   branchStats:      BranchStat[]
+  /** A rede tem UMA unidade ativa (D-19): sem "Por filial", "Total rede" nem o filtro de filial. */
+  umaUnidade?:      boolean
   transactions:     AdminTx[]
   branchSlugMap:    Record<string, string>
   branches:         { id: string; name: string; slug: string }[]
@@ -192,7 +194,7 @@ export function AdminFinancialView({
   totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAReceberEmAberto, totalAPagar, totalMovimentacoes,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
-  branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
+  branchStats, umaUnidade = false, transactions, branchSlugMap, branches, unidadeInicial = '',
   canPay = false, canReverse = false, podeDarCredito = false, clients = [],
 }: Props) {
   const router      = useRouter()
@@ -376,7 +378,8 @@ export function AdminFinancialView({
       </div>
 
 
-      {/* Por filial */}
+      {/* Por filial — só com mais de uma unidade (D-19). */}
+      {!umaUnidade && (
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Por filial</span>
@@ -464,6 +467,7 @@ export function AdminFinancialView({
         </table>
         </div>{/* end table-wrap */}
       </div>
+      )}
 
       {/* Movimentações */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -475,8 +479,8 @@ export function AdminFinancialView({
             </span>
           </span>
 
-          {/* Filtro por filial */}
-          <select
+          {/* Filtro por filial — só com mais de uma unidade (D-19). */}
+          {!umaUnidade && <select
             className="filtro-select"
             value={filterBranch}
             onChange={e => setFilterBranch(e.target.value)}
@@ -486,7 +490,7 @@ export function AdminFinancialView({
             {branchStats.map(b => (
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}
-          </select>
+          </select>}
         </div>
 
         {visibleTxs.length === 0 ? (

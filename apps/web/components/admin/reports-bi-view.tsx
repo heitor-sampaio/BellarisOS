@@ -106,6 +106,8 @@ export interface ReportsBiProps {
    * parcelas a receber —, como no dashboard.
    */
   soOsMeus?: boolean
+  /** A rede tem UMA unidade ativa (D-19): "Faturamento por Unidade" e "Saúde do Estoque por Unidade" somem. */
+  umaUnidade?: boolean
   installments: LinhaParcela[]
   productBatches: LinhaLote[]
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
@@ -355,9 +357,11 @@ function TabOverview(p: ReportsBiProps) {
         <SCard title="Evolução do Período" style={{ gridColumn: '1 / -1' }}>
           <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} soReceita={p.soOsMeus} />
         </SCard>
+        {!p.umaUnidade && (
         <SCard title="Faturamento por Unidade">
           <HBarChart data={byBranch} />
         </SCard>
+        )}
         <SCard title="Top 5 Procedimentos por Receita">
           <HBarChart data={topProcs} />
         </SCard>
@@ -1094,9 +1098,11 @@ function TabEstoque(p: ReportsBiProps) {
           <SCard title="Valor em Estoque por Categoria">
             <DonutChart data={byCategory} />
           </SCard>
+          {!p.umaUnidade && (
           <SCard title="Saúde do Estoque por Unidade" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={branchHealthCols} rows={branchHealthRows} />
           </SCard>
+          )}
         </>}
         {batchRows.length > 0 && (
           <SCard title="Validades Próximas (≤ 30 dias)" style={{ gridColumn: '1 / -1' }}>

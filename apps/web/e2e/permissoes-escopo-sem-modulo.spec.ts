@@ -89,7 +89,7 @@ test('sem a agenda, o "só os meus" guardado nela não recorta: o dashboard da u
 test('sem a agenda, o dashboard da rede mostra a receita e o custo da rede, sem o recorte "só os meus"', async ({ browser }) => {
   await como(browser, daRede!, async p => {
     await p.goto('/admin/dashboard?period=month')
-    await expect(p.getByRole('heading', { name: 'Visão geral da rede' })).toBeVisible()
+    await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
     const corpo = p.locator('main')
     await expect.soft(corpo, 'a receita da rede').toContainText('R$ 300,00')
     await expect.soft(p.getByText('Custo do mês'), 'o custo aparece: não há recorte').toBeVisible()

@@ -38,7 +38,7 @@ type Period = ReportsPeriod
  */
 export async function ReportsBiSection({
   tenantId, branches, todasAsUnidades, selectedBranchId, allowNetwork, showBranchFilter,
-  tab, period, rawFrom, rawTo, rawFunil, rawTipo, rawPagina, scopeLabel,
+  tab, period, rawFrom, rawTo, rawFunil, rawTipo, rawPagina, scopeLabel, umaUnidade = false,
 }: {
   tenantId:   string
   /** Unidades que entram no cálculo. Uma só quando há recorte. */
@@ -59,6 +59,8 @@ export async function ReportsBiSection({
   rawPagina?: string
   /** Overline do cabeçalho: 'Rede' ou o nome da unidade. */
   scopeLabel: string
+  /** A rede tem UMA unidade ativa (D-19): os quadros por unidade somem. */
+  umaUnidade?: boolean
 }) {
   const admin = createAdminClient()
   const now   = new Date()
@@ -308,6 +310,7 @@ export async function ReportsBiSection({
         estoqueNoResultado={{ atual: estoque?.total ?? SEM_ESTOQUE_NO_RESULTADO, anterior: estoqueAnterior?.total ?? SEM_ESTOQUE_NO_RESULTADO }}
         verComissoes={verComissoes}
         soOsMeus={soOsMeus}
+        umaUnidade={umaUnidade}
         comercial={comercial}
         vendas={vendas}
         perdas={perdas}

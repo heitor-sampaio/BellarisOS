@@ -328,6 +328,25 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - Quem já via a aba Financeiro ganhou a Vendas na migration; daí em diante ela
   se marca em Cargos. Prova: `e2e/relatorio-vendas.spec.ts`.
 
+**A clínica de UMA unidade só não vê rede** (D-19, decisão do Heitor,
+2026-10-29: "Com UMA unidade ativa, somem os termos e gráficos de rede
+('TOTAL REDE', 'por filial', os rankings de filial, 'Voltar para a rede') e o
+seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda
+unidade."). A régua é UMA: `redeTemUmaUnidade(tenantId)`
+(`lib/unidades/uma-so.ts`, as unidades ATIVAS pelo cache
+`getCachedNetworkBranches`, tag `branches:<rede>` — criar, editar e
+ativar/desativar unidade a expiram na hora); a tela que já tem a lista das
+ativas usa `umaUnidadeSo(n)`, a mesma regra. Com uma unidade: o dashboard da
+rede é "Visão geral" (sem "N unidades"), sem o "Ranking de filiais", com
+"Hoje" e "Ocupação"; o financeiro da rede sem "Por filial", "Total rede" e o
+filtro de filial; Relatórios com o nome da unidade no lugar de "Rede" e sem
+"Faturamento por Unidade" e "Saúde do Estoque por Unidade"; o estoque sem
+"Consolidado / Por unidade" e "TOTAL REDE"; o portal da unidade sem "Voltar
+para a rede" nem o seletor de unidade. Os números não mudam — só o que só
+faz sentido com duas. Seletor de unidade que já some com `length > 1` (agenda
+da rede, filtro dos Relatórios, estoque) segue a mesma regra. Prova:
+`e2e/rede-de-uma-unidade.spec.ts`.
+
 **Variação contra o período anterior e a aba Agenda (2026-10-27)**
 - Sem período anterior (anterior = 0) não existe variação:
   `variacaoPercentual` (`lib/metrics/resultado.ts`) devolve nulo e a tela diz

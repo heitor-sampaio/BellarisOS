@@ -178,13 +178,13 @@ const card = (p: Page, titulo: string, qual: 'first' | 'last' = 'first') =>
 test('"só os meus": o dashboard da rede mostra a receita DELA, sem custo, lucro, margem nem o dinheiro das outras', async ({ browser }) => {
   await como(browser, propria!, async p => {
     await p.goto('/admin/dashboard?period=month')
-    await expect(p.getByRole('heading', { name: 'Visão geral da rede' })).toBeVisible()
+    await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
     const corpo = p.locator('main')
     await expect.soft(corpo, 'a receita dela').toContainText('R$ 120,00')
     await expect.soft(corpo, 'não a da rede').not.toContainText('R$ 420,00')
     await expect.soft(corpo, 'nem o custo').not.toContainText('777,00')
     await expect.soft(p.getByText('Custo do mês')).toHaveCount(0)
-    for (const r of ['Ranking de filiais', 'Ranking — Procedimentos por margem', 'Ocupação por filial']) {
+    for (const r of ['Ranking de filiais', 'Ranking — Procedimentos por margem', 'Ocupação por filial', 'Ocupação']) {
       await expect.soft(p.getByText(r, { exact: true }), r).toHaveCount(0)
     }
     // A evolução é a da receita DELA, sem custo nem lucro.
@@ -197,9 +197,9 @@ test('"só os meus": o dashboard da rede mostra a receita DELA, sem custo, lucro
 test('"só os meus": os rankings, a demografia, o giro, os planos e o funil são os DELA', async ({ browser }) => {
   await como(browser, propria!, async p => {
     await p.goto('/admin/dashboard?period=month')
-    await expect(p.getByRole('heading', { name: 'Visão geral da rede' })).toBeVisible()
+    await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
     const corpo = p.locator('main')
-    await expect.soft(corpo, 'o total: as clientes que ela atendeu').toContainText(/unidade · 2 clientes/)
+    await expect.soft(corpo, 'o total: as clientes que ela atendeu').toContainText(/ · 2 clientes/)
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'não o da outra').not.toContainText(outroProc)
     await expect.soft(card(p, 'Ranking — Procedimentos por receita bruta'), 'a receita por procedimento dela').toContainText('R$ 120,00')
@@ -259,10 +259,11 @@ test('quem tem ALL segue vendo o dinheiro e os números da rede (controle)', asy
     await expect(corpo).toContainText('R$ 420,00')
     await expect(corpo).toContainText('777,00')
     await expect(p.getByText('Custo do mês')).toBeVisible()
-    for (const r of ['Ranking de filiais', 'Ranking — Procedimentos por receita bruta', 'Ranking — Procedimentos por margem', 'Ranking — Vendas', 'Ranking — Valor gasto']) {
+    // Sem "Ranking de filiais": a rede de teste tem UMA unidade (D-19).
+    for (const r of ['Ranking — Procedimentos por receita bruta', 'Ranking — Procedimentos por margem', 'Ranking — Vendas', 'Ranking — Valor gasto']) {
       await expect(p.getByText(r, { exact: true }).first(), r).toBeVisible()
     }
-    await expect(corpo).toContainText(/unidade · 6 clientes/)
+    await expect(corpo).toContainText(/ · 6 clientes/)
     await expect(card(p, 'Ranking — Procedimentos realizados')).toContainText(outroProc)
     await expect(card(p, 'Ranking — Mais solicitados')).toContainText(nomeDaOutra)
     await expect(card(p, 'Ranking — Localização')).toContainText(`Cidoutra ${marca}`)

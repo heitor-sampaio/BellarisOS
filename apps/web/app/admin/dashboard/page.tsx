@@ -1,4 +1,5 @@
 import { getTenantContext, temRecurso } from '@/lib/auth'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
@@ -128,6 +129,8 @@ export default async function AdminDashboardPage({
     .order('name'), 'carregar as unidades')
 
   const branches  = branchesRaw ?? []
+  // D-19: a clínica de uma unidade só não vê ranking nem "por filial".
+  const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
   const branchIds = branches.map(b => b.id)
 
   if (branchIds.length === 0) {
@@ -568,6 +571,7 @@ export default async function AdminDashboardPage({
         clientesQuePagaram={clientesQuePagaram}
         totalClientsEver={totalClientsEver ?? 0}
         branchCount={branches.length}
+        umaUnidade={umaUnidade}
         prevRevenue={prevRevenue}
         prevAppointments={prevAppointments}
         prevNewClients={prevClientsCount ?? 0}

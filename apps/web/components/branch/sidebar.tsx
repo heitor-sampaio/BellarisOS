@@ -48,12 +48,14 @@ interface BranchSidebarProps {
   plano?:          { funcionalidades: readonly string[] } | null
   isNetworkAdmin?: boolean
   allBranches?:    { name: string; slug: string }[]
+  /** A rede tem UMA unidade ativa (D-19): sem "Voltar para a rede" nem o seletor de unidade. */
+  umaUnidade?:     boolean
 }
 
 const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
 export function BranchSidebar({
-  slug, branchName, permissions, scopes, plano = null, isNetworkAdmin, allBranches = [],
+  slug, branchName, permissions, scopes, plano = null, isNetworkAdmin, allBranches = [], umaUnidade = false,
 }: BranchSidebarProps) {
   const base = `/${slug}`
   const [switcherOpen, setSwitcherOpen] = useState(false)
@@ -111,7 +113,7 @@ export function BranchSidebar({
         </div>
 
         {/* Network admin: voltar para rede + seletor (oculto quando recolhido) */}
-        {!collapsed && (isNetworkAdmin ? (
+        {!collapsed && (isNetworkAdmin && !umaUnidade ? (
           <div style={{ padding: '0 4px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <Link
               href="/admin/dashboard"

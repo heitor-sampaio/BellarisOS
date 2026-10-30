@@ -293,6 +293,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         {/* Consolidado / Por unidade — duas opções fixas que trocam a visão:
             segmento. Era o SegSelect reimplementado à mão, com raio e altura
             próprios. */}
+        {variasUnidades && (
         <SegSelect
           ariaLabel="Como ver o estoque"
           value={view}
@@ -302,6 +303,7 @@ export function AdminStockView({ products, branches, categories, productCategori
             { key: 'por-unidade', label: 'Por unidade' },
           ]}
         />
+        )}
 
         {/* Busca */}
         <div style={{
