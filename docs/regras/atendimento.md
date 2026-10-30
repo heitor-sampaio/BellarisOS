@@ -605,6 +605,17 @@ const procedures = await ler(
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e
     transferência, o histórico).
+- **O produto tem USO: Insumo, Revenda ou Os dois** (D-6, decisão do Heitor,
+  2026-10-29; `products.uso`, migration `20261029001302`). O cadastro
+  pergunta (segmentado "Uso do produto"); a revenda e "os dois" exigem preço
+  de venda (`usoEPrecoDoFormulario` e a restrição `products_uso_check`); o
+  insumo grava o preço nulo. A regra é UMA, `lib/estoque/uso.ts` (`ehInsumo`,
+  `ehRevenda`): o insumo aparece no procedimento (o que já está ligado a um
+  procedimento continua na lista dele), no "Adicionar insumo" do atendimento
+  e no editor do plano; a revenda, na venda de produto. Os produtos de antes
+  herdaram do preço de venda: com preço, "Os dois"; sem, "Insumo" (na
+  produção, 1 e 9). Era o liga/desliga "venda direta", que nada lia. Prova:
+  `e2e/estoque-uso-do-produto.spec.ts`.
 - **A tela de Estoque mostra o saldo na unidade de CONSUMO** (J-43/J-44/J-45,
   2026-10-30). A regra é UMA, `lib/estoque/situacao.ts` (tela da rede, da
   unidade e o "Estoque crítico" do dashboard): o produto com unidade de

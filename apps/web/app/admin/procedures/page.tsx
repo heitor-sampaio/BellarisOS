@@ -1,6 +1,7 @@
 import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
+import { ehInsumo } from '@/lib/estoque/uso'
 import { ProcedureModal } from '@/components/admin/procedure-modal'
 import { CategoriasDeProcedimento } from '@/components/admin/categorias-de-procedimento'
 import { categoriasAtivasDaRede } from '@/lib/procedimentos/categorias'
@@ -118,7 +119,11 @@ export default async function AdminProceduresPage({
   // Usa as filiais já carregadas para montar o mapa de nomes (sem embed PostgREST)
   const branchNameMap = Object.fromEntries((branches ?? []).map(b => [b.id, b.name]))
 
-  const productList = (products ?? []).map(p => ({
+  // Os INSUMOS (D-6): o produto só de revenda não se escolhe como insumo —
+  // mas o que já está ligado a um procedimento continua na lista, senão o
+  // modal perderia o nome dele (e salvar o tiraria).
+  const ligados = new Set((procProducts ?? []).map(pp => pp.product_id as string))
+  const productList = (products ?? []).filter(p => ehInsumo((p as { uso?: string | null }).uso) || ligados.has(p.id)).map(p => ({
     id:                p.id,
     name:              p.name,
     unit:              p.unit,

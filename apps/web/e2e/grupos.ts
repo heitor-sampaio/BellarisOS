@@ -64,6 +64,7 @@ export const ISOLADOS = [
   'estoque-custo-de-consumo.spec.ts',
   'estoque-nunca-gera-despesa.spec.ts',
   'estoque-tela-consumo-e-lotes.spec.ts',
+  'estoque-uso-do-produto.spec.ts',
   'estrutura-endereco-da-unidade.spec.ts',
   'fechamento-escopo-proprio.spec.ts',
   'ficha-cadastro-documento.spec.ts',

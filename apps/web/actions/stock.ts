@@ -5,6 +5,7 @@ import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
+import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -47,6 +48,21 @@ function num(fd: FormData, key: string): number | null {
 // --- Catálogo de produtos ------------------------------------------
 
 /**
+ * O uso do produto e o preço de venda (D-6): a revenda (e "os dois") precisa
+ * de preço — não haveria por quanto vender; o insumo grava o preço nulo. Sem o
+ * campo (um chamador antigo), vale o preço de venda: com ele, os dois.
+ */
+function usoEPrecoDoFormulario(fd: FormData): { uso: UsoDoProduto; preco: number | null } | { error: string } {
+  const preco = num(fd, 'sale_price')
+  const pedido = str(fd, 'uso')
+  const uso = pedido == null ? (preco != null ? 'AMBOS' : 'INSUMO') : lerUso(pedido)
+  if (!uso) return { error: 'Uso do produto inválido.' }
+  if (uso === 'INSUMO') return { uso, preco: null }
+  if (preco == null || !(preco > 0)) return { error: 'Informe o preço de venda: o produto de revenda é vendido por ele.' }
+  return { uso, preco }
+}
+
+/**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
  *
  * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
@@ -76,6 +92,9 @@ async function createProductInterno(
     if (!name) return { error: 'Nome é obrigatório.' }
     const unit = str(formData, 'unit')
     if (!unit) return { error: 'Unidade é obrigatória.' }
+
+    const usoEPreco = usoEPrecoDoFormulario(formData)
+    if ('error' in usoEPreco) return { error: usoEPreco.error }
 
     const categoryId = str(formData, 'category_id')
     const admin = createAdminClient()
@@ -112,7 +131,8 @@ async function createProductInterno(
       supplier:    str(formData, 'supplier'),
       barcode:           str(formData, 'barcode'),
       cost_price:        num(formData, 'cost_price'),
-      sale_price:        num(formData, 'sale_price'),
+      sale_price:        usoEPreco.preco,
+      uso:               usoEPreco.uso,
       min_stock:         minStock,
       consumption_unit:  str(formData, 'consumption_unit'),
       units_per_package: num(formData, 'units_per_package'),
@@ -185,6 +205,9 @@ export async function updateProduct(
     const unit = str(formData, 'unit')
     if (!unit) return { error: 'Unidade é obrigatória.' }
 
+    const usoEPreco = usoEPrecoDoFormulario(formData)
+    if ('error' in usoEPreco) return { error: usoEPreco.error }
+
     const categoryId = str(formData, 'category_id')
     const admin = createAdminClient()
 
@@ -211,7 +234,8 @@ export async function updateProduct(
         supplier:    str(formData, 'supplier'),
         barcode:           str(formData, 'barcode'),
         cost_price:        num(formData, 'cost_price'),
-        sale_price:        num(formData, 'sale_price'),
+        sale_price:        usoEPreco.preco,
+        uso:               usoEPreco.uso,
         min_stock:         num(formData, 'min_stock') ?? 0,
         consumption_unit:  str(formData, 'consumption_unit'),
         units_per_package: num(formData, 'units_per_package'),

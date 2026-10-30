@@ -32,6 +32,8 @@ export async function procedimentosParaPlano(tenantId: string) {
       .select('id, name, unit, consumption_unit, units_per_package')
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
+      // Só os insumos: o produto só de revenda não entra no plano (D-6).
+      .neq('uso', 'REVENDA')
       .order('name'), 'carregar os produtos'),
   ])
 

@@ -6,6 +6,7 @@ import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
+import { ehInsumo } from '@/lib/estoque/uso'
 import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
@@ -257,9 +258,10 @@ export async function SessaoDeAtendimento({
 
   const products = planSessionProducts.length > 0 ? planSessionProducts : defaultProducts
 
-  // Todos os produtos ativos da rede (para o profissional adicionar avulso)
-  type RawBranchProduct = { id: string; name: string; unit: string; consumption_unit: string | null; units_per_package: number | null }
-  const availableProducts: AvailableProduct[] = ((branchProductsRaw ?? []) as RawBranchProduct[]).map(p => ({
+  // Os INSUMOS ativos da rede (para o profissional adicionar avulso) — o
+  // produto só de revenda não é insumo (D-6).
+  type RawBranchProduct = { id: string; name: string; unit: string; consumption_unit: string | null; units_per_package: number | null; uso?: string | null }
+  const availableProducts: AvailableProduct[] = ((branchProductsRaw ?? []) as RawBranchProduct[]).filter(p => ehInsumo(p.uso)).map(p => ({
     id:   p.id,
     name: p.name,
     unit: unidadeDoInsumo(p),

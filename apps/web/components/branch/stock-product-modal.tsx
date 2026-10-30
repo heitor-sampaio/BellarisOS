@@ -8,6 +8,8 @@ import { X, Package, Building2, ChevronDown, Barcode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
 import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
+import { USOS_DO_PRODUTO, lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
+import { SegSelect } from '@/components/shared/seg-select'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -22,6 +24,8 @@ export interface StockProduct {
   supplier:          string | null
   cost_price:        number | null
   sale_price:        number | null
+  /** O uso (D-6); sem ele, vale pelo preço de venda. */
+  uso?:              string | null
   min_stock:         number | null
   consumption_unit:  string | null
   units_per_package: number | null
@@ -156,7 +160,11 @@ function ProductFields({
   const [costPriceStr,     setCostPriceStr]     = useState(product?.cost_price != null ? String(product.cost_price) : '')
   const [unitsPerPkgStr,   setUnitsPerPkgStr]   = useState(product?.units_per_package != null ? String(product.units_per_package) : '')
   const [consumptionUnit,  setConsumptionUnit]  = useState(product?.consumption_unit ?? '')
-  const [vendaDireta,      setVendaDireta]      = useState((product?.sale_price ?? null) !== null)
+  // O uso do produto (D-6): o que já existia sem a coluna vale pelo preço de
+  // venda (com preço, os dois; sem, insumo) — a mesma regra da migração.
+  const [uso,              setUso]              = useState<UsoDoProduto>(
+    lerUso(product?.uso) ?? ((product?.sale_price ?? null) !== null ? 'AMBOS' : 'INSUMO'))
+  const vendaDireta = uso !== 'INSUMO'
   const [showStock,        setShowStock]        = useState(false)
 
   const selectedCat = useMemo(() => categories.find(c => c.id === categoryId), [categories, categoryId])
@@ -308,51 +316,33 @@ function ProductFields({
         </p>
       </div>
 
-      {/* Toggle: Venda direta */}
+      {/* O uso do produto (D-6, decisão do Heitor): o insumo aparece no
+          atendimento; a revenda, na venda de produto ("Vender" da ficha). Três
+          opções fixas e curtas: segmentado. */}
       <div style={{
-        display: 'flex', flexDirection: 'column', gap: vendaDireta ? 12 : 0,
+        display: 'flex', flexDirection: 'column', gap: 10,
         border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
         background: vendaDireta ? 'var(--bg-app)' : 'transparent',
         transition: 'background 200ms',
       }}>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={vendaDireta}
-          onClick={() => setVendaDireta(v => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-            textAlign: 'left',
-          }}
-        >
-          <div style={{
-            width: 36, height: 20, borderRadius: 10, flexShrink: 0,
-            background: vendaDireta ? 'var(--brand)' : 'var(--border)',
-            position: 'relative', transition: 'background 200ms',
-          }}>
-            <div style={{
-              position: 'absolute', top: 3,
-              left: vendaDireta ? 19 : 3,
-              width: 14, height: 14, borderRadius: '50%',
-              background: 'white',
-              boxShadow: 'none',
-              transition: 'left 200ms',
-            }} />
-          </div>
-          <div>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'block' }}>
-              Produto para venda direta ao cliente
-            </span>
-            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              {vendaDireta ? 'Ligado: informe o preço de venda abaixo.' : 'Desligado: o produto é só insumo, de uso interno.'}
-            </span>
-          </div>
-        </button>
+        <div role="group" aria-label="Uso do produto" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            Uso do produto *
+          </span>
+          <SegSelect ariaLabel="Uso do produto" options={USOS_DO_PRODUTO} value={uso} onSelect={k => setUso(k as UsoDoProduto)} />
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+            {uso === 'INSUMO'
+              ? 'Usado nos atendimentos: aparece como insumo do procedimento e da sessão.'
+              : uso === 'REVENDA'
+              ? 'Vendido à cliente: aparece em "Vender" na ficha, e não como insumo.'
+              : 'Usado nos atendimentos e vendido à cliente.'}
+          </span>
+        </div>
+        <input type="hidden" name="uso" value={uso} />
 
         {vendaDireta && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <Label>Preço de venda</Label>
+            <Label>Preço de venda *</Label>
             <div style={{ position: 'relative' }}>
               <span style={{
                 position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
@@ -365,7 +355,7 @@ function ProductFields({
           </div>
         )}
 
-        {/* Garante que sale_price seja enviado como null quando venda direta estiver desativada */}
+        {/* Só insumo: o preço de venda vai vazio (o servidor grava nulo). */}
         {!vendaDireta && <input type="hidden" name="sale_price" value="" />}
       </div>
 

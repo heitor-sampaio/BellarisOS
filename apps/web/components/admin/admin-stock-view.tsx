@@ -47,6 +47,8 @@ type ProductStock = {
   supplier:         string | null
   costPrice:        number
   salePrice:        number | null
+  /** O uso do produto (D-6): INSUMO, REVENDA ou AMBOS. */
+  uso?:             string | null
   consumptionUnit:  string | null
   unitsPerPackage:  number | null
   totalStock:       number
@@ -66,6 +68,9 @@ const saldoDe = (b: BranchStock) => ({ embalagens: b.currentStock, rendimento: b
 const situacaoDe = (p: ProductStock, b: BranchStock) => situacaoDoEstoque(saldoDe(b), medidas(p))
 const fmtData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 const fmtBRLv = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+/** O uso na linha do produto (D-6): "Insumo", "Revenda" ou "Insumo e revenda". */
+const rotuloDoUso = (uso: string | null | undefined) =>
+  uso === 'REVENDA' ? 'Revenda' : uso === 'AMBOS' ? 'Insumo e revenda' : 'Insumo'
 
 interface Props {
   products:          ProductStock[]
@@ -419,7 +424,9 @@ export function AdminStockView({ products, branches, categories, productCategori
                       >
                         <td data-label="" style={{ padding: '13px 16px' }}>
                           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
-                          {p.sku && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{p.sku}</p>}
+                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
+                            {[p.sku, rotuloDoUso(p.uso)].filter(Boolean).join(' · ')}
+                          </p>
                         </td>
                         <td data-label="Categoria" data-par style={{ padding: '13px 16px' }}>
                           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -654,6 +661,7 @@ export function AdminStockView({ products, branches, categories, productCategori
             supplier:          editing.supplier,
             cost_price:        editing.costPrice,
             sale_price:        editing.salePrice,
+            uso:               editing.uso ?? null,
             consumption_unit:  editing.consumptionUnit,
             units_per_package: editing.unitsPerPackage,
             min_stock:         null,
