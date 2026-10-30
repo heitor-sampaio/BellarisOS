@@ -22,6 +22,14 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   já foi pago: entrada + restante somam exatamente os pontos do plano.
   A regra mora numa função só: `fidelidade_pontos_do_pagamento` — e multiplica
   antes de dividir (120 × (100 ÷ 300) perdia um ponto).
+- **Os números com fração da configuração** (pontos por R$ 1, valor de 1
+  ponto até 4 casas, teto em %) leem como o dinheiro: `parseDecimal`
+  (`@estetica-os/utils`, o `parseDinheiro` com N casas). O ambíguo ("0.012")
+  mostra `NUMERO_INVALIDO` ("use vírgula…") junto do campo e não salva. A tela
+  tirava todos os pontos antes de trocar a vírgula: "0.5" ponto por real
+  gravava 5, e "0.01" no valor do ponto, R$ 1 (frente de cadastro,
+  2026-10-29). Os inteiros (mínimo, meses, bônus, dias) continuam lendo o
+  ponto como milhar. Prova: `e2e/fidelidade-opcionais.spec.ts` ("0.5").
 - **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu
   (lê o GANHO). Saldo pode ficar **negativo**, como estoque.
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por

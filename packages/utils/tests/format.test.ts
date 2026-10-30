@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatBRL, formatDate, formatDateTime, formatTime, formatPercent,
-  maskCPF, maskPhone, maskCNPJ, maskTelefoneDigitando,
+  maskCPF, maskPhone, maskCNPJ, maskTelefoneDigitando, parseDecimal,
 } from '../src/format'
 
 describe('formatBRL', () => {
@@ -89,5 +89,23 @@ describe('maskTelefoneDigitando', () => {
   it('com "+", fica como se escreve (sem letras)', () => {
     expect(maskTelefoneDigitando('+351 912 345 678')).toBe('+351 912 345 678')
     expect(maskTelefoneDigitando('+1 (415) 555-0100x')).toBe('+1 (415) 555-0100')
+  })
+})
+
+// Frente de cadastro (2026-10-29): os pontos por real da fidelidade liam "0.5"
+// como 5. Número com casas decimais lê como o dinheiro (`parseDinheiro`), com
+// o número de casas que o campo aceita.
+describe('parseDecimal', () => {
+  it('com duas casas é o parseDinheiro', () => {
+    expect(parseDecimal('0.5')).toBe(0.5)
+    expect(parseDecimal('0,5')).toBe(0.5)
+    expect(parseDecimal('1.000')).toBe(1000)
+    expect(parseDecimal('0.012')).toBeNaN()
+  })
+  it('com mais casas, o ponto seguido de um a N dígitos é decimal (o milhar continua milhar)', () => {
+    expect(parseDecimal('0.001', 4)).toBe(0.001)
+    expect(parseDecimal('0,0025', 4)).toBe(0.0025)
+    expect(parseDecimal('1.000', 4)).toBe(1000)
+    expect(parseDecimal('0.00001', 4)).toBeNaN()
   })
 })

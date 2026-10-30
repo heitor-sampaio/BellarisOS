@@ -115,6 +115,30 @@ test.describe.serial('fidelidade: opcionais da rede', () => {
     } finally { await ctx.close() }
   })
 
+  // Frente de cadastro (2026-10-29): a tela tirava TODOS os pontos antes de
+  // trocar a vírgula — "0.5" pontos por real virava 5, e "0.01" no valor do
+  // ponto virava R$ 1. A leitura é a dos campos de dinheiro, com o aviso.
+  test('pela tela: "0.5" ponto por real é meio ponto (não 5), e o ambíguo avisa "use vírgula" sem salvar', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: gestor!.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto('/admin/settings?tab=fidelidade')
+      await p.locator('input[name="points_per_real"]').fill('0.5')
+      await p.locator('input[name="redeem_points_value"]').fill('0.01')
+      await p.getByRole('button', { name: 'Salvar', exact: true }).click()
+      await expect(p.getByText('Salvo')).toBeVisible()
+      const { data } = await db().from('loyalty_configs').select('points_per_real, redeem_points_value').eq('tenant_id', rede!.tenantId).single()
+      expect([Number(data!.points_per_real), Number(data!.redeem_points_value)]).toEqual([0.5, 0.01])
+
+      await p.locator('input[name="points_per_real"]').fill('0.012')
+      await expect(p.getByText(/use vírgula/).first()).toBeVisible()
+      await p.getByRole('button', { name: 'Salvar', exact: true }).click()
+      await expect(p.getByRole('alert').filter({ hasText: 'Pontos por R$ 1' })).toBeVisible()
+      const depois = await db().from('loyalty_configs').select('points_per_real').eq('tenant_id', rede!.tenantId).single()
+      expect(Number(depois.data!.points_per_real), 'o ambíguo não foi salvo').toBe(0.5)
+    } finally { await ctx.close() }
+  })
+
   test('primeiro acesso: o primeiro login dá o bônus uma vez; quem já tinha entrado não ganha', async ({ browser }) => {
     await configurar({ first_access_bonus: 50, expiry_months: null })
     const novo = await clienteComSenha('novo')

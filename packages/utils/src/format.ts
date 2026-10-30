@@ -116,21 +116,37 @@ export const maskCEPDigitando = (valor: string) => {
  *   centavos com três dígitos). Quem chama recusa com `DINHEIRO_INVALIDO`.
  */
 export function parseDinheiro(texto: string): number {
+  return parseDecimal(texto, 2)
+}
+
+/**
+ * Um número com até `casas` casas decimais, digitado à brasileira — a MESMA
+ * leitura de `parseDinheiro` (que é este com duas casas): vírgula decimal e
+ * ponto de milhar; sem vírgula, o ponto seguido de grupos de exatamente três
+ * dígitos é milhar ("1.000"), e com um a `casas` dígitos é decimal ("0.5").
+ * O resto é NaN — não se adivinha. Frente de cadastro (2026-10-29): os pontos
+ * por real da fidelidade tiravam todos os pontos antes de trocar a vírgula, e
+ * "0.5" virava 5. Quem chama recusa com `NUMERO_INVALIDO`.
+ */
+export function parseDecimal(texto: string, casas = 2): number {
   const s = texto.replace(/R\$|\s/g, '')
   const sinal = s.startsWith('-') ? -1 : 1
   const corpo = sinal < 0 ? s.slice(1) : s
   if (!/\d/.test(corpo)) return NaN
-  // Milhar com ponto (ou nenhum) e, opcional, a vírgula dos centavos.
-  if (/^(\d*|[1-9]\d{0,2}(\.\d{3})+)(,\d{0,2})?$/.test(corpo)) {
+  // Milhar com ponto (ou nenhum) e, opcional, a vírgula dos decimais.
+  if (new RegExp(`^(\\d*|[1-9]\\d{0,2}(\\.\\d{3})+)(,\\d{0,${casas}})?$`).test(corpo)) {
     return sinal * Number(corpo.replace(/\./g, '').replace(',', '.'))
   }
-  // Ponto decimal: um ou dois dígitos depois dele.
-  if (/^\d*\.\d{1,2}$/.test(corpo)) return sinal * Number(corpo)
+  // Ponto decimal: de um a `casas` dígitos depois dele.
+  if (new RegExp(`^\\d*\\.\\d{1,${casas}}$`).test(corpo)) return sinal * Number(corpo)
   return NaN
 }
 
 /** A recusa de um valor que `parseDinheiro` não lê — a mesma frase em toda tela. */
 export const DINHEIRO_INVALIDO = 'Valor não entendido: use vírgula para os centavos (ex.: 1.400,00 ou 0,50).'
+
+/** A recusa de um número que `parseDecimal` não lê (o que não é dinheiro: pontos, percentuais). */
+export const NUMERO_INVALIDO = 'Número não entendido: use vírgula para as casas decimais (ex.: 0,5 ou 1.000).'
 
 /** Reais no formato do campo: 1234.5 -> "1.234,50" (vazio se não for número). */
 export function formatDinheiroCampo(n: number): string {

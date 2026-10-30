@@ -5,6 +5,7 @@ import { Check, Loader2 } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigFidelidade } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
 import type { ConfigFidelidade, ModoDeGanho } from '@/lib/fidelidade/config'
 
 /**
@@ -64,15 +65,21 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   function salvar() {
     setErro(null)
     setSalvo(false)
+    // Os números com casas decimais leem como o dinheiro (frente de cadastro,
+    // 2026-10-29: "0.5" ponto por real virava 5, e "0.01" no valor do ponto, R$ 1).
+    const ilegivel = ([
+      ['Pontos por R$ 1 pago', taxa, CASAS.taxa], ['Valor de 1 ponto (R$)', valorDoPonto, CASAS.valorDoPonto], ['Pontos pagam até (%)', teto, CASAS.teto],
+    ] as const).find(([, v, c]) => numeroIlegivel(v, c))
+    if (ilegivel) { setErro(`${ilegivel[0]}: ${NUMERO_INVALIDO}`); return }
     iniciar(async () => {
       try {
         const res = await salvarConfigFidelidade({
           enabled:         ligado,
           earn_mode:       modo,
-          points_per_real: taxa.replace(/\./g, '').replace(',', '.'),
-          redeem_points_value: numero(valorDoPonto),
+          points_per_real:     decimal(taxa, CASAS.taxa),
+          redeem_points_value: decimal(valorDoPonto, CASAS.valorDoPonto),
           redeem_min_points:   numero(minimo),
-          redeem_max_pct:      numero(teto),
+          redeem_max_pct:      decimal(teto, CASAS.teto),
           expiry_months:       vencem ? numero(meses) : null,
           scope_per_branch:    porUnidade,
           birthday_bonus:      aniversario ? numero(pontosAniversario) : 0,
@@ -138,6 +145,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
               name="points_per_real" className="field" inputMode="decimal"
               value={taxa} onChange={e => setTaxa(e.target.value)} disabled={!podeEditar}
             />
+            <AvisoDoNumero valor={taxa} casas={CASAS.taxa} />
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
               Ex.: 1 = um atendimento de R$ 250 dá 250 pontos. Frações de ponto são descartadas.
             </span>
@@ -156,11 +164,11 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <CampoNumero rotulo="Valor de 1 ponto (R$)" nome="redeem_points_value" valor={valorDoPonto} onChange={setValorDoPonto}
-            dica={`Ex.: 0,01 = 100 pontos valem R$ 1.`} desabilitado={!podeEditar} />
+            dica={`Ex.: 0,01 = 100 pontos valem R$ 1.`} desabilitado={!podeEditar} casas={CASAS.valorDoPonto} />
           <CampoNumero rotulo="Mínimo para usar (pontos)" nome="redeem_min_points" valor={minimo} onChange={setMinimo}
             dica="0 = qualquer quantidade." desabilitado={!podeEditar} />
           <CampoNumero rotulo="Pontos pagam até (%)" nome="redeem_max_pct" valor={teto} onChange={setTeto}
-            dica="100 = pode pagar tudo com pontos." desabilitado={!podeEditar} />
+            dica="100 = pode pagar tudo com pontos." desabilitado={!podeEditar} casas={CASAS.teto} />
         </div>
       </Bloco>
 
@@ -302,13 +310,33 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   )
 }
 
-/** "1.234,56" → "1234.56": o zod converte; aqui só se tira a formatação BR. */
+/** Número INTEIRO (mínimo, meses, bônus, dias): "1.000" é mil; o zod converte e recusa a fração. */
 function numero(v: string): string {
   return v.trim().replace(/\./g, '').replace(',', '.')
 }
 
-function CampoNumero({ rotulo, nome, valor, onChange, dica, desabilitado }: {
+/** As casas decimais de cada campo com fração: o valor do ponto vai a 0,0001. */
+const CASAS = { taxa: 2, valorDoPonto: 4, teto: 2 } as const
+
+/** Número com fração pela leitura do dinheiro (`parseDecimal`); vazio segue vazio (o zod responde). */
+function decimal(v: string, casas: number): number | string {
+  return v.trim() ? parseDecimal(v, casas) : ''
+}
+const numeroIlegivel = (v: string, casas: number) => v.trim() !== '' && !Number.isFinite(parseDecimal(v, casas))
+
+function AvisoDoNumero({ valor, casas }: { valor: string; casas: number }) {
+  if (!numeroIlegivel(valor, casas)) return null
+  return (
+    <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+      {NUMERO_INVALIDO}
+    </span>
+  )
+}
+
+function CampoNumero({ rotulo, nome, valor, onChange, dica, desabilitado, casas }: {
   rotulo: string; nome: string; valor: string; onChange: (v: string) => void; dica?: string; desabilitado?: boolean
+  /** Campo com fração: lê como o dinheiro e avisa o ambíguo. */
+  casas?: number
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -317,6 +345,7 @@ function CampoNumero({ rotulo, nome, valor, onChange, dica, desabilitado }: {
       </span>
       <input name={nome} className="field" inputMode="decimal" value={valor}
         onChange={e => onChange(e.target.value)} disabled={desabilitado} />
+      {casas != null && <AvisoDoNumero valor={valor} casas={casas} />}
       {dica && <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</span>}
     </label>
   )
