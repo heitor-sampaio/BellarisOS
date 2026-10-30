@@ -397,6 +397,16 @@ só, com a rede travada (`crm_funil_padrao`, só `service_role`, migration
 banco deixava funil sem etapa. Prova: `e2e/crm-funil-padrao.spec.ts`,
 `tests/crm-funil-padrao.test.ts`.
 
+**Quem monta o funil é Configurações** (D-1, decisão do Heitor, 2026-10-29):
+criar, renomear, reordenar, arquivar, apagar e escolher o padrão de funis e
+etapas, a cor e o desfecho da etapa e os motivos de perda pedem
+`settings: MANAGE` (mais `crm: VIEW`, de quem vê o quadro) — nas actions
+(`actions/crm-funnels.ts`, `crm-stages.ts`, `crm-motivos.ts`) e na tela
+("Configurar funis" só aparece com Configurações, nos dois portais). Mover os
+cards, criar e editar oportunidades continua com quem opera o quadro
+(`crm: MANAGE`). Antes bastava o CRM em Gerenciar, e a SDR mexia no funil da
+clínica inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`.
+
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um
 motivo da lista da REDE (`crm_motivos_perda`, editada em Configurar funis →

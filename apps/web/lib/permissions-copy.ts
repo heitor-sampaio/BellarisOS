@@ -120,7 +120,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   crm: {
     NONE:   SEM_ACESSO,
     VIEW:   'Vê o funil de leads, abre os cards e lê as conversas de WhatsApp.',
-    MANAGE: 'Tudo do Ver, mais criar e mover leads, responder no WhatsApp, configurar as etapas do funil e agendar direto pelo CRM.',
+    MANAGE: 'Tudo do Ver, mais criar e mover leads, responder no WhatsApp e agendar direto pelo CRM. Montar funis, etapas e motivos de perda é Configurações.',
   },
   marketing: {
     NONE:   SEM_ACESSO,
@@ -146,7 +146,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   settings: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Cadastra e edita unidades, conecta WhatsApp e contas de anúncio, e trata os pedidos de LGPD.',
+    MANAGE: 'Cadastra e edita unidades, conecta WhatsApp e contas de anúncio, monta os funis do CRM (etapas e motivos de perda) e trata os pedidos de LGPD.',
   },
   automations: {
     NONE:   SEM_ACESSO,

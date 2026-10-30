@@ -15,10 +15,13 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let sdr: MembroDeTeste | null = null
+// Quem monta o funil (Configurações em Gerenciar — D-1, decisão do Heitor,
+// 2026-10-29): a SDR opera o quadro, mas não cria motivo de perda.
+let gerente: MembroDeTeste | null = null
 let slug = ''
 
-async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
-  const ctx = await browser.newContext({ storageState: sdr!.estado })
+async function como(browser: Browser, fn: (p: Page) => Promise<void>, quem: () => MembroDeTeste = () => sdr!) {
+  const ctx = await browser.newContext({ storageState: quem().estado })
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
@@ -49,6 +52,9 @@ test.beforeAll(async () => {
   sdr = await criarMembro(`mps${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'reports', nivel: 'VIEW' }],
   })
+  gerente = await criarMembro(`mpg${marca}`, {
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
+  })
 })
 test.afterAll(async () => {
   if (rede) {
@@ -57,7 +63,7 @@ test.afterAll(async () => {
     if (ids.length) { await db().from('lead_events').delete().in('lead_id', ids); await db().from('leads').delete().in('id', ids) }
     await db().from('contacts').delete().eq('tenant_id', rede.tenantId)
   }
-  await sdr?.limpar(); await rede?.limpar()
+  await gerente?.limpar(); await sdr?.limpar(); await rede?.limpar()
 })
 
 test.describe.serial('o motivo da perda', () => {
@@ -141,7 +147,7 @@ test.describe.serial('o motivo da perda', () => {
       await p.getByLabel('Novo motivo').fill('Distância')
       await p.getByRole('button', { name: 'Adicionar motivo' }).click()
       await expect.poll(async () => (await db().from('crm_motivos_perda').select('nome').eq('tenant_id', rede!.tenantId).eq('nome', 'Distância')).data?.length).toBe(1)
-    })
+    }, () => gerente!) // montar o funil é Configurações (D-1, 2026-10-29); a SDR não tem o botão
   })
 
   test('"Outro" fica por último, mesmo com motivo criado depois dele (A15)', async ({ browser }) => {

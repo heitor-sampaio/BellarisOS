@@ -32,7 +32,10 @@ export async function createFunnel(
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const name = (formData.get('name') as string)?.trim()
     const slug = (formData.get('_slug') as string)?.trim() ?? ''
@@ -83,7 +86,10 @@ export async function renameFunnel(funnelId: string, name: string, slug: string)
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
     if (!name.trim()) return
 
     const { error } = await createAdminClient()
@@ -107,7 +113,10 @@ export async function setDefaultFunnel(funnelId: string, slug: string): Promise<
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const admin = createAdminClient()
 
@@ -149,7 +158,10 @@ export async function setFunnelArchived(
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const admin = createAdminClient()
 
@@ -194,7 +206,10 @@ export async function deleteFunnel(funnelId: string, slug: string): Promise<Resu
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const admin = createAdminClient()
 
@@ -258,7 +273,10 @@ export async function reorderFunnels(orderedIds: string[], slug: string) {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const admin = createAdminClient()
     // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a

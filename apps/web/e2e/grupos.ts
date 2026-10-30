@@ -113,6 +113,7 @@ export const ISOLADOS = [
   'listas-sem-corte.spec.ts',
   'listas-sem-corte-limpeza.spec.ts',
   'crm-funil-padrao.spec.ts',
+  'crm-funis-pede-configuracoes.spec.ts',
   'prontuario-acessos.spec.ts',
   'indicadores-dashboard-e-agenda.spec.ts',
   'indicadores-uma-conta-so.spec.ts',

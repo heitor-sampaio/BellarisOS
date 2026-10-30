@@ -159,9 +159,10 @@ export default async function BranchOportunidadesPage({
     }
   })
 
-  // Configurar funis é permissão de CRM, não cargo de rede: uma gerente com
-  // `crm: MANAGE` monta o funil da unidade dela.
-  const podeConfigurar = can(ctx, 'crm', 'MANAGE')
+  // Configurar funis (funis, etapas, motivos de perda) é configuração da
+  // clínica: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29).
+  // Mover os cards continua com quem opera o quadro (`crm`).
+  const podeConfigurar = can(ctx, 'settings', 'MANAGE')
 
   return (
     <div className="crm-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

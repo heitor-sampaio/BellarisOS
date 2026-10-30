@@ -54,6 +54,9 @@ export default async function AdminOportunidadesPage({
   const branches = await filiaisAtivas(ctx.tenantId!)
 
   const canEdit = can(ctx, 'crm', 'MANAGE')
+  // Configurar funis (funis, etapas, motivos de perda) é configuração da
+  // clínica: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29).
+  const podeConfigurar = can(ctx, 'settings', 'MANAGE')
 
   // -- Funis e etapas --
   const funnels     = await seedDefaultFunnel(ctx.tenantId!)
@@ -148,15 +151,17 @@ export default async function AdminOportunidadesPage({
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {podeConfigurar && branches.length > 0 && (
+            <CRMStageSettings
+              motivos={motivosTodos}
+              slug=""
+              funnels={funnels}
+              stages={allStages}
+              activeFunnelId={selecionado?.id ?? ''}
+            />
+          )}
           {canEdit && branches.length > 0 && (
             <>
-              <CRMStageSettings
-                motivos={motivosTodos}
-                slug=""
-                funnels={funnels}
-                stages={allStages}
-                activeFunnelId={selecionado?.id ?? ''}
-              />
               <CRMLeadModal
                 branches={branches}
                 unidades={branches}

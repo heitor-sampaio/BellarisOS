@@ -8,8 +8,9 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 /**
  * Os motivos de perda da rede (2026-10-21), editados em "Configurar funis":
- * quem configura o funil (crm: MANAGE) cria e desativa. Desativar tira da
- * escolha, sem apagar: os leads já perdidos por ele continuam com o motivo.
+ * quem configura o funil (Configurações em Gerenciar, D-1 de 2026-10-29) cria
+ * e desativa. Desativar tira da escolha, sem apagar: os leads já perdidos por
+ * ele continuam com o motivo.
  */
 
 type Resultado = { ok: true } | { error: string }
@@ -18,7 +19,10 @@ export async function criarMotivoDePerda(nome: string): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
     const limpo = (nome ?? '').trim().slice(0, 60)
     if (!limpo) return { error: 'Dê um nome ao motivo.' }
     const admin = createAdminClient()
@@ -40,7 +44,10 @@ export async function alternarMotivoDePerda(id: string, ativo: boolean): Promise
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
     if (!z.string().uuid().safeParse(id).success) return { error: 'Motivo não encontrado.' }
     const feitas = await gravar(createAdminClient().from('crm_motivos_perda').update({ ativo: !!ativo })
       .eq('id', id).eq('tenant_id', ctx.tenantId!).select('id'), 'mudar o motivo') as { id: string }[] | null

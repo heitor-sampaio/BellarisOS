@@ -31,7 +31,10 @@ export async function createStage(
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const name     = (formData.get('name')       as string)?.trim()
     const color    = (formData.get('color')      as string)?.trim() || '#c34d6b'
@@ -84,7 +87,10 @@ export async function renameStage(stageId: string, name: string, slug: string) {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
     if (!name.trim()) return
 
     const { error } = await createAdminClient()
@@ -105,7 +111,10 @@ export async function updateStageColor(stageId: string, color: string, slug: str
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const { error } = await createAdminClient()
       .from('crm_stages')
@@ -131,7 +140,10 @@ export async function updateStageOutcome(
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
     if (!isStageOutcome(outcome)) return { error: 'Resultado inválido.' }
 
     const { error } = await createAdminClient()
@@ -154,7 +166,10 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const admin = createAdminClient()
 
@@ -208,7 +223,10 @@ export async function reorderStages(orderedIds: string[], slug: string) {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
-    assertPermission(ctx, 'crm', 'MANAGE')
+    // Configurar o funil é configuração da clínica (D-1, decisão do Heitor,
+    // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
 
     const admin = createAdminClient()
     // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a
