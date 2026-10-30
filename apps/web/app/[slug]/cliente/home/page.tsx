@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MessageCircle, Sparkles } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
+import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
@@ -121,16 +122,15 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 
   // O plano PROPOSTO (D-18): validade da rede e o caminho para falar com a
   // clínica do endereço — o aceite é na clínica.
+  // A clínica do endereço também é o cartão "A clínica" do fim da página (J-66).
   const temProposto = activePlans.some(p => p.status === 'PROPOSED')
-  const [validadeDias, aClinica] = temProposto
-    ? await Promise.all([
-        redeDoCliente
-          ? ler(admin.from('tenants').select('plano_validade_dias').eq('id', redeDoCliente).maybeSingle(), 'ler a validade do plano proposto')
-              .then(t => Number((t as { plano_validade_dias?: number } | null)?.plano_validade_dias ?? 30))
-          : Promise.resolve(30),
-        aClinicaDoEndereco(slug),
-      ])
-    : [30, null]
+  const [validadeDias, aClinica] = await Promise.all([
+    temProposto && redeDoCliente
+      ? ler(admin.from('tenants').select('plano_validade_dias').eq('id', redeDoCliente).maybeSingle(), 'ler a validade do plano proposto')
+          .then(t => Number((t as { plano_validade_dias?: number } | null)?.plano_validade_dias ?? 30))
+      : Promise.resolve(30),
+    aClinicaDoEndereco(slug),
+  ])
 
   // Termos e contratos esperando a assinatura dele (§9.4.1).
   const paraAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
@@ -388,6 +388,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
         <CalendarDays size={15} />
         Agendar procedimento
       </Link>
+
+      {/* -- A clínica (J-66) ---------------------------------------- */}
+      {aClinica && <CartaoDaClinica clinica={aClinica} />}
 
     </div>
   )

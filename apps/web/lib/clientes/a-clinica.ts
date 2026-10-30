@@ -18,6 +18,8 @@ export interface AClinica {
   telefone:  string | null
   /** `https://wa.me/55…`, ou nulo sem telefone. */
   whatsapp:  string | null
+  /** `tel:+55…`, para ligar. */
+  ligar:     string | null
   /** "Seg a sex, 08:00–20:00" — a unidade, dia a dia (`resumoDoHorario`). */
   horario:   string[]
 }
@@ -46,6 +48,7 @@ export async function aClinicaDoEndereco(slug: string): Promise<AClinica | null>
     endereco,
     telefone: formatarTelefone(telefone),
     whatsapp: linkDoWhatsapp(telefone),
+    ligar:    linkDoWhatsapp(telefone)?.replace('https://wa.me/', 'tel:+') ?? null,
     horario:  resumoDoHorario(normalizarHorario(u.horario), null),
   }
 }
