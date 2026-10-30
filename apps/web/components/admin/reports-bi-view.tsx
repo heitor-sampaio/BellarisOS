@@ -721,7 +721,7 @@ function TabClientes(p: ReportsBiProps) {
   // atendidos antes dele. O cálculo anterior — "2+ atendimentos dentro da
   // janela" — media recorrência, não retenção, e em janelas curtas dava zero
   // por construção.
-  const { clientsServed, returningClients, firstTimeClients } = retention
+  const { clientsServed, firstTimeClients } = retention
   const taxaRetencao = taxaDeRetencao(retention) ?? 0
 
   // O ticket médio: a média do que as clientes que pagaram gastaram no período
