@@ -172,6 +172,13 @@
   - `retenção` = clientes atendidos no período que **já tinham sido atendidos
     antes dele** ÷ atendidos no período (`getRetention`). Não confundir com
     recorrência dentro da janela, que em períodos curtos dá zero por construção.
+    **"A cliente é da clínica, o atendimento é da profissional"** (decisão do
+    Heitor, 2026-10-29): com a agenda "só os meus", entram as clientes que ELA
+    atendeu no período, e "voltou" é quem a CLÍNICA já tinha atendido antes —
+    por qualquer profissional, nas unidades do recorte (migration
+    `20261029001103`). Era "já tinha vindo a ela" (20261028000804), e a cliente
+    que trocou de profissional contava como primeira vez. Prova:
+    `e2e/indicadores-retencao-da-clinica.spec.ts`.
 - **Zero é um dado, não ausência de dado.** Em métricas de anúncio, `0 ||
   undefined` transformava "zero clique no link" em "Indisponível" e escondia
   justamente a campanha problemática. Só use `undefined` quando a origem
@@ -369,8 +376,8 @@ cada número da aba no recorte do seu módulo (acima) — o da agenda a
 e às vendas (e ao CSV de `/api/relatorios/vendas`), os dois a
 `getCoreDosModulos` e `getRelatorioDosModulos`
 (`metrics_retention`/`metrics_new_clients_series`, migration
-`20261028000804`: as clientes que ELA atendeu; "voltou" = já tinha vindo a
-ELA antes — decisão nova). Com o CRM em OWN, a aba Comercial é a dos leads
+`20261028000804`: as clientes que ELA atendeu; "voltou" = a CLÍNICA já a
+tinha atendido antes — `20261029001103`, acima). Com o CRM em OWN, a aba Comercial é a dos leads
 dela e dos sem dono: o funil (`ownerId`), o painel (`metrics_comercial`:
 também os agendamentos que ela marcou) e os motivos de perda
 (`metrics_motivos_de_perda`), todos com `p_owner`. Com o FINANCEIRO em OWN,

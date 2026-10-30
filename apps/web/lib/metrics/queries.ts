@@ -433,7 +433,8 @@ export type Retention = {
  * construção, e não mede retenção.
  */
 export async function getRetention(args: Args): Promise<Retention> {
-  // `professionalId` ("só os meus"): as clientes que ELA atendeu, e que já tinham vindo a ela.
+  // `professionalId` ("só os meus" da agenda): as clientes que ELA atendeu; "voltou" é quem a
+  // CLÍNICA já tinha atendido antes, por qualquer profissional (2026-10-29).
   const { data, error } = await createAdminClient().rpc('metrics_retention', { ...baseArgs(args), p_professional_id: args.professionalId ?? null })
   logRpcError('metrics_retention', error)
   const row = (data as Record<string, unknown>[] | null)?.[0]
