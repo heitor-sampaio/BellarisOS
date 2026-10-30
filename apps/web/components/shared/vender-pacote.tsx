@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote } from '@/actions/pacotes'
-import { CamposDoPagamento, estadoDoPagamento, montarPagamento } from '@/components/shared/campos-do-pagamento'
+import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 
 /**
@@ -34,7 +34,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
   const conta = contaDoDesconto(pacote.price, desconto)
 
   function vender() {
-    setErro(null)
+    setErro(recusaDoPagamento(estado))
+    if (recusaDoPagamento(estado)) return
     iniciar(async () => {
       const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto))
       if (r.error) { setErro(r.error); return }

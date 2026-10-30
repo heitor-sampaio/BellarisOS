@@ -1,6 +1,6 @@
 'use client'
 
-import { parseDinheiro } from '@estetica-os/utils'
+import { lerEntrada, erroDaEntrada } from '@/lib/checkout/entrada'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -67,9 +67,20 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
   }
   if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo, vencimento: e.vencimento ? iso(e.vencimento) : null }
   const dataIso = iso(e.data)
-  // A regra de todo campo de dinheiro ("1.400" é mil e quatrocentos — D3).
-  const valorEntrada = parseDinheiro(e.entrada) || 0
+  // A regra de todo campo de dinheiro ("1.400" é mil e quatrocentos — D3). O
+  // ilegível não chega aqui: quem salva confere `recusaDoPagamento` antes.
+  const lida = lerEntrada(e.entrada)
+  const valorEntrada = 'valor' in lida ? lida.valor : 0
   return { forma: 'PARCELADO', metodo: e.metodo, entrada: valorEntrada, parcelas: e.parcelas, primeiroVencimento: dataIso }
+}
+
+/**
+ * O pagamento que não se pode salvar: a entrada ilegível ("1,400.50") virava
+ * R$ 0 calado (frente de cadastro, 2026-10-29). Quem salva confere ANTES de
+ * montar — o aviso é o de todo campo de dinheiro.
+ */
+export function recusaDoPagamento(e: EstadoDoPagamento): string | null {
+  return e.forma === 'PARCELADO' ? erroDaEntrada(e.entrada) : null
 }
 
 export function CamposDoPagamento({ estado, aoMudar, formas }: {
@@ -109,6 +120,11 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
               <span style={rotulo}>Entrada (opcional)</span>
               <input className="field" inputMode="decimal" placeholder="0,00" value={estado.entrada}
                 onChange={e => mudar({ entrada: e.target.value })} aria-label="Entrada" />
+              {erroDaEntrada(estado.entrada) && (
+                <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+                  {erroDaEntrada(estado.entrada)}
+                </span>
+              )}
             </label>
           )}
           {forma === 'PARCELADO' && (

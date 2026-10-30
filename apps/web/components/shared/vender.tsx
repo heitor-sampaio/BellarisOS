@@ -11,7 +11,7 @@ import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FormularioDoPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
-import { CamposDoPagamento, estadoDoPagamento, montarPagamento } from '@/components/shared/campos-do-pagamento'
+import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 
 /**
@@ -122,7 +122,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   const jaAtendido = aReceber.find(a => a.procedureId === proc.id) ?? null
 
   function vender() {
-    setErro(null)
+    setErro(recusaDoPagamento(estado))
+    if (recusaDoPagamento(estado)) return
     iniciar(async () => {
       const r = await venderProcedimento(clienteId, proc.id, branchId, qtd, validade.trim() ? Number(validade) : null,
         montarPagamento(estado), descontoDoEstado(desconto))

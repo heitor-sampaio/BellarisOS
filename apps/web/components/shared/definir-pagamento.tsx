@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { definirPagamentoDoContrato } from '@/actions/documentos'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
-import { CamposDoPagamento, estadoDoPagamento, montarPagamento } from '@/components/shared/campos-do-pagamento'
+import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 
 /**
@@ -31,7 +31,8 @@ export function DefinirPagamento({ documentoId, atual, descontoAtual, total, aoT
   const [salvando, iniciar] = useTransition()
 
   function salvar() {
-    setErro(null)
+    setErro(recusaDoPagamento(estado))
+    if (recusaDoPagamento(estado)) return
     iniciar(async () => {
       const r = await definirPagamentoDoContrato(documentoId, montarPagamento(estado), total != null ? descontoDoEstado(desconto) : null)
       if (r.error) { setErro(r.error); return }

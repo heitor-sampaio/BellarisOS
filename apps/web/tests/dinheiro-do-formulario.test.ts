@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { parseDinheiro, formatDinheiroCampo } from '@estetica-os/utils'
+import { parseDinheiro, formatDinheiroCampo, DINHEIRO_INVALIDO } from '@estetica-os/utils'
+import { lerEntrada } from '@/lib/checkout/entrada'
 
 /**
  * D10 (simulação de 2026-10-27): o preço do procedimento era uma máscara de
@@ -70,5 +71,30 @@ describe('formatDinheiroCampo', () => {
   })
   it('NaN vira vazio', () => {
     expect(formatDinheiroCampo(NaN)).toBe('')
+  })
+})
+
+/**
+ * A entrada do contrato e do checkout (frente de cadastro, 2026-10-29): o
+ * ilegível virava R$ 0 calado (`parseDinheiro(...) || 0`). Ganha o mesmo
+ * aviso dos outros campos de dinheiro; vazio continua sendo "sem entrada".
+ */
+describe('lerEntrada', () => {
+  it('vazio é sem entrada (R$ 0)', () => {
+    expect(lerEntrada('')).toEqual({ valor: 0 })
+    expect(lerEntrada('  ')).toEqual({ valor: 0 })
+  })
+  it('lê como todo campo de dinheiro', () => {
+    expect(lerEntrada('100')).toEqual({ valor: 100 })
+    expect(lerEntrada('1.400,50')).toEqual({ valor: 1400.5 })
+    expect(lerEntrada('1.400')).toEqual({ valor: 1400 })
+  })
+  it('o ilegível ou ambíguo é recusado com o aviso de sempre — nunca vira R$ 0', () => {
+    expect(lerEntrada('1,400.50')).toEqual({ erro: DINHEIRO_INVALIDO })
+    expect(lerEntrada('0.012')).toEqual({ erro: DINHEIRO_INVALIDO })
+    expect(lerEntrada('abc')).toEqual({ erro: DINHEIRO_INVALIDO })
+  })
+  it('negativa é recusada', () => {
+    expect(lerEntrada('-50')).toEqual({ erro: 'A entrada não pode ser negativa.' })
   })
 })

@@ -14,7 +14,7 @@ import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import type { Horario } from '@/lib/agenda/horario'
 import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
-import { parseDinheiro } from '@estetica-os/utils'
+import { lerEntrada, erroDaEntrada } from '@/lib/checkout/entrada'
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -143,7 +143,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const liquido   = contaDesc.liquido
 
   // A regra de todo campo de dinheiro (D3): "1.400,00" dava NaN e "1.400", R$ 1,40.
-  const entradaNum = Math.max(0, Math.min(parseDinheiro(entrada) || 0, liquido))
+  // O ilegível NÃO vira R$ 0 calado (frente de cadastro, 2026-10-29): o aviso de
+  // todo campo de dinheiro, e o checkout não avança (`recusaDaEntrada`).
+  const entradaLida = lerEntrada(entrada)
+  const recusaDaEntrada = formaPgto === 'PARCELADO' ? erroDaEntrada(entrada) : null
+  const entradaNum = Math.max(0, Math.min('valor' in entradaLida ? entradaLida.valor : 0, liquido))
   const saldo      = Math.round((liquido - entradaNum) * 100) / 100
   const valorParcela = parcelas > 0 ? saldo / parcelas : 0
 
@@ -238,7 +242,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // Voltar ao pagamento e trocá-lo monta de novo — e o contrato já assinado
   // com o pagamento antigo é substituído (o servidor decide, não a tela).
   function irParaDocumentos() {
-    setError(null)
+    setError(recusaDaEntrada)
+    if (recusaDaEntrada) return
     startPreparar(async () => {
       const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento(), descontoDoEstado(desconto))
       if (r.error) { setError(r.error); return }
@@ -284,7 +289,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }
 
   function handleFinish() {
-    setError(null)
+    setError(recusaDaEntrada)
+    if (recusaDaEntrada) return
     const schedules: SessionScheduleInput[] = plan.sessions
       .filter(s => {
         const d = sessionDates[s.id]
@@ -563,6 +569,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                   inputMode="decimal" aria-label="Entrada" value={entrada} onChange={e => setEntrada(e.target.value)}
                   placeholder="0,00" className="field" style={{ marginTop: 5 }}
                 />
+                {recusaDaEntrada && (
+                  <p role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)', marginTop: 4 }}>
+                    {recusaDaEntrada}
+                  </p>
+                )}
               </div>
               <div>
                 <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>

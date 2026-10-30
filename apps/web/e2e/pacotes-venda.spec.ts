@@ -300,6 +300,26 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, t.due_date])).toEqual([[800, false, null]])
   })
 
+  // A entrada ilegível virava R$ 0 calado (frente de cadastro, 2026-10-29): agora
+  // o aviso de todo campo de dinheiro, e a venda não sai.
+  test('entrada ilegível ("1,400.50"): o aviso de dinheiro aparece e a venda NÃO sai com entrada R$ 0', async ({ browser }) => {
+    await comSessao(browser, gestor!, async p => {
+      await p.goto(`/admin/clients/${cliente}`)
+      await p.getByRole('button', { name: 'Vender', exact: true }).click()
+      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
+      await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
+      await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await dlg.getByLabel('Entrada').fill('1,400.50')
+      await expect(dlg.getByText('Valor não entendido: use vírgula para os centavos')).toBeVisible()
+      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await expect(dlg.getByRole('alert').filter({ hasText: 'Valor não entendido' }).first()).toBeVisible()
+      await p.waitForTimeout(1500)
+    })
+    const { data: vendas } = await db().from('client_packages').select('id').eq('client_id', cliente)
+    expect(vendas, 'a venda com a entrada ilegível não foi gravada').toHaveLength(2)
+  })
+
   test('na conversa: com cliente, "Vender" abre a venda; sem cliente, cadastra e depois vende', async ({ browser }) => {
     const conversa = async (linha: Record<string, unknown>) => {
       const { data, error } = await db().from('conversations').insert({

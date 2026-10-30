@@ -272,6 +272,13 @@ o procedimento avulso pago antes.
   campos `type="number"` (lançamento manual, crédito, custo do insumo) o
   navegador já lê. Prova: `tests/dinheiro-do-formulario.test.ts`,
   `e2e/procedimento-preco-em-reais.spec.ts`.
+  - **A entrada do "entrada + parcelas"** (contrato do procedimento, venda de
+    pacote e de pré-pago, checkout do plano) é `lerEntrada`
+    (`lib/checkout/entrada.ts`; frente de cadastro, 2026-10-29): vazia é sem
+    entrada; ilegível mostra `DINHEIRO_INVALIDO` junto do campo e a tela NÃO
+    salva (`recusaDoPagamento` em `CamposDoPagamento`, `recusaDaEntrada` no
+    checkout). Era `parseDinheiro(…) || 0`: "1,400.50" vendia com entrada
+    R$ 0, calado. Prova: `e2e/pacotes-venda.spec.ts` ("entrada ilegível").
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
 - **Cartão de crédito em N vezes é PAGO na hora** (decisão do Heitor,
   2026-10-20): quem paga a clínica é a maquininha, então para o cliente está
