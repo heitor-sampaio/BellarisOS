@@ -96,7 +96,7 @@ test('Relatórios: as despesas são o caixa (R$ 700) e o lucro desconta o insumo
     await expect.poll(async () => card(p, 'Margem').innerText(), { timeout: 10_000 }).toContain('77,0%')
     const dre = card(p, 'DRE Simplificado')
     await expect(dre).toContainText(/Despesas Operacionais\s*R\$\s*200/)
-    await expect(dre).toContainText(/Insumos consumidos\s*R\$\s*30/)
+    await expect(dre).toContainText(/Insumos e produtos vendidos\s*R\$\s*30/)
     await expect(dre).toContainText(/Lucro\s*R\$\s*770/)
   })
 })

@@ -117,6 +117,15 @@
     catálogo (por procedimento) já descontava o insumo. Até 2026-10-29 o lucro
     era receita − despesa paga, e o consumo era informativo. Prova:
     `e2e/indicadores-lucro-desconta-insumo.spec.ts`, `tests/metrics-resultado.test.ts`.
+    **O custo do PRODUTO VENDIDO entra na mesma parcela** (D4, 2026-10-30;
+    migration `20261029001307`): a receita da venda de produto entra pela
+    regra única, e o custo dela (`product_sales.custo`, o custo dos lotes que
+    saíram, retratado na venda) sai do lucro na data da venda — é o mesmo caso
+    do insumo: o estoque que saiu para gerar a receita. A coluna continua
+    `consumo_de_insumo` (em `metrics_resultado` e
+    `metrics_series_do_resultado`; com "só os meus", a venda de quem vendeu), e
+    o DRE diz "− Insumos e produtos vendidos". A perda (D-7) NÃO entra (não
+    gerou receita — decisão para o Heitor). Prova: `e2e/vendas-produto.spec.ts`.
   - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
     pago pela regra de receita, a receita de serviço, os concluídos e os
     cobrados). A ficha a chama com a cliente e a janela inteira (`getDoCliente`:

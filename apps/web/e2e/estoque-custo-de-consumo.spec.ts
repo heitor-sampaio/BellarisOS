@@ -254,7 +254,7 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       // O estoque não gera despesa (D13 revisto); o consumo desconta do lucro.
       await expect(p.getByText('Desconta do lucro', { exact: true })).toBeVisible()
       const dre = p.locator('div.card').filter({ hasText: 'DRE Simplificado' }).first()
-      await expect(dre).toContainText(/Insumos consumidos\s*R\$\s*4,50/)
+      await expect(dre).toContainText(/Insumos e produtos vendidos\s*R\$\s*4,50/)
     } finally { await ctx.close() }
   })
 

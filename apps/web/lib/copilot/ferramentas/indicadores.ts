@@ -118,7 +118,7 @@ export const indicadores: FerramentaDeLeitura<{
             insumoConsumido: dinheiro(resultado.insumoConsumido),
             lucro: dinheiro(resultado.lucro),
             margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
-            notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque, que fica no caixa) − insumo consumido.',
+            notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque, que fica no caixa) − insumo consumido e custo do produto vendido.',
           }),
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,

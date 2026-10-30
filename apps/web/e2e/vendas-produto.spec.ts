@@ -291,4 +291,25 @@ test.describe.serial('a venda de produto', () => {
       .map(e => ({ o: e.origem, produto: e.procedimento, cliente: !!e.cliente })))
       .toEqual([{ o: 'PRODUTO', produto: nomeSerum, cliente: true }])
   })
+
+  test('o custo do produto vendido desconta do lucro, como o insumo consumido (metrics_resultado)', async () => {
+    const custos = (await vendas()).reduce((s, v) => Math.round((s + n(v.custo)) * 100) / 100, 0)
+    expect(custos, 'as vendas retrataram o custo dos lotes').toBeGreaterThan(0)
+    const dia = hojeBR()
+    const { data, error } = await db().rpc('metrics_resultado', {
+      p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId],
+      p_from: `${dia}T00:00:00-03:00`, p_to: `${dia}T23:59:59-03:00`, p_professional_id: null,
+    })
+    expect(error).toBeNull()
+    const total = (data as { branch_id: string | null; consumo_de_insumo: number }[]).find(l => l.branch_id === null)
+    expect(n(total?.consumo_de_insumo), 'o custo do que foi vendido, no lucro').toBe(custos)
+
+    const { data: serie, error: e2 } = await db().rpc('metrics_series_do_resultado', {
+      p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId],
+      p_from: `${dia}T00:00:00-03:00`, p_to: `${dia}T23:59:59-03:00`, p_granularity: 'day', p_professional_id: null,
+    })
+    expect(e2).toBeNull()
+    const naSerie = (serie as { consumo_de_insumo: number }[]).reduce((s, r) => Math.round((s + n(r.consumo_de_insumo)) * 100) / 100, 0)
+    expect(naSerie, 'o gráfico da evolução bate com o cartão').toBe(custos)
+  })
 })

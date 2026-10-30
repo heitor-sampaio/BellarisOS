@@ -243,7 +243,7 @@ export function DreWaterfall({
   receita: number
   /** A despesa paga SEM a compra de estoque (que fica no caixa). */
   despesas: number
-  /** O insumo consumido nos atendimentos, ao custo do movimento (2026-10-29). */
+  /** O insumo consumido nos atendimentos e o custo do produto vendido (D4, 2026-10-30) — o estoque que saiu para gerar a receita. */
   insumos: number
   lucro: number
 }) {
@@ -252,7 +252,7 @@ export function DreWaterfall({
   const rows = [
     { label: 'Receita Bruta',          v: receita,       color: 'var(--brand)', pct: 100 },
     { label: '− Despesas Operacionais', v: despesas,      color: 'var(--warning)', pct: receita > 0 ? (despesas / receita) * 100 : 0 },
-    { label: '− Insumos consumidos',    v: insumos,       color: 'var(--danger)',  pct: receita > 0 ? (insumos / receita) * 100 : 0 },
+    { label: '− Insumos e produtos vendidos', v: insumos,       color: 'var(--danger)',  pct: receita > 0 ? (insumos / receita) * 100 : 0 },
     {
       label: '= Lucro',
       v: lucro,
