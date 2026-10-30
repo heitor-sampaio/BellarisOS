@@ -29,7 +29,7 @@ import { ptBR } from 'date-fns/locale'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
-import { Vender, type ProcedimentoAVenda } from '@/components/shared/vender'
+import { Vender, type ProcedimentoAVenda, type ProdutoAVenda } from '@/components/shared/vender'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
@@ -225,6 +225,8 @@ interface Props {
   pacotesAVenda?:        PacoteAVenda[]
   /** Os procedimentos à venda como pré-pago (só para quem recebe). */
   procedimentosAVenda?:  ProcedimentoAVenda[]
+  /** Os produtos de revenda à venda (D4; só para quem recebe). */
+  produtosAVenda?:       ProdutoAVenda[]
   /** Os procedimentos pré-pagos do cliente, com as unidades. */
   prePagos?:             PrePagoDoCliente[]
   /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha. */
@@ -1175,7 +1177,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], prePagos = [], podeAgendar = false,
+  procedimentosAVenda = [], produtosAVenda = [], prePagos = [], podeAgendar = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1194,10 +1196,10 @@ export function ClientProfile({
   // URL: o Vender abre quando ele passa de 0 a 1. Sem nada a vender aqui, ou
   // sem poder receber, avisa em vez de não fazer nada.
   const acaoDaUrl = params.get('acao')
-  const podeVenderAqui = podeReceber && !!currentBranchId && (pacotesAVenda.length > 0 || procedimentosAVenda.length > 0)
+  const podeVenderAqui = podeReceber && !!currentBranchId && (pacotesAVenda.length > 0 || procedimentosAVenda.length > 0 || produtosAVenda.length > 0)
   const sinalDaVenda = acaoDaUrl === 'vender' && podeVenderAqui ? 1 : 0
   const aoPedirVenda = useEffectEvent(() => {
-    if (!podeVenderAqui) toast.info(podeReceber ? 'Não há procedimento nem pacote à venda para este cliente.' : 'Seu cargo não recebe pagamentos.')
+    if (!podeVenderAqui) toast.info(podeReceber ? 'Não há procedimento, pacote nem produto à venda para este cliente.' : 'Seu cargo não recebe pagamentos.')
     const q = new URLSearchParams(params.toString())
     q.delete('acao')
     const resto = q.toString()
@@ -1349,7 +1351,7 @@ export function ClientProfile({
               que o cliente compra e como paga; agendar, quando ele vem. */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {podeReceber && currentBranchId && (
-              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda}
+              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} produtos={produtosAVenda}
                 podeAgendar={podeAgendar} abrirSinal={sinalDaVenda} aReceber={aReceber.itens} />
             )}
             <button

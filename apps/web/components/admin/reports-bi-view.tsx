@@ -493,7 +493,7 @@ function TabFinanceiro(p: ReportsBiProps) {
 const vendasNoPlural = (n: number) => `${n.toLocaleString('pt-BR')} ${n === 1 ? 'venda' : 'vendas'}`
 
 const PLURAL_DO_TIPO = {
-  PROCEDIMENTO: 'Procedimentos', PACOTE: 'Pacotes', PRE_PAGO: 'Pré-pagos', PLANO: 'Planos',
+  PROCEDIMENTO: 'Procedimentos', PACOTE: 'Pacotes', PRE_PAGO: 'Pré-pagos', PLANO: 'Planos', PRODUTO: 'Produtos',
 } as const
 
 /**

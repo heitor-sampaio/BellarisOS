@@ -50,6 +50,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   const [primeiroAcesso, setPrimeiroAcesso] = useState(inicial.first_access_bonus > 0)
   const [pontosPrimeiroAcesso, setPontosPrimeiroAcesso] = useState(String(inicial.first_access_bonus || 50))
   const [trocaNoPortal, setTrocaNoPortal] = useState(inicial.client_redeem)
+  const [pontuaProduto, setPontuaProduto] = useState(inicial.pontua_venda_de_produto)
   const [avisar,   setAvisar]   = useState(inicial.expiry_notice_days != null)
   const [diasAviso, setDiasAviso] = useState(String(inicial.expiry_notice_days ?? 7))
   const [erro,     setErro]     = useState<string | null>(null)
@@ -85,6 +86,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
           birthday_bonus:      aniversario ? numero(pontosAniversario) : 0,
           first_access_bonus:  primeiroAcesso ? numero(pontosPrimeiroAcesso) : 0,
           client_redeem:       trocaNoPortal,
+          pontua_venda_de_produto: pontuaProduto,
           expiry_notice_days:  vencem && avisar ? numero(diasAviso) : null,
         })
         if (res.error) setErro(res.error)
@@ -235,6 +237,26 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
           <CampoNumero rotulo="Pontos no primeiro acesso" nome="first_access_bonus" valor={pontosPrimeiroAcesso} onChange={setPontosPrimeiroAcesso}
             desabilitado={!podeEditar} />
         </Opcional>
+      </Bloco>
+
+      {/* A venda de produto (D4, decisão do Heitor: "os pontos são
+          configuráveis pela clínica"). Nasce desligado, como todo opcional. */}
+      <Bloco titulo="Venda de produto">
+        {podeEditar ? (
+          <SegSelect
+            options={[{ key: 'nao', label: 'Não pontua' }, { key: 'sim', label: 'Pontua' }]}
+            value={pontuaProduto ? 'sim' : 'nao'}
+            onSelect={k => setPontuaProduto(k === 'sim')}
+            ariaLabel="A venda de produto pontua"
+          />
+        ) : (
+          <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{pontuaProduto ? 'Pontua' : 'Não pontua'}</strong>
+        )}
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+          {pontuaProduto
+            ? 'O produto vendido na ficha dá pontos pelo valor pago, na mesma conta de pontos por R$ 1 — também quando os procedimentos pontuam por procedimento.'
+            : 'O produto vendido na ficha não dá pontos. Só os atendimentos, pacotes, pré-pagos e planos pontuam.'}
+        </p>
       </Bloco>
 
       <Bloco titulo="Quem troca pontos por recompensa">

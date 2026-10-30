@@ -34,6 +34,8 @@ export interface ConfigFidelidade {
   client_redeem:       boolean
   /** Avisa por push N dias antes de vencer. Nulo = não avisa (e sem validade, nunca). */
   expiry_notice_days:  number | null
+  /** A venda de PRODUTO dá pontos (D4, 2026-10-30) — por real pago, em qualquer modo. Nasce desligado. */
+  pontua_venda_de_produto: boolean
 }
 
 /** A config de quem nunca configurou: tudo desligado, com valores sensatos para quando ligar. */
@@ -50,6 +52,7 @@ export const CONFIG_PADRAO: ConfigFidelidade = {
   first_access_bonus:  0,
   client_redeem:       false,
   expiry_notice_days:  null,
+  pontua_venda_de_produto: false,
 }
 
 /** O que a tela manda para salvar. Os números chegam do formulário; a validação é aqui. */
@@ -86,6 +89,8 @@ export const EntradaDaConfig = z.object({
     z.coerce.number().int('O aviso é um número inteiro de dias.')
       .min(1, 'O aviso sai com pelo menos 1 dia de antecedência.').max(90, 'O aviso sai com no máximo 90 dias de antecedência.'),
   ]),
+  // A venda de produto pontua? Sem o campo (chamador antigo), não.
+  pontua_venda_de_produto: z.boolean().optional().default(false),
 })
 export type EntradaDaConfig = z.infer<typeof EntradaDaConfig>
 
@@ -109,5 +114,6 @@ export function configDaLinha(linha: Record<string, unknown> | null | undefined)
     first_access_bonus:  num(linha.first_access_bonus, 0),
     client_redeem:       linha.client_redeem === true,
     expiry_notice_days:  linha.expiry_notice_days == null ? null : num(linha.expiry_notice_days, 0) || null,
+    pontua_venda_de_produto: linha.pontua_venda_de_produto === true,
   }
 }

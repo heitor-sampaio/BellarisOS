@@ -3,7 +3,7 @@
  * rótulos, e `lib/metrics/vendas.ts` (server-only) faz a leitura.
  */
 
-export const TIPOS_DE_VENDA = ['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PLANO'] as const
+export const TIPOS_DE_VENDA = ['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PLANO', 'PRODUTO'] as const
 export type TipoDeVenda = typeof TIPOS_DE_VENDA[number]
 
 export const ROTULO_DO_TIPO: Record<TipoDeVenda, string> = {
@@ -11,6 +11,7 @@ export const ROTULO_DO_TIPO: Record<TipoDeVenda, string> = {
   PACOTE:       'Pacote',
   PRE_PAGO:     'Pré-pago',
   PLANO:        'Plano',
+  PRODUTO:      'Produto',
 }
 
 export const POR_PAGINA = 50
@@ -20,7 +21,7 @@ export interface Venda {
   tipo:         TipoDeVenda
   data:         string
   descricao:    string
-  /** Sessões do pacote ou do plano; unidades do pré-pago; 1 no avulso. */
+  /** Sessões do pacote ou do plano; unidades do pré-pago; embalagens do produto; 1 no avulso. */
   quantidade:   number
   clienteId:    string | null
   cliente:      string | null
@@ -41,7 +42,7 @@ export const ehTipoDeVenda = (v: unknown): v is TipoDeVenda =>
 
 /** A descrição como a lista e a exportação a mostram ("3× Botox" no pré-pago). */
 export function descricaoDaVenda(v: Pick<Venda, 'tipo' | 'descricao' | 'quantidade'>): string {
-  if (v.tipo === 'PRE_PAGO') return `${v.quantidade}× ${v.descricao}`
+  if (v.tipo === 'PRE_PAGO' || v.tipo === 'PRODUTO') return `${v.quantidade}× ${v.descricao}`
   if (v.tipo === 'PACOTE' || v.tipo === 'PLANO') {
     return v.quantidade > 0 ? `${v.descricao} · ${v.quantidade} ${v.quantidade === 1 ? 'sessão' : 'sessões'}` : v.descricao
   }

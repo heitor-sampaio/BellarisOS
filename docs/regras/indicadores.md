@@ -303,6 +303,8 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   é forma de pagamento, não desconto).
 - **Pacote** (`purchased_at`, o vendido, quem vendeu) e **pré-pago**
   (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
+- **Produto** (D4, 2026-10-30): `product_sales.sold_at`, o vendido, quem
+  vendeu; a quantidade são as embalagens ("3× Sérum").
 - **Plano**: `treatment_plans.aceito_em` (gatilho `trg_plano_aceito_em` na
   passagem para ACCEPTED; os antigos herdaram o evento `plano.aceito`, o
   primeiro lançamento ou o `updated_at`), e vale a soma dos procedimentos dele

@@ -8,6 +8,7 @@ import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
 import { rotaDoRecebimento } from '@/components/shared/atendimentos-a-receber'
 import { formatBRL } from '@estetica-os/utils'
 import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
+import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FormularioDoPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
@@ -24,13 +25,18 @@ import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from
 
 export interface ProcedimentoAVenda { id: string; name: string; price: number }
 
-type Aba = 'PROCEDIMENTO' | 'PACOTE'
+/** O produto de revenda à venda (D4): o preço e quantas embalagens inteiras há na unidade. */
+export interface ProdutoAVenda { id: string; name: string; price: number; unidade: string; disponivel: number }
 
-export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [] }: {
+type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
+
+export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos = [], compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [] }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
   procedimentos: ProcedimentoAVenda[]
+  /** Os produtos de revenda (D4): a venda de produto exige a cliente — esta janela já é da ficha dela. */
+  produtos?:     ProdutoAVenda[]
   /** Botão pequeno, como as ações do painel da conversa. */
   compacto?:     boolean
   /**
@@ -49,17 +55,18 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
-  const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : 'PACOTE')
+  const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : pacotes.length ? 'PACOTE' : 'PRODUTO')
   const abrir = useCallback(() => { setAbertura(n => n + 1); dialogRef.current?.showModal() }, [])
   const fechar = useCallback(() => dialogRef.current?.close(), [])
   useEffect(() => {
     if (abrirSinal > 0 && !dialogRef.current?.open) dialogRef.current?.showModal()
   }, [abrirSinal])
 
-  if (!pacotes.length && !procedimentos.length) return null
+  if (!pacotes.length && !procedimentos.length && !produtos.length) return null
   const abas = [
     ...(procedimentos.length ? [{ key: 'PROCEDIMENTO', label: 'Procedimento' }] : []),
     ...(pacotes.length ? [{ key: 'PACOTE', label: 'Pacote' }] : []),
+    ...(produtos.length ? [{ key: 'PRODUTO', label: 'Produto' }] : []),
   ]
   const chave = `${abertura}-${abrirSinal}`
   return (
@@ -84,13 +91,86 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
             {abas.length > 1 && (
               <SegSelect ariaLabel="O que vender" options={abas} value={aba} onSelect={k => setAba(k as Aba)} />
             )}
-            {aba === 'PROCEDIMENTO' && procedimentos.length > 0
+            {aba === 'PRODUTO' && produtos.length > 0
+              ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={fechar} />
+              : aba === 'PROCEDIMENTO' && procedimentos.length > 0
               ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} />
               : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} />}
           </div>
         </div>
       </dialog>
     </>
+  )
+}
+
+/**
+ * Produto (D4, decisão do Heitor, 2026-10-29): o produto de revenda, quantas
+ * embalagens, o desconto e como vai ser pago. O estoque baixa na hora, pelo
+ * lote que vence primeiro; sem estoque suficiente, o servidor recusa.
+ */
+function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
+  clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void
+}) {
+  const router = useRouter()
+  const [prodId, setProdId] = useState(produtos[0]!.id)
+  const [quantidade, setQuantidade] = useState('1')
+  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
+  const [desconto, setDesconto] = useState(SEM_DESCONTO)
+  const [erro, setErro] = useState<string | null>(null)
+  const [pendente, iniciar] = useTransition()
+  const prod = produtos.find(p => p.id === prodId) ?? produtos[0]!
+  const qtd = Math.max(0, Math.trunc(Number(quantidade) || 0))
+  const tabela = Math.round(prod.price * 100) * qtd / 100
+  const conta = contaDoDesconto(tabela, desconto)
+
+  function vender() {
+    setErro(recusaDoPagamento(estado))
+    if (recusaDoPagamento(estado)) return
+    iniciar(async () => {
+      const r = await venderProduto(clienteId, prod.id, branchId, qtd, montarPagamento(estado), descontoDoEstado(desconto))
+      if (r.error) { setErro(r.error); return }
+      router.refresh()
+      onFim()
+    })
+  }
+
+  const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span className="overline">Produto</span>
+        <select className="field" aria-label="Produto" value={prodId} onChange={e => setProdId(e.target.value)}>
+          {produtos.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.name} — {formatBRL(p.price)} · {p.disponivel > 0 ? `${p.disponivel} ${p.unidade} em estoque` : 'sem estoque'}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
+        <span style={rotulo}>Quantidade ({prod.unidade})</span>
+        <input className="field" type="number" min={1} max={100} step={1} inputMode="numeric" aria-label="Quantidade"
+          value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+      </label>
+      <p data-resumo-do-produto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
+        {qtd} × {formatBRL(prod.price)} = {formatBRL(tabela)} · sai do estoque agora, pelo lote que vence primeiro
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+        <p className="overline">Pagamento</p>
+        <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} />
+        {estado.forma === 'A_RECEBER' && (
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
+        )}
+      </div>
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
+        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || qtd < 1 || qtd > 100}>
+          {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
+        </button>
+      </div>
+    </div>
   )
 }
 

@@ -460,7 +460,7 @@ export function InboxLeadPanel({
             {card.venda && (cliente ? (
               card.venda.branchId && (
                 <Vender compacto clienteId={cliente.id} branchId={card.venda.branchId}
-                  pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} abrirSinal={abrirVenda} />
+                  pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} produtos={card.venda.produtos} abrirSinal={abrirVenda} />
               )
             ) : (
               <button type="button" className="btn-ghost"

@@ -67,6 +67,7 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
         birthday_bonus:      c.birthday_bonus,
         first_access_bonus:  c.first_access_bonus,
         client_redeem:       c.client_redeem,
+        pontua_venda_de_produto: c.pontua_venda_de_produto,
         // Sem validade não há o que avisar: o aviso só se guarda junto dela.
         expiry_notice_days:  c.expiry_months == null ? null : c.expiry_notice_days,
         updated_at:      new Date().toISOString(),

@@ -12,6 +12,7 @@ import { ClientProfile } from '@/components/branch/client-profile'
 import { eventosDeConfirmacaoEChegada } from '@/lib/clients/historico-do-agendamento'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
+import { produtosAVenda } from '@/lib/produtos/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { getDoCliente } from '@/lib/metrics/unidade'
@@ -440,6 +441,7 @@ export default async function ClientProfilePage({
       podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
       pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branch.id as string) : []}
       procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branch.id as string) : []}
+      produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branch.id as string) : []}
       prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
       podeAgendar={can(ctx, 'agenda', 'MANAGE')}
       isNetworkWide={ctx.branchId === null}

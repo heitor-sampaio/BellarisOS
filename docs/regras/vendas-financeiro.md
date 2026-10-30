@@ -151,6 +151,43 @@ o procedimento avulso pago antes.
   "Tratamentos em curso"; no export da LGPD, seção própria.
 - Prova: `e2e/pre-pago.spec.ts`.
 
+### 9.3.3 Venda de produto (D4, 2026-10-30)
+
+Decisão do Heitor (2026-10-29): "Produto entra no 'Vender' da ficha da
+cliente, com quantidade, desconto e forma de pagamento. O estoque baixa pelo
+lote que vence primeiro. A venda vai para o caixa, para as vendas e para o
+faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
+
+- **Só produto de REVENDA** (ou "os dois", `products.uso` — D-6, §9.5), ativo
+  e com preço de venda: `produtosAVenda` (`lib/produtos/leitura.ts`) diz
+  também quantas EMBALAGENS INTEIRAS há na unidade (a aberta não se vende).
+- **A porta é o "Vender"** (aba "Produto", `FormularioDoProduto` em
+  `components/shared/vender.tsx`), na ficha (os dois portais) e no painel do
+  inbox, para quem recebe (`podeReceber`). **Exige cliente cadastrada**: no
+  inbox sem ficha o botão abre o cadastro (o rápido serve) antes, e a action
+  recusa sem a ficha da rede.
+- `venderProduto` (`actions/produtos.ts`) confere permissão, rede e alcance,
+  calcula o desconto (`lib/vendas/desconto.ts`) e os lançamentos
+  (`lancamentosDoPagamento`: à vista — inclusive crédito em N vezes —, entrada
+  + parcelas, a receber), e `produto_vender` grava TUDO numa transação: a
+  venda (`product_sales`, com o RETRATO do preço unitário e de tabela, do
+  desconto, do vendido, do CUSTO do que saiu e de quem vendeu), o movimento
+  `SALE` (o gatilho do lote tira pelo que vence primeiro), o saldo (linha
+  travada; sem estoque suficiente, recusa: "Estoque insuficiente: há 2 un de
+  Sérum nesta unidade.") e o dinheiro (`financial_transactions.product_sale_id`,
+  categoria "Venda de produto", com a cliente). Nunca despesa.
+- O custo do que saiu é o da entrada de cada lote que o FEFO tirou, na
+  proporção (sem lote com custo, o custo de consumo do cadastro).
+- O dinheiro segue a regra única de receita (`metrics_receitas_pagas`): caixa,
+  faturamento e ticket médio. O relatório de vendas ganha o tipo **Produto**
+  (`metrics_vendas`: na data da venda, pelo vendido, "quem vendeu" na coluna
+  Profissional).
+- Pontos: só se a clínica ligar (Configurações → Fidelidade → "Venda de
+  produto", `fidelidade.md`).
+- A sessão só LÊ `product_sales` (a equipe que alcança a unidade, a cliente a
+  dela); as restritivas do suporte valem.
+- Prova: `e2e/vendas-produto.spec.ts`.
+
 ---
 
 ### 9.6 Financeiro

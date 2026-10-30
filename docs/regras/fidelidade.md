@@ -101,6 +101,13 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     (`clients.app_account_created_at`, marcado por `fidelidade_primeiro_acesso`
     no `loginAction` e na sessão do app); quem já tinha entrado antes da
     opção existir não ganha.
+  - **A venda de produto pontua?** (`pontua_venda_de_produto`, D4,
+    2026-10-30 — "os pontos são configuráveis pela clínica"): nasce
+    DESLIGADO. Ligado, a venda de produto paga dá pontos por real pago
+    (`points_per_real`) — também no modo "por procedimento", que o produto não
+    tem os pontos do procedimento. A regra mora em
+    `fidelidade_pontos_do_pagamento` (o lançamento com `product_sale_id`).
+    Prova: `e2e/vendas-produto.spec.ts`.
   - **Troca pelo portal** (`client_redeem`): o cliente troca pontos por
     recompensa em `/[slug]/cliente/fidelidade` (`actions/fidelidade-portal.ts`),
     com o saldo da unidade daquele portal quando a abrangência é por unidade.

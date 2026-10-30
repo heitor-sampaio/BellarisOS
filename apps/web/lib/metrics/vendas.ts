@@ -71,7 +71,7 @@ export async function getResumoDeVendas(r: Recorte): Promise<ResumoDeVendas> {
   const vazio = { quantidade: 0, total: 0 }
   const resumo: ResumoDeVendas = {
     geral: vazio,
-    porTipo: { PROCEDIMENTO: vazio, PACOTE: vazio, PRE_PAGO: vazio, PLANO: vazio },
+    porTipo: { PROCEDIMENTO: vazio, PACOTE: vazio, PRE_PAGO: vazio, PLANO: vazio, PRODUTO: vazio },
   }
   for (const l of linhas ?? []) {
     const valor = { quantidade: Number(l.quantidade), total: Number(l.total) }

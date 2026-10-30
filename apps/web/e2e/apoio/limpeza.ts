@@ -197,6 +197,8 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
   // Procedimentos pré-pagos: as unidades saem em cascata; lançamento e linha de
   // comissão perdem o vínculo (set null) e saem com o resto do cliente.
   await passo(falhas, 'procedimentos pré-pagos', db.from('procedure_sales').delete().in('client_id', clientes))
+  // Vendas de produto (D4): o lançamento perde o vínculo (set null) e sai com o resto.
+  await passo(falhas, 'vendas de produto', db.from('product_sales').delete().in('client_id', clientes))
   // A oportunidade é da PESSOA, não do cliente: perde o vínculo, não some.
   await passo(falhas, 'vínculo da oportunidade', db.from('leads').update({ client_id: null }).in('client_id', clientes))
   await passo(falhas, 'eventos do cliente', db.from('domain_events').delete().in('entidade_id', clientes))
