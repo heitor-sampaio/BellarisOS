@@ -47,6 +47,7 @@ export const ISOLADOS = [
   'comissoes-calculo.spec.ts',
   'comissoes-configuracao.spec.ts',
   'comissoes-fechamento.spec.ts',
+  'comissoes-pacote.spec.ts',
   'configuracoes-textos-e-estados-vazios.spec.ts',
   'configuracoes-unidade-horario-e-cep.spec.ts',
   'clientes-arquivar.spec.ts',

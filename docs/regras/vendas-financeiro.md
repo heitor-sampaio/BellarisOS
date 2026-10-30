@@ -91,7 +91,9 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
   "Sessão de pacote". Prova: `e2e/pacote-abater-avulso.spec.ts`.
 - A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
-- Comissão da sessão: §9.7.
+- Comissão: a de VENDA e a de EXECUÇÃO são do cadastro de cada pacote
+  (2026-10-30, §9.7 "A comissão do PACOTE"); a do "Abater do pacote" segue a
+  de execução dele.
 - Prova: `e2e/pacotes-venda.spec.ts`.
 
 ### 9.3.2 Procedimento pré-pago (2026-09-30)

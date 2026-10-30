@@ -6,6 +6,12 @@ import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { formatBRL, parseDinheiro } from '@estetica-os/utils'
 import { salvarPacote } from '@/actions/pacotes'
 import { contemSemAcento } from '@/lib/texto'
+import { SegSelect } from '@/components/shared/seg-select'
+import { CampoDeValor, paraTexto } from '@/components/admin/comissao-do-membro'
+import {
+  COMISSAO_DO_PACOTE_PADRAO, rotuloDaComissaoDoPacote,
+  type ComissaoDoPacote, type ExecucaoDoPacote, type TipoDeRegra,
+} from '@/lib/comissoes/config'
 
 /**
  * O catálogo de pacotes da rede (Vendas → Pacotes). Um pacote é um conjunto de
@@ -18,20 +24,37 @@ export interface PacoteDoCatalogo {
   id: string; name: string; price: number; totalSessions: number; validityDays: number | null
   isActive: boolean; composicao: string
   itens: { procedureId: string; procedureName: string; quantidade: number; precoTabela: number }[]
+  /** A comissão de venda e de execução (2026-10-30). */
+  comissao: ComissaoDoPacote
 }
 
 interface ItemDoRascunho { procedureId: string; quantidade: string }
-interface Rascunho { id?: string; name: string; itens: ItemDoRascunho[]; preco: string; validade: string; ativo: boolean }
+type VendaDoRascunho = 'NENHUMA' | TipoDeRegra
+interface ComissaoDoRascunho { venda: VendaDoRascunho; vendaValor: string; execucao: ExecucaoDoPacote; execucaoValor: string }
+interface Rascunho {
+  id?: string; name: string; itens: ItemDoRascunho[]; preco: string; validade: string; ativo: boolean
+  comissao: ComissaoDoRascunho
+}
+
+const rascunhoDaComissao = (c: ComissaoDoPacote): ComissaoDoRascunho => ({
+  venda: c.venda?.tipo ?? 'NENHUMA', vendaValor: c.venda ? paraTexto(c.venda.valor) : '',
+  execucao: c.execucao.tipo, execucaoValor: c.execucao.valor != null ? paraTexto(c.execucao.valor) : '',
+})
 
 // Sem número de sessões escolhido por nós (2026-10-21: nascia com 5).
-const vazio = (procedureId: string): Rascunho => ({ name: '', itens: [{ procedureId, quantidade: '' }], preco: '', validade: '', ativo: true })
+const vazio = (procedureId: string): Rascunho => ({
+  name: '', itens: [{ procedureId, quantidade: '' }], preco: '', validade: '', ativo: true,
+  comissao: rascunhoDaComissao(COMISSAO_DO_PACOTE_PADRAO),
+})
 // O dinheiro como em todo campo (`parseDinheiro`: "1.400" é mil e quatrocentos — D3).
 const numero = (t: string) => parseDinheiro(t)
 
-export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInicial = '' }: {
+export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComissao = false, buscaInicial = '' }: {
   pacotes: PacoteDoCatalogo[]
   procedimentos: { id: string; name: string; price: number }[]
   podeEditar: boolean
+  /** Quem é do financeiro (`financial: MANAGE`, da rede) vê e muda a comissão do pacote. */
+  podeComissao?: boolean
   /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
   buscaInicial?: string
 }) {
@@ -81,7 +104,7 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInici
       </div>
 
       {editando && !editando.id && (
-        <Formulario inicial={editando} procedimentos={procedimentos} aoTerminar={() => setEditando(null)} />
+        <Formulario inicial={editando} procedimentos={procedimentos} podeComissao={podeComissao} aoTerminar={() => setEditando(null)} />
       )}
 
       {pacotes.length === 0 && !editando && (
@@ -93,7 +116,7 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInici
       )}
 
       {visiveis.map(p => editando?.id === p.id ? (
-        <Formulario key={p.id} inicial={editando} procedimentos={procedimentos} aoTerminar={() => setEditando(null)} />
+        <Formulario key={p.id} inicial={editando} procedimentos={procedimentos} podeComissao={podeComissao} aoTerminar={() => setEditando(null)} />
       ) : (
         <div key={p.id} data-pacote={p.id}
           style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
@@ -102,6 +125,11 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInici
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {p.composicao} · {p.totalSessions} sessões{p.validityDays ? ` · válido por ${p.validityDays} dias` : ' · sem validade'}
             </p>
+            {podeComissao && (
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }} data-comissao-do-pacote>
+                {rotuloDaComissaoDoPacote(p.comissao)}
+              </p>
+            )}
           </div>
           <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{formatBRL(p.price)}</strong>
           <span className={p.isActive ? 'chip chip-success' : 'chip chip-muted'}>{p.isActive ? 'Ativo' : 'Inativo'}</span>
@@ -110,6 +138,7 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInici
               id: p.id, name: p.name,
               itens: p.itens.map(i => ({ procedureId: i.procedureId, quantidade: String(i.quantidade) })),
               preco: String(p.price).replace('.', ','), validade: p.validityDays ? String(p.validityDays) : '', ativo: p.isActive,
+              comissao: rascunhoDaComissao(p.comissao),
             })}>
               <Pencil size={15} />
             </button>
@@ -120,8 +149,8 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInici
   )
 }
 
-function Formulario({ inicial, procedimentos, aoTerminar }: {
-  inicial: Rascunho; procedimentos: { id: string; name: string; price: number }[]; aoTerminar: () => void
+function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
+  inicial: Rascunho; procedimentos: { id: string; name: string; price: number }[]; podeComissao: boolean; aoTerminar: () => void
 }) {
   const router = useRouter()
   const [r, setR] = useState(inicial)
@@ -140,11 +169,15 @@ function Formulario({ inicial, procedimentos, aoTerminar }: {
     setErro(null)
     const preco = numero(r.preco)
     if (!Number.isFinite(preco) || preco < 0 || !r.preco.trim()) { setErro('Informe o preço do pacote.'); return }
+    const comissao = podeComissao ? comissaoDoRascunho(r.comissao) : null
+    if (comissao && 'erro' in comissao) { setErro(comissao.erro); return }
     iniciar(async () => {
       const res = await salvarPacote({
         id: r.id, name: r.name, price: preco,
         itens: r.itens.map(i => ({ procedure_id: i.procedureId, quantity: Number(i.quantidade) })),
         validity_days: r.validade.trim() ? Number(r.validade) : null, is_active: r.ativo,
+        // Só quem pode manda a comissão: o campo ausente não mexe nela.
+        ...(comissao ? { comissao: comissao.entrada } : {}),
       })
       if (res.error) { setErro(res.error); return }
       aoTerminar()
@@ -203,10 +236,94 @@ function Formulario({ inicial, procedimentos, aoTerminar }: {
         <input type="checkbox" checked={r.ativo} onChange={e => mudar({ ativo: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 16, height: 16 }} />
         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>À venda</span>
       </label>
+      {podeComissao && <CamposDaComissao c={r.comissao} mudar={parte => mudar({ comissao: { ...r.comissao, ...parte } })} />}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={aoTerminar} disabled={salvando}>Cancelar</button>
         <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar pacote'}</button>
+      </div>
+    </div>
+  )
+}
+
+const VENDAS = [
+  { key: 'NENHUMA',      label: 'Nenhuma' },
+  { key: 'PERCENTAGE',   label: 'Percentual' },
+  { key: 'FIXED_AMOUNT', label: 'Valor fixo' },
+]
+const EXECUCOES = [
+  { key: 'REGRA',        label: 'Regra do profissional' },
+  { key: 'PERCENTAGE',   label: 'Percentual' },
+  { key: 'FIXED_AMOUNT', label: 'Valor fixo' },
+  { key: 'NENHUMA',      label: 'Nenhuma' },
+]
+
+/** O rascunho da tela → a entrada da action, ou o que falta preencher. */
+function comissaoDoRascunho(c: ComissaoDoRascunho): { entrada: ComissaoDoPacote } | { erro: string } {
+  const lerValor = (tipo: TipoDeRegra, texto: string, qual: string): number | string => {
+    const v = numero(texto)
+    if (!texto.trim() || !Number.isFinite(v) || v < 0) return `Informe o valor da comissão de ${qual}.`
+    if (tipo === 'PERCENTAGE' && v > 100) return `A comissão de ${qual} é de no máximo 100%.`
+    return v
+  }
+  let venda: ComissaoDoPacote['venda'] = null
+  if (c.venda !== 'NENHUMA') {
+    const v = lerValor(c.venda, c.vendaValor, 'venda')
+    if (typeof v === 'string') return { erro: v }
+    venda = { tipo: c.venda, valor: v }
+  }
+  if (c.execucao === 'PERCENTAGE' || c.execucao === 'FIXED_AMOUNT') {
+    const v = lerValor(c.execucao, c.execucaoValor, 'execução')
+    if (typeof v === 'string') return { erro: v }
+    return { entrada: { venda, execucao: { tipo: c.execucao, valor: v } } }
+  }
+  return { entrada: { venda, execucao: { tipo: c.execucao, valor: null } } }
+}
+
+/**
+ * A comissão do pacote (decisão do Heitor, 2026-10-30): a de VENDA, para quem
+ * vendeu, e a de EXECUÇÃO, para quem atende cada sessão. Mudar aqui vale para
+ * as próximas vendas — o pacote vendido guarda o retrato.
+ */
+function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: Partial<ComissaoDoRascunho>) => void }) {
+  const ajuda = { fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 } as const
+  const titulo = { fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', margin: 0 } as const
+  return (
+    <div role="group" aria-label="Comissão do pacote"
+      style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
+      <p className="overline">Comissão</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={titulo}>De venda — para quem vendeu</p>
+        <div role="group" aria-label="Comissão de venda">
+          <SegSelect ariaLabel="Comissão de venda" value={c.venda} options={VENDAS}
+            onSelect={k => mudar({ venda: k as VendaDoRascunho })} />
+        </div>
+        {c.venda !== 'NENHUMA' && (
+          <CampoDeValor tipo={c.venda} valor={c.vendaValor} onChange={v => mudar({ vendaValor: v })} rotulo="Valor da comissão de venda" />
+        )}
+        <p style={ajuda}>
+          {c.venda === 'NENHUMA'
+            ? 'Quem vende o pacote não recebe comissão pela venda.'
+            : c.venda === 'PERCENTAGE'
+              ? 'Sobre o valor vendido (com o desconto), liberada à medida que o pacote é pago; o estorno devolve.'
+              : 'Liberada à medida que o pacote é pago; o estorno devolve.'}
+        </p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={titulo}>De execução — para quem atende cada sessão</p>
+        <div role="group" aria-label="Comissão de execução">
+          <SegSelect ariaLabel="Comissão de execução" value={c.execucao} options={EXECUCOES}
+            onSelect={k => mudar({ execucao: k as ExecucaoDoPacote })} />
+        </div>
+        {(c.execucao === 'PERCENTAGE' || c.execucao === 'FIXED_AMOUNT') && (
+          <CampoDeValor tipo={c.execucao} valor={c.execucaoValor} onChange={v => mudar({ execucaoValor: v })} rotulo="Valor da comissão de execução" />
+        )}
+        <p style={ajuda}>
+          {c.execucao === 'REGRA' ? 'Cada sessão paga a comissão de quem atende, pela regra dele (Equipe ou Procedimentos).'
+            : c.execucao === 'PERCENTAGE' ? 'Sobre a parte da sessão no preço do pacote.'
+            : c.execucao === 'FIXED_AMOUNT' ? 'O mesmo valor a cada sessão atendida.'
+            : 'As sessões deste pacote não geram comissão para quem atende.'}
+        </p>
       </div>
     </div>
   )

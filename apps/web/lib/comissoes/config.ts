@@ -141,9 +141,73 @@ export function regraAplicavel(
     ?? null
 }
 
+// ─── A comissão do pacote (2026-10-30) ──────────────────────────────────────
+
+/**
+ * A comissão de um pacote, no cadastro dele (decisão do Heitor, 2026-10-30):
+ * - de VENDA, para quem vendeu — % do vendido ou valor fixo, liberada à medida
+ *   que o pacote é pago (a conta é do banco, `comissao_alvo`);
+ * - de EXECUÇÃO, para quem atende cada sessão — a regra do profissional (o de
+ *   sempre, e o padrão), % da parte da sessão, valor fixo por sessão ou nenhuma.
+ */
+export const EXECUCOES_DO_PACOTE = ['REGRA', 'PERCENTAGE', 'FIXED_AMOUNT', 'NENHUMA'] as const
+export type ExecucaoDoPacote = typeof EXECUCOES_DO_PACOTE[number]
+
+export interface ComissaoDoPacote {
+  venda:    Pick<RegraDeComissao, 'tipo' | 'valor'> | null
+  execucao: { tipo: ExecucaoDoPacote; valor: number | null }
+}
+
+export const COMISSAO_DO_PACOTE_PADRAO: ComissaoDoPacote = { venda: null, execucao: { tipo: 'REGRA', valor: null } }
+
+export const EntradaDaComissaoDoPacote = z.object({
+  venda:    Regra.nullable(),
+  execucao: z.union([
+    z.object({ tipo: z.enum(['REGRA', 'NENHUMA']), valor: z.null().optional().default(null) }),
+    z.object({ tipo: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']), valor: z.number().min(0).max(1_000_000) })
+      .refine(r => r.tipo !== 'PERCENTAGE' || r.valor <= 100, 'Percentual acima de 100%.'),
+  ]),
+})
+
+/** As colunas do banco (`service_packages` ou o retrato em `client_packages`) → a comissão do pacote. */
+export function comissaoDoPacoteDaLinha(l: {
+  comissao_venda_tipo?: unknown; comissao_venda_valor?: unknown; comissao_execucao?: unknown; comissao_execucao_valor?: unknown
+} | null | undefined): ComissaoDoPacote {
+  const tipoV = l?.comissao_venda_tipo
+  const venda = (tipoV === 'PERCENTAGE' || tipoV === 'FIXED_AMOUNT') && l?.comissao_venda_valor != null
+    ? { tipo: tipoV as TipoDeRegra, valor: Number(l.comissao_venda_valor) } : null
+  const tipoE = EXECUCOES_DO_PACOTE.includes(l?.comissao_execucao as ExecucaoDoPacote) ? l!.comissao_execucao as ExecucaoDoPacote : 'REGRA'
+  const comValor = tipoE === 'PERCENTAGE' || tipoE === 'FIXED_AMOUNT'
+  if (comValor && l?.comissao_execucao_valor == null) return { venda, execucao: { tipo: 'REGRA', valor: null } }
+  return { venda, execucao: { tipo: tipoE, valor: comValor ? Number(l!.comissao_execucao_valor) : null } }
+}
+
+/** "Venda: 10% · Execução: R$ 25,00 fixo por sessão". */
+export function rotuloDaComissaoDoPacote(c: ComissaoDoPacote): string {
+  const venda = c.venda ? rotuloDaRegra(c.venda) : 'nenhuma'
+  const e = c.execucao
+  const execucao = e.tipo === 'REGRA' ? 'regra de cada profissional'
+    : e.tipo === 'NENHUMA' ? 'nenhuma'
+    : e.tipo === 'PERCENTAGE' ? `${rotuloDaRegra({ tipo: 'PERCENTAGE', valor: e.valor ?? 0 })} da sessão`
+    : `${rotuloDaRegra({ tipo: 'FIXED_AMOUNT', valor: e.valor ?? 0 })} por sessão`
+  return `Venda: ${venda} · Execução: ${execucao}`
+}
+
+/**
+ * A regra da EXECUÇÃO de uma sessão de pacote: a do pacote, quando ele diz
+ * uma; "nenhuma" é sem comissão (nulo); "regra do profissional", a de sempre.
+ */
+export function regraDaSessaoDePacote(
+  execucao: ComissaoDoPacote['execucao'], regras: RegraDeComissao[], procedureId: string | null, gerais: ComissoesGerais = new Map(),
+): RegraDeComissao | null {
+  if (execucao.tipo === 'NENHUMA') return null
+  if (execucao.tipo === 'REGRA' || execucao.valor == null) return regraAplicavel(regras, procedureId, gerais)
+  return { procedure_id: procedureId, tipo: execucao.tipo, valor: execucao.valor }
+}
+
 // ─── As linhas de um atendimento ─────────────────────────────────────────────
 
-export type OrigemDaComissao = 'AVULSO' | 'PLANO' | 'PACOTE' | 'PRE_PAGO' | 'PRODUTO'
+export type OrigemDaComissao = 'AVULSO' | 'PLANO' | 'PACOTE' | 'PACOTE_VENDA' | 'PRE_PAGO' | 'PRODUTO'
 
 /** Um procedimento executado e o preço que serve de base à comissão dele. */
 export interface ItemExecutado { procedure_id: string | null; preco: number }

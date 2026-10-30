@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { PacotesCatalogo } from '@/components/admin/pacotes-catalogo'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
+import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 
 /**
  * Vendas → Pacotes, o corpo dos dois portais. O catálogo é da REDE: edita quem
@@ -12,6 +13,8 @@ import { catalogoDePacotes } from '@/lib/pacotes/leitura'
  */
 export async function PacotesDaRede({ ctx, unidadeId, busca }: { ctx: TenantContext; unidadeId?: string; busca?: string }) {
   const podeEditar = can(ctx, 'procedures', 'MANAGE') && ctx.branchId === null
+  // A comissão do pacote (2026-10-30) é do financeiro, como a do procedimento.
+  const podeComissao = podeEditar && podeMudarComissaoDoProcedimento(ctx)
   const [pacotes, procedimentos] = await Promise.all([
     catalogoDePacotes(ctx.tenantId!, { branchId: unidadeId ?? null }),
     podeEditar
@@ -34,6 +37,7 @@ export async function PacotesDaRede({ ctx, unidadeId, busca }: { ctx: TenantCont
         pacotes={pacotes}
         procedimentos={((procedimentos ?? []) as { id: string; name: string; price: number | null }[]).map(p => ({ id: p.id, name: p.name, price: Number(p.price ?? 0) }))}
         podeEditar={podeEditar}
+        podeComissao={podeComissao}
         buscaInicial={busca}
       />
     </div>

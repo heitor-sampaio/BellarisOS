@@ -2,7 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import {
-  configDaLinha, linhasDaComissao, precoDaSessaoDePacote,
+  configDaLinha, linhasDaComissao, precoDaSessaoDePacote, comissaoDoPacoteDaLinha, regraDaSessaoDePacote,
   type ConfigDeComissao, type RegraDeComissao, type TaxaDePagamento, type TipoDeRegra, type MetodoComTaxa,
   type ItemExecutado, type LinhaDeComissao, type ComissoesGerais,
 } from './config'
@@ -128,8 +128,9 @@ export async function regrasDaRede(tenantId: string, profissionalId?: string): P
  * - avulso: o preço do atendimento;
  * - sessão de plano: cada procedimento da sessão, com o preço dele no plano
  *   (antes a regra do primeiro procedimento valia sobre a sessão inteira);
- * - sessão de pacote: preço do pacote ÷ sessões (antes, o preço que o
- *   navegador mandou ao agendar).
+ * - sessão de pacote: a parte da sessão no rateio da venda (antes, o preço que o
+ *   navegador mandou ao agendar), com a execução do PACOTE quando ele a diz
+ *   (2026-10-30: % da sessão, valor fixo ou nenhuma; senão, a regra de sempre).
  */
 export async function linhasDoAtendimento(tenantId: string, appt: {
   id: string; procedure_id: string | null; professional_id: string; price: number; treatment_plan_id: string | null
@@ -140,9 +141,10 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
   // inteira (são poucas por rede), porque os procedimentos de uma sessão de
   // plano ou de pacote só se conhecem abaixo.
   const gerais = await comissoesGeraisDaRede(tenantId)
-  if (!regras.length && !gerais.size) return []
+  const semRegraNenhuma = !regras.length && !gerais.size
 
   if (appt.treatment_plan_id) {
+    if (semRegraNenhuma) return []
     const sessao = await ler(admin.from('treatment_plan_sessions')
       .select('id, treatment_plan_session_procedures(procedure_id, price, sort_order)')
       .eq('plan_id', appt.treatment_plan_id).eq('appointment_id', appt.id).maybeSingle(), 'buscar a sessão do plano')
@@ -154,11 +156,13 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
     return linhasDaComissao(itens, regras, 'PLANO', appt.treatment_plan_id, gerais)
   }
 
+  // A sessão de pacote vem antes do "sem regra nenhuma": o PACOTE pode dizer a
+  // comissão da execução (2026-10-30), valendo para quem não tem regra.
   const sessaoDePacote = await ler(admin.from('package_sessions')
-    .select('procedure_id, preco, client_packages!inner(price, total_sessions, service_packages!inner(price, total_sessions, procedure_id))')
+    .select('procedure_id, preco, client_packages!inner(price, total_sessions, comissao_execucao, comissao_execucao_valor, service_packages!inner(price, total_sessions, procedure_id))')
     .eq('appointment_id', appt.id).maybeSingle(), 'buscar a sessão do pacote')
   const doCliente = sessaoDePacote?.client_packages as unknown as {
-    price: number | null; total_sessions: number
+    price: number | null; total_sessions: number; comissao_execucao: string | null; comissao_execucao_valor: number | null
     service_packages: { price: number; total_sessions: number; procedure_id: string | null } | null
   } | null
   const pacote = doCliente?.service_packages
@@ -173,11 +177,17 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
           Number(vendido ? doCliente.price : pacote.price),
           Number(vendido ? doCliente.total_sessions : pacote.total_sessions),
         )
-    return linhasDaComissao([{
-      procedure_id: (sessaoDePacote.procedure_id as string | null) ?? pacote.procedure_id ?? appt.procedure_id,
-      preco,
-    }], regras, 'PACOTE', null, gerais)
+    const procedimento = (sessaoDePacote.procedure_id as string | null) ?? pacote.procedure_id ?? appt.procedure_id
+    // A execução é a do RETRATO da venda (mudar o catálogo vale para as próximas).
+    const { execucao } = comissaoDoPacoteDaLinha(doCliente)
+    const regra = regraDaSessaoDePacote(execucao, regras, procedimento, gerais)
+    if (!regra) return []
+    return [{
+      procedure_id: procedimento, origem: 'PACOTE', treatment_plan_id: null,
+      regra_tipo: regra.tipo, regra_valor: regra.valor, preco: Math.max(0, Math.round(preco * 100) / 100),
+    }]
   }
+  if (semRegraNenhuma) return []
 
   // Procedimento pré-pago: a parte desta UNIDADE no preço vendido (o banco liga
   // a linha à venda na conclusão e libera na proporção do que a venda recebeu).
@@ -211,6 +221,8 @@ export interface LancamentoDoExtrato {
   appointmentId: string | null; scheduledAt: string | null
   cliente: string | null; procedimento: string | null; origem: string | null
   preco: number | null; regraTipo: string | null; regraValor: number | null
+  /** O pacote da linha (a venda ou a sessão dele), quando é de pacote. */
+  pacote: string | null
 }
 
 export interface Fechamento {
@@ -256,6 +268,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     cliente: (l.cliente as string | null) ?? null, procedimento: (l.procedimento as string | null) ?? null,
     origem: (l.origem as string | null) ?? null, preco: l.preco == null ? null : Number(l.preco),
     regraTipo: (l.regra_tipo as string | null) ?? null, regraValor: l.regra_valor == null ? null : Number(l.regra_valor),
+    pacote: (l.pacote as string | null) ?? null,
   }))
 }
 

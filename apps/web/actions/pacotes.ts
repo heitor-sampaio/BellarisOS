@@ -18,6 +18,8 @@ import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lanca
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
+import { EntradaDaComissaoDoPacote } from '@/lib/comissoes/config'
+import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -32,6 +34,8 @@ const EntradaDoPacote = z.object({
   price:         z.number().min(0).max(1_000_000),
   validity_days: z.number().int().min(1).max(3650).nullable(),
   is_active:     z.boolean(),
+  /** A comissão do pacote (2026-10-30). Ausente = não mexe nela. */
+  comissao:      EntradaDaComissaoDoPacote.optional(),
 }).refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) >= 2, 'Um pacote tem pelo menos 2 sessões.')
   .refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) <= 100, 'No máximo 100 sessões num pacote.')
 
@@ -45,6 +49,9 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
     const lido = EntradaDoPacote.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const p = lido.data
+    // Quanto se paga de comissão é do financeiro (§9.7), como a do procedimento:
+    // conferido ANTES de gravar, para a recusa não deixar meio cadastro.
+    if (p.comissao && !podeMudarComissaoDoProcedimento(ctx)) return { error: 'Seu cargo não muda a comissão dos pacotes.' }
 
     // O mesmo procedimento em duas linhas vira uma só, somada.
     const porProcedimento = new Map<string, number>()
@@ -57,6 +64,7 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
     await gravar(createAdminClient().rpc('pacote_salvar', {
       p_tenant: ctx.tenantId!, p_id: p.id ?? null, p_nome: p.name, p_preco: Math.round(p.price * 100) / 100,
       p_validade: p.validity_days, p_ativo: p.is_active, p_itens: itens,
+      p_comissao: p.comissao ?? null,
     }), 'salvar o pacote')
     revalidatePath('/admin/pacotes')
     revalidatePath('/[slug]/pacotes', 'page')

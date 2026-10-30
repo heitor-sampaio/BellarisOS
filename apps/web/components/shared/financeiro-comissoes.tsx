@@ -17,7 +17,16 @@ import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/li
  */
 
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno' }
-const ORIGEM: Record<string, string> = { AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Pacote', PRE_PAGO: 'Pré-pago', PRODUTO: 'Venda de produto' }
+const ORIGEM: Record<string, string> = {
+  AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Sessão de pacote', PACOTE_VENDA: 'Venda de pacote', PRE_PAGO: 'Pré-pago', PRODUTO: 'Venda de produto',
+}
+/** A origem da linha, com o nome do pacote quando é dele (2026-10-30): "Venda do pacote X", "Sessão do pacote X". */
+const origemDe = (l: LancamentoDoExtrato) => {
+  if (!l.origem) return ''
+  if (l.pacote && l.origem === 'PACOTE_VENDA') return `Venda do pacote ${l.pacote}`
+  if (l.pacote && l.origem === 'PACOTE') return `Sessão do pacote ${l.pacote}`
+  return ORIGEM[l.origem] ?? l.origem
+}
 const METODOS = [
   { key: 'PIX', label: 'Pix' }, { key: 'CASH', label: 'Dinheiro' },
   { key: 'DEBIT_CARD', label: 'Débito' }, { key: 'CREDIT_CARD', label: 'Crédito' },
@@ -64,7 +73,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
       ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Situação'],
       ...p.extrato.map(l => [
         data(l.releasedAt), nome.get(l.professionalId) ?? '', unidade.get(l.branchId) ?? '', data(l.scheduledAt),
-        l.cliente ?? '', l.procedimento ?? '', l.origem ? ORIGEM[l.origem] ?? l.origem : '',
+        l.cliente ?? '', l.procedimento ?? '', origemDe(l),
         l.preco == null ? '' : l.preco.toFixed(2).replace('.', ','), regra(l), TIPO[l.kind], l.motivo ?? '',
         l.amount.toFixed(2).replace('.', ','), l.status === 'PAID' ? 'Paga' : 'A pagar',
       ]),
@@ -244,7 +253,7 @@ function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
             </p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {data(l.releasedAt)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}
-              {l.origem ? ` · ${ORIGEM[l.origem] ?? l.origem}` : ''}
+              {l.origem ? ` · ${origemDe(l)}` : ''}
               {l.preco != null ? ` · base ${formatBRL(l.preco)} · ${regra(l)}` : ''}
             </p>
           </div>

@@ -53,6 +53,32 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   maquininha da rede; não desconta insumos. O extrato (`comissoes_extrato`)
   diz a cliente e o produto; o fechamento é o de sempre. Prova:
   `e2e/vendas-produto.spec.ts` ("a comissão da venda de produto").
+- **A comissão do PACOTE é do cadastro de cada pacote** (decisão do Heitor,
+  2026-10-30; migration `20261029001501`): Vendas → Pacotes, seção "Comissão"
+  do formulário (só para quem tem `financial: MANAGE`, da rede e com
+  comissões no plano — `podeMudarComissaoDoProcedimento`; `salvarPacote`
+  recusa o campo `comissao` de quem não pode, antes de gravar). Duas, cada uma
+  ligada ou não, gravadas em `service_packages` e RETRATADAS em
+  `client_packages` na venda (mudar o catálogo vale para as próximas):
+  - **De venda**, para quem vendeu (`sold_by`): % do VENDIDO (com o desconto)
+    ou valor fixo. A linha (`origem = 'PACOTE_VENDA'`, `client_package_id`,
+    sem atendimento) nasce em `pacote_vender`, antes do dinheiro, e é SEMPRE do
+    modo "quando paga": à vista libera na hora; a receber, na proporção do que
+    entrou (pacote de R$ 800 com 10%: R$ 40 a cada parcela de R$ 400); o
+    estorno devolve a parte dele. É o ramo do pacote em `comissao_alvo`.
+    Retrata a taxa da maquininha da rede; não desconta insumos.
+  - **De execução**, para quem atende cada sessão (`comissao_execucao`):
+    `REGRA` (a regra do profissional — o padrão, e o que valia para todo pacote
+    antes), `PERCENTAGE` (da parte da sessão no rateio), `FIXED_AMOUNT` (por
+    sessão) ou `NENHUMA` (sem linha). `linhasDoAtendimento` lê o retrato
+    (`regraDaSessaoDePacote`) — vale também para quem não tem regra nenhuma —,
+    e o modo da rede (no atendimento × quando paga) segue valendo para ela.
+  - **"Abater do pacote"** segue a execução do pacote: com `REGRA`, a linha
+    avulsa vira a de pacote com a mesma regra (o de antes); com a do pacote, a
+    avulsa é CANCELADA e nasce UMA linha com a regra dele (ou nenhuma).
+  - O extrato (`comissoes_extrato`, coluna `pacote`) diz "Venda do pacote X" e
+    "Sessão do pacote X"; o fechamento é o de sempre.
+  - Prova: `e2e/comissoes-pacote.spec.ts`.
 - **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
   oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
   chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`
@@ -74,7 +100,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - **A base é lida no servidor** (`linhasDoAtendimento`,
     `lib/comissoes/leitura.ts`): avulso = preço do atendimento; sessão de plano
     = CADA procedimento da sessão com o preço dele no plano (e a regra dele);
-    sessão de pacote = a parte DELA no rateio da venda (`package_sessions.preco`), e a regra do procedimento dela. Antes a regra do primeiro
+    sessão de pacote = a parte DELA no rateio da venda (`package_sessions.preco`), e a regra do procedimento dela — ou a execução que o pacote diz (acima). Antes a regra do primeiro
     procedimento valia sobre a sessão inteira, e o pacote usava o preço que o
     navegador mandou.
   - Os insumos da linha são o custo dos movimentos do atendimento (a conta de

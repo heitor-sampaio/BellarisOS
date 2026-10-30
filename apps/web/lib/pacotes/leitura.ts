@@ -4,24 +4,28 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { composicaoDoPacote, type ItemDoPacote } from './rateio'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
+import { comissaoDoPacoteDaLinha, type ComissaoDoPacote } from '@/lib/comissoes/config'
 
 export interface ItemDoCatalogo { procedureId: string; procedureName: string; quantidade: number; precoTabela: number }
 
 export interface PacoteDoCatalogoLido {
   id: string; name: string; price: number; totalSessions: number; validityDays: number | null
   isActive: boolean; itens: ItemDoCatalogo[]; composicao: string
+  /** A comissão de venda e de execução do pacote (2026-10-30). */
+  comissao: ComissaoDoPacote
 }
 
 /** O catálogo de pacotes: da rede (e os da unidade, quando houver), com os itens. */
 export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: string | null; soAtivos?: boolean } = {}): Promise<PacoteDoCatalogoLido[]> {
   let q = createAdminClient().from('service_packages')
-    .select('id, name, price, total_sessions, validity_days, is_active, service_package_items(procedure_id, quantity, sort_order, procedures(name, price))')
+    .select('id, name, price, total_sessions, validity_days, is_active, comissao_venda_tipo, comissao_venda_valor, comissao_execucao, comissao_execucao_valor, service_package_items(procedure_id, quantity, sort_order, procedures(name, price))')
     .eq('tenant_id', tenantId)
   if (opcoes.soAtivos) q = q.eq('is_active', true)
   if (opcoes.branchId) q = q.or(`branch_id.is.null,branch_id.eq.${opcoes.branchId}`)
   const linhas = await ler(q.order('name'), 'carregar o catálogo de pacotes')
   return ((linhas ?? []) as unknown as {
     id: string; name: string; price: number; total_sessions: number; validity_days: number | null; is_active: boolean
+    comissao_venda_tipo: string | null; comissao_venda_valor: number | null; comissao_execucao: string; comissao_execucao_valor: number | null
     service_package_items: { procedure_id: string; quantity: number; sort_order: number; procedures: { name: string; price: number | null } | null }[]
   }[]).map(p => {
     const itens = [...(p.service_package_items ?? [])].sort((a, b) => a.sort_order - b.sort_order).map(i => ({
@@ -31,6 +35,7 @@ export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: s
     return {
       id: p.id, name: p.name, price: Number(p.price), totalSessions: p.total_sessions,
       validityDays: p.validity_days, isActive: p.is_active, itens, composicao: composicaoDoPacote(itens),
+      comissao: comissaoDoPacoteDaLinha(p),
     }
   })
 }
