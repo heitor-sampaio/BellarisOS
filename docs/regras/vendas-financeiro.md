@@ -399,6 +399,13 @@ o procedimento avulso pago antes.
   `internal_credits.amount` — concessão positiva, uso NEGATIVO com o
   `transaction_id` que o consumiu. Estornar um pagamento feito com crédito
   devolve o crédito.
+- **A cliente vê o saldo do crédito no app** (D-17, decisão do Heitor,
+  2026-10-30): o Financeiro do portal mostra "Crédito na clínica" com o saldo
+  da ficha da clínica do ENDEREÇO (`ctx.clientId`), só quando é maior que
+  zero — `getCreditoInternoDoCliente` (`lib/metrics/unidade.ts`, a conta de
+  `metrics_financeiro_do_cliente`, a mesma da ficha). Só o saldo: os
+  lançamentos do crédito (com a descrição interna) ficam com a equipe.
+  Prova: `e2e/portal-cliente-credito-interno.spec.ts`.
 - **Estornar pede confirmação** (`ConfirmarEstorno`, nos financeiros da rede e
   da unidade; 2026-10-20): mostra o lançamento e o valor e avisa que não se
   desfaz. Era um clique só.

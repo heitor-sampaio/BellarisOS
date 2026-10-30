@@ -46,6 +46,19 @@ export async function getDoCliente(tenantId: string, clientId: string): Promise<
   }
 }
 
+/**
+ * O saldo do crédito interno da cliente (concessões − usos), do banco — a
+ * mesma conta da aba Financeiro da ficha (`metrics_financeiro_do_cliente`).
+ * É o que o Financeiro do app mostra (D-17, 2026-10-30).
+ */
+export async function getCreditoInternoDoCliente(tenantId: string, clientId: string): Promise<number> {
+  const data = await ler(createAdminClient().rpc('metrics_financeiro_do_cliente', {
+    p_tenant: tenantId, p_client: clientId, p_profissional: null,
+  }), 'calcular o crédito interno do cliente')
+  const d = ((data ?? []) as { credito: number | string | null }[])[0]
+  return Number(d?.credito ?? 0)
+}
+
 /** Custo × saldo das unidades dadas (o "valor em estoque"). */
 export async function getValorEmEstoque(branchIds: string[]): Promise<number> {
   const data = await ler(createAdminClient().rpc('metrics_valor_em_estoque', {

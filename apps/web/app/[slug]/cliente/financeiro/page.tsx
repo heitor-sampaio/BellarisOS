@@ -1,7 +1,8 @@
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { getDoCliente } from '@/lib/metrics/unidade'
+import { getDoCliente, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
+import { formatBRL } from '@estetica-os/utils'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 type TxRow = {
@@ -60,7 +61,12 @@ export default async function ClientFinancialPage() {
   // da ficha dele na clínica. Somar a lista aqui contava o estornado.
   const ficha = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).single(), 'buscar o cliente')
   if (!ficha) throw new Error('Cadastro do cliente não encontrado.')
-  const total = (await getDoCliente(ficha.tenant_id as string, ctx.clientId!)).ltv
+  // O crédito interno é o da ficha DESTA clínica (ctx.clientId é a do
+  // endereço, §5): D-17, 2026-10-30.
+  const [{ ltv: total }, credito] = await Promise.all([
+    getDoCliente(ficha.tenant_id as string, ctx.clientId!),
+    getCreditoInternoDoCliente(ficha.tenant_id as string, ctx.clientId!),
+  ])
 
   return (
     <div>
@@ -81,6 +87,19 @@ export default async function ClientFinancialPage() {
           R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </p>
       </div>
+
+      {/* Crédito interno (D-17): só quando há saldo — zero não é informação. */}
+      {credito > 0 && (
+        <div data-credito-interno className="card" style={{ padding: '16px 22px', marginTop: -12, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Crédito na clínica</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Use como forma de pagamento nos próximos atendimentos.</p>
+          </div>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--success)', letterSpacing: '-0.01em' }}>
+            {formatBRL(credito)}
+          </p>
+        </div>
+      )}
 
       {rows.length === 0 && (
         <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', padding: '48px 0' }}>
