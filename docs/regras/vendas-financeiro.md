@@ -297,6 +297,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     `20261029001105`). Nos dois financeiros (a rede, cada unidade no recorte e
     a unidade), no escopo do financeiro ("só os meus": o ligado aos
     atendimentos dela). Prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
+- **O total da LISTA do financeiro tem sinal** (J-48, 2026-10-30): "2
+  lançamentos · resultado −R$ 2.400,00" — o pago que entrou menos o pago que
+  saiu do que está filtrado na tela, sem os dois lados do estorno. A conta é
+  `resultadoDaLista` (`lib/metrics/resultado.ts`, em centavos), sobre a lista
+  lida inteira (`lerTodas`); a tela fazia o reduce e tirava o sinal com
+  `Math.abs` (só a cor dizia que era negativo). Prova:
+  `e2e/financeiro-lista-total-com-sinal.spec.ts`, `tests/metrics-resultado-da-lista.test.ts`.
 - **O lançamento manual pago tem a DATA do pagamento** (2026-10-21, decisão
   do Heitor): "Data do pagamento" no Novo lançamento (hoje por padrão, nunca no
   futuro — a tela limita e `pagoNoDia`, em `lib/financeiro/lancamento.ts`,

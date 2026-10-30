@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { SegSelect } from '@/components/shared/seg-select'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { resultadoDaLista } from '@/lib/metrics/resultado'
 
 export interface Transaction {
   id:             string
@@ -113,10 +114,8 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
       })
   }, [transactions, filterType, filterPaid, search, sortDir])
 
-  const totalFiltered = filtered.reduce((acc, tx) => {
-    if (!tx.is_paid) return acc
-    return tx.type === 'INCOME' ? acc + tx.amount : acc - tx.amount
-  }, 0)
+  // O resultado do que está na tela, com sinal (J-48) — a conta mora em lib/metrics.
+  const totalFiltered = resultadoDaLista(filtered)
 
   const thStyle: React.CSSProperties = {
     fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
@@ -184,11 +183,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
         </button>
 
         {/* Resultado filtrado */}
-        <span style={{
+        <span data-total-da-lista style={{
           marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', fontWeight: 800,
           color: totalFiltered >= 0 ? 'var(--success)' : 'var(--danger)',
         }}>
-          {filtered.length} lançamento{filtered.length !== 1 ? 's' : ''} · {fmtBRL(Math.abs(totalFiltered))}
+          {filtered.length} lançamento{filtered.length !== 1 ? 's' : ''} · resultado {totalFiltered < 0 ? '−' : ''}{fmtBRL(Math.abs(totalFiltered))}
         </span>
       </div>
 

@@ -170,3 +170,22 @@ export function taxaDeRetencao(r: { clientsServed: number; returningClients: num
 export function giroDoEstoque(n: { consumo: number; valorEmEstoque: number }): number | null {
   return percent(n.consumo, n.valorEmEstoque)
 }
+
+/**
+ * O total da LISTA do financeiro (o que está filtrado na tela, J-48 de
+ * 2026-10-30): o pago que entrou menos o pago que saiu, COM SINAL, sem os dois
+ * lados do estorno (a regra de metrics_core) — em centavos. A tela fazia o
+ * reduce ela mesma e tirava o sinal com Math.abs: "6 lançamentos · R$ 2.400,00"
+ * era um resultado negativo. A lista é a da tela, lida inteira (lerTodas).
+ */
+export function resultadoDaLista(linhas: {
+  type: 'INCOME' | 'EXPENSE'; amount: number; is_paid: boolean; notes?: string | null; category?: string | null
+}[]): number {
+  let centavos = 0
+  for (const l of linhas) {
+    if (!l.is_paid || (l.notes ?? '') === 'Estornada' || (l.category ?? '') === 'Estorno') continue
+    const v = Math.round(Number(l.amount) * 100)
+    centavos += l.type === 'INCOME' ? v : -v
+  }
+  return centavos / 100
+}
