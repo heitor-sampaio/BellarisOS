@@ -149,3 +149,24 @@ export function resumoDoFunil(etapas: FunnelStage[]) {
     conversaoPct: conversaoDasOportunidades({ total, ganhos, temGanho }),
   }
 }
+
+/**
+ * As taxas que a tela de Relatórios dividia por conta própria (decisão do
+ * Heitor, 2026-10-29; §13.1). Mudança de lugar: os números não mudam. Sem
+ * denominador, nulo (a tela mostra o zero de sempre).
+ */
+
+/** Taxa de conclusão da agenda: concluídos ÷ agendamentos do período, em %. */
+export function taxaDeConclusao(n: { concluidos: number; total: number }): number | null {
+  return percent(n.concluidos, n.total)
+}
+
+/** Retenção: as clientes atendidas que já tinham vindo antes ÷ as atendidas no período, em %. */
+export function taxaDeRetencao(r: { clientsServed: number; returningClients: number }): number | null {
+  return percent(r.returningClients, r.clientsServed)
+}
+
+/** Giro do estoque: o consumo de insumo do período ÷ o valor em estoque, em %. */
+export function giroDoEstoque(n: { consumo: number; valorEmEstoque: number }): number | null {
+  return percent(n.consumo, n.valorEmEstoque)
+}

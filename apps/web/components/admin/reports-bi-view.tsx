@@ -21,7 +21,10 @@ import {
   CHART_COLORS, fmtBRLShort, fmtBRLFull,
   type TableColumn,
 } from './reports-charts'
-import { resultadoDoPeriodo, variacaoDaMargemPp, mediaPorExecucao, participacaoPct, type EstoqueNoResultado } from '@/lib/metrics/resultado'
+import {
+  resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque,
+  type EstoqueNoResultado,
+} from '@/lib/metrics/resultado'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -255,9 +258,10 @@ function SCard({
 }
 
 // -- Delta helper --------------------------------------------------------------
+// A variação é a de lib/metrics (`variacaoPercentual`, §13.1): sem base, nula.
 function pctDelta(curr: number, prev: number): number | null {
-  if (prev === 0) return null
-  return ((curr - prev) / prev) * 100
+  const v = variacaoPercentual(curr, prev)
+  return v === null ? null : (v.up ? v.pct : -v.pct)
 }
 
 // -- Formatters ----------------------------------------------------------------
@@ -628,7 +632,8 @@ function TabAgenda(p: ReportsBiProps) {
   const completed  = core.appointmentsCompleted
   const cancelled  = core.appointmentsCancelled
   const noShow     = core.appointmentsNoShow
-  const rate       = total > 0 ? (completed / total) * 100 : 0
+  // A divisão mora em lib/metrics (§13.1, 2026-10-29); a tela só formata.
+  const rate       = taxaDeConclusao({ concluidos: completed, total }) ?? 0
 
   const byStatus = [
     { name: 'Concluído',      value: completed },
@@ -659,7 +664,7 @@ function TabAgenda(p: ReportsBiProps) {
     completed: u.concluidos,
     cancelled: u.cancelados,
     noShow:    u.faltas,
-    rate:      u.total > 0 ? (u.concluidos / u.total) * 100 : 0,
+    rate:      taxaDeConclusao({ concluidos: u.concluidos, total: u.total }) ?? 0,
   }))
 
   return (
@@ -717,7 +722,7 @@ function TabClientes(p: ReportsBiProps) {
   // janela" — media recorrência, não retenção, e em janelas curtas dava zero
   // por construção.
   const { clientsServed, returningClients, firstTimeClients } = retention
-  const taxaRetencao = clientsServed > 0 ? (returningClients / clientsServed) * 100 : 0
+  const taxaRetencao = taxaDeRetencao(retention) ?? 0
 
   // O ticket médio: a média do que as clientes que pagaram gastaram no período
   // (era o "Gasto médio" desta aba, o mesmo número; agora UM indicador com o
@@ -1021,7 +1026,7 @@ function TabEstoque(p: ReportsBiProps) {
   const totalStockValue = e.valorEmEstoque
   // Consumo ao custo do MOVIMENTO, a mesma conta do giro do dashboard.
   const consumoValue    = r.consumoTotal
-  const giro            = totalStockValue > 0 ? (consumoValue / totalStockValue) * 100 : 0
+  const giro            = giroDoEstoque({ consumo: consumoValue, valorEmEstoque: totalStockValue }) ?? 0
   const criticos        = e.criticos
   const zerados         = e.zerados
   const topConsumed     = e.maisConsumidos.map(x => ({ name: x.nome, value: x.valor }))

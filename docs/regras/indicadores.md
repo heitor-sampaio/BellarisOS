@@ -85,6 +85,13 @@
     procedimento, também moram em `lib/metrics/resultado.ts`
     (`mediaPorAtendimento`, `mediaPorExecucao`, `participacaoPct`): a tela
     dividia por conta própria até a frente F (`tests/metrics-medias-das-tabelas`
+    trava). **As taxas dos Relatórios também** (decisão do Heitor, 2026-10-29):
+    a taxa de conclusão da agenda (no total e por unidade, `taxaDeConclusao`),
+    a retenção (`taxaDeRetencao`), o giro do estoque (`giroDoEstoque`), a
+    conversão por vendedor do Comercial (`conversaoDasOportunidades`, em
+    `getPainelComercial`) e a variação contra o período anterior dos cartões
+    (`variacaoPercentual`) moram em `lib/metrics/resultado.ts`; a tela só
+    formata. Os números não mudaram (`tests/metrics-divisoes-dos-relatorios`
     trava).
   - **Lucro e margem também moram em lib/metrics** (`resultadoDoPeriodo`,
     `variacaoDaMargemPp` em `lib/metrics/resultado.ts`): **lucro = receita paga
