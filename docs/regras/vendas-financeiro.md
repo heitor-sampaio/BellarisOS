@@ -450,6 +450,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   como "a vencer", sem botão, e se recebe no financeiro. Antes o banner
   oferecia "Receber R$ 600" de um plano parcelado: cobrança em dobro (a
   simulação de 2026-10-20 achou). Prova: `e2e/plano-recebimento.spec.ts`.
+- **A tela do plano FECHADO mostra o dinheiro e as sessões** (J-42,
+  2026-10-30): "Valor do plano", "Recebido" e "A receber" (contados no banco,
+  `metrics_financeiro_do_plano` → `getFinanceiroDoPlano`,
+  `lib/metrics/plano.ts`; o recebido é a regra única de receita), cada
+  lançamento — entrada e "Parcela 2/3", com "Pago em … · Pix", "A vencer em
+  …" ou "Vencida em … · cobrada no check-in" — e "1 de 3 sessões feitas · 1
+  agendada". Dizia só "O que estiver em aberto é recebido no check-in", e o
+  check-in só cobra o que venceu. Migration `20261029001801`. Prova:
+  `e2e/plano-tela-mostra-o-pago.spec.ts`.
 - **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
   lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
   lançamento é de R$ 0 e sem forma de pagamento.

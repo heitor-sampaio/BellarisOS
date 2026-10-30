@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation'
 import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CreditCard, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
 import {
   getPlanosDoCliente, salvarPlanoNovo, salvarPlanoDoCliente, getPlanoParaEditar,
-  proposeTreatmentPlan, getCheckoutPlan, vincularClienteAoPlano, buscarClientesParaPlano,
+  proposeTreatmentPlan, getCheckoutPlan, vincularClienteAoPlano, buscarClientesParaPlano, getResumoDoPlano,
 } from '@/actions/treatment-plans'
+import type { FinanceiroDoPlano, LancamentoDoPlano } from '@/lib/metrics/plano'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { endOfDayTZ } from '@/lib/datetime'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -423,11 +426,10 @@ export function PlanejamentoTratamento({
         </div>
       )}
 
-      {fechado && aberto.status !== 'CANCELLED' && (
-        <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
-          <CheckCircle2 size={14} /> Plano aceito. O que estiver em aberto é recebido no check-in do atendimento.
-        </p>
-      )}
+      {/* O plano fechado diz o que foi pago, o que falta e as sessões (J-42).
+          Dizia só "O que estiver em aberto é recebido no check-in", e o
+          check-in só cobra o que VENCEU. */}
+      {fechado && aberto.status !== 'CANCELLED' && <ResumoDoPlano key={`resumo-${aberto.id}`} planId={aberto.id} />}
 
       {/* Checkout sobre o planejamento, como na tela do atendimento. */}
       {checkout && (
@@ -452,6 +454,96 @@ export function PlanejamentoTratamento({
         </JanelaModal>
       )}
 
+    </div>
+  )
+}
+
+// -- O dinheiro e as sessões do plano fechado (J-42) ---------------------------
+
+const DIA = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })
+
+function rotuloDoLancamento(l: LancamentoDoPlano): string {
+  if (l.parcelaNumero && l.parcelaTotal) return `Parcela ${l.parcelaNumero}/${l.parcelaTotal}`
+  if (/entrada/i.test(l.descricao ?? '')) return 'Entrada'
+  return 'Pagamento'
+}
+
+function situacaoDoLancamento(l: LancamentoDoPlano): { texto: string; cor: string } {
+  if (l.pago) {
+    const quando = l.pagoEm ? ` em ${DIA.format(new Date(l.pagoEm))}` : ''
+    return { texto: `Pago${quando} · ${rotuloDaForma(l.forma, l.cartaoVezes)}`, cor: 'var(--success)' }
+  }
+  if (!l.vencimento) return { texto: 'A receber', cor: 'var(--warning)' }
+  const venceu = new Date(l.vencimento).getTime() <= endOfDayTZ(new Date()).getTime()
+  return venceu
+    ? { texto: `Vencida em ${DIA.format(new Date(l.vencimento))} · cobrada no check-in`, cor: 'var(--danger)' }
+    : { texto: `A vencer em ${DIA.format(new Date(l.vencimento))}`, cor: 'var(--text-muted)' }
+}
+
+function ResumoDoPlano({ planId }: { planId: string }) {
+  const [resumo, setResumo] = useState<FinanceiroDoPlano | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+  useEffect(() => {
+    let vivo = true
+    getResumoDoPlano(planId)
+      .then(res => { if (vivo) { if (res.resumo) setResumo(res.resumo); else setErro(res.error ?? 'Não foi possível ler o plano.') } })
+      .catch(() => { if (vivo) setErro('Não foi possível ler o pagamento do plano.') })
+    return () => { vivo = false }
+  }, [planId])
+
+  if (erro) return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>{erro}</p>
+  if (!resumo) return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando o pagamento do plano…</p>
+
+  const { sessoes } = resumo
+  // Hierarquia por preenchimento: o número que pede ação é o preenchido.
+  const destaque = resumo.aReceber > 0 ? 'aReceber' : 'recebido'
+  const caixa = (chave: 'valor' | 'recebido' | 'aReceber', titulo: string, valor: number, attr: Record<string, string>) => {
+    const cheio = destaque === chave
+    return (
+      <div style={{
+        flex: '1 1 140px', padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+        background: cheio ? 'var(--brand)' : 'var(--surface)', border: cheio ? 'none' : '1px solid var(--border)',
+      }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: cheio ? 'var(--on-brand)' : 'var(--text-faint)' }}>{titulo}</p>
+        <p {...attr} style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em', color: cheio ? 'var(--on-brand)' : 'var(--text)' }}>{fmtBRL(valor)}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div data-resumo-do-plano className="card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {caixa('valor', 'Valor do plano', resumo.valor, { 'data-plano-valor': '' })}
+        {caixa('recebido', 'Recebido', resumo.recebido, { 'data-plano-recebido': '' })}
+        {caixa('aReceber', 'A receber', resumo.aReceber, { 'data-plano-a-receber': '' })}
+      </div>
+
+      <p data-plano-sessoes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
+        {sessoes.feitas} de {sessoes.total} {sessoes.total === 1 ? 'sessão feita' : 'sessões feitas'}
+        {sessoes.agendadas > 0 && <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}> · {sessoes.agendadas} {sessoes.agendadas === 1 ? 'agendada' : 'agendadas'}</span>}
+      </p>
+
+      {resumo.lancamentos.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {resumo.lancamentos.map(l => {
+            const sit = situacaoDoLancamento(l)
+            return (
+              <div key={l.id} data-lancamento-do-plano style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', minWidth: 96 }}>{rotuloDoLancamento(l)}</span>
+                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{fmtBRL(l.valor)}</span>
+                <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: sit.cor, marginLeft: 'auto' }}>{sit.texto}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: resumo.aReceber > 0 ? 'var(--text-muted)' : 'var(--success)', fontWeight: 600 }}>
+        <CheckCircle2 size={13} />
+        {resumo.aReceber > 0
+          ? 'Plano fechado. A parcela vencida é cobrada no check-in do atendimento; a que vence depois se recebe no financeiro.'
+          : 'Plano fechado e pago.'}
+      </p>
     </div>
   )
 }

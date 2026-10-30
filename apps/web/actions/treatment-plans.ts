@@ -12,6 +12,7 @@ import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
+import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -650,6 +651,21 @@ export async function listarPlanejamentos(opcoes?: {
 }
 
 /** Um plano no formato que o editor entende. */
+/**
+ * O dinheiro e as sessões do plano, para a tela dele (J-42, 2026-10-30): o
+ * valor, o recebido e o a receber contados no banco, a entrada e as parcelas,
+ * e as sessões feitas. O mesmo público que já via o saldo do plano na tela do
+ * atendimento: quem vê a agenda, com o alcance do plano (planoDoTenant).
+ */
+export async function getResumoDoPlano(planId: string): Promise<{ resumo?: FinanceiroDoPlano; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+  const admin = createAdminClient()
+  const plan = await planoDoTenant(admin, planId, ctx)
+  if (!plan) return { error: 'Plano não encontrado.' }
+  return { resumo: await getFinanceiroDoPlano(ctx.tenantId!, planId) }
+}
+
 export async function getPlanoParaEditar(planId: string): Promise<{
   plano?: {
     id: string; status: string; notes: string | null
