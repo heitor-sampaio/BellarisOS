@@ -3,6 +3,8 @@
  * rótulos, e `lib/metrics/vendas.ts` (server-only) faz a leitura.
  */
 
+import { dayKeyTZ } from '@/lib/datetime'
+
 export const TIPOS_DE_VENDA = ['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PLANO', 'PRODUTO'] as const
 export type TipoDeVenda = typeof TIPOS_DE_VENDA[number]
 
@@ -47,4 +49,14 @@ export function descricaoDaVenda(v: Pick<Venda, 'tipo' | 'descricao' | 'quantida
     return v.quantidade > 0 ? `${v.descricao} · ${v.quantidade} ${v.quantidade === 1 ? 'sessão' : 'sessões'}` : v.descricao
   }
   return v.descricao
+}
+
+/**
+ * O nome do CSV do relatório de vendas: o primeiro e o ÚLTIMO dia do período,
+ * no fuso do negócio (J-53, 2026-10-30). Era `fullTo.toISOString()` — o fim
+ * de outubro (31/10 23:59 em Brasília) já é 01/11 em UTC, e o arquivo de
+ * outubro saía "…-a-2026-11-01".
+ */
+export function nomeDoCsvDeVendas(from: Date, fullTo: Date): string {
+  return `vendas-${dayKeyTZ(from)}-a-${dayKeyTZ(fullTo)}.csv`
 }

@@ -7,6 +7,7 @@ import { recorteDosModulos } from '@/lib/metrics/escopo'
 import {
   getTodasAsVendas, ehTipoDeVenda, descricaoDaVenda, ROTULO_DO_TIPO,
 } from '@/lib/metrics/vendas'
+import { nomeDoCsvDeVendas } from '@/lib/metrics/vendas-comum'
 
 /**
  * O relatório de vendas inteiro, em CSV (2026-10-14): o MESMO recorte da aba
@@ -76,7 +77,8 @@ export async function GET(req: NextRequest) {
     reais(v.valor),
   ].map(celula).join(';'))
   const corpo = '﻿' + ['Data;Tipo;Descrição;Cliente;Profissional;Unidade;Valor', ...linhas].join('\r\n')
-  const nome = `vendas-${periodo.from.toISOString().slice(0, 10)}-a-${periodo.fullTo.toISOString().slice(0, 10)}.csv`
+  // O último dia do período no fuso do negócio (J-53): o de outubro saía "…-a-2026-11-01".
+  const nome = nomeDoCsvDeVendas(periodo.from, periodo.fullTo)
   return new NextResponse(corpo, {
     headers: {
       'content-type': 'text/csv; charset=utf-8',

@@ -321,6 +321,10 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - A lista e o total fecham no `fullTo`. A exportação (`/api/relatorios/vendas`,
   CSV) leva o mesmo recorte sem página e se defende sozinha: sessão, a aba no
   cargo, a unidade ao alcance; a rede inteira só para quem vê o consolidado.
+  O NOME do arquivo diz o primeiro e o último dia no fuso do negócio
+  (`nomeDoCsvDeVendas`, J-53 de 2026-10-30): outubro é
+  "vendas-2026-10-01-a-2026-10-31.csv" — saía "…-a-2026-11-01", o fim do
+  período em UTC.
 - Quem já via a aba Financeiro ganhou a Vendas na migration; daí em diante ela
   se marca em Cargos. Prova: `e2e/relatorio-vendas.spec.ts`.
 

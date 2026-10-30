@@ -203,6 +203,8 @@ test('pagina de 50 em 50, e a exportação leva todas as vendas do período', as
     const r = await p.request.get(href!)
     expect(r.status()).toBe(200)
     expect(r.headers()['content-type']).toContain('text/csv')
+    // J-53: o nome diz o último dia DO PERÍODO, no fuso (era o fim em UTC: 2021-05-01).
+    expect(r.headers()['content-disposition']).toContain('vendas-2021-04-01-a-2021-04-30.csv')
     const csv = (await r.text()).replace(/^﻿/, '').trim().split(/\r?\n/)
     expect(csv[0]).toBe('Data;Tipo;Descrição;Cliente;Profissional;Unidade;Valor')
     expect(csv).toHaveLength(54)
