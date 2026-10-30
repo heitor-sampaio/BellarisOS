@@ -2,13 +2,13 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
-import { normalizarHorario } from '@/lib/agenda/horario'
+import { normalizarHorario, horarioDeQuemDeixaDeSeguir } from '@/lib/agenda/horario'
 import { Pencil, X } from 'lucide-react'
 import { updateTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
 
-interface Branch { id: string; name: string }
+interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 interface Role   { id: string; label: string }
 
 export interface EditableMember {
@@ -79,6 +79,7 @@ export function TeamMemberEdit(props: Props) {
  */
 function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, cargoDeAdminId, onFechar }: Props & { onFechar: () => void }) {
   const [scopeEscolhido, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
+  const [filial, setFilial] = useState(member.branchId ?? '')
   // Cargo fora das opções nunca vira "o primeiro da lista": fica em "Selecione…".
   const cargoInicial = member.roleId && roles.some(r => r.id === member.roleId) ? member.roleId : ''
   const [cargo, setCargo] = useState(cargoInicial)
@@ -168,7 +169,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                     <label className="overline" htmlFor={`tme-branch-${member.id}`}>Filial</label>
                     <select
                       id={`tme-branch-${member.id}`} name="branchId" required className="field"
-                      defaultValue={member.branchId ?? ''}
+                      value={filial} onChange={e => setFilial(e.target.value)}
                     >
                       <option value="" disabled>Selecione…</option>
                       {branches.map(b => (
@@ -196,7 +197,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span className="field-label">Horário de atendimento</span>
-                  <EditorDeHorario nome="horario" valor={normalizarHorario(member.horario)} seguir="Segue o horário da unidade" />
+                  <EditorDeHorario nome="horario" valor={normalizarHorario(member.horario)} seguir="Segue o horário da unidade"
+                    base={horarioDeQuemDeixaDeSeguir(branches, scope === 'branch' ? (filial || null) : null)} />
                 </div>
               </div>
 

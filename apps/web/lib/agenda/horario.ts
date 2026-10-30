@@ -57,6 +57,18 @@ export function normalizarHorario(v: unknown): Horario | null {
 }
 
 /**
+ * De onde parte o horário PRÓPRIO de quem deixa de seguir a unidade (J-9,
+ * 2026-10-30): o horário da unidade do membro — a dona que só tira a quarta
+ * não redigita a semana, nem ganha o sábado em que a unidade não abre. O
+ * membro da REDE (atende em todas) parte da unidade quando a rede tem uma só;
+ * com várias, do padrão. Unidade sem cadastro: o padrão.
+ */
+export function horarioDeQuemDeixaDeSeguir(unidades: { id: string; horario?: unknown }[], branchId: string | null): Horario {
+  const unidade = branchId ? unidades.find(u => u.id === branchId) : unidades.length === 1 ? unidades[0] : undefined
+  return normalizarHorario(unidade?.horario) ?? HORARIO_PADRAO
+}
+
+/**
  * O campo `horario` de um formulário (editor de horário da unidade e passo da
  * unidade do setup): ausente = não mexe (undefined); vazio = sem cadastro
  * (null); válido = normalizado; inválido = `{ erro }`.

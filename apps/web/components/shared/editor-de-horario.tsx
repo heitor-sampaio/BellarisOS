@@ -20,17 +20,25 @@ const DIAS: { chave: string; nome: string }[] = [
 const copiar = (h: Horario): Record<string, Intervalo[]> =>
   Object.fromEntries(DIAS.map(d => [d.chave, (h.dias[d.chave] ?? []).map(i => ({ ...i }))]))
 
-export function EditorDeHorario({ nome, valor, seguir }: {
+export function EditorDeHorario({ nome, valor, seguir, base }: {
   /** O nome do campo oculto (o que a action lê). */
   nome:    string
   valor:   Horario | null
   /** Oferece "segue o horário da unidade" (o profissional): marcado = sem cadastro próprio. */
   seguir?: string
+  /**
+   * De onde parte quem ainda não tem horário próprio (J-9): o da unidade do
+   * membro (`horarioDeQuemDeixaDeSeguir`). Sem ele, o padrão comercial.
+   */
+  base?:   Horario | null
 }) {
   const [segue, setSegue] = useState(!!seguir && !valor)
-  const [dias, setDias]   = useState<Record<string, Intervalo[]>>(() => copiar(valor ?? HORARIO_PADRAO))
+  const [dias, setDias]   = useState<Record<string, Intervalo[]>>(() => copiar(valor ?? base ?? HORARIO_PADRAO))
+  // Até alguém mexer num dia, o horário próprio acompanha a base (a unidade
+  // pode ter mudado no formulário enquanto "segue" estava marcado).
+  const [mexeu, setMexeu] = useState(false)
 
-  const mudar = (dia: string, lista: Intervalo[]) => setDias(prev => ({ ...prev, [dia]: lista }))
+  const mudar = (dia: string, lista: Intervalo[]) => { setMexeu(true); setDias(prev => ({ ...prev, [dia]: lista })) }
   const rotulo = { fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' } as const
 
   return (
@@ -39,7 +47,10 @@ export function EditorDeHorario({ nome, valor, seguir }: {
 
       {seguir && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={segue} onChange={e => setSegue(e.target.checked)} />
+          <input type="checkbox" checked={segue} onChange={e => {
+            setSegue(e.target.checked)
+            if (!e.target.checked && !valor && !mexeu) setDias(copiar(base ?? HORARIO_PADRAO))
+          }} />
           {seguir}
         </label>
       )}

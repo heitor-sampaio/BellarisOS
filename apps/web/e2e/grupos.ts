@@ -62,6 +62,7 @@ export const ISOLADOS = [
   'equipe-comissao-ao-criar.spec.ts',
   'equipe-dona-que-atende.spec.ts',
   'equipe-formulario-limpo.spec.ts',
+  'equipe-horario-parte-da-unidade.spec.ts',
   'estoque-chip-da-unidade.spec.ts',
   'estoque-custo-de-consumo.spec.ts',
   'estoque-nunca-gera-despesa.spec.ts',

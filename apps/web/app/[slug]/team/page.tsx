@@ -49,7 +49,7 @@ export default async function TeamPage({
 
   const branch = await ler(supabase
     .from('branches')
-    .select('id, name')
+    .select('id, name, horario')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
@@ -203,7 +203,7 @@ export default async function TeamPage({
                           branchId:         branchId,
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                         }}
-                        branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade' }]}
+                        branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade', horario: branch?.horario }]}
                         roles={assignableRoles}
                         canChooseScope={false}
                         redirectPath={`/${slug}/team`}

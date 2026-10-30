@@ -47,7 +47,7 @@ export default async function AdminTeamPage({
   const [branches, tenantRoles, membersResult] = await Promise.all([
     ler(supabase
       .from('branches')
-      .select('id, name')
+      .select('id, name, horario')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
       .order('name'), 'carregar as unidades'),

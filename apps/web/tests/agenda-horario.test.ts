@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HORARIO_PADRAO, normalizarHorario, intervalosDoDia, slotsDoDia, capacidadeEmMinutos, janelaDaGrade, diaDaSemana,
+  HORARIO_PADRAO, normalizarHorario, horarioDeQuemDeixaDeSeguir, intervalosDoDia, slotsDoDia, capacidadeEmMinutos, janelaDaGrade, diaDaSemana,
   type Horario,
 } from '@/lib/agenda/horario'
 
@@ -63,5 +63,19 @@ describe('o horário de funcionamento', () => {
     expect(normalizarHorario({ dias: { 1: [{ de: '09:00', ate: '12:00' }, { de: '11:00', ate: '14:00' }] } }), 'sobreposto').toBeNull()
     expect(normalizarHorario(null)).toBeNull()
     expect(normalizarHorario(unidade)).toEqual(unidade)
+  })
+})
+
+describe('o horário de quem deixa de seguir a unidade (J-9)', () => {
+  const daUnidade = { dias: { 0: [], 1: [{ de: '10:00', ate: '18:00' }], 6: [] } }
+  it('parte do horário da unidade do membro', () => {
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }, { id: 'b', horario: null }], 'a')).toEqual(daUnidade)
+  })
+  it('unidade sem cadastro: o padrão', () => {
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }, { id: 'b', horario: null }], 'b')).toEqual(HORARIO_PADRAO)
+  })
+  it('o membro da rede parte da unidade quando a rede tem uma só; com várias, do padrão', () => {
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }], null)).toEqual(daUnidade)
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }, { id: 'b' }], null)).toEqual(HORARIO_PADRAO)
   })
 })
