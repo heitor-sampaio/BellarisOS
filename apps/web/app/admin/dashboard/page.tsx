@@ -464,8 +464,8 @@ export default async function AdminDashboardPage({
   // A conta da conversão é UMA (lib/metrics), a mesma do quadro de Oportunidades (D10).
   const resumoFunil    = resumoDoFunil(funnelStages)
   const leadsTotal     = resumoFunil.total
-  const leadsConverted = resumoFunil.convertidos
-  const conversionRate = resumoFunil.conversaoPct ?? 0
+  const leadsGanhos    = resumoFunil.ganhos
+  const conversionRate = resumoFunil.conversaoPct
 
   // -- Marketing: alcance/gasto (Meta Ads, tempo real) + campanhas (gate marketing) --
   let marketing: {
@@ -506,8 +506,9 @@ export default async function AdminDashboardPage({
         funnels={funisAtivos.map(f => ({ id: f.id, name: f.name }))}
         activeFunnelId={funilAtivo?.id ?? ''}
         leadsTotal={leadsTotal}
-        leadsConverted={leadsConverted}
+        leadsGanhos={leadsGanhos}
         conversionRate={conversionRate}
+        funilTemGanho={resumoFunil.temGanho}
         marketing={marketing}
         monthLabel={periodLabel}
         currentPeriod={selectorPeriod}

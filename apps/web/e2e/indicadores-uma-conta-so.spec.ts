@@ -27,6 +27,7 @@ let gestor: MembroDeTeste
 let sdr: MembroDeTeste
 let slug = ''
 let funil = ''
+let funilSemGanho = ''
 const leads: string[] = []
 
 async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise<void>) {
@@ -55,9 +56,10 @@ test.beforeAll(async () => {
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }],
   })
 
-  // -- D10: um funil com ganho e perda, e três leads em "Novo" ------------
-  // Dois viraram cliente sem o card ir para a etapa de ganho (é o caso da
-  // simulação: converte-se o lead e o card fica onde estava).
+  // -- D10: um funil com ganho e perda, e três oportunidades ----------------
+  // A conversão é da OPORTUNIDADE (decisão do Heitor, 2026-10-29): conta a
+  // que chegou à etapa de ganho, não a pessoa que virou cliente. A Ana fechou
+  // (ganho); a Bia virou cliente mas o card ficou em "Novo"; a Cris, nada.
   const f = await b.from('crm_funnels').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Funil ${marca}`, is_default: true }).select('id').single<{ id: string }>()
   expect(f.error).toBeNull(); funil = f.data!.id
   const etapas = await b.from('crm_stages').insert([
@@ -66,18 +68,24 @@ test.beforeAll(async () => {
     { tenant_id: rede.tenantId, funnel_id: funil, name: 'Perdido', position: 2, outcome: 'LOST' },
   ]).select('id, position')
   expect(etapas.error).toBeNull()
-  const novo = (etapas.data as { id: string; position: number }[]).find(e => e.position === 0)!.id
-  const lead = async (nome: string, owner: string | null, cliente: string | null) => {
+  const daEtapa = (pos: number) => (etapas.data as { id: string; position: number }[]).find(e => e.position === pos)!.id
+  // Um segundo funil SEM etapa de ganho (o de pós-venda): a conversão é "—".
+  const f2 = await b.from('crm_funnels').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Pós-venda ${marca}`, is_default: false }).select('id').single<{ id: string }>()
+  expect(f2.error).toBeNull(); funilSemGanho = f2.data!.id
+  const e2 = await b.from('crm_stages').insert({ tenant_id: rede.tenantId, funnel_id: funilSemGanho, name: 'Acompanhar', position: 0, outcome: 'OPEN' }).select('id').single<{ id: string }>()
+  expect(e2.error).toBeNull()
+  const lead = async (nome: string, owner: string | null, cliente: string | null, etapa: string) => {
     const { data, error } = await b.from('leads').insert({
       tenant_id: rede.tenantId, name: `${PREFIXO} ${nome} ${marca}`, phone: '5548' + String(Date.now() + leads.length).slice(-9),
-      crm_stage_id: novo, owner_id: owner, client_id: cliente, source: 'Instagram',
+      crm_stage_id: etapa, owner_id: owner, client_id: cliente, source: 'Instagram',
     }).select('id').single<{ id: string }>()
     expect(error, 'criar a oportunidade').toBeNull()
     leads.push(data!.id)
   }
-  await lead('Ana', gestor.userId, await rede.criarCliente('Lead Ana'))   // do gestor, virou cliente
-  await lead('Bia', null, await rede.criarCliente('Lead Bia'))            // sem dono, virou cliente
-  await lead('Cris', null, null)                                          // sem dono, ainda não
+  await lead('Ana', gestor.userId, await rede.criarCliente('Lead Ana'), daEtapa(1)) // do gestor, GANHA
+  await lead('Bia', null, await rede.criarCliente('Lead Bia'), daEtapa(0))          // sem dono, cliente, card em "Novo"
+  await lead('Cris', null, null, daEtapa(0))                                        // sem dono, nada
+  await lead('Dora', null, await rede.criarCliente('Lead Dora'), e2.data!.id)       // pós-venda (sem etapa de ganho)
 
   // -- D11: uma limpeza de R$ 180 (paga) e uma avaliação de R$ 0 ------------
   const pr = await b.from('procedures')
@@ -134,25 +142,51 @@ test.afterAll(async () => {
   await sdr?.limpar(); await gestor?.limpar(); await rede?.limpar()
 })
 
-test.describe('D10: a conversão de Oportunidades é a de lib/metrics', () => {
-  test('o quadro da rede diz 66,7% (2 de 3 viraram clientes), como o dashboard', async ({ browser }) => {
+test.describe('D10: a conversão é da OPORTUNIDADE (ganhas ÷ do funil), uma conta só', () => {
+  test('o quadro da rede diz 33,3% (1 de 3 ganhas), como o dashboard — a Bia virou cliente e não conta', async ({ browser }) => {
     await como(browser, gestor, async p => {
       await p.goto(`/admin/oportunidades?funil=${funil}`)
-      await expect(resumoDoQuadro(p)).toContainText('66,7% de conversão')
-      await expect(resumoDoQuadro(p)).toContainText('2 de 3 viraram clientes')
+      await expect(resumoDoQuadro(p)).toContainText('33,3% de conversão')
+      await expect(resumoDoQuadro(p)).toContainText('1 de 3 ganhas')
+      await expect(resumoDoQuadro(p)).not.toContainText('viraram clientes')
 
       // O controle: o dashboard (lib/metrics) diz o mesmo.
       await p.goto(`/admin/dashboard?period=month&funil=${funil}`)
-      await expect(cartao(p, 'Taxa de conversão')).toContainText('66,7%')
-      await expect(cartao(p, 'Taxa de conversão')).toContainText('2 de 3 leads convertidos')
+      await expect(cartao(p, 'Taxa de conversão')).toContainText('33,3%')
+      await expect(cartao(p, 'Taxa de conversão')).toContainText('1 de 3 oportunidades ganhas')
     })
   })
 
-  test('"só os meus" conta o que o quadro mostra: os dele e os sem dono (1 de 2)', async ({ browser }) => {
+  test('"só os meus" conta o que o quadro mostra: os dele e os sem dono (0 de 2 ganhas)', async ({ browser }) => {
     await como(browser, sdr, async p => {
       await p.goto(`/${slug}/oportunidades?funil=${funil}`)
-      await expect(resumoDoQuadro(p)).toContainText('50,0% de conversão')
-      await expect(resumoDoQuadro(p)).toContainText('1 de 2 viraram clientes')
+      await expect(resumoDoQuadro(p)).toContainText('0,0% de conversão')
+      await expect(resumoDoQuadro(p)).toContainText('0 de 2 ganhas')
+    })
+  })
+
+  test('funil sem etapa de ganho: a conversão é "—", no quadro e no dashboard', async ({ browser }) => {
+    await como(browser, gestor, async p => {
+      await p.goto(`/admin/oportunidades?funil=${funilSemGanho}`)
+      await expect(resumoDoQuadro(p)).toContainText('1 lead no funil')
+      await expect(resumoDoQuadro(p)).toContainText('conversão —')
+      await expect(resumoDoQuadro(p)).not.toContainText('%')
+
+      await p.goto(`/admin/dashboard?period=month&funil=${funilSemGanho}`)
+      await expect(cartao(p, 'Taxa de conversão')).toContainText('—')
+      await expect(cartao(p, 'Taxa de conversão')).toContainText('sem etapa de ganho')
+    })
+  })
+
+  test('Relatórios → Comercial junta os funis: 1 de 4 oportunidades ganhas (25%), e o ranking por vendedor também', async ({ browser }) => {
+    await como(browser, gestor, async p => {
+      await p.goto('/admin/reports?tab=comercial&period=month')
+      await expect(cartao(p, 'Conversão')).toContainText('25,0%')
+      await expect(p.getByText(/1 de 4 oportunidades ganhas/)).toBeVisible()
+      const ranking = p.getByText('Ranking por vendedor', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')
+      // O gestor: 1 oportunidade, ganha (100%); sem responsável: 3, nenhuma ganha (a Bia e a Dora são clientes).
+      await expect(ranking.locator('tr').filter({ hasText: 'Sem responsável' })).toContainText('0%')
+      await expect(ranking.locator('tr').filter({ hasText: `ucg${marca}` })).toContainText('100%')
     })
   })
 })

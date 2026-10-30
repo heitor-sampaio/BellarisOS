@@ -430,6 +430,8 @@ conceito não pode ter dois nomes) — no código segue `owner`.
 Olha só se a oportunidade tem um cliente ligado (`leads.client_id`, gravado
 ao cadastrar o cliente pelo card, pelo inbox ou ao agendar pelo CRM) — não a
 etapa nem o desfecho: há card ganho sem cliente e card perdido com cliente.
+É SÓ filtro: a conversão do quadro é da oportunidade (as na etapa de ganho ÷
+as do funil; sem etapa de ganho, "—" — `indicadores.md`, 2026-10-29).
 Situação e período têm a forma dos outros filtros da barra (`PickerCompacto`
 de escolha única com o MESMO marcador quadrado dos vizinhos — `marcadorQuadrado` —,
 o gatilho mostra a escolhida, e sem divisor entre eles), e o período tem

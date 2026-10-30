@@ -135,16 +135,27 @@
     as fatias somam o valor em estoque da aba. Até 2026-10-28 esse produto
     sumia, e a tela dizia "Sem dados no período" com R$ 5.562 em estoque (D17,
     migration `20261028000502`). Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
-  - **conversão de leads** = os que viraram cliente (`client_id`, o
-    `converted` de `metrics_lead_funnel`) ÷ os leads do funil — UMA conta,
-    `resumoDoFunil` (`lib/metrics/resultado.ts`), no dashboard, nos Relatórios
-    e no quadro de Oportunidades. O quadro a chama no recorte que mostra
-    (`getFunilDoQuadro`): o funil de AGORA, sem período, e com o CRM "só os
-    meus" os leads da pessoa e os sem dono; o dashboard, os criados no período.
-    A etapa de GANHO é outra coisa (o card fechado), e o quadro a mostra como
-    "ganhos". Até 2026-10-28 o quadro contava só o ganho e somava no navegador:
-    "0% de conversão · 2 viraram clientes" ao lado de 66,7% no dashboard (D10).
-    Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
+  - **A conversão é da OPORTUNIDADE** (decisão do Heitor, 2026-10-29: "o
+    objeto é a oportunidade"): as oportunidades na etapa de GANHO (desfecho
+    `WON`) ÷ as oportunidades do funil, sem importar se a pessoa já é cliente.
+    UMA conta, `conversaoDasOportunidades` (`lib/metrics/resultado.ts`), que
+    `resumoDoFunil` usa no dashboard, no funil dos Relatórios e no quadro de
+    Oportunidades ("33,3% de conversão (1 de 3 ganhas)"). O quadro a chama no
+    recorte que mostra (`getFunilDoQuadro`): o funil de AGORA, sem período, e
+    com o CRM "só os meus" os leads da pessoa e os sem dono; o dashboard, os
+    criados no período. **Funil sem etapa de ganho não tem conversão: "—"**
+    (num pós-venda ela nasceria 0% ou 100% sem dizer nada).
+    - **Onde a tela junta funis, junta as oportunidades deles**: o painel de
+      Relatórios → Comercial (`metrics_comercial`: `ganhos` de qualquer funil
+      ÷ as oportunidades do período; `tem_ganho` = a rede tem alguma etapa de
+      ganho) e a coluna "Conv." do ranking por vendedor (a mesma conta sobre
+      as dele, em `getPainelComercial` — a tela não divide). Migration
+      `20261029001101`.
+    - "Já é cliente" (`converted`, `leads.client_id`) não é conversão: é só o
+      filtro do quadro ("Já é cliente / Ainda não é cliente") e um dado
+      informativo para o Copilot. De 2026-10-28 a 10-29 a conversão foi
+      "viraram cliente ÷ leads" (D10), e o Heitor a devolveu à oportunidade.
+    Prova: `e2e/indicadores-uma-conta-so.spec.ts`, `tests/metrics-resultado.test.ts`.
   - `retenção` = clientes atendidos no período que **já tinham sido atendidos
     antes dele** ÷ atendidos no período (`getRetention`). Não confundir com
     recorrência dentro da janela, que em períodos curtos dá zero por construção.

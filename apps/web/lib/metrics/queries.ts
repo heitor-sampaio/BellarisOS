@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
+import { conversaoDasOportunidades } from './resultado'
 
 /**
  * Acesso às funções de agregação do Postgres (migration 20260909000001).
@@ -441,9 +442,18 @@ export async function getNewClientsSeries(
  * tela sobre as listas — até 1000 linhas de cada — e saía subcontado.
  */
 export type PainelComercial = {
-  totalLeads: number; convertidos: number
+  /** As oportunidades criadas no período, de TODOS os funis da rede. */
+  totalLeads: number
+  /** Destas, as numa etapa de ganho (WON) — a conversão é da oportunidade (2026-10-29). */
+  ganhos: number
+  /** A rede tem etapa de ganho em algum funil (sem nenhuma, a conversão é "—"). */
+  temGanho: boolean
+  /** Ganhas ÷ oportunidades (`conversaoDasOportunidades`); nula sem etapa de ganho. */
+  conversaoPct: number | null
+  /** As que já são de cliente — informativo, não é conversão. */
+  convertidos: number
   agendados: number; considerados: number; realizados: number
-  porDono: { dono: string | null; leads: number; convertidos: number; agendamentos: number }[]
+  porDono: { dono: string | null; leads: number; ganhos: number; conversaoPct: number | null; agendamentos: number }[]
 }
 
 export async function getPainelComercial(args: { tenantId: string; branchIds: string[]; from: Date; to: Date; ownerId?: string | null }): Promise<PainelComercial> {
@@ -454,12 +464,18 @@ export async function getPainelComercial(args: { tenantId: string; branchIds: st
   })
   logRpcError('metrics_comercial', error)
   const r = (data ?? {}) as Record<string, unknown>
+  const temGanho = r.tem_ganho === true
+  const totalLeads = n(r.total_leads), ganhos = n(r.ganhos)
   return {
-    totalLeads: n(r.total_leads), convertidos: n(r.convertidos),
+    totalLeads, ganhos, temGanho,
+    conversaoPct: conversaoDasOportunidades({ total: totalLeads, ganhos, temGanho }),
+    convertidos: n(r.convertidos),
     agendados: n(r.agendados), considerados: n(r.considerados), realizados: n(r.realizados),
     porDono: ((r.ranking as Record<string, unknown>[] | null) ?? []).map(d => ({
       dono: d.dono == null ? null : String(d.dono),
-      leads: n(d.leads), convertidos: n(d.convertidos), agendamentos: n(d.agendamentos),
+      leads: n(d.leads), ganhos: n(d.ganhos), agendamentos: n(d.agendamentos),
+      // A "Conv." do vendedor: a mesma conta, sobre as oportunidades dele.
+      conversaoPct: conversaoDasOportunidades({ total: n(d.leads), ganhos: n(d.ganhos), temGanho }),
     })),
   }
 }

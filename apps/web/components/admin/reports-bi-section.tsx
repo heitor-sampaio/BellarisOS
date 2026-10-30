@@ -341,9 +341,6 @@ async function painelComercial({
 
   const nomeDe = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))
 
-  const totalLeads  = painel.totalLeads
-  const convertidos = painel.convertidos
-
   // Comparecimento exclui as canceladas do denominador: com elas dentro a
   // métrica misturava "não cancelou" com "compareceu" e ficava sempre baixa.
   //
@@ -357,42 +354,28 @@ async function painelComercial({
 
   // Leads sem dono entram numa linha própria em vez de sumirem: antes o
   // ranking somava menos leads que o KPI de leads recebidos, sem explicação.
-  type Vendedor = { id: string; name: string; leads: number; convertidos: number; agendamentos: number }
-  const vendedores = new Map<string, Vendedor>()
-  const SEM_DONO = '__sem_responsavel__'
-  const bump = (id: string | null): Vendedor => {
-    const chave = id ?? SEM_DONO
-    let v = vendedores.get(chave)
-    if (!v) {
-      v = {
-        id: chave,
-        name: id ? (nomeDe.get(id) ?? 'Sem nome') : 'Sem responsável',
-        leads: 0, convertidos: 0, agendamentos: 0,
-      }
-      vendedores.set(chave, v)
-    }
-    return v
-  }
-  for (const d of painel.porDono) {
-    const v = bump(d.dono)
-    v.leads += d.leads
-    v.convertidos += d.convertidos
-    v.agendamentos += d.agendamentos
-  }
+  // Uma linha por dono já vem do banco, com a conversão de lib/metrics
+  // (ganhas ÷ oportunidades dele); aqui só o nome.
+  const ranking = painel.porDono.map(d => ({
+    id:   d.dono ?? '__sem_responsavel__',
+    name: d.dono ? (nomeDe.get(d.dono) ?? 'Sem nome') : 'Sem responsável',
+    leads: d.leads, ganhos: d.ganhos, conversaoPct: d.conversaoPct, agendamentos: d.agendamentos,
+  }))
 
   return {
     funis:      funisAtivos.map(f => ({ id: f.id, name: f.name })),
     funilAtivo: funilAtivo?.id ?? '',
     etapas:     etapasRaw.map(s => ({ name: s.name, count: s.leads })),
-    totalLeads,
-    convertidos,
-    conversao:      percent(convertidos, totalLeads) ?? 0,
+    // A conversão é da OPORTUNIDADE, somando os funis (2026-10-29): ganhas ÷ todas.
+    totalLeads: painel.totalLeads,
+    ganhos:     painel.ganhos,
+    temGanho:   painel.temGanho,
+    conversao:  painel.conversaoPct,
     comerciaisAgendados: painel.agendados,
     comerciaisConsiderados,
     comerciaisRealizados,
     comparecimento: percent(comerciaisRealizados, comerciaisConsiderados) ?? 0,
-    ranking: [...vendedores.values()]
-      .sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos)),
+    ranking: ranking.sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos)),
     motivosDePerda,
   }
 }

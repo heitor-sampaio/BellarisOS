@@ -65,8 +65,12 @@ export interface AdminDashboardProps {
   funnels:          { id: string; name: string }[]
   activeFunnelId:   string
   leadsTotal:       number
-  leadsConverted:   number
-  conversionRate:   number
+  /** As oportunidades na etapa de GANHO do funil (a conversão é da oportunidade). */
+  leadsGanhos:      number
+  /** Ganhas ÷ do funil; nulo sem etapa de ganho ou sem oportunidade ("—"). */
+  conversionRate:   number | null
+  /** O funil tem etapa de ganho (sem ela, a conversão não existe). */
+  funilTemGanho:    boolean
   marketing:        { connected: boolean; spend: number; reach: number; activeCampaigns: number; totalCampaigns: number; notifActive: number } | null
   monthLabel:       string
   totalRevenue:      number
@@ -388,7 +392,7 @@ function StatusPill({ label, count, colorKey }: { label: string; count: number; 
 
 export function AdminDashboardView({
   permissions, userName, leadFunnel, funnels, activeFunnelId,
-  leadsTotal, leadsConverted, conversionRate, marketing,
+  leadsTotal, leadsGanhos, conversionRate, funilTemGanho, marketing,
   monthLabel,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio,
   totalClientsEver, branchCount,
@@ -1462,10 +1466,13 @@ export function AdminDashboardView({
         <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <span className="overline">Taxa de conversão</span>
           <p style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--brand)', marginTop: 8, lineHeight: 1 }}>
-            {conversionRate.toFixed(1).replace('.', ',')}%
+            {conversionRate === null ? '—' : `${conversionRate.toFixed(1).replace('.', ',')}%`}
           </p>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-            {leadsConverted} de {leadsTotal} leads convertidos
+            {/* A conversão é da OPORTUNIDADE: as que chegaram à etapa de ganho (2026-10-29). */}
+            {funilTemGanho
+              ? `${leadsGanhos} de ${leadsTotal} ${leadsTotal === 1 ? 'oportunidade ganha' : 'oportunidades ganhas'}`
+              : 'Funil sem etapa de ganho'}
           </p>
         </div>
       </div>

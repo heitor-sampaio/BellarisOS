@@ -47,13 +47,16 @@ export interface DadosComerciais {
   funilAtivo: string
   etapas:     { name: string; count: number }[]
   totalLeads:  number
-  convertidos: number
-  conversao:   number
+  /** As oportunidades na etapa de ganho, de todos os funis (a conversão é da oportunidade). */
+  ganhos:      number
+  temGanho:    boolean
+  /** Ganhas ÷ oportunidades (lib/metrics); nula sem etapa de ganho ("—"). */
+  conversao:   number | null
   comerciaisAgendados:    number
   comerciaisConsiderados: number
   comerciaisRealizados:   number
   comparecimento:         number
-  ranking: { id: string; name: string; leads: number; convertidos: number; agendamentos: number }[]
+  ranking: { id: string; name: string; leads: number; ganhos: number; conversaoPct: number | null; agendamentos: number }[]
   /** Por que as oportunidades do período foram perdidas (2026-10-21). */
   motivosDePerda: { motivo: string; total: number }[]
 }
@@ -1110,8 +1113,9 @@ function TabComercial(p: ReportsBiProps) {
     { key: 'name',         label: 'Vendedor' },
     { key: 'leads',        label: 'Leads',   align: 'right', width: 80, render: v => fmtInt(Number(v)) },
     { key: 'conversao',    label: 'Conv.',   align: 'right', width: 80,
-      render: (_v, row) => Number(row.leads) > 0
-        ? <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{fmtPct((Number(row.convertidos) / Number(row.leads)) * 100)}</span>
+      // A conta vem de lib/metrics (ganhas ÷ oportunidades do vendedor): a tela só formata.
+      render: (_v, row) => row.conversaoPct !== '' && row.conversaoPct != null
+        ? <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{fmtPct(Number(row.conversaoPct))}</span>
         : '—' },
     { key: 'agendamentos', label: 'Agend.',  align: 'right', width: 90, render: v => fmtInt(Number(v)) },
   ]
@@ -1119,14 +1123,16 @@ function TabComercial(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <KpiCard label="Conversão de leads"    value={c.conversao} format="pct" />
+        <KpiCard label="Conversão"             value={c.conversao} format="pct" />
         <KpiCard label="Leads recebidos"       value={c.totalLeads} format="int" accent="var(--text)" />
         <KpiCard label="Agendados pelo comercial" value={c.comerciaisAgendados} format="int" accent="var(--text)" />
         <KpiCard label="Comparecimento"           value={c.comparecimento} format="pct" accent="var(--text)" />
       </div>
 
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0 }}>
-        {fmtInt(c.convertidos)} de {fmtInt(c.totalLeads)} leads viraram cliente ·
+        {c.temGanho
+          ? `${fmtInt(c.ganhos)} de ${fmtInt(c.totalLeads)} oportunidades ganhas, somando os funis`
+          : 'Nenhum funil tem etapa de ganho: sem conversão'} ·
         {' '}{fmtInt(c.comerciaisRealizados)} de {fmtInt(c.comerciaisConsiderados)} agendamentos
         do comercial não cancelados aconteceram.
       </p>
@@ -1162,7 +1168,7 @@ function TabComercial(p: ReportsBiProps) {
         <SCard title="Ranking por vendedor">
           <SimpleTable
             columns={colunas}
-            rows={c.ranking}
+            rows={c.ranking.map(r => ({ ...r, conversaoPct: r.conversaoPct ?? '' }))}
             emptyMsg="Nenhuma atividade comercial atribuída neste período."
           />
         </SCard>

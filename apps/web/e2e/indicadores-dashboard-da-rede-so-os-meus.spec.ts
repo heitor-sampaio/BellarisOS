@@ -139,6 +139,8 @@ test.beforeAll(async () => {
   expect(f.error).toBeNull()
   const e = await db().from('crm_stages').insert({ tenant_id: rede.tenantId, funnel_id: f.data!.id, name: 'Primeiro contato', position: 0 }).select('id').single<{ id: string }>()
   expect(e.error).toBeNull()
+  // Uma etapa de ganho (vazia): a conversão é da oportunidade, e sem ela seria "—".
+  expect((await db().from('crm_stages').insert({ tenant_id: rede.tenantId, funnel_id: f.data!.id, name: 'Fechado', position: 1, outcome: 'WON' })).error).toBeNull()
   for (const [nome, dono] of [['Lead dela', propria.userId], ['Lead da outra', rede.professionalId], ['Lead sem dono', null]] as const) {
     const { data, error: eL } = await db().from('leads').insert({
       tenant_id: rede.tenantId, name: `${PREFIXO} ${nome} ${marca}`, phone: '5548' + String(Date.now() + leads.length).slice(-9),
@@ -217,7 +219,7 @@ test('"só os meus": os rankings, a demografia, o giro, os planos e o funil são
     await expect.soft(card(p, 'Estoque'), 'o giro dos atendimentos dela').toContainText('R$ 20,00')
     await expect.soft(corpo, 'o plano dela aguardando checkout').toContainText(`Plano dela dr${marca}`)
     await expect.soft(corpo, 'não o da outra').not.toContainText('Plano alheio')
-    await expect.soft(corpo, 'o funil: os leads dela e os sem dono').toContainText('de 2 leads convertidos')
+    await expect.soft(corpo, 'o funil: os leads dela e os sem dono').toContainText('0 de 2 oportunidades ganhas')
   })
 })
 
@@ -266,6 +268,6 @@ test('quem tem ALL segue vendo o dinheiro e os números da rede (controle)', asy
     await expect(card(p, 'Ranking — Localização')).toContainText(`Cidoutra ${marca}`)
     await expect(card(p, 'Estoque')).toContainText('R$ 70,00')
     await expect(corpo).toContainText('Plano alheio')
-    await expect(corpo).toContainText('de 3 leads convertidos')
+    await expect(corpo).toContainText('0 de 3 oportunidades ganhas')
   })
 })

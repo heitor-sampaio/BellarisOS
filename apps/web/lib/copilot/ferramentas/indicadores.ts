@@ -8,7 +8,7 @@ import { getRelatorio } from '@/lib/metrics/relatorio'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
-import { ticketMedio } from '@/lib/metrics/resultado'
+import { ticketMedio, resumoDoFunil } from '@/lib/metrics/resultado'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -116,7 +116,19 @@ export const indicadores: FerramentaDeLeitura<{
     if (aba === 'comercial') {
       // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
       const funil = await getLeadFunnel({ ...base, ownerId: ownerFilter(c.ctx, 'crm') })
-      return { dados: { ...cabecalho, funil: funil.map(e => ({ etapa: e.name, desfecho: e.outcome, oportunidades: e.leads, convertidas: e.converted })) } }
+      // A conversão é da OPORTUNIDADE (ganhas ÷ do funil), a conta das telas.
+      const resumo = resumoDoFunil(funil)
+      return {
+        dados: {
+          ...cabecalho,
+          funil: funil.map(e => ({ etapa: e.name, desfecho: e.outcome, oportunidades: e.leads, jaSaoClientes: e.converted })),
+          oportunidades: resumo.total, ganhas: resumo.ganhos,
+          conversao: resumo.conversaoPct === null ? null : `${resumo.conversaoPct.toFixed(1).replace('.', ',')}%`,
+          nota: resumo.temGanho
+            ? 'Conversão = oportunidades na etapa de ganho ÷ oportunidades do funil (não importa se a pessoa já é cliente).'
+            : 'O funil não tem etapa de ganho: não há conversão.',
+        },
+      }
     }
 
     if (aba === 'vendas') {

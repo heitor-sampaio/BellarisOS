@@ -78,25 +78,38 @@ export function variacaoPercentual(atual: number, anterior: number): { pct: numb
 }
 
 /**
+ * A conversão das oportunidades: as GANHAS (na etapa de desfecho WON) ÷ as
+ * oportunidades, sem olhar se a pessoa já é cliente (decisão do Heitor,
+ * 2026-10-29: "o objeto é a oportunidade"). Sem etapa de ganho — no funil, ou
+ * em nenhum dos funis que a tela junta — não há conversão: nulo, e a tela
+ * mostra "—". Sem oportunidade, também nulo.
+ */
+export function conversaoDasOportunidades(n: { total: number; ganhos: number; temGanho: boolean }): number | null {
+  return n.temGanho ? percent(n.ganhos, n.total) : null
+}
+
+/**
  * O resumo de UM funil, a partir das etapas que o banco contou
- * (`metrics_lead_funnel`): o total, os que viraram cliente (`converted`), os
- * nas etapas de ganho e de perda, e a conversão = convertidos ÷ total (nula
- * sem lead). É a conta do dashboard, dos Relatórios e do quadro de
- * Oportunidades — o quadro dizia "0% de conversão" ao lado de "2 viraram
- * clientes", contando só a etapa de ganho (D10 da simulação de 2026-10-28).
+ * (`metrics_lead_funnel`): o total, as ganhas e as perdidas, as que já são de
+ * cliente (`convertidos` — só informativo: "já é cliente" é filtro do quadro,
+ * não conversão) e a conversão = ganhas ÷ total (`conversaoDasOportunidades`).
+ * É a conta do dashboard, dos Relatórios e do quadro de Oportunidades. Até
+ * 2026-10-29 era "viraram cliente ÷ leads" (D10 de 2026-10-28), e o Heitor a
+ * devolveu à oportunidade.
  */
 export function resumoDoFunil(etapas: FunnelStage[]) {
   const soma = (f: (e: FunnelStage) => number) => etapas.reduce((s, e) => s + f(e), 0)
   const total = soma(e => e.leads)
-  const convertidos = soma(e => e.converted)
+  const ganhos = soma(e => (e.outcome === 'WON' ? e.leads : 0))
+  const temGanho = etapas.some(e => e.outcome === 'WON')
   return {
     total,
-    convertidos,
-    ganhos:   soma(e => (e.outcome === 'WON' ? e.leads : 0)),
+    convertidos: soma(e => e.converted),
+    ganhos,
     perdidos: soma(e => (e.outcome === 'LOST' ? e.leads : 0)),
     /** O funil marca etapa de ganho / de perda (senão não há o que mostrar). */
-    temGanho: etapas.some(e => e.outcome === 'WON'),
+    temGanho,
     temPerda: etapas.some(e => e.outcome === 'LOST'),
-    conversaoPct: percent(convertidos, total),
+    conversaoPct: conversaoDasOportunidades({ total, ganhos, temGanho }),
   }
 }
