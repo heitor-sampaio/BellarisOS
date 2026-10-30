@@ -1770,8 +1770,8 @@ Oito decisões da revisão do Heitor, com o teste escrito antes (migrations
 6. Sem denominador, as taxas dos Relatórios seguem mostrando 0.
 7. Na rede, o em aberto é o das unidades ativas, como o número do mês.
 
-O J-50 ("Contas" casar com "Compra de estoque") não tem o que fazer: não existe
-a categoria "Contas" no código nem no banco. O `copilot-indicadores-so-os-meus`
+O J-50 é CRIAR a categoria "Contas (energia, água, internet)" (não existe) e
+tirar o "Desconto" da despesa: vai na frente de produto e estoque. O `copilot-indicadores-so-os-meus`
 só roda contra o build e ficou para a completa. Mexeu em toda `lib/metrics`,
 nos dashboards, nos Relatórios e nos financeiros: vale uma completa.
 
