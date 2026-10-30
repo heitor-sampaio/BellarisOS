@@ -1651,6 +1651,60 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Frente de contratos e automações: campanha, modelos, contrato, retorno, parcelas e a clínica de uma unidade
+
+Seis decisões do Heitor e três ajustes do editor de automações, com o teste
+escrito antes (migrations `20261029001601`–`1604`, pelo `apply_migration`):
+
+- **A campanha diz que é aviso no celular** (1fb22a92, D-3): na lista, na
+  criação e no detalhe, "não vai pelo WhatsApp"; o público diz "2 clientes no
+  público · 1 vai receber o aviso no celular", contado no banco pela regra do
+  envio.
+- **"Usar um modelo" nas automações** (4eac999d, D-4): aniversário, retorno
+  depois do atendimento (com o "Se procedimento" a escolher) e lembrete antes do
+  agendamento. Nascem em Rascunho; a "Nova automação" segue vazia.
+- **O contrato de plano novo nasce inativo, com "Tornar ativo"** (ea305e37,
+  D-5), que troca o ativo numa transação só.
+- **"Retorno em (dias)" ao finalizar o atendimento** (98e63677, D-12), gravado
+  dentro de `concluir_atendimento`. O dashboard da unidade mostra "Retornos a
+  marcar" (7 dias à frente, 60 para trás), e o gatilho "Retorno vencendo" sai
+  pelo cron novo `retornos`, de hora em hora.
+- **"Parcelar no crédito até"** em Configurações → Comissões (cffbb040, D-15).
+  Automático = a maior parcela com taxa (sem taxa, 12x). Vale em todo "Vezes no
+  cartão", e o servidor recusa acima.
+- **A clínica de uma unidade sem vocabulário de rede** (47bae762, D-19): "Visão
+  geral", sem ranking nem "por filial", Relatórios com o nome da unidade, sem
+  "Voltar para a rede" nem seletor. Os números não mudam; a segunda unidade
+  traz tudo de volta (`redeTemUmaUnidade`).
+- **O quadro das automações liga o passo novo ao anterior, nasce à vista e não
+  desloca** (35e2d002, J-14).
+- **"1 dia" e "Sim"/"Não" no quadro** (c94dfe46, J-15).
+- **"Tags e importações" no menu** de quem só tem essas abas (9325900e, J-16).
+
+**Decisões da frente, para revisar:**
+1. J-16: o rótulo curto é "Tags e importações".
+2. J-14: o anterior é o passo aberto no painel ou o último criado; gatilho e
+   saída já usada não se religam.
+3. D-4: "Usar um modelo" é um botão separado; os modelos mandam por WhatsApp e
+   nascem desligados.
+4. D-4: toda regra do "Se" sem valor passou a bloquear o "Ligar" (nenhuma
+   automação existente tinha).
+5. D-3: "vai receber" é quem tem aparelho registrado (app ou aviso do
+   navegador); conta no portal não basta.
+6. D-15: o limite vale para o cartão em N vezes, não para o crediário; fica
+   junto das taxas, com a permissão delas.
+7. D-15: enquanto o limite carrega, o seletor só oferece "À vista".
+8. D-19: o "Consolidado / Filial" do mapa de calor do dashboard ficou de fora.
+9. D-12: o retorno mora no próprio agendamento; sai da lista quando a cliente
+   tem qualquer agendamento depois, em qualquer unidade.
+10. D-12: o evento é `agendamento.retorno_vencendo`.
+11. D-12: o aviso à recepção ficou só no dashboard da unidade, não na agenda; não
+    há modelo de automação "avisar do retorno".
+
+Mexeu no layout de `[slug]`, no catálogo de eventos, em `scripts/cron.mjs`, em
+`concluir_atendimento`, nos campos do pagamento e no checkout, nas
+Configurações e em sete specs antigos: vale uma completa.
+
 ### 2026-10-30 — Frente de comissão de pacote e financeiro: a comissão no cadastro do pacote e os ajustes do caixa
 
 A decisão do Heitor sobre a comissão de pacote e sete ajustes, com o teste
@@ -8519,23 +8573,23 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 **Respostas do Heitor (2026-10-29):**
 - **D-1:** criar e editar funis, etapas e motivos de perda exige Configurações MANAGE, como as tags. Mover os cards segue com quem opera o quadro. **Feito em 2026-10-29** (c67e836c).
 - **D-2: fica só na rede.** "A automação é da clínica, mesmo que o alvo seja a unidade." A tela de Cargos passa a avisar que Marketing e Automações valem para quem é da rede. **Feito em 2026-10-29** (c5f87973).
-- **D-3:** a campanha de hoje é aviso no celular (push). A tela passa a dizer isso claramente. O WhatsApp fica para o futuro.
-- **D-4:** modelos prontos entram como opção. "Nova automação" continua começando vazia, e o procedimento continua no passo "Se" (condicional), sem ir para o gatilho.
-- **D-5:** um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto. Fica o fluxo de trocar; sai o de criar outro e desativar o atual antes.
+- **D-3:** a campanha de hoje é aviso no celular (push). A tela passa a dizer isso claramente. O WhatsApp fica para o futuro. **Feito em 2026-10-30** (1fb22a92).
+- **D-4:** modelos prontos entram como opção. "Nova automação" continua começando vazia, e o procedimento continua no passo "Se" (condicional), sem ir para o gatilho. **Feito em 2026-10-30** (4eac999d).
+- **D-5:** um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto. Fica o fluxo de trocar; sai o de criar outro e desativar o atual antes. **Feito em 2026-10-30** (ea305e37).
 - **D-6:** o cadastro do produto diz o uso: Insumo, Revenda ou Os dois. O insumo aparece no atendimento, e a revenda na venda de produto. **Feito em 2026-10-30** (95293623).
 - **D-7:** cria a saída por perda, com motivo (vencido, quebrou, amostra, uso interno), sem gerar despesa, e um relatório de perdas. **Feito em 2026-10-30** (40291c57).
 - **D-8:** fica como está; só quem tem o produto envia.
 - **D-9:** ao cadastrar com o telefone de um lead, a tela pergunta "É a mesma pessoa do lead X?" e liga os dois. **Feito em 2026-10-29** (fe24a5cf).
 - **D-10:** a importação aceita a linha que só tem e-mail. Com o telefone repetido, junta tags e origem ao contato que já existe, sem sobrescrever. **Feito em 2026-10-29** (78824d1c).
 - **D-11:** o campo vira "Documento" com tipo (CPF, Passaporte, RNE). Sem CPF, a cliente fica sem acesso ao app por enquanto. **Feito em 2026-10-29** (edde7da3, migration `20261029001001`).
-- **D-12:** fazer o campo "Retorno em N dias" no atendimento. Ele vira lembrete à recepção e gatilho de automação.
+- **D-12:** fazer o campo "Retorno em N dias" no atendimento. Ele vira lembrete à recepção e gatilho de automação. **Feito em 2026-10-30** (98e63677).
 - **D-13: deixar como está.** A ficha já é customizável.
 - **D-14:** o card mantém o número do mês, e abaixo vem a linha "Em aberto, todos os vencimentos: R$ X". **Feito em 2026-10-30** (004576f0).
-- **D-15:** a clínica configura "parcela até Nx". O padrão é o maior número de parcelas com taxa cadastrada.
+- **D-15:** a clínica configura "parcela até Nx". O padrão é o maior número de parcelas com taxa cadastrada. **Feito em 2026-10-30** (cffbb040).
 - **D-16:** "Sem preferência" no app junta os horários de todas que fazem o procedimento. O sistema escolhe quem está livre, com menos atendimentos no dia. **Feito em 2026-10-30** (2527cbfa).
 - **D-17:** o saldo do crédito interno aparece no Financeiro do app. **Feito em 2026-10-30** (031fca85).
 - **D-18:** o plano proposto no app mostra procedimentos, valor e validade, com "Falar com a clínica". O aceite continua na clínica. **Feito em 2026-10-30** (f000ae80).
-- **D-19:** com UMA unidade ativa, somem os termos e gráficos de rede ("TOTAL REDE", "por filial", os rankings de filial, "Voltar para a rede") e o seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda unidade.
+- **D-19:** com UMA unidade ativa, somem os termos e gráficos de rede ("TOTAL REDE", "por filial", os rankings de filial, "Voltar para a rede") e o seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda unidade. **Feito em 2026-10-30** (47bae762).
 
 Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
 
@@ -8558,9 +8612,9 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-12: o texto do catálogo de fidelidade.
   - J-13: a busca universal acha as telas.
 - **Automações**
-  - J-14: os nós soltos e o deslocamento.
-  - J-15: "1 dias" e "sim/nao".
-  - J-16: o rótulo cortado no menu.
+  - J-14: os nós soltos e o deslocamento. Feito (35e2d002).
+  - J-15: "1 dias" e "sim/nao". Feito (c94dfe46).
+  - J-16: o rótulo cortado no menu. Feito (9325900e).
 - **CRM**
   - J-17: as tags que repetem as origens.
   - J-18: os nomes acessíveis dos botões de etapa.
