@@ -2,6 +2,7 @@ import { reaisDe } from '@/lib/redes/valor'
 import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import type { AssinaturaLida } from '@/lib/redes/assinatura'
 import { PlanoDaRede } from '@/components/admin/plano-da-rede'
+import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
 import { AdicionaisDaClinica } from '@/components/admin/adicionais-da-clinica'
 import { ADICIONAIS } from '@estetica-os/nucleo/lib/planos/recursos'
 import { recursosEfetivos } from '@estetica-os/nucleo/lib/planos/adicionais'
@@ -65,7 +66,7 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso,
           <span className="sistema-situacao" data-situacao={rede.planStatus ?? ''}>{rotuloDaSituacao(rede.planStatus)}</span>
         </p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-          {planoNome ? <>Plano <strong>{planoNome}</strong></> : 'Sem plano definido'}
+          {planoNome ? <>Plano <strong>{planoNome}</strong></> : nomeDoPlanoNaTela(null, rede.planStatus)}
           {assinatura && assinatura.totalCentavos > 0 && <> · {reaisDe(assinatura.totalCentavos)} por mês</>}
         </p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
@@ -104,6 +105,7 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso,
         recursos={assinatura ? recursosEfetivos(assinatura.recursos, assinatura.adicionais) : null}
         extras={{ whatsapp: assinatura?.adicionais.whatsapp?.quantidade ?? 0, copilot: !!assinatura?.adicionais.copilot }}
         uso={uso}
+        planStatus={rede.planStatus}
       />
 
       {copilot && (

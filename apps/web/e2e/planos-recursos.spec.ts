@@ -530,12 +530,14 @@ test.describe.serial('a aba Assinatura mostra o que o plano inclui', () => {
     })
   })
 
-  test('sem plano: tudo liberado', async ({ browser }) => {
+  // Sem plano, tudo liberado MENOS o Copilot (J-7, 2026-10-30): ele não libera
+  // sem plano (lib/copilot/disponivel.ts), e a tela dizia "todas".
+  test('sem plano: tudo liberado, menos o Copilot', async ({ browser }) => {
     expect((await db().from('tenant_subscriptions').update({ recursos: null }).eq('tenant_id', outra.tenantId)).error).toBeNull()
     await expirarRede(outra.tenantId)
     await comSessao(browser, dono!.estado, async p => {
       await p.goto('/admin/settings?tab=assinatura')
-      await expect(p.locator('section', { hasText: 'O que o seu plano inclui' })).toContainText('Todas as funcionalidades, sem limite')
+      await expect(p.locator('section', { hasText: 'O que o seu plano inclui' })).toContainText(/tudo, menos o Copilot|sem limite, menos o Copilot/)
     })
   })
 })
