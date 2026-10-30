@@ -264,6 +264,14 @@ o procedimento avulso pago antes.
   recusa). Hoje é o instante de agora; antes de hoje, o meio-dia daquele dia
   em Brasília. Era sempre "agora": a conta paga na semana passada caía no caixa
   de hoje. Prova: `e2e/financeiro-data-do-lancamento.spec.ts`.
+- **A despesa não tem desconto, e tem "Contas"** (J-50, 2026-10-30): no Novo
+  lançamento, o "Desconto" só aparece na RECEITA (desconto é de venda; a
+  despesa é o que se pagou — o campo diz "Valor", não "Valor bruto"), e o
+  desconto digitado antes de trocar para despesa não entra no valor. A
+  categoria "Contas (energia, água, internet)" é despesa operacional comum
+  (caixa e lucro); só a "Compra de estoque" fica fora do lucro
+  (`lib/financeiro/categorias.ts`). Prova: `e2e/financeiro-despesa-sem-desconto.spec.ts`,
+  `tests/financeiro-categorias.test.ts`.
 - **O dinheiro DIGITADO tem UMA leitura** (`parseDinheiro`,
   `@estetica-os/utils`; D10 de 2026-10-27 e D3 de 2026-10-29): "180" é
   R$ 180,00; com vírgula, ela é a dos centavos (até dois dígitos) e o ponto é

@@ -72,14 +72,16 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   const grossAmount    = parsePtBR(rawAmount)
   const discountNumber = parsePtBR(discountVal)
 
+  // Desconto é de VENDA: a despesa é o que se pagou (J-50, 2026-10-30), e o
+  // desconto digitado na receita não vaza quando a pessoa troca o tipo.
   const { discountAmt, finalAmount } = useMemo(() => {
-    if (discountNumber <= 0 || grossAmount <= 0) return { discountAmt: 0, finalAmount: grossAmount }
+    if (type === 'EXPENSE' || discountNumber <= 0 || grossAmount <= 0) return { discountAmt: 0, finalAmount: grossAmount }
     const disc = discountType === 'percent'
       ? grossAmount * (discountNumber / 100)
       : discountNumber
     const discAmt = Math.min(disc, grossAmount)
     return { discountAmt: discAmt, finalAmount: Math.max(0, grossAmount - discAmt) }
-  }, [grossAmount, discountNumber, discountType])
+  }, [grossAmount, discountNumber, discountType, type])
 
   const hasDiscount = discountAmt > 0
 
@@ -220,7 +222,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label htmlFor="lanc-valor">Valor bruto (R$) *</Label>
+                <Label htmlFor="lanc-valor">{type === 'INCOME' ? 'Valor bruto (R$) *' : 'Valor (R$) *'}</Label>
                 <input
                   id="lanc-valor" type="number" step="0.01" min="0.01" required className="field"
                   placeholder="0,00"
@@ -230,7 +232,8 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
               </div>
             </div>
 
-            {/* Desconto */}
+            {/* Desconto — só na receita: na despesa não há o que descontar (J-50). */}
+            {type === 'INCOME' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Tag size={12} style={{ color: 'var(--text-muted)' }} />
@@ -267,6 +270,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                 />
               </div>
             </div>
+            )}
 
             {/* Preview valor final */}
             {grossAmount > 0 && (

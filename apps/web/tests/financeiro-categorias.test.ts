@@ -22,3 +22,15 @@ describe('a categoria "Compra de estoque"', () => {
     expect(ehCompraDeEstoque(null)).toBe(false)
   })
 })
+
+/**
+ * "Contas (energia, água, internet)" (J-50, 2026-10-30): a conta de luz não
+ * tinha categoria. É despesa operacional comum — conta no caixa E no lucro;
+ * só a compra de estoque fica fora do lucro.
+ */
+describe('a categoria "Contas"', () => {
+  it('está entre as categorias de despesa e não é compra de estoque', () => {
+    expect(CATEGORIAS_DE_DESPESA).toContain('Contas (energia, água, internet)')
+    expect(ehCompraDeEstoque('Contas (energia, água, internet)')).toBe(false)
+  })
+})

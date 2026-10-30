@@ -45,7 +45,7 @@ test.describe.serial('a data do lançamento pago', () => {
       await dialogo.getByRole('button', { name: 'Despesa' }).click()
       await dialogo.getByLabel('Descrição *').fill(descricao)
       await dialogo.getByLabel('Categoria *').selectOption('Aluguel')
-      await dialogo.getByLabel('Valor bruto (R$) *').fill('230')
+      await dialogo.getByLabel('Valor (R$) *').fill('230')
       // Nasce com hoje; a pessoa troca.
       await expect(dialogo.getByLabel('Data do pagamento')).toHaveValue(diaBR(0))
       await dialogo.getByLabel('Data do pagamento').fill(dia)
