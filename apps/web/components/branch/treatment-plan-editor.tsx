@@ -5,6 +5,7 @@ import { Plus, Trash2, Send, Save, Copy, ChevronDown, ChevronUp, FlaskConical, P
 import { saveTreatmentPlan, proposeTreatmentPlan, pacotesParaODicaDoPlano } from '@/actions/treatment-plans'
 import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
 import type { PlanSessionInput } from '@/actions/treatment-plans'
+import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
 
 export interface TreatmentPlanEditorRef {
   getSessions: () => PlanSessionInput[]
@@ -611,7 +612,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
           <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 6, padding: '2px 8px' }}>
-            {existingPlan?.status === 'PROPOSED' ? 'Aguardando checkout' : 'Em execução'}
+            {situacaoDoPlano(existingPlan?.status ?? 'PROPOSED').label}
           </span>
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>

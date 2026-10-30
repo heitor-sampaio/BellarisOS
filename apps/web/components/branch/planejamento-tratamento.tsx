@@ -11,6 +11,7 @@ import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -33,13 +34,7 @@ interface PlanoItem {
   origemId: string | null
 }
 
-const STATUS_LABEL: Record<string, { label: string; cor: string; fundo: string }> = {
-  DRAFT:     { label: 'Rascunho',   cor: 'var(--text-muted)', fundo: 'var(--bg-app)' },
-  PROPOSED:  { label: 'Aguardando aceite', cor: 'var(--warning)', fundo: 'var(--warning-soft)' },
-  ACCEPTED:  { label: 'Fechado',    cor: 'var(--success)', fundo: 'var(--success-bg)' },
-  COMPLETED: { label: 'Concluído',  cor: 'var(--success)', fundo: 'var(--success-bg)' },
-  CANCELLED: { label: 'Cancelado',  cor: 'var(--danger)', fundo: 'var(--danger-soft)' },
-}
+// O nome de cada situação é UM (J-37): lib/plano-de-tratamento/situacao.
 
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -266,7 +261,7 @@ export function PlanejamentoTratamento({
         </div>
       ) : (
         planos.map(p => {
-          const st = STATUS_LABEL[p.status] ?? STATUS_LABEL.DRAFT!
+          const st = situacaoDoPlano(p.status)
           return (
             <button
               key={p.id}
@@ -318,7 +313,7 @@ export function PlanejamentoTratamento({
   )
 
   // -- Um plano aberto ---------------------------------------------------------
-  const st       = STATUS_LABEL[aberto.status] ?? STATUS_LABEL.DRAFT!
+  const st       = situacaoDoPlano(aberto.status)
   const fechado  = aberto.status === 'ACCEPTED' || aberto.status === 'COMPLETED' || aberto.status === 'CANCELLED'
   const editavel = podeEditar && !fechado
 

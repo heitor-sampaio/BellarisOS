@@ -15,6 +15,7 @@ import type { ProfileClient, ProfilePackage } from './client-profile'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { RespostasDaAnamnese } from '@/components/branch/anamnese-geral'
 import { quemRespondeu } from '@/lib/anamnese-geral'
+import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -26,13 +27,7 @@ function fmtDateTime(d: string) {
   return format(new Date(d), "EEE, dd MMM · HH:mm", { locale: ptBR })
 }
 
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  ACCEPTED:   { label: 'Em andamento', color: 'var(--brand)',   bg: 'var(--brand-soft)' },
-  COMPLETED:  { label: 'Concluído',    color: 'var(--success)',        bg: 'var(--success-bg)' },
-  REJECTED:   { label: 'Cancelado',    color: 'var(--danger)',        bg: 'var(--danger-soft)' },
-  PROPOSED:   { label: 'Aguardando',   color: 'var(--warning)',        bg: 'var(--warning-soft)' },
-  DRAFT:      { label: 'Rascunho',     color: 'var(--text-faint)', bg: 'var(--bg-app)' },
-}
+// O nome de cada situação do plano é UM (J-37): lib/plano-de-tratamento/situacao.
 
 const APPT_STATUS: Record<string, { label: string; color: string }> = {
   SCHEDULED:   { label: 'Agendada',     color: 'var(--info)' },
@@ -297,7 +292,8 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
     return () => { supabase.removeChannel(channel) }
   }, [activePackage.planId, fetchDetails])
 
-  const status  = details ? (STATUS_MAP[details.status] ?? STATUS_MAP['ACCEPTED']!) : STATUS_MAP['ACCEPTED']!
+  const situacao = situacaoDoPlano(details?.status ?? 'ACCEPTED')
+  const status  = { label: situacao.label, color: situacao.cor, bg: situacao.fundo }
   const pct     = activePackage.totalSessions > 0
     ? Math.round((activePackage.usedSessions / activePackage.totalSessions) * 100)
     : 0

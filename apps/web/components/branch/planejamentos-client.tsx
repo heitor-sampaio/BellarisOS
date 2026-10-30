@@ -8,6 +8,7 @@ import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
 import { listarPlanejamentos, criarPlanoDoCliente } from '@/actions/treatment-plans'
 import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { situacaoDoPlano, SITUACAO_DO_PLANO } from '@/lib/plano-de-tratamento/situacao'
 
 /**
  * Tela de planejamentos: lista, busca e criação.
@@ -31,18 +32,12 @@ export interface PlanoDaLista {
 const FILTROS: { key: string; label: string }[] = [
   { key: '',          label: 'Todos' },
   { key: 'DRAFT',     label: 'Rascunho' },
-  { key: 'PROPOSED',  label: 'Aguardando aceite' },
-  { key: 'ACCEPTED',  label: 'Aceitos' },
+  { key: 'PROPOSED',  label: SITUACAO_DO_PLANO.PROPOSED!.label },
+  { key: 'ACCEPTED',  label: 'Fechados' },
   { key: 'COMPLETED', label: 'Concluídos' },
 ]
 
-const STATUS: Record<string, { label: string; cor: string; fundo: string }> = {
-  DRAFT:     { label: 'Rascunho',          cor: 'var(--text-muted)', fundo: 'var(--bg-app)' },
-  PROPOSED:  { label: 'Aguardando aceite', cor: 'var(--warning)', fundo: 'var(--warning-soft)' },
-  ACCEPTED:  { label: 'Aceito',            cor: 'var(--success)', fundo: 'var(--success-bg)' },
-  COMPLETED: { label: 'Concluído',         cor: 'var(--success)', fundo: 'var(--success-bg)' },
-  CANCELLED: { label: 'Cancelado',         cor: 'var(--danger)', fundo: 'var(--danger-soft)' },
-}
+// O nome de cada situação é UM (J-37): lib/plano-de-tratamento/situacao.
 
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -170,7 +165,7 @@ export function PlanejamentosClient({
       ) : (
         <div className="rolagem-da-lista" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {planos.map(p => {
-            const st = STATUS[p.status] ?? STATUS.DRAFT!
+            const st = situacaoDoPlano(p.status)
             return (
               <Link key={p.id} href={`${base}/${p.id}`}
                 className="card card-hover"
