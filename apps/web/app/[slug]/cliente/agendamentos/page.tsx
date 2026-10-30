@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { CalendarDays, ChevronRight, Clock3, User, Plus } from 'lucide-react'
 import { ler } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar } from '@/lib/clientes/agenda-do-portal'
+import { textoDoConcluido } from '@/lib/agenda/hora-real'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -31,6 +32,7 @@ type Appt = {
   status:        string
   price:         number
   duration_min:  number
+  completed_at:  string | null
   procedures:    { name: string } | null
   professionals: { name: string } | null
 }
@@ -43,7 +45,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   const admin = createAdminClient()
   const data = await ler(admin
     .from('appointments')
-    .select('id, scheduled_at, status, price, duration_min, procedures(name), professionals:users!professional_id(name)')
+    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name)')
     .eq('client_id', ctx.clientId!)
     .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
@@ -209,6 +211,10 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras }: { appt: 
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <Clock3 size={11} />
           {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
+          {/* A hora real ao lado da agendada (J-34). */}
+          {appt.status === 'COMPLETED' && textoDoConcluido(appt.scheduled_at, appt.completed_at) && (
+            <span data-hora-real>· {textoDoConcluido(appt.scheduled_at, appt.completed_at)}</span>
+          )}
         </span>
         {appt.price > 0 && (
           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto' }}>

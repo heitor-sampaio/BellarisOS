@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
+import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
 
@@ -249,7 +250,7 @@ function ProfColumn({
               <SeloDaFicha estado={ev.fichaDeSaude} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
               {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
-              {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· concluído</span>}
+              {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt) ?? 'concluído'}</span>}
             </div>
             {height > 42 && (
               <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: isCompleted ? 'var(--text-muted)' : 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -149,6 +149,7 @@ export const ISOLADOS = [
   'financeiro-a-receber-todos-os-vencimentos.spec.ts',
   'prontuario-evolucao.spec.ts',
   'agenda-chegar-e-iniciar.spec.ts',
+  'agenda-concluido-hora-real.spec.ts',
   'plano-dica-do-pacote.spec.ts',
   'plano-unidade-de-consumo.spec.ts',
   'ficha-documentos-um-cancelar.spec.ts',

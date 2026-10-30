@@ -9,6 +9,7 @@ import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { estenderJanela } from '@/lib/agenda/grade'
+import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 
 // -- Tipos ---------------------------------------------------------------------
@@ -332,7 +333,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {desmarcado(a)
                           ? <>{st.label}{a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}</>
-                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}</>}
+                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.status === 'COMPLETED' && textoDoConcluido(a.scheduled_at, a.completed_at) && <strong>{textoDoConcluido(a.scheduled_at, a.completed_at)} · </strong>}{a.users?.name ?? '—'}</>}
                       </div>
                     </button>
                   )

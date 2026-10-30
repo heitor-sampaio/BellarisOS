@@ -21,6 +21,8 @@ export interface CalendarEvent {
   fichaDeSaude?:   SeloDaFichaEstado | null
   /** O check-in (2026-10-21): quando chegou. */
   arrivedAt?:      string | null
+  /** A hora REAL da conclusão (J-34): aparece ao lado da agendada. */
+  completedAt?:    string | null
   /** Cancelado: o motivo (aparece com "Mostrar cancelados"). */
   motivoDoCancelamento?: string | null
 }

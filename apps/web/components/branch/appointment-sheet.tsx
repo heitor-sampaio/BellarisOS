@@ -10,6 +10,7 @@ import { rotaAtendimento } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { toast } from 'sonner'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
+import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 
 interface AppointmentEvent {
@@ -22,6 +23,8 @@ interface AppointmentEvent {
   start:            string
   /** Cancelado: o motivo, inteiro (o bloco da grade o corta). */
   motivoDoCancelamento?: string | null
+  /** A hora REAL da conclusão (J-34). */
+  completedAt?:     string | null
 }
 
 interface AppointmentSheetProps {
@@ -178,6 +181,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
             <Clock size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
             <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
               <strong>{timeStr}</strong> — {dateStr}
+              {appointment.status === 'COMPLETED' && textoDoConcluido(appointment.start, appointment.completedAt) && (
+                <span style={{ color: 'var(--text-muted)' }}> · {textoDoConcluido(appointment.start, appointment.completedAt)}</span>
+              )}
             </span>
           </div>
           {!isProfessional && (
