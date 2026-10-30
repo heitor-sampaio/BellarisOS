@@ -5,7 +5,7 @@ import { revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso, can, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
-import { camposDoDestino, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
+import { camposDoDestino, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
 import { processarImportacao, manterImportacoes } from '@/lib/importacao/processar'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
 
@@ -62,9 +62,8 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
   const mapeamento = mapa.map(c => (typeof c === 'string' && permitidos.has(c as ChaveDeCampo) ? c as ChaveDeCampo : null))
   const usados = mapeamento.filter(Boolean)
   if (new Set(usados).size !== usados.length) return { ok: false, error: 'Cada campo do sistema vai para uma coluna só.' }
-  for (const c of campos) {
-    if (c.obrigatorio && !mapeamento.includes(c.chave)) return { ok: false, error: `Escolha a coluna de ${c.rotulo}.` }
-  }
+  const faltam = colunasQueFaltam(destino, campos, mapeamento)
+  if (faltam.length) return { ok: false, error: `Escolha a coluna de ${faltam[0]}.` }
 
   const linhas = Array.isArray(pedido?.linhas) ? pedido.linhas : []
   if (!linhas.length) return { ok: false, error: 'O arquivo não tem linhas para importar.' }

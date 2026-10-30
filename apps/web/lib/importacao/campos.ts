@@ -68,7 +68,9 @@ const DA_PESSOA: Record<Destino, CampoDoSistema[]> = {
   ],
   contatos: [
     { ...NOME, obrigatorio: false },
-    TELEFONE,
+    // D-10 (2026-10-29): o contato entra com o telefone OU o e-mail
+    // (`colunasQueFaltam` pede uma das duas colunas; `validarLinha`, um dos dois valores).
+    { ...TELEFONE, obrigatorio: false },
     EMAIL,
     p('social_media', 'Rede social', SOCIAL_SINONIMOS),
     TAGS,
@@ -103,6 +105,17 @@ export function camposDoDestino(destino: Destino, opcoes: OpcoesDosCampos = {}):
     lista.push(...DA_OPORTUNIDADE)
   }
   return lista
+}
+
+/**
+ * As colunas que faltam escolher antes da prévia: as obrigatórias e, no
+ * contato, a do telefone OU a do e-mail (D-10, 2026-10-29). A tela e a action
+ * usam esta — a mesma conta nos dois lados.
+ */
+export function colunasQueFaltam(destino: Destino, campos: CampoDoSistema[], mapa: (ChaveDeCampo | null)[]): string[] {
+  const faltam = campos.filter(c => c.obrigatorio && !mapa.includes(c.chave)).map(c => c.rotulo)
+  if (destino === 'contatos' && !mapa.includes('phone') && !mapa.includes('email')) faltam.push('Telefone ou E-mail')
+  return faltam
 }
 
 /** "Data de Nascimento:" → "data de nascimento". */

@@ -92,6 +92,12 @@ export interface OpcoesDaCriacao {
   semEventos?:    boolean
   responsavelId?: string | null
   clientId?:      string | null
+  /**
+   * A pessoa (contacts) da oportunidade, quando quem chama já a achou e o
+   * gatilho não acharia: a linha da importação só com e-mail (D-10). Sem isto o
+   * gatilho liga pela conversa ou pelo telefone, ou cria uma pessoa nova.
+   */
+  contatoId?:     string | null
 }
 
 export async function criarOportunidadeCore(
@@ -123,6 +129,7 @@ export async function criarOportunidadeCore(
     // responsável que quem chama escolheu e conferiu.
     owner_id: opcoes.responsavelId !== undefined ? opcoes.responsavelId : ctx.internalUserId,
     ...(opcoes.clientId ? { client_id: opcoes.clientId } : {}),
+    ...(opcoes.contatoId ? { contato_id: opcoes.contatoId } : {}),
   }).select('id, created_at').single()
   if (error || !lead) {
     console.error('[criarOportunidadeCore]', error?.message)

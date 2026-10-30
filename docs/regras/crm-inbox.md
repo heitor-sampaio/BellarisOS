@@ -218,7 +218,21 @@ dela — e vê Configurações só com essa aba.
   troca o que a clínica tem; importar de novo é seguro. Cliente: pelo CPF; sem
   achar, a ficha SEM CPF do mesmo telefone (`cliente_por_telefone`,
   `p_sem_cpf`) — a regra do cadastro manual (telefone de ficha com CPF pode
-  ser de outra pessoa). Contato: pelo telefone exato.
+  ser de outra pessoa). Contato: pelo telefone exato; sem telefone, pelo
+  e-mail (sem caixa).
+- **O contato entra com o telefone OU o e-mail** (D-10, decisão do Heitor,
+  frente de cadastro de 2026-10-29): a linha só com e-mail vira pessoa sem
+  telefone (`identifiers` vazio), e a oportunidade dela vai para ESSA pessoa
+  (`criarOportunidadeCore(…, { contatoId })` — sem telefone, o gatilho criaria
+  outra). Sem os dois, a linha é recusada; a tela pede a coluna de um dos dois
+  (`colunasQueFaltam`). A FICHA (clientes) continua exigindo o telefone
+  (`clients.phone` é NOT NULL).
+- **No contato, o telefone repetido JUNTA** (D-10): não é "Repetida na
+  planilha" — a segunda linha completa o vazio da pessoa que a primeira
+  criou e junta as tags; a ORIGEM da linha (`op_origem`) entra como tag da
+  pessoa (como a do anúncio, `deriveLeadSource`), também na pessoa nova. Na
+  ficha (clientes) a repetida continua recusada (mesmo CPF, ou sem CPF o
+  mesmo telefone). Prova: `e2e/importacao-contatos.spec.ts` ("só com e-mail").
 - **Cliente novo**: tag da unidade (é por ela que a lista filtra) e conta de
   fidelidade (`fidelidade_conta`); **SEM acesso ao portal** (cria-se na ficha).
   A importação de clientes não cria contato do CRM: a ficha se liga à pessoa

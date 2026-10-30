@@ -293,14 +293,20 @@ export function validarLinha(
         dados[campo.chave] = v.slice(0, MAX_TEXTO)
     }
   }
+  // D-10 (2026-10-29): o contato precisa do telefone OU do e-mail.
+  if (destino === 'contatos' && !bruto.get('phone') && !bruto.get('email')) {
+    erros.push('Sem telefone nem e-mail: o contato precisa de um dos dois.')
+  }
   return { dados, erros }
 }
 
 /**
  * A mesma pessoa duas vezes na planilha: a segunda é recusada (seria um
  * "completar" de si mesma). Cliente: pelo CPF; sem CPF, pelo telefone — com
- * CPF diferente, o mesmo telefone é outra pessoa (mãe e filha). Contato: pelo
- * telefone.
+ * CPF diferente, o mesmo telefone é outra pessoa (mãe e filha). No CONTATO
+ * não há repetida (D-10, decisão do Heitor de 2026-10-29): a segunda linha do
+ * mesmo telefone JUNTA as tags e a origem à pessoa que a primeira criou, e
+ * completa só o vazio.
  */
 /** Quem é "a mesma pessoa" dentro da planilha (a regra de marcarRepetidas). */
 export function chaveDaPessoa(destino: Destino, dados: DadosDaLinha): string {
@@ -309,6 +315,7 @@ export function chaveDaPessoa(destino: Destino, dados: DadosDaLinha): string {
 }
 
 export function marcarRepetidas(destino: Destino, linhas: LinhaValidada[]): LinhaValidada[] {
+  if (destino === 'contatos') return linhas
   const vistas = new Map<string, number>()
   return linhas.map(l => {
     if (l.erros.length) return l

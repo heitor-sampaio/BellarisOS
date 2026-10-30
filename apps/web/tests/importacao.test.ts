@@ -189,9 +189,30 @@ describe('validarLinha', () => {
     ])
     expect(validarLinha('clientes', [...mapa], ['Bia', '48999990000', '', '', '']).erros).toEqual([])
   })
-  it('no contato, o telefone é obrigatório e o nome não', () => {
+  // D-10 (frente de cadastro, 2026-10-29): o contato entra com o telefone OU o
+  // e-mail — a linha que só tem e-mail passa. Na ficha (clientes), o telefone
+  // continua obrigatório.
+  it('no contato, basta o telefone ou o e-mail; o nome não é obrigatório', () => {
     expect(validarLinha('contatos', ['name', 'phone'], ['', '48999990000']).erros).toEqual([])
-    expect(validarLinha('contatos', ['name', 'phone'], ['Ana', '']).erros).toEqual(['Telefone vazio.'])
+    expect(validarLinha('contatos', ['name', 'phone', 'email'], ['Ana', '', 'ana@exemplo.com']).erros).toEqual([])
+    expect(validarLinha('contatos', ['name', 'phone', 'email'], ['Ana', '', '']).erros)
+      .toEqual(['Sem telefone nem e-mail: o contato precisa de um dos dois.'])
+    expect(camposDoDestino('contatos').find(c => c.chave === 'phone')?.obrigatorio).toBe(false)
+  })
+  it('na ficha (clientes), o telefone continua obrigatório', () => {
+    expect(validarLinha('clientes', ['name', 'phone', 'email'], ['Ana', '', 'ana@exemplo.com']).erros).toEqual(['Telefone vazio.'])
+  })
+})
+
+// D-10: no CONTATO, o telefone repetido na planilha não é erro — a segunda
+// linha junta as tags e a origem à pessoa que a primeira criou.
+describe('marcarRepetidas — contatos', () => {
+  it('o mesmo telefone duas vezes passa (a segunda junta à primeira)', () => {
+    const r = marcarRepetidas('contatos', [
+      { numero: 2, dados: { name: 'A', phone: '5548222220000', tags: ['vip'] }, erros: [] },
+      { numero: 3, dados: { name: 'B', phone: '5548222220000', tags: ['botox'] }, erros: [] },
+    ])
+    expect(r.map(l => l.erros)).toEqual([[], []])
   })
 })
 

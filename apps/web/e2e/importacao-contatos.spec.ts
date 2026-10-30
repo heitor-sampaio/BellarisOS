@@ -277,6 +277,53 @@ test('quem só tem o CRM importa contatos; "Sem responsável" vale; e o contato 
   expect(lead).toEqual({ contato_id: pessoa!.id, owner_id: null })
 })
 
+// D-10 (decisão do Heitor, frente de cadastro de 2026-10-29): (a) a linha que
+// só tem e-mail entra como contato; (b) o telefone repetido JUNTA as tags e a
+// origem à pessoa que já existe, sem trocar os outros campos.
+test('contatos: a linha só com e-mail entra, e o telefone repetido junta tags e origem à pessoa', async ({ browser }) => {
+  const s4 = sufixo.slice(-4)
+  const emailSo = `e2e-so-email-${marca}@bellaris.invalid`
+  const nome = `email-e-repetido-${marca}.csv`
+  const arquivo = Buffer.from([
+    'Nome;WhatsApp;Email;Tags;Origem',
+    `${PREFIXO} Lia ${marca};(21) 96666-${s4};;vip;Instagram`,
+    `${PREFIXO} Lia de novo ${marca};(21) 96666-${s4};lia-${marca}@bellaris.invalid;botox;Indicação`,
+    `${PREFIXO} Só Email ${marca};;${emailSo};feira;Evento`,
+  ].join('\n'), 'utf-8')
+  await como(browser, admin, async p => {
+    await abrirArquivo(p, nome, arquivo)
+    await p.getByRole('button', { name: 'Como contatos do CRM', exact: true }).click()
+    await p.getByLabel('Criar oportunidade no funil').check()
+    await p.getByLabel('Etapa', { exact: true }).selectOption(etapa)
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await expect(p.getByLabel('Campo da coluna Origem')).toHaveValue('op_origem')
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await p.getByRole('button', { name: /Importar 3 linhas/ }).click()
+    await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
+  })
+  expect(await importacao(nome)).toMatchObject({ com_erro: 0, novas: 2, completadas: 1, oportunidades: 2 })
+
+  // (b) A Lia é UMA pessoa: o nome da primeira linha fica, o e-mail vazio é
+  // completado, e as tags e as origens das duas linhas se juntam.
+  const { data: lia } = await db().from('contacts').select('id, name, email, tags')
+    .eq('tenant_id', outra.tenantId).overlaps('identifiers', [`552196666${s4}`])
+  expect(lia).toHaveLength(1)
+  expect(lia![0]!.name).toBe(`${PREFIXO} Lia ${marca}`)
+  expect(lia![0]!.email).toBe(`lia-${marca}@bellaris.invalid`)
+  expect([...(lia![0]!.tags as string[])].sort()).toEqual(['Indicação', 'Instagram', 'botox', 'vip'])
+  const { count: leadsDaLia } = await db().from('leads').select('id', { count: 'exact', head: true }).eq('contato_id', lia![0]!.id)
+  expect(leadsDaLia, 'a oportunidade aberta não se duplica').toBe(1)
+
+  // (a) A pessoa só com e-mail, e a oportunidade nela (sem nascer outra pessoa).
+  const { data: soEmail } = await db().from('contacts').select('id, phone, email, tags, identifiers')
+    .eq('tenant_id', outra.tenantId).eq('email', emailSo)
+  expect(soEmail).toHaveLength(1)
+  expect(soEmail![0]).toMatchObject({ phone: null, identifiers: [] })
+  expect([...(soEmail![0]!.tags as string[])].sort()).toEqual(['Evento', 'feira'])
+  const { data: leadEmail } = await db().from('leads').select('contato_id, email').eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Só Email ${marca}`)
+  expect(leadEmail).toEqual([{ contato_id: soEmail![0]!.id, email: emailSo }])
+})
+
 test('a importação de clientes não se lê por quem só tem o CRM', async ({ browser }) => {
   const r = await importacao(`clientes-${marca}.csv`)
   await como(browser, soCrm, async p => {

@@ -1,7 +1,7 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import type { TenantContext } from '@estetica-os/types'
-import { unitTag } from '@estetica-os/utils'
+import { unitTag, mergeTags } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
@@ -133,7 +133,8 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
 
       for (const l of linhas) {
         const { dados, erros: problemas } = validarLinha(p.destino, p.mapeamento, l.valores, refs)
-        if (!problemas.length) {
+        // A repetida é só da ficha (clientes): no contato, a segunda linha junta à pessoa (D-10).
+        if (!problemas.length && p.destino === 'clientes') {
           const chave = chaveDaPessoa(p.destino, dados)
           const primeira = vistas.get(chave)
           if (primeira !== undefined) problemas.push(`Repetida na planilha (igual à linha ${primeira}).`)
@@ -185,11 +186,33 @@ async function pessoaDoTelefone(admin: Admin, tenantId: string, fone: string): P
     .order('created_at').limit(1).maybeSingle(), 'buscar a pessoa pelo telefone') as never
 }
 
+/**
+ * A pessoa do CRM com este e-mail (sem caixa) — a linha de contato que só tem
+ * e-mail (D-10, 2026-10-29). A pessoa mais antiga, como pelo telefone.
+ */
+async function pessoaDoEmail(admin: Admin, tenantId: string, email: string): Promise<{
+  id: string; name: string | null; phone: string | null; email: string | null; social_media: string | null; tags: string[] | null
+} | null> {
+  const exato = email.replace(/[\\%_]/g, c => '\\' + c)
+  return await ler(admin.from('contacts').select('id, name, phone, email, social_media, tags')
+    .eq('tenant_id', tenantId).ilike('email', exato)
+    .order('created_at').limit(1).maybeSingle(), 'buscar a pessoa pelo e-mail') as never
+}
+
+/** A pessoa da linha: pelo telefone; sem ele (contato só com e-mail), pelo e-mail. */
+async function pessoaDaLinha(admin: Admin, tenantId: string, dados: DadosDaLinha) {
+  const fone = dados.phone as string | undefined
+  if (fone) return pessoaDoTelefone(admin, tenantId, fone)
+  const email = dados.email as string | undefined
+  return email ? pessoaDoEmail(admin, tenantId, email) : null
+}
+
 /** Uma linha válida: a pessoa (nova, completada ou igual) e a oportunidade, se pedida. */
 async function gravarLinha(
   admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
 ): Promise<{ resultado: Resultado; oportunidade: boolean }> {
-  const fone = dados.phone as string
+  // Sem telefone só no contato que só tem e-mail (D-10): a ficha exige o telefone.
+  const fone = dados.phone as string | undefined
   let resultado: Resultado
   let clientId: string | null = null
   if (p.destino === 'clientes') {
@@ -204,24 +227,28 @@ async function gravarLinha(
   // A oportunidade vai para a pessoa que JÁ existe (o gatilho a acha pelo
   // telefone EXATO): com o número dela, e não o da planilha, que pode ser a
   // outra forma (com o nono dígito).
-  const pessoa = await pessoaDoTelefone(admin, p.tenant_id, fone)
+  const pessoa = await pessoaDaLinha(admin, p.tenant_id, dados)
   if (pessoa && await temOportunidadeAberta(admin, p.tenant_id, pessoa.id, p.oportunidade.etapaId)) {
     return { resultado, oportunidade: false }
   }
-  const nome = (dados.name as string | undefined) ?? fone
+  const nome = (dados.name as string | undefined) ?? fone ?? (dados.email as string)
   const texto = (c: ChaveDeCampo) => (dados[c] as string | undefined) ?? null
   // A etapa e o responsável da LINHA vencem os da tela (vazio = os da tela).
   // O responsável da linha já passou pela trava do cargo (a action recusa a
   // coluna para quem não troca responsável) e é da equipe ativa (refs).
   const criada = await criarOportunidadeCore(admin, ctx, {
-    nome, telefone: pessoa?.phone || fone, email: texto('email'), social: texto('social_media'),
+    nome, telefone: pessoa?.phone || fone || null, email: texto('email'), social: texto('social_media'),
     origem: texto('op_origem'), observacoes: texto('op_observacoes'),
     valor: dados.op_valor ? Number(dados.op_valor) : null,
     crmStageId: texto('op_etapa') ?? p.oportunidade.etapaId,
     procedureIds: (dados.op_procedimentos as string[] | undefined) ?? [],
     tags: (dados.op_tags as string[] | undefined) ?? [],
     utmSource: texto('op_utm_source'), utmMedium: texto('op_utm_medium'), utmCampaign: texto('op_utm_campaign'),
-  }, { semEventos: true, responsavelId: texto('op_responsavel') ?? p.oportunidade.responsavelId, clientId })
+  }, {
+    semEventos: true, responsavelId: texto('op_responsavel') ?? p.oportunidade.responsavelId, clientId,
+    // Sem telefone o gatilho não acha a pessoa (criaria outra): a oportunidade vai para a do e-mail.
+    ...(!fone && pessoa ? { contatoId: pessoa.id } : {}),
+  })
   if ('error' in criada) throw new Error(`Oportunidade: ${criada.error}`)
   return { resultado, oportunidade: true }
 }
@@ -292,10 +319,18 @@ async function gravarCliente(
   return { resultado: 'nova', clientId: novo.id }
 }
 
-/** O contato do CRM pelo telefone — com ou sem o nono dígito, como o WhatsApp o guarda. */
-async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext, dados: DadosDaLinha): Promise<Resultado> {
-  const fone = dados.phone as string
-  const pessoa = await pessoaDoTelefone(admin, tenantId, fone)
+/**
+ * O contato do CRM pelo telefone — com ou sem o nono dígito, como o WhatsApp o
+ * guarda —, ou, sem telefone, pelo e-mail (D-10). A ORIGEM da linha entra
+ * como tag da pessoa (como a do anúncio, `deriveLeadSource`), e a pessoa que
+ * já existe junta as tags e a origem; o resto, só o vazio (D-10, decisão do
+ * Heitor de 2026-10-29).
+ */
+async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext, linha: DadosDaLinha): Promise<Resultado> {
+  const fone = linha.phone as string | undefined
+  const origem = linha.op_origem as string | undefined
+  const dados: DadosDaLinha = { ...linha, tags: mergeTags(linha.tags as string[] | undefined, origem ? [origem] : []) }
+  const pessoa = await pessoaDaLinha(admin, tenantId, dados)
   if (pessoa) {
     const atual = pessoa.name?.trim() ?? ''
     // Sem nome = vazio, ou só o número (o que a conversa põe quando o WhatsApp não manda nome).
@@ -313,9 +348,9 @@ async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext,
     return 'completada'
   }
   await gravar(admin.from('contacts').insert({
-    tenant_id: tenantId, name: (dados.name as string | undefined) ?? null, phone: fone,
+    tenant_id: tenantId, name: (dados.name as string | undefined) ?? null, phone: fone ?? null,
     email: (dados.email as string | undefined) ?? null, social_media: (dados.social_media as string | undefined) ?? null,
-    identifiers: [fone], tags: (dados.tags as string[] | undefined) ?? [],
+    identifiers: fone ? [fone] : [], tags: (dados.tags as string[] | undefined) ?? [],
   }), 'criar o contato')
   return 'nova'
 }

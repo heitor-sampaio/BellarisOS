@@ -6,7 +6,7 @@ import { FileUp, Download, Loader2, AlertCircle, CheckCircle2 } from 'lucide-rea
 import { SegSelect } from '@/components/shared/seg-select'
 import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
-import { camposDoDestino, sugerirMapeamento, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
+import { camposDoDestino, sugerirMapeamento, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
 import { validarLinha, marcarRepetidas, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
 import { importarContatos, andamentoDaImportacao, type AndamentoDaImportacao } from '@/actions/importacao'
 
@@ -120,7 +120,7 @@ export function ImportadorDeContatos(p: Props) {
     setMapa(m => m.map((c, j) => (j === i ? campo : c === campo ? null : c)))
   }
 
-  const faltando = campos.filter(c => c.obrigatorio && !mapa.includes(c.chave))
+  const faltando = colunasQueFaltam(destino, campos, mapa)
 
   const validadas = useMemo<LinhaValidada[]>(() => {
     if (passo < 3 || !arquivo) return []
@@ -303,7 +303,7 @@ export function ImportadorDeContatos(p: Props) {
             ))}
           </div>
           {faltando.length > 0 && (
-            <Aviso tom="espera">Escolha a coluna de: {faltando.map(c => c.rotulo).join(', ')}.</Aviso>
+            <Aviso tom="espera">Escolha a coluna de: {faltando.join(', ')}.</Aviso>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <button type="button" className="btn-ghost" onClick={() => setPasso(1)}>Voltar</button>
@@ -328,8 +328,8 @@ export function ImportadorDeContatos(p: Props) {
               </ul>
             )}
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
-              Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone'}) só tem o que está em
-              branco completado — nada do que a clínica já tem é trocado. A importação não dispara as
+              Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone ou, sem ele, pelo e-mail'}) só tem o que está em
+              branco completado — nada do que a clínica já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags e a origem se juntam.'} A importação não dispara as
               automações de cadastro (boas-vindas, novo lead); as de rotina — aniversário, quem não volta há
               tempo — passam a contar com quem entrou.
             </p>
