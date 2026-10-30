@@ -54,8 +54,12 @@ export interface AlertLowStock {
   productName:  string
   branchName:   string
   branchSlug:   string
-  currentStock: number
-  minStock:     number
+  /** O saldo na unidade de consumo, pronto ("268 UI") — lib/estoque/situacao (J-43). */
+  saldo:        string
+  /** O mínimo na mesma unidade ("300 UI"). */
+  minimo:       string
+  /** "Abaixo do mínimo", "No mínimo" ou "Sem estoque". */
+  situacao:     string
 }
 
 export interface AdminDashboardProps {
@@ -839,7 +843,7 @@ export function AdminDashboardView({
                         {item.productName}
                       </p>
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                        {item.branchName} · {item.currentStock} de {item.minStock} mín.
+                        {item.branchName} · {item.saldo} · mín. {item.minimo} · {item.situacao}
                       </p>
                     </div>
                     <a

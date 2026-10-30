@@ -24,6 +24,7 @@ import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
+import { situacaoDoEstoque, estoqueBaixo, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
 
 
 
@@ -36,8 +37,8 @@ type PlanoPendente = {
   clients: { name: string } | null; branches: { name: string; slug: string } | null
 }
 type SaldoLido = {
-  current_stock: Num; min_stock: Num; branch_id: string
-  products: { name: string; is_active: boolean } | null
+  current_stock: Num; min_stock: Num; current_rendimento: Num | null; branch_id: string
+  products: { name: string; is_active: boolean; unit: string; consumption_unit: string | null; units_per_package: Num | null } | null
   branches: { name: string; slug: string } | null
 }
 
@@ -219,7 +220,7 @@ export default async function AdminDashboardPage({
 
     // Estoque: produtos com min_stock configurado OU zerados (para indicador de saúde)
     ler(admin.from('branch_product_stock')
-      .select('current_stock, min_stock, branch_id, products(name, is_active), branches(name, slug)')
+      .select('current_stock, min_stock, current_rendimento, branch_id, products(name, is_active, unit, consumption_unit, units_per_package), branches(name, slug)')
       .in('branch_id', branchIds)
       .or('min_stock.gt.0,current_stock.eq.0')
       .order('current_stock', { ascending: true }), 'carregar os saldos de estoque'),
@@ -312,26 +313,30 @@ export default async function AdminDashboardPage({
 
   const allBps = (bpsRaw ?? []) as unknown as SaldoLido[]
 
-  const lowStockItems: AlertLowStock[] = allBps
-    .filter(b => Number(b.current_stock) <= Number(b.min_stock) && Number(b.min_stock) > 0)
+  // A situação de cada saldo pela regra da tela de estoque (J-43): no
+  // rendimento, com "No mínimo" separado de "Abaixo do mínimo".
+  const comSituacao = allBps.map(b => {
+    const saldo = { embalagens: Number(b.current_stock), rendimento: b.current_rendimento != null ? Number(b.current_rendimento) : null, minimo: Number(b.min_stock) }
+    const medidas = { unit: b.products?.unit ?? '', consumption_unit: b.products?.consumption_unit ?? null, units_per_package: b.products?.units_per_package ?? null }
+    return { b, saldo, medidas, situacao: situacaoDoEstoque(saldo, medidas) }
+  })
+  const lowStockItems: AlertLowStock[] = comSituacao
+    .filter(s => Number(s.b.min_stock) > 0 && (s.situacao === 'SEM_ESTOQUE' || estoqueBaixo(s.situacao)))
     .slice(0, 20)
-    .map(b => ({
-      productName:  b.products?.name ?? '—',
-      branchName:   b.branches?.name ?? '—',
-      branchSlug:   b.branches?.slug ?? '',
-      currentStock: Number(b.current_stock),
-      minStock:     Number(b.min_stock),
+    .map(s => ({
+      productName:  s.b.products?.name ?? '—',
+      branchName:   s.b.branches?.name ?? '—',
+      branchSlug:   s.b.branches?.slug ?? '',
+      saldo:        formatarQuantidadeComUnidade(saldoParaMostrar(s.saldo, s.medidas)),
+      minimo:       formatarQuantidadeComUnidade(minimoParaMostrar(s.saldo, s.medidas)),
+      situacao:     ROTULO_DA_SITUACAO[s.situacao],
     }))
 
   // -- Indicador de saúde do estoque --------------------------------
   const zeroStockCount = allBps.filter(b =>
     Number(b.current_stock) === 0 && b.products?.is_active !== false
   ).length
-  const lowStockCount = allBps.filter(b =>
-    Number(b.current_stock) > 0 &&
-    Number(b.min_stock) > 0 &&
-    Number(b.current_stock) <= Number(b.min_stock)
-  ).length
+  const lowStockCount = comSituacao.filter(s => estoqueBaixo(s.situacao)).length
   const stockStatus: 'critical' | 'warning' | 'healthy' =
     zeroStockCount > 0 ? 'critical' : lowStockCount > 0 ? 'warning' : 'healthy'
   // Despesas do período. Simétrico à receita: só o que foi efetivamente pago

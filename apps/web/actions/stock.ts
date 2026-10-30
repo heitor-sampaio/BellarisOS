@@ -593,6 +593,18 @@ export interface MovimentoDeEstoque {
   embalagem:    string
   /** O saldo depois, em embalagens (4,95 frascos) — só quando o produto conta em consumo. */
   saldoEmEmbalagens: number | null
+  /**
+   * O movimento em embalagens (−32 UI = −0,32 frasco; +300 UI = +3 frasco) —
+   * só quando o produto conta em consumo (J-44: o histórico dizia "−1 ml" e a
+   * pessoa pensava na seringa).
+   */
+  emEmbalagens: number | null
+  /** O custo de UMA unidade de consumo gravado no movimento (R$ 6,50 a UI). */
+  custoUnitario: number | null
+  /** O custo de UMA embalagem (o de consumo × o rendimento): R$ 650 o frasco. */
+  custoPorEmbalagem: number | null
+  /** Os lotes do movimento (de onde saiu, ou o que a entrada criou) — J-45. */
+  lotes: { numero: string | null; validade: string | null }[]
 }
 
 /**
@@ -613,7 +625,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, created_at, branches!inner(name, tenant_id)')
+    .select('id, type, quantity, balance_after, notes, created_at, unit_cost, branches!inner(name, tenant_id), stock_movement_batches(product_batches(batch_number, expires_at))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -643,7 +655,10 @@ export async function getProductMovements(
   type Row = {
     id: string; type: string; quantity: number; balance_after: number
     notes: string | null; created_at: string; branches: { name: string } | null
+    unit_cost: number | string | null
+    stock_movement_batches: { product_batches: { batch_number: string | null; expires_at: string | null } | null }[] | null
   }
+  const fator = emConsumo ? upp : 1
   return ((data ?? []) as unknown as Row[]).map(m => ({
     id:           m.id,
     type:         m.type,
@@ -656,6 +671,11 @@ export async function getProductMovements(
     porEmbalagem: emConsumo ? upp : null,
     embalagem,
     saldoEmEmbalagens: emConsumo ? Math.round(Number(m.balance_after) / upp * 100) / 100 : null,
+    emEmbalagens: emConsumo ? Math.round(Number(m.quantity) / upp * 100) / 100 : null,
+    custoUnitario: m.unit_cost != null ? Number(m.unit_cost) : null,
+    custoPorEmbalagem: m.unit_cost != null ? Math.round(Number(m.unit_cost) * fator * 100) / 100 : null,
+    lotes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
+      ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at }] : []),
   }))
 }
 

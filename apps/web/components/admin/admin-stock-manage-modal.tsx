@@ -670,8 +670,21 @@ function HistoricoTab({ product, defaultBranchId }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
       {movs.map(m => {
         const entrada = m.quantity >= 0
+        const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+        const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        // O lote e o custo do movimento (J-45): de qual lote saiu (ou qual a
+        // entrada criou) e quanto custou a unidade de consumo e a embalagem.
+        const lotes = m.lotes.map(l => [
+          l.numero ? `Lote ${l.numero}` : 'Lote sem número',
+          l.validade ? `val. ${new Date(l.validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : null,
+        ].filter(Boolean).join(' ')).join(' · ')
+        const custo = m.custoUnitario != null && m.custoUnitario > 0
+          ? (m.porEmbalagem
+            ? `${fmtBRL(m.custoUnitario)}/${m.unidade} (${fmtBRL(m.custoPorEmbalagem ?? 0)}/${m.embalagem})`
+            : `${fmtBRL(m.custoUnitario)}/${m.unidade}`)
+          : null
         return (
-          <div key={m.id} style={{
+          <div key={m.id} data-movimento style={{
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '9px 12px', borderRadius: 9,
             border: '1px solid var(--hairline)', background: 'var(--surface)',
@@ -685,11 +698,22 @@ function HistoricoTab({ product, defaultBranchId }: {
                 {new Date(m.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 {m.notes ? ` · ${m.notes}` : ''}
               </p>
+              {(lotes || custo) && (
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
+                  {[lotes, custo ? `custo ${custo}` : null].filter(Boolean).join(' · ')}
+                </p>
+              )}
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: entrada ? 'var(--success)' : 'var(--danger)' }}>
-                {entrada ? '+' : ''}{m.quantity.toLocaleString('pt-BR')} {m.unidade}
+                {entrada ? '+' : ''}{fmt(m.quantity)} {m.unidade}
               </p>
+              {/* O movimento também em embalagens (J-44): −32 UI = 0,32 frasco. */}
+              {m.emEmbalagens != null && (
+                <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
+                  {fmt(Math.abs(m.emEmbalagens))} {m.embalagem}
+                </p>
+              )}
               {/* O movimento está na unidade de consumo (ml, UI); o saldo
                   mostra também a equivalência em embalagens. */}
               <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>

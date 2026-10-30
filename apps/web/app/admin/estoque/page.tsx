@@ -9,6 +9,8 @@ import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
+import { lotesComSaldo, lotesVencendo, type LoteDoProduto } from '@/lib/estoque/lotes'
+import { situacaoDoEstoque, estoqueBaixo } from '@/lib/estoque/situacao'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
 type ProdutoLido = {
@@ -144,22 +146,18 @@ export default async function AdminEstoquePage({
   // filial e do dashboard. Giro = consumo em procedimentos no mês (não qualquer
   // saída: transferência entre unidades não é consumo). Somar as linhas aqui
   // cortava em 1000 (§13.1). Fim do MÊS, não "agora" (relógio do Postgres).
-  const [valorEstoque, valorGiro, batchesRaw, valores] = productIds.length > 0
+  const [valorEstoque, valorGiro, lotes, valores] = productIds.length > 0
     ? await Promise.all([
         getValorEmEstoque(unidadesDoRecorte),
         getGiroDeEstoque({ branchIds: unidadesDoRecorte, from: monthStart, to: endOfMonthTZ(now) }),
 
-        // Lotes com saldo vencendo em até 30 dias (inclui os já vencidos)
-        ler(admin
-          .from('product_batches')
-          .select('product_id, expires_at')
-          .in('product_id', productIds)
-          .gt('quantity', 0)
-          .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
+        // Os lotes com saldo das unidades do recorte (J-45): a linha aberta
+        // mostra número, validade e custo, e o cartão diz quais vencem.
+        lotesComSaldo(admin, unidadesDoRecorte, products.map(p => ({ id: p.id, fator: p.consumptionUnit && p.unitsPerPackage ? p.unitsPerPackage : 1 }))),
         // O valor de cada linha: a consolidada soma as unidades da rede inteira.
         getValorEmEstoquePorProduto(todasAsUnidades),
       ])
-    : [0, 0, [], new Map<string, number>()]
+    : [0, 0, [] as LoteDoProduto[], new Map<string, number>()]
 
   // -- KPIs ------------------------------------------------------------
 
@@ -168,8 +166,11 @@ export default async function AdminEstoquePage({
   const saldosVisiveis = (p: (typeof products)[number]) =>
     unidadeId ? p.branches.filter(b => b.branchId === unidadeId) : p.branches
 
+  // No mínimo OU abaixo (o alerta de sempre), no rendimento — J-43.
   const abaixoMinimo = products.filter(p =>
-    saldosVisiveis(p).some(b => b.minStock > 0 && b.currentStock <= b.minStock),
+    saldosVisiveis(p).some(b => estoqueBaixo(situacaoDoEstoque(
+      { embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock },
+      { unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage }))),
   ).length
 
   const semEstoque = products.filter(p => {
@@ -177,8 +178,11 @@ export default async function AdminEstoquePage({
     return saldos.length > 0 && saldos.every(b => b.currentStock === 0)
   }).length
 
-  // Conta lotes, não produtos distintos.
-  const validadeProxima = (batchesRaw ?? []).length
+  // Conta lotes, não produtos distintos — e diz QUAIS produtos (J-45).
+  const vencendo        = lotesVencendo(lotes, in30Days)
+  const validadeProxima = vencendo.length
+  const nomeDoProduto   = new Map(products.map(p => [p.id, p.name]))
+  const quaisVencem     = [...new Set(vencendo.map(l => nomeDoProduto.get(l.produtoId) ?? ''))].filter(Boolean)
 
   const suppliers      = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
@@ -240,7 +244,9 @@ export default async function AdminEstoquePage({
             brand:   false,
           },
           {
-            label:   'ABAIXO DO MÍNIMO',
+            id:      'baixo',
+            label:   'ESTOQUE BAIXO',
+            detalhe: 'no mínimo ou abaixo' as string | undefined,
             value:   String(abaixoMinimo),
             icon:    <AlertTriangle size={18} style={{ color: abaixoMinimo > 0 ? 'var(--warning)' : 'var(--text-faint)' }} />,
             iconBg:  abaixoMinimo > 0 ? 'var(--warning-soft)' : 'var(--bg-app)',
@@ -258,7 +264,9 @@ export default async function AdminEstoquePage({
             brand:   false,
           },
           {
+            id:      'validade',
             label:   'VALIDADE EM 30 DIAS',
+            detalhe: quaisVencem.length ? quaisVencem.slice(0, 2).join(', ') + (quaisVencem.length > 2 ? ` e mais ${quaisVencem.length - 2}` : '') : undefined,
             value:   String(validadeProxima),
             icon:    <CalendarClock size={18} style={{ color: validadeProxima > 0 ? 'var(--warning)' : 'var(--text-faint)' }} />,
             iconBg:  validadeProxima > 0 ? 'var(--warning-soft)' : 'var(--bg-app)',
@@ -269,6 +277,8 @@ export default async function AdminEstoquePage({
         ].map(k => (
           <div
             key={k.label}
+            data-kpi={'id' in k ? k.id : undefined}
+            title={'detalhe' in k && k.detalhe ? `${k.label}: ${k.detalhe}` : undefined}
             className={k.brand ? 'card-brand' : 'card'}
             style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}
           >
@@ -285,6 +295,11 @@ export default async function AdminEstoquePage({
               <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.color, marginTop: 3, whiteSpace: 'nowrap' }}>
                 {k.value}
               </p>
+              {'detalhe' in k && k.detalhe && (
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {k.detalhe}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -297,6 +312,7 @@ export default async function AdminEstoquePage({
           // consumo), não da tela — A39, 2026-10-27.
           valor:    valores.get(p.id) ?? 0,
           branches: p.branches.map(b => ({ ...b, valor: valores.get(`${p.id}:${b.branchId}`) ?? 0 })),
+          lotes:    lotes.filter(l => l.produtoId === p.id),
         }))}
         branches={branches}
         categories={stockCategories}

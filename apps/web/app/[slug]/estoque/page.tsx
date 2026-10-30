@@ -12,6 +12,8 @@ import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
+import { lotesComSaldo, lotesVencendo, type LoteDoProduto } from '@/lib/estoque/lotes'
+import { situacaoDoEstoque, estoqueBaixo } from '@/lib/estoque/situacao'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
 type ProdutoLido = {
@@ -136,26 +138,24 @@ export default async function BranchStockPage({
   // dashboard (custo do movimento; o do cadastro só como reserva). Somar as
   // linhas aqui cortava em 1000 (§13.1). Fim do MÊS, não "agora": o consumo
   // lançado neste segundo nasce com o relógio do Postgres, à frente do app.
-  const [valorEstoque, valorGiro, batchesRaw, valores] = productIds.length > 0
+  const [valorEstoque, valorGiro, lotes, valores] = productIds.length > 0
     ? await Promise.all([
         getValorEmEstoque([branchId]),
         getGiroDeEstoque({ branchIds: [branchId], from: startOfMonthTZ(now), to: endOfMonthTZ(now) }),
 
         // O lote é DA UNIDADE (desde 2026-09-28): o que vence aqui é o que está
-        // nesta prateleira, não o que está em outra unidade.
-        ler(admin
-          .from('product_batches')
-          .select('product_id, expires_at')
-          .eq('branch_id', branchId)
-          .in('product_id', productIds)
-          .gt('quantity', 0)
-          .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
+        // nesta prateleira, não o que está em outra unidade. Todos os lotes com
+        // saldo: a linha aberta mostra número, validade e custo (J-45).
+        lotesComSaldo(admin, [branchId], products.map(p => ({ id: p.id, fator: p.consumptionUnit && p.unitsPerPackage ? p.unitsPerPackage : 1 }))),
         getValorEmEstoquePorProduto([branchId]),
       ])
-    : [0, 0, [], new Map<string, number>()]
+    : [0, 0, [] as LoteDoProduto[], new Map<string, number>()]
 
+  // No mínimo OU abaixo (o alerta de sempre), no rendimento — J-43.
   const abaixoMinimo = products.filter(p =>
-    p.branches.some(b => b.minStock > 0 && b.currentStock <= b.minStock),
+    p.branches.some(b => estoqueBaixo(situacaoDoEstoque(
+      { embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock },
+      { unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage }))),
   ).length
 
   // `every` sobre lista vazia é true: sem a guarda de comprimento, todo produto
@@ -165,8 +165,12 @@ export default async function BranchStockPage({
   ).length
 
   // Conta LOTES, não produtos — cinco lotes do mesmo produto vencendo são cinco
-  // avisos. Lotes já vencidos entram no alerta em vez de sumirem dele.
-  const validadeProxima = (batchesRaw ?? []).length
+  // avisos. Lotes já vencidos entram no alerta em vez de sumirem dele. E diz
+  // QUAIS produtos (J-45): o cartão só dava o número.
+  const vencendo        = lotesVencendo(lotes, in30Days)
+  const validadeProxima = vencendo.length
+  const nomeDoProduto   = new Map(products.map(p => [p.id, p.name]))
+  const quaisVencem     = [...new Set(vencendo.map(l => nomeDoProduto.get(l.produtoId) ?? ''))].filter(Boolean)
 
   const suppliers       = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
@@ -225,7 +229,9 @@ export default async function BranchStockPage({
             },
           ] : []),
           {
-            label: 'ABAIXO DO MÍNIMO',
+            id:    'baixo',
+            label: 'ESTOQUE BAIXO',
+            detalhe: 'no mínimo ou abaixo',
             value: String(abaixoMinimo),
             icon:  <AlertTriangle size={18} style={{ color: abaixoMinimo > 0 ? 'var(--warning)' : 'var(--text-faint)' }} />,
             iconBg: abaixoMinimo > 0 ? 'var(--warning-soft)' : 'var(--bg-app)',
@@ -241,7 +247,9 @@ export default async function BranchStockPage({
             labelColor: 'var(--text-muted)', brand: false,
           },
           {
+            id:    'validade',
             label: 'VALIDADE EM 30 DIAS',
+            detalhe: quaisVencem.length ? quaisVencem.slice(0, 2).join(', ') + (quaisVencem.length > 2 ? ` e mais ${quaisVencem.length - 2}` : '') : undefined,
             value: String(validadeProxima),
             icon:  <CalendarClock size={18} style={{ color: validadeProxima > 0 ? 'var(--warning)' : 'var(--text-faint)' }} />,
             iconBg: validadeProxima > 0 ? 'var(--warning-soft)' : 'var(--bg-app)',
@@ -254,6 +262,8 @@ export default async function BranchStockPage({
         {allKpis.map(k => (
           <div
             key={k.label}
+            data-kpi={'id' in k ? k.id : undefined}
+            title={'detalhe' in k && k.detalhe ? `${k.label}: ${k.detalhe}` : undefined}
             className={k.brand ? 'card-brand' : 'card'}
             style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}
           >
@@ -270,6 +280,11 @@ export default async function BranchStockPage({
               <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.color, marginTop: 3, whiteSpace: 'nowrap' }}>
                 {k.value}
               </p>
+              {'detalhe' in k && k.detalhe && (
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {k.detalhe}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -284,6 +299,7 @@ export default async function BranchStockPage({
           // consumo), não da tela — A39, 2026-10-27.
           valor:    valores.get(p.id) ?? 0,
           branches: p.branches.map(b => ({ ...b, valor: valores.get(`${p.id}:${b.branchId}`) ?? 0 })),
+          lotes:    lotes.filter(l => l.produtoId === p.id),
         }))}
         branches={branchData}
         unidadesDaRede={unidadesDaRede}

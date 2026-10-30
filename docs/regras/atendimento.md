@@ -605,6 +605,29 @@ const procedures = await ler(
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e
     transferência, o histórico).
+- **A tela de Estoque mostra o saldo na unidade de CONSUMO** (J-43/J-44/J-45,
+  2026-10-30). A regra é UMA, `lib/estoque/situacao.ts` (tela da rede, da
+  unidade e o "Estoque crítico" do dashboard): o produto com unidade de
+  consumo se mostra no rendimento (268 UI) com a equivalência EXATA em
+  embalagens embaixo (2,68 frasco) — o `current_stock` arredonda a embalagem
+  aberta para cima, e 95 ml apareciam como "1 frasco". A situação compara o
+  rendimento com o mínimo em consumo (3 frascos = 300 UI): menor é "Abaixo do
+  mínimo", IGUAL é "No mínimo" (era "abaixo do mín."); os dois são "estoque
+  baixo" (o cartão e o filtro "No mínimo ou abaixo", o alerta de sempre).
+  - "TOTAL REDE" e "ESTOQUE POR FILIAL" só com mais de uma unidade na tela; no
+    portal da unidade a coluna é "ESTOQUE".
+  - O histórico do produto diz cada movimento na unidade dele E em embalagens
+    (−32 UI · 0,32 frasco), o lote (número e validade) e o custo
+    (`getProductMovements`: `stock_movement_batches` e `unit_cost`).
+  - A linha aberta lista os lotes com saldo de cada unidade (número, validade,
+    o que sobra, custo da embalagem — `lotesComSaldo`, `lib/estoque/lotes.ts`),
+    e o cartão "Validade em 30 dias" diz QUAIS produtos.
+  - **A entrada guarda o lote também só com a validade**, e fica LIGADA ao
+    lote que criou em `stock_movement_batches` (migration `20261029001301`).
+    Antes a validade sem número de lote sumia. O lote continua sem custo
+    próprio: o custo dele é o do movimento de entrada ligado (o lote que veio
+    por transferência fica sem custo, "—").
+  - Prova: `e2e/estoque-tela-consumo-e-lotes.spec.ts`, `tests/estoque-situacao.test.ts`.
 - **Movimentação de estoque NUNCA gera despesa** (D13 revisto, decisão do
   Heitor, 2026-10-28: "tanto entrada quanto saída, não gera despesa. Os
   valores são informados apenas para base de cálculo de insumos, custo,

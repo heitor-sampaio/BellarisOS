@@ -9,6 +9,21 @@ import { contemSemAcento } from '@/lib/texto'
 import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
 import { SegSelect } from '@/components/shared/seg-select'
+import {
+  situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo,
+  formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
+  type MedidasDoProduto, type SituacaoDoEstoque,
+} from '@/lib/estoque/situacao'
+
+/** Um lote com saldo (J-45): número, validade, o que sobra e o custo da embalagem. */
+export type LoteNaTela = {
+  id:                string
+  unidadeId:         string
+  numero:            string | null
+  validade:          string | null
+  quantidade:        number
+  custoPorEmbalagem: number | null
+}
 
 type BranchStock = {
   branchId:          string
@@ -39,9 +54,18 @@ type ProductStock = {
   /** O valor do produto nas unidades da linha, do banco (saldo em consumo × custo de consumo). */
   valor:            number
   branches:         BranchStock[]
+  /** Os lotes com saldo do produto nas unidades da tela. */
+  lotes?:           LoteNaTela[]
 }
 
 type Branch = { id: string; name: string; slug: string }
+
+const medidas = (p: ProductStock): MedidasDoProduto =>
+  ({ unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage })
+const saldoDe = (b: BranchStock) => ({ embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock })
+const situacaoDe = (p: ProductStock, b: BranchStock) => situacaoDoEstoque(saldoDe(b), medidas(p))
+const fmtData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+const fmtBRLv = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 interface Props {
   products:          ProductStock[]
@@ -71,15 +95,19 @@ interface Props {
 type ViewMode  = 'consolidado' | 'por-unidade'
 type StatusFilter = 'all' | 'ok' | 'baixo' | 'zero'
 
-function StockBadge({ current, min, unit }: { current: number; min: number; unit: string }) {
-  const isZero  = current === 0
-  const isBaixo = !isZero && min > 0 && current <= min
+/** As cores de cada situação: zerado é perigo, no mínimo e abaixo são alerta. */
+function coresDa(sit: SituacaoDoEstoque) {
+  if (sit === 'SEM_ESTOQUE') return { bg: 'var(--danger-soft)', color: 'var(--danger)' }
+  if (estoqueBaixo(sit))     return { bg: 'var(--warning-soft)', color: 'var(--warning)' }
+  return { bg: 'var(--success-bg)', color: 'var(--success)' }
+}
 
-  const bg    = isZero ? 'var(--danger-soft)' : isBaixo ? 'var(--warning-soft)' : 'var(--success-bg)'
-  const color = isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--success)'
-  const icon  = isZero
+/** O selo da situação: "Abaixo do mínimo", "No mínimo" (igual não é abaixo — J-43), "OK", "Sem estoque". */
+function StockBadge({ situacao }: { situacao: SituacaoDoEstoque }) {
+  const { bg, color } = coresDa(situacao)
+  const icon  = situacao === 'SEM_ESTOQUE'
     ? <PackageX   size={10} />
-    : isBaixo
+    : estoqueBaixo(situacao)
     ? <AlertTriangle size={10} />
     : <CheckCircle2  size={10} />
 
@@ -87,32 +115,47 @@ function StockBadge({ current, min, unit }: { current: number; min: number; unit
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
       fontSize: 'var(--text-xs-sz)', fontWeight: 800, padding: '3px 8px', borderRadius: 99,
-      background: bg, color,
+      background: bg, color, whiteSpace: 'nowrap',
     }}>
       {icon}
-      {current.toLocaleString('pt-BR')} {unit}
+      {ROTULO_DA_SITUACAO[situacao]}
     </span>
   )
 }
 
-function BranchPills({ branches, unit }: { branches: BranchStock[]; unit: string }) {
+/** O saldo na unidade de consumo e, embaixo, a equivalência exata em embalagens (J-43). */
+function Saldo({ produto, quantidade, forte = true }: { produto: ProductStock; quantidade: { quantidade: number; unidade: string }; forte?: boolean }) {
+  const emb = produto.consumptionUnit && produto.unitsPerPackage ? emEmbalagens(quantidade.quantidade, medidas(produto)) : null
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.2 }}>
+      <span style={{ fontSize: forte ? 'var(--text-base-sz)' : 'var(--text-sm-sz)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+        {formatarQuantidadeComUnidade(quantidade)}
+      </span>
+      {emb && (
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+          {formatarQuantidadeComUnidade(emb)}
+        </span>
+      )}
+    </span>
+  )
+}
+
+function BranchPills({ branches, produto }: { branches: BranchStock[]; produto: ProductStock }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
       {branches.map(b => {
-        const isZero  = b.currentStock === 0
-        const isBaixo = !isZero && b.minStock > 0 && b.currentStock <= b.minStock
-        const color   = isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--success)'
-        const bg      = isZero ? 'var(--danger-soft)' : isBaixo ? 'var(--warning-soft)' : 'var(--success-bg)'
+        const { bg, color } = coresDa(situacaoDe(produto, b))
+        const saldo = formatarQuantidadeComUnidade(saldoParaMostrar(saldoDe(b), medidas(produto)))
         return (
           // O nome INTEIRO da unidade (D15, 2026-10-28): a primeira palavra dava
           // "Íris · 3" para o Centro e para o Kobrasol. Se não couber, o CSS
           // trunca com reticências e o title diz tudo.
-          <span key={b.branchId} title={`${b.branchName} · ${b.currentStock.toLocaleString('pt-BR')} ${unit}`} style={{
+          <span key={b.branchId} title={`${b.branchName} · ${saldo}`} style={{
             fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
             background: bg, color, whiteSpace: 'nowrap',
             display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom',
           }}>
-            {b.branchName} · {b.currentStock.toLocaleString('pt-BR')} {unit}
+            {b.branchName} · {saldo}
           </span>
         )
       })}
@@ -168,6 +211,11 @@ export function AdminStockView({ products, branches, categories, productCategori
   const [editing,    setEditing]    = useState<ProductStock | null>(null)
   const [scanning,   setScanning]   = useState(false)
   const editModalRef = useRef<StockProductModalHandle>(null)
+  // Lido uma vez (o lote vencido se marca em vermelho; Date.now não roda no render).
+  const [agora] = useState(() => Date.now())
+  // Rede de verdade só com mais de uma unidade na tela (J-44): no portal da
+  // unidade, "TOTAL REDE" e "ESTOQUE POR FILIAL" eram a mesma unidade.
+  const variasUnidades = branches.length > 1
 
   useEffect(() => {
     if (editing) editModalRef.current?.open()
@@ -200,9 +248,10 @@ export function AdminStockView({ products, branches, categories, productCategori
             ? p.branches.filter(b => b.branchId === branchId)
             : p.branches
 
-          if (status === 'zero'  && !stocksToCheck.some(b => b.currentStock === 0))   return false
-          if (status === 'baixo' && !stocksToCheck.some(b => b.minStock > 0 && b.currentStock > 0 && b.currentStock <= b.minStock)) return false
-          if (status === 'ok'    && !stocksToCheck.some(b => b.currentStock > 0 && (b.minStock === 0 || b.currentStock > b.minStock))) return false
+          const situacoes = stocksToCheck.map(b => situacaoDe(p, b))
+          if (status === 'zero'  && !situacoes.includes('SEM_ESTOQUE')) return false
+          if (status === 'baixo' && !situacoes.some(estoqueBaixo))       return false
+          if (status === 'ok'    && !situacoes.includes('OK'))          return false
         }
 
         return true
@@ -289,7 +338,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         <select className="filtro-select" value={status} onChange={e => setStatus(e.target.value as StatusFilter)}>
           <option value="all">Todos os status</option>
           <option value="ok">OK</option>
-          <option value="baixo">Abaixo do mínimo</option>
+          <option value="baixo">No mínimo ou abaixo</option>
           <option value="zero">Sem estoque</option>
         </select>
 
@@ -337,9 +386,10 @@ export function AdminStockView({ products, branches, categories, productCategori
                 <tr>
                   <th style={thStyle}>PRODUTO</th>
                   <th style={thStyle}>CATEGORIA</th>
-                  <th style={thStyle}>TOTAL REDE</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>RENDIMENTO</th>
-                  <th style={thStyle}>ESTOQUE POR FILIAL</th>
+                  {/* "TOTAL REDE" só quando há rede para somar (J-44): no portal
+                      da unidade a coluna somava só a unidade. */}
+                  <th style={thStyle}>{variasUnidades ? 'TOTAL REDE' : 'ESTOQUE'}</th>
+                  {variasUnidades && <th style={thStyle}>ESTOQUE POR FILIAL</th>}
                   {!readOnly && <th style={{ ...thStyle, textAlign: 'right' }}>VALOR EM ESTOQUE</th>}
                   {!readOnly && <th style={{ ...thStyle, width: 68 }} />}
                   <th style={{ ...thStyle, width: 36 }} />
@@ -348,8 +398,14 @@ export function AdminStockView({ products, branches, categories, productCategori
               <tbody>
                 {filtered.map((p, i) => {
                   const isExpanded = expanded.has(p.id)
-                  const totalBaixo = p.branches.filter(b => b.minStock > 0 && b.currentStock <= b.minStock).length
-                  const totalZero  = p.branches.filter(b => b.currentStock === 0).length
+                  const situacoes   = p.branches.map(b => situacaoDe(p, b))
+                  const totalAbaixo = situacoes.filter(s => s === 'ABAIXO').length
+                  const totalNoMin  = situacoes.filter(s => s === 'NO_MINIMO').length
+                  const totalZero   = situacoes.filter(s => s === 'SEM_ESTOQUE').length
+                  // O total na unidade de consumo (o rendimento), não em embalagens arredondadas (J-43).
+                  const total = p.consumptionUnit && p.totalRendimento != null
+                    ? { quantidade: p.totalRendimento, unidade: p.consumptionUnit }
+                    : { quantidade: p.totalStock, unidade: p.unit }
 
                   return (
                     <Fragment key={p.id}>
@@ -370,47 +426,40 @@ export function AdminStockView({ products, branches, categories, productCategori
                             {p.category ?? '—'}
                           </span>
                         </td>
-                        <td data-label="Total rede" data-par style={{ padding: '13px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-                              {p.totalStock.toLocaleString('pt-BR')}
-                            </span>
-                            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>{p.unit}</span>
+                        <td data-label={variasUnidades ? 'Total rede' : 'Estoque'} data-par style={{ padding: '13px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <Saldo produto={p} quantidade={total} />
                             {totalZero > 0 && (
                               <span style={{
                                 fontSize: 'var(--text-overline)', fontWeight: 700, padding: '1px 6px', borderRadius: 99,
                                 background: 'var(--danger-soft)', color: 'var(--danger)',
                               }}>
-                                {totalZero} sem estoque
+                                {variasUnidades ? `${totalZero} sem estoque` : 'Sem estoque'}
                               </span>
                             )}
-                            {totalZero === 0 && totalBaixo > 0 && (
+                            {totalZero === 0 && totalAbaixo > 0 && (
                               <span style={{
                                 fontSize: 'var(--text-overline)', fontWeight: 700, padding: '1px 6px', borderRadius: 99,
                                 background: 'var(--warning-soft)', color: 'var(--warning)',
                               }}>
-                                {totalBaixo} abaixo do mín.
+                                {variasUnidades ? `${totalAbaixo} abaixo do mín.` : 'Abaixo do mín.'}
+                              </span>
+                            )}
+                            {totalZero === 0 && totalAbaixo === 0 && totalNoMin > 0 && (
+                              <span style={{
+                                fontSize: 'var(--text-overline)', fontWeight: 700, padding: '1px 6px', borderRadius: 99,
+                                background: 'var(--warning-soft)', color: 'var(--warning)',
+                              }}>
+                                {variasUnidades ? `${totalNoMin} no mínimo` : 'No mínimo'}
                               </span>
                             )}
                           </div>
                         </td>
-                        <td data-label="Rendimento" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {p.consumptionUnit && p.totalRendimento != null ? (
-                            <div>
-                              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-                                {p.totalRendimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                              </span>
-                              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginLeft: 4 }}>
-                                {p.consumptionUnit}
-                              </span>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>
-                          )}
-                        </td>
-                        <td data-label="Por filial" style={{ padding: '13px 16px' }}>
-                          <BranchPills branches={p.branches} unit={p.unit} />
-                        </td>
+                        {variasUnidades && (
+                          <td data-label="Por filial" style={{ padding: '13px 16px' }}>
+                            <BranchPills branches={p.branches} produto={p} />
+                          </td>
+                        )}
                         {!readOnly && (
                           <td data-label="Valor" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {p.costPrice > 0
@@ -442,27 +491,51 @@ export function AdminStockView({ products, branches, categories, productCategori
                       </tr>
                       {isExpanded && (
                         <tr style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
-                          <td data-label="" colSpan={readOnly ? 6 : 8} style={{ padding: '0 16px 14px 40px', background: 'var(--bg-app)' }}>
+                          <td data-label="" colSpan={(variasUnidades ? 4 : 3) + (readOnly ? 0 : 2) + 1} style={{ padding: '0 16px 14px 40px', background: 'var(--bg-app)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                              {p.branches.map(b => (
+                              {p.branches.map(b => {
+                                const lotes = (p.lotes ?? []).filter(l => l.unidadeId === b.branchId)
+                                return (
                                 <div key={b.branchId} style={{
-                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  display: 'flex', flexDirection: 'column', gap: 6,
                                   padding: '8px 12px', borderRadius: 8,
                                   background: 'var(--surface)', border: '1px solid var(--hairline)',
                                 }}>
-                                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-                                    {b.branchName}
-                                  </span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                    {b.minStock > 0 && (
-                                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                                        mín. {b.minStock.toLocaleString('pt-BR')} {p.unit}
-                                      </span>
-                                    )}
-                                    <StockBadge current={b.currentStock} min={b.minStock} unit={p.unit} />
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
+                                      {b.branchName}
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                                      <Saldo produto={p} quantidade={saldoParaMostrar(saldoDe(b), medidas(p))} forte={false} />
+                                      {b.minStock > 0 && (
+                                        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                                          mín. {formatarQuantidadeComUnidade(minimoParaMostrar(saldoDe(b), medidas(p)))}
+                                        </span>
+                                      )}
+                                      <StockBadge situacao={situacaoDe(p, b)} />
+                                    </div>
                                   </div>
+                                  {/* Os lotes desta unidade (J-45): número, validade, o que sobra e o custo da embalagem. */}
+                                  {lotes.length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
+                                      {lotes.map(l => {
+                                        const vencido = l.validade ? new Date(l.validade).getTime() < agora : false
+                                        return (
+                                          <p key={l.id} data-lotes-do-produto style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                            <strong style={{ color: 'var(--text)' }}>{l.numero ? `Lote ${l.numero}` : 'Lote sem número'}</strong>
+                                            <span style={{ color: vencido ? 'var(--danger)' : undefined }}>
+                                              {l.validade ? `${vencido ? 'venceu' : 'vence'} ${fmtData(l.validade)}` : 'sem validade'}
+                                            </span>
+                                            <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
+                                            <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}` : 'custo —'}</span>
+                                          </p>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           </td>
                         </tr>
@@ -485,7 +558,6 @@ export function AdminStockView({ products, branches, categories, productCategori
                   <th style={thStyle}>CATEGORIA</th>
                   <th style={thStyle}>FILIAL</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>ESTOQUE</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>RENDIMENTO</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>MÍNIMO</th>
                   {!readOnly && <th style={{ ...thStyle, textAlign: 'right' }}>VALOR</th>}
                   <th style={thStyle}>STATUS</th>
@@ -494,8 +566,7 @@ export function AdminStockView({ products, branches, categories, productCategori
               </thead>
               <tbody>
                 {rowsByUnit.map((row, i) => {
-                  const isZero  = row.branch.currentStock === 0
-                  const isBaixo = !isZero && row.branch.minStock > 0 && row.branch.currentStock <= row.branch.minStock
+                  const situacao = situacaoDe(row, row.branch)
 
                   return (
                     <tr key={`${row.id}-${row.branch.branchId}`} style={{
@@ -519,36 +590,11 @@ export function AdminStockView({ products, branches, categories, productCategori
                         </span>
                       </td>
                       <td data-label="Estoque" data-par style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        <span style={{
-                          fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
-                          color: isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--text)',
-                        }}>
-                          {row.branch.currentStock.toLocaleString('pt-BR')}
-                          <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>
-                            {row.unit}
-                          </span>
-                        </span>
-                      </td>
-                      <td data-label="Rendimento" data-par style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        {row.consumptionUnit && row.unitsPerPackage ? (() => {
-                          const r = row.branch.currentRendimento != null
-                            ? row.branch.currentRendimento
-                            : row.branch.currentStock * row.unitsPerPackage
-                          return (
-                            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
-                              {r.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginLeft: 4 }}>
-                                {row.consumptionUnit}
-                              </span>
-                            </span>
-                          )
-                        })() : (
-                          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>
-                        )}
+                        <Saldo produto={row} quantidade={saldoParaMostrar(saldoDe(row.branch), medidas(row))} />
                       </td>
                       <td data-label="Mínimo" data-par style={{ padding: '12px 16px', textAlign: 'right' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-                          {row.branch.minStock > 0 ? `${row.branch.minStock.toLocaleString('pt-BR')} ${row.unit}` : '—'}
+                          {row.branch.minStock > 0 ? formatarQuantidadeComUnidade(minimoParaMostrar(saldoDe(row.branch), medidas(row))) : '—'}
                         </span>
                       </td>
                       {!readOnly && (
@@ -565,7 +611,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                         </td>
                       )}
                       <td data-label="Status" data-par style={{ padding: '12px 16px' }}>
-                        <StockBadge current={row.branch.currentStock} min={row.branch.minStock} unit={row.unit} />
+                        <StockBadge situacao={situacao} />
                       </td>
                       {!readOnly && (
                         <td data-label="" style={{ padding: '12px 10px' }}>
