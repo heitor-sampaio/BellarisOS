@@ -1651,6 +1651,55 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Ajustes J, 1ª rodada: setup, configurações, equipe, busca, CRM e clientes
+
+Dezenove ajustes em 12 commits (3bc3f8d1…5e276796), com o teste escrito antes;
+nenhuma migration:
+
+- **Setup** (J-1, J-3, J-6): o telefone com DDI volta inteiro ("(48) 99999-0000");
+  recarregar fica no passo da unidade (`?passo=unidade`); a primeira unidade
+  herda o CNPJ da rede.
+- **Configurações → Geral** (J-2, J-7): CNPJ e telefone com máscara, o telefone
+  salvo como aparece; a rede em teste diz "Teste grátis: tudo, menos o Copilot".
+- **"1 membro cadastrado"** nas duas telas da Equipe (J-8).
+- **Procedimento** com um rótulo só, "Visível no app do cliente" (J-10); o
+  catálogo de fidelidade diz quando a cliente troca pelo app (J-12).
+- **A busca acha telas**: "sala" → Configurações → Unidades · Salas, "caixa" →
+  Fechamento do dia, com as permissões de quem busca (J-13).
+- **CRM** (J-17…J-20): sem as origens nas tags, "Novo lead em Proposta",
+  telefone com máscara, rótulos ligados.
+- **O Esc fecha todo seletor de lista**, e o clique fora não é engolido (J-21).
+- **Clientes** (J-22…J-27): a conta já existente diz "a senha continua a dela";
+  o texto da unidade de cadastro diz onde ela aparece; arquivar pede
+  confirmação, a ficha arquivada tem o selo e o servidor recusa agendar e
+  vender; o filtro "Arquivadas"; o comentário da avaliação na linha do tempo e
+  no app; o "Histórico de procedimentos" só com os concluídos; "por Fulana" em
+  cada evento e o histórico na janela do agendamento.
+
+**Decisões da frente, para revisar:**
+1. J-3: o passo mora no endereço; fechar o navegador recomeça no passo 1, com
+   os dados preenchidos.
+2. J-6: `createBranch` herda o CNPJ da rede sempre que o formulário não manda.
+3. J-2: "CNPJ ou CPF" usa a máscara de CPF até 11 dígitos; o telefone da rede é
+   gravado formatado.
+4. J-7: fora do teste e sem plano, "Todas as funcionalidades, sem limite, menos
+   o Copilot…".
+5. J-13: apelidos de busca (caixa, comissão, termos, importar, etiquetas,
+   fatura, histórico do WhatsApp).
+6. J-19: o mesmo número com ou sem máscara e 55 conta como igual; salvar sem
+   mexer não muda o número gravado.
+7. J-21: corrigido no seletor compartilhado (`picker-compacto`).
+8. J-23: reativar é um clique; a recusa vale para criar agendamento (agenda,
+   plano, pré-pago, Copilot), não para remarcar nem para o app da cliente.
+9. J-24: o texto some na clínica de uma unidade.
+10. J-26: a falta saiu do "Histórico de procedimentos" (fica na linha do tempo).
+11. J-27: vale o autor da última vez; o concluído mostra quem concluiu.
+
+O E2E do J-7 (`planos-recursos`) só roda contra o build. Mexeu em
+`conferirPecasDoAgendamento`, nas actions de venda, em `lib/cached-queries.ts`,
+em `packages/utils`, no seletor compartilhado e nas actions de rede, setup e
+clientes: vale uma completa.
+
 ### 2026-10-30 — Frente de contratos e automações: campanha, modelos, contrato, retorno, parcelas e a clínica de uma unidade
 
 Seis decisões do Heitor e três ajustes do editor de automações, com o teste
@@ -8596,38 +8645,38 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
 **Ajustes, sem decisão (J-1…J-68).** Vão para frentes de correção, com TDD.
 
 - **Setup e Configurações**
-  - J-1: o DDI no telefone do setup.
-  - J-2: as máscaras de CNPJ e telefone na aba Geral.
-  - J-3: o setup volta ao passo 1.
+  - J-1: o DDI no telefone do setup. Feito (3bc3f8d1).
+  - J-2: as máscaras de CNPJ e telefone na aba Geral. Feito (c038b0f0).
+  - J-3: o setup volta ao passo 1. Feito (4fde94da).
   - J-4: o horário de funcionamento na "Nova unidade". Feito (cbec8e7b).
   - J-5: o CEP na "Nova unidade". Feito (cbec8e7b).
-  - J-6: a unidade herda o CNPJ.
-  - J-7: "Teste grátis: tudo, menos o Copilot".
+  - J-6: a unidade herda o CNPJ. Feito (4fde94da).
+  - J-7: "Teste grátis: tudo, menos o Copilot". Feito (ee7b0995).
 - **Equipe**
-  - J-8: "1 membro cadastrados".
+  - J-8: "1 membro cadastrados". Feito (cc82a723).
   - J-9: o horário próprio nasce do horário da unidade. Feito (6f68225a).
 - **Catálogo, fidelidade e busca**
-  - J-10: um rótulo só para o self-service.
+  - J-10: um rótulo só para o self-service. Feito (01b866f7).
   - J-11: a medida "U". Feito (cd6e99c5).
-  - J-12: o texto do catálogo de fidelidade.
-  - J-13: a busca universal acha as telas.
+  - J-12: o texto do catálogo de fidelidade. Feito (012fd270).
+  - J-13: a busca universal acha as telas. Feito (4496e0c4).
 - **Automações**
   - J-14: os nós soltos e o deslocamento. Feito (35e2d002).
   - J-15: "1 dias" e "sim/nao". Feito (c94dfe46).
   - J-16: o rótulo cortado no menu. Feito (9325900e).
 - **CRM**
-  - J-17: as tags que repetem as origens.
-  - J-18: os nomes acessíveis dos botões de etapa.
-  - J-19: o telefone cru no modal.
-  - J-20: os labels dos selects.
-  - J-21: o Esc no seletor de tags.
+  - J-17: as tags que repetem as origens. Feito (fdb7e05f).
+  - J-18: os nomes acessíveis dos botões de etapa. Feito (fdb7e05f).
+  - J-19: o telefone cru no modal. Feito (fdb7e05f).
+  - J-20: os labels dos selects. Feito (fdb7e05f).
+  - J-21: o Esc no seletor de tags. Feito (6d1b6ee0).
 - **Clientes**
-  - J-22: o aviso falso de "a senha é o CPF" para quem já tem conta.
-  - J-23: arquivar pede confirmação e ganha marca e filtro.
-  - J-24: o texto "qualquer unidade".
-  - J-25: o nome do "+".
-  - J-26: o histórico de avaliação e o cancelado.
-  - J-27: quem fez cada ação.
+  - J-22: o aviso falso de "a senha é o CPF" para quem já tem conta. Feito (f8113c03).
+  - J-23: arquivar pede confirmação e ganha marca e filtro. Feito (d05dfdc3).
+  - J-24: o texto "qualquer unidade". Feito (f8113c03).
+  - J-25: o nome do "+". Feito (d05dfdc3).
+  - J-26: o histórico de avaliação e o cancelado. Feito (5e276796).
+  - J-27: quem fez cada ação. Feito (5e276796).
 - **Agenda**
   - J-28: o modal não perde os campos no conflito. Feito (cb84d4bc).
   - J-29: o aviso ao abrir outra unidade. Feito (bb9a0237).
