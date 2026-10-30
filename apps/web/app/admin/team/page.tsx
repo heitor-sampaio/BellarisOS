@@ -1,4 +1,5 @@
 import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
+import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
@@ -128,9 +129,7 @@ export default async function AdminTeamPage({
             Equipe
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {members.length} {members.length === 1 ? 'membro' : 'membros'}
-            {hasFilters && ' encontrados'}
-            {!hasFilters && ' em toda a rede'}
+            {contagemDeMembros(members.length, hasFilters ? 'encontrados' : 'em toda a rede')}
           </p>
         </div>
         {canManage && (
