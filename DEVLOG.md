@@ -1651,6 +1651,41 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-29 — Frente de permissões: o plano é da cliente, só a Admin mexe na Admin
+
+Seis decisões da revisão do Heitor, um commit cada, com o teste escrito antes:
+
+- **O plano é da cliente** (51ec17f3). Com a agenda em "só os meus", ela vê os
+  planos de toda cliente que tem agendamento com ela, quem quer que os tenha
+  montado.
+- **Só a Admin da rede promove e altera uma Admin** (e7829988): cargo, "atende",
+  horário, comissão, desativar e reativar. A gerente da rede deixa de poder.
+- **Os documentos emitidos seguem o prontuário "só os meus"** (edfc9317).
+- **O cargo volta a guardar o "só os meus" do módulo desligado** (64f4a643). O
+  contexto continua a ignorá-lo enquanto o módulo está em NONE.
+- **Funis, etapas e motivos de perda exigem Configurações em Gerenciar**
+  (c67e836c). Mover cards não mudou.
+- **A tela de Cargos avisa que Marketing e Automações valem só na rede**
+  (c5f87973).
+
+**Decisões da frente, para revisar:**
+1. O plano que ela mesma montou continua dela, mesmo sem agendamento com a
+   cliente. A anotação do profissional no plano segue o prontuário. O número
+   "planos aguardando checkout" do dashboard não mudou.
+2. "Cliente dela" inclui agendamento cancelado ou falta, a regra que o
+   prontuário já usava.
+3. "Adicionar membro" não oferece o cargo de Admin; promove-se pela edição. A
+   Admin não se rebaixa nem havendo outra. Reativar uma Admin também é só da
+   Admin. As exceções de comissão por procedimento não foram travadas.
+4. O histórico da ficha também esconde os "Assinado: …" da cliente que ela não
+   atende.
+5. Funis pedem, além de Configurações, ver o CRM.
+6. As versões antigas de `documentos_emitidos_pagina` e `_resumo` ficaram no
+   banco sem uso (o `drop function` pelo MCP falhou duas vezes); apagar depois.
+
+Mexeu na ficha da cliente, na sessão de atendimento, em `actions/team.ts` e
+`actions/comissoes.ts`: vale uma completa.
+
 ### 2026-10-29 — Os defeitos da quarta simulação, corrigidos (17 de 19)
 
 Pedido do Heitor: corrigir os defeitos. Os atritos ficam para depois. O D4 (venda de produto) e o D5 (tela de salas) são recursos novos e esperam a decisão dele.
@@ -7000,7 +7035,9 @@ verdade. O que vale:
       "só os meus", ela vê os planos de toda cliente que atende (que tem
       agendamento com ela), quem quer que tenha montado o plano. É a mesma
       regra do prontuário: quem cobre uma sessão precisa ver o que foi feito e
-      o que falta. A FAZER.
+      o que falta. **Feito em 2026-10-29** (51ec17f3): na lista Planejamentos,
+      na aba da cliente e pelo id; a regra mora em `lib/clientes/atendida-por.ts`,
+      a mesma do prontuário. O recebimento do plano continua de fora.
     - **(6) "A cliente é da clínica; o atendimento é da profissional."** Na
       retenção dela entram as clientes que ela atendeu no período, e "voltou" é
       quem já tinha sido atendida pela CLÍNICA antes, por qualquer
@@ -7016,7 +7053,9 @@ verdade. O que vale:
       cliente é da clínica". O que é dela (prontuário, planos, financeiro) já
       segue o "só os meus".
     - **Documentos emitidos:** seguem o prontuário. Com ele em "só os meus",
-      só os das clientes que ela atende. A FAZER.
+      só os das clientes que ela atende. **Feito em 2026-10-29** (edfc9317,
+      migration `20261029000901`): a tela, o Copilot, a ficha, a sessão, as
+      actions pelo id, a assinatura e o PDF.
     - **Caixa, fechamento do dia e checkout:** são da recepção e do caixa, e
       quem tem o módulo vê tudo.
     - **Giro do estoque:** é da clínica e fica inteiro.
@@ -7966,7 +8005,8 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - **(3) "Somente admin pode alterar admin."** Cargo, "atende", horário,
     comissão e desativação de um Admin da rede só por outro Admin da rede
     (ou por ela mesma, no que já pode). A gerente da rede deixa de poder.
-  - A FAZER, na frente de permissões.
+  - **Feito em 2026-10-29** (e7829988). O cargo é reconhecido pela chave de
+    sistema (`lib/equipe/admin-da-rede.ts`), nunca pelo rótulo.
 - **D3.** "1.400" no preço vira R$ 1,40, sem aviso. `parseDinheiro` lê o ponto como decimal quando não há vírgula (`packages/utils/src/format.ts:99-103`), e isso vale para todo campo de dinheiro. NOVO, uma ambiguidade da regra de `639ebd5`.
 
   **Feito em 2026-10-29** (7cd98962).
@@ -8021,7 +8061,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
     3. Quem não tem agenda nem financeiro vê os números da unidade dos módulos que tem, e o dinheiro continua preso ao Financeiro.
   - **Revisto pelo Heitor (2026-10-29):**
     - (1) confirmado.
-    - (2) **volta ao jeito antigo.** O cargo salvo GUARDA o "só os meus" do módulo desligado, e religar devolve o que estava. O sistema continua ignorando esse escopo enquanto o módulo está em NONE. Sai o `escopoParaGravar`. A FAZER, na frente de permissões.
+    - (2) **volta ao jeito antigo.** O cargo salvo GUARDA o "só os meus" do módulo desligado, e religar devolve o que estava. O sistema continua ignorando esse escopo enquanto o módulo está em NONE. Sai o `escopoParaGravar`. **Feito em 2026-10-29** (64f4a643).
     - (3) é a regra "cada número segue o seu módulo" (revisão da frente G).
 - **D7.** Para a recepção, Planejamento → Injetáveis responde 500 e fica em "Carregando…" sem fim.
   - Causa: a sub-aba não confere a permissão, e o `useEffect` não trata o `semAcesso()` da action.
@@ -8136,8 +8176,8 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 | D-19 | O vocabulário de rede numa clínica de uma unidade só | 3ª A26, seção da 4ª |
 
 **Respostas do Heitor (2026-10-29):**
-- **D-1:** criar e editar funis, etapas e motivos de perda exige Configurações MANAGE, como as tags. Mover os cards segue com quem opera o quadro.
-- **D-2: fica só na rede.** "A automação é da clínica, mesmo que o alvo seja a unidade." A tela de Cargos passa a avisar que Marketing e Automações valem para quem é da rede.
+- **D-1:** criar e editar funis, etapas e motivos de perda exige Configurações MANAGE, como as tags. Mover os cards segue com quem opera o quadro. **Feito em 2026-10-29** (c67e836c).
+- **D-2: fica só na rede.** "A automação é da clínica, mesmo que o alvo seja a unidade." A tela de Cargos passa a avisar que Marketing e Automações valem para quem é da rede. **Feito em 2026-10-29** (c5f87973).
 - **D-3:** a campanha de hoje é aviso no celular (push). A tela passa a dizer isso claramente. O WhatsApp fica para o futuro.
 - **D-4:** modelos prontos entram como opção. "Nova automação" continua começando vazia, e o procedimento continua no passo "Se" (condicional), sem ir para o gatilho.
 - **D-5:** um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto. Fica o fluxo de trocar; sai o de criar outro e desativar o atual antes.
