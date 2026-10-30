@@ -190,6 +190,31 @@
   o que a métrica de "avaliações agendadas × comparecimento" sempre quis saber.
 - `clientNotes`: observações que o cliente envia ao agendar pelo app
 - `roomId`: sala/cabine opcional — uma sala não pode ter dois agendamentos simultâneos (validar no action)
+- **As salas da unidade** (D5, decisão do Heitor, 2026-10-30; migration
+  `20261029001401`): Configurações → Unidades → a unidade, cartão "Salas"
+  (`components/admin/salas-da-unidade.tsx`, `actions/salas.ts`): criar,
+  renomear, desativar e reativar — não se apaga (agendamentos apontam para
+  ela). Quem tem `settings: MANAGE`, na unidade ao alcance; o nome é único
+  entre as ATIVAS da unidade (`rooms_nome_unico_na_unidade`). A sessão não
+  grava sala pelo PostgREST (as políticas de escrita saíram): só o servidor.
+  - **O procedimento se liga às salas em que é feito** (`procedure_rooms`, no
+    cadastro do procedimento, "Salas em que é feito"). Ligação OPCIONAL e por
+    UNIDADE: sem sala ligada nesta unidade, qualquer sala ativa dela serve;
+    com sala ligada, só as ligadas. A regra é UMA, pura,
+    `lib/agenda/salas.ts` (`salasParaOProcedimento`).
+  - **O agendar** (agenda dos dois portais e o CRM) oferece só as salas que
+    servem, com "(ocupada)" na que tem atendimento no horário, e já escolhe a
+    primeira livre (`salasParaAgendar` / `salasParaAgendarNoCrm` →
+    `salasDoAgendar`, `lib/appointments/salas.ts`). **Unidade sem sala: o
+    campo nem aparece.** A sala continua opcional (decisão para o Heitor).
+  - **O servidor confere em todo caminho que passa por
+    `conferirPecasDoAgendamento`** (com `procedureId`): sala ativa da unidade
+    ("Sala não encontrada nesta unidade.") e que serve ao procedimento ("Esta
+    sala não é usada para este procedimento."); o conflito ("Esta sala já está
+    ocupada nesse horário.") é `horarioOcupado`, no núcleo e na remarcação.
+    O checkout do plano, as sessões de pacote/plano e o Copilot não escolhem
+    sala (agendam sem). Prova: `e2e/agenda-salas.spec.ts`,
+    `tests/agenda-salas.test.ts`.
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
 - Ao marcar `COMPLETED`: consumo de estoque + comissão, numa transação — ver §10. Os pontos de fidelidade NÃO nascem aqui: nascem no pagamento (§9.2.2).
 
@@ -884,6 +909,7 @@ O resto do fluxo:
 ❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
+❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
 ❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_inicial/estoque_ajuste (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)

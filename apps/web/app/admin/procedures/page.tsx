@@ -59,6 +59,7 @@ export default async function AdminProceduresPage({
     products,
     fichaRows,
     categorias,
+    salasDaRede,
   ] = await Promise.all([
     ler(admin.from('branches').select('id, name')
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades'),
@@ -75,6 +76,11 @@ export default async function AdminProceduresPage({
 
     // O vocabulário da rede (Procedimentos → Categorias).
     categoriasAtivasDaRede(ctx.tenantId!),
+
+    // As salas ATIVAS das unidades da rede (D5, 2026-10-30): o procedimento se liga às em que é feito.
+    ler(admin.from('rooms').select('id, name, branch_id, branches!inner(tenant_id, name, is_active)')
+      .eq('branches.tenant_id', ctx.tenantId!).eq('branches.is_active', true).eq('is_active', true)
+      .order('name').order('id'), 'carregar as salas da rede'),
   ])
   const comissao = podeComissao ? await comissaoDosProcedimentos(ctx.tenantId!) : null
   // O que o chip e o modal de editar recebem; o de criar começa sem nada.
@@ -100,13 +106,15 @@ export default async function AdminProceduresPage({
     availability,
     procProducts,
     branchPricing,
+    salasLigadas,
   ] = procIds.length > 0
     ? await Promise.all([
         ler(admin.from('procedure_branch_availability').select('procedure_id, branch_id').in('procedure_id', procIds), 'carregar a disponibilidade por unidade'),
         ler(admin.from('procedure_products').select('procedure_id, product_id, quantity, unit_cost').in('procedure_id', procIds), 'carregar os insumos dos procedimentos'),
         ler(admin.from('procedure_branch_pricing').select('procedure_id, branch_id, price, labor_cost').in('procedure_id', procIds), 'carregar os preços por unidade'),
+        ler(admin.from('procedure_rooms').select('procedure_id, room_id').in('procedure_id', procIds), 'carregar as salas dos procedimentos'),
       ])
-    : [[], [], []]
+    : [[], [], [], []]
 
   // Junta os dados manualmente
   const procList = baseProcs.map(p => ({
@@ -114,6 +122,7 @@ export default async function AdminProceduresPage({
     procedure_branch_availability: (availability   ?? []).filter(a  => a.procedure_id  === p.id),
     procedure_products:            (procProducts   ?? []).filter(pp => pp.procedure_id  === p.id),
     procedure_branch_pricing:      (branchPricing  ?? []).filter(bp => bp.procedure_id  === p.id),
+    room_ids:                      (salasLigadas   ?? []).filter(l  => l.procedure_id   === p.id).map(l => l.room_id as string),
   }))
 
   // Usa as filiais já carregadas para montar o mapa de nomes (sem embed PostgREST)
@@ -148,6 +157,8 @@ export default async function AdminProceduresPage({
   const totalActive   = procList.filter(p => p.is_active).length
   const totalInactive = procList.filter(p => !p.is_active).length
   const branchList    = branches ?? []
+  const salasDoCadastro = ((salasDaRede ?? []) as unknown as { id: string; name: string; branches: { name: string } }[])
+    .map(s => ({ id: s.id, name: s.name, unidade: s.branches.name }))
 
   return (
     <div>
@@ -166,7 +177,7 @@ export default async function AdminProceduresPage({
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* O catálogo é da rede: as categorias também (a mesma trava de criar procedimento). */}
             {ctx.branchId === null && <CategoriasDeProcedimento ativas={categorias.length} />}
-            <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
+            <ProcedureModal salas={salasDoCadastro} branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
           </div>
         )}
       </div>
@@ -241,6 +252,7 @@ export default async function AdminProceduresPage({
                     consent_template_id:  (p.consent_template_id as string | null) ?? null,
                     contract_template_id: (p.contract_template_id as string | null) ?? null,
                     loyalty_points:       (p.loyalty_points as number | null) ?? null,
+                    room_ids:             p.room_ids,
                   }
 
                   return (
@@ -292,6 +304,7 @@ export default async function AdminProceduresPage({
                         {canEdit && (
                           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                             <ProcedureModal
+                              salas={salasDoCadastro}
                               branches={branchList}
                               products={productList}
                               fichas={fichas}
@@ -327,7 +340,7 @@ export default async function AdminProceduresPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 16 }}>
             Nenhum procedimento cadastrado na rede ainda.
           </p>
-          <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
+          <ProcedureModal salas={salasDoCadastro} branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
         </div>
       )}
     </div>

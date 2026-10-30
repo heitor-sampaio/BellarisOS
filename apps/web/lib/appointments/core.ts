@@ -20,6 +20,7 @@ import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { oportunidadeDoAgendamento, ligarAgendamentoAOportunidade } from '@/lib/crm/liga-agendamento'
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import type { CandidataDoHorario } from '@/lib/appointments/sem-preferencia'
+import { recusaDaSala } from '@/lib/appointments/salas'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -103,12 +104,16 @@ export async function horarioOcupado(admin: Admin, a: {
 export async function conferirPecasDoAgendamento(
   admin: Admin,
   ctx: TenantContext,
-  pecas: { branchId?: string | null; professionalId?: string | null; clientId?: string | null; roomId?: string | null },
+  pecas: {
+    branchId?: string | null; professionalId?: string | null; clientId?: string | null; roomId?: string | null
+    /** Com a sala: o procedimento, para conferir que a sala serve a ele (D5). */
+    procedureId?: string | null
+  },
 ): Promise<string | null> {
   if (pecas.branchId && ctx.branchId && pecas.branchId !== ctx.branchId) {
     return 'Você só pode agendar na sua unidade.'
   }
-  const [unidade, profissional, cliente, sala] = await Promise.all([
+  const [unidade, profissional, cliente, recusaSala] = await Promise.all([
     pecas.branchId
       ? ler(admin.from('branches').select('id')
           .eq('id', pecas.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
@@ -121,15 +126,16 @@ export async function conferirPecasDoAgendamento(
       ? ler(admin.from('clients').select('id')
           .eq('id', pecas.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
       : Promise.resolve({ id: null }),
+    // A sala ATIVA da unidade e, com o procedimento ligado a salas ali, uma
+    // das dele (D5, 2026-10-30). Sala sem unidade não se confere: não há onde.
     pecas.roomId && pecas.branchId
-      ? ler(admin.from('rooms').select('id')
-          .eq('id', pecas.roomId).eq('branch_id', pecas.branchId).maybeSingle(), 'buscar a sala')
-      : Promise.resolve({ id: null }),
+      ? recusaDaSala(admin, { branchId: pecas.branchId, roomId: pecas.roomId, procedureId: pecas.procedureId })
+      : Promise.resolve(pecas.roomId ? 'Sala não encontrada nesta unidade.' : null),
   ])
   if (!unidade)      return 'Filial não encontrada.'
   if (!profissional) return 'Profissional não encontrado.'
   if (!cliente)      return 'Cliente não encontrado.'
-  if (!sala)         return 'Sala não encontrada nesta unidade.'
+  if (recusaSala)    return recusaSala
   return null
 }
 

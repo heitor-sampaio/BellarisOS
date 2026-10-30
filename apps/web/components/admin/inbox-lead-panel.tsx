@@ -29,10 +29,12 @@ import { updateLead, updateLeadStage } from '@/actions/leads'
 import { ClientForm } from '@/components/branch/client-form'
 import {
   getCrmSchedulingData,
+  salasParaAgendarNoCrm,
   getCrmSlots,
   createCrmAppointment,
   type CrmSchedulingData,
 } from '@/actions/crm-scheduling'
+import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Vender } from '@/components/shared/vender'
 import { creditosParaAgendar } from '@/actions/creditos'
@@ -1114,6 +1116,27 @@ function ScheduleModal({
     return () => { active = false }
   }, [branchId, professionalId, date, procedureId, durationMin])
 
+  // As salas (D5, 2026-10-30): só as que servem ao procedimento, dizendo a
+  // ocupada no horário; a primeira livre vem escolhida até a pessoa escolher.
+  const temSalas = !!data && data.rooms.length > 0
+  const horarioDaSala = slot ? new Date(`${date}T${slot}:00-03:00`).toISOString() : null
+  const chaveDasSalas = `${branchId}|${procedureId}|${horarioDaSala}`
+  const [salasDoServidor, setSalasDoServidor] = useState<{ chave: string; salas: SalaParaAgendar[]; sugerida: string | null } | null>(null)
+  useEffect(() => {
+    if (!temSalas || !branchId) return
+    let vivo = true
+    salasParaAgendarNoCrm(branchId, procedureId || null, horarioDaSala)
+      .then(r => { if (vivo) setSalasDoServidor({ chave: chaveDasSalas, ...r }) })
+      .catch(() => { /* fica a lista da unidade */ })
+    return () => { vivo = false }
+  }, [temSalas, branchId, procedureId, horarioDaSala, chaveDasSalas])
+  const salasOferecidas: SalaParaAgendar[] = salasDoServidor?.chave === chaveDasSalas
+    ? salasDoServidor.salas
+    : (data?.rooms ?? []).map(r => ({ id: r.id, name: r.name, livre: true }))
+  const salaFinal = roomId !== ''
+    ? (roomId === '-' ? '' : salasOferecidas.some(s => s.id === roomId) ? roomId : '')
+    : (salasDoServidor?.chave === chaveDasSalas ? (salasDoServidor.sugerida ?? '') : '')
+
   function handleSubmit() {
     setError(null)
     if (!branchId)                        { setError('Selecione a unidade.'); return }
@@ -1134,7 +1157,7 @@ function ScheduleModal({
         professionalId,
         procedureId,
         scheduledAt,
-        roomId: roomId || null,
+        roomId: salaFinal || null,
         contato: clienteLigado ? null : { nome: nome.trim(), telefone: telefone.trim() },
         credito: credito ? { tipo: credito.tipo, id: credito.id } : null,
       })
@@ -1230,12 +1253,13 @@ function ScheduleModal({
           </label>
 
           {/* Sala (opcional) */}
-          {data && data.rooms.length > 0 && (
+          {temSalas && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <span style={labelStyle}>Sala (opcional)</span>
-              <select className="field" value={roomId} onChange={e => setRoomId(e.target.value)} style={selectStyle}>
-                <option value="">Nenhuma</option>
-                {data.rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {/* "-" = "Nenhuma"; o estado vazio = ninguém escolheu (vale a sugerida). */}
+              <select className="field" value={salaFinal || '-'} onChange={e => setRoomId(e.target.value)} style={selectStyle}>
+                <option value="-">Nenhuma</option>
+                {salasOferecidas.map(r => <option key={r.id} value={r.id}>{r.livre ? r.name : `${r.name} (ocupada)`}</option>)}
               </select>
             </label>
           )}

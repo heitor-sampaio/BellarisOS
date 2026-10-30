@@ -1,7 +1,8 @@
 'use client'
 
 import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar } from '@/actions/appointments'
+import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhone, maskPhoneDigitando } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
@@ -34,10 +35,11 @@ interface AppointmentModalProps {
   onSuccess:     () => void
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** O rótulo é LIGADO ao campo (`htmlFor`, design.md): sem isso, nem o leitor de tela nem o clique o acham. */
+function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+      <label htmlFor={htmlFor} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
         {label}
       </label>
       {children}
@@ -85,7 +87,7 @@ export function AppointmentModal({
 
   function trocarUnidade(id: string) {
     setUnidadeId(id)
-    setProfId(''); setProcId('')
+    setProfId(''); setProcId(''); setSalaEscolhida(null)
     if (escolheUnidade && id) setCarregandoUnidade(true)
   }
 
@@ -214,6 +216,32 @@ export function AppointmentModal({
     [localDT],
   )
 
+  // -- Sala (D5, 2026-10-30) --------------------------------------------------
+  // Só as salas que servem ao procedimento (as ligadas a ele nesta unidade, ou
+  // todas), cada uma dizendo se está livre no horário; a primeira livre vem
+  // escolhida, até a pessoa escolher outra. O servidor confere de novo.
+  const temSalas = dados.rooms.length > 0
+  const procedimentoDoAgendamento = credito?.procedureId ?? procId
+  const [salasDoServidor, setSalasDoServidor] = useState<{ chave: string; salas: SalaParaAgendar[]; sugerida: string | null } | null>(null)
+  const chaveDasSalas = `${unidadeId}|${procedimentoDoAgendamento}|${scheduledAtUTC}|${duracaoMin}`
+  useEffect(() => {
+    if (!temSalas || !unidadeId) return
+    let vivo = true
+    salasParaAgendar(unidadeId, procedimentoDoAgendamento || null, scheduledAtUTC || null, duracaoMin)
+      .then(r => { if (vivo) setSalasDoServidor({ chave: chaveDasSalas, ...r }) })
+      .catch(() => { /* fica a lista da unidade */ })
+    return () => { vivo = false }
+  }, [temSalas, unidadeId, procedimentoDoAgendamento, scheduledAtUTC, duracaoMin, chaveDasSalas])
+  const salasOferecidas: SalaParaAgendar[] = salasDoServidor?.chave === chaveDasSalas
+    ? salasDoServidor.salas
+    : dados.rooms.map(r => ({ id: r.id, name: r.name, livre: true }))
+  // `null` = ninguém escolheu: vale a sugerida. A escolhida que deixou de
+  // servir (outro procedimento) volta a "sem sala".
+  const [salaEscolhida, setSalaEscolhida] = useState<string | null>(null)
+  const salaId = salaEscolhida !== null
+    ? (salaEscolhida === '' || salasOferecidas.some(s => s.id === salaEscolhida) ? salaEscolhida : '')
+    : (salasDoServidor?.chave === chaveDasSalas ? (salasDoServidor.sugerida ?? '') : '')
+
   const minDT = useMemo(() => {
     const now = new Date(agora)
     const pad = (n: number) => String(n).padStart(2, '0')
@@ -246,8 +274,8 @@ export function AppointmentModal({
           {/* Na rede o atendimento precisa dizer de qual unidade é: é ela que
               tem a sala, a profissional e a agenda. */}
           {escolheUnidade && (
-            <Field label="Unidade *">
-              <select className="field" value={unidadeId} onChange={e => trocarUnidade(e.target.value)}>
+            <Field label="Unidade *" htmlFor="ag-unidade">
+              <select id="ag-unidade" className="field" value={unidadeId} onChange={e => trocarUnidade(e.target.value)}>
                 {unidades!.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </Field>
@@ -404,8 +432,8 @@ export function AppointmentModal({
               </p>
             </Field>
           ) : (
-          <Field label="Procedimento *">
-            <select name="procedure_id" required className="field" disabled={carregandoUnidade} value={procId} onChange={e => setProcId(e.target.value)}>
+          <Field label="Procedimento *" htmlFor="ag-procedimento">
+            <select id="ag-procedimento" name="procedure_id" required className="field" disabled={carregandoUnidade} value={procId} onChange={e => setProcId(e.target.value)}>
               <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione o procedimento…'}</option>
               {dados.procedures.map(p => (
                 <option key={p.id} value={p.id}>
@@ -416,24 +444,32 @@ export function AppointmentModal({
           </Field>
           )}
 
-          <div className="form-2col">
-            <Field label="Profissional *">
-              <select name="professional_id" required className="field" disabled={carregandoUnidade} value={profId} onChange={e => setProfId(e.target.value)}>
+          <div className={temSalas ? 'form-2col' : undefined}>
+            <Field label="Profissional *" htmlFor="ag-profissional">
+              <select id="ag-profissional" name="professional_id" required className="field" disabled={carregandoUnidade} value={profId} onChange={e => setProfId(e.target.value)}>
                 <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione…'}</option>
                 {dados.professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </Field>
 
-            <Field label="Sala / Cabine">
-              <select name="room_id" className="field">
-                <option value="">Sem sala definida</option>
-                {dados.rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            </Field>
+            {/* Unidade sem sala: o campo nem aparece (D5). Com sala, só as que
+                servem ao procedimento, com a livre já escolhida. */}
+            {temSalas && (
+              <Field label="Sala / Cabine" htmlFor="ag-sala">
+                <select id="ag-sala" name="room_id" className="field" disabled={carregandoUnidade}
+                  value={salaId} onChange={e => setSalaEscolhida(e.target.value)}>
+                  <option value="">Sem sala definida</option>
+                  {salasOferecidas.map(r => (
+                    <option key={r.id} value={r.id}>{r.livre ? r.name : `${r.name} (ocupada)`}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
           </div>
 
-          <Field label="Data e hora *">
+          <Field label="Data e hora *" htmlFor="ag-quando">
             <input
+              id="ag-quando"
               type="datetime-local" required className="field"
               value={localDT}
               min={minDT}
@@ -442,8 +478,8 @@ export function AppointmentModal({
             <input type="hidden" name="scheduled_at" value={scheduledAtUTC} />
           </Field>
 
-          <Field label="Observações internas">
-            <textarea name="notes" rows={2} className="field" placeholder="Preferências, contraindicações…" style={{ resize: 'vertical' }} />
+          <Field label="Observações internas" htmlFor="ag-notas">
+            <textarea id="ag-notas" name="notes" rows={2} className="field" placeholder="Preferências, contraindicações…" style={{ resize: 'vertical' }} />
           </Field>
 
           {state?.error && (

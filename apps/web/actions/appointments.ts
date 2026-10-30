@@ -41,6 +41,7 @@ import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
+import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
 
 import {
   getUserName, logHistory, fmtDateTime, loadApptCtx, notifyNewAppointment, notifyCancelledAppointment, notifyRescheduledAppointment, notifyCheckin, notifyCompleted, notifyPayment,
@@ -1921,6 +1922,20 @@ export async function proximoHorarioLivre(branchId: string, professionalId: stri
   const achou = await procurarHorarioLivre(dayKeyTZ(new Date()), data =>
     computeAvailableSlots(admin, branchId, professionalId, data, duracao))
   return achou ? `${achou.data}T${achou.hora}` : null
+}
+
+/**
+ * As salas que o agendar oferece (D5, 2026-10-30): as da unidade que servem ao
+ * procedimento (as ligadas a ele ali, ou todas), cada uma dizendo se está livre
+ * no horário, e a sugerida — a primeira livre. A duração é a do procedimento
+ * (a da tela só vale sem procedimento). O servidor confere de novo ao gravar.
+ */
+export async function salasParaAgendar(
+  branchId: string, procedureId: string | null, scheduledAt: string | null, durationMin: number,
+): Promise<{ salas: SalaParaAgendar[]; sugerida: string | null }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+  return salasDoAgendar(ctx, branchId, procedureId, scheduledAt, durationMin)
 }
 
 /**

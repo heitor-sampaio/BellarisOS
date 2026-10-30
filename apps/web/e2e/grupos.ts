@@ -29,6 +29,7 @@ export const ISOLADOS = [
   'agenda-grade-madrugada.spec.ts',
   'agenda-minha-ocupacao.spec.ts',
   'agenda-profissional-da-rede.spec.ts',
+  'agenda-salas.spec.ts',
   'agenda-so-os-meus-pelo-id.spec.ts',
   'agendar-com-credito.spec.ts',
   'anuncios-integracao.spec.ts',

@@ -132,6 +132,9 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
       // Os modelos de documento: o procedimento aponta para eles, e a versão para o modelo.
       await db.from('document_template_versions').delete().eq('tenant_id', t!.id)
       await db.from('document_templates').delete().eq('tenant_id', t!.id)
+      // As salas (D5, 2026-10-30) prendem a unidade.
+      await db.from('appointments').update({ room_id: null }).eq('branch_id', b!.id)
+      await db.from('rooms').delete().eq('branch_id', b!.id)
       await db.from('branches').delete().eq('id', b!.id)
       await db.from('role_permissions').delete().eq('tenant_id', t!.id)
       await db.from('tenant_roles').delete().eq('tenant_id', t!.id)

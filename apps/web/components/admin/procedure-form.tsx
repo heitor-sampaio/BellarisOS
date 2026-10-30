@@ -57,7 +57,12 @@ interface ExistingProcedure {
   consent_template_id?: string | null
   contract_template_id?: string | null
   loyalty_points?: number | null
+  /** As salas em que é feito (D5). */
+  room_ids?: string[]
 }
+
+/** Uma sala ativa da rede, com a unidade dela (D5). */
+export interface SalaDoCadastro { id: string; name: string; unidade: string }
 
 /** Um modelo de termo ou contrato que o procedimento pode ligar. */
 export interface OpcaoDeModeloDoProcedimento {
@@ -73,6 +78,8 @@ export interface ModelosDoProcedimento {
 }
 
 interface ProcedureFormProps {
+  /** As salas ativas da rede (D5): o procedimento se liga às em que é feito. */
+  salas?: SalaDoCadastro[]
   branches: Branch[]
   products: Product[]
   fichas?: { id: string; name: string }[]
@@ -147,8 +154,17 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
+function ProcedureFormInner({ salas = [], branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
   const pathname = usePathname()
+
+  // As salas em que é feito (D5, 2026-10-30): opcional. Só as ativas se
+  // oferecem; sem marcada numa unidade, qualquer sala dela serve.
+  const [salasMarcadas, setSalasMarcadas] = useState<string[]>(
+    () => (existing?.room_ids ?? []).filter(id => salas.some(s => s.id === id)))
+  const variasUnidades = new Set(salas.map(s => s.unidade)).size > 1
+  function alternarSala(id: string) {
+    setSalasMarcadas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
+  }
 
   // A comissão (2026-10-15): o mesmo editor do chip da tabela. Só vai ao
   // servidor se MUDOU — editar a descrição não regrava a comissão.
@@ -308,6 +324,8 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
       <input type="hidden" name="branch_ids"     value={JSON.stringify(selectedBranches)} />
       <input type="hidden" name="products"       value={JSON.stringify(insumos)} />
       <input type="hidden" name="branch_pricing" value={branchPricingPayload} />
+      {/* Sem sala na rede o campo não vai: a ação não mexe nas ligações. */}
+      {salas.length > 0 && <input type="hidden" name="room_ids" value={JSON.stringify(salasMarcadas)} />}
 
       {/* -- Dados básicos -- */}
       <div className="form-2col">
@@ -415,6 +433,29 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
           })}
         </div>
       </div>
+
+      {/* -- Salas em que é feito (D5) -- */}
+      {salas.length > 0 && (
+        <div>
+          <p id="salas-do-procedimento" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
+            SALAS EM QUE É FEITO
+          </p>
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
+            Opcional. Sem sala marcada numa unidade, qualquer sala dela serve; com sala marcada, o agendar oferece só as marcadas.
+          </p>
+          <div role="group" aria-label="Salas em que é feito" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+            {salas.map(s => {
+              const on = salasMarcadas.includes(s.id)
+              return (
+                <button key={s.id} type="button" className={on ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                  aria-pressed={on} onClick={() => alternarSala(s.id)}>
+                  {variasUnidades ? `${s.name} · ${s.unidade}` : s.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* -- Insumos -- */}
       <div>

@@ -23,6 +23,7 @@ import {
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { gravar, ler } from '@/lib/db'
 import { lerCredito } from '@/lib/creditos/credito'
+import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
 
 
 export interface CrmSchedProcedure { id: string; name: string; duration_min: number; price: number }
@@ -110,6 +111,19 @@ async function contatoDaConversa(
   }
 
   return null
+}
+
+/**
+ * As salas que o agendar do CRM oferece (D5, 2026-10-30): as que servem ao
+ * procedimento na unidade, livres ou não no horário, e a sugerida. A mesma
+ * conta do agendar da agenda (`salasDoAgendar`); o núcleo confere ao gravar.
+ */
+export async function salasParaAgendarNoCrm(
+  branchId: string, procedureId: string | null, scheduledAt: string | null,
+): Promise<{ salas: SalaParaAgendar[]; sugerida: string | null }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'VIEW')
+  return salasDoAgendar(ctx, branchId, procedureId, scheduledAt, 60)
 }
 
 /** Horários livres de um profissional num dia. */

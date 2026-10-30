@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server'
 import { toggleBranchStatus } from '@/actions/branches'
 import type { ComponentProps } from 'react'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
+import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Power, PowerOff, Users } from 'lucide-react'
 import { ler } from '@/lib/db'
 
@@ -38,6 +40,10 @@ export default async function BranchDetailPage({ params }: Props) {
   // para toda unidade. Ninguém aqui lia o cargo — saiu do select (2026-09-27).
 
   if (!branch) notFound()
+
+  // As salas da unidade (D5, 2026-10-30): as ativas e as desativadas.
+  const salas = ((await ler(createAdminClient().from('rooms').select('id, name, is_active')
+    .eq('branch_id', id).order('name'), 'carregar as salas')) ?? []) as SalaDaUnidade[]
 
   const members = (Array.isArray(branch.users) ? branch.users : []) as { id: string; name: string; is_active: boolean }[]
   const activeMembers = members.filter(u => u.is_active).length
@@ -115,6 +121,8 @@ export default async function BranchDetailPage({ params }: Props) {
 
       {/* Formulário de edição */}
       <BranchEditForm branch={branch as unknown as ComponentProps<typeof BranchEditForm>['branch']} />
+
+      <SalasDaUnidade branchId={id} salas={salas} />
 
     </div>
   )

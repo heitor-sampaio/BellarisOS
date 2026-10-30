@@ -363,6 +363,9 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     const unidades = await ids(db.from('branches').select('id').eq('tenant_id', rede))
     if (unidades.length) {
       await passo(falhas, 'lançamentos da rede de teste', db.from('financial_transactions').delete().in('branch_id', unidades))
+      // As salas (D5, 2026-10-30) prendem a unidade: saem antes dela.
+      await passo(falhas, 'agendamentos com sala da rede de teste', db.from('appointments').update({ room_id: null }).in('branch_id', unidades))
+      await passo(falhas, 'salas da rede de teste', db.from('rooms').delete().in('branch_id', unidades))
     }
     // Recompensas apontam procedimento e produto: saem antes deles.
     await passo(falhas, 'vouchers da rede de teste', db.from('loyalty_vouchers').delete().eq('tenant_id', rede))

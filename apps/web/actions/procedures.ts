@@ -86,6 +86,38 @@ function dinheiroDoFormulario(formData: FormData): { price: number; laborCost: n
   return { price, laborCost, otherCosts }
 }
 
+/**
+ * As salas em que o procedimento é feito (D5, 2026-10-30). `null` = o
+ * formulário não trouxe o campo (rede sem sala): as ligações ficam como estão.
+ * As salas têm de ser ATIVAS e de unidades da rede.
+ */
+async function salasDoFormulario(
+  admin: ReturnType<typeof createAdminClient>, tenantId: string, formData: FormData,
+): Promise<{ ids: string[] | null } | { error: string }> {
+  if (!formData.has('room_ids')) return { ids: null }
+  let lidas: unknown
+  try { lidas = JSON.parse(String(formData.get('room_ids') || '[]')) } catch { return { error: 'Salas inválidas.' } }
+  if (!Array.isArray(lidas) || lidas.some(x => typeof x !== 'string')) return { error: 'Salas inválidas.' }
+  const ids = [...new Set(lidas as string[])]
+  if (!ids.length) return { ids }
+  const achadas = await ler(admin.from('rooms').select('id, branches!inner(tenant_id)')
+    .in('id', ids).eq('is_active', true).eq('branches.tenant_id', tenantId), 'conferir as salas')
+  if ((achadas ?? []).length !== ids.length) return { error: 'Sala não encontrada.' }
+  return { ids }
+}
+
+/** Troca as salas ligadas ao procedimento pelas do formulário. */
+async function gravarSalasDoProcedimento(
+  admin: ReturnType<typeof createAdminClient>, tenantId: string, procedureId: string, ids: string[],
+) {
+  await gravar(admin.from('procedure_rooms').delete().eq('procedure_id', procedureId), 'limpar as salas do procedimento')
+  if (ids.length) {
+    await gravar(admin.from('procedure_rooms').insert(
+      ids.map(room_id => ({ procedure_id: procedureId, room_id, tenant_id: tenantId })),
+    ), 'salvar as salas do procedimento')
+  }
+}
+
 function assertRede(ctx: { branchId: string | null }) {
   if (ctx.branchId !== null) {
     throw new Error('Procedimentos são do catálogo da rede: só quem tem abrangência de rede pode alterá-los.')
@@ -155,6 +187,8 @@ async function addProcedureInterno(
     contrato: contratoId,
   })
   if (recusa) return { error: recusa }
+  const salas = await salasDoFormulario(admin, ctx.tenantId!, formData)
+  if ('error' in salas) return { error: salas.error }
 
   // Insere o procedimento no catálogo da rede (branch_id = null)
   const { data: procedure, error } = await admin
@@ -205,6 +239,9 @@ async function addProcedureInterno(
   // Emitido DEPOIS dos insumos e da disponibilidade: o retrato de um
   // procedimento recém-criado sem eles descreveria um estado que durou
   // milissegundos e nunca existiu para o usuário.
+  // As salas em que é feito (D5).
+  if (salas.ids) await gravarSalasDoProcedimento(admin, ctx.tenantId!, procedure.id as string, salas.ids)
+
   await procedimentoCriado(procedure.id as string, ctx)
 
   // Por último: se falhar, o procedimento já existe — a tela diz, e a
@@ -293,6 +330,8 @@ async function updateProcedureInterno(
     contrato: contratoId,
   })
   if (recusa) return { error: recusa }
+  const salas = await salasDoFormulario(admin, ctx.tenantId!, formData)
+  if ('error' in salas) return { error: salas.error }
 
   // Histório de preço se alterado
   const precoAnterior = parseFloat(String(existing.price))
@@ -340,6 +379,9 @@ async function updateProcedureInterno(
 
   // Só quando o preço mudou de verdade. Editar a descrição e salvar é o uso
   // comum desta tela; emitir aí faria a automação de preço disparar à toa.
+  // As salas em que é feito (D5): só quando o formulário as trouxe.
+  if (salas.ids) await gravarSalasDoProcedimento(admin, ctx.tenantId!, procedureId, salas.ids)
+
   if (precoMudou) await procedimentoPrecoAlterado(procedureId, ctx, precoAnterior)
 
   if (comissao.entrada) {

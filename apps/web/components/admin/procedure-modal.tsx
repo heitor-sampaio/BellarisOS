@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
-import { ProcedureForm, type ModelosDoProcedimento } from './procedure-form'
+import { ProcedureForm, type ModelosDoProcedimento, type SalaDoCadastro } from './procedure-form'
 import type { DadosDaComissao } from './comissao-do-procedimento'
 
 interface Branch  { id: string; name: string }
@@ -27,9 +27,12 @@ interface ExistingProcedure {
   consent_template_id?: string | null
   contract_template_id?: string | null
   loyalty_points?: number | null
+  room_ids?: string[]
 }
 
 interface ProcedureModalProps {
+  /** As salas ativas da rede (D5): o procedimento se liga às em que é feito. */
+  salas?: SalaDoCadastro[]
   branches: Branch[]
   products: Product[]
   fichas?: { id: string; name: string }[]
@@ -43,7 +46,7 @@ interface ProcedureModalProps {
   comissao?: DadosDaComissao
 }
 
-export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias, comissao }: ProcedureModalProps) {
+export function ProcedureModal({ salas = [], branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias, comissao }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
@@ -120,6 +123,7 @@ export function ProcedureModal({ branches, products, fichas = [], existing, trig
           <div className="modal-body" style={{ padding: '24px 24px 28px' }}>
             <ProcedureForm
               key={abertura}
+              salas={salas}
               branches={branches}
               products={products}
               fichas={fichas}
