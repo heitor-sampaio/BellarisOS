@@ -48,8 +48,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
   const [isPending,  startTransition] = useTransition()
 
   // O dia de hoje em Brasília (o toISOString dava o de amanhã depois das 21h).
-  const today = diaNoFuso(Date.now())
-  const tomorrow = diaNoFuso(Date.now() + 86_400_000)
+  const [{ today, tomorrow }] = useState(() => ({ today: diaNoFuso(Date.now()), tomorrow: diaNoFuso(Date.now() + 86_400_000) }))
 
   function handleSelectProcedure(p: Procedure) {
     setProcedure(p)

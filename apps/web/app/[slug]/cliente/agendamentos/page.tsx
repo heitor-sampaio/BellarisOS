@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, Clock3, User, Plus } from 'lucide-react'
 import { ler } from '@/lib/db'
-import { separarAgendaDoPortal, limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
+import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar } from '@/lib/clientes/agenda-do-portal'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -216,7 +216,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras }: { appt: 
           </span>
         )}
       </div>
-      {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && new Date(appt.scheduled_at).getTime() - Date.now() >= prazoHoras * 3600_000 && (
+      {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && aindaDaParaAlterar(appt.scheduled_at, prazoHoras) && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Alterar até {limiteParaAlterar(appt.scheduled_at, prazoHoras)}
         </p>

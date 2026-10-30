@@ -410,7 +410,7 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone }: {
   const itens = sessoes.flatMap(s => s.treatment_plan_session_procedures ?? [])
   const valor = itens.reduce((t, i) => t + Math.round(Number(i.price ?? 0) * 100), 0) / 100
   const validoAte = new Date(new Date(plano.created_at).getTime() + validadeDias * 86_400_000)
-  const vencido = validoAte.getTime() < Date.now()
+  const vencido = jaPassou(validoAte)
   const dia = validoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
   return (
     <div data-plano-proposto className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -448,6 +448,11 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone }: {
       ) : null}
     </div>
   )
+}
+
+/** O instante já passou (fora do componente: a página renderiza uma vez por requisição). */
+function jaPassou(d: Date): boolean {
+  return d.getTime() < Date.now()
 }
 
 function SectionHeader({ label }: { label: string }) {

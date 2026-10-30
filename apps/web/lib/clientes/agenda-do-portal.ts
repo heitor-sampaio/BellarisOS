@@ -43,3 +43,8 @@ export function diaEHoraNoPortal(d: Date): string {
 export function limiteParaAlterar(scheduledAt: string, prazoHoras: number): string {
   return diaEHoraNoPortal(new Date(new Date(scheduledAt).getTime() - prazoHoras * 3600_000))
 }
+
+/** Ainda dá para cancelar ou remarcar pelo app: falta pelo menos o prazo da rede. */
+export function aindaDaParaAlterar(scheduledAt: string, prazoHoras: number, agora: number = Date.now()): boolean {
+  return new Date(scheduledAt).getTime() - agora >= prazoHoras * 3600_000
+}
