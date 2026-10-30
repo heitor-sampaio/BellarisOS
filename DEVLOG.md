@@ -1651,6 +1651,55 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Frente de salas e agenda: as salas da unidade e os ajustes da agenda
+
+A decisão D5 e dez ajustes, com o teste escrito antes (migration
+`20261029001401`, aplicada por `execute_sql` porque o `apply_migration` expirou;
+arquivo idêntico, histórico registrado):
+
+- **As salas da unidade** (8eea5d85, D5). Configurações → Unidades → Ver
+  detalhes → "Salas": criar, renomear, desativar (não se apaga). O procedimento
+  marca "Salas em que é feito" (opcional). O agendar oferece só as salas certas,
+  com a primeira livre escolhida; unidade sem sala não vê o campo. O servidor
+  recusa sala desativada, errada ou ocupada. A escrita de `rooms` pela sessão
+  saiu do banco.
+- **"Nova unidade" com horário, e o CEP com máscara e busca no 8º dígito**
+  (cbec8e7b, J-4/J-5).
+- **O horário próprio parte do da unidade** (6f68225a, J-9).
+- **O modal de agendamento não perde o digitado na recusa** (cb84d4bc, J-28).
+- **Encaixe fora do horário e conflito avisam antes de confirmar**, e a coluna
+  sombreia o horário dela (29a72777, J-30). O encaixe continua permitido.
+- **"Minha agenda" respeita o `?date=`**, setas com nome, motivo do
+  cancelamento ligado ao campo (f3739fc3, J-31/J-33).
+- **Outra unidade ou /admin sem acesso levam à sua unidade dizendo por quê**
+  (bb9a0237, J-29).
+- **O concluído mostra a hora real** ("23:30 · concluído em 29/10 às 00:22"), na
+  agenda e no app (87f25e27, J-34).
+- **Atendimentos de dias anteriores ainda abertos** avisados na agenda e no
+  dashboard da unidade (9bc71c53, J-32).
+
+**Decisões da frente, para revisar:**
+1. A sala é opcional ao agendar ("Sem sala definida"). Checkout do plano,
+   sessões de pacote e plano e o Copilot seguem agendando sem sala.
+2. A ligação procedimento × sala é por unidade: ligado só a salas da A, aceita
+   qualquer sala na B.
+3. As salas se cadastram só pelo portal da rede, com Configurações em
+   Gerenciar; a gerente de unidade não chega à tela hoje.
+4. A escrita de sala é só pelo servidor.
+5. J-9, membro da rede: parte do horário da unidade só quando a rede tem uma
+   unidade; com várias, do padrão comercial.
+6. J-32: "aberto" é só Chegou ou Em atendimento, dos últimos 30 dias. O
+   agendado que passou sem ninguém mexer não entra.
+7. J-30 é só aviso; o conflito o servidor já recusava.
+8. J-34: concluído em outro dia leva a data.
+9. **A conferir:** o número do aviso do J-32 é contado em
+   `lib/agenda/abertos-de-antes.ts`, não em `lib/metrics` (tratado como alerta,
+   não indicador).
+
+Mexeu nos layouts dos dois portais, em `conferirPecasDoAgendamento` e
+`horarioOcupado` (`lib/appointments/core.ts`), em `lib/agenda/horario.ts`, no
+apoio do E2E e no agendar do CRM: vale uma completa.
+
 ### 2026-10-30 — Frente de produto e estoque: a venda de produto, o uso, a perda e a tela de Estoque
 
 Três decisões do Heitor e cinco ajustes, com o teste escrito antes (migrations
@@ -8277,7 +8326,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - Ao agendar, escolhe-se a sala, e o conflito de sala vale.
   - O procedimento pode ser ligado às salas em que é feito (ligação OPCIONAL: sem salas marcadas, aceita qualquer uma). Com a ligação, o agendar oferece só as salas certas e sugere uma livre.
 
-  A FAZER.
+  **Feito em 2026-10-30** (8eea5d85, migration `20261029001401`).
 - **D6.** A contadora, sem agenda, vê "Meu faturamento R$ 0".
   - Causa: o cargo criado com agenda "Nenhum" guardou `scope = OWN`. `resolveScopes` (`lib/permissions.ts:141-150`) guarda o escopo sem olhar o nível, e o dashboard recorta por `isOwnScope(ctx,'agenda')`.
   - É defeito, não a decisão D7.
@@ -8437,13 +8486,13 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-1: o DDI no telefone do setup.
   - J-2: as máscaras de CNPJ e telefone na aba Geral.
   - J-3: o setup volta ao passo 1.
-  - J-4: o horário de funcionamento na "Nova unidade".
-  - J-5: o CEP na "Nova unidade".
+  - J-4: o horário de funcionamento na "Nova unidade". Feito (cbec8e7b).
+  - J-5: o CEP na "Nova unidade". Feito (cbec8e7b).
   - J-6: a unidade herda o CNPJ.
   - J-7: "Teste grátis: tudo, menos o Copilot".
 - **Equipe**
   - J-8: "1 membro cadastrados".
-  - J-9: o horário próprio nasce do horário da unidade.
+  - J-9: o horário próprio nasce do horário da unidade. Feito (6f68225a).
 - **Catálogo, fidelidade e busca**
   - J-10: um rótulo só para o self-service.
   - J-11: a medida "U". Feito (cd6e99c5).
@@ -8467,13 +8516,13 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-26: o histórico de avaliação e o cancelado.
   - J-27: quem fez cada ação.
 - **Agenda**
-  - J-28: o modal não perde os campos no conflito.
-  - J-29: o aviso ao abrir outra unidade.
-  - J-30: o aviso de encaixe fora do horário e o sombreado.
-  - J-31: o label do motivo.
-  - J-32: o atendimento de ontem ainda aberto.
-  - J-33: as setas e o `?date=` da "Minha agenda".
-  - J-34: a hora real do concluído.
+  - J-28: o modal não perde os campos no conflito. Feito (cb84d4bc).
+  - J-29: o aviso ao abrir outra unidade. Feito (bb9a0237).
+  - J-30: o aviso de encaixe fora do horário e o sombreado. Feito (29a72777).
+  - J-31: o label do motivo. Feito (f3739fc3).
+  - J-32: o atendimento de ontem ainda aberto. Feito (9bc71c53).
+  - J-33: as setas e o `?date=` da "Minha agenda". Feito (f3739fc3).
+  - J-34: a hora real do concluído. Feito (87f25e27).
 - **Atendimento e plano**
   - J-35: o nome do "Enviar para a recepção".
   - J-36: a foto no histórico.
