@@ -16,6 +16,7 @@ import { ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cl
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
+import { pessoaDoCrmDoTelefone, ligarPessoaDoCrmAoCliente, type PessoaDoCrm } from '@/lib/clients/pessoa-do-crm'
 import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
 
 const TELEFONE_INCOMPLETO = 'Telefone incompleto: informe o DDD e o número (10 ou 11 dígitos). De outro país, comece com + e o código do país (ex.: +351 912 345 678).'
@@ -58,7 +59,11 @@ export type ResultadoDoCadastro = {
   error?: string; success?: boolean; clientId?: string; acessoCriado?: boolean
   avisoTelefone?: AvisoDeTelefone
   mesmaPessoa?: PerguntaDaFichaRapida
+  mesmaPessoaDoLead?: PerguntaDoLead
 }
+
+/** A pessoa do CRM (lead ou conversa) com este telefone: "É a mesma pessoa do lead X?" (D-9). */
+export type PerguntaDoLead = { contatoId: string; nome: string; ehLead: boolean; perdida: boolean; telefone: string }
 
 export async function addClient(
   _prev: ResultadoDoCadastro | undefined,
@@ -189,6 +194,25 @@ export async function addClient(
     }
   }
 
+  // O telefone de um LEAD do CRM (D-9, frente de cadastro de 2026-10-29) —
+  // até o perdido que voltou: "É a mesma pessoa do lead X?". Sim liga a
+  // oportunidade e a conversa à ficha; Não cadastra sem ligar. A resposta
+  // (`_pessoaDoCrm`) vale para AQUELA pessoa. Quem vem do card ou da conversa
+  // (`leadId`/`conversationId`) já disse de quem é.
+  let pessoaDoCrm: PessoaDoCrm | null = null
+  if (!leadId && !conversationId) {
+    const achada = await pessoaDoCrmDoTelefone(admin, ctx, fone.digitos)
+    const resposta = formData.get('_pessoaDoCrm')
+    if (achada && resposta === `mesma:${achada.contatoId}`) pessoaDoCrm = achada
+    else if (achada && resposta !== `outra:${achada.contatoId}`) {
+      return { mesmaPessoaDoLead: {
+        contatoId: achada.contatoId, nome: achada.nome, ehLead: !!achada.leadId, perdida: achada.perdida, telefone: fone.digitos,
+      } }
+    }
+  }
+  // A oportunidade que se converte: a do card, ou a do lead que a recepção disse ser a mesma pessoa.
+  const leadDaConversao = leadId ?? pessoaDoCrm?.leadId ?? null
+
   // 1) Conta de login PRIMEIRO (login = e-mail, senha = CPF) — ou a que ela já
   // tem em outra clínica, quando o e-mail e o CPF batem (a senha fica a dela).
   // E-mail de equipe ou CPF que não bate → aborta sem criar cliente órfão.
@@ -237,15 +261,20 @@ export async function addClient(
     await ligarContatoAoCliente(admin, ctx.tenantId!, conversationId, client.id as string)
     revalidatePath('/admin/inbox')
   }
+  // "É a mesma pessoa do lead": as outras oportunidades e as conversas dela.
+  if (pessoaDoCrm) {
+    await ligarPessoaDoCrmAoCliente(admin, ctx, pessoaDoCrm, client.id as string)
+    revalidatePath('/admin/inbox')
+  }
 
   // 5) Conversão de lead: liga o lead e dispara Meta CAPI (CompleteRegistration)
-  if (leadId) {
+  if (leadDaConversao) {
     const leadRow = await ler(admin
-      .from('leads').select('ctwa_clid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a oportunidade')
-    await gravar(admin.from('leads').update({ client_id: client.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
+      .from('leads').select('ctwa_clid').eq('id', leadDaConversao).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a oportunidade')
+    await gravar(admin.from('leads').update({ client_id: client.id }).eq('id', leadDaConversao).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
     await registrarEventoLead({
       tenantId:    ctx.tenantId!,
-      leadId,
+      leadId:      leadDaConversao,
       type:        'CONVERTED',
       actorUserId: ctx.internalUserId,
       actorName:   ctx.userName || null,

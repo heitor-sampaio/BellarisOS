@@ -44,6 +44,18 @@
     ficha, e o formulário a reenvia nos envios seguintes (uma pergunta pode
     vir depois da outra). A importação continua completando a ficha sem CPF
     (não há quem responda);
+  - o telefone de uma PESSOA do CRM (`contacts`, pelas formas do WhatsApp,
+    `variantesDoTelefone`) que ainda não é cliente — o lead, até o PERDIDO
+    que voltou, ou só a conversa — faz a tela perguntar "É a mesma pessoa do
+    lead X?" (D-9, frente de cadastro de 2026-10-29; `pessoaDoCrmDoTelefone`,
+    `lib/clients/pessoa-do-crm.ts`). "Sim" liga à ficha nova as oportunidades
+    e as conversas da pessoa que quem cadastra ALCANÇA (`leadAoAlcance`,
+    `conversaAoAlcance`; sem o CRM não pergunta): a mais recente segue a
+    conversão de sempre (CONVERTED, o clique do anúncio, a API de
+    Conversões), as outras ganham `client_id` e CONVERTED. "Não" cadastra sem
+    ligar. Resposta em `_pessoaDoCrm` (`mesma:`/`outra:<contato>`). Quem
+    cadastra pelo card ou pela conversa não é perguntado (já disse quem é).
+    Prova: `e2e/ficha-cadastro-mesma-pessoa-do-lead.spec.ts`;
   - o erro do Auth vai à tela em português (`erroDoAuth`,
     `lib/erro-do-auth.ts`; também na Equipe e na troca de senha). A senha
     fraca, na cliente, é o CPF: a tela diz isso. Nunca a mensagem crua do

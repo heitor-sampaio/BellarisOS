@@ -88,6 +88,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const aviso = state?.avisoTelefone && state.avisoTelefone.telefone === digitos ? state.avisoTelefone : null
   // A ficha rápida do mesmo telefone (frente de cadastro, 2026-10-29): "É a mesma pessoa?".
   const mesmaPessoa = state?.mesmaPessoa && state.mesmaPessoa.telefone === digitos ? state.mesmaPessoa : null
+  // O telefone é de um lead do CRM (D-9): "É a mesma pessoa do lead X?".
+  const doLead = state?.mesmaPessoaDoLead && state.mesmaPessoaDoLead.telefone === digitos ? state.mesmaPessoaDoLead : null
 
   // As RESPOSTAS às perguntas do cadastro ("é a mesma pessoa?", "cadastrar
   // mesmo assim") vão em TODO envio seguinte: uma pergunta pode vir depois da
@@ -313,6 +315,31 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           </span>
           <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
             Sim completa a ficha dela com estes dados (o histórico fica junto). Não cadastra uma ficha nova.
+          </span>
+        </div>
+      )}
+      {doLead && (
+        <div role="alert" style={{
+          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
+          color: 'var(--warning)', background: 'var(--warning-soft)',
+          borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+        }}>
+          <span>
+            {doLead.ehLead
+              ? <>Este telefone é de um lead do CRM{doLead.perdida ? ' (a oportunidade está perdida)' : ''}. É a mesma pessoa do lead <b style={{ color: 'var(--text)' }}>{doLead.nome}</b>?</>
+              : <>Este telefone é de uma conversa do inbox. É a mesma pessoa do contato <b style={{ color: 'var(--text)' }}>{doLead.nome}</b>?</>}
+          </span>
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `mesma:${doLead.contatoId}`)}>
+              Sim, é a mesma pessoa
+            </button>
+            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `outra:${doLead.contatoId}`)}>
+              Não, é outra pessoa
+            </button>
+          </span>
+          <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
+            Sim liga a oportunidade e a conversa à ficha nova (o card passa a "Já é cliente"). Não cadastra sem ligar.
           </span>
         </div>
       )}
