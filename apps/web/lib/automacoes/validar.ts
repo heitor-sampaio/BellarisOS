@@ -1,10 +1,10 @@
-import { NODES, TIPOS_DE_GATILHO, ROTULOS_DE_NO, INTERVALO_MINIMO_MIN } from '@estetica-os/types'
+import { NODES, TIPOS_DE_GATILHO, ROTULOS_DE_NO, INTERVALO_MINIMO_MIN, CAMPOS_DO_EVENTO } from '@estetica-os/types'
 import type {
-  GrafoDeAutomacao, NoDoGrafo, TipoDeNo, GrupoDeCondicao, ConfigGatilhoAgenda,
+  GrafoDeAutomacao, NoDoGrafo, TipoDeNo, GrupoDeCondicao, ConfigGatilhoAgenda, ConfigCondicaoSe,
 } from '@estetica-os/types'
 import { caminhosDoTexto } from './variaveis'
 import { conferirExpressao, ehCaminhoSimples } from './expressao'
-import { antecessoresDe } from './disponiveis'
+import { antecessoresDe, CAMPOS_DAS_ENTIDADES } from './disponiveis'
 import { chaveDoPasso, nomeDoPasso } from './passos'
 
 /**
@@ -111,6 +111,22 @@ export function validarGrafo(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
         problemas.push({
           grau: 'aviso', noId: no.id,
           mensagem: 'Só um lado da condição está ligado — o outro caminho termina aqui.',
+        })
+      }
+
+      // Regra que compara com NADA (D-4): "Procedimento é ___" nunca é
+      // verdade, e o fluxo ligado não faria nada sem explicar por quê. É o
+      // que o modelo de retorno deixa para a clínica escolher. "Está vazio" e
+      // "está preenchido" não comparam com valor.
+      const regras = (no.config as ConfigCondicaoSe)?.grupo?.regras ?? []
+      for (const r of regras) {
+        if (r.operador === 'vazio' || r.operador === 'preenchido') continue
+        const v = r.valor as unknown
+        const semValor = v == null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && v.length === 0)
+        if (!semValor) continue
+        problemas.push({
+          grau: 'erro', noId: no.id,
+          mensagem: `Em "${rotuloCurto(no)}", a regra de "${rotuloDoCampoDaRegra(r.campo)}" está sem o valor com que comparar.`,
         })
       }
     }
@@ -357,6 +373,19 @@ function acharCiclo(grafo: GrafoDeAutomacao): string | null {
     }
   }
   return null
+}
+
+/** O rótulo de um campo de regra, como a lista da tela o mostra; o caminho cru como último recurso. */
+function rotuloDoCampoDaRegra(campo: string): string {
+  for (const g of CAMPOS_DAS_ENTIDADES) {
+    const item = g.itens.find(i => i.caminho === campo)
+    if (item) return item.rotulo
+  }
+  for (const lista of Object.values(CAMPOS_DO_EVENTO)) {
+    const item = lista.find(c => c.caminho === campo)
+    if (item) return item.rotulo
+  }
+  return campo
 }
 
 function rotuloCurto(no: NoDoGrafo): string {

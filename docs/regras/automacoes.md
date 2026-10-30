@@ -105,6 +105,18 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   com `canal: 'whatsapp'` gravado (`configPadrao`, `lib/automacoes/ids.ts`); o salvo sem canal mostra
   "Escolha o canal…" — nunca um WhatsApp que a config não tem (a validação continua exigindo o canal).
   Prova: `e2e/automacoes-canal-gravado.spec.ts`.
+- **Modelos prontos são OPÇÃO, ao lado do "Nova automação"** (D-4, decisão do
+  Heitor, 2026-10-29): "Nova automação" continua começando vazia; "Usar um
+  modelo" lista `MODELOS_DE_AUTOMACAO` (`lib/automacoes/modelos.ts` —
+  aniversário, retorno depois do atendimento, lembrete antes do agendamento) e
+  `criarAutomacaoDeModelo` grava o grafo DO SERVIDOR (o navegador manda só a
+  chave), em RASCUNHO, para a clínica revisar. O procedimento fica no passo
+  "Se", nunca no gatilho. Modelo novo usa só nodes e eventos do catálogo, e
+  nasce com tudo ligado (`tests/automacoes-modelos.test.ts` confere).
+- **Regra do "Se" sem valor não liga** (D-4): "Procedimento é ___" nunca é
+  verdade; o validador acusa erro em toda regra que compara (tudo menos "está
+  vazio"/"está preenchido") sem valor. É o que segura o modelo de retorno até
+  a clínica escolher o procedimento. Prova: `e2e/automacoes-modelos.spec.ts`.
 - **O passo novo nasce LIGADO ao anterior** (J-14, 2026-10-30): o anterior é o
   passo aberto no painel ou, sem nenhum, o último que entrou; a ligação sai da
   primeira saída livre dele (no "Se", a Sim, depois a Não), e o passo nasce na

@@ -4,8 +4,10 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Workflow, Plus, Zap, AlertCircle, ChevronRight } from 'lucide-react'
-import { criarAutomacao, type AutomacaoNaLista } from '@/actions/automacoes'
+import { Workflow, Plus, Zap, AlertCircle, ChevronRight, LayoutTemplate, X } from 'lucide-react'
+import { criarAutomacao, criarAutomacaoDeModelo, type AutomacaoNaLista } from '@/actions/automacoes'
+import { MODELOS_DE_AUTOMACAO } from '@/lib/automacoes/modelos'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
  * A lista de automações.
@@ -23,6 +25,17 @@ export function ListaDeAutomacoes({
   const [criando, criar] = useTransition()
   const [nome, setNome]  = useState('')
   const [abrindo, setAbrindo] = useState(false)
+  const [vendoModelos, setVendoModelos] = useState(false)
+  const [usando, setUsando] = useState<string | null>(null)
+
+  function usarModelo(chave: string) {
+    setUsando(chave)
+    criar(async () => {
+      const r = await criarAutomacaoDeModelo(chave)
+      if (r.error || !r.id) { setUsando(null); toast.error(r.error ?? 'Erro ao criar.'); return }
+      router.push(`/admin/automacoes/${r.id}`)
+    })
+  }
 
   function aoCriar() {
     const titulo = nome.trim()
@@ -67,11 +80,53 @@ export function ListaDeAutomacoes({
               </button>
             </div>
           ) : (
-            <button type="button" className="btn-primary" onClick={() => setAbrindo(true)}>
-              <Plus size={15} /> Nova automação
-            </button>
+            // "Nova automação" continua começando VAZIA; o modelo é a opção ao
+            // lado (D-4, decisão do Heitor em 2026-10-29).
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-secondary" onClick={() => setVendoModelos(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <LayoutTemplate size={15} /> Usar um modelo
+              </button>
+              <button type="button" className="btn-primary" onClick={() => setAbrindo(true)}>
+                <Plus size={15} /> Nova automação
+              </button>
+            </div>
           )
         )}
+
+      {vendoModelos && (
+        <JanelaModal onFechar={() => setVendoModelos(false)} rotulo="Modelos de automação" largura={560} travado={criando}>
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', margin: 0 }}>
+                  Modelos de automação
+                </h2>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                  O modelo cria a automação desligada, com o fluxo montado. Revise e ligue quando estiver do seu jeito.
+                </p>
+              </div>
+              <button type="button" className="btn-ghost" aria-label="Fechar" onClick={() => setVendoModelos(false)} disabled={criando}>
+                <X size={15} />
+              </button>
+            </div>
+            {MODELOS_DE_AUTOMACAO.map(m => (
+              <div key={m.chave} data-modelo={m.chave} className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', margin: 0 }}>{m.nome}</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{m.descricao}</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)', margin: 0, lineHeight: 1.5 }}>
+                  Para revisar: {m.revisar}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn-secondary" onClick={() => usarModelo(m.chave)} disabled={criando}>
+                    {usando === m.chave ? 'Criando…' : 'Usar este modelo'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </JanelaModal>
+      )}
       </div>
 
       {erro && (

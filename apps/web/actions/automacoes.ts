@@ -11,6 +11,7 @@ import type {
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { modeloDeAutomacao } from '@/lib/automacoes/modelos'
 import { ler, tentar } from '@/lib/db'
 
 /**
@@ -198,6 +199,40 @@ export async function criarAutomacao(nome: string): Promise<{ id?: string; error
       // mensagem antes de alguém terminar de montá-la.
       status:     'RASCUNHO',
       grafo:      GRAFO_VAZIO,
+      limites:    LIMITES_PADRAO,
+      criado_por: ctx.internalUserId,
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) return { error: `Erro ao criar a automação: ${error?.message}` }
+
+  revalidatePath('/admin/automacoes')
+  return { id: data.id as string }
+}
+
+/**
+ * Cria uma automação a partir de um modelo pronto (D-4). Nasce RASCUNHO, como
+ * a vazia: o modelo é um ponto de partida que a clínica revisa antes de ligar.
+ * O que chega do navegador é só a CHAVE do modelo — o grafo sai do servidor.
+ */
+export async function criarAutomacaoDeModelo(chave: string): Promise<{ id?: string; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'MANAGE')
+
+  const modelo = modeloDeAutomacao(String(chave ?? ''))
+  if (!modelo) return { error: 'Modelo não encontrado.' }
+  const grafo = modelo.grafo()
+
+  const { data, error } = await createAdminClient()
+    .from('automations')
+    .insert({
+      tenant_id:  ctx.tenantId!,
+      nome:       modelo.nome,
+      descricao:  modelo.descricao,
+      status:     'RASCUNHO',
+      grafo,
+      gatilhos:   gatilhosDoGrafo(grafo),
       limites:    LIMITES_PADRAO,
       criado_por: ctx.internalUserId,
     })
