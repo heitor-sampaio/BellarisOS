@@ -616,6 +616,21 @@ const procedures = await ler(
   herdaram do preço de venda: com preço, "Os dois"; sem, "Insumo" (na
   produção, 1 e 9). Era o liga/desliga "venda direta", que nada lia. Prova:
   `e2e/estoque-uso-do-produto.spec.ts`.
+- **A saída por PERDA** (D-7, decisão do Heitor, 2026-10-29; migrations
+  `20261029001303`/`304`): Gerenciar estoque → Movimentações → "Perda", com o
+  LOTE (ou "sem lote — sai o que vence primeiro"), a quantidade em
+  EMBALAGENS, o motivo (Vencido, Quebrou, Amostra, Uso interno —
+  `lib/estoque/perda.ts`, o banco confere a mesma lista) e a observação.
+  `registrarPerda` → `estoque_perda`, uma transação com a linha do saldo
+  travada: recusa mais do que o lote tem ("O lote tem só 2 frasco.") e mais
+  do que há. O movimento é `LOSS` (em consumo, com `motivo_da_perda`) e diz o
+  lote em `reference = 'lote:<id>'`: o gatilho do lote tira DELE primeiro (o
+  frasco vencido sai do lote vencido, não do bom); o resto segue o FEFO. O
+  custo é o da entrada do lote; sem lote, o dos lotes que o FEFO tira. NUNCA
+  gera despesa. A perda NÃO é consumo: fica fora do giro e do lucro (decisão
+  para o Heitor). O relatório é a seção "Perdas no período" de Relatórios →
+  Estoque (`metrics_perdas` → `getPerdas`, `indicadores.md`). Prova:
+  `e2e/estoque-perda.spec.ts`.
 - **A tela de Estoque mostra o saldo na unidade de CONSUMO** (J-43/J-44/J-45,
   2026-10-30). A regra é UMA, `lib/estoque/situacao.ts` (tela da rede, da
   unidade e o "Estoque crítico" do dashboard): o produto com unidade de

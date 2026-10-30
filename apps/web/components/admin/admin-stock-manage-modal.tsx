@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   X, PackagePlus, ArrowLeftRight, SlidersHorizontal,
-  AlertTriangle, TrendingDown, Check, Loader2,
+  AlertTriangle, TrendingDown, Check, Loader2, PackageX,
 } from 'lucide-react'
 import {
-  adminAddStock, adminTransferStock, adminAdjustStock, adminUpdateMinStock,
+  adminAddStock, adminTransferStock, adminAdjustStock, adminUpdateMinStock, registrarPerda,
   getProductMovements, type MovimentoDeEstoque,
 } from '@/actions/stock'
+import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
 import { erroParaTela } from '@/lib/erro-na-tela'
 
 type BranchStock = {
@@ -23,6 +24,8 @@ type ProductInfo = {
   name:     string
   unit:     string
   branches: BranchStock[]
+  /** Os lotes com saldo (a perda escolhe de qual lote sai — D-7). */
+  lotes?:   { id: string; unidadeId: string; numero: string | null; validade: string | null; quantidade: number }[]
 }
 
 type AllBranch = { id: string; name: string }
@@ -36,7 +39,7 @@ interface Props {
 }
 
 type Tab   = 'movimentacoes' | 'min-stock' | 'historico'
-type MovOp = 'entrada' | 'transferencia' | 'ajuste'
+type MovOp = 'entrada' | 'transferencia' | 'ajuste' | 'perda'
 
 // -- Primitivos --------------------------------------------------------
 function Label({ children }: { children: React.ReactNode }) {
@@ -395,6 +398,96 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   )
 }
 
+// -- Formulário: Perda -------------------------------------------------
+// D-7 (decisão do Heitor): o que saiu por vencido, quebrou, amostra ou uso
+// interno — pelo LOTE escolhido (o vencido sai dele, não do que vence
+// primeiro) e SEM despesa. A quantidade é em embalagens, como a entrada.
+function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
+  product: ProductInfo; allBranches: AllBranch[]
+  defaultBranchId?: string
+  onClose: () => void; onSuccess: () => void
+}) {
+  const [error,    setError]    = useState<string>()
+  const [pending,  setPending]  = useState(false)
+  const [branchId, setBranchId] = useState(defaultBranchId ?? '')
+  const lotes = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setPending(true); setError(undefined)
+    try {
+      const fd = new FormData(e.currentTarget)
+      fd.set('productId', product.id)
+      const res = await registrarPerda(undefined, fd)
+      if (res?.success) onSuccess()
+      else setError(res?.error ?? 'Erro inesperado.')
+    } catch { setError('Erro inesperado.') }
+    finally { setPending(false) }
+  }
+
+  const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+  const rotulo: React.CSSProperties = { fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        O que saiu do estoque sem ser usado num atendimento. Não gera despesa: o custo entra no relatório de perdas.
+      </p>
+      {defaultBranchId ? (
+        <input type="hidden" name="branchId" value={defaultBranchId} />
+      ) : (
+        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches}
+          label="Filial" required onChange={setBranchId} />
+      )}
+
+      <FieldWrap>
+        <label htmlFor="perda-lote" style={rotulo}>Lote</label>
+        <select id="perda-lote" name="loteId" className="field" defaultValue="">
+          <option value="">Sem lote — sai o que vence primeiro</option>
+          {lotes.map(l => (
+            <option key={l.id} value={l.id}>
+              {l.numero ? `Lote ${l.numero}` : 'Lote sem número'}
+              {l.validade ? ` · vence ${new Date(l.validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
+              {` · ${fmt(l.quantidade)} ${product.unit}`}
+            </option>
+          ))}
+        </select>
+      </FieldWrap>
+
+      <div className="form-2col">
+        <FieldWrap>
+          <label htmlFor="perda-quantidade" style={rotulo}>Quantidade</label>
+          <div style={{ position: 'relative' }}>
+            <input id="perda-quantidade" name="quantity" type="text" inputMode="decimal" required className="field"
+              placeholder="0" style={{ paddingRight: 48 }} />
+            <UnitSuffix unit={product.unit} />
+          </div>
+        </FieldWrap>
+        <FieldWrap>
+          <label htmlFor="perda-motivo" style={rotulo}>Motivo</label>
+          <select id="perda-motivo" name="motivo" required className="field" defaultValue="">
+            <option value="" disabled>Selecione…</option>
+            {MOTIVOS_DA_PERDA.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+          </select>
+        </FieldWrap>
+      </div>
+
+      <FieldWrap>
+        <label htmlFor="perda-obs" style={rotulo}>Observação</label>
+        <textarea id="perda-obs" name="notes" className="field" rows={2} placeholder="Ex: frasco caiu no chão"
+          style={{ resize: 'vertical' }} />
+      </FieldWrap>
+
+      <ErrorMsg msg={error} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button type="button" onClick={onClose} className="btn-secondary" disabled={pending}>Cancelar</button>
+        <button type="submit" className="btn-primary" disabled={pending}>
+          <PackageX size={14} />
+          {pending ? 'Registrando…' : 'Registrar perda'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 // -- Tab: Estoque mínimo -----------------------------------------------
 function MinStockTab({ product, allBranches, defaultBranchId }: {
   product:          ProductInfo
@@ -529,6 +622,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
     { op: 'entrada',       label: 'Entrada',       icon: <PackagePlus      size={13} />, color: 'var(--success)' },
     { op: 'transferencia', label: 'Transferência',  icon: <ArrowLeftRight   size={13} />, color: 'var(--info)' },
     { op: 'ajuste',        label: 'Ajuste',         icon: <SlidersHorizontal size={13}/>, color: 'var(--warning)' },
+    { op: 'perda',         label: 'Perda',          icon: <PackageX         size={13} />, color: 'var(--danger)' },
   ]
   // Transferir some so quando nao ha para onde: a filial mandava produto para
   // lugar nenhum porque recebia apenas a propria unidade na lista.
@@ -615,6 +709,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
             {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
           </div>
         ) : tab === 'historico' ? (
           <HistoricoTab product={product} defaultBranchId={defaultBranchId} />
@@ -639,6 +734,7 @@ const MOV_LABEL: Record<string, string> = {
   PROCEDURE_USAGE:   'Consumo em atendimento',
   MANUAL_ADJUSTMENT: 'Ajuste manual',
   LOSS:              'Perda',
+  SALE:              'Venda',
 }
 
 function HistoricoTab({ product, defaultBranchId }: {

@@ -9,6 +9,7 @@ import { addDaysTZ } from '@/lib/datetime'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
+import { getPerdas } from '@/lib/metrics/perdas'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
   getSeries, getTicketMedio, getResultadoDoEstoque, getSeriesDoResultado,
@@ -138,6 +139,7 @@ export async function ReportsBiSection({
     estoque,
     estoqueAnterior,
     seriesDoResultado,
+    perdas,
   ] = await Promise.all([
     getRelatorioDosModulos({
       tenantId: ctx.tenantId!, branchIds,
@@ -208,6 +210,9 @@ export async function ReportsBiSection({
     comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro }) : Promise.resolve(null),
     comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, professionalId: profDinheiro }) : Promise.resolve(null),
     comLucro ? getSeriesDoResultado({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, granularity, professionalId: profDinheiro }) : Promise.resolve([]),
+    // As perdas do período (D-7): do estoque da unidade, como o saldo — com o
+    // financeiro "só os meus" não se atribuem a ela e nem são consultadas.
+    needBatches ? getPerdas({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : Promise.resolve(undefined),
   ])
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
@@ -305,6 +310,7 @@ export async function ReportsBiSection({
         soOsMeus={soOsMeus}
         comercial={comercial}
         vendas={vendas}
+        perdas={perdas}
       />
     </>
   )

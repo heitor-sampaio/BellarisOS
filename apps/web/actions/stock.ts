@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
+import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -601,6 +602,59 @@ async function adminAdjustStockInterno(
   }
 }
 
+/**
+ * A saída por PERDA (D-7, decisão do Heitor, 2026-10-29): pelo lote escolhido
+ * (ou, sem lote, o que vence primeiro), com o motivo, e SEM despesa — uma
+ * transação (`estoque_perda`, a linha do saldo travada; recusa mais do que há
+ * ou do que o lote tem). A quantidade é em embalagens, como a entrada e o
+ * ajuste.
+ */
+export async function registrarPerda(
+  ...args: Parameters<typeof registrarPerdaInterno>
+): ReturnType<typeof registrarPerdaInterno> {
+  try {
+    return await registrarPerdaInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function registrarPerdaInterno(
+  _prev: { error?: string; success?: boolean } | undefined,
+  formData: FormData,
+) {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'stock', 'MANAGE')
+
+  const productId = str(formData, 'productId')
+  const branchId  = str(formData, 'branchId')
+  const loteId    = str(formData, 'loteId')
+  if (!productId) return { error: 'Produto não identificado.' }
+  if (!branchId)  return { error: 'Selecione uma filial.' }
+  if (!alcancaUnidade(ctx, branchId)) return { error: 'Operação não permitida fora da sua filial.' }
+  const motivo = lerMotivoDaPerda(str(formData, 'motivo'))
+  if (!motivo) return { error: 'Escolha o motivo da perda.' }
+  const qtd = num(formData, 'quantity')
+  if (qtd == null || !(qtd > 0)) return { error: 'Quantidade deve ser maior que zero.' }
+
+  const admin = createAdminClient()
+  if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
+    return { error: 'Produto ou filial não encontrado.' }
+
+  const { error } = await admin.rpc('estoque_perda', {
+    p_produto: productId, p_unidade: branchId, p_lote: loteId, p_quantidade: qtd,
+    p_motivo: motivo, p_observacao: str(formData, 'notes'), p_autor: ctx.internalUserId,
+  })
+  if (error) {
+    if (error.code === 'P0001') return { error: error.message }
+    throw new Error(`Não consegui registrar a perda: ${error.message}`)
+  }
+
+  revalidatePath('/admin/estoque')
+  revalidatePath('/[slug]/estoque', 'page')
+  return { success: true }
+}
+
 export interface MovimentoDeEstoque {
   id:           string
   type:         string
@@ -649,7 +703,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, created_at, unit_cost, branches!inner(name, tenant_id), stock_movement_batches(product_batches(batch_number, expires_at))')
+    .select('id, type, quantity, balance_after, notes, created_at, unit_cost, motivo_da_perda, branches!inner(name, tenant_id), stock_movement_batches(product_batches(batch_number, expires_at))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -680,6 +734,7 @@ export async function getProductMovements(
     id: string; type: string; quantity: number; balance_after: number
     notes: string | null; created_at: string; branches: { name: string } | null
     unit_cost: number | string | null
+    motivo_da_perda: string | null
     stock_movement_batches: { product_batches: { batch_number: string | null; expires_at: string | null } | null }[] | null
   }
   const fator = emConsumo ? upp : 1
@@ -688,7 +743,8 @@ export async function getProductMovements(
     type:         m.type,
     quantity:     Number(m.quantity),
     balanceAfter: Number(m.balance_after),
-    notes:        m.notes,
+    // A perda diz o motivo antes da observação (D-7): "Vencido · frasco aberto".
+    notes:        m.motivo_da_perda ? [rotuloDoMotivo(m.motivo_da_perda), m.notes].filter(Boolean).join(' · ') : m.notes,
     createdAt:    m.created_at,
     branchName:   m.branches?.name ?? '—',
     unidade:      emConsumo ? consumo! : embalagem,

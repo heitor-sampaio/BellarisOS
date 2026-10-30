@@ -11,6 +11,8 @@ import { validadeDoLote, type LinhaLote, type LinhaParcela } from './reports-lin
 import type { Relatorio } from '@/lib/metrics/relatorio'
 import type { MetricsCore } from '@/lib/metrics'
 import type { DadosDeVendas } from './reports-bi-section'
+import type { RelatorioDePerdas } from '@/lib/metrics/perdas'
+import { rotuloDoMotivo } from '@/lib/estoque/perda'
 import {
   TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda,
 } from '@/lib/metrics/vendas-comum'
@@ -124,6 +126,8 @@ export interface ReportsBiProps {
   comercial?: DadosComerciais
   /** Só vem preenchido quando a aba Vendas está aberta. */
   vendas?: DadosDeVendas
+  /** As perdas do período (D-7) — só na aba Estoque, e não com o financeiro "só os meus". */
+  perdas?: RelatorioDePerdas
 }
 
 // -- Animated number -----------------------------------------------------------
@@ -1098,6 +1102,52 @@ function TabEstoque(p: ReportsBiProps) {
           <SCard title="Validades Próximas (≤ 30 dias)" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={batchCols} rows={batchRows} emptyMsg="Sem lotes vencendo em breve." />
           </SCard>
+        )}
+        {/* As perdas do período (D-7): por motivo e produto, com o custo — os
+            números vêm prontos do banco (metrics_perdas). */}
+        {p.perdas && (
+          <div data-perdas style={{ gridColumn: '1 / -1' }}>
+            <SCard title="Perdas no período">
+              {p.perdas.total.movimentos === 0 ? (
+                <EmptyMsg texto="Nenhuma perda registrada no período." />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {p.perdas.motivos.map(m => (
+                      <span key={m.motivo} style={{
+                        fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 99,
+                        background: 'var(--bg-app)', border: '1px solid var(--border)', color: 'var(--text)',
+                      }}>
+                        {rotuloDoMotivo(m.motivo)} · {fmtBRLFull(m.custo)}
+                      </span>
+                    ))}
+                    <span style={{
+                      fontSize: 'var(--text-xs-sz)', fontWeight: 800, padding: '4px 10px', borderRadius: 99,
+                      background: 'var(--danger-soft)', color: 'var(--danger)',
+                    }}>
+                      Total {fmtBRLFull(p.perdas.total.custo)}
+                    </span>
+                  </div>
+                  <SimpleTable
+                    columns={[
+                      { key: 'motivo',  label: 'Motivo' },
+                      { key: 'produto', label: 'Produto' },
+                      { key: 'qtd',     label: 'Quantidade', align: 'right' },
+                      { key: 'custo',   label: 'Custo', align: 'right', render: v => fmtBRLFull(Number(v)) },
+                    ]}
+                    rows={p.perdas.linhas.map(l => ({
+                      motivo:  rotuloDoMotivo(l.motivo),
+                      produto: l.produto,
+                      qtd:     l.unidade !== l.embalagem
+                        ? `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.unidade} (${l.embalagens.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.embalagem})`
+                        : `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.unidade}`,
+                      custo:   l.custo,
+                    }))}
+                  />
+                </div>
+              )}
+            </SCard>
+          </div>
         )}
       </div>
     </div>
