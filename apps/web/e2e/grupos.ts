@@ -76,6 +76,7 @@ export const ISOLADOS = [
   'estoque-tela-consumo-e-lotes.spec.ts',
   'estoque-uso-do-produto.spec.ts',
   'estrutura-endereco-da-unidade.spec.ts',
+  'fechamento-do-dia-avisos.spec.ts',
   'fechamento-escopo-proprio.spec.ts',
   'ficha-cadastro-documento.spec.ts',
   'ficha-cadastro-mesma-pessoa-do-lead.spec.ts',

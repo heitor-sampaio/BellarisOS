@@ -3,10 +3,10 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, Wallet } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Info, Wallet } from 'lucide-react'
 import { fecharODia } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
-import type { FechamentoDoDia } from '@/lib/metrics'
+import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 import { rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
@@ -33,7 +33,7 @@ function Diferenca({ valor }: { valor: number }) {
  * A tela do fechamento do dia (2026-10-21). Todo número vem do servidor
  * (metrics_fechamento_do_dia); aqui só se desenha e se manda o contado.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, podeReceberAtendimento = false }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, podeReceberAtendimento = false, avisos }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -44,6 +44,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   /** Os atendimentos concluídos e não pagos da unidade (D5, 2026-10-27). */
   aReceber?: ListaAReceber
   podeReceberAtendimento?: boolean
+  /** Os números dos avisos (J-49), do banco. */
+  avisos?: AvisosDoFechamento
 }) {
   const router = useRouter()
   const [contado, setContado] = useState('')
@@ -93,6 +95,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
             onChange={e => e.target.value && ir(e.target.value)} style={{ width: 160 }} />
         </div>
       </div>
+
+      <AvisosDoDia resumo={resumo} aReceber={aReceber} avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
 
       {/* O dia por forma de pagamento */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -175,6 +179,53 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
             </p>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Os avisos do fechamento (J-49, 2026-10-30) — todo número vem do banco:
+ * - há dinheiro a receber (os atendimentos concluídos sem pagamento, de
+ *   qualquer dia — o total da lista abaixo);
+ * - houve movimento depois do último fechamento (feche de novo);
+ * - saiu em espécie mais do que entrou (o esperado na gaveta é negativo);
+ * - e, só informativo, as taxas da maquininha estimadas do dia.
+ */
+function AvisosDoDia({ resumo, aReceber, avisos, fechadoAs }: {
+  resumo: FechamentoDoDia; aReceber?: ListaAReceber; avisos?: AvisosDoFechamento; fechadoAs: string | null
+}) {
+  const lista: { chave: string; texto: string }[] = []
+  if (aReceber && aReceber.total.n > 0) {
+    const n = aReceber.total.n
+    lista.push({ chave: 'a-receber', texto: `Há ${brl(aReceber.total.valor)} a receber de ${n} atendimento${n > 1 ? 's' : ''} concluído${n > 1 ? 's' : ''} sem pagamento (lista abaixo).` })
+  }
+  if (avisos && avisos.movimentosDepois > 0 && fechadoAs) {
+    const n = avisos.movimentosDepois
+    lista.push({ chave: 'movimento-depois', texto: `Houve ${n} lançamento${n > 1 ? 's' : ''} depois do fechamento das ${fechadoAs}: confira e feche de novo.` })
+  }
+  if (resumo.esperadoDinheiro < 0) {
+    lista.push({ chave: 'dinheiro-negativo', texto: `Saiu mais dinheiro em espécie do que entrou hoje (${brl(Math.abs(resumo.esperadoDinheiro))} a mais): confira as saídas pagas em dinheiro.` })
+  }
+  const taxas = avisos?.taxas ?? 0
+  if (!lista.length && taxas <= 0) return null
+  return (
+    <div data-avisos-do-fechamento style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {lista.map(a => (
+        <p key={a.chave} data-aviso={a.chave} role="status" style={{
+          display: 'flex', gap: 8, alignItems: 'flex-start', margin: 0, padding: '10px 14px',
+          borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--surface)',
+          fontSize: 'var(--text-sm-sz)', color: 'var(--text)',
+        }}>
+          <AlertTriangle size={15} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
+          <span>{a.texto}</span>
+        </p>
+      ))}
+      {taxas > 0 && (
+        <p data-taxas-do-dia style={{ display: 'flex', gap: 8, alignItems: 'center', margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          <Info size={13} aria-hidden style={{ flexShrink: 0 }} />
+          Taxas da maquininha no dia (estimadas): {brl(taxas)} — só para conferência; não saem do saldo.
+        </p>
       )}
     </div>
   )

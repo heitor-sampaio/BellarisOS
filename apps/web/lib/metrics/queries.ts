@@ -419,6 +419,31 @@ export async function getFechamentoDoDia(args: { tenantId: string; branchId: str
   }
 }
 
+export interface AvisosDoFechamento {
+  /** As taxas da maquininha estimadas do dia (só informativo: não saem do saldo). */
+  taxas: number
+  /** Lançamentos do dia pagos DEPOIS do último fechamento (zero sem fechamento). */
+  movimentosDepois: number
+}
+
+/**
+ * Os números dos avisos do Fechamento do dia (J-49, 2026-10-30;
+ * `metrics_avisos_do_fechamento`): as taxas da maquininha de cada recebimento
+ * do dia (a tabela de Configurações → Comissões, `comissao_taxa_pct`) e o
+ * movimento depois do último fechamento (`desde`).
+ */
+export async function getAvisosDoFechamento(args: {
+  tenantId: string; branchId: string; from: Date; to: Date; desde: string | null
+}): Promise<AvisosDoFechamento> {
+  const { data, error } = await createAdminClient().rpc('metrics_avisos_do_fechamento', {
+    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+    p_desde: args.desde,
+  })
+  logRpcError('metrics_avisos_do_fechamento', error)
+  const r = ((data as Record<string, unknown>[] | null) ?? [])[0] ?? {}
+  return { taxas: n(r.taxas), movimentosDepois: n(r.movimentos_depois) }
+}
+
 export interface ComposicaoFinanceira {
   /** Receita paga por forma de pagamento (método do banco: PIX, CASH…). */
   formas:   { chave: string; valor: number }[]

@@ -221,6 +221,17 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   - Cada fechamento é um REGISTRO em `fechamentos_do_dia` (com o retrato do
     resumo, refeito no servidor; a diferença é coluna gerada). Fechar de novo
     não apaga o anterior — vale o mais recente. Dia futuro não fecha.
+  - **Os avisos** (J-49, 2026-10-30), acima da tabela, todos com número do
+    banco: (1) há dinheiro a receber — os concluídos a receber da unidade
+    (o total da lista `atendimentos_a_receber`); (2) houve lançamento DEPOIS
+    do último fechamento (pago depois de `fechado_em`: feche de novo); (3)
+    saiu em espécie mais do que entrou (o esperado na gaveta é negativo — não
+    há caixa de abrir, então é "pagou em dinheiro mais do que recebeu em
+    dinheiro"); e (4) uma linha só INFORMATIVA com as taxas da maquininha
+    estimadas do dia (cada recebimento × a taxa da forma, a tabela de
+    Configurações → Comissões — `comissao_taxa_pct`), que não saem do saldo.
+    (2) e (4) são `metrics_avisos_do_fechamento` (`getAvisosDoFechamento`;
+    migration `20261029001504`). Prova: `e2e/fechamento-do-dia-avisos.spec.ts`.
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
   de 2026-10-27, decisões do Heitor). A conta é UMA, no banco
