@@ -1651,6 +1651,66 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Frente de indicadores: conversão da oportunidade, ticket por cliente, cada número no seu módulo
+
+Oito decisões da revisão do Heitor, com o teste escrito antes (migrations
+`20261029001101`–`001105`):
+
+- **Conversão é da oportunidade** (18e3482a). Ganhas ÷ do funil; o quadro que
+  dizia "66,7% (2 de 3 viraram clientes)" diz "33,3% (1 de 3 ganhas)". Sem
+  etapa de ganho, "—".
+- **Ticket médio = quanto cada cliente gasta** (34b2d071). Pago ÷ clientes que
+  pagaram, em toda tela; o "Gasto médio" de Relatórios → Clientes virou ele.
+- **"Clientes no mês" até agora** (72506878).
+- **Cada número segue o escopo do seu módulo** (5be8ba4e). Agenda e clientes
+  pela agenda, dinheiro pelo financeiro, funil pelo CRM: nos dois dashboards,
+  nos Relatórios (com o CSV de vendas) e no Copilot.
+- **Retenção: "voltou" é quem a clínica já atendera** (21afd4e4).
+- **O lucro desconta o insumo consumido** (452eefa0). A "Compra de estoque"
+  fica no caixa e fora do lucro; o DRE ganhou a linha "Insumos consumidos".
+- **As quatro contas da tela de Relatórios foram para `lib/metrics`**
+  (b55db91a, ee2193a4), sem mudar os números.
+- **"A receber"** (004576f0): abaixo do número do mês, "Em aberto, todos os
+  vencimentos".
+
+**Decisões da frente, para revisar:**
+1. Escopo:
+   a. **A mais importante:** quem não tem o módulo Financeiro (vale "todos")
+      passa a ver o dinheiro da clínica nos Relatórios e no Copilot, se o
+      cargo tiver a aba marcada. Antes a agenda "só os meus" o recortava.
+   b. Giro e consumo de insumo, LTV por CEP e vendas seguem o financeiro; os
+      planos aguardando checkout seguem a agenda.
+   c. O ranking de filiais some com qualquer "só os meus"; a ocupação por
+      filial, só com a agenda "só os meus"; o saldo do estoque, só com o
+      financeiro "só os meus".
+   d. A tabela por procedimento junta execuções (agenda) e receita
+      (financeiro): com a agenda dela e o financeiro de todos, o procedimento
+      que ela não fez aparece com 0 execuções e a receita da clínica.
+2. Ticket médio:
+   a. Na ficha da cliente, o "Ticket médio" virou "Média por atend." (a conta
+      antiga), porque numa cliente só o ticket novo seria o LTV.
+   b. Receita sem cliente não entra.
+   c. A cliente que pagou em duas unidades conta uma vez no total e uma em
+      cada unidade.
+3. A conversão que junta os funis nos Relatórios aparece se a rede tiver etapa
+   de ganho em qualquer funil, inclusive arquivado.
+4. Na retenção, o "já tinha vindo antes" vale nas unidades do recorte.
+5. Lucro:
+   a. O lote não guarda custo próprio: vale o custo gravado na baixa do insumo
+      (o mesmo do giro).
+   b. A categoria antiga "Estoque" conta como compra de estoque (4 despesas,
+      R$ 2.850, da Entrada de estoque antiga).
+   c. "Despesas Op." virou "Despesas pagas" (o caixa).
+   d. O "Custo" do gráfico é o do lucro (despesas sem a compra de estoque, mais
+      o insumo); o cartão "Custo do mês" segue o caixa e diz isso.
+6. Sem denominador, as taxas dos Relatórios seguem mostrando 0.
+7. Na rede, o em aberto é o das unidades ativas, como o número do mês.
+
+O J-50 ("Contas" casar com "Compra de estoque") não tem o que fazer: não existe
+a categoria "Contas" no código nem no banco. O `copilot-indicadores-so-os-meus`
+só roda contra o build e ficou para a completa. Mexeu em toda `lib/metrics`,
+nos dashboards, nos Relatórios e nos financeiros: vale uma completa.
+
 ### 2026-10-29 — Frente de cadastro: telefone de fora, "é a mesma pessoa?" e Documento com tipo
 
 Oito decisões da revisão do Heitor, um commit cada, com o teste escrito antes
@@ -7047,7 +7107,8 @@ verdade. O que vale:
     seguem o escopo da agenda, dinheiro segue o do financeiro e funil segue
     o do CRM. Exemplo: com a agenda ALL e o financeiro OWN, os atendimentos
     são os da clínica e o faturamento é o dela. Vale nos dois dashboards, nos
-    Relatórios e no Copilot. A FAZER, na frente de indicadores.
+    Relatórios e no Copilot. **Feito em 2026-10-30** (5be8ba4e; a regra em
+    `lib/metrics/escopo.ts` e `dos-modulos.ts`).
     **"Em qualquer lugar" — ainda vazando** (achados da frente G, só leitura):
     em módulo COM escopo — mapas de injetáveis (`listarMapasDeInjetaveis`
     ignora o prontuário OWN: dado clínico), planejamentos (`listarPlanejamentos`
@@ -7092,7 +7153,7 @@ verdade. O que vale:
     - **(6) "A cliente é da clínica; o atendimento é da profissional."** Na
       retenção dela entram as clientes que ela atendeu no período, e "voltou" é
       quem já tinha sido atendida pela CLÍNICA antes, por qualquer
-      profissional. A FAZER, na frente de indicadores.
+      profissional. **Feito em 2026-10-30** (21afd4e4).
 
     Mexeu em `metrics_receitas_pagas` (fechamento do dia, financeiro da
     cliente) e em `planoDoTenant`: vale uma completa, que o Heitor decide.
@@ -7181,7 +7242,8 @@ verdade. O que vale:
       - o lucro desconta o insumo consumido, pelo custo do lote;
       - a despesa da categoria "Compra de estoque" conta no CAIXA (o que saiu)
         e não no lucro, para o produto não ser descontado duas vezes.
-    - A FAZER, na frente de indicadores.
+    - **Feito em 2026-10-30** (452eefa0). A categoria "Compra de estoque" não
+      existia e entrou no lançamento; a antiga "Estoque" conta como ela.
   - Ficha de saúde (D2): o servidor recusa a vazia e a com obrigatória em
     branco (app, "nada mudou" e link). Obrigatórias na ficha padrão: alergias,
     gestação/amamentação, medicamentos e condições de saúde (pele, protetor,
@@ -7273,7 +7335,7 @@ verdade. O que vale:
     sem importar se a pessoa já é cliente. É o mesmo número no quadro, nos
     Relatórios e no dashboard; onde a tela junta funis, junta as oportunidades
     deles. Funil sem etapa de ganho mostra "—". "Já é cliente" fica só como
-    filtro do quadro. A FAZER (fila: depois do planejador na ficha).
+    filtro do quadro. **Feito em 2026-10-30** (18e3482a).
   - Ticket (D11): além do rótulo, o NÚMERO do cartão de Relatórios →
     Procedimentos mudou (dividia pelos concluídos: R$ 90 contra R$ 180 na
     Visão geral; agora é o `ticketMedio`).
@@ -7284,15 +7346,15 @@ verdade. O que vale:
     parcelas), pré-pago e, quando existir, produto. Quem não pagou nada não
     entra. É um indicador só com o "Gasto médio" de Relatórios → Clientes,
     com o nome "Ticket médio". Vale em toda tela e, com "só os meus", é o
-    dela. A FAZER (na frente de indicadores, com a conversão). Muda a regra de 27/10 em
-    `indicadores.md`.
+    dela. **Feito em 2026-10-30** (34b2d071); a regra de 27/10 em
+    `indicadores.md` mudou.
   - "Clientes no mês" (D12): conta até o fim do mês; os cartões de dinheiro
     seguem até agora. A "Taxa de aproveitamento" da rede segue em "horários
     passados", de propósito.
     **Revisto pelo Heitor (2026-10-29): "Clientes no mês" conta até AGORA**,
     porque não se sabe se o que está agendado vai acontecer. Volta o corte
-    em "agora". A "Taxa de aproveitamento" segue como está. A FAZER, na
-    frente de indicadores junto com a conversão e o ticket médio.
+    em "agora". A "Taxa de aproveitamento" segue como está. **Feito em
+    2026-10-30** (72506878).
   - Estoque sem categoria (D17): a categoria em branco também vai a "Sem
     categoria". **Confirmado pelo Heitor (2026-10-29).**
   - O 404 sem o `loading` no topo (frente F): ele vem na casca de erro do
@@ -7308,7 +7370,7 @@ verdade. O que vale:
     do dashboard e da tabela por procedimento foram para `lib/metrics`.
     **Decidido pelo Heitor (2026-10-29): as quatro vão para `lib/metrics`**, na
     frente de indicadores. A conversão por origem já sai pela oportunidade
-    (item 15). A FAZER.
+    (item 15). **Feito em 2026-10-30** (b55db91a, ee2193a4).
 
 - **Para decidir (2026-10-28): o que a cliente vê dos documentos no portal.**
   `/[slug]/cliente/historico` lista TODO `client_documents` dela — foto
@@ -8240,7 +8302,7 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 - **D-11:** o campo vira "Documento" com tipo (CPF, Passaporte, RNE). Sem CPF, a cliente fica sem acesso ao app por enquanto. **Feito em 2026-10-29** (edde7da3, migration `20261029001001`).
 - **D-12:** fazer o campo "Retorno em N dias" no atendimento. Ele vira lembrete à recepção e gatilho de automação.
 - **D-13: deixar como está.** A ficha já é customizável.
-- **D-14:** o card mantém o número do mês, e abaixo vem a linha "Em aberto, todos os vencimentos: R$ X".
+- **D-14:** o card mantém o número do mês, e abaixo vem a linha "Em aberto, todos os vencimentos: R$ X". **Feito em 2026-10-30** (004576f0).
 - **D-15:** a clínica configura "parcela até Nx". O padrão é o maior número de parcelas com taxa cadastrada.
 - **D-16:** "Sem preferência" no app junta os horários de todas que fazem o procedimento. O sistema escolhe quem está livre, com menos atendimentos no dia.
 - **D-17:** o saldo do crédito interno aparece no Financeiro do app.
