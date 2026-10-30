@@ -5,7 +5,8 @@ import { Plus, X, Loader2 } from 'lucide-react'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { maskPhoneDigitando } from '@estetica-os/utils'
+import { maskPhoneDigitando, maskCEPDigitando } from '@estetica-os/utils'
+import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -40,27 +41,31 @@ export function BranchForm() {
   const [uf,         setUf]         = useState('')
   const [cepLoading, setCepLoading] = useState(false)
   const [cepError,   setCepError]   = useState<string | null>(null)
+  const [cepBuscado, setCepBuscado] = useState('')
 
   if (formState?.success && open) {
     setOpen(false)
     setName(''); setSlug(''); setSlugTouched(false)
     setZipCode(''); setAddress(''); setCity(''); setUf('')
-    setCepError(null)
+    setCepError(null); setCepBuscado('')
   }
 
   function handleClose() {
     setOpen(false)
     setName(''); setSlug(''); setSlugTouched(false)
     setZipCode(''); setAddress(''); setCity(''); setUf('')
-    setCepError(null)
+    setCepError(null); setCepBuscado('')
   }
 
-  async function handleCepBlur() {
-    const digits = zipCode.replace(/\D/g, '')
-    if (digits.length !== 8) return
+  // Busca o endereço assim que o CEP chega a 8 dígitos, sem esperar sair do
+  // campo (J-5) — como o setup. O mesmo CEP não busca duas vezes.
+  async function buscarCep(valor: string) {
+    const digits = valor.replace(/\D/g, '')
+    if (digits.length !== 8 || digits === cepBuscado) return
+    setCepBuscado(digits)
     setCepLoading(true)
     setCepError(null)
-    const result = await fetchCep(zipCode)
+    const result = await fetchCep(valor)
     setCepLoading(false)
     if (!result) {
       setCepError('CEP não encontrado.')
@@ -183,8 +188,9 @@ export function BranchForm() {
                       <input
                         id="br-zip" type="text" className="field"
                         value={zipCode}
-                        onChange={e => { setZipCode(e.target.value); setCepError(null) }}
-                        onBlur={handleCepBlur}
+                        inputMode="numeric"
+                        onChange={e => { const v = maskCEPDigitando(e.target.value); setZipCode(v); setCepError(null); void buscarCep(v) }}
+                        onBlur={() => void buscarCep(zipCode)}
                         placeholder="01310-000"
                         maxLength={9}
                       />
@@ -229,6 +235,15 @@ export function BranchForm() {
                     </div>
                   </div>
                 </div>
+              </section>
+
+              {/* -- Horário de funcionamento (J-4): o mesmo editor do detalhe da unidade. -- */}
+              <section>
+                <p className="overline" style={{ marginBottom: 6 }}>Horário de funcionamento</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 10 }}>
+                  Os horários livres da agenda e do app da cliente seguem este horário. O padrão é segunda a sábado, das 8h às 20h.
+                </p>
+                <EditorDeHorario nome="horario" valor={null} />
               </section>
 
               {formState?.error && (

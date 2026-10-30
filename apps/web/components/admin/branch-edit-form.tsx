@@ -5,7 +5,8 @@ import { updateBranch } from '@/actions/branches'
 import { Save, Loader2 } from 'lucide-react'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { normalizarHorario } from '@/lib/agenda/horario'
-import { maskPhoneDigitando } from '@estetica-os/utils'
+import { maskPhoneDigitando, maskCEPDigitando } from '@estetica-os/utils'
+import { fetchCep } from '@/lib/cep'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -31,21 +32,6 @@ interface Props {
   branch: BranchData
 }
 
-async function fetchCep(rawCep: string): Promise<{ address: string; city: string; uf: string } | null> {
-  const digits = rawCep.replace(/\D/g, '')
-  if (digits.length !== 8) return null
-  try {
-    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
-    if (!res.ok) return null
-    const data = await res.json()
-    if (data.erro) return null
-    const address = [data.logradouro, data.bairro].filter(Boolean).join(' — ')
-    return { address, city: data.localidade, uf: data.uf }
-  } catch {
-    return null
-  }
-}
-
 export function BranchEditForm({ branch }: Props) {
   const boundAction = updateBranch.bind(null, branch.id)
   const [formState, action, pending] = useActionState(boundAction, undefined)
@@ -53,16 +39,20 @@ export function BranchEditForm({ branch }: Props) {
   const [address, setAddress] = useState(branch.address ?? '')
   const [city,    setCity]    = useState(branch.city    ?? '')
   const [uf,      setUf]      = useState(branch.state   ?? '')
-  const [zipCode, setZipCode] = useState(branch.zip_code ?? '')
+  const [zipCode, setZipCode] = useState(branch.zip_code ? maskCEPDigitando(branch.zip_code) : '')
   const [cepLoading, setCepLoading] = useState(false)
   const [cepError,   setCepError]   = useState<string | null>(null)
 
-  async function handleCepBlur() {
-    const digits = zipCode.replace(/\D/g, '')
-    if (digits.length !== 8) return
+  // Busca o endereço assim que o CEP chega a 8 dígitos, sem esperar sair do
+  // campo (J-5) — como o setup. O mesmo CEP não busca duas vezes.
+  const [cepBuscado, setCepBuscado] = useState('')
+  async function buscarCep(valor: string) {
+    const digits = valor.replace(/\D/g, '')
+    if (digits.length !== 8 || digits === cepBuscado) return
+    setCepBuscado(digits)
     setCepLoading(true)
     setCepError(null)
-    const result = await fetchCep(zipCode)
+    const result = await fetchCep(valor)
     setCepLoading(false)
     if (!result) {
       setCepError('CEP não encontrado.')
@@ -148,8 +138,9 @@ export function BranchEditForm({ branch }: Props) {
             <input
               id="be-zip" type="text" className="field"
               value={zipCode}
-              onChange={e => { setZipCode(e.target.value); setCepError(null) }}
-              onBlur={handleCepBlur}
+              inputMode="numeric"
+              onChange={e => { const v = maskCEPDigitando(e.target.value); setZipCode(v); setCepError(null); void buscarCep(v) }}
+              onBlur={() => void buscarCep(zipCode)}
               placeholder="01310-000"
               maxLength={9}
             />
