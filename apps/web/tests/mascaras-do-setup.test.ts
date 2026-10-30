@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { maskCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
+import { maskCNPJDigitando, maskCEPDigitando, maskPhoneDigitando, maskCPFouCNPJDigitando } from '@estetica-os/utils'
 import { lerHorarioDoForm, HORARIO_PADRAO } from '@/lib/agenda/horario'
 
 /**
@@ -35,6 +35,20 @@ describe('máscara de telefone enquanto se digita, com o DDI', () => {
   it('o DDD 55 sem DDI continua sendo DDD', () => {
     expect(maskPhoneDigitando('55999990000')).toBe('(55) 99999-0000')
     expect(maskPhoneDigitando('559')).toBe('(55) 9')
+  })
+})
+
+// J-2 (2026-10-30): a aba Geral pede "CNPJ ou CPF". Até 11 dígitos é CPF; daí
+// em diante, CNPJ.
+describe('máscara de CPF ou CNPJ enquanto se digita', () => {
+  it('até 11 dígitos, a do CPF', () => {
+    expect(maskCPFouCNPJDigitando('123')).toBe('123')
+    expect(maskCPFouCNPJDigitando('1234567')).toBe('123.456.7')
+    expect(maskCPFouCNPJDigitando('12345678901')).toBe('123.456.789-01')
+  })
+  it('do 12º em diante, a do CNPJ', () => {
+    expect(maskCPFouCNPJDigitando('11222333000181')).toBe('11.222.333/0001-81')
+    expect(maskCPFouCNPJDigitando('11.222.333/0001-81')).toBe('11.222.333/0001-81')
   })
 })
 

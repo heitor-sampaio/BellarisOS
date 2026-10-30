@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { maskPhone } from '@estetica-os/utils'
 import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
 
 /** O que a tela de Configurações → Geral mostra da rede. */
@@ -109,7 +110,9 @@ export async function atualizarDadosDaRede(
         name,
         document: documento,
         email,
-        phone:    texto('phone'),
+        // No formato da tela (J-2): "(48) 3333-4444", também o que veio com o
+        // 55 ou só com dígitos — salvar não muda o que a pessoa vê.
+        phone:    telefoneDaRede(texto('phone')),
         website,
         portal_prazo_alteracao_horas: prazo,
         plano_validade_dias: validadeDoPlano,
@@ -123,6 +126,11 @@ export async function atualizarDadosDaRede(
 
   revalidatePath('/admin/settings')
   return { success: true }
+}
+
+/** O telefone da rede no formato da tela; o que não é número nacional fica como veio. */
+function telefoneDaRede(v: string | null): string | null {
+  return v ? maskPhone(v) : null
 }
 
 /**

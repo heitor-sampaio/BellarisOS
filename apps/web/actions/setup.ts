@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { maskPhone } from '@estetica-os/utils'
 
 export async function updateTenantProfile(data: {
   name: string
@@ -16,7 +17,8 @@ export async function updateTenantProfile(data: {
   const name     = data.name?.trim()
   // Só os dígitos: com máscara, o mesmo CNPJ viraria dois documentos para qualquer busca.
   const document = data.document?.replace(/\D/g, '') || null
-  const phone    = data.phone?.trim() || null
+  // No formato da tela, o mesmo da aba Geral (J-2).
+  const phone    = data.phone?.trim() ? maskPhone(data.phone.trim()) : null
   const website  = data.website?.trim() || null
 
   if (!name) return { error: 'Nome é obrigatório.' }

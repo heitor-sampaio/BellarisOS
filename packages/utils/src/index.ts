@@ -1,4 +1,4 @@
-export { formatBRL, formatDate, formatDateTime, formatTime, formatPercent, maskCPF, maskPhone, maskPhoneDigitando, maskTelefoneDigitando, maskCNPJ, maskCNPJDigitando, maskCEPDigitando, parseDinheiro, parseDecimal, DINHEIRO_INVALIDO, NUMERO_INVALIDO, formatDinheiroCampo, formatDia, idadeEm } from './format'
+export { formatBRL, formatDate, formatDateTime, formatTime, formatPercent, maskCPF, maskPhone, maskPhoneDigitando, maskTelefoneDigitando, maskCNPJ, maskCNPJDigitando, maskCPFouCNPJDigitando, maskCEPDigitando, parseDinheiro, parseDecimal, DINHEIRO_INVALIDO, NUMERO_INVALIDO, formatDinheiroCampo, formatDia, idadeEm } from './format'
 export { cpfValido, telefoneNacional, telefoneInternacional, telefoneDoCadastro, documentoEstrangeiro, TIPOS_DE_DOCUMENTO, type TipoDeDocumento } from './validacao'
 export { iniciaisDoNome } from './iniciais'
 export {

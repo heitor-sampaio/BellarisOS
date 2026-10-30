@@ -183,6 +183,8 @@ export const ISOLADOS = [
   'whatsapp-cobranca.spec.ts',
   'acoes-em-lote.spec.ts',
   'importacao-contatos.spec.ts',
+  // Os ajustes de tela J (1ª rodada, 2026-10-30): cada um na sua rede [e2e].
+  'configuracoes-geral-mascaras.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

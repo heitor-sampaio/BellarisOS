@@ -101,6 +101,19 @@ export const maskCNPJDigitando = (valor: string) => {
   return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
 }
 
+/**
+ * O documento "CNPJ ou CPF" ENQUANTO se digita (J-2, a aba Geral): até 11
+ * dígitos, a máscara do CPF ("123.456.789-01"); do 12º em diante, a do CNPJ.
+ */
+export const maskCPFouCNPJDigitando = (valor: string) => {
+  const d = valor.replace(/\D/g, '').slice(0, 14)
+  if (d.length > 11) return maskCNPJDigitando(d)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+}
+
 /** O CEP ENQUANTO se digita: "88010-400". */
 export const maskCEPDigitando = (valor: string) => {
   const d = valor.replace(/\D/g, '').slice(0, 8)

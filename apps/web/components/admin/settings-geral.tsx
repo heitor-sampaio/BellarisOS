@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
+import { maskCPFouCNPJDigitando, maskTelefoneDigitando } from '@estetica-os/utils'
 import { atualizarDadosDaRede, type DadosDaRede } from '@/actions/rede'
 import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
@@ -41,6 +42,12 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
 
   const erro = estado && 'error' in estado ? estado.error : null
 
+  // O documento e o telefone com a máscara ENQUANTO se digita (J-2): eram
+  // crus ("11222333000181", "5548999990000"). O servidor grava o documento só
+  // com os dígitos e o telefone no formato que aparece aqui — salvar não o muda.
+  const [documento, setDocumento] = useState(maskCPFouCNPJDigitando(rede.document ?? ''))
+  const [telefone, setTelefone] = useState(maskTelefoneDigitando(rede.phone ?? ''))
+
   return (
     <form action={enviar} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div>
@@ -57,9 +64,10 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
           <input name="name" className="field" defaultValue={rede.name} disabled={!podeEditar} required />
         </Campo>
 
-        <Campo rotulo="CNPJ ou CPF" dica="Só os números — a máscara entra na exibição.">
-          <input name="document" className="field" defaultValue={rede.document ?? ''} disabled={!podeEditar}
-            inputMode="numeric" placeholder="00000000000000" />
+        <Campo rotulo="CNPJ ou CPF">
+          <input name="document" className="field" value={documento} disabled={!podeEditar}
+            onChange={e => setDocumento(maskCPFouCNPJDigitando(e.target.value))}
+            inputMode="numeric" placeholder="00.000.000/0000-00" />
         </Campo>
 
         <Campo rotulo="E-mail">
@@ -67,7 +75,8 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
         </Campo>
 
         <Campo rotulo="Telefone">
-          <input name="phone" className="field" defaultValue={rede.phone ?? ''} disabled={!podeEditar}
+          <input name="phone" className="field" value={telefone} disabled={!podeEditar}
+            onChange={e => setTelefone(maskTelefoneDigitando(e.target.value))}
             inputMode="tel" placeholder="(00) 00000-0000" />
         </Campo>
 
