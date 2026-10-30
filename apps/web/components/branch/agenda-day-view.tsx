@@ -6,6 +6,7 @@ import { isSameDay, format } from 'date-fns'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
+import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
 
 interface Professional { id: string; name: string }
 
@@ -21,6 +22,12 @@ interface Props {
   janela?:       { inicio: number; fim: number }
   /** Minutos desde a meia-noite em que a unidade abre NESTE dia (nulo: fechada). */
   aberturaDoDia?: number | null
+  /**
+   * O horário da unidade e o de cada profissional (J-30): a coluna sombreia o
+   * que é fora do horário DELA. Sem eles, nada se sombreia.
+   */
+  horarioDaUnidade?:         Horario | null
+  horariosDosProfissionais?: Record<string, Horario | null>
 }
 
 // A janela da grade vem do horário de funcionamento (prop `janela`); o
@@ -65,6 +72,8 @@ function yToTime(y: number, baseDate: Date, g: Grade): Date {
 
 interface ColProps {
   pro:          Professional
+  /** Os períodos em que ela atende neste dia (unidade ∩ ela); nulo = não sombreia. */
+  horarioDoDia: { de: string; ate: string }[] | null
   profColor:    { bg: string; text: string }
   events:       CalendarEvent[]
   currentDate:  Date
@@ -81,16 +90,21 @@ interface ColProps {
 }
 
 function ProfColumn({
-  events, currentDate, isFirst, canWrite,
+  pro, horarioDoDia, events, currentDate, isFirst, canWrite,
   draggingId, dropPreviewY,
   onEventClick, onSlotClick, onDragStart, onDragEnd, onDragOver, onDrop,
 }: ColProps) {
   const colRef = useRef<HTMLDivElement>(null)
   const g = useContext(GradeCtx)
+  // O fora do horário dela, sombreado (J-30). O clique continua marcando ali:
+  // o encaixe é permitido (§9.1) — o modal avisa.
+  const foras = horarioDoDia ? forasDoHorario(horarioDoDia, g.START_HOUR * 60, g.END_HOUR * 60) : []
 
   return (
     <div
       ref={colRef}
+      data-coluna-do-profissional={pro.name}
+      data-horario-de-trabalho={horarioDoDia ? (textoDosIntervalos(horarioDoDia) || 'Não atende') : undefined}
       style={{
         flex: 1, minWidth: 160, position: 'relative', height: g.TOTAL_PX,
         borderLeft: isFirst ? 'none' : '1px solid var(--border)',
@@ -105,6 +119,13 @@ function ProfColumn({
         onSlotClick(yToTime(e.clientY - rect.top, currentDate, g))
       }}
     >
+      {foras.map(f => (
+        <div key={f.de} data-fora-do-horario aria-hidden style={{
+          position: 'absolute', top: (f.de / 60 - g.START_HOUR) * HOUR_PX, height: (f.ate - f.de) / 60 * HOUR_PX,
+          left: 0, right: 0, background: 'var(--bg-app)', pointerEvents: 'none',
+        }} />
+      ))}
+
       {/* Hour grid lines */}
       {g.HOURS.map(h => (
         <div key={h} style={{
@@ -247,7 +268,7 @@ function ProfColumn({
   )
 }
 
-export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela, aberturaDoDia }: Props) {
+export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela, aberturaDoDia, horarioDaUnidade, horariosDosProfissionais }: Props) {
   const [draggingId,   setDraggingId]   = useState<string | null>(null)
   const [dropTarget,   setDropTarget]   = useState<{ profId: string; y: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -368,6 +389,9 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
             <ProfColumn
               key={pro.id}
               pro={pro}
+              horarioDoDia={horariosDosProfissionais
+                ? intervalosDoDia(horarioDaUnidade ?? null, horariosDosProfissionais[pro.id] ?? null, diaDaSemana(diaChave))
+                : null}
               profColor={PROF_COLORS[i % PROF_COLORS.length]!}
               events={proEvs}
               currentDate={currentDate}

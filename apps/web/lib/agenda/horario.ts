@@ -104,6 +104,37 @@ export function slotsDoDia(intervalos: Intervalo[], duracao: number, passo = 30)
   return saida
 }
 
+/** Os períodos em texto, para quem agenda: "10:00–12:00 e 13:00–18:00" (vazio = não atende). */
+export function textoDosIntervalos(intervalos: Intervalo[]): string {
+  return intervalos.map(i => `${i.de}–${i.ate}`).join(' e ')
+}
+
+/**
+ * O atendimento [inicio, fim) — em minutos do dia — cabe INTEIRO num período
+ * de trabalho? Fora disso é ENCAIXE: a equipe pode marcar (§9.1), a tela
+ * avisa (J-30, 2026-10-30).
+ */
+export function cabeNoHorario(intervalos: Intervalo[], inicioMin: number, fimMin: number): boolean {
+  return intervalos.some(i => inicioMin >= minutos(i.de) && fimMin <= minutos(i.ate))
+}
+
+/**
+ * As faixas de [janelaDe, janelaAte) — minutos do dia — FORA dos períodos de
+ * trabalho: o que a coluna da profissional sombreia na grade do dia (J-30).
+ */
+export function forasDoHorario(intervalos: Intervalo[], janelaDe: number, janelaAte: number): { de: number; ate: number }[] {
+  const saida: { de: number; ate: number }[] = []
+  let cursor = janelaDe
+  for (const i of [...intervalos].sort((a, b) => minutos(a.de) - minutos(b.de))) {
+    const de = Math.max(janelaDe, minutos(i.de)), ate = Math.min(janelaAte, minutos(i.ate))
+    if (ate <= de) continue
+    if (de > cursor) saida.push({ de: cursor, ate: de })
+    cursor = Math.max(cursor, ate)
+  }
+  if (cursor < janelaAte) saida.push({ de: cursor, ate: janelaAte })
+  return saida
+}
+
 export function minutosDoDia(intervalos: Intervalo[]): number {
   return intervalos.reduce((s, i) => s + minutos(i.ate) - minutos(i.de), 0)
 }

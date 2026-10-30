@@ -26,6 +26,7 @@
  */
 export const ISOLADOS = [
   'abrangencia-unidade.spec.ts',
+  'agenda-encaixe-avisa.spec.ts',
   'agenda-grade-madrugada.spec.ts',
   'agenda-minha-ocupacao.spec.ts',
   'agenda-modal-erro-mantem-campos.spec.ts',

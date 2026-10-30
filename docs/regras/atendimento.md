@@ -21,7 +21,21 @@
     tarde entre as unidades; D5 de 2026-10-28, era 07–21 fixo nas duas últimas);
   - a capacidade da ocupação (`capacidadeEmMinutos`, §13.1).
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
-  das sessões do plano continuam livres. Prova:
+  das sessões do plano continuam livres.
+  - **O encaixe é permitido, mas AVISADO** (J-30, 2026-10-30): o modal de
+    agendamento diz, antes do Confirmar, "Fora do horário de atendimento de X
+    (10:00–18:00). O encaixe é permitido." e o choque com outro atendimento
+    dela ("X já tem atendimento das 11:00 às 12:00.") — `avisosDoHorario` →
+    `avisosDoHorarioCore` (`lib/appointments/encaixe.ts`), com
+    `cabeNoHorario` e o `primeiroConflito` do núcleo (a mesma conta de
+    `horarioOcupado`). Na grade do dia, a coluna de cada profissional sombreia
+    o que é fora do horário DELA (`forasDoHorario`); o clique ali continua
+    agendando. Prova: `e2e/agenda-encaixe-avisa.spec.ts`.
+  - **Desmarcar "Segue o horário da unidade"** (Equipe) parte do horário da
+    unidade do membro, não do comercial (J-9, `horarioDeQuemDeixaDeSeguir`);
+    o membro da rede parte da unidade quando a rede tem uma só. Prova:
+    `e2e/equipe-horario-parte-da-unidade.spec.ts`.
+  Prova:
   `e2e/agenda-horario-de-funcionamento.spec.ts`, `tests/agenda-horario.test.ts`.
   - **Livre não é fixo** (D8 da simulação de 2026-10-29): a grade desses
     seletores (`GradeDeHorarios`, `components/shared/grade-de-horarios.tsx` —

@@ -352,6 +352,8 @@ export function AgendaCalendar({
           <AgendaDayView
             janela={janelaDaGrade([horarioDaUnidade])}
             aberturaDoDia={aberturaDaUnidade(horarioDaUnidade ?? null, currentDate)}
+            horarioDaUnidade={horarioDaUnidade}
+            horariosDosProfissionais={horariosDosProfissionais}
             currentDate={currentDate}
             events={events}
             professionals={professionals}

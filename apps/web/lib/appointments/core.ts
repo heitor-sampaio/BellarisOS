@@ -60,7 +60,11 @@ const DURACAO_MAXIMA_MS = 12 * 60 * 60_000
  * 09:00 não bloqueava um novo às 10:00, e um de 30 min às 09:00 bloqueava um
  * longo às 10:00 —, e olhava só a unidade.
  */
-export async function horarioOcupado(admin: Admin, a: {
+export async function horarioOcupado(admin: Admin, a: ConsultaDeHorario): Promise<boolean> {
+  return !!(await primeiroConflito(admin, a))
+}
+
+interface ConsultaDeHorario {
   tenantId: string
   inicio: Date
   duracaoMin: number
@@ -70,8 +74,15 @@ export async function horarioOcupado(admin: Admin, a: {
   branchId?: string | null
   /** O próprio agendamento, na remarcação. */
   excluir?: string | null
-}): Promise<boolean> {
-  if (!a.professionalId && !a.roomId) return false
+}
+
+/**
+ * O agendamento que bate com o horário (a MESMA conta de `horarioOcupado`),
+ * com início e fim — é o que o modal mostra ANTES de confirmar (J-30:
+ * "já tem atendimento das 11:00 às 12:00"). Nulo = livre.
+ */
+export async function primeiroConflito(admin: Admin, a: ConsultaDeHorario): Promise<{ inicio: Date; fim: Date } | null> {
+  if (!a.professionalId && !a.roomId) return null
   const ini = a.inicio.getTime()
   const fim = ini + Math.max(1, a.duracaoMin) * 60000
   let q = admin.from('appointments')
@@ -84,11 +95,12 @@ export async function horarioOcupado(admin: Admin, a: {
   else q = q.eq('room_id', a.roomId!).eq('branch_id', a.branchId!)
   if (a.excluir) q = q.neq('id', a.excluir)
   const candidatos = (await ler(q.order('scheduled_at', { ascending: false }).limit(200), 'conferir o horário') as { scheduled_at: string; duration_min: number | null }[] | null) ?? []
-  return candidatos.some(c => {
+  for (const c of candidatos) {
     const oIni = new Date(c.scheduled_at).getTime()
     const oFim = oIni + (c.duration_min || 60) * 60000
-    return ini < oFim && fim > oIni
-  })
+    if (ini < oFim && fim > oIni) return { inicio: new Date(oIni), fim: new Date(oFim) }
+  }
+  return null
 }
 
 /**

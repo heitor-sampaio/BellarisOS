@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HORARIO_PADRAO, normalizarHorario, horarioDeQuemDeixaDeSeguir, intervalosDoDia, slotsDoDia, capacidadeEmMinutos, janelaDaGrade, diaDaSemana,
+  HORARIO_PADRAO, normalizarHorario, horarioDeQuemDeixaDeSeguir, textoDosIntervalos, cabeNoHorario, forasDoHorario, intervalosDoDia, slotsDoDia, capacidadeEmMinutos, janelaDaGrade, diaDaSemana,
   type Horario,
 } from '@/lib/agenda/horario'
 
@@ -77,5 +77,26 @@ describe('o horário de quem deixa de seguir a unidade (J-9)', () => {
   it('o membro da rede parte da unidade quando a rede tem uma só; com várias, do padrão', () => {
     expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }], null)).toEqual(daUnidade)
     expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }, { id: 'b' }], null)).toEqual(HORARIO_PADRAO)
+  })
+})
+
+describe('o encaixe fora do horário (J-30)', () => {
+  const dela = [{ de: '10:00', ate: '12:00' }, { de: '13:00', ate: '18:00' }]
+  it('o texto dos períodos', () => {
+    expect(textoDosIntervalos(dela)).toBe('10:00–12:00 e 13:00–18:00')
+    expect(textoDosIntervalos([])).toBe('')
+  })
+  it('cabe inteiro num período — senão é encaixe', () => {
+    expect(cabeNoHorario(dela, 10 * 60, 11 * 60)).toBe(true)
+    expect(cabeNoHorario(dela, 11 * 60 + 30, 12 * 60 + 30)).toBe(false) // atravessa a pausa
+    expect(cabeNoHorario(dela, 8 * 60 + 30, 9 * 60 + 30)).toBe(false)
+    expect(cabeNoHorario([], 10 * 60, 11 * 60)).toBe(false)
+  })
+  it('as faixas fora do horário dentro da janela da grade', () => {
+    expect(forasDoHorario(dela, 8 * 60, 20 * 60)).toEqual([
+      { de: 480, ate: 600 }, { de: 720, ate: 780 }, { de: 1080, ate: 1200 },
+    ])
+    expect(forasDoHorario([], 8 * 60, 20 * 60)).toEqual([{ de: 480, ate: 1200 }])
+    expect(forasDoHorario([{ de: '08:00', ate: '20:00' }], 8 * 60, 20 * 60)).toEqual([])
   })
 })

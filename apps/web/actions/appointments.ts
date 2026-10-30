@@ -42,6 +42,7 @@ import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vend
 import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
+import { avisosDoHorarioCore, type AvisosDoHorario } from '@/lib/appointments/encaixe'
 
 import {
   getUserName, logHistory, fmtDateTime, loadApptCtx, notifyNewAppointment, notifyCancelledAppointment, notifyRescheduledAppointment, notifyCheckin, notifyCompleted, notifyPayment,
@@ -1936,6 +1937,19 @@ export async function salasParaAgendar(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   return salasDoAgendar(ctx, branchId, procedureId, scheduledAt, durationMin)
+}
+
+/**
+ * O que o modal avisa antes de confirmar (J-30, 2026-10-30): o encaixe fora do
+ * horário da profissional e o choque com outro atendimento dela. Só aviso — o
+ * encaixe é permitido, e o choque o núcleo recusa ao gravar.
+ */
+export async function avisosDoHorario(
+  branchId: string, professionalId: string, scheduledAt: string, procedureId: string | null, durationMin: number,
+): Promise<AvisosDoHorario> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+  return avisosDoHorarioCore(ctx, { branchId, professionalId, scheduledAt, procedureId, durationMin })
 }
 
 /**

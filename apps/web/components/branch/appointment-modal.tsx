@@ -1,12 +1,12 @@
 'use client'
 
 import { startTransition, useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario } from '@/actions/appointments'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhone, maskPhoneDigitando } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
-import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
+import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 
 interface Client      { id: string; name: string; phone: string }
@@ -241,6 +241,26 @@ export function AppointmentModal({
   const salaId = salaEscolhida !== null
     ? (salaEscolhida === '' || salasOferecidas.some(s => s.id === salaEscolhida) ? salaEscolhida : '')
     : (salasDoServidor?.chave === chaveDasSalas ? (salasDoServidor.sugerida ?? '') : '')
+
+  // -- Avisos do horário (J-30, 2026-10-30) ----------------------------------
+  // Antes de confirmar: o encaixe fora do horário da profissional e o choque
+  // com outro atendimento dela. É aviso — o encaixe é permitido (§9.1), e o
+  // choque o servidor recusa ao gravar.
+  const chaveDosAvisos = profId && unidadeId && scheduledAtUTC
+    ? `${unidadeId}|${profId}|${scheduledAtUTC}|${procedimentoDoAgendamento}|${duracaoMin}` : ''
+  const [avisos, setAvisos] = useState<{ chave: string; foraDoHorario: string | null; conflito: string | null } | null>(null)
+  useEffect(() => {
+    if (!chaveDosAvisos) return
+    let vivo = true
+    const t = setTimeout(() => {
+      avisosDoHorario(unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento || null, duracaoMin)
+        .then(r => { if (vivo) setAvisos({ chave: chaveDosAvisos, ...r }) })
+        .catch(() => { /* sem aviso: o servidor confere ao gravar */ })
+    }, 200)
+    return () => { vivo = false; clearTimeout(t) }
+  }, [chaveDosAvisos, unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento, duracaoMin])
+  const avisosDoMomento = avisos && avisos.chave === chaveDosAvisos
+    ? [avisos.conflito, avisos.foraDoHorario].filter((x): x is string => !!x) : []
 
   const minDT = useMemo(() => {
     const now = new Date(agora)
@@ -487,6 +507,18 @@ export function AppointmentModal({
               onChange={e => { horaEscolhida.current = true; setLocalDT(e.target.value) }}
             />
             <input type="hidden" name="scheduled_at" value={scheduledAtUTC} />
+            {avisosDoMomento.length > 0 && (
+              <div data-aviso-do-horario role="status" style={{
+                display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2,
+                background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+              }}>
+                {avisosDoMomento.map(t => (
+                  <span key={t} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                    <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden /> {t}
+                  </span>
+                ))}
+              </div>
+            )}
           </Field>
 
           <Field label="Observações internas" htmlFor="ag-notas">
