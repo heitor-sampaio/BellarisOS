@@ -46,7 +46,7 @@ function revalidar() {
  */
 function mensagem(e: unknown): string {
   if (e instanceof ErroDeBanco && e.causa.code === '23505' && /contrato_de_plano/.test(e.causa.message)) {
-    return 'A rede já tem um contrato de plano ativo. Desative o atual antes de ativar outro.'
+    return 'Outro contrato de plano ficou ativo ao mesmo tempo. Recarregue a tela e use "Tornar ativo" no que deve valer.'
   }
   return mensagemDoErro(e)
 }
@@ -217,6 +217,13 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     const admin = createAdminClient()
+    // Ligar um contrato de plano é TROCAR o ativo (D-5): pelo mesmo caminho
+    // do "Tornar ativo", numa transação, em vez de bater no índice único.
+    if (ativo) {
+      const m = await ler(admin.from('document_templates').select('kind')
+        .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o modelo')
+      if (m?.kind === 'CONTRATO_PLANO') return await trocarContratoDePlano(ctx.tenantId!, id)
+    }
     const linhas = await gravar(admin
       .from('document_templates')
       .update({ is_active: ativo, updated_at: new Date().toISOString() })
@@ -229,6 +236,30 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
   } catch (e) {
     return { error: mensagem(e) }
   }
+}
+
+/**
+ * "Tornar ativo" do contrato de plano (D-5, decisão do Heitor em 2026-10-29:
+ * "Um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto").
+ * O atual sai e o escolhido entra numa transação só
+ * (`documento_contrato_de_plano_ativar`).
+ */
+export async function tornarContratoDePlanoAtivo(id: string): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'forms', 'MANAGE')
+    return await trocarContratoDePlano(ctx.tenantId!, String(id ?? ''))
+  } catch (e) {
+    return { error: mensagem(e) }
+  }
+}
+
+async function trocarContratoDePlano(tenantId: string, id: string): Promise<Resultado> {
+  await gravar(createAdminClient().rpc('documento_contrato_de_plano_ativar', {
+    p_tenant: tenantId, p_modelo: id,
+  }), 'trocar o contrato de plano ativo')
+  revalidar()
+  return { id }
 }
 
 // ─── Imagem do documento (o logo, por exemplo) ───────────────────────────────

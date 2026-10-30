@@ -245,12 +245,18 @@ test.describe.serial('documentos: modelos da rede', () => {
     expect(v).toMatchObject({ file_pages: 1, file_sha256: createHash('sha256').update(pdf).digest('hex') })
   })
 
-  test('contrato de plano: um só ativo por rede', async ({ browser }) => {
+  // D-5 (decisão do Heitor, 2026-10-29): "Um contrato de plano ativo só, e dá
+  // para TROCAR qual é o ativo direto. Fica o fluxo de trocar; sai o de criar
+  // outro e desativar o atual antes." Salvar o segundo dava "Desative o atual
+  // antes" e o texto se perdia.
+  test('contrato de plano: um só ativo; o segundo salva inativo e "Tornar ativo" troca', async ({ browser }) => {
+    const nomeA = `${PREFIXO} Contrato de plano A ${marca}`
+    const nomeB = `${PREFIXO} Contrato de plano B ${marca}`
     await como(browser, async page => {
-      for (const n of ['A', 'B']) {
+      for (const nome of [nomeA, nomeB]) {
         await abrirDocumentos(page)
         await page.getByRole('button', { name: 'Novo contrato de plano' }).click()
-        await page.getByPlaceholder(/Termo de consentimento — toxina/).fill(`${PREFIXO} Contrato de plano ${n} ${marca}`)
+        await page.getByPlaceholder(/Termo de consentimento — toxina/).fill(nome)
         await limparCorpo(page)
         await page.keyboard.type('Contrato: ')
         await variavel(page, 'procedimentos.lista')
@@ -259,14 +265,24 @@ test.describe.serial('documentos: modelos da rede', () => {
         await page.keyboard.type(', pago em ')
         await variavel(page, 'pagamento.forma')
         await page.getByRole('button', { name: 'Salvar modelo' }).click()
-        if (n === 'A') await expect(page.getByText(`${PREFIXO} Contrato de plano A ${marca}`)).toBeVisible()
-        else await expect(page.getByText(/já tem um contrato de plano ativo/)).toBeVisible()
+        await expect(page.getByText(nome)).toBeVisible()
       }
+      await expect(page.getByText(/já tem um contrato de plano ativo/)).toHaveCount(0)
+
+      // O segundo nasce INATIVO, com o texto salvo, e a troca é um clique.
+      const secao = page.getByRole('region', { name: 'Contrato de plano' })
+      const linhaB = secao.locator('[data-modelo]', { hasText: nomeB })
+      const linhaA = secao.locator('[data-modelo]', { hasText: nomeA })
+      await expect(linhaA.getByText('Ativo', { exact: true })).toBeVisible()
+      await linhaB.getByRole('button', { name: 'Tornar ativo' }).click()
+      await expect(linhaB.getByText('Ativo', { exact: true })).toBeVisible()
+      await expect(linhaA.getByRole('button', { name: 'Tornar ativo' })).toBeVisible()
     })
-    const a = await modelo(`${PREFIXO} Contrato de plano A ${marca}`)
-    expect(a).toMatchObject({ kind: 'CONTRATO_PLANO', moment: null, is_active: true })
-    expect((await versoes(a!.id))[0]).toMatchObject({ uses_payment: true })
-    expect(await modelo(`${PREFIXO} Contrato de plano B ${marca}`)).toBeNull()
+    const a = await modelo(nomeA)
+    const b = await modelo(nomeB)
+    expect(a).toMatchObject({ kind: 'CONTRATO_PLANO', moment: null, is_active: false })
+    expect(b).toMatchObject({ kind: 'CONTRATO_PLANO', moment: null, is_active: true })
+    expect((await versoes(b!.id))[0]).toMatchObject({ uses_payment: true })
   })
 
   test('o procedimento liga um termo e um contrato; o de outra rede é recusado', async ({ browser }) => {

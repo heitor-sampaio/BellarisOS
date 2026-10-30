@@ -21,6 +21,15 @@ DEVLOG ("Termos e contratos").
   procedimento distinto e UM **contrato de plano** da rede
   (`kind = 'CONTRATO_PLANO'`, no máximo um ativo — índice único). Sempre de
   novo: cada atendimento avulso e cada plano pede documentos novos.
+- **O contrato de plano ativo se TROCA, não se desativa antes** (D-5, decisão
+  do Heitor, 2026-10-29: "Fica o fluxo de trocar; sai o de criar outro e
+  desativar o atual antes."). O contrato de plano novo nasce INATIVO quando a
+  rede já tem um ativo (`documento_modelo_salvar`, migration
+  `20261029001602`) — o texto nunca se perde —, e "Tornar ativo"
+  (`tornarContratoDePlanoAtivo` → `documento_contrato_de_plano_ativar`)
+  desliga o atual e liga o escolhido numa transação só. Ligar um contrato de
+  plano por `definirModeloAtivo` passa pelo mesmo caminho. O índice único
+  continua sendo a garantia. Prova: `e2e/documentos-modelos.spec.ts`.
 - **Três tipos, cada um com as suas variáveis** (`lib/documentos/variaveis.ts`,
   catálogo FECHADO): o termo também serve ao plano, então não usa
   `agendamento.*`; o contrato do procedimento é o do avulso; só o contrato de

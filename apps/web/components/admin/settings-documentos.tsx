@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Pencil, FileSignature, FileText, ScrollText } from 'lucide-react'
 import { EditorDeDocumento, type ModeloEmEdicao } from '@/components/admin/editor-de-documento'
-import { definirModeloAtivo, definirEnvioDoLinkPelaConversa } from '@/actions/modelos-de-documento'
+import { definirModeloAtivo, definirEnvioDoLinkPelaConversa, tornarContratoDePlanoAtivo } from '@/actions/modelos-de-documento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { TipoDeModelo } from '@/lib/documentos/variaveis'
 
@@ -32,7 +32,7 @@ const GRUPOS: { tipo: TipoDeModelo; titulo: string; dica: string; icone: typeof 
   { tipo: 'CONTRATO',       titulo: 'Contratos do procedimento', icone: FileText,
     dica: 'Assinados no atendimento avulso do procedimento a que estão ligados.' },
   { tipo: 'CONTRATO_PLANO', titulo: 'Contrato de plano', icone: ScrollText,
-    dica: 'Assinado no fechamento de todo plano de tratamento, com os procedimentos, o valor e a forma de pagamento. Um só ativo.' },
+    dica: 'Assinado no fechamento de todo plano de tratamento, com os procedimentos, o valor e a forma de pagamento. Um só ativo: o novo nasce inativo, e "Tornar ativo" troca o que vale.' },
 ]
 
 const MOMENTO = { AGENDAMENTO: 'nasce ao agendar', INICIO_ATENDIMENTO: 'nasce no início do atendimento' } as const
@@ -60,6 +60,16 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
     setErro(null)
     setOcupado(m.id)
     const r = await definirModeloAtivo(m.id, !m.ativo)
+    setOcupado(null)
+    if (r.error) setErro(r.error)
+    else router.refresh()
+  }
+
+  /** O contrato de plano é um só ativo: "Tornar ativo" TROCA o atual por este (D-5). */
+  async function tornarAtivo(m: ItemDeModelo) {
+    setErro(null)
+    setOcupado(m.id)
+    const r = await tornarContratoDePlanoAtivo(m.id)
     setOcupado(null)
     if (r.error) setErro(r.error)
     else router.refresh()
@@ -118,7 +128,7 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {doGrupo.map(m => (
-                  <div key={m.id} className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, opacity: m.ativo ? 1 : 0.7 }}>
+                  <div key={m.id} data-modelo={m.id} className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, opacity: m.ativo ? 1 : 0.7 }}>
                     <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <Icone size={17} color="var(--brand)" />
                     </div>
@@ -136,14 +146,25 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
                         ].filter(Boolean).join(' · ')}
                       </p>
                     </div>
-                    <button
-                      type="button" onClick={() => alternar(m)} disabled={ocupado === m.id}
-                      aria-pressed={m.ativo}
-                      className={m.ativo ? 'chip chip-success' : 'chip chip-muted'}
-                      style={{ cursor: 'pointer', border: 0 }}
-                    >
-                      {m.ativo ? 'Ativo' : 'Inativo'}
-                    </button>
+                    {g.tipo === 'CONTRATO_PLANO' && !m.ativo ? (
+                      // Um só ativo: o inativo não liga sozinho, ele TOMA o
+                      // lugar do atual (D-5).
+                      <button
+                        type="button" className="btn-secondary" onClick={() => tornarAtivo(m)} disabled={ocupado === m.id}
+                        title="Passa a valer este contrato; o atual fica inativo"
+                      >
+                        {ocupado === m.id ? 'Trocando…' : 'Tornar ativo'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button" onClick={() => alternar(m)} disabled={ocupado === m.id}
+                        aria-pressed={m.ativo}
+                        className={m.ativo ? 'chip chip-success' : 'chip chip-muted'}
+                        style={{ cursor: 'pointer', border: 0 }}
+                      >
+                        {m.ativo ? 'Ativo' : 'Inativo'}
+                      </button>
+                    )}
                     <button type="button" title="Editar" aria-label={`Editar ${m.nome}`}
                       onClick={() => setVista({ modo: 'editar', modelo: m })} style={botaoDeIcone}>
                       <Pencil size={14} />
