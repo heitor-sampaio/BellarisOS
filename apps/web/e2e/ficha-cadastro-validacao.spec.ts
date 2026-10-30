@@ -163,3 +163,53 @@ test('o telefone de outro país de outra cliente também AVISA', async ({ browse
   })
   expect(await fichasDe(nome('sobrinha de fora'))).toHaveLength(1)
 })
+
+// Decisão do Heitor (frente de cadastro, 2026-10-29): o cadastro completo que
+// acha uma ficha RÁPIDA (sem CPF, a do "agendar com nome e telefone") do mesmo
+// telefone a completava calado. Agora pergunta: Sim completa aquela ficha; Não
+// cria outra.
+test('a ficha rápida do mesmo telefone: "É a mesma pessoa?" — Sim completa a ficha dela', async ({ browser }) => {
+  const fone = telefone('0003')
+  const { data: rapida, error } = await db().from('clients').insert({
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('rápida sim'), phone: fone, is_active: true,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+
+  await como(browser, async p => {
+    await preencher(p, { nome: nome('completa sim'), telefone: fone })
+    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa?' })
+    await expect(pergunta).toContainText(`Já existe a ficha de ${nome('rápida sim')} com este telefone`)
+    const [antes] = await fichasDe(nome('rápida sim'))
+    expect(antes?.id, 'perguntar não completa nada').toBe(rapida!.id)
+    expect(await fichasDe(nome('completa sim'))).toEqual([])
+
+    await pergunta.getByRole('button', { name: 'Sim, é a mesma pessoa' }).click()
+    await expect(p).toHaveURL(new RegExp(`/admin/clients/${rapida!.id}`))
+  })
+  const [completa] = await fichasDe(nome('completa sim'))
+  expect(completa?.id, 'a ficha rápida foi completada, não duplicada').toBe(rapida!.id)
+  expect(await fichasDe(nome('rápida sim'))).toEqual([])
+})
+
+test('a ficha rápida do mesmo telefone: "Não, é outra pessoa" cria uma ficha nova e deixa a rápida como está', async ({ browser }) => {
+  const fone = telefone('0004')
+  const { data: rapida, error } = await db().from('clients').insert({
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('rápida não'), phone: fone, is_active: true,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+
+  await como(browser, async p => {
+    await preencher(p, { nome: nome('outra pessoa'), telefone: fone })
+    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa?' })
+    await pergunta.getByRole('button', { name: 'Não, é outra pessoa' }).click()
+    await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
+    expect(p.url()).not.toContain(rapida!.id)
+  })
+  const [nova] = await fichasDe(nome('outra pessoa'))
+  expect(nova, 'nasceu uma ficha nova').toBeTruthy()
+  expect(nova!.id).not.toBe(rapida!.id)
+  const [rapidaDepois] = await fichasDe(nome('rápida não'))
+  expect(rapidaDepois?.id, 'a rápida ficou como estava').toBe(rapida!.id)
+})

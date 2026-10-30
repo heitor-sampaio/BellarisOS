@@ -51,10 +51,19 @@ export type AvisoDeTelefone = {
   exibir: string
 }
 
+/** A ficha RÁPIDA (sem CPF) do mesmo telefone: a tela pergunta "É a mesma pessoa?". */
+export type PerguntaDaFichaRapida = { id: string; nome: string; telefone: string }
+
+export type ResultadoDoCadastro = {
+  error?: string; success?: boolean; clientId?: string; acessoCriado?: boolean
+  avisoTelefone?: AvisoDeTelefone
+  mesmaPessoa?: PerguntaDaFichaRapida
+}
+
 export async function addClient(
-  _prev: { error?: string; success?: boolean; clientId?: string; avisoTelefone?: AvisoDeTelefone } | undefined,
+  _prev: ResultadoDoCadastro | undefined,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean; clientId?: string; acessoCriado?: boolean; avisoTelefone?: AvisoDeTelefone }> {
+): Promise<ResultadoDoCadastro> {
   const ctx     = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
 
@@ -151,16 +160,29 @@ export async function addClient(
   // O cadastro rápido grava nome e telefone e deixa CPF nulo. Sem procurar por
   // aqui, completar a ficha depois criaria um segundo cliente com o mesmo
   // telefone — e o histórico de atendimento ficaria dividido entre os dois.
-  const jaExiste = await clienteRapidoDoTelefone(admin, ctx.tenantId!, phone)
+  //
+  // Completar calado juntava duas pessoas que dividem o número (decisão do
+  // Heitor, frente de cadastro de 2026-10-29): a tela PERGUNTA "É a mesma
+  // pessoa?". A resposta vem em `_fichaRapida` e vale para AQUELA ficha
+  // (`mesma:<id>` completa, `outra:<id>` cria uma nova) — trocou o telefone e
+  // achou outra ficha, pergunta de novo.
+  const rapida = await clienteRapidoDoTelefone(admin, ctx.tenantId!, phone)
+  const respostaRapida = formData.get('_fichaRapida')
+  if (rapida && respostaRapida !== `mesma:${rapida.id}` && respostaRapida !== `outra:${rapida.id}`) {
+    const dela = await ler(admin.from('clients').select('name').eq('id', rapida.id).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+      'buscar a ficha rápida do telefone') as { name: string } | null
+    if (dela) return { mesmaPessoa: { id: rapida.id, nome: dela.name, telefone: fone.digitos } }
+  }
+  const jaExiste = rapida && respostaRapida === `mesma:${rapida.id}` ? rapida : null
 
   // O telefone de OUTRA cliente (D13): avisa, e a recepção confirma — o
   // `_telefoneConfirmado` vale para ESTE número (trocou o número, avisa de
-  // novo). A ficha rápida sem CPF do mesmo telefone não é "outra": é ela que
-  // o cadastro completa.
+  // novo). A ficha rápida já respondida ("é a mesma" ou "é outra") não avisa
+  // de novo: a recepção acabou de dizer quem ela é.
   if (formData.get('_telefoneConfirmado') !== fone.digitos) {
     const outra = await ler(admin.rpc('cliente_por_telefone', { p_tenant: ctx.tenantId!, p_digitos: fone.digitos }),
       'conferir se o telefone já é de outra cliente') as string | null
-    if (outra && outra !== jaExiste?.id) {
+    if (outra && outra !== rapida?.id) {
       const dela = await ler(admin.from('clients').select('name').eq('id', outra).eq('tenant_id', ctx.tenantId!).maybeSingle(),
         'buscar a cliente do telefone') as { name: string } | null
       if (dela) return { avisoTelefone: { nome: dela.name, telefone: fone.digitos, exibir: fone.gravar } }

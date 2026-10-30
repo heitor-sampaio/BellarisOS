@@ -34,8 +34,16 @@
     (`maskTelefoneDigitando`). Sem o "+" não se adivinha o país;
   - o telefone que já é de OUTRA cliente da rede (`cliente_por_telefone`)
     AVISA e deixa confirmar ("Cadastrar mesmo assim", que vale para aquele
-    número) — mãe e filha dividem número. A ficha rápida sem CPF do mesmo
-    telefone não é "outra": é a que o cadastro completa, como sempre;
+    número) — mãe e filha dividem número;
+  - a ficha RÁPIDA (sem CPF, a do "agendar com nome e telefone") do mesmo
+    telefone faz a tela PERGUNTAR "Já existe a ficha de X com este telefone.
+    É a mesma pessoa?" (decisão do Heitor, frente de cadastro de
+    2026-10-29; antes o cadastro a completava calado): "Sim" completa aquela
+    ficha, "Não" cria uma nova (e não avisa de novo do número dela). A
+    resposta (`_fichaRapida`, `mesma:<id>` ou `outra:<id>`) vale para AQUELA
+    ficha, e o formulário a reenvia nos envios seguintes (uma pergunta pode
+    vir depois da outra). A importação continua completando a ficha sem CPF
+    (não há quem responda);
   - o erro do Auth vai à tela em português (`erroDoAuth`,
     `lib/erro-do-auth.ts`; também na Equipe e na troca de senha). A senha
     fraca, na cliente, é o CPF: a tela diz isso. Nunca a mensagem crua do

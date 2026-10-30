@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useActionState, useEffect, useEffectEvent, useState } from 'react'
+import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { addClient } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
@@ -84,17 +84,34 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
 
   // O telefone já é de outra cliente (D13): o aviso vale para ESTE número —
   // trocou o número, ele some (e o servidor confere de novo).
-  const aviso = state?.avisoTelefone && state.avisoTelefone.telefone === telefoneDoCadastro(phone)?.digitos
-    ? state.avisoTelefone : null
+  const digitos = telefoneDoCadastro(phone)?.digitos
+  const aviso = state?.avisoTelefone && state.avisoTelefone.telefone === digitos ? state.avisoTelefone : null
+  // A ficha rápida do mesmo telefone (frente de cadastro, 2026-10-29): "É a mesma pessoa?".
+  const mesmaPessoa = state?.mesmaPessoa && state.mesmaPessoa.telefone === digitos ? state.mesmaPessoa : null
+
+  // As RESPOSTAS às perguntas do cadastro ("é a mesma pessoa?", "cadastrar
+  // mesmo assim") vão em TODO envio seguinte: uma pergunta pode vir depois da
+  // outra, e sem a primeira resposta o servidor a faria de novo. Cada resposta
+  // leva a ficha ou o número a que responde — trocou o telefone, o servidor a
+  // ignora e pergunta de novo.
+  const [respostas, setRespostas] = useState<Record<string, string>>({})
+  const formRef = useRef<HTMLFormElement>(null)
+  function mandar(dados: FormData, nova?: Record<string, string>) {
+    const todas = { ...respostas, ...nova }
+    if (nova) setRespostas(todas)
+    for (const [k, v] of Object.entries(todas)) dados.set(k, v)
+    startTransition(() => formAction(dados))
+  }
+  function responder(campo: string, valor: string) {
+    if (formRef.current) mandar(new FormData(formRef.current), { [campo]: valor })
+  }
 
   // Sem o reset automático do formulário: com ele, o aviso do telefone (e todo
   // erro) apagava o nome, o nascimento e as observações já digitados, e
-  // confirmar pedia para digitar tudo de novo. O botão que enviou vai junto
-  // (o "Cadastrar mesmo assim" leva a confirmação do telefone).
+  // confirmar pedia para digitar tudo de novo.
   function enviar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const dados = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter)
-    startTransition(() => formAction(dados))
+    mandar(new FormData(e.currentTarget))
   }
 
   const aoCadastrar = useEffectEvent(() => {
@@ -123,7 +140,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   }
 
   return (
-    <form onSubmit={enviar} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <form ref={formRef} onSubmit={enviar} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <input type="hidden" name="_branchId" value={branches && branches.length > 0 ? unitId : branchId} />
       <input type="hidden" name="_slug" value={slug} />
       {leadId && <input type="hidden" name="_leadId" value={leadId} />}
@@ -270,9 +287,33 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             O telefone {aviso.exibir} já é de <b style={{ color: 'var(--text)' }}>{aviso.nome}</b> nesta
             clínica. Se é o mesmo número mesmo (mãe e filha, por exemplo), confirme.
           </span>
-          <button type="submit" name="_telefoneConfirmado" value={aviso.telefone} className="btn-secondary" disabled={pending}>
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_telefoneConfirmado', aviso.telefone)}>
             Cadastrar mesmo assim
           </button>
+        </div>
+      )}
+      {mesmaPessoa && (
+        <div role="alert" style={{
+          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
+          color: 'var(--warning)', background: 'var(--warning-soft)',
+          borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+        }}>
+          <span>
+            Já existe a ficha de <b style={{ color: 'var(--text)' }}>{mesmaPessoa.nome}</b> com este telefone, sem CPF
+            (cadastrada às pressas, ao agendar). É a mesma pessoa?
+          </span>
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `mesma:${mesmaPessoa.id}`)}>
+              Sim, é a mesma pessoa
+            </button>
+            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `outra:${mesmaPessoa.id}`)}>
+              Não, é outra pessoa
+            </button>
+          </span>
+          <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
+            Sim completa a ficha dela com estes dados (o histórico fica junto). Não cadastra uma ficha nova.
+          </span>
         </div>
       )}
       {state?.success && (
