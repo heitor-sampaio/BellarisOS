@@ -10,6 +10,7 @@
  */
 
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { getTenantContext, alcancaUnidade, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -51,12 +52,13 @@ export async function venderProduto(
     const admin = createAdminClient()
     const [unidade, cliente, produto] = await Promise.all([
       ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
-      ler(admin.from('clients').select('id').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente'),
+      ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente'),
       ler(admin.from('products').select('id, name, sale_price, uso, is_active')
         .eq('id', produtoId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto'),
     ])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
     if (!cliente) return { error: 'Cliente não encontrada.' }
+    if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA }
     if (!produto) return { error: 'Produto não encontrado.' }
     if (produto.is_active === false) return { error: 'Este produto está desativado.' }
     if ((produto.uso !== 'REVENDA' && produto.uso !== 'AMBOS') || produto.sale_price == null) {

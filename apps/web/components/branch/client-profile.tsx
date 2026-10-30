@@ -7,6 +7,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
+import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
@@ -1224,6 +1225,11 @@ export function ClientProfile({
     setMenuAberto(false)
     router.refresh()
   }
+  // Arquivada (J-23): a ficha diz isso, e agendar e vender ficam desligados —
+  // o servidor também recusa (CLIENTE_ARQUIVADA).
+  const arquivada = !client.isActive
+  const motivoDoArquivo = 'Cliente arquivada: reative em "Mais ações" para agendar ou vender.'
+
   // O prontuário aparece para quem pode vê-lo, mesmo antes do primeiro
   // atendimento (a anamnese já está lá): a dona não achava a aba (2026-10-20).
   const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro))
@@ -1317,6 +1323,9 @@ export function ClientProfile({
                 <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
                   {client.name}
                 </h1>
+                {arquivada && (
+                  <TagBadge label="Arquivada" size="xs" style={{ bg: 'var(--warning-soft)', color: 'var(--warning)' }} />
+                )}
                 {client.temAcesso && (
                   <TagBadge label="Tem acesso ao app" size="xs" style={{ bg: 'var(--success-soft)', color: 'var(--success)' }} />
                 )}
@@ -1356,13 +1365,16 @@ export function ClientProfile({
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {podeReceber && currentBranchId && (
               <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} produtos={produtosAVenda}
-                podeAgendar={podeAgendar} abrirSinal={sinalDaVenda} aReceber={aReceber.itens} />
+                podeAgendar={podeAgendar} abrirSinal={arquivada ? 0 : sinalDaVenda} aReceber={aReceber.itens}
+                desativadoPorque={arquivada ? motivoDoArquivo : null} />
             )}
             <button
               type="button"
               // Já com este cliente escolhido no modal (era a agenda vazia).
               onClick={() => router.push(`${rotaAgenda(pathname, slug)}?novo=1&cliente=${client.id}`)}
               className="btn-primary"
+              disabled={arquivada}
+              title={arquivada ? motivoDoArquivo : undefined}
             >
               + Agendar
             </button>
@@ -1380,17 +1392,36 @@ export function ClientProfile({
                     position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 41,
                     minWidth: 230, padding: 6, boxShadow: 'var(--shadow-popover)',
                   }}>
-                    <button type="button" disabled={alterandoStatus}
-                      onClick={alternarStatus}
-                      style={{
-                        width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8,
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        fontSize: 'var(--text-base-sz)', fontWeight: 700,
-                        color: client.isActive ? 'var(--warning)' : 'var(--success)',
-                        display: 'flex', alignItems: 'center', gap: 8,
-                      }}>
-                      {client.isActive ? <><XCircle size={14} /> Arquivar cliente</> : <><CheckCircle2 size={14} /> Reativar cliente</>}
-                    </button>
+                    {/* Arquivar pede confirmação (J-23): era um clique só. */}
+                    {client.isActive ? (
+                      <BotaoComConfirmacao
+                        acao={() => toggleClientStatus(client.id, false, slug)}
+                        titulo="Arquivar cliente?"
+                        explicacao={<><strong style={{ color: 'var(--text)' }}>{client.name}</strong> sai das listas e da busca, e não se agenda nem se vende para ela até reativar. O histórico e o prontuário ficam.</>}
+                        rotuloConfirmar="Arquivar"
+                        title="Arquivar cliente"
+                        className=""
+                        style={{
+                          width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8,
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--warning)',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                        }}
+                      >
+                        <XCircle size={14} /> Arquivar cliente
+                      </BotaoComConfirmacao>
+                    ) : (
+                      <button type="button" disabled={alterandoStatus}
+                        onClick={alternarStatus}
+                        style={{
+                          width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8,
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--success)',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                        }}>
+                        <CheckCircle2 size={14} /> Reativar cliente
+                      </button>
+                    )}
                     <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
                       {client.isActive
                         ? 'Some das listas e da busca e deixa de contar como cliente nova. O histórico e o prontuário ficam.'
@@ -1459,7 +1490,7 @@ export function ClientProfile({
       {tab === 'visao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <NotasDoCliente client={client} slug={slug} />
-        <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar}
+        <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar && !arquivada}
           branches={branches} currentBranchId={currentBranchId ?? ''} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
 

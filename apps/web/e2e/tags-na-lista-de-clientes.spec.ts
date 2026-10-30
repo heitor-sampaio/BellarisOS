@@ -81,10 +81,10 @@ test('a lista filtra por situação e pelas tags da rede, sem o segmento fixo', 
 
     // Situação: escolha única.
     await p.getByRole('button', { name: 'Situação', exact: true }).click()
-    await p.getByRole('button', { name: 'Inativos', exact: true }).click()
+    await p.getByRole('button', { name: 'Arquivadas', exact: true }).click()
     await expect(p.getByText(INATIVA)).toBeVisible()
     await expect(p.getByText(COM_TAG)).toHaveCount(0)
-    await expect(p.getByRole('button', { name: 'Inativos', exact: true })).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Arquivadas', exact: true })).toBeVisible()
   })
 })
 

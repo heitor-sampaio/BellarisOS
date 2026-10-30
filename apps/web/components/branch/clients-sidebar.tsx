@@ -104,7 +104,8 @@ export function ClientsSidebar({
   const situacoes: { valor: Filter; rotulo: string }[] = [
     { valor: 'ativos',   rotulo: 'Ativos' },
     { valor: 'novos',    rotulo: 'Novos' },
-    { valor: 'inativos', rotulo: 'Inativos' },
+    // "Arquivadas": o nome da ação na ficha (J-23) — era "Inativos".
+    { valor: 'inativos', rotulo: 'Arquivadas' },
   ]
 
   const addHref = newClientHref === undefined ? `${basePath}/new` : newClientHref
@@ -154,6 +155,7 @@ export function ClientsSidebar({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
               title="Novo cliente"
+              aria-label="Novo cliente"
             >
               <UserPlus size={14} />
             </button>
@@ -229,9 +231,10 @@ export function ClientsSidebar({
             const isSelected = c.id === selectedId
             const initials   = iniciaisDoNome(c.name)
             const isVip      = c.tags.includes('VIP')
-            const badgeLabel = isVip ? 'VIP' : c.isNew ? 'Novo' : 'Regular'
-            const badgeColor = isVip ? 'var(--brand)' : c.isNew ? 'var(--success)' : 'var(--text-faint)'
-            const badgeBg    = isVip ? 'var(--brand-soft)' : c.isNew ? 'var(--success-soft)' : 'var(--bg-app)'
+            // A arquivada tem a marca na linha (J-23).
+            const badgeLabel = !c.isActive ? 'Arquivada' : isVip ? 'VIP' : c.isNew ? 'Novo' : 'Regular'
+            const badgeColor = !c.isActive ? 'var(--warning)' : isVip ? 'var(--brand)' : c.isNew ? 'var(--success)' : 'var(--text-faint)'
+            const badgeBg    = !c.isActive ? 'var(--warning-soft)' : isVip ? 'var(--brand-soft)' : c.isNew ? 'var(--success-soft)' : 'var(--bg-app)'
 
             return (
               <button

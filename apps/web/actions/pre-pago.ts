@@ -10,6 +10,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
+import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -58,12 +59,13 @@ export async function venderProcedimento(
     const admin = createAdminClient()
     const [unidade, cliente, proc] = await Promise.all([
       ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
-      ler(admin.from('clients').select('id').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
+      ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
       ler(admin.from('procedures').select('id, name, price, is_active, branch_id')
         .eq('id', procedimentoId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento'),
     ])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
     if (!cliente) return { error: 'Cliente não encontrado.' }
+    if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA }
     if (!proc) return { error: 'Procedimento não encontrado.' }
     if (proc.is_active === false) return { error: 'Este procedimento está desativado.' }
     if (proc.branch_id && proc.branch_id !== branchId) return { error: 'Este procedimento é de outra unidade.' }

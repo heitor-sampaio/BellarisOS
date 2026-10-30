@@ -4,6 +4,7 @@
 // insert, histórico) desacoplada de FormData/cookies. Sem 'use server'.
 
 import { after } from 'next/server'
+import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { intervalosDoDia, normalizarHorario, slotsDoDia, diaDaSemana } from '@/lib/agenda/horario'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -135,9 +136,9 @@ export async function conferirPecasDoAgendamento(
           .eq('id', pecas.professionalId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o profissional')
       : Promise.resolve({ id: null }),
     pecas.clientId
-      ? ler(admin.from('clients').select('id')
+      ? ler(admin.from('clients').select('id, is_active')
           .eq('id', pecas.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
-      : Promise.resolve({ id: null }),
+      : Promise.resolve({ id: null, is_active: true }),
     // A sala ATIVA da unidade e, com o procedimento ligado a salas ali, uma
     // das dele (D5, 2026-10-30). Sala sem unidade não se confere: não há onde.
     pecas.roomId && pecas.branchId
@@ -147,6 +148,8 @@ export async function conferirPecasDoAgendamento(
   if (!unidade)      return 'Filial não encontrada.'
   if (!profissional) return 'Profissional não encontrado.'
   if (!cliente)      return 'Cliente não encontrado.'
+  // Arquivada não se agenda (J-23): só quem cria passa o cliente por aqui.
+  if (cliente.is_active === false) return CLIENTE_ARQUIVADA
   if (recusaSala)    return recusaSala
   return null
 }

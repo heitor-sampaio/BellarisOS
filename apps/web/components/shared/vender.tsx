@@ -30,7 +30,7 @@ export interface ProdutoAVenda { id: string; name: string; price: number; unidad
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
 
-export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos = [], compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [] }: {
+export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos = [], compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [], desativadoPorque = null }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
@@ -52,6 +52,8 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
    * o mesmo procedimento de novo cobraria duas vezes — a venda avisa.
    */
   aReceber?:     AtendimentoAReceber[]
+  /** O botão aparece desligado, com o motivo (a ficha arquivada, J-23). */
+  desativadoPorque?: string | null
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -69,6 +71,14 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
     ...(produtos.length ? [{ key: 'PRODUTO', label: 'Produto' }] : []),
   ]
   const chave = `${abertura}-${abrirSinal}`
+  if (desativadoPorque) {
+    return (
+      <button type="button" className={compacto ? 'btn-ghost' : 'btn-secondary'} disabled title={desativadoPorque}
+        style={compacto ? { fontSize: 'var(--text-2xs)', padding: '4px 7px' } : undefined}>
+        <ShoppingBag size={compacto ? 12 : 15} aria-hidden /> Vender
+      </button>
+    )
+  }
   return (
     <>
       {compacto ? (

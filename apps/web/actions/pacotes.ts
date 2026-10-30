@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
+import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { z } from 'zod'
 import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -105,12 +106,13 @@ export async function venderPacote(
     const admin = createAdminClient()
     const [unidade, cliente, pacote] = await Promise.all([
       ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
-      ler(admin.from('clients').select('id').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
+      ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
       ler(admin.from('service_packages').select('id, name, price, is_active')
         .eq('id', pacoteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o pacote'),
     ])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
     if (!cliente) return { error: 'Cliente não encontrado.' }
+    if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA }
     if (!pacote) return { error: 'Pacote não encontrado.' }
     if (!pacote.is_active) return { error: 'Este pacote está desativado.' }
 
