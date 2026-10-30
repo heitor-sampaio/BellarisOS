@@ -970,6 +970,8 @@ export async function confirmPayment(
       valorDoDesconto > 0 ? { tipo: formData.get('desconto_tipo'), valor: valorDoDesconto } : null,
     )
     if (!pedidoDeDesconto.success) return { error: 'Desconto inválido.' }
+    // O porquê do desconto (J-47), opcional: o banco só o grava com desconto.
+    const motivoDoDesconto = String(formData.get('desconto_motivo') ?? '').trim().slice(0, 300) || null
 
     const admin = createAdminClient()
 
@@ -1035,6 +1037,7 @@ export async function confirmPayment(
           metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal,
           voucher_id: voucherId, desconto_voucher: descontoVoucher, desconto_venda: descontoVenda,
           cartao_vezes: valorFinal > 0 ? cartaoVezes : 1,
+          desconto_motivo: descontoVenda > 0 ? motivoDoDesconto : null,
         },
       }), 'confirmar o pagamento')
     } catch (e) {

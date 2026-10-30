@@ -434,6 +434,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   - **Avulso**: `financial_transactions.sale_discount`, fora de `amount` (o
     bruto é `amount + loyalty_discount + sale_discount`). A ordem é voucher →
     desconto comercial → pontos (o teto dos pontos vale sobre o que sobra).
+    O desconto tem um **motivo OPCIONAL** (J-47, 2026-10-30): o campo
+    "Motivo do desconto (opcional)" aparece na janela do pagamento quando há
+    desconto, e `confirmar_pagamento_do_atendimento` o grava em
+    `financial_transactions.desconto_motivo` (até 300 caracteres; sem
+    desconto, nulo) e na linha do tempo ("com desconto de R$ 50,00 (Cliente
+    fiel)"). Migration `20261029001503`. Prova: `e2e/vendas-desconto.spec.ts`.
   - **Contrato**: o desconto é parte do COMBINADO — vai no retrato do
     pagamento (`pagamentoNormalizado(p, desconto)`, só quando existe), e
     trocá-lo depois de assinar substitui o contrato como trocar a forma.

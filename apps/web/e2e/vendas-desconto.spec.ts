@@ -208,18 +208,21 @@ test.describe.serial('desconto nas vendas', () => {
       await p.getByRole('button', { name: 'Confirmar pagamento' }).click()
       await p.getByLabel('Desconto', { exact: true }).fill('50')
       await expect(p.getByTestId('total-a-receber')).toContainText('150,00')
+      // J-47: o motivo do desconto, opcional, fica gravado com ele.
+      await p.getByLabel('Motivo do desconto (opcional)').fill('Cliente fiel')
       await p.locator('select[name="payment_method"]').selectOption('PIX')
       await p.locator('form').getByRole('button', { name: 'Confirmar pagamento' }).click()
       await expect.poll(async () => (await db().from('financial_transactions').select('is_paid').eq('appointment_id', ap!.id).maybeSingle()).data?.is_paid,
         { message: 'o pagamento é gravado' }).toBe(true)
     })
-    const { data: t } = await db().from('financial_transactions').select('amount, sale_discount, loyalty_discount').eq('appointment_id', ap!.id).single()
-    expect({ amount: n(t!.amount), venda: n(t!.sale_discount), pontos: n(t!.loyalty_discount) }).toEqual({ amount: 150, venda: 50, pontos: 0 })
+    const { data: t } = await db().from('financial_transactions').select('amount, sale_discount, loyalty_discount, desconto_motivo').eq('appointment_id', ap!.id).single()
+    expect({ amount: n(t!.amount), venda: n(t!.sale_discount), pontos: n(t!.loyalty_discount), motivo: t!.desconto_motivo })
+      .toEqual({ amount: 150, venda: 50, pontos: 0, motivo: 'Cliente fiel' })
     const comissao = ((await db().from('commissions').select('amount').eq('appointment_id', ap!.id)).data ?? [])
       .reduce((s, c) => Math.round((s + n(c.amount)) * 100) / 100, 0)
     expect(comissao, '10% de 150, não de 200').toBe(15)
     const { data: hist } = await db().from('appointment_history').select('description').eq('appointment_id', ap!.id).eq('action', 'PAYMENT_CONFIRMED')
-    expect(hist?.[0]?.description).toMatch(/desconto de R\$ 50,00/)
+    expect(hist?.[0]?.description).toMatch(/desconto de R\$ 50,00 \(Cliente fiel\)/)
   })
 
   test('recepção: a função recusa desconto maior que o atendimento', async () => {

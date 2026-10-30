@@ -467,6 +467,13 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
           {pedidoDeDesconto && <input type="hidden" name="desconto_tipo" value={pedidoDeDesconto.tipo} />}
           {pedidoDeDesconto && <input type="hidden" name="desconto_valor" value={String(pedidoDeDesconto.valor)} />}
           <CampoDoDesconto estado={descontoEstado} aoMudar={e => { setDescontoEstado(e); setPontos('') }} total={aposVoucher} />
+          {/* J-47: o porquê do desconto, opcional — fica no lançamento e na linha do tempo. */}
+          {pedidoDeDesconto && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+              Motivo do desconto (opcional)
+              <input name="desconto_motivo" className="field" maxLength={300} placeholder="Ex.: cliente fiel, retorno, cortesia da casa" />
+            </label>
+          )}
           {previa && previa.vouchers.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label className="field-label" htmlFor="voucher-do-pagamento">Aplicar voucher</label>
