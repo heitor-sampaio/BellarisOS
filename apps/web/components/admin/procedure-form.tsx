@@ -348,16 +348,22 @@ function ProcedureFormInner({ salas = [], branches, products, fichas = [], exist
             min={1} defaultValue={existing?.duration_min ?? 60} />
         </Field>
 
-        <Field label="Visível no app do cliente">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingTop: 6 }}>
-            <input type="checkbox" name="visible_on_client_app"
+        {/* Um rótulo só, LIGADO à caixa (J-10, 2026-10-30): o título "Visível no
+            app do cliente" e a caixa "Permitir agendamento self-service" pareciam
+            duas coisas. A explicação vai pelo aria-describedby. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 18 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input type="checkbox" name="visible_on_client_app" aria-describedby="proc-visivel-no-app-dica"
               defaultChecked={existing?.visible_on_client_app ?? false}
               style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
-            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
-              Permitir agendamento self-service
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+              Visível no app do cliente
             </span>
           </label>
-        </Field>
+          <p id="proc-visivel-no-app-dica" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+            A cliente vê o procedimento no app e agenda sozinha.
+          </p>
+        </div>
 
         {/* UMA ficha. Eram duas — "de anamnese" e "de atendimento" —, com os
             mesmos campos possíveis e o mesmo momento de preenchimento: quem
