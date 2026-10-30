@@ -1651,6 +1651,54 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Ajustes J, 2ª rodada: atendimento, plano, injetáveis, dashboard e relatórios — a fila de correção acabou
+
+Treze ajustes em 11 commits (9ab6828b…742c219a), com o teste escrito antes
+(migration `20261029001801`, a função `metrics_financeiro_do_plano`). Com esta
+rodada, as 19 decisões D-1…D-19 e os 68 ajustes J-1…J-68 estão feitos.
+
+- **Atendimento** (J-35, J-40): "Gerar plano e enviar à recepção", com a dica de
+  que o avulso termina no "Finalizar"; a janela do "Finalizar" diz de onde vem
+  o pagamento ("Sessão do plano de tratamento: o pagamento é o do plano…").
+- **Fotos** (J-41, J-36): o cartão mostra o título dado à foto; anexar grava
+  "Foto clínica anexada" no histórico, sem o título.
+- **Um nome por situação do plano** (J-37): "Aguardando checkout" e "Fechado",
+  de `lib/plano-de-tratamento/situacao.ts`.
+- **Mapa de injetáveis** (J-38): o primeiro ponto pede o produto, os seguintes
+  repetem o último; "Região (opcional)"; o "Nome" ligado ao campo.
+- **"Novo plano" com "Cliente (opcional)"** pela busca (J-39).
+- **A tela do plano fechado** (J-42): "Valor do plano R$ 900,00 · Recebido
+  R$ 300,00 · A receber R$ 600,00", as sessões feitas e cada lançamento,
+  contados no banco.
+- **`?unidade=` no dashboard e em Clientes do /admin** (J-54), com "Ver a rede
+  inteira" e o ranking levando ao recorte.
+- **Dicas "i"** (J-55, J-56): a conta de cada taxa e a data de cada número
+  (receita pelo pagamento, atendimento pela hora marcada), de
+  `lib/metrics/definicoes.ts`; o Prontuário mostra o dia do atendimento, como
+  Documentos.
+- **"Status dos agendamentos do período"** com "Em aberto" (J-57).
+- **"Mais realizado"** desempata pela receita e diz o empate (J-58).
+
+**Decisões da frente, para revisar:**
+1. J-35: a dica do "Finalizar" só aparece com o atendimento aberto.
+2. J-36: uma linha por foto, sem o título; apagar não gera linha.
+3. J-37: também o fechado ganhou um nome só ("Fechado"), sem ter sido pedido.
+4. J-38: o ponto sem produto avisa, mas não impede salvar.
+5. J-39: a busca só aparece para quem tem o módulo Clientes.
+6. J-42: o valor é a soma dos procedimentos das sessões com desconto; vê o
+   resumo quem vê a agenda.
+7. J-54: o funil de oportunidades continua da rede inteira com uma unidade
+   escolhida (o lead em geral não tem unidade).
+8. J-55/J-56: as dicas abrem no clique (no celular não há passar o mouse).
+9. J-56: o Prontuário usa a hora marcada, não a da conclusão.
+10. J-57: os em aberto entram no gráfico; os cartões de cima seguem contando até
+    agora. A aba Agenda chama "Outros" de "Em aberto".
+11. J-58: empatando também na receita, o cartão mostra todos os empatados.
+
+Mexeu em `lib/cached-queries.ts` (o cache das unidades ganhou o slug), nos
+dashboards, nos Relatórios, na sessão de atendimento e em `e2e/grupos.ts`
+(10 specs novos): vale uma completa.
+
 ### 2026-10-30 — Ajustes J, 1ª rodada: setup, configurações, equipe, busca, CRM e clientes
 
 Dezenove ajustes em 12 commits (3bc3f8d1…5e276796), com o teste escrito antes;
@@ -8686,14 +8734,14 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-33: as setas e o `?date=` da "Minha agenda". Feito (f3739fc3).
   - J-34: a hora real do concluído. Feito (87f25e27).
 - **Atendimento e plano**
-  - J-35: o nome do "Enviar para a recepção".
-  - J-36: a foto no histórico.
-  - J-37: um nome só para PROPOSED.
-  - J-38: o ponto nasce com o primeiro produto.
-  - J-39: o "Novo plano" sem busca de cliente.
-  - J-40: "será confirmado pela recepcionista" no que já foi pago.
-  - J-41: o título da foto.
-  - J-42: a tela do plano mostra a entrada, as parcelas e as sessões.
+  - J-35: o nome do "Enviar para a recepção". Feito (9ab6828b).
+  - J-36: a foto no histórico. Feito (d7bc9f59).
+  - J-37: um nome só para PROPOSED. Feito (c590f7b4).
+  - J-38: o ponto nasce com o primeiro produto. Feito (98a46aa2).
+  - J-39: o "Novo plano" sem busca de cliente. Feito (1c98c780).
+  - J-40: "será confirmado pela recepcionista" no que já foi pago. Feito (9ab6828b).
+  - J-41: o título da foto. Feito (d7bc9f59).
+  - J-42: a tela do plano mostra a entrada, as parcelas e as sessões. Feito (ac8b6649).
 - **Estoque**
   - J-43: "abaixo do mín." quando é igual, e a unidade de consumo. Feito (e6f105d4).
   - J-44: a unidade do histórico e o "TOTAL REDE". Feito (e6f105d4).
@@ -8708,11 +8756,11 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-52: "faltam N pontos". Feito (5c2119ca).
   - J-53: o nome do CSV. Feito (968c093e).
 - **Dashboard e Relatórios**
-  - J-54: o `?unidade=`.
-  - J-55: as dicas de aproveitamento e conclusão.
-  - J-56: qual data cada número usa.
-  - J-57: o "Status" com os abertos.
-  - J-58: o empate do "Mais realizado".
+  - J-54: o `?unidade=`. Feito (6f42d768).
+  - J-55: as dicas de aproveitamento e conclusão. Feito (9c609b2e).
+  - J-56: qual data cada número usa. Feito (2d4ba18e).
+  - J-57: o "Status" com os abertos. Feito (e592303e).
+  - J-58: o empate do "Mais realizado". Feito (742c219a).
 - **Portal da cliente, login e acesso**
   - J-59: Hoje/Amanhã e os turnos. Feito (e96a048f).
   - J-60: o horário da profissional. Feito (e96a048f).
