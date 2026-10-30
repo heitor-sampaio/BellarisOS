@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { Gift, Loader2, Ticket } from 'lucide-react'
 import { cancelarVoucher, entregarVoucherProduto, resgatarRecompensa, vouchersDoClienteAcao } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { formatarPontos } from '@/lib/fidelidade/formato'
+import { formatarPontos, faltamPontos } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, descricaoDoVoucher, situacaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa, VoucherDoCliente } from '@/lib/fidelidade/leitura'
 
@@ -77,6 +77,7 @@ export function VouchersDoCliente({
         }}>
           {recompensas.map(r => {
             const alcanca = saldo >= r.points_cost
+            const falta = faltamPontos(saldo, r.points_cost)
             return (
               <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -84,12 +85,13 @@ export function VouchersDoCliente({
                   <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                     {ROTULO_DO_TIPO[r.type as TipoDeRecompensa] ?? r.type} · vale {r.validity_days} dias
                   </p>
+                  {falta && <p data-faltam-pontos style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 700 }}>{falta}</p>}
                 </div>
                 <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: alcanca ? 'var(--brand)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                   {formatarPontos(r.points_cost)}
                 </span>
                 <button type="button" className="btn-primary" disabled={!alcanca || ocupado}
-                  title={alcanca ? undefined : 'Pontos insuficientes'}
+                  title={falta ?? undefined}
                   onClick={() => depois(async () => {
                     const res = await resgatarRecompensa({ clientId, rewardId: r.id, branchId: unidade })
                     if (!res.error) setTrocando(false)

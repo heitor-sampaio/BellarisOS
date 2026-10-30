@@ -112,6 +112,11 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     recompensa em `/[slug]/cliente/fidelidade` (`actions/fidelidade-portal.ts`),
     com o saldo da unidade daquele portal quando a abrangência é por unidade.
     Desligada, só a equipe troca, na ficha.
+  - **A recompensa fora do alcance diz quanto falta** (J-52, 2026-10-30):
+    "Faltam 120 pontos" embaixo do "Trocar" desabilitado, no app e na ficha —
+    o texto é UM, `faltamPontos` (`lib/fidelidade/formato.ts`). Prova:
+    `tests/fidelidade-faltam-pontos.test.ts`, `e2e/fidelidade-opcionais.spec.ts`,
+    `e2e/fidelidade-vouchers.spec.ts`.
   - **Aviso de vencimento por push** (`expiry_notice_days`, só com validade):
     `avisos_de_vencimento` REIVINDICA o aviso antes de o push sair (a conta
     guarda até onde já avisou) — um aviso por lote novo na janela, nunca um

@@ -254,6 +254,8 @@ test.describe.serial('fidelidade: opcionais da rede', () => {
       await p.getByRole('button', { name: 'Confirmar (100 pontos)' }).click()
       await expect(p.getByTestId('meus-vouchers')).toContainText('R$')
       await expect(p.getByTestId('saldo-do-portal')).toHaveText('50 pontos')
+      // J-52: a recompensa fora do alcance diz quanto falta (o "Trocar" desabilitado não explicava).
+      await expect(p.getByText('Faltam 50 pontos')).toBeVisible()
       const { data: v } = await db().from('loyalty_vouchers').select('created_by, status').eq('client_id', cliente.clientId)
       expect(v).toEqual([{ created_by: 'cliente', status: 'ATIVO' }])
 

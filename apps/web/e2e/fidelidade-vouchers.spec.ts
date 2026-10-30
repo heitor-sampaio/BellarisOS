@@ -101,6 +101,10 @@ test.describe.serial('fidelidade: recompensas e vouchers', () => {
       await p.getByTestId('trocar-pontos').locator('div').filter({ hasText: nome }).getByRole('button', { name: 'Trocar' }).click()
       await expect(vouchers.getByTestId('voucher').filter({ hasText: nome })).toContainText('Ativo')
       await expect(p.getByTestId('saldo-de-pontos')).toHaveText('50 pontos')
+      // J-52: com 50 pontos, a recompensa de 100 diz quanto falta.
+      await vouchers.getByRole('button', { name: 'Trocar pontos' }).click()
+      await expect(p.getByTestId('trocar-pontos').locator('div').filter({ hasText: nome }).first()).toContainText('Faltam 50 pontos')
+      await p.getByTestId('trocar-pontos').getByRole('button', { name: 'Fechar' }).click()
 
       // 3. No pagamento: o voucher zera o atendimento — sem forma de pagamento.
       await p.goto(`/admin/agenda/${ap}`)

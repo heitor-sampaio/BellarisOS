@@ -37,3 +37,14 @@ export function formatarPontos(pontos: number): string {
   const sinal = pontos < 0 ? '−' : ''
   return `${sinal}${abs} ${Math.abs(pontos) === 1 ? 'ponto' : 'pontos'}`
 }
+
+/**
+ * "Faltam 120 pontos" para a recompensa que o saldo não alcança — ou nulo,
+ * quando alcança (J-52, 2026-10-30: o "Trocar" desabilitado não explicava, no
+ * app nem na ficha). Saldo negativo conta a partir do que se deve.
+ */
+export function faltamPontos(saldo: number, custo: number): string | null {
+  const falta = Math.ceil(custo - saldo)
+  if (!(falta > 0)) return null
+  return `${falta === 1 ? 'Falta' : 'Faltam'} ${formatarPontos(falta)}`
+}

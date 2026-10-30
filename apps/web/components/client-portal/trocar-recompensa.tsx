@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { trocarPontosNoPortal } from '@/actions/fidelidade-portal'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { formatarPontos } from '@/lib/fidelidade/formato'
+import { formatarPontos, faltamPontos } from '@/lib/fidelidade/formato'
 
 /**
  * Portal → trocar pontos por uma recompensa (só com `client_redeem` ligado na
@@ -20,6 +20,7 @@ export function TrocarRecompensa({ slug, rewardId, nome, custo, saldo }: {
   const [erro, setErro] = useState<string | null>(null)
   const [trocando, iniciar] = useTransition()
   const alcanca = saldo >= custo
+  const falta = faltamPontos(saldo, custo)
 
   function trocar() {
     setErro(null)
@@ -52,6 +53,8 @@ export function TrocarRecompensa({ slug, rewardId, nome, custo, saldo }: {
           </button>
         </div>
       )}
+      {/* J-52: o "Trocar" desabilitado diz por quê. */}
+      {falta && <p data-faltam-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>{falta}</p>}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
     </div>
   )
