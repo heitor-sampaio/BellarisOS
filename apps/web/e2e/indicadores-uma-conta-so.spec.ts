@@ -266,13 +266,15 @@ test.describe('Ticket médio = média de quanto cada CLIENTE gasta (pago ÷ clie
   })
 })
 
-test('D12: "Clientes no mês" conta os agendamentos até o FIM do mês, com o cancelado de amanhã', async ({ browser }) => {
+test('"Clientes no mês" conta até AGORA: o marcado e o cancelado de mais adiante ainda não aconteceram', async ({ browser }) => {
+  // Revisto pelo Heitor (2026-10-29): não se sabe se o agendado vai acontecer.
+  // Era até o fim do mês (D12 de 2026-10-28) e contava 4 agendamentos.
   await como(browser, gestor, async p => {
     await p.goto(`/${slug}/dashboard`)
-    // Os 2 concluídos de agora, o marcado e o cancelado de mais adiante.
-    await expect.poll(() => etapa(p, 'Agendamentos'), { timeout: 10_000 }).toBe('4')
+    // Só os 2 concluídos de agora.
+    await expect.poll(() => etapa(p, 'Agendamentos'), { timeout: 10_000 }).toBe('2')
     expect(await etapa(p, 'Concluídos')).toBe('2')
-    expect(await etapa(p, 'Cancelados/faltas')).toBe('1')
+    expect(await etapa(p, 'Cancelados/faltas')).toBe('0')
   })
 })
 

@@ -144,7 +144,6 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     profissionaisDaUnidade,
     procedureStats,
     paraReativar,
-    coreDoMes,
     ticket,
   ] = await Promise.all([
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
@@ -211,16 +210,6 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           professionalId: recorteDela,
         })
       : Promise.resolve({ total: 0, lista: [] }),
-
-    // "Clientes no mês" é uma CONTAGEM de agendamentos do mês: fecha no FIM
-    // do mês (fullTo), com os horários de mais tarde e o cancelado de amanhã.
-    // Fechava em "agora" (period.to) e dizia 0 agendamentos com 3 hoje (D12
-    // da simulação de 2026-10-28, a mesma classe do A38 dos Relatórios). O
-    // núcleo de cima segue em "agora": é o dinheiro, comparado com o mês
-    // anterior de mesma duração decorrida.
-    canClients
-      ? getCore({ ...metricArgs, to: period.fullTo })
-      : Promise.resolve({ ...EMPTY_CORE }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29).
     canFinancial
@@ -297,11 +286,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // Todas as etapas no mesmo recorte (o mês) e no mesmo universo. Antes o
   // funil misturava "novos no mês" com "agendados hoje", e a barra usava
   // "novos clientes" como base — o que estourava 100%.
+  // "Clientes no mês" conta até AGORA (revisto pelo Heitor, 2026-10-29): o que
+  // está agendado ainda não aconteceu, e não se sabe se vai. É o núcleo do mês
+  // até agora, o mesmo dos cartões. De 2026-10-28 a 10-29 fechava no fim do
+  // mês (D12), com os horários de mais tarde e o cancelado de amanhã.
   const funnel = [
-    { label: 'Novos clientes',    count: coreDoMes.newClients,            color: 'var(--brand)' },
-    { label: 'Agendamentos',      count: coreDoMes.appointmentsTotal,     color: 'var(--brand-2)' },
-    { label: 'Concluídos',        count: coreDoMes.appointmentsCompleted, color: 'var(--brand-3)' },
-    { label: 'Cancelados/faltas', count: coreDoMes.appointmentsCancelled + coreDoMes.appointmentsNoShow, color: 'var(--border)' },
+    { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
+    { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },
+    { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
+    { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
   ]
   const funnelMax = Math.max(1, ...funnel.map(f => f.count))
 
@@ -574,7 +567,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               Clientes no mês
             </h2>
           </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>{recorteDela ? 'As suas novas clientes e os seus agendamentos neste mês' : 'Novos clientes e agendamentos da unidade neste mês'}</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>{recorteDela ? 'As suas novas clientes e os seus agendamentos neste mês, até agora' : 'Novos clientes e agendamentos da unidade neste mês, até agora'}</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {funnel.map((f, i) => {
