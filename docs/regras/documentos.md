@@ -158,6 +158,12 @@ DEVLOG ("Termos e contratos").
   texto GENÉRICO — o título pode dizer o procedimento, e o push aparece na tela
   de bloqueio. Cliente sem conta no portal: recusado, e a tela diz o caminho.
   Quem agenda pelo portal e tem documento a assinar vai direto para ele.
+  O detalhe do agendamento no portal tem "Documentos deste atendimento"
+  (J-63, `documentosDoAgendamento`): o título e a situação — "Falta a sua
+  assinatura" (com "Assinar"), "Assinado em …" (com "Ver"), "Em preparação
+  pela clínica", "Dispensado pela clínica". O que falta no cadastro e o
+  motivo da dispensa ficam com a equipe. Prova:
+  `e2e/portal-cliente-documentos-do-agendamento.spec.ts`.
 - **Link público** (`/assinar/[token]`, rota pública; `gerarLinkDeAssinatura`
   na ficha): uso único, 7 dias, um ativo por documento (gerar outro revoga).
   - **Só o SHA-256 do token vai para o banco** (`document_sign_links`) — o

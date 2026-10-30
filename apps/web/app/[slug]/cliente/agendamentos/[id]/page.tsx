@@ -7,12 +7,44 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { formatarTelefone } from '@/lib/documentos/valores'
 import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamento'
+import { documentosDoAgendamento, type ResumoDeDocumento } from '@/lib/documentos/leitura'
+import { FileSignature } from 'lucide-react'
 
 /**
  * O agendamento aberto no portal (2026-10-21): os cartões da agenda não
  * abriam. Até o prazo da rede, ela cancela ou remarca aqui; depois, o caminho
  * para falar com a clínica. Só a ficha DELA — de outra cliente, 404.
  */
+const SITUACAO: Record<string, { texto: string; cor: string }> = {
+  ASSINADO:   { texto: 'Assinado', cor: 'var(--success)' },
+  PENDENTE:   { texto: 'Falta a sua assinatura', cor: 'var(--brand)' },
+  A_GERAR:    { texto: 'Falta a sua assinatura', cor: 'var(--brand)' },
+  INCOMPLETO: { texto: 'Em preparação pela clínica', cor: 'var(--text-muted)' },
+  DISPENSADO: { texto: 'Dispensado pela clínica', cor: 'var(--text-muted)' },
+}
+
+function LinhaDoDocumento({ slug, doc }: { slug: string; doc: ResumoDeDocumento }) {
+  const s = SITUACAO[doc.status] ?? { texto: 'Cancelado', cor: 'var(--text-muted)' }
+  const assinar = doc.status === 'PENDENTE' || doc.status === 'A_GERAR'
+  const texto = doc.status === 'ASSINADO' && doc.assinadoEm
+    ? `Assinado em ${new Date(doc.assinadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+    : s.texto
+  return (
+    <div data-documento={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
+      <FileSignature size={16} color="var(--brand)" aria-hidden="true" style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-sm-sz)', overflowWrap: 'anywhere' }}>{doc.titulo}</p>
+        <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: s.cor }}>{texto}</p>
+      </div>
+      {(assinar || doc.status === 'ASSINADO') && (
+        <Link href={`/${slug}/cliente/documentos/${doc.id}`} className={assinar ? 'btn-primary' : 'btn-ghost'} style={{ flexShrink: 0 }}>
+          {assinar ? 'Assinar' : 'Ver'}
+        </Link>
+      )}
+    </div>
+  )
+}
+
 export default async function AgendamentoDaClientePage({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
@@ -33,6 +65,10 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
   const rede = await ler(admin.from('tenants').select('portal_prazo_alteracao_horas, phone').eq('id', a.branches.tenant_id).single(),
     'ler o prazo do portal') as { portal_prazo_alteracao_horas: number; phone: string | null } | null
   const prazoHoras = rede?.portal_prazo_alteracao_horas ?? 24
+  // Os termos e contratos DESTE atendimento, com a situação (J-63). Só o
+  // título e a situação: o que falta no cadastro e o motivo da dispensa são
+  // da equipe.
+  const documentos = await documentosDoAgendamento(a.branches.tenant_id, a.id)
 
   const aberto = ['SCHEDULED', 'CONFIRMED'].includes(a.status)
   const telefone = (a.branches.phone || rede?.phone || '').replace(/\D/g, '')
@@ -64,6 +100,13 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           </p>
         )}
       </div>
+
+      {documentos.length > 0 && (
+        <section data-documentos-do-agendamento aria-label="Documentos deste atendimento" className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Documentos deste atendimento</p>
+          {documentos.map(d => <LinhaDoDocumento key={d.id} slug={slug} doc={d} />)}
+        </section>
+      )}
 
       {aberto && (
         <AlterarAgendamento
