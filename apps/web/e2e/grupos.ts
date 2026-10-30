@@ -96,6 +96,7 @@ export const ISOLADOS = [
   'financeiro-estorno-reabre.spec.ts',
   'financeiro-historico-forma-em-portugues.spec.ts',
   'financeiro-parcelas.spec.ts',
+  'financeiro-parcelas-no-credito.spec.ts',
   'fidelidade-desconto-no-pagamento.spec.ts',
   'fidelidade-ganho.spec.ts',
   'fidelidade-painel-atualiza.spec.ts',

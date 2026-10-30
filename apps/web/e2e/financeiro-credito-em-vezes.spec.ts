@@ -88,8 +88,12 @@ test.describe.serial('as formas de pagamento', () => {
   })
 
   test('A33: escolher um N sem taxa cadastrada avisa', async ({ browser }) => {
-    // A rede só tem a taxa de 2x.
-    const { error } = await db().from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 2, taxa_pct: 4.5 })
+    // A rede tem a taxa de 2x e a de 6x: o seletor vai até 6x (D-15, o padrão é
+    // a maior parcela com taxa), e o 3x fica sem taxa própria.
+    const { error } = await db().from('payment_fees').insert([
+      { tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 2, taxa_pct: 4.5 },
+      { tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 6, taxa_pct: 9 },
+    ])
     expect(error).toBeNull()
     await como(browser, async p => {
       await p.goto(`/${slug}/agenda/${aReceber}?receber=1`)

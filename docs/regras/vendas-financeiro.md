@@ -363,6 +363,23 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
   check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
   Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.
+  - **A clínica diz até quantas vezes** (D-15, decisão do Heitor,
+    2026-10-29: "A clínica configura 'parcela até Nx'. O padrão é o maior
+    número de parcelas com taxa cadastrada."): Configurações → Comissões →
+    "Parcelar no crédito até" (`tenants.cartao_max_vezes`, 1–12, migration
+    `20261029001603`; grava `salvarMaximoDeVezes`, a mesma permissão das
+    taxas). Vazio = automático: a maior parcela do CRÉDITO com taxa em
+    `payment_fees`; sem nenhuma, 12x (`maximoDeVezes`,
+    `lib/financeiro/vezes-do-cartao.ts`). Todo "Vezes no cartão" monta as
+    opções por `useOpcoesDeVezes` (recebimento do avulso, do plano no
+    check-in, checkout do plano, `CamposDoPagamento` — pacote, pré-pago,
+    produto e o pagamento do contrato), e o servidor RECUSA acima do limite
+    (`recusaDasVezesDaRede`, `lib/financeiro/vezes-da-rede.ts`) em
+    `confirmPayment`, no checkout e no recebimento do plano, em `venderPacote`,
+    `venderProcedimento`, `venderProduto`, `definirPagamentoDoContrato` e
+    `prepararDocumentosDoCheckout`. Vale só para o cartão em N vezes; as
+    parcelas do crediário ("entrada + parcelas") não mudaram. Prova:
+    `e2e/financeiro-parcelas-no-credito.spec.ts`, `tests/financeiro-vezes-do-cartao.test.ts`.
   - **O "3x" aparece** (A33, 2026-10-27): o nome da forma é UM
     (`rotuloDaForma`, `lib/financeiro/formas.ts` — "Crédito 3x" nas listas do
     financeiro, na ficha, no "Pagamento confirmado" do atendimento e no

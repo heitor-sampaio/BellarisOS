@@ -45,6 +45,7 @@ import { catalogoDeRecompensas } from '@/actions/fidelidade'
 import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
 import { SettingsComissoes } from '@/components/admin/settings-comissoes'
 import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao } from '@/lib/comissoes/leitura'
+import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada, type ChaveDeAba,
 } from '@/lib/configuracoes/abas'
@@ -230,7 +231,7 @@ export async function Configuracoes({
   const temLancamentos = activeTab === 'fidelidade' ? await redeTemLancamentos(ctx.tenantId!) : false
   // As comissões também são da rede (a aba não está em ABAS_DA_UNIDADE).
   const comissoes = activeTab === 'comissoes'
-    ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), taxasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!)])
+    ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), taxasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!), maximoDeVezesDaRede(ctx.tenantId!)])
     : null
   const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
@@ -490,7 +491,7 @@ export async function Configuracoes({
       )}
 
       {activeTab === 'comissoes' && comissoes && (
-        <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]}
+        <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]} maximoDeVezes={comissoes[3].configurado}
           podeEditar={can(ctx, 'financial', 'MANAGE') && ctx.branchId === null} />
       )}
 

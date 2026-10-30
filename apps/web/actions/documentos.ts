@@ -31,7 +31,8 @@ import { prepararDocumentosDoPlano } from '@/lib/documentos/plano'
 import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from '@/lib/documentos/assinar'
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
-import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { vezesNoCartao, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { ROTULO_DO_EVENTO, ROTULO_DO_CANAL } from '@/lib/documentos/situacao'
 import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
@@ -224,6 +225,9 @@ export async function prepararDocumentosDoCheckout(
     const ctx = await getTenantContext()
     if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
     if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
+    if (recusaDasVezes) return { error: recusaDasVezes }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }
     const admin = createAdminClient()
@@ -262,6 +266,9 @@ export async function definirPagamentoDoContrato(
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
     if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
+    if (recusaDasVezes) return { error: recusaDasVezes }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }
     const doc = await documentoAoAlcance(ctx, id)

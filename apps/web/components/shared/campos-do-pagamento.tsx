@@ -4,6 +4,7 @@ import { lerEntrada, erroDaEntrada } from '@/lib/checkout/entrada'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
+import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -91,6 +92,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
   const mudar = (parte: Partial<EstadoDoPagamento>) => aoMudar({ ...estado, ...parte })
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
   const { forma } = estado
+  // Até quantas vezes a clínica parcela no crédito (D-15).
+  const opcoesDeVezes = useOpcoesDeVezes()
   return (
     <>
       <SegSelect
@@ -110,7 +113,7 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={rotulo}>Vezes no cartão</span>
               <select className="field" value={estado.vezes} onChange={e => mudar({ vezes: Number(e.target.value) })} aria-label="Vezes no cartão">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
+                {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
               </select>
               <AvisoDaTaxa vezes={estado.vezes} />
             </label>

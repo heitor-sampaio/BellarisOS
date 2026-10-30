@@ -15,6 +15,8 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
+import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 
 const UUID = /^[0-9a-f-]{36}$/i
@@ -40,6 +42,9 @@ export async function venderProduto(
     if (!Number.isInteger(qtd) || qtd < 1 || qtd > 100) return { error: 'Quantidade inválida (de 1 a 100).' }
     const lido = EntradaDoPagamento.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
+    // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(lido.data))
+    if (recusaDasVezes) return { error: recusaDasVezes }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }
 

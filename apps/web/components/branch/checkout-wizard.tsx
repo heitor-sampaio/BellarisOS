@@ -18,6 +18,7 @@ import { lerEntrada, erroDaEntrada } from '@/lib/checkout/entrada'
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
+import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -129,6 +130,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [parcelas,      setParcelas]      = useState(3)
   // À vista no cartão de crédito: em quantas vezes na maquininha (pago na hora).
   const [vezesCartao,   setVezesCartao]   = useState(1)
+  // Até quantas vezes a clínica parcela no crédito (D-15).
+  const opcoesDeVezes = useOpcoesDeVezes()
   // O atendimento que gerou o plano entra junto quando algo é recebido agora.
   const recebeHoje   = !!plan.atendimentoDeHoje && (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO')
   const precoDeHoje  = plan.atendimentoDeHoje?.preco ?? 0
@@ -644,7 +647,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
               Vezes no cartão
               <select value={vezesCartao} onChange={e => setVezesCartao(Number(e.target.value))} className="field" style={{ marginTop: 5 }} aria-label="Vezes no cartão">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                {opcoesDeVezes.map(n => (
                   <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>
                 ))}
               </select>

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
+import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { clienteAtendidaPor } from '@/lib/clientes/atendida-por'
 import type { TenantContext } from '@estetica-os/types'
@@ -1339,6 +1340,9 @@ async function checkoutTreatmentPlanInterno(
   // Aceitar o plano lança receita, cria agendamentos e muda o status: com o id
   // de um plano de outra rede, tudo isso acontecia lá.
   if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
+  // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
+  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
+  if (recusaDasVezes) return { error: recusaDasVezes }
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -1661,6 +1665,9 @@ async function receberDoPlanoInterno(
 
   const planTenant = (plan?.branches as unknown as { tenant_id: string } | null)?.tenant_id
   if (!plan || planTenant !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Plano não encontrado.' }
+  // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
+  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(recebimento))
+  if (recusaDasVezes) return { error: recusaDasVezes }
 
   // O agendamento só serve para registrar o recebimento no histórico dele — e
   // tem de ser DESTE plano (uma sessão dele ou a avaliação que o gerou). Antes

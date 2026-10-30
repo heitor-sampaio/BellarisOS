@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
-import { salvarConfigDeComissao, salvarTaxasDaMaquininha } from '@/actions/comissoes'
+import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes } from '@/actions/comissoes'
+import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
 
@@ -33,9 +34,11 @@ const PARCELAS_DO_CREDITO = Array.from({ length: 11 }, (_, i) => i + 2)
 /** Os campos de taxa são curtos: em grade, quantos couberem na linha. */
 const grade = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 } as const
 
-export function SettingsComissoes({ inicial, taxas, semRegra, podeEditar }: {
+export function SettingsComissoes({ inicial, taxas, semRegra, podeEditar, maximoDeVezes: maximoGravado = null }: {
   inicial:    ConfigDeComissao
   taxas:      TaxaDePagamento[]
+  /** "Parcelar no crédito até" gravado pela rede (D-15); nulo = automático. */
+  maximoDeVezes?: number | null
   /** Quem atende clientes e não tem comissão padrão configurada. */
   semRegra:   { id: string; nome: string }[]
   podeEditar: boolean
@@ -43,7 +46,7 @@ export function SettingsComissoes({ inicial, taxas, semRegra, podeEditar }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ComoAcontece inicial={inicial} podeEditar={podeEditar} />
-      <TabelaDeTaxas inicial={taxas} podeEditar={podeEditar} />
+      <TabelaDeTaxas inicial={taxas} podeEditar={podeEditar} maximoGravado={maximoGravado} />
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
         <h2 style={titulo}>Comissão de cada profissional</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
@@ -186,7 +189,7 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
   )
 }
 
-function TabelaDeTaxas({ inicial, podeEditar }: { inicial: TaxaDePagamento[]; podeEditar: boolean }) {
+function TabelaDeTaxas({ inicial, podeEditar, maximoGravado }: { inicial: TaxaDePagamento[]; podeEditar: boolean; maximoGravado: number | null }) {
   const router = useRouter()
   const chave = (m: MetodoComTaxa, n: number) => `${m}/${n}`
   const [valores, setValores] = useState<Record<string, string>>(() =>
@@ -194,6 +197,14 @@ function TabelaDeTaxas({ inicial, podeEditar }: { inicial: TaxaDePagamento[]; po
   const [erro, setErro] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
   const [salvando, iniciar] = useTransition()
+  // D-15: "parcela até Nx". Vazio = automático, a maior parcela do crédito
+  // com taxa preenchida acima (sem nenhuma, 12x) — calculado do que está na
+  // tela, para o rótulo acompanhar a tabela enquanto ela é editada.
+  const [maxVezes, setMaxVezes] = useState<string>(maximoGravado == null ? '' : String(maximoGravado))
+  const parcelasComTaxa = Object.entries(valores)
+    .filter(([k, v]) => k.startsWith('CREDIT_CARD/') && v.trim() !== '')
+    .map(([k]) => Number(k.split('/')[1]))
+  const automatico = maximoDeVezes(null, parcelasComTaxa)
 
   function salvar() {
     setErro(null)
@@ -209,6 +220,8 @@ function TabelaDeTaxas({ inicial, podeEditar }: { inicial: TaxaDePagamento[]; po
     iniciar(async () => {
       const r = await salvarTaxasDaMaquininha(lista)
       if (r.error) { setErro(r.error); return }
+      const m = await salvarMaximoDeVezes(maxVezes === '' ? null : Number(maxVezes))
+      if (m.error) { setErro(m.error); return }
       setSalvo(true)
       router.refresh()
     })
@@ -246,6 +259,17 @@ function TabelaDeTaxas({ inicial, podeEditar }: { inicial: TaxaDePagamento[]; po
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
         Parcela sem taxa própria usa a da maior quantidade preenchida abaixo dela.
       </p>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Parcelar no crédito até</span>
+        <select className="field" aria-label="Parcelar no crédito até" disabled={!podeEditar} value={maxVezes}
+          onChange={e => { setMaxVezes(e.target.value); setSalvo(false) }}>
+          <option value="">Automático — até {automatico === 1 ? 'à vista' : `${automatico}x`} (a maior parcela com taxa)</option>
+          {opcoesDeVezes(TETO_DE_VEZES).map(n => <option key={n} value={String(n)}>{n === 1 ? 'Só à vista' : `Até ${n}x`}</option>)}
+        </select>
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas. Acima disso o sistema não deixa passar.
+        </span>
+      </label>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {podeEditar && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>

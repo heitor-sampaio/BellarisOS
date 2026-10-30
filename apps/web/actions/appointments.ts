@@ -5,6 +5,7 @@ import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can, temRecurso } from '@/lib/auth'
+import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
@@ -964,6 +965,9 @@ export async function confirmPayment(
     const voucherId     = (formData.get('voucher_id') as string | null)?.trim() || null
     // Cartão de crédito em N vezes (2026-10-20): pago na hora; o banco confere 1–12 e o meio.
     const cartaoVezes   = paymentMethod === 'CREDIT_CARD' ? Math.trunc(Number(formData.get('cartao_vezes') ?? 1) || 1) : 1
+    // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, cartaoVezes)
+    if (recusaDasVezes) return { error: recusaDasVezes }
     // Desconto comercial da recepção (2026-09-30): R$ ou %, sem teto.
     const valorDoDesconto = Number(formData.get('desconto_valor') ?? 0) || 0
     const pedidoDeDesconto = EntradaDoDesconto.safeParse(

@@ -23,6 +23,8 @@ import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDa
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { gravarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
+import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -70,6 +72,41 @@ export async function salvarTaxasDaMaquininha(entrada: unknown): Promise<Resulta
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
+}
+
+/**
+ * "Parcelar no crédito até" (D-15): nulo volta ao padrão (a maior parcela com
+ * taxa). Vale para a rede inteira, como as taxas — mesma permissão e
+ * abrangência.
+ */
+export async function salvarMaximoDeVezes(entrada: unknown): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (ctx.branchId !== null) return { error: 'O parcelamento vale para a rede inteira: quem muda é quem administra a rede.' }
+    const n = entrada === null || entrada === '' ? null : Number(entrada)
+    if (n !== null && !(Number.isInteger(n) && n >= 1 && n <= TETO_DE_VEZES)) {
+      return { error: `Escolha de 1 a ${TETO_DE_VEZES} vezes.` }
+    }
+    const linhas = await gravar(createAdminClient().from('tenants')
+      .update({ cartao_max_vezes: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o limite de vezes no crédito')
+    if (!linhas?.length) return { error: 'Rede não encontrada.' }
+    revalidar()
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * Até quantas vezes o seletor de "Vezes no cartão" oferece (D-15). Leitura
+ * da própria rede; sem rede (a cliente), o teto.
+ */
+export async function maximoDeVezesNoCartao(): Promise<number> {
+  const ctx = await getTenantContext()
+  if (!ctx.tenantId) return TETO_DE_VEZES
+  return (await maximoDeVezesDaRede(ctx.tenantId)).maximo
 }
 
 export async function salvarRegrasDoProfissional(profissionalId: string, entrada: unknown): Promise<Resultado> {
