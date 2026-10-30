@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ticketMedio, mediaPorAtendimentoCobrado, resultadoDoPeriodo, variacaoDaMargemPp, resumoDoFunil, conversaoDasOportunidades,
+  SEM_ESTOQUE_NO_RESULTADO,
 } from '@/lib/metrics/resultado'
 
 /**
@@ -26,16 +27,22 @@ describe('mediaPorAtendimentoCobrado — a média da ficha da cliente (outra con
 
 describe('resultadoDoPeriodo', () => {
   it('lucro = receita − despesa; margem = lucro ÷ receita, em %', () => {
-    expect(resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 250 })).toEqual({ lucro: 750, margemPct: 75 })
+    expect(resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 250, ...SEM_ESTOQUE_NO_RESULTADO }))
+      .toEqual({ lucro: 750, margemPct: 75, despesaOperacional: 250, insumoConsumido: 0 })
+  })
+  it('o lucro desconta o insumo CONSUMIDO, e a compra de estoque fica no caixa e fora do lucro (2026-10-29)', () => {
+    // Despesa paga R$ 700 (R$ 200 de aluguel + R$ 500 de compra de estoque) e R$ 30 de insumo consumido.
+    expect(resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 700, compraDeEstoque: 500, consumoDeInsumo: 30 }))
+      .toEqual({ lucro: 770, margemPct: 77, despesaOperacional: 200, insumoConsumido: 30 })
   })
   it('sem receita, a margem não existe (não é 0%)', () => {
-    expect(resultadoDoPeriodo({ revenueCash: 0, expensesCash: 2400 })).toEqual({ lucro: -2400, margemPct: null })
+    expect(resultadoDoPeriodo({ revenueCash: 0, expensesCash: 2400, ...SEM_ESTOQUE_NO_RESULTADO }).margemPct).toBeNull()
   })
   it('a variação da margem é em pontos percentuais', () => {
-    const atual = resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 780 })     // 22%
-    const anterior = resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 800 })  // 20%
+    const atual = resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 780, ...SEM_ESTOQUE_NO_RESULTADO })     // 22%
+    const anterior = resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 800, ...SEM_ESTOQUE_NO_RESULTADO })  // 20%
     expect(variacaoDaMargemPp(atual, anterior)).toBeCloseTo(2, 10)
-    expect(variacaoDaMargemPp(atual, resultadoDoPeriodo({ revenueCash: 0, expensesCash: 0 }))).toBeNull()
+    expect(variacaoDaMargemPp(atual, resultadoDoPeriodo({ revenueCash: 0, expensesCash: 0, ...SEM_ESTOQUE_NO_RESULTADO }))).toBeNull()
   })
 })
 

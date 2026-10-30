@@ -10,29 +10,35 @@ export interface PontoDaEvolucao {
   profit:  number
 }
 
+/** As parcelas do estoque no resultado, por fatia (`metrics_series_do_resultado`). */
+export interface FatiaDoResultado { bucket: string; compraDeEstoque: number; consumoDeInsumo: number }
+
 /**
- * Os pontos do gráfico de evolução dos relatórios, a partir da série do banco
- * (`metrics_series`, a mesma regra do KPI: pago, sem estorno, eixo em
- * `paid_at`, fuso do negócio). Puro: só põe cada fatia no seu lugar do eixo —
- * a tela não soma nada (§13.1).
+ * Os pontos do gráfico de evolução (Relatórios e dashboard da rede), a partir
+ * da série do banco (`metrics_series`, a mesma regra do KPI: pago, sem
+ * estorno, eixo em `paid_at`, fuso do negócio). Puro: só põe cada fatia no seu
+ * lugar do eixo — a tela não soma nada (§13.1).
  *
- * O CUSTO é a despesa paga, e só ela (D2 da simulação de 2026-10-27). O
- * consumo de insumos NÃO entra: a compra do insumo já é despesa ("Estoque"), e
- * somar os dois contava o mesmo custo duas vezes — o gráfico dizia CUSTO
- * R$ 5.350 ao lado do cartão de despesas de R$ 4.900.
+ * O CUSTO é o do LUCRO (decisão do Heitor, 2026-10-29; `resultadoDoPeriodo`):
+ * a despesa paga SEM a compra de estoque (que fica no caixa) mais o insumo
+ * consumido — `doResultado`, de `metrics_series_do_resultado`. Assim a linha
+ * do lucro soma o cartão de lucro. Sem `doResultado`, o custo é a despesa paga
+ * (era a regra de 2026-10-27, D2, quando o consumo era só informativo).
  */
 export function pontosDaEvolucao(
   serie: SeriesPoint[],
   janela: { granularidade: 'hour' | 'day'; de: Date; ate: Date },
+  doResultado: FatiaDoResultado[] = [],
 ): PontoDaEvolucao[] {
-  const porFatia = new Map(serie.map(p => [
-    janela.granularidade === 'hour' ? String(partsInTZ(new Date(p.bucket)).hour) : dayKeyTZ(p.bucket),
-    p,
-  ]))
-  const ponto = (chave: string, day: number): PontoDaEvolucao => {
-    const p       = porFatia.get(chave)
+  const chave = (bucket: string) =>
+    janela.granularidade === 'hour' ? String(partsInTZ(new Date(bucket)).hour) : dayKeyTZ(bucket)
+  const porFatia = new Map(serie.map(p => [chave(p.bucket), p]))
+  const estoquePorFatia = new Map(doResultado.map(p => [chave(p.bucket), p]))
+  const ponto = (k: string, day: number): PontoDaEvolucao => {
+    const p       = porFatia.get(k)
+    const e       = estoquePorFatia.get(k)
     const revenue = p?.revenue ?? 0
-    const cost    = p?.expenses ?? 0
+    const cost    = (p?.expenses ?? 0) - (e?.compraDeEstoque ?? 0) + (e?.consumoDeInsumo ?? 0)
     return { day, revenue, cost, profit: revenue - cost }
   }
 

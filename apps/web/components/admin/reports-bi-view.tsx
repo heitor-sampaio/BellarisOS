@@ -21,7 +21,7 @@ import {
   CHART_COLORS, fmtBRLShort, fmtBRLFull,
   type TableColumn,
 } from './reports-charts'
-import { resultadoDoPeriodo, variacaoDaMargemPp, mediaPorExecucao, participacaoPct } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo, variacaoDaMargemPp, mediaPorExecucao, participacaoPct, type EstoqueNoResultado } from '@/lib/metrics/resultado'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -115,6 +115,8 @@ export interface ReportsBiProps {
   corePrev: MetricsCore
   /** Ticket médio do período: o pago pelas clientes ÷ as que pagaram (lib/metrics, 2026-10-29). Nulo = "—". */
   ticketMedio: number | null
+  /** A compra de estoque paga e o insumo consumido, no período e no anterior: o lucro desconta o insumo, não a compra (2026-10-29). */
+  estoqueNoResultado: { atual: EstoqueNoResultado; anterior: EstoqueNoResultado }
   /** Só vem preenchido quando a aba Comercial está aberta. */
   comercial?: DadosComerciais
   /** Só vem preenchido quando a aba Vendas está aberta. */
@@ -311,8 +313,8 @@ function TabOverview(p: ReportsBiProps) {
   const prevExpenses = corePrev.expensesCash
   // Lucro e ticket vêm de lib/metrics (§13.1) — a tela não faz conta. O
   // ticket é a média por CLIENTE: o pago pelas clientes ÷ as que pagaram.
-  const profit       = resultadoDoPeriodo(core).lucro
-  const prevProfit   = resultadoDoPeriodo(corePrev).lucro
+  const profit       = resultadoDoPeriodo({ ...core, ...p.estoqueNoResultado.atual }).lucro
+  const prevProfit   = resultadoDoPeriodo({ ...corePrev, ...p.estoqueNoResultado.anterior }).lucro
   const avgTicket    = p.ticketMedio
 
   const byBranch = r.receitaPorUnidade
@@ -374,17 +376,17 @@ function TabFinanceiro(p: ReportsBiProps) {
 
   const revenue     = core.revenueCash
   const prevRevenue = corePrev.revenueCash
-  // Consumo de insumos é indicador gerencial, exibido à parte. NÃO entra no
-  // resultado: a compra do insumo já foi lançada como despesa (categoria
-  // "Estoque"), e somar o consumo de novo contava o mesmo custo duas vezes.
-  // Ao custo do MOVIMENTO — a mesma conta do giro do dashboard.
+  // O consumo de insumos ENTRA no lucro (decisão do Heitor, 2026-10-29), ao
+  // custo do MOVIMENTO — a mesma conta do giro do dashboard. A compra de
+  // estoque fica nas despesas (o caixa) e fora do lucro: senão o produto seria
+  // descontado duas vezes.
   const stockCOGS   = r.consumoTotal
   const opEx        = core.expensesCash
   const prevOpEx    = corePrev.expensesCash
   // Lucro, margem e a variação dela (em p.p.) vêm de lib/metrics
   // (resultadoDoPeriodo): a tela fazia a conta. Sem receita, a margem é "—".
-  const resultado     = resultadoDoPeriodo(core)
-  const anterior      = resultadoDoPeriodo(corePrev)
+  const resultado     = resultadoDoPeriodo({ ...core, ...p.estoqueNoResultado.atual })
+  const anterior      = resultadoDoPeriodo({ ...corePrev, ...p.estoqueNoResultado.anterior })
   const profit        = resultado.lucro
   const prevProfit    = anterior.lucro
   const margin        = resultado.margemPct
@@ -426,14 +428,14 @@ function TabFinanceiro(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Receita Bruta"   value={revenue}   format="brl" delta={pctDelta(revenue, prevRevenue)}   showDelta hero />
-        {/* Informativo: o consumo não entra no lucro nem no DRE. Movimentação
-            de estoque nunca gera despesa (D13 revisto, 2026-10-28): a compra
-            paga entra no financeiro por um lançamento, se a clínica quiser. */}
+        {/* O consumo entra no lucro (2026-10-29). Movimentação de estoque
+            nunca gera despesa (D13 revisto, 2026-10-28): a compra paga entra no
+            financeiro por um lançamento ("Compra de estoque"), que fica no caixa. */}
         <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="var(--danger)"
-          detalhe="Informativo: não entra no lucro" />
+          detalhe="Desconta do lucro" />
         {/* A despesa, o lucro e a margem não se atribuem a ela ("só os meus"). */}
         {!p.soOsMeus && <>
-          <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
+          <KpiCard label="Despesas pagas"  value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
           <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
           <KpiCard label="Margem"          value={margin}    format="pct" accent={margin == null ? undefined : margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={marginDeltaPp} showDelta deltaUnit="p.p." />
         </>}
@@ -441,9 +443,9 @@ function TabFinanceiro(p: ReportsBiProps) {
       <div className="rg-2" style={{ gap: 16 }}>
         {!p.soOsMeus && (
           <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
-            {/* Sem a linha de insumos (era fixa em R$ 0,00 e confundia): o
-                consumo é informativo e não entra no resultado. */}
-            <DreWaterfall receita={revenue} despesas={opEx} lucro={profit} />
+            {/* As despesas operacionais (sem a compra de estoque, que fica no
+                caixa) e os insumos consumidos: os dois descontam do lucro. */}
+            <DreWaterfall receita={revenue} despesas={resultado.despesaOperacional} insumos={resultado.insumoConsumido} lucro={profit} />
           </SCard>
         )}
         <SCard title="Receita por Forma de Pagamento">

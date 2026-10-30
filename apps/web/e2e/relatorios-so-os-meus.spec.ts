@@ -133,7 +133,7 @@ test('"só os meus": a visão geral e o financeiro são o dinheiro DELA, sem des
     const fin = await aba(p, 'financeiro')
     await expect.soft(kpi(p, 'Receita Bruta')).toContainText('R$ 120,00')
     await expect.soft(fin).not.toContainText('777,00')
-    for (const r of ['Despesas Op.', 'Lucro', 'Margem', 'DRE Simplificado', 'Parcelas Pendentes']) {
+    for (const r of ['Despesas pagas', 'Lucro', 'Margem', 'DRE Simplificado', 'Parcelas Pendentes']) {
       await expect.soft(p.getByText(r, { exact: true }), r).toHaveCount(0)
     }
   })

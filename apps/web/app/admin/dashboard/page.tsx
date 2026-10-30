@@ -15,7 +15,7 @@ import { startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 import {
   resolvePeriod, percent, EMPTY_CORE,
   getByBranch, getSeries, getTopProcedures, getTopProfessionals,
-  getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento, getTicketMedio,
+  getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento, getTicketMedio, getSeriesDoResultado,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
@@ -147,6 +147,12 @@ export default async function AdminDashboardPage({
   const topProceduresDaAgenda     = needsCore ? getTopProcedures({ ...daAgenda, limit: 5 }) : Promise.resolve([])
   const topProfessionalsDaAgenda  = needsCore ? getTopProfessionals({ ...daAgenda, limit: 5 }) : Promise.resolve([])
   const topClientsDaAgenda        = needsCore ? getTopClients({ ...daAgenda, limit: 10 }) : Promise.resolve([])
+  // O lucro da evolução desconta o insumo consumido e deixa a compra de
+  // estoque no caixa (2026-10-29). Só existe sem o financeiro "só os meus"
+  // (com ele, a evolução é só a receita dela).
+  const seriesDoResultadoP = needsCore && !recorteProprio
+    ? getSeriesDoResultado({ ...janela, granularity: period === 'today' ? 'hour' : 'day' })
+    : Promise.resolve([])
   const demografiaDaAgenda        = needsCore ? getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: agendaDela }) : Promise.resolve({ total: 0, idades: [], cidades: [], ceps: [] } as Demografia)
 
   const [
@@ -339,7 +345,7 @@ export default async function AdminDashboardPage({
   // o fuso do servidor e divergiam do total.
   const granularity: 'hour' | 'day' = period === 'today' ? 'hour' : 'day'
 
-  const evolutionData = pontosDaEvolucao(seriesData, { granularidade: granularity, de: startDate, ate: endDate })
+  const evolutionData = pontosDaEvolucao(seriesData, { granularidade: granularity, de: startDate, ate: endDate }, await seriesDoResultadoP)
 
   // -- Aproveitamento da agenda por filial ---------------------------
   // Renomeado de "ocupação": o denominador é o total marcado, não a

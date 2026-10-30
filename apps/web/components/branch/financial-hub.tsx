@@ -15,7 +15,7 @@ import { ClientCreditModal, ClientCreditModalHandle }       from './client-credi
 import { FinancialTable, Transaction }                      from './financial-table'
 import { SegSelect }                                        from '@/components/shared/seg-select'
 import { iniciaisDoNome } from '@estetica-os/utils'
-import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo, type EstoqueNoResultado } from '@/lib/metrics/resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 
@@ -58,6 +58,9 @@ interface Props {
   totaisAnteriores: TotaisDoPeriodo
   /** Ticket médio do período: o pago pelas clientes ÷ as que pagaram (lib/metrics). Nulo = "—". */
   ticketMedio:      number | null
+  /** A compra de estoque paga e o insumo consumido do período (o lucro desconta o insumo, não a compra). */
+  estoqueNoResultado:         EstoqueNoResultado
+  estoqueNoResultadoAnterior: EstoqueNoResultado
   branchId:         string
   branchName:       string
   slug:             string
@@ -489,7 +492,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores, ticketMedio, composicao,
+  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -535,9 +538,11 @@ export function FinancialHub({
   const pendingExpense     = emAberto.aPagar
   const prevPendingExpense = aPagarAnterior
 
-  // O lucro do período vem de lib/metrics (resultadoDoPeriodo), como nos Relatórios.
-  const saldo     = resultadoDoPeriodo(totais).lucro
-  const prevSaldo = resultadoDoPeriodo(totaisAnteriores).lucro
+  // O lucro do período vem de lib/metrics (resultadoDoPeriodo), como nos
+  // Relatórios: desconta o insumo consumido; a compra de estoque fica nas
+  // despesas (o caixa) e fora do lucro (2026-10-29).
+  const saldo     = resultadoDoPeriodo({ ...totais, ...estoqueNoResultado }).lucro
+  const prevSaldo = resultadoDoPeriodo({ ...totaisAnteriores, ...estoqueNoResultadoAnterior }).lucro
 
   // -- Charts ----------------------------------------------------
   // Os valores vêm de metrics_series; aqui só se posiciona (lib/financeiro/barras).

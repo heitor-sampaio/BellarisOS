@@ -3,9 +3,9 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
-import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 
 /** Lançamento como o select pede. */
 type LancamentoLido = {
@@ -77,7 +77,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -120,6 +120,10 @@ export default async function AdminFinanceiroPage({
     // mesma conta do financeiro da unidade. Uma chamada por unidade, e a
     // clínica típica tem uma.
     Promise.all(branchIds.map(async id => [id, await getEmAberto({ tenantId: ctx.tenantId!, branchIds: [id], from: start, to: fimDoPeriodo })] as const)),
+    // O resultado desconta o insumo consumido e deixa a compra de estoque no
+    // caixa (2026-10-29): o total das ativas e cada unidade (as de getByBranch).
+    getResultadoDoEstoque(metricArgs),
+    getResultadoDoEstoque({ ...metricArgs, branchIds: null }),
   ])
   const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
@@ -149,7 +153,7 @@ export default async function AdminFinanceiroPage({
     slug:        b.branchSlug,
     revenue:     b.revenueCash,
     expenses:    b.expensesCash,
-    result:      resultadoDoPeriodo(b).lucro,
+    result:      resultadoDoPeriodo({ ...b, ...(estoquePorUnidade.porUnidade[b.branchId] ?? SEM_ESTOQUE_NO_RESULTADO) }).lucro,
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
     aPagar:      emAbertoDe[b.branchId]?.aPagar ?? 0,
@@ -176,7 +180,7 @@ export default async function AdminFinanceiroPage({
         customTo={sp.to}
         totalRevenue={totalRevenue}
         totalExpenses={totalExpenses}
-        totalResult={resultadoDoPeriodo(core).lucro}
+        totalResult={resultadoDoPeriodo({ ...core, ...estoqueNoResultado.total }).lucro}
         totalCommissions={totalComm}
         totalAReceber={emAbertoDaRede.aReceber}
         totalAPagar={emAbertoDaRede.aPagar}

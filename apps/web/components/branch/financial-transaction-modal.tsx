@@ -4,6 +4,7 @@ import { useRef, useCallback, useActionState, useEffect, useState, useMemo, isVa
 import { X, TrendingUp, TrendingDown, Tag, CalendarClock } from 'lucide-react'
 import { createTransactionAdvanced } from '@/actions/financial'
 import { dayKeyTZ } from '@/lib/datetime'
+import { CATEGORIAS_DE_RECEITA, CATEGORIAS_DE_DESPESA } from '@/lib/financeiro/categorias'
 
 interface Props {
   branchId?:  string
@@ -15,8 +16,10 @@ interface Props {
 
 type TxType = 'INCOME' | 'EXPENSE'
 
-const INCOME_CATEGORIES  = ['Atendimento', 'Venda de produto', 'Taxa de agendamento', 'Pacote de sessões', 'Outro']
-const EXPENSE_CATEGORIES = ['Fornecedores', 'Aluguel', 'Salários', 'Equipamentos', 'Manutenção', 'Marketing', 'Material de escritório', 'Outro']
+// As listas são as do lançamento (lib/financeiro/categorias), com a "Compra de
+// estoque": fica no caixa e fora do lucro (2026-10-29).
+const INCOME_CATEGORIES:  readonly string[] = CATEGORIAS_DE_RECEITA
+const EXPENSE_CATEGORIES: readonly string[] = CATEGORIAS_DE_DESPESA
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH:            'Dinheiro',

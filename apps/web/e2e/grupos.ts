@@ -121,6 +121,7 @@ export const ISOLADOS = [
   'indicadores-uma-conta-so.spec.ts',
   'indicadores-cada-numero-no-seu-modulo.spec.ts',
   'indicadores-retencao-da-clinica.spec.ts',
+  'indicadores-lucro-desconta-insumo.spec.ts',
   'prontuario-evolucao.spec.ts',
   'agenda-chegar-e-iniciar.spec.ts',
   'plano-dica-do-pacote.spec.ts',

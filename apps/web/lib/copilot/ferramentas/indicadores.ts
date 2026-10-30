@@ -3,13 +3,13 @@ import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
 import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
 import { resolvePeriod } from '@/lib/metrics/period'
-import { getLeadFunnel, getTicketMedio } from '@/lib/metrics/queries'
+import { getLeadFunnel, getTicketMedio, getResultadoDoEstoque } from '@/lib/metrics/queries'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
-import { resumoDoFunil } from '@/lib/metrics/resultado'
+import { resumoDoFunil, resultadoDoPeriodo } from '@/lib/metrics/resultado'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -96,11 +96,15 @@ export const indicadores: FerramentaDeLeitura<{
     }
 
     if (aba === 'overview') {
-      const [atual, anterior, ticket] = await Promise.all([
+      const [atual, anterior, ticket, estoque] = await Promise.all([
         getCoreDosModulos({ ...janela, recorte }),
         getCoreDosModulos({ ...janela, from: periodo.prevFrom, to: periodo.prevTo, recorte }),
         getTicketMedio(doDinheiro),
+        // O lucro, como nas telas: desconta o insumo consumido; a compra de
+        // estoque fica nas despesas (o caixa). Não se atribui a ela com o financeiro OWN.
+        recorteProprio ? Promise.resolve(null) : getResultadoDoEstoque(janela),
       ])
+      const resultado = estoque ? resultadoDoPeriodo({ ...atual, ...estoque.total }) : null
       // Com o financeiro "só os meus", a comissão do núcleo já é a DELA.
       const comissoes = can(c.ctx, 'financial', 'VIEW')
       return {
@@ -109,7 +113,13 @@ export const indicadores: FerramentaDeLeitura<{
           faturamento: dinheiro(atual.revenueCash), faturamentoAnterior: dinheiro(anterior.revenueCash),
           aReceber: dinheiro(atual.revenuePending),
           // A despesa não se atribui a ela (o dashboard esconde o custo).
-          ...(recorteProprio ? {} : { despesas: dinheiro(atual.expensesCash) }),
+          ...(recorteProprio || !resultado ? {} : {
+            despesas: dinheiro(atual.expensesCash),
+            insumoConsumido: dinheiro(resultado.insumoConsumido),
+            lucro: dinheiro(resultado.lucro),
+            margem: resultado.margemPct === null ? null : `${resultado.margemPct.toFixed(1).replace('.', ',')}%`,
+            notaDoLucro: 'Lucro = receita paga − despesas pagas (sem a compra de estoque, que fica no caixa) − insumo consumido.',
+          }),
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
           agendamentos: atual.appointmentsTotal, cancelados: atual.appointmentsCancelled, faltas: atual.appointmentsNoShow,

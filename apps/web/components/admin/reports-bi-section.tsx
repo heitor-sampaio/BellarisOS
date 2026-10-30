@@ -8,9 +8,10 @@ import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { addDaysTZ } from '@/lib/datetime'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
+import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
-  getSeries, getTicketMedio,
+  getSeries, getTicketMedio, getResultadoDoEstoque, getSeriesDoResultado,
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
@@ -122,6 +123,7 @@ export async function ReportsBiSection({
   const needBatches = tab === 'estoque' && !soOsMeus
   const needInstall = tab === 'financeiro' && !soOsMeus
   const needClientes = tab === 'clientes'
+  const comLucro = tab === 'overview' || tab === 'financeiro'
 
   const [
     relatorio,
@@ -133,6 +135,9 @@ export async function ReportsBiSection({
     corePrev,
     seriesData,
     ticket,
+    estoque,
+    estoqueAnterior,
+    seriesDoResultado,
   ] = await Promise.all([
     getRelatorioDosModulos({
       tenantId: ctx.tenantId!, branchIds,
@@ -197,6 +202,12 @@ export async function ReportsBiSection({
     ['overview', 'clientes', 'procedimentos'].includes(tab)
       ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro })
       : Promise.resolve(null),
+
+    // O lucro desconta o insumo consumido e deixa a compra de estoque no
+    // caixa (2026-10-29): as duas parcelas, no período, no anterior e por fatia.
+    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profDinheiro }) : Promise.resolve(null),
+    comLucro ? getResultadoDoEstoque({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd, professionalId: profDinheiro }) : Promise.resolve(null),
+    comLucro ? getSeriesDoResultado({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, granularity, professionalId: profDinheiro }) : Promise.resolve([]),
   ])
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
@@ -243,11 +254,11 @@ export async function ReportsBiSection({
 
   // Os pontos vêm prontos de lib/metrics, com a MESMA regra do KPI: só pago,
   // estorno fora dos dois lados, eixo em `paid_at`, fuso do negócio. O custo
-  // é a despesa paga — o consumo de insumos não entra, a compra já é despesa
-  // (D2, 2026-10-27: o gráfico somava os dois e divergia do cartão).
+  // é o do LUCRO (2026-10-29): a despesa paga sem a compra de estoque, mais o
+  // insumo consumido — a linha do lucro soma o cartão de lucro.
   const evolutionData: ChartPoint[] = pontosDaEvolucao(seriesData, {
     granularidade: granularity, de: startDate, ate: endDate,
-  })
+  }, seriesDoResultado)
 
   // -- Render --------------------------------------------------------
   return (
@@ -289,6 +300,7 @@ export async function ReportsBiSection({
         core={core}
         corePrev={corePrev}
         ticketMedio={ticket?.total.valor ?? null}
+        estoqueNoResultado={{ atual: estoque?.total ?? SEM_ESTOQUE_NO_RESULTADO, anterior: estoqueAnterior?.total ?? SEM_ESTOQUE_NO_RESULTADO }}
         verComissoes={verComissoes}
         soOsMeus={soOsMeus}
         comercial={comercial}

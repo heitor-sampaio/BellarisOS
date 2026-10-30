@@ -571,7 +571,9 @@ const procedures = await ler(
   `financial_transactions`; o custo informado fica no movimento
   (`unit_cost`, a base do custo de consumo, do giro e da margem). A compra
   que a clínica PAGOU, se ela quiser no financeiro, é um lançamento manual
-  (Financeiro → Novo lançamento). Por 28/10 a Entrada e o cadastro tiveram
+  (Financeiro → Novo lançamento, categoria "Compra de estoque": conta no caixa e
+  fica FORA do lucro, que já desconta o insumo consumido — 2026-10-29,
+  `indicadores.md`). Por 28/10 a Entrada e o cadastro tiveram
   "Lançar o custo como despesa paga hoje" (`estoque_compra`, 1b54c531): saiu
   (migrations `20261028000801`/`802`; `estoque_inicial` perdeu
   `p_despesa`). Prova: `e2e/estoque-nunca-gera-despesa.spec.ts`.

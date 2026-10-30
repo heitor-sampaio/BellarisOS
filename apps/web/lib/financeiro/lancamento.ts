@@ -16,8 +16,8 @@ import { dayKeyTZ } from '@/lib/datetime'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-export const CATEGORIAS_DE_RECEITA = ['Atendimento', 'Venda de produto', 'Taxa de agendamento', 'Pacote de sessões', 'Outro'] as const
-export const CATEGORIAS_DE_DESPESA = ['Fornecedores', 'Aluguel', 'Salários', 'Equipamentos', 'Manutenção', 'Marketing', 'Material de escritório', 'Outro'] as const
+// As listas moram em ./categorias (puro: a tela usa a mesma).
+export { CATEGORIAS_DE_RECEITA, CATEGORIAS_DE_DESPESA } from '@/lib/financeiro/categorias'
 export const FORMAS_DE_PAGAMENTO = ['CASH', 'PIX', 'DEBIT_CARD', 'CREDIT_CARD'] as const
 
 export interface NovoLancamento {

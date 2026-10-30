@@ -238,17 +238,23 @@ export function MiniAreaChart({
 // resultado (movimentação de estoque nunca gera despesa — D13 revisto,
 // 2026-10-28). A linha ficava fixa em R$ 0,00 ao lado do KPI de consumo.
 export function DreWaterfall({
-  receita, despesas, lucro,
+  receita, despesas, insumos, lucro,
 }: {
   receita: number
+  /** A despesa paga SEM a compra de estoque (que fica no caixa). */
   despesas: number
+  /** O insumo consumido nos atendimentos, ao custo do movimento (2026-10-29). */
+  insumos: number
   lucro: number
 }) {
+  // Os números vêm prontos de lib/metrics (resultadoDoPeriodo); aqui só a
+  // largura de cada barra.
   const rows = [
     { label: 'Receita Bruta',          v: receita,       color: 'var(--brand)', pct: 100 },
     { label: '− Despesas Operacionais', v: despesas,      color: 'var(--warning)', pct: receita > 0 ? (despesas / receita) * 100 : 0 },
+    { label: '− Insumos consumidos',    v: insumos,       color: 'var(--danger)',  pct: receita > 0 ? (insumos / receita) * 100 : 0 },
     {
-      label: '= Lucro Operacional',
+      label: '= Lucro',
       v: lucro,
       color: lucro >= 0 ? 'var(--success)' : 'var(--danger)',
       pct: receita > 0 ? Math.min(Math.abs(lucro / receita) * 100, 100) : 0,

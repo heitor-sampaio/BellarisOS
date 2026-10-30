@@ -57,18 +57,40 @@ export function participacaoPct(parte: number, total: number): number | null {
 }
 
 export interface ResultadoDoPeriodo {
-  /** Receita paga − despesa paga (as duas pelo caixa, sem estorno). */
+  /** Receita paga − despesa operacional paga − insumo consumido (decisão do Heitor, 2026-10-29). */
   lucro:     number
   /** Lucro ÷ receita, em %. Nulo sem receita: não é 0%. */
   margemPct: number | null
+  /** A despesa paga SEM a compra de estoque: a que entra no lucro. */
+  despesaOperacional: number
+  /** O insumo consumido nos atendimentos, ao custo do movimento: entra no lucro. */
+  insumoConsumido: number
 }
 
-/** O resultado do período a partir do núcleo (receita e despesa pagas). */
-export function resultadoDoPeriodo(n: { revenueCash: number; expensesCash: number }): ResultadoDoPeriodo {
-  const lucro = n.revenueCash - n.expensesCash
-  const r = ratio(lucro, n.revenueCash)
-  return { lucro, margemPct: r === null ? null : r * 100 }
+/** As parcelas do resultado que não estão no núcleo (`metrics_resultado`, `getResultadoDoEstoque`). */
+export interface EstoqueNoResultado {
+  /** A despesa paga da categoria "Compra de estoque": conta no CAIXA, não no lucro. */
+  compraDeEstoque: number
+  /** O insumo consumido nos atendimentos (custo do movimento): desconta do lucro. */
+  consumoDeInsumo: number
 }
+
+/**
+ * O resultado do período: lucro = receita paga − (despesa paga − compra de
+ * estoque paga) − insumo consumido; margem = lucro ÷ receita (decisão do
+ * Heitor, 2026-10-29). O insumo entra pelo que foi CONSUMIDO; a compra fica no
+ * caixa (é o que saiu) e fora do lucro — senão o produto seria descontado
+ * duas vezes. Até 2026-10-29 o lucro era receita − despesa paga, e o consumo
+ * era só informativo.
+ */
+export function resultadoDoPeriodo(n: { revenueCash: number; expensesCash: number } & EstoqueNoResultado): ResultadoDoPeriodo {
+  const despesaOperacional = n.expensesCash - n.compraDeEstoque
+  const lucro = n.revenueCash - despesaOperacional - n.consumoDeInsumo
+  const r = ratio(lucro, n.revenueCash)
+  return { lucro, margemPct: r === null ? null : r * 100, despesaOperacional, insumoConsumido: n.consumoDeInsumo }
+}
+
+export const SEM_ESTOQUE_NO_RESULTADO: EstoqueNoResultado = { compraDeEstoque: 0, consumoDeInsumo: 0 }
 
 /**
  * A variação da margem, em PONTOS percentuais (20% → 22% é "+2,0 p.p.", não

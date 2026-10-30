@@ -483,7 +483,7 @@ export function AdminDashboardView({
           label={`Custo ${rotulo.doPeriodo}`}
           value={totalCost}
           format="brl"
-          sub="despesas registradas"
+          sub="despesas pagas (o caixa)"
           icon={<TrendingDown size={16} color="var(--brand)" />}
         />}
         {can('agenda') && <KpiCard

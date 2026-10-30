@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
-import { conversaoDasOportunidades, ticketMedio } from './resultado'
+import { conversaoDasOportunidades, ticketMedio, type EstoqueNoResultado } from './resultado'
 
 /**
  * Acesso às funções de agregação do Postgres (migration 20260909000001).
@@ -241,6 +241,40 @@ export async function getTicketMedio(args: Args): Promise<{ total: TicketMedio; 
     total: linha(linhas.find(r => r.branch_id == null)),
     porUnidade: Object.fromEntries(linhas.filter(r => r.branch_id != null).map(r => [String(r.branch_id), linha(r)])),
   }
+}
+
+/**
+ * As parcelas do estoque no resultado (`metrics_resultado`, decisão do Heitor
+ * de 2026-10-29): a compra de estoque paga (fica no caixa, sai do lucro) e o
+ * insumo consumido (custo do movimento, entra no lucro), no total e por
+ * unidade. Com `professionalId` (o financeiro "só os meus"), o dos
+ * atendimentos dela — a compra, então, é zero.
+ */
+export async function getResultadoDoEstoque(args: Args): Promise<{ total: EstoqueNoResultado; porUnidade: Record<string, EstoqueNoResultado> }> {
+  const { data, error } = await createAdminClient().rpc('metrics_resultado', {
+    ...baseArgs(args), p_professional_id: args.professionalId ?? null,
+  })
+  logRpcError('metrics_resultado', error)
+  const linha = (r: Record<string, unknown> | undefined): EstoqueNoResultado =>
+    ({ compraDeEstoque: n(r?.compra_de_estoque), consumoDeInsumo: n(r?.consumo_de_insumo) })
+  const linhas = (data as Record<string, unknown>[] | null) ?? []
+  return {
+    total: linha(linhas.find(r => r.branch_id == null)),
+    porUnidade: Object.fromEntries(linhas.filter(r => r.branch_id != null).map(r => [String(r.branch_id), linha(r)])),
+  }
+}
+
+/** As mesmas parcelas por fatia, para o gráfico de evolução (`metrics_series_do_resultado`). */
+export async function getSeriesDoResultado(
+  args: Args & { granularity?: 'hour' | 'day' | 'week' | 'month' },
+): Promise<{ bucket: string; compraDeEstoque: number; consumoDeInsumo: number }[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_series_do_resultado', {
+    ...baseArgs(args), p_granularity: args.granularity ?? 'day', p_professional_id: args.professionalId ?? null,
+  })
+  logRpcError('metrics_series_do_resultado', error)
+  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
+    bucket: String(r.bucket), compraDeEstoque: n(r.compra_de_estoque), consumoDeInsumo: n(r.consumo_de_insumo),
+  }))
 }
 
 /**

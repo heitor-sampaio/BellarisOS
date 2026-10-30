@@ -87,10 +87,27 @@
     dividia por conta própria até a frente F (`tests/metrics-medias-das-tabelas`
     trava).
   - **Lucro e margem também moram em lib/metrics** (`resultadoDoPeriodo`,
-    `variacaoDaMargemPp` em `lib/metrics/resultado.ts`): lucro = receita paga
-    − despesa paga; margem = lucro ÷ receita, nula sem receita; a variação da
-    margem em p.p. Relatórios (visão geral e financeiro), o financeiro da
-    unidade e o da rede usavam cada um a sua subtração (2026-10-27).
+    `variacaoDaMargemPp` em `lib/metrics/resultado.ts`): **lucro = receita paga
+    − (despesa paga − compra de estoque paga) − insumo consumido** (decisão do
+    Heitor, 2026-10-29); margem = lucro ÷ receita, nula sem receita; a
+    variação da margem em p.p. O insumo entra pelo que foi CONSUMIDO nos
+    atendimentos (o custo do movimento, `metrics_giro_estoque`; o lote não
+    guarda custo próprio). A despesa da categoria **"Compra de estoque"**
+    (`lib/financeiro/categorias.ts`; o banco também lê a antiga "Estoque")
+    conta no CAIXA — o cartão de despesas, o fechamento, o gráfico do
+    financeiro — e NÃO no lucro: senão o produto seria descontado duas
+    vezes. As duas parcelas vêm de `metrics_resultado` (por unidade e no
+    total; `getResultadoDoEstoque`) e, por fatia, de
+    `metrics_series_do_resultado` (`getSeriesDoResultado` → o 3º argumento de
+    `pontosDaEvolucao`); migration `20261029001104`. Valem no lucro dos
+    Relatórios (visão geral e financeiro, com o DRE "Receita − Despesas
+    operacionais − Insumos consumidos = Lucro"), no "Lucro Líquido" do
+    financeiro da unidade, no "Resultado líquido" do da rede, na evolução
+    (dashboard da rede e Relatórios: o custo do gráfico é o do lucro) e no
+    Copilot. Com o financeiro "só os meus", o lucro não aparece. A margem do
+    catálogo (por procedimento) já descontava o insumo. Até 2026-10-29 o lucro
+    era receita − despesa paga, e o consumo era informativo. Prova:
+    `e2e/indicadores-lucro-desconta-insumo.spec.ts`, `tests/metrics-resultado.test.ts`.
   - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
     pago pela regra de receita, a receita de serviço, os concluídos e os
     cobrados). A ficha a chama com a cliente e a janela inteira (`getDoCliente`:
@@ -244,15 +261,15 @@ KPI que não fazia nenhum dos dois.
 - **Consumo de insumo é uma conta só** (`metrics_giro_estoque`, por
   `custo_do_movimento`): custo do MOVIMENTO, que é o da unidade de CONSUMO
   (§9.5); o de consumo do cadastro só como reserva. Dashboard, estoque e
-  relatórios. **É informativo: não entra no resultado** — o resultado é
-  receita paga − despesa paga, e movimentação de estoque NUNCA gera despesa
-  (D13 revisto, 2026-10-28; a compra paga, se a clínica quiser no caixa, é um
-  lançamento manual). O gráfico "Evolução do Período" dos relatórios
-  somava o consumo à despesa e dizia CUSTO R$ 5.350 ao lado do cartão de
-  R$ 4.900 (D2, 2026-10-27): o ponto agora vem pronto de
-  `pontosDaEvolucao` (`lib/metrics/evolucao.ts`), com custo = a despesa paga.
-  O DRE não tem mais a linha "− Custo de Insumos" (era fixa em R$ 0,00); o
-  KPI de consumo diz que é informativo.
+  relatórios. **Entra no lucro** (decisão do Heitor, 2026-10-29; acima, em
+  "Lucro e margem") — e a movimentação de estoque NUNCA gera despesa (D13
+  revisto, 2026-10-28): a compra paga, se a clínica quiser no caixa, é um
+  lançamento manual na categoria "Compra de estoque", que fica fora do lucro.
+  O ponto do gráfico "Evolução do Período" vem pronto de `pontosDaEvolucao`
+  (`lib/metrics/evolucao.ts`), com o custo do LUCRO (a despesa sem a compra
+  de estoque, mais o insumo consumido). O DRE tem a linha "− Insumos
+  consumidos"; o KPI de consumo diz "Desconta do lucro". De 2026-10-27 a
+  10-29 o consumo era informativo e o custo do gráfico, a despesa paga (D2).
 - **`lib/metrics` para a tela quando o RPC falha** (`logRpcError` lança). Ele
   registrava e devolvia zero — "R$ 0,00" com cara de dado.
 - ⚠️ **Migration que cria função termina com `notify pgrst, 'reload schema'`.**

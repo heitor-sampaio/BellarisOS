@@ -230,7 +230,7 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
     ])
   })
 
-  test('a tela: o gráfico não soma o consumo à despesa, e o DRE não tem a linha fixa em zero', async ({ browser }) => {
+  test('a tela: o cartão de despesas é o caixa (zero); o custo do gráfico e o DRE descontam o insumo consumido (R$ 4,50)', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: gestor!.estado })
     try {
       const p = await ctx.newPage()
@@ -244,14 +244,17 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       await expect.poll(async () => brl(await cartao.innerText()), { timeout: 10_000 }).toBe(0)
       const grafico = p.locator('div.card').filter({ hasText: 'Evolução do Período' }).first()
       const custo = grafico.getByText('Custo', { exact: true }).locator('xpath=following-sibling::p[1]')
-      expect(brl(await custo.innerText()), 'o custo do gráfico é a despesa paga — o consumo não entra').toBe(0)
+      // O lucro desconta o insumo CONSUMIDO (decisão do Heitor, 2026-10-29): o
+      // custo do gráfico é o do lucro — a despesa (zero) mais os 5 ml a R$ 0,90.
+      expect(brl(await custo.innerText()), 'o custo do gráfico é o do lucro: o insumo consumido entra').toBe(4.5)
 
       await p.goto('/admin/reports?period=month&tab=financeiro')
       await expect(p.getByText('Consumo de insumos', { exact: true })).toBeVisible()
       await expect(p.getByText(/Custo de Insumos/)).toHaveCount(0)
-      // O consumo é informativo: o estoque não gera despesa (D13 revisto).
-      await expect(p.getByText('Informativo: não entra no lucro', { exact: true })).toBeVisible()
-      await expect(p.getByText(/a compra já está nas despesas/i)).toHaveCount(0)
+      // O estoque não gera despesa (D13 revisto); o consumo desconta do lucro.
+      await expect(p.getByText('Desconta do lucro', { exact: true })).toBeVisible()
+      const dre = p.locator('div.card').filter({ hasText: 'DRE Simplificado' }).first()
+      await expect(dre).toContainText(/Insumos consumidos\s*R\$\s*4,50/)
     } finally { await ctx.close() }
   })
 
