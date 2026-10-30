@@ -9,12 +9,26 @@ import type { FunnelStage } from './queries'
  */
 
 /**
- * Ticket médio = receita de serviço ÷ atendimentos concluídos COBRADOS (preço
- * > 0) — decisão do Heitor, 2026-10-27. A avaliação de R$ 0 entrava no
- * denominador e puxava a média para baixo (R$ 90 numa clínica de limpezas de
- * R$ 180). Sem atendimento cobrado, nulo: a tela mostra "—", não R$ 0,00.
+ * Ticket médio = a média de quanto cada CLIENTE gasta na clínica: o que as
+ * clientes pagaram no período ÷ as clientes que pagaram (decisão do Heitor,
+ * 2026-10-29; `metrics_ticket_medio`, `getTicketMedio`). Pelo eixo da receita
+ * paga, entra tudo que tem cliente — atendimento, pacote, plano, pré-pago,
+ * produto. Sem cliente que pagou, nulo: a tela mostra "—", não R$ 0,00.
+ * Era receita de serviço ÷ atendimentos cobrados (2026-10-27); essa conta
+ * ficou só na ficha da cliente, com outro nome (`mediaPorAtendimentoCobrado`).
  */
-export function ticketMedio(n: { serviceRevenue: number; appointmentsCharged: number }): number | null {
+export function ticketMedio(n: { pagoPelasClientes: number; clientesQuePagaram: number }): number | null {
+  return ratio(n.pagoPelasClientes, n.clientesQuePagaram)
+}
+
+/**
+ * A "Média por atend." da FICHA da cliente: a receita de serviço dela ÷ os
+ * concluídos COBRADOS (a avaliação de R$ 0 não puxa a média). Era o "ticket
+ * médio" do sistema até 2026-10-29; numa cliente só, o ticket novo (pago ÷
+ * clientes) seria o próprio LTV, e a ficha guardou a média por atendimento —
+ * com o nome que diz a conta.
+ */
+export function mediaPorAtendimentoCobrado(n: { serviceRevenue: number; appointmentsCharged: number }): number | null {
   return ratio(n.serviceRevenue, n.appointmentsCharged)
 }
 

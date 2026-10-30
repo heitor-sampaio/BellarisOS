@@ -21,7 +21,7 @@ import {
   CHART_COLORS, fmtBRLShort, fmtBRLFull,
   type TableColumn,
 } from './reports-charts'
-import { resultadoDoPeriodo, ticketMedio, variacaoDaMargemPp, mediaPorExecucao, participacaoPct } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo, variacaoDaMargemPp, mediaPorExecucao, participacaoPct } from '@/lib/metrics/resultado'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -113,6 +113,8 @@ export interface ReportsBiProps {
    */
   core:     MetricsCore
   corePrev: MetricsCore
+  /** Ticket médio do período: o pago pelas clientes ÷ as que pagaram (lib/metrics, 2026-10-29). Nulo = "—". */
+  ticketMedio: number | null
   /** Só vem preenchido quando a aba Comercial está aberta. */
   comercial?: DadosComerciais
   /** Só vem preenchido quando a aba Vendas está aberta. */
@@ -308,10 +310,10 @@ function TabOverview(p: ReportsBiProps) {
   const expenses     = core.expensesCash
   const prevExpenses = corePrev.expensesCash
   // Lucro e ticket vêm de lib/metrics (§13.1) — a tela não faz conta. O
-  // ticket é dos concluídos COBRADOS: a avaliação de R$ 0 não puxa a média.
+  // ticket é a média por CLIENTE: o pago pelas clientes ÷ as que pagaram.
   const profit       = resultadoDoPeriodo(core).lucro
   const prevProfit   = resultadoDoPeriodo(corePrev).lucro
-  const avgTicket    = ticketMedio(core)
+  const avgTicket    = p.ticketMedio
 
   const byBranch = r.receitaPorUnidade
     .map(u => ({ name: nomeDaUnidade(u.branchId), value: u.atual }))
@@ -335,9 +337,8 @@ function TabOverview(p: ReportsBiProps) {
         </>}
         <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Novos Clientes" value={core.newClients}            format="int" delta={pctDelta(core.newClients, corePrev.newClients)}                       showDelta />
-        {/* Sem delta: a receita de serviço do período anterior não é carregada,
-            e comparar com o caixa anterior daria uma variação de outra métrica. */}
-        <KpiCard label="Ticket Médio"   value={avgTicket}         format="brl" />
+        {/* Sem delta: o ticket do período anterior não é carregado. */}
+        <KpiCard label="Ticket médio"   value={avgTicket}         format="brl" />
       </div>
       {/* Charts grid */}
       <div className="rg-2" style={{ gap: 16 }}>
@@ -716,9 +717,10 @@ function TabClientes(p: ReportsBiProps) {
   const { clientsServed, returningClients, firstTimeClients } = retention
   const taxaRetencao = clientsServed > 0 ? (returningClients / clientsServed) * 100 : 0
 
-  // Gasto médio por cliente que pagou algo no período, do mesmo conjunto de
-  // receita do KPI (pago, sem estorno, eixo em paid_at).
-  const gastoMedio = c.gastoMedio
+  // O ticket médio: a média do que as clientes que pagaram gastaram no período
+  // (era o "Gasto médio" desta aba, o mesmo número; agora UM indicador com o
+  // ticket de toda tela — decisão do Heitor, 2026-10-29).
+  const gastoMedio = p.ticketMedio
 
   // Série de aquisição agregada no banco, dentro da janela e no fuso do
   // negócio.
@@ -755,7 +757,7 @@ function TabClientes(p: ReportsBiProps) {
         <KpiCard label="Atendidos no Período" value={clientsServed}    format="int" accent={CHART_COLORS[1]} />
         <KpiCard label="Primeira Vez"         value={firstTimeClients} format="int" accent={CHART_COLORS[2]} />
         <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao >= 40 ? 'var(--success)' : 'var(--warning)'} />
-        <KpiCard label="Gasto Médio"      value={gastoMedio}   format="brl" />
+        <KpiCard label="Ticket médio"     value={gastoMedio}   format="brl" />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Novos Clientes ao Longo do Tempo" style={{ gridColumn: '1 / -1' }}>
@@ -845,13 +847,12 @@ function TabProcedimentos(p: ReportsBiProps) {
   const topByAgeMargin = porFaixa(faixas.margem, l => `${l.margem.toFixed(1).replace('.', ',')}%`, l => l.nome)
 
   // Totais do NÚCLEO: atendimentos concluídos e a receita deles — e o MESMO
-  // ticket médio do sistema inteiro (§13.1, lib/metrics: receita de serviço ÷
-  // concluídos COBRADOS). A aba dividia pelos concluídos, e a avaliação de
-  // R$ 0 puxava a média: R$ 90 aqui e R$ 180 na Visão geral (D11, 2026-10-28).
-  // Os rankings abaixo são por procedimento.
+  // ticket médio do sistema inteiro (§13.1, lib/metrics: o pago pelas clientes
+  // ÷ as que pagaram, 2026-10-29). A aba dividia pelos concluídos (D11): R$ 90
+  // aqui e R$ 180 na Visão geral. Os rankings abaixo são por procedimento.
   const totalExec   = core.appointmentsCompleted
   const totalRev    = core.serviceRevenue
-  const avgTicket   = ticketMedio(core)
+  const avgTicket   = p.ticketMedio
   const topByName   = [...r.porProcedimento].sort((a, b) => b.receita - a.receita)
   const topRevenue  = topByName.slice(0, 10).map(d => ({ name: d.nome, value: d.receita }))
   const topVolume   = [...r.porProcedimento]
@@ -886,12 +887,13 @@ function TabProcedimentos(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {/* Só "Total Execuções" tem delta: é a única grandeza cujo período
-            anterior é medido do mesmo jeito (atendimentos concluídos). Receita
-            e ticket aqui vêm de appointments.price, e o comparativo disponível
-            do período anterior é de caixa — comparar os dois media outra coisa. */}
+            anterior é medido do mesmo jeito (atendimentos concluídos). A receita
+            aqui vem de appointments.price, e o comparativo disponível do período
+            anterior é de caixa — comparar os dois media outra coisa. O ticket é
+            o do sistema (por cliente), sem o anterior carregado. */}
         <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Receita Total"   value={totalRev}  format="brl" />
-        <KpiCard label="Ticket Médio"    value={avgTicket} format="brl" />
+        <KpiCard label="Ticket médio"    value={avgTicket} format="brl" />
         <div className="card" style={{ padding: '16px 20px', flex: '1 1 160px' }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
             Mais Realizado

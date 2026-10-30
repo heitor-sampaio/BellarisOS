@@ -1,17 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { ticketMedio, resultadoDoPeriodo, variacaoDaMargemPp, resumoDoFunil, conversaoDasOportunidades } from '@/lib/metrics/resultado'
+import {
+  ticketMedio, mediaPorAtendimentoCobrado, resultadoDoPeriodo, variacaoDaMargemPp, resumoDoFunil, conversaoDasOportunidades,
+} from '@/lib/metrics/resultado'
 
 /**
  * O ticket, o lucro e a margem moram em lib/metrics (§13.1): a tela de
  * Relatórios, o financeiro e o dashboard faziam a conta cada um.
  */
-describe('ticketMedio', () => {
-  it('é a receita de serviço ÷ os concluídos COBRADOS (a avaliação de R$ 0 não puxa a média)', () => {
-    // A simulação: uma limpeza de R$ 180 e duas avaliações de R$ 0 davam R$ 60.
-    expect(ticketMedio({ serviceRevenue: 180, appointmentsCharged: 1 })).toBe(180)
+describe('ticketMedio — a média de quanto cada CLIENTE gasta (decisão do Heitor, 2026-10-29)', () => {
+  it('é o que as clientes pagaram ÷ as clientes que pagaram', () => {
+    // A Joana pagou a limpeza (R$ 180) e a Lia um pacote (R$ 420): R$ 300.
+    expect(ticketMedio({ pagoPelasClientes: 600, clientesQuePagaram: 2 })).toBe(300)
   })
-  it('sem atendimento cobrado não há ticket ("—", não R$ 0,00)', () => {
-    expect(ticketMedio({ serviceRevenue: 0, appointmentsCharged: 0 })).toBeNull()
+  it('sem cliente que pagou não há ticket ("—", não R$ 0,00)', () => {
+    expect(ticketMedio({ pagoPelasClientes: 0, clientesQuePagaram: 0 })).toBeNull()
+  })
+})
+
+describe('mediaPorAtendimentoCobrado — a média da ficha da cliente (outra conta, outro nome)', () => {
+  it('é a receita de serviço ÷ os concluídos COBRADOS (a avaliação de R$ 0 não puxa a média)', () => {
+    expect(mediaPorAtendimentoCobrado({ serviceRevenue: 180, appointmentsCharged: 1 })).toBe(180)
+    expect(mediaPorAtendimentoCobrado({ serviceRevenue: 0, appointmentsCharged: 0 })).toBeNull()
   })
 })
 

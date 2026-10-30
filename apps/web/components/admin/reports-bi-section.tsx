@@ -9,7 +9,7 @@ import { addDaysTZ } from '@/lib/datetime'
 import { getRelatorio } from '@/lib/metrics/relatorio'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
-  getCore, getSeries,
+  getCore, getSeries, getTicketMedio,
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
@@ -129,6 +129,7 @@ export async function ReportsBiSection({
     core,
     corePrev,
     seriesData,
+    ticket,
   ] = await Promise.all([
     getRelatorio({
       tenantId: ctx.tenantId!, branchIds,
@@ -187,6 +188,12 @@ export async function ReportsBiSection({
       tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
       granularity, professionalId,
     }),
+
+    // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): a
+    // Visão geral, Clientes e Procedimentos mostram o MESMO número.
+    ['overview', 'clientes', 'procedimentos'].includes(tab)
+      ? getTicketMedio({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId })
+      : Promise.resolve(null),
   ])
 
   // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
@@ -276,6 +283,7 @@ export async function ReportsBiSection({
         evolutionData={evolutionData}
         core={core}
         corePrev={corePrev}
+        ticketMedio={ticket?.total.valor ?? null}
         verComissoes={verComissoes}
         soOsMeus={soOsMeus}
         comercial={comercial}

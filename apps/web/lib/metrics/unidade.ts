@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
-import { ticketMedio } from './resultado'
+import { mediaPorAtendimentoCobrado } from './resultado'
 
 /**
  * Contagens das telas da UNIDADE, agregadas no Postgres (migration
@@ -30,8 +30,8 @@ export interface DoCliente {
   ltv: number
   /** Atendimentos concluídos, desde sempre. */
   atendimentos: number
-  /** Ticket canônico recortado no cliente (lib/metrics/resultado). Nulo sem atendimento cobrado. */
-  ticketMedio: number | null
+  /** A "Média por atend." da ficha: serviço ÷ concluídos COBRADOS (não é o ticket médio do sistema, pago ÷ clientes — numa cliente só ele seria o LTV). Nulo sem atendimento cobrado. */
+  mediaPorAtendimento: number | null
 }
 
 export async function getDoCliente(tenantId: string, clientId: string): Promise<DoCliente> {
@@ -42,7 +42,7 @@ export async function getDoCliente(tenantId: string, clientId: string): Promise<
   return {
     ltv: Number(d?.pago ?? 0),
     atendimentos: Number(d?.atendimentos ?? 0),
-    ticketMedio: ticketMedio({ serviceRevenue: Number(d?.receita_servico ?? 0), appointmentsCharged: Number(d?.atendimentos_cobrados ?? 0) }),
+    mediaPorAtendimento: mediaPorAtendimentoCobrado({ serviceRevenue: Number(d?.receita_servico ?? 0), appointmentsCharged: Number(d?.atendimentos_cobrados ?? 0) }),
   }
 }
 

@@ -108,6 +108,16 @@ test.beforeAll(async () => {
       expect(eT, 'pagamento').toBeNull()
     }
   }
+  // O ticket médio é a média de quanto cada CLIENTE gasta (decisão do Heitor,
+  // 2026-10-29): a Lia pagou um pacote de R$ 420 e não teve atendimento. Pago
+  // pelas clientes R$ 600 ÷ 2 clientes que pagaram = R$ 300. (A Cris, sem
+  // pagamento, não entra.) Pela conta antiga — serviço ÷ cobrados — dava R$ 180.
+  const lia = await rede.criarCliente('Lia')
+  const { error: eLia } = await b.from('financial_transactions').insert({
+    branch_id: rede.branchId, client_id: lia, type: 'INCOME', category: 'Pacotes',
+    description: `[e2e] pacote ${marca}`, amount: 420, payment_method: 'PIX', is_paid: true, paid_at: agora, created_by: 'e2e',
+  })
+  expect(eLia, 'o pacote da Lia').toBeNull()
 
   // -- D12: um marcado e um cancelado mais adiante, ainda neste mês -----------
   const fimDoMes = new Date(`${new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 7)}-01T00:00:00-03:00`)
@@ -191,14 +201,17 @@ test.describe('D10: a conversão é da OPORTUNIDADE (ganhas ÷ do funil), uma co
   })
 })
 
-test.describe('D11: o rótulo do ticket médio acompanha a conta', () => {
-  test('dashboard da rede: "receita de serviço ÷ atendimentos cobrados", R$ 180', async ({ browser }) => {
+test.describe('Ticket médio = média de quanto cada CLIENTE gasta (pago ÷ clientes que pagaram)', () => {
+  test('dashboard da rede: R$ 300 (R$ 600 ÷ 2 clientes), no cartão e na linha da filial', async ({ browser }) => {
     await como(browser, gestor, async p => {
       await p.goto('/admin/dashboard?period=month')
       const ticket = cartao(p, 'Ticket médio')
-      await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(180)
-      await expect(ticket).toContainText('receita de serviço ÷ atendimentos cobrados')
-      await expect(ticket).not.toContainText('receita ÷ atendimentos')
+      await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
+      await expect(ticket).toContainText('pago pelas clientes ÷ 2 clientes que pagaram')
+      await expect(ticket).not.toContainText('atendimentos cobrados')
+      // O ranking de filiais: a mesma conta, na unidade.
+      const filial = p.locator('tr').filter({ hasText: `Unidade uc${marca}` }).first()
+      await expect(filial.locator('[data-label="Ticket médio"]')).toContainText(/R\$\s*300,00/)
       // O ranking de clientes divide o PAGO pelos concluídos — outra conta,
       // outro nome (a ficha da cliente é que tem o ticket dela).
       const ranking = cartao(p, 'Ranking — Valor gasto')
@@ -210,21 +223,39 @@ test.describe('D11: o rótulo do ticket médio acompanha a conta', () => {
     })
   })
 
-  test('dashboard da unidade: o ticket diz quantos atendimentos COBRADOS ele divide', async ({ browser }) => {
+  test('dashboard da unidade: R$ 300, e diz quantas clientes pagaram', async ({ browser }) => {
     await como(browser, gestor, async p => {
       await p.goto(`/${slug}/dashboard`)
       const ticket = cartao(p, 'Ticket médio')
-      await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(180)
-      await expect(ticket).toContainText('1 atendimento cobrado')
-      await expect(ticket).not.toContainText('atendimentos concluídos')
+      await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
+      await expect(ticket).toContainText('2 clientes que pagaram')
+      await expect(ticket).not.toContainText('cobrado')
     })
   })
 
-  test('Relatórios → Procedimentos: o "Ticket Médio" é o do sistema (R$ 180, não R$ 90)', async ({ browser }) => {
+  test('o financeiro da unidade: o cartão "Ticket médio" é o mesmo R$ 300', async ({ browser }) => {
+    await como(browser, gestor, async p => {
+      await p.goto(`/${slug}/financeiro`)
+      const ticket = cartao(p, 'Ticket médio')
+      await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
+    })
+  })
+
+  test('Relatórios: Visão geral, Clientes ("Ticket médio", não "Gasto médio") e Procedimentos dizem R$ 300', async ({ browser }) => {
+    await como(browser, gestor, async p => {
+      await p.goto('/admin/reports?tab=overview&period=month')
+      await expect.poll(async () => brl(await cartao(p, 'Ticket médio').innerText()), { timeout: 10_000 }).toBe(300)
+      await p.goto('/admin/reports?tab=clientes&period=month')
+      await expect.poll(async () => brl(await cartao(p, 'Ticket médio').innerText()), { timeout: 10_000 }).toBe(300)
+      await expect(p.getByText(/^gasto médio$/i)).toHaveCount(0)
+    })
+  })
+
+  test('Relatórios → Procedimentos: o "Ticket médio" é o do sistema (R$ 300); a tabela é por execução', async ({ browser }) => {
     await como(browser, gestor, async p => {
       await p.goto('/admin/reports?tab=procedimentos&period=month')
-      const ticket = cartao(p, 'Ticket Médio')
-      await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(180)
+      const ticket = cartao(p, 'Ticket médio')
+      await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
       // A coluna da tabela é por execução, e diz isso.
       await expect(p.getByText('Média por execução', { exact: true })).toBeVisible()
       // A linha da limpeza: R$ 180 por execução e 100% da receita (a avaliação

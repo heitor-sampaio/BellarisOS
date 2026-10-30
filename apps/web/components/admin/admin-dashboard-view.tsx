@@ -78,6 +78,8 @@ export interface AdminDashboardProps {
   totalAppointments: number
   newClients:       number
   ticketMedio:      number
+  /** O denominador do ticket: as clientes que pagaram no período. */
+  clientesQuePagaram: number
   totalClientsEver: number
   branchCount:      number
   prevRevenue:      number
@@ -394,7 +396,7 @@ export function AdminDashboardView({
   permissions, userName, leadFunnel, funnels, activeFunnelId,
   leadsTotal, leadsGanhos, conversionRate, funilTemGanho, marketing,
   monthLabel,
-  totalRevenue, totalCost, totalAppointments, newClients, ticketMedio,
+  totalRevenue, totalCost, totalAppointments, newClients, ticketMedio, clientesQuePagaram,
   totalClientsEver, branchCount,
   prevRevenue, prevAppointments, prevNewClients,
   branchStats, todayTotal, todayByBranch,
@@ -506,7 +508,7 @@ export function AdminDashboardView({
           label="Ticket médio"
           value={ticketMedio}
           format="brl"
-          sub="receita de serviço ÷ atendimentos cobrados"
+          sub={`pago pelas clientes ÷ ${clientesQuePagaram} ${clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}`}
           icon={<Zap size={16} color="var(--brand)" />}
         />}
       </div>

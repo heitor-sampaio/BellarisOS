@@ -3,12 +3,12 @@ import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
 import { can, isOwnScope, ownerFilter, podeVerRelatorio } from '@/lib/auth'
 import { resolvePeriod } from '@/lib/metrics/period'
-import { getCore, getLeadFunnel } from '@/lib/metrics/queries'
+import { getCore, getLeadFunnel, getTicketMedio } from '@/lib/metrics/queries'
 import { getRelatorio } from '@/lib/metrics/relatorio'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
-import { ticketMedio, resumoDoFunil } from '@/lib/metrics/resultado'
+import { resumoDoFunil } from '@/lib/metrics/resultado'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -88,9 +88,10 @@ export const indicadores: FerramentaDeLeitura<{
     }
 
     if (aba === 'overview') {
-      const [atual, anterior] = await Promise.all([
+      const [atual, anterior, ticket] = await Promise.all([
         getCore(base),
         getCore({ ...base, from: periodo.prevFrom, to: periodo.prevTo }),
+        getTicketMedio(base),
       ])
       // Com "só os meus", a comissão do núcleo já é a DELA.
       const comissoes = can(c.ctx, 'financial', 'VIEW') && (!isOwnScope(c.ctx, 'financial') || recorteProprio)
@@ -104,8 +105,9 @@ export const indicadores: FerramentaDeLeitura<{
           receitaDeServicos: dinheiro(atual.serviceRevenue),
           atendimentosConcluidos: atual.appointmentsCompleted, atendimentosConcluidosAnterior: anterior.appointmentsCompleted,
           agendamentos: atual.appointmentsTotal, cancelados: atual.appointmentsCancelled, faltas: atual.appointmentsNoShow,
-          // Dos concluídos COBRADOS (lib/metrics/resultado), como as telas.
-          ticketMedio: (() => { const t = ticketMedio(atual); return t === null ? null : dinheiro(t) })(),
+          // A média por CLIENTE (o pago pelas clientes ÷ as que pagaram), como as telas.
+          ticketMedio: ticket.total.valor === null ? null : dinheiro(ticket.total.valor),
+          clientesQuePagaram: ticket.total.clientesQuePagaram,
           novosClientes: atual.newClients, novosClientesAnterior: anterior.newClients,
           ...(comissoes ? { comissoesEmAberto: dinheiro(atual.commissionsOpen), comissoesPagas: dinheiro(atual.commissionsPaid) } : {}),
           nota: 'O período anterior é o equivalente (mesmo tamanho), não o mês inteiro.',
@@ -146,7 +148,10 @@ export const indicadores: FerramentaDeLeitura<{
       }
     }
 
-    const r = await getRelatorio({ ...base, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day' })
+    const [r, ticket] = await Promise.all([
+      getRelatorio({ ...base, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day' }),
+      aba === 'clientes' ? getTicketMedio(base) : Promise.resolve(null),
+    ])
     const nomesDasUnidades = await nomesPorId(c, 'branches', [...r.receitaPorUnidade.map(x => x.branchId), ...r.agendaPorUnidade.map(x => x.branchId), ...r.estoque.porUnidade.map(x => x.branchId)])
     const unidade = (id: string) => nomesDasUnidades.get(id) ?? id
     const top = <T>(l: T[], n = 15) => l.slice(0, n)
@@ -163,7 +168,9 @@ export const indicadores: FerramentaDeLeitura<{
       },
       clientes: {
         ativos: r.clientes.totalAtivos, porFaixaDeIdade: r.clientes.porFaixa, porGenero: r.clientes.porGenero,
-        cidades: top(r.clientes.cidades, 10), gastoMedio: dinheiro(r.clientes.gastoMedio),
+        cidades: top(r.clientes.cidades, 10),
+        // O ticket médio (era o "gasto médio"): o pago pelas clientes ÷ as que pagaram.
+        ticketMedio: ticket?.total.valor == null ? null : dinheiro(ticket.total.valor),
         quemMaisGasta: top(r.clientes.topClientes, 10).map(x => ({ ...x, total: dinheiro(x.total) })),
       },
       procedimentos: {

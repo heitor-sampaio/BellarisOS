@@ -15,12 +15,12 @@ import { startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 import {
   resolvePeriod, percent, EMPTY_CORE,
   getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
-  getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento,
+  getTopClients, getLeadFunnel, getRankingDeComissao, getMargemPorProcedimento, getTicketMedio,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, contar } from '@/lib/db'
-import { ticketMedio as ticketMedioDe, resumoDoFunil } from '@/lib/metrics/resultado'
+import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 
 /** Sem membro (não acontece com sessão de equipe): o recorte não acha nada, em vez de achar tudo. */
@@ -147,6 +147,7 @@ export default async function AdminDashboardPage({
     margensDosProcedimentos,
     stockTurnover,
     demografia,
+    ticket,
   ] = needsCore ? await Promise.all([
 
     // Núcleo agregado no Postgres: receita, atendimentos, novos clientes,
@@ -208,9 +209,13 @@ export default async function AdminDashboardPage({
     // contada no banco: o total, idade, cidade, CEP e LTV por CEP. Antes vinha
     // a base inteira e era cortada em 1000.
     getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: proId }),
+
+    // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): o
+    // total e o de cada unidade, numa chamada.
+    getTicketMedio(metricArgs),
   ]) : [
     { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [],
-    [], [], [], [], 0, { total: 0, idades: [], cidades: [], ceps: [] } as Demografia,
+    [], [], [], [], 0, { total: 0, idades: [], cidades: [], ceps: [] } as Demografia, null,
   ]
 
   // Total de clientes (todo o período): o da demografia, a mesma contagem.
@@ -226,9 +231,10 @@ export default async function AdminDashboardPage({
   const newClients        = core.newClients
   const prevClientsCount  = prevCore.newClients
 
-  // Ticket médio = receita dos atendimentos ÷ concluídos COBRADOS (lib/metrics:
-  // a avaliação de R$ 0 não puxa a média). 0 = sem atendimento cobrado ("—").
-  const ticketMedio = ticketMedioDe(core) ?? 0
+  // Ticket médio = a média de quanto cada CLIENTE gasta (pago ÷ clientes que
+  // pagaram; lib/metrics, 2026-10-29). 0 = nenhuma cliente pagou ("—").
+  const ticketMedio = ticket?.total.valor ?? 0
+  const clientesQuePagaram = ticket?.total.clientesQuePagaram ?? 0
 
   // -- Por filial ----------------------------------------------------
   // Unidade desativada só entra se teve movimento no período (simulação de 2026-10-20).
@@ -239,7 +245,7 @@ export default async function AdminDashboardPage({
     revenue:      b.revenueCash,
     appointments: b.appointmentsCompleted,
     newClients:   b.newClients,
-    ticketMedio:  ticketMedioDe(b) ?? 0,
+    ticketMedio:  ticket?.porUnidade[b.branchId]?.valor ?? 0,
   }))
 
   // -- Hoje por filial -----------------------------------------------
@@ -520,6 +526,7 @@ export default async function AdminDashboardPage({
         totalAppointments={totalAppointments}
         newClients={newClients}
         ticketMedio={ticketMedio}
+        clientesQuePagaram={clientesQuePagaram}
         totalClientsEver={totalClientsEver ?? 0}
         branchCount={branches.length}
         prevRevenue={prevRevenue}

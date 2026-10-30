@@ -13,8 +13,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * Relatórios → Clientes dizia "Gasto médio R$ 390" (A26) — cada número de uma
  * conta.
  *
- * Agora: ticket = receita de serviço ÷ concluídos com preço > 0, em toda tela;
- * sem atendimento cobrado, "—". O gasto de cada cliente (o que pagou, a
+ * Depois (decisão do Heitor, 2026-10-29): o ticket médio é a média de quanto
+ * cada CLIENTE gasta — o pago pelas clientes ÷ as que pagaram (era o "Gasto
+ * médio" dos relatórios, que vira "Ticket médio"). A conta serviço ÷ cobrados
+ * ficou na ficha, como "Média por atend."; sem atendimento cobrado, "—". O gasto de cada cliente (o que pagou, a
  * receita de serviço, os cobrados) sai de metrics_gasto_por_cliente — a ficha
  * e os relatórios.
  */
@@ -96,34 +98,43 @@ test.describe.serial('o ticket médio e o gasto da cliente', () => {
     expect([Number(r.service_revenue), Number(r.appointments_completed), Number(r.appointments_charged)]).toEqual([180, 3, 1])
   })
 
-  test('o ticket da tela é R$ 180 (não R$ 60): o de R$ 0 não puxa a média', async ({ browser }) => {
+  test('o ticket da tela é a média por CLIENTE: R$ 390 = (180 + 600) ÷ as 2 que pagaram (a Sofia não pagou)', async ({ browser }) => {
     await como(browser, async p => {
       await p.goto('/admin/reports?period=month')
-      const cartao = p.getByText('Ticket Médio', { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
-      await expect.poll(async () => brl(await cartao.innerText()), { timeout: 10_000 }).toBe(180)
+      const cartao = p.getByText('Ticket médio', { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
+      await expect.poll(async () => brl(await cartao.innerText()), { timeout: 10_000 }).toBe(390)
 
       await p.goto(`/${slug}/financeiro`)
       const doFinanceiro = p.getByText('Ticket médio', { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
-      await expect(doFinanceiro).toContainText('180,00')
+      await expect(doFinanceiro).toContainText('390,00')
     })
+    // A conta pelo banco: o pago pelas clientes e quantas pagaram.
+    const de = new Date(Date.now() - 86_400_000).toISOString(), ate = new Date(Date.now() + 86_400_000).toISOString()
+    const { data, error } = await db().rpc('metrics_ticket_medio', { p_tenant: rede!.tenantId, p_branch_ids: null, p_from: de, p_to: ate })
+    expect(error).toBeNull()
+    const total = (data as { branch_id: string | null; pago: number; clientes: number }[]).find(r => r.branch_id === null)!
+    expect([Number(total.pago), Number(total.clientes)]).toEqual([780, 2])
   })
 
   test('A26: a ficha e os relatórios saem da mesma conta do gasto da cliente', async ({ browser }) => {
     await como(browser, async p => {
-      // Mariana: pagou R$ 600, nenhum atendimento cobrado — ticket "—", não R$ 0,00.
+      // Mariana: pagou R$ 600, nenhum atendimento cobrado — a média por
+      // atendimento da ficha é "—", não R$ 0,00. (O ticket médio do sistema é
+      // por cliente; numa cliente só seria o LTV, e a ficha diz a média por atend.)
       await p.goto(`/${slug}/clients/${cli.mariana}`)
-      const ticket = p.getByText('TICKET MÉDIO', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')
+      await expect(p.getByText('TICKET MÉDIO', { exact: true })).toHaveCount(0)
+      const ticket = p.getByText('MÉDIA POR ATEND.', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')
       await expect(ticket).toContainText('—')
       await expect(ticket).not.toContainText('R$')
       await expect(p.getByText('INVESTIDO TOTAL — LTV').locator('xpath=ancestor::div[contains(@class,"card")][1]')).toContainText('600,00')
 
       // Joana: R$ 180 num atendimento de R$ 180.
       await p.goto(`/${slug}/clients/${cli.joana}`)
-      await expect(p.getByText('TICKET MÉDIO', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')).toContainText('180,00')
+      await expect(p.getByText('MÉDIA POR ATEND.', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')).toContainText('180,00')
 
-      // Gasto médio: (180 + 600) ÷ as 2 que pagaram — o mesmo "pago" da ficha.
+      // O ticket médio (era o "Gasto médio"): (180 + 600) ÷ as 2 que pagaram — o mesmo "pago" da ficha.
       await p.goto('/admin/reports?period=month&tab=clientes')
-      const gasto = p.getByText('Gasto Médio', { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
+      const gasto = p.getByText('Ticket médio', { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
       await expect.poll(async () => brl(await gasto.innerText()), { timeout: 10_000 }).toBe(390)
     })
     // A conta única, pelo banco: a mesma função, a cliente e a janela inteira.

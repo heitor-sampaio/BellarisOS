@@ -15,7 +15,7 @@ import { ClientCreditModal, ClientCreditModalHandle }       from './client-credi
 import { FinancialTable, Transaction }                      from './financial-table'
 import { SegSelect }                                        from '@/components/shared/seg-select'
 import { iniciaisDoNome } from '@estetica-os/utils'
-import { resultadoDoPeriodo, ticketMedio } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 
@@ -56,6 +56,8 @@ interface Props {
   /** Formas de pagamento e categorias do período — de lib/metrics, não da lista. */
   composicao:       ComposicaoFinanceira
   totaisAnteriores: TotaisDoPeriodo
+  /** Ticket médio do período: o pago pelas clientes ÷ as que pagaram (lib/metrics). Nulo = "—". */
+  ticketMedio:      number | null
   branchId:         string
   branchName:       string
   slug:             string
@@ -487,7 +489,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores, composicao,
+  totais, totaisAnteriores, ticketMedio, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -523,12 +525,11 @@ export function FinancialHub({
   const prevExpense    = totaisAnteriores.expensesCash
   const prevPendingIncome = totaisAnteriores.revenuePending
 
-  // Ticket médio, na definição do §13.1: preço dos atendimentos concluídos
-  // dividido pelos atendimentos concluídos — numerador e denominador do mesmo
-  // conjunto. Antes era receita ÷ nº de lançamentos, que sobe quando alguém
-  // paga em duas parcelas e desce quando paga numa.
-  // Dos concluídos COBRADOS (lib/metrics): a avaliação de R$ 0 não puxa a média.
-  const avgTicket = ticketMedio(totais) ?? 0
+  // Ticket médio, na definição do §13.1: a média de quanto cada CLIENTE gasta
+  // — o pago pelas clientes ÷ as que pagaram (2026-10-29), contado no banco e
+  // dividido em lib/metrics. Antes era receita ÷ nº de lançamentos, que sobe
+  // quando alguém paga em duas parcelas e desce quando paga numa.
+  const avgTicket = ticketMedio ?? 0
 
   // A despesa a pagar vem do banco (metrics_a_pagar): era somada na lista.
   const pendingExpense     = emAberto.aPagar

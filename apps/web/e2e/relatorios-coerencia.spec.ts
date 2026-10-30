@@ -155,10 +155,13 @@ test('financeiro da unidade bate com o núcleo do mês', async ({ page }) => {
 
   const c = (nucleo as Record<string, number>[])[0]!
   const receita = Number(c.revenue_cash)
-  // Dos concluídos COBRADOS (2026-10-27): a avaliação de R$ 0 não entra.
-  const ticket  = Number(c.appointments_charged) > 0
-    ? Number(c.service_revenue) / Number(c.appointments_charged)
-    : 0
+  // O ticket médio é por CLIENTE (2026-10-29): o pago pelas clientes ÷ as que pagaram.
+  const { data: tk, error: eTk } = await db.rpc('metrics_ticket_medio', {
+    p_tenant: tenant, p_branch_ids: [unidade!.id], p_from: inicioDoMes, p_to: new Date().toISOString(),
+  })
+  if (eTk) throw new Error(`metrics_ticket_medio falhou: ${eTk.message}`)
+  const t = (tk as { branch_id: string | null; pago: number; clientes: number }[]).find(r => r.branch_id === null)!
+  const ticket  = Number(t.clientes) > 0 ? Number(t.pago) / Number(t.clientes) : 0
 
   await page.goto(`/${unidade!.slug}/financeiro?period=month`)
 

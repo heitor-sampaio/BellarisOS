@@ -16,11 +16,10 @@ import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
   resolvePeriod, delta, occupancyPct,
-  getCore, getSeries, getTopProcedures, EMPTY_CORE,
+  getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
 } from '@/lib/metrics'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
-import { ticketMedio } from '@/lib/metrics/resultado'
 
 // --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
@@ -146,6 +145,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     procedureStats,
     paraReativar,
     coreDoMes,
+    ticket,
   ] = await Promise.all([
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
     // novos clientes e comissões saem coerentes entre si por construção.
@@ -221,6 +221,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canClients
       ? getCore({ ...metricArgs, to: period.fullTo })
       : Promise.resolve({ ...EMPTY_CORE }),
+
+    // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29).
+    canFinancial
+      ? getTicketMedio(metricArgs)
+      : Promise.resolve(null),
   ])
 
   // -- KPIs ------------------------------------------------------
@@ -231,11 +236,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     ? { value: rawDelta.value.toFixed(1).replace('.', ','), up: rawDelta.up }
     : null
 
-  // Ticket médio = receita dos atendimentos ÷ atendimentos concluídos COBRADOS.
-  // Numerador e denominador do mesmo conjunto — antes o numerador era o caixa
-  // (que inclui venda de produto e plano) sobre a contagem da agenda.
-  // Dos concluídos COBRADOS (lib/metrics): a avaliação de R$ 0 não puxa a média.
-  const avgTicket = ticketMedio(core) ?? 0
+  // Ticket médio = a média de quanto cada CLIENTE gasta: o pago pelas clientes
+  // no mês ÷ as clientes que pagaram (decisão do Heitor, 2026-10-29; lib/metrics).
+  // Entra tudo que ela pagou — atendimento, pacote, plano, pré-pago.
+  const avgTicket = ticket?.total.valor ?? 0
+  const clientesQuePagaram = ticket?.total.clientesQuePagaram ?? 0
 
   const validToday    = (todayAppts ?? []).filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
   const todayCount    = validToday.length
@@ -438,8 +443,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             {avgTicket > 0 ? formatBRL(avgTicket) : '—'}
           </p>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-            {/* O rótulo acompanha a conta (D11): o ticket divide pelos COBRADOS. */}
-            receita de serviço ÷ {core.appointmentsCharged} {core.appointmentsCharged === 1 ? 'atendimento cobrado' : 'atendimentos cobrados'}
+            {/* O rótulo acompanha a conta: o ticket divide pelas clientes que PAGARAM. */}
+            pago pelas clientes ÷ {clientesQuePagaram} {clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}
           </p>
         </div>
         )}

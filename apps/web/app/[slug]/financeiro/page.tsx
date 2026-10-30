@@ -5,7 +5,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto, getTicketMedio } from '@/lib/metrics'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
 
@@ -41,7 +41,7 @@ export default async function FinancialPage({
   // parcela criada num mês e paga no outro — e o checkout de plano cria
   // exatamente isso.
   const argsDoNucleo = { tenantId: ctx.tenantId!, branchIds: [branch.id as string] }
-  const [totais, totaisAnteriores, composicao, serie, emAberto, aPagarAnterior] = await Promise.all([
+  const [totais, totaisAnteriores, composicao, serie, emAberto, aPagarAnterior, ticket] = await Promise.all([
     getCore({ ...argsDoNucleo, from: start,     to: end }),
     getCore({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
     // Formas de pagamento e categorias: também do banco (a tela somava a lista).
@@ -52,6 +52,8 @@ export default async function FinancialPage({
     // vencimento de cada lado (A34, 2026-10-27).
     getEmAberto({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
     getAPagar({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
+    // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29), a conta do sistema.
+    getTicketMedio({ ...argsDoNucleo, from: start, to: end }),
   ])
 
   // Em páginas (2026-10-22): o PostgREST corta em 1000, e o extrato do período
@@ -125,6 +127,7 @@ export default async function FinancialPage({
       <FinancialHub
         totais={totais}
         totaisAnteriores={totaisAnteriores}
+        ticketMedio={ticket.total.valor}
         composicao={composicao}
         branchId={branch.id}
         branchName={branch.name}

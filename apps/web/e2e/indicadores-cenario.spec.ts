@@ -292,6 +292,11 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     // conferida contra a contagem direta.
     const clientes = await aba('clientes')
     expect(num(clientes.gasto_medio)).toBe(150)
+    // O ticket médio É esse número (2026-10-29): R$ 300 pagos por 2 clientes.
+    const { data: tk, error: eTk } = await db.rpc('metrics_ticket_medio', { p_tenant: c!.tenant, p_branch_ids: [c!.unidade], p_from: DE, p_to: ATE })
+    expect(eTk).toBeNull()
+    expect((tk as Record<string, unknown>[]).map(r => [r.branch_id, num(r.pago), num(r.clientes)]))
+      .toEqual(expect.arrayContaining([[null, 300, 2], [c!.unidade, 300, 2]]))
     expect(nums(clientes.top_clientes, ['total', 'atendimentos'])).toEqual(ordena([
       { nome: `${PREFIXO} Ind C1 ${marca}`, total: 200, atendimentos: 1 },
       { nome: `${PREFIXO} Ind C2 ${marca}`, total: 100, atendimentos: 1 },

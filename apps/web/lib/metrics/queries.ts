@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
-import { conversaoDasOportunidades } from './resultado'
+import { conversaoDasOportunidades, ticketMedio } from './resultado'
 
 /**
  * Acesso às funções de agregação do Postgres (migration 20260909000001).
@@ -216,6 +216,31 @@ export async function getTopClients(args: Args & { limit?: number }): Promise<Cl
     totalSpent:   n(r.total_spent),
     appointments: n(r.appointments),
   }))
+}
+
+/** O ticket médio de um recorte: o pago pelas clientes, quantas pagaram e a divisão. */
+export interface TicketMedio { pagoPelasClientes: number; clientesQuePagaram: number; valor: number | null }
+
+/**
+ * Ticket médio = o que as clientes pagaram ÷ as clientes que pagaram
+ * (`metrics_ticket_medio`, decisão do Heitor de 2026-10-29), no recorte e,
+ * com `professionalId` ("só os meus" do FINANCEIRO), o dinheiro dela. O total
+ * e cada unidade: a cliente que pagou em duas unidades conta uma vez no total.
+ */
+export async function getTicketMedio(args: Args): Promise<{ total: TicketMedio; porUnidade: Record<string, TicketMedio> }> {
+  const { data, error } = await createAdminClient().rpc('metrics_ticket_medio', {
+    ...baseArgs(args), p_professional_id: args.professionalId ?? null,
+  })
+  logRpcError('metrics_ticket_medio', error)
+  const linha = (r: Record<string, unknown> | undefined): TicketMedio => {
+    const pagoPelasClientes = n(r?.pago), clientesQuePagaram = n(r?.clientes)
+    return { pagoPelasClientes, clientesQuePagaram, valor: ticketMedio({ pagoPelasClientes, clientesQuePagaram }) }
+  }
+  const linhas = (data as Record<string, unknown>[] | null) ?? []
+  return {
+    total: linha(linhas.find(r => r.branch_id == null)),
+    porUnidade: Object.fromEntries(linhas.filter(r => r.branch_id != null).map(r => [String(r.branch_id), linha(r)])),
+  }
 }
 
 /**

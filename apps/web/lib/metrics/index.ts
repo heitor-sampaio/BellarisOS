@@ -11,11 +11,10 @@
  *   revenuePending  — a receber (INCOME não pago).
  *   serviceRevenue  — preço dos atendimentos concluídos (eixo em aconteceu_em: a hora
  *                     marcada, ou a da conclusão se veio antes — D13, 2026-10-22).
- *   ticketMedio     — serviceRevenue ÷ atendimentos concluídos COBRADOS (preço
- *                     > 0; 2026-10-27 — a avaliação de R$ 0 puxava a média).
- *                     Mesmo conjunto nos dois lados da divisão; antes o
- *                     numerador vinha do caixa e o denominador da agenda.
- *                     A conta mora em ./resultado (com o lucro e a margem).
+ *   ticketMedio     — a média de quanto cada CLIENTE gasta: o pago pelas
+ *                     clientes ÷ as clientes que pagaram (2026-10-29;
+ *                     metrics_ticket_medio → getTicketMedio). A divisão mora
+ *                     em ./resultado (com o lucro e a margem).
  *   occupancy       — minutos agendados ÷ capacidade (profissionais × jornada
  *                     × dias com expediente no período).
  */

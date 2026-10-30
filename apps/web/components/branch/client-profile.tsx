@@ -69,7 +69,8 @@ export interface ProfileStats {
   totalSessions:  number
   totalInvested:  number
   /** Nulo sem atendimento cobrado: "—", não R$ 0,00 (2026-10-27). */
-  ticketMedio:    number | null
+  /** A média por atendimento da ficha (serviço ÷ cobrados) — não é o ticket médio do sistema. */
+  mediaPorAtendimento: number | null
   age:            number | null
 }
 
@@ -1405,7 +1406,7 @@ export function ClientProfile({
         {[
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
           { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested) },
-          { label: 'TICKET MÉDIO',     value: stats.ticketMedio == null ? '—' : fmtBRL(stats.ticketMedio) },
+          { label: 'MÉDIA POR ATEND.', value: stats.mediaPorAtendimento == null ? '—' : fmtBRL(stats.mediaPorAtendimento) },
           ...(fidelidade ? [{ label: 'PONTOS', value: fidelidade.saldo.toLocaleString('pt-BR') }] : []),
         ].map(k => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>

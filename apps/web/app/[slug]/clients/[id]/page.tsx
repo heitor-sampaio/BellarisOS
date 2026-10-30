@@ -110,7 +110,7 @@ export default async function ClientProfilePage({
   const stats: ProfileStats = {
     totalSessions: doCliente.atendimentos,
     totalInvested: doCliente.ltv,
-    ticketMedio:   doCliente.ticketMedio,
+    mediaPorAtendimento: doCliente.mediaPorAtendimento,
     age,
   }
 

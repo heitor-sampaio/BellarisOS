@@ -33,7 +33,6 @@ export interface Relatorio {
     porFaixa:    { faixa: string; n: number }[]
     porGenero:   { genero: string; n: number }[]
     cidades:     { cidade: string; n: number }[]
-    gastoMedio:  number
     topClientes: { nome: string; total: number; atendimentos: number }[]
   }
   procedimentosPorFaixa: {
@@ -102,7 +101,6 @@ export async function getRelatorio(args: {
       porFaixa:    lista(r.por_faixa).map(x => ({ faixa: String(x.faixa), n: num(x.n) })),
       porGenero:   lista(r.por_genero).map(x => ({ genero: String(x.genero), n: num(x.n) })),
       cidades:     lista(r.cidades).map(x => ({ cidade: String(x.cidade), n: num(x.n) })),
-      gastoMedio:  num(r.gasto_medio),
       topClientes: lista(r.top_clientes).map(x => ({ nome: String(x.nome), total: num(x.total), atendimentos: num(x.atendimentos) })),
     },
     procedimentosPorFaixa: {

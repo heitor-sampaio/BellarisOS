@@ -32,9 +32,9 @@
   - O eixo do caixa é `paid_at`, nunca `created_at`. Filtrar a lista por
     `created_at` e somar dali põe a parcela criada em agosto e paga em
     setembro no mês errado — e o checkout de plano cria exatamente isso.
-  - **O rótulo acompanha a conta.** "Ticket médio" é `serviceRevenue ÷
-    atendimentos concluídos COBRADOS` em toda tela; se a conta for outra, o
-    nome tem de ser outro. `e2e/relatorios-coerencia.spec.ts` compara tela, gráfico e
+  - **O rótulo acompanha a conta.** "Ticket médio" é o pago pelas clientes ÷
+    as clientes que pagaram, em toda tela; se a conta for outra, o nome tem de
+    ser outro. `e2e/relatorios-coerencia.spec.ts` compara tela, gráfico e
     banco para que a divergência não volte em silêncio.
 - **Definições canônicas** (uma só por indicador):
   - `revenueCash` — recebido (INCOME pago, eixo em `paid_at`)
@@ -56,18 +56,30 @@
     marcado: contar pela conclusão pura mudaria o atendimento de dia e de mês.
     Indicador novo de atendimento filtra por `aconteceu_em`, nunca por
     `scheduled_at`. Prova: `e2e/indicadores-concluido-antes-da-hora.spec.ts`.
-  - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos COBRADOS`
-    (preço > 0; `appointments_charged` de `metrics_core`/`metrics_by_branch`)
-    — **numerador e denominador do mesmo conjunto**. A divisão é UMA,
-    `ticketMedio()` em `lib/metrics/resultado.ts`; sem atendimento cobrado, é
-    nulo e a tela mostra "—", não R$ 0,00. Decisão do Heitor, 2026-10-27: a
-    avaliação de R$ 0 entrava no denominador e a simulação viu "R$ 90" numa
-    clínica de limpezas de R$ 180. Prova: `e2e/indicadores-ticket-medio.spec.ts`.
-    O subtítulo diz a conta ("receita de serviço ÷ atendimentos cobrados"; no
-    da unidade, quantos cobrados). Divisão parecida sobre OUTRO conjunto tem
-    outro nome: "Média por atend." (o pago da cliente ÷ os concluídos, no
-    ranking do dashboard) e "Média por execução" (por procedimento, nos
-    Relatórios). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a
+  - **`ticketMedio` = a média de quanto cada CLIENTE gasta na clínica**
+    (decisão do Heitor, 2026-10-29; muda a regra de 2026-10-27): o que as
+    clientes pagaram no período ÷ as clientes que pagaram — quem não pagou não
+    entra. Pelo eixo da receita paga (`metrics_receitas_pagas`), entra tudo
+    que tem cliente: atendimento, pacote, plano (entrada e parcelas),
+    pré-pago e, quando existir, produto. A conta é UMA: `metrics_ticket_medio`
+    (o pago e as clientes, por unidade e no total — a cliente que pagou em
+    duas unidades conta uma vez no total; migration `20261029001102`),
+    `getTicketMedio` e a divisão `ticketMedio()` em `lib/metrics/resultado.ts`;
+    sem cliente que pagou, nulo e a tela mostra "—". É UM indicador só com o
+    antigo "Gasto médio" de Relatórios → Clientes (o mesmo número), que passou
+    a se chamar "Ticket médio": dashboards (o cartão e a coluna por filial),
+    financeiro da unidade, Relatórios (Visão geral, Clientes, Procedimentos) e
+    Copilot. Com o financeiro "só os meus", é o DELA (o dinheiro dos
+    atendimentos dela). O subtítulo diz a conta ("pago pelas clientes ÷ 2
+    clientes que pagaram"). Era `serviceRevenue ÷ atendimentos COBRADOS`
+    (2026-10-27: a avaliação de R$ 0 puxava a média para R$ 90). Prova:
+    `e2e/indicadores-ticket-medio.spec.ts`, `e2e/indicadores-uma-conta-so.spec.ts`.
+    Divisão parecida sobre OUTRO conjunto tem outro nome: "Média por atend."
+    (no ranking do dashboard, o pago da cliente ÷ os concluídos; na FICHA da
+    cliente, a receita de serviço dela ÷ os concluídos cobrados —
+    `mediaPorAtendimentoCobrado`, a conta antiga do ticket: numa cliente só, o
+    ticket novo seria o próprio LTV) e "Média por execução" (por
+    procedimento, nos Relatórios). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a
     aba Procedimentos dividia pelos concluídos — R$ 90 ao lado dos R$ 180 da
     Visão geral (D11). Essas duas médias, e o "% do Total" da tabela por
     procedimento, também moram em `lib/metrics/resultado.ts`
@@ -82,8 +94,9 @@
   - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
     pago pela regra de receita, a receita de serviço, os concluídos e os
     cobrados). A ficha a chama com a cliente e a janela inteira (`getDoCliente`:
-    LTV e ticket); Relatórios → Clientes, com o período ("Gasto médio" = a
-    média do pago de quem pagou, e o top clientes). A ficha da Mariana dizia
+    LTV e a média por atendimento); Relatórios → Clientes, com o período (o
+    top clientes; o "Gasto médio" de lá virou o ticket médio, de
+    `metrics_ticket_medio` — o mesmo número). A ficha da Mariana dizia
     "ticket R$ 0,00" ao lado de "LTV R$ 600" e os relatórios "Gasto médio
     R$ 390", cada um de uma conta (A26). `metrics_do_cliente` virou um
     invólucro dela (o app não a chama mais).
