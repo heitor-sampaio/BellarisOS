@@ -90,9 +90,16 @@ export default async function AdminTeamPage({
   const allRoles = tenantRoles ?? []
   // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
-  // O Admin da rede edita "atende", comissão e horário com o cargo TRAVADO (D2,
-  // 2026-10-29): fora das opções, o seletor marcava o primeiro cargo da lista.
-  const cargoDeAdmin = allRoles.find(r => r.key === 'NETWORK_ADMIN')
+  // O cargo de SISTEMA Admin da rede (`key` + `is_system`, nunca o rótulo —
+  // lib/equipe/admin-da-rede.ts). Revisão do Heitor (2026-10-29): só quem o TEM
+  // dá esse cargo e altera quem o tem; a própria Admin edita "atende", comissão
+  // e horário com o cargo travado (D2). As actions conferem de novo.
+  const cargoDeAdmin = allRoles.find(r => r.key === 'NETWORK_ADMIN' && r.is_system)
+  const souAdmin = !!cargoDeAdmin && ctx.roleId === cargoDeAdmin.id
+  const rolesParaDar = souAdmin && cargoDeAdmin ? [...assignableRoles, cargoDeAdmin] : assignableRoles
+  /** Quem age pode mexer neste membro? A Admin da rede, só outra Admin (ou ela mesma). */
+  const podeMexerEm = (m: { id: string; role_id: string | null }) =>
+    !cargoDeAdmin || m.role_id !== cargoDeAdmin.id || souAdmin || m.id === ctx.internalUserId
   // Mapa id → label (inclui sistema, para exibir o Admin da rede)
   const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
   // Filtro por cargo: value = role_id
@@ -247,11 +254,11 @@ export default async function AdminTeamPage({
 
                     <td data-label="" style={{ padding: '14px 20px', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                      {regras && (m.provides_services || regras.has(m.id)) && (
+                      {regras && (m.provides_services || regras.has(m.id)) && podeMexerEm(m) && (
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                           procedimentos={procedimentos} atende={!!m.provides_services} />
                       )}
-                      {canManage && <TeamMemberEdit
+                      {canManage && podeMexerEm(m) && <TeamMemberEdit
                         member={{
                           id:               m.id,
                           name:             m.name,
@@ -261,14 +268,17 @@ export default async function AdminTeamPage({
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                         }}
                         branches={branches ?? []}
-                        roles={assignableRoles}
+                        roles={rolesParaDar}
                         canChooseScope={ctx.branchId === null}
                         redirectPath="/admin/team"
-                        cargoFixo={cargoDeAdmin && m.role_id === cargoDeAdmin.id ? { id: cargoDeAdmin.id, label: cargoDeAdmin.label } : undefined}
+                        // Travado só para a própria Admin; outra Admin troca o cargo dela.
+                        cargoFixo={cargoDeAdmin && m.role_id === cargoDeAdmin.id && m.id === ctx.internalUserId
+                          ? { id: cargoDeAdmin.id, label: cargoDeAdmin.label } : undefined}
+                        cargoDeAdminId={souAdmin ? cargoDeAdmin?.id : undefined}
                       />}
                       {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
-                          (a action também recusa). */}
-                      {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
+                          (a action também recusa). A Admin da rede, só outra Admin. */}
+                      {canManage && m.id !== ctx.internalUserId && podeMexerEm(m) && (m.is_active ? (
                         <BotaoComConfirmacao
                           acao={async () => {
                             'use server'

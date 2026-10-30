@@ -30,12 +30,19 @@ interface Props {
   canChooseScope: boolean
   redirectPath:   string
   /**
-   * O cargo de SISTEMA do membro (o Admin da rede), que não se troca pela
-   * Equipe (D2, 2026-10-29): aparece travado, e a abrangência também. Sem
-   * isto o seletor recebia um valor fora das opções e o navegador marcava o
-   * primeiro cargo da lista — salvar o "atende" rebaixava a dona da clínica.
+   * O cargo de SISTEMA do membro (o Admin da rede), travado: é a Admin editando
+   * a si mesma (D2, 2026-10-29; revisto pelo Heitor no mesmo dia — outra Admin
+   * troca, ela não). Aparece travado, e a abrangência também. Sem isto o
+   * seletor recebia um valor fora das opções e o navegador marcava o primeiro
+   * cargo da lista — salvar o "atende" rebaixava a dona da clínica.
    */
   cargoFixo?:     Role
+  /**
+   * O id do cargo de sistema Admin da rede, quando ele está entre as opções
+   * (só a Admin da rede o dá — revisão do Heitor, 2026-10-29). Escolhido, a
+   * abrangência some: a Admin é sempre da rede.
+   */
+  cargoDeAdminId?: string
 }
 
 /**
@@ -70,10 +77,14 @@ export function TeamMemberEdit(props: Props) {
  * o resultado da última tentativa nascem dos valores do membro a cada abertura,
  * e não do que se mexeu antes de cancelar.
  */
-function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, onFechar }: Props & { onFechar: () => void }) {
-  const [scope, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
+function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, cargoDeAdminId, onFechar }: Props & { onFechar: () => void }) {
+  const [scopeEscolhido, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
   // Cargo fora das opções nunca vira "o primeiro da lista": fica em "Selecione…".
   const cargoInicial = member.roleId && roles.some(r => r.id === member.roleId) ? member.roleId : ''
+  const [cargo, setCargo] = useState(cargoInicial)
+  // A Admin da rede é sempre da rede: escolhido o cargo, a abrangência some.
+  const paraAdmin = !!cargoDeAdminId && cargo === cargoDeAdminId
+  const scope = paraAdmin ? 'network' : scopeEscolhido
   const [state, action, pending] = useActionState(updateTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
 
@@ -116,14 +127,14 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                         <option value={cargoFixo.id}>{cargoFixo.label}</option>
                       </select>
                       <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        O cargo {cargoFixo.label} e a abrangência dele não se trocam pela Equipe.
+                        Você não muda o próprio cargo de {cargoFixo.label}: outra Admin da rede muda.
                       </span>
                     </>
                   ) : (
                     <>
                       <select
                         id={`tme-role-${member.id}`} name="roleId" required className="field"
-                        defaultValue={cargoInicial}
+                        value={cargo} onChange={e => setCargo(e.target.value)}
                       >
                         <option value="" disabled>Selecione…</option>
                         {roles.map(r => (
@@ -137,7 +148,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                   )}
                 </div>
 
-                {!cargoFixo && canChooseScope && (
+                {!cargoFixo && !paraAdmin && canChooseScope && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline">Abrangência</label>
                     <SegSelect
@@ -168,7 +179,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                 )}
                 {!cargoFixo && scope === 'network' && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    Acesso a todas as unidades, sem filial fixa.
+                    {paraAdmin ? 'A Admin da rede tem acesso total, em todas as unidades.' : 'Acesso a todas as unidades, sem filial fixa.'}
                   </span>
                 )}
 

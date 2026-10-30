@@ -134,7 +134,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   team: {
     NONE:   SEM_ACESSO,
     VIEW:   'Vê quem trabalha na unidade, com cargo e situação.',
-    MANAGE: 'Tudo do Ver, mais cadastrar e editar pessoas, definir o cargo de cada uma e desativar quem sai.',
+    MANAGE: 'Tudo do Ver, mais cadastrar e editar pessoas, definir o cargo de cada uma e desativar quem sai. Quem é Admin da rede só outra Admin da rede altera.',
   },
   forms: {
     NONE:   SEM_ACESSO,

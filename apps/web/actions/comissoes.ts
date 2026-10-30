@@ -18,6 +18,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
 import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento } from '@/lib/comissoes/config'
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { gravarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
@@ -81,10 +82,14 @@ export async function salvarRegrasDoProfissional(profissionalId: string, entrada
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
 
     const admin = createAdminClient()
-    const membro = await ler(admin.from('users').select('id, branch_id')
+    const membro = await ler(admin.from('users').select('id, branch_id, role_id')
       .eq('id', profissionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o profissional')
     // De outra rede, ou de uma unidade fora do alcance: como se não existisse.
     if (!membro || !alcancaUnidade(ctx, (membro.branch_id as string | null) ?? null)) return { error: 'Profissional não encontrado.' }
+    // A comissão de uma Admin da rede só outra Admin muda (revisão do Heitor,
+    // 2026-10-29: "somente admin pode alterar admin").
+    const recusa = await recusaDeMexerNaAdmin(admin, ctx, membro as { id: string; role_id: string | null })
+    if (recusa) return { error: recusa }
 
     const { padrao, excecoes } = lido.data
     await gravar(admin.rpc('comissao_regras_definir', {

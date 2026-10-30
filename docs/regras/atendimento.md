@@ -48,7 +48,8 @@
   `e2e/agenda-profissional-da-rede.spec.ts`.
 - **A dona que atende** (D2 da simulação de 2026-10-29): o Admin da rede
   marca "Atende clientes", a comissão e o horário na Equipe da rede com o
-  cargo TRAVADO (CLAUDE.md §11) e entra na agenda, no agendar e na comissão
+  cargo TRAVADO (CLAUDE.md §11; só outra Admin da rede muda o cargo dela,
+  revisão do Heitor de 2026-10-29) e entra na agenda, no agendar e na comissão
   como qualquer profissional da rede. A **Equipe da unidade** lista também
   quem é da rede e atende ali (ativo), com o chip "Da rede", só o nome e o
   cargo, e SEM ações: cargo, comissão e acesso se mexem na Equipe da rede

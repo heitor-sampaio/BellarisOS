@@ -95,12 +95,15 @@ test('a dona marca "Atende clientes" pela Equipe, continua Admin da rede e entra
   })
 })
 
-test('o cargo de Admin da rede não se troca pela Equipe', async ({ browser }) => {
+// Revisto pelo Heitor (2026-10-29): o cargo de Admin da rede passou a se dar e
+// a se tirar pela Equipe — só por outra Admin (o bloco do fim). A própria
+// Admin continua sem mudar o próprio cargo.
+test('a Admin da rede não muda o próprio cargo pela Equipe', async ({ browser }) => {
   await como(browser, dona!.estado, async p => {
     const r = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', '/admin/team', [undefined], {
       userId: dona!.userId, roleId: gerenteDaUnidade!.roleId, scope: 'network', redirectPath: '/admin/team',
     })
-    expect(r.texto, 'a action recusa').toMatch(/não se troca pela Equipe/)
+    expect(r.texto, 'a action recusa').toMatch(/próprio cargo de Admin da rede/)
   })
   expect((await membro(dona!.userId))?.role_id, 'nada mudou').toBe(dona!.roleId)
 })
@@ -145,4 +148,122 @@ test('a última Admin da rede ativa não se desativa', async ({ browser }) => {
     await db().from('domain_events').delete().eq('entidade_id', gestora.userId)
     await gestora.limpar()
   }
+})
+
+/**
+ * Revisão do Heitor (2026-10-29) das decisões (1) e (3) do D2:
+ * - "Somente um admin pode promover alguém a admin": quem TEM o cargo de
+ *   sistema Admin da rede dá esse cargo a outro membro (uma sócia). Ninguém
+ *   mais — nem quem tem a Equipe em Gerenciar.
+ * - "Somente admin pode alterar admin": cargo, "atende", horário, comissão e
+ *   desativação de uma Admin da rede só por outra Admin da rede (ou por ela
+ *   mesma, no que já pode). A gerente da rede deixa de poder.
+ */
+test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
+  let gestora: MembroDeTeste | null = null
+  let colega: MembroDeTeste | null = null
+  const ARQ = 'actions/team.ts'
+
+  test.beforeAll(async () => {
+    // A gerente da rede: Equipe e Financeiro em Gerenciar, abrangência de rede.
+    gestora = await criarMembro(`dag2${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Gestora',
+      permissoes: [{ modulo: 'team', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
+    })
+    colega = await criarMembro(`dac${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Colega', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
+    })
+    // Independe da ordem: a sócia ativa.
+    expect((await db().from('users').update({ is_active: true }).eq('id', socia!.userId)).error).toBeNull()
+  })
+  test.afterAll(async () => {
+    await db().from('commission_rules').delete().eq('tenant_id', rede!.tenantId)
+    for (const m of [gestora, colega]) if (m) await db().from('domain_events').delete().eq('entidade_id', m.userId)
+    await colega?.limpar()
+    await gestora?.limpar()
+  })
+
+  test('a gerente da rede não promove ninguém a Admin; a Admin promove', async ({ browser }) => {
+    await como(browser, gestora!.estado, async p => {
+      await p.goto('/admin/team')
+      await p.getByTitle(`Editar ${PREFIXO} Colega dac${marca}`).click()
+      const opcoes = p.getByRole('dialog').locator(`#tme-role-${colega!.userId} option`)
+      await expect(opcoes.first()).toBeAttached()
+      expect(await opcoes.allTextContents(), 'a gerente não vê o cargo de Admin').not.toContain('Admin da rede')
+      const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
+        userId: colega!.userId, roleId: dona!.roleId, scope: 'network', redirectPath: '/admin/team',
+      })
+      expect(r.texto, 'a action recusa').toMatch(/Só quem é Admin da rede/)
+    })
+    expect((await membro(colega!.userId))?.role_id, 'a colega segue no cargo dela').toBe(colega!.roleId)
+
+    // Controle: a Admin vê o cargo e promove (a abrangência é a rede).
+    await como(browser, dona!.estado, async p => {
+      await p.goto('/admin/team')
+      await p.getByTitle(`Editar ${PREFIXO} Colega dac${marca}`).click()
+      const opcoes = p.getByRole('dialog').locator(`#tme-role-${colega!.userId} option`)
+      await expect(opcoes.first()).toBeAttached()
+      expect(await opcoes.allTextContents()).toContain('Admin da rede')
+      const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
+        userId: colega!.userId, roleId: dona!.roleId, scope: 'branch', branchId: rede!.branchId, redirectPath: '/admin/team',
+      })
+      expect(r.texto).toContain('"success":true')
+    })
+    const promovida = await membro(colega!.userId)
+    expect(promovida?.role_id, 'promovida a Admin').toBe(dona!.roleId)
+    expect(promovida?.branch_id, 'a Admin é da rede, peça o formulário o que pedir').toBeNull()
+  })
+
+  test('a gerente da rede não altera a Admin: nem "atende", nem comissão, nem desativa', async ({ browser }) => {
+    await como(browser, gestora!.estado, async p => {
+      await p.goto('/admin/team')
+      const linha = p.getByRole('row', { name: new RegExp(`Socia das${marca}`) })
+      await expect(linha).toBeVisible()
+      await expect(linha.getByTitle(/^Editar /), 'sem o lápis na Admin').toHaveCount(0)
+      await expect(linha.getByTitle('Desativar membro'), 'sem desativar a Admin').toHaveCount(0)
+
+      const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
+        userId: socia!.userId, roleId: socia!.roleId, scope: 'network', providesServices: 'on', redirectPath: '/admin/team',
+      })
+      expect(r.texto, '"atende"').toMatch(/Só quem é Admin da rede/)
+      const d = await chamarAcao(p, ARQ, 'deactivateTeamMember', '/admin/team', [socia!.userId, '/admin/team'])
+      expect(d.texto, 'desativar').toMatch(/Só quem é Admin da rede/)
+      const c = await chamarAcao(p, 'actions/comissoes.ts', 'salvarRegrasDoProfissional', '/admin/team',
+        [socia!.userId, { padrao: { tipo: 'PERCENTAGE', valor: 40 }, excecoes: [] }])
+      expect(c.texto, 'comissão').toMatch(/Só quem é Admin da rede/)
+    })
+    const s = await membro(socia!.userId)
+    expect(s?.provides_services, 'o "atende" não mudou').toBe(false)
+    expect(s?.is_active, 'segue ativa').toBe(true)
+    expect((await db().from('commission_rules').select('id').eq('professional_id', socia!.userId)).data, 'sem comissão').toEqual([])
+
+    // Controle: outra Admin altera.
+    await como(browser, dona!.estado, async p => {
+      await p.goto('/admin/team')
+      const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
+        userId: socia!.userId, roleId: socia!.roleId, scope: 'network', providesServices: 'on', redirectPath: '/admin/team',
+      })
+      expect(r.texto).toContain('"success":true')
+      const c = await chamarAcao(p, 'actions/comissoes.ts', 'salvarRegrasDoProfissional', '/admin/team',
+        [socia!.userId, { padrao: { tipo: 'PERCENTAGE', valor: 40 }, excecoes: [] }])
+      expect(c.texto).toContain('"ok":true')
+    })
+    expect((await membro(socia!.userId))?.provides_services, 'controle: a Admin marcou').toBe(true)
+  })
+
+  test('uma Admin rebaixa outra (que não é a última); a si mesma, não', async ({ browser }) => {
+    await como(browser, dona!.estado, async p => {
+      await p.goto('/admin/team')
+      const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
+        userId: colega!.userId, roleId: colega!.roleId, scope: 'network', redirectPath: '/admin/team',
+      })
+      expect(r.texto, 'rebaixa a outra').toContain('"success":true')
+      const eu = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
+        userId: dona!.userId, roleId: gerenteDaUnidade!.roleId, scope: 'network', redirectPath: '/admin/team',
+      })
+      expect(eu.texto, 'a si mesma não').toMatch(/próprio cargo de Admin da rede/)
+    })
+    expect((await membro(colega!.userId))?.role_id, 'a colega voltou ao cargo dela').toBe(colega!.roleId)
+    expect((await membro(dona!.userId))?.role_id, 'a dona segue Admin').toBe(dona!.roleId)
+  })
 })
