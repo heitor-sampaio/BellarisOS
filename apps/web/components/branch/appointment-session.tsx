@@ -2163,7 +2163,7 @@ export function AppointmentSession({
             )}
 
             {/* Histórico */}
-            <div className="card" style={{ padding: '18px 20px' }}>
+            <div data-historico-do-atendimento className="card" style={{ padding: '18px 20px' }}>
               <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
                 Histórico
               </p>

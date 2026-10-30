@@ -11,6 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
 import { gravar, ler, tentar } from '@/lib/db'
+import { logHistory } from '@/lib/appointments/avisos'
 
 const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -124,6 +125,15 @@ export async function uploadClientDocument(
     // para a tela; um arquivo que sobrar fica registrado no log para limpeza.
     await tentar(admin.storage.from(BUCKET).remove([path]), 'desfazer o upload do documento')
     return { error: `Erro ao salvar: ${dbError.message}` }
+  }
+
+  // A foto anexada pela tela do atendimento entra no histórico dele (J-36,
+  // 2026-10-30). O texto é FIXO: o título é escrito pela profissional e pode
+  // dizer o que a foto mostra, e o histórico aparece para quem tem só a agenda.
+  // Acessório: falhar aqui não desfaz a foto (fica no log).
+  if (appointmentId) {
+    await logHistory(admin, appointmentId, ctx.internalUserId, ctx.userName || ctx.roleLabel || 'Equipe',
+      'FOTO_CLINICA', 'Foto clínica anexada')
   }
 
   // Os dois portais mostram a mesma ficha: só o da unidade era revalidado, e

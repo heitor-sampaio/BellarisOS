@@ -79,8 +79,10 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
                     ? <img src={f.url} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <FileImage size={22} style={{ color: 'var(--text-faint)' }} />}
                 </div>
-                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {f.fileName}
+                {/* O título que a profissional deu (J-41): o nome do arquivo
+                    ("IMG_0001.png") não diz nada — fica na dica. */}
+                <span data-titulo-da-foto title={f.fileName} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {f.name || f.fileName}
                 </span>
               </a>
             ))}

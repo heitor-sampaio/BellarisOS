@@ -93,7 +93,7 @@ const ROTULO_DA_ACAO: Record<string, string> = {
   STARTED: 'Atendimento iniciado', IN_PROGRESS: 'Atendimento iniciado', COMPLETED: 'Concluído',
   CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu', RESCHEDULED: 'Remarcado',
   REASSIGNED: 'Profissional trocado', EDITED: 'Editado', PAYMENT_CONFIRMED: 'Pagamento recebido',
-  CHECKOUT_COMPLETED: 'Plano fechado', PLAN_PROPOSED: 'Plano proposto',
+  CHECKOUT_COMPLETED: 'Plano fechado', PLAN_PROPOSED: 'Plano proposto', FOTO_CLINICA: 'Foto clínica anexada',
 }
 export function rotuloDaAcao(action: string, descricao: string | null): string {
   return ROTULO_DA_ACAO[action] ?? descricao ?? action

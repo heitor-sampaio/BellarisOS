@@ -476,6 +476,10 @@ const procedures = await ler(
   quem escreve nele. A foto aparece também na aba Documentos da ficha, com a
   linha "Atendimento de dd/mm/aaaa · Procedimento" levando à tela dele
   (`atendimentoDoAnexo`, `lib/clientes/anexos.ts`; o dia no fuso do negócio).
+  O cartão mostra o TÍTULO dado à foto (o nome do arquivo fica na dica — J-41),
+  e anexar grava no histórico do atendimento a linha `FOTO_CLINICA`, "Foto
+  clínica anexada" — texto FIXO, sem o título: o histórico aparece a quem tem
+  só a agenda, e o título pode dizer o que a foto mostra (J-36).
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
 - **No app da cliente aparece só o arquivo que a clínica ENVIA** (decisão do
   Heitor, 2026-10-30; migration `20261029001201`). Anexar (pela ficha ou pela

@@ -100,6 +100,43 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
     })
   })
 
+  // J-41 e J-36 (ajustes J, 2026-10-30): o nome dado à foto era ignorado — a
+  // miniatura mostrava o nome do ARQUIVO — e a foto não entrava no histórico
+  // do atendimento. O histórico diz só "Foto clínica anexada": o título é
+  // escrito pela profissional e pode dizer o que a foto mostra, e o histórico
+  // aparece para quem tem só a agenda.
+  const TITULO = `Antes — região malar ${marca}`
+  test('o título dado à foto aparece no cartão e na aba Documentos, e o histórico registra a foto sem o título', async ({ browser }) => {
+    const antes = (await fotosDo(atendimento)).length
+    await como(profissional!, browser, async p => {
+      await p.goto(`/${slug}/agenda/${atendimento}`)
+      const fotos = p.locator('[data-fotos-do-atendimento]')
+      await fotos.getByRole('button', { name: 'Anexar foto' }).click()
+      await fotos.locator('input[name="name"]').fill(TITULO)
+      await fotos.locator('input[name="file"]').setInputFiles({ name: 'IMG_0001.png', mimeType: 'image/png', buffer: PNG })
+      await fotos.getByRole('button', { name: 'Anexar foto' }).last().click()
+      await expect.poll(async () => (await fotosDo(atendimento)).length).toBe(antes + 1)
+      await expect(fotos.locator('[data-titulo-da-foto]', { hasText: TITULO }), 'o cartão mostra o título, não o nome do arquivo').toBeVisible()
+      await expect(fotos.locator('[data-titulo-da-foto]', { hasText: 'IMG_0001.png' })).toHaveCount(0)
+      await p.reload()
+      const historico = p.locator('[data-historico-do-atendimento]')
+      await expect(historico.getByText('Foto clínica anexada').first(), 'a foto entra no histórico').toBeVisible()
+      await expect(historico, 'o histórico não repete o título (pode ser dado clínico)').not.toContainText(TITULO)
+      await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
+      await expect(p.locator('[data-documento-da-ficha]').getByText(TITULO, { exact: true }), 'a aba Documentos mostra o título').toBeVisible()
+    })
+    const { data: linhas } = await db().from('appointment_history').select('action, description').eq('appointment_id', atendimento)
+    const daFoto = (linhas ?? []).filter(l => l.action === 'FOTO_CLINICA')
+    expect(daFoto.length, 'uma linha por foto anexada').toBe((await fotosDo(atendimento)).length)
+    for (const l of daFoto) expect(l.description).toBe('Foto clínica anexada')
+    // Quem tem só a agenda vê o histórico — e nada do título.
+    await como(recepcao!, browser, async p => {
+      await p.goto(`/${slug}/agenda/${atendimento}`)
+      await expect(p.locator('[data-historico-do-atendimento]').getByText('Foto clínica anexada').first()).toBeVisible()
+      await expect(p.locator('body')).not.toContainText(TITULO)
+    })
+  })
+
   test('a ligação com o atendimento é conferida: o de outra cliente é recusado', async ({ browser }) => {
     await como(profissional!, browser, async p => {
       await p.goto(`/${slug}/agenda/${atendimento}`)
