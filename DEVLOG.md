@@ -1651,6 +1651,60 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — Frente de produto e estoque: a venda de produto, o uso, a perda e a tela de Estoque
+
+Três decisões do Heitor e cinco ajustes, com o teste escrito antes (migrations
+`20261029001301`–`1307`; as funções de 1305 e 1306 foram aplicadas por
+`execute_sql` porque o `apply_migration` expirou duas vezes — os arquivos têm o
+mesmo conteúdo):
+
+- **A medida "U"** (cd6e99c5, J-11).
+- **A despesa sem "Desconto" e a categoria "Contas (energia, água, internet)"**
+  (83452f65, J-50). Conta no caixa e no lucro; só a "Compra de estoque" fica
+  fora do lucro.
+- **A tela de Estoque** (e6f105d4, J-43/J-44/J-45). O saldo na unidade de
+  consumo ("268 UI / 2,68 frasco", antes "3 frasco"); "No mínimo" separado de
+  "Abaixo do mínimo"; "TOTAL REDE" só com mais de uma unidade; lote, validade e
+  custo no histórico e na linha do produto; o cartão de validade diz quais
+  produtos. A entrada com só a validade passou a guardar o lote.
+- **O uso do produto: Insumo, Revenda ou Os dois** (95293623, D-6). Os de antes:
+  com preço de venda viraram "Os dois" (1), sem, "Insumo" (9).
+- **A saída por perda** (40291c57, D-7): pelo lote, com motivo, sem lançamento;
+  Relatórios → Estoque ganhou "Perdas no período".
+- **A venda de produto** (a6f173d6, 7c4ab6b5, 2e7f8650, D4). A aba Produto no
+  "Vender" da ficha e do inbox: 3 séruns com R$ 47 de desconto no Pix = R$ 400 no
+  caixa, baixa pelo lote que vence primeiro, no relatório de vendas e no
+  faturamento. Pontos ("Não pontua" por padrão) e comissão (%) configuráveis;
+  o custo do produto vendido sai do lucro como o insumo.
+
+**Decisões da frente, para revisar:**
+1. O uso dos produtos de antes saiu do preço de venda.
+2. Produto marcado só como revenda continua no procedimento em que já estava,
+   mas não se escolhe mais como insumo.
+3. "No mínimo" continua alerta ("Estoque baixo — no mínimo ou abaixo").
+4. A coluna "Rendimento" saiu da tela de Estoque (o saldo já a mostra).
+5. A perda se digita em embalagens ("0,5 frasco"), como a entrada e o ajuste.
+6. O custo da perda e da venda é o da entrada do lote; sem lote, a média dos que
+   saem primeiro; sem custo, o do cadastro.
+7. A perda não desconta do lucro: fica só no relatório de perdas.
+8. Só se vende embalagem inteira, de 1 a 100, um produto por venda.
+9. Ligados, os pontos da venda são por real pago, também na clínica que pontua
+   por procedimento.
+10. A comissão vai para quem registrou a venda (como pacote e pré-pago), só
+    quando paga, com a taxa da maquininha se marcada, nunca com insumo.
+11. **A conferir:** estornar a venda devolve dinheiro, pontos e comissão, mas o
+    produto NÃO volta ao estoque, e o custo segue descontado do lucro. Quem
+    quiser o produto de volta lança uma entrada.
+12. O custo do produto vendido entra na mesma linha do insumo ("− Insumos e
+    produtos vendidos").
+13. **A conferir:** com o financeiro "só os meus", a venda de produto conta
+    para quem vendeu nas vendas e no custo, mas no faturamento não conta para
+    ninguém (o recorte só pega dinheiro ligado a atendimento).
+
+Mexeu em `e2e/apoio/limpeza.ts`, `lib/cached-queries.ts`, na sessão de
+atendimento, no "Vender", na ficha, em `lib/metrics/vendas*`, nos Relatórios e
+nas funções do banco de comissão, pontos e resultado: vale uma completa.
+
 ### 2026-10-30 — Frente do portal da cliente: só o que a clínica envia, "Sem preferência" e os dez ajustes do app
 
 As cinco decisões do Heitor e os ajustes J-59…J-68, com o teste escrito antes
@@ -1771,7 +1825,7 @@ Oito decisões da revisão do Heitor, com o teste escrito antes (migrations
 7. Na rede, o em aberto é o das unidades ativas, como o número do mês.
 
 O J-50 é CRIAR a categoria "Contas (energia, água, internet)" (não existe) e
-tirar o "Desconto" da despesa: vai na frente de produto e estoque. O `copilot-indicadores-so-os-meus`
+tirar o "Desconto" da despesa: feito na frente de produto e estoque (83452f65). O `copilot-indicadores-so-os-meus`
 só roda contra o build e ficou para a completa. Mexeu em toda `lib/metrics`,
 nos dashboards, nos Relatórios e nos financeiros: vale uma completa.
 
@@ -8214,7 +8268,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - **A comissão de venda de produto é configurável pela clínica.**
   - **Exige cliente cadastrada**, mesmo que pelo cadastro rápido.
 
-  A FAZER.
+  **Feito em 2026-10-30** (a6f173d6, 7c4ab6b5, 2e7f8650; migrations `20261029001305`–`1307`).
 
 **Média**
 - **D5.** Não há tela para cadastrar salas. A tabela `rooms` e a conferência de conflito de sala existem, mas nenhum código do app insere sala. NOVO.
@@ -8360,8 +8414,8 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 - **D-3:** a campanha de hoje é aviso no celular (push). A tela passa a dizer isso claramente. O WhatsApp fica para o futuro.
 - **D-4:** modelos prontos entram como opção. "Nova automação" continua começando vazia, e o procedimento continua no passo "Se" (condicional), sem ir para o gatilho.
 - **D-5:** um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto. Fica o fluxo de trocar; sai o de criar outro e desativar o atual antes.
-- **D-6:** o cadastro do produto diz o uso: Insumo, Revenda ou Os dois. O insumo aparece no atendimento, e a revenda na venda de produto.
-- **D-7:** cria a saída por perda, com motivo (vencido, quebrou, amostra, uso interno), sem gerar despesa, e um relatório de perdas.
+- **D-6:** o cadastro do produto diz o uso: Insumo, Revenda ou Os dois. O insumo aparece no atendimento, e a revenda na venda de produto. **Feito em 2026-10-30** (95293623).
+- **D-7:** cria a saída por perda, com motivo (vencido, quebrou, amostra, uso interno), sem gerar despesa, e um relatório de perdas. **Feito em 2026-10-30** (40291c57).
 - **D-8:** fica como está; só quem tem o produto envia.
 - **D-9:** ao cadastrar com o telefone de um lead, a tela pergunta "É a mesma pessoa do lead X?" e liga os dois. **Feito em 2026-10-29** (fe24a5cf).
 - **D-10:** a importação aceita a linha que só tem e-mail. Com o telefone repetido, junta tags e origem ao contato que já existe, sem sobrescrever. **Feito em 2026-10-29** (78824d1c).
@@ -8392,7 +8446,7 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-9: o horário próprio nasce do horário da unidade.
 - **Catálogo, fidelidade e busca**
   - J-10: um rótulo só para o self-service.
-  - J-11: a medida "U".
+  - J-11: a medida "U". Feito (cd6e99c5).
   - J-12: o texto do catálogo de fidelidade.
   - J-13: a busca universal acha as telas.
 - **Automações**
@@ -8430,15 +8484,15 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
   - J-41: o título da foto.
   - J-42: a tela do plano mostra a entrada, as parcelas e as sessões.
 - **Estoque**
-  - J-43: "abaixo do mín." quando é igual, e a unidade de consumo.
-  - J-44: a unidade do histórico e o "TOTAL REDE".
-  - J-45: lote, validade e custo na tela.
+  - J-43: "abaixo do mín." quando é igual, e a unidade de consumo. Feito (e6f105d4).
+  - J-44: a unidade do histórico e o "TOTAL REDE". Feito (e6f105d4).
+  - J-45: lote, validade e custo na tela. Feito (e6f105d4).
 - **Caixa e financeiro**
   - J-46: comissão "base cheia" escrito.
   - J-47: o motivo do desconto.
   - J-48: o sinal do total.
   - J-49: os quatro avisos do Fechamento do dia.
-  - J-50: a categoria "Contas", que deve casar com "Compra de estoque".
+  - J-50: a categoria "Contas", que deve casar com "Compra de estoque". Feito (83452f65).
   - J-51: os labels de "Conceder crédito".
   - J-52: "faltam N pontos".
   - J-53: o nome do CSV.
