@@ -547,6 +547,12 @@ const procedures = await ler(
     — fora do `'use server'`, onde todo export é endpoint.
   Prova: `e2e/atendimento-ficha-planejador-injetaveis.spec.ts`,
   `tests/retrato-dos-injetaveis.test.ts`.
+- **O ponto novo do mapa** (J-38, 2026-10-30): o PRIMEIRO nasce sem produto
+  (a linha diz "Escolha o produto"); os seguintes repetem o produto, a dose e
+  a unidade do ÚLTIMO marcado. Nascia com o primeiro produto do catálogo
+  ("Ácido hialurônico") e dose 0. Cada ponto tem "Região (opcional)"
+  (`InjectablePoint.regiao`). A lista de produtos continua texto livre
+  (decisão pendente do Heitor). Prova: `e2e/injetaveis-ponto-novo.spec.ts`.
 - **Os mapas de injetáveis seguem o prontuário "só os meus"** (decisão do
   Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer
   lugar"). Com `medical_records` OWN, a lista de Injetáveis

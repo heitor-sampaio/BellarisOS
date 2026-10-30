@@ -42,6 +42,8 @@ export interface InjectablePoint {
   /** Dose confirmada na aplicação; `null` enquanto for só plano. */
   applied: number | null
   note?:   string
+  /** O nome da região, opcional (J-38, 2026-10-30): "glabela", "frontal". */
+  regiao?: string
   /**
    * Ilustração em que o ponto foi marcado. Ausente nos pontos anteriores a
    * 2026-09-18, que são todos do rosto feminino — é o que

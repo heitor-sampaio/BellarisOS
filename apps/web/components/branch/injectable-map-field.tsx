@@ -150,11 +150,17 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
     if (!canEdit || dragId) return
     const rel = toRelative(e)
     if (!rel) return
+    // O ponto novo repete o produto, a dose e a unidade do ÚLTIMO marcado
+    // (J-38, 2026-10-30): na toxina, os pontos vizinhos são do mesmo produto.
+    // O primeiro nasce SEM produto — a linha pede a escolha. Nascia com o
+    // primeiro da lista ("Ácido hialurônico") e dose 0, e quem marcava toxina
+    // sem reparar gravava ácido.
+    const ultimo = map.points[map.points.length - 1]
     const point: InjectablePoint = {
       id: newId(), x: rel.x, y: rel.y,
-      product: products[0] ?? '',
-      dose: 0,
-      unit: 'UI',
+      product: ultimo?.product ?? '',
+      dose: ultimo?.dose ?? 0,
+      unit: ultimo?.unit ?? 'UI',
       applied: confirmed ? 0 : null,
       // O ponto pertence à ilustração em que foi marcado — é o que permite
       // rosto e corpo no mesmo planejamento.
@@ -619,6 +625,7 @@ function PointRow({
 }) {
   return (
     <div
+      data-ponto-do-mapa
       onClick={onSelect}
       style={{
         padding: '8px 10px', borderRadius: 'var(--radius-row)',
@@ -643,8 +650,10 @@ function PointRow({
             value={point.product}
             onChange={e => onChange({ product: e.target.value })}
             placeholder="Produto"
+            aria-label="Produto"
+            aria-invalid={!point.product.trim() || undefined}
             className="field"
-            style={{ flex: 1, minWidth: 0, padding: '5px 8px', fontSize: 'var(--text-xs-sz)' }}
+            style={{ flex: 1, minWidth: 0, padding: '5px 8px', fontSize: 'var(--text-xs-sz)', borderColor: point.product.trim() ? undefined : 'var(--warning)' }}
           />
         ) : (
           <span style={{ flex: 1, fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
@@ -670,6 +679,30 @@ function PointRow({
           </button>
         )}
       </div>
+
+      {canEdit && !point.product.trim() && (
+        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-bold)' }}>
+          Escolha o produto
+        </span>
+      )}
+
+      {/* A região do ponto, opcional (J-38). */}
+      {canEdit ? (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5 }} onClick={e => e.stopPropagation()}>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap' }}>
+            Região (opcional)
+          </span>
+          <input
+            value={point.regiao ?? ''}
+            onChange={e => onChange({ regiao: e.target.value || undefined })}
+            placeholder="Ex.: glabela"
+            className="field"
+            style={{ flex: 1, minWidth: 0, padding: '5px 8px', fontSize: 'var(--text-xs-sz)' }}
+          />
+        </label>
+      ) : point.regiao ? (
+        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Região: {point.regiao}</span>
+      ) : null}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <DoseInput

@@ -200,8 +200,10 @@ function NovoPlanejamento({
 
         <div style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label className="field-label">Nome *</label>
+            {/* O rótulo LIGADO ao campo (J-38; design.md, Formulários). */}
+            <label className="field-label" htmlFor="novo-planejamento-nome">Nome *</label>
             <input
+              id="novo-planejamento-nome"
               type="text" autoFocus className="field" value={nome}
               onChange={e => setNome(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') void criar() }}
