@@ -913,8 +913,8 @@ function GrantCreditForm({
 
       {unidades.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">Unidade do crédito *</label>
-          <select name="branch_id" required className="field" style={{ background: 'var(--surface)' }} defaultValue="">
+          <label className="field-label" htmlFor="credito-unidade">Unidade do crédito *</label>
+          <select id="credito-unidade" name="branch_id" required className="field" style={{ background: 'var(--surface)' }} defaultValue="">
             <option value="" disabled>Selecione a unidade…</option>
             {unidades.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
@@ -923,8 +923,9 @@ function GrantCreditForm({
 
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">Valor (R$) *</label>
+          <label className="field-label" htmlFor="credito-valor">Valor (R$) *</label>
           <input
+            id="credito-valor"
             type="number" name="amount" required min="0.01" step="0.01"
             placeholder="0,00"
             className="field"
@@ -932,10 +933,11 @@ function GrantCreditForm({
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">Motivo *</label>
+          <label className="field-label" htmlFor="credito-motivo">Motivo *</label>
           <input
+            id="credito-motivo"
             type="text" name="description" required
-            placeholder="Ex: Estorno de pagamento duplicado"
+            placeholder="Ex.: valor pago a mais, que fica para a próxima"
             className="field"
             style={{ background: 'var(--surface)' }}
           />
