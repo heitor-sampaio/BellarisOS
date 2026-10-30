@@ -1651,6 +1651,57 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-29 — Frente de cadastro: telefone de fora, "é a mesma pessoa?" e Documento com tipo
+
+Oito decisões da revisão do Heitor, um commit cada, com o teste escrito antes
+(e abe3137c, as aspas que o lint pediu):
+
+- **Telefone de outro país** (f8440a06). O que começa com "+" passa no cadastro
+  e na aba Dados, gravado como foi escrito; o aviso de repetido vale para ele.
+- **"É a mesma pessoa?" com a ficha rápida** (28a00097). Sim completa a ficha
+  sem CPF do mesmo telefone; Não cria outra.
+- **"É a mesma pessoa do lead X?"** (fe24a5cf, D-9). Sim liga à ficha as
+  oportunidades e as conversas da pessoa, e conta a conversão.
+- **"Documento" com tipo: CPF, Passaporte ou RNE** (edde7da3, D-11). O CPF segue
+  no mesmo campo (unicidade, senha inicial e ligação de contas não mudaram);
+  passaporte e RNE em colunas próprias. Sem CPF, sem acesso ao app, e a tela diz.
+- **O histórico antigo de pagamento em português** (c5ac4659): 6 linhas.
+- **A entrada ilegível ganha o aviso de dinheiro** (fdb90fc5) e a venda não sai
+  com R$ 0 calado.
+- **"0.5" ponto por real é meio ponto** (fd916dd6), e "0.01" no valor do ponto
+  não vira mais R$ 1.
+- **Importação** (78824d1c, D-10). O contato só com e-mail entra; o telefone
+  repetido na planilha junta tags e origem à pessoa e só preenche o que está
+  vazio.
+
+**Decisões da frente, para revisar:**
+1. Número de fora sem "+" ("351912345678") continua recusado: não dá para
+   adivinhar o país.
+2. O número de fora fica gravado como foi escrito; o brasileiro, só com os
+   dígitos, como antes.
+3. O "+" vale só no cadastro e na aba Dados. O agendar rápido, a importação e o
+   Copilot seguem a regra antiga.
+4. A importação continua completando a ficha sem CPF do mesmo telefone sem
+   perguntar (não há quem responda).
+5. A pergunta do lead só aparece para quem tem o CRM, e só pelos leads e
+   conversas que a pessoa alcança; o Sim liga só esses. Também pergunta quando
+   só há conversa, sem lead ("É a mesma pessoa do contato X?").
+6. Lead com várias oportunidades: o Sim converte a mais recente e liga as outras.
+7. O contrato e os documentos mostram só o CPF. O passaporte é único por rede.
+   A ficha tem um documento ou outro: trocar o tipo apaga o anterior.
+8. No checkout, a entrada maior que o total continua cortada no total, calada.
+9. O valor do ponto aceita até 4 casas (0,0001); pontos por real e teto, 2.
+10. Na importação para a ficha (clientes), o telefone continua obrigatório e a
+    linha repetida continua recusada (mãe e filha); só a de contatos mudou.
+11. A origem importada entra como tag da pessoa, também na nova. Reimportar a
+    mesma planilha pode marcá-la "completada" em vez de "sem mudança".
+12. Ficou no banco uma função que traduz o código da forma de pagamento, só
+    para o servidor (o teste a chama).
+
+Mexeu em `parseDinheiro` (agora `parseDecimal`, usado por todo campo de
+dinheiro), em `lib/crm/oportunidade.ts`, `lib/clients/atualizar.ts`, nos
+campos do pagamento e no checkout: vale uma completa.
+
 ### 2026-10-29 — Frente de permissões: o plano é da cliente, só a Admin mexe na Admin
 
 Seis decisões da revisão do Heitor, um commit cada, com o teste escrito antes:
@@ -8027,7 +8078,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
     1. O valor ambíguo é recusado, não adivinhado.
     2. "12.500" no percentual de comissão dá 12500 e é recusado pelo limite.
     3. A entrada do contrato com texto ambíguo continua virando 0, sem aviso, como qualquer texto inválido de antes.
-  - **Revisto pelo Heitor (2026-10-29):** (1) e (2) confirmados. (3): a entrada do contrato ganha o MESMO aviso dos outros campos e deixa de aceitar R$ 0 calado. A FAZER.
+  - **Revisto pelo Heitor (2026-10-29):** (1) e (2) confirmados. (3): a entrada do contrato ganha o MESMO aviso dos outros campos e deixa de aceitar R$ 0 calado. **Feito em 2026-10-29** (fdb90fc5): contrato, pacote, pré-pago e checkout do plano.
 - **D4.** Não existe venda de produto. O cadastro tem "Venda direta" e preço de venda, mas o "Vender" da ficha só oferece Procedimento e Pacote. A única saída é o ajuste, que não gera receita, pontos nem caixa. NOVO, como caminho que falta, e grande o bastante para ser decisão de escopo.
 
   **Decidido pelo Heitor (2026-10-29): fazer.** "Produto" entra no "Vender" da ficha da cliente, com quantidade, desconto e forma de pagamento. O estoque baixa pelo lote que vence primeiro. A venda vai para o caixa, para as vendas e para o faturamento.
@@ -8092,7 +8143,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
   - A descrição agora diz "via Crédito 3x", com o nome curto que a tela usa, pela função `private.rotulo_da_forma`.
   - O checkout do plano ("3x em CREDIT_CARD") e o recebimento do plano no check-in também foram traduzidos.
   - Prova: `e2e/financeiro-historico-forma-em-portugues.spec.ts`.
-  - O histórico já gravado ficou como estava: seis linhas nas redes [sim] e três na Bellaris Clinic. **Revisto pelo Heitor (2026-10-29): traduzir também as antigas**, para o histórico ficar todo igual. A FAZER. Confirmados o nome curto da forma ("via Crédito 3x"), o "180.50" no fechamento e na oportunidade, e a unidade do plano lida na hora (D9).
+  - O histórico já gravado ficou como estava: seis linhas nas redes [sim] e três na Bellaris Clinic. **Revisto pelo Heitor (2026-10-29): traduzir também as antigas**, para o histórico ficar todo igual. **Feito em 2026-10-29** (c5ac4659, migration `20261029001002`): eram 6 linhas, agora 0. Confirmados o nome curto da forma ("via Crédito 3x"), o "180.50" no fechamento e na oportunidade, e a unidade do plano lida na hora (D9).
 - **D19.** O link da ficha e o link de assinatura dizem "Olá, Dona!" e "confirme o seu data de nascimento" (`actions/pre-atendimento.ts:264-266`, `actions/documentos.ts:406`). **Feito em 2026-10-29** (fa69b27d). `nomeParaSaudar` pula o tratamento (Dona, Seu, Sr., Dra.…) também na home do portal, na assinatura e no `{{first_name}}` das campanhas. Os links têm uma frase só, com a concordância certa.
 
 **Decisões da frente 5, para revisar:**
@@ -8108,7 +8159,7 @@ O consolidador conferiu os defeitos no código ou no banco, só com SELECT, e n�
 - (1), (2), (4), (6) e (7) confirmados.
 - **(3) Aceitar número internacional**: o que começa com "+" (ex.: +351 …) passa no cadastro e na aba Dados.
 - **(5) A ficha rápida de mesmo telefone não é mais completada calada.** A tela pergunta "Já existe a ficha de <nome> com este telefone. É a mesma pessoa?". Com Sim, completa a ficha; com Não, nasce uma ficha nova.
-- A FAZER: (3) e (5), na frente de cadastro.
+- **Feitos em 2026-10-29** (frente de cadastro): (3) em f8440a06, (5) em 28a00097.
 
 ~~**Sobra do D13 revisto (`e46e27b`).**~~ **Feita pela frente H em 7ebdd975**, que agora diz "Informativo: não entra no lucro". O spec velho e o comentário foram ajustados em 08cc969b. O cartão "Consumo de insumos" dos Relatórios ainda diz "a compra já está nas despesas (Estoque)". O texto está em `components/admin/reports-bi-view.tsx:418` e nos comentários em `:426` e em `reports-charts.tsx:237`. O E2E `e2e/estoque-custo-de-consumo.spec.ts:247` exige esse texto.
 
@@ -8143,7 +8194,7 @@ A sugestão: com uma unidade ativa, esconder o vocabulário de rede, sem mudar o
 6. **Ocupação (D12 e a ocupação revista, para revisar).** Na mesma unidade única, o dashboard da unidade dá 12% e o da rede dá 80%, com o mesmo nome e outra definição (aproveitamento). A da "Minha agenda" é um terceiro número, e esse é defeito (D11).
 7. **Grade pela unidade (D5, confirmado).** A tela mostra como "livre" um horário em que a profissional de horário próprio não atende. É só para o Heitor saber.
 8. **Decisão nova:** a cliente ganha pontos sobre a entrada de um plano parcelado antes de qualquer sessão, e as parcelas pontuam quando pagas. É coerente com "1 ponto por R$ pago", mas vale confirmar. **Confirmado pelo Heitor (2026-10-29):** o ponto acompanha o pagamento, e a clínica configura quantos pontos dá por real. Isso já existe em Fidelidade → Configurações (`points_per_real`).
-   - **Defeito achado na conferência:** `components/admin/fidelidade-config.tsx:72` tira todos os pontos antes de trocar a vírgula. Com isso, "0.5" vira 5, a mesma classe do D3. A FAZER, com o aviso "use vírgula".
+   - **Defeito achado na conferência:** `components/admin/fidelidade-config.tsx:72` tira todos os pontos antes de trocar a vírgula. Com isso, "0.5" vira 5, a mesma classe do D3. **Feito em 2026-10-29** (fd916dd6), com o aviso "use vírgula". O "Valor de 1 ponto" tinha o mesmo defeito ("0.01" virava R$ 1) e foi corrigido junto.
 
 ### Os atritos da 3ª e da 4ª simulação: a lista única (triagem de 2026-10-29)
 
@@ -8184,9 +8235,9 @@ Pedido do Heitor: uma lista única, sem repetidos, com os ajustes de tela corrig
 - **D-6:** o cadastro do produto diz o uso: Insumo, Revenda ou Os dois. O insumo aparece no atendimento, e a revenda na venda de produto.
 - **D-7:** cria a saída por perda, com motivo (vencido, quebrou, amostra, uso interno), sem gerar despesa, e um relatório de perdas.
 - **D-8:** fica como está; só quem tem o produto envia.
-- **D-9:** ao cadastrar com o telefone de um lead, a tela pergunta "É a mesma pessoa do lead X?" e liga os dois.
-- **D-10:** a importação aceita a linha que só tem e-mail. Com o telefone repetido, junta tags e origem ao contato que já existe, sem sobrescrever.
-- **D-11:** o campo vira "Documento" com tipo (CPF, Passaporte, RNE). Sem CPF, a cliente fica sem acesso ao app por enquanto.
+- **D-9:** ao cadastrar com o telefone de um lead, a tela pergunta "É a mesma pessoa do lead X?" e liga os dois. **Feito em 2026-10-29** (fe24a5cf).
+- **D-10:** a importação aceita a linha que só tem e-mail. Com o telefone repetido, junta tags e origem ao contato que já existe, sem sobrescrever. **Feito em 2026-10-29** (78824d1c).
+- **D-11:** o campo vira "Documento" com tipo (CPF, Passaporte, RNE). Sem CPF, a cliente fica sem acesso ao app por enquanto. **Feito em 2026-10-29** (edde7da3, migration `20261029001001`).
 - **D-12:** fazer o campo "Retorno em N dias" no atendimento. Ele vira lembrete à recepção e gatilho de automação.
 - **D-13: deixar como está.** A ficha já é customizável.
 - **D-14:** o card mantém o número do mês, e abaixo vem a linha "Em aberto, todos os vencimentos: R$ X".
