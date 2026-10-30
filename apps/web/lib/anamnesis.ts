@@ -12,7 +12,7 @@ export type AnamnesisFieldType =
 // dose de toxina era registrada até aqui.
 
 /** Unidades de dose. Mesmo vocabulário do estoque (`consumption_unit`). */
-export const INJECTABLE_UNITS = ['UI', 'ml', 'mg'] as const
+export const INJECTABLE_UNITS = ['UI', 'U', 'ml', 'mg'] as const
 export type InjectableUnit = typeof INJECTABLE_UNITS[number]
 
 /**

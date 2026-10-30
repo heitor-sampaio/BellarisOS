@@ -7,6 +7,7 @@ import {
 import { X, Package, Building2, ChevronDown, Barcode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
+import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -112,7 +113,7 @@ function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; de
   )
 }
 
-const UNITS = ['un', 'UI', 'ml', 'L', 'g', 'kg', 'cx', 'par', 'rolo', 'ampola', 'frasco']
+const UNITS = MEDIDAS_DO_PRODUTO
 
 function skuPrefix(cat: string): string {
   return cat
