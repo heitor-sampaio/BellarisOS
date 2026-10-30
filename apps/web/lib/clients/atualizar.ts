@@ -6,10 +6,11 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { camposAlterados } from '@/lib/events/emitir'
+import { documentoEstrangeiroRepetido, type ColunasDoDocumento } from '@/lib/clients/documento'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-const COLUNAS_DO_EVENTO = 'name, phone, email, birth_date, document, tags, gender, notes, city'
+const COLUNAS_DO_EVENTO = 'name, phone, email, birth_date, document, documento_tipo, documento_numero, tags, gender, notes, city'
 
 /**
  * Atualizar o cadastro de um cliente — o núcleo que a ficha
@@ -37,6 +38,9 @@ export async function atualizarClienteCore(
       .limit(1).maybeSingle(), 'buscar o cliente')
     if (dup) return { error: `CPF já cadastrado para ${dup.name}.` }
   }
+  // O passaporte ou RNE (D-11): um por rede, como o CPF.
+  const repetido = await documentoEstrangeiroRepetido(admin, ctx.tenantId!, colunas as Partial<ColunasDoDocumento>, clientId)
+  if (repetido) return { error: repetido }
 
   await gravar(admin.from('clients').update({ ...colunas, updated_at: new Date().toISOString() })
     .eq('id', clientId).eq('tenant_id', ctx.tenantId!), 'atualizar o cliente')

@@ -7,7 +7,7 @@ import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
-import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
+import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 
@@ -76,7 +76,9 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const [email, setEmail] = useState(prefill?.email ?? '')
   // O acesso ao app é escolha (2026-10-21): só com e-mail e CPF.
   const [comAcesso, setComAcesso] = useState(false)
-  const podeAcesso = email.trim().length > 0 && document.replace(/\D/g, '').length === 11
+  // O tipo do documento (D-11): sem CPF não há acesso ao app por enquanto — a senha inicial é o CPF.
+  const [tipoDoc, setTipoDoc] = useState<string>('CPF')
+  const podeAcesso = tipoDoc === 'CPF' && email.trim().length > 0 && document.replace(/\D/g, '').length === 11
   const [unitId, setUnitId] = useState(branchId || branches?.[0]?.id || '')
 
   const router   = useRouter()
@@ -202,13 +204,26 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           />
         </Field>
 
-        <Field label="CPF">
-          <input
-            name="document" type="text" className="field" inputMode="numeric"
-            value={document}
-            onChange={e => setDocument(maskCPF(e.target.value))}
-            placeholder="000.000.000-00"
-          />
+        {/* O "Documento" tem tipo (D-11): CPF, passaporte ou RNE. */}
+        <Field label="Documento" grupo>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select
+              name="document_type" className="field" aria-label="Tipo do documento"
+              value={tipoDoc}
+              onChange={e => { setTipoDoc(e.target.value); setDocument('') }}
+              style={{ width: 'auto', flex: '0 0 auto' }}
+            >
+              {TIPOS_DE_DOCUMENTO.map(t => <option key={t.valor} value={t.valor}>{t.rotulo}</option>)}
+            </select>
+            <input
+              name="document" type="text" className="field" aria-label="Número do documento"
+              inputMode={tipoDoc === 'CPF' ? 'numeric' : 'text'}
+              value={document}
+              onChange={e => setDocument(tipoDoc === 'CPF' ? maskCPF(e.target.value) : e.target.value.toUpperCase())}
+              placeholder={tipoDoc === 'CPF' ? '000.000.000-00' : tipoDoc === 'RNE' ? 'V123456-7' : 'AB123456'}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+          </div>
         </Field>
 
         <Field label="Data de nascimento">
@@ -349,6 +364,16 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         </div>
       )}
 
+      {tipoDoc !== 'CPF' ? (
+        <p style={{
+          fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
+          background: 'var(--bg-app)', border: '1px solid var(--hairline)',
+          borderRadius: 10, padding: '10px 12px',
+        }}>
+          <b style={{ color: 'var(--text)' }}>Sem CPF, a cliente fica sem acesso ao app por enquanto</b> — a senha
+          inicial do app é o CPF. Ela é cadastrada normalmente, sem o login.
+        </p>
+      ) : (
       <label style={{
         display: 'flex', gap: 10, alignItems: 'flex-start',
         fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
@@ -373,6 +398,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           )}
         </span>
       </label>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
         {showCancelButton && (

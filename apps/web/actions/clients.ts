@@ -18,9 +18,9 @@ import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { pessoaDoCrmDoTelefone, ligarPessoaDoCrmAoCliente, type PessoaDoCrm } from '@/lib/clients/pessoa-do-crm'
 import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
+import { CPF_INVALIDO, documentoDaFicha, documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 
 const TELEFONE_INCOMPLETO = 'Telefone incompleto: informe o DDD e o número (10 ou 11 dígitos). De outro país, comece com + e o código do país (ex.: +351 912 345 678).'
-const CPF_INVALIDO = 'CPF inválido: confira os números.'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -98,7 +98,10 @@ export async function addClient(
   const phone     = (formData.get('phone') as string)?.trim()
   const email     = (formData.get('email') as string)?.trim().toLowerCase() || null
   const rawDoc    = (formData.get('document') as string)?.trim() || null
-  const document  = rawDoc ? rawDoc.replace(/\D/g, '') : null
+  // O "Documento" tem tipo (D-11): CPF em `document`, passaporte e RNE nas colunas deles.
+  const doc       = documentoDaFicha(formData.get('document_type') as string | null, rawDoc)
+  if ('error' in doc) return { error: doc.error }
+  const document  = doc.colunas.document
   const birthDate = (formData.get('birth_date') as string) || null
   const gender    = (formData.get('gender') as string) || null
   const notes     = (formData.get('notes') as string)?.trim() || null
@@ -120,11 +123,14 @@ export async function addClient(
   const fone = telefoneDoCadastro(phone)
   if (!fone) return { error: TELEFONE_INCOMPLETO }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'E-mail inválido.' }
-  // D12: pelos dígitos verificadores — o 11111111111 passava e virava a senha inicial do login.
-  if (document && !cpfValido(document))    return { error: CPF_INVALIDO }
+  // D12: pelos dígitos verificadores (em `documentoDaFicha`) — o 11111111111 passava e virava a senha inicial do login.
+  // Sem CPF (passaporte, RNE), sem acesso ao app por enquanto: a senha inicial é o CPF.
   if (comAcesso && (!email || !document))  return { error: 'O acesso ao app precisa do e-mail e do CPF.' }
 
   const admin = createAdminClient()
+
+  const repetido = await documentoEstrangeiroRepetido(admin, ctx.tenantId!, doc.colunas)
+  if (repetido) return { error: repetido }
 
   // CPF único por rede. Na conversão (leadId), se o CPF já é de um cliente, liga o lead a ele (dedupe).
   const existing = !document ? null : await ler(admin
@@ -228,7 +234,7 @@ export async function addClient(
   // 2) Cliente — completa a ficha rápida quando ela existe, senão cria.
   const dadosDoCliente = {
     tenant_id: ctx.tenantId!, branch_id: branchId,
-    name, phone: fone.gravar, email, document,
+    name, phone: fone.gravar, email, ...doc.colunas,
     birth_date: birthDate, gender, notes, tags,
     is_active: true, auth_id: authId,
   }
@@ -417,6 +423,8 @@ export async function updateClientContactData(
     name?:              string
     gender?:            string | null
     document:           string | null
+    /** O tipo do documento (D-11): CPF (o padrão), PASSAPORTE ou RNE. */
+    documentType?:      string | null
     phone:              string | null
     email:              string | null
     birthDate:          string | null
@@ -443,11 +451,12 @@ export async function updateClientContactData(
   }
   // As mesmas regras do cadastro (D12, D13).
   if (data.phone?.trim() && !telefoneDoCadastro(data.phone)) return { error: TELEFONE_INCOMPLETO }
-  if (data.document?.replace(/\D/g, '') && !cpfValido(data.document)) return { error: CPF_INVALIDO }
+  const doc = documentoDaFicha(data.documentType ?? 'CPF', data.document)
+  if ('error' in doc) return doc
 
   // O núcleo que a ficha e o Copilot dividem (lib/clients/atualizar.ts).
   return atualizarClienteCore(admin, ctx, clientId, {
-    document:            data.document?.replace(/\D/g, '') || null,
+    ...doc.colunas,
     // O de outro país guarda o "+", como foi escrito: é por ele que se sabe que não é nacional.
     phone:               telefoneInternacional(data.phone) ?? (data.phone?.replace(/\D/g, '') || null),
     email:               data.email?.trim() || null,

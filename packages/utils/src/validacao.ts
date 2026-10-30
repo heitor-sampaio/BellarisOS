@@ -60,3 +60,23 @@ export function telefoneDoCadastro(telefone: string | null | undefined): { digit
   const nacional = telefoneNacional(telefone)
   return nacional ? { digitos: nacional, gravar: maskPhone(nacional) } : null
 }
+
+/** Os tipos de documento da ficha (D-11, 2026-10-29). O CPF mora em `clients.document`; os outros, em `documento_tipo`/`documento_numero`. */
+export const TIPOS_DE_DOCUMENTO = [
+  { valor: 'CPF', rotulo: 'CPF' },
+  { valor: 'PASSAPORTE', rotulo: 'Passaporte' },
+  { valor: 'RNE', rotulo: 'RNE' },
+] as const
+export type TipoDeDocumento = (typeof TIPOS_DE_DOCUMENTO)[number]['valor']
+
+/**
+ * O número do passaporte ou do RNE (D-11, decisão do Heitor de 2026-10-29):
+ * texto livre RAZOÁVEL — letras e números, com hífen, ponto ou barra no meio,
+ * pelo menos um número, 5 a 20 caracteres. Volta em maiúsculas e sem espaço
+ * (é a chave da unicidade na rede); o ilegível é nulo.
+ */
+export function documentoEstrangeiro(numero: string | null | undefined): string | null {
+  const s = (numero ?? '').toUpperCase().replace(/\s+/g, '')
+  if (s.length < 5 || s.length > 20 || !/\d/.test(s)) return null
+  return /^[A-Z0-9][A-Z0-9./-]*[A-Z0-9]$/.test(s) ? s : null
+}

@@ -21,7 +21,7 @@ import { LeadTimeline } from './lead-timeline'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { rotaAgenda, rotaClientes } from '@/lib/rotas'
 import { rotaComParams } from '@/lib/query-params'
-import { isUnitTag, unitTag, unitTagName, iniciaisDoNome, maskPhone } from '@estetica-os/utils'
+import { isUnitTag, unitTag, unitTagName, iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { format, isSameDay, subDays } from 'date-fns'
@@ -45,6 +45,9 @@ export interface ProfileClient {
   phone:              string
   email:              string | null
   document:           string | null
+  /** O documento de quem não tem CPF (D-11): o tipo e o número. Nulo = o documento é o CPF. */
+  documentoTipo?:     'PASSAPORTE' | 'RNE' | null
+  documentoNumero?:   string | null
   birthDate:          string | null
   gender:             string | null
   tags:               string[]
@@ -471,7 +474,9 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
   // digitado errado no cadastro nao tinha caminho nenhum no sistema.
   const [nome,       setNome]       = useState(client.name ?? '')
   const [gender,     setGender]     = useState(client.gender ?? '')
-  const [cpf,        setCpf]        = useState(client.document ? applyDocMask(client.document) : '')
+  // O "Documento" tem tipo (D-11): CPF (com a máscara e a busca de repetido) ou passaporte/RNE.
+  const [tipoDoc,    setTipoDoc]    = useState<string>(client.documentoTipo ?? 'CPF')
+  const [cpf,        setCpf]        = useState(client.documentoTipo ? (client.documentoNumero ?? '') : client.document ? applyDocMask(client.document) : '')
   const [phone,      setPhone]      = useState(maskPhone(client.phone ?? ''))
   const [email,      setEmail]      = useState(client.email ?? '')
   const [birthDate,  setBirthDate]  = useState(client.birthDate ? client.birthDate.slice(0, 10) : '')
@@ -497,6 +502,12 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
   const cpfTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleCpfChange(v: string) {
+    if (tipoDoc !== 'CPF') {
+      setCpf(v.toUpperCase())
+      setCpfStatus('idle')
+      setSaved(false)
+      return
+    }
     const masked = applyDocMask(v)
     setCpf(masked)
     setCpfStatus('idle')
@@ -540,7 +551,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
     setSaveError(null)
     const result = await updateClientContactData(
       client.id,
-      { name: nome, gender, document: cpf, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags },
+      { name: nome, gender, document: cpf, documentType: tipoDoc, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags },
       slug,
     )
     setSaving(false)
@@ -578,14 +589,24 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
         </div>
       </div>
 
-      {/* CPF */}
+      {/* Documento: CPF, passaporte ou RNE (D-11) */}
       <div>
-        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>CPF</p>
-        <div style={{ position: 'relative' }}>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Documento</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+        <select
+          aria-label="Tipo do documento"
+          value={tipoDoc}
+          onChange={e => { setTipoDoc(e.target.value); setCpf(''); setCpfStatus('idle'); setSaved(false) }}
+          style={{ ...fieldStyle, width: 'auto', flex: '0 0 auto' }}
+        >
+          {TIPOS_DE_DOCUMENTO.map(t => <option key={t.valor} value={t.valor}>{t.rotulo}</option>)}
+        </select>
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
           <input
             type="text"
-            inputMode="numeric"
-            placeholder="000.000.000-00"
+            aria-label="Número do documento"
+            inputMode={tipoDoc === 'CPF' ? 'numeric' : 'text'}
+            placeholder={tipoDoc === 'CPF' ? '000.000.000-00' : tipoDoc === 'RNE' ? 'V123456-7' : 'AB123456'}
             value={cpf}
             onChange={e => handleCpfChange(e.target.value)}
             style={{ ...fieldStyle, paddingRight: 36 }}
@@ -596,6 +617,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
           {cpfStatus === 'ok' && (
             <CheckCircle2 size={14} style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--success)' }} />
           )}
+        </div>
         </div>
         {cpfStatus === 'dup' && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginTop: 5 }}>
@@ -766,7 +788,13 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
         })()}
       </div>
 
-      {!client.temAcesso && <AcessoAoApp clientId={client.id} pronto={!!client.email && (client.document ?? '').replace(/\D/g, '').length === 11} />}
+      {!client.temAcesso && (
+        <AcessoAoApp
+          clientId={client.id}
+          pronto={!!client.email && (client.document ?? '').replace(/\D/g, '').length === 11}
+          semCpf={client.documentoTipo ? (client.documentoTipo === 'RNE' ? 'RNE' : 'passaporte') : null}
+        />
+      )}
 
       {saveError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{saveError}</p>}
 
@@ -791,7 +819,11 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
  * A ficha sem login no app (a cliente de balcão, 2026-10-21): o acesso se dá
  * aqui, com o e-mail e o CPF já SALVOS na ficha.
  */
-function AcessoAoApp({ clientId, pronto }: { clientId: string; pronto: boolean }) {
+function AcessoAoApp({ clientId, pronto, semCpf }: {
+  clientId: string; pronto: boolean
+  /** O documento é passaporte ou RNE (D-11): sem CPF, sem acesso ao app por enquanto — nada a oferecer. */
+  semCpf?: string | null
+}) {
   const router = useRouter()
   const [dando, setDando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -805,6 +837,17 @@ function AcessoAoApp({ clientId, pronto }: { clientId: string; pronto: boolean }
     if ('error' in r) { setErro(r.error); return }
     setFeito(true)
     router.refresh()
+  }
+
+  if (semCpf) {
+    return (
+      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--hairline)', borderRadius: 10, padding: '10px 12px' }}>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          O documento desta cliente é o {semCpf}, sem CPF — ela não tem acesso ao app por enquanto (a senha inicial
+          do app é o CPF).
+        </p>
+      </div>
+    )
   }
 
   return (

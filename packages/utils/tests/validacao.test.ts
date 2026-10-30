@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cpfValido, telefoneNacional, telefoneDoCadastro } from '../src/validacao'
+import { cpfValido, telefoneNacional, telefoneDoCadastro, documentoEstrangeiro } from '../src/validacao'
 
 // D12 da simulação de 2026-10-29: o CPF 11111111111 passava no cadastro com
 // acesso ao app (só o TAMANHO era conferido), e o login nascia com ele de senha.
@@ -63,5 +63,25 @@ describe('o telefone do cadastro (nacional ou de outro país)', () => {
   })
   it('sem o "+", o número de outro país é lido como nacional (não se adivinha o país)', () => {
     expect(telefoneDoCadastro('351912345678')).toBeNull()
+  })
+})
+
+// D-11 (frente de cadastro, 2026-10-29): o "Documento" tem tipo — CPF,
+// Passaporte ou RNE. O CPF segue `cpfValido`; os outros, texto livre razoável.
+describe('o documento de estrangeira (passaporte, RNE)', () => {
+  it('letras e números, com hífen, ponto ou barra no meio; volta em maiúsculas, sem espaço', () => {
+    expect(documentoEstrangeiro('ab123456')).toBe('AB123456')
+    expect(documentoEstrangeiro(' V123456-7 ')).toBe('V123456-7')
+    expect(documentoEstrangeiro('CA 12 34 56')).toBe('CA123456')
+    expect(documentoEstrangeiro('X.123.456/0')).toBe('X.123.456/0')
+  })
+  it('curto, longo, sem número ou com símbolo estranho não é documento', () => {
+    expect(documentoEstrangeiro('ab1')).toBeNull()
+    expect(documentoEstrangeiro('A'.repeat(10) + '1'.repeat(11))).toBeNull()
+    expect(documentoEstrangeiro('ABCDEFG')).toBeNull()
+    expect(documentoEstrangeiro('AB#123456')).toBeNull()
+    expect(documentoEstrangeiro('-AB12345')).toBeNull()
+    expect(documentoEstrangeiro('')).toBeNull()
+    expect(documentoEstrangeiro(null)).toBeNull()
   })
 })

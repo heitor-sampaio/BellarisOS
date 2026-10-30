@@ -7,6 +7,17 @@
 
 ### 9.2 Clientes / CRM
 - CPF (`document`) único por `tenantId` — constraint `@@unique([tenantId, document])`
+- **O "Documento" tem tipo: CPF, Passaporte ou RNE** (D-11, decisão do
+  Heitor, frente de cadastro de 2026-10-29; migration `20261029001001`). O
+  CPF continua SÓ em `document` (máscara, `cpfValido`, unicidade, a senha
+  inicial do app e `login_de_cliente_para_ligar` não mudaram); passaporte e
+  RNE moram em `documento_tipo` + `documento_numero` (texto livre razoável,
+  `documentoEstrangeiro`: 5 a 20 letras e números, maiúsculas, um por rede).
+  A ficha tem um OU outro (`documentoDaFicha`, `lib/clients/documento.ts`, no
+  cadastro e na aba Dados). **Sem CPF, a cliente fica SEM acesso ao app por
+  enquanto** (a senha inicial é o CPF): o cadastro não oferece a caixa e diz
+  por quê, e a aba Dados não oferece "Dar acesso ao app". Prova:
+  `e2e/ficha-cadastro-documento.spec.ts`.
 - `authId` em `Client` é opcional — preenchido quando a CLÍNICA dá o acesso ao
   app. **O mesmo login pode estar em várias fichas, uma por rede** (a mesma
   pessoa cliente de várias clínicas, 2026-10-19 — regras no §5 do

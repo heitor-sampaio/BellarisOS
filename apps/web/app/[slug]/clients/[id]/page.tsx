@@ -69,6 +69,8 @@ export default async function ClientProfilePage({
     phone:             raw.phone,
     email:             raw.email ?? null,
     document:          raw.document ?? null,
+    documentoTipo:     (raw.documento_tipo as ProfileClient["documentoTipo"]) ?? null,
+    documentoNumero:   raw.documento_numero ?? null,
     birthDate:         raw.birth_date ?? null,
     gender:            raw.gender ?? null,
     tags:              (raw.tags as string[]) ?? [],

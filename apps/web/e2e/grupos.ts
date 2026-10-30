@@ -65,6 +65,7 @@ export const ISOLADOS = [
   'estoque-nunca-gera-despesa.spec.ts',
   'estrutura-endereco-da-unidade.spec.ts',
   'fechamento-escopo-proprio.spec.ts',
+  'ficha-cadastro-documento.spec.ts',
   'ficha-cadastro-mesma-pessoa-do-lead.spec.ts',
   'ficha-cadastro-validacao.spec.ts',
   'ficha-pre-atendimento.spec.ts',
