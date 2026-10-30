@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
+import { startTransition, useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar } from '@/actions/appointments'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
@@ -264,7 +264,18 @@ export function AppointmentModal({
           <button onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={16} /></button>
         </div>
 
-        <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* onSubmit + startTransition, e não `action={formAction}` (J-28): o
+            `<form action>` do React REINICIA o formulário ao fim da action, com
+            erro ou não — a recusa por conflito apagava a observação digitada.
+            Como o cadastro de cliente (client-form). */}
+        <form
+          onSubmit={e => {
+            e.preventDefault()
+            const dados = new FormData(e.currentTarget)
+            startTransition(() => formAction(dados))
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        >
           <input type="hidden" name="_branchId" value={unidadeId} />
           <input type="hidden" name="_slug" value={dados.slug} />
           <input type="hidden" name="client_id" value={selectedClient?.id ?? ''} />
