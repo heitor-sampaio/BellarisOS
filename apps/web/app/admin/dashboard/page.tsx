@@ -46,9 +46,9 @@ type SaldoLido = {
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string; funil?: string }>
+  searchParams: Promise<{ period?: string; from?: string; to?: string; funil?: string; unidade?: string }>
 }) {
-  const { period: rawPeriod, from: rawFrom, to: rawTo, funil: rawFunil } = await searchParams
+  const { period: rawPeriod, from: rawFrom, to: rawTo, funil: rawFunil, unidade: rawUnidade } = await searchParams
 
   const ctx   = await getTenantContext()
 
@@ -128,9 +128,17 @@ export default async function AdminDashboardPage({
     .eq('is_active', true)
     .order('name'), 'carregar as unidades')
 
-  const branches  = branchesRaw ?? []
+  const todasAsUnidades = branchesRaw ?? []
   // D-19: a clínica de uma unidade só não vê ranking nem "por filial".
   const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+  // `?unidade=<id|slug>` recorta a rede a uma unidade (J-54, 2026-10-30): é o
+  // drill-down da rede (CLAUDE.md §6), que o dashboard ignorava. A abrangência
+  // vence o pedido (ctx.branchId ?? unidade); valor desconhecido ou unidade
+  // desativada cai na rede inteira. Com uma unidade só, não há o que recortar.
+  const pedida = umaUnidade ? null : todasAsUnidades.find(b => b.id === rawUnidade || b.slug === rawUnidade)?.id ?? null
+  const unidadeId = ctx.branchId ?? pedida
+  const branches  = unidadeId ? todasAsUnidades.filter(b => b.id === unidadeId) : todasAsUnidades
+  const unidadeRecortada = unidadeId && !umaUnidade ? (branches[0]?.name ?? null) : null
   const branchIds = branches.map(b => b.id)
 
   if (branchIds.length === 0) {
@@ -186,7 +194,8 @@ export default async function AdminDashboardPage({
     getCoreDosModulos({ ...janela, from: prevStart, to: prevEnd, recorte }),
     // Por unidade: o ranking de filiais (dinheiro e agenda de cada unidade, só
     // sem "só os meus") e a ocupação por filial (a agenda: sem a agenda dela).
-    agendaDela ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate }),
+    agendaDela ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate })
+      .then(linhas => unidadeId ? linhas.filter(l => l.branchId === unidadeId) : linhas),
     // A série é dinheiro: com o financeiro dela, a receita DELA (só a receita).
     getSeries({ ...doDinheiro, granularity: period === 'today' ? 'hour' : 'day' }),
     // Os rankings que CONTAM seguem a agenda; os de VALOR, o dinheiro.
@@ -542,6 +551,14 @@ export default async function AdminDashboardPage({
     marketing = { connected, spend, reach, activeCampaigns, totalCampaigns, notifActive }
   }
 
+  // A volta à rede guarda o período e o funil escolhidos.
+  const daRede = new URLSearchParams()
+  if (rawPeriod) daRede.set('period', rawPeriod)
+  if (rawFrom)   daRede.set('from', rawFrom)
+  if (rawTo)     daRede.set('to', rawTo)
+  if (rawFunil)  daRede.set('funil', rawFunil)
+  const hrefDaRede = `/admin/dashboard${daRede.size ? `?${daRede}` : ''}`
+
   return (
     <>
       <RealtimeRefresher
@@ -571,7 +588,11 @@ export default async function AdminDashboardPage({
         clientesQuePagaram={clientesQuePagaram}
         totalClientsEver={totalClientsEver ?? 0}
         branchCount={branches.length}
-        umaUnidade={umaUnidade}
+        // Recortada a uma unidade, os quadros "por filial" saem como na
+        // clínica de uma unidade só — e o título diz qual.
+        umaUnidade={umaUnidade || !!unidadeRecortada}
+        unidadeRecortada={unidadeRecortada}
+        hrefDaRede={hrefDaRede}
         prevRevenue={prevRevenue}
         prevAppointments={prevAppointments}
         prevNewClients={prevClientsCount ?? 0}

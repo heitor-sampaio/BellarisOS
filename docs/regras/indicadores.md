@@ -347,6 +347,17 @@ faz sentido com duas. Seletor de unidade que já some com `length > 1` (agenda
 da rede, filtro dos Relatórios, estoque) segue a mesma regra. Prova:
 `e2e/rede-de-uma-unidade.spec.ts`.
 
+**O dashboard da rede recorta a unidade do `?unidade=<id|slug>`** (J-54,
+2026-10-30; o drill-down do CLAUDE.md §6, que ele ignorava): o título é a
+unidade, os números são os dela (o núcleo, as séries, os rankings, o hoje, o
+estoque — `branchIds` dela), os quadros "por filial" saem como na clínica de
+uma unidade só, e "Ver a rede inteira" volta guardando o período. A
+abrangência vence o pedido (`ctx.branchId ?? unidade`); valor desconhecido cai
+na rede; com uma unidade só (D-19) não há recorte. O nome da filial no
+"Ranking de filiais" leva a esse recorte. O funil de oportunidades continua o
+da rede. Clientes do /admin abre com o filtro de unidade já escolhido.
+Prova: `e2e/indicadores-unidade-na-url.spec.ts`.
+
 **Variação contra o período anterior e a aba Agenda (2026-10-27)**
 - Sem período anterior (anterior = 0) não existe variação:
   `variacaoPercentual` (`lib/metrics/resultado.ts`) devolve nulo e a tela diz

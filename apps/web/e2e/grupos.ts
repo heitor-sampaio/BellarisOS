@@ -193,6 +193,7 @@ export const ISOLADOS = [
   'injetaveis-ponto-novo.spec.ts',
   'plano-novo-com-cliente.spec.ts',
   'plano-tela-mostra-o-pago.spec.ts',
+  'indicadores-unidade-na-url.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

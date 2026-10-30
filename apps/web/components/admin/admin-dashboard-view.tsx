@@ -91,6 +91,10 @@ export interface AdminDashboardProps {
    * termos de rede ("da rede", "por filial"). Volta com a segunda unidade.
    */
   umaUnidade?:      boolean
+  /** O nome da unidade do `?unidade=` (J-54): o dashboard da rede recortado a ela. */
+  unidadeRecortada?: string | null
+  /** A volta à rede inteira, com o período escolhido. */
+  hrefDaRede?:      string
   prevRevenue:      number
   prevAppointments: number
   prevNewClients:   number
@@ -318,7 +322,7 @@ function KpiCard({
   brand?:  boolean
 }) {
   return (
-    <div className="card kpi-hero" style={{
+    <div data-kpi={label} className="card kpi-hero" style={{
       padding: '20px 22px',
       background: brand ? 'var(--brand)' : 'var(--surface)',
       display: 'flex', flexDirection: 'column', gap: 10,
@@ -408,7 +412,7 @@ export function AdminDashboardView({
   leadsTotal, leadsGanhos, conversionRate, funilTemGanho, marketing,
   monthLabel,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio, clientesQuePagaram,
-  totalClientsEver, branchCount, umaUnidade = false,
+  totalClientsEver, branchCount, umaUnidade = false, unidadeRecortada = null, hrefDaRede = '/admin/dashboard',
   prevRevenue, prevAppointments, prevNewClients,
   branchStats, todayTotal, todayByBranch,
   pendingPlans, lowStockItems, stockStatus, zeroStockCount, lowStockCount, stockTurnover,
@@ -452,10 +456,13 @@ export function AdminDashboardView({
             fontSize: 'var(--text-title)', fontWeight: 800,
             letterSpacing: '-0.022em', color: 'var(--text)', lineHeight: 1.1,
           }}>
-            {umaUnidade ? 'Visão geral' : 'Visão geral da rede'}
+            {unidadeRecortada ?? (umaUnidade ? 'Visão geral' : 'Visão geral da rede')}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
             {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`} · {totalClientsEver.toLocaleString('pt-BR')} clientes
+            {unidadeRecortada && (
+              <> · <Link href={hrefDaRede} style={{ color: 'var(--brand)', fontWeight: 700 }}>Ver a rede inteira</Link></>
+            )}
           </p>
           {!hasAlerts && (
             <div style={{
@@ -584,7 +591,9 @@ export function AdminDashboardView({
                       {i + 1}
                     </td>
                     <td data-label="" style={{ padding: '13px 16px', maxWidth: 220 }}>
-                      <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'block' }}>{b.name}</span>
+                      {/* O drill-down da rede (J-54): o dashboard recortado a ela. */}
+                      <Link href={`/admin/dashboard?unidade=${b.slug}`} title="Ver o dashboard desta unidade"
+                        style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'block', textDecoration: 'none' }}>{b.name}</Link>
                       {/* mini bar */}
                       <div style={{ marginTop: 5 }}>
                         <AnimatedBar pct={pct} color="var(--brand)" height={3} maxWidth={160} />

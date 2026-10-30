@@ -160,13 +160,15 @@ export function getCachedNetworkBranches(tenantId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('branches')
-        .select('id, name')
+        // O slug resolve o `?unidade=<slug>` da rede (J-54) — a chave do cache
+        // mudou junto, para não servir a forma antiga, sem ele.
+        .select('id, name, slug')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .order('name'), 'carregar as unidades')
       return data ?? []
     },
-    [`network-branches-${tenantId}`],
+    [`network-branches-v2-${tenantId}`],
     { revalidate: 600, tags: [`branches:${tenantId}`] },
   )()
 }

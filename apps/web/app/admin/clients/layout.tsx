@@ -38,7 +38,7 @@ export default async function AdminClientsLayout({
   })
 
   const totalActive    = clients.filter(c => c.isActive).length
-  const branches       = (branchesRaw ?? []) as { id: string; name: string }[]
+  const branches       = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
 
   return (
     <ListaDetalhe
@@ -52,6 +52,8 @@ export default async function AdminClientsLayout({
           // escondido aqui e só existia dentro do portal de uma unidade.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
           availableBranches={branches}
+          // A abrangência vence o `?unidade=` (J-54): quem tem unidade fixa fica nela.
+          unidadeFixa={ctx.branchId}
         />
       }
     >

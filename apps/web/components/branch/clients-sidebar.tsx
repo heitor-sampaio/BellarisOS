@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { iniciaisDoNome } from '@estetica-os/utils'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Search, UserPlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -28,7 +28,9 @@ interface Props {
   basePath:          string          // e.g. "/bellaris-sp/clients" or "/admin/clients"
   totalActive:       number
   newClientHref?:    string | null   // null = hide button; undefined = basePath + "/new"
-  availableBranches?: { id: string; name: string }[]  // admin-only: shows branch filter
+  availableBranches?: { id: string; name: string; slug?: string }[]  // admin-only: shows branch filter
+  /** A unidade da abrangência de quem vê: vence o `?unidade=` da URL (J-54). */
+  unidadeFixa?:      string | null
 }
 
 type Filter = 'ativos' | 'novos' | 'inativos'
@@ -52,13 +54,21 @@ export function ClientsSidebar({
   totalActive,
   newClientHref,
   availableBranches,
+  unidadeFixa = null,
 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
 
   const [search,           setSearch]           = useState('')
   const [filter,           setFilter]           = useState<Filter>('ativos')
-  const [selectedBranchId, setSelectedBranchId] = useState<string>('')
+  // O drill-down da rede é `?unidade=<id|slug>` (CLAUDE.md §6; J-54): a lista
+  // abre com ela escolhida. Com uma unidade só (sem o filtro), nada a recortar.
+  const unidadeDaUrl = useSearchParams().get('unidade')
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
+    if (!availableBranches || availableBranches.length <= 1) return ''
+    const pedida = unidadeFixa ?? unidadeDaUrl
+    return availableBranches.find(b => b.id === pedida || b.slug === pedida)?.id ?? ''
+  })
   const [tagsEscolhidas,   setTagsEscolhidas]   = useState<string[]>([])
 
   // Unidade é uma TAG (quem frequenta), não o branch_id de cadastro.
