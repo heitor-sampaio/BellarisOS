@@ -38,7 +38,13 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   ao concluir | PAGAMENTO, sobre o recebido), descontos da base
   (`desconta_insumos`, `desconta_taxa`), `base_com_pontos` (PRECO | VALOR_PAGO,
   veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
-  (MENSAL | QUINZENAL | SEMANAL). **Taxas da maquininha** em `payment_fees`
+  (MENSAL | QUINZENAL | SEMANAL). O padrão é a **base cheia**, e a tela diz
+  com essas palavras (J-46, 2026-10-30: a dona achava que a comissão
+  descontava taxa e insumo): a configuração e o extrato usam a MESMA frase,
+  `rotuloDaBase` — "base cheia (sem taxa nem insumo descontados)" ou o que
+  saiu dela —, o extrato pelo retrato de cada linha (`comissoes_extrato`
+  devolve `desconta_taxa`/`desconta_insumos`; migration `20261029001502`), e
+  o CSV ganhou a coluna "O que saiu da base". **Taxas da maquininha** em `payment_fees`
   (Pix, débito, crédito 1–12x), gravadas por `comissao_taxas_definir`.
 - **A comissão da VENDA DE PRODUTO** (D4, decisão do Heitor, 2026-10-29: "é
   configurável pela clínica"; migration `20261029001306`): Configurações →

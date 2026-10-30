@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   configDaLinha, CONFIG_PADRAO, EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras,
   EntradaDaComissaoDoProcedimento, rotuloDaComissaoDoProcedimento,
-  regraAplicavel, rotuloDaRegra, linhasDaComissao, precoDaSessaoDePacote,
+  regraAplicavel, rotuloDaRegra, linhasDaComissao, precoDaSessaoDePacote, rotuloDaBase,
   type RegraDeComissao, type TaxaDePagamento,
 } from '@/lib/comissoes/config'
 
@@ -142,5 +142,18 @@ describe('comissão do procedimento (2026-10-15): a geral, a mesma para todos', 
     expect(rotuloDaComissaoDoProcedimento({ tipo: 'PERCENTAGE', valor: 25 }, 0)).toBe('25% para todos')
     expect(rotuloDaComissaoDoProcedimento(null, 2)).toBe('Por profissional · 2')
     expect(rotuloDaComissaoDoProcedimento(null, 0)).toBe('Padrão de cada um')
+  })
+})
+
+// J-46 (simulação de 2026-10-30): a dona achou que a comissão descontava a
+// taxa e o insumo; o padrão é a base cheia, e a tela tem de dizer.
+describe('rotuloDaBase', () => {
+  it('sem nada descontado, a base é cheia — e diz isso', () => {
+    expect(rotuloDaBase({ desconta_taxa: false, desconta_insumos: false })).toBe('base cheia (sem taxa nem insumo descontados)')
+  })
+  it('diz o que sai da base', () => {
+    expect(rotuloDaBase({ desconta_taxa: true, desconta_insumos: false })).toBe('base sem a taxa da maquininha')
+    expect(rotuloDaBase({ desconta_taxa: false, desconta_insumos: true })).toBe('base sem o custo dos insumos')
+    expect(rotuloDaBase({ desconta_taxa: true, desconta_insumos: true })).toBe('base sem a taxa da maquininha e sem os insumos')
   })
 })

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarTaxasDaMaquininha } from '@/actions/comissoes'
-import type { ConfigDeComissao, TaxaDePagamento, MetodoComTaxa } from '@/lib/comissoes/config'
+import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
 
 /**
@@ -132,8 +132,8 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
         ))}
         <p style={texto}>
           {c.desconta_insumos || c.desconta_taxa
-            ? 'A comissão é calculada sobre o valor do atendimento menos o que estiver marcado acima.'
-            : 'Nada é descontado: a comissão é sobre o valor cheio.'}
+            ? `A comissão é calculada sobre a ${rotuloDaBase(c)}.`
+            : `Nada é descontado: a comissão é sobre a ${rotuloDaBase(c)}.`}
           {' '}Vale para a comissão em percentual; a de valor fixo não muda com taxa nem insumos.
         </p>
       </Bloco>

@@ -223,6 +223,8 @@ export interface LancamentoDoExtrato {
   preco: number | null; regraTipo: string | null; regraValor: number | null
   /** O pacote da linha (a venda ou a sessão dele), quando é de pacote. */
   pacote: string | null
+  /** O que saiu da base desta linha (o retrato dela) — J-46. */
+  descontaTaxa: boolean; descontaInsumos: boolean
 }
 
 export interface Fechamento {
@@ -269,6 +271,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     origem: (l.origem as string | null) ?? null, preco: l.preco == null ? null : Number(l.preco),
     regraTipo: (l.regra_tipo as string | null) ?? null, regraValor: l.regra_valor == null ? null : Number(l.regra_valor),
     pacote: (l.pacote as string | null) ?? null,
+    descontaTaxa: l.desconta_taxa === true, descontaInsumos: l.desconta_insumos === true,
   }))
 }
 

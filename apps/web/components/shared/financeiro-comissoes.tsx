@@ -7,6 +7,7 @@ import { ChevronDown, Download } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
+import { rotuloDaBase } from '@/lib/comissoes/config'
 
 /**
  * Financeiro → Comissões (os dois portais). Por profissional e unidade: o que
@@ -33,6 +34,8 @@ const METODOS = [
 ]
 
 const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
+/** "base cheia (sem taxa nem insumo descontados)" ou o que saiu dela (J-46). */
+const base = (l: LancamentoDoExtrato) => rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos })
 const regra = (l: LancamentoDoExtrato) => l.regraTipo == null ? '—'
   : l.regraTipo === 'PERCENTAGE' ? `${String(l.regraValor).replace('.', ',')}%` : `${formatBRL(l.regraValor ?? 0)} fixo`
 
@@ -70,11 +73,11 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     const unidade = new Map(p.resumo.map(r => [r.branchId, r.branchName]))
     const campo = (v: string) => /[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
     const linhas = [
-      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Situação'],
+      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Situação'],
       ...p.extrato.map(l => [
         data(l.releasedAt), nome.get(l.professionalId) ?? '', unidade.get(l.branchId) ?? '', data(l.scheduledAt),
         l.cliente ?? '', l.procedimento ?? '', origemDe(l),
-        l.preco == null ? '' : l.preco.toFixed(2).replace('.', ','), regra(l), TIPO[l.kind], l.motivo ?? '',
+        l.preco == null ? '' : l.preco.toFixed(2).replace('.', ','), l.preco == null ? '' : base(l), regra(l), TIPO[l.kind], l.motivo ?? '',
         l.amount.toFixed(2).replace('.', ','), l.status === 'PAID' ? 'Paga' : 'A pagar',
       ]),
     ]
@@ -254,7 +257,7 @@ function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {data(l.releasedAt)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}
               {l.origem ? ` · ${origemDe(l)}` : ''}
-              {l.preco != null ? ` · base ${formatBRL(l.preco)} · ${regra(l)}` : ''}
+              {l.preco != null ? ` · ${base(l)}: ${formatBRL(l.preco)} · ${regra(l)}` : ''}
             </p>
           </div>
           <span className={l.status === 'PAID' ? 'chip chip-success' : 'chip chip-muted'}>{l.status === 'PAID' ? 'Paga' : 'A pagar'}</span>

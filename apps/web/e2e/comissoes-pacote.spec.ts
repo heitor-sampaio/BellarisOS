@@ -272,6 +272,8 @@ test.describe.serial('comissão do pacote — venda e execução', () => {
       const doProfissional = p.locator(`[data-comissoes-de="${rede!.professionalId}"]`)
       await doProfissional.getByRole('button', { name: 'Extrato' }).click()
       await expect(doProfissional).toContainText(`Sessão do pacote ${NOME}`)
+      // J-46: a rede não desconta nada — o extrato diz que a base é cheia.
+      await expect(doProfissional).toContainText('base cheia (sem taxa nem insumo descontados): R$ 200,00')
     })
   })
 })

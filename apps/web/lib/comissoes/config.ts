@@ -55,6 +55,18 @@ export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unkn
   }
 }
 
+/**
+ * O que sai da base da comissão, em palavras (J-46, 2026-10-30): a dona achou
+ * que a comissão descontava taxa e insumo, e o padrão é a base CHEIA. A
+ * configuração e o extrato dizem a mesma frase.
+ */
+export function rotuloDaBase(c: { desconta_taxa: boolean; desconta_insumos: boolean }): string {
+  if (c.desconta_taxa && c.desconta_insumos) return 'base sem a taxa da maquininha e sem os insumos'
+  if (c.desconta_taxa) return 'base sem a taxa da maquininha'
+  if (c.desconta_insumos) return 'base sem o custo dos insumos'
+  return 'base cheia (sem taxa nem insumo descontados)'
+}
+
 // ─── Taxas da maquininha ─────────────────────────────────────────────────────
 
 export const METODOS_COM_TAXA = ['PIX', 'DEBIT_CARD', 'CREDIT_CARD'] as const

@@ -59,6 +59,8 @@ test.describe.serial('comissões — configuração e regras', () => {
       await expect(p.locator('[data-sem-regra]')).toContainText(`Prof com${marca}`)
 
       const como = p.locator('[aria-label="Como a comissão acontece"]')
+      // J-46: o padrão é a base CHEIA, e a tela diz isso com todas as letras.
+      await expect(como).toContainText('base cheia (sem taxa nem insumo descontados)')
       await como.getByRole('button', { name: 'Quando o cliente paga' }).click()
       await como.getByLabel('Custo dos insumos usados no atendimento').check()
       await como.getByLabel('Taxa da maquininha do pagamento (tabela abaixo)').check()
