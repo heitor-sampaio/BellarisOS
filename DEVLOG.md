@@ -1651,6 +1651,32 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-10-30 — A completa depois das frentes: 6 falhas em 1.241, corrigidas
+
+A completa no GitHub Actions (run 41151753519, contra o build de 53b4a803)
+deu 1.235 verdes e 6 falhas. Reproduzidas contra o build local e corrigidas
+em 4 commits (9a4e48ed…868124e7):
+
+- **Três specs que não acompanharam as telas de hoje** (9a4e48ed): o ranking
+  de filiais some na rede de uma unidade (D-19), arquivar pede confirmação
+  (J-23), "Tags e importações" também no menu (J-16).
+- **O aviso de "Dar acesso ao app" sumia no refresh** (4dcb683b): o quadro só
+  existia sem acesso e desmontava levando o aviso. Agora fica: "Acesso ao app
+  criado. O login é o e-mail (…) e a senha inicial é o CPF…".
+- **Login sem rede nem ficha dava volta sem fim** entre `/login` e
+  `/admin/dashboard` (e0944b15, efeito do J-67): `destinoPelosClaims` devolve
+  nulo sem `tenant_id`, e a pessoa fica no formulário. O CI deixou o login
+  `[e2e]` do spec na base; foi apagado, e o spec agora apaga o dele.
+- **O passo do setup não ia à URL a tempo no build** (868124e7, J-3):
+  `history.replaceState` no lugar de `router.replace`.
+
+**Decisão para revisar:** o login sem clínica nenhuma volta ao formulário sem
+explicação (como antes do J-67); um aviso "esta conta não tem acesso a nenhuma
+clínica" seria decisão de produto.
+
+Mexeu em `lib/destino-da-sessao.ts` (o destino de todo login): vale rodar a
+completa de novo.
+
 ### 2026-10-30 — Ajustes J, 2ª rodada: atendimento, plano, injetáveis, dashboard e relatórios — a fila de correção acabou
 
 Treze ajustes em 11 commits (9ab6828b…742c219a), com o teste escrito antes
