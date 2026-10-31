@@ -805,13 +805,14 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
         })()}
       </div>
 
-      {!client.temAcesso && (
-        <AcessoAoApp
-          clientId={client.id}
-          pronto={!!client.email && (client.document ?? '').replace(/\D/g, '').length === 11}
-          semCpf={client.documentoTipo ? (client.documentoTipo === 'RNE' ? 'RNE' : 'passaporte') : null}
-        />
-      )}
+      {/* Sempre montado: o aviso do acesso criado fica depois do refresh (a ficha passa a ter acesso). */}
+      <AcessoAoApp
+        temAcesso={!!client.temAcesso}
+        email={client.email ?? ''}
+        clientId={client.id}
+        pronto={!!client.email && (client.document ?? '').replace(/\D/g, '').length === 11}
+        semCpf={client.documentoTipo ? (client.documentoTipo === 'RNE' ? 'RNE' : 'passaporte') : null}
+      />
 
       {saveError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{saveError}</p>}
 
@@ -835,8 +836,14 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 /**
  * A ficha sem login no app (a cliente de balcão, 2026-10-21): o acesso se dá
  * aqui, com o e-mail e o CPF já SALVOS na ficha.
+ *
+ * Fica montado depois de dar o acesso: o refresh traz a ficha COM acesso, e
+ * desmontar levava junto o aviso de login e senha antes de alguém o ler.
  */
-function AcessoAoApp({ clientId, pronto, semCpf }: {
+function AcessoAoApp({ temAcesso, email, clientId, pronto, semCpf }: {
+  /** A ficha já tem login: nada a oferecer — só o aviso do que acabou de ser criado. */
+  temAcesso: boolean
+  email: string
   clientId: string; pronto: boolean
   /** O documento é passaporte ou RNE (D-11): sem CPF, sem acesso ao app por enquanto — nada a oferecer. */
   semCpf?: string | null
@@ -844,7 +851,7 @@ function AcessoAoApp({ clientId, pronto, semCpf }: {
   const router = useRouter()
   const [dando, setDando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const [feito, setFeito] = useState<string | null>(null)
+  const [feito, setFeito] = useState<{ titulo: string; descricao: string } | null>(null)
 
   async function dar() {
     setErro(null)
@@ -853,9 +860,11 @@ function AcessoAoApp({ clientId, pronto, semCpf }: {
     setDando(false)
     if ('error' in r) { setErro(r.error); return }
     // Na conta que ela já tinha (outra clínica), a senha é a dela, não o CPF (J-22).
-    setFeito(avisoDoAcessoCriado({ contaLigada: r.contaLigada, email: '' }).descricao)
+    setFeito(avisoDoAcessoCriado({ contaLigada: r.contaLigada, email }))
     router.refresh()
   }
+
+  if (temAcesso && !feito) return null
 
   if (semCpf) {
     return (
@@ -875,7 +884,7 @@ function AcessoAoApp({ clientId, pronto, semCpf }: {
     }}>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 460 }}>
         {feito
-          ? feito
+          ? <><strong style={{ color: 'var(--text)' }}>{feito.titulo}.</strong> {feito.descricao}</>
           : pronto
             ? 'Esta cliente ainda não tem acesso ao app. O login é o e-mail, e a senha inicial, o CPF.'
             : 'Esta cliente ainda não tem acesso ao app. Para dar, salve o e-mail e o CPF dela.'}

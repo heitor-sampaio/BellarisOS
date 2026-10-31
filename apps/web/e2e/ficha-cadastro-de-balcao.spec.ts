@@ -112,7 +112,13 @@ test.describe.serial('a cliente de balcão', () => {
     await como(browser, async p => {
       await p.goto(`/admin/clients/${ficha!.id}?aba=dados`)
       await p.getByRole('button', { name: 'Dar acesso ao app' }).click()
-      await expect(p.getByText('Acesso criado: login = e-mail, senha = CPF.')).toBeVisible()
+      // O aviso diz o login e a senha inicial (o texto do J-22, o mesmo do
+      // cadastro) — e FICA depois do refresh, quando a ficha já tem o selo:
+      // antes, o quadro desmontava com a ficha nova e levava o aviso junto.
+      await expect(p.getByText('Tem acesso ao app', { exact: true })).toBeVisible()
+      const aviso = p.locator('p').filter({ hasText: 'Acesso ao app criado' })
+      await expect(aviso).toBeVisible()
+      await expect(aviso).toContainText(`O login é o e-mail (${ficha!.email!.toLowerCase()}) e a senha inicial é o CPF`)
     })
     expect((await fichaDe(nome('sem marcar')))?.auth_id).toBeTruthy()
   })
