@@ -77,7 +77,9 @@ test('o topo das Configurações diz o que a pessoa vê, não "cargos e integra�
     await p.goto(`/${slug}/settings`)
     await expect(p.getByRole('heading', { name: 'Configurações' })).toBeVisible()
     await expect(p.getByText(/Cargos, modelos de ficha e integrações/)).toHaveCount(0)
-    await expect(p.getByText(/Tags e importações/)).toBeVisible()
+    // No topo da tela (o subtítulo do título): desde o J-16 o item do menu também
+    // se chama "Tags e importações", e o texto solto acha os dois.
+    await expect(p.getByRole('main').getByText(/Tags e importações/)).toBeVisible()
   })
 })
 

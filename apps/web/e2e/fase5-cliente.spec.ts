@@ -61,6 +61,8 @@ test('editar nome e gênero, depois desativar e reativar — sem sair do /admin'
   await page.reload()
   await abrirMenuDeAcoes(page)
   await page.getByRole('button', { name: 'Arquivar cliente' }).click()
+  // J-23 (2026-10-30): arquivar pede confirmação — o clique do menu só abre a janela.
+  await page.getByRole('dialog', { name: 'Arquivar cliente?' }).getByRole('button', { name: 'Arquivar', exact: true }).click()
 
   await expect.poll(async () => {
     const { data } = await db.from('clients').select('is_active').eq('id', clientId!).single()

@@ -209,9 +209,10 @@ test.describe('Ticket médio = média de quanto cada CLIENTE gasta (pago ÷ clie
       await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
       await expect(ticket).toContainText('pago pelas clientes ÷ 2 clientes que pagaram')
       await expect(ticket).not.toContainText('atendimentos cobrados')
-      // O ranking de filiais: a mesma conta, na unidade.
-      const filial = p.locator('tr').filter({ hasText: `Unidade uc${marca}` }).first()
-      await expect(filial.locator('[data-label="Ticket médio"]')).toContainText(/R\$\s*300,00/)
+      // A rede deste teste tem UMA unidade: desde o D-19 (2026-10-30) o dashboard
+      // não mostra o "Ranking de filiais" — a mesma conta na unidade é a do
+      // dashboard dela, no teste seguinte.
+      await expect(p.getByText('Ranking de filiais', { exact: true })).toHaveCount(0)
       // O ranking de clientes divide o PAGO pelos concluídos — outra conta,
       // outro nome (a ficha da cliente é que tem o ticket dela).
       const ranking = cartao(p, 'Ranking — Valor gasto')
