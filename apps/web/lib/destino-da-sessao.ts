@@ -10,7 +10,8 @@ import { destinoDaCliente } from '@/lib/clientes/destino'
  * Para onde a pessoa da sessão vai: o portal dela, pelos claims — a cliente
  * por `destinoDaCliente` (uma clínica, várias, o seletor), a equipe pela
  * unidade ou pela rede. Nulo sem sessão, para a equipe da PLATAFORMA (os apps
- * dela são outros hosts) e no erro: quem chama decide o que fazer.
+ * dela são outros hosts), para o login sem rede nem ficha e no erro: quem
+ * chama decide o que fazer.
  *
  * Não passa por `buildContext` de propósito: o login (com a sessão aberta,
  * J-67) não pode depender de um portão que manda de volta ao login — a
@@ -26,6 +27,11 @@ export async function destinoPelosClaims(
     const claims = (user.app_metadata ?? {}) as JwtClaims & { plataforma?: string }
     if (claims.plataforma) return null
     if (claims.client_id) return await destinoDaCliente(user.id)
+    // Sem rede nem ficha (a conta que sobrou, ou o e-mail do primeiro admin
+    // da plataforma usado na clínica), não há destino: o "/admin/dashboard"
+    // de sempre mandava de volta ao /login pelo portão do /admin, e o /login
+    // ao destino de novo — milhares de idas e voltas, a tela em branco.
+    if (!claims.tenant_id) return null
     if (claims.branch_id) {
       const br = await ler(createAdminClient().from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')
       return getRedirectPath(claims.role, br?.slug ?? null)

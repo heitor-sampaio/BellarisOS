@@ -57,6 +57,35 @@ test('a equipe da unidade, em /login e /admin, vai ao painel dela', async ({ bro
   })
 })
 
+// O login que não é de clínica nenhuma (sem rede nem ficha — a conta que
+// sobrou, ou o e-mail do primeiro admin da plataforma usado na clínica): o
+// destino pelos claims era /admin/dashboard, o portão do /admin devolvia ao
+// /login, e o /login (J-67) mandava de novo ao destino — milhares de idas e
+// voltas, a tela em branco (completa de 2026-10-30, plataforma-primeiro-admin).
+test('um login sem clínica nenhuma entra e fica no formulário, sem dar volta', async ({ browser }) => {
+  const email = `e2e-sem-clinica-${marca}@bellaris.invalid`
+  const senha = `Senha-${marca}-7z`
+  const { data: criado, error } = await db().auth.admin.createUser({ email, password: senha, email_confirm: true })
+  expect(error).toBeNull()
+  const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  try {
+    const p = await ctx.newPage()
+    let idasAoPainel = 0
+    p.on('request', r => { if (new URL(r.url()).pathname === '/admin/dashboard') idasAoPainel++ })
+    await p.goto('/login')
+    await p.locator('#email').fill(email)
+    await p.locator('#password').fill(senha)
+    await p.getByRole('button', { name: 'Entrar' }).click()
+    await expect(p).toHaveURL(/\/login(\?|$)/)
+    await expect(p.getByRole('button', { name: 'Entrar' })).toBeVisible()
+    await p.waitForTimeout(2_000)
+    expect(idasAoPainel, 'nada de ida e volta entre o /login e o painel').toBeLessThan(3)
+  } finally {
+    await ctx.close()
+    await db().auth.admin.deleteUser(criado.user!.id)
+  }
+})
+
 test('sem sessão, /login continua o formulário', async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   try {

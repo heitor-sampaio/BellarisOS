@@ -75,18 +75,27 @@ test.describe.serial('primeiro admin por variável', () => {
     const senha = `Senha-${Date.now().toString(36)}-8y`
     const { data: criado, error } = await db().auth.admin.createUser({ email: EMAIL, password: senha, email_confirm: true })
     expect(error).toBeNull()
-    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
     try {
-      const p = await ctx.newPage()
-      await p.goto('/login')
-      await p.locator('#email').fill(EMAIL)
-      await p.locator('#password').fill(senha)
-      await p.getByRole('button', { name: 'Entrar' }).click()
-      await p.waitForLoadState('networkidle')
-    } finally { await ctx.close() }
-    const { data: login } = await db().auth.admin.getUserById(criado.user!.id)
-    expect((login.user?.app_metadata as { plataforma?: string }).plataforma).toBeUndefined()
-    expect((await db().from('platform_staff').select('id').eq('auth_id', criado.user!.id)).data ?? []).toHaveLength(0)
-    await db().auth.admin.deleteUser(criado.user!.id)
+      const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+      try {
+        const p = await ctx.newPage()
+        await p.goto('/login')
+        await p.locator('#email').fill(EMAIL)
+        await p.locator('#password').fill(senha)
+        await p.getByRole('button', { name: 'Entrar' }).click()
+        // Sem rede nem ficha, a clínica não tem para onde levar: fica no login.
+        // Até 2026-10-30 dava volta entre o /login e o painel (milhares de idas)
+        // e o networkidle esperava os 5 minutos do teste.
+        await expect(p).toHaveURL(/\/login(\?|$)/)
+        await p.waitForLoadState('networkidle', { timeout: 30_000 })
+      } finally { await ctx.close() }
+      const { data: login } = await db().auth.admin.getUserById(criado.user!.id)
+      expect((login.user?.app_metadata as { plataforma?: string }).plataforma).toBeUndefined()
+      expect((await db().from('platform_staff').select('id').eq('auth_id', criado.user!.id)).data ?? []).toHaveLength(0)
+    } finally {
+      // Sempre: sem a linha da equipe, o afterAll não acha este login, e o
+      // e-mail ocupado derrubava o primeiro teste da rodada seguinte.
+      await db().auth.admin.deleteUser(criado.user!.id)
+    }
   })
 })
