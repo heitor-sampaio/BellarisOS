@@ -530,12 +530,21 @@ function StepDone({ tenantName }: { tenantName: string }) {
 
 // -- Wizard root ---------------------------------------------------------------
 
+/**
+ * O passo na URL NA HORA, pelo history do navegador (o Next o acompanha). Com
+ * router.replace a URL só mudava quando a ida ao servidor voltava: recarregar
+ * logo depois de continuar (no build, ~50 ms) ainda pegava /setup e voltava ao
+ * passo 1 — e a página não tem nada a buscar para trocar de passo.
+ */
+function passoNaUrl(passo: 'unidade' | null) {
+  window.history.replaceState(null, '', passo ? `/setup?passo=${passo}` : '/setup')
+}
+
 export function SetupWizard({ rede: inicial, temUnidade, noPassoDaUnidade = false }: {
   rede: DadosDaRede; temUnidade: boolean
   /** A rede já foi salva neste setup (`?passo=unidade`): recarregar fica na unidade (J-3). */
   noPassoDaUnidade?: boolean
 }) {
-  const router = useRouter()
   // A rede que já tem unidade (saiu no meio e voltou) vai direto ao fim; a
   // que já salvou a rede e recarregou fica no passo da unidade (J-3: voltava
   // ao passo 1). O passo mora na URL, que o recarregar mantém.
@@ -549,12 +558,12 @@ export function SetupWizard({ rede: inicial, temUnidade, noPassoDaUnidade = fals
       {step === 0 && (
         <StepNetwork
           inicial={rede}
-          onNext={(salvos) => { setRede(salvos); setStep(1); router.replace('/setup?passo=unidade', { scroll: false }) }}
+          onNext={(salvos) => { setRede(salvos); setStep(1); passoNaUrl('unidade') }}
         />
       )}
       {step === 1 && (
         <StepBranch documentoDaRede={rede.documento}
-          onNext={() => setStep(2)} onBack={() => { setStep(0); router.replace('/setup', { scroll: false }) }} />
+          onNext={() => setStep(2)} onBack={() => { setStep(0); passoNaUrl(null) }} />
       )}
       {step === 2 && (
         <StepDone tenantName={rede.nome} />
