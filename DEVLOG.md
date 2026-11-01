@@ -8931,6 +8931,22 @@ Configurações.
 1. Estorno da venda de produto: o estoque não volta, o DRE desconta o custo e,
    novo, Vendas e CSV contam a venda estornada (`metrics_vendas` não olha
    estorno).
+   **Feito em 2026-11-01 (F3: db189652, d574e40f; migrations
+   `20261101000301–302`).** Estornar qualquer lançamento de uma venda de
+   produto estorna a VENDA INTEIRA numa transação (`produto_estornar_venda`):
+   a janela "Estornar esta venda de produto?" exige "O produto voltou ao
+   estoque?" e o motivo. Sim: o protetor volta de 9 para 10, nos lotes de
+   origem ("Devolução de venda"). Não: o estoque fica, e Relatórios → Estoque
+   → Perdas mostra "Venda estornada (não voltou)" pelo custo. Vendas, CSV e
+   DRE deixam de contar a venda estornada (R$ 5.915; lucro 2.799). A48: a
+   janela "Vender" diz se a venda de produto gera pontos. Prova:
+   `e2e/vendas-produto.spec.ts`.
+   **Decisões da F3, para revisar:** (1) o estorno é sempre da venda inteira;
+   (2) a parcela a receber da venda estornada vira "Estornada", sem
+   contra-lançamento; (3) "não voltou" é perda no relatório, pelo custo, no
+   dia do estorno; (4) o passado muda (a venda sai também do mês dela); (5)
+   falta um "cancelar venda" para a venda toda a receber, sem botão de
+   estorno; (6) pacote e pré-pago estornados ainda contam nas Vendas.
 2. Custo e lucro na tela: "Custo do mês R$ 0" ao lado do gráfico com R$ 445.
 3. Retornos a marcar (D-12): só no dashboard da unidade, 7 dias; a dona da
    clínica única usa o `/admin` e não os vê.
