@@ -234,7 +234,10 @@
     servem, com "(ocupada)" na que tem atendimento no horário, e já escolhe a
     primeira livre (`salasParaAgendar` / `salasParaAgendarNoCrm` →
     `salasDoAgendar`, `lib/appointments/salas.ts`). **Unidade sem sala: o
-    campo nem aparece.** A sala continua opcional (decisão para o Heitor).
+    campo nem aparece.** **A sala é opcional** em todo agendamento e
+    atendimento (decisão do Heitor, 2026-11-01: "não deve ser obrigatório
+    selecionar sala"): o app da cliente, o checkout, as sessões e o Copilot
+    agendam sem sala, e nada exige uma. A sala escolhida é que é conferida.
   - **O servidor confere em todo caminho que passa por
     `conferirPecasDoAgendamento`** (com `procedureId`): sala ativa da unidade
     ("Sala não encontrada nesta unidade.") e que serve ao procedimento ("Esta

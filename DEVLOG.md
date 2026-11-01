@@ -1953,6 +1953,8 @@ arquivo idêntico, histórico registrado):
 **Decisões da frente, para revisar:**
 1. A sala é opcional ao agendar ("Sem sala definida"). Checkout do plano,
    sessões de pacote e plano e o Copilot seguem agendando sem sala.
+   **Confirmado pelo Heitor (2026-11-01):** "não deve ser obrigatório
+   selecionar sala para agendamento/atendimento".
 2. A ligação procedimento × sala é por unidade: ligado só a salas da A, aceita
    qualquer sala na B.
 3. As salas se cadastram só pelo portal da rede, com Configurações em
@@ -8859,6 +8861,10 @@ nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a
   (`createClientAppointment`, `actions/appointments.ts:1604-1718`;
   `computeAvailableSlots` só olha a profissional). Sobra da frente de salas
   (8eea5d85).
+  **Decidido pelo Heitor (2026-11-01): não é defeito.** "Não deve ser
+  obrigatório selecionar sala para agendamento/atendimento": o app agenda sem
+  sala, como o checkout, as sessões e o Copilot. Leva junto o D11 e o item 5
+  do "Reforça".
 - **D2.** A agenda da unidade mostra "—" no lugar do nome da cliente
   cadastrada em outra unidade (Marlene, da Moinhos, na agenda da Zona Sul) e
   do profissional da rede (Dr. Paulo, visto pela recepção fixa). A página lê
@@ -8895,6 +8901,7 @@ nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a
   não avisa.
 - **D11.** PROVÁVEL: corrida no modal da agenda; quem confirma antes de
   `salasParaAgendar` responder grava sem sala. Sobra da frente de salas.
+  Fechado com o D1: gravar sem sala é permitido.
 - **D12.** A janela do agendamento mostra "VALOR R$ 140,00" no pré-pago e
   R$ 550 na sessão de pacote, como se faltasse cobrar (também no app).
 - **D13.** A agenda da rede diz "1 Cancelamentos" com 1 falta e nenhum
@@ -8918,7 +8925,9 @@ Configurações.
 3. Retornos a marcar (D-12): só no dashboard da unidade, 7 dias; a dona da
    clínica única usa o `/admin` e não os vê.
 4. "A receber" com duas contas: o Financeiro ignora o concluído sem pagamento.
-5. Sala opcional: ficaram sem sala a Priscila, a Inês e o app; salas só pela rede.
+5. Sala opcional: ficaram sem sala a Priscila, a Inês e o app; salas só pela
+   rede. **A sala segue opcional (Heitor, 2026-11-01).** Fica em aberto só
+   "salas só pela rede".
 6. Módulos sem escopo (frente H): a esteticista vê todos os clientes.
 7. Ficha com obrigatórias: "Grávida ou amamentando?" para homem.
 8. Grade da "Minha agenda" pela unidade (D5 da 4ª).
