@@ -290,9 +290,14 @@ test.describe.serial('a venda de produto', () => {
       p_tenant: rede!.tenantId, p_branch_ids: null, p_inicio: `${dia}T00:00:00-03:00`, p_fim: `${dia}T23:59:59-03:00`, p_profissional: recepcao!.userId,
     })
     expect(error).toBeNull()
-    expect((extrato as { procedimento: string | null; cliente: string | null; origem: string }[])
-      .map(e => ({ o: e.origem, produto: e.procedimento, cliente: !!e.cliente })))
-      .toEqual([{ o: 'PRODUTO', produto: nomeSerum, cliente: true }])
+    // A paga liberou; a receber aparece "aguardando o pagamento integral", com o previsto (H4).
+    expect((extrato as { procedimento: string | null; cliente: string | null; origem: string; kind: string; previsto: number | null }[])
+      .map(e => ({ k: e.kind, o: e.origem, produto: e.procedimento, cliente: !!e.cliente, previsto: e.previsto == null ? null : n(e.previsto) }))
+      .sort((a, b) => a.k.localeCompare(b.k)))
+      .toEqual([
+        { k: 'AGUARDANDO', o: 'PRODUTO', produto: nomeSerum, cliente: true, previsto: 14.9 },
+        { k: 'LIBERACAO', o: 'PRODUTO', produto: nomeSerum, cliente: true, previsto: null },
+      ])
   })
 
   test('o custo do produto vendido desconta do lucro, como o insumo consumido (metrics_resultado)', async () => {

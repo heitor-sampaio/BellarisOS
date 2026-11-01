@@ -11,7 +11,7 @@ import { responderAnamnese } from './apoio/anamnese'
  * profissional. Agora são duas, cada uma ligada ou não:
  *
  * - de VENDA, para quem vendeu: percentual sobre o valor vendido ou valor
- *   fixo, liberada quando (e à medida que) o pacote é pago; o estorno devolve;
+ *   fixo, liberada quando o pacote está pago INTEIRO (H4, 2026-11-01); o estorno devolve;
  * - de EXECUÇÃO, para quem atende cada sessão: a regra do profissional (o de
  *   sempre — os pacotes que já existem ficam assim), percentual da parte da
  *   sessão, valor fixo por sessão ou nenhuma.
@@ -95,7 +95,7 @@ test.beforeAll(async () => {
     tenant_id: rede.tenantId, professional_id: rede.professionalId, procedure_id: null, type: 'PERCENTAGE', value: 10, is_active: true,
   })).error).toBeNull()
   expect((await db().from('commission_configs').upsert({
-    tenant_id: rede.tenantId, modo: 'ATENDIMENTO', desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
+    tenant_id: rede.tenantId, desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
   }, { onConflict: 'tenant_id' })).error).toBeNull()
   gestor = await criarMembro(`cpkg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestão',
@@ -190,7 +190,7 @@ test.describe.serial('comissão do pacote — venda e execução', () => {
     expect(n(depois!.comissao_venda_valor)).toBe(10)
   })
 
-  test('venda: R$ 800 com 10% são R$ 80 para quem vendeu quando pago; a receber libera à medida que entra; o estorno devolve', async () => {
+  test('venda: R$ 800 com 10% são R$ 80 para quem vendeu quando pago; a receber só libera com a última parcela (H4); o estorno volta a aguardar', async () => {
     // À vista: libera na hora.
     const aVista = await vender(pacote, [{ amount: 800, payment_method: 'PIX', is_paid: true }])
     const v1 = await devidoDaVenda(aVista)
@@ -202,7 +202,7 @@ test.describe.serial('comissão do pacote — venda e execução', () => {
     expect({ ...retrato, comissao_venda_valor: n(retrato!.comissao_venda_valor), comissao_execucao_valor: n(retrato!.comissao_execucao_valor) })
       .toEqual({ comissao_venda_tipo: 'PERCENTAGE', comissao_venda_valor: 10, comissao_execucao: 'FIXED_AMOUNT', comissao_execucao_valor: 25 })
 
-    // A receber em duas parcelas: nada até entrar; metade a cada parcela paga.
+    // A receber em duas parcelas: nada até a venda estar paga inteira.
     const aReceber = await vender(pacote, [
       { amount: 400, payment_method: 'PIX', is_paid: false, parcela_numero: 1, parcela_total: 2 },
       { amount: 400, payment_method: 'PIX', is_paid: false, parcela_numero: 2, parcela_total: 2 },
@@ -212,12 +212,12 @@ test.describe.serial('comissão do pacote — venda e execução', () => {
       .eq('client_package_id', aReceber).order('parcela_numero')
     const pagar = (id: string) => db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', id)
     expect((await pagar(parcelas![0]!.id)).error).toBeNull()
-    expect((await devidoDaVenda(aReceber)).devido).toBe(40)
+    expect((await devidoDaVenda(aReceber)).devido, 'meio pacote pago não libera').toBe(0)
     expect((await pagar(parcelas![1]!.id)).error).toBeNull()
     expect((await devidoDaVenda(aReceber)).devido).toBe(80)
-    // Estornar uma parcela devolve a parte dela.
+    // Estornar uma parcela tira a quitação: a comissão volta a aguardar.
     expect((await db().rpc('estornar_transacao', { p_transacao: parcelas![1]!.id, p_tenant: rede!.tenantId, p_ator: 'e2e' })).error).toBeNull()
-    expect((await devidoDaVenda(aReceber)).devido).toBe(40)
+    expect((await devidoDaVenda(aReceber)).devido).toBe(0)
   })
 
   test('execução: o valor fixo do pacote vale no lugar da regra do profissional; "nenhuma" não gera comissão', async ({ browser }) => {
@@ -247,7 +247,7 @@ test.describe.serial('comissão do pacote — venda e execução', () => {
       p_agendamento: a!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
       p_dados: { insumos: [], comissoes: [{ procedure_id: proc, origem: 'AVULSO', treatment_plan_id: null, regra_tipo: 'PERCENTAGE', regra_valor: 10, preco: 200 }] },
     })).error, 'concluir o avulso').toBeNull()
-    expect(await devidoDoAtendimento(a!.id)).toBe(20)
+    expect(await devidoDoAtendimento(a!.id), 'o avulso não pago aguarda (H4)').toBe(0)
 
     const cp = await vender(pacote, [{ amount: 800, payment_method: 'PIX', is_paid: true }])
     const { data: s } = await db().from('package_sessions').select('id').eq('client_package_id', cp)

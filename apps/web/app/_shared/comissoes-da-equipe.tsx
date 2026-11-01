@@ -49,7 +49,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
     aPagar:   Math.round((t.aPagar + r.aPagar) * 100) / 100,
     liberado: Math.round((t.liberado + r.liberado) * 100) / 100,
     pago:     Math.round((t.pago + r.pago) * 100) / 100,
-  }), { aPagar: 0, liberado: 0, pago: 0 })
+    aguardando: Math.round((t.aguardando + r.aguardando) * 100) / 100,
+  }), { aPagar: 0, liberado: 0, pago: 0, aguardando: 0 })
 
   return (
     <>
@@ -68,7 +69,6 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         fechamentos={fechamentos}
         podeFechar={can(ctx, 'financial', 'MANAGE') && !soAsProprias}
         soAsProprias={!!soAsProprias}
-        modoPagamento={config.modo === 'PAGAMENTO'}
       />
     </>
   )

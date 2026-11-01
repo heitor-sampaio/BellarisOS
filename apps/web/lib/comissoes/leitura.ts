@@ -190,7 +190,7 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
   if (semRegraNenhuma) return []
 
   // Procedimento pré-pago: a parte desta UNIDADE no preço vendido (o banco liga
-  // a linha à venda na conclusão e libera na proporção do que a venda recebeu).
+  // a linha à venda na conclusão e libera quando a venda estiver paga inteira — H4, 2026-11-01).
   const unidadePrePaga = await ler(admin.from('procedure_sale_units')
     .select('preco, procedure_sales!inner(procedure_id)')
     .eq('appointment_id', appt.id).eq('status', 'DISPONIVEL').maybeSingle(), 'buscar a unidade pré-paga')
@@ -212,12 +212,18 @@ export interface ResumoDoProfissional {
   aPagar: number
   /** Fechamentos pagos no período. */
   pago: number
+  /**
+   * O que vai dever quando a cliente pagar TUDO (H4, 2026-11-01): fora do a
+   * pagar e do fechamento. Inclui o que nasceu antes do período.
+   */
+  aguardando: number
 }
 
 export interface LancamentoDoExtrato {
   id: string; professionalId: string; branchId: string; releasedAt: string
-  kind: 'LIBERACAO' | 'AJUSTE' | 'ESTORNO'; motivo: string | null; amount: number
-  status: 'OPEN' | 'PAID'; payoutId: string | null
+  /** AGUARDANDO: a linha que espera o pagamento integral — não é lançamento (valor 0; o previsto ao lado). */
+  kind: 'LIBERACAO' | 'AJUSTE' | 'ESTORNO' | 'AGUARDANDO'; motivo: string | null; amount: number
+  status: 'OPEN' | 'PAID' | 'AGUARDANDO'; payoutId: string | null
   appointmentId: string | null; scheduledAt: string | null
   cliente: string | null; procedimento: string | null; origem: string | null
   preco: number | null; regraTipo: string | null; regraValor: number | null
@@ -225,6 +231,8 @@ export interface LancamentoDoExtrato {
   pacote: string | null
   /** O que saiu da base desta linha (o retrato dela) — J-46. */
   descontaTaxa: boolean; descontaInsumos: boolean
+  /** Na linha AGUARDANDO: quanto ela vai dever quando a cliente pagar tudo. */
+  previsto: number | null
 }
 
 export interface Fechamento {
@@ -247,7 +255,7 @@ export async function resumoDasComissoes(r: Recorte): Promise<ResumoDoProfission
   return ((linhas ?? []) as Record<string, unknown>[]).map(l => ({
     professionalId: String(l.professional_id), professionalName: String(l.professional_name),
     branchId: String(l.branch_id), branchName: String(l.branch_name),
-    liberado: Number(l.liberado), aPagar: Number(l.a_pagar), pago: Number(l.pago),
+    liberado: Number(l.liberado), aPagar: Number(l.a_pagar), pago: Number(l.pago), aguardando: Number(l.aguardando ?? 0),
   }))
 }
 
@@ -272,6 +280,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     regraTipo: (l.regra_tipo as string | null) ?? null, regraValor: l.regra_valor == null ? null : Number(l.regra_valor),
     pacote: (l.pacote as string | null) ?? null,
     descontaTaxa: l.desconta_taxa === true, descontaInsumos: l.desconta_insumos === true,
+    previsto: l.previsto == null ? null : Number(l.previsto),
   }))
 }
 

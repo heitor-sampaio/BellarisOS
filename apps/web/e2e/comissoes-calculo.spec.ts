@@ -76,7 +76,7 @@ test.afterAll(async () => {
 
 async function configurar(cfg: Record<string, unknown>) {
   const { error } = await db().from('commission_configs').upsert({
-    tenant_id: rede!.tenantId, modo: 'ATENDIMENTO', desconta_insumos: false, desconta_taxa: false,
+    tenant_id: rede!.tenantId, desconta_insumos: false, desconta_taxa: false,
     base_com_pontos: 'PRECO', periodo: 'MENSAL', ...cfg,
   }, { onConflict: 'tenant_id' })
   expect(error).toBeNull()
@@ -143,27 +143,27 @@ async function finalizarPelaTela(browser: Browser, ap: string) {
 }
 
 test.describe.serial('comissões — cálculo e extrato', () => {
-  test('no atendimento: nasce na conclusão; a taxa vira ajuste no pagamento; o estorno desfaz', async () => {
-    await configurar({ modo: 'ATENDIMENTO', desconta_taxa: true })
+  test('só com o pagamento integral (H4): nada na conclusão; o pagamento libera já com a taxa; o estorno desfaz', async () => {
+    await configurar({ desconta_taxa: true })
     await taxas([{ metodo: 'PIX', parcelas: 1, taxa_pct: 2 }])
     const ap = await atendimento(200)
     await concluir(ap, 200)
-    expect(await extrato(ap)).toEqual([['LIBERACAO', 20]])
+    expect(await extrato(ap), 'concluído sem pagamento não libera').toEqual([])
 
     const tx = await pagar(ap, 200, 'PIX')
     // (200 − 2% de taxa) × 10% = 19,60.
-    expect(await extrato(ap)).toEqual([['LIBERACAO', 20], ['AJUSTE', -0.4]])
+    expect(await extrato(ap)).toEqual([['LIBERACAO', 19.6]])
 
     await estornar(tx)
-    expect(await extrato(ap)).toEqual([['LIBERACAO', 20], ['AJUSTE', -0.4], ['ESTORNO', -19.6]])
+    expect(await extrato(ap)).toEqual([['LIBERACAO', 19.6], ['ESTORNO', -19.6]])
 
     // Concluído não se cancela (o gatilho), e o extrato não muda.
     const { error } = await db().from('appointments').update({ status: 'CANCELLED' }).eq('id', ap)
     expect(error?.message).toMatch(/não pode ser cancelado/)
   })
 
-  test('quando o cliente paga: nada na conclusão; libera no pagamento sem taxa e sem insumos', async () => {
-    await configurar({ modo: 'PAGAMENTO', desconta_taxa: true, desconta_insumos: true })
+  test('descontando taxa e insumos: nada na conclusão; libera no pagamento sem taxa e sem insumos', async () => {
+    await configurar({ desconta_taxa: true, desconta_insumos: true })
     await taxas([{ metodo: 'CREDIT_CARD', parcelas: 1, taxa_pct: 3 }])
     const produto = await rede!.criarProduto('insumo', 10)
     // O custo do insumo é lido pelo banco, do cadastro (custo de consumo;
@@ -173,9 +173,9 @@ test.describe.serial('comissões — cálculo e extrato', () => {
     const ap = await atendimento(200)
     // 2 unidades a R$ 5: R$ 10 de insumo.
     await concluir(ap, 200, [{ produto, quantidade: -2, saldo_apos: 8, embalagens: 8, rendimento: null, minimo: 0 }])
-    expect(await extrato(ap), 'no modo "quando paga" a conclusão não libera nada').toEqual([])
+    expect(await extrato(ap), 'sem o pagamento integral a conclusão não libera nada').toEqual([])
     const { data: linha } = await db().from('commission_lines').select('modo, custo_insumos').eq('appointment_id', ap).single()
-    expect({ modo: linha!.modo, custo: Number(linha!.custo_insumos) }).toEqual({ modo: 'PAGAMENTO', custo: 10 })
+    expect({ modo: linha!.modo, custo: Number(linha!.custo_insumos) }).toEqual({ modo: 'INTEGRAL', custo: 10 })
 
     await pagar(ap, 200, 'CREDIT_CARD')
     // (200 − 3% = 194 − 10 de insumo) × 10% = 18,40.
@@ -188,7 +188,7 @@ test.describe.serial('comissões — cálculo e extrato', () => {
   test('cartão de crédito em 3x: pago na hora, com a taxa da faixa de 3x (2026-10-20)', async () => {
     // A maquininha paga a clínica: o lançamento nasce PAGO, e as vezes ficam
     // nele para a taxa — antes o único jeito era "entrada + parcelas", a receber.
-    await configurar({ modo: 'PAGAMENTO', desconta_taxa: true })
+    await configurar({ desconta_taxa: true })
     await taxas([{ metodo: 'CREDIT_CARD', parcelas: 1, taxa_pct: 3 }, { metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 6 }])
     const ap = await atendimento(200)
     await concluir(ap, 200)
@@ -213,17 +213,17 @@ test.describe.serial('comissões — cálculo e extrato', () => {
   })
 
   test('mudar a configuração depois não reescreve o atendimento já concluído', async () => {
-    await configurar({ modo: 'ATENDIMENTO' })
+    await configurar({})
     const ap = await atendimento(100)
     await concluir(ap, 100)
-    await configurar({ modo: 'PAGAMENTO', desconta_taxa: true })
+    await configurar({ desconta_taxa: true })
     await pagar(ap, 100, 'CREDIT_CARD')
-    // A linha guardou "no atendimento, sem taxa": o pagamento não mexe.
+    // A linha guardou "sem taxa": a configuração nova não a reescreve.
     expect(await extrato(ap)).toEqual([['LIBERACAO', 10]])
   })
 
-  test('plano, quando o cliente paga: cada procedimento com a sua regra, na proporção do recebido', async ({ browser }) => {
-    await configurar({ modo: 'PAGAMENTO' })
+  test('plano: cada procedimento com a sua regra, só com o plano pago inteiro (H4)', async ({ browser }) => {
+    await configurar({})
     const b = db()
     const { data: plano, error: eP } = await b.from('treatment_plans').insert({
       client_id: cliente, branch_id: rede!.branchId, professional_id: rede!.professionalId, status: 'ACCEPTED', name: `${PREFIXO} Plano ${marca}`,
@@ -251,28 +251,25 @@ test.describe.serial('comissões — cálculo e extrato', () => {
     await b.from('treatment_plan_sessions').update({ appointment_id: ap }).eq('id', s1!.id)
     await finalizarPelaTela(browser, ap)
 
-    // Recebido 500 de 2.000 = 25%. A: 10% de 600 = 60 → 15. B: R$ 50 fixo → 12,50.
-    expect(await porProcedimento(ap)).toEqual({ [proc.A]: 15, [proc.B]: 12.5 })
-    // Um `comissao.gerada` por PROCEDIMENTO: a chave era por atendimento, e só o primeiro entrava.
-    // (Espera: o status muda dentro da transação, e os fatos saem depois dela.)
-    await expect.poll(async () => {
-      const { data: geradas } = await db().from('domain_events').select('dados').eq('nome', 'comissao.gerada').eq('entidade_id', ap)
-      return (geradas ?? []).map(e => Number(e.dados?.valor)).sort((x, y) => x - y)
-    }, { timeout: 15_000 }).toEqual([12.5, 15])
+    // Recebido 500 de 2.000: o plano não está pago — nada ainda (era 25%, na proporção).
+    expect(await porProcedimento(ap)).toEqual({ [proc.A]: 0, [proc.B]: 0 })
 
-    // A parcela seguinte completa (o gatilho do recebimento).
+    // A parcela que quita libera tudo (o gatilho do recebimento). A: 10% de 600 = 60. B: R$ 50 fixo.
     const segunda = await receber(1500)
     expect(await porProcedimento(ap)).toEqual({ [proc.A]: 60, [proc.B]: 50 })
+    // Um `comissao.liberada` por PROCEDIMENTO (a chave é por lançamento).
+    const { data: liberadas } = await db().from('domain_events').select('dados').eq('nome', 'comissao.liberada').eq('entidade_id', ap)
+    expect((liberadas ?? []).map(e => Number(e.dados?.valor)).sort((x, y) => x - y)).toEqual([50, 60])
 
-    // Estornar a parcela volta à proporção de antes.
+    // Estornar a parcela tira a quitação: volta a aguardar.
     await estornar(segunda)
-    expect(await porProcedimento(ap)).toEqual({ [proc.A]: 15, [proc.B]: 12.5 })
+    expect(await porProcedimento(ap)).toEqual({ [proc.A]: 0, [proc.B]: 0 })
     const tipos = (await extrato(ap)).map(([k]) => k)
     expect(tipos.filter(k => k === 'ESTORNO')).toHaveLength(2)
   })
 
   test('sessão de pacote: a base é o preço do pacote ÷ sessões, lido no servidor', async ({ browser }) => {
-    await configurar({ modo: 'PAGAMENTO' })
+    await configurar({})
     const b = db()
     const { data: sp } = await b.from('service_packages').insert({
       tenant_id: rede!.tenantId, procedure_id: proc.A, name: `${PREFIXO} Pacote ${marca}`, total_sessions: 3, price: 300,
@@ -285,7 +282,8 @@ test.describe.serial('comissões — cálculo e extrato', () => {
     await b.from('package_sessions').insert({ client_package_id: cp!.id, appointment_id: ap, status: 'AVAILABLE', session_number: 1 })
     await finalizarPelaTela(browser, ap)
 
-    // R$ 300 ÷ 3 = 100; 10% = 10 — e o pacote já foi pago: libera mesmo no modo "quando paga".
+    // R$ 300 ÷ 3 = 100; 10% = 10 — pacote de antes da venda no sistema (sem
+    // preço vendido nem lançamento): libera na conclusão, como sempre.
     expect(await extrato(ap)).toEqual([['LIBERACAO', 10]])
     const { data: linha } = await b.from('commission_lines').select('origem, preco').eq('appointment_id', ap).single()
     expect({ origem: linha!.origem, preco: Number(linha!.preco) }).toEqual({ origem: 'PACOTE', preco: 100 })

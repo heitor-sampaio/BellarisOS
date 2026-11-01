@@ -161,12 +161,15 @@ test.describe.serial('fechar um atendimento', () => {
       .eq('product_id', c!.produto).eq('branch_id', c!.unidade).single()
     expect(Number(saldo!.current_stock)).toBe(-1)
 
-    const { data: com } = await db.from('commissions').select('amount, status, period_ref, professional_id')
+    // A linha de comissão nasce na conclusão; o lançamento só vem com o
+    // pagamento integral da cliente (H4, 2026-11-01) — aqui não houve pagamento.
+    const { data: linha } = await db.from('commission_lines').select('regra_valor, preco, professional_id, modo')
       .eq('appointment_id', c!.agendamento).single()
-    expect(Number(com!.amount), '10% de R$ 100 pela regra do procedimento').toBe(10)
-    expect(com!.status).toBe('OPEN')
-    expect(com!.professional_id).toBe(c!.profissional)
-    expect(com!.period_ref).toMatch(/^\d{4}-\d{2}$/)
+    expect([Number(linha!.regra_valor), Number(linha!.preco), linha!.modo], '10% de R$ 100 pela regra do procedimento')
+      .toEqual([10, 100, 'INTEGRAL'])
+    expect(linha!.professional_id).toBe(c!.profissional)
+    const { data: com } = await db.from('commissions').select('id').eq('appointment_id', c!.agendamento)
+    expect(com ?? [], 'sem pagamento, nada a pagar ainda').toHaveLength(0)
 
     // A receita NÃO nasce no fechamento — é o pagamento que a lança.
     const { data: rec } = await db.from('financial_transactions').select('id').eq('appointment_id', c!.agendamento)

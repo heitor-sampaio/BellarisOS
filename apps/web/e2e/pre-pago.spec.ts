@@ -13,7 +13,7 @@ import { chamarAcao } from './apoio/acao-direta'
  * - A venda: retrato do preço e do desconto, unidades com a sua parte, e o
  *   dinheiro (`procedimento_vender`).
  * - A unidade no atendimento: a conclusão a usa, a recepção não cobra de novo,
- *   a comissão (PRE_PAGO) libera na proporção do que a venda recebeu.
+ *   a comissão (PRE_PAGO) libera com a venda paga inteira (H4, 2026-11-01).
  * - Falta devolve a unidade; cancelar a unidade reduz o a receber ou registra
  *   a devolução.
  *
@@ -34,7 +34,6 @@ test.beforeAll(async () => {
     tenant_id: rede.tenantId, professional_id: rede.professionalId, procedure_id: null, type: 'PERCENTAGE', value: 10, is_active: true,
   })
   expect(eR).toBeNull()
-  await db().from('commission_configs').upsert({ tenant_id: rede.tenantId, modo: 'PAGAMENTO' }, { onConflict: 'tenant_id' })
   gestor = await criarMembro(`ppg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção e vendas',
     permissoes: [
@@ -134,7 +133,7 @@ test.describe.serial('procedimento pré-pago', () => {
     expect((txs ?? []).map(t => [n(t.amount), t.is_paid, t.parcela_numero])).toEqual([[210, true, null], [300, false, 1], [300, false, 2]])
   })
 
-  test('a unidade no atendimento: conclusão a usa, recepção não cobra, comissão pela proporção recebida', async () => {
+  test('a unidade no atendimento: conclusão a usa, recepção não cobra, comissão só com a venda paga inteira', async () => {
     const ap = await agendar(cliente)
     const { data: u1 } = await db().from('procedure_sale_units').select('id').eq('sale_id', venda).eq('numero', 1).single()
     await db().from('procedure_sale_units').update({ appointment_id: ap }).eq('id', u1!.id)
@@ -148,8 +147,8 @@ test.describe.serial('procedimento pré-pago', () => {
     expect(usada!.status).toBe('USADA')
     const { data: linha } = await db().from('commission_lines').select('origem, preco, procedure_sale_id').eq('appointment_id', ap).single()
     expect({ ...linha, preco: n(linha!.preco) }).toEqual({ origem: 'PRE_PAGO', preco: 270, procedure_sale_id: venda })
-    // Modo PAGAMENTO: 10% de 270 = 27, na proporção do recebido (210 de 810).
-    expect(await devido(ap)).toBe(7)
+    // 10% de 270 = 27, mas só 210 de 810 entraram: aguarda (era 7, na proporção).
+    expect(await devido(ap)).toBe(0)
 
     // A recepção não cobra de novo.
     const { error: eP } = await db().rpc('confirmar_pagamento_do_atendimento', {
@@ -157,12 +156,12 @@ test.describe.serial('procedimento pré-pago', () => {
     })
     expect(eP?.message).toMatch(/pré-pago/)
 
-    // Uma parcela paga libera a parte dela (210 + 300 de 810 → 17); as duas, tudo.
+    // Uma parcela paga ainda não quita (era 17); as duas, tudo.
     const { data: abertas } = await db().from('financial_transactions').select('id')
       .eq('procedure_sale_id', venda).eq('is_paid', false).order('parcela_numero')
     const pagar = (ids: string[]) => db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).in('id', ids)
     await pagar([abertas![0]!.id])
-    expect(await devido(ap)).toBe(17)
+    expect(await devido(ap)).toBe(0)
     await pagar(abertas!.slice(1).map(a => a.id))
     expect(await devido(ap)).toBe(27)
   })

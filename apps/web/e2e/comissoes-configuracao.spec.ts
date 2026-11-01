@@ -61,7 +61,10 @@ test.describe.serial('comissões — configuração e regras', () => {
       const como = p.locator('[aria-label="Como a comissão acontece"]')
       // J-46: o padrão é a base CHEIA, e a tela diz isso com todas as letras.
       await expect(como).toContainText('base cheia (sem taxa nem insumo descontados)')
-      await como.getByRole('button', { name: 'Quando o cliente paga' }).click()
+      // H4 (2026-11-01): quando a comissão vale não é escolha — a tela diz a regra.
+      await expect(como).toContainText('Quando a cliente paga tudo o que a gerou')
+      await expect(como.getByRole('button', { name: 'No atendimento' })).toHaveCount(0)
+      await expect(como.getByRole('button', { name: 'Quando o cliente paga' })).toHaveCount(0)
       await como.getByLabel('Custo dos insumos usados no atendimento').check()
       await como.getByLabel('Taxa da maquininha do pagamento (tabela abaixo)').check()
       await como.getByRole('button', { name: 'Quinzenal' }).click()
@@ -78,12 +81,22 @@ test.describe.serial('comissões — configuração e regras', () => {
 
     const { data: cfg } = await db().from('commission_configs')
       .select('modo, desconta_insumos, desconta_taxa, periodo, updated_by').eq('tenant_id', rede!.tenantId).single()
-    expect(cfg).toEqual({ modo: 'PAGAMENTO', desconta_insumos: true, desconta_taxa: true, periodo: 'QUINZENAL', updated_by: gestor!.userId })
+    expect(cfg).toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, periodo: 'QUINZENAL', updated_by: gestor!.userId })
     const { data: fees } = await db().from('payment_fees').select('metodo, parcelas, taxa_pct')
       .eq('tenant_id', rede!.tenantId).order('metodo').order('parcelas')
     expect((fees ?? []).map(f => [f.metodo, f.parcelas, Number(f.taxa_pct)])).toEqual([
       ['CREDIT_CARD', 1, 3.2], ['CREDIT_CARD', 6, 8], ['PIX', 1, 0.99],
     ])
+  })
+
+  test('o modo antigo ("no atendimento") não se grava nem pela action', async ({ browser }) => {
+    await comSessao(browser, gestor!, async p => {
+      const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarConfigDeComissao', '/admin/settings',
+        [{ modo: 'ATENDIMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'PRECO', periodo: 'SEMANAL' }])
+      expect(r.texto).not.toContain('"ok":true')
+    })
+    const { data: cfg } = await db().from('commission_configs').select('modo, periodo').eq('tenant_id', rede!.tenantId).single()
+    expect(cfg).toEqual({ modo: 'INTEGRAL', periodo: 'QUINZENAL' })
   })
 
   test('a Equipe define a comissão padrão e a exceção de um procedimento', async ({ browser }) => {
@@ -137,14 +150,14 @@ test.describe.serial('comissões — configuração e regras', () => {
         [rede!.professionalId, { padrao: { tipo: 'PERCENTAGE', valor: 99 }, excecoes: [] }])
       expect(regrasR.texto).not.toContain('"ok":true')
       const cfgR = await chamarAcao(p, 'actions/comissoes.ts', 'salvarConfigDeComissao', '/admin/settings',
-        [{ modo: 'ATENDIMENTO', desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL' }])
+        [{ desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL' }])
       expect(cfgR.texto).not.toContain('"ok":true')
       const taxasR = await chamarAcao(p, 'actions/comissoes.ts', 'salvarTaxasDaMaquininha', '/admin/settings', [[]])
       expect(taxasR.texto).not.toContain('"ok":true')
     })
     expect((await regras()).map(r => Number(r.value))).toEqual([30, 80])
-    const { data: cfg } = await db().from('commission_configs').select('modo').eq('tenant_id', rede!.tenantId).single()
-    expect(cfg?.modo).toBe('PAGAMENTO')
+    const { data: cfg } = await db().from('commission_configs').select('periodo').eq('tenant_id', rede!.tenantId).single()
+    expect(cfg?.periodo).toBe('QUINZENAL')
     const { count } = await db().from('payment_fees').select('metodo', { count: 'exact', head: true }).eq('tenant_id', rede!.tenantId)
     expect(count).toBe(3)
   })
@@ -185,7 +198,7 @@ test.describe.serial('comissões — configuração e regras', () => {
     expect(ins.error).not.toBeNull()
     const upd = await api.from('commission_rules').update({ value: 99 }).eq('professional_id', rede!.professionalId).select('id')
     expect(upd.data ?? []).toHaveLength(0)
-    const cfg = await api.from('commission_configs').update({ modo: 'ATENDIMENTO' }).eq('tenant_id', rede!.tenantId).select('tenant_id')
+    const cfg = await api.from('commission_configs').update({ periodo: 'SEMANAL' }).eq('tenant_id', rede!.tenantId).select('tenant_id')
     expect(cfg.data ?? []).toHaveLength(0)
     const fee = await api.from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 50 }).select('metodo')
     expect(fee.error).not.toBeNull()

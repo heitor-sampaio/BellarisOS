@@ -9,6 +9,49 @@
 
 Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 
+- **A comissão só fica A PAGAR com o pagamento INTEGRAL da cliente** (H4,
+  decisão do Heitor, 2026-11-01: "comissão só paga com pagamento integral do
+  cliente; note que pagamento parcelado no cartão deve ser considerado como
+  pagamento integral da parte do cliente, o repasse do valor das parcelas é de
+  responsabilidade da operadora do cartão, o cliente já fez o pagamento
+  integral"; migration `20261101000201`). O modo é UM, `INTEGRAL`:
+  - avulso: quando o atendimento está pago;
+  - pacote (a comissão de venda E a de cada sessão já feita), plano, pré-pago e
+    venda de produto: quando a venda inteira está paga — o recebido (com os
+    pontos, que são forma de pagamento) fecha com o preço vendido;
+  - **crédito em N vezes é pago na hora** (`cartao_vezes`, um lançamento
+    pago): libera na hora. O que espera é só o que a cliente ainda deve à
+    CLÍNICA — o crediário (entrada + parcelas a receber), o avulso concluído
+    sem pagamento —, e ele libera quando a última parcela entra ("f2 ok,
+    concordamos", o Heitor, 2026-11-01);
+  - o estorno de um pagamento tira a quitação: a comissão volta a aguardar
+    (lançamento ESTORNO). Pacote vendido antes da venda no sistema (sem preço
+    vendido) libera na conclusão, como sempre.
+  - **Antes de liberar, a linha APARECE**: `comissoes_extrato` devolve a linha
+    que aguarda (`kind`/`status` `AGUARDANDO`, valor 0 e o `previsto`), e
+    `comissoes_resumo` tem a coluna `aguardando` — a tela diz "R$ 110,00
+    aguardando o pagamento integral" no card do profissional e "previsto"
+    no extrato, fora do "a pagar", do fechamento e de toda métrica (que leem
+    os lançamentos). Quem aguarda é `private.comissoes_aguardando`: linha
+    INTEGRAL ativa, sem nada lançado, não quitada, com previsto > 0. Era o
+    A53 da 5ª simulação: R$ 192,50 da sessão 1 de um pacote com 90% a
+    receber, e o extrato não dizia nada.
+  - Toda linha NOVA nasce INTEGRAL pelo gatilho `trg_comissao_linha_integral`
+    (vale em `concluir_atendimento`, `pacote_vender`, `produto_vender` e
+    `atendimento_abater_do_pacote` sem mexer em cada um). As linhas de ANTES
+    guardam o modo delas (`ATENDIMENTO`, devida na conclusão; `PAGAMENTO`,
+    na proporção do recebido) e seguem a conta delas em
+    `private.comissao_conta` — o passado não se reescreve. Na produção
+    ficaram assim, já lançadas sobre dinheiro que não entrou inteiro, seis
+    linhas de antes (das redes [sim] e da rede de teste; uma já fechada e
+    paga, as outras a pagar — a do Dr. Paulo, R$ 192,50, entre elas).
+  - Configurações → Comissões não oferece mais o modo: diz a regra. A rede
+    que estava em "quando o cliente paga" passou a `base_com_pontos =
+    VALOR_PAGO` (a base que ela já tinha); `commission_configs.modo` só aceita
+    `INTEGRAL`, e a action recusa outro.
+  - Prova: `e2e/comissoes-pagamento-integral.spec.ts` (pacote no crediário,
+    avulso no crédito 3x, pacote no Pix e a tela da configuração).
+
 - **A regra é do PROFISSIONAL, na rede** (`commission_rules`: `tenant_id`,
   `professional_id uuid → users`, `procedure_id` nulo = PADRÃO): um padrão
   (% ou R$ fixo) e EXCEÇÕES por procedimento. Índice único
@@ -34,8 +77,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   procedimentos da rede). A sessão só LÊ — até 2026-09-30
   qualquer funcionário gravava `commission_rules` pelo PostgREST.
 - **Configuração da REDE** (`commission_configs`, Configurações → Comissões,
-  `financial: MANAGE` + abrangência de rede): `modo` (ATENDIMENTO, sobre o preço
-  ao concluir | PAGAMENTO, sobre o recebido), descontos da base
+  `financial: MANAGE` + abrangência de rede): `modo` (só `INTEGRAL` desde
+  2026-11-01, acima; era ATENDIMENTO | PAGAMENTO), descontos da base
   (`desconta_insumos`, `desconta_taxa`), `base_com_pontos` (PRECO | VALOR_PAGO,
   veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
   (MENSAL | QUINZENAL | SEMANAL). O padrão é a **base cheia**, e a tela diz
@@ -53,9 +96,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   REGISTROU a venda (`product_sales.sold_by`, como o pacote e o pré-pago), sobre
   o VENDIDO (com o desconto). A linha (`commission_lines.origem = 'PRODUTO'`,
   `product_sale_id`, sem atendimento — `appointment_id` e o do extrato aceitam
-  nulo) nasce em `produto_vender`, antes do dinheiro, e é SEMPRE do modo
-  "quando paga": à vista libera na hora, a receber quando entrar, o estorno
-  devolve (`comissao_alvo`, o mesmo ramo do pré-pago). Retrata a taxa da
+  nulo) nasce em `produto_vender`, antes do dinheiro, e libera com a venda
+  paga inteira (H4): à vista ou no cartão em N vezes, na hora; no crediário,
+  com a última parcela; o estorno devolve (`comissao_alvo`, o mesmo ramo do
+  pré-pago). Retrata a taxa da
   maquininha da rede; não desconta insumos. O extrato (`comissoes_extrato`)
   diz a cliente e o produto; o fechamento é o de sempre. Prova:
   `e2e/vendas-produto.spec.ts` ("a comissão da venda de produto").
@@ -68,17 +112,18 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `client_packages` na venda (mudar o catálogo vale para as próximas):
   - **De venda**, para quem vendeu (`sold_by`): % do VENDIDO (com o desconto)
     ou valor fixo. A linha (`origem = 'PACOTE_VENDA'`, `client_package_id`,
-    sem atendimento) nasce em `pacote_vender`, antes do dinheiro, e é SEMPRE do
-    modo "quando paga": à vista libera na hora; a receber, na proporção do que
-    entrou (pacote de R$ 800 com 10%: R$ 40 a cada parcela de R$ 400); o
-    estorno devolve a parte dele. É o ramo do pacote em `comissao_alvo`.
+    sem atendimento) nasce em `pacote_vender`, antes do dinheiro, e libera com
+    o pacote pago inteiro (H4): à vista ou no cartão em N vezes, na hora; no
+    crediário, com a última parcela (pacote de R$ 800 com 10%: os R$ 80 quando
+    a segunda parcela de R$ 400 entra — era R$ 40 a cada uma); o estorno de
+    um pagamento a devolve. É o ramo do pacote em `comissao_alvo`.
     Retrata a taxa da maquininha da rede; não desconta insumos.
   - **De execução**, para quem atende cada sessão (`comissao_execucao`):
     `REGRA` (a regra do profissional — o padrão, e o que valia para todo pacote
     antes), `PERCENTAGE` (da parte da sessão no rateio), `FIXED_AMOUNT` (por
     sessão) ou `NENHUMA` (sem linha). `linhasDoAtendimento` lê o retrato
     (`regraDaSessaoDePacote`) — vale também para quem não tem regra nenhuma —,
-    e o modo da rede (no atendimento × quando paga) segue valendo para ela.
+    e ela também só libera com o pacote pago inteiro (H4).
   - **"Abater do pacote"** segue a execução do pacote: com `REGRA`, a linha
     avulsa vira a de pacote com a mesma regra (o de antes); com a do pacote, a
     avulsa é CANCELADA e nasce UMA linha com a regra dele (ou nenhuma).
@@ -113,8 +158,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     `metrics_giro_estoque`, `custo_do_movimento`), rateado pelo preço de cada
     procedimento. O custo é o da unidade de CONSUMO (§9.5): 5 ml de um frasco
     de 100 ml a R$ 90 descontam R$ 4,50, não R$ 450 (D1, 2026-10-27).
-- **A conta mora no BANCO, e só lá**: `private.comissao_alvo` diz quanto a
-  linha deve AGORA, e `private.comissao_acertar_linha` lança a diferença para o
+- **A conta mora no BANCO, e só lá**: `private.comissao_conta` diz quanto a
+  linha deve AGORA (`alvo`), quanto deveria paga (`previsto`) e se está paga
+  (`quitado`); `private.comissao_alvo` é o `alvo` dela, e
+  `private.comissao_acertar_linha` lança a diferença para o
   já lançado (trava por linha; chamar duas vezes não lança duas). Não há cópia
   em TS — o recebimento do plano entra por gatilho e precisa dela.
   - Percentual: sobre preço − desconto comercial (sempre) − pontos/voucher
@@ -122,14 +169,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     marcados). Valor fixo: só pontos e voucher o reduzem, na proporção; taxa,
     insumos e desconto comercial não. No pacote e no plano o desconto já está
     no preço da sessão e do procedimento (§9.6).
-  - ATENDIMENTO: devida desde a conclusão; o pagamento acerta (taxa, base com
-    pontos) e o estorno do pagamento a zera; o recebimento novo depois do
-    estorno (§9.6, D6 de 2026-10-28) a devolve UMA vez — a conta lê o
-    lançamento vivo do atendimento, e o estornado só quando não há outro.
-  - PAGAMENTO: avulso só vale pago; plano e pacote liberam na proporção do que
-    receberam (receita paga, sem estorno ÷ soma dos procedimentos do plano, ou ÷
-    preço da venda do pacote). Pacote vendido antes de 2026-09-30 (sem venda no
-    sistema) libera na conclusão.
+  - INTEGRAL (toda linha desde 2026-11-01): avulso só vale pago; plano,
+    pacote, pré-pago e produto só com o recebido (com os pontos) fechando com o
+    total (soma dos procedimentos do plano, preço da venda do pacote, vendido −
+    unidades canceladas do pré-pago, vendido do produto). O recebimento novo
+    depois do estorno (§9.6, D6 de 2026-10-28) a devolve UMA vez — a conta lê
+    o lançamento vivo do atendimento, e o estornado só quando não há outro.
+    Pacote vendido antes de 2026-09-30 (sem venda no sistema) libera na
+    conclusão.
+  - As linhas de ANTES seguem o modo retratado: ATENDIMENTO (devida desde a
+    conclusão; o estorno do pagamento a zera) e PAGAMENTO (plano e pacote na
+    proporção do que receberam).
   - Taxa: `private.comissao_taxa_pct` (a do meio; no crédito, a da maior
     parcela cadastrada até a do recebimento). No plano, ponderada pelo que
     cada recebimento pagou. As vezes do recebimento: `cartao_vezes` (crédito
@@ -147,8 +197,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   métrica (`metrics_core`, `_by_branch`, `_commissions_detail`,
   `_top_professionals`, a aba Profissionais de `metrics_relatorio`) e no
   fechamento — não o do atendimento: o ajuste de outubro de um atendimento de
-  setembro é dinheiro de outubro, e o plano no modo "quando paga" libera meses
-  depois da sessão.
+  setembro é dinheiro de outubro, e o plano no crediário libera meses depois
+  da sessão, quando a última parcela entra.
 - **Fechamento** (Financeiro → Comissões, `/admin/financeiro/comissoes` e
   `/[slug]/financeiro/comissoes`, corpo em `app/_shared/comissoes-da-equipe.tsx`):
   - Os períodos são os da configuração, no fuso (`lib/comissoes/periodo.ts`:
@@ -180,8 +230,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   servidor. Antes ficavam sob `team` e `reports`, e mostravam a de todos.
 - O ranking de comissão é `metrics_ranking_comissao` (ordena pela comissão;
   o dashboard reordenava o top 5 por atendimentos).
-- Prova: `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-calculo.spec.ts`
-  e `e2e/comissoes-fechamento.spec.ts`; os valores do eixo novo no
+- Prova: `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-calculo.spec.ts`,
+  `e2e/comissoes-pagamento-integral.spec.ts` e `e2e/comissoes-fechamento.spec.ts`; os valores do eixo novo no
   `e2e/indicadores-cenario.spec.ts`.
 
 ---
@@ -190,6 +240,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 
 ```
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
+❌ Liberar comissão sobre o que a cliente ainda deve à clínica (crediário, avulso sem pagamento) — só com o pagamento integral; o cartão em N vezes JÁ é pago
+❌ Criar linha de comissão em outro modo que não INTEGRAL (o gatilho trg_comissao_linha_integral garante), ou reescrever o modo de uma linha antiga
 ❌ Decidir a regra de um procedimento sem as gerais (regraAplicavel sem o terceiro argumento ignora "a mesma para todos")
 ❌ Mandar ao banco a base de comissão que o navegador enviou (plano e pacote se leem em linhasDoAtendimento)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)

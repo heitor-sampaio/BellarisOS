@@ -10,8 +10,8 @@ import { responderAnamnese } from './apoio/anamnese'
 /**
  * Pacotes (2026-09-30): o catálogo em Procedimentos, a venda na ficha do
  * cliente (`pacote_vender`: pacote, sessões e dinheiro numa transação) e a
- * comissão da sessão de pacote no modo "quando o cliente paga", liberada na
- * proporção do que o pacote recebeu. Numa rede [e2e] própria.
+ * comissão da sessão de pacote, liberada só com o pacote pago inteiro (H4,
+ * 2026-11-01). Numa rede [e2e] própria.
  */
 
 const marca = Date.now().toString(36)
@@ -46,7 +46,6 @@ test.beforeAll(async () => {
     tenant_id: rede.tenantId, professional_id: rede.professionalId, procedure_id: null, type: 'PERCENTAGE', value: 10, is_active: true,
   })
   expect(eR).toBeNull()
-  await db().from('commission_configs').upsert({ tenant_id: rede.tenantId, modo: 'PAGAMENTO' }, { onConflict: 'tenant_id' })
   gestor = await criarMembro(`pvg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção e gestão',
     permissoes: [
@@ -193,7 +192,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     expect(txs![3]!.description).toMatch(/^Pacote — .* — parcela 3\/3$/)
   })
 
-  test('comissão da sessão, quando o cliente paga: na proporção do que o pacote recebeu', async ({ browser }) => {
+  test('comissão da sessão: só com o pacote pago inteiro (H4, 2026-11-01)', async ({ browser }) => {
     // A primeira sessão, agendada com um preço "do navegador" que não é a base.
     const { data: ap } = await db().from('appointments').insert({
       branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,
@@ -211,23 +210,23 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     })
     const { data: linha } = await db().from('commission_lines').select('origem, preco, client_package_id').eq('appointment_id', ap!.id).single()
     expect({ ...linha, preco: Number(linha!.preco) }).toEqual({ origem: 'PACOTE', preco: 300, client_package_id: vendido })
-    // A parte da sessão (300) × 10% = 30; recebido 100 de 800 → 3,75.
-    expect(await devido(ap!.id)).toBe(3.75)
+    // A parte da sessão (300) × 10% = 30 — mas só 100 de 800 entraram: aguarda.
+    expect(await devido(ap!.id)).toBe(0)
 
-    // Uma parcela paga libera a parte dela: 100 + 233,33 de 800 → 12,50.
+    // Uma parcela paga ainda não quita (era 12,50, na proporção).
     const { data: abertas } = await db().from('financial_transactions').select('id')
       .eq('client_package_id', vendido).eq('is_paid', false).order('parcela_numero')
     const pagar = (ids: string[]) => db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).in('id', ids)
     await pagar([abertas![0]!.id])
-    expect(await devido(ap!.id)).toBe(12.5)
-    // As outras pagas (baixa no financeiro): completa.
+    expect(await devido(ap!.id)).toBe(0)
+    // As outras pagas (baixa no financeiro): quitado, libera tudo.
     await pagar(abertas!.slice(1).map(a => a.id))
     expect(await devido(ap!.id)).toBe(30)
 
-    // Estornar a entrada volta à proporção do que sobrou: 700 de 800 → 26,25.
+    // Estornar a entrada tira a quitação: volta a aguardar (era 26,25, na proporção).
     const { data: entrada } = await db().from('financial_transactions').select('id').eq('client_package_id', vendido).eq('amount', 100).single()
     expect((await db().rpc('estornar_transacao', { p_transacao: entrada!.id, p_tenant: rede!.tenantId, p_ator: 'e2e' })).error).toBeNull()
-    expect(await devido(ap!.id)).toBe(26.25)
+    expect(await devido(ap!.id)).toBe(0)
   })
 
   test('recusas: pagamento que não fecha, forma inválida e a sessão pelo PostgREST', async ({ browser }) => {

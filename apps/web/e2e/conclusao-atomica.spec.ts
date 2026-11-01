@@ -81,7 +81,9 @@ async function estado(appt: string) {
   const [a, entrada, comissao, movs, saldo] = await Promise.all([
     b.from('appointments').select('status').eq('id', appt).single(),
     b.from('medical_record_entries').select('id').eq('appointment_id', appt),
-    b.from('commissions').select('id').eq('appointment_id', appt),
+    // A LINHA de comissão (nasce na conclusão); o lançamento dela só vem com o
+    // pagamento integral da cliente (H4, 2026-11-01).
+    b.from('commission_lines').select('id').eq('appointment_id', appt),
     b.from('stock_movements').select('id').eq('appointment_id', appt),
     b.from('branch_product_stock').select('current_stock').eq('product_id', f!.produto).eq('branch_id', f!.outra.branchId).single(),
   ])

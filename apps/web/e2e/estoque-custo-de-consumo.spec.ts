@@ -60,7 +60,7 @@ test.beforeAll(async () => {
   })
   expect(eR).toBeNull()
   const { error: eC } = await db().from('commission_configs').upsert({
-    tenant_id: rede.tenantId, modo: 'ATENDIMENTO', desconta_insumos: true, desconta_taxa: false,
+    tenant_id: rede.tenantId, desconta_insumos: true, desconta_taxa: false,
     base_com_pontos: 'PRECO', periodo: 'MENSAL',
   }, { onConflict: 'tenant_id' })
   expect(eC).toBeNull()
@@ -201,6 +201,12 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
     // A comissão com "descontar insumos": (180 − 4,50) × 10% = 17,55.
     const { data: cl } = await db().from('commission_lines').select('id, custo_insumos').eq('appointment_id', agendamento).single()
     expect(n(cl!.custo_insumos)).toBe(4.5)
+    // A comissão só fica a pagar com o atendimento pago (H4, 2026-11-01).
+    const { error: ePago } = await db().rpc('confirmar_pagamento_do_atendimento', {
+      p_agendamento: agendamento, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+      p_dados: { metodo: 'PIX', pontos: 0, desconto: 0, valor_final: 180 },
+    })
+    expect(ePago, 'pagar').toBeNull()
     const { data: extrato } = await db().from('commissions').select('amount').eq('line_id', cl!.id)
     expect((extrato ?? []).map(c => n(c.amount))).toEqual([17.55])
   })

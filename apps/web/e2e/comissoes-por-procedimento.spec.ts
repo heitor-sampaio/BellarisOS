@@ -139,6 +139,12 @@ test('o atendimento concluído usa a geral do procedimento, não a exceção nem
   })
   const linhas = (await db().from('commission_lines').select('regra_tipo, regra_valor').eq('appointment_id', ap)).data ?? []
   expect(linhas.map(l => [l.regra_tipo, Number(l.regra_valor)])).toEqual([['PERCENTAGE', 25]])
+  // A comissão só fica a pagar com o atendimento pago (H4, 2026-11-01).
+  const { error: ePago } = await db().rpc('confirmar_pagamento_do_atendimento', {
+    p_agendamento: ap, p_tenant: rede.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { metodo: 'PIX', pontos: 0, desconto: 0, valor_final: 200 },
+  })
+  expect(ePago, 'pagar').toBeNull()
   const extrato = (await db().from('commissions').select('amount').eq('appointment_id', ap)).data ?? []
   expect(extrato.reduce((s, c) => s + Number(c.amount), 0)).toBe(50)
 })

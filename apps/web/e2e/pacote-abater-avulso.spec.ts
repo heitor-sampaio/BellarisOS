@@ -87,7 +87,7 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ branch_id: rede.branchId, provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   expect((await db().from('commission_configs').upsert({
-    tenant_id: rede.tenantId, modo: 'ATENDIMENTO', desconta_insumos: false, desconta_taxa: false,
+    tenant_id: rede.tenantId, desconta_insumos: false, desconta_taxa: false,
     base_com_pontos: 'PRECO', periodo: 'MENSAL',
   }, { onConflict: 'tenant_id' })).error).toBeNull()
   const { data: pac, error } = await db().rpc('pacote_salvar', {
@@ -129,7 +129,7 @@ test('o "Receber" oferece "Abater do pacote": o atendimento vira sessão do paco
   const bianca = await rede!.criarCliente('Bianca')
   const ap = await avulsoConcluido(bianca, drenagem)
   const cp = await venderPacote(bianca)
-  expect(await extrato(ap)).toEqual([['LIBERACAO', 15]])
+  expect(await extrato(ap), 'o avulso não pago aguarda o pagamento integral (H4)').toEqual([])
 
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${ap}`)
@@ -153,8 +153,8 @@ test('o "Receber" oferece "Abater do pacote": o atendimento vira sessão do paco
   expect(lanc ?? [], 'nenhuma cobrança nova').toEqual([])
   // O preço do atendimento é a parte da sessão no pacote (a base da comissão dela).
   expect(n((await db().from('appointments').select('price').eq('id', ap).single()).data?.price)).toBe(120)
-  // A comissão segue a da sessão de pacote: a do avulso sai, a do pacote entra.
-  expect(await extrato(ap)).toEqual([['LIBERACAO', 15], ['LIBERACAO', 12], ['AJUSTE', -15]])
+  // A comissão segue a da sessão de pacote: a do avulso sai, a do pacote (pago no Pix) entra.
+  expect(await extrato(ap)).toEqual([['LIBERACAO', 12]])
   const { data: linhas } = await db().from('commission_lines').select('origem, status, client_package_id, preco').eq('appointment_id', ap).order('item')
   expect(linhas).toEqual([
     { origem: 'AVULSO', status: 'CANCELADA', client_package_id: null, preco: 150 },

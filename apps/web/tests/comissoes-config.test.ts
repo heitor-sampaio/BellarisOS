@@ -18,11 +18,23 @@ describe('configDaLinha', () => {
     expect(configDaLinha({ modo: 'OUTRO', periodo: 'ANUAL', base_com_pontos: 'X' })).toEqual(CONFIG_PADRAO)
   })
   it('lê o que foi salvo', () => {
-    expect(configDaLinha({ modo: 'PAGAMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: '7.50' }))
-      .toEqual({ modo: 'PAGAMENTO', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: 7.5 })
+    expect(configDaLinha({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: '7.50' }))
+      .toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: 7.5 })
+  })
+  it('o modo é um só: o pagamento integral (H4, 2026-11-01)', () => {
+    expect(CONFIG_PADRAO.modo).toBe('INTEGRAL')
+    // Uma linha antiga, de antes da regra, também lê o modo que vale.
+    expect(configDaLinha({ modo: 'ATENDIMENTO' }).modo).toBe('INTEGRAL')
+    expect(configDaLinha({ modo: 'PAGAMENTO' }).modo).toBe('INTEGRAL')
+    // A entrada não aceita mais "no atendimento" nem "proporcional ao pago".
+    expect(EntradaDaConfigDeComissao.safeParse({ ...CONFIG_PADRAO, modo: 'ATENDIMENTO' }).success).toBe(false)
+    expect(EntradaDaConfigDeComissao.safeParse({ ...CONFIG_PADRAO, modo: 'PAGAMENTO' }).success).toBe(false)
+    const semModo: Partial<typeof CONFIG_PADRAO> = { ...CONFIG_PADRAO }
+    delete semModo.modo
+    expect(EntradaDaConfigDeComissao.parse(semModo).modo).toBe('INTEGRAL')
   })
   it('a entrada recusa campo faltando', () => {
-    expect(EntradaDaConfigDeComissao.safeParse({ modo: 'ATENDIMENTO' }).success).toBe(false)
+    expect(EntradaDaConfigDeComissao.safeParse({ modo: 'INTEGRAL' }).success).toBe(false)
     expect(EntradaDaConfigDeComissao.safeParse(CONFIG_PADRAO).success).toBe(true)
   })
 })

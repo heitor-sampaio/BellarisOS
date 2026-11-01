@@ -15,10 +15,15 @@ import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
  * cada profissional (o padrão e as exceções por procedimento) ficam na Equipe.
  */
 
-const MODOS = {
-  ATENDIMENTO: { label: 'No atendimento', explicacao: 'A comissão nasce quando o atendimento é concluído, sobre o preço dele. A taxa da maquininha, se marcada abaixo, entra como ajuste quando o cliente paga. Se o pagamento for estornado, a comissão é estornada junto.' },
-  PAGAMENTO:   { label: 'Quando o cliente paga', explicacao: 'A comissão só vale depois que o cliente paga, sobre o que ele pagou (sem pontos e voucher). No plano, cada sessão executada libera a comissão na proporção do que o plano já recebeu, e cada recebimento seguinte completa. A sessão de pacote libera na conclusão: o pacote é pago na venda.' },
-} as const
+/**
+ * Quando a comissão vale não é mais escolha (H4, decisão do Heitor,
+ * 2026-11-01): só com o pagamento integral. A tela diz a regra.
+ */
+const QUANDO_VALE = [
+  'A comissão fica a pagar quando a cliente paga tudo o que a gerou: o atendimento pago; no pacote, no plano, no pré-pago e na venda de produto, a venda inteira paga — a comissão da venda e a de cada sessão já feita.',
+  'Cartão de crédito em várias vezes conta como pago: quem paga a clínica é a operadora. No crediário da clínica (entrada + parcelas), a comissão libera quando a última parcela entra.',
+  'Até lá, ela aparece no extrato como “aguardando o pagamento integral”, fora do a pagar e do fechamento. Se um pagamento for estornado, a comissão volta a aguardar.',
+] as const
 const BASES = {
   PRECO:      { label: 'Sobre o preço', explicacao: 'Quando o cliente usa pontos ou voucher como desconto, a comissão continua sobre o preço do atendimento. O desconto é custo da clínica.' },
   VALOR_PAGO: { label: 'Sobre o valor pago', explicacao: 'Quando o cliente usa pontos ou voucher, a comissão cai na mesma proporção. O profissional divide o custo do programa.' },
@@ -115,11 +120,8 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
       </div>
 
       <Bloco titulo="Quando a comissão vale">
-        {podeEditar
-          ? <SegSelect ariaLabel="Quando a comissão vale" value={c.modo} onSelect={k => mudar('modo', k as ConfigDeComissao['modo'])}
-              options={(['ATENDIMENTO', 'PAGAMENTO'] as const).map(k => ({ key: k, label: MODOS[k].label }))} />
-          : <strong style={{ fontSize: 'var(--text-sm-sz)' }}>{MODOS[c.modo].label}</strong>}
-        <p style={texto}>{MODOS[c.modo].explicacao}</p>
+        <strong style={{ fontSize: 'var(--text-sm-sz)' }}>Quando a cliente paga tudo o que a gerou</strong>
+        {QUANDO_VALE.map(t => <p key={t} style={texto}>{t}</p>)}
       </Bloco>
 
       <Bloco titulo="O que sai da base da comissão">
@@ -142,17 +144,11 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
       </Bloco>
 
       <Bloco titulo="Quando o cliente usa pontos ou voucher">
-        {c.modo === 'PAGAMENTO' ? (
-          <p style={texto}>Com a comissão valendo quando o cliente paga, ela já é sobre o que ele pagou — o desconto de pontos ou voucher sai da base.</p>
-        ) : (
-          <>
-            {podeEditar
-              ? <SegSelect ariaLabel="Comissão quando o cliente usa pontos" value={c.base_com_pontos} onSelect={k => mudar('base_com_pontos', k as ConfigDeComissao['base_com_pontos'])}
-                  options={(['PRECO', 'VALOR_PAGO'] as const).map(k => ({ key: k, label: BASES[k].label }))} />
-              : <strong style={{ fontSize: 'var(--text-sm-sz)' }}>{BASES[c.base_com_pontos].label}</strong>}
-            <p style={texto}>{BASES[c.base_com_pontos].explicacao}</p>
-          </>
-        )}
+        {podeEditar
+          ? <SegSelect ariaLabel="Comissão quando o cliente usa pontos" value={c.base_com_pontos} onSelect={k => mudar('base_com_pontos', k as ConfigDeComissao['base_com_pontos'])}
+              options={(['PRECO', 'VALOR_PAGO'] as const).map(k => ({ key: k, label: BASES[k].label }))} />
+          : <strong style={{ fontSize: 'var(--text-sm-sz)' }}>{BASES[c.base_com_pontos].label}</strong>}
+        <p style={texto}>{BASES[c.base_com_pontos].explicacao}</p>
       </Bloco>
 
       <Bloco titulo="Venda de produto">
@@ -164,7 +160,7 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
         </label>
         <p style={texto}>
           {pctProduto.trim()
-            ? 'Quem registra a venda na ficha ganha esse percentual do valor vendido (com o desconto), quando a cliente paga: à vista, na hora; a receber, quando entrar. O estorno devolve.'
+            ? 'Quem registra a venda na ficha ganha esse percentual do valor vendido (com o desconto), quando a venda estiver paga inteira: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. O estorno devolve.'
             : 'Vazio: a venda de produto não gera comissão.'}
         </p>
       </Bloco>

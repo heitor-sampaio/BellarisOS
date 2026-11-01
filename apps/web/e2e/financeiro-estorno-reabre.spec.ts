@@ -63,9 +63,9 @@ test.beforeAll(async () => {
     .select('id').single<{ id: string }>()
   expect(error).toBeNull()
   proc = pr!.id
-  // Comissão "no atendimento", 10%, sem taxa; fidelidade de 1 ponto por real.
+  // Comissão de 10%, sem taxa (liberada com o pagamento integral — H4); fidelidade de 1 ponto por real.
   expect((await db().from('commission_configs').upsert({
-    tenant_id: rede.tenantId, modo: 'ATENDIMENTO', desconta_insumos: false, desconta_taxa: false,
+    tenant_id: rede.tenantId, desconta_insumos: false, desconta_taxa: false,
     base_com_pontos: 'PRECO', periodo: 'MENSAL',
   }, { onConflict: 'tenant_id' })).error).toBeNull()
   expect((await db().from('loyalty_configs').upsert({

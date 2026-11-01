@@ -85,15 +85,17 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
   o preço do atendimento vira a parte da sessão no rateio, a conta a receber
   que existisse é substituída (valor zero e nota), e a comissão passa à regra
   da sessão de pacote — a linha AVULSO é CANCELADA (o acerto devolve o que
-  ela liberou) e nasce a linha PACOTE (base = a parte da sessão; no modo
-  "quando paga", na proporção do que a venda recebeu). O estoque já baixou na
+  ela liberou) e nasce a linha PACOTE (base = a parte da sessão; liberada com
+  o pacote pago inteiro — H4, `comissoes.md`). O estoque já baixou na
   conclusão. Sem cobrança nova; o atendimento sai de "a receber" e vira
   "Sessão de pacote". Prova: `e2e/pacote-abater-avulso.spec.ts`.
 - A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
 - Comissão: a de VENDA e a de EXECUÇÃO são do cadastro de cada pacote
   (2026-10-30, §9.7 "A comissão do PACOTE"); a do "Abater do pacote" segue a
-  de execução dele.
+  de execução dele. As duas só ficam a pagar com o pacote pago INTEIRO (H4,
+  2026-11-01): no crediário, quando a última parcela entra; no cartão em N
+  vezes, na hora.
 - Prova: `e2e/pacotes-venda.spec.ts`.
 
 ### 9.3.2 Procedimento pré-pago (2026-09-30)
@@ -136,9 +138,9 @@ o procedimento avulso pago antes.
     o horário pode encostar em DOIS agendamentos, e o `maybeSingle` dava
     "Não consegui buscar o agendamento" em vez de "já tem agendamento".
   - Prova: `e2e/agendar-com-credito.spec.ts`.
-- **Comissão**: como o pacote — a base é a parte da unidade; no modo
-  "quando paga", libera na proporção do que a venda recebeu (sobre o que ela
-  vale hoje: vendido − unidades canceladas). O gatilho do pagamento acerta.
+- **Comissão**: como o pacote — a base é a parte da unidade, e ela libera só
+  com a venda paga inteira (sobre o que ela vale hoje: vendido − unidades
+  canceladas; H4, 2026-11-01, `comissoes.md`). O gatilho do pagamento acerta.
 - **Falta ou cancelamento do agendamento DEVOLVE a unidade** (gatilho
   `trg_pre_pago_libera`): pode remarcar. Decisão do Heitor.
 - **Cancelar a unidade** (`procedimento_cancelar_unidade`, com motivo, só a
@@ -397,8 +399,9 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   quitado. É o "À vista" com o meio Cartão de crédito e "Vezes no cartão"
   (1–12): UM lançamento pago, com `financial_transactions.cartao_vezes`
   (2–12, só no crédito — a restrição do banco confere) — só para a taxa da
-  comissão (§9.7). "Entrada + parcelas" é o CREDIÁRIO da própria clínica: cada
-  parcela a receber. Vale nas cinco portas: pacote e pré-pago
+  comissão (§9.7). Para a comissão, é pagamento INTEGRAL (H4, 2026-11-01):
+  libera na hora. "Entrada + parcelas" é o CREDIÁRIO da própria clínica: cada
+  parcela a receber, e a comissão espera a última. Vale nas cinco portas: pacote e pré-pago
   (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
   check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
   Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.

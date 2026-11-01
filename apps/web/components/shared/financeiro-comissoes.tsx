@@ -15,9 +15,16 @@ import { rotuloDaBase } from '@/lib/comissoes/config'
  * cada um; "fechar e pagar" (vira despesa paga no financeiro); o CSV do
  * extrato; e os últimos fechamentos. Quem só vê as próprias comissões vê a
  * própria linha, sem fechar.
+ *
+ * A comissão só fica a pagar com o pagamento INTEGRAL da cliente (H4,
+ * 2026-11-01). Antes disso a linha aparece como "aguardando o pagamento
+ * integral", com o previsto, fora do a pagar e do fechamento (A53: o extrato
+ * não dizia que a comissão era sobre dinheiro que ainda não tinha entrado).
  */
 
-const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno' }
+const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', AGUARDANDO: 'Aguardando' }
+const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar', PAID: 'Paga', AGUARDANDO: 'Aguardando o pagamento integral' }
+const CHIP: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'chip chip-muted', PAID: 'chip chip-success', AGUARDANDO: 'chip chip-warning' }
 const ORIGEM: Record<string, string> = {
   AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Sessão de pacote', PACOTE_VENDA: 'Venda de pacote', PRE_PAGO: 'Pré-pago', PRODUTO: 'Venda de produto',
 }
@@ -49,13 +56,11 @@ export interface PropsDaTela {
   unidades?:     { id: string; name: string }[]
   unidadeAtual?: string
   resumo:        ResumoDoProfissional[]
-  totais:        { aPagar: number; liberado: number; pago: number }
+  totais:        { aPagar: number; liberado: number; pago: number; aguardando: number }
   extrato:       LancamentoDoExtrato[]
   fechamentos:   Fechamento[]
   podeFechar:    boolean
   soAsProprias:  boolean
-  /** A rede libera no pagamento do cliente: a tela explica por que há atendimento sem comissão ainda. */
-  modoPagamento: boolean
 }
 
 export function FinanceiroComissoes(p: PropsDaTela) {
@@ -73,12 +78,12 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     const unidade = new Map(p.resumo.map(r => [r.branchId, r.branchName]))
     const campo = (v: string) => /[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
     const linhas = [
-      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Situação'],
+      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação'],
       ...p.extrato.map(l => [
         data(l.releasedAt), nome.get(l.professionalId) ?? '', unidade.get(l.branchId) ?? '', data(l.scheduledAt),
         l.cliente ?? '', l.procedimento ?? '', origemDe(l),
         l.preco == null ? '' : l.preco.toFixed(2).replace('.', ','), l.preco == null ? '' : base(l), regra(l), TIPO[l.kind], l.motivo ?? '',
-        l.amount.toFixed(2).replace('.', ','), l.status === 'PAID' ? 'Paga' : 'A pagar',
+        l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), SITUACAO[l.status],
       ]),
     ]
     // BOM + ponto e vírgula: é o que o Excel em pt-BR abre certo.
@@ -130,11 +135,11 @@ export function FinanceiroComissoes(p: PropsDaTela) {
         {kpi('Lançado no período', p.totais.liberado)}
         {kpi('Pago no período', p.totais.pago)}
       </div>
-      {p.modoPagamento && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          A rede libera a comissão quando o cliente paga: atendimento ainda não pago não aparece aqui.
-        </p>
-      )}
+      <p data-regra-da-comissao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        A comissão fica a pagar quando a cliente paga tudo o que a gerou: o atendimento pago, ou a venda inteira do pacote, do plano ou do produto.
+        Cartão de crédito em várias vezes conta como pago. O que a cliente ainda deve à clínica fica “aguardando o pagamento integral”
+        {p.totais.aguardando > 0 ? ` (${formatBRL(p.totais.aguardando)} no total)` : ''}, fora do a pagar.
+      </p>
 
       {p.resumo.length === 0 ? (
         <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
@@ -151,6 +156,11 @@ export function FinanceiroComissoes(p: PropsDaTela) {
                   <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                     <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{r.professionalName}</p>
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{r.branchName}</p>
+                    {r.aguardando > 0 && (
+                      <p data-aguardando style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                        {formatBRL(r.aguardando)} aguardando o pagamento integral
+                      </p>
+                    )}
                   </div>
                   {/* Os três números andam juntos: no celular descem inteiros
                       para baixo do nome, em vez de um subir e dois descerem. */}
@@ -255,15 +265,21 @@ function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
               {l.procedimento ?? 'Procedimento'}{l.cliente ? ` · ${l.cliente}` : ''}
             </p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              {data(l.releasedAt)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}
+              {data(l.releasedAt)} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
               {l.origem ? ` · ${origemDe(l)}` : ''}
               {l.preco != null ? ` · ${base(l)}: ${formatBRL(l.preco)} · ${regra(l)}` : ''}
             </p>
           </div>
-          <span className={l.status === 'PAID' ? 'chip chip-success' : 'chip chip-muted'}>{l.status === 'PAID' ? 'Paga' : 'A pagar'}</span>
-          <strong style={{ minWidth: 90, textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: l.amount < 0 ? 'var(--danger)' : 'var(--text)' }}>
-            {formatBRL(l.amount)}
-          </strong>
+          <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando' : SITUACAO[l.status]}</span>
+          {l.kind === 'AGUARDANDO' ? (
+            <span style={{ minWidth: 90, textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              previsto {formatBRL(l.previsto ?? 0)}
+            </span>
+          ) : (
+            <strong style={{ minWidth: 90, textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: l.amount < 0 ? 'var(--danger)' : 'var(--text)' }}>
+              {formatBRL(l.amount)}
+            </strong>
+          )}
         </div>
       ))}
     </div>

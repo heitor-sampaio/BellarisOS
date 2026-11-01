@@ -929,7 +929,7 @@ async function finishSessionInterno(
     } | null
 
     // ─── Depois: os avisos do que aconteceu ───────────────────────────────
-    // Um fato por linha que já nasce devida. No modo "quando o cliente paga"
+    // Um fato por linha que já nasce devida. Sem o pagamento integral (H4)
     // a linha nasce zerada e é liberada no pagamento.
     for (const linha of gravado?.comissoes ?? []) {
       if (Number(linha.liberado) <= 0) continue

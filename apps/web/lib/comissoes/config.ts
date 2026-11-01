@@ -6,7 +6,13 @@ import { z } from 'zod'
  * leem as mesmas definições.
  */
 
-export const MODOS = ['ATENDIMENTO', 'PAGAMENTO'] as const
+/**
+ * Quando a comissão vale (H4, decisão do Heitor, 2026-11-01): só com o
+ * pagamento INTEGRAL da cliente — o modo é um só. "No atendimento" e "quando o
+ * cliente paga" (proporcional) saíram; as linhas antigas guardam o modo delas
+ * e seguem a conta de antes no banco (`private.comissao_conta`).
+ */
+export const MODOS = ['INTEGRAL'] as const
 export const PERIODOS = ['MENSAL', 'QUINZENAL', 'SEMANAL'] as const
 export const BASES_COM_PONTOS = ['PRECO', 'VALOR_PAGO'] as const
 
@@ -28,12 +34,13 @@ export interface ConfigDeComissao {
 }
 
 export const CONFIG_PADRAO: ConfigDeComissao = {
-  modo: 'ATENDIMENTO', desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
+  modo: 'INTEGRAL', desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
   produto_pct: null,
 }
 
 export const EntradaDaConfigDeComissao = z.object({
-  modo:             z.enum(MODOS),
+  // Opcional (há um só); "ATENDIMENTO" ou "PAGAMENTO" de um chamador antigo é recusado.
+  modo:             z.enum(MODOS).optional().default('INTEGRAL'),
   desconta_insumos: z.boolean(),
   desconta_taxa:    z.boolean(),
   base_com_pontos:  z.enum(BASES_COM_PONTOS),
@@ -46,7 +53,7 @@ export const EntradaDaConfigDeComissao = z.object({
 export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unknown>> | null | undefined): ConfigDeComissao {
   const l = linha ?? {}
   return {
-    modo:             l.modo === 'PAGAMENTO' ? 'PAGAMENTO' : 'ATENDIMENTO',
+    modo:             'INTEGRAL',
     desconta_insumos: l.desconta_insumos === true,
     desconta_taxa:    l.desconta_taxa === true,
     base_com_pontos:  l.base_com_pontos === 'VALOR_PAGO' ? 'VALOR_PAGO' : 'PRECO',

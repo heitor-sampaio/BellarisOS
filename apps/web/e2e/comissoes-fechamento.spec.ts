@@ -46,7 +46,7 @@ test.beforeAll(async () => {
   })
   const { error: eAba } = await db().from('role_report_tabs').insert({ tenant_id: rede.tenantId, role_id: equipe.roleId, tab: 'profissionais' })
   expect(eAba).toBeNull()
-  await db().from('commission_configs').upsert({ tenant_id: rede.tenantId, modo: 'ATENDIMENTO', periodo: 'MENSAL' }, { onConflict: 'tenant_id' })
+  await db().from('commission_configs').upsert({ tenant_id: rede.tenantId, periodo: 'MENSAL' }, { onConflict: 'tenant_id' })
 })
 
 test.afterAll(async () => {
@@ -75,7 +75,10 @@ test.afterAll(async () => {
   if (rede) await rede.limpar()
 })
 
-/** Um atendimento concluído do profissional, com 10% de comissão sobre o preço. */
+/**
+ * Um atendimento concluído E PAGO do profissional, com 10% de comissão sobre o
+ * preço — a comissão só fica a pagar com o pagamento integral (H4, 2026-11-01).
+ */
 async function concluido(profissional: string, preco: number) {
   const { data: ap, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, professional_id: profissional, procedure_id: rede!.procedureId,
@@ -87,6 +90,11 @@ async function concluido(profissional: string, preco: number) {
     p_dados: { insumos: [], comissoes: [{ procedure_id: rede!.procedureId, origem: 'AVULSO', treatment_plan_id: null, regra_tipo: 'PERCENTAGE', regra_valor: 10, preco }] },
   })
   expect(eFim).toBeNull()
+  const { error: ePag } = await db().rpc('confirmar_pagamento_do_atendimento', {
+    p_agendamento: ap!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { metodo: 'PIX', pontos: 0, desconto: 0, valor_final: preco },
+  })
+  expect(ePag, 'pagar').toBeNull()
   return ap!.id
 }
 const aPagar = async (prof: string) => ((await db().from('commissions').select('amount')
@@ -135,12 +143,10 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
     const P = rede!.professionalId
     // Um atendimento já fechado (o do teste anterior) tem o pagamento estornado.
     const { data: ap } = await db().from('commission_lines').select('appointment_id').eq('professional_id', P).limit(1).single()
-    const { data: tx, error: ePag } = await db().rpc('confirmar_pagamento_do_atendimento', {
-      p_agendamento: ap!.appointment_id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
-      p_dados: { metodo: 'PIX', pontos: 0, desconto: 0, valor_final: 200 },
-    })
+    const { data: tx, error: ePag } = await db().from('financial_transactions').select('id')
+      .eq('appointment_id', ap!.appointment_id).eq('type', 'INCOME').single<{ id: string }>()
     expect(ePag).toBeNull()
-    expect((await db().rpc('estornar_transacao', { p_transacao: tx, p_tenant: rede!.tenantId, p_ator: 'e2e' })).error).toBeNull()
+    expect((await db().rpc('estornar_transacao', { p_transacao: tx!.id, p_tenant: rede!.tenantId, p_ator: 'e2e' })).error).toBeNull()
     expect(await aPagar(P), 'o estorno fica a pagar (negativo) para o próximo fechamento').toBe(-20)
 
     await comSessao(browser, gestor!, async p => {
