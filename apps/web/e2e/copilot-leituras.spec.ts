@@ -26,9 +26,13 @@ let segundaUnidade: string
 const agendamentos: string[] = []
 const lancamentos: string[] = []
 
+// O próximo dia de ATENDIMENTO: o horário padrão fecha no domingo, e num
+// domingo os "horários livres" vêm vazios (a completa da madrugada de sábado caiu nisso).
 const AMANHA = (() => {
-  const d = new Date(Date.now() + 86_400_000)
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  const dia = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  let d = new Date(Date.now() + 86_400_000)
+  if (new Date(`${dia(d)}T12:00:00Z`).getUTCDay() === 0) d = new Date(d.getTime() + 86_400_000)
+  return dia(d)
 })()
 const PROFISSIONAL = `${PREFIXO} Prof copl${marca}`
 
