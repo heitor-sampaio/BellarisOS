@@ -170,8 +170,15 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
  * A filial saiu da assinatura: ela vem do registro estornado. Recebê-la do
  * cliente permitia estornar o lançamento de uma unidade e jogar a despesa em
  * outra.
+ *
+ * O lançamento de uma VENDA DE PRODUTO estorna a venda inteira (H2, decisão
+ * do Heitor, 2026-11-01: "estorno de produto precisa ter um campo para indicar
+ * se houve devolução de produto ou não; se sim, produto volta ao estoque"):
+ * `voltou` é obrigatório, e `produto_estornar_venda` estorna o pago, cancela
+ * o a receber e a comissão, devolve o produto aos lotes (ou o deixa como
+ * perda) e tira a venda das Vendas e do custo — numa transação.
  */
-export async function reverseTransaction(transactionId: string, slug: string, motivo?: string) {
+export async function reverseTransaction(transactionId: string, slug: string, motivo?: string, voltou?: boolean) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
@@ -185,12 +192,29 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
     // 2026-09-28 a unidade A estornava o lançamento da B.
     const tx = await ler(admin
       .from('financial_transactions')
-      .select('branch_id, branches!inner(tenant_id)')
+      .select('branch_id, product_sale_id, branches!inner(tenant_id)')
       .eq('id', transactionId)
       .maybeSingle(), 'buscar o lançamento')
     const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
     if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) {
       return { error: 'Lançamento não encontrado.' }
+    }
+    if (tx.product_sale_id) {
+      if (typeof voltou !== 'boolean') return { error: 'Diga se o produto voltou ao estoque.' }
+      await gravar(
+        admin.rpc('produto_estornar_venda', {
+          p_tenant: ctx.tenantId!,
+          p_venda:  tx.product_sale_id as string,
+          p_ator:   ctx.internalUserId,
+          p_motivo: porque,
+          p_voltou: voltou,
+        }),
+        'estornar a venda de produto',
+      )
+      if (slug) { revalidatePath(`/${slug}/financeiro`); revalidatePath(`/${slug}/estoque`) }
+      revalidatePath('/admin/financeiro')
+      revalidatePath('/admin/estoque')
+      return { success: true }
     }
     await gravar(
       admin.rpc('estornar_transacao', {

@@ -186,6 +186,37 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   Profissional).
 - Pontos: só se a clínica ligar (Configurações → Fidelidade → "Venda de
   produto", `fidelidade.md`).
+- **O estorno é da VENDA e pergunta se o produto voltou** (H2, decisão do
+  Heitor, 2026-11-01: "estorno de produto precisa ter um campo para indicar
+  se houve devolução de produto ou não; se sim, produto volta ao estoque").
+  O "Estornar" de qualquer lançamento de uma venda de produto (nos dois
+  financeiros) abre "Estornar esta venda de produto?" com "O produto voltou
+  ao estoque?" (Sim / Não, sem resposta não confirma) e o motivo;
+  `reverseTransaction` exige o `voltou` e chama `produto_estornar_venda`,
+  UMA transação: os lançamentos PAGOS passam por `estornar_transacao`
+  (contra-lançamento na mesma forma, pontos, crédito interno), os A RECEBER
+  saem marcados `Estornada` (sem contra-lançamento: não entrou dinheiro), a
+  linha de comissão é CANCELADA e acertada, e a venda guarda `estornada_em`,
+  quem, o motivo e `produto_voltou`.
+  - **Voltou**: um movimento `SALE_RETURN` ("Devolução de venda", com
+    `reference = 'venda:<id>'`) devolve ao saldo (linha travada) o que a
+    venda tirou, e a cada LOTE o que saiu dele (`stock_movement_batches` do
+    movimento da venda), ao custo do movimento da venda.
+  - **Não voltou**: o estoque fica, e a venda vira PERDA — a seção "Perdas
+    no período" de Relatórios → Estoque a mostra com o motivo "Venda
+    estornada (não voltou)" (`VENDA_ESTORNADA`, no dia do estorno, pelo custo
+    retratado na venda). Como toda perda, fora do lucro (D-7).
+  - Nos dois casos a venda sai de Relatórios → Vendas (e do CSV) e o custo
+    dela sai do lucro (`indicadores.md`).
+  - `estornar_transacao` RECUSA sozinho o lançamento de venda de produto
+    ("estorne a venda, dizendo se o produto voltou"): estornar só o dinheiro
+    deixava a venda viva. Só `produto_estornar_venda` o deixa passar
+    (`set_config('bellaris.estorno_da_venda', …)`, só para aquela venda).
+  - Venda estornada não se estorna de novo ("Esta venda já foi estornada.").
+  - A venda toda A RECEBER (nada pago) não tem botão de estorno na lista —
+    fica para o "cancelar venda" quando o Heitor decidir.
+  - Prova: `e2e/vendas-produto.spec.ts` (voltou pela tela, não voltou e a
+    venda em entrada + parcela pela action).
 - A sessão só LÊ `product_sales` (a equipe que alcança a unidade, a cliente a
   dela); as restritivas do suporte valem.
 - Prova: `e2e/vendas-produto.spec.ts`.
@@ -581,4 +612,5 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Gravar texto para pessoas (histórico, descrição) com o código da forma (CASH, CREDIT_CARD) — é rotuloDaForma no app e private.rotulo_da_forma no banco
 ❌ Ler dinheiro digitado com uma regra própria (Number(s.replace…), parseFloat em campo de texto) — é parseDinheiro, e o NaN dele é recusa, não zero
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
+❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ```

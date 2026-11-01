@@ -312,4 +312,147 @@ test.describe.serial('a venda de produto', () => {
     const naSerie = (serie as { consumo_de_insumo: number }[]).reduce((s, r) => Math.round((s + n(r.consumo_de_insumo)) * 100) / 100, 0)
     expect(naSerie, 'o gráfico da evolução bate com o cartão').toBe(custos)
   })
+
+  // O ESTORNO da venda de produto (H2, decisão do Heitor, 2026-11-01): "estorno
+  // de produto precisa ter um campo para indicar se houve devolução de produto
+  // ou não; se sim, produto volta ao estoque". Na 5ª simulação o protetor
+  // estornado ("devolveu, lacrado") ficou fora do estoque, contou nas Vendas
+  // (R$ 6.013 contra R$ 5.915) e o custo dele saiu do lucro.
+
+  test('estorno com "o produto voltou": o estoque volta aos lotes de onde saiu, e a venda some das Vendas e do custo', async ({ browser }) => {
+    const [primeira] = await vendas()
+    expect(await lotes(), 'antes: a primeira venda tirou 2 do A e 1 do B').toEqual({ A: 0, B: 0, C: 4 })
+    expect(await saldo()).toBe(4)
+
+    const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
+    try {
+      const p = await ctxFin.newPage()
+      await p.goto('/admin/financeiro')
+      const linha = p.locator('tr', { hasText: `3× ${nomeSerum}` })
+      await linha.getByTitle('Estornar').click()
+      const dlg = p.getByRole('dialog', { name: 'Estornar esta venda de produto?' })
+      await expect(dlg.getByRole('radiogroup', { name: 'O produto voltou ao estoque?' })).toBeVisible()
+      await dlg.getByLabel('Motivo do estorno *').fill('Devolveu lacrado')
+      await expect(dlg.getByRole('button', { name: 'Confirmar estorno' }), 'sem dizer se voltou, não estorna').toBeDisabled()
+      await dlg.getByRole('radio', { name: /Sim, voltou ao estoque/ }).check()
+      await dlg.getByRole('button', { name: 'Confirmar estorno' }).click()
+      await expect(dlg).toBeHidden()
+    } finally { await ctxFin.close() }
+
+    const estornada = await venda(primeira!.id as string)
+    expect({ estornada: !!estornada.estornada_em, voltou: estornada.produto_voltou, motivo: estornada.estorno_motivo })
+      .toEqual({ estornada: true, voltou: true, motivo: 'Devolveu lacrado' })
+    expect(await lotes(), 'os 3 voltam aos lotes de onde saíram').toEqual({ A: 2, B: 1, C: 4 })
+    expect(await saldo()).toBe(7)
+    const { data: dev } = await db().from('stock_movements').select('quantity, unit_cost, reference').eq('product_id', serum).eq('type', 'SALE_RETURN')
+    expect((dev ?? []).map(m => ({ q: n(m.quantity), ref: m.reference }))).toEqual([{ q: 3, ref: `venda:${primeira!.id}` }])
+    const { data: tx } = await db().from('financial_transactions').select('notes, category').eq('product_sale_id', primeira!.id)
+    expect(tx!.map(t => t.notes)).toEqual(['Estornada'])
+
+    const r = await resumoDoProduto()
+    expect(r, 'sem a venda estornada: as três de R$ 149').toEqual({ q: 3, total: 447 })
+    expect(await consumo(), 'o custo do lucro sem a venda estornada').toBe(await custoDasVivas())
+  })
+
+  test('estorno com "não voltou": o estoque fica, a venda sai das Vendas e o custo vai para as Perdas', async ({ browser }) => {
+    const segunda = (await vendas())[1]!
+    const { data: txs } = await db().from('financial_transactions').select('id').eq('product_sale_id', segunda.id)
+    const tx = txs![0]!.id as string
+    const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
+    try {
+      const p = await ctxFin.newPage()
+      await p.goto('/admin/financeiro')
+      const semDizer = await chamarAcao(p, 'actions/financial.ts', 'reverseTransaction', '/admin/financeiro', [tx, '', 'Quebrou na bolsa'])
+      expect(semDizer.texto, 'o servidor exige a resposta').toMatch(/voltou ao estoque/i)
+      expect((await venda(segunda.id as string)).estornada_em).toBeNull()
+      const r = await chamarAcao(p, 'actions/financial.ts', 'reverseTransaction', '/admin/financeiro', [tx, '', 'Quebrou na bolsa', false])
+      expect(r.texto).toMatch(/"success":true/)
+    } finally { await ctxFin.close() }
+
+    const v = await venda(segunda.id as string)
+    expect({ estornada: !!v.estornada_em, voltou: v.produto_voltou }).toEqual({ estornada: true, voltou: false })
+    expect(await saldo(), 'não voltou: o estoque fica').toBe(7)
+    const { count } = await db().from('stock_movements').select('id', { count: 'exact', head: true }).eq('product_id', serum).eq('type', 'SALE_RETURN')
+    expect(count).toBe(1)
+    expect(await pontos(), 'os pontos dela voltam').toEqual(expect.arrayContaining([{ points: -149, kind: 'ESTORNO_GANHO' }]))
+    expect(await resumoDoProduto()).toEqual({ q: 2, total: 298 })
+    expect(await consumo()).toBe(await custoDasVivas())
+
+    const dia = hojeBR()
+    const { data: perdas, error } = await db().rpc('metrics_perdas', {
+      p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: `${dia}T00:00:00-03:00`, p_to: `${dia}T23:59:59-03:00`,
+    })
+    expect(error).toBeNull()
+    const linha = (perdas as { motivo: string | null; product_id: string | null; quantidade: number; custo: number }[])
+      .find(l => l.motivo === 'VENDA_ESTORNADA' && l.product_id === serum)
+    expect({ q: n(linha?.quantidade), custo: n(linha?.custo) }).toEqual({ q: 1, custo: n(v.custo) })
+  })
+
+  test('venda com entrada e parcela: o estorno estorna a entrada, cancela a parcela e a comissão — e a venda não se estorna duas vezes', async ({ browser }) => {
+    const nova = await db().rpc('produto_vender', {
+      p_tenant: rede!.tenantId, p_cliente: cliente, p_produto: serum, p_unidade: rede!.branchId, p_ator: recepcao!.userId,
+      p_quantidade: 1, p_desconto: 0, p_lancamentos: [
+        { amount: 49, is_paid: true, payment_method: 'PIX', sufixo: 'entrada' },
+        { amount: 100, is_paid: false, due_date: emDias(30), sufixo: 'parcela 2/2' },
+      ],
+    })
+    expect(nova.error).toBeNull()
+    const id = nova.data as string
+    expect(await saldo()).toBe(6)
+    const { data: txs } = await db().from('financial_transactions').select('id, is_paid').eq('product_sale_id', id).order('amount')
+    const entrada = txs!.find(t => t.is_paid)!.id as string
+    const parcela = txs!.find(t => !t.is_paid)!.id as string
+
+    // Pela função de sempre, sem dizer do produto, o banco recusa.
+    const porFora = await db().rpc('estornar_transacao', { p_transacao: entrada, p_tenant: rede!.tenantId, p_ator: 'e2e' })
+    expect(porFora.error?.message ?? '').toMatch(/venda de produto/i)
+
+    const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
+    try {
+      const p = await ctxFin.newPage()
+      await p.goto('/admin/financeiro')
+      const r = await chamarAcao(p, 'actions/financial.ts', 'reverseTransaction', '/admin/financeiro', [entrada, '', 'Desistiu', true])
+      expect(r.texto).toMatch(/"success":true/)
+      const deNovo = await chamarAcao(p, 'actions/financial.ts', 'reverseTransaction', '/admin/financeiro', [parcela, '', 'De novo', true])
+      expect(deNovo.texto).toMatch(/já foi estornada/i)
+    } finally { await ctxFin.close() }
+
+    const { data: depois } = await db().from('financial_transactions').select('id, is_paid, notes').eq('product_sale_id', id)
+    expect(Object.fromEntries(depois!.map(t => [t.id === entrada ? 'entrada' : 'parcela', { pago: t.is_paid, notes: t.notes }])))
+      .toEqual({ entrada: { pago: true, notes: 'Estornada' }, parcela: { pago: false, notes: 'Estornada' } })
+    expect(await saldo(), 'voltou').toBe(7)
+    const { data: linha } = await db().from('commission_lines').select('id, status').eq('product_sale_id', id).single()
+    expect(linha!.status).toBe('CANCELADA')
+    const { data: acertos } = await db().from('commissions').select('amount').eq('line_id', linha!.id)
+    expect((acertos ?? []).reduce((s, c) => Math.round((s + n(c.amount)) * 100) / 100, 0), 'nada a pagar').toBe(0)
+  })
 })
+
+async function venda(id: string) {
+  const { data, error } = await db().from('product_sales').select('estornada_em, produto_voltou, estorno_motivo, custo').eq('id', id).single()
+  expect(error).toBeNull()
+  return data!
+}
+async function saldo() {
+  const { data } = await db().from('branch_product_stock').select('current_stock').eq('product_id', serum).eq('branch_id', rede!.branchId).single()
+  return n(data!.current_stock)
+}
+function janelaDeHoje() {
+  const dia = hojeBR()
+  return { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: `${dia}T00:00:00-03:00`, p_to: `${dia}T23:59:59-03:00` }
+}
+async function resumoDoProduto() {
+  const { data, error } = await db().rpc('metrics_vendas_resumo', janelaDeHoje())
+  expect(error).toBeNull()
+  const produto = (data as { tipo: string | null; quantidade: number; total: number }[]).find(r => r.tipo === 'PRODUTO')
+  return { q: n(produto?.quantidade), total: n(produto?.total) }
+}
+async function consumo() {
+  const { data, error } = await db().rpc('metrics_resultado', { ...janelaDeHoje(), p_professional_id: null })
+  expect(error).toBeNull()
+  return n((data as { branch_id: string | null; consumo_de_insumo: number }[]).find(l => l.branch_id === null)?.consumo_de_insumo)
+}
+async function custoDasVivas() {
+  const { data } = await db().from('product_sales').select('custo').eq('tenant_id', rede!.tenantId).is('estornada_em', null)
+  return (data ?? []).reduce((s, v) => Math.round((s + n(v.custo)) * 100) / 100, 0)
+}

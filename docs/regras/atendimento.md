@@ -710,6 +710,16 @@ const procedures = await ler(
   para o Heitor). O relatório é a seção "Perdas no período" de Relatórios →
   Estoque (`metrics_perdas` → `getPerdas`, `indicadores.md`). Prova:
   `e2e/estoque-perda.spec.ts`.
+- **A DEVOLUÇÃO da venda de produto estornada** (H2, decisão do Heitor,
+  2026-11-01; migrations `20261101000301`/`302`): o estorno pergunta se o
+  produto voltou. Voltou: movimento `SALE_RETURN` ("Devolução de venda" no
+  histórico), positivo, que devolve o que a venda tirou ao saldo e a cada
+  lote de onde saiu (pelo `stock_movement_batches` da venda — o gatilho do
+  lote não mexe em movimento positivo, quem devolve é a função). Não voltou:
+  o estoque fica, e a venda é perda no relatório (motivo "Venda estornada").
+  Não é consumo nem entrada: fora do giro. A regra é de
+  `produto_estornar_venda` (`vendas-financeiro.md` §9.3.3). Prova:
+  `e2e/vendas-produto.spec.ts`.
 - **A tela de Estoque mostra o saldo na unidade de CONSUMO** (J-43/J-44/J-45,
   2026-10-30). A regra é UMA, `lib/estoque/situacao.ts` (tela da rede, da
   unidade e o "Estoque crítico" do dashboard): o produto com unidade de

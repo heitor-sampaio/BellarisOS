@@ -126,6 +126,12 @@
     `metrics_series_do_resultado`; com "só os meus", a venda de quem vendeu), e
     o DRE diz "− Insumos e produtos vendidos". A perda (D-7) NÃO entra (não
     gerou receita — decisão para o Heitor). Prova: `e2e/vendas-produto.spec.ts`.
+    **A venda ESTORNADA não entra** (H2, 2026-11-01; `product_sales.estornada_em`):
+    nem o custo no lucro (`metrics_resultado`, `metrics_series_do_resultado`),
+    nem a venda em Relatórios → Vendas. Se o produto não voltou, o custo dela
+    aparece em "Perdas no período" (`metrics_perdas`, motivo
+    `VENDA_ESTORNADA`, no dia do estorno). Na 5ª simulação o protetor
+    estornado ainda tirava R$ 45 do lucro ("Lucro 2.754" em vez de 2.799).
   - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
     pago pela regra de receita, a receita de serviço, os concluídos e os
     cobrados). A ficha a chama com a cliente e a janela inteira (`getDoCliente`:
@@ -189,7 +195,9 @@
     (grouping sets; a quantidade só por produto, que unidades diferentes não
     se somam) → `getPerdas` (`lib/metrics/perdas.ts`). É a seção "Perdas no
     período" de Relatórios → Estoque, que some com o financeiro "só os meus"
-    (como o saldo). A perda não entra no giro nem no lucro.
+    (como o saldo). A perda não entra no giro nem no lucro. A venda de
+    produto estornada cujo produto NÃO voltou também é perda ali
+    (`VENDA_ESTORNADA`, "Venda estornada (não voltou)" — H2, 2026-11-01).
   - **A conversão é da OPORTUNIDADE** (decisão do Heitor, 2026-10-29: "o
     objeto é a oportunidade"): as oportunidades na etapa de GANHO (desfecho
     `WON`) ÷ as oportunidades do funil, sem importar se a pessoa já é cliente.
@@ -313,7 +321,10 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - **Pacote** (`purchased_at`, o vendido, quem vendeu) e **pré-pago**
   (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
 - **Produto** (D4, 2026-10-30): `product_sales.sold_at`, o vendido, quem
-  vendeu; a quantidade são as embalagens ("3× Sérum").
+  vendeu; a quantidade são as embalagens ("3× Sérum"). A venda ESTORNADA sai
+  (H2, 2026-11-01): era R$ 6.013 contra R$ 5.915 na 5ª simulação. Pacote e
+  pré-pago estornados ainda contam (ninguém os estornou ainda; o estorno
+  deles é só do lançamento).
 - **Plano**: `treatment_plans.aceito_em` (gatilho `trg_plano_aceito_em` na
   passagem para ACCEPTED; os antigos herdaram o evento `plano.aceito`, o
   primeiro lançamento ou o `updated_at`), e vale a soma dos procedimentos dele

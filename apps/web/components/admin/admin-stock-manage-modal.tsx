@@ -735,6 +735,7 @@ const MOV_LABEL: Record<string, string> = {
   MANUAL_ADJUSTMENT: 'Ajuste manual',
   LOSS:              'Perda',
   SALE:              'Venda',
+  SALE_RETURN:       'Devolução de venda',
 }
 
 function HistoricoTab({ product, defaultBranchId }: {
