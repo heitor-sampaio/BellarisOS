@@ -8974,8 +8974,29 @@ As correções vão em frentes sequenciais com TDD (F1 nomes na agenda, F2
 comissão, F3 estorno de produto, F4 permissões e gerente, F5 desativar com
 repasse, F6 cliente em qualquer unidade e portal/agenda, F7 indicadores e "a
 dona vê tudo", F8 vocabulário da clínica de uma unidade, F9 clientes e CRM,
-F10 atendimento, caixa e automações). Fica com o Heitor só o item 6 (módulos
-sem escopo).
+F10 atendimento, caixa e automações).
+
+**Mais decisões do Heitor (2026-11-01):**
+- **Comissão (F2), confirmado:** cartão de crédito em N vezes é pagamento
+  integral ("a operadora não vai dar calote") e libera a comissão na hora; o
+  crediário direto da clínica só libera quando a cliente quita.
+- **Módulos sem escopo (item 6): ficam como estão** — "se não, alguém que
+  precisa cobrir um atendimento de outro profissional não consegue ver os
+  dados do cliente".
+- **Quem só pode ver, só pode ver** (F4): o botão some para o cargo com "Ver".
+- **Idempotência** (F9): "se achar que precisa, use idempotência para todos os
+  cadastros e edições do sistema".
+- **"Grávida ou amamentando?"** (F10): "não podemos assumir se é homem ou
+  mulher só pelo nome"; a pergunta ganha a resposta "Não se aplica".
+- **Concordou:** quem tem Clientes em Gerenciar edita a ficha de qualquer
+  cliente da clínica (F6); a cliente arquivada não agenda pelo app (F6);
+  "Cancelar pacote" com as sessões restantes devolvidas como estorno ou
+  crédito, e a comissão de venda na proporção (F2b); a venda de produto no
+  "Meu faturamento" de quem vendeu (F7); o dinheiro de Relatórios segue as
+  abas do cargo, e o Copilot também (F7); "desativado" sempre que a conta
+  estiver bloqueada, sem o oráculo de senha (F5).
+- **Login sem vínculo:** "não deve ter como ter um login sem vínculo, ou é
+  rede ou é unidade" (F5).
 
 ### Próximas fases já combinadas
 
