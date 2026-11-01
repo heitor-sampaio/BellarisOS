@@ -1651,6 +1651,42 @@ Ficam para o Heitor revisar, no §5:
 
 Os módulos sem escopo (clientes, documentos, caixa, estoque, checkout) seguem esperando a decisão dele.
 
+### 2026-11-01 — Quinta simulação: dois times em paralelo, a clínica de uma unidade e a rede que abre a segunda
+
+Pedido do Heitor: dois times de agentes ao mesmo tempo, com cenários novos, só
+anotando. Rodaram em produção no domingo 01/11, das 10h às 12h25, com 15
+agentes (run `wf_0a47c720-9b6`):
+
+- **Time A, "[sim] Clínica Jasmim"** (Florianópolis, uma unidade só): a dona
+  que atende, recepção e caixa, esteticista, biomédica de meio período
+  desativada no fim, e a cliente no celular. Pôs em uso o que as frentes de
+  29–30/10 fizeram: salas, comissão de pacote, venda e estorno de produto,
+  perda, "Parcelar até", troca de contrato, modelos de automação, "Retorno em
+  N dias", "Sem preferência".
+- **Time B, "[sim] Rede Magnólia"** (Porto Alegre): abriu a Moinhos e, no meio
+  do dia, a Zona Sul. SDR "só os meus", recepção e gerente fixas cada uma numa
+  unidade, médico da rede nas duas, pacote e pré-pago usados na outra
+  unidade, crediário, transferência de estoque, contadora sem agenda.
+
+**Dinheiro:** o caixa bateu nos dois times (banco, dashboard, Financeiro,
+Fechamento e CSV). Divergem o ranking "receita bruta" (D3), as Vendas com o
+produto estornado e o "A receber" sem o atendimento concluído sem pagamento.
+
+**Defeitos:** 15 (12 confirmados, 3 prováveis), nenhum regressão. Cinco são
+sobras das correções de 28–30/10. Três de alta: o app agenda sem sala (D1), a
+agenda da unidade mostra "—" no nome da cliente de outra unidade e do médico
+da rede (D2), e o ranking "receita bruta" que não é a receita (D3).
+
+**Atritos:** 68. **Revisão:** 13 achados reforçam decisões que já esperam o
+Heitor, e há 3 decisões novas.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-01 (5ª)".
+
+Antes dela, a completa de 30/10 rodou de novo (run 41165203915): 1 falha, do
+teste. O `copilot-leituras` pedia os horários livres de "amanhã", que caiu
+num domingo, e o horário padrão fecha no domingo. O teste agora pula o
+domingo (7f80ad62).
+
 ### 2026-10-30 — A completa depois das frentes: 6 falhas em 1.241, corrigidas
 
 A completa no GitHub Actions (run 41151753519, contra o build de 53b4a803)
@@ -8804,6 +8840,98 @@ Todas as 19 respondidas; as "fazer" entram nas frentes de correção.
 **Fora.** F-1…F-12. Uma dívida pequena, do F-9: apagar a coluna legada `leads.stage`, que não vale mais (a etapa é `crm_stage_id`).
 
 A triagem completa, com o arquivo provável de cada ajuste e a tabela de conferência atrito × item, está fora do git, em `apps/web/.sim/atritos-triagem.md`.
+
+### Da simulação de 2026-11-01 (5ª: 15 defeitos e 68 atritos em aberto)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`, com as
+capturas, os 68 atritos A1–A68 por tela, os 22 achados que eram regra ou
+engano, o dinheiro esperado × sistema e o que ficou sem testar. A 4ª rodada
+está em `.sim/arquivo-2026-10-29/`. Os ids D1…D15 e A1…A68 são desta rodada.
+
+O consolidador conferiu no código e no banco, só com SELECT, e não corrigiu
+nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a
+`apps/web/`:
+
+**Alta**
+- **D1.** O agendamento pelo app ignora a sala. A Carla marcou Peeling às
+  10:00 de terça, com a única sala do Peeling já ocupada pelo Diego: o horário
+  apareceu e foi aceito. Nenhum agendamento pelo app grava `room_id`
+  (`createClientAppointment`, `actions/appointments.ts:1604-1718`;
+  `computeAvailableSlots` só olha a profissional). Sobra da frente de salas
+  (8eea5d85).
+- **D2.** A agenda da unidade mostra "—" no lugar do nome da cliente
+  cadastrada em outra unidade (Marlene, da Moinhos, na agenda da Zona Sul) e
+  do profissional da rede (Dr. Paulo, visto pela recepção fixa). A página lê
+  `clients(name)` e `users(name)` pela sessão, e a RLS recorta pela unidade
+  (`app/[slug]/agenda/page.tsx:55-70, 138-152`). Sobra do D1 da 3ª (1d85d64e)
+  e do J-24.
+- **D3.** O ranking "Receita bruta" por procedimento e por profissional é o
+  valor dos atendimentos concluídos, sem desconto, com o não pago e com a
+  sessão de pacote: Dr. Paulo R$ 1.200 com a receita do mês em R$ 780; Limpeza
+  R$ 220 com R$ 200 vendidos. O nome é o do cartão de caixa, e o
+  `indicadores.md` diz que conta outra pede nome outro
+  (`components/admin/reports-bi-view.tsx:1000-1039`,
+  `admin-dashboard-view.tsx:1031-1034`). NOVO.
+
+**Média: o botão aparece para quem não pode usar**
+- **D4.** O SDR (Clientes = Ver) vê "Cadastrar cliente" no inbox; ao enviar, a
+  página inteira vira "Você não tem acesso a esta área" (`inbox-lead-panel.tsx:455`).
+- **D5.** A aba Dados da ficha fica editável para quem só vê, e "Salvar dados"
+  dá 500 sem mensagem (`client-profile.tsx:486-578`).
+- **D7.** A contadora (Financeiro = Ver) vê "Novo lançamento" no Financeiro da
+  rede, e a recusa sai "Forbidden", em inglês (`admin-financial-view.tsx:326`;
+  o `catch` de `actions/financial.ts:136, 156` devolve `e.message`, §14).
+- **D8.** O termo que bloqueia o atendimento aparece ao médico "Para assinar ·
+  bloqueia", sem ação, e "Iniciar" fica desligado sem dizer quem colhe a
+  assinatura (o cargo modelo Profissional tem `documents: VIEW`).
+- **D9.** A gerente (prontuário só Ver) vê "Fechar agora" e a dica do J-35
+  ("basta o Finalizar atendimento"), que ela não tem. Sobra do J-35 (9ab6828b).
+
+**Baixa**
+- **D6.** Cargo sem Agenda: a aba Planejamento fica em "Carregando planos…"
+  para sempre (sem `catch`). Sobra do D7 da 4ª (690108e9).
+- **D10.** PROVÁVEL: um "Cadastrar cliente" gerou duas fichas iguais com 0,7 s
+  de diferença; não há trava contra reenvio, e o telefone de ficha arquivada
+  não avisa.
+- **D11.** PROVÁVEL: corrida no modal da agenda; quem confirma antes de
+  `salasParaAgendar` responder grava sem sala. Sobra da frente de salas.
+- **D12.** A janela do agendamento mostra "VALOR R$ 140,00" no pré-pago e
+  R$ 550 na sessão de pacote, como se faltasse cobrar (também no app).
+- **D13.** A agenda da rede diz "1 Cancelamentos" com 1 falta e nenhum
+  cancelamento, contado na tela (§13.1).
+- **D14.** "Profissionais ativos 2" com 3 que atendem; é quem produziu no
+  período, contado na tela (§13.1).
+- **D15.** PROVÁVEL: com duas unidades, o mapa do dashboard abre com zoom numa
+  só (enquadra os clientes, não as unidades).
+
+**O achado mais repetido:** a clínica de uma unidade ainda fala "rede" em quase
+toda tela. O D-19 (47bae762) limpou o dashboard e os Relatórios; seis papéis
+viram "REDE", "Admin da rede", "filial" e "Toda a rede" no menu, Equipe,
+Procedimentos, Estoque (com select de filial vazio), Financeiro, Documentos e
+Configurações.
+
+**Reforça o que espera a revisão do Heitor** (13):
+1. Estorno da venda de produto: o estoque não volta, o DRE desconta o custo e,
+   novo, Vendas e CSV contam a venda estornada (`metrics_vendas` não olha
+   estorno).
+2. Custo e lucro na tela: "Custo do mês R$ 0" ao lado do gráfico com R$ 445.
+3. Retornos a marcar (D-12): só no dashboard da unidade, 7 dias; a dona da
+   clínica única usa o `/admin` e não os vê.
+4. "A receber" com duas contas: o Financeiro ignora o concluído sem pagamento.
+5. Sala opcional: ficaram sem sala a Priscila, a Inês e o app; salas só pela rede.
+6. Módulos sem escopo (frente H): a esteticista vê todos os clientes.
+7. Ficha com obrigatórias: "Grávida ou amamentando?" para homem.
+8. Grade da "Minha agenda" pela unidade (D5 da 4ª).
+9. Comissão de execução de pacote "no atendimento": R$ 192,50 com 90% do
+   pacote a receber.
+10. O vocabulário de rede numa unidade só (D-19 decisão 8, J-24 decisão 9).
+11. "Sem preferência" não aparece na remarcação.
+12. D-18: plano proposto e agendamento avulso do mesmo procedimento sem ligação.
+13. D-4: o modelo de automação manda por WhatsApp numa rede sem WhatsApp.
+
+**Decisões novas:** a cliente agendar em outra unidade pelo app; o que fazer
+com os agendamentos e oportunidades do membro desativado; a gerente de
+unidade fixa mexendo em configurações da rede (tags e importações).
 
 ### Próximas fases já combinadas
 
