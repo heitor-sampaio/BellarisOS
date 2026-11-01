@@ -185,7 +185,11 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   (`metrics_vendas`: na data da venda, pelo vendido, "quem vendeu" na coluna
   Profissional).
 - Pontos: só se a clínica ligar (Configurações → Fidelidade → "Venda de
-  produto", `fidelidade.md`).
+  produto", `fidelidade.md`). **A janela da venda DIZ** (A48 da 5ª
+  simulação): com a fidelidade ligada, "A venda de produto não gera pontos de
+  fidelidade (Configurações → Fidelidade)." ou "A venda gera pontos de
+  fidelidade quando for paga." (`data-pontos-do-produto`; `produtosAVenda`
+  lê a config da rede). Com a fidelidade desligada, não fala de pontos.
 - **O estorno é da VENDA e pergunta se o produto voltou** (H2, decisão do
   Heitor, 2026-11-01: "estorno de produto precisa ter um campo para indicar
   se houve devolução de produto ou não; se sim, produto volta ao estoque").

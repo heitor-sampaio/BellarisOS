@@ -26,7 +26,11 @@ import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from
 export interface ProcedimentoAVenda { id: string; name: string; price: number }
 
 /** O produto de revenda à venda (D4): o preço e quantas embalagens inteiras há na unidade. */
-export interface ProdutoAVenda { id: string; name: string; price: number; unidade: string; disponivel: number }
+export interface ProdutoAVenda {
+  id: string; name: string; price: number; unidade: string; disponivel: number
+  /** Se a venda de produto pontua (A48): `null` com a fidelidade da rede desligada. */
+  fidelidade?: 'PONTUA' | 'NAO_PONTUA' | null
+}
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
 
@@ -165,6 +169,14 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
       <p data-resumo-do-produto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
         {qtd} × {formatBRL(prod.price)} = {formatBRL(tabela)} · sai do estoque agora, pelo lote que vence primeiro
       </p>
+      {/* A48 da 5ª simulação: a venda de produto nasce sem pontuar, e a tela não dizia. */}
+      {prod.fidelidade && (
+        <p data-pontos-do-produto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          {prod.fidelidade === 'PONTUA'
+            ? 'A venda gera pontos de fidelidade quando for paga.'
+            : 'A venda de produto não gera pontos de fidelidade (Configurações → Fidelidade).'}
+        </p>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} />
