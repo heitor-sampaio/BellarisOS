@@ -8959,6 +8959,26 @@ Configurações.
 8. Grade da "Minha agenda" pela unidade (D5 da 4ª).
 9. Comissão de execução de pacote "no atendimento": R$ 192,50 com 90% do
    pacote a receber.
+   **Feito em 2026-11-01 (F2: d2692c07; migration `20261101000201`).** Um
+   modo só, INTEGRAL: a comissão fica a pagar quando a cliente pagou tudo o
+   que a gerou — avulso pago; pacote, plano, pré-pago e produto quando o
+   recebido (com os pontos) fecha com o vendido; crediário só na última
+   parcela; cartão em N vezes na hora. O estorno volta a deixar aguardando.
+   Na tela: o pacote de R$ 3.300 (entrada R$ 300 + 3 × R$ 1.000) deixa o card
+   do Dr. Paulo com "R$ 110,00 aguardando o pagamento integral" e "A pagar
+   R$ 0,00"; a 3ª parcela libera. O extrato mostra a linha "Aguardando" com o
+   previsto (e o CSV a coluna "Previsto"); Configurações → Comissões diz
+   "Quando a cliente paga tudo o que a gerou", sem o "No atendimento". Fecha o
+   A53. Prova: `e2e/comissoes-pagamento-integral.spec.ts`.
+   **Decisões da F2, para revisar:** (1) a linha nova nasce INTEGRAL por
+   gatilho; (2) quem estava em "quando paga" ficou com a base "Sobre o valor
+   pago"; (3) pontos quitam como dinheiro; (4) as 6 linhas antigas lançadas
+   sobre dinheiro não recebido ficam como estavam (Magnólia R$ 227,50 e
+   R$ 192,50, Jasmim R$ 60, Lótus R$ 121,50 já paga, Bellaris Clinic R$ 40);
+   (5) o previsto do avulso não pago sai sem a taxa da maquininha.
+   **Pergunta ao Heitor:** o cartão em N vezes hoje é UM lançamento pago no
+   dia (decisão de 2026-10-20), não parcelas a receber por mês, como a frase
+   do H4 sugere.
 10. O vocabulário de rede numa unidade só (D-19 decisão 8, J-24 decisão 9).
 11. "Sem preferência" não aparece na remarcação.
 12. D-18: plano proposto e agendamento avulso do mesmo procedimento sem ligação.
