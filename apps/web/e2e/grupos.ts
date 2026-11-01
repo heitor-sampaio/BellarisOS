@@ -33,6 +33,7 @@ export const ISOLADOS = [
   'agenda-minha-agenda-data-e-rotulos.spec.ts',
   'agenda-minha-ocupacao.spec.ts',
   'agenda-modal-erro-mantem-campos.spec.ts',
+  'agenda-nomes-de-outra-unidade.spec.ts',
   'agenda-profissional-da-rede.spec.ts',
   'agenda-salas.spec.ts',
   'agenda-so-os-meus-pelo-id.spec.ts',

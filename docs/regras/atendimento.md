@@ -60,6 +60,17 @@
   (`professionals:<rede>`): mexer num membro da rede expira todas as unidades.
   Escolher em QUAIS unidades ele atende fica para depois. Prova:
   `e2e/agenda-profissional-da-rede.spec.ts`.
+- **O nome de quem está no registro da unidade não vem pelo join da SESSÃO**
+  (D2 da simulação de 2026-11-01): a agenda da unidade (o cartão, a janela,
+  a "Minha agenda") e o Financeiro da unidade leem o agendamento e o
+  lançamento pela sessão, mas o nome da cliente e do profissional sai de
+  `nomesDosRegistros` (`lib/nomes-dos-registros.ts`, cliente de serviço, com
+  a rede, só os ids dos registros já lidos). Pela sessão, `clients_select`
+  mostra a ficha só à unidade de CADASTRO e a política de `users` mostra a
+  quem tem unidade fixa só os membros da unidade dele: a cliente cadastrada
+  em outra unidade e o profissional da rede viravam "—". A RLS de `clients` e
+  `users` não foi alargada (decisão de produto). Prova:
+  `e2e/agenda-nomes-de-outra-unidade.spec.ts`.
 - **A dona que atende** (D2 da simulação de 2026-10-29): o Admin da rede
   marca "Atende clientes", a comissão e o horário na Equipe da rede com o
   cargo TRAVADO (CLAUDE.md §11; só outra Admin da rede muda o cargo dela,
@@ -978,6 +989,7 @@ O resto do fluxo:
 ❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
 ❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
+❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem

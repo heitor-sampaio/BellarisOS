@@ -10,6 +10,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 import { selosDaFicha } from '@/lib/pre-atendimento/selos'
 import { abertosDeAntes } from '@/lib/agenda/abertos-de-antes'
+import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
@@ -58,9 +59,7 @@ export default async function AgendaPage({ params, searchParams }: {
       .select(`
         id, scheduled_at, duration_min, status, price, professional_id, client_id, arrived_at, completed_at,
         cancellation_reason,
-        clients(name),
-        procedures(name),
-        users!professional_id(name)
+        procedures(name)
       `)
       .eq('branch_id', branchId)
       .gte('scheduled_at', from)
@@ -132,13 +131,22 @@ export default async function AgendaPage({ params, searchParams }: {
   // descartado e a unidade inteira aparecia sem nenhum atendimento.
 
   // O selo da ficha de saúde no bloco (2026-10-21): só o estado, do banco.
-  const selos = await selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[])
+  // O nome da cliente e do profissional NÃO vem pelo join da sessão (D2 da
+  // simulação de 2026-11-01): a RLS mostra a ficha só à unidade de CADASTRO e
+  // o membro só à unidade dele, e a cliente de outra unidade e o profissional
+  // da rede viravam "—". Os agendamentos acima já são os desta unidade, ao
+  // alcance da sessão; daqui saem só os nomes de quem está neles.
+  const [selos, nomes] = await Promise.all([
+    selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[]),
+    nomesDosRegistros(ctx.tenantId!, {
+      clientes: (rawAppointments ?? []).map(a => a.client_id as string | null),
+      membros:  (rawAppointments ?? []).map(a => a.professional_id as string | null),
+    }),
+  ])
 
   // Mapeia appointments para eventos do FullCalendar
   const events = (rawAppointments ?? []).map(a => {
-    const client       = a.clients       as unknown as { name: string } | null
     const procedure    = a.procedures    as unknown as { name: string } | null
-    const professional = a.users         as unknown as { name: string } | null
     const endDate      = new Date(new Date(a.scheduled_at).getTime() + a.duration_min * 60000)
 
     return {
@@ -147,9 +155,9 @@ export default async function AgendaPage({ params, searchParams }: {
       end:              endDate.toISOString(),
       durationMin:      a.duration_min,
       status:           a.status,
-      clientName:       client?.name ?? '—',
+      clientName:       (a.client_id && nomes.clientes[a.client_id]) || '—',
       procedureName:    procedure?.name ?? '—',
-      professionalName: professional?.name ?? '—',
+      professionalName: (a.professional_id && nomes.membros[a.professional_id]) || '—',
       professionalId:   a.professional_id ?? '',
       price:            String(a.price),
       fichaDeSaude:     selos[a.id] ?? null,

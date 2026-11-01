@@ -290,8 +290,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   são os da unidade: `revenuePending` (getCore/getByBranch) e
   `metrics_a_pagar` até o fim do período; com uma unidade recortada, os dela.
   O cliente é `financial_transactions.client_id` (embed
-  `clients!financial_transactions_client_id_fkey`); sem ele, "—". Prova:
-  `e2e/financeiro-rede-a-receber.spec.ts`.
+  `clients!financial_transactions_client_id_fkey` na rede); sem ele, "—". Prova:
+  `e2e/financeiro-rede-a-receber.spec.ts`. **Na unidade, o nome vem de
+  `nomesDosRegistros`, não do embed da sessão** (D2 da simulação de
+  2026-11-01): a RLS mostra a ficha só à unidade de CADASTRO, e a venda da
+  cliente de outra unidade saía com "—" (regra em `atendimento.md` §9.1).
+  Prova: `e2e/agenda-nomes-de-outra-unidade.spec.ts`.
   - **"A receber" e "A pagar" valem pelo VENCIMENTO e dizem isso** (A34,
     2026-10-27): os dois cartões (unidade e rede, e cada unidade no recorte da
     rede) vêm de `getEmAberto` (`metrics_em_aberto`): em aberto com a data de

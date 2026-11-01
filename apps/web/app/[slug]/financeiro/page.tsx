@@ -9,6 +9,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
+import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 
 export default async function FinancialPage({
   params,
@@ -65,9 +66,9 @@ export default async function FinancialPage({
 
   // Em páginas (2026-10-22): o PostgREST corta em 1000, e o extrato do período
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
-  const transactions = await lerTodas((de, ate) => supabase
+  const lancamentos = await lerTodas((de, ate) => supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id')
     .eq('branch_id', branch.id)
     // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
     // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
@@ -81,6 +82,18 @@ export default async function FinancialPage({
     .lte('data_de_referencia', fimDoPeriodo.toISOString())
     .order('data_de_referencia', { ascending: false }).order('id')
     .range(de, ate), 'carregar os lançamentos')
+
+  // O nome da cliente NÃO vem pelo join da sessão (D2 da simulação de
+  // 2026-11-01): a RLS mostra a ficha só à unidade de CADASTRO, e a venda da
+  // cliente de outra unidade aparecia com "—". Os lançamentos acima já são os
+  // desta unidade, ao alcance da sessão; daqui saem só os nomes.
+  const nomes = await nomesDosRegistros(ctx.tenantId!, {
+    clientes: (lancamentos ?? []).map(t => t.client_id as string | null),
+  })
+  const transactions = (lancamentos ?? []).map(({ client_id, ...t }) => ({
+    ...t,
+    cliente: client_id && nomes.clientes[client_id] ? { name: nomes.clientes[client_id] } : null,
+  }))
 
 
 
@@ -147,7 +160,7 @@ export default async function FinancialPage({
         periodStart={start.toISOString()}
         customFrom={sp.from}
         customTo={sp.to}
-        transactions={(transactions ?? []) as unknown as Props['transactions']}
+        transactions={transactions as unknown as Props['transactions']}
         serie={serie}
         emAberto={emAberto}
         aPagarAnterior={aPagarAnterior}
