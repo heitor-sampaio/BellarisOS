@@ -8942,6 +8942,31 @@ Configurações.
 com os agendamentos e oportunidades do membro desativado; a gerente de
 unidade fixa mexendo em configurações da rede (tags e importações).
 
+**Respondido pelo Heitor (2026-11-01): "ajuste tudo que foi observado"**, com
+as decisões:
+- **Estorno de produto (item 1):** "precisa ter um campo para indicar se houve
+  devolução de produto ou não; se sim, produto volta ao estoque".
+- **A dona (item 3):** "ajuste para que a dona veja tudo, sempre" — os
+  retornos a marcar também no `/admin` e na ficha.
+- **Comissão (item 9):** "comissão só paga com pagamento integral do cliente;
+  pagamento parcelado no cartão deve ser considerado como pagamento integral
+  da parte do cliente, o repasse do valor das parcelas é de responsabilidade
+  da operadora do cartão. As parcelas continuam entrando como a receber nos
+  meses correspondentes."
+- **Cliente em outra unidade:** "a cliente é da clínica, pode agendar em
+  qualquer unidade da clínica".
+- **Membro desativado:** no momento da desativação, a opção de repassar os
+  agendamentos e as oportunidades para outra pessoa, caso a caso ou todos de
+  uma vez.
+- **Gerente de unidade:** "só mexe no que é da unidade".
+
+As correções vão em frentes sequenciais com TDD (F1 nomes na agenda, F2
+comissão, F3 estorno de produto, F4 permissões e gerente, F5 desativar com
+repasse, F6 cliente em qualquer unidade e portal/agenda, F7 indicadores e "a
+dona vê tudo", F8 vocabulário da clínica de uma unidade, F9 clientes e CRM,
+F10 atendimento, caixa e automações). Fica com o Heitor só o item 6 (módulos
+sem escopo).
+
 ### Próximas fases já combinadas
 
 - ~~Busca universal, fase 2 — ações~~ **feita em 2026-10-08** (ver a linha do tempo).
