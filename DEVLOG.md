@@ -8871,6 +8871,16 @@ nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a
   `clients(name)` e `users(name)` pela sessão, e a RLS recorta pela unidade
   (`app/[slug]/agenda/page.tsx:55-70, 138-152`). Sobra do D1 da 3ª (1d85d64e)
   e do J-24.
+  **Feito em 2026-11-01** (b7d9a4ae). A gerente fixa na Zona Sul vê
+  "Marlene · Limpeza" no cartão e "Dr. Paulo" na janela; a "Minha agenda" e a
+  coluna Cliente do Financeiro da unidade (o mesmo defeito, achado na
+  varredura) também. Os registros seguem lidos pela sessão (rede, unidade e
+  "só os meus"); só os NOMES vêm de `nomesDosRegistros`
+  (`lib/nomes-dos-registros.ts`, cliente de serviço, pela rede e pelos ids
+  desses registros). Sem migration, RLS intocada. Prova:
+  `e2e/agenda-nomes-de-outra-unidade.spec.ts`. Ficou para a F6 (a cliente é
+  da clínica): o membro fixo não edita a ficha de cliente cadastrada em outra
+  unidade.
 - **D3.** O ranking "Receita bruta" por procedimento e por profissional é o
   valor dos atendimentos concluídos, sem desconto, com o não pago e com a
   sessão de pacote: Dr. Paulo R$ 1.200 com a receita do mês em R$ 780; Limpeza
