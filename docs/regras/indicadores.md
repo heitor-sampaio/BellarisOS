@@ -535,6 +535,26 @@ zerados, por categoria, por unidade, validades) — fica o consumo dos
 atendimentos dela. A comissão que chega já é a dela e aparece. Prova:
 `e2e/relatorios-so-os-meus.spec.ts`.
 
+**A receita por procedimento e por profissional é a PAGA dos atendimentos**
+(D3 da 5ª simulação, 2026-11-02): o que entrou pela regra única
+(`metrics_receitas_pagas`) ligado a um atendimento (`appointment_id`), pelo
+procedimento e pela profissional dele — `metrics_top_procedures`,
+`metrics_top_professionals`, `metrics_relatorio` (por procedimento, por
+profissional e o total `receita_dos_atendimentos`, o "Receita paga dos
+atendimentos" da aba Procedimentos e o denominador do "% do Total") e
+`metrics_receita_por_categoria_de_procedimento` (migration
+`20261101000704`). Era a soma do PREÇO dos concluídos com o nome "Receita
+bruta"/"Receita Gerada": entravam o avulso concluído e não pago, a sessão de
+pacote/pré-pago já vendida e o preço sem o desconto (Laser R$ 1.200 contra
+R$ 780 de receita no mês). O nome é "receita paga", com a dica
+`DEFINICOES.receitaDosAtendimentos`. Pacote, pré-pago, plano e produto não
+são de um atendimento e não entram aqui. As execuções seguem o eixo do
+atendimento; a receita, o do pagamento — o pago no período sem execução nele
+vem com 0 execuções (o ranking que CONTA o deixa de fora). O ranking por
+receita do dashboard pede a lista larga (50) e ordena pela receita.
+`serviceRevenue` (o preço dos concluídos) continua no núcleo, com o nome
+"receita de serviço". Prova: `e2e/indicadores-receita-paga-por-procedimento.spec.ts`.
+
 **O topo da agenda da rede** (D13 da 5ª simulação, 2026-11-02) é
 `contagemDaAgenda` (`lib/metrics/resultado.ts`), sobre a lista que a tela já
 carregou inteira: Total, Confirmados, Em atendimento, Concluídos, **Cancelados**

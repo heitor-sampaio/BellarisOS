@@ -379,10 +379,10 @@ function TabOverview(p: ReportsBiProps) {
           <HBarChart data={byBranch} />
         </SCard>
         )}
-        <SCard title="Top 5 Procedimentos por Receita">
+        <SCard title="Top 5 Procedimentos por receita paga" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topProcs} />
         </SCard>
-        <SCard title="Top 5 Profissionais por Receita">
+        <SCard title="Top 5 Profissionais por receita paga" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topProfs} color={CHART_COLORS[1]} />
         </SCard>
         <SCard title="Forma de Pagamento">
@@ -879,12 +879,13 @@ function TabProcedimentos(p: ReportsBiProps) {
   const topByAgeVolume = porFaixa(faixas.volume, l => `${l.n} exec.`, l => l.nome)
   const topByAgeMargin = porFaixa(faixas.margem, l => `${l.margem.toFixed(1).replace('.', ',')}%`, l => l.nome)
 
-  // Totais do NÚCLEO: atendimentos concluídos e a receita deles — e o MESMO
-  // ticket médio do sistema inteiro (§13.1, lib/metrics: o pago pelas clientes
-  // ÷ as que pagaram, 2026-10-29). A aba dividia pelos concluídos (D11): R$ 90
-  // aqui e R$ 180 na Visão geral. Os rankings abaixo são por procedimento.
+  // Os atendimentos concluídos (o núcleo) e a receita PAGA deles (D3 da 5ª:
+  // era o preço dos concluídos — o não pago e a sessão de pacote entravam) —
+  // e o MESMO ticket médio do sistema inteiro (§13.1, lib/metrics: o pago
+  // pelas clientes ÷ as que pagaram, 2026-10-29). Os rankings abaixo são por
+  // procedimento, com a mesma receita paga.
   const totalExec   = core.appointmentsCompleted
-  const totalRev    = core.serviceRevenue
+  const totalRev    = r.receitaDosAtendimentos
   const avgTicket   = p.ticketMedio
   const topByName   = [...r.porProcedimento].sort((a, b) => b.receita - a.receita)
   const topRevenue  = topByName.slice(0, 10).map(d => ({ name: d.nome, value: d.receita }))
@@ -902,7 +903,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: 'Receita Total', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue',  label: 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
     // conta os cobrados), e o nome diz isso (D11).
     { key: 'ticket',   label: 'Média por execução', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
@@ -921,13 +922,11 @@ function TabProcedimentos(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {/* Só "Total Execuções" tem delta: é a única grandeza cujo período
-            anterior é medido do mesmo jeito (atendimentos concluídos). A receita
-            aqui vem de appointments.price, e o comparativo disponível do período
-            anterior é de caixa — comparar os dois media outra coisa. O ticket é
-            o do sistema (por cliente), sem o anterior carregado. */}
+        {/* Só "Total Execuções" tem delta: o anterior da receita paga dos
+            atendimentos não é carregado. O ticket é o do sistema (por
+            cliente), sem o anterior carregado. */}
         <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, corePrev.appointmentsCompleted)} showDelta />
-        <KpiCard label="Receita Total"   value={totalRev}  format="brl" />
+        <KpiCard label="Receita paga dos atendimentos" value={totalRev} format="brl" dica={DEFINICOES.receitaDosAtendimentos} />
         <KpiCard label="Ticket médio"    value={avgTicket} format="brl" />
         <div className="card" style={{ padding: '16px 20px', flex: '1 1 160px' }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
@@ -948,7 +947,7 @@ function TabProcedimentos(p: ReportsBiProps) {
         </div>
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
-        <SCard title="Top 10 por Receita">
+        <SCard title="Top 10 por receita paga" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topRevenue} />
         </SCard>
         <SCard title="Top 10 por Volume">
@@ -957,7 +956,7 @@ function TabProcedimentos(p: ReportsBiProps) {
         <SCard title="Distribuição por Categoria">
           <DonutChart data={byCategory} />
         </SCard>
-        <SCard title="Receita por Categoria">
+        <SCard title="Receita paga por categoria" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart
             data={byCategory.sort((a, b) => b.value - a.value)}
             color={CHART_COLORS[2]}
@@ -1003,7 +1002,7 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: 'Receita Gerada', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue', label: 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     {
@@ -1036,7 +1035,7 @@ function TabProfissionais(p: ReportsBiProps) {
         </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
-        <SCard title="Receita Gerada por Profissional">
+        <SCard title="Receita paga por profissional" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={byRevenue} />
         </SCard>
         <SCard title="Atendimentos por Profissional">

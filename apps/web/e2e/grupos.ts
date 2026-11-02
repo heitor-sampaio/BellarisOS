@@ -111,6 +111,7 @@ export const ISOLADOS = [
   'indicadores-ticket-medio.spec.ts',
   'indicadores-credito-interno.spec.ts',
   'indicadores-venda-de-produto-de-quem-vendeu.spec.ts',
+  'indicadores-receita-paga-por-procedimento.spec.ts',
   'indicadores-dashboard-da-rede-so-os-meus.spec.ts',
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',

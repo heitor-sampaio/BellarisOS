@@ -53,6 +53,7 @@ export async function getRelatorioDosModulos(
     receitaPorCategoria: d.receitaPorCategoria,
     consumoTotal:        d.consumoTotal,
     receitaPorCategoriaDeProcedimento: d.receitaPorCategoriaDeProcedimento,
+    receitaDosAtendimentos: d.receitaDosAtendimentos,
     porProcedimento:     juntarPorNome(a.porProcedimento, d.porProcedimento, ['receita']),
     porProfissional:     juntarPorNome(a.porProfissional, d.porProfissional, ['receita']),
     clientes:            { ...a.clientes, topClientes: d.clientes.topClientes },

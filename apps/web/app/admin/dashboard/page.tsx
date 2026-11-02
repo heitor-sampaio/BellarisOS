@@ -200,9 +200,12 @@ export default async function AdminDashboardPage({
     getSeries({ ...doDinheiro, granularity: period === 'today' ? 'hour' : 'day' }),
     // Os rankings que CONTAM seguem a agenda; os de VALOR, o dinheiro.
     topProceduresDaAgenda,
-    noDinheiro(topProceduresDaAgenda, () => getTopProcedures({ ...doDinheiro, limit: 5 })),
+    // O de VALOR é a receita PAGA dos atendimentos (D3 da 5ª) e vem por
+    // execuções do banco: pede-se uma lista larga e ordena-se pela receita
+    // aqui (ordenar não é somar).
+    getTopProcedures({ ...doDinheiro, limit: 50 }),
     topProfessionalsDaAgenda,
-    noDinheiro(topProfessionalsDaAgenda, () => getTopProfessionals({ ...doDinheiro, limit: 5 })),
+    getTopProfessionals({ ...doDinheiro, limit: 50 }),
     topClientsDaAgenda,
     noDinheiro(topClientsDaAgenda, () => getTopClients({ ...doDinheiro, limit: 10 })),
 
@@ -383,30 +386,34 @@ export default async function AdminDashboardPage({
   const barPct = (value: number, max: number) => (max > 0 ? (value / max) * 100 : 0)
 
   // 1. Top procedimentos por atendimentos
-  const maxProcCount  = procedureStats[0]?.appointments ?? 0
-  const topProcedures = procedureStats.map(p => ({
+  // O pago no período sem execução nele (concluído antes, pago agora) vem com
+  // 0 execuções: fica de fora do ranking que conta.
+  const procedureStatsFeitos = procedureStats.filter(p => p.appointments > 0)
+  const maxProcCount  = procedureStatsFeitos[0]?.appointments ?? 0
+  const topProcedures = procedureStatsFeitos.map(p => ({
     name: p.name, count: p.appointments, pct: barPct(p.appointments, maxProcCount),
   }))
 
   // 1a. Top procedimentos por receita de serviço
-  const byProcRevenue    = [...procedureStatsDoDinheiro].sort((a, b) => b.revenue - a.revenue)
+  const byProcRevenue    = procedureStatsDoDinheiro.filter(p => p.revenue > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
   const maxProcRevenue   = byProcRevenue[0]?.revenue ?? 0
   const topProceduresByRevenue = byProcRevenue.map(p => ({
     name: p.name, revenue: p.revenue, pct: barPct(p.revenue, maxProcRevenue),
   }))
 
   // 1b. Recorrência: retornos do mesmo cliente no período
-  const topRecurring = [...procedureStats]
+  const topRecurring = [...procedureStatsFeitos]
     .map(p => ({ name: p.name, repeatVisits: p.repeatVisits }))
     .sort((a, b) => b.repeatVisits - a.repeatVisits)
 
   // 2. Top profissionais por atendimentos
-  const maxProfCount     = professionalStats[0]?.appointments ?? 0
-  const topProfessionals = professionalStats.map(p => ({
+  const professionalStatsFeitos = professionalStats.filter(p => p.appointments > 0)
+  const maxProfCount     = professionalStatsFeitos[0]?.appointments ?? 0
+  const topProfessionals = professionalStatsFeitos.map(p => ({
     name: p.name, count: p.appointments, pct: barPct(p.appointments, maxProfCount),
   }))
 
-  const byProfRevenue  = [...professionalStatsDoDinheiro].sort((a, b) => b.revenue - a.revenue)
+  const byProfRevenue  = professionalStatsDoDinheiro.filter(p => p.revenue > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
   const maxProfRevenue = byProfRevenue[0]?.revenue ?? 0
   const topProfessionalsByRevenue = byProfRevenue.map(p => ({
     name: p.name, revenue: p.revenue, pct: barPct(p.revenue, maxProfRevenue),

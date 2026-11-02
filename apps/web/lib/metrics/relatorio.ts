@@ -22,7 +22,13 @@ export interface Relatorio {
   consumoTotal:        number
   porProcedimento:     { nome: string; categoria: string; receita: number; execucoes: number }[]
   porProfissional:     { nome: string; receita: number; atendimentos: number }[]
-  /** Receita dos atendimentos por categoria do procedimento (aba Procedimentos). */
+  /**
+   * A receita PAGA dos atendimentos (D3 da 5ª, 2026-11-02): o pago pela regra
+   * única ligado a um atendimento — o total das tabelas por procedimento e por
+   * profissional, cuja `receita` é a mesma conta. Era o preço dos concluídos.
+   */
+  receitaDosAtendimentos: number
+  /** Receita PAGA dos atendimentos por categoria do procedimento (aba Procedimentos). */
   receitaPorCategoriaDeProcedimento: { categoria: string; receita: number }[]
   agendamentosPorStatus: { status: string; n: number }[]
   porDiaDaSemana:      { dia: number; n: number }[]
@@ -88,6 +94,7 @@ export async function getRelatorio(args: {
     consumoTotal:        num(r.consumo_total),
     porProcedimento:     lista(r.por_procedimento).map(x => ({ nome: String(x.nome), categoria: String(x.categoria), receita: num(x.receita), execucoes: num(x.execucoes) })),
     porProfissional:     lista(r.por_profissional).map(x => ({ nome: String(x.nome), receita: num(x.receita), atendimentos: num(x.atendimentos) })),
+    receitaDosAtendimentos: num(r.receita_dos_atendimentos),
     receitaPorCategoriaDeProcedimento: lista(categorias).map(x => ({ categoria: String(x.categoria), receita: num(x.receita) })),
     agendamentosPorStatus: lista(r.agendamentos_por_status).map(x => ({ status: String(x.status), n: num(x.n) })),
     porDiaDaSemana:      lista(r.por_dia_da_semana).map(x => ({ dia: num(x.dia), n: num(x.n) })),

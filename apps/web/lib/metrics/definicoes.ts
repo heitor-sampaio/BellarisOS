@@ -42,6 +42,13 @@ export const DEFINICOES = {
     rotulo: 'Como o ticket médio é contado',
     texto: 'O que as clientes pagaram no período ÷ quantas clientes pagaram, pelo dia do PAGAMENTO (horário de Brasília).',
   },
+  /** A receita por procedimento e por profissional (D3 da 5ª, 2026-11-02): o pago dos atendimentos. */
+  receitaDosAtendimentos: {
+    rotulo: 'O que a receita paga dos atendimentos conta',
+    texto: 'O que as clientes pagaram pelos atendimentos, pelo dia do PAGAMENTO (horário de Brasília), com o desconto e sem '
+      + 'estornos — de cada procedimento ou de cada profissional. O concluído ainda não pago não entra; pacote, pré-pago, '
+      + 'plano e produto também não, porque não são pagos num atendimento (estão no faturamento e nas Vendas).',
+  },
   /** Relatórios → Visão geral: o status dos agendamentos do período inteiro (J-57). */
   statusDoPeriodo: {
     rotulo: 'O que o gráfico de status conta',

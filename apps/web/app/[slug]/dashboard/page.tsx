@@ -285,7 +285,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const semesterDelta = (chartData[5]?.value ?? 0) - (chartData[0]?.value ?? 0)
 
   // -- Top procedimentos -----------------------------------------
-  const topProcs = procedureStats.map(p => ({ name: p.name, count: p.appointments }))
+  // O pago sem execução no período vem com 0 (D3 da 5ª): não é "realizado".
+  const topProcs = procedureStats.filter(p => p.appointments > 0).map(p => ({ name: p.name, count: p.appointments }))
   const maxProc  = topProcs[0]?.count ?? 1
 
   // -- Funil ------------------------------------------------------
