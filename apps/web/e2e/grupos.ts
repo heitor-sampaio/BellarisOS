@@ -91,6 +91,7 @@ export const ISOLADOS = [
   'ficha-pre-atendimento-obrigatoria.spec.ts',
   'financeiro-a-pagar-vencimento.spec.ts',
   'financeiro-a-receber-concluido.spec.ts',
+  'financeiro-cartao-a-receber-da-operadora.spec.ts',
   'financeiro-credito-em-vezes.spec.ts',
   'financeiro-despesa-sem-desconto.spec.ts',
   'financeiro-lista-total-com-sinal.spec.ts',

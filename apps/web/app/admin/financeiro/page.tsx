@@ -6,6 +6,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 
 /** Lançamento como o select pede. */
@@ -78,7 +79,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, aReceberEmAbertoPorUnidade] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, aReceberEmAbertoPorUnidade, operadora, parcelasDaOperadora] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -129,6 +130,10 @@ export default async function AdminFinanceiroPage({
     // ativas (como o cartão do mês) e cada unidade (as de getByBranch).
     getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds }),
     getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds: null }),
+    // F2c: o cartão em N vezes que a OPERADORA ainda deposita, mês a mês, pelo
+    // vencimento até o fim do período — o total das ativas e cada unidade.
+    getAReceberDaOperadora({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
+    getParcelasDaOperadora({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
   ])
   const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
@@ -191,6 +196,8 @@ export default async function AdminFinanceiroPage({
         totalAReceber={emAbertoDaRede.aReceber}
         totalAReceberEmAberto={aReceberEmAberto.total}
         totalAPagar={emAbertoDaRede.aPagar}
+        aReceberDaOperadora={operadora}
+        parcelasDaOperadora={parcelasDaOperadora}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}
         totalProximoAPagar={emAbertoDaRede.proximoAPagar}
         totalMovimentacoes={movimentacoes.total}

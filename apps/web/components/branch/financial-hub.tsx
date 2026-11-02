@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet,
   Clock, BarChart2, Plus, ArrowUpRight, ArrowDownRight,
-  Gift,
+  Gift, CreditCard,
 } from 'lucide-react'
 import { FinancialTransactionModal }                        from './financial-transaction-modal'
 import { ClientCreditModal, ClientCreditModalHandle }       from './client-credit-modal'
@@ -18,6 +18,8 @@ import { iniciaisDoNome } from '@estetica-os/utils'
 import { resultadoDoPeriodo, type EstoqueNoResultado } from '@/lib/metrics/resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
+import { ParcelasDaOperadora } from '@/components/shared/parcelas-da-operadora'
+import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 
 // --- Types --------------------------------------------------------
 
@@ -63,6 +65,10 @@ interface Props {
   estoqueNoResultadoAnterior: EstoqueNoResultado
   /** D-14: todo o a receber em aberto, de qualquer vencimento (lib/metrics). */
   aReceberEmAberto: number
+  /** F2c: o cartão em N vezes que a operadora ainda deposita (não é dívida da cliente). */
+  aReceberDaOperadora: AReceberDaOperadora
+  /** As parcelas da operadora com vencimento no período. */
+  parcelasDaOperadora: ParcelaDaOperadora[]
   branchId:         string
   branchName:       string
   slug:             string
@@ -494,7 +500,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, composicao,
+  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, aReceberDaOperadora, parcelasDaOperadora, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -675,11 +681,22 @@ export function FinancialHub({
         <KpiCardFull
           chave="a-receber"
           nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} />}
-          label="A Receber"
+          label="A receber da cliente"
           curr={pendingIncome} prev={prevPendingIncome}
           icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
           iconBg="var(--success-bg)"
           valueColor={pendingIncome > 0 ? 'var(--success)' : 'var(--text)'}
+        />
+        {/* F2c: o que a OPERADORA ainda deposita do cartão em N vezes — a
+            cliente já pagou tudo; não é dívida dela (lib/metrics/operadora). */}
+        <KpiCardFull
+          chave="a-receber-operadora"
+          nota={<NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto} />}
+          label="A receber da operadora"
+          curr={aReceberDaOperadora.aReceber} prev={0}
+          icon={<CreditCard size={13} style={{ color: 'var(--success)' }} />}
+          iconBg="var(--success-bg)"
+          valueColor={aReceberDaOperadora.aReceber > 0 ? 'var(--success)' : 'var(--text)'}
         />
         <KpiCardFull
           chave="a-pagar"
@@ -775,6 +792,9 @@ export function FinancialHub({
           <CategoryBars items={expenseCategories} color="var(--danger)" />
         </div>
       </div>}
+
+      {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
+      {!ownScope && <ParcelasDaOperadora parcelas={parcelasDaOperadora} podeMarcar={canWrite} slug={slug} />}
 
       {/* Transactions */}
       {!ownScope && <div>

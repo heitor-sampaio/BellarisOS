@@ -44,6 +44,18 @@
     criação até 2026-10-27 (A34): agora também pelo vencimento. O cartão
     "A receber" do financeiro diz embaixo todo o em aberto, de qualquer
     vencimento (D-14, `getAReceberEmAberto` — `vendas-financeiro.md`).
+  - **O cartão em N vezes conta no dia da VENDA** (decisão do Heitor,
+    2026-11-01: "conta no mês do dia da venda"): a receita é o lançamento
+    pago, inteiro, no `paid_at` dele — a regra única não muda. As parcelas
+    que a OPERADORA deposita mês a mês (`recebiveis_do_cartao`) não são
+    receita e não entram em `revenuePending`: são o "A receber da operadora"
+    (`metrics_a_receber_da_operadora` → `getAReceberDaOperadora`,
+    `lib/metrics/operadora.ts`: o em aberto com vencimento no período, o
+    recebido no período, todo o em aberto e o próximo vencimento), ao lado do
+    "A receber da cliente" no Financeiro. A parcela recebida (na data ou
+    antecipada) NÃO soma receita. Prova:
+    `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`
+    (`vendas-financeiro.md` §9.6).
   - `serviceRevenue` — preço dos atendimentos concluídos, no eixo
     `appointments.aconteceu_em`
   - **O atendimento conta quando ACONTECEU** (D13, decisão do Heitor,

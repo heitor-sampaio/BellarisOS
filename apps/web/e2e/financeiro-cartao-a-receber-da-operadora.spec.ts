@@ -1,0 +1,324 @@
+import { test, expect, type Browser, type Page } from '@playwright/test'
+import { banco, PREFIXO } from './apoio/banco'
+import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
+import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
+
+/**
+ * O cartão de crédito em N vezes vira N parcelas A RECEBER DA OPERADORA, mês a
+ * mês (F2c da 5ª simulação; decisões do Heitor, 2026-11-01: "no financeiro mês
+ * a mês, como a receber" e "conta no mês do dia da venda").
+ *
+ * - a venda segue UM lançamento pago (a receita entra inteira no dia da venda,
+ *   a comissão libera na hora — H4 — e os pontos saem na venda);
+ * - a operadora deposita em parcelas: cada uma a receber no mesmo dia dos
+ *   meses seguintes, com a taxa da maquininha rateada;
+ * - a cliente não deve nada: nem a ficha, nem o app, nem o Fechamento;
+ * - a parcela vira recebida sozinha na data, e dá para marcar antes
+ *   (antecipação) — sem somar receita;
+ * - o estorno da venda cancela as que faltam e estorna as já recebidas.
+ */
+
+const marca = Date.now().toString(36)
+const db = () => banco()
+let rede: OutraRede | null = null
+let gestor: MembroDeTeste | null = null
+let cliente: ClienteDeTeste | null = null
+let slug = ''
+let proc = ''
+let pacote = ''
+/** A venda de R$ 1.100 no crédito 3x (o pagamento do avulso). */
+let venda = ''
+let atendimentoDaVenda = ''
+const n = (v: unknown) => Number(v ?? 0)
+const soma = (linhas: { amount: unknown }[] | null) => Math.round((linhas ?? []).reduce((s, c) => s + n(c.amount), 0) * 100) / 100
+
+/** Hoje em Brasília, "AAAA-MM-DD". */
+const hojeSP = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+/** O mesmo dia, `k` meses depois (o dia 31 vira o último dia do mês curto), "AAAA-MM-DD". */
+function maisMeses(dia: string, k: number) {
+  const [a, m, d] = dia.split('-').map(Number) as [number, number, number]
+  const alvo = new Date(Date.UTC(a, m - 1 + k, 1))
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate()
+  alvo.setUTCDate(Math.min(d, ultimo))
+  return alvo.toISOString().slice(0, 10)
+}
+
+async function comSessao(browser: Browser, estado: string, fn: (p: Page) => Promise<void>) {
+  const ctx = await browser.newContext({ storageState: estado })
+  try { await fn(await ctx.newPage()) } finally { await ctx.close() }
+}
+
+interface Parcela {
+  id: string; transaction_id: string; parcela_numero: number; parcela_total: number
+  valor: number; taxa_pct: number; taxa: number; liquido: number; estornado: number
+  vencimento_dia: string; situacao: string
+}
+async function parcelasDa(tx: string): Promise<Parcela[]> {
+  const { data, error } = await db().rpc('recebiveis_do_cartao_lista', {
+    p_tenant: rede!.tenantId, p_branch_ids: null, p_from: null, p_to: null,
+  })
+  expect(error, 'ler as parcelas da operadora').toBeNull()
+  return ((data ?? []) as Record<string, unknown>[])
+    .filter(r => r.transaction_id === tx)
+    .map(r => ({
+      id: String(r.id), transaction_id: String(r.transaction_id), parcela_numero: n(r.parcela_numero), parcela_total: n(r.parcela_total),
+      valor: n(r.valor), taxa_pct: n(r.taxa_pct), taxa: n(r.taxa), liquido: n(r.liquido), estornado: n(r.estornado),
+      vencimento_dia: String(r.vencimento_dia), situacao: String(r.situacao),
+    }))
+    .sort((a, b) => a.parcela_numero - b.parcela_numero)
+}
+async function aReceberDaOperadora() {
+  const { data, error } = await db().rpc('metrics_a_receber_da_operadora', {
+    p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: new Date(Date.now() - 86_400_000).toISOString(),
+    p_to: new Date(Date.now() + 86_400_000).toISOString(),
+  })
+  expect(error, 'o a receber da operadora').toBeNull()
+  return ((data ?? []) as Record<string, unknown>[]).find(r => r.branch_id == null) ?? {}
+}
+/** A receita paga do dia (a regra única, metrics_core.revenue_cash). */
+async function receitaDeHoje() {
+  const { data, error } = await db().rpc('metrics_core', {
+    p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId],
+    p_from: new Date(Date.now() - 6 * 3_600_000).toISOString(), p_to: new Date(Date.now() + 6 * 3_600_000).toISOString(),
+  })
+  expect(error, 'a receita do dia').toBeNull()
+  return n((data as Record<string, unknown>[])[0]?.revenue_cash)
+}
+async function devidoDoAtendimento(ap: string) {
+  const { data } = await db().from('commissions').select('amount').eq('appointment_id', ap)
+  return soma(data)
+}
+async function atendimento(clientId: string) {
+  const { data, error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: clientId, professional_id: rede!.professionalId, procedure_id: proc,
+    scheduled_at: new Date().toISOString(), duration_min: 30, price: 1100, status: 'IN_PROGRESS', source: 'INTERNAL',
+  }).select('id').single<{ id: string }>()
+  expect(error, 'criar o atendimento').toBeNull()
+  return data!.id
+}
+async function concluir(ap: string, origem: 'AVULSO' | 'PACOTE') {
+  const { error } = await db().rpc('concluir_atendimento', {
+    p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { insumos: [], comissoes: [{ procedure_id: proc, origem, treatment_plan_id: null, regra_tipo: 'PERCENTAGE', regra_valor: 10, preco: 1100 }] },
+  })
+  expect(error, 'concluir').toBeNull()
+}
+
+test.beforeAll(async () => {
+  rede = await criarOutraRede(`cop${marca}`)
+  proc = rede.procedureId
+  slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
+  expect((await db().from('procedures').update({ name: `${PREFIXO} Laser ${marca}`, price: 1100 }).eq('id', proc)).error).toBeNull()
+  cliente = await clienteComSessao(`copc${marca}`, { id: rede.branchId, slug }, { tenant: rede.tenantId })
+  await responderAnamnese(cliente.clientId, rede.tenantId)
+  expect((await db().from('users').update({ provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
+  expect((await db().from('commission_rules').insert({
+    tenant_id: rede.tenantId, professional_id: rede.professionalId, procedure_id: null, type: 'PERCENTAGE', value: 10, is_active: true,
+  })).error).toBeNull()
+  // A taxa da maquininha no crédito 3x: 4,5%.
+  expect((await db().from('payment_fees').insert({ tenant_id: rede.tenantId, metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 4.5 })).error).toBeNull()
+  // A fidelidade ligada: 1 ponto por real pago.
+  const fid = await db().from('loyalty_configs').upsert({ tenant_id: rede.tenantId, enabled: true, points_per_real: 1, earn_mode: 'POR_REAL' }, { onConflict: 'tenant_id' })
+  expect(fid.error, 'ligar a fidelidade').toBeNull()
+  gestor = await criarMembro(`copg${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Gestão',
+    permissoes: [
+      { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' },
+      { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' },
+    ],
+  })
+  const { data, error } = await db().rpc('pacote_salvar', {
+    p_tenant: rede.tenantId, p_id: null, p_nome: `${PREFIXO} Pacote cartão ${marca}`, p_preco: 3300, p_validade: null, p_ativo: true,
+    p_itens: [{ procedure_id: proc, quantity: 3 }],
+    p_comissao: { venda: null, execucao: { tipo: 'REGRA', valor: null } },
+  })
+  expect(error, 'criar o pacote').toBeNull()
+  pacote = data as string
+})
+
+test.afterAll(async () => {
+  const falhas: string[] = []
+  if (rede) {
+    const b = db()
+    const passo = async (o: string, q: PromiseLike<{ error: { message: string } | null }>) => {
+      const { error } = await q
+      if (error) falhas.push(`${o}: ${error.message}`)
+    }
+    await passo('comissão', b.from('commission_lines').delete().eq('tenant_id', rede.tenantId))
+    const { data: cps } = await b.from('client_packages').select('id').eq('branch_id', rede.branchId)
+    const ids = (cps ?? []).map(c => c.id as string)
+    if (ids.length) {
+      await passo('sessões', b.from('package_sessions').delete().in('client_package_id', ids))
+      await passo('lançamentos do pacote', b.from('financial_transactions').update({ client_package_id: null }).in('client_package_id', ids))
+      await passo('pacotes do cliente', b.from('client_packages').delete().in('id', ids))
+    }
+    await passo('pacotes', b.from('service_packages').delete().eq('tenant_id', rede.tenantId))
+    await passo('taxas', b.from('payment_fees').delete().eq('tenant_id', rede.tenantId))
+  }
+  await cliente?.limpar()
+  await gestor?.limpar()
+  await rede?.limpar()
+  expect(falhas).toEqual([])
+})
+
+test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', () => {
+  test('a venda de R$ 1.100 no crédito 3x: 3 parcelas da operadora nos meses certos, comissão e pontos na hora, receita no dia da venda', async () => {
+    const ap = await atendimento(cliente!.clientId)
+    atendimentoDaVenda = ap
+    await concluir(ap, 'AVULSO')
+    const { data: tx, error } = await db().rpc('confirmar_pagamento_do_atendimento', {
+      p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+      p_dados: { metodo: 'CREDIT_CARD', cartao_vezes: 3, pontos: 0, desconto: 0, valor_final: 1100 },
+    })
+    expect(error, 'pagar em 3x').toBeNull()
+    venda = tx as string
+
+    // A venda é UM lançamento pago, como sempre.
+    const { data: l } = await db().from('financial_transactions').select('is_paid, cartao_vezes, amount').eq('id', venda).single()
+    expect(l).toEqual({ is_paid: true, cartao_vezes: 3, amount: 1100 })
+
+    // A operadora: 3 parcelas, o mesmo dia nos 3 meses seguintes, a taxa de 4,5% rateada.
+    const hoje = hojeSP()
+    const parcelas = await parcelasDa(venda)
+    expect(parcelas.map(p => [p.parcela_numero, p.parcela_total, p.valor, p.vencimento_dia, p.situacao])).toEqual([
+      [1, 3, 366.66, maisMeses(hoje, 1), 'A_RECEBER'],
+      [2, 3, 366.66, maisMeses(hoje, 2), 'A_RECEBER'],
+      [3, 3, 366.68, maisMeses(hoje, 3), 'A_RECEBER'],
+    ])
+    expect(parcelas.every(p => p.taxa_pct === 4.5)).toBe(true)
+    expect(Math.round(parcelas.reduce((s, p) => s + p.taxa, 0) * 100) / 100, 'a taxa de 4,5% sobre R$ 1.100').toBe(49.5)
+    expect(Math.round(parcelas.reduce((s, p) => s + p.liquido, 0) * 100) / 100).toBe(1050.5)
+
+    // A comissão libera na hora (H4): a quitação olha a VENDA, não as parcelas da operadora.
+    expect(await devidoDoAtendimento(ap), 'comissão a pagar na hora').toBe(110)
+    // Os pontos saem na venda: a cliente pagou tudo.
+    const { data: ganho } = await db().from('loyalty_transactions').select('points').eq('transaction_id', venda).eq('kind', 'GANHO')
+    expect(ganho?.map(g => g.points), 'os pontos da venda inteira').toEqual([1100])
+    // A receita entra inteira no dia da venda.
+    expect(await receitaDeHoje()).toBe(1100)
+    // O a receber da operadora: tudo em aberto, nada no período de hoje.
+    const op = await aReceberDaOperadora()
+    expect([n(op.a_receber), n(op.em_aberto)]).toEqual([0, 1100])
+  })
+
+  test('a cliente não deve nada: nem a ficha, nem o Fechamento, nem o app', async ({ browser }) => {
+    const { data: fin, error } = await db().rpc('metrics_financeiro_do_cliente', { p_tenant: rede!.tenantId, p_client: cliente!.clientId })
+    expect(error).toBeNull()
+    expect(n((fin as Record<string, unknown>[])[0]?.a_receber), 'a receber da cliente na ficha').toBe(0)
+    const { data: ar, error: eAr } = await db().rpc('atendimentos_a_receber', { p_tenant: rede!.tenantId, p_unidade: rede!.branchId })
+    expect(eAr).toBeNull()
+    expect(((ar ?? []) as { appointment_id: string }[]).map(a => a.appointment_id), 'concluídos a receber do Fechamento').not.toContain(atendimentoDaVenda)
+    const { data: aberto } = await db().rpc('metrics_a_receber_em_aberto', { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId] })
+    expect(n(((aberto ?? []) as Record<string, unknown>[]).find(r => r.branch_id == null)?.valor), 'a receber da cliente no Financeiro').toBe(0)
+
+    await comSessao(browser, cliente!.estado, async p => {
+      await p.goto(`/${slug}/cliente/financeiro`)
+      await expect(p.getByRole('heading', { name: 'Financeiro' })).toBeVisible()
+      await expect(p.getByText('Crédito 3x')).toBeVisible()
+      await expect(p.getByText('Pago', { exact: true })).toHaveCount(1)
+      await expect(p.getByText('Pendente', { exact: true })).toHaveCount(0)
+    })
+  })
+
+  test('o Financeiro mostra os dois a receber, nomeados, e a parcela antecipada não soma receita', async ({ browser }) => {
+    const hoje = hojeSP()
+    const ate = maisMeses(hoje, 4)
+    await comSessao(browser, gestor!.estado, async p => {
+      await p.goto(`/admin/financeiro?period=custom&from=${hoje}&to=${ate}`)
+      await expect(p.locator('[data-kpi="a-receber"]')).toContainText('A receber da cliente')
+      const kpi = p.locator('[data-kpi="a-receber-operadora"]')
+      await expect(kpi).toContainText('A receber da operadora')
+      await expect(kpi).toContainText('R$ 1.100,00')
+
+      const lista = p.locator('[data-recebiveis-da-operadora]')
+      await expect(lista).toContainText('A cliente já pagou')
+      const linhas = lista.locator('[data-parcela-da-operadora]')
+      await expect(linhas).toHaveCount(3)
+      const primeira = lista.locator('[data-parcela-da-operadora][data-numero="1"]')
+      await expect(primeira).toContainText('1/3')
+      await expect(primeira).toContainText('R$ 366,66')
+      await expect(primeira).toContainText('A receber')
+
+      // A operadora antecipou: marca à mão.
+      await primeira.getByRole('button', { name: 'Marcar recebida' }).click()
+      const dlg = p.getByRole('dialog', { name: 'Marcar a parcela como recebida' })
+      await dlg.getByRole('button', { name: 'Marcar recebida' }).click()
+      await expect(primeira).toContainText('Antecipada')
+      await expect(kpi).toContainText('R$ 733,34')
+
+      // O financeiro da unidade mostra o mesmo.
+      await p.goto(`/${slug}/financeiro?period=custom&from=${hoje}&to=${ate}`)
+      await expect(p.locator('[data-kpi="a-receber-operadora"]')).toContainText('R$ 733,34')
+      await expect(p.locator('[data-recebiveis-da-operadora] [data-parcela-da-operadora]')).toHaveCount(3)
+    })
+    const parcelas = await parcelasDa(venda)
+    expect(parcelas.map(x => x.situacao)).toEqual(['ANTECIPADA', 'A_RECEBER', 'A_RECEBER'])
+    // A baixa da parcela NÃO soma receita: a venda já entrou inteira.
+    expect(await receitaDeHoje()).toBe(1100)
+  })
+
+  test('quem só vê o Financeiro não marca a parcela recebida', async ({ browser }) => {
+    const leitor = await criarMembro(`copl${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Só vê', permissoes: [{ modulo: 'financial', nivel: 'VIEW' }],
+    })
+    try {
+      const hoje = hojeSP()
+      await comSessao(browser, leitor.estado, async p => {
+        await p.goto(`/admin/financeiro?period=custom&from=${hoje}&to=${maisMeses(hoje, 4)}`)
+        await expect(p.locator('[data-recebiveis-da-operadora] [data-parcela-da-operadora]')).toHaveCount(3)
+        await expect(p.locator('[data-recebiveis-da-operadora]').getByRole('button', { name: 'Marcar recebida' })).toHaveCount(0)
+      })
+    } finally { await leitor.limpar() }
+  })
+
+  test('o estorno da venda cancela as parcelas a receber e estorna a já recebida', async () => {
+    const { error } = await db().rpc('estornar_transacao', { p_transacao: venda, p_tenant: rede!.tenantId, p_ator: 'e2e', p_motivo: 'e2e' })
+    expect(error, 'estornar').toBeNull()
+    const parcelas = await parcelasDa(venda)
+    expect(parcelas.map(x => [x.situacao, x.valor, x.estornado])).toEqual([
+      ['ESTORNADA', 0, 366.66], ['CANCELADA', 0, 0], ['CANCELADA', 0, 0],
+    ])
+    expect(n((await aReceberDaOperadora()).em_aberto)).toBe(0)
+    expect(await devidoDoAtendimento(atendimentoDaVenda), 'o estorno devolve a comissão, como sempre').toBe(0)
+  })
+
+  test('a parcela vira recebida sozinha na data, sem ninguém clicar', async () => {
+    const pago = new Date(Date.now() - 40 * 86_400_000).toISOString()
+    const { data, error } = await db().from('financial_transactions').insert({
+      branch_id: rede!.branchId, client_id: cliente!.clientId, type: 'INCOME', category: 'Serviços',
+      description: `${PREFIXO} Venda antiga ${marca}`, amount: 200, payment_method: 'CREDIT_CARD', cartao_vezes: 2,
+      is_paid: true, paid_at: pago, created_by: 'e2e',
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    const parcelas = await parcelasDa(data!.id)
+    expect(parcelas.map(x => [x.valor, x.situacao])).toEqual([[100, 'RECEBIDA'], [100, 'A_RECEBER']])
+  })
+
+  test('o pacote no crédito 3x cancelado com estorno: as parcelas da operadora acompanham o que voltou', async () => {
+    const outra = await rede!.criarCliente('Pacote no cartão')
+    await responderAnamnese(outra, rede!.tenantId)
+    const { data: cp, error } = await db().rpc('pacote_vender', {
+      p_tenant: rede!.tenantId, p_cliente: outra, p_pacote: pacote, p_unidade: rede!.branchId, p_ator: gestor!.userId,
+      p_lancamentos: [{ amount: 3300, payment_method: 'CREDIT_CARD', is_paid: true, cartao_vezes: 3 }],
+      p_sessoes: Array.from({ length: 3 }, () => ({ procedure_id: proc, preco: 1100 })),
+    })
+    expect(error, 'vender o pacote no cartão').toBeNull()
+    const { data: tx } = await db().from('financial_transactions').select('id').eq('client_package_id', cp as string).single<{ id: string }>()
+    expect((await parcelasDa(tx!.id)).map(x => x.valor)).toEqual([1100, 1100, 1100])
+
+    // Uma sessão feita (R$ 1.100 usados), e o cancelamento devolve R$ 2.200.
+    const ap = await atendimento(outra)
+    expect((await db().from('package_sessions').update({ appointment_id: ap }).eq('client_package_id', cp as string).eq('session_number', 1)).error).toBeNull()
+    await concluir(ap, 'PACOTE')
+    const args = { p_tenant: rede!.tenantId, p_pacote: cp, p_ator: gestor!.userId, p_ator_nome: 'e2e', p_motivo: 'desistiu', p_destino: 'ESTORNO', p_agendamentos: null }
+    const { data: previa, error: eP } = await db().rpc('pacote_cancelar', { ...args, p_esperado: 0, p_simular: true })
+    expect(eP).toBeNull()
+    expect(n((previa as Record<string, unknown>).devolver)).toBe(2200)
+    expect((await db().rpc('pacote_cancelar', { ...args, p_esperado: 2200, p_simular: false })).error, 'cancelar').toBeNull()
+
+    // O lançamento ficou com R$ 1.100; a operadora deixa de pagar as duas últimas.
+    expect(n((await db().from('financial_transactions').select('amount').eq('id', tx!.id).single()).data?.amount)).toBe(1100)
+    expect((await parcelasDa(tx!.id)).map(x => [x.situacao, x.valor])).toEqual([['A_RECEBER', 1100], ['CANCELADA', 0], ['CANCELADA', 0]])
+  })
+})
