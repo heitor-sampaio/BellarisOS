@@ -8903,6 +8903,25 @@ nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a
 - **D9.** A gerente (prontuário só Ver) vê "Fechar agora" e a dica do J-35
   ("basta o Finalizar atendimento"), que ela não tem. Sobra do J-35 (9ab6828b).
 
+  **D4–D9 feitos em 2026-11-01 (F4: 76ec4548, com A5, A23, A38, A39, A43).**
+  O SDR não vê "Cadastrar cliente", "Vender" nem "Converter"; a aba Dados fica
+  travada com "Seu cargo só consulta o cadastro"; Planejamento some sem Agenda
+  nem prontuário e nunca fica em "Carregando…"; a contadora não vê "Novo
+  lançamento" e a recusa sai em português (todo `catch` com
+  `mensagemDoErro`); o médico lê "A assinatura é colhida pela recepção…"; a
+  gerente não vê "Fechar agora" nem a dica. Prova:
+  `e2e/permissoes-quem-so-ve.spec.ts`. **H7 feito** (457ff911): a gerente de
+  unidade fixa vê "Esta configuração é da clínica toda" em Tags, Cargos,
+  Fichas, Documentos, Integrações e Geral, e ganhou a aba **Unidade** (dados,
+  horário e salas dela); a action recusa (`recusaDaConfigDaClinica`). Prova:
+  `e2e/permissoes-gerente-de-unidade.spec.ts`. **A comissão de uma Admin**
+  só outra Admin muda (c1834ad9). Regras no CLAUDE.md §11 e §14 e em
+  `docs/regras/plataforma.md`. Decisões da F4, para revisar: catálogo de
+  produtos e categorias do estoque, respostas rápidas e Importações ficaram
+  com a unidade; D8 só com o texto, sem "pedir à recepção"; A38 responde 404;
+  A43 só mudou o texto; desbloquear e gerar plano pedem Prontuário em
+  Gerenciar.
+
 **Baixa**
 - **D6.** Cargo sem Agenda: a aba Planejamento fica em "Carregando planos…"
   para sempre (sem `catch`). Sobra do D7 da 4ª (690108e9).
