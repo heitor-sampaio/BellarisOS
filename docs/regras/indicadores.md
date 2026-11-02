@@ -483,6 +483,11 @@ UM, o de `metrics_core`:
 - **atendimento dela**: `appointments.professional_id = ela`;
 - **dinheiro dela**: a transação ligada a um atendimento dela
   (`appointment_id`) — a evolução e o gráfico dos 6 meses batem com o cartão;
+  e, desde 2026-11-02 (decisão do Heitor: "concordo"), a da venda de
+  PRODUTO que ela vendeu (`product_sale_id` → `product_sales.sold_by`), como
+  nas Vendas — `metrics_receitas_pagas`, `metrics_core`, `metrics_series` e
+  `metrics_top_clients` (migration `20261101000703`). Prova:
+  `e2e/indicadores-venda-de-produto-de-quem-vendeu.spec.ts`;
 - **cliente dela**: quem tem agendamento NÃO CANCELADO com ela numa unidade
   do recorte (o total, os novos clientes, a demografia, a recorrência e o
   gasto). Até 2026-10-28 os novos clientes com profissional eram 0 por
