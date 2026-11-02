@@ -49,6 +49,12 @@ export const DEFINICOES = {
       + 'estornos — de cada procedimento ou de cada profissional. O concluído ainda não pago não entra; pacote, pré-pago, '
       + 'plano e produto também não, porque não são pagos num atendimento (estão no faturamento e nas Vendas).',
   },
+  /** A ficha da cliente (A56): o preço médio dos atendimentos, ao lado do investido total. */
+  precoMedioPorAtendimento: {
+    rotulo: 'O que o preço médio por atendimento conta',
+    texto: 'O preço dos atendimentos concluídos e cobrados dela ÷ quantos foram (o preço do atendimento, antes do '
+      + 'desconto). O "Investido total" é outra conta: tudo o que ela PAGOU — atendimentos, pacotes, planos e produtos.',
+  },
   /** Relatórios → Visão geral: o status dos agendamentos do período inteiro (J-57). */
   statusDoPeriodo: {
     rotulo: 'O que o gráfico de status conta',

@@ -123,14 +123,16 @@ test.describe.serial('o ticket médio e o gasto da cliente', () => {
       // por cliente; numa cliente só seria o LTV, e a ficha diz a média por atend.)
       await p.goto(`/${slug}/clients/${cli.mariana}`)
       await expect(p.getByText('TICKET MÉDIO', { exact: true })).toHaveCount(0)
-      const ticket = p.getByText('MÉDIA POR ATEND.', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')
+      const ticket = p.getByText('PREÇO MÉDIO POR ATEND.', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')
       await expect(ticket).toContainText('—')
       await expect(ticket).not.toContainText('R$')
       await expect(p.getByText('INVESTIDO TOTAL — LTV').locator('xpath=ancestor::div[contains(@class,"card")][1]')).toContainText('600,00')
+      // A56: ao lado do "Investido total", o preço médio diz a conta (a dica).
+      await expect(ticket.getByRole('button', { name: 'O que o preço médio por atendimento conta' })).toBeVisible()
 
       // Joana: R$ 180 num atendimento de R$ 180.
       await p.goto(`/${slug}/clients/${cli.joana}`)
-      await expect(p.getByText('MÉDIA POR ATEND.', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')).toContainText('180,00')
+      await expect(p.getByText('PREÇO MÉDIO POR ATEND.', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')).toContainText('180,00')
 
       // O ticket médio (era o "Gasto médio"): (180 + 600) ÷ as 2 que pagaram — o mesmo "pago" da ficha.
       await p.goto('/admin/reports?period=month&tab=clientes')

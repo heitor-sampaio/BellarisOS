@@ -105,7 +105,9 @@
     (no ranking do dashboard, o pago da cliente ÷ os concluídos; na FICHA da
     cliente, a receita de serviço dela ÷ os concluídos cobrados —
     `mediaPorAtendimentoCobrado`, a conta antiga do ticket: numa cliente só, o
-    ticket novo seria o próprio LTV) e "Média por execução" (por
+    ticket novo seria o próprio LTV; desde 2026-11-02, A56, o cartão se chama
+    "Preço médio por atend." e tem a dica `DEFINICOES.precoMedioPorAtendimento`
+    — ao lado do "Investido total", que é tudo o que ela pagou) e "Média por execução" (por
     procedimento, nos Relatórios; na aba Procedimentos, a receita paga dos
     atendimentos ÷ as execuções, num cartão ao lado do "Ticket médio por
     cliente" — A55, 2026-11-02: o ticket fica, com o nome que diz a conta). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a

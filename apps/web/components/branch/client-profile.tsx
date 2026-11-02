@@ -39,6 +39,8 @@ import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/ace
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { Dica } from '@/components/shared/dica'
+import { DEFINICOES } from '@/lib/metrics/definicoes'
 
 // -- Types --------------------------------------------------------------------
 
@@ -1510,12 +1512,14 @@ export function ClientProfile({
         {[
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
           { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested) },
-          { label: 'MÉDIA POR ATEND.', value: stats.mediaPorAtendimento == null ? '—' : fmtBRL(stats.mediaPorAtendimento) },
+          // A56: ao lado do que ela PAGOU (de tudo), o preço médio dos
+          // atendimentos cobrados — outra conta, outro nome, e a dica diz qual.
+          { label: 'PREÇO MÉDIO POR ATEND.', value: stats.mediaPorAtendimento == null ? '—' : fmtBRL(stats.mediaPorAtendimento), dica: DEFINICOES.precoMedioPorAtendimento },
           ...(fidelidade ? [{ label: 'PONTOS', value: fidelidade.saldo.toLocaleString('pt-BR') }] : []),
-        ].map(k => (
+        ].map((k: { label: string; value: string; dica?: { rotulo: string; texto: string } }) => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
-              {k.label}
+              {k.label}{k.dica && <Dica rotulo={k.dica.rotulo}>{k.dica.texto}</Dica>}
             </p>
             <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
               {k.value}
