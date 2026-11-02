@@ -48,6 +48,15 @@
     unidade pode ter sido desativada comercialmente mas ainda tem contas a
     receber"), que também aparece no "Por filial" enquanto tiver conta em
     aberto (prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`).
+    E o atendimento CONCLUÍDO sem pagamento ("Reforça", item 4 da 5ª,
+    2026-11-02) aparece no mesmo cartão, SEPARADO e nomeado — "Atendimentos
+    concluídos sem pagamento: R$ 650,00 (1 atendimento)" —, sem se somar
+    aos lançamentos: `getTotalDosAtendimentosAReceber`
+    (`lib/metrics/a-receber.ts`, o conjunto de `atendimentos_a_receber`,
+    contado no banco), na rede (total e por unidade) e na unidade (com o
+    financeiro "só os meus", os dela). Só aparecia no Fechamento do dia, que
+    passou a citar também as parcelas e lançamentos em aberto da unidade
+    (`getAReceberEmAberto`, aviso `parcelas-em-aberto`).
   - **O cartão em N vezes conta no dia da VENDA** (decisão do Heitor,
     2026-11-01: "conta no mês do dia da venda"): a receita é o lançamento
     pago, inteiro, no `paid_at` dele — a regra única não muda. As parcelas

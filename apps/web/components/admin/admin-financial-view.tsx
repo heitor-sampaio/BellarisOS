@@ -33,6 +33,8 @@ interface BranchStat {
   aReceber:    number
   /** D-14: todo o a receber em aberto da unidade, de qualquer vencimento. */
   aReceberEmAberto?: number
+  /** "Reforça", item 4: os concluídos sem pagamento da unidade. */
+  concluidosSemPagamento?: { n: number; valor: number }
   aPagar:      number
   /** O próximo vencimento depois do período (A34): "R$ 300,00 em 05/11". */
   proximoAReceber?: ProximoVencimento | null
@@ -79,6 +81,8 @@ interface Props {
   totalAReceber:    number
   /** D-14: todo o a receber em aberto da rede, de qualquer vencimento (getAReceberEmAberto). */
   totalAReceberEmAberto: number
+  /** "Reforça", item 4: os atendimentos concluídos sem pagamento da rede, separados dos lançamentos. */
+  totalConcluidosSemPagamento?: { n: number; valor: number }
   totalAPagar:      number
   /**
    * F2c: o cartão em N vezes que a OPERADORA ainda deposita (a cliente já
@@ -203,7 +207,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAReceberEmAberto, totalAPagar, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAReceberEmAberto, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
@@ -272,6 +276,7 @@ export function AdminFinancialView({
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
   const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
   const aReceberEmAberto = statDaUnidade ? statDaUnidade.aReceberEmAberto ?? 0 : totalAReceberEmAberto
+  const concluidosSemPagamento = statDaUnidade ? statDaUnidade.concluidosSemPagamento : totalConcluidosSemPagamento
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
   const proximoAReceber = statDaUnidade ? statDaUnidade.proximoAReceber ?? null : totalProximoAReceber
   const proximoAPagar   = statDaUnidade ? statDaUnidade.proximoAPagar ?? null   : totalProximoAPagar
@@ -382,7 +387,7 @@ export function AdminFinancialView({
           chave="a-receber"
           label="A receber da cliente"
           value={fmtBRL(aReceber)}
-          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} />}
+          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
         {/* F2c: o que a operadora ainda deposita do cartão em N vezes — não é

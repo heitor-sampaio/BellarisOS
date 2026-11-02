@@ -2,7 +2,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { getFechamentoDoDia, getAvisosDoFechamento } from '@/lib/metrics'
+import { getFechamentoDoDia, getAvisosDoFechamento, getAReceberEmAberto } from '@/lib/metrics'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { diaDoFechamento, janelaDoDia } from '@/lib/financeiro/fechamento'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -23,7 +23,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
 }) {
   const dia = diaDoFechamento(diaPedido)
   const janela = janelaDoDia(dia)!
-  const [resumo, aReceber, feitos] = await Promise.all([
+  const [resumo, aReceber, feitos, emAberto] = await Promise.all([
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
     // Os concluídos a receber da unidade, de qualquer dia (D5, 2026-10-27):
     // o que ficou sem pagamento ontem continua aqui até alguém receber.
@@ -32,6 +32,9 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
       .select('id, esperado_dinheiro, contado_dinheiro, diferenca, observacao, fechado_por_nome, fechado_em')
       .eq('tenant_id', ctx.tenantId!).eq('branch_id', unidadeId).eq('dia', dia)
       .order('fechado_em', { ascending: false }).limit(20), 'carregar os fechamentos do dia'),
+    // "Reforça", item 4: as parcelas e lançamentos a receber da unidade, de
+    // qualquer vencimento — o mesmo "Em aberto" do Financeiro.
+    getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds: [unidadeId] }),
   ])
 
   // Os avisos (J-49): o movimento depois do ÚLTIMO fechamento e as taxas do dia.
@@ -61,6 +64,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         }) satisfies FechamentoFeito)}
         podeFechar={podeReceber(ctx)}
         aReceber={aReceber}
+        emAberto={emAberto.total}
         avisos={avisos}
         // Receber o atendimento é do módulo de recebimentos (confirmPayment).
         podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}

@@ -78,6 +78,33 @@ test('o financeiro da unidade e o da rede: o mês (R$ 100) e "Em aberto, todos o
   })
 })
 
+test('"Reforça", item 4: o Financeiro mostra o atendimento concluído sem pagamento, separado; o Fechamento cita o em aberto', async ({ browser }) => {
+  // O laser avulso de R$ 650 concluído e não pago só aparecia no Fechamento.
+  const b = db()
+  const cli = await rede!.criarCliente('Laser')
+  const agora = new Date().toISOString()
+  expect((await b.from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cli, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 650, scheduled_at: agora, completed_at: agora,
+  })).error).toBeNull()
+
+  await como(browser, dona!, async p => {
+    for (const tela of [`/${slug}/financeiro?period=month`, '/admin/financeiro?period=month']) {
+      await p.goto(tela)
+      const cartao = p.locator('[data-kpi="a-receber"]')
+      // Separado e nomeado: não entra no número do cartão nem no em aberto dos lançamentos.
+      await expect(cartao, tela).toContainText(/R\$\s*100,00/)
+      await expect(cartao, tela).toContainText(/Em aberto, todos os vencimentos:\s*R\$\s*450,00/)
+      await expect(cartao.locator('[data-concluidos-sem-pagamento]'), tela)
+        .toContainText(/Atendimentos concluídos sem pagamento:\s*R\$\s*650,00/)
+    }
+    // O Fechamento: além dos 650, cita as parcelas e os lançamentos em aberto.
+    await p.goto(`/${slug}/fechamento`)
+    await expect(p.locator('[data-aviso="a-receber"]')).toContainText('650,00')
+    await expect(p.locator('[data-aviso="parcelas-em-aberto"]')).toContainText('450,00')
+  })
+})
+
 test('ind-11: a unidade DESATIVADA com conta a receber entra no em aberto da rede', async ({ browser }) => {
   // "A unidade pode ter sido desativada comercialmente mas ainda tem contas a
   // receber" (o Heitor, revisão de 2026-11-02).

@@ -7,6 +7,7 @@ import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, get
 import { lerTodas } from '@/lib/db'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
+import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 
 /** Lançamento como o select pede. */
@@ -79,7 +80,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -135,7 +136,13 @@ export default async function AdminFinanceiroPage({
     // vencimento até o fim do período — o total das ativas e cada unidade.
     getAReceberDaOperadora({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
     getParcelasDaOperadora({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
+    // "Reforça", item 4: os concluídos sem pagamento da rede inteira,
+    // separados dos lançamentos (só apareciam no Fechamento).
+    getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId! }),
   ])
+  // E de cada unidade, para o recorte da tela (uma chamada por unidade, como o em aberto).
+  const concluidosSemPagamentoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
+    [b.branchId, await getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: b.branchId })] as const)))
   const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
 
@@ -170,6 +177,7 @@ export default async function AdminFinanceiroPage({
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
     aReceberEmAberto: aReceberEmAberto.porUnidade[b.branchId] ?? 0,
+    concluidosSemPagamento: concluidosSemPagamentoDe[b.branchId],
     aPagar:      emAbertoDe[b.branchId]?.aPagar ?? 0,
     proximoAReceber: emAbertoDe[b.branchId]?.proximoAReceber ?? null,
     proximoAPagar:   emAbertoDe[b.branchId]?.proximoAPagar ?? null,
@@ -198,6 +206,7 @@ export default async function AdminFinanceiroPage({
         totalCommissions={totalComm}
         totalAReceber={emAbertoDaRede.aReceber}
         totalAReceberEmAberto={aReceberEmAberto.total}
+        totalConcluidosSemPagamento={concluidosSemPagamento}
         totalAPagar={emAbertoDaRede.aPagar}
         aReceberDaOperadora={operadora}
         parcelasDaOperadora={parcelasDaOperadora}

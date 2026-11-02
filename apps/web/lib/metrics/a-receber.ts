@@ -74,3 +74,25 @@ export async function getAtendimentosAReceber(args: {
     total: { n: Number(linhas[0]?.total_n ?? 0), valor: Number(linhas[0]?.total_valor ?? 0) },
   }
 }
+
+/**
+ * Só o TOTAL dos concluídos a receber ("Reforça", item 4 da 5ª simulação,
+ * 2026-11-02): o mesmo conjunto de `atendimentos_a_receber`, contado no banco,
+ * sem trazer a lista — o Financeiro (rede e unidade) mostra "Atendimentos
+ * concluídos sem pagamento" separado dos lançamentos em aberto. Sem
+ * `unidadeId`, a rede inteira (inclusive a unidade desativada).
+ */
+export async function getTotalDosAtendimentosAReceber(args: {
+  tenantId: string; unidadeId?: string | null; profissionalId?: string | null
+}): Promise<{ n: number; valor: number }> {
+  const { data, error } = await createAdminClient()
+    .rpc('atendimentos_a_receber', {
+      p_tenant: args.tenantId, p_unidade: args.unidadeId ?? null, p_cliente: null,
+      p_agendamento: null, p_profissional: args.profissionalId ?? null,
+    })
+    .order('completed_at').order('appointment_id')
+    .range(0, 0)
+  if (error) throw new Error(`[metrics] somar os atendimentos a receber: ${error.message}`)
+  const l = ((data ?? []) as Linha[])[0]
+  return { n: Number(l?.total_n ?? 0), valor: Number(l?.total_valor ?? 0) }
+}

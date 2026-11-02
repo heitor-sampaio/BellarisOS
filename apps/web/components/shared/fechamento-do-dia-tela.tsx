@@ -33,7 +33,7 @@ function Diferenca({ valor }: { valor: number }) {
  * A tela do fechamento do dia (2026-10-21). Todo número vem do servidor
  * (metrics_fechamento_do_dia); aqui só se desenha e se manda o contado.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, podeReceberAtendimento = false, avisos }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, podeReceberAtendimento = false, avisos }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -43,6 +43,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   podeFechar: boolean
   /** Os atendimentos concluídos e não pagos da unidade (D5, 2026-10-27). */
   aReceber?: ListaAReceber
+  /** "Reforça", item 4: as parcelas e lançamentos a receber da unidade, de qualquer vencimento. */
+  emAberto?: number
   podeReceberAtendimento?: boolean
   /** Os números dos avisos (J-49), do banco. */
   avisos?: AvisosDoFechamento
@@ -96,7 +98,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
         </div>
       </div>
 
-      <AvisosDoDia resumo={resumo} aReceber={aReceber} avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
+      <AvisosDoDia resumo={resumo} aReceber={aReceber} emAberto={emAberto} avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
 
       {/* O dia por forma de pagamento */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -192,13 +194,16 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
  * - saiu em espécie mais do que entrou (o esperado na gaveta é negativo);
  * - e, só informativo, as taxas da maquininha estimadas do dia.
  */
-function AvisosDoDia({ resumo, aReceber, avisos, fechadoAs }: {
-  resumo: FechamentoDoDia; aReceber?: ListaAReceber; avisos?: AvisosDoFechamento; fechadoAs: string | null
+function AvisosDoDia({ resumo, aReceber, emAberto = 0, avisos, fechadoAs }: {
+  resumo: FechamentoDoDia; aReceber?: ListaAReceber; emAberto?: number; avisos?: AvisosDoFechamento; fechadoAs: string | null
 }) {
   const lista: { chave: string; texto: string }[] = []
   if (aReceber && aReceber.total.n > 0) {
     const n = aReceber.total.n
     lista.push({ chave: 'a-receber', texto: `Há ${brl(aReceber.total.valor)} a receber de ${n} atendimento${n > 1 ? 's' : ''} concluído${n > 1 ? 's' : ''} sem pagamento (lista abaixo).` })
+  }
+  if (emAberto > 0) {
+    lista.push({ chave: 'parcelas-em-aberto', texto: `Há ${brl(emAberto)} em parcelas e lançamentos a receber, de qualquer vencimento (no Financeiro).` })
   }
   if (avisos && avisos.movimentosDepois > 0 && fechadoAs) {
     const n = avisos.movimentosDepois

@@ -65,6 +65,8 @@ interface Props {
   estoqueNoResultadoAnterior: EstoqueNoResultado
   /** D-14: todo o a receber em aberto, de qualquer vencimento (lib/metrics). */
   aReceberEmAberto: number
+  /** "Reforça", item 4: os atendimentos concluídos sem pagamento, separados dos lançamentos. */
+  concluidosSemPagamento?: { n: number; valor: number }
   /** F2c: o cartão em N vezes que a operadora ainda deposita (não é dívida da cliente). */
   aReceberDaOperadora: AReceberDaOperadora
   /** As parcelas da operadora com vencimento no período. */
@@ -500,7 +502,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, aReceberDaOperadora, parcelasDaOperadora, composicao,
+  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, concluidosSemPagamento, aReceberDaOperadora, parcelasDaOperadora, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -680,7 +682,7 @@ export function FinancialHub({
         />
         <KpiCardFull
           chave="a-receber"
-          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} />}
+          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento} />}
           label="A receber da cliente"
           curr={pendingIncome} prev={prevPendingIncome}
           icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
