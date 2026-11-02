@@ -224,3 +224,24 @@ export function maisRealizado(lista: { nome: string; execucoes: number; receita:
     desempatePelaReceita: mesmasExecucoes.length > 1 && empatados.length === 1,
   }
 }
+
+/**
+ * Os números do topo da agenda da rede (D13 da 5ª simulação, 2026-11-02):
+ * sobre a lista que a tela já carregou inteira (`lerTodas`), por status. O
+ * cancelado e a falta são DOIS números — "Cancelamentos" somava os dois, e a
+ * Fernanda via "1 cancelamento" com uma falta e nenhum cancelado. A conta
+ * era da tela; mora aqui (§13.1).
+ */
+export function contagemDaAgenda(lista: { status: string }[]): {
+  total: number; confirmados: number; emAtendimento: number; concluidos: number; cancelados: number; faltas: number
+} {
+  const de = (...s: string[]) => lista.filter(a => s.includes(a.status)).length
+  return {
+    total:         lista.length,
+    confirmados:   de('CONFIRMED', 'ARRIVED'),
+    emAtendimento: de('IN_PROGRESS'),
+    concluidos:    de('COMPLETED'),
+    cancelados:    de('CANCELLED'),
+    faltas:        de('NO_SHOW'),
+  }
+}

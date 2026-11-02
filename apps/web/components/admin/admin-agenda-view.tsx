@@ -11,6 +11,7 @@ import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { estenderJanela } from '@/lib/agenda/grade'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
+import { contagemDaAgenda } from '@/lib/metrics/resultado'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -531,11 +532,8 @@ export function AdminAgendaView({
         return `${mDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })} – ${sDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })}`
       })()
 
-  const total     = appointments.length
-  const completed = appointments.filter(a => a.status === 'COMPLETED').length
-  const inProg    = appointments.filter(a => a.status === 'IN_PROGRESS').length
-  const confirmed = appointments.filter(a => a.status === 'CONFIRMED' || a.status === 'ARRIVED').length
-  const cancelled = appointments.filter(a => a.status === 'CANCELLED' || a.status === 'NO_SHOW').length
+  // Os números do topo vêm de lib/metrics (D13): o cancelado e a falta separados.
+  const conta = contagemDaAgenda(appointments)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -627,13 +625,14 @@ export function AdminAgendaView({
       {/* KPIs compactos */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {[
-          { label: 'Total',          value: total,     color: 'var(--brand)' },
-          { label: 'Confirmados',    value: confirmed, color: 'var(--cat-4)' },
-          { label: 'Em atendimento', value: inProg,    color: 'var(--warning)' },
-          { label: 'Concluídos',     value: completed, color: 'var(--success)' },
-          { label: 'Cancelamentos',  value: cancelled, color: 'var(--danger)' },
+          { label: 'Total',          value: conta.total,         color: 'var(--brand)' },
+          { label: 'Confirmados',    value: conta.confirmados,   color: 'var(--cat-4)' },
+          { label: 'Em atendimento', value: conta.emAtendimento, color: 'var(--warning)' },
+          { label: 'Concluídos',     value: conta.concluidos,    color: 'var(--success)' },
+          { label: 'Cancelados',     value: conta.cancelados,    color: 'var(--text-muted)' },
+          { label: 'Faltas',         value: conta.faltas,        color: 'var(--danger)' },
         ].map(k => (
-          <div key={k.label} style={{
+          <div key={k.label} data-kpi={k.label} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 14px',
             background: 'var(--surface)',

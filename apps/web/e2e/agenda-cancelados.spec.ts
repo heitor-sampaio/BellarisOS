@@ -17,6 +17,7 @@ let recepcao: MembroDeTeste | null = null
 let slug = ''
 const dia = (dias: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + dias * 86_400_000))
 const AMANHA = dia(1)
+const DEPOIS = dia(2)
 let cancelado = ''
 
 async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
@@ -39,6 +40,14 @@ test.beforeAll(async () => {
   }).select('id').single<{ id: string }>()
   expect(error, 'agendar').toBeNull()
   cancelado = data!.id
+  // D13 da 5ª: num outro dia, um cancelado e uma falta — a agenda da rede
+  // contava os dois como "Cancelamentos".
+  const base = { branch_id: rede.branchId, client_id: cliente, procedure_id: rede.procedureId, professional_id: rede.professionalId, source: 'INTERNAL', duration_min: 60, price: 0 }
+  const r2 = await db().from('appointments').insert([
+    { ...base, status: 'CANCELLED', cancelled_at: new Date().toISOString(), cancellation_reason: 'desmarcou', scheduled_at: new Date(`${DEPOIS}T09:00:00-03:00`).toISOString() },
+    { ...base, status: 'NO_SHOW', scheduled_at: new Date(`${DEPOIS}T11:00:00-03:00`).toISOString() },
+  ])
+  expect(r2.error, 'agendar o cancelado e a falta').toBeNull()
 })
 test.afterAll(async () => { await recepcao?.limpar(); await rede?.limpar() })
 
@@ -70,6 +79,16 @@ test.describe.serial('os cancelados na agenda', () => {
       const bloco = p.locator(`[data-agendamento="${cancelado}"]`)
       await expect(bloco).toBeVisible()
       await expect(bloco).toContainText('viagem de última hora')
+    })
+  })
+
+  test('na rede, a falta não é cancelamento: os dois números separados (D13)', async ({ browser }) => {
+    await como(browser, async p => {
+      await p.goto(`/admin/agenda?date=${DEPOIS}`)
+      await expect(p.locator('[data-kpi="Total"]')).toContainText('2')
+      await expect(p.locator('[data-kpi="Cancelados"]')).toContainText('1')
+      await expect(p.locator('[data-kpi="Faltas"]')).toContainText('1')
+      await expect(p.getByText('Cancelamentos', { exact: true })).toHaveCount(0)
     })
   })
 })

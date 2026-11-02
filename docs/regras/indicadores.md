@@ -520,5 +520,11 @@ zerados, por categoria, por unidade, validades) — fica o consumo dos
 atendimentos dela. A comissão que chega já é a dela e aparece. Prova:
 `e2e/relatorios-so-os-meus.spec.ts`.
 
+**O topo da agenda da rede** (D13 da 5ª simulação, 2026-11-02) é
+`contagemDaAgenda` (`lib/metrics/resultado.ts`), sobre a lista que a tela já
+carregou inteira: Total, Confirmados, Em atendimento, Concluídos, **Cancelados**
+e **Faltas** — dois números. "Cancelamentos" somava a falta, contado na tela.
+Prova: `e2e/agenda-cancelados.spec.ts`.
+
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).
