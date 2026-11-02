@@ -226,6 +226,15 @@ conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
 - Fica de fora: a mesma pessoa como EQUIPE de uma clínica e cliente de outra
   com o mesmo e-mail (usa outro e-mail).
 - Prova: `e2e/portal-cliente-varias-clinicas.spec.ts`.
+- **A ficha é da CLÍNICA, não da unidade de cadastro** (H5, 2026-11-02: "A
+  cliente é da clínica, pode agendar em qualquer unidade da clínica"). O portal
+  de QUALQUER unidade ativa da rede da ficha abre a mesma ficha
+  (`slugsDaClinica` em `fichaDaRequisicao`; o layout de `[slug]` confere a
+  rede); o agendar do app usa a unidade do ENDEREÇO, pergunta "Em qual
+  unidade?" quando há mais de uma e grava pelo `createAppointmentCore`. Na
+  equipe, quem tem Clientes em Gerenciar edita, arquiva e reativa a cliente de
+  qualquer unidade. Nada se prende a `clients.branch_id`. Prova:
+  `e2e/portal-cliente-outra-unidade.spec.ts`, `e2e/ficha-de-outra-unidade.spec.ts`.
 - **O endereço (slug) da unidade é único no sistema inteiro**
   (`branches_slug_unico`, 2026-10-19) — é o que deixa o endereço decidir a
   ficha. `createBranch` escolhe um livre sozinho (`lib/unidades/endereco.ts`):

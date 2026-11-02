@@ -9128,6 +9128,27 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F6 feita em 2026-11-02 — a cliente em qualquer unidade, o portal e a agenda**
+(14 commits, c9a707d6…6f121ea0; migrations `20261101000601–602`). A Marlene,
+da Moinhos, abre o app da Zona Sul e fica nela; "Novo agendamento" pergunta "Em
+qual unidade?"; cada cartão diz a unidade. O agendar do app grava pelo núcleo
+da agenda (e emite "agendamento criado"). A arquivada lê "Fale com a clínica
+para agendar." O procedimento ganhou **"Quem realiza"**: o app e o repasse
+oferecem só quem faz (a agenda da clínica só avisa). Remarcar oferece "Sem
+preferência"; a profissional "só os meus" cancela e marca falta pela janela;
+remarcar avisa do fora do horário e da arquivada. O WhatsApp do cartão "A
+clínica" é o número conectado, e "Falar com a clínica" abre com a mensagem
+pronta. A janela mostra "Já pago · Pré-pago · 1 de 2" e "45 min · Sala Rosa ·
+unidade"; o cancelado ganha "Reagendar"; o concluído adiantado libera o
+horário e a sala; o conflito diz a unidade; a "Minha agenda" mostra o horário
+DELA. No app: parcelas com vencimento, o avulso a pagar, o pacote com "restam
+2" e "Agendar Laser", prazo da LGPD, estrelas com nome. Regra no CLAUDE.md §5.
+Ficaram para a F10: A32 (iniciar muito antes pede confirmação) e A33 (o
+"Agendando…" lento). Decisões da F6, para revisar: arquivar/reativar de
+qualquer unidade; o portal de qualquer unidade ativa; "Quem realiza" vazio =
+todas; a agenda só avisa; a profissional "só os meus" cancela com a agenda em
+Gerenciar; o prazo da LGPD cita o art. 19, II.
+
 **F5 feita em 2026-11-02 — Equipe** (377067d4, 54edf049, 741bbfc5,
 e398c472, aceea941; migration `20261101000501`). Ao desativar a Renata, a
 janela mostra "Agendamentos futuros (2)" e "Oportunidades abertas (2)" e
