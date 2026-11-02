@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { comissaoDoFormulario, gravarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
+import { comissaoDoFormulario, gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin } from '@/lib/comissoes/gravacao'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -177,6 +177,11 @@ async function addProcedureInterno(
   // conferida aqui, antes de qualquer gravação.
   const comissao = comissaoDoFormulario(ctx, formData)
   if (comissao.error) return { error: comissao.error }
+  // O valor de uma Admin da rede só outra Admin muda (CLAUDE.md §11).
+  if (comissao.entrada) {
+    const daAdmin = await recusaDaComissaoDaAdmin(ctx, null, comissao.entrada)
+    if (daAdmin) return { error: daAdmin }
+  }
 
   const admin = createAdminClient()
   const recusa = await idsDoFormularioDaRede(admin, ctx.tenantId!, {
@@ -320,6 +325,11 @@ async function updateProcedureInterno(
   if (isNaN(price) || price < 0)             return { error: 'Preço inválido.' }
   const comissao = comissaoDoFormulario(ctx, formData)
   if (comissao.error) return { error: comissao.error }
+  // O valor de uma Admin da rede só outra Admin muda (CLAUDE.md §11).
+  if (comissao.entrada) {
+    const daAdmin = await recusaDaComissaoDaAdmin(ctx, procedureId, comissao.entrada)
+    if (daAdmin) return { error: daAdmin }
+  }
 
   const admin = createAdminClient()
   const recusa = await idsDoFormularioDaRede(admin, ctx.tenantId!, {

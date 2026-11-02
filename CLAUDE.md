@@ -534,7 +534,8 @@ Regras:
   ninguém, nem quem tem a Equipe em Gerenciar: a tela não mostra o lápis, a
   comissão nem o desativar na linha de uma Admin, e as actions
   (`updateTeamMember`, `createTeamMember`, `deactivateTeamMember`,
-  `reactivateTeamMember`, `salvarRegrasDoProfissional`) recusam. A própria
+  `reactivateTeamMember`, `salvarRegrasDoProfissional` e o valor dela na
+  comissão do procedimento, `recusaDaComissaoDaAdmin`) recusam. A própria
   Admin edita em si o "atende" e o horário com o cargo travado (é assim que a
   dona que atende se marca profissional, D2), e não muda o próprio cargo; a
   última Admin ativa não é rebaixada nem desativada.

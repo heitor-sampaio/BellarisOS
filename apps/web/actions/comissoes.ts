@@ -21,7 +21,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
 import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento } from '@/lib/comissoes/config'
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
-import { gravarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
+import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
@@ -157,6 +157,9 @@ export async function salvarComissaoDoProcedimento(procedimentoId: string, entra
     const lido = EntradaDaComissaoDoProcedimento.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
 
+    // O valor de uma Admin da rede só outra Admin muda (CLAUDE.md §11).
+    const recusa = await recusaDaComissaoDaAdmin(ctx, procedimentoId, lido.data)
+    if (recusa) return { error: recusa }
     // A função confere que o procedimento e cada profissional são da rede.
     await gravarComissaoDoProcedimento(ctx, procedimentoId, lido.data)
     revalidar()

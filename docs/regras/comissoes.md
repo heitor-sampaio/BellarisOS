@@ -72,6 +72,21 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   conjunto inteiro do procedimento, a Equipe não o oferece como exceção e
   `comissao_regras_definir` recusa. Muda quem tem `financial: MANAGE` e é da
   rede. Prova: `e2e/comissoes-por-procedimento.spec.ts`.
+  - **O valor de uma Admin da rede no procedimento só outra Admin muda**
+    (achado da compilação da 5ª simulação, 2026-11-01; a regra é a do
+    CLAUDE.md §11, "somente admin pode alterar admin"): o procedimento grava o
+    conjunto inteiro dos profissionais, e quem tinha o Financeiro em Gerenciar
+    punha, mudava ou tirava a exceção da Admin por aqui. `recusaDaComissaoDaAdmin`
+    (`lib/comissoes/gravacao.ts`, com `adminsDaRede` de
+    `lib/equipe/admin-da-rede.ts`) compara o que cada Admin tem no procedimento
+    com o que fica: igual passa (a tela manda a lista toda), diferente recusa
+    ("Só quem é Admin da rede altera a comissão de uma Admin da rede."). "A
+    mesma para todos" tira a exceção dela e conta como mexer; a regra geral
+    nova num procedimento em que ela não tem valor próprio é do procedimento,
+    não dela (decisão desta frente, para o Heitor revisar). Vale nas duas
+    portas: o chip (`salvarComissaoDoProcedimento`) e o modal do procedimento
+    (antes de gravar o procedimento), e `gravarComissaoDoProcedimento` confere
+    de novo. Prova: `e2e/comissoes-procedimento-da-admin.spec.ts`.
 - **Só o servidor grava regra**: `comissao_regras_definir` e
   `comissao_do_procedimento_definir` (service_role, conferem profissional e
   procedimentos da rede). A sessão só LÊ — até 2026-09-30
@@ -259,6 +274,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Recortar comissão por scheduled_at do atendimento (o período é o do lançamento, released_at)
 ❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)
+❌ Gravar a comissão de um procedimento sem recusaDaComissaoDaAdmin (quem não é Admin mexia no valor da Admin)
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ```

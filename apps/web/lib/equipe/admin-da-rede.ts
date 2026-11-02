@@ -30,6 +30,16 @@ export async function souAdminDaRede(admin: Admin, ctx: TenantContext): Promise<
   return !!ctx.tenantId && cargoEhAdminDaRede(admin, ctx.tenantId, ctx.roleId)
 }
 
+/** Os membros com o cargo de sistema Admin da rede (ativos ou não), pelo id. */
+export async function adminsDaRede(admin: Admin, tenantId: string): Promise<Set<string>> {
+  const cargo = await ler(admin.from('tenant_roles').select('id')
+    .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true).maybeSingle(), 'achar o cargo de Admin da rede') as { id: string } | null
+  if (!cargo) return new Set()
+  const membros = await ler(admin.from('users').select('id')
+    .eq('tenant_id', tenantId).eq('role_id', cargo.id), 'listar as Admins da rede') as { id: string }[] | null
+  return new Set((membros ?? []).map(m => m.id))
+}
+
 /**
  * A recusa de mexer num membro que é Admin da rede, ou null: só outra Admin
  * da rede altera uma Admin (cargo, "atende", horário, comissão, desativar,
