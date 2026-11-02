@@ -9128,6 +9128,23 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**Respondido nas conversas (2026-11-02):**
+- **O banco é só de teste:** "antes do lançamento vamos fazer wipe total dos
+  dados do sistema; nenhum cliente real usando ainda". Dado antigo não se
+  preserva nem se migra; versão velha que nada usa pode ir embora (as duas
+  funções antigas de documentos saíram, 8658e7d2, doc-04).
+- **com-04:** a comissão de quem atende o pacote ganha a opção "sobre o valor
+  do pacote, de uma vez, quando pago por inteiro, para a profissional
+  responsável" ao lado do "por sessão" (F11).
+- **doc-02:** fica. **doc-03:** "o histórico não é dado clínico, é o
+  histórico de ações feitas no cliente" — a linha do tempo mostra todas as
+  ações a quem vê a ficha (F10).
+- **aut-04:** "não tem necessidade real de um retorno em x dias; é só um novo
+  agendamento com motivo específico" — sai o "Retorno em N dias", a lista
+  "Retornos a marcar" e o cron (F7), desfazendo o D-12.
+- **atend-15:** alergia vira Sim/Não; "Sim" abre o texto livre e dá o alerta;
+  nada interpreta texto ("precisaria de uma IA, fora do escopo") (F10).
+
 **Para conversar:** a comissão de execução do pacote (com-04), o
 "Confirmar assinatura" (doc-02), o "Assinado" escondido no histórico
 (doc-03), o uso dos produtos antigos (est-01), o fundo de troco (ven-03,
