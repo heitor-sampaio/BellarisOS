@@ -202,12 +202,12 @@ test('"só os meus": os rankings, a demografia, o giro, os planos e o funil são
     await expect.soft(corpo, 'o total: as clientes que ela atendeu').toContainText(/ · 2 clientes/)
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'não o da outra').not.toContainText(outroProc)
-    await expect.soft(card(p, 'Ranking — Procedimentos por receita bruta'), 'a receita por procedimento dela').toContainText('R$ 120,00')
-    await expect.soft(card(p, 'Ranking — Procedimentos por receita bruta')).not.toContainText(outroProc)
+    await expect.soft(card(p, 'Ranking — Procedimentos por receita paga'), 'a receita por procedimento dela').toContainText('R$ 120,00')
+    await expect.soft(card(p, 'Ranking — Procedimentos por receita paga')).not.toContainText(outroProc)
     await expect.soft(card(p, 'Ranking — Mais solicitados'), 'só a linha dela').toContainText(nomeDela)
     await expect.soft(card(p, 'Ranking — Mais solicitados')).not.toContainText(nomeDaOutra)
-    await expect.soft(card(p, 'Ranking — Vendas'), 'as vendas dela').toContainText('R$ 120,00')
-    await expect.soft(card(p, 'Ranking — Vendas')).not.toContainText(nomeDaOutra)
+    await expect.soft(card(p, 'Ranking — Profissionais por receita paga'), 'as vendas dela').toContainText('R$ 120,00')
+    await expect.soft(card(p, 'Ranking — Profissionais por receita paga')).not.toContainText(nomeDaOutra)
     await expect.soft(card(p, 'Ranking — Valor gasto'), 'as clientes dela').toContainText(`Dela dr${marca}`)
     await expect.soft(card(p, 'Ranking — Valor gasto')).not.toContainText('Da outra')
     await expect.soft(card(p, 'Ranking — Recorrência', 'last'), 'a recorrência das clientes dela').not.toContainText('Da outra')
@@ -260,7 +260,7 @@ test('quem tem ALL segue vendo o dinheiro e os números da rede (controle)', asy
     await expect(corpo).toContainText('777,00')
     await expect(p.getByText('Custo do mês')).toBeVisible()
     // Sem "Ranking de filiais": a rede de teste tem UMA unidade (D-19).
-    for (const r of ['Ranking — Procedimentos por receita bruta', 'Ranking — Procedimentos por margem', 'Ranking — Vendas', 'Ranking — Valor gasto']) {
+    for (const r of ['Ranking — Procedimentos por receita paga', 'Ranking — Procedimentos por margem', 'Ranking — Profissionais por receita paga', 'Ranking — Valor gasto']) {
       await expect(p.getByText(r, { exact: true }).first(), r).toBeVisible()
     }
     await expect(corpo).toContainText(/ · 6 clientes/)

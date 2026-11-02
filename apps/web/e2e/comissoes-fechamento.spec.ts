@@ -224,7 +224,7 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
   test('dashboard e relatórios: a comissão da equipe só para quem vê o financeiro de todos', async ({ browser }) => {
     await comSessao(browser, equipe!, async p => {
       await p.goto('/admin/dashboard')
-      await expect(p.getByText('Ranking — Vendas')).toBeVisible()
+      await expect(p.getByText('Ranking — Profissionais por receita paga')).toBeVisible()
       await expect(p.getByText('Ranking — Comissão')).toHaveCount(0)
       await p.goto('/admin/reports?tab=profissionais')
       await expect(p.getByText('Atendimentos por Profissional')).toBeVisible()
