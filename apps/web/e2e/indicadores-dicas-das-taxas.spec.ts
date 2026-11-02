@@ -41,6 +41,10 @@ async function abrirDica(p: Page, rotulo: string) {
 test('J-55: aproveitamento (dashboard) e conclusão (Relatórios) dizem a conta de cada um', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto('/admin/dashboard')
+    // ind-13: a seção da rede é "Aproveitamento" (concluídos ÷ marcados), não
+    // "Ocupação" — a ocupação do dashboard da unidade é outra conta.
+    await expect(p.getByText('Aproveitamento', { exact: true })).toBeVisible()
+    await expect(p.getByText('Ocupação', { exact: true })).toHaveCount(0)
     const aproveitamento = await abrirDica(p, 'O que é a taxa de aproveitamento')
     await expect(aproveitamento).toContainText('até agora')
     await expect(aproveitamento).toContainText('Taxa de Conclusão')

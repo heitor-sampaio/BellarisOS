@@ -890,10 +890,12 @@ export function AdminDashboardView({
 
 
       {/* ══════════════════════════════════════════════════════════════
-          SEÇÃO: OCUPAÇÃO
+          SEÇÃO: APROVEITAMENTO (ind-13: concluídos ÷ marcados — a
+          "Ocupação" do dashboard da unidade é outra conta, horas ocupadas ÷
+          horas livres; conta outra, nome outro)
       ══════════════════════════════════════════════════════════════ */}
       {can('agenda') && !agendaPropria && (<>
-      <SectionHeader title={umaUnidade ? 'Ocupação' : 'Ocupação por filial'} />
+      <SectionHeader title={umaUnidade ? 'Aproveitamento' : 'Aproveitamento por filial'} />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

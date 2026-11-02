@@ -376,7 +376,8 @@ unidade."). A régua é UMA: `redeTemUmaUnidade(tenantId)`
 ativar/desativar unidade a expiram na hora); a tela que já tem a lista das
 ativas usa `umaUnidadeSo(n)`, a mesma regra. Com uma unidade: o dashboard da
 rede é "Visão geral" (sem "N unidades"), sem o "Ranking de filiais", com
-"Hoje" e "Ocupação"; o financeiro da rede sem "Por filial", "Total rede" e o
+"Hoje" e "Aproveitamento" (era "Ocupação"; ind-13, 2026-11-02: a
+ocupação da unidade é outra conta — conta outra, nome outro); o financeiro da rede sem "Por filial", "Total rede" e o
 filtro de filial; Relatórios com o nome da unidade no lugar de "Rede" e sem
 "Faturamento por Unidade" e "Saúde do Estoque por Unidade"; o estoque sem
 "Consolidado / Por unidade" e "TOTAL REDE"; o portal da unidade sem "Voltar

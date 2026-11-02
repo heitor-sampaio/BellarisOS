@@ -184,7 +184,7 @@ test('"só os meus": o dashboard da rede mostra a receita DELA, sem custo, lucro
     await expect.soft(corpo, 'não a da rede').not.toContainText('R$ 420,00')
     await expect.soft(corpo, 'nem o custo').not.toContainText('777,00')
     await expect.soft(p.getByText('Custo do mês')).toHaveCount(0)
-    for (const r of ['Ranking de filiais', 'Ranking — Procedimentos por margem', 'Ocupação por filial', 'Ocupação']) {
+    for (const r of ['Ranking de filiais', 'Ranking — Procedimentos por margem', 'Aproveitamento por filial', 'Aproveitamento']) {
       await expect.soft(p.getByText(r, { exact: true }), r).toHaveCount(0)
     }
     // A evolução é a da receita DELA, sem custo nem lucro.
