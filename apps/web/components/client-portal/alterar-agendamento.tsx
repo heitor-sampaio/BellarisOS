@@ -16,11 +16,17 @@ const diaDeAmanha = () => diaNoFuso(Date.now() + 86_400_000)
  * do prazo, só o caminho para falar com a clínica. As ações de verdade
  * conferem o prazo de novo no servidor.
  */
-export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, telefone }: {
+export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false }: {
   appointmentId: string
   scheduledAt:   string
   prazoHoras:    number
   whatsapp:      string | null
+  /** O nome da profissional do agendamento. */
+  profissional?: string | null
+  /** O agendamento foi feito em "Sem preferência" (A59): o remarcar começa por aí. */
+  semPreferenciaInicial?: boolean
+  /** Mais de uma profissional realiza o procedimento na unidade: oferece "Sem preferência" (A59). */
+  ofereceSemPreferencia?: boolean
   /** O telefone da clínica, já formatado — o contato quando o app não remarca mais. */
   telefone:      string | null
 }) {
@@ -37,6 +43,9 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const [erro, setErro] = useState<string | null>(null)
   const [feito, setFeito] = useState<string | null>(null)
   const [enviando, iniciar] = useTransition()
+  // Com quem remarcar (A59): a mesma profissional, ou "Sem preferência" — que
+  // escolhe de novo, entre quem realiza, quem estiver livre no horário.
+  const [semPreferencia, setSemPreferencia] = useState(ofereceSemPreferencia && semPreferenciaInicial)
 
   if (!podeAlterar) {
     return (
@@ -58,11 +67,11 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     )
   }
 
-  function escolherDia(novo: string) {
+  function escolherDia(novo: string, sem = semPreferencia) {
     setDia(novo); setHora(null); setSlots(null); setErro(null)
     if (!novo) return
     iniciar(async () => {
-      const r = await horariosParaRemarcar(appointmentId, novo)
+      const r = await horariosParaRemarcar(appointmentId, novo, sem)
       if ('error' in r) setErro(r.error)
       else setSlots(r.slots)
     })
@@ -72,7 +81,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     if (!dia || !hora) return
     setErro(null)
     iniciar(async () => {
-      const r = await remarcarPelaCliente(appointmentId, new Date(`${dia}T${hora}:00-03:00`).toISOString())
+      const r = await remarcarPelaCliente(appointmentId, new Date(`${dia}T${hora}:00-03:00`).toISOString(), semPreferencia)
       if ('error' in r) { setErro(r.error); return }
       setFeito('Agendamento remarcado.'); setModo('nada'); router.refresh()
     })
@@ -107,6 +116,18 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
 
       {modo === 'remarcar' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {ofereceSemPreferencia && (
+            <div role="group" aria-label="Com quem?" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button type="button" aria-pressed={!semPreferencia} className={!semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                onClick={() => { setSemPreferencia(false); if (dia) escolherDia(dia, false) }}>
+                {profissional ? `Com ${profissional}` : 'A mesma profissional'}
+              </button>
+              <button type="button" aria-pressed={semPreferencia} className={semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                onClick={() => { setSemPreferencia(true); if (dia) escolherDia(dia, true) }}>
+                Sem preferência
+              </button>
+            </div>
+          )}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
             Novo dia
             <input type="date" className="field" value={dia} onChange={e => escolherDia(e.target.value)} />

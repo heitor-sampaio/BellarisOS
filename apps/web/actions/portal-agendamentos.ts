@@ -6,7 +6,8 @@ import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { computeAvailableSlots } from '@/lib/appointments/core'
+import { computeAvailableSlots, candidatasDoDia } from '@/lib/appointments/core'
+import { escolherQuemAtende, juntarHorarios } from '@/lib/appointments/sem-preferencia'
 import { logHistory, notifyCancelledAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
@@ -29,9 +30,10 @@ async function agendamentoDaCliente(appointmentId: string) {
   if (!UUID.safeParse(appointmentId).success || !ctx.clientId) return null
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, scheduled_at, duration_min, branch_id, professional_id, client_id, clients!inner(name, tenant_id), branches!inner(tenant_id)')
+    .select('id, status, scheduled_at, duration_min, branch_id, professional_id, procedure_id, client_id, clients!inner(name, tenant_id), branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('client_id', ctx.clientId).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; scheduled_at: string; duration_min: number; branch_id: string; professional_id: string | null
+      procedure_id: string | null
       clients: { name: string; tenant_id: string }; branches: { tenant_id: string }
     } | null
   if (!a) return null
@@ -56,14 +58,18 @@ export async function cancelarPelaCliente(appointmentId: string, motivo: string)
     if (!ABERTOS.includes(a.status)) return { error: 'Este agendamento não pode mais ser cancelado.' }
     const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras)
     if (recusa) return { error: recusa }
-    const porque = (motivo ?? '').trim().slice(0, 300) || 'Cancelado pela cliente no app'
+    // A61: sem motivo digitado, "Pela cliente no app" — era "Pela cliente no
+    // app: Cancelado pela cliente no app".
+    const digitado = (motivo ?? '').trim().slice(0, 300)
+    const porque = digitado || 'Cancelado pela cliente no app'
 
     const canceladas = await gravar(admin.from('appointments').update({
-      status: 'CANCELLED', cancelled_at: new Date().toISOString(), cancellation_reason: `Pela cliente no app: ${porque}`,
+      status: 'CANCELLED', cancelled_at: new Date().toISOString(),
+      cancellation_reason: digitado ? `Pela cliente no app: ${digitado}` : 'Pela cliente no app',
     }).eq('id', a.id).in('status', ABERTOS).select('id'), 'cancelar o agendamento') as { id: string }[] | null
     if (!canceladas?.length) return { error: 'Este agendamento não pode mais ser cancelado.' }
 
-    await logHistory(admin, a.id, null, `${a.clients.name} (app)`, 'CANCELLED', `Cancelado pela cliente no app: ${porque}`)
+    await logHistory(admin, a.id, null, `${a.clients.name} (app)`, 'CANCELLED', digitado ? `Cancelado pela cliente no app: ${digitado}` : 'Cancelado pela cliente no app')
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, a.id, { tenantId: a.clients.tenant_id }, {
       motivo: porque, ator: { tipo: 'cliente', id: ctx.clientId! }, origem: 'app',
     })
@@ -76,7 +82,18 @@ export async function cancelarPelaCliente(appointmentId: string, motivo: string)
   }
 }
 
-export async function remarcarPelaCliente(appointmentId: string, scheduledAt: string): Promise<Resultado> {
+/**
+ * "Sem preferência" no remarcar (A59): as candidatas do dia entre quem atende
+ * na unidade e REALIZA o procedimento, sem o próprio agendamento ocupando o
+ * horário — as mesmas do agendar (`candidatasDoDia`).
+ */
+async function candidatasParaRemarcar(admin: ReturnType<typeof createAdminClient>, a: {
+  id: string; branch_id: string; procedure_id: string | null; duration_min: number; clients: { tenant_id: string }
+}, dia: string) {
+  return candidatasDoDia(admin, a.clients.tenant_id, a.branch_id, dia, a.duration_min || 30, a.procedure_id, a.id)
+}
+
+export async function remarcarPelaCliente(appointmentId: string, scheduledAt: string, semPreferencia = false): Promise<Resultado> {
   try {
     const achado = await agendamentoDaCliente(appointmentId)
     if (!achado) return { error: 'Agendamento não encontrado.' }
@@ -84,18 +101,28 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
     if (!ABERTOS.includes(a.status)) return { error: 'Este agendamento não pode mais ser remarcado.' }
     const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras)
     if (recusa) return { error: recusa }
-    if (!a.professional_id) return { error: 'Fale com a clínica para remarcar este horário.' }
+    if (!a.professional_id && !semPreferencia) return { error: 'Fale com a clínica para remarcar este horário.' }
 
-    // O horário novo é um dos livres do self-service, para o mesmo profissional.
+    // O horário novo é um dos livres do self-service: da mesma profissional,
+    // ou, em "Sem preferência" (A59), de quem estiver livre e realizar o
+    // procedimento — a escolha do agendar (`escolherQuemAtende`).
     const inicio = new Date(scheduledAt)
     if (Number.isNaN(inicio.getTime()) || inicio.getTime() <= Date.now()) return { error: 'Escolha um horário a partir de agora.' }
     const p = partsInTZ(inicio)
     const hora = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
-    const livres = await computeAvailableSlots(admin, a.branch_id, a.professional_id, dayKeyTZ(inicio), a.duration_min || 30, a.id)
-    if (p.second !== 0 || !livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+    if (p.second !== 0) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+    let profissional = a.professional_id
+    if (semPreferencia) {
+      profissional = escolherQuemAtende(await candidatasParaRemarcar(admin, a, dayKeyTZ(inicio)), hora)
+      if (!profissional) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+    } else {
+      const livres = await computeAvailableSlots(admin, a.branch_id, a.professional_id!, dayKeyTZ(inicio), a.duration_min || 30, a.id)
+      if (!livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+    }
 
     const remarcadas = await gravar(admin.from('appointments').update({
       scheduled_at: inicio.toISOString(), status: 'SCHEDULED', confirmed_at: null, updated_at: new Date().toISOString(),
+      professional_id: profissional, sem_preferencia: semPreferencia,
     }).eq('id', a.id).in('status', ABERTOS).select('id'), 'remarcar o agendamento') as { id: string }[] | null
     if (!remarcadas?.length) return { error: 'Este agendamento não pode mais ser remarcado.' }
 
@@ -114,13 +141,15 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
   }
 }
 
-/** Os horários livres para remarcar: os do self-service, do mesmo profissional e duração. */
-export async function horariosParaRemarcar(appointmentId: string, dia: string): Promise<{ slots: string[] } | { error: string }> {
+/** Os horários livres para remarcar: os do self-service, do mesmo profissional (ou de todas, em "Sem preferência") e duração. */
+export async function horariosParaRemarcar(appointmentId: string, dia: string, semPreferencia = false): Promise<{ slots: string[] } | { error: string }> {
   try {
     const achado = await agendamentoDaCliente(appointmentId)
     if (!achado) return { error: 'Agendamento não encontrado.' }
     const { admin, a } = achado
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || !a.professional_id) return { slots: [] }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { slots: [] }
+    if (semPreferencia) return { slots: juntarHorarios((await candidatasParaRemarcar(admin, a, dia)).map(c => c.livres)) }
+    if (!a.professional_id) return { slots: [] }
     return { slots: await computeAvailableSlots(admin, a.branch_id, a.professional_id, dia, a.duration_min || 30, a.id) }
   } catch (e) {
     return { error: mensagemDoErro(e) }

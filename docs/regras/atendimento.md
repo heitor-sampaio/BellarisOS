@@ -207,6 +207,17 @@
   terminou em …", e no cartão da agenda "Alterar até …", com a seta de que o
   cartão abre. O motivo do cancelamento é "Motivo (opcional)" (J-64). Prova:
   `e2e/portal-cliente-prazo-na-tela.spec.ts`, `tests/agenda-do-portal.test.ts`.
+  **Remarcar oferece "Sem preferência"** (A59 da 5ª simulação, "Reforça",
+  item 11): com mais de uma profissional que atende na unidade e realiza o
+  procedimento, o remarcar do app pergunta "Com quem?" — "Com X" ou "Sem
+  preferência", que escolhe de novo quem estiver livre no horário (as mesmas
+  `candidatasDoDia`/`escolherQuemAtende` do agendar, sem o próprio
+  agendamento ocupando o horário). O agendamento feito em "Sem preferência"
+  guarda isso (`appointments.sem_preferencia`, migration `20261101000602`) e
+  o remarcar começa por aí; antes, ele prendia a escolhida (a Renata só de
+  manhã). **O cancelamento sem motivo** grava "Pela cliente no app" (A61: era
+  "Pela cliente no app: Cancelado pela cliente no app"). Prova:
+  `e2e/portal-cliente-remarcar-sem-preferencia.spec.ts`.
 - **"Sem preferência" de profissional no app** (D-16, decisão do Heitor,
   2026-10-30): com mais de uma profissional na unidade, o passo
   "Profissional" do agendamento oferece "Sem preferência". A data mostra os

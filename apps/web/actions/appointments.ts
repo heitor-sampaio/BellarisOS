@@ -1718,6 +1718,8 @@ export async function createClientAppointment(params: {
       scheduledAt:    params.scheduledAt,
       source:         'CLIENT_APP',
       credito:        pago?.tipo === 'CREDITO' ? pago.credito : null,
+      // "Sem preferência" (A59): o remarcar do app começa por aí.
+      semPreferencia: !params.professionalId,
     })
     if ('error' in criado) return { error: criado.error === CLIENTE_ARQUIVADA ? CLIENTE_ARQUIVADA_NO_APP : criado.error }
     const appt = criado

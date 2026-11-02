@@ -45,6 +45,8 @@ export interface CreateAppointmentInput {
    * chama (`leadAoAlcance`). Sem ela, vale a oportunidade ABERTA da cliente.
    */
   leadId?:        string | null
+  /** A cliente agendou pelo app em "Sem preferência" (A59): o remarcar começa por aí. */
+  semPreferencia?: boolean
 }
 
 const IGNORED_STATUS = '("CANCELLED","NO_SHOW")'
@@ -242,6 +244,7 @@ export async function createAppointmentCore(
       status:          'SCHEDULED',
       source:          origem,
       created_by_id:   ctx.internalUserId,
+      sem_preferencia: input.semPreferencia ?? false,
     })
     .select('id')
     .single()
@@ -361,6 +364,8 @@ export async function candidatasDoDia(
   admin: Admin, tenantId: string, branchId: string, date: string, durationMin: number,
   /** Com o procedimento, só quem o REALIZA (por-01, `lib/procedimentos/quem-realiza.ts`). */
   procedureId?: string | null,
+  /** Ao REMARCAR, o próprio agendamento não ocupa o horário (A59). */
+  ignorarAgendamentoId?: string,
 ): Promise<CandidataDoHorario[]> {
   const [todas, realizam] = await Promise.all([
     ler(admin.from('users').select('id, name')
@@ -377,7 +382,7 @@ export async function candidatasDoDia(
   const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
   const [livres, doDia] = await Promise.all([
-    Promise.all(equipe.map(p => computeAvailableSlots(admin, branchId, p.id, date, durationMin))),
+    Promise.all(equipe.map(p => computeAvailableSlots(admin, branchId, p.id, date, durationMin, ignorarAgendamentoId))),
     ler(admin.from('appointments').select('professional_id')
       .in('professional_id', equipe.map(p => p.id))
       .gte('scheduled_at', dayStart).lte('scheduled_at', dayEnd)

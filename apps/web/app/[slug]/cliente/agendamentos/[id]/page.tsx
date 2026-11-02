@@ -7,6 +7,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { formatarTelefone } from '@/lib/documentos/valores'
 import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamento'
+import { getCachedBranchProfessionals } from '@/lib/cached-queries'
+import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { documentosDoAgendamento, type ResumoDeDocumento } from '@/lib/documentos/leitura'
 import { FileSignature } from 'lucide-react'
 
@@ -55,9 +57,10 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
 
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, scheduled_at, duration_min, cancellation_reason, procedures(name), profissional:users!professional_id(name), branches!inner(name, phone, tenant_id)')
+    .select('id, status, scheduled_at, duration_min, cancellation_reason, branch_id, procedure_id, sem_preferencia, procedures(name), profissional:users!professional_id(name), branches!inner(name, phone, tenant_id)')
     .eq('id', id).eq('client_id', ctx.clientId).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; scheduled_at: string; duration_min: number; cancellation_reason: string | null
+      branch_id: string; procedure_id: string | null; sem_preferencia: boolean
       procedures: { name: string } | null; profissional: { name: string } | null
       branches: { name: string; phone: string | null; tenant_id: string }
     } | null
@@ -71,6 +74,15 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
   const documentos = await documentosDoAgendamento(a.branches.tenant_id, a.id)
 
   const aberto = ['SCHEDULED', 'CONFIRMED'].includes(a.status)
+  // "Sem preferência" no remarcar (A59): com mais de uma que atende na unidade
+  // e REALIZA o procedimento (por-01).
+  const ofereceSemPreferencia = aberto && await (async () => {
+    const [equipe, realizam] = await Promise.all([
+      getCachedBranchProfessionals(a.branch_id, a.branches.tenant_id),
+      a.procedure_id ? quemRealizaOProcedimento(admin, a.procedure_id) : Promise.resolve([] as string[]),
+    ])
+    return (equipe as { id: string }[]).filter(p => realiza(realizam, p.id)).length > 1
+  })()
   const telefone = (a.branches.phone || rede?.phone || '').replace(/\D/g, '')
   const quando = new Date(a.scheduled_at)
 
@@ -114,6 +126,9 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           scheduledAt={a.scheduled_at}
           prazoHoras={prazoHoras}
           telefone={formatarTelefone(telefone)}
+          profissional={a.profissional?.name ?? null}
+          semPreferenciaInicial={a.sem_preferencia}
+          ofereceSemPreferencia={ofereceSemPreferencia}
           whatsapp={telefone ? `https://wa.me/${telefone.startsWith('55') ? telefone : `55${telefone}`}` : null}
         />
       )}
