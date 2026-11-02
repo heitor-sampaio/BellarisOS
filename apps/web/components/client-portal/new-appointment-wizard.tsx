@@ -37,6 +37,8 @@ interface Props {
    * procedimentos, as profissionais e os horários vêm de lá.
    */
   unidades?:     { slug: string; nome: string }[]
+  /** Vindo do cartão do pacote (A63): o procedimento já escolhido, e o agendar começa pela profissional. */
+  procedimentoInicial?: string | null
   procedures:    Procedure[]
   professionals: Professional[]
 }
@@ -47,10 +49,11 @@ type Step = 1 | 2 | 3 | 4
 const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 
 
-export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedures, professionals }: Props) {
+export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, procedures, professionals }: Props) {
   const router = useRouter()
-  const [step,       setStep]       = useState<Step>(1)
-  const [procedure,  setProcedure]  = useState<Procedure | null>(null)
+  const inicial = procedures.find(p => p.id === procedimentoInicial) ?? null
+  const [step,       setStep]       = useState<Step>(inicial ? 2 : 1)
+  const [procedure,  setProcedure]  = useState<Procedure | null>(inicial)
   const [prof,       setProf]       = useState<Professional | null>(null)
   const [date,       setDate]       = useState('')
   const [slots,      setSlots]      = useState<string[]>([])

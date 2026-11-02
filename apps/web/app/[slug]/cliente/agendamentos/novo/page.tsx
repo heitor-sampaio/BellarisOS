@@ -9,8 +9,13 @@ import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { AgendarComAClinica } from '@/components/client-portal/agendar-com-a-clinica'
 
-export default async function NewClientAppointmentPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function NewClientAppointmentPage({ params, searchParams }: {
+  params: Promise<{ slug: string }>
+  /** `?procedimento=`: o cartão do pacote leva ao agendamento do procedimento dele (A63). */
+  searchParams: Promise<{ procedimento?: string }>
+}) {
   const { slug } = await params
+  const { procedimento } = await searchParams
   const ctx = await getTenantContext()
   assertClient(ctx)
 
@@ -83,6 +88,7 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
       // Mais de uma unidade: a cliente escolhe onde (A62).
       unidades={unidades.length > 1 ? unidades.map(u => ({ slug: u.slug, nome: u.name })) : []}
       procedures={procedures}
+      procedimentoInicial={typeof procedimento === 'string' ? procedimento : null}
       professionals={professionals}
     />
   )

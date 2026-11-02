@@ -274,6 +274,13 @@
   agendar mostra "Fale com a clínica para agendar." e o cartão da unidade
   (`AgendarComAClinica`), e `createClientAppointment` recusa com a mesma frase
   (`CLIENTE_ARQUIVADA_NO_APP`). Prova: o mesmo spec.
+- **O cartão do pacote leva ao agendamento DELE** (A63 da 5ª simulação): na
+  home do app, o pacote diz "N de M sessões realizadas · restam R" e, pela
+  próxima sessão livre, "Agendar <procedimento>" — o agendar abre já na
+  profissional (`?procedimento=`). Se o procedimento não é agendável pelo app
+  (fora do app, inativo ou de outra unidade), diz "<procedimento>: agende com
+  a clínica", com o WhatsApp. Era "Agendar procedimento", cuja lista não tinha
+  o Laser. Prova: `e2e/agenda-pago-antes.spec.ts` ("A63").
 - **O agendar do app diz QUANDO cada profissional atende** (J-60) e tem
   "Hoje"/"Amanhã" e os horários por Manhã/Tarde/Noite (J-59, o mesmo
   `gruposDeHorario` do remarcar). O texto é `resumoDoHorario`

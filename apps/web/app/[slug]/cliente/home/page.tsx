@@ -34,6 +34,11 @@ type ActivePackage = {
   used_sessions:  number
   expires_at:     string | null
   service_packages: { name: string } | null
+  /** As sessões livres (A63): a próxima diz o procedimento a agendar. */
+  package_sessions: {
+    session_number: number; status: string; appointment_id: string | null
+    procedures: { id: string; name: string; visible_on_client_app: boolean; is_active: boolean; branch_id: string | null } | null
+  }[] | null
 }
 
 type ActivePlan = {
@@ -58,6 +63,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   assertClient(ctx)
 
   const admin = createAdminClient()
+  // A unidade do endereço (o slug é único no sistema, §5): o procedimento do
+  // pacote se agenda por aqui se é da rede ou desta unidade (A63).
+  const unidadeDoEndereco = await ler(admin.from('branches').select('id').eq('slug', slug).maybeSingle(), 'buscar a unidade do endereço') as { id: string } | null
 
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
@@ -78,7 +86,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('scheduled_at', { ascending: false })
       .limit(5), 'buscar os atendimentos a confirmar'),
     ler(admin.from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, service_packages(name)')
+      .select('id, total_sessions, used_sessions, expires_at, service_packages(name), package_sessions(session_number, status, appointment_id, procedures(id, name, visible_on_client_app, is_active, branch_id))')
       .eq('client_id', ctx.clientId!)
       // O pacote cancelado (F2b) não é tratamento em curso.
       .is('cancelado_em', null)
@@ -299,8 +307,15 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
               const used  = Number(pkg.used_sessions)
               const total = Number(pkg.total_sessions)
               const pct   = total > 0 ? Math.round((used / total) * 100) : 0
+              // A63: a próxima sessão livre diz o procedimento a agendar — e
+              // se o app o agenda (visível, ativo, da rede ou desta unidade).
+              const proxima = [...(pkg.package_sessions ?? [])]
+                .filter(s => s.status === 'AVAILABLE' && !s.appointment_id)
+                .sort((a, b) => a.session_number - b.session_number)[0]
+              const proc = proxima?.procedures ?? null
+              const peloApp = !!proc && proc.visible_on_client_app && proc.is_active && (!proc.branch_id || proc.branch_id === unidadeDoEndereco?.id)
               return (
-                <div key={pkg.id} className="card" style={{ padding: '14px 18px' }}>
+                <div key={pkg.id} data-pacote className="card" style={{ padding: '14px 18px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     <Sparkles size={15} color="var(--brand)" />
                     <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
@@ -310,7 +325,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   <ProgressBar pct={pct} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      {used} de {total} sessões realizadas
+                      {used} de {total} sessões realizadas · restam {Math.max(0, total - used)}
                     </span>
                     {pkg.expires_at && (
                       <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
@@ -318,6 +333,20 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                       </span>
                     )}
                   </div>
+                  {proc && (peloApp ? (
+                    <Link href={`/${slug}/cliente/agendamentos/novo?procedimento=${proc.id}`} className="btn-secondary"
+                      style={{ marginTop: 10, justifyContent: 'center', width: '100%' }}>
+                      <CalendarDays size={14} aria-hidden="true" /> Agendar {proc.name}
+                    </Link>
+                  ) : (
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10 }}>
+                      {proc.name}: agende com a clínica.
+                      {aClinica?.whatsapp && (
+                        <> <a href={comMensagem(aClinica.whatsapp, `Olá! Quero agendar a próxima sessão do meu pacote (${proc.name}).`)!}
+                          target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 700 }}>Falar no WhatsApp</a></>
+                      )}
+                    </p>
+                  ))}
                 </div>
               )
             })}

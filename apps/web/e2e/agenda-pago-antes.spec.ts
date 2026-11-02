@@ -122,3 +122,28 @@ test('o app da cliente mostra os dois como já pagos, sem o valor a pagar', asyn
     await expect(pacote).not.toContainText('R$ 550,00')
   })
 })
+
+// A63 (5ª simulação): o cartão do pacote "6 lasers" levava a "Agendar
+// procedimento", cuja lista não tinha o Laser, e dizia "1 de 6" sem "restam 5".
+// Agora diz quantas restam e leva ao agendamento DO procedimento do pacote; se
+// ele não é agendável pelo app, diz para agendar com a clínica.
+test('A63: o cartão do pacote diz quantas restam e leva ao agendamento do procedimento dele', async ({ browser }) => {
+  await como(browser, cliente!.estado, async p => {
+    // O procedimento NÃO está no app: agendar é com a clínica.
+    expect((await db().from('procedures').update({ visible_on_client_app: false }).eq('id', rede!.procedureId)).error).toBeNull()
+    await p.goto(`/${slug}/cliente/home`)
+    let cartao = p.locator('[data-pacote]', { hasText: nomeDoPacote })
+    await expect(cartao).toContainText('restam 2')
+    await expect(cartao).toContainText('agende com a clínica')
+    await expect(cartao.getByRole('link', { name: /^Agendar/ })).toHaveCount(0)
+
+    expect((await db().from('procedures').update({ visible_on_client_app: true }).eq('id', rede!.procedureId)).error).toBeNull()
+    await p.goto(`/${slug}/cliente/home`)
+    cartao = p.locator('[data-pacote]', { hasText: nomeDoPacote })
+    const agendar = cartao.getByRole('link', { name: /^Agendar/ })
+    await expect(agendar).toHaveAttribute('href', `/${slug}/cliente/agendamentos/novo?procedimento=${rede!.procedureId}`)
+    await agendar.click()
+    // O agendar abre já no passo da profissional, com o procedimento do pacote.
+    await expect(p.getByText('Tem preferência de profissional?')).toBeVisible()
+  })
+})
