@@ -9099,6 +9099,40 @@ avisaria a cliente) → F10; usar crédito interno conta a receita duas vezes
 - **Login sem vínculo:** "não deve ter como ter um login sem vínculo, ou é
   rede ou é unidade" (F5).
 
+### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
+
+As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
+(https://claude.ai/artifact/SGHGFJUgfJCpB8HSMMxcDo), uma por cartão. O Heitor
+respondeu as 113: **71 manter, 37 mudar, 5 conversar**. As respostas ficam na
+página (e numa cópia fora do git, `scratchpad/respostas-para-agir.json` da
+sessão 8c930f82).
+
+**Duas regras gerais que ele deu:**
+- "Regras de negócio devem ser sempre validadas em backend": toda trava da
+  tela vale também no servidor.
+- "Flexibilidade é a palavra-chave": onde a clínica pode operar de jeitos
+  diferentes, ela escolhe; campo vazio que muda algo pede aviso e confirmação.
+
+**Os 37 "mudar"** foram distribuídos nas frentes da fila: F6 (agenda e portal:
+"Quem realiza" no procedimento para o "Sem preferência", o WhatsApp
+conectado no cartão "A clínica", cancelar na janela com "só os meus"), F7
+(aviso de atendimentos abertos com o agendado esquecido, retenção pela
+clínica inteira, "—" em taxa sem denominador, a unidade desativada no "em
+aberto", "Aproveitamento" no lugar de "Ocupação", perda como métrica fora do
+lucro), F9 (o "+" em todo caminho, Admin no "Adicionar membro"), F10 (foto
+apagada no histórico, obrigatórias conferidas também na conclusão, aviso de
+ficha vencida, planejamento vazio pede confirmação, passaporte no contrato) e
+duas frentes novas: **F11** (vendas e caixa: entrada acima do total recusada,
+vários produtos numa venda, recibo em PDF, fundo de troco opcional, motivo do
+desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
+(CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
+funil, só por automação).
+
+**Para conversar:** a comissão de execução do pacote (com-04), o
+"Confirmar assinatura" (doc-02), o "Assinado" escondido no histórico
+(doc-03), o uso dos produtos antigos (est-01), o fundo de troco (ven-03,
+decidido: opcional).
+
 ### Próximas fases já combinadas
 
 - ~~Busca universal, fase 2 — ações~~ **feita em 2026-10-08** (ver a linha do tempo).
