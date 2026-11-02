@@ -140,6 +140,7 @@ export const ISOLADOS = [
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',
   'portal-cliente-outra-unidade.spec.ts',
+  'procedimento-quem-realiza.spec.ts',
   'portal-cliente-agendar-horarios.spec.ts',
   'portal-cliente-credito-interno.spec.ts',
   'portal-cliente-plano-proposto.spec.ts',

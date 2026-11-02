@@ -10,7 +10,7 @@ import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle } from 'lucide-re
 import { JanelaModal } from '@/components/shared/janela-modal'
 
 interface Client      { id: string; name: string; phone: string }
-interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number }
+interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; /** Quem realiza (por-01; vazio = todas). */ realizam?: string[] }
 interface Professional { id: string; name: string }
 interface Room        { id: string; name: string }
 interface Unidade     { id: string; name: string; slug: string }
@@ -117,6 +117,12 @@ export function AppointmentModal({
   const creditosDoCliente = selectedClient && creditos.de === selectedClient.id ? creditos.itens : []
   const chaveDoCredito = (c: CreditoParaAgendar) => `${c.tipo}:${c.id}`
   const credito = creditosDoCliente.find(c => chaveDoCredito(c) === creditoSel) ?? null
+
+  // Quem realiza o procedimento escolhido (por-01): o nome da escolhida que NÃO realiza.
+  const procDoAgendamento = dados.procedures.find(p => p.id === (credito?.procedureId ?? procId))
+  const naoRealiza = profId && procDoAgendamento?.realizam?.length && !procDoAgendamento.realizam.includes(profId)
+    ? (dados.professionals.find(p => p.id === profId)?.name ?? 'A profissional')
+    : null
 
   const aoAgendar = useEffectEvent(() => { onSuccess(); onClose() })
   useEffect(() => { if (state?.success) aoAgendar() }, [state?.success])
@@ -481,6 +487,13 @@ export function AppointmentModal({
                 <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione…'}</option>
                 {dados.professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
+              {/* Quem realiza (por-01): a agenda AVISA, não barra — o encaixe é da clínica. */}
+              {naoRealiza && (
+                <p data-aviso-quem-realiza role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
+                  <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} />
+                  {naoRealiza} não está em “Quem realiza” deste procedimento.
+                </p>
+              )}
             </Field>
 
             {/* Unidade sem sala: o campo nem aparece (D5). Com sala, só as que

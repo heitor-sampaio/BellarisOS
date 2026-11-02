@@ -9,6 +9,7 @@ import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/c
 import { logHistory, loadApptCtx, fmtDateTime } from '@/lib/appointments/avisos'
 import { notifyUser } from '@/lib/notifications/notify'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
+import { quemRealizaOsProcedimentos, realiza } from '@/lib/procedimentos/quem-realiza'
 
 /**
  * O REPASSE ao desativar um membro (H6, decisão do Heitor, 5ª simulação,
@@ -83,7 +84,7 @@ export function podeRepassarAgendamentos(ctx: TenantContext): boolean {
 }
 
 interface LinhaDoAgendamento {
-  id: string; scheduled_at: string; duration_min: number | null; branch_id: string
+  id: string; scheduled_at: string; duration_min: number | null; branch_id: string; procedure_id: string | null
   clients: { name: string } | null; procedures: { name: string } | null; branches: { name: string; tenant_id: string } | null
 }
 
@@ -91,7 +92,7 @@ interface LinhaDoAgendamento {
 async function agendamentosDoMembro(admin: Admin, ctx: TenantContext, membroId: string): Promise<LinhaDoAgendamento[]> {
   const agora = new Date().toISOString()
   const linhas = await lerTodas((de, ate) => admin.from('appointments')
-    .select('id, scheduled_at, duration_min, branch_id, clients(name), procedures(name), branches!inner(name, tenant_id)')
+    .select('id, scheduled_at, duration_min, branch_id, procedure_id, clients(name), procedures(name), branches!inner(name, tenant_id)')
     .eq('branches.tenant_id', ctx.tenantId!)
     .eq('professional_id', membroId)
     .in('status', ABERTOS)
@@ -139,6 +140,8 @@ export async function pendenciasDoMembro(
     oportunidadesAbertas(admin, ctx.tenantId!, membro.id),
     quemTemCrm(admin, ctx.tenantId!, membro.id),
   ])
+  // Quem realiza cada procedimento (por-01): o repasse oferece só elas.
+  const realizam = await quemRealizaOsProcedimentos(admin, ags.map(a => a.procedure_id).filter((x): x is string => !!x))
 
   // Os horários de quem pode receber, de uma vez (não um por par).
   const ocupados = new Map<string, { ini: number; fim: number }[]>()
@@ -168,7 +171,7 @@ export async function pendenciasDoMembro(
     agendamentos: ags.map(a => {
       const ini = new Date(a.scheduled_at).getTime()
       const fim = ini + (a.duration_min || 60) * 60_000
-      const daUnidade = equipe.filter(p => atendeNaUnidade(p, a.branch_id))
+      const daUnidade = equipe.filter(p => atendeNaUnidade(p, a.branch_id) && realiza(realizam.get(a.procedure_id ?? ''), p.id))
       const bate = (p: { id: string }) => (ocupados.get(p.id) ?? []).some(o => ini < o.fim && fim > o.ini)
       return {
         id: a.id, quando: a.scheduled_at, duracaoMin: a.duration_min || 60,
@@ -219,6 +222,7 @@ export async function aplicarRepasse(
     ])
     const porId = new Map(ags.map(a => [a.id, a]))
     const porPessoa = new Map(equipe.map(p => [p.id, p]))
+    const realizam = await quemRealizaOsProcedimentos(admin, ags.map(a => a.procedure_id).filter((x): x is string => !!x))
     for (const item of repasse.agendamentos) {
       const ag = porId.get(item.id)
       if (!ag) { falhas.push('Um dos agendamentos já não é desta pessoa (ou já passou).'); continue }
@@ -226,6 +230,11 @@ export async function aplicarRepasse(
       const para = porPessoa.get(item.para)
       if (!para || !atendeNaUnidade(para, ag.branch_id)) {
         falhas.push(`O agendamento de ${quando} não foi repassado: a pessoa escolhida não atende nesta unidade.`)
+        continue
+      }
+      // Só quem REALIZA o procedimento (por-01; sem ninguém marcado, todas).
+      if (!realiza(realizam.get(ag.procedure_id ?? ''), para.id)) {
+        falhas.push(`O agendamento de ${quando} não foi repassado: ${para.name} não realiza este procedimento.`)
         continue
       }
       // As peças pelo núcleo da agenda (a pessoa da rede e ativa, a unidade ao alcance).

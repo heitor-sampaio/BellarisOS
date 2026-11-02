@@ -59,7 +59,12 @@ interface ExistingProcedure {
   loyalty_points?: number | null
   /** As salas em que é feito (D5). */
   room_ids?: string[]
+  /** Quem realiza (por-01). Vazio = todas as que atendem. */
+  professional_ids?: string[]
 }
+
+/** Quem atende na rede: o "Quem realiza" do procedimento (por-01). */
+export interface ProfissionalDoCadastro { id: string; name: string }
 
 /** Uma sala ativa da rede, com a unidade dela (D5). */
 export interface SalaDoCadastro { id: string; name: string; unidade: string }
@@ -80,6 +85,8 @@ export interface ModelosDoProcedimento {
 interface ProcedureFormProps {
   /** As salas ativas da rede (D5): o procedimento se liga às em que é feito. */
   salas?: SalaDoCadastro[]
+  /** Quem atende na rede (por-01): as que realizam o procedimento. */
+  profissionais?: ProfissionalDoCadastro[]
   branches: Branch[]
   products: Product[]
   fichas?: { id: string; name: string }[]
@@ -154,7 +161,7 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ salas = [], branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
+function ProcedureFormInner({ salas = [], profissionais = [], branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
   const pathname = usePathname()
 
   // As salas em que é feito (D5, 2026-10-30): opcional. Só as ativas se
@@ -164,6 +171,14 @@ function ProcedureFormInner({ salas = [], branches, products, fichas = [], exist
   const variasUnidades = new Set(salas.map(s => s.unidade)).size > 1
   function alternarSala(id: string) {
     setSalasMarcadas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
+  }
+
+  // Quem realiza (por-01, revisão do Heitor de 2026-11-02): opcional. Sem
+  // ninguém marcado, todas as que atendem realizam (o de antes).
+  const [quemRealiza, setQuemRealiza] = useState<string[]>(
+    () => (existing?.professional_ids ?? []).filter(id => profissionais.some(p => p.id === id)))
+  function alternarQuemRealiza(id: string) {
+    setQuemRealiza(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   }
 
   // A comissão (2026-10-15): o mesmo editor do chip da tabela. Só vai ao
@@ -326,6 +341,8 @@ function ProcedureFormInner({ salas = [], branches, products, fichas = [], exist
       <input type="hidden" name="branch_pricing" value={branchPricingPayload} />
       {/* Sem sala na rede o campo não vai: a ação não mexe nas ligações. */}
       {salas.length > 0 && <input type="hidden" name="room_ids" value={JSON.stringify(salasMarcadas)} />}
+      {/* Sem ninguém que atenda na rede, o campo não vai: a ação não mexe nas ligações. */}
+      {profissionais.length > 0 && <input type="hidden" name="professional_ids" value={JSON.stringify(quemRealiza)} />}
 
       {/* -- Dados básicos -- */}
       <div className="form-2col">
@@ -439,6 +456,31 @@ function ProcedureFormInner({ salas = [], branches, products, fichas = [], exist
           })}
         </div>
       </div>
+
+      {/* -- Quem realiza (por-01) -- */}
+      {profissionais.length > 0 && (
+        <div>
+          <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
+            QUEM REALIZA
+          </p>
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
+            {quemRealiza.length
+              ? 'O app da cliente e o "Sem preferência" oferecem só as marcadas; a agenda avisa quando a escolhida não realiza.'
+              : 'Opcional. Sem ninguém marcado, todas as profissionais que atendem realizam este procedimento.'}
+          </p>
+          <div role="group" aria-label="Quem realiza" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+            {profissionais.map(p => {
+              const on = quemRealiza.includes(p.id)
+              return (
+                <button key={p.id} type="button" className={on ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                  aria-pressed={on} onClick={() => alternarQuemRealiza(p.id)}>
+                  {p.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* -- Salas em que é feito (D5) -- */}
       {salas.length > 0 && (

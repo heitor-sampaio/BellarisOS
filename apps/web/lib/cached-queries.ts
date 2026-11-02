@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
 import { ler, lerTodas } from '@/lib/db'
 import type { FichaDoLogin } from '@/lib/clientes/ficha-da-requisicao'
+import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 
 // ─── Membro por auth_id (usado no getTenantContext) ───────────────────────────
 // Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
@@ -257,9 +258,12 @@ export function getCachedBranchProcedures(branchId: string, tenantId: string) {
         .or(`branch_id.is.null,branch_id.eq.${branchId}`)
         .eq('is_active', true)
         .order('name'), 'carregar os procedimentos')
-      return data ?? []
+      // Quem realiza cada um (por-01): a agenda avisa quando a escolhida não
+      // realiza. Gravar o procedimento expira a tag `procedures:<rede>`.
+      const realizam = await quemRealizaOsProcedimentos(admin, (data ?? []).map(p => p.id as string))
+      return (data ?? []).map(p => ({ ...p, realizam: realizam.get(p.id as string) ?? [] }))
     },
-    [`branch-procedures-${branchId}`],
+    [`branch-procedures-v2-${branchId}`],
     { revalidate: 300, tags: [`procedures:${tenantId}`] },
   )()
 }

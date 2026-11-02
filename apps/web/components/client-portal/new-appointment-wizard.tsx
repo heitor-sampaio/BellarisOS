@@ -15,6 +15,8 @@ interface Procedure {
   name:         string
   price:        number
   duration_min: number
+  /** Quem realiza (por-01). Vazio = todas as que atendem. */
+  realizam?:    string[]
 }
 
 interface Professional {
@@ -59,6 +61,11 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
   // O dia de hoje em Brasília (o toISOString dava o de amanhã depois das 21h).
   const [{ today, tomorrow }] = useState(() => ({ today: diaNoFuso(Date.now()), tomorrow: diaNoFuso(Date.now() + 86_400_000) }))
 
+  // Só quem REALIZA o procedimento escolhido (por-01; sem ninguém marcado, todas).
+  const quemRealiza = procedure?.realizam?.length
+    ? professionals.filter(p => procedure.realizam!.includes(p.id))
+    : professionals
+
   function handleSelectProcedure(p: Procedure) {
     setProcedure(p)
     setProf(null)
@@ -82,7 +89,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
     setSlots([])
     if (!newDate || !prof || !procedure) return
     startTransition(async () => {
-      const res = await getClientAvailableSlots(branchId, prof.id || null, newDate, procedure.duration_min)
+      const res = await getClientAvailableSlots(branchId, prof.id || null, newDate, procedure.duration_min, procedure.id)
       setSlots(res.slots)
     })
   }
@@ -271,13 +278,13 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
             Tem preferência de profissional?
           </p>
-          {professionals.length === 0 && (
+          {quemRealiza.length === 0 && (
             <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', textAlign: 'center', padding: '48px 0' }}>
               Nenhum profissional disponível.
             </p>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {professionals.length > 1 && (
+            {quemRealiza.length > 1 && (
               <button
                 type="button"
                 onClick={() => handleSelectProfessional(SEM_PREFERENCIA)}
@@ -300,7 +307,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
                 </div>
               </button>
             )}
-            {professionals.map(p => (
+            {quemRealiza.map(p => (
               <button
                 key={p.id}
                 type="button"

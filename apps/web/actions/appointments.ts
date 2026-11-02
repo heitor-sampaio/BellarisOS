@@ -2,6 +2,7 @@
 
 import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { CLIENTE_ARQUIVADA, CLIENTE_ARQUIVADA_NO_APP } from '@/lib/clients/arquivada'
+import { NAO_REALIZA, quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can, temRecurso } from '@/lib/auth'
@@ -1574,6 +1575,8 @@ export async function getClientAvailableSlots(
   professionalId: string | null,
   date: string,
   durationMin: number,
+  /** O procedimento: o "Sem preferência" junta só quem o realiza (por-01). */
+  procedureId?: string | null,
 ): Promise<{ slots: string[] }> {
   const ctx = await getTenantContext()
   assertClient(ctx)
@@ -1593,7 +1596,7 @@ export async function getClientAvailableSlots(
   if (!branch) return { slots: [] }
 
   if (!professionalId) {
-    const candidatas = await candidatasDoDia(admin, cliente!.tenant_id as string, branchId, date, durationMin)
+    const candidatas = await candidatasDoDia(admin, cliente!.tenant_id as string, branchId, date, durationMin, procedureId)
     return { slots: juntarHorarios(candidatas.map(c => c.livres)) }
   }
   const slots = await computeAvailableSlots(admin, branchId, professionalId, date, durationMin)
@@ -1668,7 +1671,7 @@ export async function createClientAppointment(params: {
     // conferências de quem foi escolhida pela cliente.
     let professionalId = params.professionalId
     if (!professionalId) {
-      const candidatas = await candidatasDoDia(admin, branch.tenant_id as string, params.branchId, dayKeyTZ(inicio), Number(procedure.duration_min))
+      const candidatas = await candidatasDoDia(admin, branch.tenant_id as string, params.branchId, dayKeyTZ(inicio), Number(procedure.duration_min), params.procedureId)
       professionalId = escolherQuemAtende(candidatas, hora)
       if (!professionalId) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
@@ -1686,6 +1689,8 @@ export async function createClientAppointment(params: {
       .maybeSingle()
     if (profErr) return { error: `Erro ao validar o profissional: ${profErr.message}` }
     if (!prof)   return { error: 'Profissional não disponível.' }
+    // Só quem REALIZA o procedimento (por-01; sem ninguém marcado, todas).
+    if (!realiza(await quemRealizaOProcedimento(admin, params.procedureId), professionalId)) return { error: NAO_REALIZA }
 
     const livres = await computeAvailableSlots(
       admin, params.branchId, professionalId, dayKeyTZ(inicio), Number(procedure.duration_min),
@@ -1872,7 +1877,8 @@ export async function confirmAndRateAppointment(params: {
 // sob demanda, em vez de virem prontos da página como no portal da unidade.
 
 export interface DadosParaAgendar {
-  procedures:    { id: string; name: string; category: string; duration_min: number; price: number }[]
+  /** `realizam`: quem realiza (por-01; vazio = todas). */
+  procedures:    { id: string; name: string; category: string; duration_min: number; price: number; realizam?: string[] }[]
   professionals: { id: string; name: string }[]
   rooms:         { id: string; name: string }[]
   slug:          string
@@ -1900,11 +1906,11 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
     getCachedRoomsByBranch(branchId, ctx.tenantId!),
   ])
 
-  type Proc = { id: string; name: string; category: string; duration_min: number; price: number }
+  type Proc = { id: string; name: string; category: string; duration_min: number; price: number; realizam?: string[] }
   return {
     procedures: (procedures as Proc[]).map(p => ({
       id: p.id, name: p.name, category: p.category,
-      duration_min: p.duration_min, price: Number(p.price),
+      duration_min: p.duration_min, price: Number(p.price), realizam: p.realizam ?? [],
     })),
     professionals: (professionals as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name })),
     rooms:         (rooms as { id: string; name: string }[]).map(r => ({ id: r.id, name: r.name })),

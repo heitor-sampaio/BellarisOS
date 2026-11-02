@@ -83,7 +83,8 @@
   e as oportunidades ABERTAS da pessoa, com "Repassar todos … para" e um
   seletor por item ("Deixar com X (sem repasse)" é a escolha padrão). O
   agendamento só vai para quem ATENDE na unidade dele (a regra de
-  `filtroDeQuemAtendeNaUnidade`), passando por `conferirPecasDoAgendamento` e
+  `filtroDeQuemAtendeNaUnidade`) e REALIZA o procedimento dele ("Quem
+  realiza", §9.3 — a lista e a action, "X não realiza este procedimento"), passando por `conferirPecasDoAgendamento` e
   livre no horário (`horarioOcupado`): quem está ocupada aparece desligada, e o
   "todos para" avisa na linha que conflita e a deixa para o caso a caso. A
   oportunidade vai para quem tem o CRM (ou "Sem responsável"), por
@@ -217,8 +218,9 @@
   candidatas e os livres são `candidatasDoDia` (`lib/appointments/core.ts`):
   quem atende na unidade (`filtroDeQuemAtendeNaUnidade`) e os livres de
   `computeAvailableSlots` — a escolhida passa depois pelas mesmas
-  conferências de quem a cliente escolheu. Não há cadastro de "quem faz qual
-  procedimento": são todas as que atendem na unidade. Prova:
+  conferências de quem a cliente escolheu. As candidatas são só as que
+  REALIZAM o procedimento ("Quem realiza", §9.3; sem ninguém marcado, todas as
+  que atendem na unidade). Prova:
   `e2e/portal-cliente-sem-preferencia.spec.ts`, `tests/sem-preferencia.test.ts`.
 - **A cliente agenda em QUALQUER unidade da clínica pelo app** (H5, decisão do
   Heitor, 2026-11-01: "A cliente é da clínica, pode agendar em qualquer
@@ -320,6 +322,23 @@
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um procedimento
 - `ProcedureProduct`: insumos consumidos por execução — base do consumo automático de estoque
+- **"Quem realiza"** (por-01, revisão do Heitor de 2026-11-02: "já deveria ter
+  um cadastro das profissionais que podem realizar o procedimento. Isso já
+  deve estar na hora da criação de um procedimento e disponível também na
+  edição"; migration `20261101000601`, `procedure_professionals`). O
+  cadastro do procedimento marca quem o faz, entre quem atende na rede. **Sem
+  ninguém marcado, todas as que atendem realizam** (o de antes). A regra é UMA,
+  `realiza` (`lib/procedimentos/quem-realiza.ts`), usada por:
+  - o app da cliente: o passo "Profissional" e o "Sem preferência"
+    (`candidatasDoDia` com o procedimento) oferecem só quem realiza, e
+    `createClientAppointment` recusa as outras ("Esta profissional não
+    realiza este procedimento.");
+  - a agenda da clínica: o modal AVISA ("X não está em “Quem realiza” deste
+    procedimento"), sem barrar — o encaixe é da clínica;
+  - o repasse ao desativar (`lib/equipe/repasse.ts`): a lista e a action.
+  Só o servidor grava a ligação (`actions/procedures.ts`, quem atende, ativa
+  e da rede); a sessão lê a da própria rede. Prova:
+  `e2e/procedimento-quem-realiza.spec.ts`.
 - **Categorias da rede** (`procedure_categories`, 2026-10-14; Procedimentos →
   Categorias): eram quinze fixas no código. `procedures.category` continua
   TEXTO (relatórios agrupam pelo nome); a tabela é o vocabulário — cresce

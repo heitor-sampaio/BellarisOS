@@ -22,6 +22,7 @@ import { oportunidadeDoAgendamento, ligarAgendamentoAOportunidade } from '@/lib/
 import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import type { CandidataDoHorario } from '@/lib/appointments/sem-preferencia'
 import { recusaDaSala } from '@/lib/appointments/salas'
+import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -358,13 +359,19 @@ export async function computeAvailableSlots(
  */
 export async function candidatasDoDia(
   admin: Admin, tenantId: string, branchId: string, date: string, durationMin: number,
+  /** Com o procedimento, só quem o REALIZA (por-01, `lib/procedimentos/quem-realiza.ts`). */
+  procedureId?: string | null,
 ): Promise<CandidataDoHorario[]> {
-  const equipe = ((await ler(admin.from('users').select('id, name')
-    .eq('tenant_id', tenantId)
-    .or(filtroDeQuemAtendeNaUnidade(branchId))
-    .eq('provides_services', true)
-    .eq('is_active', true)
-    .order('name'), 'carregar quem atende na unidade')) ?? []) as { id: string; name: string }[]
+  const [todas, realizam] = await Promise.all([
+    ler(admin.from('users').select('id, name')
+      .eq('tenant_id', tenantId)
+      .or(filtroDeQuemAtendeNaUnidade(branchId))
+      .eq('provides_services', true)
+      .eq('is_active', true)
+      .order('name'), 'carregar quem atende na unidade'),
+    procedureId ? quemRealizaOProcedimento(admin, procedureId) : Promise.resolve([] as string[]),
+  ])
+  const equipe = ((todas ?? []) as { id: string; name: string }[]).filter(p => realiza(realizam, p.id))
   if (!equipe.length) return []
 
   const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()

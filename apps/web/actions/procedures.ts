@@ -118,6 +118,39 @@ async function gravarSalasDoProcedimento(
   }
 }
 
+/**
+ * "Quem realiza" (por-01, revisão do Heitor de 2026-11-02): as profissionais
+ * que fazem o procedimento. `null` = o formulário não trouxe o campo (as
+ * ligações ficam como estão); vazio = todas as que atendem. Só membros ATIVOS
+ * da rede que atendem (`provides_services`).
+ */
+async function profissionaisDoFormulario(
+  admin: ReturnType<typeof createAdminClient>, tenantId: string, formData: FormData,
+): Promise<{ ids: string[] | null } | { error: string }> {
+  if (!formData.has('professional_ids')) return { ids: null }
+  let lidas: unknown
+  try { lidas = JSON.parse(String(formData.get('professional_ids') || '[]')) } catch { return { error: 'Profissionais inválidas.' } }
+  if (!Array.isArray(lidas) || lidas.some(x => typeof x !== 'string')) return { error: 'Profissionais inválidas.' }
+  const ids = [...new Set(lidas as string[])]
+  if (!ids.length) return { ids }
+  const achadas = await ler(admin.from('users').select('id')
+    .in('id', ids).eq('tenant_id', tenantId).eq('is_active', true).eq('provides_services', true), 'conferir quem realiza')
+  if ((achadas ?? []).length !== ids.length) return { error: 'Profissional não encontrada.' }
+  return { ids }
+}
+
+/** Troca quem realiza o procedimento pelas do formulário. */
+async function gravarQuemRealiza(
+  admin: ReturnType<typeof createAdminClient>, tenantId: string, procedureId: string, ids: string[],
+) {
+  await gravar(admin.from('procedure_professionals').delete().eq('procedure_id', procedureId), 'limpar quem realiza o procedimento')
+  if (ids.length) {
+    await gravar(admin.from('procedure_professionals').insert(
+      ids.map(user_id => ({ procedure_id: procedureId, user_id, tenant_id: tenantId })),
+    ), 'salvar quem realiza o procedimento')
+  }
+}
+
 function assertRede(ctx: { branchId: string | null }) {
   if (ctx.branchId !== null) {
     throw new Error('Procedimentos são do catálogo da rede: só quem tem abrangência de rede pode alterá-los.')
@@ -194,6 +227,8 @@ async function addProcedureInterno(
   if (recusa) return { error: recusa }
   const salas = await salasDoFormulario(admin, ctx.tenantId!, formData)
   if ('error' in salas) return { error: salas.error }
+  const quemRealiza = await profissionaisDoFormulario(admin, ctx.tenantId!, formData)
+  if ('error' in quemRealiza) return { error: quemRealiza.error }
 
   // Insere o procedimento no catálogo da rede (branch_id = null)
   const { data: procedure, error } = await admin
@@ -246,6 +281,8 @@ async function addProcedureInterno(
   // milissegundos e nunca existiu para o usuário.
   // As salas em que é feito (D5).
   if (salas.ids) await gravarSalasDoProcedimento(admin, ctx.tenantId!, procedure.id as string, salas.ids)
+  // Quem realiza (por-01).
+  if (quemRealiza.ids) await gravarQuemRealiza(admin, ctx.tenantId!, procedure.id as string, quemRealiza.ids)
 
   await procedimentoCriado(procedure.id as string, ctx)
 
@@ -342,6 +379,8 @@ async function updateProcedureInterno(
   if (recusa) return { error: recusa }
   const salas = await salasDoFormulario(admin, ctx.tenantId!, formData)
   if ('error' in salas) return { error: salas.error }
+  const quemRealiza = await profissionaisDoFormulario(admin, ctx.tenantId!, formData)
+  if ('error' in quemRealiza) return { error: quemRealiza.error }
 
   // Histório de preço se alterado
   const precoAnterior = parseFloat(String(existing.price))
@@ -391,6 +430,8 @@ async function updateProcedureInterno(
   // comum desta tela; emitir aí faria a automação de preço disparar à toa.
   // As salas em que é feito (D5): só quando o formulário as trouxe.
   if (salas.ids) await gravarSalasDoProcedimento(admin, ctx.tenantId!, procedureId, salas.ids)
+  // Quem realiza (por-01): só quando o formulário o trouxe.
+  if (quemRealiza.ids) await gravarQuemRealiza(admin, ctx.tenantId!, procedureId, quemRealiza.ids)
 
   if (precoMudou) await procedimentoPrecoAlterado(procedureId, ctx, precoAnterior)
 

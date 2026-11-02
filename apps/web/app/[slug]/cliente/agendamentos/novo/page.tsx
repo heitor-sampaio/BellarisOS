@@ -6,6 +6,7 @@ import { NewAppointmentWizard } from '@/components/client-portal/new-appointment
 import { ler } from '@/lib/db'
 import { normalizarHorario, resumoDoHorario } from '@/lib/agenda/horario'
 import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
+import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { AgendarComAClinica } from '@/components/client-portal/agendar-com-a-clinica'
 
 export default async function NewClientAppointmentPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -57,7 +58,10 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
     getCachedBranchProfessionals(branchTyped.id, branchTyped.tenant_id as string),
   ])
 
-  const procedures    = (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[]
+  // Quem realiza cada um (por-01): o passo "Profissional" oferece só elas.
+  const lidos = (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[]
+  const realizam = await quemRealizaOsProcedimentos(admin, lidos.map(p => p.id))
+  const procedures = lidos.map(p => ({ ...p, realizam: realizam.get(p.id) ?? [] }))
   const equipe        = (rawProfessionals ?? []) as { id: string; name: string }[]
 
   // Quando cada uma atende (J-60): a unidade ∩ ela, em texto — a cliente vê

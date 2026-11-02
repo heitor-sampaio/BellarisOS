@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
-import { ProcedureForm, type ModelosDoProcedimento, type SalaDoCadastro } from './procedure-form'
+import { ProcedureForm, type ModelosDoProcedimento, type SalaDoCadastro, type ProfissionalDoCadastro } from './procedure-form'
 import type { DadosDaComissao } from './comissao-do-procedimento'
 
 interface Branch  { id: string; name: string }
@@ -28,11 +28,15 @@ interface ExistingProcedure {
   contract_template_id?: string | null
   loyalty_points?: number | null
   room_ids?: string[]
+  /** Quem realiza (por-01). */
+  professional_ids?: string[]
 }
 
 interface ProcedureModalProps {
   /** As salas ativas da rede (D5): o procedimento se liga às em que é feito. */
   salas?: SalaDoCadastro[]
+  /** Quem atende na rede (por-01): o "Quem realiza" do procedimento. */
+  profissionais?: ProfissionalDoCadastro[]
   branches: Branch[]
   products: Product[]
   fichas?: { id: string; name: string }[]
@@ -46,7 +50,7 @@ interface ProcedureModalProps {
   comissao?: DadosDaComissao
 }
 
-export function ProcedureModal({ salas = [], branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias, comissao }: ProcedureModalProps) {
+export function ProcedureModal({ salas = [], profissionais = [], branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias, comissao }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
@@ -124,6 +128,7 @@ export function ProcedureModal({ salas = [], branches, products, fichas = [], ex
             <ProcedureForm
               key={abertura}
               salas={salas}
+              profissionais={profissionais}
               branches={branches}
               products={products}
               fichas={fichas}
