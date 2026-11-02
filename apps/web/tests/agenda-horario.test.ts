@@ -100,3 +100,12 @@ describe('o encaixe fora do horário (J-30)', () => {
     expect(forasDoHorario([{ de: '08:00', ate: '20:00' }], 8 * 60, 20 * 60)).toEqual([])
   })
 })
+
+describe('janelaDoDia — a grade da Minha agenda ("Reforça", item 8)', () => {
+  it('das horas cheias que cobrem os intervalos do dia; nulo quando não atende', async () => {
+    const { janelaDoDia } = await import('@/lib/agenda/horario')
+    expect(janelaDoDia([{ de: '08:00', ate: '12:00' }])).toEqual({ inicio: 8, fim: 12 })
+    expect(janelaDoDia([{ de: '07:30', ate: '12:00' }, { de: '18:00', ate: '21:30' }])).toEqual({ inicio: 7, fim: 22 })
+    expect(janelaDoDia([])).toBeNull()
+  })
+})

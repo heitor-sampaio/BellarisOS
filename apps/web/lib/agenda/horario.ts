@@ -249,6 +249,17 @@ export function capacidadeEmMinutos(
   return total
 }
 
+/**
+ * As horas da grade de UM dia, pelos intervalos dele (a "Minha agenda" —
+ * "Reforça", item 8 da 5ª simulação: unidade ∩ ela). Nulo = não atende.
+ */
+export function janelaDoDia(intervalos: Intervalo[]): { inicio: number; fim: number } | null {
+  if (!intervalos.length) return null
+  const de = Math.min(...intervalos.map(i => minutos(i.de)))
+  const ate = Math.max(...intervalos.map(i => minutos(i.ate)))
+  return ate > de ? { inicio: Math.floor(de / 60), fim: Math.ceil(ate / 60) } : null
+}
+
 /** As horas da grade da agenda: da primeira abertura ao último fechamento da semana. */
 export function janelaDaGrade(horarios: (Horario | null)[]): { inicio: number; fim: number } {
   let inicio = 24 * 60, fim = 0

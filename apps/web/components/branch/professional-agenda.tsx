@@ -17,7 +17,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { estenderJanela } from '@/lib/agenda/grade'
 import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
-import type { Horario, BlocoOcupado } from '@/lib/agenda/horario'
+import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
@@ -186,9 +186,14 @@ export function ProfessionalAgendaView({
   const monthCells = Array.from({ length: totalCell }, (_, i) => addDays(mStart, i - firstDow))
 
   // -- Time grid (dia) -----------------------------------------------
-  // A mesma regra da grade da unidade (§9.1, D5 de 2026-10-28): abre no
-  // horário de funcionamento e se estende pelos atendimentos de fora dele.
-  const { inicio: DAY_START, fim: DAY_END } = estenderJanela(janela, dayEvents)
+  // A grade é o horário DELA no dia (unidade ∩ ela — "Reforça", item 8 da 5ª
+  // simulação: a Renata, de 07–12, via a unidade inteira livre), estendida
+  // pelos atendimentos de fora dele (§9.1). No dia em que ela não atende, a
+  // janela da unidade, toda sombreada.
+  const intervalosDela = intervalosDoDia(horarioDaUnidade, horarioDaProfissional, diaDaSemana(format(selectedDate, 'yyyy-MM-dd')))
+  const naoAtende = intervalosDela.length === 0
+  const { inicio: DAY_START, fim: DAY_END } = estenderJanela(janelaDoDia(intervalosDela) ?? janela, dayEvents)
+  const forasDela = forasDoHorario(intervalosDela, DAY_START * 60, DAY_END * 60)
   const gridHeight = (DAY_END - DAY_START) * PX_PER_HOUR
   const hourLines  = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => i + DAY_START)
 
@@ -364,7 +369,7 @@ export function ProfessionalAgendaView({
 
           {/* Grade de horários */}
           <div style={{ overflowY: 'auto', maxHeight: 620 }}>
-            <div style={{ position: 'relative', height: gridHeight }}>
+            <div data-grade-minha-agenda style={{ position: 'relative', height: gridHeight }}>
 
               {/* Linhas de hora */}
               {hourLines.map(h => (
@@ -381,6 +386,14 @@ export function ProfessionalAgendaView({
                   </span>
                   <div style={{ flex: 1, height: 1, background: 'var(--hairline)', marginTop: 7 }} />
                 </div>
+              ))}
+
+              {/* O fora do horário dela, sombreado (como a coluna da agenda da unidade). */}
+              {forasDela.map(f => (
+                <div key={f.de} data-fora-do-horario aria-hidden style={{
+                  position: 'absolute', top: (f.de / 60 - DAY_START) * PX_PER_HOUR, height: (f.ate - f.de) / 60 * PX_PER_HOUR,
+                  left: 58, right: 0, background: 'var(--bg-app)', pointerEvents: 'none',
+                }} />
               ))}
 
               {/* Slots livres */}
@@ -463,7 +476,7 @@ export function ProfessionalAgendaView({
                   position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                   textAlign: 'center', pointerEvents: 'none',
                 }}>
-                  <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Dia livre</p>
+                  <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>{naoAtende ? 'Você não atende neste dia' : 'Dia livre'}</p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 4 }}>Nenhum atendimento agendado.</p>
                 </div>
               )}
