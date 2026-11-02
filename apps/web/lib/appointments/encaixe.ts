@@ -58,6 +58,8 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   const choque = await primeiroConflito(admin, {
     tenantId: ctx.tenantId!, professionalId: a.professionalId, inicio, duracaoMin: duracao, excluir: a.excluir ?? null,
   })
-  const conflito = choque ? `${nome} já tem atendimento das ${hora(choque.inicio)} às ${hora(choque.fim)}.` : null
+  // A30: o outro atendimento de OUTRA unidade diz qual (a recepção desta não vê aquela agenda).
+  const onde = choque && choque.unidadeId !== a.branchId && choque.unidade ? `, na unidade ${choque.unidade}` : ''
+  const conflito = choque ? `${nome} já tem atendimento das ${hora(choque.inicio)} às ${hora(choque.fim)}${onde}.` : null
   return { foraDoHorario, conflito }
 }

@@ -294,6 +294,17 @@
   Agenda e o "Próximo agendamento" da home. O que passou sem ser fechado vai
   ao histórico. A Agenda filtrava só o status, e o "Na clínica" de ontem
   aparecia em "Próximos". Prova: `tests/agenda-do-portal.test.ts`.
+- **O concluído adiantado libera o resto do horário e a sala** (A31 da 5ª
+  simulação): o CONCLUÍDO ocupa só até a conclusão (`fimDaOcupacao`,
+  `lib/appointments/core.ts`), em `primeiroConflito`/`horarioOcupado` (logo
+  no núcleo, na remarcação, nas salas e no aviso do modal) e nos livres de
+  `computeAvailableSlots`. A Bianca concluiu às 10:53 o das 12:00, e o das
+  12:00 seguia ocupado — foi assim que a Priscila ficou sem a Sala Rosa.
+- **O conflito diz a unidade do outro atendimento** (A30): o profissional da
+  rede atende em várias, e a recepção de uma não vê a agenda da outra. O
+  aviso do modal ("…das 15:00 às 16:00, na unidade Moinhos.") e a recusa
+  (`recusaDoConflito`: "…nesse horário, na unidade Moinhos.") dizem onde,
+  quando é OUTRA unidade. Prova: `e2e/agenda-conflito-atritos.spec.ts`.
 - **"Mostrar cancelados"** (2026-10-21, decisão do Heitor): a agenda da
   unidade deixa o cancelado e a falta fora da grade; o botão do cabeçalho
   (`?cancelados=1`, a consulta do servidor) os traz de volta, apagados, riscados
@@ -1139,6 +1150,7 @@ O resto do fluxo:
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
+❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem. A exceção é pacote_cancelar (F2b): cancela as sessões agendadas na MESMA transação do dinheiro, com o status, o motivo e o histórico do cancelarCore, e a action emite o evento e o aviso depois
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro

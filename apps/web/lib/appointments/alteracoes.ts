@@ -5,7 +5,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { alcancaUnidade, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
-import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoConflito } from '@/lib/appointments/core'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { getUserName, logHistory } from '@/lib/appointments/avisos'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
@@ -76,12 +76,12 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   // passava (a criação conferia; a remarcação, não — até 2026-10-08). Em
   // qualquer unidade da rede, com a duração de cada um (horarioOcupado).
   const profissional = input.professionalId || existente.professional_id
-  if (profissional && await horarioOcupado(admin, {
+  const choque = profissional ? await primeiroConflito(admin, {
     tenantId: ctx.tenantId!, professionalId: profissional, excluir: existente.id,
     inicio, duracaoMin: existente.duration_min || 60,
-  })) {
-    return { error: 'Este profissional já tem agendamento nesse horário.' }
-  }
+  }) : null
+  // A30: o outro atendimento de OUTRA unidade diz qual.
+  if (choque) return { error: recusaDoConflito(choque, existente.branch_id) }
   // E a sala, quando o agendamento tem uma.
   if (existente.room_id && await horarioOcupado(admin, {
     tenantId: ctx.tenantId!, roomId: existente.room_id, branchId: existente.branch_id, excluir: existente.id,

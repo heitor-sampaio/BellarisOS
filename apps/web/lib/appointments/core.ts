@@ -85,12 +85,28 @@ interface ConsultaDeHorario {
  * com início e fim — é o que o modal mostra ANTES de confirmar (J-30:
  * "já tem atendimento das 11:00 às 12:00"). Nulo = livre.
  */
-export async function primeiroConflito(admin: Admin, a: ConsultaDeHorario): Promise<{ inicio: Date; fim: Date } | null> {
+/**
+ * Até quando um agendamento ocupa o horário (A31 da 5ª simulação): o
+ * CONCLUÍDO adiantado libera o resto — ocupa só até a conclusão (a Bianca
+ * concluiu às 10:53 o das 12:00, e o das 12:00 seguia ocupado, com a sala).
+ * Concluído antes de começar não ocupa nada (o fim fica antes do início).
+ */
+export function fimDaOcupacao(a: { scheduled_at: string; duration_min: number | null; status?: string | null; completed_at?: string | null }): number {
+  const fim = new Date(a.scheduled_at).getTime() + (a.duration_min || 60) * 60000
+  if (a.status === 'COMPLETED' && a.completed_at) return Math.min(fim, new Date(a.completed_at).getTime())
+  return fim
+}
+
+export async function primeiroConflito(admin: Admin, a: ConsultaDeHorario): Promise<{
+  inicio: Date; fim: Date
+  /** A unidade do outro atendimento (A30): o da rede atende em várias, e a recepção de uma não vê a agenda da outra. */
+  unidadeId: string; unidade: string
+} | null> {
   if (!a.professionalId && !a.roomId) return null
   const ini = a.inicio.getTime()
   const fim = ini + Math.max(1, a.duracaoMin) * 60000
   let q = admin.from('appointments')
-    .select('id, scheduled_at, duration_min, branches!inner(tenant_id)')
+    .select('id, scheduled_at, duration_min, status, completed_at, branch_id, branches!inner(tenant_id, name)')
     .eq('branches.tenant_id', a.tenantId)
     .not('status', 'in', IGNORED_STATUS)
     .lt('scheduled_at', new Date(fim).toISOString())
@@ -98,13 +114,26 @@ export async function primeiroConflito(admin: Admin, a: ConsultaDeHorario): Prom
   if (a.professionalId) q = q.eq('professional_id', a.professionalId)
   else q = q.eq('room_id', a.roomId!).eq('branch_id', a.branchId!)
   if (a.excluir) q = q.neq('id', a.excluir)
-  const candidatos = (await ler(q.order('scheduled_at', { ascending: false }).limit(200), 'conferir o horário') as { scheduled_at: string; duration_min: number | null }[] | null) ?? []
+  const candidatos = (await ler(q.order('scheduled_at', { ascending: false }).limit(200), 'conferir o horário') as unknown as {
+    scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null
+    branch_id: string; branches: { name: string } | null
+  }[] | null) ?? []
   for (const c of candidatos) {
     const oIni = new Date(c.scheduled_at).getTime()
-    const oFim = oIni + (c.duration_min || 60) * 60000
-    if (ini < oFim && fim > oIni) return { inicio: new Date(oIni), fim: new Date(oFim) }
+    const oFim = fimDaOcupacao(c)
+    if (ini < oFim && fim > oIni) return { inicio: new Date(oIni), fim: new Date(oFim), unidadeId: c.branch_id, unidade: c.branches?.name ?? '' }
   }
   return null
+}
+
+/**
+ * A recusa do conflito de PROFISSIONAL, dizendo a unidade quando o outro
+ * atendimento é de OUTRA (A30): "…nesse horário, na unidade Moinhos.".
+ */
+export function recusaDoConflito(conflito: { unidadeId: string; unidade: string }, unidadeDoAgendamento: string | null | undefined): string {
+  return conflito.unidadeId && unidadeDoAgendamento && conflito.unidadeId !== unidadeDoAgendamento && conflito.unidade
+    ? `Este profissional já tem agendamento nesse horário, na unidade ${conflito.unidade}.`
+    : 'Este profissional já tem agendamento nesse horário.'
 }
 
 /**
@@ -214,12 +243,12 @@ export async function createAppointmentCore(
     return { error: 'Esta sala já está ocupada nesse horário.' }
   }
 
-  // Conflito de PROFISSIONAL (sempre) — impede duplo-agendamento do mesmo profissional
-  if (await horarioOcupado(admin, {
+  // Conflito de PROFISSIONAL (sempre) — impede duplo-agendamento do mesmo
+  // profissional, e diz a unidade quando o outro é de outra (A30).
+  const choque = await primeiroConflito(admin, {
     tenantId: ctx.tenantId!, professionalId: input.professionalId, inicio: start, duracaoMin: durationMin,
-  })) {
-    return { error: 'Este profissional já tem agendamento nesse horário.' }
-  }
+  })
+  if (choque) return { error: recusaDoConflito(choque, input.branchId) }
 
   // A cliente tem oportunidade aberta? Então o agendamento é do comercial
   // (D11, 2026-10-27): a origem não depende de quem agenda nem de por onde — o
@@ -334,7 +363,7 @@ export async function computeAvailableSlots(
   // começo do dia (2026-10-08).
   const booked = await ler(admin
     .from('appointments')
-    .select('id, scheduled_at, duration_min')
+    .select('id, scheduled_at, duration_min, status, completed_at')
     .eq('professional_id', professionalId)
     .gte('scheduled_at', new Date(new Date(dayStart).getTime() - DURACAO_MAXIMA_MS).toISOString())
     .lt('scheduled_at', dayEnd)
@@ -342,7 +371,8 @@ export async function computeAvailableSlots(
 
   const occupied = (booked ?? []).filter((b) => b.id !== ignorarAgendamentoId).map((b) => ({
     start: new Date(b.scheduled_at as string).getTime(),
-    end:   new Date(b.scheduled_at as string).getTime() + (Number(b.duration_min) || 60) * 60000,
+    // O concluído adiantado ocupa só até a conclusão (A31).
+    end:   fimDaOcupacao(b as { scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null }),
   }))
   const agora = Date.now()
 
