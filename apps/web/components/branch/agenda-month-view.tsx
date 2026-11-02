@@ -19,6 +19,12 @@ export interface CalendarEvent {
   price:           string
   /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
   pagoAntes?:      string | null
+  /** A cliente (A29: "Reagendar" o cancelado abre o novo agendamento com ela). */
+  clientId?:       string | null
+  /** A sala (A29), no cartão e na janela. */
+  roomName?:       string | null
+  /** A unidade (A29), na janela da agenda da rede. */
+  unidade?:        string | null
   /** A ficha de saúde da cliente para este horário (selo no bloco). */
   fichaDeSaude?:   SeloDaFichaEstado | null
   /** O check-in (2026-10-21): quando chegou. */

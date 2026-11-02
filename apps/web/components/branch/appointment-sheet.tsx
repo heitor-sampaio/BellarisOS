@@ -23,6 +23,11 @@ interface AppointmentEvent {
   price:            string
   /** Já pago antes (D12): o texto que substitui o valor ("Pré-pago · 1 de 2"). */
   pagoAntes?:       string | null
+  /** A29: a duração, a sala e a unidade na janela; a cliente para "Reagendar". */
+  durationMin?:     number
+  roomName?:        string | null
+  unidade?:         string | null
+  clientId?:        string | null
   start:            string
   /** Cancelado: o motivo, inteiro (o bloco da grade o corta). */
   motivoDoCancelamento?: string | null
@@ -227,6 +232,16 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               )}
             </span>
           </div>
+          {/* A29: a duração, a sala e a unidade — a janela não as dizia. */}
+          {(appointment.durationMin || appointment.roomName || appointment.unidade) && (
+            <p data-detalhes-do-agendamento style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', paddingLeft: 24 }}>
+              {[
+                appointment.durationMin ? `${appointment.durationMin} min` : null,
+                appointment.roomName ?? null,
+                appointment.unidade ?? null,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
           {!isProfessional && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg-app)', borderRadius: 'var(--radius-card-sm)', border: '1px solid var(--border)' }}>
               <div>
@@ -411,6 +426,19 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
           <p data-motivo-do-cancelamento style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 10 }}>
             <strong>Motivo:</strong> {appointment.motivoDoCancelamento}
           </p>
+        )}
+        {/* A29: o cancelado e a falta ganham "Reagendar" — o novo agendamento
+            já com a cliente (o `?novo=1&cliente=` da agenda). */}
+        {(appointment.status === 'CANCELLED' || appointment.status === 'NO_SHOW') && podeCancelar && appointment.clientId && (
+          <button type="button" className="btn-secondary" style={{ width: '100%', justifyContent: 'center', marginBottom: 10 }}
+            onClick={() => {
+              const q = new URLSearchParams(window.location.search)
+              q.set('novo', '1'); q.set('cliente', appointment.clientId!)
+              onClose()
+              router.push(`${pathname}?${q.toString()}`)
+            }}>
+            <CalendarClock size={14} /> Reagendar
+          </button>
         )}
         {isDone && (
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-xs-sz)' }}>

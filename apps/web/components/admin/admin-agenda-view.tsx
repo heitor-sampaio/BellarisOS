@@ -35,6 +35,10 @@ interface Appointment {
   ficha?:          EstadoDaFicha | null
   /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
   pagoAntes?:      string | null
+  /** A29: a duração, a sala e a cliente, na janela. */
+  duration_min?:   number | null
+  client_id?:      string | null
+  rooms?:          { name: string } | null
 }
 
 interface Props {
@@ -680,6 +684,11 @@ export function AdminAgendaView({
             professionalName: selecionado.users?.name ?? '—',
             price:            String(selecionado.price ?? 0),
             pagoAntes:        selecionado.pagoAntes ?? null,
+            durationMin:      selecionado.duration_min ?? undefined,
+            roomName:         selecionado.rooms?.name ?? null,
+            // A agenda da rede mostra várias unidades: a janela diz de qual (A29).
+            unidade:          todasUnidades.find(b => b.id === selecionado.branch_id)?.name ?? null,
+            clientId:         selecionado.client_id ?? null,
             start:            selecionado.scheduled_at,
             motivoDoCancelamento: selecionado.cancellation_reason ?? null,
           }}

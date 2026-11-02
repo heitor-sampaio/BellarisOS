@@ -244,7 +244,8 @@ function ProfColumn({
             }}
           >
             <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : 'var(--success)', display: 'flex', gap: 4, flexWrap: height > 42 ? 'wrap' : 'nowrap', overflow: 'hidden' }}>
-              <span style={{ flexShrink: 0 }}>{timeStr}{height > 42 ? ` · ${ev.durationMin}min` : ''}</span>
+              {/* A sala no cartão (A29). */}
+              <span style={{ flexShrink: 0 }}>{timeStr}{height > 42 ? ` · ${ev.durationMin}min` : ''}{height > 42 && ev.roomName ? ` · ${ev.roomName}` : ''}</span>
               {/* O bloco curto (30 min) não tem altura para a linha do nome: ele vem aqui. */}
               {height <= 42 && <span style={{ color: isCompleted ? 'var(--text-muted)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.clientName}</span>}
               <SeloDaFicha estado={ev.fichaDeSaude} />

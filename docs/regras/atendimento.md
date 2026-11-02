@@ -304,6 +304,11 @@
   Agenda e o "Próximo agendamento" da home. O que passou sem ser fechado vai
   ao histórico. A Agenda filtrava só o status, e o "Na clínica" de ontem
   aparecia em "Próximos". Prova: `tests/agenda-do-portal.test.ts`.
+- **A janela do agendamento diz duração, sala e unidade** (A29 da 5ª
+  simulação; `[data-detalhes-do-agendamento]`), o cartão da grade diz a sala,
+  e o cancelado (e a falta) ganha "Reagendar" — o novo agendamento já com a
+  cliente (`?novo=1&cliente=`), para quem cancela. Prova:
+  `e2e/agenda-janela-detalhes.spec.ts`.
 - **O concluído adiantado libera o resto do horário e a sala** (A31 da 5ª
   simulação): o CONCLUÍDO ocupa só até a conclusão (`fimDaOcupacao`,
   `lib/appointments/core.ts`), em `primeiroConflito`/`horarioOcupado` (logo

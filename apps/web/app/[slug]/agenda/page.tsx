@@ -58,7 +58,7 @@ export default async function AgendaPage({ params, searchParams }: {
     let q = supabase
       .from('appointments')
       .select(`
-        id, scheduled_at, duration_min, status, price, professional_id, client_id, arrived_at, completed_at,
+        id, scheduled_at, duration_min, status, price, professional_id, client_id, room_id, arrived_at, completed_at,
         cancellation_reason,
         procedures(name)
       `)
@@ -164,6 +164,9 @@ export default async function AgendaPage({ params, searchParams }: {
       professionalId:   a.professional_id ?? '',
       price:            String(a.price),
       pagoAntes:        jaPagos.get(a.id as string) ?? null,
+      // A29: a cliente (para "Reagendar") e a sala, no cartão e na janela.
+      clientId:         (a.client_id as string | null) ?? null,
+      roomName:         ((rooms ?? []) as { id: string; name: string }[]).find(r => r.id === (a as { room_id?: string | null }).room_id)?.name ?? null,
       fichaDeSaude:     selos[a.id] ?? null,
       arrivedAt:        (a as { arrived_at?: string | null }).arrived_at ?? null,
       completedAt:      (a as { completed_at?: string | null }).completed_at ?? null,
