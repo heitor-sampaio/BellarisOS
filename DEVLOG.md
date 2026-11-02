@@ -9128,6 +9128,24 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F5 feita em 2026-11-02 — Equipe** (377067d4, 54edf049, 741bbfc5,
+e398c472, aceea941; migration `20261101000501`). Ao desativar a Renata, a
+janela mostra "Agendamentos futuros (2)" e "Oportunidades abertas (2)" e
+repassa todos para uma pessoa ou linha a linha (quem está ocupada no horário
+aparece apagada; padrão "Deixar com Renata"); o histórico diz "Repassado de
+Renata para Bianca ao desativar Renata"; o filtro Responsável mostra "Vítor
+(inativo)". A conta desativada lê "Seu acesso foi desativado pela clínica" com
+qualquer senha (sem o oráculo `senha_da_conta_confere`, sem execução; o drop
+`20261101000502` espera a confirmação do Heitor). Login novo sem vínculo é
+apagado (`comLoginNovo`), e o que sobrar lê "Esta conta não tem acesso a
+nenhuma clínica." A7: o X do segundo período tira só ele ("Sem pausa" junta).
+A9 não reproduziu. Órfãos na produção: 254 de teste (`.invalid`/e2e, de
+setembro e outubro) e a conta CLIENT do próprio Heitor, sem ficha. Decisões
+da F5, para revisar: o repasse vem antes de desativar (falha parcial deixa o
+repassado); cada linha começa sem repasse; recebe quem atende na unidade (com
+"Quem realiza", da F6, passa a usá-lo); não confere o horário de quem recebe;
+repassar pede Agenda/CRM em Gerenciar com "todos".
+
 **Respondido nas conversas (2026-11-02):**
 - **O banco é só de teste:** "antes do lançamento vamos fazer wipe total dos
   dados do sistema; nenhum cliente real usando ainda". Dado antigo não se

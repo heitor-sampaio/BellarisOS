@@ -525,8 +525,17 @@ Regras:
   mais uma requisição, e o `updateTag` se mostrou instável no `unstable_cache`
   (2026-10-21). Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
   desativa a si mesmo. O login diz "Seu acesso foi desativado pela clínica"
-  (o `user_banned` do Auth) só a quem acertou a senha
-  (`senha_da_conta_confere`, J-68). Prova: `e2e/membro-desativado.spec.ts`.
+  SEMPRE que o Auth responde `user_banned`, com qualquer senha (2026-11-01):
+  conferir a senha antes (`senha_da_conta_confere`, J-68) era um oráculo de
+  senha sem limite — a função perdeu a execução em `20261101000501`.
+  **Desativar oferece repassar** os agendamentos futuros e as oportunidades
+  abertas, caso a caso ou todos de uma vez (H6, `lib/equipe/repasse.ts`).
+  Prova: `e2e/membro-desativado.spec.ts`, `e2e/equipe-desativar-repassa.spec.ts`.
+- **Nenhum login da clínica sem vínculo** (o Heitor, 2026-11-01: "ou é rede ou
+  é unidade"): todo login é membro de uma rede ou cliente com ficha (a
+  plataforma à parte). Login novo grava o vínculo por `comLoginNovo`, que
+  apaga o login se o vínculo falha; o que sobrar não entra ("Esta conta não
+  tem acesso a nenhuma clínica."). Ver `docs/regras/plataforma.md`.
 - **Só a Admin da rede dá e altera o cargo de Admin da rede** (revisão do
   Heitor, 2026-10-29: "somente um admin pode promover alguém a admin" e
   "somente admin pode alterar admin"). Quem tem o cargo de SISTEMA Admin da
