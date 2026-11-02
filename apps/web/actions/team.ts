@@ -11,6 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
 import { gravar, ler } from '@/lib/db'
 import { cargoEhAdminDaRede, souAdminDaRede, recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
+import { comLoginNovo } from '@/lib/login-novo'
 
 // Resolve a abrangência (branch_id) de um membro a partir do form.
 // Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
@@ -148,30 +149,34 @@ export async function createTeamMember(
 
   const authId = authData.user.id
 
-  // 2. Setar claims no JWT (role derivado do cargo; abrangência = branch_id)
-  // Sem as claims o membro entra sem rede no JWT, e a RLS depende delas.
-  await gravar(admin.rpc('set_user_claims', {
-    p_auth_id:   authId,
-    p_tenant_id: ctx.tenantId!,
-    p_branch_id: effectiveBranchId,
-    p_role_id:   roleId,
-  }), 'gravar o acesso do membro')
-
-  // 3. Inserir na tabela users
-  const { data: novo, error: insertError } = await admin.from('users').insert({
-    auth_id:           authId,
-    tenant_id:         ctx.tenantId!,
-    branch_id:         effectiveBranchId,
-    name,
-    email,
-    role_id:           roleId,
-    provides_services: providesServices,
-  }).select('id').single()
-
-  if (insertError || !novo) {
-    await admin.auth.admin.deleteUser(authId)
-    return { error: 'Erro ao salvar membro. Tente novamente.' }
+  // 2 e 3. As claims no JWT (role do cargo; abrangência = branch_id — a RLS
+  // depende delas) e a linha em `users`. Falhou um dos dois, o login some
+  // (`comLoginNovo`): nenhum login sem vínculo (o Heitor, 2026-11-01). Antes,
+  // claims que falhavam deixavam o login solto.
+  let novo: { id: string } | null
+  try {
+    novo = await comLoginNovo(admin, authId, async () => {
+      await gravar(admin.rpc('set_user_claims', {
+        p_auth_id:   authId,
+        p_tenant_id: ctx.tenantId!,
+        p_branch_id: effectiveBranchId,
+        p_role_id:   roleId,
+      }), 'gravar o acesso do membro')
+      const { data, error: insertError } = await admin.from('users').insert({
+        auth_id:           authId,
+        tenant_id:         ctx.tenantId!,
+        branch_id:         effectiveBranchId,
+        name,
+        email,
+        role_id:           roleId,
+        provides_services: providesServices,
+      }).select('id').single()
+      return insertError || !data ? null : data as { id: string }
+    }, r => r === null)
+  } catch {
+    novo = null
   }
+  if (!novo) return { error: 'Erro ao salvar membro. Tente novamente.' }
 
   await membroCriado(novo.id as string, ctx)
 

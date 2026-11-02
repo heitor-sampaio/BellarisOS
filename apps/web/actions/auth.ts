@@ -12,6 +12,7 @@ import type { JwtClaims } from '@estetica-os/types'
 import { destinoPelosClaims, contaSemVinculo } from '@/lib/destino-da-sessao'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
+import { comLoginNovo } from '@/lib/login-novo'
 
 export async function registerAction(
   _prevState: { error: string } | { needsConfirmation: boolean } | undefined,
@@ -51,11 +52,14 @@ export async function registerAction(
 
   // A rede nasce pelo MESMO caminho do "Nova rede" do /sistema
   // (lib/redes/criar.ts), em teste pelos dias da configuração da plataforma.
-  const rede = await semearRede({
+  // A rede não nasceu: o login some junto (`comLoginNovo`) — nenhum login sem
+  // vínculo (o Heitor, 2026-11-01). Antes ficava solto, e a pessoa nem podia
+  // tentar de novo com o mesmo e-mail ("já cadastrado").
+  const rede = await comLoginNovo(createAdminClient(), authUser.id, async () => semearRede({
     authId: authUser.id, email, nomeDoResponsavel: email, nomeDaRede: 'Minha Clínica',
     slugBase: email.split('@')[1]?.split('.')[0] ?? 'clinica',
     planStatus: 'trial', trialEndsAt: await fimDoTesteParaHoje(),
-  })
+  }), r => !r.ok)
   if (!rede.ok) return { error: 'Erro ao configurar conta. Tente novamente.' }
 
   // Se o Supabase exigir confirmação de e-mail, a sessão não estará disponível ainda
