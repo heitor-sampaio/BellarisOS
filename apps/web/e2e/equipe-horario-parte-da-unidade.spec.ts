@@ -56,3 +56,39 @@ test('desmarcar "Segue o horário da unidade" parte do horário da unidade, não
     await ctx.close()
   }
 })
+
+// A7 da 5ª simulação: na profissional de meio período (07–12 e 18–22), o X do
+// segundo período ("Tirar a pausa") JUNTAVA os dois (07–22) — o contrário do
+// que ela queria, que era tirar o período da tarde. O X tira o período; juntar
+// os dois é outro botão, que diz o que faz.
+test('o X do segundo período tira aquele período; "Juntar" junta os dois', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: gestora!.estado })
+  const p = await ctx.newPage()
+  try {
+    await p.goto('/admin/team')
+    await p.getByTitle(`Editar ${PREFIXO} Esteticista ehe${marca}`).click()
+    const janela = p.getByRole('dialog')
+    await janela.getByLabel('Segue o horário da unidade').uncheck()
+    const segunda = janela.locator('[data-dia="1"]')
+    await segunda.getByRole('button', { name: 'Pausa' }).click()
+    await segunda.getByLabel('Segunda, abre às').nth(0).fill('07:00')
+    await segunda.getByLabel('Segunda, fecha às').nth(0).fill('12:00')
+    await segunda.getByLabel('Segunda, abre às').nth(1).fill('18:00')
+    await segunda.getByLabel('Segunda, fecha às').nth(1).fill('22:00')
+
+    await segunda.getByRole('button', { name: /^Tirar .* de Segunda$/ }).click()
+    await expect(segunda.getByLabel('Segunda, abre às')).toHaveCount(1)
+    await expect(segunda.getByLabel('Segunda, abre às')).toHaveValue('07:00')
+    await expect(segunda.getByLabel('Segunda, fecha às')).toHaveValue('12:00')
+
+    // Juntar: 08–12 e 13–18 viram 08–18.
+    const terca = janela.locator('[data-dia="2"]')
+    await terca.getByRole('button', { name: 'Pausa' }).click()
+    await terca.getByRole('button', { name: 'Juntar os períodos de Terça' }).click()
+    await expect(terca.getByLabel('Terça, abre às')).toHaveCount(1)
+    await expect(terca.getByLabel('Terça, abre às')).toHaveValue('10:00')
+    await expect(terca.getByLabel('Terça, fecha às')).toHaveValue('18:00')
+  } finally {
+    await ctx.close()
+  }
+})

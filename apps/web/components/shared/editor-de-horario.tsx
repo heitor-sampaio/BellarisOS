@@ -74,14 +74,24 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
                 <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>às</span>
                 <input type="time" className="field" style={{ width: 110 }} value={i.ate} aria-label={`${nomeDoDia}, fecha às`}
                   onChange={e => mudar(chave, lista.map((x, k) => k === n ? { ...x, ate: e.target.value } : x))} />
+                {/* O X tira ESTE período (A7 da 5ª simulação): era "Tirar a pausa", que
+                    juntava os dois — a profissional de 07–12 e 18–22 ficava 07–22. */}
                 {n > 0 && (
-                  <button type="button" className="btn-ghost" aria-label={`Tirar a pausa de ${nomeDoDia}`} style={{ padding: '4px 6px' }}
-                    onClick={() => mudar(chave, [{ de: lista[0]!.de, ate: i.ate }])}>
+                  <button type="button" className="btn-ghost" aria-label={`Tirar o período das ${i.de} às ${i.ate} de ${nomeDoDia}`}
+                    title="Tirar este período" style={{ padding: '4px 6px' }}
+                    onClick={() => mudar(chave, lista.filter((_, k) => k !== n))}>
                     <X size={13} />
                   </button>
                 )}
               </span>
             ))}
+            {lista.length === 2 && (
+              <button type="button" className="btn-ghost" aria-label={`Juntar os períodos de ${nomeDoDia}`}
+                style={{ fontSize: 'var(--text-xs-sz)' }}
+                onClick={() => mudar(chave, [{ de: lista[0]!.de, ate: lista[1]!.ate }])}>
+                Sem pausa
+              </button>
+            )}
             {aberto && lista.length === 1 && (
               <button type="button" className="btn-ghost" style={{ gap: 4, fontSize: 'var(--text-xs-sz)' }}
                 onClick={() => mudar(chave, [{ de: lista[0]!.de, ate: '12:00' }, { de: '13:00', ate: lista[0]!.ate }])}>

@@ -35,6 +35,10 @@
     unidade do membro, não do comercial (J-9, `horarioDeQuemDeixaDeSeguir`);
     o membro da rede parte da unidade quando a rede tem uma só. Prova:
     `e2e/equipe-horario-parte-da-unidade.spec.ts`.
+  - **O X do segundo período TIRA aquele período** (A7 da 5ª simulação,
+    2026-11-01; `components/shared/editor-de-horario.tsx`): era "Tirar a
+    pausa", que juntava os dois — a profissional de 07–12 e 18–22 ficava
+    07–22. Juntar é outro botão, "Sem pausa". Prova: o mesmo spec.
   Prova:
   `e2e/agenda-horario-de-funcionamento.spec.ts`, `tests/agenda-horario.test.ts`.
   - **Livre não é fixo** (D8 da simulação de 2026-10-29): a grade desses
