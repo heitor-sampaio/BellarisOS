@@ -242,7 +242,10 @@
     **"A cliente é da clínica, o atendimento é da profissional"** (decisão do
     Heitor, 2026-10-29): com a agenda "só os meus", entram as clientes que ELA
     atendeu no período, e "voltou" é quem a CLÍNICA já tinha atendido antes —
-    por qualquer profissional, nas unidades do recorte (migration
+    por qualquer profissional, em QUALQUER unidade da clínica (ind-08,
+    2026-11-02, migration `20261101000706`: era "nas unidades do recorte", e
+    a Carla atendida na Moinhos contava como nova olhando a Zona Sul — prova:
+    `e2e/indicadores-retencao-clinica-inteira.spec.ts`; migration anterior
     `20261029001103`). Era "já tinha vindo a ela" (20261028000804), e a cliente
     que trocou de profissional contava como primeira vez. Prova:
     `e2e/indicadores-retencao-da-clinica.spec.ts`.
