@@ -129,3 +129,25 @@ export async function getRelatorio(args: {
     },
   }
 }
+
+/**
+ * Quem ATENDE no recorte (D14 da 5ª simulação, 2026-11-02): ativo, com
+ * `provides_services` e ao alcance das unidades — as dela e as da REDE
+ * (`branch_id` nulo atende em todas, como `filtroDeQuemAtendeNaUnidade`). É o
+ * "Profissionais ativos" de Relatórios → Profissionais, contado no banco
+ * (`count: 'exact'`); a tela contava quem teve PRODUÇÃO no período (a Renata,
+ * sem atendimento, ficava de fora). Com a agenda "só os meus", só ela.
+ */
+export async function getQuemAtende(args: {
+  tenantId: string; branchIds: string[]; professionalId?: string | null
+}): Promise<{ total: number; nomes: string[] }> {
+  if (args.branchIds.length === 0) return { total: 0, nomes: [] }
+  const admin = createAdminClient()
+  let q = admin.from('users').select('name', { count: 'exact' })
+    .eq('tenant_id', args.tenantId).eq('is_active', true).eq('provides_services', true)
+    .or(`branch_id.is.null,branch_id.in.(${args.branchIds.join(',')})`)
+  if (args.professionalId) q = q.eq('id', args.professionalId)
+  const { data, count, error } = await q.order('name').order('id')
+  if (error) throw new Error(`[metrics] contar quem atende: ${error.message}`)
+  return { total: count ?? 0, nomes: (data ?? []).map(u => String(u.name)) }
+}

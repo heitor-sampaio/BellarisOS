@@ -99,6 +99,8 @@ export interface ReportsBiProps {
    * segunda regra de faturamento ao lado do KPI (§13.1).
    */
   relatorio: Relatorio
+  /** Quem ATENDE no recorte (D14, lib/metrics `getQuemAtende`): o "Profissionais ativos" e as linhas da tabela. Só na aba Profissionais. */
+  quemAtende?: { total: number; nomes: string[] }
   /** Vê a comissão da equipe (financeiro com escopo de todos). Sem, a aba Profissionais não a mostra. */
   verComissoes: boolean
   /**
@@ -990,7 +992,8 @@ function TabProcedimentos(p: ReportsBiProps) {
 function TabProfissionais(p: ReportsBiProps) {
   const { relatorio: r, core, corePrev, verComissoes } = p
 
-  const profissionais = r.porProfissional.length
+  // Quem ATENDE, contado em lib/metrics (D14): era quem teve produção no período.
+  const profissionais = p.quemAtende?.total ?? 0
   const totalAppts    = core.appointmentsCompleted
   // Comissões do núcleo: o período é o do LANÇAMENTO (released_at).
   const commOpen      = core.commissionsOpen
@@ -1012,7 +1015,11 @@ function TabProfissionais(p: ReportsBiProps) {
   ]
   const producao  = new Map(r.porProfissional.map(x => [x.nome, x]))
   const comissoes = new Map(r.comissoesPorProfissional.map(x => [x.nome, x]))
-  const commRows = [...new Set([...producao.keys(), ...comissoes.keys()])].map(name => {
+  // A tabela lista quem atende (e quem atendeu no período); a comissão de quem
+  // NÃO atende (a recepção, pela venda do pacote) fica numa linha à parte (D14).
+  const atendem = new Set([...(p.quemAtende?.nomes ?? []), ...producao.keys()])
+  const semAtender = r.comissoesPorProfissional.filter(c => !atendem.has(c.nome))
+  const commRows = [...atendem].map(name => {
     const open = comissoes.get(name)?.aberta ?? 0
     return {
       name,
@@ -1044,6 +1051,11 @@ function TabProfissionais(p: ReportsBiProps) {
         {verComissoes && (
           <SCard title="Comissões por Profissional" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={commCols} rows={commRows} />
+            {semAtender.length > 0 && (
+              <p data-comissao-sem-atender style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '10px 0 0' }}>
+                Também têm comissão, sem atender: {semAtender.map(c => `${c.nome} (${fmtBRLFull(c.aberta)} em aberto, ${fmtBRLFull(c.paga)} paga)`).join('; ')}
+              </p>
+            )}
           </SCard>
         )}
       </div>

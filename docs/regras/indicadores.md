@@ -555,6 +555,16 @@ receita do dashboard pede a lista larga (50) e ordena pela receita.
 `serviceRevenue` (o preço dos concluídos) continua no núcleo, com o nome
 "receita de serviço". Prova: `e2e/indicadores-receita-paga-por-procedimento.spec.ts`.
 
+**"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
+2026-11-02): ativo, com `provides_services` e ao alcance das unidades do
+recorte (as dela e as da rede) — `getQuemAtende` (`lib/metrics/relatorio.ts`,
+contado no banco). Era quem teve produção no período, contado na tela (a
+Renata, sem atendimento, ficava de fora). A tabela "Comissões por
+Profissional" lista quem atende (e quem atendeu no período); a comissão de
+quem NÃO atende (a recepção, pela venda do pacote) fica numa linha à parte
+("Também têm comissão, sem atender: …"), sem sumir. Prova:
+`e2e/relatorios-profissionais-ativos.spec.ts`.
+
 **O topo da agenda da rede** (D13 da 5ª simulação, 2026-11-02) é
 `contagemDaAgenda` (`lib/metrics/resultado.ts`), sobre a lista que a tela já
 carregou inteira: Total, Confirmados, Em atendimento, Concluídos, **Cancelados**

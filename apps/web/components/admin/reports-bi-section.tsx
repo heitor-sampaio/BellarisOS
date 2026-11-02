@@ -10,6 +10,7 @@ import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-mod
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
+import { getQuemAtende } from '@/lib/metrics/relatorio'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
   getSeries, getTicketMedio, getResultadoDoEstoque, getSeriesDoResultado,
@@ -235,6 +236,11 @@ export async function ReportsBiSection({
     for (const nucleo of [core, corePrev]) { nucleo.commissionsOpen = 0; nucleo.commissionsPaid = 0 }
   }
 
+  // Quem atende (D14): o "Profissionais ativos" e as linhas da tabela da aba.
+  const quemAtende = tab === 'profissionais'
+    ? await getQuemAtende({ tenantId, branchIds, professionalId: profAgenda })
+    : undefined
+
   const productBatches = (productBatchesRaw ?? []) as unknown as LinhaLote[]
   const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
     .filter(i => branchIds.includes(i.branch_id))
@@ -322,6 +328,7 @@ export async function ReportsBiSection({
         comercial={comercial}
         vendas={vendas}
         perdas={perdas}
+        quemAtende={quemAtende}
       />
     </>
   )
