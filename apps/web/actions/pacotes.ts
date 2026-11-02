@@ -8,7 +8,7 @@
  * Todo export é endpoint público: cada um confere permissão, rede e alcance.
  */
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { z } from 'zod'
 import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
@@ -23,6 +23,10 @@ import { itensParaRateio } from '@/lib/pacotes/leitura'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { EntradaDaComissaoDoPacote } from '@/lib/comissoes/config'
 import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
+import { lerPreviaDoCancelamento, agendamentosCancelados, type PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
+import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
+import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avisos'
+import { EVENTOS } from '@estetica-os/types'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -136,6 +140,103 @@ export async function venderPacote(
     revalidatePath('/admin/financeiro')
     revalidatePath('/[slug]/financeiro', 'page')
     return { clientPackageId }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// --- Cancelar pacote (F2b da 5ª simulação, 2026-11-01) ----------------------
+
+/**
+ * O pacote da cliente, da rede e com a unidade ao alcance (§11: a abrangência
+ * se confere na action). Nulo quando não é.
+ */
+async function pacoteDaClienteAoAlcance(
+  admin: ReturnType<typeof createAdminClient>, ctx: Awaited<ReturnType<typeof getTenantContext>>, id: string,
+): Promise<{ id: string; branch_id: string; client_id: string } | null> {
+  if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return null
+  const cp = await ler(admin.from('client_packages')
+    .select('id, branch_id, client_id, branches!inner(tenant_id)')
+    .eq('id', id).maybeSingle(), 'buscar o pacote da cliente')
+  const rede = (cp?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+  if (!cp || rede !== ctx.tenantId || !alcancaUnidade(ctx, cp.branch_id as string)) return null
+  return { id: cp.id as string, branch_id: cp.branch_id as string, client_id: cp.client_id as string }
+}
+
+/**
+ * A conta do cancelamento, ANTES de cancelar: as sessões restantes e o valor
+ * delas (o rateio do pacote, com o desconto), as parcelas a receber que caem,
+ * o que volta e as sessões já agendadas. É a MESMA função que grava
+ * (`pacote_cancelar` com `p_simular`): a tela não refaz conta nenhuma.
+ */
+export async function previaDoCancelamentoDoPacote(
+  clientPackageId: string,
+): Promise<{ error?: string; previa?: PreviaDoCancelamento }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    const admin = createAdminClient()
+    const cp = await pacoteDaClienteAoAlcance(admin, ctx, clientPackageId)
+    if (!cp) return { error: 'Pacote não encontrado.' }
+    const j = await ler(admin.rpc('pacote_cancelar', {
+      p_tenant: ctx.tenantId!, p_pacote: cp.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName ?? null,
+      p_motivo: null, p_destino: null, p_agendamentos: null, p_esperado: null, p_simular: true,
+    }), 'calcular o cancelamento do pacote') as Record<string, unknown>
+    return { previa: lerPreviaDoCancelamento(j) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+const EntradaDoCancelamento = z.object({
+  motivo:       z.string().trim().min(1, 'Diga o motivo do cancelamento.').max(500),
+  destino:      z.enum(['ESTORNO', 'CREDITO']).nullable(),
+  agendamentos: z.enum(['CANCELAR', 'SOLTAR']).nullable(),
+  /** O "a devolver" que a janela mostrou: mudou no meio, o banco recusa. */
+  esperado:     z.number().min(0),
+})
+
+/**
+ * Cancela o pacote: as sessões que sobraram, o crediário que passa do usado,
+ * o que volta (estorno ou crédito na clínica), a comissão e os agendamentos
+ * — numa transação (`pacote_cancelar`). Quem pode: `financial: MANAGE`, com a
+ * unidade do pacote ao alcance.
+ */
+export async function cancelarPacote(clientPackageId: string, entrada: unknown): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    const lido = EntradaDoCancelamento.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+    const admin = createAdminClient()
+    const cp = await pacoteDaClienteAoAlcance(admin, ctx, clientPackageId)
+    if (!cp) return { error: 'Pacote não encontrado.' }
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
+    const j = await gravar(admin.rpc('pacote_cancelar', {
+      p_tenant: ctx.tenantId!, p_pacote: cp.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: userName,
+      p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_agendamentos: lido.data.agendamentos,
+      p_esperado: lido.data.esperado, p_simular: false,
+    }), 'cancelar o pacote') as Record<string, unknown>
+
+    // Os agendamentos cancelados com o pacote avisam como qualquer
+    // cancelamento (o evento das automações e a cliente/equipe), depois da
+    // transação: o banco já gravou o status e o histórico.
+    const motivo = `Pacote cancelado: ${lido.data.motivo}`
+    for (const id of agendamentosCancelados(j)) {
+      await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, id, { ...ctx, userName }, { motivo })
+      notifyCancelledAppointment(id, motivo, ctx.internalUserId)
+    }
+
+    revalidateTag(`client:${cp.client_id}`, { expire: 0 })
+    revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+    revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    revalidatePath('/admin/financeiro')
+    revalidatePath('/[slug]/financeiro', 'page')
+    revalidatePath('/admin/agenda')
+    revalidatePath('/[slug]/agenda', 'page')
+    return { ok: true }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

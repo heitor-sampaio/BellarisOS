@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
-import { idadeEm } from '@estetica-os/utils'
+import { idadeEm, formatBRL } from '@estetica-os/utils'
+import { historicoDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
@@ -119,7 +120,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, purchased_at, service_packages(name, procedure_id, price, procedures(name, duration_min))')
+      .select('id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, service_packages(name, procedure_id, price, procedures(name, duration_min))')
       .eq('client_id', id)
       .order('purchased_at', { ascending: false })
       .limit(10), 'carregar os pacotes'),
@@ -199,7 +200,9 @@ export default async function AdminClientProfilePage({
   let activePackage: ProfilePackage | null = null
   const pkgsArray = Array.isArray(pkgs) ? pkgs : pkgs ? [pkgs] : []
   const now = new Date()
+  // O pacote cancelado (F2b) não está em andamento: fica só no histórico.
   const activePkg = pkgsArray.find(p =>
+    !(p as { cancelado_em?: string | null }).cancelado_em &&
     p.used_sessions < p.total_sessions &&
     (!p.expires_at || new Date(p.expires_at) > now)
   )
@@ -352,6 +355,8 @@ export default async function AdminClientProfilePage({
     if (pkgDate) {
       history.push({ id: uid('pkg'), date: pkgDate, type: 'PACKAGE_PURCHASED', title: `Pacote adquirido: ${sp?.name ?? 'Pacote'}`, subtitle: `${pkg.total_sessions} sessões`, amount: Number(sp?.price ?? 0), link: null })
     }
+    const cancelado = historicoDoCancelamento(pkg as { cancelado_em?: string | null }, sp?.name ?? 'Pacote', formatBRL)
+    if (cancelado) history.push({ id: uid('pkgc'), type: 'PACKAGE_CANCELLED', link: null, ...cancelado })
   }
 
   // Termos e contratos assinados (os novos e o legado do checkout antigo).
@@ -419,6 +424,7 @@ export default async function AdminClientProfilePage({
         produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branchId || null) : []}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}
+      podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
         isNetworkWide={ctx.branchId === null}
         clienteSemFilial={!branchRow}
         clientHistory={clientHistory}

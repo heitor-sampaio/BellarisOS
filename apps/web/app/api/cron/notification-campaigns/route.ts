@@ -260,6 +260,8 @@ async function processExpiryCampaign(
     .from('client_packages')
     .select('client_id, clients!inner(id, name, tenant_id)')
     .eq('clients.tenant_id', camp.tenant_id)
+    // O pacote cancelado (F2b) não vence: não há o que lembrar.
+    .is('cancelado_em', null)
     .gte('expires_at', dayStart.toISOString())
     .lte('expires_at', dayEnd.toISOString()), 'carregar os pacotes do cliente')
 

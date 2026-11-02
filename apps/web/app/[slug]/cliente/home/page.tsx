@@ -80,6 +80,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
     ler(admin.from('client_packages')
       .select('id, total_sessions, used_sessions, expires_at, service_packages(name)')
       .eq('client_id', ctx.clientId!)
+      // O pacote cancelado (F2b) não é tratamento em curso.
+      .is('cancelado_em', null)
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')

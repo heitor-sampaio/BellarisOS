@@ -9,6 +9,7 @@ import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggle
 import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { TreatmentFileModal } from './treatment-file-modal'
+import { CancelarPacote } from '@/components/shared/cancelar-pacote'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
@@ -148,6 +149,7 @@ export interface ClientHistoryEvent {
     | 'PLAN_ACCEPTED'
     | 'PLAN_CANCELLED'
     | 'PACKAGE_PURCHASED'
+    | 'PACKAGE_CANCELLED'
     | 'CONSENT_SIGNED'
     | 'APPOINTMENT_RATED'
   title:    string
@@ -238,6 +240,8 @@ interface Props {
   prePagos?:             PrePagoDoCliente[]
   /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha. */
   podeAgendar?:          boolean
+  /** Cancelar o pacote (F2b, 2026-11-01): `financial: MANAGE`. */
+  podeCancelarPacote?:   boolean
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
@@ -390,6 +394,7 @@ const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
   PLAN_ACCEPTED:         { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: ClipboardCheck },
   PLAN_CANCELLED:        { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
   PACKAGE_PURCHASED:     { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: Package },
+  PACKAGE_CANCELLED:     { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
   CONSENT_SIGNED:        { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: FileCheck },
   APPOINTMENT_RATED:     { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: Star },
 }
@@ -1203,7 +1208,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], prePagos = [], podeAgendar = false,
+  procedimentosAVenda = [], produtosAVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1232,6 +1237,10 @@ export function ClientProfile({
     router.replace(resto ? `${pathname}?${resto}` : pathname, { scroll: false })
   })
   useEffect(() => { if (acaoDaUrl === 'vender') aoPedirVenda() }, [acaoDaUrl])
+
+  // Cancelar o pacote em andamento (F2b): a janela da conta.
+  const [cancelandoPacote, setCancelandoPacote] = useState(false)
+  const pacoteCancelavel = podeCancelarPacote && !!activePackage && !activePackage.planId
 
   // Menu do cabeçalho: desativar e reativar o cliente.
   const [menuAberto,      setMenuAberto]      = useState(false)
@@ -1320,7 +1329,11 @@ export function ClientProfile({
           canManageProcedures={canManageProcedures}
           isNetworkWide={isNetworkWide}
           onClose={() => setTreatmentModalOpen(false)}
+          onCancelarPacote={pacoteCancelavel ? () => { setTreatmentModalOpen(false); setCancelandoPacote(true) } : undefined}
         />
+      )}
+      {cancelandoPacote && activePackage && (
+        <CancelarPacote clientPackageId={activePackage.id} onFechar={() => setCancelandoPacote(false)} />
       )}
 
       {/* -- Hero card ------------------------------------------------- */}
@@ -1517,6 +1530,7 @@ export function ClientProfile({
 
           {/* 1. Tratamento em andamento */}
           {activePackage ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div role="button" onClick={() => setTreatmentModalOpen(true)} style={{
               borderRadius: 'var(--radius-card)',
               background: 'var(--gradient-brand)',
@@ -1543,6 +1557,14 @@ export function ClientProfile({
                   {activePackage.totalSessions - activePackage.usedSessions} sessões restantes
                 </p>
               )}
+            </div>
+            {/* Cancelar o pacote (F2b): fora do cartão, que já é o botão da ficha de tratamento. */}
+            {pacoteCancelavel && (
+              <button type="button" className="btn-ghost" onClick={() => setCancelandoPacote(true)}
+                style={{ alignSelf: 'flex-start' }}>
+                Cancelar pacote
+              </button>
+            )}
             </div>
           ) : (
             <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, minHeight: 90 }}>

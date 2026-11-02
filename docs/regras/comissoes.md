@@ -129,7 +129,19 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     avulsa é CANCELADA e nasce UMA linha com a regra dele (ou nenhuma).
   - O extrato (`comissoes_extrato`, coluna `pacote`) diz "Venda do pacote X" e
     "Sessão do pacote X"; o fechamento é o de sempre.
-  - Prova: `e2e/comissoes-pacote.spec.ts`.
+  - **O pacote CANCELADO** (F2b, 2026-11-01; `vendas-financeiro.md` §9.3.1):
+    a comissão de VENDA volta na proporção do que foi cancelado — 10% de um
+    pacote de R$ 3.300 com R$ 2.200 cancelados deve R$ 110, e o acerto lança a
+    diferença ("Cancelamento do pacote"). Vale também para a PREVISTA: se a
+    linha ainda aguardava o pagamento integral, o previsto cai do mesmo jeito,
+    e nada libera sobre o que caiu. A de EXECUÇÃO das sessões feitas fica. A
+    quitação passa a ser pelo que ficou (vendido − cancelado): o crediário que
+    passava do usado caiu, e a comissão libera quando o que sobrou dele entra.
+    É `private.comissao_conta` (o total do pacote é `price − valor_cancelado`,
+    e a linha `PACOTE_VENDA` leva o fator `(price − valor_cancelado) ÷ price`
+    no valor e no previsto; migration `20261101000252`).
+  - Prova: `e2e/comissoes-pacote.spec.ts`, `e2e/pacote-cancelar.spec.ts` (o
+    cancelamento).
 - **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
   oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
   chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`

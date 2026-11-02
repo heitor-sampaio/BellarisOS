@@ -366,7 +366,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .from('client_packages')
           // `purchased_at` é a data do "Pacote adquirido" no histórico — sem ela
           // o evento nunca aparecia (a página lia um campo que não vinha).
-          .select('id, total_sessions, used_sessions, expires_at, purchased_at, service_packages(name, procedure_id, price, procedures(name, duration_min))')
+          .select('id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, service_packages(name, procedure_id, price, procedures(name, duration_min))')
           .eq('client_id', clientId)
           .order('purchased_at', { ascending: false })
           .limit(10),

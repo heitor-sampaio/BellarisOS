@@ -89,6 +89,57 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
   o pacote pago inteiro — H4, `comissoes.md`). O estoque já baixou na
   conclusão. Sem cobrança nova; o atendimento sai de "a receber" e vira
   "Sessão de pacote". Prova: `e2e/pacote-abater-avulso.spec.ts`.
+- **Cancelar pacote** (F2b da 5ª simulação; decisão do Heitor, 2026-11-01:
+  "concordo"). A cliente compra 6, faz 2 e desiste — até aqui não havia o que
+  fazer. "Cancelar pacote" fica na ficha (embaixo do cartão "Tratamento em
+  andamento") e na ficha de tratamento do pacote, para quem tem
+  `financial: MANAGE`; a action (`cancelarPacote`, `actions/pacotes.ts`)
+  confere a permissão e a unidade do pacote ao alcance.
+  - **A conta é do banco, e a tela só a mostra**: `pacote_cancelar` com
+    `p_simular` (`previaDoCancelamentoDoPacote`) devolve as sessões restantes
+    e o valor delas — a soma de `package_sessions.preco`, o rateio do pacote
+    COM o desconto —, o usado (vendido − restantes), o pago, o a receber, as
+    parcelas que caem e o que volta. A janela (`CancelarPacote`,
+    `components/shared/cancelar-pacote.tsx`) diz tudo isso; confirmar manda o
+    "a devolver" que ela mostrou (`p_esperado`), e o banco recusa se mudou no
+    meio ("Os valores do pacote mudaram…").
+  - **O crediário cai antes de devolver qualquer coisa**: o a receber que
+    passa do usado (`pago + a receber − usado`, até o a receber) cai do mais
+    novo para o mais antigo — a parcela inteira sai marcada `Estornada` (sem
+    contra-lançamento, como no estorno da venda de produto), a que cai em
+    parte diminui. Ex.: entrada R$ 300 + 3 × R$ 1.000, 2 de 6 sessões de
+    R$ 550 feitas (usado R$ 1.100): caem a 3ª e a 2ª inteiras e R$ 200 da 1ª,
+    que fica com R$ 800. Nada a devolver.
+  - **O pago além do usado volta, como a recepção escolher**: ESTORNO (o
+    estorno de sempre, `estornar_transacao`, do lançamento mais novo para o
+    mais antigo; o último em parte — o lançamento fica com o que sobra e um
+    contra-lançamento "Estorno parcial", na mesma forma, leva o resto, com os
+    pontos daquele pagamento na proporção) ou CRÉDITO NA CLÍNICA
+    (`internal_credits`, "Cancelamento do pacote X"; o dinheiro fica e os
+    pontos também — ele não voltou). Ex.: Pix de R$ 3.300, 2 de 6 feitas:
+    R$ 2.200 de crédito, ou o Pix fica com R$ 1.100 e R$ 2.200 voltam.
+  - **As sessões já agendadas**: a recepção escolhe cancelar os agendamentos
+    (status, motivo "Pacote cancelado: …", histórico na transação; o evento
+    `agendamento.cancelado` e o aviso à cliente e à equipe depois, na action,
+    como todo cancelamento) ou mantê-los como atendimento AVULSO (soltos do
+    pacote, com o preço que tinham — a parte da sessão —, a cobrar). Sessão em
+    atendimento agora (chegou ou em andamento) recusa o cancelamento.
+  - As sessões que sobraram ficam `CANCELLED` (`PackageSessionStatus`, que não
+    se agendam); o pacote guarda `cancelado_em`, quem, o motivo,
+    `valor_cancelado` e o retrato da conta (`cancelamento`). Pacote vencido,
+    já cancelado ou com todas as sessões feitas não se cancela.
+  - Tudo numa transação (`pacote_cancelar`, migration `20261101000252`; o
+    valor novo do enum em `20261101000251`).
+  - A comissão: a de venda volta na proporção do que foi cancelado, e a de
+    execução das sessões feitas fica (`comissoes.md`). Os pontos seguem o
+    estorno (`fidelidade.md`). Nas Vendas, o pacote vale o usado
+    (`indicadores.md`).
+  - Na ficha, o pacote cancelado sai do "Tratamento em andamento" e entra no
+    Histórico ("Pacote cancelado: X — 4 sessões canceladas · R$ 2.200,00 em
+    crédito na clínica · Motivo: …"); no app da cliente, sai dos tratamentos
+    em curso; o lembrete de vencimento (cron) não o lembra; o pacote LGPD diz
+    "cancelado em".
+  - Prova: `e2e/pacote-cancelar.spec.ts`.
 - A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
 - Comissão: a de VENDA e a de EXECUÇÃO são do cadastro de cada pacote
@@ -219,10 +270,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     deixava a venda viva. Só `produto_estornar_venda` o deixa passar
     (`set_config('bellaris.estorno_da_venda', …)`, só para aquela venda).
   - Venda estornada não se estorna de novo ("Esta venda já foi estornada.").
-  - A venda toda A RECEBER (nada pago) não tem botão de estorno na lista —
-    fica para o "cancelar venda" quando o Heitor decidir.
+  - **A venda toda A RECEBER (nada pago) se CANCELA** (sobra da F3,
+    2026-11-01): o lançamento em aberto de uma venda de produto tem
+    "Cancelar venda" (nos dois financeiros), que abre a mesma janela como
+    "Cancelar esta venda de produto?" — "O produto voltou ao estoque?" e o
+    motivo — e passa pela mesma `produto_estornar_venda` (o a receber sai
+    `Estornada`, o produto volta ou vira perda, a venda sai das Vendas).
   - Prova: `e2e/vendas-produto.spec.ts` (voltou pela tela, não voltou e a
-    venda em entrada + parcela pela action).
+    venda em entrada + parcela pela action, e o "Cancelar venda" da venda
+    toda a receber pela tela).
 - A sessão só LÊ `product_sales` (a equipe que alcança a unidade, a cliente a
   dela); as restritivas do suporte valem.
 - Prova: `e2e/vendas-produto.spec.ts`.
@@ -602,6 +658,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ```
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa
 ❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos)
+❌ Cancelar pacote fora de pacote_cancelar, ou fazer a conta do cancelamento na tela (é a simulação da mesma função), ou ler "pacote em andamento" sem tirar o cancelado (cancelado_em)
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
 ❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
 ❌ Gravar um parcelado como um lançamento só (cada parcela é um lançamento; divida com dividirEmParcelas) ou escrever em installments

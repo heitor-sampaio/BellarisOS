@@ -242,11 +242,13 @@ interface Props {
   canManageProcedures: boolean
   isNetworkWide:       boolean
   onClose:         () => void
+  /** Cancelar o pacote (F2b, 2026-11-01): só o pacote vendido, para quem tem o financeiro em Gerenciar. */
+  onCancelarPacote?: () => void
 }
 
 // -- Modal principal -----------------------------------------------------------
 
-export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, onClose }: Props) {
+export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, onClose, onCancelarPacote }: Props) {
   const [details,      setDetails]      = useState<TreatmentFileDetails | null>(null)
   // Nasce carregando quando há plano: a busca inicial sai no efeito abaixo.
   const [loading,      setLoading]      = useState(!!activePackage.planId)
@@ -562,6 +564,11 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                     <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                       {activePackage.usedSessions} de {activePackage.totalSessions} sessões realizadas.
                     </p>
+                    {onCancelarPacote && (
+                      <button type="button" className="btn-ghost" onClick={onCancelarPacote} style={{ marginTop: 10 }}>
+                        Cancelar pacote
+                      </button>
+                    )}
                   </div>
                 </>
               )}

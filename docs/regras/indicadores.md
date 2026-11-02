@@ -322,9 +322,14 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
 - **Produto** (D4, 2026-10-30): `product_sales.sold_at`, o vendido, quem
   vendeu; a quantidade são as embalagens ("3× Sérum"). A venda ESTORNADA sai
-  (H2, 2026-11-01): era R$ 6.013 contra R$ 5.915 na 5ª simulação. Pacote e
-  pré-pago estornados ainda contam (ninguém os estornou ainda; o estorno
-  deles é só do lançamento).
+  (H2, 2026-11-01): era R$ 6.013 contra R$ 5.915 na 5ª simulação.
+- **Pacote CANCELADO e pré-pago com unidade cancelada valem o que ficou**
+  (F2b, 2026-11-01; migration `20261101000252`): o pacote, `price −
+  valor_cancelado` (o usado), e o pré-pago, o vendido menos as unidades
+  canceladas — na data da venda. O que caiu inteiro (nenhuma sessão feita,
+  todas as unidades canceladas) sai das Vendas e do CSV. Estornar só um
+  LANÇAMENTO do pacote (o pagamento errado) não muda a venda: o pacote segue
+  vendido.
 - **Plano**: `treatment_plans.aceito_em` (gatilho `trg_plano_aceito_em` na
   passagem para ACCEPTED; os antigos herdaram o evento `plano.aceito`, o
   primeiro lançamento ou o `updated_at`), e vale a soma dos procedimentos dele

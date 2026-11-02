@@ -57,6 +57,14 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 - Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
   API de Conversões (o `pagamento.recebido` sai, com 0).
 - Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
+- **Pacote cancelado** (F2b, 2026-11-01; `vendas-financeiro.md` §9.3.1): os
+  pontos seguem o estorno. Devolvido como ESTORNO, cada lançamento estornado
+  inteiro tira o que deu (`estornar_transacao`), e o estornado EM PARTE tira
+  na proporção do que voltou (ESTORNO_GANHO de `pontos × voltou ÷ pago`,
+  ligado ao contra-lançamento "Estorno parcial"). Devolvido como CRÉDITO na
+  clínica, os pontos ficam: o dinheiro não voltou (e pagar com crédito interno
+  não pontua). Parcela a receber que caiu nunca deu ponto. Prova:
+  `e2e/pacote-cancelar.spec.ts`.
 - **Catálogo de recompensas e vouchers** (fase 3): a rede cadastra recompensas
   (`loyalty_rewards`: procedimento grátis, desconto R$ ou %, produto) em
   Configurações → Fidelidade. A EQUIPE troca os pontos na ficha

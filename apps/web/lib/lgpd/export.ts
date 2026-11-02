@@ -170,7 +170,7 @@ export async function buildClientExport(
       .select('created_at, loyalty_transactions(created_at, kind, points, description, branches(name))')
       .eq('client_id', clientId).maybeSingle(),
     admin.from('client_packages')
-      .select('purchased_at, expires_at, total_sessions, used_sessions, service_packages(name)')
+      .select('purchased_at, expires_at, total_sessions, used_sessions, cancelado_em, service_packages(name)')
       .eq('client_id', clientId),
     admin.from('client_documents')
       .select('created_at, name, category, file_name, mime_type, file_size, apagado_em').eq('client_id', clientId),
@@ -316,6 +316,7 @@ export async function buildClientExport(
       validoAte:     p.expires_at ?? null,
       sessoes:       p.total_sessions,
       sessoesUsadas: p.used_sessions,
+      canceladoEm:   p.cancelado_em ?? null,
     })),
     procedimentosPrePagos: (prePagos ?? []).map(v => ({
       procedimento:  (v.procedures as { name?: string } | null)?.name ?? 'Procedimento',
@@ -418,7 +419,7 @@ export async function buildClientExport(
       emptyLabel: 'Nenhum pacote adquirido.',
       lines: (packages ?? []).map(p => {
         const nome = (p.service_packages as { name?: string } | null)?.name ?? 'Pacote'
-        return `${fmtDate(p.purchased_at)} — ${nome} — ${p.used_sessions}/${p.total_sessions} sessões usadas`
+        return `${fmtDate(p.purchased_at)} — ${nome} — ${p.used_sessions}/${p.total_sessions} sessões usadas${p.cancelado_em ? ` — cancelado em ${fmtDate(p.cancelado_em)}` : ''}`
       }),
     },
     {

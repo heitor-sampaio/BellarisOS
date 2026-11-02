@@ -385,7 +385,8 @@ export function TreatmentSessionsModal({
                 const isScheduling = schedulingId === sess.id
                 const isDone    = rawStatus === 'USED' || rawStatus === 'COMPLETED'
                 const isBooked  = rawStatus === 'SCHEDULED' || rawStatus === 'IN_PROGRESS'
-                const isAvail   = !isDone && !isBooked
+                // A sessão do pacote cancelado (F2b) não se agenda mais.
+                const isAvail   = !isDone && !isBooked && sess.status !== 'CANCELLED'
 
                 return (
                   <div key={sess.id} style={{
