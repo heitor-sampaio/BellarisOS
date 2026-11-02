@@ -457,13 +457,50 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     checkout). Era `parseDinheiro(…) || 0`: "1,400.50" vendia com entrada
     R$ 0, calado. Prova: `e2e/pacotes-venda.spec.ts` ("entrada ilegível").
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
-- **Cartão de crédito em N vezes é PAGO na hora** (decisão do Heitor,
-  2026-10-20): quem paga a clínica é a maquininha, então para o cliente está
-  quitado. É o "À vista" com o meio Cartão de crédito e "Vezes no cartão"
-  (1–12): UM lançamento pago, com `financial_transactions.cartao_vezes`
-  (2–12, só no crédito — a restrição do banco confere) — só para a taxa da
-  comissão (§9.7). Para a comissão, é pagamento INTEGRAL (H4, 2026-11-01):
-  libera na hora. "Entrada + parcelas" é o CREDIÁRIO da própria clínica: cada
+- **Cartão de crédito em N vezes é PAGO na hora PELA CLIENTE** (decisão do
+  Heitor, 2026-10-20): quem paga a clínica é a maquininha, então para o
+  cliente está quitado. É o "À vista" com o meio Cartão de crédito e "Vezes
+  no cartão" (1–12): UM lançamento pago, com
+  `financial_transactions.cartao_vezes` (2–12, só no crédito — a restrição do
+  banco confere). Para a comissão, é pagamento INTEGRAL (H4, 2026-11-01):
+  libera na hora.
+  - **E a OPERADORA deposita mês a mês: N parcelas a receber DELA** (F2c da
+    5ª simulação; decisões do Heitor, 2026-11-01: "no financeiro mês a mês,
+    como a receber" e "conta no mês do dia da venda"). O lançamento pago no
+    crédito em 2+ vezes ganha, por gatilho (`trg_recebiveis_do_cartao`, vale
+    nas cinco portas), N linhas em `recebiveis_do_cartao` — FORA de
+    `financial_transactions` de propósito: nada que conta receita, ponto,
+    comissão ou dívida da cliente as vê. Cada parcela tem o seu valor (a
+    divisão em centavos, a sobra na última), a taxa da maquininha de N vezes
+    retratada (`private.comissao_taxa_pct`, a mesma da comissão), o líquido e
+    o vencimento no MESMO DIA dos meses seguintes ao pagamento (o 31 vira o
+    último dia do mês curto, em Brasília): uma por mês. (Decisão desta frente,
+    para o Heitor revisar: a operadora real paga em D+30 corridos, mas aí um
+    mês fica sem parcela e outro com duas.)
+    - **A receita é da VENDA**: entra inteira no dia dela, pela regra única;
+      a parcela recebida NÃO soma receita (`indicadores.md`).
+    - **A baixa é na leitura, sem cron**: a parcela vira recebida SOZINHA
+      quando vence (`recebiveis_do_cartao_lista` deriva a situação —
+      A_RECEBER, RECEBIDA, ANTECIPADA, CANCELADA, ESTORNADA). "Marcar
+      recebida" é a antecipação (`anteciparParcelaDaOperadora`, com
+      `financial: MANAGE` sem "só os meus" e a unidade ao alcance;
+      `recebivel_do_cartao_receber`).
+    - **A cliente não deve nada**: a ficha, o app ("Financeiro") e o
+      Fechamento não as veem. O Financeiro (os dois portais) mostra os dois a
+      receber, NOMEADOS: "A receber da cliente" (o de sempre) e "A receber da
+      operadora" (`getAReceberDaOperadora`, pelo vencimento no período, com o
+      próximo vencimento e todo o em aberto), e a lista "Cartão em várias
+      vezes: a receber da operadora" com as parcelas que vencem no período
+      (`ParcelasDaOperadora`). Com o financeiro "só os meus", não aparece.
+    - **O estorno da venda** (inteiro ou em parte — o cancelamento do pacote
+      reduz o lançamento) é acompanhado pelo gatilho, na mesma transação:
+      cai primeiro o que ainda não foi recebido, do mais novo para o mais
+      antigo (CANCELADA); depois, o já recebido é ESTORNADO (a operadora toma
+      de volta: `estornado`).
+    - As vendas antigas no cartão N× (3 na produção em 2026-11-01: Aurora
+      R$ 600, Jasmim R$ 150, Lótus R$ 280) ficam como estão, sem parcelas.
+    - Migration `20261101000261`. Prova:
+      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`. "Entrada + parcelas" é o CREDIÁRIO da própria clínica: cada
   parcela a receber, e a comissão espera a última. Vale nas cinco portas: pacote e pré-pago
   (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
   check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
@@ -676,7 +713,8 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou
 ❌ Gravar due_date como "AAAA-MM-DD" cru (meia-noite UTC = 21h da VÉSPERA em Brasília) — use vencimentoDoDia (lib/financeiro/lancamento.ts)
 ❌ Dar baixa sem a guarda do já pago/estornado (marcarPagoCore confere a linha devolvida)
-❌ Gravar "cartão de crédito em N vezes" como parcelas a receber (é pago na hora, com cartao_vezes) — entrada + parcelas é o crediário da clínica
+❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da clínica; o que a operadora deposita mês a mês mora em recebiveis_do_cartao, nascido pelo gatilho
+❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0

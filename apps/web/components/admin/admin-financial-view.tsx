@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
   ArrowUpRight, ArrowDownRight,
-  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle,
+  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle, CreditCard,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
@@ -17,6 +17,8 @@ import { toast } from 'sonner'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import type { ProximoVencimento } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
+import { ParcelasDaOperadora } from '@/components/shared/parcelas-da-operadora'
+import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 
 // --- Types -------------------------------------------------------------------
 
@@ -78,6 +80,13 @@ interface Props {
   /** D-14: todo o a receber em aberto da rede, de qualquer vencimento (getAReceberEmAberto). */
   totalAReceberEmAberto: number
   totalAPagar:      number
+  /**
+   * F2c: o cartão em N vezes que a OPERADORA ainda deposita (a cliente já
+   * pagou tudo) — o total das ativas e cada unidade (lib/metrics/operadora).
+   */
+  aReceberDaOperadora: { total: AReceberDaOperadora; porUnidade: Record<string, AReceberDaOperadora> }
+  /** As parcelas da operadora com vencimento no período. */
+  parcelasDaOperadora: ParcelaDaOperadora[]
   /** O próximo vencimento da rede depois do período, de cada lado (getEmAberto). */
   totalProximoAReceber?: ProximoVencimento | null
   totalProximoAPagar?:   ProximoVencimento | null
@@ -195,6 +204,7 @@ function KpiCard({
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAReceberEmAberto, totalAPagar, totalMovimentacoes,
+  aReceberDaOperadora, parcelasDaOperadora,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, branchSlugMap, branches, unidadeInicial = '',
@@ -265,6 +275,9 @@ export function AdminFinancialView({
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
   const proximoAReceber = statDaUnidade ? statDaUnidade.proximoAReceber ?? null : totalProximoAReceber
   const proximoAPagar   = statDaUnidade ? statDaUnidade.proximoAPagar ?? null   : totalProximoAPagar
+  const SEM_OPERADORA: AReceberDaOperadora = { aReceber: 0, recebido: 0, emAberto: 0, proximo: null }
+  const operadora = statDaUnidade ? aReceberDaOperadora.porUnidade[statDaUnidade.id] ?? SEM_OPERADORA : aReceberDaOperadora.total
+  const parcelasVisiveis = filterBranch === 'all' ? parcelasDaOperadora : parcelasDaOperadora.filter(p => p.branchId === filterBranch)
 
   const iconColor    = (brand: boolean) => brand ? 'var(--surface)' : 'var(--brand)'
   // Sem base de comparação por unidade, não se inventa delta: `prevRevenue` e
@@ -367,10 +380,19 @@ export function AdminFinancialView({
         {/* A receber e a pagar (2026-10-21): a unidade mostrava, a rede não. */}
         <KpiCard
           chave="a-receber"
-          label="A receber"
+          label="A receber da cliente"
           value={fmtBRL(aReceber)}
           nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} />}
           icon={<Clock size={16} color="var(--brand)" />}
+        />
+        {/* F2c: o que a operadora ainda deposita do cartão em N vezes — não é
+            dívida da cliente (ela pagou tudo na maquininha). */}
+        <KpiCard
+          chave="a-receber-operadora"
+          label="A receber da operadora"
+          value={fmtBRL(operadora.aReceber)}
+          nota={<NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto} />}
+          icon={<CreditCard size={16} color="var(--brand)" />}
         />
         <KpiCard
           chave="a-pagar"
@@ -472,6 +494,10 @@ export function AdminFinancialView({
         </div>{/* end table-wrap */}
       </div>
       )}
+
+      {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
+      <ParcelasDaOperadora parcelas={parcelasVisiveis} podeMarcar={canWrite}
+        unidades={umaUnidade ? undefined : Object.fromEntries(branches.map(b => [b.id, b.name]))} />
 
       {/* Movimentações */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

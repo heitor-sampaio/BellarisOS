@@ -20,7 +20,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     venda de produto: quando a venda inteira está paga — o recebido (com os
     pontos, que são forma de pagamento) fecha com o preço vendido;
   - **crédito em N vezes é pago na hora** (`cartao_vezes`, um lançamento
-    pago): libera na hora. O que espera é só o que a cliente ainda deve à
+    pago): libera na hora. As parcelas que a OPERADORA deposita mês a mês
+    (`recebiveis_do_cartao`, F2c de 2026-11-01) moram fora de
+    `financial_transactions`: a quitação olha a VENDA, e elas nunca deixam a
+    comissão "aguardando" (prova:
+    `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`). O que espera é só o que a cliente ainda deve à
     CLÍNICA — o crediário (entrada + parcelas a receber), o avulso concluído
     sem pagamento —, e ele libera quando a última parcela entra ("f2 ok,
     concordamos", o Heitor, 2026-11-01);

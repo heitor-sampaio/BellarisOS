@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
@@ -226,6 +226,46 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
       'estornar o lançamento',
     )
 
+    if (slug) revalidatePath(`/${slug}/financeiro`)
+    revalidatePath('/admin/financeiro')
+    return { success: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * Marca como RECEBIDA, antes da data, uma parcela do cartão em N vezes que a
+ * operadora deposita (F2c da 5ª simulação: a operadora antecipou). Na data ela
+ * vira recebida sozinha — isto é só a antecipação.
+ *
+ * Não é receita: a venda já entrou inteira no dia dela ("conta no mês do dia
+ * da venda", o Heitor, 2026-11-01). Muda só o "A receber da operadora".
+ * Quem lança no financeiro (`financial: MANAGE`, sem "só os meus") e alcança
+ * a unidade da parcela.
+ */
+export async function anteciparParcelaDaOperadora(parcelaId: string, slug?: string) {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (isOwnScope(ctx, 'financial')) return { error: 'Seu cargo não libera esta ação.' }
+    if (!/^[0-9a-f-]{36}$/i.test(parcelaId)) return { error: 'Parcela não encontrada.' }
+
+    const admin = createAdminClient()
+    const parcela = await ler(admin
+      .from('recebiveis_do_cartao')
+      .select('branch_id, tenant_id')
+      .eq('id', parcelaId)
+      .maybeSingle(), 'buscar a parcela da operadora')
+    if (!parcela || parcela.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, parcela.branch_id as string)) {
+      return { error: 'Parcela não encontrada.' }
+    }
+    await gravar(
+      admin.rpc('recebivel_do_cartao_receber', {
+        p_tenant: ctx.tenantId!, p_recebivel: parcelaId, p_ator: ctx.internalUserId ?? ctx.userId,
+      }),
+      'marcar a parcela como recebida',
+    )
     if (slug) revalidatePath(`/${slug}/financeiro`)
     revalidatePath('/admin/financeiro')
     return { success: true }
