@@ -817,6 +817,13 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
         <PreviewLine title="Na unidade" items={branch} />
         <PreviewLine title="Na rede"    items={network} />
       </div>
+      {/* Relatórios em Ver sem aba nenhuma some do resumo: o resumo diz por
+          quê, em vez de só o aviso pequeno ao lado da matriz (A5, 2026-11-01). */}
+      {levels.reports !== 'NONE' && reportTabs.length === 0 && (
+        <p data-relatorios-sem-aba style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', marginTop: 8 }}>
+          Relatórios não aparece: nenhum relatório está marcado. Marque ao menos um em &quot;Relatórios liberados&quot;.
+        </p>
+      )}
     </div>
   )
 }

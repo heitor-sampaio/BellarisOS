@@ -98,6 +98,7 @@ interface Props {
    * própria tabela por filial, que antes saíam para o portal da unidade.
    */
   unidadeInicial?:  string
+  /** Lança (Financeiro em Gerenciar): sem isso, o "Novo lançamento" não aparece (D7, 2026-11-01). */
   canWrite?:        boolean
   /** Recebe (caixa ou financeiro): marca pendência como paga e dá crédito. */
   canPay?:          boolean
@@ -197,7 +198,7 @@ export function AdminFinancialView({
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, branchSlugMap, branches, unidadeInicial = '',
-  canPay = false, canReverse = false, podeDarCredito = false, clients = [],
+  canWrite = false, canPay = false, canReverse = false, podeDarCredito = false, clients = [],
 }: Props) {
   const router      = useRouter()
   const [estornando, startT] = useTransition()
@@ -325,7 +326,8 @@ export function AdminFinancialView({
               Crédito para cliente
             </button>
           )}
-          <FinancialTransactionModal
+          {/* Com o Financeiro em Ver, o botão aparecia e a recusa chegava em inglês (D7). */}
+          {canWrite && <FinancialTransactionModal
             branches={branches}
             trigger={
               <button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 8 }}>
@@ -333,7 +335,7 @@ export function AdminFinancialView({
                 Novo lançamento
               </button>
             }
-          />
+          />}
         </div>
       </div>
 

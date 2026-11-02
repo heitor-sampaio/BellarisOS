@@ -439,17 +439,22 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
               Nenhum documento anexado
             </p>
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 280 }}>
-              Adicione termos de consentimento, laudos, exames ou qualquer arquivo do cliente.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              className="btn-primary"
-              style={{ marginTop: 4, gap: 6 }}
-            >
-              <Plus size={13} /> Adicionar primeiro documento
-            </button>
+            {/* Só quem pode anexar ganha o convite (A23, 2026-11-01): sem o
+                cadastro nem o prontuário em Gerenciar, o botão abria um
+                formulário que a action recusava. */}
+            {(podeAnexarComum || podeAnexarClinico) && (<>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 280 }}>
+                Adicione termos de consentimento, laudos, exames ou qualquer arquivo do cliente.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowForm(true)}
+                className="btn-primary"
+                style={{ marginTop: 4, gap: 6 }}
+              >
+                <Plus size={13} /> Adicionar primeiro documento
+              </button>
+            </>)}
           </div>
         )}
 

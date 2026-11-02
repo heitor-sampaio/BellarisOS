@@ -4,7 +4,7 @@ import { after } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso, can, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { camposDoDestino, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
 import { processarImportacao, manterImportacoes } from '@/lib/importacao/processar'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
@@ -130,7 +130,7 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
     }
   } catch (e) {
     await admin.from('importacoes').delete().eq('id', imp.id)
-    return { ok: false, error: e instanceof Error ? e.message : 'Não foi possível guardar o arquivo.' }
+    return { ok: false, error: e instanceof Error ? mensagemDoErro(e) : 'Não foi possível guardar o arquivo.' }
   }
 
   after(() => processarImportacao(imp.id, ctx))

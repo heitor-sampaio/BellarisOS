@@ -238,8 +238,16 @@ interface Props {
   produtosAVenda?:       ProdutoAVenda[]
   /** Os procedimentos pré-pagos do cliente, com as unidades. */
   prePagos?:             PrePagoDoCliente[]
-  /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha. */
+  /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha, e o "+ Agendar" (A23). */
   podeAgendar?:          boolean
+  /**
+   * Editar o cadastro (Clientes em Gerenciar): a aba Dados, as anotações e o
+   * arquivar. Quem só vê lê tudo isso e não edita (D5, 2026-11-01: "quem só
+   * pode ver só pode ver").
+   */
+  podeEditarCadastro?:   boolean
+  /** Os planos de tratamento (Agenda em Ver, a de `getPlanosDoCliente`); sem eles, o Planejamento é só injetáveis (D6). */
+  podeVerPlanos?:        boolean
   /** Cancelar o pacote (F2b, 2026-11-01): `financial: MANAGE`. */
   podeCancelarPacote?:   boolean
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
@@ -277,14 +285,14 @@ export interface ClientOpportunity {
  * por palavra digitada não serve a ninguém.
  */
 function NotasDoCliente({
-  client, slug,
-}: { client: ProfileClient; slug: string }) {
+  client, slug, podeEditar,
+}: { client: ProfileClient; slug: string; /** Clientes em Gerenciar: quem só vê lê as anotações (D5). */ podeEditar: boolean }) {
   const [texto, setTexto] = useState(client.notes ?? '')
   const [estado, setEstado] = useState<'ocioso' | 'salvando' | 'salvo' | 'erro'>('ocioso')
   const salvoRef = useRef(client.notes ?? '')
 
   async function salvar() {
-    if (texto === salvoRef.current) return
+    if (!podeEditar || texto === salvoRef.current) return
     setEstado('salvando')
     const res = await updateClientContactData(
       client.id,
@@ -320,6 +328,7 @@ function NotasDoCliente({
           em `updateClientContactData`), como no resto desta ficha. */}
       <textarea
         value={texto}
+        readOnly={!podeEditar}
         onChange={e => { setTexto(e.target.value); setEstado('ocioso') }}
         onBlur={salvar}
         rows={2}
@@ -488,7 +497,11 @@ function applyCepMask(v: string) {
   return d.replace(/(\d{5})(\d)/, '$1-$2')
 }
 
-function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: string; branches: { id: string; name: string }[] }) {
+function DadosTab({ client, slug, branches, podeEditar }: {
+  client: ProfileClient; slug: string; branches: { id: string; name: string }[]
+  /** Clientes em Gerenciar. Sem isso, os campos só se leem (D5, 2026-11-01). */
+  podeEditar: boolean
+}) {
   const router = useRouter()
 
   // Nome e genero ficavam de fora: a unica tela que os editava era o modo de
@@ -593,6 +606,15 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
   return (
     <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Quem só vê lê o cadastro: os campos ficam travados pelo fieldset, e
+          não há "Salvar" nem "Dar acesso ao app" — era um 500 mudo (D5). */}
+      {!podeEditar && (
+        <p data-cadastro-so-leitura style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
+          Seu cargo só consulta o cadastro: editar pede Clientes em Gerenciar.
+        </p>
+      )}
+      <fieldset disabled={!podeEditar} style={{ display: 'contents' }}>
 
       {/* Nome e genero */}
       <div className="form-2col">
@@ -810,18 +832,20 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
         })()}
       </div>
 
+      </fieldset>
+
       {/* Sempre montado: o aviso do acesso criado fica depois do refresh (a ficha passa a ter acesso). */}
-      <AcessoAoApp
+      {podeEditar && <AcessoAoApp
         temAcesso={!!client.temAcesso}
         email={client.email ?? ''}
         clientId={client.id}
         pronto={!!client.email && (client.document ?? '').replace(/\D/g, '').length === 11}
         semCpf={client.documentoTipo ? (client.documentoTipo === 'RNE' ? 'RNE' : 'passaporte') : null}
-      />
+      />}
 
       {saveError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{saveError}</p>}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      {podeEditar && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={handleSave}
@@ -833,7 +857,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
            saved    ? <><Check size={13} /> Salvo</>                                  :
                       'Salvar dados'}
         </button>
-      </div>
+      </div>}
     </div>
   )
 }
@@ -1208,7 +1232,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false,
+  procedimentosAVenda = [], produtosAVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, podeEditarCadastro = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1262,7 +1286,10 @@ export function ClientProfile({
 
   // O prontuário aparece para quem pode vê-lo, mesmo antes do primeiro
   // atendimento (a anamnese já está lá): a dona não achava a aba (2026-10-20).
-  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro))
+  // O Planejamento é dos planos (Agenda) e dos injetáveis (prontuário): sem
+  // nenhum dos dois, a aba ficava em "Carregando planos…" para sempre (D6).
+  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro)
+    && (t.key !== 'planejamento' || podeVerPlanos || podeVerProntuario))
 
   /**
    * A aba aberta mora na URL, não em `useState`.
@@ -1402,6 +1429,8 @@ export function ClientProfile({
                 podeAgendar={podeAgendar} abrirSinal={arquivada ? 0 : sinalDaVenda} aReceber={aReceber.itens}
                 desativadoPorque={arquivada ? motivoDoArquivo : null} />
             )}
+            {/* Sem a Agenda em Gerenciar, "+ Agendar" levava à tela de bloqueio (A23). */}
+            {podeAgendar && (
             <button
               type="button"
               // Já com este cliente escolhido no modal (era a agenda vazia).
@@ -1412,8 +1441,11 @@ export function ClientProfile({
             >
               + Agendar
             </button>
+            )}
             {/* O "..." existia sem fazer nada. Desativar cliente era uma action
-                sem porta:  nao tinha um unico chamador. */}
+                sem porta:  nao tinha um unico chamador. Arquivar e reativar são
+                do cadastro: só com Clientes em Gerenciar. */}
+            {podeEditarCadastro && (
             <div style={{ position: 'relative' }}>
               <button type="button" className="btn-ghost" style={{ padding: '8px 10px' }} aria-label="Mais ações"
                 onClick={() => setMenuAberto(v => !v)}>
@@ -1468,6 +1500,7 @@ export function ClientProfile({
                 </>
               )}
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -1523,7 +1556,7 @@ export function ClientProfile({
       {/* -- Tab: Visão geral ------------------------------------------ */}
       {tab === 'visao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <NotasDoCliente client={client} slug={slug} />
+        <NotasDoCliente client={client} slug={slug} podeEditar={podeEditarCadastro} />
         <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar && !arquivada}
           branches={branches} currentBranchId={currentBranchId ?? ''} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
@@ -1723,6 +1756,7 @@ export function ClientProfile({
             podeEditar={canManageProcedures}
             // Injetáveis é prontuário: a mesma decisão da aba Prontuário.
             podeVerInjetaveis={podeVerProntuario}
+            podeVerPlanos={podeVerPlanos}
             podeReceber={podeReceber}
             // A ficha já é uma rota: o plano aberto cabe na URL dela.
             navegarPorUrl
@@ -1845,7 +1879,7 @@ export function ClientProfile({
 
       {/* -- Tab: Dados ------------------------------------------------ */}
       {tab === 'dados' && (
-        <DadosTab client={client} slug={slug} branches={branches} />
+        <DadosTab client={client} slug={slug} branches={branches} podeEditar={podeEditarCadastro} />
       )}
 
       {/* -- Tab: Financeiro ------------------------------------------- */}

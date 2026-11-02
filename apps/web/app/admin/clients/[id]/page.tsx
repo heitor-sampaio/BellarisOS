@@ -424,6 +424,8 @@ export default async function AdminClientProfilePage({
         produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branchId || null) : []}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}
+        podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}
+        podeVerPlanos={can(ctx, 'agenda', 'VIEW')}
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
         isNetworkWide={ctx.branchId === null}
         clienteSemFilial={!branchRow}

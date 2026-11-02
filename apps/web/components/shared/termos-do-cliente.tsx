@@ -164,8 +164,18 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
     )
   }
 
+  // Quem não colhe a assinatura (Termos só em Ver — o médico da simulação, D8
+  // de 2026-11-01) via o termo que bloqueia sem saída nenhuma: a tela diz quem
+  // colhe. É a recepção, na clínica, por link ou pelo app da cliente.
+  const temAberto = itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR' || i.status === 'INCOMPLETO')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Termos e contratos">
+      {!podeColher && temAberto && (
+        <p data-quem-colhe style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
+          A assinatura é colhida pela recepção (quem tem os Termos em Gerenciar): na clínica, por link ou pelo app da cliente.
+        </p>
+      )}
       {erro && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {aviso && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>{aviso}</p>}
       {itens.map(item => {

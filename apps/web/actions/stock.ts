@@ -186,7 +186,7 @@ async function createProductInterno(
     revalidateTag(`products:${ctx.tenantId!}`, { expire: 0 })
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -256,7 +256,7 @@ export async function updateProduct(
     revalidateTag(`products:${ctx.tenantId!}`, { expire: 0 })
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -276,7 +276,7 @@ export async function findProductByBarcode(barcode: string) {
     if (!data) return { error: 'Nenhum produto encontrado com este código.' }
     return { product: data }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -316,7 +316,7 @@ async function toggleProductActiveInterno(productId: string, isActive: boolean) 
     revalidateTag(`products:${ctx.tenantId!}`, { expire: 0 })
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -348,7 +348,7 @@ export async function createCategory(
     revalidatePath('/*/stock')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -369,7 +369,7 @@ export async function deleteCategory(categoryId: string) {
     revalidatePath('/*/stock')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -420,7 +420,7 @@ async function adminUpdateMinStockInterno(productId: string, branchId: string, m
     if (ctx.branchId) revalidatePath(`/*/stock`)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -478,7 +478,7 @@ async function adminAddStockInterno(
     if (ctx.branchId) revalidatePath(`/*/stock`)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -545,7 +545,7 @@ async function adminTransferStockInterno(
     revalidatePath('/admin/estoque')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -598,7 +598,7 @@ async function adminAdjustStockInterno(
     if (ctx.branchId) revalidatePath(`/*/stock`)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -810,7 +810,7 @@ async function saveBarcodeToProductInterno(productId: string, barcode: string) {
     revalidatePath('/admin/estoque')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 

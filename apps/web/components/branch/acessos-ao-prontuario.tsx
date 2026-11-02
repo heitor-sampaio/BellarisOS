@@ -21,7 +21,10 @@ export function AcessosAoProntuario({ itens, total }: { itens: AcessoNaFicha[]; 
         <span className="chip chip-brand" style={{ marginLeft: 'auto' }}>{total}</span>
       </div>
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 10 }}>
-        Quem viu os dados de saúde desta cliente, e por onde. Só a administração da rede vê esta lista.
+        {/* A regra é `podeVerAcessosAoProntuario`: sem unidade fixa e com o
+            prontuário em Gerenciar — o texto dizia "só a administração da
+            rede", e o médico da rede via a lista (A43, 2026-11-01). */}
+        Quem viu os dados de saúde desta cliente, e por onde. Esta lista aparece para quem tem o Prontuário em Gerenciar, sem unidade fixa.
         {total > itens.length && ` Mostrando os ${itens.length} mais recentes.`}
       </p>
       {itens.length === 0 ? (

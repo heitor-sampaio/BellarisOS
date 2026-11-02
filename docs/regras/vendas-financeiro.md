@@ -412,6 +412,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   lida inteira (`lerTodas`); a tela fazia o reduce e tirava o sinal com
   `Math.abs` (só a cor dizia que era negativo). Prova:
   `e2e/financeiro-lista-total-com-sinal.spec.ts`, `tests/metrics-resultado-da-lista.test.ts`.
+- **"Novo lançamento" é de quem lança** (D7 da 5ª simulação, 2026-11-01):
+  com o Financeiro em Ver, o financeiro da rede mostrava o botão
+  (`AdminFinancialView canWrite`, como o da unidade já fazia), e a recusa
+  chegava como "Forbidden". Todo `catch` das actions que devolvia `e.message`
+  passa por `mensagemDoErro` ("Seu cargo não libera esta ação."), e o erro cru
+  do banco no lançamento parcelado/recorrente virou "Não consegui gravar os
+  lançamentos." Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
 - **O lançamento manual pago tem a DATA do pagamento** (2026-10-21, decisão
   do Heitor): "Data do pagamento" no Novo lançamento (hoje por padrão, nunca no
   futuro — a tela limita e `pagoNoDia`, em `lib/financeiro/lancamento.ts`,
@@ -676,5 +683,6 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Gravar texto para pessoas (histórico, descrição) com o código da forma (CASH, CREDIT_CARD) — é rotuloDaForma no app e private.rotulo_da_forma no banco
 ❌ Ler dinheiro digitado com uma regra própria (Number(s.replace…), parseFloat em campo de texto) — é parseDinheiro, e o NaN dele é recusa, não zero
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
+❌ Devolver e.message num catch de action (o 'Forbidden' da trava ia em inglês para a tela) — é mensagemDoErro
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ```

@@ -95,7 +95,10 @@
   rede nova nasce.
 
 **As tags da rede** (2026-10-13, pedido do Heitor; **Configurações → Tags**,
-nos dois portais, para quem tem `clients` OU `crm` em Gerenciar). Até aqui a
+nos dois portais, para quem tem `clients` OU `crm` em Gerenciar — e é da rede:
+quem tem unidade fixa lê "Esta configuração é da clínica toda", e
+`criarTag`/`renomearTag`/`arquivarTag` recusam, H7 de 2026-11-01,
+`plataforma.md`). Até aqui a
 ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 (importação, automação, o card) ficava gravada e INVISÍVEL na ficha.
 - **Um vocabulário só para a ficha e o CRM** (decisão: a tag descreve a
@@ -138,6 +141,18 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   2026-10-21, nem o `updateTag` derrubou este `unstable_cache` (daí a regra do
   CLAUDE.md §14 valer para todos os caches). Prova:
   `e2e/ficha-lista-de-clientes.spec.ts`.
+- **Quem só vê os clientes não cadastra nem edita** (D4/D5 da 5ª simulação,
+  2026-11-01; o Heitor: "quem só pode ver só pode ver"). Com Clientes em Ver,
+  o inbox não oferece "Cadastrar cliente" nem o "Vender" de quem não tem ficha
+  (`ConversationCard.podeCadastrarCliente`), o quadro não oferece "Converter",
+  e a ficha mostra a aba Dados e as anotações só para ler (os campos num
+  `fieldset` desligado, sem "Salvar dados" nem "Dar acesso ao app", com a
+  frase "Seu cargo só consulta o cadastro"), sem "Mais ações" (arquivar). As
+  actions `addClient` e `updateClientContactData` devolvem
+  `SO_CONSULTA_CLIENTES` (`lib/clients/so-consulta.ts`) em `{ error }`: o
+  `semAcesso()` lançado dentro do `useActionState` derrubava o inbox inteiro
+  em "Você não tem acesso", e a promessa rejeitada da aba Dados dava 500 mudo.
+  Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
 - **A aba Financeiro da ficha é do financeiro** (2026-10-20): os pagamentos e
   o crédito interno do cliente só são carregados para `financial: VIEW` ou
   quem recebe (`podeReceber`), e a aba some para os outros. Carregava para
@@ -479,7 +494,10 @@ etapas, a cor e o desfecho da etapa e os motivos de perda pedem
 ("Configurar funis" só aparece com Configurações, nos dois portais). Mover os
 cards, criar e editar oportunidades continua com quem opera o quadro
 (`crm: MANAGE`). Antes bastava o CRM em Gerenciar, e a SDR mexia no funil da
-clínica inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`.
+clínica inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`. E é da
+REDE (H7, 2026-11-01): quem tem unidade fixa não configura o funil nem com
+Configurações em Gerenciar (`recusaDaConfigDaClinica`; o botão some do quadro
+da unidade). Prova: `e2e/permissoes-gerente-de-unidade.spec.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um
@@ -556,4 +574,5 @@ o contato junto.
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
+❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })
 ```

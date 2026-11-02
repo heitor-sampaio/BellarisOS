@@ -11,13 +11,17 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  * conferia o dono ("é da recepção"). O clínico não vazou — mas o §11 diz que
  * o escopo vale também para o id, não só para a lista.
  *
- * Decisão: com a agenda OWN, a tela do atendimento de outro profissional é
- * "sem acesso", e as actions pelo id recusam o agendamento de outro: check-in,
- * iniciar pelo status, trocar o profissional, remarcar, cancelar e salvar a
- * evolução. A recepção (ALL) segue fazendo o de todos — é o controle.
+ * Decisão: com a agenda OWN, a tela do atendimento de outro profissional
+ * responde como se ele não existisse, "Página não encontrada" (A38 da 5ª
+ * simulação, 2026-11-01: dizia "Seu cargo não libera esta tela", e o cargo
+ * libera; o que não é dela é ESTE atendimento), e as actions pelo id recusam o
+ * agendamento de outro: check-in, iniciar pelo status, trocar o profissional,
+ * remarcar, cancelar e salvar a evolução. A recepção (ALL) segue fazendo o de
+ * todos — é o controle.
  */
 
 const SEM_ACESSO = 'Você não tem acesso a esta área'
+const NAO_ENCONTRADA = 'Página não encontrada'
 const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
@@ -92,12 +96,13 @@ test.afterAll(async () => {
   await propria?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('"só os meus": a tela do atendimento de outra profissional é sem acesso; a dela abre, e a recepção abre a de todas', async ({ browser }) => {
+test('"só os meus": a tela do atendimento de outra profissional é "não encontrada"; a dela abre, e a recepção abre a de todas', async ({ browser }) => {
   const daOutra = await agendado('Bianca', rede!.professionalId)
   const dela    = await agendado('Helena', propria!.userId)
   await como(browser, propria!, async p => {
     await p.goto(`/${slug}/agenda/${daOutra}`)
-    await expect(p.getByRole('heading', { name: SEM_ACESSO }), 'a de outra').toBeVisible()
+    await expect(p.getByRole('heading', { name: NAO_ENCONTRADA }), 'a de outra').toBeVisible()
+    await expect(p.getByText(SEM_ACESSO), 'A38: o cargo libera a tela; o que não é dela é este atendimento').toHaveCount(0)
     await p.goto(`/${slug}/agenda/${dela}`)
     await expect(p.getByText(`Helena om${marca}`).first(), 'a dela').toBeVisible()
     await expect(p.getByText(SEM_ACESSO)).toHaveCount(0)

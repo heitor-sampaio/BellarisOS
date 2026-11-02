@@ -89,7 +89,7 @@ export async function createTransactionAdvanced(
           parcela_grupo:  grupo,
         })),
       )
-      if (txErr) return { error: txErr.message }
+      if (txErr) { console.error('[createTransactionAdvanced]', txErr.message); return { error: 'Não consegui gravar os lançamentos. Tente de novo.' } }
 
     // -- Recorrente ------------------------------------------------
     } else if (scheduleMode === 'recurring' && type === 'EXPENSE') {
@@ -118,7 +118,7 @@ export async function createTransactionAdvanced(
       }))
 
       const { error: txErr } = await admin.from('financial_transactions').insert(rows)
-      if (txErr) return { error: txErr.message }
+      if (txErr) { console.error('[createTransactionAdvanced]', txErr.message); return { error: 'Não consegui gravar os lançamentos. Tente de novo.' } }
 
     // -- Único (comportamento padrão) ------------------------------
     } else {
@@ -134,7 +134,7 @@ export async function createTransactionAdvanced(
     revalidatePath('/admin/financeiro')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -154,7 +154,7 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
     revalidatePath('/admin/financeiro')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 

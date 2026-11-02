@@ -27,7 +27,7 @@ type Aba = 'tratamento' | 'injetaveis'
 export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
-  podeEditar, podeVerInjetaveis, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
+  podeEditar, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
 }: {
   clientId:       string
   branchId:       string
@@ -43,6 +43,12 @@ export function PainelPlanejamento({
    * recepção abria a sub-aba e ficava em "Carregando…" (D7, 2026-10-29).
    */
   podeVerInjetaveis: boolean
+  /**
+   * Os planos de tratamento (Agenda em Ver — `getPlanosDoCliente`). Sem eles, o
+   * painel é só o de injetáveis: o cargo sem Agenda ficava em "Carregando
+   * planos…" para sempre, com 500 na rede (D6 da 5ª simulação, 2026-11-01).
+   */
+  podeVerPlanos?: boolean
   podeReceber?:   boolean
   /** Guarda a aba e o item aberto na URL, em vez de em estado local. */
   navegarPorUrl?: boolean
@@ -60,8 +66,9 @@ export function PainelPlanejamento({
   const abaPedida: Aba = navegarPorUrl
     ? (abaDaUrl === 'injetaveis' ? 'injetaveis' : 'tratamento')
     : abaLocal
-  // Sem o prontuário, nem pela URL: fica no plano de tratamento.
-  const aba: Aba = podeVerInjetaveis ? abaPedida : 'tratamento'
+  // Sem o prontuário, nem pela URL: fica no plano de tratamento. Sem os planos
+  // (a Agenda), só os injetáveis.
+  const aba: Aba = !podeVerPlanos && podeVerInjetaveis ? 'injetaveis' : podeVerInjetaveis ? abaPedida : 'tratamento'
   const aberto = navegarPorUrl ? params.get('aberto') : abertoLocal
 
   function trocarAba(k: Aba) {
@@ -84,7 +91,7 @@ export function PainelPlanejamento({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {podeVerInjetaveis && (
+      {podeVerInjetaveis && podeVerPlanos && (
       <div style={{ display: 'flex', gap: 6 }}>
         <SegSelect
           options={[

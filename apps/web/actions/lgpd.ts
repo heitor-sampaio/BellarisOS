@@ -6,7 +6,7 @@ import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LGPD_BUCKET } from '@/lib/lgpd/export'
 import { processExportRequest } from '@/lib/lgpd/processar'
-import { ler } from '@/lib/db'
+import { ler, mensagemDoErro } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 
 /**
@@ -88,7 +88,7 @@ export async function requestDataExport(
     revalidatePath('/[slug]/cliente/perfil', 'page')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -242,6 +242,6 @@ export async function reviewMedicalData(
     revalidatePath('/admin/settings')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }

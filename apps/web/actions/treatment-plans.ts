@@ -1942,7 +1942,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
       },
     }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 

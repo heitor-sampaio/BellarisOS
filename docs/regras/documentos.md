@@ -82,7 +82,17 @@ DEVLOG ("Termos e contratos").
   transação, e só abre versão nova quando o CONTEÚDO muda. Versão não se
   altera (gatilho); modelo não se apaga (desativa).
 - **Modelos são `forms: MANAGE`** (Configurações → Documentos); colher a
-  assinatura é o módulo `documents`; ligar ao procedimento é `procedures`.
+  assinatura é o módulo `documents`; ligar ao procedimento é `procedures`. E
+  os modelos são da REDE: quem tem unidade fixa não os cria nem muda (H7,
+  2026-11-01; `recusaDaConfigDaClinica`, `plataforma.md`).
+  - **Quem não colhe lê quem colhe** (D8 da 5ª simulação, 2026-11-01): com os
+    Termos em Ver (o médico), o termo que bloqueia aparecia "Para assinar ·
+    bloqueia" sem ação nenhuma. `TermosDoCliente` diz, havendo documento em
+    aberto, "A assinatura é colhida pela recepção (quem tem os Termos em
+    Gerenciar): na clínica, por link ou pelo app da cliente."
+    (`data-quem-colhe`), na ficha e no atendimento. Decisão desta frente: só o
+    texto, sem botão de "pedir à recepção" (não há para onde mandar o pedido
+    além do aviso que a tela já dá). Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
   - **Exceção do checkout** (decisão do Heitor, 2026-10-20): quem RECEBE
     (`podeReceber`) colhe a assinatura do documento de um plano que está no
     checkout (`treatment_plan_id` de plano PROPOSED) — abrir, assinar na tela,

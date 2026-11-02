@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { injectableTotals, emptyInjectableMap, type InjectableMapValue } from '@/lib/anamnesis'
-import { ler, lerTodas } from '@/lib/db'
+import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
 
 /**
  * Planejamento de injetáveis.
@@ -466,7 +466,7 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
         (b.updated_at ?? '').localeCompare(a.updated_at ?? '') || a.id.localeCompare(b.id))
     }
   } catch (e) {
-    return { mapas: [], error: `Não foi possível carregar os planejamentos: ${e instanceof Error ? e.message : String(e)}` }
+    return { mapas: [], error: `Não foi possível carregar os planejamentos: ${e instanceof Error ? mensagemDoErro(e) : String(e)}` }
   }
   const ids = linhas.map(l => l.client_id).filter(Boolean) as string[]
   const aplicacoes = await contarAplicacoes(admin, ctx.tenantId!, ids)

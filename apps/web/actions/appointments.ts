@@ -114,7 +114,7 @@ export async function addAppointment(
     notifyNewAppointment(result.id, ctx.internalUserId)
     return { success: true, id: result.id }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -424,7 +424,7 @@ async function checkinAppointmentInterno(
     notifyCheckin(appointmentId)
     return {}
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -615,7 +615,7 @@ async function reassignProfessionalInterno(
     })
     return {}
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -662,7 +662,7 @@ async function cancelAppointmentSessionInterno(
     notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
     return {}
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -951,7 +951,7 @@ async function finishSessionInterno(
     notifyCompleted(appointmentId)
     return { avisos }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -1061,7 +1061,7 @@ export async function confirmPayment(
     notifyPayment(appointmentId)
     return {}
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -1200,7 +1200,7 @@ async function saveDraftNotesInterno(
 
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -1231,7 +1231,7 @@ export async function rescheduleAppointment(
     notifyRescheduledAppointment(appointmentId, ctx.internalUserId)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -1741,7 +1741,7 @@ export async function createClientAppointment(params: {
       .eq('appointment_id', appt.id as string).in('status', ['A_GERAR', 'PENDENTE', 'INCOMPLETO']), 'contar os documentos do agendamento')
     return { id: appt.id as string, documentosParaAssinar }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -1865,7 +1865,7 @@ export async function confirmAndRateAppointment(params: {
 
     return { ok: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 

@@ -102,16 +102,26 @@ export function PlanejamentoTratamento({
   const [clienteLigado, setClienteLigado] = useState<{ id: string; nome: string } | null>(null)
   const termoRef = useRef("")
 
+  // A carga da lista que falhou (a action lança sem a Agenda, a rede caiu) vira
+  // um aviso — nunca "Carregando planos…" para sempre (D6, 2026-11-01).
+  const [listaFalhou, setListaFalhou] = useState(false)
+
   const carregarLista = useCallback(async () => {
     if (!clientId) return
-    const res = await getPlanosDoCliente(clientId)
-    setPlanos(res.planos)
+    try {
+      const res = await getPlanosDoCliente(clientId)
+      setPlanos(res.planos); setListaFalhou(false)
+    } catch {
+      setListaFalhou(true)
+    }
   }, [clientId])
 
   useEffect(() => {
     if (!clientId) return
     let vivo = true
-    getPlanosDoCliente(clientId).then(res => { if (vivo) setPlanos(res.planos) })
+    getPlanosDoCliente(clientId)
+      .then(res => { if (vivo) setPlanos(res.planos) })
+      .catch(() => { if (vivo) setListaFalhou(true) })
     return () => { vivo = false }
   }, [clientId])
 
@@ -251,7 +261,9 @@ export function PlanejamentoTratamento({
       )}
 
       {planos === null ? (
-        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando planos…</p>
+        listaFalhou
+          ? <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Não foi possível carregar os planos de tratamento.</p>
+          : <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando planos…</p>
       ) : planos.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '32px 16px' }}>
           <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

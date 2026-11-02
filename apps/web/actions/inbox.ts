@@ -2,7 +2,7 @@
 
 import { moverEtapaCore } from '@/lib/crm/oportunidade'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
-import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso, temRecurso, can } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
@@ -704,6 +704,12 @@ export interface ConversationCard {
   comOportunidades: boolean
   /** E a agenda? Sem ela, a conversa não marca horário. */
   comAgenda: boolean
+  /**
+   * Cadastrar a pessoa como cliente (e o "Vender" de quem ainda não tem ficha,
+   * que passa pelo cadastro) pede Clientes em Gerenciar. Com Clientes em Ver, o
+   * botão aparecia e o envio derrubava a tela (D4 da 5ª simulação, 2026-11-01).
+   */
+  podeCadastrarCliente: boolean
   /** Em andamento: etapa com outcome `OPEN`. */
   abertas:    Oportunidade[]
   /** Ganhas e perdidas, para consulta. */
@@ -849,7 +855,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       social:   c.pessoa?.social_media ?? null,
       canal:    c.channel as InboxChannel,
     },
-    cliente, venda, comOportunidades, comAgenda: temRecurso(ctx, 'agenda'), abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
+    cliente, venda, comOportunidades, comAgenda: temRecurso(ctx, 'agenda'), podeCadastrarCliente: can(ctx, 'clients', 'MANAGE'), abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
     outrasThreads,
   }
 }
@@ -914,7 +920,7 @@ async function buscarOutrasThreads(
   try {
     [alcance, minhasCaixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
   } catch (e) {
-    console.error('[getConversationCard] alcance:', e instanceof Error ? e.message : e)
+    console.error('[getConversationCard] alcance:', e instanceof Error ? mensagemDoErro(e) : e)
     return []
   }
   linhas = linhas.filter(l =>
@@ -2018,7 +2024,7 @@ export async function sendMediaMessage(
       arquivo.name || `arquivo.${kind}`,
     )
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Falha ao guardar o arquivo.' }
+    return { ok: false, error: e instanceof Error ? mensagemDoErro(e) : 'Falha ao guardar o arquivo.' }
   }
 
   const { data: msgRow, error: erroInsert } = await admin

@@ -11,7 +11,7 @@ import {
   diferencas, listaLegivel,
 } from '@/lib/lead-events'
 import { isUnitTag, unitTagName, parseDinheiro } from '@estetica-os/utils'
-import { ler } from '@/lib/db'
+import { ler, mensagemDoErro } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa, digitosDoTelefone, mesmoTelefone } from '@/lib/contatos/propagar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
@@ -115,7 +115,7 @@ export async function createLead(
     revalidatePath('/admin/oportunidades')
     return { success: true, leadId: lead.id as string, createdAt: lead.created_at as string }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -324,7 +324,7 @@ export async function updateLead(
     revalidatePath('/admin/oportunidades')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -348,7 +348,7 @@ export async function updateLeadStage(
     return {}
   } catch (e) {
     console.error('[updateLeadStage]', e)
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 

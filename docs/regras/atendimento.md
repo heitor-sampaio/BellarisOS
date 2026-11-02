@@ -103,7 +103,10 @@
 - **A agenda "só os meus" vale também pelo ID** (D4 da simulação de
   2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
   (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
-  agendamento de OUTRO profissional é `semAcesso()`, e as actions pelo id o
+  agendamento de OUTRO profissional responde como se ele não existisse,
+  "Página não encontrada" (A38 da 5ª simulação, 2026-11-01: era `semAcesso()`,
+  "Seu cargo não libera esta tela" — e o cargo libera; o que não é dela é este
+  atendimento), e as actions pelo id o
   recusam — check-in (`checkinCore`), confirmar, remarcar, cancelar
   (`confirmarCore`/`remarcarCore`/`cancelarCore`, logo também o Copilot),
   iniciar pelo status (`updateAppointmentStatus`), trocar o profissional e
@@ -458,7 +461,11 @@ const procedures = await ler(
     sozinha. Falha no registro vai ao log e não tranca o atendimento.
   - Quem VÊ é o admin da REDE (`ctx.branchId === null` e
     `medical_records: MANAGE`), no fim da aba Prontuário da ficha. A cliente
-    não o recebe no pacote LGPD (expõe nomes da equipe).
+    não o recebe no pacote LGPD (expõe nomes da equipe). O texto da seção diz
+    a regra de verdade — "quem tem o Prontuário em Gerenciar, sem unidade
+    fixa" (A43 da 5ª simulação, 2026-11-01: dizia "só a administração da
+    rede", e o médico da rede, com o prontuário em Gerenciar, via a lista).
+    A regra ficou; decisão para o Heitor revisar.
   - Só o servidor lê e grava (RLS sem política); um acesso não se altera
     (gatilho); `user_id` sem chave estrangeira — o registro sobrevive ao
     membro, e o nome é o do ctx (com a marca "via suporte").
@@ -589,6 +596,15 @@ const procedures = await ler(
   promessa rejeitada vira o aviso "Não foi possível carregar…"
   (`buscarPlanejamentos`). A recepção abria a sub-aba, recebia 500 e ficava
   carregando para sempre. Prova: `e2e/injetaveis-sem-prontuario.spec.ts`.
+- **E o plano de tratamento só existe para quem tem a Agenda** (D6 da 5ª
+  simulação, 2026-11-01; `getPlanosDoCliente` pede `agenda: VIEW`): na ficha,
+  sem a Agenda e sem o prontuário, a aba Planejamento some; com o prontuário e
+  sem a Agenda, ela é só a de injetáveis (`PainelPlanejamento podeVerPlanos`).
+  A carga da lista que falha diz "Não foi possível carregar os planos de
+  tratamento." — era "Carregando planos…" para sempre, com 500 na rede. E a
+  ficha não oferece "+ Agendar" sem a Agenda em Gerenciar, nem "Adicionar
+  primeiro documento" a quem não anexa (A23). Prova:
+  `e2e/permissoes-quem-so-ve.spec.ts`.
 - **Os planos de tratamento seguem a agenda "só os meus"** (decisão do Heitor,
   2026-10-28). Com `agenda` OWN, a tela Planejamentos (`listarPlanejamentos`),
   os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
@@ -905,7 +921,18 @@ O resto do fluxo:
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
   simulação de 2026-10-29): a evolução só se lê e a anamnese aparece como
   leitura — não em branco com as obrigatórias marcadas. Quem desbloqueia
-  ("Editar registro") tem os campos de volta.
+  ("Editar registro") tem os campos de volta. **Desbloquear pede a Agenda E o
+  Prontuário em Gerenciar** (`canReassign && canEditRecords`; A39 da 5ª
+  simulação, 2026-11-01): o botão aparecia a quem não escreve no prontuário, e
+  ao lado do texto "Apenas gerentes podem editar" — que contradizia o botão da
+  profissional. O texto diz agora a regra ("use Editar registro" a quem pode;
+  "pede a Agenda e o Prontuário em Gerenciar" a quem não).
+- **Gerar o plano (o "Fechar agora" e o "Gerar plano e enviar à recepção")
+  pede o Prontuário em Gerenciar** (D9 da 5ª simulação, 2026-11-01): grava a
+  avaliação no prontuário (`generateEvaluationPlan`). Com ele só em Ver, o
+  cartão some inteiro, com a dica do J-35 — que mandava a um "Finalizar
+  atendimento" que não existe para ela (o alto da tela já diz "Quem conclui é
+  o profissional"). Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
 - **A avaliação concluída gera o plano** (revisão do Heitor, 2026-10-29: "é
   preciso avaliar primeiro pra depois decidir o que fazer"). O A30 tinha tirado
   o "Fechar agora" e o "Enviar para a recepção" porque gerar o plano regravava
@@ -997,7 +1024,8 @@ O resto do fluxo:
 ❌ Dizer "respondida" (selo, "algo mudou?", janela de 30 dias) sem anamneseRespondida / respostas não vazias — a ficha gravada vazia não é respondida
 ❌ Aceitar a ficha da CLIENTE (app ou link) sem oQueFaltaNaFicha no servidor
 ❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
-❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista)
+❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, notFound(), não semAcesso() (o cargo libera; o atendimento é que não é dela)
+❌ Botão que grava o prontuário (gerar o plano, "Editar registro") para quem não tem o Prontuário em Gerenciar (canEditRecords)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede

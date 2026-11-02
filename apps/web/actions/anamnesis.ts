@@ -7,7 +7,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } from '@/lib/storage'
-import { ler } from '@/lib/db'
+import { ler, mensagemDoErro } from '@/lib/db'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 
 
@@ -73,7 +73,7 @@ export async function uploadAnamnesisPhoto(
     const url = await getSignedUrl(ANAMNESIS_BUCKET, path)
     return { path, url: url ?? undefined }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro no upload.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro no upload.' }
   }
 }
 
@@ -199,6 +199,6 @@ export async function salvarFichaDoProcedimento(params: {
     revalidatePath(`/admin/agenda/${params.appointmentId}`)
     return { ok: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }

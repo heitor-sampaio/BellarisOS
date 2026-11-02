@@ -1771,10 +1771,14 @@ export function AppointmentSession({
               <p style={{ fontSize: 'var(--text-xs-sz)', color: isUnlocked ? 'var(--warning)' : 'var(--text-faint)', marginTop: 2 }}>
                 {isUnlocked
                   ? 'Todas as alterações serão registradas no histórico do atendimento.'
-                  : 'Atendimento concluído. Apenas gerentes podem editar este registro.'}
+                  : canReassign && canEditRecords
+                    ? 'Atendimento concluído. Para corrigir, use "Editar registro": a alteração fica no histórico.'
+                    : 'Atendimento concluído. Corrigir o registro pede a Agenda e o Prontuário em Gerenciar.'}
               </p>
             </div>
-            {canReassign && (
+            {/* Desbloquear é para editar o prontuário: pede os dois (A39 — o
+                botão aparecia ao lado de "Apenas gerentes podem editar"). */}
+            {canReassign && canEditRecords && (
               isUnlocked ? (
                 <button type="button" onClick={() => setIsUnlocked(false)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--warning-border)', background: 'transparent', color: 'var(--warning)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>
@@ -2034,7 +2038,11 @@ export function AppointmentSession({
                       o que fazer"): o A30 tirou os botões porque gerar o plano
                       regravava o registro fechado — agora o plano nasce sozinho,
                       ligado a ela, e o registro fica como está. */}
-                  {canManage && (status === 'COMPLETED' || !isDone) && (
+                  {/* Gerar o plano grava a avaliação no prontuário (generateEvaluationPlan
+                      pede o prontuário em Gerenciar): com ele só em Ver, "Fechar agora"
+                      respondia "Seu cargo não libera" e a dica mandava a um
+                      "Finalizar" que não existe para ela (D9, 2026-11-01). */}
+                  {canManage && canEditRecords && (status === 'COMPLETED' || !isDone) && (
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {status === 'COMPLETED' && (
                         <p data-plano-da-avaliacao-concluida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>

@@ -1,7 +1,8 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertClient, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, alcancaUnidade, can } from '@/lib/auth'
+import { SO_CONSULTA_CLIENTES } from '@/lib/clients/so-consulta'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
@@ -72,7 +73,9 @@ export async function addClient(
   formData: FormData,
 ): Promise<ResultadoDoCadastro> {
   const ctx     = await getTenantContext()
-  assertPermission(ctx, 'clients', 'MANAGE')
+  // Com Clientes em Ver, a recusa vem em { error }: lançada dentro do
+  // useActionState, derrubava a tela do inbox inteira (D4, 2026-11-01).
+  if (!can(ctx, 'clients', 'MANAGE')) return { error: SO_CONSULTA_CLIENTES }
 
   const branchId = formData.get('_branchId') as string
   const slug     = formData.get('_slug') as string
@@ -446,7 +449,9 @@ export async function updateClientContactData(
   slug: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'clients', 'MANAGE')
+  // A aba Dados e as anotações de quem só vê não salvam; a recusa vem em
+  // { error } (a promessa rejeitada dava 500 mudo — D5, 2026-11-01).
+  if (!can(ctx, 'clients', 'MANAGE')) return { error: SO_CONSULTA_CLIENTES }
 
   const admin = createAdminClient()
 

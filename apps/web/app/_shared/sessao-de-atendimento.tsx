@@ -20,7 +20,6 @@ import { ler } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { deOutroProfissional } from '@/lib/appointments/alteracoes'
-import { semAcesso } from '@/lib/sem-acesso'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 
 /**
@@ -83,7 +82,9 @@ export async function SessaoDeAtendimento({
   // A agenda "só os meus" vale também para o id (§11; D4 da simulação de
   // 2026-10-28): a profissional abria pela URL o atendimento de outra e
   // marcava o check-in. A recepção (ALL) abre o de todos.
-  if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) throw semAcesso()
+  // Responde como se não existisse (A38, 2026-11-01): "Seu cargo não libera
+  // esta tela" mentia — o cargo libera; o que não é dela é ESTE atendimento.
+  if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) notFound()
 
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
   type RawProf   = { id: string; name: string }

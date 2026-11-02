@@ -452,19 +452,22 @@ export function InboxLeadPanel({
               >
                 <UserCheck size={12} color="var(--success)" /> Ver cliente
               </a>
-            ) : (
+            ) : card.podeCadastrarCliente ? (
+              // Cadastrar pede Clientes em Gerenciar (D4, 2026-11-01): com Ver, o
+              // botão aparecia e o envio derrubava a tela.
               <button type="button" className="btn-ghost"
                 style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
                 onClick={() => setConvertOpen(true)}>
                 <UserCheck size={12} /> Cadastrar cliente
               </button>
-            )}
+            ) : null}
             {card.venda && (cliente ? (
               card.venda.branchId && (
                 <Vender compacto clienteId={cliente.id} branchId={card.venda.branchId}
                   pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} produtos={card.venda.produtos} abrirSinal={abrirVenda} />
               )
-            ) : (
+            ) : card.podeCadastrarCliente && (
+              // Sem ficha, a venda passa pelo cadastro: o mesmo Clientes em Gerenciar.
               <button type="button" className="btn-ghost"
                 style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
                 onClick={() => { setVenderAposCadastro(true); setConvertOpen(true) }}>
