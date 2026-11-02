@@ -146,11 +146,15 @@ async function updateAppointmentStatusInterno(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
 
-  // Profissional só pode iniciar (IN_PROGRESS) ou concluir (COMPLETED)
   // Quem só gerencia a própria agenda mexe no andamento do atendimento
-  // (iniciar/concluir), não no ciclo de vida do agendamento.
-  if (isOwnScope(ctx, 'agenda') && !(['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)) {
-    throw semAcesso()
+  // (iniciar/concluir) e, com a agenda em Gerenciar, cancela e marca a falta
+  // do DELA (agenda-06, revisão do Heitor de 2026-11-02: em 28/10 ele
+  // confirmou que a profissional cancela o que é dela). Confirmar e chegar
+  // seguem com a recepção.
+  if (isOwnScope(ctx, 'agenda')) {
+    const doAndamento = (['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)
+    const doDela = (['CANCELLED', 'NO_SHOW'] as string[]).includes(status) && ctx.permissions.agenda === 'MANAGE'
+    if (!doAndamento && !doDela) throw semAcesso()
   }
   // E só no agendamento DELE (D4, 2026-10-28): o iniciar pelo status mexia no
   // de qualquer profissional da unidade, pelo id.
@@ -1967,6 +1971,42 @@ export async function avisosDoHorario(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   return avisosDoHorarioCore(ctx, { branchId, professionalId, scheduledAt, procedureId, durationMin })
+}
+
+/**
+ * O que a janela da agenda avisa ANTES de remarcar (A25 e cli-01, 2026-11-02):
+ * o horário novo fora do expediente da profissional e o choque com outro
+ * atendimento dela (a conta do agendar, `avisosDoHorarioCore`, sem contar o
+ * próprio agendamento), e a cliente ARQUIVADA ("avisar ao remarcar, sem
+ * recusar" — revisão do Heitor). Só aviso: `remarcarCore` decide.
+ */
+export async function avisosDoRemarcar(appointmentId: string, scheduledAt: string): Promise<AvisosDoHorario & { clienteArquivada: string | null }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+  const nada = { foraDoHorario: null, conflito: null, clienteArquivada: null }
+  if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return nada
+  const admin = createAdminClient()
+  const a = await ler(admin.from('appointments')
+    .select('branch_id, professional_id, procedure_id, duration_min, client_id, branches!inner(tenant_id)')
+    .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
+      branch_id: string; professional_id: string | null; procedure_id: string | null; duration_min: number | null; client_id: string
+    } | null
+  if (!a || !alcancaUnidade(ctx, a.branch_id) || deOutroProfissional(ctx, a.professional_id)) return nada
+  const [avisos, ficha] = await Promise.all([
+    a.professional_id
+      ? avisosDoHorarioCore(ctx, {
+          branchId: a.branch_id, professionalId: a.professional_id, scheduledAt, procedureId: a.procedure_id,
+          durationMin: a.duration_min ?? 60, excluir: appointmentId,
+        })
+      : Promise.resolve({ foraDoHorario: null, conflito: null }),
+    ler(admin.from('clients').select('name, is_active').eq('id', a.client_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente') as Promise<{ name: string; is_active: boolean } | null>,
+  ])
+  return {
+    ...avisos,
+    clienteArquivada: ficha && ficha.is_active === false
+      ? `${ficha.name} está arquivada. Remarcar é permitido; para agendar de novo, reative a ficha (em "Mais ações").`
+      : null,
+  }
 }
 
 /**

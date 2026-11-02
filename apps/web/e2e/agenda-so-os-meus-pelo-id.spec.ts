@@ -173,3 +173,54 @@ test('"só os meus" segue fazendo tudo isso no agendamento DELA', async ({ brows
     expect((await situacao(dela)).status, 'iniciar o dela').toBe('IN_PROGRESS')
   })
 })
+
+// agenda-06 (revisão do Heitor, 2026-11-02; em 28/10 ele confirmou que a
+// profissional cancela o que é dela): a JANELA da agenda (`/admin/agenda`, a
+// da profissional da rede) de quem tem "só os meus" mostra "Cancelar" e "Não
+// compareceu" no agendamento DELA, e a action deixa — no de outra, recusa.
+test('agenda-06: "só os meus" cancela e marca a falta do agendamento DELA pela janela; no de outra, a action recusa', async ({ browser }) => {
+  const daRede = await criarMembro(`omd${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Profissional da rede',
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }],
+  })
+  try {
+    expect((await db().from('users').update({ provides_services: true }).eq('id', daRede.userId)).error).toBeNull()
+    const paraCancelar = await agendado('Cancela', daRede.userId)
+    // A falta é só depois do início: um que começou há uma hora.
+    const cliente = await rede!.criarCliente('Faltou')
+    const { data: passado, error } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: daRede.userId,
+      status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0,
+      scheduled_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    const daOutra = await agendado('Outra', rede!.professionalId)
+
+    await como(browser, daRede, async p => {
+      await p.goto(`/admin/agenda?date=${HOJE}`)
+      await p.locator(`[data-agendamento="${paraCancelar}"]`).first().click()
+      let janela = p.getByRole('dialog', { name: 'Agendamento' })
+      await janela.getByRole('button', { name: 'Cancelar', exact: true }).click()
+      await janela.getByLabel('Motivo do cancelamento *').fill(`${marca} pediu para desmarcar`)
+      await janela.getByRole('button', { name: 'Confirmar cancelamento' }).click()
+      await expect.poll(async () => (await situacao(paraCancelar)).status).toBe('CANCELLED')
+
+      await p.goto(`/admin/agenda?date=${HOJE}`)
+      await p.locator(`[data-agendamento="${passado!.id}"]`).first().click()
+      janela = p.getByRole('dialog', { name: 'Agendamento' })
+      await janela.getByRole('button', { name: 'Não compareceu' }).click()
+      await expect.poll(async () => (await situacao(passado!.id)).status).toBe('NO_SHOW')
+
+      // No de outra, pelo id: recusa.
+      await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', '/admin/agenda', [daOutra, 'CANCELLED', slug, 'motivo'])
+      expect((await situacao(daOutra)).status).toBe('SCHEDULED')
+    })
+  } finally {
+    if (rede) {
+      const ids = ((await db().from('appointments').select('id').eq('professional_id', daRede.userId)).data ?? []).map(a => a.id)
+      if (ids.length) await db().from('appointment_history').delete().in('appointment_id', ids)
+      await db().from('appointments').delete().eq('professional_id', daRede.userId)
+    }
+    await daRede.limpar()
+  }
+})

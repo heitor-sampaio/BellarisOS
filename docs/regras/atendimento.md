@@ -143,10 +143,22 @@
   `e2e/agenda-so-os-meus-pelo-id.spec.ts`.
 - **A chegada é do DIA do agendamento** (A18, 2026-10-27): `checkinCore`
   recusa fora do dia (Brasília, `ehODiaDoAgendamento`) — vale para a agenda, o
-  Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". Com a
-  agenda "só os meus", a janela também não mostra Cancelar nem "Não
-  compareceu" (a action recusa): mostra só o que a action deixa fazer. O
+  Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". O
   cancelado traz o motivo inteiro na janela e no tooltip do bloco.
+- **"Só os meus" cancela e marca a falta do DELA** (agenda-06, revisão do
+  Heitor de 2026-11-02; em 28/10 ele confirmou que a profissional cancela o
+  que é dela): com a agenda em Gerenciar e escopo "só os meus", a janela da
+  agenda (`/admin/agenda`, a da profissional da rede; a da unidade é a "Minha
+  agenda", que abre a tela do atendimento) mostra "Cancelar" e "Não
+  compareceu", e `updateAppointmentStatus` deixa CANCELLED e NO_SHOW no
+  agendamento dela (`deOutroProfissional` recusa o de outra). Confirmar e
+  "Chegou" seguem com a recepção. Prova: `e2e/agenda-so-os-meus-pelo-id.spec.ts`.
+- **O remarcar da janela AVISA antes de confirmar** (A25 e cli-01, 2026-11-02):
+  o horário novo fora do expediente da profissional e o choque (a conta do
+  agendar, `avisosDoHorarioCore`, sem o próprio agendamento), e a cliente
+  ARQUIVADA ("avisar ao remarcar, sem recusar" — revisão do Heitor):
+  `avisosDoRemarcar` → `[data-aviso-do-remarcar]`. Só aviso: o remarcar
+  continua. Prova: `e2e/agenda-remarcar-avisa.spec.ts`.
 - **A grade do dia rola a cada troca de dia** (D8): hoje, uma hora antes de
   agora; outro dia, o primeiro atendimento ou a abertura da unidade, o que
   vier antes (`rolagemDaGrade`). O novo agendamento sugere o próximo horário

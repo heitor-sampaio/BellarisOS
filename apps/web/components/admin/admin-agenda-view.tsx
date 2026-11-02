@@ -683,6 +683,7 @@ export function AdminAgendaView({
           slug={todasUnidades.find(b => b.id === selecionado.branch_id)?.slug ?? ''}
           userRole=""
           escopoProprio={escopoProprio}
+          podeGerenciar={podeAgendar}
           onClose={() => { setSelecionado(null); router.refresh() }}
         />
       )}

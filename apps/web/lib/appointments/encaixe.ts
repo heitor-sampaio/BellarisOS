@@ -19,6 +19,8 @@ const hora = (d: Date) => { const p = partsInTZ(d); return `${String(p.hour).pad
 
 export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   branchId: string; professionalId: string; scheduledAt: string; procedureId: string | null; durationMin: number
+  /** Ao REMARCAR (A25), o próprio agendamento não conta como choque. */
+  excluir?: string | null
 }): Promise<AvisosDoHorario> {
   const nada: AvisosDoHorario = { foraDoHorario: null, conflito: null }
   if (![a.branchId, a.professionalId].every(x => typeof x === 'string' && UUID.test(x))) return nada
@@ -54,7 +56,7 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
       : `${nome} não atende neste dia. O encaixe é permitido.`
 
   const choque = await primeiroConflito(admin, {
-    tenantId: ctx.tenantId!, professionalId: a.professionalId, inicio, duracaoMin: duracao,
+    tenantId: ctx.tenantId!, professionalId: a.professionalId, inicio, duracaoMin: duracao, excluir: a.excluir ?? null,
   })
   const conflito = choque ? `${nome} já tem atendimento das ${hora(choque.inicio)} às ${hora(choque.fim)}.` : null
   return { foraDoHorario, conflito }

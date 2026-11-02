@@ -402,6 +402,7 @@ export function AgendaCalendar({
           slug={slug}
           userRole={userRole}
           escopoProprio={escopoProprio}
+          podeGerenciar={canWrite}
           onClose={() => setSelectedEvent(null)}
         />
       )}

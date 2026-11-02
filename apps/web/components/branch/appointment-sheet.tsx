@@ -2,9 +2,9 @@
 
 import { useState, useActionState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock, DoorOpen, HandCoins } from 'lucide-react'
+import { X, CheckCircle2, Clock, AlertCircle, AlertTriangle, Ban, Play, CalendarClock, DoorOpen, HandCoins } from 'lucide-react'
 import Link from 'next/link'
-import { updateAppointmentStatus, rescheduleAppointment, chegarEIniciar } from '@/actions/appointments'
+import { updateAppointmentStatus, rescheduleAppointment, chegarEIniciar, avisosDoRemarcar } from '@/actions/appointments'
 import { situacaoDaCobranca } from '@/actions/a-receber'
 import { historicoDoAgendamento, type PassoDoHistorico } from '@/actions/historico-do-agendamento'
 import { rotaAtendimento } from '@/lib/rotas'
@@ -42,6 +42,12 @@ interface AppointmentSheetProps {
    * botões apareciam para quem a action recusaria.
    */
   escopoProprio?: boolean
+  /**
+   * A agenda em Gerenciar. Com "só os meus", ela cancela e marca a falta do
+   * agendamento DELA (agenda-06, revisão do Heitor de 2026-11-02) — a janela da
+   * agenda "só os meus" lista só os dela, e a action confere de novo.
+   */
+  podeGerenciar?: boolean
   onClose:     () => void
 }
 
@@ -64,8 +70,11 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, onClose }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
+  // Cancelar e "Não compareceu": a recepção (todas) e a profissional "só os
+  // meus" com a agenda em Gerenciar, no dela (agenda-06).
+  const podeCancelar = !isProfessional || podeGerenciar
   const router   = useRouter()
   // Para onde ir ao iniciar o atendimento: quem decide o portal é o caminho
   // atual, não o slug do registro. Sem isto, iniciar pela agenda da rede jogava
@@ -96,6 +105,25 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   const pad = (n: number) => String(n).padStart(2, '0')
   const inicioLocal = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
   const [novoDT, setNovoDT] = useState(inicioLocal)
+
+  // O que o remarcar avisa ANTES de confirmar (A25, cli-01): fora do
+  // expediente, choque e a cliente arquivada. Só aviso — o servidor decide.
+  const [avisosRemarcar, setAvisosRemarcar] = useState<string[]>([])
+  useEffect(() => {
+    if (!remarcando || !novoDT) return
+    let vivo = true
+    const t = setTimeout(() => {
+      avisosDoRemarcar(appointment.id, new Date(novoDT).toISOString())
+        .then(r => {
+          if (!vivo) return
+          // O choque do horário de AGORA é o próprio agendamento: só conta o do novo.
+          const novo = novoDT !== inicioLocal
+          setAvisosRemarcar([r.clienteArquivada, novo ? r.foraDoHorario : null, novo ? r.conflito : null].filter((x): x is string => !!x))
+        })
+        .catch(() => { /* aviso é acessório: sem ele, o servidor ainda decide */ })
+    }, 250)
+    return () => { vivo = false; clearTimeout(t) }
+  }, [remarcando, novoDT, inicioLocal, appointment.id])
 
   // O que dizer quando dá certo (2026-10-21): a janela fechava em silêncio.
   const AVISO: Partial<Record<Parameters<typeof updateAppointmentStatus>[1], string>> = {
@@ -280,6 +308,15 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
                   onChange={e => setNovoDT(e.target.value)}
                   style={{ background: 'var(--surface)' }}
                 />
+                {avisosRemarcar.length > 0 && (
+                  <div data-aviso-do-remarcar role="status" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {avisosRemarcar.map(a => (
+                      <p key={a} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+                        <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} /> {a}
+                      </p>
+                    ))}
+                  </div>
+                )}
                 {remarcaState?.error && (
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>{remarcaState.error}</p>
                 )}
@@ -291,10 +328,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
 
             {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
 
-            {/* Falta e cancelamento são do ciclo de vida do agendamento: quem tem a
-                agenda "só os meus" mexe no andamento do atendimento, e a action
-                recusa o resto — a janela mostra só o que ela deixa fazer. */}
-            {!isProfessional && (
+            {/* Falta e cancelamento: a recepção e, com "só os meus" e a agenda em
+                Gerenciar, a profissional no DELA (agenda-06, 2026-11-02). A
+                janela mostra só o que a action deixa fazer. */}
+            {podeCancelar && (
             <div style={{ display: 'flex', gap: 8 }}>
               {jaComecou && (
                 <button disabled={loading} onClick={() => changeStatus('NO_SHOW')} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
@@ -307,7 +344,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
             </div>
             )}
 
-            {showCancelReason && !isProfessional && (
+            {showCancelReason && podeCancelar && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning)' }}>
                 {/* O rótulo LIGADO ao campo (J-31, design.md). */}
                 <label htmlFor="motivo-do-cancelamento" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)' }}>
