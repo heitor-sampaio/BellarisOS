@@ -295,6 +295,16 @@ predicado de `metrics_core.revenue_cash`. Receita por unidade, por forma de
 pagamento, por categoria, gasto por cliente e LTV saem DELE. Até 2026-09-27 os
 relatórios somavam esses gráficos por `created_at` e com estorno, ao lado de um
 KPI que não fazia nenhum dos dois.
+- **Pagar com CRÉDITO INTERNO não é receita** (F7 da 5ª, 2026-11-02; achado
+  da F2b): o dinheiro entrou quando a cliente pagou (o Pix do pacote que
+  virou crédito fica), e o crédito é só o saldo dela. O lançamento pago com
+  `payment_method = 'INTERNAL_CREDIT'` sai da fonte única e das contas que
+  repetem o predicado dela — `metrics_receitas_pagas`, `metrics_core`,
+  `metrics_by_branch`, `metrics_series`, `metrics_top_clients` e a composição
+  (migration `20261101000702`). Contava duas vezes: R$ 600 de receita para
+  R$ 300 que entraram. Função nova que soma receita paga parte de
+  `metrics_receitas_pagas` ou repete o predicado INTEIRO, com o crédito
+  interno fora. Prova: `e2e/indicadores-credito-interno.spec.ts`.
 - **LTV é o que o cliente PAGOU**, desde sempre (`metrics_do_cliente`,
   `metrics_top_clients`). Não é "preço dos atendimentos": atendimento concluído
   e não pago não é dinheiro que entrou.
