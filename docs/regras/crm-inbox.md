@@ -124,9 +124,14 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **Arquivar a cliente** (menu "Mais ações" da ficha, `clients: MANAGE`; era "Desativar") a tira das
   listas e da conta de CLIENTE NOVA do dashboard (`is_active` nas três contas: `metrics_core`,
   `metrics_by_branch`, `metrics_new_clients_series`, A24). Prova: `e2e/clientes-arquivar.spec.ts`.
-  Quem tem unidade fixa só arquiva a cliente CADASTRADA na unidade dela (`clients.branch_id`, a
-  mesma que a RLS confere; a tag "Unidade: …" é frequência, não abrangência; ficha sem unidade é da
-  rede): `toggleClientStatus` confere com `alcancaUnidade` antes de gravar (2026-10-27). Prova:
+- **A ficha é da CLÍNICA, não da unidade de cadastro** (H5, "A cliente é da clínica, pode agendar
+  em qualquer unidade da clínica"; F6 da 5ª simulação, o Heitor: "concordo"): quem tem Clientes em
+  Gerenciar edita os dados, as anotações e as tags e ARQUIVA/REATIVA a ficha de qualquer cliente da
+  rede, mesmo cadastrada em outra unidade — a recepção fixa na Zona Sul cuida da Marlene da
+  Moinhos. Toda gravação da ficha vai pelo SERVIDOR (cliente de serviço) com a rede na consulta:
+  `atualizarClienteCore` e `toggleClientStatus` (até 2026-11-02 o arquivar ia pela sessão, e a RLS
+  de `clients`, que recorta pela unidade de cadastro, o recusava com "Esta cliente é de outra
+  unidade."). A RLS não foi alargada. Prova: `e2e/ficha-de-outra-unidade.spec.ts`,
   `e2e/abrangencia-unidade.spec.ts`.
 - **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
   mostra marcada. Não há apagar.
@@ -579,5 +584,6 @@ o contato junto.
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
+❌ Gravar a ficha da cliente (dados, anotações, arquivar) pela SESSÃO — a RLS recorta pela unidade de cadastro e a cliente é da clínica: é pelo servidor, com a rede na consulta
 ❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })
 ```

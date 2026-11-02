@@ -270,18 +270,20 @@ test.describe.serial('quem tem unidade fixa age só na dela', () => {
     expect((await linha('users', f!.membroB.userId)).is_active, 'a rede desativa').toBe(false)
   })
 
-  // A unidade da cliente é a do CADASTRO (clients.branch_id) — a mesma que a
-  // RLS de clients confere. A tag "Unidade: …" (que o agendamento põe) é
-  // métrica de frequência, não abrangência: não dá à A a cliente da B.
-  test('clientes: não arquiva a cliente da B (nem com a tag da A); arquiva a da A', async ({ browser }) => {
-    expect((await linha('clients', f!.cliente)).tags as string[], 'o agendamento na A pôs a tag da A')
-      .toContain(`Unidade: ${PREFIXO} Unidade A ${marca}`)
+  // A cliente é da CLÍNICA (H5; F6 da 5ª simulação, 2026-11-02): a recepção
+  // da A arquiva e reativa também a cliente CADASTRADA na B, como já editava
+  // os dados dela. Até aqui a recusa ("Esta cliente é de outra unidade.") era
+  // a regra; a prova da tela é `e2e/ficha-de-outra-unidade.spec.ts`.
+  test('clientes: a recepção da A arquiva a cliente da B (a cliente é da clínica) e a da A', async ({ browser }) => {
     await como(browser, 'recepcaoA', async p => {
       const r = await acao(p, 'recepcaoA', 'clients', 'toggleClientStatus', [f!.cliente, false, f!.unidadeA.slug])
-      // A action recusa por si (a RLS é a segunda linha), e diz o porquê.
-      expect(devolvido(r.texto), 'a recusa é da action').toEqual({ error: 'Esta cliente é de outra unidade.' })
+      expect(devolvido(r.texto), 'a action aceita').toEqual({})
     })
-    expect((await linha('clients', f!.cliente)).is_active, 'a cliente da B segue ativa').toBe(true)
+    expect((await linha('clients', f!.cliente)).is_active, 'a A arquiva a da B').toBe(false)
+    await como(browser, 'recepcaoA', async p => {
+      await acao(p, 'recepcaoA', 'clients', 'toggleClientStatus', [f!.cliente, true, f!.unidadeA.slug])
+    })
+    expect((await linha('clients', f!.cliente)).is_active, 'e reativa').toBe(true)
 
     // A da A, a recepção da A arquiva — e reativa.
     await como(browser, 'recepcaoA', async p => {

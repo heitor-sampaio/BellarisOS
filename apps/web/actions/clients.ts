@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertClient, assertPermission, alcancaUnidade, can } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, can } from '@/lib/auth'
 import { SO_CONSULTA_CLIENTES } from '@/lib/clients/so-consulta'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -552,20 +552,13 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
 
-  // A abrangência (§11) se confere AQUI, não só na RLS: a unidade da cliente é
-  // a do cadastro (a tag "Unidade: …" é frequência, não abrangência), e quem
-  // tem unidade fixa só arquiva a dela. Ficha sem unidade é da rede.
-  const ficha = await ler(createAdminClient()
-    .from('clients')
-    .select('branch_id')
-    .eq('id', clientId)
-    .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle(), 'buscar o cliente')
-  if (!ficha) return { error: 'Cliente não encontrado.' }
-  if (!alcancaUnidade(ctx, ficha.branch_id as string | null)) return { error: 'Esta cliente é de outra unidade.' }
-
-  const supabase = await createSupabase()
-  const { data, error } = await supabase
+  // A cliente é da CLÍNICA (H5; F6 da 5ª simulação, o Heitor: "concordo"):
+  // quem tem Clientes em Gerenciar arquiva e reativa QUALQUER ficha da rede,
+  // mesmo cadastrada em outra unidade — como já editava os dados dela. Até
+  // 2026-11-02 isto gravava pela SESSÃO e recusava a ficha de outra unidade
+  // (a RLS de `clients` recorta pela unidade de cadastro); agora grava pelo
+  // servidor, com a rede conferida na própria consulta.
+  const { data, error } = await createAdminClient()
     .from('clients')
     .update({ is_active: isActive })
     .eq('id', clientId)
@@ -573,7 +566,7 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
     .select('id')
 
   if (error) return { error: `Não foi possível ${isActive ? 'reativar' : 'arquivar'} o cliente: ${error.message}` }
-  // Update pela sessão que atinge zero linhas não dá erro (RLS): sem isto a tela dizia que arquivou.
+  // Nenhuma linha: o id não é de uma cliente desta rede.
   if (!data?.length) return { error: `Não foi possível ${isActive ? 'reativar' : 'arquivar'} o cliente.` }
 
   await emitirEventoDeCliente(

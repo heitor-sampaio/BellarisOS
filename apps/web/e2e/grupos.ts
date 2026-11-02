@@ -57,6 +57,7 @@ export const ISOLADOS = [
   'credito-conceder-rotulos.spec.ts',
   'configuracoes-unidade-horario-e-cep.spec.ts',
   'clientes-arquivar.spec.ts',
+  'ficha-de-outra-unidade.spec.ts',
   'conclusao-atomica.spec.ts',
   'telefone-formatado.spec.ts',
   'crm-agendar-liga-oportunidade.spec.ts',
