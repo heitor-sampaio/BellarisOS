@@ -130,6 +130,8 @@ export async function updateBranch(
 
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)
+  // A aba Unidade do portal da unidade (H7): é por ela que a gerente edita a dela.
+  revalidatePath('/[slug]/settings', 'page')
   revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
   return { success: true }
 }

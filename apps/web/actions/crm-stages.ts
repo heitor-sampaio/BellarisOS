@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isStageOutcome, type StageOutcome } from '@/lib/crm'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 // Os tipos e o seed dos funis vivem em `lib/crm.ts` e `actions/crm-funnels.ts`:
 // arquivo `'use server'` só exporta função assíncrona.
@@ -35,6 +36,9 @@ export async function createStage(
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
 
     const name     = (formData.get('name')       as string)?.trim()
     const color    = (formData.get('color')      as string)?.trim() || '#c34d6b'
@@ -78,7 +82,7 @@ export async function createStage(
     revalidarCRM(slug)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -91,6 +95,8 @@ export async function renameStage(stageId: string, name: string, slug: string) {
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    if (recusaDaConfigDaClinica(ctx)) return
     if (!name.trim()) return
 
     const { error } = await createAdminClient()
@@ -115,6 +121,8 @@ export async function updateStageColor(stageId: string, color: string, slug: str
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    if (recusaDaConfigDaClinica(ctx)) return
 
     const { error } = await createAdminClient()
       .from('crm_stages')
@@ -144,6 +152,9 @@ export async function updateStageOutcome(
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
     if (!isStageOutcome(outcome)) return { error: 'Resultado inválido.' }
 
     const { error } = await createAdminClient()
@@ -157,7 +168,7 @@ export async function updateStageOutcome(
     revalidarCRM(slug)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -170,6 +181,9 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
 
     const admin = createAdminClient()
 
@@ -214,7 +228,7 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
     revalidarCRM(slug)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -227,6 +241,8 @@ export async function reorderStages(orderedIds: string[], slug: string) {
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    if (recusaDaConfigDaClinica(ctx)) return
 
     const admin = createAdminClient()
     // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a

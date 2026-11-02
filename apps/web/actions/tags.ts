@@ -5,6 +5,7 @@ import { getTenantContext, assertAnyPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { validarNomeDeTag } from '@/lib/tags/escolha'
 
 /**
@@ -44,6 +45,9 @@ export async function listarTagsComUso(): Promise<TagDaRede[]> {
 export async function criarTag(bruto: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const ctx = await getTenantContext()
   assertAnyPermission(ctx, [...QUEM_GERENCIA], 'MANAGE')
+  // O vocabulário é da clínica toda (H7): quem tem unidade fixa não o muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const v = validarNomeDeTag(String(bruto ?? ''))
   if ('error' in v) return { ok: false, error: v.error }
   const { error } = await createAdminClient().from('tags').insert({ tenant_id: ctx.tenantId!, nome: v.nome })
@@ -57,6 +61,8 @@ export async function renomearTag(id: string, bruto: string): Promise<
 > {
   const ctx = await getTenantContext()
   assertAnyPermission(ctx, [...QUEM_GERENCIA], 'MANAGE')
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const v = validarNomeDeTag(String(bruto ?? ''))
   if ('error' in v) return { ok: false, error: v.error }
   const admin = createAdminClient()
@@ -86,6 +92,8 @@ export async function renomearTag(id: string, bruto: string): Promise<
 export async function arquivarTag(id: string, arquivar: boolean): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertAnyPermission(ctx, [...QUEM_GERENCIA], 'MANAGE')
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const { data, error } = await createAdminClient().from('tags')
     .update({ arquivada_em: arquivar ? new Date().toISOString() : null })
     .eq('id', String(id ?? '')).eq('tenant_id', ctx.tenantId!).select('id')

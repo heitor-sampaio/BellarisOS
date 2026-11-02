@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createClient } from '@/lib/supabase/server'
 import { gravar, ler, contar } from '@/lib/db'
@@ -22,6 +23,9 @@ export async function createRole(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
+  // O cargo é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   const travado = bloqueioDoSuporte(ctx, 'criar cargo')
   if (travado) return { error: travado }
 
@@ -55,6 +59,9 @@ export async function updateRole(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
+  // O cargo é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   const travado = bloqueioDoSuporte(ctx, 'mudar as permissões de um cargo')
   if (travado) return { error: travado }
 
@@ -97,6 +104,9 @@ export async function updateRole(
 export async function deleteRole(roleId: string): Promise<{ error: string } | { success: true }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
+  // O cargo é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const supabase = await createClient()
 

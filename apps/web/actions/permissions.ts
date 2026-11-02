@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createClient } from '@/lib/supabase/server'
 import { ALL_MODULES, MODULE_LEVELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
@@ -22,6 +23,9 @@ export async function saveRolePermissions(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
+  // A matriz do cargo é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   const travado = bloqueioDoSuporte(ctx, 'mudar as permissões de um cargo')
   if (travado) return { error: travado }
 

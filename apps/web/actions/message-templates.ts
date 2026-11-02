@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   numerosOficiais, configDaWaba, importarCatalogoDaWaba, limparCatalogosSemNumero,
@@ -13,7 +14,7 @@ import {
 import {
   criarTemplateNaMeta, editarTemplateNaMeta, apagarTemplateNaMeta,
 } from '@/lib/templates/meta-api'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 export interface MessageTemplate {
   id:          string
@@ -111,6 +112,9 @@ export async function saveTemplate(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // O template é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   const rascunho: TemplateRascunho = {
@@ -227,6 +231,9 @@ export async function submitTemplate(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // O template é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -292,6 +299,9 @@ export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?:
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // O template é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -339,6 +349,9 @@ export async function syncTemplates(): Promise<{ ok: boolean; atualizados?: numb
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // O template é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   const contas = [...new Set((await numerosOficiais(ctx.tenantId!)).map(n => n.wabaId))]
@@ -387,5 +400,5 @@ function mensagemDeErro(error: { code?: string; message: string }): string {
 }
 
 function msg(e: unknown): string {
-  return e instanceof Error ? e.message : 'Erro desconhecido'
+  return e instanceof Error ? mensagemDoErro(e) : 'Erro desconhecido'
 }

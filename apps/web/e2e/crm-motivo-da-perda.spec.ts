@@ -52,8 +52,9 @@ test.beforeAll(async () => {
   sdr = await criarMembro(`mps${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'reports', nivel: 'VIEW' }],
   })
+  // Da REDE: montar o funil é configuração da clínica toda (H7, 2026-11-01).
   gerente = await criarMembro(`mpg${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
+    tenant: rede.tenantId, rotulo: 'Gerente', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
 })
 test.afterAll(async () => {

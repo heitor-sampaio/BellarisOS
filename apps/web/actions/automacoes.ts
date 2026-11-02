@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LIMITES_PADRAO, TIPOS_DE_GATILHO, ROTULOS_DE_NO, rotuloDoEvento } from '@estetica-os/types'
 import type {
@@ -186,6 +187,9 @@ export async function getAutomacao(id: string): Promise<{
 export async function criarAutomacao(nome: string): Promise<{ id?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const titulo = nome.trim()
   if (!titulo) return { error: 'Dê um nome à automação.' }
@@ -219,6 +223,9 @@ export async function criarAutomacao(nome: string): Promise<{ id?: string; error
 export async function criarAutomacaoDeModelo(chave: string): Promise<{ id?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const modelo = modeloDeAutomacao(String(chave ?? ''))
   if (!modelo) return { error: 'Modelo não encontrado.' }
@@ -254,6 +261,9 @@ export async function salvarAutomacao(input: {
 }): Promise<{ error?: string; problemas?: string[] }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   const admin = createAdminClient()
 
   const atual = await ler(admin
@@ -441,6 +451,9 @@ export async function mudarStatusDaAutomacao(
 ): Promise<{ error?: string; problemas?: string[] }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   const admin = createAdminClient()
 
   const { data, error: erroLeitura } = await admin
@@ -475,6 +488,9 @@ export async function mudarStatusDaAutomacao(
 export async function excluirAutomacao(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   const admin = createAdminClient()
 
   const data = await ler(admin
@@ -722,6 +738,9 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
 }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'MANAGE')
+  // A automação é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   const admin = createAdminClient()
 
   const auto = await ler(admin

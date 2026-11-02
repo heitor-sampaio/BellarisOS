@@ -55,6 +55,7 @@ const APELIDOS: Record<string, readonly string[]> = {
  */
 const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
   unidades:     ['salas', 'filiais', 'horário de funcionamento'],
+  unidade:      ['salas', 'horário de funcionamento', 'endereço da unidade'],
   permissions:  ['permissões', 'acessos', 'perfis'],
   fichas:       ['anamnese', 'formulários'],
   documentos:   ['termos', 'contratos', 'assinatura'],

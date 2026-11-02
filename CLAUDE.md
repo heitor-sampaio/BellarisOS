@@ -486,7 +486,8 @@ a minha unidade" × "a rede inteira", não "os meus registros").
 **Relatórios tem um eixo a mais**: `reports: VIEW` abre a tela, e
 `role_report_tabs` diz QUAIS abas o cargo enxerga — o time comercial vê o funil
 sem ver o faturamento. Sem nenhuma aba marcada, o módulo vale NONE
-(`buildContext`): a entrada some do menu em vez de abrir uma tela vazia. Ler com
+(`buildContext`): a entrada some do menu em vez de abrir uma tela vazia, e o
+resumo do cargo ("O que essa pessoa vai ver") diz por quê (A5). Ler com
 `podeVerRelatorio(ctx, aba)` — é o que a seção de relatórios usa.
 
 ```typescript
@@ -547,6 +548,16 @@ Regras:
   de cargo com valor fora das opções fica em "Selecione…", nunca no primeiro
   da lista (era o que rebaixava a dona). Prova:
   `e2e/equipe-dona-que-atende.spec.ts`.
+- **A configuração da clínica toda é de quem é da rede** (H7, decisão do
+  Heitor, 2026-11-01: "gerente de uma unidade só mexe no que é da unidade").
+  Com os módulos em Gerenciar, quem tem unidade fixa (`ctx.branchId !== null`)
+  não grava tags, funis, cargos, fichas, termos, integrações, automações,
+  campanhas, templates nem os dados da rede: a action devolve
+  `recusaDaConfigDaClinica` (`lib/configuracao-da-rede.ts`) e a aba diz "Esta
+  configuração é da clínica toda". Continua com a dela: a aba Unidade (dados,
+  horário, salas), o estoque, a equipe e as importações para a unidade. A
+  lista dos dois lados está em `docs/regras/plataforma.md`. Prova:
+  `e2e/permissoes-gerente-de-unidade.spec.ts`.
 - **A abrangência se confere na ACTION, não só no layout.** Registro de
   unidade que chega por id (agendamento, lançamento, plano, mapa, membro,
   unidade) passa por `alcancaUnidade` / `assertUnidade` (`lib/auth.ts`)
@@ -642,6 +653,8 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
 ❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
 ❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
+❌ Action que grava configuração da clínica toda sem recusaDaConfigDaClinica (a gerente de unidade fixa a mudava para todas — H7)
+❌ Botão que a pessoa não pode usar (o módulo em Ver, sem o módulo): a tela esconde, e a action devolve { error } em vez de lançar dentro do useActionState
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
 ❌ Expirar cache com revalidateTag 'max' (serve o velho mais uma vez) ou com updateTag (instável no unstable_cache — 2026-10-21) — é revalidateTag(tag, { expire: 0 }) (tests/cache-expira-na-hora.test.ts trava)

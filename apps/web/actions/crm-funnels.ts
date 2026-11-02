@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NEW_FUNNEL_STAGES } from '@/lib/crm'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 /**
  * Revalida o quadro nos dois portais.
@@ -36,6 +37,9 @@ export async function createFunnel(
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
 
     const name = (formData.get('name') as string)?.trim()
     const slug = (formData.get('_slug') as string)?.trim() ?? ''
@@ -76,7 +80,7 @@ export async function createFunnel(
     revalidarCRM(slug)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -90,6 +94,8 @@ export async function renameFunnel(funnelId: string, name: string, slug: string)
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    if (recusaDaConfigDaClinica(ctx)) return
     if (!name.trim()) return
 
     const { error } = await createAdminClient()
@@ -117,6 +123,9 @@ export async function setDefaultFunnel(funnelId: string, slug: string): Promise<
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
 
     const admin = createAdminClient()
 
@@ -148,7 +157,7 @@ export async function setDefaultFunnel(funnelId: string, slug: string): Promise<
     revalidarCRM(slug)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -162,6 +171,9 @@ export async function setFunnelArchived(
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
 
     const admin = createAdminClient()
 
@@ -188,7 +200,7 @@ export async function setFunnelArchived(
     revalidarCRM(slug)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -210,6 +222,9 @@ export async function deleteFunnel(funnelId: string, slug: string): Promise<Resu
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
 
     const admin = createAdminClient()
 
@@ -263,7 +278,7 @@ export async function deleteFunnel(funnelId: string, slug: string): Promise<Resu
     revalidarCRM(slug)
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -277,6 +292,8 @@ export async function reorderFunnels(orderedIds: string[], slug: string) {
     // 2026-10-29): Configurações em Gerenciar. Mover os cards segue do CRM.
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
+    // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
+    if (recusaDaConfigDaClinica(ctx)) return
 
     const admin = createAdminClient()
     // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a

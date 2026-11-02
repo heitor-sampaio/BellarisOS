@@ -1,6 +1,7 @@
 'use server'
 
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { acoesEmLote, type AcaoEmLote } from '@/lib/lotes/acoes'
@@ -23,6 +24,9 @@ export async function listarAcoesEmLote(): Promise<AcaoEmLote[]> {
 export async function repetirAcaoEmLote(id: string, tipo: TipoDeAcao = 'historico_whatsapp'): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   // A importação: continua de onde parou (a action confere o módulo do destino).
   if (tipo === 'importacao_contatos') return retomarImportacao(id)
   const linha = await ler(createAdminClient().from('whatsapp_historicos')

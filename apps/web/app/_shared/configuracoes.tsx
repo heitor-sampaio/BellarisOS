@@ -6,9 +6,14 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RolesEditor } from '@/components/admin/roles-editor'
 import type { AppModule, PermissionLevel, PermissionScope, ReportTab } from '@estetica-os/types'
+import type { ComponentProps } from 'react'
 import type { RoleModulePermission } from '@/components/admin/roles-editor'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
+import { BranchEditForm } from '@/components/admin/branch-edit-form'
+import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
+import { CONFIG_DA_CLINICA, mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { Lock } from 'lucide-react'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
 import { SettingsPreAtendimento } from '@/components/admin/settings-pre-atendimento'
 import { SettingsDocumentos } from '@/components/admin/settings-documentos'
@@ -47,7 +52,7 @@ import { SettingsComissoes } from '@/components/admin/settings-comissoes'
 import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao } from '@/lib/comissoes/leitura'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import {
-  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada, type ChaveDeAba,
+  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_CLINICA_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
 } from '@/lib/configuracoes/abas'
 
 /**
@@ -62,6 +67,12 @@ import {
  * Quais abas cada portal oferece é decisão da página, não daqui: `/admin` abre
  * as sete, a unidade fica sem "Unidades" (o card leva a `/admin/branches`) e
  * sem "LGPD" (a lista é da rede inteira, sem recorte por unidade).
+ *
+ * Quem tem UNIDADE FIXA (H7, decisão do Heitor, 2026-11-01: "gerente de uma
+ * unidade só mexe no que é da unidade") abre as abas da clínica toda
+ * (`ABAS_DA_CLINICA_TODA`) e lê de quem elas são, sem o editor — a action
+ * também recusa (`recusaDaConfigDaClinica`). Dela são a aba Unidade (os dados,
+ * o horário e as salas da unidade do portal) e as Importações.
  */
 
 // A lista das abas (e o módulo de cada uma) mora em `lib/configuracoes/abas.ts`,
@@ -130,16 +141,25 @@ export async function Configuracoes({
   const requested = abaPedida as ChaveDeAba | undefined
   // Cai na primeira aba permitida quando o link aponta para uma que este cargo
   // não acessa — em vez de renderizar a tela vazia.
+  // Sem aba pedida, quem tem unidade fixa abre na primeira que é DELA (a
+  // Unidade, as Importações), não num aviso de que a aba é da clínica toda.
+  const primeira = tabs.find(t => mexeNaConfigDaClinica(ctx) || !ABAS_DA_CLINICA_TODA.includes(t.key)) ?? tabs[0]!
   const activeTab: ChaveDeAba =
-    requested && tabs.some(t => t.key === requested) ? requested : tabs[0]!.key
+    requested && tabs.some(t => t.key === requested) ? requested : primeira.key
+
+  // H7 (decisão do Heitor, 2026-11-01): quem tem unidade fixa abre a aba da
+  // configuração da clínica toda e lê de quem ela é — sem o editor, e sem ler
+  // o que só o editor usa. A Geral mostra os dados, só para ler.
+  const daClinicaToda = !mexeNaConfigDaClinica(ctx) && ABAS_DA_CLINICA_TODA.includes(activeTab)
+  const conteudo: ChaveDeAba | null = daClinicaToda && activeTab !== 'general' ? null : activeTab
 
   const supabase = await createClient()
   const admin    = createAdminClient()
 
   // Cada bloco só é buscado quando a aba correspondente está aberta: as demais
   // não usam o dado, e o admin client ignora RLS.
-  const wantsRoles = activeTab === 'permissions'
-  const wantsForms = activeTab === 'fichas'
+  const wantsRoles = conteudo === 'permissions'
+  const wantsForms = conteudo === 'fichas'
 
   const [allRoles, overrides, abasDeRelatorio, integrationRows, formRows] = await Promise.all([
     // Admin client de propósito: a policy de SELECT em `users` limita quem não
@@ -167,7 +187,7 @@ export async function Configuracoes({
           .select('role_id, tab')
           .eq('tenant_id', ctx.tenantId!), 'carregar as abas de relatório dos cargos')
       : [],
-    activeTab === 'integrations'
+    conteudo === 'integrations'
       ? ler(admin
           .from('integration_configs')
           .select('id, provider, config, is_active, updated_at')
@@ -196,11 +216,11 @@ export async function Configuracoes({
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   // A lista mostra nomes de clientes e pede Clientes (Ver): sem o módulo, a tela
   // inteira caía em "sem acesso" (2026-10-21). Sem ele, a aba diz o porquê.
-  const lgpdSemClientes = activeTab === 'lgpd' && !can(ctx, 'clients', 'VIEW')
-  const lgpdRequests = activeTab === 'lgpd' && !lgpdSemClientes ? await listDataRequests() : []
-  const dadosDoSuporte = activeTab === 'suporte' && !ctx.suporte ? await dadosDaAbaSuporte(ctx.tenantId!) : null
+  const lgpdSemClientes = conteudo === 'lgpd' && !can(ctx, 'clients', 'VIEW')
+  const lgpdRequests = conteudo === 'lgpd' && !lgpdSemClientes ? await listDataRequests() : []
+  const dadosDoSuporte = conteudo === 'suporte' && !ctx.suporte ? await dadosDaAbaSuporte(ctx.tenantId!) : null
   // A assinatura do BellarisOS (o plano, as faturas): só a aba dela lê.
-  const assinatura = activeTab === 'assinatura' ? await lerAssinatura(ctx.tenantId!) : null
+  const assinatura = conteudo === 'assinatura' ? await lerAssinatura(ctx.tenantId!) : null
   const extrasDaAssinatura = assinatura ? await Promise.all([
     assinatura.assinatura?.planoId
       ? ler(admin.from('platform_plans').select('nome').eq('id', assinatura.assinatura.planoId).maybeSingle(), 'ler o plano')
@@ -219,29 +239,39 @@ export async function Configuracoes({
   // O consumo do Copilot no mês, para a aba (só com o Copilot no plano).
   const usoDoCopilotNaAba = assinatura && copilotNoPlano(ctx) ? await usoDoCopilot(admin, ctx.tenantId!, ctx.plano ?? null) : null
 
-  const modelosDeDocumento = activeTab === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
-  const linkPelaConversa = activeTab === 'documentos' ? await envioPelaConversaLigado(ctx.tenantId!) : false
+  const modelosDeDocumento = conteudo === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
+  const linkPelaConversa = conteudo === 'documentos' ? await envioPelaConversaLigado(ctx.tenantId!) : false
   const imagensDosModelos = modelosDeDocumento ? await urlsDasImagensDosModelos(modelosDeDocumento) : {}
 
   // Idem para os dados da própria rede.
-  const dadosDaRede = activeTab === 'general' ? await lerDadosDaRede() : null
+  const dadosDaRede = conteudo === 'general' ? await lerDadosDaRede() : null
+  // A unidade do portal (H7): os dados, o horário e as salas DELA — o que a
+  // gerente de unidade fixa continua mexendo (updateBranch e as salas conferem o alcance).
+  const unidadeParaEditar = conteudo === 'unidade' && unidadeDaTela
+    ? await Promise.all([
+        ler(admin.from('branches')
+          .select('id, name, document, state_registration, email, phone, address, city, state, zip_code, horario')
+          .eq('id', unidadeDaTela.id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'carregar a unidade'),
+        ler(admin.from('rooms').select('id, name, is_active').eq('branch_id', unidadeDaTela.id).order('name'), 'carregar as salas'),
+      ])
+    : null
   // A fidelidade é da rede: a aba só existe no portal da rede (ABAS_DA_UNIDADE não a tem).
-  const configFidelidade = activeTab === 'fidelidade' ? await configDaRede(ctx.tenantId!) : null
-  const catalogo = activeTab === 'fidelidade' ? await catalogoDeRecompensas() : null
-  const temLancamentos = activeTab === 'fidelidade' ? await redeTemLancamentos(ctx.tenantId!) : false
+  const configFidelidade = conteudo === 'fidelidade' ? await configDaRede(ctx.tenantId!) : null
+  const catalogo = conteudo === 'fidelidade' ? await catalogoDeRecompensas() : null
+  const temLancamentos = conteudo === 'fidelidade' ? await redeTemLancamentos(ctx.tenantId!) : false
   // As comissões também são da rede (a aba não está em ABAS_DA_UNIDADE).
-  const comissoes = activeTab === 'comissoes'
+  const comissoes = conteudo === 'comissoes'
     ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), taxasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!), maximoDeVezesDaRede(ctx.tenantId!)])
     : null
   const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
   // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
   // últimas linhas) e nenhuma outra aba as usa.
-  const [resumo, primeiraPagina] = activeTab === 'eventos'
+  const [resumo, primeiraPagina] = conteudo === 'eventos'
     ? await Promise.all([resumoDoCatalogo(), listarEventosDeDominio()])
     : [null, null]
-  const lotes = activeTab === 'lotes' ? await acoesEmLote(ctx.tenantId!) : null
-  const tagsDaRede = activeTab === 'tags' ? await listarTagsComUso() : null
+  const lotes = conteudo === 'lotes' ? await acoesEmLote(ctx.tenantId!) : null
+  const tagsDaRede = conteudo === 'tags' ? await listarTagsComUso() : null
 
   // Credencial não vai ao navegador: o segredo guardado vira o marcador
   // (lib/integracoes/sem-segredo.ts), e salvar com ele mantém o do banco.
@@ -252,12 +282,12 @@ export async function Configuracoes({
   // `integration_configs`. Ler de um lugar e gravar no outro faria o formulário
   // reabrir com o valor antigo depois de salvar — e é exatamente o tipo de
   // divergência que não dá erro nenhum.
-  const [numerosDeWhatsApp, opcoesDeVinculo] = activeTab === 'integrations'
+  const [numerosDeWhatsApp, opcoesDeVinculo] = conteudo === 'integrations'
     ? await Promise.all([listarNumerosWhatsApp(), opcoesDeVinculoDoNumero()])
     : [[], { unidades: [], pessoas: [] }]
   // Quantas conexões de WhatsApp o plano dá (o efetivo: plano + adicionais) e
   // quantas estão em uso — os ATIVOS, a mesma conta de conferirLimite.
-  const usoDoWhatsapp = activeTab === 'integrations'
+  const usoDoWhatsapp = conteudo === 'integrations'
     ? {
         emUso: numerosDeWhatsApp.filter(n => n.isActive).length,
         limite: limiteDe(lerRecursos(ctx.plano ?? null), 'whatsapp'),
@@ -348,11 +378,28 @@ export async function Configuracoes({
         />
       </div>
 
-      {activeTab === 'unidades' && (
+      {/* A configuração da clínica toda, para quem tem unidade fixa (H7). */}
+      {daClinicaToda && (
+        <div className="card" data-config-da-clinica style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '14px 18px', marginBottom: conteudo ? 20 : 0 }}>
+          <Lock size={15} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
+            {CONFIG_DA_CLINICA}
+          </p>
+        </div>
+      )}
+
+      {conteudo === 'unidade' && unidadeParaEditar?.[0] && (
+        <div style={{ maxWidth: 760, display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <BranchEditForm branch={unidadeParaEditar[0] as unknown as ComponentProps<typeof BranchEditForm>['branch']} />
+          <SalasDaUnidade branchId={unidadeDaTela!.id} salas={(unidadeParaEditar[1] ?? []) as SalaDaUnidade[]} />
+        </div>
+      )}
+
+      {conteudo === 'unidades' && (
         <SettingsBranches />
       )}
 
-      {activeTab === 'permissions' && (
+      {conteudo === 'permissions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
@@ -383,7 +430,7 @@ export async function Configuracoes({
         </div>
       )}
 
-      {activeTab === 'fichas' && (
+      {conteudo === 'fichas' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {preAtendimento && (() => {
             const [ficha, rede] = preAtendimento as [{ id: string; name: string; schema: unknown } | null, { pre_atendimento_envio: boolean; pre_atendimento_validade_meses: number }]
@@ -400,12 +447,12 @@ export async function Configuracoes({
         </div>
       )}
 
-      {activeTab === 'documentos' && modelosDeDocumento && (
+      {conteudo === 'documentos' && modelosDeDocumento && (
         <SettingsDocumentos modelos={modelosDeDocumento} imagens={imagensDosModelos}
           envio={{ pelaConversa: linkPelaConversa, podeMudar: ctx.branchId === null }} />
       )}
 
-      {activeTab === 'integrations' && (
+      {conteudo === 'integrations' && (
         <SettingsIntegrations
           initialConfigs={integrationConfigs}
           numeros={numerosDeWhatsApp}
@@ -422,7 +469,7 @@ export async function Configuracoes({
         />
       )}
 
-      {activeTab === 'assinatura' && assinatura && (
+      {conteudo === 'assinatura' && assinatura && (
         <SettingsAssinatura
           dados={assinatura}
           planoNome={(extrasDaAssinatura?.[0] as { nome: string } | null)?.nome ?? assinatura.rede.planName}
@@ -438,7 +485,7 @@ export async function Configuracoes({
         />
       )}
 
-      {activeTab === 'suporte' && (dadosDoSuporte
+      {conteudo === 'suporte' && (dadosDoSuporte
         ? <SettingsSuporte dados={dadosDoSuporte} podeClinico={podeIncluirClinico(ctx)} />
         : (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
@@ -452,20 +499,20 @@ export async function Configuracoes({
         </p>
       )}
 
-      {activeTab === 'lgpd' && !lgpdSemClientes && (
+      {conteudo === 'lgpd' && !lgpdSemClientes && (
         <SettingsLgpd
           requests={lgpdRequests}
           canReviewMedical={ctx.permissions.medical_records === 'MANAGE'}
         />
       )}
 
-      {activeTab === 'lotes' && lotes && <SettingsAcoesEmLote iniciais={lotes} />}
+      {conteudo === 'lotes' && lotes && <SettingsAcoesEmLote iniciais={lotes} />}
 
-      {activeTab === 'tags' && tagsDaRede && <SettingsTags iniciais={tagsDaRede} />}
+      {conteudo === 'tags' && tagsDaRede && <SettingsTags iniciais={tagsDaRede} />}
 
-      {activeTab === 'importacoes' && <ImportarContatos unidadeFixa={unidadeDaTela ?? null} />}
+      {conteudo === 'importacoes' && <ImportarContatos unidadeFixa={unidadeDaTela ?? null} />}
 
-      {activeTab === 'eventos' && resumo && primeiraPagina && (
+      {conteudo === 'eventos' && resumo && primeiraPagina && (
         <>
           {/* A corrente cresce enquanto a tela está aberta — quem veio conferir
               se um gatilho dispara quer ver o fato chegando, não recarregar. */}
@@ -480,7 +527,7 @@ export async function Configuracoes({
         </>
       )}
 
-      {activeTab === 'fidelidade' && configFidelidade && (
+      {conteudo === 'fidelidade' && configFidelidade && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
             temLancamentos={temLancamentos} />
@@ -491,14 +538,14 @@ export async function Configuracoes({
         </div>
       )}
 
-      {activeTab === 'comissoes' && comissoes && (
+      {conteudo === 'comissoes' && comissoes && (
         <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]} maximoDeVezes={comissoes[3].configurado}
           podeEditar={can(ctx, 'financial', 'MANAGE') && ctx.branchId === null} />
       )}
 
-      {activeTab === 'general' && (
+      {conteudo === 'general' && (
         dadosDaRede
-          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE')} naRede={ctx.branchId === null} />
+          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaClinica(ctx)} naRede={ctx.branchId === null} />
           : (
             <div className="card">
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

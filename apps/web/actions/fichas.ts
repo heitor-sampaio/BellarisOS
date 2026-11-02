@@ -12,7 +12,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { mensagemDoErro } from '@/lib/db'
 import { normalizeFormSchema, validateFormSchema } from '@/lib/anamnesis'
 
 type Result = { error?: string; id?: string; ok?: true }
@@ -27,6 +29,9 @@ export async function criarFicha(input: { name: string; schema: unknown }): Prom
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
 
@@ -48,7 +53,7 @@ export async function criarFicha(input: { name: string; schema: unknown }): Prom
     revalidate()
     return { id: data.id as string }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -58,6 +63,9 @@ export async function atualizarFicha(input: {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
 
@@ -84,7 +92,7 @@ export async function atualizarFicha(input: {
     revalidate()
     return { ok: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -92,6 +100,9 @@ export async function definirFichaAtiva(id: string, isActive: boolean): Promise<
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
     const admin = createAdminClient()
@@ -106,7 +117,7 @@ export async function definirFichaAtiva(id: string, isActive: boolean): Promise<
     revalidate()
     return { ok: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }
 
@@ -114,6 +125,9 @@ export async function apagarFicha(id: string): Promise<Result> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
     const admin = createAdminClient()
@@ -129,6 +143,6 @@ export async function apagarFicha(id: string): Promise<Result> {
     revalidate()
     return { ok: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
 }

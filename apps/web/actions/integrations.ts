@@ -2,11 +2,12 @@
 
 import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
-import { ler } from '@/lib/db'
+import { ler, mensagemDoErro } from '@/lib/db'
 import { enderecoPublico } from '@/lib/whatsapp/endereco-publico'
 import { mascararSegredos, mesclarSegredos } from '@/lib/integracoes/sem-segredo'
 import { cifrarSegredos, decifrarSegredos } from '@/lib/integracoes/cofre'
@@ -60,6 +61,9 @@ export async function salvarNumeroWhatsApp(
 ): Promise<{ ok: boolean; numeroId?: string; error?: string; avisos?: string[] }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const admin = createAdminClient()
 
@@ -259,6 +263,9 @@ export async function conectarWhatsAppPelaMeta(pedido: {
 }): Promise<{ ok: true; numeroId: string; avisos: string[] } | { ok: false; error: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const modo: ModoOficial = pedido?.modo === 'cloud_api' ? 'cloud_api' : 'coexistencia'
 
   const r = await conectarPeloCadastro(ctx.tenantId!, { ...pedido, modo })
@@ -284,6 +291,9 @@ export async function definirNumeroPadrao(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   const alvo = await ler(admin
@@ -349,6 +359,9 @@ export async function saveAdsConfig(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const admin = createAdminClient()
   const anterior = await ler(admin
@@ -403,6 +416,9 @@ export async function confirmMetaAdsSelection(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const admin = createAdminClient()
 
@@ -508,7 +524,7 @@ export async function fetchMetaAdAccounts(): Promise<{
       pixels: [...pixels].map(([id, name]) => ({ id, name })),
     }
   } catch (e) {
-    return { ok: false, error: (e as Error).message }
+    return { ok: false, error: mensagemDoErro(e) }
   }
 }
 
@@ -516,6 +532,9 @@ export async function disconnectMetaAds(): Promise<{ ok: boolean; error?: string
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const admin = createAdminClient()
 
@@ -546,6 +565,9 @@ export async function confirmMetaPageSelection(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const admin = createAdminClient()
   const existing = await ler(admin
@@ -589,6 +611,9 @@ export async function confirmMetaPageSelection(
 export async function disconnectMetaMessaging(): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -634,6 +659,9 @@ export async function atualizarVinculosDoNumero(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   const rotulo = dados.rotulo.trim()
@@ -696,6 +724,9 @@ export async function removerNumeroWhatsApp(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   const alvo = await ler(admin

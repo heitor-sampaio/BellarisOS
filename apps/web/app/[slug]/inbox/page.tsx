@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
+import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
@@ -104,7 +105,8 @@ export default async function BranchInboxPage({
         slug={slug}
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}
-        podeConfigurarIntegracoes={can(ctx, 'settings', 'MANAGE')}
+        // A integração é da clínica toda: a gerente de unidade fixa pede a quem administra (H7).
+        podeConfigurarIntegracoes={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaClinica(ctx)}
         numerosDaRede={canais.numeros}
         numeroDoUsuario={canais.numeroDoUsuario}
       />

@@ -427,6 +427,8 @@ interface CRMBoardProps {
    * entra no card). Fora da lista carregada (alcance, outro funil), nada abre.
    */
   leadAberto?:  string | null
+  /** "Converter" o lead em cliente pede Clientes em Gerenciar (D4, 2026-11-01). */
+  podeCadastrarCliente?: boolean
 }
 
 // --- Cores suaves a partir de hex --------------------------------
@@ -470,7 +472,7 @@ function MenuItem({
 
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
-  lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs,
+  lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs, podeCadastrarCliente = false,
   isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
 }: {
   lead:           Lead
@@ -483,6 +485,7 @@ function LeadCard({
   procedures:     Procedure[]
   branches?:      { id: string; name: string; slug: string }[]
   networkMode?:   boolean
+  podeCadastrarCliente?: boolean
   /** Nulo antes de montar — ver o useState lá embaixo. */
   nowMs:          number | null
   isDragging:     boolean
@@ -911,8 +914,9 @@ function LeadCard({
           </span>
           {lead.client_id ? (
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--success)', fontWeight: 700 }}>✓ Cliente</span>
-          ) : networkMode ? (
-            // Lead de rede converte no painel do inbox (escolhe a unidade de cadastro).
+          ) : networkMode || !podeCadastrarCliente ? (
+            // Lead de rede converte no painel do inbox (escolhe a unidade de cadastro);
+            // e converter é cadastrar: sem Clientes em Gerenciar, nada (D4).
             null
           ) : (
             <button
@@ -971,7 +975,7 @@ const semRelogio = () => null
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId, unidades,
-  procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [],
+  procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [], podeCadastrarCliente = false,
 }: CRMBoardProps) {
   // Levar o card à etapa de desfecho perdido pergunta o motivo antes de mover.
   const [perdaPendente, setPerdaPendente] = useState<{ id: string; etapa: string } | null>(null)
@@ -1263,6 +1267,7 @@ export function CRMBoard({
                   unidades={unidades}
                   procedures={procedures} branches={branches}
                   networkMode={networkMode}
+                  podeCadastrarCliente={podeCadastrarCliente}
                   nowMs={nowMs}
                   isDragging={draggingId === lead.id}
                   onDragStart={handleDragStart}

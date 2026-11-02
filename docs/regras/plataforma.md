@@ -510,6 +510,47 @@ um muro que não depende de cada trava do código.
 - Um gatilho garante que o chamado de uma autorização ou sessão é da mesma rede.
 - Tabelas: RLS ligada e ZERO políticas. Prova: `e2e/chamados.spec.ts`.
 
+**A configuração da clínica toda (H7, decisão do Heitor, 2026-11-01:
+"gerente de uma unidade só mexe no que é da unidade"):**
+- A gerente de unidade fixa, com os módulos em Gerenciar, abria Configurações
+  no portal da unidade e gravava o que vale para todas as unidades (A6 da 5ª
+  simulação) — a tela só avisava "alterar aqui muda para todas". A trava é da
+  ABRANGÊNCIA (`ctx.branchId`), nunca do nome do cargo: `mexeNaConfigDaClinica`
+  / `recusaDaConfigDaClinica` (`lib/configuracao-da-rede.ts`), na action E na
+  tela.
+- **Fica com quem é da rede** (a action recusa, a aba diz "Esta configuração é
+  da clínica toda" sem o editor, `ABAS_DA_CLINICA_TODA`): tags
+  (`actions/tags.ts`), funis, etapas e motivos de perda (`crm-funnels`,
+  `crm-stages`, `crm-motivos`; o "Configurar funis" some do quadro da
+  unidade), cargos, a matriz e quem vê o inbox (`roles`, `permissions`,
+  `rede.atualizarVisibilidadeDoInbox`), os dados da rede e o setup
+  (`rede.atualizarDadosDaRede`, `setup`; a aba Geral fica só para ler), as
+  fichas (`fichas`) e a de pré-atendimento, os modelos de termo e contrato
+  (`modelos-de-documento`), as integrações e as caixas de WhatsApp
+  (`integrations`, `uazapi-connection`, o OAuth da Meta em `/api/oauth/meta`;
+  o inbox vazio manda pedir a quem administra), as ações em lote
+  (`acoes-em-lote`), as automações, as campanhas e os templates (que já eram
+  só do portal da rede, D-2). Já eram da rede antes: o catálogo de
+  procedimentos, as categorias e os pacotes, a fidelidade, a configuração de
+  comissões, as taxas e a comissão do procedimento, criar/desativar unidade, a
+  assinatura e o suporte.
+- **Fica com a unidade** (o alcance de sempre, `alcancaUnidade`): a aba
+  **Unidade** do portal da unidade (nova): os dados, o horário e as salas da
+  unidade do endereço (`updateBranch`, `actions/salas.ts`); o estoque dela
+  (entrada, ajuste, perda, mínimo, transferência que sai dela); a equipe dela
+  (e a comissão de quem é dela); as importações para a unidade dela; os
+  cadastros e a operação do dia.
+- Decisões desta frente, para o Heitor revisar: o CATÁLOGO de produtos e as
+  categorias do estoque (`createProduct`, `createCategory`) e as respostas
+  rápidas do inbox (`quick-replies`) seguem com a unidade — a entrada do
+  estoque dela e o atendimento do inbox dependem deles; as Importações também
+  (são dados para a unidade dela, não configuração).
+- Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
+  é DELA.
+- Prova: `e2e/permissoes-gerente-de-unidade.spec.ts` (a action direta de cada
+  área recusada para a gerente, com a dona como controle; a aba Unidade; as
+  telas).
+
 ---
 
 ## O que nunca fazer aqui
@@ -552,5 +593,6 @@ um muro que não depende de cada trava do código.
 ❌ Criar cliente ou assinatura no Asaas sem procurar antes pelo externalReference (o Asaas aceita duplicado)
 ❌ Webhook do Asaas que responde diferente de 200 para o que já gravou (o Asaas repete e, com 15 falhas, pausa a fila)
 ❌ Mandar automação, campanha ou push ao paciente de uma rede bloqueada (redeEstaBloqueada)
+❌ Action ou tela que grava configuração da clínica toda sem recusaDaConfigDaClinica / mexeNaConfigDaClinica (a gerente de unidade fixa mudava para todas — H7), ou decidir isso pelo nome do cargo
 ❌ Chamar assinaturas_aplicar_regras em teste sem p_tenant (vale para as redes reais)
 ```

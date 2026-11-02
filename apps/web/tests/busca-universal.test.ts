@@ -105,9 +105,17 @@ describe('paginasQueCasam', () => {
     expect(paginasQueCasam(paginas, 'importar').map(r => r.id)).toContain('settings:importacoes')
   })
 
-  it('o apelido não abre tela que a pessoa não abre: na unidade, "sala" não acha nada', () => {
-    expect(paginasQueCasam(paginasDaBusca('centro', ALL_PERMISSIONS), 'sala')).toEqual([])
+  it('o apelido não abre tela que a pessoa não abre: sem Configurações em Gerenciar, "sala" não acha nada', () => {
     expect(paginasQueCasam(paginasDaBusca(null, com({ settings: 'VIEW' })), 'sala')).toEqual([])
+    expect(paginasQueCasam(paginasDaBusca('centro', com({ settings: 'VIEW' })), 'sala')).toEqual([])
+  })
+
+  // H7 (2026-11-01): a unidade tem a aba Unidade (os dados, o horário e as
+  // salas dela) — a busca a acha no portal da unidade.
+  it('na unidade, "sala" leva à aba Unidade', () => {
+    expect(paginasQueCasam(paginasDaBusca('centro', ALL_PERMISSIONS), 'sala')).toEqual([
+      expect.objectContaining({ id: 'settings:unidade', href: '/centro/settings?tab=unidade', subtitulo: 'Salas' }),
+    ])
   })
 
   it('achada pelo próprio nome, a página não leva subtítulo', () => {

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
@@ -128,6 +129,9 @@ export async function createCampaign(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // A campanha é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -165,6 +169,9 @@ export async function updateCampaign(
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // A campanha é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const admin = createAdminClient()
 
@@ -209,6 +216,9 @@ export async function activateCampaign(id: string): Promise<{ error?: string }> 
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // A campanha é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'disparar campanha')
   if (travado) return { error: travado }
@@ -249,6 +259,9 @@ export async function pauseCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // A campanha é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -268,6 +281,9 @@ export async function archiveCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // A campanha é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -285,6 +301,9 @@ export async function deleteCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
+  // A campanha é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const admin = createAdminClient()
 

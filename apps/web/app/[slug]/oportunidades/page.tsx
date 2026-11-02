@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
+import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -162,7 +163,8 @@ export default async function BranchOportunidadesPage({
   // Configurar funis (funis, etapas, motivos de perda) é configuração da
   // clínica: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29).
   // Mover os cards continua com quem opera o quadro (`crm`).
-  const podeConfigurar = can(ctx, 'settings', 'MANAGE')
+  // E é da clínica toda: quem tem unidade fixa não configura (H7, 2026-11-01).
+  const podeConfigurar = can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaClinica(ctx)
 
   return (
     <div className="crm-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -226,6 +228,7 @@ export default async function BranchOportunidadesPage({
         branchName={branch.name}
         slug={slug}
         leadAberto={leadAberto}
+        podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
       />
     </div>
   )

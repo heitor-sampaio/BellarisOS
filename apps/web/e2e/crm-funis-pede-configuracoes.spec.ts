@@ -33,8 +33,11 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
   })
+  // Da REDE: o funil é configuração da clínica toda, e quem tem unidade fixa
+  // não o muda nem com Configurações (H7, 2026-11-01 —
+  // e2e/permissoes-gerente-de-unidade.spec.ts).
   configuradora = await criarMembro(`cfpc${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Gerente',
+    tenant: rede.tenantId, rotulo: 'Gerente',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
 })

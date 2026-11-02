@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, can } from '@/lib/auth'
+import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { MetaMessagingPage } from '@/lib/meta/messaging'
 import { origemPublica, urlPublica } from '@/lib/origem'
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
   // Meta dele no lugar.
   const ctx = await getTenantContext().catch(() => null)
   if (!ctx) return NextResponse.redirect(makeErrUrl('sem_sessao'))
-  if (!can(ctx, 'settings', 'MANAGE')) return NextResponse.redirect(makeErrUrl('sem_permissao'))
+  if (!can(ctx, 'settings', 'MANAGE') || !mexeNaConfigDaClinica(ctx)) return NextResponse.redirect(makeErrUrl('sem_permissao'))
 
   try {
     const origin      = origemPublica(req)

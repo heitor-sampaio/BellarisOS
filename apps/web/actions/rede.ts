@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { maskPhone } from '@estetica-os/utils'
@@ -72,6 +73,9 @@ export async function atualizarDadosDaRede(
 ): Promise<{ error: string } | { success: true }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // O dado da rede é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   const texto = (k: string) => (formData.get(k) as string | null)?.trim() || null
 
@@ -155,6 +159,9 @@ export async function atualizarVisibilidadeDoInbox(
 ): Promise<{ error: string } | { success: true }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
+  // Quem vê o inbox é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { error: daClinica }
 
   if (modo !== 'pessoa' && modo !== 'conversa') return { error: 'Opção inválida.' }
 

@@ -3,6 +3,7 @@
 import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { UazapiConfig, NumeroDeWhatsApp } from '@/lib/whatsapp/types'
 import {
@@ -13,7 +14,7 @@ import {
 import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { getNumero } from '@/lib/whatsapp/factory'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
-import { gravar, ler, tentar } from '@/lib/db'
+import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { cifrarSegredos } from '@/lib/integracoes/cofre'
 import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
 import { dispararHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
@@ -103,6 +104,9 @@ async function numeroDaRede(
 export async function trazerHistoricoUazapi(numeroId: string): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   if (!numero.isActive) return { ok: false, error: 'Conecte o número antes de trazer o histórico.' }
@@ -201,7 +205,7 @@ export async function getEstadoConexaoUazapi(
       await marcarConectada(numero, base.phone, base.name, ctx)
     }
   } catch (e) {
-    base.erro = e instanceof Error ? e.message : 'Falha ao consultar a instância.'
+    base.erro = e instanceof Error ? mensagemDoErro(e) : 'Falha ao consultar a instância.'
   }
 
   try {
@@ -236,6 +240,9 @@ export async function criarConexaoUazapi(
 ): Promise<{ ok: boolean; numeroId?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const admin = createAdminClient()
 
   if (!conexaoGerenciadaDisponivel()) {
@@ -300,7 +307,7 @@ export async function criarConexaoUazapi(
     // o erro que a tela precisa é o da instância; uma linha que sobrar fica
     // registrada no log.
     await tentar(admin.from('whatsapp_numbers').delete().eq('id', numeroId), 'apagar o número sem instância')
-    return { ok: false, error: e instanceof Error ? e.message : 'Falha ao criar a instância.' }
+    return { ok: false, error: e instanceof Error ? mensagemDoErro(e) : 'Falha ao criar a instância.' }
   }
 
   const base = (process.env.UAZAPI_BASE_URL ?? '').replace(/\/$/, '')
@@ -368,6 +375,9 @@ export async function repararConexaoUazapi(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
@@ -382,7 +392,7 @@ export async function repararConexaoUazapi(
     const proxyUrl = proxyParaTenant(ctx.tenantId!)
     if (proxyUrl) await definirProxy(baseDa(config), config.token, proxyUrl)
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Falha ao reparar.' }
+    return { ok: false, error: e instanceof Error ? mensagemDoErro(e) : 'Falha ao reparar.' }
   }
 
   revalidatePath('/admin/settings')
@@ -394,6 +404,8 @@ export async function getQrCodeUazapi(numeroId: string): Promise<{
 }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
@@ -419,7 +431,7 @@ export async function getQrCodeUazapi(numeroId: string): Promise<{
     const par = await conectarInstancia(baseDa(config), config.token)
     return { ok: true, conectada: false, qr: par.qrcode, paircode: par.paircode }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Falha ao obter o QR code.' }
+    return { ok: false, error: e instanceof Error ? mensagemDoErro(e) : 'Falha ao obter o QR code.' }
   }
 }
 
@@ -430,6 +442,9 @@ export async function getCodigoPareamentoUazapi(
 ): Promise<{ ok: boolean; code?: string | null; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const digitos = telefone.replace(/\D/g, '')
   if (digitos.length < 10) return { ok: false, error: 'Informe o número com DDD.' }
@@ -442,7 +457,7 @@ export async function getCodigoPareamentoUazapi(
     const par = await conectarInstancia(baseDa(config), config.token, digitos)
     return { ok: true, code: par.paircode }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Falha ao gerar o código.' }
+    return { ok: false, error: e instanceof Error ? mensagemDoErro(e) : 'Falha ao gerar o código.' }
   }
 }
 
@@ -515,6 +530,9 @@ export async function desconectarUazapi(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
@@ -523,7 +541,7 @@ export async function desconectarUazapi(
   try {
     await desconectarInstancia(baseDa(config), config.token)
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Falha ao desconectar.' }
+    return { ok: false, error: e instanceof Error ? mensagemDoErro(e) : 'Falha ao desconectar.' }
   }
 
   const { error } = await createAdminClient()
@@ -555,6 +573,9 @@ export async function removerConexaoUazapi(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
@@ -565,7 +586,7 @@ export async function removerConexaoUazapi(
   } catch (e) {
     return {
       ok: false,
-      error: `O servidor do WhatsApp Web recusou remover: ${e instanceof Error ? e.message : 'erro desconhecido'}. `
+      error: `O servidor do WhatsApp Web recusou remover: ${e instanceof Error ? mensagemDoErro(e) : 'erro desconhecido'}. `
            + 'A conexão foi mantida para não gerar cobrança sem dono.',
     }
   }

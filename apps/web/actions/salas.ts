@@ -41,6 +41,8 @@ async function salaAoAlcance(ctx: TenantContext, salaId: unknown): Promise<{ id:
 function expirar(ctx: TenantContext, branchId: string) {
   revalidateTag(`rooms:${ctx.tenantId!}`, { expire: 0 })
   revalidatePath(`/admin/branches/${branchId}`)
+  // A aba Unidade do portal da unidade (H7, 2026-11-01).
+  revalidatePath('/[slug]/settings', 'page')
 }
 
 function recusaDoBanco(e: { code?: string; message?: string } | null): string | null {

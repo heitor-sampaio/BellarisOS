@@ -15,6 +15,9 @@ import { Configuracoes, ABAS_DA_UNIDADE } from '@/app/_shared/configuracoes'
  * nada. Fora daqui ficam "Unidades" (o card leva a `/admin/branches`) e
  * "LGPD" (a lista é da rede inteira, sem recorte por unidade).
  *
+ * Quem tem unidade fixa edita a aba Unidade (a dela) e importa para ela; as
+ * outras abas são da clínica toda e só dizem isso (H7, 2026-11-01).
+ *
  * A checagem é própria porque o layout protege a navegação, não a URL.
  */
 export default async function BranchSettingsPage({
@@ -39,8 +42,11 @@ export default async function BranchSettingsPage({
       basePath={`/${slug}/settings`}
       abas={ABAS_DA_UNIDADE}
       abaPedida={tab}
-      subtitulo="Cargos, modelos de ficha e integrações da rede"
-      aviso="Estas configurações valem para a rede inteira. Alterar aqui muda para todas as unidades."
+      // Quem tem unidade fixa mexe só na unidade dela (H7, 2026-11-01): o resto
+      // das abas diz que é da clínica toda, e o aviso de "alterar aqui muda para
+      // todas" sairia convidando a mexer. Quem é da rede continua lendo o aviso.
+      subtitulo={ctx.branchId === null ? 'Cargos, modelos de ficha e integrações da rede' : 'Os dados e as salas da unidade, e o que vale para a clínica toda'}
+      aviso={ctx.branchId === null ? 'Estas configurações valem para a rede inteira. Alterar aqui muda para todas as unidades.' : undefined}
       atalhoParaEquipe={false}
       unidadeDaTela={{ id: unidade.id as string, nome: unidade.name as string }}
       metaStep={meta_step}

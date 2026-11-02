@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { getTenantContext, can, temRecurso } from '@/lib/auth'
+import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { origemPublica } from '@/lib/origem'
 
 /**
@@ -36,7 +37,8 @@ export async function GET(req: NextRequest) {
   // Configurações. `/api/*` é público no proxy, então a sessão também é daqui.
   const ctx = await getTenantContext().catch(() => null)
   if (!ctx) return new NextResponse('Entre no sistema para conectar.', { status: 401 })
-  if (!can(ctx, 'settings', 'MANAGE')) {
+  // A integração é da clínica toda (H7): quem tem unidade fixa não conecta.
+  if (!can(ctx, 'settings', 'MANAGE') || !mexeNaConfigDaClinica(ctx)) {
     return new NextResponse('Sem permissão para conectar integrações.', { status: 403 })
   }
 

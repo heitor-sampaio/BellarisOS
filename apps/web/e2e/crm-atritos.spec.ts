@@ -32,8 +32,10 @@ test.beforeAll(async () => {
   sdr = await criarMembro(`crs${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'SDR', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
   })
+  // Da REDE: as integrações são da clínica toda, e o atalho é de quem as muda
+  // (H7, 2026-11-01: a gerente de unidade fixa pede a quem administra).
   admin = await criarMembro(`cra${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Admin',
+    tenant: rede.tenantId, rotulo: 'Admin',
     permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }],
   })
 })
