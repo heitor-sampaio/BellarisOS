@@ -21,6 +21,8 @@ interface AppointmentEvent {
   procedureName:    string
   professionalName: string
   price:            string
+  /** Já pago antes (D12): o texto que substitui o valor ("Pré-pago · 1 de 2"). */
+  pagoAntes?:       string | null
   start:            string
   /** Cancelado: o motivo, inteiro (o bloco da grade o corta). */
   motivoDoCancelamento?: string | null
@@ -232,10 +234,23 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', marginTop: 3 }}>{appointment.professionalName}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p className="overline">Valor</p>
-                <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', marginTop: 3 }}>
-                  {parseFloat(appointment.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
+                {/* D12: o pré-pago, a sessão do pacote e a do plano já foram
+                    pagos — o valor ali parecia cobrança pendente. */}
+                {appointment.pagoAntes ? (
+                  <>
+                    <p className="overline">Já pago</p>
+                    <p data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--success)', marginTop: 3 }}>
+                      {appointment.pagoAntes}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="overline">Valor</p>
+                    <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', marginTop: 3 }}>
+                      {parseFloat(appointment.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}

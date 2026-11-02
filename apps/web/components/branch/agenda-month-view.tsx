@@ -17,6 +17,8 @@ export interface CalendarEvent {
   professionalId:  string
   professionalName: string
   price:           string
+  /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
+  pagoAntes?:      string | null
   /** A ficha de saúde da cliente para este horário (selo no bloco). */
   fichaDeSaude?:   SeloDaFichaEstado | null
   /** O check-in (2026-10-21): quando chegou. */

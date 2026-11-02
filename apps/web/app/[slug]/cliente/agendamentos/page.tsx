@@ -5,6 +5,7 @@ import { CalendarDays, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-r
 import { ler, contar } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
+import { pagosAntes } from '@/lib/appointments/pago-antes'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -36,6 +37,8 @@ type Appt = {
   procedures:    { name: string } | null
   professionals: { name: string } | null
   branches:      { name: string } | null
+  /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
+  pagoAntes?:    string | null
 }
 
 export default async function ClientAgendaPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -64,7 +67,9 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         .eq('tenant_id', ficha.tenant_id).eq('is_active', true), 'contar as unidades da clínica')) ?? 0) > 1
     : false
 
-  const appointments = (data ?? []) as unknown as Appt[]
+  // O que já foi pago antes (D12): pré-pago, pacote, plano — sem o "R$" a pagar.
+  const jaPagos = await pagosAntes(admin, (data ?? []).map(a => a.id as string))
+  const appointments = ((data ?? []) as unknown as Appt[]).map(a => ({ ...a, pagoAntes: jaPagos.get(a.id) ?? null }))
   // A mesma regra da home (D14): o que ainda vai acontecer, em aberto.
   const { proximos: upcoming, historico: past } = separarAgendaDoPortal(appointments)
 
@@ -229,7 +234,11 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
             <span data-hora-real>· {textoDoConcluido(appt.scheduled_at, appt.completed_at)}</span>
           )}
         </span>
-        {appt.price > 0 && (
+        {appt.pagoAntes ? (
+          <span data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)', marginLeft: 'auto' }}>
+            {appt.pagoAntes}
+          </span>
+        ) : appt.price > 0 && (
           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto' }}>
             {price}
           </span>

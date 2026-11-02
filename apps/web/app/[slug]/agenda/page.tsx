@@ -11,6 +11,7 @@ import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 import { selosDaFicha } from '@/lib/pre-atendimento/selos'
 import { abertosDeAntes } from '@/lib/agenda/abertos-de-antes'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
+import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
@@ -136,12 +137,14 @@ export default async function AgendaPage({ params, searchParams }: {
   // o membro só à unidade dele, e a cliente de outra unidade e o profissional
   // da rede viravam "—". Os agendamentos acima já são os desta unidade, ao
   // alcance da sessão; daqui saem só os nomes de quem está neles.
-  const [selos, nomes] = await Promise.all([
+  // O que já foi pago antes (D12): pré-pago, pacote, plano — a janela não o mostra como valor a cobrar.
+  const [selos, nomes, jaPagos] = await Promise.all([
     selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[]),
     nomesDosRegistros(ctx.tenantId!, {
       clientes: (rawAppointments ?? []).map(a => a.client_id as string | null),
       membros:  (rawAppointments ?? []).map(a => a.professional_id as string | null),
     }),
+    pagosAntes(createAdminClient(), (rawAppointments ?? []).map(a => a.id as string)),
   ])
 
   // Mapeia appointments para eventos do FullCalendar
@@ -160,6 +163,7 @@ export default async function AgendaPage({ params, searchParams }: {
       professionalName: (a.professional_id && nomes.membros[a.professional_id]) || '—',
       professionalId:   a.professional_id ?? '',
       price:            String(a.price),
+      pagoAntes:        jaPagos.get(a.id as string) ?? null,
       fichaDeSaude:     selos[a.id] ?? null,
       arrivedAt:        (a as { arrived_at?: string | null }).arrived_at ?? null,
       completedAt:      (a as { completed_at?: string | null }).completed_at ?? null,

@@ -295,6 +295,12 @@
   horário com quem o ocupou depois (o ativo à esquerda). A agenda da rede, que
   sempre os mostrou, apaga o bloco e diz o motivo. Prova:
   `e2e/agenda-cancelados.spec.ts`.
+- **O que já foi pago aparece como PAGO** (D12 da 5ª simulação): a janela da
+  agenda (unidade e rede) e a Agenda do app da cliente mostram "Pré-pago · 1
+  de 2", "Pacote X · sessão 1 de 2" ou "Sessão do plano de tratamento" no
+  lugar do valor (`pagosAntes`, `lib/appointments/pago-antes.ts`; na janela,
+  "Já pago"). Era "VALOR R$ 140,00", lido como cobrança pendente. Prova:
+  `e2e/agenda-pago-antes.spec.ts`.
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).

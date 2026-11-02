@@ -33,6 +33,8 @@ interface Appointment {
   users:           { name: string } | null
   /** A ficha de saúde da cliente para este horário (selo no bloco). */
   ficha?:          EstadoDaFicha | null
+  /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
+  pagoAntes?:      string | null
 }
 
 interface Props {
@@ -677,6 +679,7 @@ export function AdminAgendaView({
             procedureName:    selecionado.procedures?.name ?? '—',
             professionalName: selecionado.users?.name ?? '—',
             price:            String(selecionado.price ?? 0),
+            pagoAntes:        selecionado.pagoAntes ?? null,
             start:            selecionado.scheduled_at,
             motivoDoCancelamento: selecionado.cancellation_reason ?? null,
           }}
