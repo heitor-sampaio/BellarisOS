@@ -27,6 +27,8 @@ interface Props {
   clients:           ClientItem[]
   basePath:          string          // e.g. "/bellaris-sp/clients" or "/admin/clients"
   totalActive:       number
+  /** As ativas que frequentam cada unidade, do banco (A24): o contador acompanha o filtro de unidade. */
+  ativosPorUnidade?: Record<string, number>
   newClientHref?:    string | null   // null = hide button; undefined = basePath + "/new"
   availableBranches?: { id: string; name: string; slug?: string }[]  // admin-only: shows branch filter
   /** A unidade da abrangência de quem vê: vence o `?unidade=` da URL (J-54). */
@@ -52,6 +54,7 @@ export function ClientsSidebar({
   clients,
   basePath,
   totalActive,
+  ativosPorUnidade,
   newClientHref,
   availableBranches,
   unidadeFixa = null,
@@ -150,8 +153,10 @@ export function ClientsSidebar({
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
               Clientes
             </h2>
-            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {totalActive.toLocaleString('pt-BR')} ativos
+            <span data-contador-de-clientes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
+              {selectedBranchId && selectedBranchName && ativosPorUnidade?.[selectedBranchId] !== undefined
+                ? `${ativosPorUnidade[selectedBranchId]!.toLocaleString('pt-BR')} ativos na ${selectedBranchName}`
+                : `${totalActive.toLocaleString('pt-BR')} ativos`}
             </span>
           </div>
           {addHref !== null && (

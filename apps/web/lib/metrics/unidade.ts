@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler, lerTodas } from '@/lib/db'
+import { ler, lerTodas, contar } from '@/lib/db'
+import { unitTag } from '@estetica-os/utils'
 import { mediaPorAtendimentoCobrado } from './resultado'
 
 /**
@@ -108,4 +109,23 @@ export async function getClientesParaReativar(args: {
     total: Number(d.total ?? 0),
     lista: (d.lista ?? []).map(c => ({ id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita })),
   }
+}
+
+/**
+ * As clientes ATIVAS da rede e as que frequentam cada unidade (a tag
+ * "Unidade: <nome>", o mesmo critério do filtro de Clientes) — contadas no
+ * banco (A24 da 5ª simulação, 2026-11-02). Em `/admin/clients?unidade=` a
+ * lista recortava a unidade e o contador seguia o da rede ("4 ativos").
+ */
+export async function getClientesAtivos(args: {
+  tenantId: string; unidades: { id: string; name: string }[]
+}): Promise<{ total: number; porUnidade: Record<string, number> }> {
+  const admin = createAdminClient()
+  const base = () => admin.from('clients').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', args.tenantId).eq('is_active', true)
+  const [total, ...porUnidade] = await Promise.all([
+    contar(base(), 'contar as clientes ativas'),
+    ...args.unidades.map(u => contar(base().contains('tags', [unitTag(u.name)]), 'contar as clientes da unidade')),
+  ])
+  return { total, porUnidade: Object.fromEntries(args.unidades.map((u, i) => [u.id, porUnidade[i] ?? 0])) }
 }

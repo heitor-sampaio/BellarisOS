@@ -120,6 +120,7 @@ export const ISOLADOS = [
   'indicadores-retencao-clinica-inteira.spec.ts',
   'indicadores-custo-um-nome-so.spec.ts',
   'comissoes-sem-quem-atende.spec.ts',
+  'clientes-contador-da-unidade.spec.ts',
   'indicadores-dashboard-da-rede-so-os-meus.spec.ts',
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',

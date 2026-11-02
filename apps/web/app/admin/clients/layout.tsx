@@ -3,6 +3,7 @@ import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedUltimasVisitas, getCachedNetworkBranches } from '@/lib/cached-queries'
+import { getClientesAtivos } from '@/lib/metrics/unidade'
 
 export default async function AdminClientsLayout({
   children,
@@ -37,8 +38,11 @@ export default async function AdminClientsLayout({
     }
   })
 
-  const totalActive    = clients.filter(c => c.isActive).length
   const branches       = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  // O contador vem do banco (A24): o da rede e o de cada unidade, para
+  // acompanhar o recorte do `?unidade=`.
+  const ativos         = await getClientesAtivos({ tenantId: ctx.tenantId!, unidades: branches })
+  const totalActive    = ativos.total
 
   return (
     <ListaDetalhe
@@ -48,6 +52,7 @@ export default async function AdminClientsLayout({
           clients={clients}
           basePath="/admin/clients"
           totalActive={totalActive}
+          ativosPorUnidade={ativos.porUnidade}
           // A rede passa a cadastrar pela própria rede: antes o botão era
           // escondido aqui e só existia dentro do portal de uma unidade.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}

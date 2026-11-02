@@ -454,7 +454,10 @@ uma unidade só, e "Ver a rede inteira" volta guardando o período. A
 abrangência vence o pedido (`ctx.branchId ?? unidade`); valor desconhecido cai
 na rede; com uma unidade só (D-19) não há recorte. O nome da filial no
 "Ranking de filiais" leva a esse recorte. O funil de oportunidades continua o
-da rede. Clientes do /admin abre com o filtro de unidade já escolhido.
+da rede. Clientes do /admin abre com o filtro de unidade já escolhido, e o contador
+acompanha o recorte ("2 ativos na Zona Sul" — A24 da 5ª, 2026-11-02;
+`getClientesAtivos`, `lib/metrics/unidade.ts`, contado no banco pela tag da
+unidade, o mesmo critério do filtro; prova: `e2e/clientes-contador-da-unidade.spec.ts`).
 Os **Relatórios** também (A57 da 5ª, 2026-11-02): `?unidade=<id|endereço>`,
 com `?branch=<id>` como apelido, e o seletor de unidade grava `?unidade=`
 (prova: `e2e/relatorios-unidade-na-url.spec.ts`).
