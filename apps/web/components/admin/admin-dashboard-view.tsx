@@ -502,11 +502,13 @@ export function AdminDashboardView({
           icon={<TrendingUp size={16} color="var(--surface)" />}
         />}
         {can('financial') && !recorteProprio && <KpiCard
-          label={`Custo ${rotulo.doPeriodo}`}
+          // A54: o cartão é o CAIXA (decisão 5d) e o nome diz isso — o "Custo do
+          // lucro" do gráfico soma também os insumos e os produtos vendidos.
+          label={`Despesas pagas ${rotulo.doPeriodo}`}
           dica={DEFINICOES.despesa}
           value={totalCost}
           format="brl"
-          sub="despesas pagas (o caixa)"
+          sub="o caixa; o custo do gráfico soma os insumos"
           icon={<TrendingDown size={16} color="var(--brand)" />}
         />}
         {can('agenda') && <KpiCard

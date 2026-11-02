@@ -118,6 +118,7 @@ export const ISOLADOS = [
   'relatorios-unidade-na-url.spec.ts',
   'relatorios-conversao-funis-ativos.spec.ts',
   'indicadores-retencao-clinica-inteira.spec.ts',
+  'indicadores-custo-um-nome-so.spec.ts',
   'indicadores-dashboard-da-rede-so-os-meus.spec.ts',
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',

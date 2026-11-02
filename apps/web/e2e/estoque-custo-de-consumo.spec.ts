@@ -249,13 +249,13 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       // Nenhuma despesa paga nesta rede: o cartão diz zero (o número é animado).
       await expect.poll(async () => brl(await cartao.innerText()), { timeout: 10_000 }).toBe(0)
       const grafico = p.locator('div.card').filter({ hasText: 'Evolução do Período' }).first()
-      const custo = grafico.getByText('Custo', { exact: true }).locator('xpath=following-sibling::p[1]')
+      const custo = grafico.getByText('Custo do lucro', { exact: true }).locator('xpath=following-sibling::p[1]')
       // O lucro desconta o insumo CONSUMIDO (decisão do Heitor, 2026-10-29): o
       // custo do gráfico é o do lucro — a despesa (zero) mais os 5 ml a R$ 0,90.
       expect(brl(await custo.innerText()), 'o custo do gráfico é o do lucro: o insumo consumido entra').toBe(4.5)
 
       await p.goto('/admin/reports?period=month&tab=financeiro')
-      await expect(p.getByText('Consumo de insumos', { exact: true })).toBeVisible()
+      await expect(p.getByText('Insumos e produtos vendidos', { exact: true })).toBeVisible()
       await expect(p.getByText(/Custo de Insumos/)).toHaveCount(0)
       // O estoque não gera despesa (D13 revisto); o consumo desconta do lucro.
       await expect(p.getByText('Desconta do lucro', { exact: true })).toBeVisible()

@@ -420,7 +420,10 @@ function TabFinanceiro(p: ReportsBiProps) {
   // custo do MOVIMENTO — a mesma conta do giro do dashboard. A compra de
   // estoque fica nas despesas (o caixa) e fora do lucro: senão o produto seria
   // descontado duas vezes.
-  const stockCOGS   = r.consumoTotal
+  // "Reforça", item 2: o cartão é o MESMO número do DRE logo abaixo — os
+  // insumos consumidos E o custo dos produtos vendidos (metrics_resultado).
+  // Era o consumo só dos insumos (R$ 380 ao lado do DRE de R$ 445).
+  const stockCOGS   = p.estoqueNoResultado.atual.consumoDeInsumo
   const opEx        = core.expensesCash
   const prevOpEx    = corePrev.expensesCash
   // Lucro, margem e a variação dela (em p.p.) vêm de lib/metrics
@@ -471,7 +474,7 @@ function TabFinanceiro(p: ReportsBiProps) {
         {/* O consumo entra no lucro (2026-10-29). Movimentação de estoque
             nunca gera despesa (D13 revisto, 2026-10-28): a compra paga entra no
             financeiro por um lançamento ("Compra de estoque"), que fica no caixa. */}
-        <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="var(--danger)"
+        <KpiCard label="Insumos e produtos vendidos" value={stockCOGS} format="brl" accent="var(--danger)"
           detalhe="Desconta do lucro" />
         {/* A despesa, o lucro e a margem não se atribuem a ela ("só os meus"). */}
         {!p.soOsMeus && <>

@@ -183,7 +183,7 @@ test('"só os meus": o dashboard da rede mostra a receita DELA, sem custo, lucro
     await expect.soft(corpo, 'a receita dela').toContainText('R$ 120,00')
     await expect.soft(corpo, 'não a da rede').not.toContainText('R$ 420,00')
     await expect.soft(corpo, 'nem o custo').not.toContainText('777,00')
-    await expect.soft(p.getByText('Custo do mês')).toHaveCount(0)
+    await expect.soft(p.getByText('Despesas pagas do mês')).toHaveCount(0)
     for (const r of ['Ranking de filiais', 'Ranking — Procedimentos por margem', 'Aproveitamento por filial', 'Aproveitamento']) {
       await expect.soft(p.getByText(r, { exact: true }), r).toHaveCount(0)
     }
@@ -258,7 +258,7 @@ test('quem tem ALL segue vendo o dinheiro e os números da rede (controle)', asy
     const corpo = p.locator('main')
     await expect(corpo).toContainText('R$ 420,00')
     await expect(corpo).toContainText('777,00')
-    await expect(p.getByText('Custo do mês')).toBeVisible()
+    await expect(p.getByText('Despesas pagas do mês')).toBeVisible()
     // Sem "Ranking de filiais": a rede de teste tem UMA unidade (D-19).
     for (const r of ['Ranking — Procedimentos por receita paga', 'Ranking — Procedimentos por margem', 'Ranking — Profissionais por receita paga', 'Ranking — Valor gasto']) {
       await expect(p.getByText(r, { exact: true }).first(), r).toBeVisible()

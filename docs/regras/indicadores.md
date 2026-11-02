@@ -344,7 +344,14 @@ KPI que não fazia nenhum dos dois.
   O ponto do gráfico "Evolução do Período" vem pronto de `pontosDaEvolucao`
   (`lib/metrics/evolucao.ts`), com o custo do LUCRO (a despesa sem a compra
   de estoque, mais o insumo consumido). O DRE tem a linha "− Insumos
-  consumidos"; o KPI de consumo diz "Desconta do lucro". De 2026-10-27 a
+  consumidos"; o KPI de consumo diz "Desconta do lucro". **Um nome para
+  cada conta** (A54 e "Reforça", item 2, 2026-11-02): o cartão do dashboard
+  da rede é "Despesas pagas do mês" (o caixa, decisão 5d), a linha do gráfico
+  é "Custo do lucro", e o cartão de Relatórios → Financeiro é "Insumos e
+  produtos vendidos" — o MESMO número do DRE (`metrics_resultado`); era
+  "Custo do mês R$ 0" ao lado do gráfico "Custo R$ 445", e "Consumo de
+  insumos R$ 380" ao lado do DRE de R$ 445. Prova:
+  `e2e/indicadores-custo-um-nome-so.spec.ts`. De 2026-10-27 a
   10-29 o consumo era informativo e o custo do gráfico, a despesa paga (D2).
 - **`lib/metrics` para a tela quando o RPC falha** (`logRpcError` lança). Ele
   registrava e devolvia zero — "R$ 0,00" com cara de dado.

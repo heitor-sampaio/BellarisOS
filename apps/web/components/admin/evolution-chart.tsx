@@ -29,7 +29,9 @@ const COLORS = {
 
 const LABELS: Record<string, string> = {
   revenue: 'Faturamento',
-  cost:    'Custo',
+  // A54: o custo do LUCRO (a despesa sem a compra de estoque, mais os insumos
+  // e os produtos vendidos) — não é o "Despesas pagas" do caixa.
+  cost:    'Custo do lucro',
   profit:  'Lucro',
 }
 

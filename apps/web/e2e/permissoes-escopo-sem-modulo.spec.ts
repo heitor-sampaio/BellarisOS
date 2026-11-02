@@ -92,7 +92,7 @@ test('sem a agenda, o dashboard da rede mostra a receita e o custo da rede, sem 
     await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
     const corpo = p.locator('main')
     await expect.soft(corpo, 'a receita da rede').toContainText('R$ 300,00')
-    await expect.soft(p.getByText('Custo do mês'), 'o custo aparece: não há recorte').toBeVisible()
+    await expect.soft(p.getByText('Despesas pagas do mês'), 'o custo aparece: não há recorte').toBeVisible()
     await expect.soft(corpo, 'a despesa da rede').toContainText('77,00')
   })
 })
