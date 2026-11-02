@@ -76,6 +76,9 @@ test.describe.serial('LGPD: exportação de dados', () => {
       // A tela passa direto para o estado do pedido (a revalidação chega antes
       // da mensagem de sucesso): "Em preparo" e o prontuário em análise.
       await expect(page.getByText('Prontuário em análise')).toBeVisible()
+      // A60 (5ª simulação): o pedido diz o PRAZO — o pacote base em minutos, e a
+      // decisão da clínica sobre o prontuário até 15 dias do pedido.
+      await expect(page.getByText(/poucos minutos|15 dias do pedido/).first()).toBeVisible()
     } finally {
       await ctx.close()
     }

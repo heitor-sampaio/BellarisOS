@@ -189,7 +189,10 @@
   atendimento, com a anamnese. **A alergia vai em destaque** na ficha e no
   atendimento (`alergiasDaAnamnese` + `AlertaDeAlergia`: o campo `allergies` ou
   de rótulo "alerg…", sem "não"/"nenhuma"), só para quem vê o prontuário.
-  "Aguardando confirmação do cliente pelo app" só para quem TEM o app.
+  Para quem TEM o app, o concluído diz "A cliente ainda não confirmou nem
+  avaliou pelo app (opcional).", sem alerta (A49 da 5ª simulação: era
+  "⏳ Aguardando confirmação…", lido como pagamento pendente); sem o app, que
+  a confirmação não se aplica.
   Prova: `e2e/prontuario-atritos.spec.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o agendamento do COMERCIAL, abaixo). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
 - **A origem COMMERCIAL é da cliente com oportunidade ABERTA, não de quem agenda** (D11/A12 da

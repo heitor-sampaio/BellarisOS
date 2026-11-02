@@ -1863,8 +1863,12 @@ export function AppointmentSession({
                     )}
                   </div>
                 ) : appointment.clientTemApp ? (
-                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600, marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>
-                    ⏳ Aguardando confirmação do cliente pelo app
+                  // A49 (5ª simulação): era "⏳ Aguardando confirmação do cliente
+                  // pelo app", em alerta — e quem lia achava que faltava o
+                  // pagamento. A confirmação e a avaliação são da cliente, e
+                  // opcionais: nada fica pendente na clínica por elas.
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>
+                    A cliente ainda não confirmou nem avaliou pelo app (opcional).
                   </p>
                 ) : (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>

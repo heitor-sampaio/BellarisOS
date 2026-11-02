@@ -126,7 +126,9 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     Desligada, só a equipe troca, na ficha.
   - **A recompensa fora do alcance diz quanto falta** (J-52, 2026-10-30):
     "Faltam 120 pontos" embaixo do "Trocar" desabilitado, no app e na ficha —
-    o texto é UM, `faltamPontos` (`lib/fidelidade/formato.ts`). Prova:
+    o texto é UM, `faltamPontos` (`lib/fidelidade/formato.ts`). Sem a troca pelo
+    app (`client_redeem` desligado), o app mostra o "Faltam N pontos" embaixo do
+    custo da recompensa (A58 da 5ª simulação). Prova:
     `tests/fidelidade-faltam-pontos.test.ts`, `e2e/fidelidade-opcionais.spec.ts`,
     `e2e/fidelidade-vouchers.spec.ts`.
   - **Aviso de vencimento por push** (`expiry_notice_days`, só com validade):

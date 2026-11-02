@@ -180,6 +180,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   ficar para trás. O pacote sai em PDF (legível) + JSON (portabilidade) no
   bucket privado `lgpd-exports`, com download por signed URL e validade de
   30 dias. Um pedido em aberto por cliente, garantido por índice único parcial.
+- **O pedido diz o PRAZO** (A60 da 5ª simulação; `data-request-card.tsx`): em
+  preparo, "costuma ficar pronto em poucos minutos"; com o prontuário à espera
+  da clínica, "responde até DD/MM (15 dias do pedido)" — o prazo da LGPD
+  (art. 19, II). Prova: `e2e/lgpd-exportacao.spec.ts`.
 - **Prontuário no pacote depende de liberação**: `include_medical` marca o que o
   titular pediu e `medical_status` (`not_requested | pending | approved |
   denied`) registra a decisão de quem tem `medical_records: MANAGE`, na aba

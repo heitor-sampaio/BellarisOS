@@ -22,7 +22,10 @@ function StarRating({ value, onChange, label }: {
   return (
     <div>
       <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{label}</p>
-      <div style={{ display: 'flex', gap: 6 }}>
+      {/* A67: cada estrela diz o grupo e a nota ("Procedimento: 4 de 5
+          estrelas"), e a marcada se anuncia (aria-pressed). Eram dez botões
+          "1 estrela"…"5 estrelas", iguais nos dois grupos. */}
+      <div role="group" aria-label={label} style={{ display: 'flex', gap: 6 }}>
         {[1, 2, 3, 4, 5].map(n => {
           const active = n <= (hover || value)
           return (
@@ -32,7 +35,8 @@ function StarRating({ value, onChange, label }: {
               onClick={() => onChange(n === value ? 0 : n)}
               onMouseEnter={() => setHover(n)}
               onMouseLeave={() => setHover(0)}
-              aria-label={`${n} estrela${n > 1 ? 's' : ''}`}
+              aria-label={`${label}: ${n} de 5 estrelas`}
+              aria-pressed={n === value}
               style={{
                 background: 'none', border: 'none', padding: 2, cursor: 'pointer',
                 lineHeight: 0, color: active ? 'var(--brand)' : 'var(--text-faint)',

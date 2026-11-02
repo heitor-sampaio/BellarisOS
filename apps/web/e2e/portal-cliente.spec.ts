@@ -189,7 +189,8 @@ test.describe.serial('portal do cliente', () => {
     try {
       await page.goto(`/${f!.unidade.slug}/cliente/atendimentos/${primeiro!.id}/confirmar`)
       const estrelas = (grupo: string, n: number) =>
-        page.getByText(grupo, { exact: true }).locator('xpath=..').getByRole('button', { name: `${n} estrela${n > 1 ? 's' : ''}` })
+        // A67: cada estrela tem nome próprio, com o grupo (eram 10 '1 estrela'…'5 estrelas' repetidos).
+        page.getByRole('group', { name: grupo }).getByRole('button', { name: `${grupo}: ${n} de 5 estrelas` })
       await estrelas('Procedimento', 5).click()
       await estrelas('Profissional', 4).click()
       await page.getByPlaceholder('Conte como foi seu atendimento (opcional)').fill(`${PREFIXO} ótimo`)

@@ -1,6 +1,6 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
-import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { clienteComSessao, criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
@@ -72,4 +72,30 @@ test('sem o app, o atendimento concluído não fica "aguardando confirmação do
     await expect(p.getByText(/Aguardando confirmação do cliente pelo app/)).toHaveCount(0)
     await expect(p.getByText(/sem o app/)).toBeVisible()
   })
+})
+
+// A49 da 5ª simulação: a cliente COM o app, atendimento concluído e pago —
+// a tela dizia "⏳ Aguardando confirmação do cliente pelo app", e quem lia
+// achava que faltava algo (o pagamento). A confirmação e a avaliação pelo
+// app são da cliente e opcionais: a tela diz isso, sem "aguardando".
+test('A49: com o app, o concluído não fica "aguardando confirmação"; diz que a avaliação é opcional', async ({ browser }) => {
+  const slug = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
+  const comApp = await clienteComSessao(`pra${marca}`, { id: rede!.branchId, slug }, { tenant: rede!.tenantId })
+  try {
+    const { data, error } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: comApp.clientId, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 0,
+      scheduled_at: new Date(Date.now() - 2 * 3600_000).toISOString(), started_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
+      completed_at: new Date().toISOString(),
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    await como(browser, async p => {
+      await p.goto(`/admin/agenda/${data!.id}`)
+      await expect(p.getByText(/Aguardando confirmação do cliente pelo app/)).toHaveCount(0)
+      await expect(p.getByText(/ainda não confirmou nem avaliou pelo app \(opcional\)/)).toBeVisible()
+    })
+  } finally {
+    await db().from('appointments').delete().eq('client_id', comApp.clientId)
+    await comApp.limpar()
+  }
 })

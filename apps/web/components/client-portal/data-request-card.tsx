@@ -32,6 +32,15 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
   )
 }
 
+/**
+ * O prazo da clínica para responder sobre o prontuário (A60): 15 dias do
+ * pedido, o da LGPD (art. 19, II) para a declaração completa.
+ */
+function prazoDaClinica(iso: string): string {
+  return new Date(new Date(iso).getTime() + 15 * 86_400_000)
+    .toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })
+}
+
 function fmt(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
@@ -121,10 +130,11 @@ export function DataRequestCard({ requests }: Props) {
             )}
           </div>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-            Solicitado em {fmt(openRequest.requested_at)}. Estamos reunindo seus dados
-            {openRequest.medical_status === 'pending'
-              ? ' — a parte do prontuário depende da liberação da clínica.'
-              : '.'}
+            Solicitado em {fmt(openRequest.requested_at)}. Estamos reunindo seus dados: costuma ficar
+            pronto em poucos minutos, e os arquivos aparecem aqui.
+            {openRequest.include_medical && openRequest.medical_status === 'pending'
+              ? ` A parte do prontuário depende da liberação da clínica, que responde até ${prazoDaClinica(openRequest.requested_at)} (15 dias do pedido).`
+              : ''}
           </p>
         </div>
       ) : prontuarioEmAnalise ? null : (
@@ -187,7 +197,7 @@ export function DataRequestCard({ requests }: Props) {
           </div>
           {prontuarioEmAnalise && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da clínica: quando ela decidir, o arquivo é refeito aqui.
+              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da clínica, que responde até {prazoDaClinica(latestDone.requested_at)} (15 dias do pedido): quando ela decidir, o arquivo é refeito aqui.
             </p>
           )}
           <DownloadRow request={latestDone} />

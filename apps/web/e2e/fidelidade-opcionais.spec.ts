@@ -262,8 +262,16 @@ test.describe.serial('fidelidade: opcionais da rede', () => {
       // Com a opção desligada: sem botão, e a action (chamada direto) não troca.
       await configurar({ client_redeem: false })
       await ajustar(cliente.clientId, 100)
+      // A58 (5ª simulação): sem a troca pelo app, a recompensa fora do alcance
+      // também diz quanto falta (o J-52 só a pôs embaixo do "Trocar").
+      const { data: cara } = await db().from('loyalty_rewards').insert({
+        tenant_id: rede!.tenantId, name: `${PREFIXO} Peeling ${marca}`, type: 'DESCONTO_VALOR',
+        points_cost: 500, discount_value: 50, validity_days: 30, is_active: true,
+      }).select('id').single<{ id: string }>()
       await p.goto(rota)
       await expect(p.getByText('A troca é feita na recepção.')).toBeVisible()
+      await expect(p.locator('li', { hasText: `${PREFIXO} Peeling ${marca}` })).toContainText('Faltam 350 pontos')
+      await db().from('loyalty_rewards').delete().eq('id', cara!.id)
       await expect(p.getByRole('button', { name: /^Trocar pontos por/ })).toHaveCount(0)
       const res = await chamarAcao(p, 'actions/fidelidade-portal.ts', 'trocarPontosNoPortal', rota, [{ slug: cliente.slug, rewardId: rec!.id }])
       expect(JSON.stringify(res)).toContain('não está disponível')
