@@ -227,7 +227,10 @@
       ÷ as oportunidades do período; `tem_ganho` = a rede tem alguma etapa de
       ganho) e a coluna "Conv." do ranking por vendedor (a mesma conta sobre
       as dele, em `getPainelComercial` — a tela não divide). Migration
-      `20261029001101`.
+      `20261029001101`. **Só os funis ATIVOS** (ind-07, 2026-11-02; migration
+      `20261101000705`): as oportunidades, os ganhos e o "tem ganho" ignoram
+      o funil arquivado — o ganho de um funil arquivado fazia a tela dizer
+      "0%" em vez de "—". Prova: `e2e/relatorios-conversao-funis-ativos.spec.ts`.
     - "Já é cliente" (`converted`, `leads.client_id`) não é conversão: é só o
       filtro do quadro ("Já é cliente / Ainda não é cliente") e um dado
       informativo para o Copilot. De 2026-10-28 a 10-29 a conversão foi
