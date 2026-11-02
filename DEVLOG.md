@@ -9004,6 +9004,22 @@ Configurações.
    venda (pagamento integral) e a cliente não fica devendo nada. Frente F2c.
    E: "conta no mês do dia da venda" — a receita entra inteira na venda; as
    parcelas só no "A receber" e no fluxo de caixa.
+   **Feito em 2026-11-02 (F2c: ece34282, merge 303ead92; migration
+   `20261101000261`).** A venda continua UM lançamento pago; as parcelas da
+   operadora ficam em `recebiveis_do_cartao`, criadas por gatilho em toda
+   venda paga no crédito em 2+ vezes, fora de `financial_transactions` (não
+   viram receita, pontos, comissão nem dívida da cliente). R$ 1.100 em 3x no
+   dia 02/11: "A receber da operadora" com 02/12, 02/01 e 02/02 (R$ 366,66,
+   R$ 366,66, R$ 366,68), taxa e líquido; cada uma vira "Recebida" sozinha no
+   vencimento, e "Marcar recebida" serve à antecipação. A comissão fica a pagar
+   na hora, os pontos saem na venda, o app mostra "Pago · Crédito 3x", e o
+   estorno cancela o que não foi recebido. O cartão antigo virou "A receber da
+   cliente". Prova: `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`.
+   Decisões da F2c, para revisar: o mesmo dia em cada mês (não 30 dias
+   corridos); tabela própria; antecipar não se desfaz; no estorno em parte cai
+   primeiro o não recebido, do mais novo; "só os meus" não vê a operadora;
+   sem gráfico de fluxo de caixa. As 3 vendas antigas no cartão N× ficam sem
+   parcelas.
    As 6 linhas antigas ficam como estão (sem resposta; o recomendado).
 10. O vocabulário de rede numa unidade só (D-19 decisão 8, J-24 decisão 9).
 11. "Sem preferência" não aparece na remarcação.
