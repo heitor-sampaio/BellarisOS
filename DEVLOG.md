@@ -8983,6 +8983,8 @@ Configurações.
    receber".** Muda a decisão de 2026-10-20: o crédito em N vezes vira N
    parcelas a receber da OPERADORA, uma por mês; a comissão segue liberando na
    venda (pagamento integral) e a cliente não fica devendo nada. Frente F2c.
+   E: "conta no mês do dia da venda" — a receita entra inteira na venda; as
+   parcelas só no "A receber" e no fluxo de caixa.
    As 6 linhas antigas ficam como estão (sem resposta; o recomendado).
 10. O vocabulário de rede numa unidade só (D-19 decisão 8, J-24 decisão 9).
 11. "Sem preferência" não aparece na remarcação.
