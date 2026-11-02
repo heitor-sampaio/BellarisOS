@@ -1,8 +1,9 @@
 ﻿'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Check, Calendar, Clock, User, Users, Sparkles } from 'lucide-react'
+import { ChevronLeft, Check, Calendar, Clock, User, Users, Sparkles, MapPin } from 'lucide-react'
 import { getClientAvailableSlots, createClientAppointment } from '@/actions/appointments'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
@@ -26,6 +27,14 @@ interface Professional {
 interface Props {
   slug:          string
   branchId:      string
+  /** O nome da unidade do endereço — onde o agendamento vai acontecer. */
+  unidade?:      string
+  /**
+   * As unidades da clínica, quando há mais de uma (H5/A62): a cliente escolhe
+   * onde quer ser atendida, e cada uma é o agendar do endereço DELA — os
+   * procedimentos, as profissionais e os horários vêm de lá.
+   */
+  unidades?:     { slug: string; nome: string }[]
   procedures:    Procedure[]
   professionals: Professional[]
 }
@@ -36,7 +45,7 @@ type Step = 1 | 2 | 3 | 4
 const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 
 
-export function NewAppointmentWizard({ slug, branchId, procedures, professionals }: Props) {
+export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedures, professionals }: Props) {
   const router = useRouter()
   const [step,       setStep]       = useState<Step>(1)
   const [procedure,  setProcedure]  = useState<Procedure | null>(null)
@@ -177,6 +186,36 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
       {/* --- Step 1: Procedimento ---------------------------------- */}
       {step === 1 && (
         <div>
+          {unidades.length > 1 && (
+            <div style={{ marginBottom: 24 }}>
+              <p id="agendar-unidade" style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 10 }}>
+                Em qual unidade?
+              </p>
+              <div role="group" aria-labelledby="agendar-unidade" aria-label="Unidade" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {unidades.map(u => {
+                  const atual = u.slug === slug
+                  return (
+                    <Link
+                      key={u.slug}
+                      href={`/${u.slug}/cliente/agendamentos/novo`}
+                      aria-current={atual ? 'page' : undefined}
+                      replace
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12,
+                        border: `1.5px solid ${atual ? 'var(--brand)' : 'var(--border)'}`,
+                        background: atual ? 'var(--brand-soft)' : 'var(--surface)',
+                        color: 'var(--text)', fontWeight: 700, fontSize: 'var(--text-base-sz)', textDecoration: 'none',
+                      }}
+                    >
+                      <MapPin size={15} color="var(--brand)" aria-hidden="true" style={{ flexShrink: 0 }} />
+                      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{u.nome}</span>
+                      {atual && <Check size={15} color="var(--brand)" aria-hidden="true" style={{ marginLeft: 'auto', flexShrink: 0 }} />}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
             Qual procedimento você deseja agendar?
           </p>
@@ -395,6 +434,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
           </p>
 
           <div className="card" style={{ padding: '20px 22px', marginBottom: 24 }}>
+            {unidades.length > 1 && unidade && <Row label="Unidade" value={unidade} />}
             <Row label="Procedimento" value={procedure.name} />
             <Row label="Profissional"  value={prof.id ? prof.name : 'A clínica escolhe quem estiver livre'} />
             <Row label="Data"          value={fmtDate(date)} />

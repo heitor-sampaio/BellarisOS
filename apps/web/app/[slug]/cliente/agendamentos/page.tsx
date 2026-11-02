@@ -1,8 +1,8 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import { CalendarDays, ChevronRight, Clock3, User, Plus } from 'lucide-react'
-import { ler } from '@/lib/db'
+import { CalendarDays, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-react'
+import { ler, contar } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 
@@ -35,6 +35,7 @@ type Appt = {
   completed_at:  string | null
   procedures:    { name: string } | null
   professionals: { name: string } | null
+  branches:      { name: string } | null
 }
 
 export default async function ClientAgendaPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -45,7 +46,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   const admin = createAdminClient()
   const data = await ler(admin
     .from('appointments')
-    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name)')
+    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name), branches(name)')
     .eq('client_id', ctx.clientId!)
     .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
@@ -56,6 +57,12 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         'ler o prazo do portal') as { portal_prazo_alteracao_horas: number } | null
     : null
   const prazoHoras = rede?.portal_prazo_alteracao_horas ?? 24
+  // A clínica de mais de uma unidade: cada cartão diz ONDE (A65). O agendamento
+  // da Zona Sul aparecia sob o cabeçalho da Moinhos, sem dizer a unidade.
+  const variasUnidades = ficha
+    ? ((await contar(admin.from('branches').select('id', { count: 'exact', head: true })
+        .eq('tenant_id', ficha.tenant_id).eq('is_active', true), 'contar as unidades da clínica')) ?? 0) > 1
+    : false
 
   const appointments = (data ?? []) as unknown as Appt[]
   // A mesma regra da home (D14): o que ainda vai acontecer, em aberto.
@@ -97,7 +104,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
             Toque no agendamento para cancelar ou remarcar — pelo app, até {prazoHoras} horas antes. Depois disso, fale com a clínica.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} />)}
+            {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} comUnidade={variasUnidades} />)}
           </div>
         </section>
       )}
@@ -107,7 +114,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         <section>
           <GroupLabel>Histórico</GroupLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {past.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} />)}
+            {past.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} comUnidade={variasUnidades} />)}
           </div>
         </section>
       )}
@@ -154,7 +161,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 // O cartão abre o agendamento (2026-10-21: não abria — nem detalhe, nem cancelar).
-function AppointmentCard({ appt, slug, highlight = false, prazoHoras }: { appt: Appt; slug: string; highlight?: boolean; prazoHoras?: number }) {
+function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade = false }: { appt: Appt; slug: string; highlight?: boolean; prazoHoras?: number; comUnidade?: boolean }) {
   const dt    = new Date(appt.scheduled_at)
   const color = STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
   const price = appt.price
@@ -200,6 +207,12 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras }: { appt: 
 
       {/* Details row */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+        {comUnidade && appt.branches?.name && (
+          <span data-unidade-do-agendamento style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            <MapPin size={11} aria-hidden="true" />
+            {appt.branches.name}
+          </span>
+        )}
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <User size={11} />
           {appt.professionals?.name ?? 'Profissional'}

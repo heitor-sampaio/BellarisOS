@@ -254,7 +254,8 @@ export async function createAppointmentCore(
     return { error: 'Este crédito acabou de ser usado em outro agendamento.' }
   }
 
-  const userName = ctx.userName || await getUserName(admin, ctx.userId)
+  // A cliente pelo app (por-05) não é membro: o nome não se busca em `users`.
+  const userName = ctx.userName || (ctx.isClient ? '' : await getUserName(admin, ctx.userId))
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
 
   // O card anda para "agendado" e a linha do tempo dele diz o que houve.
@@ -266,7 +267,8 @@ export async function createAppointmentCore(
   // porque são quatro caminhos de criação (agenda, inbox, checkout de plano,
   // portal do cliente) e o fato é o mesmo — emitir em cada um seria esquecer
   // o quinto.
-  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CRIADO, data.id as string, { ...ctx, userName })
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CRIADO, data.id as string, { ...ctx, userName },
+    ctx.isClient ? { ator: { tipo: 'cliente', id: input.clientId }, origem: 'app' } : undefined)
 
   // Meta: agendar é o primeiro compromisso real de quem veio de um anúncio, e
   // é o evento pelo qual a campanha é otimizada. Vai em `after()` para não

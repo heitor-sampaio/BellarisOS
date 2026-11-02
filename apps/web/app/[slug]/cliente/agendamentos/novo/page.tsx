@@ -5,6 +5,8 @@ import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { NewAppointmentWizard } from '@/components/client-portal/new-appointment-wizard'
 import { ler } from '@/lib/db'
 import { normalizarHorario, resumoDoHorario } from '@/lib/agenda/horario'
+import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
+import { AgendarComAClinica } from '@/components/client-portal/agendar-com-a-clinica'
 
 export default async function NewClientAppointmentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -13,23 +15,31 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
 
   const admin = createAdminClient()
 
-  // Querying by slug alone matches duplicates across tenants (.single() returns null).
-  // Use the client's own branch_id instead — it's a UUID and globally unique.
+  // A ficha é da CLÍNICA (H5, 2026-11-02: "A cliente é da clínica, pode
+  // agendar em qualquer unidade da clínica"): a unidade do agendar é a do
+  // ENDEREÇO, entre as ativas da rede da ficha — não mais a de cadastro, que
+  // devolvia 404 na Zona Sul e prendia a cliente à Moinhos (A62).
   const clientRecord = await ler(admin
     .from('clients')
-    .select('branch_id')
+    .select('tenant_id, is_active')
     .eq('id', ctx.clientId!)
     .single(), 'buscar o cliente')
+  if (!clientRecord) notFound()
 
-  if (!clientRecord?.branch_id) notFound()
-
-  const branch = await ler(admin
+  const unidades = ((await ler(admin
     .from('branches')
     .select('id, name, tenant_id, slug, horario')
-    .eq('id', clientRecord.branch_id)
-    .single(), 'buscar a unidade')
+    .eq('tenant_id', clientRecord.tenant_id as string)
+    .eq('is_active', true)
+    .order('name'), 'buscar as unidades da clínica')) ?? []) as { id: string; name: string; tenant_id: string; slug: string; horario: unknown }[]
 
-  if (!branch || (branch as { slug: string }).slug !== slug) notFound()
+  const branch = unidades.find(u => u.slug === slug)
+  if (!branch) notFound()
+
+  // A arquivada não agenda pelo app (o Heitor: "concordo"): fala com a clínica.
+  if (clientRecord.is_active === false) {
+    return <AgendarComAClinica slug={slug} clinica={await aClinicaDoEndereco(slug)} />
+  }
 
   const branchTyped = branch as { id: string; name: string; tenant_id: string }
 
@@ -65,6 +75,9 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
     <NewAppointmentWizard
       slug={slug}
       branchId={branchTyped.id}
+      unidade={branchTyped.name}
+      // Mais de uma unidade: a cliente escolhe onde (A62).
+      unidades={unidades.length > 1 ? unidades.map(u => ({ slug: u.slug, nome: u.name })) : []}
       procedures={procedures}
       professionals={professionals}
     />

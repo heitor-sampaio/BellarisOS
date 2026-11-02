@@ -1,7 +1,7 @@
 ﻿'use server'
 
-import { ligarCredito } from '@/lib/creditos/credito'
 import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
+import { CLIENTE_ARQUIVADA, CLIENTE_ARQUIVADA_NO_APP } from '@/lib/clients/arquivada'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can, temRecurso } from '@/lib/auth'
@@ -1622,9 +1622,13 @@ export async function createClientAppointment(params: {
     //
     // O cliente final não tem rede no JWT (§5): a rede é a da ficha dele.
     const cliente = await ler(admin
-      .from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente')
+      .from('clients').select('tenant_id, is_active').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente')
     if (!cliente) return { error: 'Cadastro não encontrado.' }
+    // A arquivada não agenda pelo app (o Heitor: "concordo", F6 da 5ª
+    // simulação): a tela já mostra "Fale com a clínica", e a action recusa.
+    if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA_NO_APP }
 
+    // A unidade é QUALQUER ativa da clínica da ficha, não só a de cadastro (H5).
     const branch = await ler(admin
       .from('branches')
       .select('tenant_id')
@@ -1669,11 +1673,8 @@ export async function createClientAppointment(params: {
       if (!professionalId) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
 
-    // Quem atende é marcado por `provides_services`. A validação antiga filtrava
-    // por `users.role`, coluna removida na migração de cargos dinâmicos: a query
-    // falhava com 42703, `prof` vinha null e TODO agendamento pelo app do cliente
-    // era recusado com "Profissional não disponível". A da REDE atende em toda
-    // unidade (D1, 2026-10-28): a lista da tela e esta conferência são a mesma.
+    // Quem atende é marcado por `provides_services`, e a da REDE atende em
+    // toda unidade (D1, 2026-10-28): é a lista que a tela ofereceu.
     const { data: prof, error: profErr } = await admin
       .from('users')
       .select('id')
@@ -1698,37 +1699,32 @@ export async function createClientAppointment(params: {
     // isso, o agendamento nascia avulso e o checkout cobraria de novo.
     const pago = await pagoParaAgendar(admin, cliente.tenant_id as string, ctx.clientId!, params.procedureId)
 
-    const { data: appt, error } = await admin
-      .from('appointments')
-      .insert({
-        branch_id:       params.branchId,
-        client_id:       ctx.clientId!,
-        procedure_id:    params.procedureId,
-        professional_id: professionalId,
-        scheduled_at:    params.scheduledAt,
-        duration_min:    procedure.duration_min,
-        price:           pago ? pago.preco : procedure.price,
-        status:          'SCHEDULED',
-        // CLIENT_APP é o cliente pelo portal/app; ONLINE era o agendamento
-        // público, que foi descartado (§9.1).
-        source:          'CLIENT_APP',
-        treatment_plan_id: pago?.tipo === 'PLANO' ? pago.planId : null,
-      })
-      .select('id')
-      .single()
+    // O NÚCLEO da agenda da clínica grava (por-05, revisão do Heitor de
+    // 2026-11-02: "passar pelas mesmas regras da agenda da clínica"): as peças
+    // da rede e a arquivada (`conferirPecasDoAgendamento`), o conflito de
+    // profissional (`horarioOcupado`), o preço, o crédito pré-pago/pacote, a
+    // oportunidade aberta e o evento "agendamento criado" — que o app não
+    // emitia. A cliente não tem rede no JWT (§5): a rede é a da ficha.
+    const criado = await createAppointmentCore(admin, { ...ctx, tenantId: cliente.tenant_id as string, branchId: null }, {
+      branchId:       params.branchId,
+      clientId:       ctx.clientId!,
+      procedureId:    params.procedureId,
+      professionalId,
+      scheduledAt:    params.scheduledAt,
+      source:         'CLIENT_APP',
+      credito:        pago?.tipo === 'CREDITO' ? pago.credito : null,
+    })
+    if ('error' in criado) return { error: criado.error === CLIENTE_ARQUIVADA ? CLIENTE_ARQUIVADA_NO_APP : criado.error }
+    const appt = criado
 
-    if (error || !appt) return { error: `Erro ao criar agendamento: ${error?.message}` }
-
-    // Liga o que foi pago, só se ainda estiver livre (compare-and-swap). Perdeu
-    // a corrida para outro agendamento: este segue avulso, com o preço de tabela.
-    if (pago) {
-      const ligou = pago.tipo === 'PLANO'
-        ? ((await gravar(admin.from('treatment_plan_sessions').update({ appointment_id: appt.id })
-            .eq('id', pago.sessionId).is('appointment_id', null).select('id'), 'ligar a sessão do plano')) as unknown[] | null)?.length
-        : await ligarCredito(admin, pago.credito, appt.id as string)
-      if (!ligou) {
-        await gravar(admin.from('appointments').update({ treatment_plan_id: null, price: procedure.price })
-          .eq('id', appt.id as string), 'desligar o agendamento do que já foi usado')
+    // A sessão livre de um plano vendido: liga só se ainda estiver livre
+    // (compare-and-swap). Perdeu a corrida: este segue avulso.
+    if (pago?.tipo === 'PLANO') {
+      const ligou = ((await gravar(admin.from('treatment_plan_sessions').update({ appointment_id: appt.id })
+        .eq('id', pago.sessionId).is('appointment_id', null).select('id'), 'ligar a sessão do plano')) as unknown[] | null)?.length
+      if (ligou) {
+        await gravar(admin.from('appointments').update({ treatment_plan_id: pago.planId, price: pago.preco })
+          .eq('id', appt.id), 'ligar o agendamento ao plano')
       }
     }
 

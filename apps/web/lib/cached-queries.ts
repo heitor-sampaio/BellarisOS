@@ -66,15 +66,24 @@ export const tagDasFichasDoLogin = (authId: string) => `fichas-do-login:${authId
 export function getCachedFichasDoLogin(authId: string) {
   return unstable_cache(
     async (): Promise<FichaDoLoginCacheada[]> => {
-      const data = await ler(createAdminClient()
+      const admin = createAdminClient()
+      const data = await ler(admin
         .from('clients')
         .select('id, tenant_id, branches(slug, name, tenants(name))')
         .eq('auth_id', authId)
         .order('created_at'), 'buscar as fichas do login')
+      // As unidades ATIVAS da clínica de cada ficha: o portal de qualquer uma
+      // abre esta ficha (H5, 2026-11-02).
+      const redes = [...new Set((data ?? []).map(c => c.tenant_id as string))]
+      const unidades = redes.length
+        ? ((await ler(admin.from('branches').select('slug, tenant_id')
+            .in('tenant_id', redes).eq('is_active', true), 'buscar as unidades das clínicas da cliente')) ?? []) as { slug: string; tenant_id: string }[]
+        : []
       return (data ?? []).map(c => {
         const unidade = c.branches as unknown as { slug: string; name: string; tenants: { name: string } | null } | null
         return {
           clientId: c.id as string, tenantId: c.tenant_id as string,
+          slugsDaClinica: unidades.filter(u => u.tenant_id === c.tenant_id).map(u => u.slug),
           slug: unidade?.slug ?? null, unidade: unidade?.name ?? '', rede: unidade?.tenants?.name ?? '',
         }
       })

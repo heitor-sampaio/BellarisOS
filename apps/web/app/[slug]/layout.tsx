@@ -30,17 +30,26 @@ export default async function BranchLayout({
   if (ENDERECOS_RESERVADOS.includes(slug)) notFound()
   const ctx = await getTenantContext()
 
-  // Portal do cliente: valida vínculo com a filial e devolve children sem chrome de staff.
-  // 1 query com join (antes eram 2 sequenciais: clients → branches).
+  // Portal do cliente: valida o vínculo com a CLÍNICA e devolve children sem
+  // chrome de staff. A ficha é da clínica, não da unidade de cadastro (H5,
+  // 2026-11-02: "A cliente é da clínica, pode agendar em qualquer unidade da
+  // clínica"): o portal de QUALQUER unidade ativa da rede da ficha abre. Até
+  // aqui só a de cadastro abria, e a Zona Sul voltava à Moinhos sem aviso (A62).
   if (ctx.isClient) {
     const adminClient = createAdminClient()
     const clientData = await ler(adminClient
       .from('clients')
-      .select('branch_id, branches!inner(slug)')
+      .select('tenant_id, branch_id')
       .eq('id', ctx.clientId!)
-      .single(), 'buscar o cliente')
-    const clientBranch = clientData?.branches as unknown as { slug: string } | null
-    if (!clientData?.branch_id || clientBranch?.slug !== slug) redirect('/login')
+      .maybeSingle(), 'buscar o cliente')
+    const unidade = clientData
+      ? await ler(adminClient.from('branches').select('id, is_active')
+          .eq('slug', slug).eq('tenant_id', clientData.tenant_id as string)
+          .maybeSingle(), 'buscar a unidade')
+      : null
+    // A unidade de CADASTRO abre mesmo desativada (é o destino do login dela;
+    // recusá-la seria um laço login → portal → login).
+    if (!unidade || (!unidade.is_active && unidade.id !== clientData!.branch_id)) redirect('/login')
     // Tela da equipe aberta pela cliente (um link, o histórico): o portal dela,
     // não a tela de "sem acesso" — que fala de cargo e de rede (2026-10-21).
     const caminho = (await caminhoDaRequisicao()).split(' ')[1]?.split('?')[0] ?? ''

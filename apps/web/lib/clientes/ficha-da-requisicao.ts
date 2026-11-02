@@ -9,7 +9,7 @@
  * atropelam. A claim `client_id` do token é só a marca "é cliente": fora de
  * um portal (api, auth, raiz) ela desempata.
  *
- * - o slug é de uma ficha dela → essa ficha;
+ * - o slug é de uma unidade da clínica de uma ficha dela → essa ficha;
  * - é o portal (`/<slug>/cliente…`) de uma clínica em que ela não tem ficha → 'fora';
  * - fora de um portal → a ficha da marca do token, ou a primeira;
  * - sem ficha nenhuma → null (quem chama fica com a claim, como antes).
@@ -23,6 +23,14 @@ export interface FichaDoLogin {
    * nunca aponta para duas fichas dela.
    */
   slug: string | null
+  /**
+   * Os slugs de TODAS as unidades ativas da clínica (rede) da ficha (H5,
+   * 2026-11-02: "A cliente é da clínica, pode agendar em qualquer unidade da
+   * clínica"). O portal de qualquer uma delas abre esta ficha — a Marlene da
+   * Moinhos em `/zona-sul/cliente` é a mesma ficha. Até aqui só o `slug` da
+   * unidade de cadastro valia, e a Zona Sul voltava à Moinhos sem aviso.
+   */
+  slugsDaClinica?: string[]
 }
 
 /** O primeiro pedaço do caminho ("MÉTODO /caminho?query") — o slug, quando é uma rota de unidade. */
@@ -39,7 +47,9 @@ export function fichaDaRequisicao<F extends FichaDoLogin>(
   const rota = (caminho.includes(' ') ? caminho.slice(caminho.indexOf(' ') + 1) : caminho).split('?')[0] ?? ''
   const [primeiro, segundo] = rota.split('/').filter(Boolean)
 
-  const daClinica = primeiro ? fichas.find(f => f.slug === primeiro) : undefined
+  const daClinica = primeiro
+    ? fichas.find(f => f.slug === primeiro) ?? fichas.find(f => f.slugsDaClinica?.includes(primeiro))
+    : undefined
   if (daClinica) return daClinica
   if (primeiro && segundo === 'cliente') return 'fora'
 

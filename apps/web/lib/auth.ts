@@ -64,7 +64,8 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     // seletor. Nenhuma abre → segue, e o portão abaixo manda à conta suspensa.
     if (ficha && !(await clinicaAbreParaCliente(ficha.tenantId))) {
       const abertas = await fichasQueAbrem(fichas)
-      if (abertas.length && slugDoCaminho(caminho) === ficha.slug) {
+      const slugDaRota = slugDoCaminho(caminho)
+      if (abertas.length && slugDaRota && (slugDaRota === ficha.slug || ficha.slugsDaClinica?.includes(slugDaRota))) {
         redirect(ROTA_DO_SELETOR)
       } else if (abertas.length) {
         ficha = abertas.find(f => f.clientId === clientId) ?? abertas[0]!

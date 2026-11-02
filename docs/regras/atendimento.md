@@ -220,6 +220,32 @@
   conferências de quem a cliente escolheu. Não há cadastro de "quem faz qual
   procedimento": são todas as que atendem na unidade. Prova:
   `e2e/portal-cliente-sem-preferencia.spec.ts`, `tests/sem-preferencia.test.ts`.
+- **A cliente agenda em QUALQUER unidade da clínica pelo app** (H5, decisão do
+  Heitor, 2026-11-01: "A cliente é da clínica, pode agendar em qualquer
+  unidade da clínica"; A62/A65 da 5ª simulação). A ficha é da REDE: o portal
+  de qualquer unidade ATIVA da rede da ficha abre a mesma ficha
+  (`slugsDaClinica` em `fichaDaRequisicao`, e o layout de `[slug]` confere a
+  rede, não a unidade de cadastro — que abre mesmo desativada, por ser o
+  destino do login). Com mais de uma unidade, o agendar começa por "Em qual
+  unidade?": cada uma é o agendar do endereço DELA, e os procedimentos, as
+  profissionais e os horários vêm de lá; o resumo diz a unidade. Os cartões da
+  Agenda do app dizem a unidade de cada agendamento quando a clínica tem mais
+  de uma. Até 2026-11-02 a Zona Sul voltava à Moinhos sem aviso, e o agendar
+  dava 404 fora da unidade de cadastro. A lista de unidades da cliente é cache
+  de 5 min (`getCachedFichasDoLogin`): a unidade nova aparece no app em até
+  5 min. Prova: `e2e/portal-cliente-outra-unidade.spec.ts`,
+  `tests/ficha-da-requisicao.test.ts`.
+- **O agendar do app passa pelo NÚCLEO da agenda** (por-05, revisão do Heitor
+  de 2026-11-02): `createClientAppointment` confere o que é do app (o
+  procedimento visível no app, o horário entre os livres, quem atende na
+  unidade, o "Sem preferência") e grava por `createAppointmentCore` —
+  peças da rede, arquivada, conflito, preço, crédito pré-pago/pacote,
+  oportunidade aberta e o evento "agendamento criado" (com o ator `cliente`),
+  que o app não emitia. Só a sessão livre do PLANO se liga depois, no app.
+- **A cliente ARQUIVADA não agenda pelo app** (o Heitor: "concordo"): o
+  agendar mostra "Fale com a clínica para agendar." e o cartão da unidade
+  (`AgendarComAClinica`), e `createClientAppointment` recusa com a mesma frase
+  (`CLIENTE_ARQUIVADA_NO_APP`). Prova: o mesmo spec.
 - **O agendar do app diz QUANDO cada profissional atende** (J-60) e tem
   "Hoje"/"Amanhã" e os horários por Manhã/Tarde/Noite (J-59, o mesmo
   `gruposDeHorario` do remarcar). O texto é `resumoDoHorario`
@@ -1041,6 +1067,8 @@ O resto do fluxo:
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts
 ❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)
+❌ Gravar o agendamento do app da cliente fora de createAppointmentCore (por-05: uma regra só, a da agenda da clínica)
+❌ Prender o portal da cliente à unidade de CADASTRO (clients.branch_id) — a ficha é da clínica: a unidade é a do endereço, entre as da rede
 ❌ Confundir a ficha do PROCEDIMENTO (forms/form_data) com a anamnese GERAL do cliente
 ❌ Action ou lista de ficha de procedimento sem .eq('tipo', 'PROCEDIMENTO') (edita e apaga a ficha de pré-atendimento)
 ❌ Gravar a anamnese geral fora de gravarAnamneseGeral (o pendente fica aberto e a cliente responde de novo)
