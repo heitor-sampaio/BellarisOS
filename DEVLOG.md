@@ -9012,6 +9012,29 @@ repasse, F6 cliente em qualquer unidade e portal/agenda, F7 indicadores e "a
 dona vê tudo", F8 vocabulário da clínica de uma unidade, F9 clientes e CRM,
 F10 atendimento, caixa e automações).
 
+**F2b feita em 2026-11-01 — Cancelar pacote e Cancelar venda** (12755788,
+913c1ad8; migrations `20261101000251–252`). Na ficha e na ficha de
+tratamento, "Cancelar pacote": "4 de 6 sessões restantes · R$ 2.200,00",
+"Usado R$ 1.100,00", "A devolver R$ 2.200,00", com a devolução como Estorno
+ou Crédito na clínica; o crediário em aberto cai antes ("Parcela 1/3: de
+R$ 1.000,00 passa a R$ 800,00", as outras canceladas); as sessões já
+agendadas são canceladas ou ficam como avulso; a comissão de venda volta na
+proporção (o previsto "aguardando" também). Uma transação
+(`pacote_cancelar`), Financeiro em Gerenciar e a unidade ao alcance. A venda
+de produto toda a receber ganhou "Cancelar venda" (com "O produto voltou?"),
+e o pacote e o pré-pago cancelados saem das Vendas pelo que não foi usado.
+Prova: `e2e/pacote-cancelar.spec.ts`, `e2e/vendas-produto.spec.ts`.
+Decisões da F2b, para revisar: os agendamentos são cancelados dentro da
+transação do pacote (aviso depois); o estorno parcial reduz o pagamento ao
+usado e lança um "Estorno parcial"; crédito na clínica mantém receita e
+pontos; pacote vencido e sessão em atendimento barram o cancelamento; "manter
+como avulso" pelo preço da sessão no rateio; cancelar agendamentos exige só
+Financeiro em Gerenciar; sem evento `pacote.cancelado`; estornar um só
+lançamento do pacote continua possível. Achados que viram correção: a
+parcela nunca paga que cai emite `pagamento.estornado` (uma automação
+avisaria a cliente) → F10; usar crédito interno conta a receita duas vezes
+(já existia) → F7.
+
 **Mais decisões do Heitor (2026-11-01):**
 - **Comissão (F2), confirmado:** cartão de crédito em N vezes é pagamento
   integral ("a operadora não vai dar calote") e libera a comissão na hora; o
