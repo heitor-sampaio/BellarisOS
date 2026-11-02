@@ -43,7 +43,11 @@
     mês da venda. O de cada unidade (`metrics_by_branch`) ainda contava pela
     criação até 2026-10-27 (A34): agora também pelo vencimento. O cartão
     "A receber" do financeiro diz embaixo todo o em aberto, de qualquer
-    vencimento (D-14, `getAReceberEmAberto` — `vendas-financeiro.md`).
+    vencimento (D-14, `getAReceberEmAberto` — `vendas-financeiro.md`). Na
+    rede, esse em aberto inclui a unidade DESATIVADA (ind-11, 2026-11-02: "a
+    unidade pode ter sido desativada comercialmente mas ainda tem contas a
+    receber"), que também aparece no "Por filial" enquanto tiver conta em
+    aberto (prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`).
   - **O cartão em N vezes conta no dia da VENDA** (decisão do Heitor,
     2026-11-01: "conta no mês do dia da venda"): a receita é o lançamento
     pago, inteiro, no `paid_at` dele — a regra única não muda. As parcelas

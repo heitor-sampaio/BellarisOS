@@ -79,7 +79,7 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, aReceberEmAbertoPorUnidade, operadora, parcelasDaOperadora] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -126,9 +126,10 @@ export default async function AdminFinanceiroPage({
     // caixa (2026-10-29): o total das ativas e cada unidade (as de getByBranch).
     getResultadoDoEstoque(metricArgs),
     getResultadoDoEstoque({ ...metricArgs, branchIds: null }),
-    // D-14: todo o a receber em aberto, de qualquer vencimento — o total das
-    // ativas (como o cartão do mês) e cada unidade (as de getByBranch).
-    getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds }),
+    // D-14: todo o a receber em aberto, de qualquer vencimento — o total e
+    // cada unidade, INCLUSIVE a desativada (ind-11, revisão de 2026-11-02: "a
+    // unidade pode ter sido desativada comercialmente mas ainda tem contas a
+    // receber"). Era só o das ativas, como o número do mês.
     getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds: null }),
     // F2c: o cartão em N vezes que a OPERADORA ainda deposita, mês a mês, pelo
     // vencimento até o fim do período — o total das ativas e cada unidade.
@@ -157,7 +158,9 @@ export default async function AdminFinanceiroPage({
 
   // Unidade desativada só entra se teve movimento no período (o dinheiro
   // aconteceu); sem nada, era ruído no ranking (simulação de 2026-10-20).
-  const branchStats = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
+  // E a desativada com conta em aberto (ind-11): o dinheiro ainda vai entrar.
+  const branchStats = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal
+    || (aReceberEmAberto.porUnidade[b.branchId] ?? 0) > 0).map(b => ({
     id:          b.branchId,
     name:        b.branchName,
     slug:        b.branchSlug,
@@ -166,7 +169,7 @@ export default async function AdminFinanceiroPage({
     result:      resultadoDoPeriodo({ ...b, ...(estoquePorUnidade.porUnidade[b.branchId] ?? SEM_ESTOQUE_NO_RESULTADO) }).lucro,
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
-    aReceberEmAberto: aReceberEmAbertoPorUnidade.porUnidade[b.branchId] ?? 0,
+    aReceberEmAberto: aReceberEmAberto.porUnidade[b.branchId] ?? 0,
     aPagar:      emAbertoDe[b.branchId]?.aPagar ?? 0,
     proximoAReceber: emAbertoDe[b.branchId]?.proximoAReceber ?? null,
     proximoAPagar:   emAbertoDe[b.branchId]?.proximoAPagar ?? null,

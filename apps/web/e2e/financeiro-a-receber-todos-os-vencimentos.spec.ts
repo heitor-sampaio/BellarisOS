@@ -20,6 +20,7 @@ const db = () => banco()
 let rede: OutraRede | null = null
 let dona: MembroDeTeste | null = null
 let slug = ''
+let desativada = ''
 
 async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: quem.estado })
@@ -52,6 +53,10 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (rede) await db().from('financial_transactions').delete().eq('branch_id', rede.branchId)
+  if (desativada) {
+    await db().from('financial_transactions').delete().eq('branch_id', desativada)
+    await db().from('branches').delete().eq('id', desativada)
+  }
   await dona?.limpar(); await rede?.limpar()
 })
 
@@ -70,5 +75,25 @@ test('o financeiro da unidade e o da rede: o mês (R$ 100) e "Em aberto, todos o
       await expect(cartao, tela).toContainText(/R\$\s*100,00/)
       await expect(cartao, tela).toContainText(/Em aberto, todos os vencimentos:\s*R\$\s*450,00/)
     }
+  })
+})
+
+test('ind-11: a unidade DESATIVADA com conta a receber entra no em aberto da rede', async ({ browser }) => {
+  // "A unidade pode ter sido desativada comercialmente mas ainda tem contas a
+  // receber" (o Heitor, revisão de 2026-11-02).
+  const b = db()
+  const { data: fechada, error } = await b.from('branches')
+    .insert({ tenant_id: rede!.tenantId, name: `[e2e] Fechada ${marca}`, slug: `e2e-arf-${marca}`, is_active: false })
+    .select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  desativada = fechada!.id
+  expect((await b.from('financial_transactions').insert({
+    branch_id: desativada, type: 'INCOME', category: 'Atendimento', description: `[e2e] parcela da fechada ${marca}`,
+    amount: 200, payment_method: 'PIX', is_paid: false, due_date: dia(60), created_by: 'e2e',
+  })).error).toBeNull()
+
+  await como(browser, dona!, async p => {
+    await p.goto('/admin/financeiro?period=month')
+    await expect(p.locator('[data-kpi="a-receber"]')).toContainText(/Em aberto, todos os vencimentos:\s*R\$\s*650,00/)
   })
 })
