@@ -109,6 +109,7 @@ export const ISOLADOS = [
   'fidelidade-vouchers.spec.ts',
   'inbox-paginado.spec.ts',
   'indicadores-ticket-medio.spec.ts',
+  'indicadores-credito-interno.spec.ts',
   'indicadores-dashboard-da-rede-so-os-meus.spec.ts',
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',
