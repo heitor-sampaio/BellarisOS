@@ -669,7 +669,8 @@ function TabAgenda(p: ReportsBiProps) {
   const cancelled  = core.appointmentsCancelled
   const noShow     = core.appointmentsNoShow
   // A divisão mora em lib/metrics (§13.1, 2026-10-29); a tela só formata.
-  const rate       = taxaDeConclusao({ concluidos: completed, total }) ?? 0
+  // Sem agendamento não há taxa: "—", não 0% (ind-10 — 0% diz que foi ruim).
+  const rate       = taxaDeConclusao({ concluidos: completed, total })
 
   // As fatias são as de lib/metrics (J-57) — a mesma conta da Visão geral.
   const byStatus = statusDosAgendamentos({ total, concluidos: completed, cancelados: cancelled, faltas: noShow })
@@ -687,7 +688,7 @@ function TabAgenda(p: ReportsBiProps) {
     { key: 'noShow',     label: 'No-Show',    align: 'center' },
     {
       key: 'rate', label: 'Conclusão', align: 'center',
-      render: (v) => (
+      render: (v) => v === '—' ? '—' : (
         <Badge label={`${Number(v).toFixed(1).replace('.', ',')}%`} color={Number(v) >= 70 ? 'green' : Number(v) >= 50 ? 'amber' : 'red'} />
       ),
     },
@@ -697,7 +698,7 @@ function TabAgenda(p: ReportsBiProps) {
     completed: u.concluidos,
     cancelled: u.cancelados,
     noShow:    u.faltas,
-    rate:      taxaDeConclusao({ concluidos: u.concluidos, total: u.total }) ?? 0,
+    rate:      taxaDeConclusao({ concluidos: u.concluidos, total: u.total }) ?? '—',
   }))
 
   return (
@@ -710,7 +711,7 @@ function TabAgenda(p: ReportsBiProps) {
         <KpiCard label="Realizados"         value={completed} format="int" delta={pctDelta(completed, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Cancelados"         value={cancelled} format="int" accent="var(--warning)" />
         <KpiCard label="Não Compareceu"     value={noShow}    format="int" accent="var(--danger)" />
-        <KpiCard label="Taxa de Conclusão"  value={rate}      format="pct" accent={rate >= 70 ? 'var(--success)' : 'var(--warning)'} dica={DEFINICOES.conclusao} />
+        <KpiCard label="Taxa de Conclusão"  value={rate}      format="pct" accent={rate == null ? undefined : rate >= 70 ? 'var(--success)' : 'var(--warning)'} dica={DEFINICOES.conclusao} />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Distribuição por Status">
@@ -755,7 +756,7 @@ function TabClientes(p: ReportsBiProps) {
   // janela" — media recorrência, não retenção, e em janelas curtas dava zero
   // por construção.
   const { clientsServed, firstTimeClients } = retention
-  const taxaRetencao = taxaDeRetencao(retention) ?? 0
+  const taxaRetencao = taxaDeRetencao(retention)
 
   // O ticket médio: a média do que as clientes que pagaram gastaram no período
   // (era o "Gasto médio" desta aba, o mesmo número; agora UM indicador com o
@@ -796,7 +797,7 @@ function TabClientes(p: ReportsBiProps) {
         <KpiCard label="Novos no Período" value={novos}        format="int" delta={pctDelta(novos, corePrev.newClients)} showDelta />
         <KpiCard label="Atendidos no Período" value={clientsServed}    format="int" accent={CHART_COLORS[1]} />
         <KpiCard label="Primeira Vez"         value={firstTimeClients} format="int" accent={CHART_COLORS[2]} />
-        <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao >= 40 ? 'var(--success)' : 'var(--warning)'} />
+        <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao == null ? undefined : taxaRetencao >= 40 ? 'var(--success)' : 'var(--warning)'} />
         <KpiCard label="Ticket médio"     value={gastoMedio}   format="brl" />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
@@ -1079,7 +1080,7 @@ function TabEstoque(p: ReportsBiProps) {
   const totalStockValue = e.valorEmEstoque
   // Consumo ao custo do MOVIMENTO, a mesma conta do giro do dashboard.
   const consumoValue    = r.consumoTotal
-  const giro            = giroDoEstoque({ consumo: consumoValue, valorEmEstoque: totalStockValue }) ?? 0
+  const giro            = giroDoEstoque({ consumo: consumoValue, valorEmEstoque: totalStockValue })
   const criticos        = e.criticos
   const zerados         = e.zerados
   const topConsumed     = e.maisConsumidos.map(x => ({ name: x.nome, value: x.valor }))
@@ -1130,7 +1131,7 @@ function TabEstoque(p: ReportsBiProps) {
         {!p.soOsMeus && <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />}
         <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" />
         {!p.soOsMeus && <>
-          <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
+          <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro == null ? undefined : giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
           <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
           <KpiCard label="Itens Zerados"  value={zerados}  format="int" accent="var(--danger)" />
         </>}

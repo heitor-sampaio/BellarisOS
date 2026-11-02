@@ -422,6 +422,12 @@ na rede; com uma unidade só (D-19) não há recorte. O nome da filial no
 da rede. Clientes do /admin abre com o filtro de unidade já escolhido.
 Prova: `e2e/indicadores-unidade-na-url.spec.ts`.
 
+**Taxa sem denominador é "—", não 0%** (ind-10, revisão de 2026-11-02:
+"0% diz que foi ruim; '—' diz que não houve"): a taxa de conclusão (no
+total e por unidade), a retenção e o giro dos Relatórios mostram "—" quando
+a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
+`e2e/relatorios-taxa-sem-denominador.spec.ts`.
+
 **Variação contra o período anterior e a aba Agenda (2026-10-27)**
 - Sem período anterior (anterior = 0) não existe variação:
   `variacaoPercentual` (`lib/metrics/resultado.ts`) devolve nulo e a tela diz
