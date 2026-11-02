@@ -101,6 +101,12 @@ test('o ranking por procedimento e por profissional é a receita PAGA dos atendi
     await pg.goto('/admin/reports?period=month&tab=procedimentos')
     await expect(pg.getByRole('columnheader', { name: 'Receita paga' })).toBeVisible()
     await expect(pg.getByRole('row', { name: new RegExp(`Limpeza ${marca}`) })).toContainText('200,00')
+    // A55: o ticket da aba é o do sistema (por CLIENTE) e diz isso; a média
+    // por execução vem ao lado: 200 pagos ÷ 2 execuções.
+    const kpi = (r: string) => pg.getByText(r, { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
+    await expect(kpi('Ticket médio por cliente')).toContainText('200,00')
+    await expect(kpi('Ticket médio por cliente').getByRole('button', { name: 'Como o ticket médio é contado' })).toBeVisible()
+    await expect(kpi('Média por execução')).toContainText('100,00')
     await pg.goto('/admin/reports?period=month&tab=profissionais')
     await expect(pg.getByText('Receita paga por profissional')).toBeVisible()
     await expect(pg.getByText('Receita Gerada')).toHaveCount(0)

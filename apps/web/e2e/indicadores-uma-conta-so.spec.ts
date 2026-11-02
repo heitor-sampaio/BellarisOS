@@ -255,10 +255,11 @@ test.describe('Ticket médio = média de quanto cada CLIENTE gasta (pago ÷ clie
   test('Relatórios → Procedimentos: o "Ticket médio" é o do sistema (R$ 300); a tabela é por execução', async ({ browser }) => {
     await como(browser, gestor, async p => {
       await p.goto('/admin/reports?tab=procedimentos&period=month')
-      const ticket = cartao(p, 'Ticket médio')
+      // A55: na aba de execuções, o nome diz que o ticket é por cliente.
+      const ticket = cartao(p, 'Ticket médio por cliente')
       await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
       // A coluna da tabela é por execução, e diz isso.
-      await expect(p.getByText('Média por execução', { exact: true })).toBeVisible()
+      await expect(p.getByRole('columnheader', { name: 'Média por execução' })).toBeVisible()
       // A linha da limpeza: R$ 180 por execução e 100% da receita (a avaliação
       // de R$ 0, R$ 0 e 0%). A conta mora em lib/metrics desde a frente F.
       const limpeza = p.locator('tr').filter({ hasText: `Limpeza ${marca}` })

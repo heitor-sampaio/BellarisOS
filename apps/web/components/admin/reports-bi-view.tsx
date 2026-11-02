@@ -935,7 +935,10 @@ function TabProcedimentos(p: ReportsBiProps) {
             cliente), sem o anterior carregado. */}
         <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Receita paga dos atendimentos" value={totalRev} format="brl" dica={DEFINICOES.receitaDosAtendimentos} />
-        <KpiCard label="Ticket médio"    value={avgTicket} format="brl" />
+        {/* A55: o ticket é o do sistema (por CLIENTE) e o nome diz isso; a
+            média por execução (a receita paga ÷ as execuções) vem ao lado. */}
+        <KpiCard label="Ticket médio por cliente" value={avgTicket} format="brl" dica={DEFINICOES.ticket} />
+        <KpiCard label="Média por execução" value={mediaPorExecucao({ receita: totalRev, execucoes: totalExec })} format="brl" />
         <div className="card" style={{ padding: '16px 20px', flex: '1 1 160px' }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
             Mais Realizado

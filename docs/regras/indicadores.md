@@ -93,7 +93,9 @@
     cliente, a receita de serviço dela ÷ os concluídos cobrados —
     `mediaPorAtendimentoCobrado`, a conta antiga do ticket: numa cliente só, o
     ticket novo seria o próprio LTV) e "Média por execução" (por
-    procedimento, nos Relatórios). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a
+    procedimento, nos Relatórios; na aba Procedimentos, a receita paga dos
+    atendimentos ÷ as execuções, num cartão ao lado do "Ticket médio por
+    cliente" — A55, 2026-11-02: o ticket fica, com o nome que diz a conta). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a
     aba Procedimentos dividia pelos concluídos — R$ 90 ao lado dos R$ 180 da
     Visão geral (D11). Essas duas médias, e o "% do Total" da tabela por
     procedimento, também moram em `lib/metrics/resultado.ts`
