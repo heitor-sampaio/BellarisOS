@@ -201,7 +201,11 @@
     `getMargemPorProcedimento`; 2026-10-21). É o custo ATUAL do catálogo — o
     giro de estoque é que usa o custo do movimento. Até então a página fazia a
     conta com o preço da embalagem inteira (a Toxina saía com −3858%). Prova:
-    `e2e/indicadores-margem.spec.ts`.
+    `e2e/indicadores-margem.spec.ts`. O ranking do dashboard lista só o
+    procedimento com custo cadastrado (A13, 2026-11-02; migration
+    `20261101000707`): sem custo nenhum a margem é 100% por construção, e a
+    5ª simulação via "100%" em todos; a tabela tem colunas fixas e cabe no
+    cartão estreito (a coluna "Margem" saía cortada).
     **O custo do procedimento é UMA conta** (`metrics_custo_dos_procedimentos`,
     2026-10-27): a margem do dashboard e a margem por faixa etária dos
     relatórios (`metrics_relatorio`, aba Procedimentos — só procedimentos com

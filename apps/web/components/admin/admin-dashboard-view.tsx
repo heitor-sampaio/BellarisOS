@@ -1060,16 +1060,19 @@ export function AdminDashboardView({
           </div>
           {procedureMargins.length === 0 ? (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>
-              Sem custo variável cadastrado nos procedimentos.
+              Sem custo cadastrado nos procedimentos.
             </p>
           ) : (
             <div className="table-wrap">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {/* A13: o card é estreito (1/4 da linha); colunas de largura fixa e o
+                nome com reticências — a coluna Margem saía cortada ("MARGE"). */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup><col /><col style={{ width: '38%' }} /><col style={{ width: '27%' }} /></colgroup>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {['Procedimento', 'Preço', 'Margem'].map(h => (
                     <th key={h} style={{
-                      padding: '9px 14px', textAlign: h === 'Procedimento' ? 'left' : 'right',
+                      padding: '9px 10px', textAlign: h === 'Procedimento' ? 'left' : 'right', whiteSpace: 'nowrap',
                       fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                       letterSpacing: '0.06em', textTransform: 'uppercase',
                     }}>{h}</th>
@@ -1084,15 +1087,15 @@ export function AdminDashboardView({
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <td style={{ padding: '11px 14px', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', maxWidth: 160 }}>
+                    <td style={{ padding: '11px 10px', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)' }}>
                       <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.name}
                       </span>
                     </td>
-                    <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {p.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
-                    <td style={{ padding: '11px 14px', textAlign: 'right' }}>
+                    <td style={{ padding: '11px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <span style={{
                         fontSize: 'var(--text-sm-sz)', fontWeight: 800,
                         color: p.marginPct >= 70 ? 'var(--success)' : p.marginPct >= 40 ? 'var(--warning)' : 'var(--danger)',
