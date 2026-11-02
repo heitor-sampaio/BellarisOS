@@ -65,7 +65,8 @@ test('o conflito recusado não apaga o que foi digitado no modal', async ({ brow
     await janela.getByLabel('Observações internas').fill('Prefere a sala do fundo')
     await janela.getByRole('button', { name: 'Confirmar agendamento' }).click()
 
-    await expect(janela.getByText('Este profissional já tem agendamento nesse horário.')).toBeVisible()
+    // A recusa do choque (A26: uma mensagem só, com o detalhe do aviso).
+    await expect(janela.getByRole('alert')).toContainText(/Não foi agendado|já tem agendamento nesse horário/)
     await expect(janela.getByLabel('Observações internas')).toHaveValue('Prefere a sala do fundo')
     await expect(janela.getByLabel('Procedimento *')).toHaveValue(rede!.procedureId)
     await expect(janela.getByLabel('Profissional *')).toHaveValue(rede!.professionalId)

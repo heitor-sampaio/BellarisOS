@@ -11,6 +11,19 @@ import { useEffect } from 'react'
  */
 type Campo = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
 
+/**
+ * O mínimo/máximo como se lê (A26 da 5ª simulação: "O mínimo é
+ * 2026-11-01T10:40."): data e hora em dd/mm/aaaa às hh:mm, número com vírgula.
+ */
+export function limiteLegivel(tipo: string, valor: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/.exec(valor)
+  if (m && (tipo === 'datetime-local' || tipo === 'date')) {
+    const dia = `${m[3]}/${m[2]}/${m[1]}`
+    return tipo === 'datetime-local' && m[4] ? `${dia} às ${m[4]}` : dia
+  }
+  return valor.replace('.', ',')
+}
+
 function mensagem(c: Campo): string {
   const v = c.validity
   if (v.valueMissing) {
@@ -25,8 +38,16 @@ function mensagem(c: Campo): string {
   }
   if (v.tooShort && 'minLength' in c) return `Use pelo menos ${c.minLength} caracteres.`
   if (v.tooLong && 'maxLength' in c) return `Use no máximo ${c.maxLength} caracteres.`
-  if (v.rangeUnderflow && c instanceof HTMLInputElement) return `O mínimo é ${c.min.replace('.', ',')}.`
-  if (v.rangeOverflow && c instanceof HTMLInputElement) return `O máximo é ${c.max.replace('.', ',')}.`
+  if (v.rangeUnderflow && c instanceof HTMLInputElement) {
+    return c.type === 'datetime-local' || c.type === 'date' || c.type === 'time'
+      ? `Escolha a partir de ${limiteLegivel(c.type, c.min)}.`
+      : `O mínimo é ${limiteLegivel(c.type, c.min)}.`
+  }
+  if (v.rangeOverflow && c instanceof HTMLInputElement) {
+    return c.type === 'datetime-local' || c.type === 'date' || c.type === 'time'
+      ? `Escolha até ${limiteLegivel(c.type, c.max)}.`
+      : `O máximo é ${limiteLegivel(c.type, c.max)}.`
+  }
   if (v.stepMismatch || v.badInput) return 'Valor inválido.'
   if (v.patternMismatch) return c.title || 'Formato inválido.'
   return ''

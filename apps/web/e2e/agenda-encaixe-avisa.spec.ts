@@ -93,6 +93,11 @@ test('a grade sombreia o fora do horário, e o modal avisa do encaixe e do confl
 
     await janela.getByLabel('Data e hora *').fill(`${DIA}T11:30`)
     await expect(aviso).toContainText(`${nomeDaProf} já tem atendimento das 11:00 às 12:00`)
+    // A26 (5ª simulação): confirmar no choque — a recusa aparece UMA vez (eram o
+    // aviso e a recusa do servidor, os dois dizendo o mesmo).
+    await janela.getByRole('button', { name: 'Confirmar agendamento' }).click()
+    await expect(janela.getByText(/Não foi agendado/)).toBeVisible()
+    await expect(janela.getByText(/já tem (atendimento|agendamento)/)).toHaveCount(1)
 
     await janela.getByLabel('Data e hora *').fill(`${DIA}T14:00`)
     await expect(aviso).toHaveCount(0)

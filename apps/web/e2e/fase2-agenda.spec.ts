@@ -217,7 +217,8 @@ test('choque de horário com cliente novo: recusado, e a ficha rápida não nasc
     await profissional.selectOption(prof!.id)
     await modal.locator('input[type="datetime-local"]').fill(`${dia}T09:00`)
     await page.getByRole('button', { name: 'Confirmar agendamento' }).click()
-    await expect(page.getByText('Este profissional já tem agendamento nesse horário.')).toBeVisible()
+    // A recusa do choque (A26: uma mensagem só, com o detalhe do aviso).
+    await expect(page.getByRole('alert').filter({ hasText: /Não foi agendado|já tem agendamento nesse horário/ })).toBeVisible()
     const { data: criado } = await db.from('clients').select('id').eq('name', nomeNovo)
     expect(criado ?? [], 'a ficha rápida não nasceu').toHaveLength(0)
   } finally {

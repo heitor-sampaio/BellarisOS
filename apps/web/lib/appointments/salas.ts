@@ -41,7 +41,7 @@ export async function recusaDaSala(admin: Admin, a: { branchId: string; roomId: 
 export async function salasParaOHorario(admin: Admin, a: {
   tenantId: string; branchId: string; procedureId: string | null
   inicio: Date | null; duracaoMin: number; excluir?: string | null
-}): Promise<{ salas: SalaParaAgendar[]; sugerida: string | null }> {
+}): Promise<{ salas: SalaParaAgendar[]; sugerida: string | null; doProcedimento: boolean }> {
   const { salas, ligadas } = await salasEDaLigacao(admin, a.branchId, a.procedureId)
   const servem = salasParaOProcedimento(salas, ligadas)
   const inicio = a.inicio && !Number.isNaN(a.inicio.getTime()) ? a.inicio : null
@@ -51,7 +51,12 @@ export async function salasParaOHorario(admin: Admin, a: {
       tenantId: a.tenantId, roomId: s.id, branchId: a.branchId, inicio, duracaoMin: a.duracaoMin, excluir: a.excluir,
     })) : true,
   })))
-  return { salas: comLivre, sugerida: salaSugerida(comLivre) }
+  // A sala só vem escolhida quando o procedimento é LIGADO a salas nesta
+  // unidade (A27 da 5ª simulação): sem procedimento, ou com o que serve em
+  // qualquer sala (a avaliação), a pessoa escolhe — vinha a "Sala Rosa —
+  // facial" para tudo.
+  const doProcedimento = !!a.procedureId && ligadas.length > 0
+  return { salas: comLivre, sugerida: doProcedimento ? salaSugerida(comLivre) : null, doProcedimento }
 }
 
 /**
@@ -61,8 +66,8 @@ export async function salasParaOHorario(admin: Admin, a: {
  */
 export async function salasDoAgendar(
   ctx: TenantContext, branchId: string, procedureId: string | null, scheduledAt: string | null, durationMin: number,
-): Promise<{ salas: SalaParaAgendar[]; sugerida: string | null }> {
-  const vazio = { salas: [], sugerida: null }
+): Promise<{ salas: SalaParaAgendar[]; sugerida: string | null; doProcedimento: boolean }> {
+  const vazio = { salas: [], sugerida: null, doProcedimento: false }
   if (typeof branchId !== 'string' || !UUID.test(branchId) || !alcancaUnidade(ctx, branchId)) return vazio
   if (procedureId != null && (typeof procedureId !== 'string' || !UUID.test(procedureId))) return vazio
   const admin = createAdminClient()

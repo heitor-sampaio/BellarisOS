@@ -228,7 +228,7 @@ export function AppointmentModal({
   // escolhida, até a pessoa escolher outra. O servidor confere de novo.
   const temSalas = dados.rooms.length > 0
   const procedimentoDoAgendamento = credito?.procedureId ?? procId
-  const [salasDoServidor, setSalasDoServidor] = useState<{ chave: string; salas: SalaParaAgendar[]; sugerida: string | null } | null>(null)
+  const [salasDoServidor, setSalasDoServidor] = useState<{ chave: string; salas: SalaParaAgendar[]; sugerida: string | null; doProcedimento?: boolean } | null>(null)
   const chaveDasSalas = `${unidadeId}|${procedimentoDoAgendamento}|${scheduledAtUTC}|${duracaoMin}`
   useEffect(() => {
     if (!temSalas || !unidadeId) return
@@ -247,6 +247,10 @@ export function AppointmentModal({
   const salaId = salaEscolhida !== null
     ? (salaEscolhida === '' || salasOferecidas.some(s => s.id === salaEscolhida) ? salaEscolhida : '')
     : (salasDoServidor?.chave === chaveDasSalas ? (salasDoServidor.sugerida ?? '') : '')
+  // A28: as salas DO procedimento todas ocupadas no horário — vai sem sala
+  // (a sala é opcional, H1), e a janela diz isso em vez de calar.
+  const semSalaLivre = !salaId && salasDoServidor?.chave === chaveDasSalas && !!salasDoServidor.doProcedimento
+    && salasOferecidas.length > 0 && salasOferecidas.every(s => !s.livre)
 
   // -- Avisos do horário (J-30, 2026-10-30) ----------------------------------
   // Antes de confirmar: o encaixe fora do horário da profissional e o choque
@@ -265,8 +269,13 @@ export function AppointmentModal({
     }, 200)
     return () => { vivo = false; clearTimeout(t) }
   }, [chaveDosAvisos, unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento, duracaoMin])
+  // A26 (5ª simulação): a recusa do servidor por choque e o aviso diziam o
+  // mesmo, duas vezes. Recusado por choque com o aviso na tela, fica UMA
+  // mensagem: a recusa, com o detalhe do aviso (horário e unidade).
+  const conflitoDoAviso = avisos && avisos.chave === chaveDosAvisos ? avisos.conflito : null
+  const recusadoPorChoque = !!state?.error?.startsWith('Este profissional já tem agendamento') && !!conflitoDoAviso
   const avisosDoMomento = avisos && avisos.chave === chaveDosAvisos
-    ? [avisos.conflito, avisos.foraDoHorario].filter((x): x is string => !!x) : []
+    ? [recusadoPorChoque ? null : avisos.conflito, avisos.foraDoHorario].filter((x): x is string => !!x) : []
 
   const minDT = useMemo(() => {
     const now = new Date(agora)
@@ -507,6 +516,12 @@ export function AppointmentModal({
                     <option key={r.id} value={r.id}>{r.livre ? r.name : `${r.name} (ocupada)`}</option>
                   ))}
                 </select>
+                {semSalaLivre && (
+                  <p data-aviso-da-sala role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
+                    <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} />
+                    {salasOferecidas.length === 1 ? 'A sala deste procedimento está ocupada' : 'As salas deste procedimento estão ocupadas'} nesse horário: o agendamento vai sem sala.
+                  </p>
+                )}
               </Field>
             )}
           </div>
@@ -539,8 +554,8 @@ export function AppointmentModal({
           </Field>
 
           {state?.error && (
-            <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
-              {state.error}
+            <p role="alert" style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
+              {recusadoPorChoque ? `Não foi agendado: ${conflitoDoAviso}` : state.error}
             </p>
           )}
 

@@ -246,3 +246,36 @@ test('unidade sem nenhuma sala: o agendar não mostra o campo', async ({ browser
     await expect(janela.getByLabel('Sala / Cabine')).toHaveCount(0)
   })
 })
+
+// A27 e A28 da 5ª simulação: sem procedimento, a sala vinha escolhida ("Sala
+// Rosa — facial"), e continuava a mesma para a Avaliação (qualquer sala); e a
+// única sala do procedimento ocupada levava o seletor a "Sem sala definida",
+// sem aviso. A sala só vem escolhida quando o procedimento é ligado a salas, e
+// quando todas as dele estão ocupadas a janela avisa que vai sem sala (a sala
+// é opcional — H1).
+test('A27/A28: sem procedimento nenhuma sala vem escolhida; todas as do procedimento ocupadas, avisa', async ({ browser }) => {
+  const salas = await salasDaUnidade(rede!.branchId)
+  const sala3 = salas.find(s => s.name === 'Sala 3')!.id
+  // A Cabine já está ocupada às 10:00 (o teste da sugestão); agora a Sala 3 também.
+  const { error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: segunda!.userId,
+    room_id: sala3, scheduled_at: as('10:00'), duration_min: 60, price: 100, status: 'SCHEDULED', source: 'INTERNAL',
+  })
+  expect(error).toBeNull()
+  await como(browser, gestora!.estado, async p => {
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    await p.getByRole('button', { name: 'Agendar', exact: true }).click()
+    const janela = p.locator('dialog[open]')
+    await janela.getByLabel('Data e hora *').fill(`${DIA}T16:00`)
+    const sala = janela.getByLabel('Sala / Cabine')
+    // A27: sem procedimento, nenhuma sala escolhida.
+    await expect(sala).toHaveValue('')
+
+    await janela.getByLabel('Procedimento *').selectOption(rede!.procedureId)
+    await janela.getByLabel('Profissional *').selectOption(rede!.professionalId)
+    await janela.getByLabel('Data e hora *').fill(`${DIA}T10:00`)
+    // A28: as duas salas do procedimento ocupadas às 10:00 — avisa que vai sem sala.
+    await expect(janela.locator('[data-aviso-da-sala]')).toContainText('sem sala')
+    await expect(sala).toHaveValue('')
+  })
+})

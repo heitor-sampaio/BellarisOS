@@ -35,7 +35,12 @@
     `cabeNoHorario` e o `primeiroConflito` do núcleo (a mesma conta de
     `horarioOcupado`). Na grade do dia, a coluna de cada profissional sombreia
     o que é fora do horário DELA (`forasDoHorario`); o clique ali continua
-    agendando. Prova: `e2e/agenda-encaixe-avisa.spec.ts`.
+    agendando. Recusado por choque com o aviso na tela, fica UMA mensagem
+    ("Não foi agendado: X já tem atendimento das…", A26 da 5ª simulação; eram
+    o aviso e a recusa repetidos). O horário no passado diz "Escolha a partir
+    de 01/11/2026 às 10:40." (`limiteLegivel`, `ValidacaoEmPortugues`; era o
+    ISO "2026-11-01T10:40"). Prova: `e2e/agenda-encaixe-avisa.spec.ts`,
+    `tests/validacao-limite-legivel.test.ts`.
   - **Desmarcar "Segue o horário da unidade"** (Equipe) parte do horário da
     unidade do membro, não do comercial (J-9, `horarioDeQuemDeixaDeSeguir`);
     o membro da rede parte da unidade quando a rede tem uma só. Prova:
@@ -354,7 +359,13 @@
   - **O agendar** (agenda dos dois portais e o CRM) oferece só as salas que
     servem, com "(ocupada)" na que tem atendimento no horário, e já escolhe a
     primeira livre (`salasParaAgendar` / `salasParaAgendarNoCrm` →
-    `salasDoAgendar`, `lib/appointments/salas.ts`). **Unidade sem sala: o
+    `salasDoAgendar`, `lib/appointments/salas.ts`) — **só quando o
+    procedimento é LIGADO a salas nesta unidade** (A27 da 5ª simulação: sem
+    procedimento, ou com o que serve em qualquer sala, nenhuma vem escolhida;
+    vinha a "Sala Rosa — facial" para a avaliação). Com todas as salas do
+    procedimento ocupadas, a janela AVISA "…ocupada(s) nesse horário: o
+    agendamento vai sem sala" (A28, `[data-aviso-da-sala]`; a sala é opcional,
+    H1). Prova: `e2e/agenda-salas.spec.ts` ("A27/A28"). **Unidade sem sala: o
     campo nem aparece.** **A sala é opcional** em todo agendamento e
     atendimento (decisão do Heitor, 2026-11-01: "não deve ser obrigatório
     selecionar sala"): o app da cliente, o checkout, as sessões e o Copilot
