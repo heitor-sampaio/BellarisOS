@@ -423,6 +423,9 @@ abrangência vence o pedido (`ctx.branchId ?? unidade`); valor desconhecido cai
 na rede; com uma unidade só (D-19) não há recorte. O nome da filial no
 "Ranking de filiais" leva a esse recorte. O funil de oportunidades continua o
 da rede. Clientes do /admin abre com o filtro de unidade já escolhido.
+Os **Relatórios** também (A57 da 5ª, 2026-11-02): `?unidade=<id|endereço>`,
+com `?branch=<id>` como apelido, e o seletor de unidade grava `?unidade=`
+(prova: `e2e/relatorios-unidade-na-url.spec.ts`).
 Prova: `e2e/indicadores-unidade-na-url.spec.ts`.
 
 **Taxa sem denominador é "—", não 0%** (ind-10, revisão de 2026-11-02:

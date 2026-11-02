@@ -1328,8 +1328,12 @@ export function ReportsBiView(props: ReportsBiProps) {
   // Mescla em vez de montar do zero: antes, trocar de aba descartava o período
   // personalizado e vice-versa.
   const switchTab = (t: Tab) => router.push(mesclarParams(searchParams, { tab: t }))
-  const switchBranch = (id: string) =>
-    router.push(mesclarParams(searchParams, { branch: id || null }))
+  // O recorte vai em `?unidade=<endereço>` (A57), como o resto da rede; o
+  // `?branch=` antigo sai da URL.
+  const switchBranch = (id: string) => {
+    const unidade = (props.allBranches ?? props.branches).find(b => b.id === id)
+    router.push(mesclarParams(searchParams, { unidade: unidade?.slug ?? (id || null), branch: null }))
+  }
 
   const activeSection = {
     overview:       <TabOverview      {...props} />,

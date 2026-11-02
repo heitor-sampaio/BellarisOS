@@ -115,6 +115,7 @@ export const ISOLADOS = [
   'relatorios-profissionais-ativos.spec.ts',
   'relatorios-procedimentos-agenda-dela.spec.ts',
   'relatorios-taxa-sem-denominador.spec.ts',
+  'relatorios-unidade-na-url.spec.ts',
   'indicadores-dashboard-da-rede-so-os-meus.spec.ts',
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',

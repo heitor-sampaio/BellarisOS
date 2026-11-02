@@ -8,9 +8,9 @@ import {
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string; branch?: string; funil?: string; tipo?: string; pagina?: string }>
+  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string; unidade?: string; branch?: string; funil?: string; tipo?: string; pagina?: string }>
 }) {
-  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, branch: rawBranch, funil: rawFunil, tipo: rawTipo, pagina: rawPagina } = await searchParams
+  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, unidade: rawUnidade, branch: rawBranch, funil: rawFunil, tipo: rawTipo, pagina: rawPagina } = await searchParams
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'reports', 'VIEW')
@@ -52,7 +52,10 @@ export default async function AdminReportsPage({
 
   // Recorte: a rede inteira, ou uma unidade. Quem não pode ver o consolidado
   // cai na primeira unidade em vez de numa tela vazia.
-  const selecionada = branches.find(b => b.id === rawBranch)
+  // `?unidade=<id|endereço>` é o drill-down da rede, como no dashboard e em
+  // Clientes (J-54; A57 da 5ª, 2026-11-02); `?branch=<id>` segue como apelido.
+  const pedida = rawUnidade ?? rawBranch
+  const selecionada = branches.find(b => b.id === pedida || b.slug === pedida)
     ?? (podeVerRede ? undefined : branches[0])
   // D-19: com UMA unidade, o cabeçalho diz o nome dela, não "Rede", e os
   // quadros por unidade somem.
