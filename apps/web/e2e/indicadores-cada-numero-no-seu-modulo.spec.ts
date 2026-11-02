@@ -113,8 +113,8 @@ test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
       await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
       await expect(card(p, 'Minha receita do mês')).toContainText(/R\$\s*120/)
       await expect.soft(card(p, 'Atendimentos')).toContainText(/atendimentos\s*3\s*concluídos/i)
-      await expect.soft(p.getByText('Ocupação', { exact: true }), 'a ocupação é da agenda: de todos').toBeVisible()
-      await expect.soft(p.getByText('Custo do mês'), 'o custo não se atribui a ela').toHaveCount(0)
+      await expect.soft(p.getByText('Aproveitamento', { exact: true }), 'a ocupação é da agenda: de todos').toBeVisible()
+      await expect.soft(p.getByText('Despesas pagas do mês'), 'o custo não se atribui a ela').toHaveCount(0)
     })
   })
 
@@ -147,9 +147,9 @@ test.describe('agenda "só os meus", financeiro de todos (a Agnes)', () => {
       await p.goto('/admin/dashboard?period=month')
       await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
       await expect(card(p, 'Receita bruta do mês')).toContainText(/R\$\s*470/)
-      await expect.soft(p.getByText('Custo do mês'), 'o financeiro é de todos').toBeVisible()
+      await expect.soft(p.getByText('Despesas pagas do mês'), 'o financeiro é de todos').toBeVisible()
       await expect.soft(card(p, 'Atendimentos')).toContainText(/atendimentos\s*1\s*concluídos/i)
-      await expect.soft(p.getByText('Ocupação', { exact: true }), 'a ocupação é da agenda: só a dela').toHaveCount(0)
+      await expect.soft(p.getByText('Aproveitamento', { exact: true }), 'a ocupação é da agenda: só a dela').toHaveCount(0)
     })
   })
 
