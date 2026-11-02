@@ -26,8 +26,6 @@ import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
 import { abertosDeAntes } from '@/lib/agenda/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
-import { retornosAMarcar, diaDeBrasilia } from '@/lib/agenda/retornos'
-import { RetornosAMarcar } from '@/components/branch/retornos-a-marcar'
 
 // --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
@@ -332,9 +330,6 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // Os atendimentos de dias anteriores ainda abertos (J-32): quem vê a agenda,
   // com o "só os meus" dela.
   const abertos = canAgenda ? await abertosDeAntes(ctx, branchId, now) : { total: 0, itens: [] }
-  // Os retornos a marcar (D-12): o "Retorno em N dias" que a profissional
-  // pediu ao finalizar e que vence sem horário marcado. Quem vê a agenda.
-  const retornos = canAgenda ? await retornosAMarcar(ctx, branchId, now) : { total: 0, itens: [] }
 
   // -------------------------------------------------------------
   return (
@@ -354,7 +349,6 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts} />}
 
       <AbertosDeAntes slug={slug} total={abertos.total} itens={abertos.itens} />
-      <RetornosAMarcar slug={slug} total={retornos.total} itens={retornos.itens} hoje={diaDeBrasilia(now)} />
 
       {/* -- Checkout pendente ----------------------------------- */}
       {canCheckout && (pendingCheckouts ?? 0) > 0 && (

@@ -33,12 +33,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `<CanalDaCampanha>` ("não vai pelo WhatsApp"), e o público mostra os dois
   números — quantas no público e quantas RECEBEM (`publico_com_aparelho`, o
   mesmo critério do disparo). Prova: `e2e/campanha-aviso-no-celular.spec.ts`.
-- **O "Retorno vencendo" sai do CRON** (D-12, 2026-10-30):
-  `agendamento.retorno_vencendo` é emitido por `/api/cron/retornos` no dia do
-  retorno que a profissional pediu ao finalizar (`atendimento.md` §10), com o
-  retrato do atendimento concluído — o procedimento é do payload, e é no "Se"
-  que a clínica escolhe qual (o gatilho não filtra procedimento) — mais
-  `retornoEmDias` e `retornoPara`. Um por atendimento.
+- **Não há gatilho "Retorno vencendo"** (aut-04, 2026-11-02): o
+  `agendamento.retorno_vencendo` e o cron `retornos` saíram com o "Retorno em N
+  dias" (`atendimento.md` §10). O retorno é um agendamento novo; o gatilho de
+  quem quer avisar é o do próprio agendamento.
 - **Campanha ≠ automação.** Campanha é disparo em massa por público; automação
   é reação a um fato. São dois produtos, e nada migra de um para o outro.
 - **A fila do motor é `automation_runs`**, no Postgres — não há broker no
