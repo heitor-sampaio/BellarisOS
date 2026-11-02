@@ -657,6 +657,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   `metrics_financeiro_do_cliente`, a mesma da ficha). Só o saldo: os
   lançamentos do crédito (com a descrição interna) ficam com a equipe.
   Prova: `e2e/portal-cliente-credito-interno.spec.ts`.
+- **Os pagamentos do app dizem o vencimento e o que falta pagar** (A64 da 5ª
+  simulação; Histórico → Pagamentos): a parcela pendente diz "Parcela 2 de 3 ·
+  vence em 01/12/2026" (`due_date`, senão `data_de_referencia`, por
+  `formatDia`), e o atendimento avulso concluído e não pago aparece "A pagar
+  na clínica" — a conta de `atendimentos_a_receber` (`getAtendimentosAReceber`),
+  a mesma do Fechamento e da ficha. Prova: `e2e/portal-cliente-pagamentos.spec.ts`.
 - **Estornar pede confirmação** (`ConfirmarEstorno`, nos financeiros da rede e
   da unidade; 2026-10-20): mostra o lançamento e o valor e avisa que não se
   desfaz. Era um clique só.

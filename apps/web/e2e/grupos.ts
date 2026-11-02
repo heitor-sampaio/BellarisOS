@@ -144,6 +144,7 @@ export const ISOLADOS = [
   'portal-cliente-remarcar-sem-preferencia.spec.ts',
   'agenda-remarcar-avisa.spec.ts',
   'agenda-pago-antes.spec.ts',
+  'portal-cliente-pagamentos.spec.ts',
   'portal-cliente-agendar-horarios.spec.ts',
   'portal-cliente-credito-interno.spec.ts',
   'portal-cliente-plano-proposto.spec.ts',

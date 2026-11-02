@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { formatDia } from '@estetica-os/utils'
 import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
 import type { ProcedimentoItem, PagamentoItem } from '@/app/[slug]/cliente/historico/page'
@@ -185,16 +186,20 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
             <EmptyState message="Nenhum pagamento registrado." />
           )}
           {pagamentos.map(p => (
-            <div key={p.id} className="card" style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div key={p.id} data-pagamento className="card" style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                   {p.procedure_name ?? p.description}
                 </p>
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                  {/* A64: a parcela e o vencimento; o atendimento não pago, "a pagar na clínica". */}
+                  {p.parcela && `${p.parcela} · `}
                   {p.paid_at
-                    ? new Date(p.paid_at).toLocaleDateString('pt-BR')
-                    : 'Pendente'}
-                  {p.payment_method && ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}`}
+                    ? new Date(p.paid_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+                    : p.aPagarNaClinica
+                      ? 'A pagar na clínica'
+                      : p.vencimento ? `vence em ${formatDia(p.vencimento)}` : 'Pendente'}
+                  {p.payment_method && !p.aPagarNaClinica && ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}`}
                 </p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>

@@ -1,4 +1,5 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
+import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assinadosDoCliente } from '@/lib/documentos/leitura'
 import { ler } from '@/lib/db'
@@ -27,6 +28,12 @@ export type PagamentoItem = {
   is_paid:        boolean
   paid_at:        string | null
   procedure_name: string | null
+  /** O vencimento da parcela/conta a receber (A64), AAAA-MM-DD. */
+  vencimento?:    string | null
+  /** "Parcela 2 de 3" (A64). */
+  parcela?:       string | null
+  /** O atendimento avulso concluído e não pago (A64): não é um lançamento, é `atendimentos_a_receber`. */
+  aPagarNaClinica?: boolean
 }
 
 export type DocumentoItem = {
@@ -52,6 +59,7 @@ type AtendimentoLido = {
 type PagamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
   is_paid: boolean; paid_at: string | null
+  due_date: string | null; data_de_referencia: string | null; parcela_numero: number | null; parcela_total: number | null
   appointments: { procedures: { name: string } | null } | null
 }
 type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string }
@@ -77,6 +85,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     ler(admin.from('financial_transactions')
       .select(`
         id, description, amount, payment_method, cartao_vezes, is_paid, paid_at,
+        due_date, data_de_referencia, parcela_numero, parcela_total,
         appointments(procedures(name))
       `)
       // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
@@ -124,7 +133,26 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     is_paid:        Boolean(r.is_paid),
     paid_at:        r.paid_at,
     procedure_name: r.appointments?.procedures?.name ?? null,
+    // A64: o vencimento e a parcela — "Pendente" sozinho não dizia quando.
+    vencimento:     r.is_paid ? null : (r.due_date ?? r.data_de_referencia ?? null),
+    parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
   }))
+  // A64: o atendimento avulso concluído e não pago (a conta de
+  // `atendimentos_a_receber`, a mesma do Fechamento e da ficha) — não tinha
+  // lançamento, e não aparecia para a cliente.
+  const ficha = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar a ficha') as { tenant_id: string } | null
+  const aReceber = ficha ? await getAtendimentosAReceber({ tenantId: ficha.tenant_id, clienteId: ctx.clientId! }) : null
+  pagamentos.unshift(...(aReceber?.itens ?? []).map(a => ({
+    id:             `a-receber-${a.appointmentId}`,
+    description:    a.procedureName ?? 'Atendimento',
+    amount:         a.price,
+    payment_method: null,
+    cartao_vezes:   null,
+    is_paid:        false,
+    paid_at:        null,
+    procedure_name: a.procedureName,
+    aPagarNaClinica: true,
+  })))
 
   // -- Documentos -------------------------------------------------
   const rawDocs = (docsRes ?? []) as unknown as DocumentoLido[]
