@@ -62,7 +62,7 @@ test('a equipe da unidade, em /login e /admin, vai ao painel dela', async ({ bro
 // destino pelos claims era /admin/dashboard, o portão do /admin devolvia ao
 // /login, e o /login (J-67) mandava de novo ao destino — milhares de idas e
 // voltas, a tela em branco (completa de 2026-10-30, plataforma-primeiro-admin).
-test('um login sem clínica nenhuma entra e fica no formulário, sem dar volta', async ({ browser }) => {
+test('um login sem clínica nenhuma não entra: fica no formulário, diz o porquê, sem dar volta', async ({ browser }) => {
   const email = `e2e-sem-clinica-${marca}@bellaris.invalid`
   const senha = `Senha-${marca}-7z`
   const { data: criado, error } = await db().auth.admin.createUser({ email, password: senha, email_confirm: true })
@@ -78,6 +78,8 @@ test('um login sem clínica nenhuma entra e fica no formulário, sem dar volta',
     await p.getByRole('button', { name: 'Entrar' }).click()
     await expect(p).toHaveURL(/\/login(\?|$)/)
     await expect(p.getByRole('button', { name: 'Entrar' })).toBeVisible()
+    // Desde a F5 da 5ª simulação (2026-11-01) o login sem vínculo não entra.
+    await expect(p.getByText('Esta conta não tem acesso a nenhuma clínica.')).toBeVisible()
     await p.waitForTimeout(2_000)
     expect(idasAoPainel, 'nada de ida e volta entre o /login e o painel').toBeLessThan(3)
   } finally {

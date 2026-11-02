@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LoginSchema, RegisterSchema, ResetPasswordSchema, UpdatePasswordSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
-import { destinoPelosClaims } from '@/lib/destino-da-sessao'
+import { destinoPelosClaims, contaSemVinculo } from '@/lib/destino-da-sessao'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
 
@@ -66,6 +66,9 @@ export async function registerAction(
   redirect('/setup')
 }
 
+/** O que lê quem tenta entrar com a conta desativada pela clínica — com a senha certa ou não. */
+const MENSAGEM_DE_DESATIVADO = 'Seu acesso foi desativado pela clínica. Fale com o responsável.'
+
 /** O que a equipe da plataforma lê quando tenta entrar na clínica. */
 const AVISO_DA_PLATAFORMA = 'A equipe da plataforma entra por admin.bellarisos.com ou suporte.bellarisos.com.'
 
@@ -81,14 +84,11 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
   // A conta desativada pela clínica (`ban_duration`, §11) responde
   // `user_banned`: dizer "senha incorreta" fazia a pessoa tentar de novo e
-  // pedir outra senha (J-68). Mas o Auth diz `user_banned` ANTES de conferir a
-  // senha — só quem acertou a senha ouve "desativado" (senha_da_conta_confere),
-  // senão qualquer um descobriria que o e-mail tem conta.
-  if (error?.code === 'user_banned') {
-    const { data: confere } = await createAdminClient()
-      .rpc('senha_da_conta_confere', { p_email: parsed.data.email, p_senha: parsed.data.password })
-    if (confere === true) return { error: 'Seu acesso foi desativado pela clínica. Fale com o responsável.' }
-  }
+  // pedir outra senha (J-68). O Auth diz `user_banned` antes de conferir a
+  // senha, e a tela diz SEMPRE o porquê (5ª simulação, 2026-11-01, o Heitor:
+  // "concordo"): conferir a senha antes (`senha_da_conta_confere`, que saiu)
+  // era um oráculo de senha sem limite de tentativas.
+  if (error?.code === 'user_banned') return { error: MENSAGEM_DE_DESATIVADO }
   if (error) return { error: 'E-mail ou senha incorretos' }
 
   // Cliente final: o primeiro login marca o primeiro acesso e, se a rede
@@ -103,6 +103,14 @@ export async function loginAction(
   if ((user?.app_metadata as { plataforma?: string } | undefined)?.plataforma) {
     await supabase.auth.signOut({ scope: 'local' })
     return { error: AVISO_DA_PLATAFORMA }
+  }
+
+  // Login sem vínculo — nem membro de uma rede nem cliente com ficha (o
+  // Heitor: "não deve ter como ter um login sem vínculo"): não entra, e diz
+  // por quê. Antes voltava mudo ao formulário, com a sessão aberta.
+  if (user && await contaSemVinculo(user.id)) {
+    await supabase.auth.signOut({ scope: 'local' })
+    return { error: 'Esta conta não tem acesso a nenhuma clínica.' }
   }
 
   // A senha dada por outra pessoa se troca antes de tudo (o proxy também leva lá).

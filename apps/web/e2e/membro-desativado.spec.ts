@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
@@ -33,6 +33,12 @@ const bloqueadoAte = async (userId: string) => {
   const { data } = await db().auth.admin.getUserById(await authIdDe(userId))
   const ate = (data.user as { banned_until?: string | null } | null)?.banned_until
   return ate ? new Date(ate) : null
+}
+/** Clica em Entrar e espera a resposta da action — sem isso, o que a tela mostrava antes passa por resposta. */
+async function entrar(p: Page) {
+  const resposta = p.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/login')
+  await p.getByRole('button', { name: 'Entrar' }).click()
+  await resposta
 }
 /** Tenta entrar pelo link mágico — o mesmo caminho do login sem senha. */
 async function consegueEntrar(email: string): Promise<boolean> {
@@ -80,6 +86,14 @@ test.describe.serial('membro desativado', () => {
       // 1. A sessão que ele já tinha para de funcionar.
       await pagina.goto('/admin/agenda')
       await expect(pagina).toHaveURL(/\/login\?acesso=desativado/)
+      await expect(pagina.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toBeVisible()
+      // A9 da 5ª simulação: ali, a senha errada de uma conta ATIVA tira a
+      // faixa e diz o erro (a pessoa lia a faixa, não o erro).
+      await pagina.getByLabel('E-mail').fill(`e2e-membro-gest${marca}@bellaris.invalid`)
+      await pagina.getByLabel('Senha').fill('senha-errada-de-proposito')
+      await entrar(pagina)
+      await expect(pagina.getByText('E-mail ou senha incorretos')).toBeVisible()
+      await expect(pagina.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toHaveCount(0)
 
       // 2. A conta está bloqueada no Auth: não entra de novo.
       const ate = await bloqueadoAte(alvo!.userId)
@@ -100,8 +114,10 @@ test.describe.serial('membro desativado', () => {
 
   // J-68 das simulações: com a conta desativada, o login dizia "E-mail ou
   // senha incorretos" — a pessoa achava que errou a senha. O Auth responde
-  // `user_banned`, e a tela diz o porquê.
-  test('o login da pessoa desativada diz que o acesso foi desativado', async ({ browser, page: admin }) => {
+  // `user_banned`, e a tela diz o porquê. Desde a 5ª simulação (2026-11-01,
+  // o Heitor: "concordo") diz SEMPRE, sem conferir a senha: conferir era um
+  // oráculo de senha sem limite (`senha_da_conta_confere`, que saiu).
+  test('o login da conta desativada diz que o acesso foi desativado, com qualquer senha', async ({ browser, page: admin }) => {
     const email = `e2e-membro-desat${marca}@bellaris.invalid`
     const senha = `E2e-${marca}-Senha!`
     expect((await db().auth.admin.updateUserById(await authIdDe(alvo!.userId), { password: senha })).error).toBeNull()
@@ -113,14 +129,16 @@ test.describe.serial('membro desativado', () => {
       await p.goto('/login')
       await p.getByLabel('E-mail').fill(email)
       await p.getByLabel('Senha').fill(senha)
-      await p.getByRole('button', { name: 'Entrar' }).click()
+      await entrar(p)
       await expect(p.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toBeVisible()
       await expect(p.getByText('E-mail ou senha incorretos')).toHaveCount(0)
-      // Com a senha ERRADA, nada diz que a conta existe nem que foi desativada.
+      // Com a senha ERRADA também: a conta está bloqueada, e é isso que a
+      // pessoa precisa saber (não "tente outra senha").
       await p.getByLabel('E-mail').fill(email)
       await p.getByLabel('Senha').fill('senha-errada-de-proposito')
-      await p.getByRole('button', { name: 'Entrar' }).click()
-      await expect(p.getByText('E-mail ou senha incorretos')).toBeVisible()
+      await entrar(p)
+      await expect(p.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toBeVisible()
+      await expect(p.getByText('E-mail ou senha incorretos')).toHaveCount(0)
     } finally {
       await ctx.close()
       await chamarAcao(admin, 'actions/team.ts', 'reactivateTeamMember', '/admin/team', [alvo!.userId, '/admin/team'])
