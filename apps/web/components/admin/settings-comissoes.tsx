@@ -39,13 +39,15 @@ const PARCELAS_DO_CREDITO = Array.from({ length: 11 }, (_, i) => i + 2)
 /** Os campos de taxa são curtos: em grade, quantos couberem na linha. */
 const grade = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 } as const
 
-export function SettingsComissoes({ inicial, taxas, semRegra, podeEditar, maximoDeVezes: maximoGravado = null }: {
+export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null }: {
   inicial:    ConfigDeComissao
   taxas:      TaxaDePagamento[]
   /** "Parcelar no crédito até" gravado pela rede (D-15); nulo = automático. */
   maximoDeVezes?: number | null
   /** Quem atende clientes e não tem comissão padrão configurada. */
   semRegra:   { id: string; nome: string }[]
+  /** Quantos atendem (A12): sem ninguém, a tela não diz "todos têm comissão". */
+  quantosAtendem?: number
   podeEditar: boolean
 }) {
   return (
@@ -65,6 +67,11 @@ export function SettingsComissoes({ inicial, taxas, semRegra, podeEditar, maximo
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', marginTop: 4 }}>{semRegra.map(p => p.nome).join(', ')}.</p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Sem regra, o atendimento é concluído sem gerar comissão.</p>
           </div>
+        ) : quantosAtendem === 0 ? (
+          // A12: "todos têm comissão" sem ninguém que atende parecia tudo em ordem.
+          <p data-ninguem-atende style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            Ninguém da equipe está marcado como “atende clientes”. Marque quem atende na Equipe para configurar a comissão.
+          </p>
         ) : (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Todos os profissionais que atendem têm comissão configurada.</p>
         )}

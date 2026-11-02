@@ -27,7 +27,7 @@ export async function taxasDaRede(tenantId: string): Promise<TaxaDePagamento[]> 
  * termina sem comissão, e a tela avisa. Só exceções não bastam — o
  * procedimento sem exceção cairia no nada.
  */
-export async function profissionaisSemComissao(tenantId: string): Promise<{ id: string; nome: string }[]> {
+export async function profissionaisSemComissao(tenantId: string): Promise<{ id: string; nome: string }[] & { quantosAtendem?: number }> {
   const admin = createAdminClient()
   const [membros, padroes] = await Promise.all([
     ler(admin.from('users').select('id, name').eq('tenant_id', tenantId)
@@ -36,7 +36,10 @@ export async function profissionaisSemComissao(tenantId: string): Promise<{ id: 
       .eq('is_active', true).is('procedure_id', null), 'listar as comissões padrão'),
   ])
   const comPadrao = new Set((padroes ?? []).map(p => p.professional_id as string))
-  return (membros ?? []).filter(m => !comPadrao.has(m.id as string)).map(m => ({ id: m.id as string, nome: m.name as string }))
+  const sem = (membros ?? []).filter(m => !comPadrao.has(m.id as string)).map(m => ({ id: m.id as string, nome: m.name as string }))
+  // A12 (5ª simulação): quantos atendem, para a tela não dizer "todos têm
+  // comissão" quando ninguém atende.
+  return Object.assign(sem, { quantosAtendem: (membros ?? []).length })
 }
 
 /**

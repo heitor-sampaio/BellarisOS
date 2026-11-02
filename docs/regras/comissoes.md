@@ -62,7 +62,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `(professional_id, procedure_id) nulls not distinct`. Qual vale:
   `regraAplicavel` (`lib/comissoes/config.ts`) — a exceção, senão o padrão,
   senão nenhuma (o atendimento conclui sem comissão, e a tela avisa quem
-  "atende" sem padrão).
+  "atende" sem padrão). Sem NINGUÉM marcado como "atende clientes", a tela
+  diz isso, e não "todos têm comissão" (A12 da 5ª, 2026-11-02; prova:
+  `e2e/comissoes-sem-quem-atende.spec.ts`).
 - **A comissão do PROCEDIMENTO** (2026-10-15; chip na coluna "Comissão" de
   Procedimentos e seção "Comissão" do modal de criar/editar — o MESMO
   `EditorDeComissao`; o modal só manda o campo `comissao` se ele mudou, e
