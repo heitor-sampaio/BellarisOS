@@ -463,6 +463,14 @@ com `?branch=<id>` como apelido, e o seletor de unidade grava `?unidade=`
 (prova: `e2e/relatorios-unidade-na-url.spec.ts`).
 Prova: `e2e/indicadores-unidade-na-url.spec.ts`.
 
+**O mapa do dashboard enquadra as UNIDADES** (D15 da 5ª, 2026-11-02): a
+unidade é localizada pelo CEP dela (a cidade só sem CEP —
+`ondeGeocodificarAUnidade`), e o mapa abre nos limites das unidades e das
+clientes (`enquadramentoDoMapa`, `components/admin/hotmap-types.ts`); tudo no
+mesmo ponto centraliza com zoom de bairro. Pela cidade, Moinhos e Zona Sul
+caíam no mesmo ponto e o mapa abria só na Zona Sul. Prova:
+`tests/mapa-enquadra-as-unidades.test.ts` (o geocoding é externo).
+
 **Taxa sem denominador é "—", não 0%** (ind-10, revisão de 2026-11-02:
 "0% diz que foi ruim; '—' diz que não houve"): a taxa de conclusão (no
 total e por unidade), a retenção e o giro dos Relatórios mostram "—" quando

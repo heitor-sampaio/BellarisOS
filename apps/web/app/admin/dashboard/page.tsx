@@ -123,7 +123,7 @@ export default async function AdminDashboardPage({
   // dashboard vazio com cara de rede nova.
   const branchesRaw = await ler(admin
     .from('branches')
-    .select('id, name, slug, city, state')
+    .select('id, name, slug, city, state, zip_code')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
     .order('name'), 'carregar as unidades')
@@ -491,6 +491,8 @@ export default async function AdminDashboardPage({
     name:    b.name as string,
     slug:    b.slug as string,
     cityKey: [b.city, b.state].filter(Boolean).join(', '),
+    // D15: a unidade pelo CEP dela (duas na mesma cidade caíam no mesmo ponto).
+    cep:     (b.zip_code as string | null) ?? null,
   }))
 
   // Clientes e LTV por CEP vêm somados do banco. O LTV é o de

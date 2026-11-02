@@ -9,6 +9,7 @@ import type { BranchPoint, HeatPoint, LayerConfig } from './hotmap-types'
 
 export type { BranchPoint, HeatPoint, LayerConfig }
 export { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-types'
+import { enquadramentoDoMapa } from './hotmap-types'
 
 // --- Components --------------------------------------------------------------
 
@@ -77,14 +78,16 @@ function HeatLayer({ points, gradient }: LayerConfig) {
   return null
 }
 
-function FitBounds({ points }: { points: [number, number][] }) {
+function FitBounds({ branches, layers }: { branches: BranchPoint[]; layers: LayerConfig[] }) {
   const map = useMap()
   // Enquadra UMA vez, ao montar: depois disso o mapa é de quem está olhando, e
   // reenquadrar a cada render do pai tiraria o zoom que a pessoa escolheu.
+  // As unidades e as clientes (D15): o enquadramento mora em hotmap-types.
   const enquadrar = useEffectEvent(() => {
-    if (points.length === 0) return
-    if (points.length === 1) { map.setView(points[0]!, 13); return }
-    map.fitBounds(L.latLngBounds(points), { padding: [48, 48] })
+    const e = enquadramentoDoMapa(branches, layers)
+    if (e.tipo === 'nenhum') return
+    if (e.tipo === 'centro') { map.setView(e.centro, e.zoom); return }
+    map.fitBounds(L.latLngBounds(e.pontos), { padding: [48, 48] })
   })
   useEffect(() => { enquadrar() }, [])
   return null
@@ -131,7 +134,7 @@ export function HotmapClient({ branches, layers }: Props) {
         maxZoom={16}
       />
 
-      <FitBounds points={allPoints} />
+      <FitBounds branches={branches} layers={layers} />
 
       {layers.map((layer, i) => (
         <HeatLayer key={i} points={layer.points} gradient={layer.gradient} />

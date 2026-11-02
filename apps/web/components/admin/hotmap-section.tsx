@@ -3,7 +3,7 @@
 import { useState, useEffect, useEffectEvent } from 'react'
 import dynamic from 'next/dynamic'
 import type { BranchPoint, HeatPoint } from './hotmap-types'
-import { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-types'
+import { GRADIENT_CLIENTS, GRADIENT_LTV, ondeGeocodificarAUnidade } from './hotmap-types'
 
 const HotmapClient = dynamic(
   () => import('./hotmap-client').then(m => m.HotmapClient),
@@ -47,6 +47,8 @@ export interface RawBranch {
   name: string
   slug: string
   cityKey: string  // "[city], [state]" para geocoding
+  /** O CEP da unidade (D15): localiza a unidade no bairro dela, não no centro da cidade. */
+  cep?: string | null
 }
 
 interface Props {
@@ -62,14 +64,16 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
   const [heatLtvPoints, setHeatLtvPoints] = useState<HeatPoint[]>([])
   const [carregando, setLoading] = useState(true)
   // Sem cidade nem CEP não há o que buscar: nem chega a carregar.
-  const nadaParaBuscar = !rawBranches.some(b => b.cityKey) && Object.keys(rawCepCounts).length === 0
+  const nadaParaBuscar = !rawBranches.some(b => ondeGeocodificarAUnidade(b)) && Object.keys(rawCepCounts).length === 0
   const loading = !nadaParaBuscar && carregando
 
   // Geocodifica UMA vez, ao montar, com os dados daquele momento — cada
   // consulta é uma chamada ao Nominatim, que bane o IP acima de 1/s.
   const geocodificar = useEffectEvent(() => {
-    const cities = [...new Set(rawBranches.map(b => b.cityKey).filter(Boolean))]
-    const ceps   = Object.keys(rawCepCounts)
+    // A unidade pelo CEP dela, quando tem (D15); senão, pela cidade.
+    const onde   = new Map(rawBranches.map(b => [b.id, ondeGeocodificarAUnidade(b)]))
+    const cities = [...new Set([...onde.values()].flatMap(o => o && 'cidade' in o ? [o.cidade] : []))]
+    const ceps   = [...new Set([...Object.keys(rawCepCounts), ...[...onde.values()].flatMap(o => o && 'cep' in o ? [o.cep] : [])])]
 
     if (cities.length === 0 && ceps.length === 0) return
 
@@ -85,7 +89,8 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
       .then(({ cities: cityCoords, ceps: cepCoords }) => {
         const bpts = rawBranches
           .map(b => {
-            const coords = cityCoords[b.cityKey]
+            const o = onde.get(b.id)
+            const coords = !o ? null : 'cep' in o ? (cepCoords[o.cep] ?? cityCoords[b.cityKey]) : cityCoords[o.cidade]
             if (!coords) return null
             return { id: b.id, name: b.name, slug: b.slug, lat: coords.lat, lng: coords.lng }
           })
