@@ -85,10 +85,18 @@
   portal mostra a unidade do ENDEREÇO (o slug) — nome, endereço, telefone,
   horário (`resumoDoHorario` da unidade) e os botões WhatsApp e Ligar. A
   leitura é UMA, `aClinicaDoEndereco` (`lib/clientes/a-clinica.ts`), a mesma
-  do "Falar com a clínica" do plano proposto. O WhatsApp é o telefone da
-  unidade (ou o da rede): o número conectado ao inbox é credencial. Sem
-  nenhum dado cadastrado, o cartão não aparece. Prova:
-  `e2e/portal-cliente-a-clinica.spec.ts`.
+  do "Falar com a clínica" do plano proposto. **O WhatsApp é o número
+  CONECTADO** (por-03, revisão do Heitor de 2026-11-02: a conversa cai no
+  inbox e fica registrada): o ativo rotulado com a unidade do endereço, senão
+  o padrão da rede; sem nenhum, o telefone da unidade (ou o da rede). Só o
+  número sai de `whatsapp_numbers`, pelo servidor — nunca a credencial. O
+  "Ligar" é sempre o telefone. **"Falar com a clínica" abre com a mensagem
+  pronta** (A66, `comMensagem`): o plano proposto ("Vi no app o plano de
+  tratamento proposto (N sessões, R$ X)…") e o agendamento ("Quero falar
+  sobre o meu agendamento de X em DD/MM HH:MM"). Sem nenhum dado cadastrado,
+  o cartão não aparece. Prova: `e2e/portal-cliente-a-clinica.spec.ts`,
+  `e2e/portal-cliente-plano-proposto.spec.ts`,
+  `e2e/portal-cliente-alterar-agendamento.spec.ts`.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
 - Tags como `String[]` no registro; o VOCABULÁRIO é da rede (`tags`, abaixo).
   `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a

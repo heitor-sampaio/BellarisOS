@@ -48,3 +48,24 @@ test('a home do app tem o cartão "A clínica" com endereço, telefone, WhatsApp
     await expect(cartao.getByRole('link', { name: /Ligar/ })).toHaveAttribute('href', 'tel:+5541998765432')
   })
 })
+
+// por-03 (revisão do Heitor, 2026-11-02): o WhatsApp do cartão é o número
+// CONECTADO da unidade (a conversa cai no inbox e fica registrada); o
+// "Ligar" continua o telefone da unidade. Sem número conectado, o telefone.
+test('por-03: o WhatsApp do cartão é o número conectado da unidade', async ({ browser }) => {
+  const { data: caixa, error } = await db().from('whatsapp_numbers').insert({
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, provider: 'uazapi', label: `[e2e] Recepção ${marca}`,
+    phone_e164: '+5541977776666', config: {}, is_active: true, is_default: false, managed: false,
+  }).select('id').single<{ id: string }>()
+  expect(error, 'ligar um número à unidade').toBeNull()
+  try {
+    await como(browser, cliente!, async p => {
+      await p.goto(`/${slug}/cliente/home`)
+      const cartao = p.locator('[data-a-clinica]')
+      await expect(cartao.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', 'https://wa.me/5541977776666')
+      await expect(cartao.getByRole('link', { name: /Ligar/ })).toHaveAttribute('href', 'tel:+5541998765432')
+    })
+  } finally {
+    await db().from('whatsapp_numbers').delete().eq('id', caixa!.id)
+  }
+})

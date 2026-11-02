@@ -4,7 +4,7 @@ import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MessageCircle, Sparkles } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
-import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
+import { aClinicaDoEndereco, comMensagem } from '@/lib/clientes/a-clinica'
 import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -442,7 +442,9 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone }: {
         {vencido ? `Proposta vencida em ${dia} — fale com a clínica para atualizar.` : `Válido até ${dia}.`} O aceite é feito na clínica.
       </p>
       {whatsapp ? (
-        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center' }}>
+        // A66: o WhatsApp abre com a mensagem pronta sobre ESTE plano.
+        <a href={comMensagem(whatsapp, `Olá! Vi no app o plano de tratamento proposto (${sessoes.length} ${sessoes.length === 1 ? 'sessão' : 'sessões'}, ${formatBRL(valor)}) e quero conversar sobre ele.`)!}
+          target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center' }}>
           <MessageCircle size={14} aria-hidden="true" /> Falar com a clínica
         </a>
       ) : telefone ? (

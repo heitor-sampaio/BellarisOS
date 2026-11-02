@@ -6,6 +6,7 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { formatarTelefone } from '@/lib/documentos/valores'
+import { aClinicaDoEndereco, comMensagem, linkDoWhatsapp } from '@/lib/clientes/a-clinica'
 import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamento'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
@@ -85,6 +86,11 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
   })()
   const telefone = (a.branches.phone || rede?.phone || '').replace(/\D/g, '')
   const quando = new Date(a.scheduled_at)
+  // O WhatsApp é o conectado da unidade (por-03), com a mensagem pronta sobre
+  // ESTE agendamento (A66).
+  const aClinica = await aClinicaDoEndereco(slug)
+  const whatsapp = comMensagem(aClinica?.whatsapp ?? linkDoWhatsapp(telefone),
+    `Olá! Quero falar sobre o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quando.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`)
 
   const linha = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' } as const
 
@@ -129,7 +135,7 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           profissional={a.profissional?.name ?? null}
           semPreferenciaInicial={a.sem_preferencia}
           ofereceSemPreferencia={ofereceSemPreferencia}
-          whatsapp={telefone ? `https://wa.me/${telefone.startsWith('55') ? telefone : `55${telefone}`}` : null}
+          whatsapp={whatsapp}
         />
       )}
     </div>

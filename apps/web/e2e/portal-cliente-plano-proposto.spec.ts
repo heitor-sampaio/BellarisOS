@@ -69,6 +69,8 @@ test('o plano proposto mostra procedimentos, valor e validade, e leva a falar co
     await expect(cartao).toContainText('O aceite é feito na clínica')
     const falar = cartao.getByRole('link', { name: /Falar com a clínica/ })
     await expect(falar).toHaveAttribute('href', /wa\.me\/5541998765432/)
+    // A66: o WhatsApp abre com a mensagem pronta sobre o plano.
+    await expect(falar).toHaveAttribute('href', /\?text=.*plano/)
     // Nem a anotação do plano nem a da sessão vão à cliente; e o app não aceita.
     await expect(p.getByText(SEGREDO)).toHaveCount(0)
     expect(await p.content()).not.toContain(SEGREDO)

@@ -147,6 +147,8 @@ test.describe('atritos da remarcação (frente 8)', () => {
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
       await expect(p.getByText(/terminou em .* \(24 horas antes do horário\)/i)).toBeVisible()
       await expect(p.getByText('(11) 98765-4321')).toBeVisible()
+      // A66: "Falar com a clínica" abre com a mensagem pronta sobre este agendamento.
+      await expect(p.getByRole('link', { name: /Falar com a clínica/ })).toHaveAttribute('href', /\?text=.*agendamento/)
     })
   })
 
