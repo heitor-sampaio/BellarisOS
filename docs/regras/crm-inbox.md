@@ -461,6 +461,11 @@ conceito não pode ter dois nomes) — no código segue `owner`.
   `trocarResponsavelCore`: a pessoa é da rede e ativa, e a linha do tempo diz
   DE quem PARA quem (até 2026-10-09 a automação gravava sempre "de: —").
   Prova: `e2e/crm-responsavel.spec.ts`.
+- **Desativar a pessoa oferece repassar as oportunidades abertas dela** (H6,
+  2026-11-01; a regra inteira em `atendimento.md` §9.1): para quem tem o CRM
+  ou "Sem responsável", pelo mesmo `trocarResponsavelCore`. O filtro
+  "Responsável" do quadro marca "(inativo)" quem foi desativado e ainda é
+  responsável por algum card. Prova: `e2e/equipe-desativar-repassa.spec.ts`.
 
 **O filtro de situação do quadro** é "Já é cliente / Ainda não é cliente"
 (2026-10-09; era "Convertidos / Não convertidos", que se lia como "ganho").

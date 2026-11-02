@@ -75,6 +75,26 @@
   em outra unidade e o profissional da rede viravam "—". A RLS de `clients` e
   `users` não foi alargada (decisão de produto). Prova:
   `e2e/agenda-nomes-de-outra-unidade.spec.ts`.
+- **Desativar oferece REPASSAR** (H6, decisão do Heitor, 2026-11-01: "os
+  agendamentos e oportunidades de quem é desativado, no momento da
+  desativação, [dar] a opção de repassar para outra pessoa, caso a caso ou
+  todos de uma vez"). A janela do "Desativar" (`DesativarMembro`, Equipe dos
+  dois portais) mostra os agendamentos FUTUROS em aberto (agendado/confirmado)
+  e as oportunidades ABERTAS da pessoa, com "Repassar todos … para" e um
+  seletor por item ("Deixar com X (sem repasse)" é a escolha padrão). O
+  agendamento só vai para quem ATENDE na unidade dele (a regra de
+  `filtroDeQuemAtendeNaUnidade`), passando por `conferirPecasDoAgendamento` e
+  livre no horário (`horarioOcupado`): quem está ocupada aparece desligada, e o
+  "todos para" avisa na linha que conflita e a deixa para o caso a caso. A
+  oportunidade vai para quem tem o CRM (ou "Sem responsável"), por
+  `trocarResponsavelCore`. Repassar pede a Agenda em Gerenciar de todos e
+  `podeTrocarResponsavel`; sem isso a janela só diz quantos ficam. A action
+  (`deactivateTeamMember` com o repasse) confere CADA item de novo
+  (`aplicarRepasse`, `lib/equipe/repasse.ts`); o que falhar volta à tela e a
+  pessoa segue ativa. O histórico do agendamento ganha "Repassado de X para Y
+  ao desativar X" (REASSIGNED); o do lead, a troca de responsável. O filtro
+  "Responsável" do quadro marca quem saiu "(inativo)". Prova:
+  `e2e/equipe-desativar-repassa.spec.ts`.
 - **A dona que atende** (D2 da simulação de 2026-10-29): o Admin da rede
   marca "Atende clientes", a comissão e o horário na Equipe da rede com o
   cargo TRAVADO (CLAUDE.md §11; só outra Admin da rede muda o cargo dela,

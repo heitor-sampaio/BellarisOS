@@ -22,7 +22,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 type LeadLido = Record<string, unknown> & {
   contato_id: string
   tags:       string[] | null
-  users:      { name: string } | null
+  users:      { name: string; is_active: boolean } | null
 }
 
 export default async function BranchOportunidadesPage({
@@ -122,7 +122,7 @@ export default async function BranchOportunidadesPage({
         .select(`
           id, name, phone, email, social_media, source,
           crm_stage_id, notes, client_id, created_at, tags,
-          owner_id, users(name), contato_id,
+          owner_id, users(name, is_active), contato_id,
           motivo_perda_id, crm_motivos_perda(nome),
           lead_procedures(procedure_id, procedures(name, price))
         `)
@@ -155,6 +155,7 @@ export default async function BranchOportunidadesPage({
       ...rest,
       tags:                l.tags ?? [],
       owner_name:          dono?.name ?? null,
+      owner_ativo:         dono ? dono.is_active : null,
       last_interaction_at: ativ?.last_interaction_at ?? null,
       awaiting_since:      ativ?.awaiting_since ?? null,
     }

@@ -1,13 +1,13 @@
 import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { contagemDeMembros } from '@/lib/equipe/contagem'
-import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
+import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura'
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
-import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
-import { UserMinus, UserCheck, Pencil } from 'lucide-react'
+import { reactivateTeamMember } from '@/actions/team'
+import { UserCheck, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -213,19 +213,7 @@ export default async function TeamPage({
                     {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
                           (a action também recusa). */}
                       {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
-                      <BotaoComConfirmacao
-                        acao={async () => {
-                          'use server'
-                          return await deactivateTeamMember(m.id, `/${slug}/team`)
-                        }}
-                        titulo="Desativar membro?"
-                        explicacao={<><strong style={{ color: 'var(--text)' }}>{m.name}</strong> não entra mais no sistema, e sai da agenda. Dá para reativar depois.</>}
-                        rotuloConfirmar="Desativar"
-                        title="Desativar membro"
-                        style={{ padding: '5px 8px', color: 'var(--text-faint)' }}
-                      >
-                        <UserMinus size={15} />
-                      </BotaoComConfirmacao>
+                      <DesativarMembro membroId={m.id} nome={m.name} redirectPath={`/${slug}/team`} />
                     ) : (
                       <form action={async () => {
                         'use server'

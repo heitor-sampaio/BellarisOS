@@ -9,9 +9,10 @@ import { parseDinheiro } from '@estetica-os/utils'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { cargoEhAdminDaRede, souAdminDaRede, recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
 import { comLoginNovo } from '@/lib/login-novo'
+import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
 
 // Resolve a abrangência (branch_id) de um membro a partir do form.
 // Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
@@ -325,12 +326,12 @@ async function membroDaRede(
   userId: string,
 ) {
   const membro = await ler(admin
-    .from('users').select('id, auth_id, branch_id, is_active, role_id')
+    .from('users').select('id, name, auth_id, branch_id, is_active, role_id')
     .eq('id', userId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o membro')
   // E ao alcance (§11): a gerente da unidade A desativava — e bania do login —
   // gente da B e admins da rede.
   if (!membro || !alcancaUnidade(ctx, membro.branch_id as string | null)) throw new Error('Membro não encontrado.')
-  return membro as { id: string; auth_id: string | null; is_active: boolean; role_id: string | null }
+  return membro as { id: string; name: string; auth_id: string | null; is_active: boolean; role_id: string | null }
 }
 
 /**
@@ -351,12 +352,33 @@ async function ehAUltimaAdminAtiva(
   return (outras ?? []).length === 0
 }
 
-export async function deactivateTeamMember(userId: string, redirectPath: string = '/admin/team'): Promise<{ error: string } | undefined> {
+/**
+ * O que fica com o membro ao desativá-lo — os agendamentos futuros e as
+ * oportunidades abertas — e para quem pode ir (H6, decisão do Heitor,
+ * 2026-11-01). A janela do "Desativar" mostra isso antes de confirmar.
+ */
+export async function pendenciasParaDesativar(userId: string): Promise<PendenciasDoMembro | { error: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'team', 'MANAGE')
+  try {
+    const admin = createAdminClient()
+    const membro = await membroDaRede(admin, ctx, userId)
+    return await pendenciasDoMembro(admin, ctx, { id: membro.id, nome: membro.name })
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+export async function deactivateTeamMember(
+  userId: string, redirectPath: string = '/admin/team', repasseBruto?: unknown,
+): Promise<{ error: string } | undefined> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'team', 'MANAGE')
   // Desativar a si mesmo tranca a pessoa do lado de fora sem ninguém para
   // desfazer — se for a única que administra a equipe, a rede fica sem.
   if (userId === ctx.internalUserId) throw new Error('Você não pode desativar o seu próprio acesso.')
+  const repasse = EntradaDoRepasse.safeParse(repasseBruto ?? {})
+  if (!repasse.success) return { error: 'O repasse veio inválido. Recarregue a página e tente de novo.' }
 
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
@@ -366,6 +388,18 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
   // Só outra Admin da rede desativa uma Admin (revisão do Heitor, 2026-10-29).
   const recusa = await recusaDeMexerNaAdmin(admin, ctx, membro)
   if (recusa) return { error: recusa }
+
+  // O repasse escolhido na janela (H6), ANTES de desativar: cada item é
+  // conferido de novo; o que falhar volta à tela e a pessoa segue ativa até
+  // o repasse escolhido valer (a janela recarrega o que sobrou).
+  if (repasse.data.agendamentos.length || repasse.data.oportunidades.length) {
+    const falhas = await aplicarRepasse(admin, ctx, { id: membro.id, nome: membro.name }, repasse.data)
+    if (falhas.length) {
+      revalidatePath(redirectPath)
+      return { error: `A pessoa continua ativa: ${falhas.join(' ')} O resto do repasse já foi feito.` }
+    }
+  }
+
   await gravar(admin.from('users').update({ is_active: false }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'desativar o membro')
 
   // Desativar TIRA o acesso — até 2026-09-27 era só uma coluna que nada lia.

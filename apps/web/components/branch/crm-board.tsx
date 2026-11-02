@@ -102,6 +102,11 @@ function FiltersBar({
     )].sort((a, b) => a.localeCompare(b, 'pt-BR'))
     return leads.some(l => !l.owner_name) ? [SEM_DONO, ...nomes] : nomes
   }, [leads])
+  // Quem foi desativado e ainda é responsável por algum card (H6, 5ª simulação:
+  // o filtro listava o inativo como qualquer outro).
+  const ownersInativos = useMemo(() => new Set(
+    leads.filter(l => l.owner_name && l.owner_ativo === false).map(l => l.owner_name as string),
+  ), [leads])
 
   // Procedimentos que aparecem em pelo menos um lead
   const availableProcs = useMemo(() => {
@@ -255,7 +260,7 @@ function FiltersBar({
         <PickerCompacto
           rotuloBotao={rotuloFiltro('Responsável', filters.owners.length)}
           opcoes={availableOwners.map(n => ({
-            valor: n, rotulo: n === SEM_DONO ? 'Sem responsável' : n,
+            valor: n, rotulo: n === SEM_DONO ? 'Sem responsável' : ownersInativos.has(n) ? `${n} (inativo)` : n,
           }))}
           selecionadas={filters.owners}
           multiplo
@@ -392,6 +397,8 @@ export interface Lead {
   /** O RESPONSÁVEL: quem está trabalhando o lead. Nulo = bolo comum. */
   owner_id?:    string | null
   owner_name?:  string | null
+  /** O responsável está ativo? Falso = desativado (H6: o filtro o marca "(inativo)"). */
+  owner_ativo?: boolean | null
   last_interaction_at?: string | null
   awaiting_since?:      string | null
   branch_name?: string | null
