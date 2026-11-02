@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
   ArrowUpRight, ArrowDownRight,
-  Plus, CheckCircle2, Clock, RotateCcw, Gift,
+  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
@@ -202,7 +202,7 @@ export function AdminFinancialView({
   const router      = useRouter()
   const [estornando, startT] = useTransition()
   // O lançamento esperando a confirmação do estorno (era um clique só, sem volta).
-  const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean } | null>(null)
+  const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean } | null>(null)
   const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
   // A unidade da ação vem da própria transação — não há o que perguntar.
@@ -221,7 +221,7 @@ export function AdminFinancialView({
       const r = await reverseTransaction(id, slug, motivo, voltou)
       if (r?.error) { toast.error(r.error); return }
       setAEstornar(null)
-      toast.success('Lançamento estornado.')
+      toast.success(aEstornar?.cancelarVenda ? 'Venda cancelada.' : 'Lançamento estornado.')
       router.refresh()
     })
   }
@@ -616,6 +616,18 @@ export function AdminFinancialView({
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             <RotateCcw size={12} />
+                          </button>
+                        )}
+                        {/* A venda de produto toda a receber não tem o que estornar: se
+                            CANCELA (a mesma pergunta do produto, produto_estornar_venda). */}
+                        {!t.is_paid && !estornada && !!t.product_sale_id && canReverse && (
+                          <button type="button" onClick={() => setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: true, cancelarVenda: true })} title="Cancelar venda" aria-label="Cancelar venda" style={{
+                            width: 30, height: 30, borderRadius: 7,
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            color: 'var(--text-faint)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <XCircle size={12} />
                           </button>
                         )}
                       </div>

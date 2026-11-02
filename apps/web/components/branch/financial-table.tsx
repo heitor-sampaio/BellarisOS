@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import {
   Search, X, TrendingUp, TrendingDown, CheckCircle2,
-  Clock, RotateCcw, ChevronUp, ChevronDown,
+  Clock, RotateCcw, ChevronUp, ChevronDown, XCircle,
 } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { useRouter } from 'next/navigation'
@@ -77,7 +77,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
   const [estornando, startTx] = useTransition()
   // O lançamento esperando a confirmação do estorno. Era um clique só, sem
   // volta (simulação de um dia de clínica, 2026-10-20).
-  const [aEstornar, setAEstornar] = useState<{ id: string; descricao: string; valor: number; vendaDeProduto?: boolean } | null>(null)
+  const [aEstornar, setAEstornar] = useState<{ id: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean } | null>(null)
 
   // As actions devolvem `{ error }` quando não conseguem — descartar isso
   // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
@@ -95,7 +95,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
       const r = await reverseTransaction(id, slug, motivo, voltou)
       if (r?.error) { toast.error(r.error); return }
       setAEstornar(null)
-      toast.success('Lançamento estornado.')
+      toast.success(aEstornar?.cancelarVenda ? 'Venda cancelada.' : 'Lançamento estornado.')
       router.refresh()
     })
   }
@@ -365,6 +365,18 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                               <RotateCcw size={12} />
                             </button>
                           )}
+                        {/* A venda de produto toda a receber não tem o que estornar: se
+                            CANCELA (a mesma pergunta do produto, produto_estornar_venda). */}
+                        {!tx.is_paid && !isReversed && !!tx.product_sale_id && canReverse && (
+                          <button type="button" onClick={() => setAEstornar({ id: tx.id, descricao: tx.description, valor: tx.amount, vendaDeProduto: true, cancelarVenda: true })} title="Cancelar venda" aria-label="Cancelar venda" style={{
+                            width: 30, height: 30, borderRadius: 7,
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            color: 'var(--text-faint)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <XCircle size={12} />
+                          </button>
+                        )}
                         </div>
                       </td>
                     </tr>

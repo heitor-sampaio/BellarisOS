@@ -434,6 +434,40 @@ test.describe.serial('a venda de produto', () => {
     const { data: acertos } = await db().from('commissions').select('amount').eq('line_id', linha!.id)
     expect((acertos ?? []).reduce((s, c) => Math.round((s + n(c.amount)) * 100) / 100, 0), 'nada a pagar').toBe(0)
   })
+
+  test('a venda toda a receber (nada pago) ganha "Cancelar venda": a mesma pergunta do produto, e a venda sai', async ({ browser }) => {
+    const sufixo = `fiado ${marca}`
+    const nova = await db().rpc('produto_vender', {
+      p_tenant: rede!.tenantId, p_cliente: cliente, p_produto: serum, p_unidade: rede!.branchId, p_ator: recepcao!.userId,
+      p_quantidade: 1, p_desconto: 0, p_lancamentos: [{ amount: 149, is_paid: false, sufixo }],
+    })
+    expect(nova.error).toBeNull()
+    const id = nova.data as string
+    const antes = await saldo()
+
+    const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
+    try {
+      const p = await ctxFin.newPage()
+      await p.goto('/admin/financeiro')
+      const linha = p.locator('tr', { hasText: sufixo })
+      await expect(linha.getByTitle('Cancelar venda')).toBeVisible()
+      await expect(linha.getByTitle('Estornar'), 'nada pago: não é estorno').toHaveCount(0)
+      await linha.getByTitle('Cancelar venda').click()
+      const dlg = p.getByRole('dialog', { name: 'Cancelar esta venda de produto?' })
+      await expect(dlg.getByRole('radiogroup', { name: 'O produto voltou ao estoque?' })).toBeVisible()
+      await dlg.getByLabel('Motivo do cancelamento *').fill('Desistiu antes de pagar')
+      await dlg.getByRole('radio', { name: /Sim, voltou ao estoque/ }).check()
+      await dlg.getByRole('button', { name: 'Confirmar cancelamento' }).click()
+      await expect(dlg).toBeHidden()
+    } finally { await ctxFin.close() }
+
+    const v = await venda(id)
+    expect({ estornada: !!v.estornada_em, voltou: v.produto_voltou, motivo: v.estorno_motivo })
+      .toEqual({ estornada: true, voltou: true, motivo: 'Desistiu antes de pagar' })
+    expect(await saldo(), 'voltou ao estoque').toBe(antes + 1)
+    const { data: txs } = await db().from('financial_transactions').select('is_paid, notes').eq('product_sale_id', id)
+    expect(txs).toEqual([{ is_paid: false, notes: 'Estornada' }])
+  })
 })
 
 async function venda(id: string) {
