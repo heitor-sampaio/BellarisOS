@@ -54,6 +54,21 @@ um muro que não depende de cada trava do código.
   `buildContext` (ANTES do padrão CLIENT — sem `role`, o atendente viraria
   cliente final), o `loginAction`, `/auth/redirect`, `/conta-suspensa` e
   `/api/auth/session` recusam também.
+- **Nenhum login da clínica sem vínculo** (o Heitor, 5ª simulação,
+  2026-11-01: "não deve ter como ter um login sem vínculo, ou é rede ou é
+  unidade"): todo login da clínica é membro de uma rede (abrangência rede ou
+  unidade) ou cliente com ficha; os da plataforma (`platform_staff`) seguem
+  como são. Quem cria login e grava o vínculo depois passa por `comLoginNovo`
+  (`lib/login-novo.ts`): o passo que lança ou falha apaga o login NOVO (o
+  cadastro da clínica e o "Novo membro"; o acesso da cliente tem
+  `desfazerLogin`, e o "Nova rede" e o primeiro admin do sistema já
+  desfaziam). Desfazer vínculo não deixa sobra: não existe remover membro,
+  apagar cliente nem apagar rede — desativar bane o login e mantém a linha;
+  arquivar mantém a ficha. O login sem vínculo que sobrar não entra
+  (`contaSemVinculo`, `lib/destino-da-sessao.ts`, no banco e não nos claims):
+  a sessão recém-aberta é desfeita e a tela diz "Esta conta não tem acesso a
+  nenhuma clínica." Prova: `e2e/autenticacao-login-sem-vinculo.spec.ts`,
+  `tests/login-novo.test.ts`.
 - **Verificação em duas etapas (TOTP do Supabase, `aal2`) é OPÇÃO do admin
   do sistema** (decisão do Heitor, 2026-10-06 — era obrigatória desde
   2026-10-03): `platform_settings.exigir_verificacao`, em Configurações do
@@ -590,6 +605,7 @@ um muro que não depende de cada trava do código.
 ❌ Mudar plan_status ou is_active sem expirar a marca rede:<id> — aqui E na clínica (o portão seguiria a situação velha)
 ❌ Mudar a situação da assinatura evento a evento no TS — é assinatura_aplicar_cobranca, por estado, no banco
 ❌ Criar rede fora de semearRede (o cadastro público e o sistema têm de nascer iguais)
+❌ Criar login da clínica e gravar o vínculo (claims, users, rede) fora de comLoginNovo — o passo que falha deixa um login sem vínculo
 ❌ Criar cliente ou assinatura no Asaas sem procurar antes pelo externalReference (o Asaas aceita duplicado)
 ❌ Webhook do Asaas que responde diferente de 200 para o que já gravou (o Asaas repete e, com 15 falhas, pausa a fila)
 ❌ Mandar automação, campanha ou push ao paciente de uma rede bloqueada (redeEstaBloqueada)
