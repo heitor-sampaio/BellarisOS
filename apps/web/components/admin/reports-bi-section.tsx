@@ -329,6 +329,7 @@ export async function ReportsBiSection({
         vendas={vendas}
         perdas={perdas}
         quemAtende={quemAtende}
+        receitaDaClinica={profAgenda !== null && profDinheiro === null}
       />
     </>
   )

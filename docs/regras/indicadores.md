@@ -535,6 +535,13 @@ zerados, por categoria, por unidade, validades) — fica o consumo dos
 atendimentos dela. A comissão que chega já é a dela e aparece. Prova:
 `e2e/relatorios-so-os-meus.spec.ts`.
 
+**Agenda DELA, dinheiro da clínica** (ind-05, revisão de 2026-11-02): as
+tabelas por procedimento e por profissional dos Relatórios juntam as
+execuções dela e a receita da clínica. A linha sem execução DELA sai
+(`getRelatorioDosModulos`) — a Renata via "Toxina · 0 execuções · R$ 2.400",
+como se tivesse gerado a receita — e a coluna diz "Receita paga (da
+clínica)". Prova: `e2e/relatorios-procedimentos-agenda-dela.spec.ts`.
+
 **A receita por procedimento e por profissional é a PAGA dos atendimentos**
 (D3 da 5ª simulação, 2026-11-02): o que entrou pela regra única
 (`metrics_receitas_pagas`) ligado a um atendimento (`appointment_id`), pelo

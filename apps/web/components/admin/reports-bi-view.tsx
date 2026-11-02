@@ -99,6 +99,11 @@ export interface ReportsBiProps {
    * segunda regra de faturamento ao lado do KPI (§13.1).
    */
   relatorio: Relatorio
+  /**
+   * A agenda é DELA e o dinheiro é da clínica (ind-05): a receita das tabelas
+   * por procedimento e por profissional é a da clínica, e a tela diz isso.
+   */
+  receitaDaClinica?: boolean
   /** Quem ATENDE no recorte (D14, lib/metrics `getQuemAtende`): o "Profissionais ativos" e as linhas da tabela. Só na aba Profissionais. */
   quemAtende?: { total: number; nomes: string[] }
   /** Vê a comissão da equipe (financeiro com escopo de todos). Sem, a aba Profissionais não a mostra. */
@@ -905,7 +910,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita paga (da clínica)' : 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
     // conta os cobrados), e o nome diz isso (D11).
     { key: 'ticket',   label: 'Média por execução', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
@@ -1005,7 +1010,7 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue', label: p.receitaDaClinica ? 'Receita paga (da clínica)' : 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     {

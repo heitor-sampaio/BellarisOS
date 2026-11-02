@@ -42,6 +42,7 @@ export async function getRelatorioDosModulos(
 ): Promise<Relatorio> {
   const { recorte, ...base } = args
   if (recorte.agenda === recorte.financeiro) return getRelatorio({ ...base, professionalId: recorte.agenda })
+  const agendaDelaDinheiroDaClinica = recorte.agenda !== null && recorte.financeiro === null
   const [a, d] = await Promise.all([
     getRelatorio({ ...base, professionalId: recorte.agenda }),
     getRelatorio({ ...base, professionalId: recorte.financeiro }),
@@ -54,8 +55,16 @@ export async function getRelatorioDosModulos(
     consumoTotal:        d.consumoTotal,
     receitaPorCategoriaDeProcedimento: d.receitaPorCategoriaDeProcedimento,
     receitaDosAtendimentos: d.receitaDosAtendimentos,
-    porProcedimento:     juntarPorNome(a.porProcedimento, d.porProcedimento, ['receita']),
-    porProfissional:     juntarPorNome(a.porProfissional, d.porProfissional, ['receita']),
+    // ind-05 (revisão de 2026-11-02): com a agenda DELA e o dinheiro da
+    // clínica, a linha sem execução dela (só a receita de outra) sai — "Toxina ·
+    // 0 execuções · R$ 2.400" parecia receita gerada por ela. A tela diz que a
+    // receita das linhas que ficam é a da clínica (`receitaDaClinica`).
+    porProcedimento:     agendaDelaDinheiroDaClinica
+      ? juntarPorNome(a.porProcedimento, d.porProcedimento, ['receita']).filter(l => l.execucoes > 0)
+      : juntarPorNome(a.porProcedimento, d.porProcedimento, ['receita']),
+    porProfissional:     agendaDelaDinheiroDaClinica
+      ? juntarPorNome(a.porProfissional, d.porProfissional, ['receita']).filter(l => l.atendimentos > 0)
+      : juntarPorNome(a.porProfissional, d.porProfissional, ['receita']),
     clientes:            { ...a.clientes, topClientes: d.clientes.topClientes },
     procedimentosPorFaixa: { ...a.procedimentosPorFaixa, temCustos: d.procedimentosPorFaixa.temCustos, margem: d.procedimentosPorFaixa.margem },
     comissoesPorProfissional: d.comissoesPorProfissional,
