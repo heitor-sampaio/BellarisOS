@@ -1050,7 +1050,7 @@ export function AdminDashboardView({
         {/* Ranking - Procedimentos pela receita PAGA dos atendimentos (D3 da 5ª) */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por receita paga<Dica rotulo={DEFINICOES.receitaDosAtendimentos.rotulo}>{DEFINICOES.receitaDosAtendimentos.texto}</Dica></span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por receita dos atendimentos<Dica rotulo={DEFINICOES.receitaDosAtendimentos.rotulo}>{DEFINICOES.receitaDosAtendimentos.texto}</Dica></span>
           </div>
           {topProceduresByRevenue.length === 0 ? (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados de receita no período.</p>
@@ -1219,7 +1219,7 @@ export function AdminDashboardView({
         {/* Ranking — Vendas (a receita de cada um; com "só os meus", só a linha dela) */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Profissionais por receita paga<Dica rotulo={DEFINICOES.receitaDosAtendimentos.rotulo}>{DEFINICOES.receitaDosAtendimentos.texto}</Dica></span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Profissionais por receita dos atendimentos<Dica rotulo={DEFINICOES.receitaDosAtendimentos.rotulo}>{DEFINICOES.receitaDosAtendimentos.texto}</Dica></span>
           </div>
           {topProfessionalsByRevenue.length === 0 ? (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>

@@ -69,6 +69,6 @@ test('com a agenda dela e o financeiro da clínica, a tabela não mostra "0 exec
     const tabela = p.locator('table').filter({ hasText: 'Execuções' })
     await expect(tabela.getByRole('row', { name: `Limpeza ${marca}` })).toBeVisible()
     await expect(tabela.getByRole('row', { name: `Toxina ${marca}` })).toHaveCount(0)
-    await expect(tabela.getByRole('columnheader', { name: 'Receita paga (da clínica)' })).toBeVisible()
+    await expect(tabela.getByRole('columnheader', { name: 'Receita dos atendimentos (da clínica)' })).toBeVisible()
   })
 })

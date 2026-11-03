@@ -441,7 +441,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{dinheiroDela ? 'Meu faturamento' : 'Faturamento'}</h2>
-              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 6 meses</p>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+                {/* r2-ven-15 × r2-ind-01: o "Meu faturamento" é de VENDA; o ranking por profissional, de execução. */}
+                {dinheiroDela ? 'Últimos 6 meses · o que você vendeu (pacotes, pré-pagos e produtos) e os seus atendimentos pagos' : 'Últimos 6 meses'}
+              </p>
             </div>
             {semesterDelta > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 99 }}>

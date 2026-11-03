@@ -42,12 +42,16 @@ export const DEFINICOES = {
     rotulo: 'Como o ticket médio é contado',
     texto: 'O que as clientes pagaram no período ÷ quantas clientes pagaram, pelo dia do PAGAMENTO (horário de Brasília).',
   },
-  /** A receita por procedimento e por profissional (D3 da 5ª, 2026-11-02): o pago dos atendimentos. */
+  /**
+   * A receita por procedimento e por profissional — a da EXECUÇÃO (D3 da 5ª,
+   * 2026-11-02; r2-ind-01, 2026-11-03: a sessão de pacote pelo rateio).
+   */
   receitaDosAtendimentos: {
-    rotulo: 'O que a receita paga dos atendimentos conta',
-    texto: 'O que as clientes pagaram pelos atendimentos, pelo dia do PAGAMENTO (horário de Brasília), com o desconto e sem '
-      + 'estornos — de cada procedimento ou de cada profissional. O concluído ainda não pago não entra; pacote, pré-pago, '
-      + 'plano e produto também não, porque não são pagos num atendimento (estão no faturamento e nas Vendas).',
+    rotulo: 'O que a receita dos atendimentos conta',
+    texto: 'O valor dos atendimentos FEITOS, para quem atendeu: o que a cliente pagou pelo avulso (pelo dia do PAGAMENTO, '
+      + 'horário de Brasília, com o desconto e sem estornos) e, na sessão de pacote, a parte dela no preço do pacote, no '
+      + 'dia da sessão. É a conta da EXECUÇÃO; o "Meu faturamento" é a da VENDA (o pacote inteiro para quem vendeu). O '
+      + 'concluído ainda não pago não entra; pré-pago, plano e produto também não (estão no faturamento e nas Vendas).',
   },
   /** A ficha da cliente (A56): o preço médio dos atendimentos, ao lado do investido total. */
   precoMedioPorAtendimento: {

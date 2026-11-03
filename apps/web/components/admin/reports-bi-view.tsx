@@ -386,10 +386,10 @@ function TabOverview(p: ReportsBiProps) {
           <HBarChart data={byBranch} />
         </SCard>
         )}
-        <SCard title="Top 5 Procedimentos por receita paga" dica={DEFINICOES.receitaDosAtendimentos}>
+        <SCard title="Top 5 Procedimentos por receita dos atendimentos" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topProcs} />
         </SCard>
-        <SCard title="Top 5 Profissionais por receita paga" dica={DEFINICOES.receitaDosAtendimentos}>
+        <SCard title="Top 5 Profissionais por receita dos atendimentos" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topProfs} color={CHART_COLORS[1]} />
         </SCard>
         <SCard title="Forma de Pagamento">
@@ -914,7 +914,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita paga (da clínica)' : 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
     // conta os cobrados), e o nome diz isso (D11).
     { key: 'ticket',   label: 'Média por execução', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
@@ -937,7 +937,7 @@ function TabProcedimentos(p: ReportsBiProps) {
             atendimentos não é carregado. O ticket é o do sistema (por
             cliente), sem o anterior carregado. */}
         <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, corePrev.appointmentsCompleted)} showDelta />
-        <KpiCard label="Receita paga dos atendimentos" value={totalRev} format="brl" dica={DEFINICOES.receitaDosAtendimentos} />
+        <KpiCard label="Receita dos atendimentos" value={totalRev} format="brl" dica={DEFINICOES.receitaDosAtendimentos} />
         {/* A55: o ticket é o do sistema (por CLIENTE) e o nome diz isso; a
             média por execução (a receita paga ÷ as execuções) vem ao lado. */}
         <KpiCard label="Ticket médio por cliente" value={avgTicket} format="brl" dica={DEFINICOES.ticket} />
@@ -961,7 +961,7 @@ function TabProcedimentos(p: ReportsBiProps) {
         </div>
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
-        <SCard title="Top 10 por receita paga" dica={DEFINICOES.receitaDosAtendimentos}>
+        <SCard title="Top 10 por receita dos atendimentos" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topRevenue} />
         </SCard>
         <SCard title="Top 10 por Volume">
@@ -970,7 +970,7 @@ function TabProcedimentos(p: ReportsBiProps) {
         <SCard title="Distribuição por Categoria">
           <DonutChart data={byCategory} />
         </SCard>
-        <SCard title="Receita paga por categoria" dica={DEFINICOES.receitaDosAtendimentos}>
+        <SCard title="Receita dos atendimentos por categoria" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart
             data={byCategory.sort((a, b) => b.value - a.value)}
             color={CHART_COLORS[2]}
@@ -1017,7 +1017,7 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: p.receitaDaClinica ? 'Receita paga (da clínica)' : 'Receita paga', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue', label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     {
@@ -1054,7 +1054,7 @@ function TabProfissionais(p: ReportsBiProps) {
         </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
-        <SCard title="Receita paga por profissional" dica={DEFINICOES.receitaDosAtendimentos}>
+        <SCard title="Receita dos atendimentos por profissional" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={byRevenue} />
         </SCard>
         <SCard title="Atendimentos por Profissional">

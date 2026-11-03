@@ -159,3 +159,38 @@ test('r2-ven-15: o pacote e o pré-pago entram inteiros no "Meu faturamento" de 
     await expect(pg.getByText('R$ 1.200 no semestre')).toBeVisible()
   })
 })
+
+test('r2-ind-01: no ranking por procedimento e por profissional (execução), a sessão de pacote entra pelo rateio, para quem atendeu', async () => {
+  const p = { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: de(), p_to: ate() }
+
+  // Por profissional: a Paula fez o avulso (R$ 100) e a sessão 1 (R$ 300); a Renata, a sessão 2 (R$ 300).
+  const { data: profs, error: e1 } = await db().rpc('metrics_top_professionals', { ...p, p_limit: 10 })
+  expect(e1).toBeNull()
+  const porId = Object.fromEntries((profs as { professional_id: string; appointments: number; revenue: number }[])
+    .map(x => [x.professional_id, [n(x.appointments), n(x.revenue)]]))
+  expect(porId[paula!.userId], 'a Paula: 2 atendimentos, R$ 400').toEqual([2, 400])
+  expect(porId[rede!.professionalId], 'a Renata: 1 atendimento, R$ 300').toEqual([1, 300])
+
+  // Por procedimento: 3 execuções, R$ 700 (o pré-pago ainda não foi feito; vendido, não é execução).
+  const { data: procs, error: e2 } = await db().rpc('metrics_top_procedures', { ...p, p_limit: 10 })
+  expect(e2).toBeNull()
+  expect((procs as { procedure_id: string; appointments: number; revenue: number }[]).map(x => [x.procedure_id, n(x.appointments), n(x.revenue)]))
+    .toEqual([[proc, 3, 700]])
+
+  // Os Relatórios (aba Procedimentos): as tabelas e o total do "% do Total".
+  const { data: rel, error: e3 } = await db().rpc('metrics_relatorio', {
+    ...p, p_prev_from: de(), p_prev_to: de(), p_aba: 'procedimentos', p_granularidade: 'day',
+  })
+  expect(e3).toBeNull()
+  const r = rel as { por_procedimento: { receita: number; execucoes: number }[]; por_profissional: { nome: string; receita: number; atendimentos: number }[]; receita_dos_atendimentos: number }
+  expect(r.por_procedimento.map(x => [n(x.receita), n(x.execucoes)])).toEqual([[700, 3]])
+  expect(r.por_profissional.map(x => [n(x.receita), n(x.atendimentos)]).sort((a, b) => b[0]! - a[0]!)).toEqual([[400, 2], [300, 1]])
+  expect(n(r.receita_dos_atendimentos)).toBe(700)
+  const { data: cat, error: e4 } = await db().rpc('metrics_receita_por_categoria_de_procedimento', p)
+  expect(e4).toBeNull()
+  expect((cat as { receita: number }[]).reduce((s, c) => s + n(c.receita), 0), 'a receita por categoria fecha com a tabela').toBe(700)
+
+  // Com o recorte da Paula ("só os meus"): a execução dela.
+  const { data: dela } = await db().rpc('metrics_top_professionals', { ...p, p_limit: 10, p_professional_id: paula!.userId })
+  expect((dela as { revenue: number }[]).map(x => n(x.revenue))).toEqual([400])
+})

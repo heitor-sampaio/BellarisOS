@@ -648,6 +648,21 @@ vem com 0 execuções (o ranking que CONTA o deixa de fora). O ranking por
 receita do dashboard pede a lista larga (50) e ordena pela receita.
 `serviceRevenue` (o preço dos concluídos) continua no núcleo, com o nome
 "receita de serviço". Prova: `e2e/indicadores-receita-paga-por-procedimento.spec.ts`.
+**A sessão de PACOTE entra pelo rateio** (r2-ind-01, o Heitor, 2026-11-03:
+"Somar também o pacote, rateado por sessão feita"): o ranking por
+procedimento e por profissional é de EXECUÇÃO, e a sessão de pacote feita
+soma a parte dela no preço do pacote (`package_sessions.preco`, o mesmo do
+"manter como avulso" do cancelamento), no dia da sessão, para quem ATENDEU —
+nas quatro contas da tela (`metrics_top_procedures`,
+`metrics_top_professionals`, `metrics_relatorio` por procedimento, por
+profissional e `receita_dos_atendimentos`, e
+`metrics_receita_por_categoria_de_procedimento`; migration
+`20261103001305`). O nome passou a ser "receita dos atendimentos" ("Ranking —
+Profissionais por receita dos atendimentos", "Receita dos atendimentos
+(da clínica)"), e a dica diz que é a conta da EXECUÇÃO e que o "Meu
+faturamento" é a da VENDA. Pré-pago, plano e produto seguem fora. Não conta
+duas vezes: a sessão não tem lançamento. Prova:
+`e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts`.
 
 **"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
 2026-11-02): ativo, com `provides_services` e ao alcance das unidades do

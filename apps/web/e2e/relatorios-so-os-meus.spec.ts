@@ -164,7 +164,7 @@ test('"só os meus": vendas, agenda, clientes, procedimentos e profissionais sã
     await expect.soft(cli).not.toContainText('Cliente Da outra')
 
     const proc = await aba(p, 'procedimentos')
-    await expect.soft(kpi(p, 'Receita paga dos atendimentos')).toContainText('R$ 120,00')
+    await expect.soft(kpi(p, 'Receita dos atendimentos')).toContainText('R$ 120,00')
     await expect.soft(p.getByText('Top 3 por Faixa de Idade — Margem', { exact: true }), 'a margem é do catálogo').toHaveCount(0)
     await expect.soft(proc).not.toContainText('R$ 420,00')
 
