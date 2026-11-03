@@ -9,7 +9,7 @@
 // (skinType, allergies…), então a anamnese antiga vira resposta dela
 // (`paraAnamneseGeral`; no banco, `anamnese_do_legado`).
 
-import { normalizeFormSchema, flattenFields, type AnamnesisRow, type AnamnesisFieldType } from '@/lib/anamnesis'
+import { normalizeFormSchema, flattenFields, campoVisivel, type AnamnesisRow, type AnamnesisFieldType } from '@/lib/anamnesis'
 
 export type OrigemDaAnamnese = 'EQUIPE' | 'CLIENTE_APP' | 'CLIENTE_LINK' | 'LEGADO'
 
@@ -55,8 +55,11 @@ const simNao = (v: unknown) => {
 export function respostasDaFicha(rows: AnamnesisRow[], bruto: unknown): Record<string, RespostaDaAnamnese> {
   const entrada = (bruto && typeof bruto === 'object' && !Array.isArray(bruto)) ? bruto as Record<string, unknown> : {}
   const saida: Record<string, RespostaDaAnamnese> = {}
-  for (const f of flattenFields({ rows })) {
+  const campos = flattenFields({ rows })
+  for (const f of campos) {
     if (f.type === 'section' || TIPOS_FORA_DO_PRE_ATENDIMENTO.includes(f.type)) continue
+    // O campo escondido pela resposta de outro (o detalhe da alergia no "Não") não se grava.
+    if (!campoVisivel(f, entrada, campos)) continue
     const v = entrada[f.id]
     if (Array.isArray(v)) {
       const lista = v.map(x => String(x).trim()).filter(Boolean).slice(0, 50)
@@ -90,8 +93,10 @@ export function anamneseRespondida(a: AnamneseGeral | null | undefined): a is An
 export function oQueFaltaNaFicha(rows: AnamnesisRow[], respostas: Record<string, RespostaDaAnamnese>): string | null {
   const vazia = (v: RespostaDaAnamnese | undefined) => v === undefined || (Array.isArray(v) ? v.length === 0 : String(v).trim() === '')
   if (Object.values(respostas).every(vazia)) return 'Responda a ficha antes de enviar.'
-  const falta = flattenFields({ rows }).find(f =>
-    f.required && f.type !== 'section' && !TIPOS_FORA_DO_PRE_ATENDIMENTO.includes(f.type) && vazia(respostas[f.id]))
+  const campos = flattenFields({ rows })
+  const falta = campos.find(f =>
+    f.required && f.type !== 'section' && !TIPOS_FORA_DO_PRE_ATENDIMENTO.includes(f.type)
+    && campoVisivel(f, respostas, campos) && vazia(respostas[f.id]))
   return falta ? `Preencha "${falta.label}".` : null
 }
 
@@ -152,41 +157,43 @@ export function quemRespondeu(a: AnamneseGeral): string {
   return `Respondida ${ORIGEM[a.origem]}${quando}`
 }
 
-/**
- * A resposta diz "não tem alergia"? (2026-10-27, D7) Começa por uma negação
- * ("não", "nenhuma", "sem", "nego", "nunca tive"), com caixa, acento e
- * pontuação ignorados — e não traz ressalva ("não sei", "mas", "só", "exceto")
- * nem nomeia uma alergia ("não tenho alergia a dipirona" fica como alerta: na
- * dúvida, avisa). Vazio também é negativa.
- */
-export function respostaDeAlergiaEhNegativa(texto: string): boolean {
-  const t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9/\s,-]/g, ' ').replace(/\s+/g, ' ').trim()
-  if (!t || /^(-+|n\/?a|nada)$/.test(t)) return true
-  if (!/^(nao|nenhum|nenhuma|sem|nego|nunca)\b/.test(t)) return false
-  if (/\b(sei|certeza|lembro|acho|talvez|duvida|mas|porem|so|apenas|exceto|menos|sim)\b/.test(t)) return false
-  if (/\balergi\w*\s+(a|ao|aos|as|de|para|com)\s+(?!nada\b|nenhum)/.test(t)) return false
-  return true
-}
+const semAcento = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.!]+$/, '').trim()
+const comoTexto = (v: unknown) => (Array.isArray(v) ? v.join(', ') : typeof v === 'string' ? v : '').trim()
 
 /**
  * As alergias que a anamnese registra, para o ALERTA na ficha e no
  * atendimento (2026-10-21; a simulação viu a alergia da cliente sem destaque
- * nenhum). Os campos da ficha cujo id é `allergies` ou cujo rótulo fala de
- * alergia; "não", "nenhuma" e vazio não contam. Nulo quando não há o que
+ * nenhum).
+ *
+ * Desde o atend-15 (revisão do Heitor, 2026-11-02: "vamos precisar de uma
+ * avaliação de uma IA para entender o que foi escrito e isso não está no
+ * escopo; alergia: opção de sim ou não; se sim, campo texto livre para
+ * detalhamento e alerta") a pergunta é Sim/Não, e NADA interpreta texto:
+ * - "Sim" avisa, com o detalhe ("Quais alergias?", o campo que só aparece no
+ *   Sim) — ou "Sim (sem detalhe)";
+ * - "Não" não avisa (o detalhe esquecido de antes não conta);
+ * - uma resposta em TEXTO (a ficha de antes, de texto livre, ou uma ficha da
+ *   clínica com a pergunta aberta) avisa como está escrita.
+ * A pergunta é a `allergies`, senão a primeira cujo rótulo fala de alergia; o
+ * detalhe, o campo que aparece só com ela em "Sim". Nulo quando não há o que
  * avisar.
  */
 export function alergiasDaAnamnese(a: AnamneseGeral | null): string | null {
   if (!a) return null
+  const respostas = a.respostas ?? {}
   const campos = flattenFields({ rows: a.ficha?.rows ?? [] })
-    .filter(f => f.id === 'allergies' || /alerg/i.test(f.label ?? ''))
-    .map(f => f.id)
-  if (!campos.includes('allergies')) campos.push('allergies')
-  const partes = [...new Set(campos)].flatMap(id => {
-    const r = a.respostas?.[id]
-    return Array.isArray(r) ? r : r ? [r] : []
-  }).map(t => String(t).trim()).filter(t => t && !respostaDeAlergiaEhNegativa(t))
-  return partes.length ? [...new Set(partes)].join('; ') : null
+  const pergunta = campos.find(f => f.id === 'allergies')?.id
+    ?? campos.find(f => !f.mostrarSe && f.type !== 'section' && /alerg/i.test(f.label ?? ''))?.id
+    ?? 'allergies'
+  const resposta = comoTexto(respostas[pergunta])
+  if (!resposta) return null
+  const r = semAcento(resposta)
+  if (r === 'nao') return null
+  if (r === 'sim') {
+    const detalhe = campos.find(f => f.mostrarSe?.campo === pergunta)?.id ?? 'allergiesDetalhe'
+    return comoTexto(respostas[detalhe]) || 'Sim (sem detalhe)'
+  }
+  return resposta
 }
 
 /** O trecho do aviso à profissional: a alergia sem pontuação sobrando no fim (o texto da cliente já pode trazer o ponto). */

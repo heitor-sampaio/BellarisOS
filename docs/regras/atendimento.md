@@ -564,11 +564,34 @@ const procedures = await ler(
     fecha o pendente nem avisa a profissional. Prova:
     `e2e/ficha-pre-atendimento-obrigatoria.spec.ts`,
     `tests/pre-atendimento-obrigatoria.test.ts`.
-  - **O alerta de alergia** (`alergiasDaAnamnese`) trata como NEGATIVA a
-    resposta que começa por negação ("não", "nenhuma", "sem", "nego", "nunca
-    tive"; caixa, acento e pontuação ignorados) — salvo ressalva ("não sei",
-    "mas", "só", "exceto") ou alergia nomeada ("não tenho alergia a X"): na
-    dúvida, avisa. Tabela em `tests/alergia-negativa.test.ts`.
+  - **A alergia é Sim/Não, e nada interpreta texto** (atend-15, revisão do
+    Heitor de 2026-11-02: "vamos precisar de uma avaliação de uma IA para
+    entender o que foi escrito e isso não está no escopo; alergia: opção de
+    sim ou não; se sim, campo texto livre para detalhamento e alerta";
+    migration `20261101001001`). A ficha padrão pergunta "Tem alguma
+    alergia?" (Sim/Não, obrigatória) e, só no "Sim", "Quais alergias?"
+    (`allergiesDetalhe`, obrigatória quando aparece). O alerta
+    (`alergiasDaAnamnese`): "Sim" avisa com o detalhe (ou "Sim (sem
+    detalhe)"), "Não" não avisa, e a resposta em TEXTO (a ficha de antes, ou
+    uma pergunta aberta que a clínica montou) avisa como está escrita. Era a
+    leitura da frase ("não tenho alergia a dipirona" virava alerta). As
+    fichas das redes foram trocadas (a igual à semente, inteira; a editada,
+    só a pergunta `allergies` e a gestação sem "Não se aplica" — a [sim]
+    Aurora); as respostas guardadas não mudam. Prova:
+    `e2e/atendimento-alergia-sim-nao.spec.ts`, `tests/alergia-negativa.test.ts`.
+  - **O campo que só aparece com uma resposta** (`mostrarSe: { campo,
+    valor }`, `campoVisivel` em `lib/anamnesis.ts`): o construtor de fichas
+    o oferece em "Mostrar só quando (opcional)", e vale nas DUAS fichas (a de
+    saúde e a do procedimento). Escondido, a obrigatória não barra
+    (`primeiraObrigatoriaVazia`, `oQueFaltaNaFicha` — a tela e o servidor) e
+    a resposta não se grava (`respostasDaFicha`); a condição que aponta para
+    um campo que saiu da ficha não esconde nada. Prova:
+    `tests/campo-condicional.test.ts`.
+  - **A faixa da alergia acompanha a TELA do atendimento** (A34 da 5ª
+    simulação): com a anamnese mexida, a faixa sai das respostas digitadas
+    (`anamneseNaTela`), não da salva — o "Sim" da Tatiane só virava faixa
+    depois de concluir. O rascunho (§10) já guardava a anamnese digitada:
+    recarregar mantém as respostas e a faixa. Prova: o mesmo spec.
     Com a rede mandando também pela conversa (a MESMA chave do link de
     assinatura, `documentos_link_pela_conversa` — decisão do Heitor,
     2026-10-21), aparece "Mandar pela conversa" (`enviarFichaPelaConversa`):

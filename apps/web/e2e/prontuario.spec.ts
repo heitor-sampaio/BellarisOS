@@ -98,7 +98,9 @@ test.describe.serial('prontuário', () => {
     // antes, com os mesmos ids): o campo se acha pelo rótulo.
     const anamneseGeral = page.locator('[data-anamnese-geral]').first()
     await anamneseGeral.locator('[data-campo="skinType"] select').selectOption({ index: 1 })
-    await anamneseGeral.locator('[data-campo="allergies"] textarea').fill(`${PREFIXO} dipirona`)
+    // A alergia é Sim/Não (atend-15): o "Sim" abre o "Quais alergias?".
+    await anamneseGeral.locator('[data-campo="allergies"]').getByRole('radio', { name: 'Sim', exact: true }).check()
+    await anamneseGeral.locator('[data-campo="allergiesDetalhe"] textarea').fill(`${PREFIXO} dipirona`)
     // As obrigatórias da ficha padrão desde D2 (2026-10-28): sem elas a tela não envia.
     await anamneseGeral.locator('[data-campo="isPregnantOrBreastfeeding"]').getByRole('radio', { name: 'Não', exact: true }).check()
     await anamneseGeral.locator('[data-campo="medications"] textarea').fill('Nenhum')
@@ -108,7 +110,7 @@ test.describe.serial('prontuário', () => {
     chamadas.anamnese = await anamnese
     await expect.poll(async () => {
       const { data } = await db.from('medical_records').select('general_anamnesis').eq('client_id', c!.cliente).maybeSingle()
-      return (data?.general_anamnesis as { respostas?: { allergies?: string } } | null)?.respostas?.allergies ?? null
+      return (data?.general_anamnesis as { respostas?: { allergiesDetalhe?: string } } | null)?.respostas?.allergiesDetalhe ?? null
     }, { message: 'a anamnese geral é gravada no prontuário do cliente' }).toBe(`${PREFIXO} dipirona`)
 
     // -- Ficha do procedimento --------------------------------------------------

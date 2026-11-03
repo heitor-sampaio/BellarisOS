@@ -121,7 +121,15 @@ export interface AnamnesisField {
   options?:     string[]        // select / radio / checkbox
   placeholder?: string
   help?:        string
+  /**
+   * O campo só APARECE com uma resposta de outro (atend-15, 2026-11-02): o
+   * "Quais alergias?" só com "Tem alguma alergia? Sim". Escondido, não barra
+   * (a obrigatória vale só visível) e a resposta dele não se grava.
+   */
+  mostrarSe?:   CondicaoDoCampo
 }
+
+export interface CondicaoDoCampo { campo: string; valor: string }
 
 /** Uma linha do formulário — os campos dentro dela viram colunas automáticas. */
 export interface AnamnesisRow {
@@ -190,6 +198,11 @@ function normField(f: unknown): AnamnesisField | null {
   if (OPTION_TYPES.includes(type)) {
     field.options = Array.isArray(raw.options) ? raw.options.map(o => String(o).trim()).filter(Boolean) : []
   }
+  const cond = raw.mostrarSe as Partial<CondicaoDoCampo> | undefined
+  if (type !== 'section' && cond && typeof cond.campo === 'string' && cond.campo
+      && typeof cond.valor === 'string' && cond.valor.trim()) {
+    field.mostrarSe = { campo: cond.campo, valor: cond.valor.trim() }
+  }
   return field
 }
 
@@ -252,6 +265,21 @@ export function campoVazio(v: unknown): boolean {
 }
 
 /**
+ * O campo está à vista com estas respostas? Sem condição, sempre; com
+ * `mostrarSe`, só quando o campo de que depende tem aquele valor (na
+ * múltipla escolha, entre as marcadas). A condição que aponta para um campo
+ * que não existe mais na ficha não esconde nada — sumir com a pergunta seria
+ * pior que mostrá-la.
+ */
+export function campoVisivel(f: AnamnesisField, respostas: Record<string, unknown>, campos: AnamnesisField[]): boolean {
+  const c = f.mostrarSe
+  if (!c) return true
+  if (!campos.some(x => x.id === c.campo && x.id !== f.id)) return true
+  const v = respostas[c.campo]
+  return Array.isArray(v) ? v.includes(c.valor) : typeof v === 'string' && v === c.valor
+}
+
+/**
  * A primeira pergunta OBRIGATÓRIA sem resposta, na ordem da ficha (ou nula).
  * `ignorar`: os tipos que quem preenche não consegue responder ali — a foto
  * e o planejador na ficha de saúde (a cliente responde pelo celular), o
@@ -260,8 +288,10 @@ export function campoVazio(v: unknown): boolean {
 export function primeiraObrigatoriaVazia(
   rows: AnamnesisRow[], respostas: Record<string, unknown>, ignorar: AnamnesisFieldType[] = [],
 ): AnamnesisField | null {
-  return flattenFields({ rows }).find(f =>
-    f.required && f.type !== 'section' && !ignorar.includes(f.type) && campoVazio(respostas[f.id])) ?? null
+  const campos = flattenFields({ rows })
+  return campos.find(f =>
+    f.required && f.type !== 'section' && !ignorar.includes(f.type) && campoVisivel(f, respostas, campos)
+    && campoVazio(respostas[f.id])) ?? null
 }
 
 /** Retorna mensagem de erro se o schema for inválido; null se ok. */

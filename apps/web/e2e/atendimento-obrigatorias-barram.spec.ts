@@ -103,7 +103,8 @@ test('"Finalizar" não conclui com obrigatória em branco: a tela aponta a anamn
     await expect(p.getByRole('button', { name: 'Confirmar conclusão' }), 'a janela de concluir não abre').toHaveCount(0)
 
     await gestacao.getByLabel('Não se aplica').check()
-    for (const c of ['allergies', 'medications', 'healthConditions']) await campo(p, ANAMNESE, c).locator('textarea').fill(`Nega ${marca}`)
+    await campo(p, ANAMNESE, 'allergies').getByLabel('Não', { exact: true }).check()
+    for (const c of ['medications', 'healthConditions']) await campo(p, ANAMNESE, c).locator('textarea').fill(`Nega ${marca}`)
 
     // 2. A ficha do procedimento: o fototipo em branco é apontado.
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()

@@ -40,6 +40,12 @@ const pendentes = async (clienteId: string) => (await db().from('pre_atendimento
  * As obrigatórias da ficha padrão além da alergia (D2 da simulação de
  * 2026-10-28): gestação, medicamentos e condições de saúde.
  */
+/** A alergia é Sim/Não (atend-15): o "Sim" abre o "Quais alergias?", onde vai o texto. */
+async function responderAlergia(escopo: Page | Locator, quais: string) {
+  await escopo.locator('[data-campo="allergies"]').getByLabel('Sim', { exact: true }).check()
+  await escopo.locator('[data-campo="allergiesDetalhe"] textarea').fill(quais)
+}
+
 async function preencherObrigatorias(escopo: Page | Locator) {
   await escopo.locator('[data-campo="isPregnantOrBreastfeeding"]').getByLabel('Não', { exact: true }).check()
   await escopo.locator('[data-campo="medications"] textarea').fill('Nenhum')
@@ -276,14 +282,14 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
       await expect(page.getByText(/Pele Oleosa/)).toBeVisible()
 
       await cartao.getByRole('button', { name: 'Editar anamnese' }).click()
-      await cartao.locator('[data-campo="allergies"] textarea').fill(`látex ${marca}`)
+      await responderAlergia(cartao, `látex ${marca}`)
       await preencherObrigatorias(cartao)
       await cartao.getByRole('button', { name: 'Salvar anamnese' }).click()
       await expect.poll(async () => {
         const { data } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
         const g = data?.general_anamnesis as { versao?: number; origem?: string; respostas?: Record<string, string> }
-        return { versao: g?.versao, origem: g?.origem, alergias: g?.respostas?.allergies, pele: g?.respostas?.skinType }
-      }).toEqual({ versao: 2, origem: 'EQUIPE', alergias: `látex ${marca}`, pele: 'Oleosa' })
+        return { versao: g?.versao, origem: g?.origem, alergia: g?.respostas?.allergies, quais: g?.respostas?.allergiesDetalhe, pele: g?.respostas?.skinType }
+      }).toEqual({ versao: 2, origem: 'EQUIPE', alergia: 'Sim', quais: `látex ${marca}`, pele: 'Oleosa' })
       expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente)).data,
         'a equipe respondeu: o pendente fecha').toEqual([{ status: 'RESPONDIDO', origem: 'EQUIPE' }])
     } finally {
@@ -385,13 +391,13 @@ test.describe('o pré-atendimento: a cliente responde no app', () => {
       await page.goto(`${portal()}/home`)
       await page.getByTestId('pre-atendimento-pendente').click()
       await expect(page).toHaveURL(new RegExp(`${portal()}/pre-atendimento`))
-      await page.locator('[data-campo="allergies"] textarea').fill(`pólen ${marca}`)
+      await responderAlergia(page, `pólen ${marca}`)
       await preencherObrigatorias(page)
       await page.getByRole('button', { name: 'Enviar respostas' }).click()
       await expect(page.getByText('Respostas enviadas')).toBeVisible()
       expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente.clientId)).data)
         .toEqual([{ status: 'RESPONDIDO', origem: 'CLIENTE_APP' }])
-      expect(await anamnese()).toMatchObject({ origem: 'CLIENTE_APP', respostas: { allergies: `pólen ${marca}` } })
+      expect(await anamnese()).toMatchObject({ origem: 'CLIENTE_APP', respostas: { allergies: 'Sim', allergiesDetalhe: `pólen ${marca}` } })
       // A profissional do agendamento é avisada, com a alergia (2026-10-21, decisão do Heitor).
       await expect.poll(async () => (await db().from('user_notifications').select('title, body')
         .eq('user_id', C.professionalId).eq('type', 'pre_atendimento_respondido')).data ?? [], { message: 'o aviso à profissional' })
@@ -422,7 +428,7 @@ test.describe('o pré-atendimento: a cliente responde no app', () => {
       await expect(page.getByText('Respostas enviadas')).toBeVisible()
       expect((await db().from('pre_atendimentos').select('status').eq('client_id', cliente.clientId).eq('status', 'PENDENTE')).data).toEqual([])
       const depois = await anamnese()
-      expect(depois?.respostas?.allergies, 'as respostas ficam').toBe(`pólen ${marca}`)
+      expect(depois?.respostas?.allergiesDetalhe, 'as respostas ficam').toBe(`pólen ${marca}`)
       expect(Date.parse(depois!.respondidoEm!), 'a data da resposta anda').toBeGreaterThan(Date.parse(antes!))
     } finally {
       await ctx.close()
@@ -520,13 +526,13 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await expect(page.locator('[data-campo="allergies"]'), 'nenhuma pergunta antes da identidade').toHaveCount(0)
       await page.getByLabel('CPF').fill(cpf)
       await page.getByRole('button', { name: 'Continuar' }).click()
-      await page.locator('[data-campo="allergies"] textarea').fill(`látex ${marca}`)
+      await responderAlergia(page, `látex ${marca}`)
       await preencherObrigatorias(page)
       await page.getByRole('button', { name: 'Enviar respostas' }).click()
       await expect(page.getByText('Respostas enviadas')).toBeVisible()
       expect(await pendenteDe(cliente)).toMatchObject({ status: 'RESPONDIDO', origem: 'CLIENTE_LINK' })
       const { data: mr } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
-      expect(mr?.general_anamnesis).toMatchObject({ origem: 'CLIENTE_LINK', respostas: { allergies: `látex ${marca}` } })
+      expect(mr?.general_anamnesis).toMatchObject({ origem: 'CLIENTE_LINK', respostas: { allergies: 'Sim', allergiesDetalhe: `látex ${marca}` } })
 
       await page.goto(`/pre-atendimento/${token}`)
       await expect(page.getByText('Ficha já respondida')).toBeVisible()
@@ -688,8 +694,9 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     const { data: ficha } = await db().from('forms').select('id, schema').eq('tenant_id', D.tenantId).eq('tipo', 'PRE_ATENDIMENTO')
       .single<{ id: string; schema: { rows: { fields: { id: string; required?: boolean }[] }[] } }>()
     const comObrigatorio = JSON.parse(JSON.stringify(ficha!.schema))
-    // Só a alergia obrigatória: a ficha padrão tem outras antes dela (D2), e o teste é do foco no campo de texto.
-    for (const r of comObrigatorio.rows) for (const f of r.fields) f.required = f.id === 'allergies'
+    // Só os medicamentos obrigatórios: a ficha padrão tem outras antes (D2), e o teste é do foco no campo de texto
+    // (a alergia é Sim/Não desde o atend-15).
+    for (const r of comObrigatorio.rows) for (const f of r.fields) f.required = f.id === 'medications'
     expect((await db().from('forms').update({ schema: comObrigatorio }).eq('id', ficha!.id)).error).toBeNull()
     const { agendamento, cpf } = await agendada('Validacao')
     const { token } = await gerarLink(browser, agendamento)
@@ -701,7 +708,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await page.getByLabel('CPF').fill(cpf)
       await page.getByRole('button', { name: 'Continuar' }).click()
       await page.getByRole('button', { name: 'Enviar respostas' }).click()
-      const campo = page.locator('[data-campo="allergies"]')
+      const campo = page.locator('[data-campo="medications"]')
       await expect(campo).toHaveAttribute('data-invalido', 'true')
       await expect(campo.getByRole('alert')).toContainText('Preencha')
       await expect(campo.locator('textarea')).toBeFocused()

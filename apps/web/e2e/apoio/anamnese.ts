@@ -10,7 +10,7 @@ import { banco } from './banco'
  * atendimento sem ser sobre a anamnese chama isto antes, como a cliente que
  * respondeu pelo app.
  *
- * Responde só as obrigatórias, com a primeira opção (escolha) ou um texto
+ * Responde só as obrigatórias, com "Não" ou a primeira opção (escolha) ou um texto
  * `[e2e]`. Origem `CLIENTE_APP`: a tela não a regrava como "pela equipe".
  */
 export async function responderAnamnese(clienteId: string, tenantId: string): Promise<Record<string, string | string[]>> {
@@ -25,7 +25,8 @@ export async function responderAnamnese(clienteId: string, tenantId: string): Pr
     if (!f.required || f.type === 'section' || f.type === 'photo' || f.type === 'injectable_map') continue
     const primeira = f.options?.[0]
     respostas[f.id] = f.type === 'checkbox' ? [primeira ?? 'Sim']
-      : (f.type === 'select' || f.type === 'radio') ? (primeira ?? 'Sim')
+      // "Não" quando há (atend-15): o "Sim" da alergia abre o "Quais alergias?", obrigatório.
+      : (f.type === 'select' || f.type === 'radio') ? (f.options?.includes('Não') ? 'Não' : (primeira ?? 'Sim'))
       : f.type === 'number' ? '0'
       : f.type === 'date' ? '2000-01-01'
       : 'Nada a declarar [e2e]'

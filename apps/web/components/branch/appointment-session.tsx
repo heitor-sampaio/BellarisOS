@@ -999,6 +999,16 @@ export function AppointmentSession({
   // formulário com ela, que só lê o valor inicial ao nascer.
   const [anamneseDigitada,   setAnamneseDigitada]   = useState<Record<string, unknown> | null>(null)
   const [anamneseDoRascunho, setAnamneseDoRascunho] = useState<Record<string, unknown> | null>(null)
+  // A faixa da alergia acompanha o que está NA TELA (A34 da 5ª simulação): a
+  // alergia digitada só virava faixa depois de concluir, porque a faixa lia a
+  // anamnese salva. Com a anamnese mexida, valem as respostas da tela, contra
+  // a ficha atual da rede.
+  const anamneseNaTela: AnamneseGeral | null = anamneseDigitada
+    ? {
+        versao: 2, respondidoEm: anamnesis?.respondidoEm ?? null, origem: anamnesis?.origem ?? 'EQUIPE', respondidoPor: anamnesis?.respondidoPor ?? null,
+        ficha: fichaPreAtendimento, respostas: anamneseDigitada as AnamneseGeral['respostas'],
+      }
+    : anamnesis
   // As respostas da ficha do PROCEDIMENTO na tela (nulas enquanto ninguém
   // mexe): o "Finalizar" as leva na conclusão (D1 da simulação de 2026-10-29).
   const [fichaDigitada, setFichaDigitada] = useState<Record<string, unknown> | null>(null)
@@ -1642,7 +1652,7 @@ export function AppointmentSession({
         </div>
 
         {/* A alergia em destaque, acima de tudo (só com o prontuário à vista). */}
-        <AlertaDeAlergia alergias={alergiasDaAnamnese(anamnesis)} />
+        <AlertaDeAlergia alergias={alergiasDaAnamnese(anamneseNaTela)} />
 
         {erroAoIniciar && (
           <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroAoIniciar}</p>

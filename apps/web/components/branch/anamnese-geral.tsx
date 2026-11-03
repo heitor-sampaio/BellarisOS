@@ -6,7 +6,7 @@ import { ClipboardList, Edit2, X } from 'lucide-react'
 import { AnamnesisFormRenderer, type AnamnesisFormHandle, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
 import { salvarAnamneseGeral } from '@/actions/pre-atendimento'
 import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
-import type { AnamnesisRow } from '@/lib/anamnesis'
+import { campoVisivel, type AnamnesisRow } from '@/lib/anamnesis'
 import { faltaNaAnamnese } from '@/lib/atendimento/obrigatorias'
 
 /**
@@ -30,10 +30,13 @@ function SeloDaAnamnese({ anamnese }: { anamnese: AnamneseGeral }) {
 
 /** O que foi respondido, pergunta por pergunta (só leitura). */
 export function RespostasDaAnamnese({ rows, respostas }: { rows: AnamnesisRow[]; respostas: AnamneseGeral['respostas'] }) {
+  const campos = rows.flatMap(r => r.fields)
   return (
     <div className="anamnese-geral-respostas">
-      {rows.flatMap(r => r.fields).map(f => {
+      {campos.map(f => {
         if (f.type === 'section') return <p key={f.id} className="anamnese-geral-secao">{f.label}</p>
+        // O detalhe que só vale com outra resposta (a alergia no "Sim") não aparece sem ela.
+        if (!campoVisivel(f, respostas, campos)) return null
         const v = respostas[f.id]
         const texto = Array.isArray(v) ? v.join(', ') : (v ?? '')
         return (

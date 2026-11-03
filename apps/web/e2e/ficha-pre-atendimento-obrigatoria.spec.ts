@@ -25,7 +25,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 const OBRIGATORIAS = ['allergies', 'isPregnantOrBreastfeeding', 'medications', 'healthConditions']
 const COMPLETA = {
-  allergies: 'Nenhuma', isPregnantOrBreastfeeding: 'Não', medications: 'Nenhum', healthConditions: 'Nenhuma',
+  allergies: 'Não', isPregnantOrBreastfeeding: 'Não', medications: 'Nenhum', healthConditions: 'Nenhuma',
 }
 
 let R: OutraRede
@@ -108,7 +108,7 @@ test.describe('a ficha de saúde não se responde vazia (D2)', () => {
     await comoCliente(browser, async page => {
       await page.goto(`${portal()}/pre-atendimento`)
       await page.locator('[data-campo="isPregnantOrBreastfeeding"]').getByLabel('Não se aplica', { exact: true }).check()
-      await page.locator('[data-campo="allergies"] textarea').fill('Nenhuma')
+      await page.locator('[data-campo="allergies"]').getByLabel('Não', { exact: true }).check()
       await page.locator('[data-campo="medications"] textarea').fill('Nenhum')
       await page.locator('[data-campo="healthConditions"] textarea').fill('Nenhuma')
       await page.getByRole('button', { name: 'Enviar respostas' }).click()

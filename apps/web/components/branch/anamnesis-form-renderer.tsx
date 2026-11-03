@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Save, Upload, X, ImageIcon, CheckCircle2, Syringe, ExternalLink } from 'lucide-react'
 import {
-  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor, primeiraObrigatoriaVazia,
+  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor, primeiraObrigatoriaVazia, campoVisivel,
   type AnamnesisField, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
@@ -78,6 +78,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
     campo?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     campo?.querySelector<HTMLElement>('input, textarea, select, button')?.focus({ preventScroll: true })
   }, [invalido])
+  const todosOsCampos = flattenFields({ rows })
   // path da foto → signed URL (temporária) para exibir
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
 
@@ -143,9 +144,13 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
   return (
     <div ref={raiz} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {rows.map(row => (
-          <div key={row.id} className="anamnesis-row" data-cols={row.fields.length}>
-            {row.fields.map(f => (
+        {rows.map(row => {
+          // O campo que depende de outra resposta só aparece com ela (atend-15: o "Quais alergias?" no "Sim").
+          const visiveis = row.fields.filter(f => campoVisivel(f, answers, todosOsCampos))
+          if (!visiveis.length) return null
+          return (
+          <div key={row.id} className="anamnesis-row" data-cols={visiveis.length}>
+            {visiveis.map(f => (
               <FieldView
                 key={f.id} field={f} value={answers[f.id]} canEdit={canEdit && !(semInjetaveis && f.type === 'injectable_map')}
                 appointmentId={appointmentId} slug={slug} injetaveis={injetaveis}
@@ -157,7 +162,8 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
               />
             ))}
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{error}</p>}

@@ -391,6 +391,7 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
         <FieldSettingsModal
           field={editingField}
           tipos={tipos}
+          outros={rows.flatMap(r => r.fields).filter(x => x.id !== editingField.id && OPTION_TYPES.includes(x.type) && x.type !== 'injectable_map')}
           onChangeType={type => changeType(editingField.id, type)}
           onPatch={ch => patch(editingField.id, ch)}
           onSetOption={(i, v) => setOption(editingField.id, i, v)}
@@ -456,7 +457,7 @@ function FieldCard({ field: f, dragging, insertHighlight, canMergeUp, canSplit, 
           {f.label || 'Sem título'}
         </p>
         <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {FIELD_TYPE_LABEL[f.type]}{f.required ? ' · obrig.' : ''}
+          {FIELD_TYPE_LABEL[f.type]}{f.required ? ' · obrig.' : ''}{f.mostrarSe ? ` · só com "${f.mostrarSe.valor}"` : ''}
         </p>
       </div>
       <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
@@ -478,8 +479,10 @@ function ModalField({ label, children }: { label: string; children: React.ReactN
 }
 
 // Configurações específicas do campo — modal.
-function FieldSettingsModal({ field: f, tipos, onChangeType, onPatch, onSetOption, onAddOption, onRemoveOption, onClose }: {
+function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, onSetOption, onAddOption, onRemoveOption, onClose }: {
   field: AnamnesisField
+  /** Os campos de opções da ficha, para o "Mostrar só quando" (atend-15). */
+  outros: AnamnesisField[]
   /** Os tipos que o plano da rede oferece (sem o planejador de injetáveis, se fora). */
   tipos: typeof FIELD_TYPES
   onChangeType: (t: AnamnesisFieldType) => void
@@ -541,6 +544,35 @@ function FieldSettingsModal({ field: f, tipos, onChangeType, onPatch, onSetOptio
               <input type="checkbox" checked={!!f.required} onChange={e => onPatch({ required: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
               Campo obrigatório
             </label>
+          )}
+
+          {/* O campo que depende de outra resposta (atend-15: o "Quais alergias?" só no "Sim"). */}
+          {!isSection && outros.length > 0 && (
+            <ModalField label="Mostrar só quando (opcional)">
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select className="field" style={{ flex: 1, minWidth: 0 }} aria-label="Campo de que depende"
+                  value={f.mostrarSe?.campo ?? ''}
+                  onChange={e => {
+                    const alvo = outros.find(o => o.id === e.target.value)
+                    onPatch({ mostrarSe: alvo ? { campo: alvo.id, valor: (alvo.options ?? [])[0] ?? '' } : undefined })
+                  }}>
+                  <option value="">Sempre aparece</option>
+                  {outros.map(o => <option key={o.id} value={o.id}>{o.label || 'Sem título'}</option>)}
+                </select>
+                {f.mostrarSe && (
+                  <select className="field" style={{ flex: 1, minWidth: 0 }} aria-label="Resposta que mostra o campo"
+                    value={f.mostrarSe.valor}
+                    onChange={e => onPatch({ mostrarSe: { campo: f.mostrarSe!.campo, valor: e.target.value } })}>
+                    {(outros.find(o => o.id === f.mostrarSe!.campo)?.options ?? []).filter(Boolean).map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                )}
+              </div>
+              {f.mostrarSe && (
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  Escondido, o campo não é pedido, mesmo obrigatório.
+                </p>
+              )}
+            </ModalField>
           )}
         </div>
 
