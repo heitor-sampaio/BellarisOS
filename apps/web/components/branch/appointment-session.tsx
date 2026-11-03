@@ -350,12 +350,13 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 3 }}>Confirme para liberar o cliente. Adicione observações se necessário.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Observações finais <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
-            <textarea name="notes" rows={3} defaultValue={initialNotes ?? ''} placeholder="Técnicas, áreas tratadas, produtos utilizados…" className="field" style={{ resize: 'vertical' }} />
+            {/* A42: a evolução tem UM nome em toda a tela (era "Anotações clínicas", "O que foi realizado" e "Observações finais"). */}
+            <label htmlFor="conclusao-evolucao" className="field-label">Evolução <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
+            <textarea id="conclusao-evolucao" name="notes" rows={3} defaultValue={initialNotes ?? ''} placeholder="Técnicas, áreas tratadas, produtos utilizados…" className="field" style={{ resize: 'vertical' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
-            <textarea name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
+            <label htmlFor="conclusao-intercorrencias" className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
+            <textarea id="conclusao-intercorrencias" name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
           </div>
           {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
@@ -905,14 +906,14 @@ function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrence
       </div>
       <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">O que foi realizado</label>
-          <textarea rows={4} value={notes} onChange={e => onNotesChange(e.target.value)} readOnly={readonly}
+          <label htmlFor="atendimento-evolucao" className="field-label">Evolução</label>
+          <textarea id="atendimento-evolucao" rows={4} value={notes} onChange={e => onNotesChange(e.target.value)} readOnly={readonly}
             placeholder={readonly ? '—' : 'Descreva técnicas, áreas tratadas, produtos utilizados…'}
             className="field" style={{ resize: 'vertical', background: readonly ? 'var(--bg-app)' : undefined }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label className="field-label">Intercorrências</label>
-          <textarea rows={2} value={intercurrences} onChange={e => onIntercurrencesChange(e.target.value)} readOnly={readonly}
+          <label htmlFor="atendimento-intercorrencias" className="field-label">Intercorrências</label>
+          <textarea id="atendimento-intercorrencias" rows={2} value={intercurrences} onChange={e => onIntercurrencesChange(e.target.value)} readOnly={readonly}
             placeholder={readonly ? '—' : 'Reações, intercorrências ou observações…'}
             className="field" style={{ resize: 'vertical', background: readonly ? 'var(--bg-app)' : undefined }} />
         </div>
@@ -2038,8 +2039,9 @@ export function AppointmentSession({
                     </div>
                     <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <label className="field-label">Anotações clínicas</label>
+                        <label htmlFor="avaliacao-evolucao" className="field-label">Evolução</label>
                         <textarea
+                          id="avaliacao-evolucao"
                           rows={4} value={evalSessionNotes} readOnly={editLocked}
                           onChange={e => setEvalSessionNotes(e.target.value)}
                           placeholder="Técnicas utilizadas, regiões tratadas, evolução do cliente…"
@@ -2047,8 +2049,9 @@ export function AppointmentSession({
                         />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <label className="field-label">Intercorrências</label>
+                        <label htmlFor="avaliacao-intercorrencias" className="field-label">Intercorrências</label>
                         <textarea
+                          id="avaliacao-intercorrencias"
                           rows={2} value={evalSessionInterc} readOnly={editLocked}
                           onChange={e => setEvalSessionInterc(e.target.value)}
                           placeholder="Reações, intercorrências ou observações…"

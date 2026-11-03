@@ -1015,6 +1015,11 @@ O resto do fluxo:
 - **O "Finalizar" leva a evolução que está NA TELA**: o modal abre com o que a
   profissional escreveu na página (avaliação ou ficha), não com o gravado —
   sem "Salvar" antes, a evolução se perdia (simulação de 2026-10-20).
+  **O campo se chama "Evolução" em toda a tela** (A42 da 5ª simulação: era
+  "Anotações clínicas" na avaliação, "O que foi realizado" no formulário de
+  sempre e "Observações finais" na janela de concluir — o mesmo
+  `medical_record_entries.notes`), o nome da aba Prontuário, com o rótulo
+  ligado ao campo. Prova: `e2e/atendimento-campos-da-tela.spec.ts`.
 - **E leva também as dores e a anamnese digitadas, na MESMA transação** (D3
   da simulação de 2026-10-28, decisão do Heitor): só o "Enviar para a
   recepção" (que exige plano) as mandava. `finishSession` recebe `queixas`

@@ -76,3 +76,17 @@ test('A35: sem as dores, gerar o plano rola até o campo, foca e diz o que falta
   })
   expect((await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', id)).data, 'nenhum plano').toEqual([])
 })
+
+test('A42: a evolução tem um nome só — no formulário e na janela de concluir', async ({ browser }) => {
+  const id = await emCurso('Evolucao')
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    await expect(p.getByLabel('Evolução', { exact: true })).toBeVisible()
+    await expect(p.getByText('Anotações clínicas')).toHaveCount(0)
+    await p.getByLabel('Evolução', { exact: true }).fill(`Peeling em zona T ${marca}`)
+    await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
+    const janela = p.getByRole('dialog')
+    await expect(janela.getByLabel(/^Evolução/)).toHaveValue(`Peeling em zona T ${marca}`)
+    await expect(janela.getByText('Observações finais')).toHaveCount(0)
+  })
+})
