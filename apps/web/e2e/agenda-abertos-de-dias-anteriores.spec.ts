@@ -56,8 +56,10 @@ test.beforeAll(async () => {
   await ag('Chegou ontem', rede.professionalId, diaAntes(1), '23:50', 'ARRIVED', { arrived_at: as(diaAntes(1), '23:52') })
   // Anteontem, ficou "em atendimento" (da profissional A).
   await ag('Em atendimento', profA.userId, diaAntes(2), '15:00', 'IN_PROGRESS', { started_at: as(diaAntes(2), '15:05') })
-  // Não entram: o agendado de ontem que ninguém mexeu, e o "chegou" de HOJE.
+  // agenda-03 (revisão de 2026-11-02): o agendado de ontem que ninguém mexeu
+  // entra num grupo À PARTE ("marcar falta ou concluir?").
   await ag('Agendado ontem', rede.professionalId, diaAntes(1), '10:00', 'SCHEDULED')
+  // Não entra: o "chegou" de HOJE.
   await ag('Chegou hoje', rede.professionalId, hojeSP(), '00:05', 'ARRIVED', { arrived_at: as(hojeSP(), '00:05') })
 })
 
@@ -70,12 +72,17 @@ for (const tela of ['agenda', 'dashboard'] as const) {
   test(`a ${tela} da unidade avisa dos atendimentos de dias anteriores ainda abertos`, async ({ browser }) => {
     await como(browser, recepcao!.estado, async p => {
       await p.goto(`/${slug}/${tela}`)
-      const aviso = p.locator('[data-abertos-de-antes]')
+      const aviso = p.locator('[data-abertos-de-antes] [data-grupo="abertos"]')
       await expect(aviso).toContainText('2 atendimentos de dias anteriores ainda abertos')
       await expect(aviso).toContainText(nome('Chegou ontem'))
       await expect(aviso).toContainText(nome('Em atendimento'))
       await expect(aviso).not.toContainText(nome('Agendado ontem'))
       await expect(aviso).not.toContainText(nome('Chegou hoje'))
+      // O agendado que passou sem chegada, num grupo próprio.
+      const semChegada = p.locator('[data-abertos-de-antes] [data-grupo="sem-chegada"]')
+      await expect(semChegada).toContainText('1 agendamento de dias anteriores passou sem chegada')
+      await expect(semChegada).toContainText('marcar falta ou concluir?')
+      await expect(semChegada).toContainText(nome('Agendado ontem'))
       await expect(aviso.getByRole('link', { name: new RegExp(nome('Chegou ontem').replace(/[[\]]/g, '\\$&')) })).toHaveAttribute('href', new RegExp(`^/${slug}/agenda/[0-9a-f-]{36}$`))
     })
   })
@@ -88,5 +95,7 @@ test('com a agenda "só os meus", a profissional vê só o atendimento aberto de
     await expect(aviso).toContainText('1 atendimento de dias anteriores ainda aberto')
     await expect(aviso).toContainText(nome('Em atendimento'))
     await expect(aviso).not.toContainText(nome('Chegou ontem'))
+    // O agendado sem chegada é da outra profissional: não aparece para ela.
+    await expect(aviso).not.toContainText(nome('Agendado ontem'))
   })
 })

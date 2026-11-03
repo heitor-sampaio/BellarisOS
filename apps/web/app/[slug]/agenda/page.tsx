@@ -9,7 +9,7 @@ import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 import { selosDaFicha } from '@/lib/pre-atendimento/selos'
-import { abertosDeAntes } from '@/lib/agenda/abertos-de-antes'
+import { abertosDeAntes } from '@/lib/metrics/abertos-de-antes'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
@@ -97,7 +97,7 @@ export default async function AgendaPage({ params, searchParams }: {
     // Os atendimentos de dias anteriores ainda abertos (J-32), com o "só os meus".
     abertosDeAntes(ctx, branchId),
   ])
-  const avisoDosAbertos = <AbertosDeAntes slug={slug} total={abertos.total} itens={abertos.itens} />
+  const avisoDosAbertos = <AbertosDeAntes slug={slug} abertos={abertos.abertos} semChegada={abertos.semChegada} />
   const horarioDaUnidade = normalizarHorario((horarioRaw[0] as { horario?: unknown } | null)?.horario)
   const horariosDosProfissionais: Record<string, Horario | null> = Object.fromEntries(
     ((horarioRaw[1] ?? []) as { id: string; horario: unknown }[]).map(p => [p.id, normalizarHorario(p.horario)]),
@@ -199,7 +199,7 @@ export default async function AgendaPage({ params, searchParams }: {
   return (
     <div>
       <RealtimeRefresher tables={['appointments']} />
-      {abertos.total > 0 && <div style={{ marginBottom: 16 }}>{avisoDosAbertos}</div>}
+      {(abertos.abertos.total > 0 || abertos.semChegada.total > 0) && <div style={{ marginBottom: 16 }}>{avisoDosAbertos}</div>}
 
       <AgendaCalendar
         branchId={branchId}

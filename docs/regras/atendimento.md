@@ -179,10 +179,13 @@
   2026-10-30): a agenda e o dashboard da unidade mostram "N atendimentos de
   dias anteriores ainda abertos" — quem CHEGOU ou está EM ATENDIMENTO num dia
   que já passou (últimos 30 dias), com o link para a tela do atendimento
-  (`abertosDeAntes`, `lib/agenda/abertos-de-antes.ts`; o aviso em
-  `components/branch/abertos-de-antes.tsx`). A cliente das 23:50 sumia da
-  agenda à meia-noite. O agendado/confirmado que passou sem ninguém mexer não
-  entra (decisão para o Heitor). Respeita o "só os meus" da agenda. Prova:
+  (`abertosDeAntes`, `lib/metrics/abertos-de-antes.ts` — na fonte única desde
+  o ind-02, 2026-11-02; o aviso em `components/branch/abertos-de-antes.tsx`).
+  A cliente das 23:50 sumia da agenda à meia-noite. O agendado/confirmado que
+  passou sem ninguém mexer vem num GRUPO À PARTE (agenda-03, revisão de
+  2026-11-02: "N agendamentos de dias anteriores passaram sem chegada —
+  marcar falta ou concluir?"); era deixado de fora. Respeita o "só os meus"
+  da agenda. Prova:
   `e2e/agenda-abertos-de-dias-anteriores.spec.ts`.
 - **O concluído mostra a hora REAL** ao lado da agendada (J-34): "23:30 ·
   concluído em 29/10 às 00:22" na grade do dia, na janela, na agenda da rede e
