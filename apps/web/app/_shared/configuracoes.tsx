@@ -545,7 +545,7 @@ export async function Configuracoes({
       )}
 
       {conteudo === 'comissoes' && comissoes && (
-        <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]} quantosAtendem={comissoes[2].quantosAtendem} maximoDeVezes={comissoes[3].configurado} prazoDaOperadora={comissoes[3].prazoDias} produtos={comissoes[4]}
+        <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]} quantosAtendem={comissoes[2].quantosAtendem} maximoDeVezes={comissoes[3].configurado} prazoDaOperadora={comissoes[3].prazoDias} porBandeira={comissoes[3].porBandeira} produtos={comissoes[4]}
           podeEditar={can(ctx, 'financial', 'MANAGE') && ctx.branchId === null} />
       )}
 

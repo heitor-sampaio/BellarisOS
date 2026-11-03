@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { vencimentoDoDia } from '@/lib/financeiro/vencimentos'
 import { dayKeyTZ } from '@/lib/datetime'
+import { bandeiraDoPagamento, ehBandeira } from '@/lib/financeiro/bandeiras'
 
 /**
  * LANÇAR (receita ou despesa, à vista ou com vencimento) e DAR BAIXA — os
@@ -37,6 +38,8 @@ export interface NovoLancamento {
    */
   pagoEm?: string | null
   observacoes?: string | null
+  /** r3-f13-01: a bandeira do cartão do pago agora, opcional. */
+  bandeira?: string | null
 }
 
 /** O `paid_at` do lançamento pago no dia escolhido. */
@@ -63,6 +66,8 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
   if (!l.valor || l.valor <= 0) return { error: 'Valor deve ser maior que zero.' }
   const pagoEm = l.pago ? pagoNoDia(l.pagoEm) : null
   if (pagoEm && typeof pagoEm !== 'string') return pagoEm
+  if (l.bandeira && !ehBandeira(l.bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
+  const bandeira = l.pago && l.tipo === 'INCOME' ? bandeiraDoPagamento(l.formaDePagamento, l.bandeira) : null
 
   const linha = await gravar(admin.from('financial_transactions').insert({
     branch_id:      l.branchId,
@@ -76,6 +81,7 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
     paid_at:        pagoEm,
     notes:          l.observacoes ?? null,
     created_by:     ctx.internalUserId,
+    ...(bandeira ? { cartao_bandeira: bandeira } : {}),
   }).select('id').single(), 'registrar o lançamento') as { id: string }
   return { id: linha.id }
 }
@@ -83,7 +89,7 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
 /** O lançamento, se for da rede E de uma unidade ao alcance. */
 export async function lancamentoAoAlcance(admin: Admin, ctx: TenantContext, id: string) {
   const tx = await ler(admin.from('financial_transactions')
-    .select('id, branch_id, type, description, category, amount, due_date, is_paid, notes, client_id, branches!inner(tenant_id)')
+    .select('id, branch_id, type, description, category, amount, due_date, is_paid, notes, client_id, payment_method, branches!inner(tenant_id)')
     .eq('id', id).maybeSingle(), 'buscar o lançamento')
   const tenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
   // E a unidade ao alcance (§11): a recepção da A não dá baixa na B.
@@ -91,17 +97,25 @@ export async function lancamentoAoAlcance(admin: Admin, ctx: TenantContext, id: 
   return tx as unknown as {
     id: string; branch_id: string; type: string; description: string | null; category: string | null
     amount: number; due_date: string | null; is_paid: boolean; notes: string | null; client_id: string | null
+    payment_method: string | null
   }
 }
 
-export async function marcarPagoCore(admin: Admin, ctx: TenantContext, transactionId: string, forma?: string | null): Promise<{ ok: true } | { error: string }> {
+export async function marcarPagoCore(
+  admin: Admin, ctx: TenantContext, transactionId: string, forma?: string | null,
+  /** r3-f13-01: a bandeira do cartão, opcional — só vale no cartão. */
+  bandeira?: string | null,
+): Promise<{ ok: true } | { error: string }> {
   const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
   if (!tx) return { error: 'Lançamento não encontrado.' }
+  if (bandeira && !ehBandeira(bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
+  const daBandeira = bandeiraDoPagamento(forma ?? tx.payment_method, bandeira)
   const agora = new Date().toISOString()
   // Com a guarda: o já pago (ou estornado) não tem o pagamento sobrescrito.
   const feitas = await gravar(admin.from('financial_transactions').update({
     is_paid: true, paid_at: agora, updated_at: agora,
     ...(forma ? { payment_method: forma } : {}),
+    ...(daBandeira ? { cartao_bandeira: daBandeira } : {}),
   }).eq('id', transactionId).eq('is_paid', false).or('notes.is.null,notes.neq.Estornada').select('id'), 'dar baixa no lançamento') as { id: string }[] | null
   if (!feitas?.length) return { error: 'Esse lançamento já está pago (ou foi estornado).' }
   return { ok: true }

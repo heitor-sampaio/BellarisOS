@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { clienteAtendidaPor } from '@/lib/clientes/atendida-por'
 import type { TenantContext } from '@estetica-os/types'
@@ -1501,6 +1502,8 @@ async function checkoutTreatmentPlanInterno(
       is_paid:          true,
       paid_at:          agora,
       ...(vezes > 1 ? { cartao_vezes: vezes } : {}),
+      // r3-f13-01: a bandeira do cartão, opcional.
+      ...(bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) ? { cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) } : {}),
     })
     if (error) return { error: `Erro ao registrar pagamento: ${error.message}` }
     transactionId = data!.id as string
@@ -1518,6 +1521,7 @@ async function checkoutTreatmentPlanInterno(
         paid_at:          agora,
         description:      `${descricao} — entrada`,
         notes:            'Entrada do plano de tratamento',
+        ...(bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) ? { cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) } : {}),
       })
       if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
       transactionId = data!.id as string
@@ -1629,7 +1633,7 @@ async function checkoutTreatmentPlanInterno(
       const { error } = await admin.rpc('confirmar_pagamento_do_atendimento', {
         p_agendamento: hoje.appointmentId, p_tenant: ctx.tenantId, p_ator: ctx.internalUserId,
         p_ator_nome:   ctx.userName || ctx.roleLabel || 'Recepção',
-        p_dados:       { metodo: pagamento.metodo, pontos: 0, desconto: 0, valor_final: hoje.preco, cartao_vezes: vezesNoCartao(pagamento) },
+        p_dados:       { metodo: pagamento.metodo, pontos: 0, desconto: 0, valor_final: hoje.preco, cartao_vezes: vezesNoCartao(pagamento), cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) },
       })
       if (error) aviso = `O plano foi fechado, mas o atendimento de hoje não foi recebido (${error.message}). Receba pela tela do atendimento.`
     }
@@ -1665,8 +1669,8 @@ async function checkoutTreatmentPlanInterno(
  */
 export type RecebimentoDoPlano =
   /** `vezes`: o cartão de crédito em N vezes, pago na hora (2026-10-20). */
-  | { forma: 'AVISTA';    metodo: string; vezes?: number }
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
+  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string }
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string }
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1781,6 +1785,7 @@ async function receberDoPlanoInterno(
     }
   }
 
+  const inicioDoRecebimento = new Date(Date.now() - 1000).toISOString()
   const { error: erroDoRecebimento } = await admin.rpc('plano_receber', {
     p_tenant:      ctx.tenantId!,
     p_plano:       planId,
@@ -1796,6 +1801,20 @@ async function receberDoPlanoInterno(
     // A recusa do banco (o saldo já recebido, o crédito sem saldo) é para a tela.
     if (erroDoRecebimento.code === 'P0001') return { error: erroDoRecebimento.message }
     throw new Error(`Não consegui registrar o recebimento: ${erroDoRecebimento.message}`)
+  }
+
+  // r3-f13-01: a bandeira do cartão do que foi pago agora. `plano_receber` não
+  // a recebe (a assinatura fica); gravada logo depois, o gatilho das parcelas da
+  // operadora refaz o prazo e a taxa pela bandeira, e a comissão se acerta.
+  const bandeira = bandeiraDoPagamento(recebimento.metodo, recebimento.bandeira)
+  if (bandeira) {
+    const base = admin.from('financial_transactions').update({ cartao_bandeira: bandeira })
+      .eq('treatment_plan_id', planId).eq('is_paid', true).is('cartao_bandeira', null)
+      .eq('payment_method', recebimento.metodo as 'CREDIT_CARD' | 'DEBIT_CARD')
+    await gravar((recebimento.forma === 'AVISTA'
+      ? base.in('id', saldo.pendentes)
+      : base.eq('description', `${descricao} — entrada`).gte('paid_at', inicioDoRecebimento)).select('id'),
+    'gravar a bandeira do recebimento do plano')
   }
 
   if (appointmentId) {

@@ -31,6 +31,7 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avisos'
 import { EVENTOS } from '@estetica-os/types'
 import { falaDaRede } from '@/lib/unidades/uma-so'
+import { BANDEIRAS, bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -255,6 +256,8 @@ const EntradaDoCancelamento = z.object({
   novo:         z.object({
     metodo: z.enum(FORMAS_DE_PAGAMENTO),
     vezes:  z.number().int().min(1).max(12),
+    /** r3-f13-01: a bandeira do cartão do pagamento novo, opcional. */
+    bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).nullable().optional(),
   }).nullable().optional(),
 })
 
@@ -284,7 +287,7 @@ export async function cancelarPacote(clientPackageId: string, entrada: unknown):
       p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_agendamentos: lido.data.agendamentos,
       p_esperado: lido.data.esperado, p_simular: false,
       p_estorno: lido.data.estorno ?? null,
-      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1 } : null,
+      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1, bandeira: bandeiraDoPagamento(novo.metodo, novo.bandeira) } : null,
     }), 'cancelar o pacote') as Record<string, unknown>
 
     // Os agendamentos cancelados com o pacote avisam como qualquer

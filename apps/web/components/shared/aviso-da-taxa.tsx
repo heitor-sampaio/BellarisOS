@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Info } from 'lucide-react'
-import { taxasDoCartaoDeCredito } from '@/actions/comissoes'
+import { taxasDoCartaoDeCredito, cartaoPorBandeiraDaRede } from '@/actions/comissoes'
 import { taxaQueVale } from '@/lib/financeiro/formas'
+import { ehBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 
 /**
  * O aviso de quem recebe no cartão de crédito em N vezes sem a taxa da
@@ -12,16 +13,25 @@ import { taxaQueVale } from '@/lib/financeiro/formas'
  * a tela não dizia. As taxas se cadastram em Configurações → Comissões (1x a
  * 12x). Só aparece no crédito; a conta é `taxaQueVale` (o espelho da do banco).
  */
-export function AvisoDaTaxa({ vezes }: { vezes: number }) {
+export function AvisoDaTaxa({ vezes, bandeira }: { vezes: number; bandeira?: string }) {
   const [taxas, setTaxas] = useState<{ parcelas: number; taxa_pct: number }[] | null>(null)
+  const [porBandeira, setPorBandeira] = useState<CartaoPorBandeira>({})
   useEffect(() => {
     let vivo = true
-    taxasDoCartaoDeCredito().then(t => { if (vivo) setTaxas(t) })
+    Promise.all([taxasDoCartaoDeCredito(), cartaoPorBandeiraDaRede()])
+      .then(([t, b]) => { if (vivo) { setTaxas(t); setPorBandeira(b) } })
       // Só um aviso: sem ele a tela segue, e o motivo vai ao console.
       .catch(e => console.error('[pagamento] taxas do cartão:', e))
     return () => { vivo = false }
   }, [])
   if (!taxas) return null
+  // r3-f13-01: a bandeira com a sua taxa até estas vezes vale; senão, a regra geral.
+  const daBandeira = ehBandeira(bandeira)
+    ? Object.entries(porBandeira[bandeira]?.taxas ?? {}).filter(([k]) => k.startsWith('CREDIT_CARD:'))
+        .map(([k, v]) => ({ parcelas: Number(k.split(':')[1]), taxa_pct: v }))
+    : []
+  const naBandeira = taxaQueVale(daBandeira, vezes)
+  if (naBandeira.parcelas !== null) return null
   const vale = taxaQueVale(taxas, vezes)
   if (vale.cadastrada) return null
   const rotulo = vezes === 1 ? 'à vista' : `${vezes}x`

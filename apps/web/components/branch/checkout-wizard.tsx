@@ -19,6 +19,7 @@ import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/ch
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
+import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 
@@ -141,6 +142,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [parcelas,      setParcelas]      = useState(3)
   // À vista no cartão de crédito: em quantas vezes na maquininha (pago na hora).
   const [vezesCartao,   setVezesCartao]   = useState(1)
+  // r3-f13-01: a bandeira do cartão, opcional (vazia = a regra geral).
+  const [bandeira,      setBandeira]      = useState('')
   // Até quantas vezes a clínica parcela no crédito (D-15).
   const opcoesDeVezes = useOpcoesDeVezes()
   // O atendimento que gerou o plano entra junto quando algo é recebido agora.
@@ -287,6 +290,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     // `null` = aceito sem cobrar. O valor nasce em aberto e aparece no check-in
     // do primeiro atendimento, com o botão de receber.
     if (formaPgto === 'NADA_AGORA') return null
+    const comBandeira = bandeira && (paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD') ? { bandeira } : {}
     if (formaPgto === 'PARCELADO') {
       return {
         forma:              'PARCELADO',
@@ -294,6 +298,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         entrada:            entradaNum,
         parcelas,
         primeiroVencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
+        ...comBandeira,
       }
     }
     if (formaPgto === 'A_RECEBER') {
@@ -304,8 +309,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       }
     }
     return paymentMethod === 'CREDIT_CARD' && vezesCartao > 1
-      ? { forma: 'AVISTA', metodo: paymentMethod, vezes: vezesCartao }
-      : { forma: 'AVISTA', metodo: paymentMethod }
+      ? { forma: 'AVISTA', metodo: paymentMethod, vezes: vezesCartao, ...comBandeira }
+      : { forma: 'AVISTA', metodo: paymentMethod, ...comBandeira }
   }
 
   function handleFinish() {
@@ -687,7 +692,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               </select>
             </label>
             <DicaDasVezes total={liquido + (recebeHoje ? precoDeHoje : 0)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
-            <AvisoDaTaxa vezes={vezesCartao} />
+            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} />
+          </div>
+        )}
+        {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && (
+          <div style={{ marginBottom: 16, maxWidth: 260 }}>
+            <CampoDaBandeira metodo={paymentMethod} valor={bandeira} aoMudar={setBandeira} />
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>

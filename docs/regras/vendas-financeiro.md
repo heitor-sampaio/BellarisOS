@@ -579,10 +579,40 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     verdade e configurável o prazo"; era o mesmo dia de cada mês). O N é da
     clínica: Configurações → Comissões → "Prazo da operadora (dias)", junto
     das taxas (`tenants.cartao_prazo_dias`, 30 por padrão, 1–120;
-    `salvarPrazoDaOperadora`, a mesma permissão e abrangência das taxas). Um
-    prazo só, não por bandeira nem por vezes: a taxa muda com as vezes, o
-    prazo da operadora não. O vencimento é retratado na parcela: mudar o
-    prazo vale para as próximas vendas. Migration `20261103001301`.
+    `salvarPrazoDaOperadora`, a mesma permissão e abrangência das taxas). O
+    vencimento é retratado na parcela: mudar o prazo vale para as próximas
+    vendas. Migration `20261103001301`.
+    - **Prazo e taxas POR BANDEIRA** (r3-f13-01, o Heitor, 2026-11-03:
+      "Lembre-se, flexibilidade. Prazo por bandeira. Taxas também
+      configuráveis por bandeira."; migration `20261103001502`). Em
+      Configurações → Comissões → "Taxas da maquininha", o seletor "Bandeira"
+      (Regra geral, Visa, Mastercard, Elo, Amex, Hipercard, Outras): cada
+      bandeira pode ter o SEU prazo e as SUAS taxas (débito e crédito 1x–12x;
+      Pix não tem bandeira), gravados juntos em `tenants.cartao_por_bandeira`
+      (`salvarCartaoPorBandeira`, a mesma permissão e abrangência das taxas;
+      a tela diz "Com regra própria: Elo"). O de antes é a **REGRA GERAL**:
+      vale para a bandeira sem regra própria (o campo vazio mostra a geral) e
+      para o pagamento sem bandeira — a clínica que não mexe não vê diferença.
+      A taxa da bandeira é a dela até as vezes do pagamento (a maior faixa
+      cadastrada), senão a geral (`private.comissao_taxa_pct` com a
+      bandeira); o prazo, o dela, senão o geral (`private.prazo_da_operadora`).
+    - **O pagamento no cartão diz a bandeira, opcional** ("Bandeira (opcional)",
+      `CampoDaBandeira`): o recebimento do atendimento e do plano no check-in,
+      o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —
+      `CamposDoPagamento`), o pagamento novo do usado no cancelamento do
+      pacote, a baixa no Financeiro de um lançamento no cartão ("Receber no
+      cartão", `ReceberNoCartao`) e o Copilot (`lancar`, `marcar_pago`).
+      Gravada em `financial_transactions.cartao_bandeira` (só no crédito e no
+      débito — a restrição do banco confere; `private.bandeira_do_cartao`
+      recusa a desconhecida). A taxa da bandeira vale onde a taxa já valia —
+      o líquido da comissão (`comissao_conta`), o que a operadora deposita
+      (`recebiveis_do_cartao`) e a estimativa do Fechamento do dia —, e o
+      prazo no nascimento das parcelas da operadora. O estorno herda a
+      bandeira. **Informada ou trocada DEPOIS de pago** (o recebimento do plano
+      no check-in grava logo depois de `plano_receber`), o gatilho refaz o
+      prazo e a taxa das parcelas enquanto a operadora não pagou nenhuma, e a
+      comissão se acerta pelo gatilho dela. Prova:
+      `e2e/financeiro-cartao-por-bandeira.spec.ts`, `tests/cartao-por-bandeira.test.ts`.
     - **A receita é da VENDA**: entra inteira no dia dela, pela regra única;
       a parcela recebida NÃO soma receita (`indicadores.md`).
     - **A baixa é na leitura, sem cron**: a parcela vira recebida SOZINHA
@@ -923,6 +953,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Dar baixa sem a guarda do já pago/estornado (marcarPagoCore confere a linha devolvida)
 ❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da clínica; o que a operadora deposita em parcelas mora em recebiveis_do_cartao, nascido pelo gatilho
 ❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
+❌ Ler a taxa ou o prazo do cartão sem a bandeira do pagamento (é private.comissao_taxa_pct com a bandeira e private.prazo_da_operadora; o de 3 argumentos é só a regra geral)
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)

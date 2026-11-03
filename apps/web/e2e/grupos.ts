@@ -244,6 +244,7 @@ export const ISOLADOS = [
   'whatsapp-cobranca.spec.ts',
   'whatsapp-remover-numero.spec.ts',
   'whatsapp-responder-por-outro-numero.spec.ts',
+  'financeiro-cartao-por-bandeira.spec.ts',
   'whatsapp-conectar-pela-meta-falha.spec.ts',
   'whatsapp-credencial-manual.spec.ts',
   'acoes-em-lote.spec.ts',

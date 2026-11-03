@@ -18,8 +18,9 @@ export type PagamentoDoPlano =
    * então para o cliente é PAGO na hora — "entrada + parcelas" é o crediário da
    * própria clínica, cada parcela a receber. 1 (ou ausente) é o à vista de sempre.
    */
-  | { forma: 'AVISTA';    metodo: string; vezes?: number }
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
+  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string }
+  /** `bandeira` (r3-f13-01): a da entrada paga agora no cartão. */
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string }
   /** Vencimento opcional: "a receber" sem data combinada é válido. */
   | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string | null }
 

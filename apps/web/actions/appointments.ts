@@ -7,6 +7,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can, temRecurso } from '@/lib/auth'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
@@ -1034,6 +1035,8 @@ export async function confirmPayment(
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
     const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, cartaoVezes)
     if (recusaDasVezes) return { error: recusaDasVezes }
+    // r3-f13-01: a bandeira do cartão, opcional (o banco confere a lista).
+    const cartaoBandeira = bandeiraDoPagamento(paymentMethod, (formData.get('cartao_bandeira') as string | null)?.trim() || null)
     // Desconto comercial da recepção (2026-09-30): R$ ou %, sem teto.
     const valorDoDesconto = Number(formData.get('desconto_valor') ?? 0) || 0
     const pedidoDeDesconto = EntradaDoDesconto.safeParse(
@@ -1107,6 +1110,7 @@ export async function confirmPayment(
           metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal,
           voucher_id: voucherId, desconto_voucher: descontoVoucher, desconto_venda: descontoVenda,
           cartao_vezes: valorFinal > 0 ? cartaoVezes : 1,
+          cartao_bandeira: valorFinal > 0 ? cartaoBandeira : null,
           desconto_motivo: descontoVenda > 0 ? motivoDoDesconto : null,
         },
       }), 'confirmar o pagamento')

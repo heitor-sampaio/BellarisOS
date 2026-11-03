@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { maximoDeVezes, recusaDasVezes, PRAZO_PADRAO_DA_OPERADORA } from './vezes-do-cartao'
+import { lerCartaoPorBandeira, type CartaoPorBandeira } from './bandeiras'
 
 /**
  * O limite de vezes no crédito DA REDE (D-15), lido do banco: o que a clínica
@@ -10,10 +11,10 @@ import { maximoDeVezes, recusaDasVezes, PRAZO_PADRAO_DA_OPERADORA } from './veze
  * Fora de `actions/`: recebe a rede por parâmetro, e quem chama já conferiu a
  * sessão.
  */
-export async function maximoDeVezesDaRede(tenantId: string): Promise<{ maximo: number; configurado: number | null; padrao: number; prazoDias: number }> {
+export async function maximoDeVezesDaRede(tenantId: string): Promise<{ maximo: number; configurado: number | null; padrao: number; prazoDias: number; porBandeira: CartaoPorBandeira }> {
   const admin = createAdminClient()
   const [rede, taxas] = await Promise.all([
-    ler(admin.from('tenants').select('cartao_max_vezes, cartao_prazo_dias').eq('id', tenantId).maybeSingle(), 'ler o limite de vezes no crédito'),
+    ler(admin.from('tenants').select('cartao_max_vezes, cartao_prazo_dias, cartao_por_bandeira').eq('id', tenantId).maybeSingle(), 'ler o limite de vezes no crédito'),
     ler(admin.from('payment_fees').select('parcelas').eq('tenant_id', tenantId).eq('metodo', 'CREDIT_CARD'),
       'ler as parcelas do crédito com taxa'),
   ])
@@ -25,6 +26,8 @@ export async function maximoDeVezesDaRede(tenantId: string): Promise<{ maximo: n
     padrao: maximoDeVezes(null, parcelas),
     // r2-fin-01: a cada quantos dias a operadora deposita cada parcela.
     prazoDias: Number(rede?.cartao_prazo_dias ?? PRAZO_PADRAO_DA_OPERADORA),
+    // r3-f13-01: o prazo e as taxas de cada bandeira (o que falta é a regra geral).
+    porBandeira: lerCartaoPorBandeira(rede?.cartao_por_bandeira),
   }
 }
 

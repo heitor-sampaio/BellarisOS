@@ -6,6 +6,8 @@ import {
   Clock, RotateCcw, ChevronUp, ChevronDown, XCircle, FileText,
 } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
+import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
+import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -84,11 +86,13 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
   // As actions devolvem `{ error }` quando não conseguem — descartar isso
   // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
   // pessoa veria se a operação simplesmente não tivesse efeito ainda.
-  function handleMarkPaid(id: string) {
+  // r3-f13-01: no cartão, a baixa pergunta a bandeira antes (opcional).
+  const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string } | null>(null)
+  function handleMarkPaid(id: string, bandeira?: string | null) {
     startTx(async () => {
-      const r = await markTransactionPaid(id, slug)
+      const r = await markTransactionPaid(id, slug, bandeira ?? null)
       if (r?.error) toast.error(r.error)
-      else router.refresh()
+      else { setNoCartao(null); router.refresh() }
     })
   }
 
@@ -133,6 +137,10 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
     {aEstornar && (
       <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
         onConfirmar={(motivo, voltou) => handleReverse(aEstornar.id, motivo, voltou)} onVoltar={() => setAEstornar(null)} />
+    )}
+    {noCartao && (
+      <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
+        aoConfirmar={b => handleMarkPaid(noCartao.id, b)} aoFechar={() => setNoCartao(null)} />
     )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Filtros */}
@@ -355,7 +363,9 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                       <td data-label="" style={{ padding: '13px 16px' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {!tx.is_paid && !isReversed && canPay && (
-                            <button type="button" onClick={() => handleMarkPaid(tx.id)} title="Marcar como pago" style={{
+                            <button type="button" onClick={() => tx.type === 'INCOME' && temBandeira(tx.payment_method)
+                              ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method! })
+                              : handleMarkPaid(tx.id)} title="Marcar como pago" style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
                               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
                               border: '1.5px solid var(--success)', background: 'var(--success-bg)',

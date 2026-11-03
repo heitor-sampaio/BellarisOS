@@ -3,6 +3,7 @@ import type { PagamentoDoPlano } from './pagamento'
 import { dividirEmParcelas, rotuloDaParcela } from './parcelas'
 import { vezesNoCartao } from './pagamento'
 import { recusaDaEntradaAcimaDoTotal } from './entrada'
+import { BANDEIRAS, bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 
 /**
  * Os lançamentos de uma venda paga de uma vez ou em partes — hoje, a venda de
@@ -30,6 +31,8 @@ export interface Lancamento {
   parcela_grupo?:  string
   /** Cartão de crédito em N vezes, PAGO na hora: a faixa da taxa da maquininha. */
   cartao_vezes?:   number
+  /** A bandeira do cartão do que foi PAGO agora (r3-f13-01): o prazo e a taxa dela. */
+  cartao_bandeira?: string
   /** O motivo do desconto da venda (fin-01): só no PRIMEIRO lançamento, para a lista do Financeiro. */
   desconto_motivo?: string
 }
@@ -41,14 +44,15 @@ export function comMotivoDoDesconto(lancamentos: Lancamento[], motivo: string | 
 }
 
 const METODOS = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const
+const BANDEIRA = z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).optional()
 const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválida.')
 
 /** O pagamento como chega do navegador: conferido aqui, antes de virar dinheiro. */
 export const EntradaDoPagamento = z.discriminatedUnion('forma', [
-  z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional() }),
+  z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA }),
   z.object({
     forma: z.literal('PARCELADO'), metodo: z.enum(METODOS),
-    entrada: z.number().min(0), parcelas: z.number().int().min(1).max(12), primeiroVencimento: data,
+    entrada: z.number().min(0), parcelas: z.number().int().min(1).max(12), primeiroVencimento: data, bandeira: BANDEIRA,
   }),
   z.object({ forma: z.literal('A_RECEBER'), metodo: z.enum(METODOS).nullable(), vencimento: data.nullable() }),
 ]).refine(
@@ -69,9 +73,12 @@ export function recusaDaEntradaDoPagamento(p: PagamentoDoPlano | null | undefine
 
 export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotulo: string): Lancamento[] {
   const valor = centavos(total)
+  // r3-f13-01: a bandeira vai no que é PAGO agora no cartão (à vista, a entrada).
+  const bandeira = bandeiraDoPagamento(p.metodo, p.forma === 'A_RECEBER' ? null : p.bandeira)
+  const comBandeira = bandeira ? { cartao_bandeira: bandeira } : {}
   if (p.forma === 'AVISTA') {
     const vezes = vezesNoCartao(p)
-    return [{ amount: valor, payment_method: p.metodo, is_paid: true, due_date: null, notes: null, ...(vezes > 1 ? { cartao_vezes: vezes } : {}) }]
+    return [{ amount: valor, payment_method: p.metodo, is_paid: true, due_date: null, notes: null, ...(vezes > 1 ? { cartao_vezes: vezes } : {}), ...comBandeira }]
   }
   if (p.forma === 'A_RECEBER') {
     return [{ amount: valor, payment_method: p.metodo, is_paid: false, due_date: p.vencimento, notes: `${rotulo} — a receber` }]
@@ -80,7 +87,7 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
   const saldo = centavos(valor - entrada)
   const saida: Lancamento[] = []
   if (entrada > 0) {
-    saida.push({ amount: entrada, payment_method: p.metodo, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}`, sufixo: 'entrada' })
+    saida.push({ amount: entrada, payment_method: p.metodo, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}`, sufixo: 'entrada', ...comBandeira })
   }
   if (saldo > 0) {
     // Cada parcela, um lançamento com o seu vencimento — e não o saldo inteiro

@@ -25,6 +25,7 @@ import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin, podeMudarComissa
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
+import { EntradaDoCartaoPorBandeira, semBandeirasVazias, lerCartaoPorBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 
 type Resultado = { error?: string; ok?: true }
@@ -150,6 +151,41 @@ export async function salvarPrazoDaOperadora(entrada: unknown): Promise<Resultad
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
+}
+
+/**
+ * O prazo da operadora e as taxas da maquininha de cada BANDEIRA (r3-f13-01;
+ * o Heitor, 2026-11-03: "Lembre-se, flexibilidade. Prazo por bandeira. Taxas
+ * também configuráveis por bandeira."). O que a bandeira não tem é a regra
+ * geral (as taxas e o prazo de sempre). Grava o conjunto inteiro, de uma vez
+ * (`tenants.cartao_por_bandeira`); a mesma permissão e abrangência das taxas.
+ */
+export async function salvarCartaoPorBandeira(entrada: unknown): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'As taxas valem para a rede inteira: quem muda é quem administra a rede.') }
+    const lido = EntradaDoCartaoPorBandeira.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+    const valor = semBandeirasVazias(lido.data as CartaoPorBandeira)
+    const linhas = await gravar(createAdminClient().from('tenants')
+      .update({ cartao_por_bandeira: valor }).eq('id', ctx.tenantId!).select('id'), 'salvar o cartão por bandeira')
+    if (!linhas?.length) return { error: 'Rede não encontrada.' }
+    revalidar()
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** As taxas de cada bandeira, para o aviso de quem recebe (`AvisoDaTaxa`). */
+export async function cartaoPorBandeiraDaRede(): Promise<CartaoPorBandeira> {
+  const ctx = await getTenantContext()
+  if (!ctx.tenantId) return {}
+  const rede = await ler(createAdminClient().from('tenants').select('cartao_por_bandeira').eq('id', ctx.tenantId).maybeSingle(),
+    'ler o cartão por bandeira') as { cartao_por_bandeira: unknown } | null
+  return lerCartaoPorBandeira(rede?.cartao_por_bandeira)
 }
 
 /**

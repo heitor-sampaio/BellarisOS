@@ -13,6 +13,7 @@ import type { ComoEstornar, DestinoDaDevolucao, EscolhaDosAgendamentos, PreviaDo
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
+import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 
 /** As formas do pagamento novo do usado (r2-ven-05). */
 const FORMAS_DO_USADO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
@@ -42,6 +43,8 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
   const [comoEstornar, setComoEstornar] = useState<ComoEstornar | null>(null)
   const [novoMetodo, setNovoMetodo] = useState<string>('')
   const [novoVezes, setNovoVezes] = useState(1)
+  // r3-f13-01: a bandeira do cartão do pagamento novo, opcional.
+  const [novaBandeira, setNovaBandeira] = useState('')
   const opcoesDeVezes = useOpcoesDeVezes()
   const [cancelando, iniciar] = useTransition()
 
@@ -76,7 +79,7 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
         esperado: previa.devolver,
         estorno: emParte ? comoEstornar : null,
         novo: emParte && comoEstornar === 'INTEIRO'
-          ? { metodo: novoMetodo, vezes: novoMetodo === 'CREDIT_CARD' ? novoVezes : 1 }
+          ? { metodo: novoMetodo, vezes: novoMetodo === 'CREDIT_CARD' ? novoVezes : 1, bandeira: novaBandeira || null }
           : null,
       })
       if (r.error) { toast.error(r.error); return }
@@ -220,6 +223,7 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
                         <DicaDasVezes total={emParte.fica} vezes={novoVezes} opcoes={opcoesDeVezes} />
                       </label>
                     )}
+                    <CampoDaBandeira metodo={novoMetodo} valor={novaBandeira} aoMudar={setNovaBandeira} />
                   </div>
                 )}
               </div>

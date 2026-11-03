@@ -6,6 +6,8 @@ import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes, ResumoDasParcelas } from '@/components/shared/resumo-das-vezes'
+import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { temBandeira } from '@/lib/financeiro/bandeiras'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -27,6 +29,8 @@ export interface EstadoDoPagamento {
   vencimento: string
   /** À vista no cartão de crédito: em quantas vezes na maquininha (1 = à vista). */
   vezes:    number
+  /** A bandeira do cartão (r3-f13-01), opcional: '' = a regra geral. */
+  bandeira: string
 }
 
 const METODOS = [
@@ -53,6 +57,7 @@ export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, pa
     data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento) : hojeMais(30),
     vencimento: atual?.forma === 'A_RECEBER' && atual.vencimento ? diaDe(atual.vencimento) : '',
     vezes:    atual?.forma === 'AVISTA' ? (atual.vezes ?? 1) : 1,
+    bandeira: atual && atual.forma !== 'A_RECEBER' ? (atual.bandeira ?? '') : '',
   }
 }
 
@@ -62,10 +67,12 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
   // Vazio segue vazio: o servidor responde "data inválida" em vez de a tela quebrar.
   const iso = (dia: string) => dia ? new Date(`${dia}T12:00:00-03:00`).toISOString() : ''
   if (e.forma === 'NADA_AGORA') return null
+  // A bandeira só no cartão, e só quando escolhida (r3-f13-01).
+  const bandeira = temBandeira(e.metodo) && e.bandeira ? { bandeira: e.bandeira } : {}
   if (e.forma === 'AVISTA') {
     return e.metodo === 'CREDIT_CARD' && e.vezes > 1
-      ? { forma: 'AVISTA', metodo: e.metodo, vezes: e.vezes }
-      : { forma: 'AVISTA', metodo: e.metodo }
+      ? { forma: 'AVISTA', metodo: e.metodo, vezes: e.vezes, ...bandeira }
+      : { forma: 'AVISTA', metodo: e.metodo, ...bandeira }
   }
   if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo, vencimento: e.vencimento ? iso(e.vencimento) : null }
   const dataIso = iso(e.data)
@@ -73,7 +80,7 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
   // ilegível não chega aqui: quem salva confere `recusaDoPagamento` antes.
   const lida = lerEntrada(e.entrada)
   const valorEntrada = 'valor' in lida ? lida.valor : 0
-  return { forma: 'PARCELADO', metodo: e.metodo, entrada: valorEntrada, parcelas: e.parcelas, primeiroVencimento: dataIso }
+  return { forma: 'PARCELADO', metodo: e.metodo, entrada: valorEntrada, parcelas: e.parcelas, primeiroVencimento: dataIso, ...bandeira }
 }
 
 /**
@@ -127,8 +134,11 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
                 {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
               </select>
               {total !== undefined && <DicaDasVezes total={total} vezes={estado.vezes} opcoes={opcoesDeVezes} />}
-              <AvisoDaTaxa vezes={estado.vezes} />
+              <AvisoDaTaxa vezes={estado.vezes} bandeira={estado.bandeira} />
             </label>
+          )}
+          {(forma === 'AVISTA' || forma === 'PARCELADO') && (
+            <CampoDaBandeira metodo={estado.metodo} valor={estado.bandeira} aoMudar={v => mudar({ bandeira: v })} />
           )}
           {forma === 'PARCELADO' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

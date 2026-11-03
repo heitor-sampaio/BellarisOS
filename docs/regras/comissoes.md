@@ -109,7 +109,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   saiu dela —, o extrato pelo retrato de cada linha (`comissoes_extrato`
   devolve `desconta_taxa`/`desconta_insumos`; migration `20261029001502`), e
   o CSV ganhou a coluna "O que saiu da base". **Taxas da maquininha** em `payment_fees`
-  (Pix, débito, crédito 1–12x), gravadas por `comissao_taxas_definir`.
+  (Pix, débito, crédito 1–12x), gravadas por `comissao_taxas_definir` — a
+  REGRA GERAL; cada bandeira pode ter as suas (r3-f13-01,
+  `tenants.cartao_por_bandeira`, `vendas-financeiro.md` §9.6), e a
+  comissão desconta a taxa da bandeira do pagamento.
 - **A comissão da VENDA DE PRODUTO** (D4, decisão do Heitor, 2026-10-29: "é
   configurável pela clínica"; migration `20261029001306`): Configurações →
   Comissões → "Venda de produto", `commission_configs.produto_pct` (vazio = sem
@@ -288,7 +291,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     conclusão; o estorno do pagamento a zera) e PAGAMENTO (plano e pacote na
     proporção do que receberam).
   - Taxa: `private.comissao_taxa_pct` (a do meio; no crédito, a da maior
-    parcela cadastrada até a do recebimento). No plano, ponderada pelo que
+    parcela cadastrada até a do recebimento; com a BANDEIRA do pagamento, a
+    dela, senão a geral — r3-f13-01). No plano, ponderada pelo que
     cada recebimento pagou. As vezes do recebimento: `cartao_vezes` (crédito
     em N vezes, pago na hora — 2026-10-20), senão `parcela_total`, senão 1.
     O avulso usava sempre 1x.

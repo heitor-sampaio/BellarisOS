@@ -50,6 +50,7 @@ import { divergenciasDaBaixa, textoDaDivergencia, formatarDose, type TotalDoMapa
 import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
+import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -490,6 +491,8 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
   // Controlado só para saber se é crédito: aí aparecem as vezes na maquininha.
   const [metodoEscolhido, setMetodoEscolhido] = useState(metodoInicial)
   const [vezes, setVezes] = useState(1)
+  // r3-f13-01: a bandeira do cartão, opcional (vazia = a regra geral).
+  const [bandeira, setBandeira] = useState('')
   // Até quantas vezes a clínica parcela no crédito (D-15).
   const opcoesDeVezes = useOpcoesDeVezes()
   const router = useRouter()
@@ -611,9 +614,10 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                       {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
                     </select>
                     <DicaDasVezes total={resgate.restante} vezes={vezes} opcoes={opcoesDeVezes} />
-                    <AvisoDaTaxa vezes={vezes} />
+                    <AvisoDaTaxa vezes={vezes} bandeira={bandeira} />
                   </>
                 )}
+                <CampoDaBandeira metodo={metodoEscolhido} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" />
                 {pagamentoCombinado && (
                   <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     Combinado no contrato: {pagamentoCombinado.rotulo}.
@@ -670,6 +674,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   const [entrada, setEntrada] = useState(0)
   const [parcelas, setParcelas] = useState(3)
   const [vezes,   setVezes]   = useState(1)
+  const [bandeira, setBandeira] = useState('')
   const opcoesDeVezes = useOpcoesDeVezes()
   const [venc,    setVenc]    = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1)
@@ -684,12 +689,13 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
   async function receber() {
     if (recusaDaEntrada) { setErro(recusaDaEntrada); return }
+    const comBandeira = bandeira && (metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD') ? { bandeira } : {}
     setSalvando(true); setErro(null)
     const res = await receberDoPlano(
       plano.planId,
       forma === 'AVISTA'
-        ? (metodo === 'CREDIT_CARD' && vezes > 1 ? { forma: 'AVISTA', metodo, vezes } : { forma: 'AVISTA', metodo })
-        : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString() },
+        ? (metodo === 'CREDIT_CARD' && vezes > 1 ? { forma: 'AVISTA', metodo, vezes, ...comBandeira } : { forma: 'AVISTA', metodo, ...comBandeira })
+        : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString(), ...comBandeira },
       appointmentId,
       slug,
       envio.chave(),
@@ -775,9 +781,10 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                     {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                   </select>
                   <DicaDasVezes total={plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
-                  <AvisoDaTaxa vezes={vezes} />
+                  <AvisoDaTaxa vezes={vezes} bandeira={bandeira} />
                 </div>
               )}
+              <CampoDaBandeira metodo={metodo} valor={bandeira} aoMudar={setBandeira} />
 
               {forma === 'PARCELADO' && (
                 <>

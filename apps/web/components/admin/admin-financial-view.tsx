@@ -11,6 +11,8 @@ import {
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
+import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
+import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
@@ -232,11 +234,13 @@ export function AdminFinancialView({
   // O resultado das actions não pode ser descartado: as duas falham devolvendo
   // `{ error }`, e engolir isso deixava a tela dar um refresh e mostrar a linha
   // exatamente como estava — indistinguível de "ainda não atualizou".
-  function marcarPago(id: string, slug: string) {
+  // r3-f13-01: no cartão, a baixa pergunta a bandeira antes (opcional).
+  const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string } | null>(null)
+  function marcarPago(id: string, slug: string, bandeira?: string | null) {
     startT(async () => {
-      const r = await markTransactionPaid(id, slug)
+      const r = await markTransactionPaid(id, slug, bandeira ?? null)
       if (r?.error) toast.error(r.error)
-      else router.refresh()
+      else { setNoCartao(null); router.refresh() }
     })
   }
   function estornar(id: string, slug: string, motivo: string, voltou?: boolean) {
@@ -307,6 +311,10 @@ export function AdminFinancialView({
       {aEstornar && (
         <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
           onConfirmar={(motivo, voltou) => estornar(aEstornar.id, aEstornar.slug, motivo, voltou)} onVoltar={() => setAEstornar(null)} />
+      )}
+      {noCartao && (
+        <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
+          aoConfirmar={b => marcarPago(noCartao.id, noCartao.slug, b)} aoFechar={() => setNoCartao(null)} />
       )}
 
       {/* Header: título (esquerda) + seletores e botão (direita) */}
@@ -653,7 +661,9 @@ export function AdminFinancialView({
                     <td data-label="" style={{ padding: '11px 16px' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         {!t.is_paid && !estornada && canPay && (
-                          <button type="button" onClick={() => marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
+                          <button type="button" onClick={() => t.type === 'INCOME' && temBandeira(t.payment_method)
+                            ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method! })
+                            : marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,
                             fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
                             border: '1.5px solid var(--success)', background: 'var(--success-bg)',
