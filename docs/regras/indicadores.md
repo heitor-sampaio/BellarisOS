@@ -231,6 +231,13 @@
     (como o saldo). A perda não entra no giro nem no lucro. A venda de
     produto estornada cujo produto NÃO voltou também é perda ali
     (`VENDA_ESTORNADA`, "Venda estornada (não voltou)" — H2, 2026-11-01).
+    **A perda é MÉTRICA, não dinheiro** (est-04/est-05, revisão de 2026-11-02:
+    "perdido ou não, o insumo já foi pago na compra … serve como métrica"):
+    não entra no lucro nem no financeiro, e o relatório mostra, além da
+    quantidade e do valor perdidos por produto (ao custo do lote), os cartões
+    "Perdas no período" e "Consumo com perdas" (o insumo consumido + as
+    perdas, `consumoComPerdas` em `lib/metrics/resultado.ts`) — o custo com
+    perdas para análise. Prova: `e2e/estoque-perda.spec.ts`.
   - **A conversão é da OPORTUNIDADE** (decisão do Heitor, 2026-10-29: "o
     objeto é a oportunidade"): as oportunidades na etapa de GANHO (desfecho
     `WON`) ÷ as oportunidades do funil, sem importar se a pessoa já é cliente.

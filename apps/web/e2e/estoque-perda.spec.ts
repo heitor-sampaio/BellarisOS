@@ -159,6 +159,13 @@ test.describe.serial('a saída por perda', () => {
       await expect(card).toContainText('Amostra')
       await expect(card).toContainText('R$ 325,00')
       await expect(card).toContainText('R$ 925,00')
+      // est-04/est-05 (revisão de 2026-11-02): a perda é MÉTRICA — "já foi paga
+      // na compra", não sai do lucro nem do caixa —, e o relatório dá o custo
+      // com perdas para análise: o consumo (zero aqui) + as perdas.
+      const kpi = (r: string) => p.getByText(r, { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
+      await expect(kpi('Perdas no período')).toContainText('925,00')
+      await expect(kpi('Perdas no período')).toContainText('Não sai do lucro')
+      await expect(kpi('Consumo com perdas')).toContainText('925,00')
     })
   })
 })

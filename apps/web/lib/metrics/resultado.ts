@@ -245,3 +245,14 @@ export function contagemDaAgenda(lista: { status: string }[]): {
     faltas:        de('NO_SHOW'),
   }
 }
+
+/**
+ * O custo COM PERDAS do estoque, para análise (est-04/est-05, revisão de
+ * 2026-11-02): o insumo consumido no período + o que se perdeu (ao custo do
+ * lote). A perda NÃO entra no lucro nem no caixa — "perdido ou não, o insumo
+ * já foi pago na compra" (o Heitor) —, mas é métrica: quanto custou o que se
+ * usou e o que se perdeu. A soma mora aqui (§13.1), não na tela.
+ */
+export function consumoComPerdas(n: { consumo: number; perdas: number }): number {
+  return Math.round((n.consumo + n.perdas) * 100) / 100
+}

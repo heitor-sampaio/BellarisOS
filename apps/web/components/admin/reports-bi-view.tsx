@@ -26,7 +26,7 @@ import {
   type TableColumn,
 } from './reports-charts'
 import {
-  resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque, statusDosAgendamentos, maisRealizado,
+  resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque, statusDosAgendamentos, maisRealizado, consumoComPerdas,
   type EstoqueNoResultado,
 } from '@/lib/metrics/resultado'
 
@@ -1136,6 +1136,14 @@ function TabEstoque(p: ReportsBiProps) {
             dos atendimentos dela (o consumo e os mais consumidos). */}
         {!p.soOsMeus && <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />}
         <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" />
+        {/* est-04/est-05: a perda é MÉTRICA (já foi paga na compra; não sai do
+            lucro nem do caixa), e o custo com perdas é para análise. */}
+        {p.perdas && <>
+          <KpiCard label="Perdas no período" value={p.perdas.total.custo} format="brl" accent="var(--danger)"
+            detalhe="Não sai do lucro: já foi paga na compra" />
+          <KpiCard label="Consumo com perdas" value={consumoComPerdas({ consumo: consumoValue, perdas: p.perdas.total.custo })} format="brl"
+            detalhe="Insumo consumido + perdas, ao custo do lote" />
+        </>}
         {!p.soOsMeus && <>
           <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro == null ? undefined : giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
           <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
