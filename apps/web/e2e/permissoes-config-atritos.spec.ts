@@ -61,14 +61,20 @@ test('a matriz de Cargos não oferece o Copilot à rede que não o tem', async (
 // ficam só no portal da rede — "a automação é da clínica" —, e a tela de
 // Cargos passa a dizer isso na linha dos dois módulos, ligados ou não.
 test('a matriz de Cargos avisa que Marketing e Automações valem só para quem é da rede', async ({ browser }) => {
+  // A clínica de UMA unidade não fala "rede" (F8, D-19): lá o aviso diz "quem
+  // é da clínica". A rede do teste nasce com uma; a régua é a da tela.
+  const { count, error } = await db().from('branches').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', rede!.tenantId).eq('is_active', true)
+  expect(error).toBeNull()
+  const aviso = count === 1 ? /só para quem é da clínica/ : /só para quem é da rede/
   await como(browser, dona!, async p => {
     await p.goto('/admin/settings?tab=permissions')
     await expect(p.getByText(/Agendamentos, check-in e atendimentos/).first(), 'a matriz carregou').toBeVisible()
     for (const modulo of ['marketing', 'automations']) {
-      await expect(p.locator(`[data-modulo="${modulo}"]`).first(), modulo).toContainText(/só para quem é da rede/)
+      await expect(p.locator(`[data-modulo="${modulo}"]`).first(), modulo).toContainText(aviso)
     }
     // Controle: um módulo da unidade não leva o aviso.
-    await expect(p.locator('[data-modulo="agenda"]').first()).not.toContainText(/só para quem é da rede/)
+    await expect(p.locator('[data-modulo="agenda"]').first()).not.toContainText(/só para quem é da (rede|clínica)/)
   })
 })
 
