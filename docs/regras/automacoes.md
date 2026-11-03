@@ -26,6 +26,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - `pagamento.*`, `estoque.*`, `comissao.liberada` e `comissao.paga` saem de GATILHO ou função no banco (`origem: 'banco'`, sem
   ator), porque esses fatos nascem em cinco ou seis lugares do código e
   instrumentar um a um é garantir esquecer o próximo.
+- **`pagamento.estornado` é só do que estava PAGO** (achado da F2b,
+  migration `20261101001003`): a parcela nunca paga que cai como
+  `Estornada` (o crediário que o cancelamento do pacote derruba, a venda de
+  produto toda a receber cancelada) não emite — uma automação nesse evento
+  avisaria a cliente de um estorno que não houve. Prova:
+  `e2e/financeiro-estorno-evento.spec.ts`.
 - **A campanha é AVISO NO CELULAR (push), e a tela diz isso** (D-3, decisão do
   Heitor, 2026-10-29: "O WhatsApp fica para o futuro."). Ela chega a quem tem
   um aparelho registrado (`push_tokens`, o app; `web_push_subscriptions`, o
