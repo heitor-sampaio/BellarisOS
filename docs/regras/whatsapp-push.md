@@ -106,9 +106,26 @@ tabela veio remover.
   - responder diz por que não dá: texto, template e mídia recusam com "O
     número desta conversa (X) foi removido da clínica: por ele não sai mais
     nada…" (`lib/inbox/numero-removido.ts`), e o composer mostra o mesmo
-    texto no lugar do campo (`[data-numero-removido]`).
+    texto no lugar do campo (`[data-numero-removido]`);
+  - **e oferece "Responder pelo X"** (r3-f14-04, o Heitor em 2026-11-03: "Um
+    botão 'Responder pelo número X' com uma seleção dos números possíveis, na
+    própria conversa, que abre a conversa nova no número atual"): a escolha
+    dos números ATIVOS que a pessoa alcança (`numerosParaResponder`: as
+    caixas do cargo, `caixasDoAlcance`; o dela primeiro, "(o seu)"; com um
+    número só, só o botão) e o botão "Responder pelo X". Ele abre a conversa
+    do MESMO contato naquele número — a que já existe (pela pessoa ou pelo
+    telefone, nas duas formas do celular), sem criar outra; senão, uma nova,
+    com o card, a ficha e a unidade da conversa de origem — e leva até ela
+    com o campo focado (`responderPorOutroNumero` → `abrirConversaNoNumero`,
+    `lib/inbox/responder-por-outro-numero.ts`). O envio é o de sempre: a
+    janela de 24 h da caixa (na Cloud API sem janela, template), o
+    `bloqueioDoSuporte` (o modo suporte nem recebe a lista) e o alcance
+    (`conversaAoAlcance`). Recusa, sem criar nada, o número removido, fora
+    do ar, de outra rede ou fora das caixas do cargo, a conversa que não é de
+    número removido e quem não tem o CRM em Gerenciar (`{ error }`).
   O que já foi juntado à mão na Bellaris Clinic fica como está. Prova:
-  `e2e/whatsapp-remover-numero.spec.ts`.
+  `e2e/whatsapp-remover-numero.spec.ts`,
+  `e2e/whatsapp-responder-por-outro-numero.spec.ts`.
 
 **Por onde a mensagem sai** — a regra é `escolherNumeroDeSaida`
 (`lib/whatsapp/escolha.ts`), pura de propósito, nesta ordem:
@@ -470,4 +487,5 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Ligar um número oficial pela credencial manual sem inscrever a WABA (subscribed_apps) nem avisar — conecta e não chega mensagem
 ❌ Apagar a linha de whatsapp_numbers, ou juntar as conversas do número que sai — é marcarNumeroComoRemovido (r2-cfg-06: as conversas ficam como estão)
 ❌ Ler os números da clínica (lista, escolha de saída) sem tirar os removidos (removido_em) — getNumerosDaRede já tira
+❌ Abrir conversa por outro número sem procurar a que o contato já tem nele (é abrirConversaNoNumero: a da pessoa ou do telefone, depois a nova)
 ```

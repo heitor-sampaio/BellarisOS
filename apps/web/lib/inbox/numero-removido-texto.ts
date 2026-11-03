@@ -14,5 +14,5 @@ export function semSufixoDoRemovido(rotulo: string): string {
 /** Por que não se responde na conversa do número removido. */
 export function recusaDoNumeroRemovido(rotulo: string): string {
   return `O número desta conversa (${semSufixoDoRemovido(rotulo)}) foi removido da clínica: por ele não sai mais nada. `
-    + 'Fale com a pessoa pela conversa dela em outro número, ou comece uma nova pelo número da clínica.'
+    + 'Para falar com a pessoa, responda por um número da clínica que está no ar.'
 }

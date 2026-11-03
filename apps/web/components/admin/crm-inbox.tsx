@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   getMessages, sendMessage, sendMediaMessage, markConversationRead,
   setConversationStatus, createConversationForLead, getMessageMediaUrl, editMessage,
+  numerosParaResponderAConversa, responderPorOutroNumero,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
   type ReplyPreview, type AnuncioDaMensagem,
   type PaginaDoInbox, type CursorDoInbox, type OpcoesDoInbox,
@@ -1590,6 +1591,56 @@ export function CRMInbox({
   const numeroRemovido = !!selectedConv?.numero_removido
   const bloqueado = numeroRemovido || integrationRequired || !janela.aberta || janelaFechadaNaCaixaPropria
 
+  // "Responder pelo X" (r3-f14-04, o Heitor: "Um botão 'Responder pelo número
+  // X' com uma seleção dos números possíveis, na própria conversa, que abre a
+  // conversa nova no número atual"). Os números vêm do SERVIDOR: os ativos que
+  // esta pessoa alcança (as caixas do cargo), o dela primeiro.
+  const [paraResponder, setParaResponder] = useState<{ conversa: string; numeros: { id: string; label: string; doUsuario: boolean }[] } | null>(null)
+  const [numeroEscolhido, setNumeroEscolhido] = useState('')
+  const [abrindoNoNumero, setAbrindoNoNumero] = useState(false)
+  /** A conversa aberta pelo "Responder pelo X" chega com o campo focado. */
+  const focarCampo = useRef(false)
+  useEffect(() => {
+    if (!selectedId || !numeroRemovido || !canEdit) return
+    let vivo = true
+    numerosParaResponderAConversa(selectedId)
+      .then(numeros => {
+        if (!vivo) return
+        setParaResponder({ conversa: selectedId, numeros })
+        setNumeroEscolhido(numeros[0]?.id ?? '')
+      })
+      .catch(() => { /* sem a lista, fica o aviso */ })
+    return () => { vivo = false }
+  }, [selectedId, numeroRemovido, canEdit])
+  const numerosParaResponder = paraResponder?.conversa === selectedId ? paraResponder.numeros : []
+  const numeroParaResponder = numerosParaResponder.find(n => n.id === numeroEscolhido) ?? numerosParaResponder[0] ?? null
+
+  async function responderPeloNumero() {
+    if (!selectedId || !numeroParaResponder) return
+    setAbrindoNoNumero(true)
+    setSendError(null)
+    try {
+      const r = await responderPorOutroNumero(selectedId, numeroParaResponder.id)
+      if (r.error || !r.conversationId) { setSendError(r.error ?? 'Não foi possível abrir a conversa neste número.'); return }
+      const id = r.conversationId
+      // A conversa nova não tem mensagem: não vem na página do inbox, e entra aqui.
+      if (!conversasRef.current.some(c => c.id === id)) {
+        const pagina = await getConversations_client({ incluirId: id, limite: 1 })
+        const aberta = pagina.conversas.find(c => c.id === id)
+        if (aberta) setConversations(prev => prev.some(c => c.id === id) ? prev : [aberta, ...prev])
+      }
+      focarCampo.current = true
+      setSelectedId(id)
+    } finally {
+      setAbrindoNoNumero(false)
+    }
+  }
+  useEffect(() => {
+    if (!focarCampo.current || !selectedConv || selectedConv.id !== selectedId) return
+    focarCampo.current = false
+    if (!bloqueado) textareaRef.current?.focus()
+  }, [selectedId, selectedConv, bloqueado])
+
   // Template só existe no WhatsApp pela API oficial.
   const podeTemplate = canEdit
     && selectedConv?.channel === 'whatsapp'
@@ -2000,7 +2051,33 @@ export function CRMInbox({
                   fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
                 }}>
                   <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span>{recusaDoNumeroRemovido(selectedConv.numero_label ?? 'sem nome')}</span>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <span>{recusaDoNumeroRemovido(selectedConv.numero_label ?? 'sem nome')}</span>
+                    {/* r3-f14-04: responder por um número que está no ar. */}
+                    {canEdit && numeroParaResponder && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                        {numerosParaResponder.length > 1 && (
+                          <select
+                            aria-label="Responder por outro número"
+                            className="filtro-select"
+                            value={numeroParaResponder.id}
+                            onChange={e => setNumeroEscolhido(e.target.value)}
+                            disabled={abrindoNoNumero}
+                          >
+                            {numerosParaResponder.map(n => (
+                              <option key={n.id} value={n.id}>{n.label}{n.doUsuario ? ' (o seu)' : ''}</option>
+                            ))}
+                          </select>
+                        )}
+                        <button type="button" className="btn-secondary" onClick={responderPeloNumero} disabled={abrindoNoNumero}>
+                          {abrindoNoNumero ? 'Abrindo…' : `Responder pelo ${numeroParaResponder.label}`}
+                        </button>
+                      </div>
+                    )}
+                    {canEdit && paraResponder?.conversa === selectedId && numerosParaResponder.length === 0 && (
+                      <span style={{ color: 'var(--text-muted)' }}>Nenhum número da clínica está no ar para você responder.</span>
+                    )}
+                  </div>
                 </div>
               )}
 

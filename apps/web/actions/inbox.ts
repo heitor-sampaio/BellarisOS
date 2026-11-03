@@ -37,6 +37,7 @@ import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } 
 import { numeroRemovidoDaConversa, recusaDoNumeroRemovido, SUFIXO_DO_REMOVIDO } from '@/lib/inbox/numero-removido'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
+import { abrirConversaNoNumero, numerosParaResponder, type NumeroParaResponder } from '@/lib/inbox/responder-por-outro-numero'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -1657,6 +1658,46 @@ export async function createConversationForLead(
 
   revalidarInbox()
   return { conversationId: (conv as unknown as { id: string }).id }
+}
+
+/**
+ * Os números pelos quais a pessoa pode responder a conversa de um número
+ * REMOVIDO (r3-f14-04). Vazio para quem não responde (sem o CRM em Gerenciar,
+ * no modo suporte), para a conversa fora do alcance e para a que não é de
+ * número removido.
+ */
+export async function numerosParaResponderAConversa(conversationId: string): Promise<NumeroParaResponder[]> {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
+  if (!can(ctx, 'crm', 'MANAGE') || bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')) return []
+  const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return []
+  const conv = await ler(admin.from('conversations').select('whatsapp_number_id')
+    .eq('id', conversationId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a conversa') as { whatsapp_number_id: string | null } | null
+  if (!conv || !(await numeroRemovidoDaConversa(admin, conv.whatsapp_number_id))) return []
+  return numerosParaResponder(admin, ctx)
+}
+
+/**
+ * "Responder pelo X" na conversa do número REMOVIDO (r3-f14-04, o Heitor em
+ * 2026-11-03: "Um botão 'Responder pelo número X' com uma seleção dos números
+ * possíveis, na própria conversa, que abre a conversa nova no número atual"):
+ * abre a conversa do mesmo contato no número escolhido — a que existe, ou uma
+ * nova. Quem não pode responder recebe `{ error }` (a tela nem oferece).
+ */
+export async function responderPorOutroNumero(
+  conversationId: string, numeroId: string,
+): Promise<{ conversationId?: string; error?: string }> {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
+  if (!can(ctx, 'crm', 'MANAGE')) return { error: 'Seu cargo não responde conversas.' }
+  // No modo suporte nada sai para o paciente (decisão do Heitor).
+  const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
+  if (travado) return { error: travado }
+  const r = await abrirConversaNoNumero(createAdminClient(), ctx, conversationId, numeroId)
+  if ('error' in r) return { error: r.error }
+  if (r.criada) revalidarInbox()
+  return { conversationId: r.conversationId }
 }
 
 /**
