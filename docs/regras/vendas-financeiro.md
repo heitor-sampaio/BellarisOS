@@ -118,6 +118,32 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
     (`internal_credits`, "Cancelamento do pacote X"; o dinheiro fica e os
     pontos também — ele não voltou). Ex.: Pix de R$ 3.300, 2 de 6 feitas:
     R$ 2.200 de crédito, ou o Pix fica com R$ 1.100 e R$ 2.200 voltam.
+  - **O pagamento que volta EM PARTE: duas formas, a recepção escolhe**
+    (r2-ven-05, o Heitor, 2026-11-03: "dar as duas opções, não sabemos como a
+    operadora da clínica vai lidar com essa parte de estorno, não sabemos se
+    vai ser possível fazer estorno parcial, então precisamos dar opção.
+    flexibilidade"). No estorno, quando o que volta é menor que um pagamento,
+    a janela pergunta "Como estornar o Pix de R$ 3.300,00?":
+    (a) **Estorno parcial** — o de cima: o pagamento passa a valer o usado e o
+    "Estorno parcial" leva o resto; (b) **Estornar o pagamento inteiro e
+    lançar o usado de novo** — o estorno de sempre do pagamento todo
+    (`estornar_transacao`, com os pontos dele) e um pagamento NOVO do usado,
+    pago agora, na forma que a recepção escolher ("Forma do pagamento do
+    usado", e as vezes no crédito, até o limite da rede), com o pacote
+    (`client_package_id`), os pontos e a comissão pelos gatilhos de sempre.
+    O retrato do cancelamento guarda a escolha (`cancelamento.estorno`,
+    `.novo`). **No cartão (crédito, em qualquer número de vezes, e débito)
+    só existe a (b)** (r2-fin-03, §9.6): a (a) fica desligada com o motivo
+    ("No cartão, a operadora estorna o pagamento inteiro") e a (b) já vem
+    escolhida; o banco recusa a (a). Na (b), a receita do usado entra no dia
+    do cancelamento (é um pagamento novo, e o Fechamento do dia o mostra na
+    forma escolhida), e a do pagamento estornado sai do dia dele, como todo
+    estorno (decisão desta frente, para o Heitor revisar). A função é
+    `pacote_cancelar_devolvendo` (`p_estorno` PARCIAL | INTEIRO, `p_novo`
+    { metodo, vezes }; migration `20261103001303`); `pacote_cancelar` ficou
+    um invólucro dela sem a escolha (fora do cartão, parcial; no cartão,
+    recusa). Prova: `e2e/pacote-cancelar.spec.ts` (as duas formas no Pix, o
+    cartão), `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`.
   - **As sessões já agendadas**: a recepção escolhe cancelar os agendamentos
     (status, motivo "Pacote cancelado: …", histórico na transação; o evento
     `agendamento.cancelado` e o aviso à cliente e à equipe depois, na action,
@@ -128,8 +154,9 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
     se agendam); o pacote guarda `cancelado_em`, quem, o motivo,
     `valor_cancelado` e o retrato da conta (`cancelamento`). Pacote vencido,
     já cancelado ou com todas as sessões feitas não se cancela.
-  - Tudo numa transação (`pacote_cancelar`, migration `20261101000252`; o
-    valor novo do enum em `20261101000251`).
+  - Tudo numa transação (`pacote_cancelar_devolvendo`, migration
+    `20261103001303`, a partir de `20261101000252`; o valor novo do enum em
+    `20261101000251`).
   - A comissão: a de venda volta na proporção do que foi cancelado, e a de
     execução das sessões feitas fica (`comissoes.md`). Os pontos seguem o
     estorno (`fidelidade.md`). Nas Vendas, o pacote vale o usado
@@ -560,11 +587,16 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       próximo vencimento e todo o em aberto), e a lista "Cartão em várias
       vezes: a receber da operadora" com as parcelas que vencem no período
       (`ParcelasDaOperadora`). Com o financeiro "só os meus", não aparece.
-    - **O estorno da venda** (inteiro ou em parte — o cancelamento do pacote
-      reduz o lançamento) é acompanhado pelo gatilho, na mesma transação:
-      cai primeiro o que ainda não foi recebido, do mais novo para o mais
-      antigo (CANCELADA); depois, o já recebido é ESTORNADO (a operadora toma
-      de volta: `estornado`).
+    - **O estorno no cartão é sempre do pagamento INTEIRO** (r2-fin-03, o
+      Heitor, 2026-11-03: "estornar no cartão estorna a venda inteira, todas
+      as operadoras fazem assim"): crédito à vista ou em N vezes, e débito.
+      Saiu o "estorno em parte" do cartão: o cancelamento do pacote estorna o
+      pagamento todo e lança o usado de novo (§9.3.1), e o gatilho
+      `trg_recebiveis_do_cartao` RECUSA diminuir o valor de um pagamento no
+      cartão já pago ("No cartão, o estorno é do pagamento inteiro…";
+      migration `20261103001303`). O estorno é acompanhado pelo gatilho, na
+      mesma transação: cai o que ainda não foi recebido (CANCELADA); o já
+      recebido é ESTORNADO (a operadora toma de volta: `estornado`).
     - As vendas antigas no cartão N× (3 na produção em 2026-11-01: Aurora
       R$ 600, Jasmim R$ 150, Lótus R$ 280) ficam como estão, sem parcelas.
     - Migration `20261101000261`. Prova:
@@ -852,7 +884,8 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ```
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa
 ❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos)
-❌ Cancelar pacote fora de pacote_cancelar, ou fazer a conta do cancelamento na tela (é a simulação da mesma função), ou ler "pacote em andamento" sem tirar o cancelado (cancelado_em)
+❌ Estornar em parte um pagamento no cartão (crédito ou débito): o cartão estorna o pagamento inteiro (r2-fin-03) — no cancelamento do pacote é o "estornar o pagamento inteiro e lançar o usado de novo"
+❌ Cancelar pacote fora de pacote_cancelar_devolvendo, ou fazer a conta do cancelamento na tela (é a simulação da mesma função), ou ler "pacote em andamento" sem tirar o cancelado (cancelado_em)
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
 ❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
 ❌ Gravar um parcelado como um lançamento só (cada parcela é um lançamento; divida com dividirEmParcelas) ou escrever em installments

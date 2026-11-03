@@ -7,6 +7,27 @@
 
 export type DestinoDaDevolucao = 'ESTORNO' | 'CREDITO'
 export type EscolhaDosAgendamentos = 'CANCELAR' | 'SOLTAR'
+/**
+ * Como estornar o pagamento que volta EM PARTE (r2-ven-05): o estorno parcial
+ * (o pagamento fica com o usado) ou o pagamento inteiro estornado e o usado
+ * lançado de novo. No cartão, só o inteiro (r2-fin-03).
+ */
+export type ComoEstornar = 'PARCIAL' | 'INTEIRO'
+
+/** O pagamento que o estorno pega em parte (o mais novo que passa do que volta). */
+export interface PagamentoEmParte {
+  id:        string
+  descricao: string
+  metodo:    string | null
+  vezes:     number | null
+  valor:     number
+  /** O que volta dele. */
+  volta:     number
+  /** O que fica (o usado): o valor do pagamento novo, no estorno inteiro. */
+  fica:      number
+  /** Crédito ou débito: o estorno parcial não existe. */
+  cartao:    boolean
+}
 
 export interface ParcelaQueCai {
   id:         string
@@ -44,6 +65,8 @@ export interface PreviaDoCancelamento {
   devolver:      number
   fidelidade:    boolean
   agendamentos:  SessaoAgendadaDoPacote[]
+  /** O pagamento que volta em parte, se houver: pede a escolha de como estornar. */
+  parcial:       PagamentoEmParte | null
 }
 
 const num = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100
@@ -71,6 +94,17 @@ export function lerPreviaDoCancelamento(j: Record<string, unknown>): PreviaDoCan
       id: String(a.id), quando: String(a.quando), preco: num(a.preco),
       procedimento: (a.procedimento as string | null) ?? null, profissional: (a.profissional as string | null) ?? null,
     })),
+    parcial:       lerParcial(j.parcial),
+  }
+}
+
+function lerParcial(v: unknown): PagamentoEmParte | null {
+  if (!v || typeof v !== 'object') return null
+  const p = v as Record<string, unknown>
+  return {
+    id: String(p.id), descricao: String(p.descricao ?? ''), metodo: (p.metodo as string | null) ?? null,
+    vezes: p.vezes == null ? null : Number(p.vezes), valor: num(p.valor), volta: num(p.volta), fica: num(p.fica),
+    cartao: p.cartao === true,
   }
 }
 
@@ -93,7 +127,9 @@ export function historicoDoCancelamento(
   const restantes = Number(c.restantes ?? 0)
   const devolver = num(c.devolver)
   const comoVoltou = devolver > 0
-    ? c.destino === 'CREDITO' ? `${brl(devolver)} em crédito na clínica` : `${brl(devolver)} estornados`
+    ? c.destino === 'CREDITO' ? `${brl(devolver)} em crédito na clínica`
+      : c.estorno === 'INTEIRO' ? `${brl(devolver)} estornados (o pagamento inteiro estornado e o usado lançado de novo)`
+      : `${brl(devolver)} estornados`
     : 'nada a devolver'
   const partes = [
     restantes ? `${restantes} ${restantes === 1 ? 'sessão cancelada' : 'sessões canceladas'}` : null,

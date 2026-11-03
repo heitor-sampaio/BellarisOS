@@ -367,7 +367,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     expect(eD?.message).toMatch(/recebida na data/)
   })
 
-  test('o pacote no crédito 3x cancelado com estorno: as parcelas da operadora acompanham o que voltou', async () => {
+  test('o pacote no crédito 3x cancelado com estorno: o cartão estorna o pagamento inteiro, as parcelas da operadora caem juntas, e o usado entra de novo (r2-fin-03)', async () => {
     const outra = await rede!.criarCliente('Pacote no cartão')
     await responderAnamnese(outra, rede!.tenantId)
     const { data: cp, error } = await db().rpc('pacote_vender', {
@@ -387,10 +387,21 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     const { data: previa, error: eP } = await db().rpc('pacote_cancelar', { ...args, p_esperado: 0, p_simular: true })
     expect(eP).toBeNull()
     expect(n((previa as Record<string, unknown>).devolver)).toBe(2200)
-    expect((await db().rpc('pacote_cancelar', { ...args, p_esperado: 2200, p_simular: false })).error, 'cancelar').toBeNull()
+    // O estorno em parte do cartão não existe mais.
+    const { error: eParcial } = await db().rpc('pacote_cancelar', { ...args, p_esperado: 2200, p_simular: false })
+    expect(eParcial?.message).toMatch(/No cartão, o estorno é do pagamento inteiro/)
+    const { error: eC } = await db().rpc('pacote_cancelar_devolvendo', {
+      ...args, p_esperado: 2200, p_simular: false, p_estorno: 'INTEIRO', p_novo: { metodo: 'CREDIT_CARD', vezes: 2 },
+    })
+    expect(eC, 'cancelar estornando o cartão inteiro').toBeNull()
 
-    // O lançamento ficou com R$ 1.100; a operadora deixa de pagar as duas últimas.
-    expect(n((await db().from('financial_transactions').select('amount').eq('id', tx!.id).single()).data?.amount)).toBe(1100)
-    expect((await parcelasDa(tx!.id)).map(x => [x.situacao, x.valor])).toEqual([['A_RECEBER', 1100], ['CANCELADA', 0], ['CANCELADA', 0]])
+    // O pagamento no cartão foi estornado inteiro: as 3 parcelas da operadora caem.
+    expect((await db().from('financial_transactions').select('amount, notes').eq('id', tx!.id).single()).data).toEqual({ amount: 3300, notes: 'Estornada' })
+    expect((await parcelasDa(tx!.id)).map(x => [x.situacao, x.valor])).toEqual([['CANCELADA', 0], ['CANCELADA', 0], ['CANCELADA', 0]])
+    // E o usado entrou de novo, no crédito 2x: duas parcelas novas da operadora.
+    const { data: novo } = await db().from('financial_transactions').select('id, amount, cartao_vezes')
+      .eq('client_package_id', cp as string).is('notes', null).eq('type', 'INCOME').single()
+    expect({ v: n(novo!.amount), vezes: novo!.cartao_vezes }).toEqual({ v: 1100, vezes: 2 })
+    expect((await parcelasDa(novo!.id)).map(x => [x.situacao, x.valor])).toEqual([['A_RECEBER', 550], ['A_RECEBER', 550]])
   })
 })

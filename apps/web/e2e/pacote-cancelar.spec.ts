@@ -20,7 +20,14 @@ import { chamarAcao } from './apoio/acao-direta'
  *   das sessões feitas fica.
  * - Os pontos seguem a regra do estorno.
  * - Os agendamentos futuros das sessões: cancelar ou manter como avulso.
- * - Uma transação (`pacote_cancelar`). `financial: MANAGE` e a unidade ao alcance.
+ * - Quando o que volta é MENOR que um pagamento, a recepção escolhe (r2-ven-05,
+ *   o Heitor: "dar as duas opções (...) flexibilidade"): o ESTORNO PARCIAL (o
+ *   pagamento passa a valer o usado e um "Estorno parcial" leva o resto) ou
+ *   ESTORNAR O PAGAMENTO INTEIRO E LANÇAR O USADO DE NOVO, na forma que ela
+ *   escolher. No cartão (crédito e débito) o parcial não existe (r2-fin-03:
+ *   "estornar no cartão estorna a venda inteira, todas as operadoras fazem
+ *   assim").
+ * - Uma transação (`pacote_cancelar_devolvendo`). `financial: MANAGE` e a unidade ao alcance.
  *
  * E a venda cancelada sai das Vendas pelo que caiu (o pré-pago com unidade
  * cancelada também).
@@ -282,7 +289,10 @@ test.describe.serial('cancelar pacote', () => {
       await expect(conta).toContainText('R$ 1.300,00')
       await expect(conta.locator('[data-a-devolver]')).toContainText('R$ 900,00')
       await dlg.getByLabel('Motivo do cancelamento *').fill('Não gostou do resultado')
-      await dlg.getByRole('radio', { name: /Estorno/ }).check()
+      await dlg.getByRole('radio', { name: /^Estorno —/ }).check()
+      // O que volta (R$ 900) é menor que a entrada de R$ 2.000: a recepção escolhe como estornar.
+      await expect(dlg.getByRole('button', { name: 'Cancelar pacote' }), 'sem dizer como estornar a entrada, não cancela').toBeDisabled()
+      await dlg.getByRole('radio', { name: /Estorno parcial/ }).check()
       await dlg.getByRole('radio', { name: /Manter como avulso/ }).check()
       await dlg.getByRole('button', { name: 'Cancelar pacote' }).click()
       await expect(dlg).toBeHidden()
@@ -346,6 +356,76 @@ test.describe.serial('cancelar pacote', () => {
     const parcela = txs.find(t => !t.is_paid && !t.notes)!
     expect((await db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', parcela.id)).error).toBeNull()
     expect([await devidoDaVenda(cp), await devidoDasSessoes(feitas)]).toEqual([110, 110])
+  })
+
+  test('Pix de R$ 3.300, 2 feitas: "estornar o pagamento inteiro e lançar o usado de novo" — o Pix volta inteiro e R$ 1.100 entram no Pix de novo (r2-ven-05)', async ({ browser }) => {
+    const cp = await vender([{ amount: 3300, payment_method: 'PIX', is_paid: true }])
+    const feitas = [await sessaoFeita(cp, 1), await sessaoFeita(cp, 2)]
+    const pontosAntes = await pontos()
+
+    await comSessao(browser, gestor!, async p => {
+      const dlg = await abrirCancelamento(p)
+      await dlg.getByLabel('Motivo do cancelamento *').fill('Vai viajar')
+      await dlg.getByRole('radio', { name: /^Estorno —/ }).check()
+      const como = dlg.locator('[data-como-estornar]')
+      await expect(como).toContainText('Pix de R$ 3.300,00')
+      await expect(como.getByRole('radio', { name: /Estorno parcial/ }), 'no Pix, as duas formas').toBeEnabled()
+      await como.getByRole('radio', { name: /Estornar o pagamento inteiro e lançar o usado de novo/ }).check()
+      await expect(como).toContainText('R$ 1.100,00')
+      await como.getByLabel('Forma do pagamento do usado').selectOption('PIX')
+      await dlg.getByRole('button', { name: 'Cancelar pacote' }).click()
+      await expect(dlg).toBeHidden()
+    })
+
+    const txs = await lancamentos(cp)
+    expect(txs.map(t => ({ v: n(t.amount), pago: t.is_paid, notes: t.notes })), 'o Pix estornado inteiro, e o usado lançado de novo')
+      .toEqual([{ v: 3300, pago: true, notes: 'Estornada' }, { v: 1100, pago: true, notes: null }])
+    const novo = (await db().from('financial_transactions').select('payment_method, cartao_vezes, type').eq('id', txs[1]!.id).single()).data
+    expect(novo).toEqual({ payment_method: 'PIX', cartao_vezes: null, type: 'INCOME' })
+    const { data: estorno } = await db().from('financial_transactions').select('amount, payment_method')
+      .eq('client_id', cliente).eq('category', 'Estorno').order('created_at', { ascending: false }).limit(1).single()
+    expect({ v: n(estorno!.amount), forma: estorno!.payment_method }, 'o estorno é do Pix inteiro').toEqual({ v: 3300, forma: 'PIX' })
+    expect(await pontos(), 'saem os pontos dos R$ 3.300 e entram os dos R$ 1.100').toBe(pontosAntes - 3300 + 1100)
+    expect(await devidoDaVenda(cp), 'a comissão de venda: 10% do usado, liberada').toBe(110)
+    expect(await devidoDasSessoes(feitas)).toBe(110)
+    expect(n((await vendasDoDia()).find(v => v.id === cp)?.valor), 'nas Vendas, o usado').toBe(1100)
+    const { data: cpLido } = await db().from('client_packages').select('cancelamento').eq('id', cp).single()
+    expect((cpLido!.cancelamento as Record<string, unknown>).estorno).toBe('INTEIRO')
+  })
+
+  test('no cartão (crédito 3x) o estorno parcial fica desligado com o motivo, e o banco o recusa (r2-fin-03)', async ({ browser }) => {
+    const cp = await vender([{ amount: 3300, payment_method: 'CREDIT_CARD', is_paid: true, cartao_vezes: 3 }])
+    await sessaoFeita(cp, 1)
+    await sessaoFeita(cp, 2)
+    const [venda] = await lancamentos(cp)
+
+    // Pelo banco: sem escolher, ou escolhendo o parcial no cartão, recusa.
+    const args = { p_tenant: rede!.tenantId, p_pacote: cp, p_ator: gestor!.userId, p_ator_nome: 'e2e', p_motivo: 'teste', p_destino: 'ESTORNO', p_agendamentos: null, p_esperado: 2200, p_simular: false }
+    for (const extra of [{}, { p_estorno: 'PARCIAL', p_novo: null }]) {
+      const fn = Object.keys(extra).length ? 'pacote_cancelar_devolvendo' : 'pacote_cancelar'
+      const { error } = await db().rpc(fn, { ...args, ...extra })
+      expect(error?.message, `${fn} ${JSON.stringify(extra)}`).toMatch(/No cartão, o estorno é do pagamento inteiro/)
+    }
+    expect((await db().from('client_packages').select('cancelado_em').eq('id', cp).single()).data!.cancelado_em).toBeNull()
+
+    await comSessao(browser, gestor!, async p => {
+      const dlg = await abrirCancelamento(p)
+      await dlg.getByLabel('Motivo do cancelamento *').fill('Desistiu')
+      await dlg.getByRole('radio', { name: /^Estorno —/ }).check()
+      const como = dlg.locator('[data-como-estornar]')
+      await expect(como).toContainText('Crédito 3x de R$ 3.300,00')
+      await expect(como.getByRole('radio', { name: /Estorno parcial/ })).toBeDisabled()
+      await expect(como).toContainText('No cartão, a operadora estorna o pagamento inteiro')
+      await expect(como.getByRole('radio', { name: /Estornar o pagamento inteiro e lançar o usado de novo/ }), 'no cartão, já vem escolhido').toBeChecked()
+      await como.getByLabel('Forma do pagamento do usado').selectOption('PIX')
+      await dlg.getByRole('button', { name: 'Cancelar pacote' }).click()
+      await expect(dlg).toBeHidden()
+    })
+    const txs = await lancamentos(cp)
+    expect(txs.map(t => ({ v: n(t.amount), notes: t.notes }))).toEqual([{ v: 3300, notes: 'Estornada' }, { v: 1100, notes: null }])
+    // As 3 parcelas da operadora caem juntas (nenhuma tinha vencido).
+    const { data: rec } = await db().from('recebiveis_do_cartao').select('cancelada_em').eq('transaction_id', venda!.id)
+    expect((rec ?? []).map(r => r.cancelada_em != null)).toEqual([true, true, true])
   })
 
   test('quem só vê o financeiro, e quem é de outra unidade, não cancela — nada muda', async ({ browser }) => {

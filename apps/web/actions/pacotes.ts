@@ -19,6 +19,7 @@ import { recusaDoMembroDaVenda, quemVendeu, type QuemVendeuDaTela } from '@/lib/
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
@@ -227,9 +228,10 @@ export async function previaDoCancelamentoDoPacote(
     const admin = createAdminClient()
     const cp = await pacoteDaClienteAoAlcance(admin, ctx, clientPackageId)
     if (!cp) return { error: 'Pacote não encontrado.' }
-    const j = await ler(admin.rpc('pacote_cancelar', {
+    const j = await ler(admin.rpc('pacote_cancelar_devolvendo', {
       p_tenant: ctx.tenantId!, p_pacote: cp.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName ?? null,
       p_motivo: null, p_destino: null, p_agendamentos: null, p_esperado: null, p_simular: true,
+      p_estorno: null, p_novo: null,
     }), 'calcular o cancelamento do pacote') as Record<string, unknown>
     return { previa: lerPreviaDoCancelamento(j) }
   } catch (e) {
@@ -243,6 +245,16 @@ const EntradaDoCancelamento = z.object({
   agendamentos: z.enum(['CANCELAR', 'SOLTAR']).nullable(),
   /** O "a devolver" que a janela mostrou: mudou no meio, o banco recusa. */
   esperado:     z.number().min(0),
+  /**
+   * Como estornar o pagamento que volta em parte (r2-ven-05): parcial, ou o
+   * inteiro com o usado lançado de novo na forma `novo`. No cartão, o banco
+   * só aceita o inteiro (r2-fin-03). Ausente: parcial fora do cartão.
+   */
+  estorno:      z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
+  novo:         z.object({
+    metodo: z.enum(FORMAS_DE_PAGAMENTO),
+    vezes:  z.number().int().min(1).max(12),
+  }).nullable().optional(),
 })
 
 /**
@@ -260,11 +272,18 @@ export async function cancelarPacote(clientPackageId: string, entrada: unknown):
     const admin = createAdminClient()
     const cp = await pacoteDaClienteAoAlcance(admin, ctx, clientPackageId)
     if (!cp) return { error: 'Pacote não encontrado.' }
+    const novo = lido.data.estorno === 'INTEIRO' ? lido.data.novo ?? null : null
+    if (novo && novo.metodo === 'CREDIT_CARD') {
+      const recusa = await recusaDasVezesDaRede(ctx.tenantId!, novo.vezes)
+      if (recusa) return { error: recusa }
+    }
     const userName = ctx.userName || await getUserName(admin, ctx.userId)
-    const j = await gravar(admin.rpc('pacote_cancelar', {
+    const j = await gravar(admin.rpc('pacote_cancelar_devolvendo', {
       p_tenant: ctx.tenantId!, p_pacote: cp.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: userName,
       p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_agendamentos: lido.data.agendamentos,
       p_esperado: lido.data.esperado, p_simular: false,
+      p_estorno: lido.data.estorno ?? null,
+      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1 } : null,
     }), 'cancelar o pacote') as Record<string, unknown>
 
     // Os agendamentos cancelados com o pacote avisam como qualquer
