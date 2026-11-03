@@ -59,3 +59,28 @@ describe('código de verificação', () => {
     expect(normalizarCodigo('curto')).toBeNull()
   })
 })
+
+// cli-09 (revisão do Heitor, 2026-11-02): o contrato mostrava só o CPF — a
+// cliente com passaporte assinava um contrato sem documento.
+describe('o documento da cliente sem CPF (cli-09)', () => {
+  const base = { agora: new Date('2026-09-30T15:00:00Z'), rede: { name: 'R', document: null, phone: null, email: null }, unidade: null, procedimento: null, agendamento: null }
+  it('com CPF: o CPF, e o "documento" diz o tipo', () => {
+    const v = valoresDoDocumento({ ...base, cliente })
+    expect(v['cliente.cpf']).toBe('529.982.247-25')
+    expect(v['cliente.documento']).toBe('CPF 529.982.247-25')
+  })
+  it('sem CPF, com passaporte: o passaporte nos dois', () => {
+    const v = valoresDoDocumento({ ...base, cliente: { ...cliente, document: null, documento_tipo: 'PASSAPORTE', documento_numero: 'AB123456' } })
+    expect(v['cliente.cpf']).toBe('Passaporte AB123456')
+    expect(v['cliente.documento']).toBe('Passaporte AB123456')
+  })
+  it('com RNE', () => {
+    const v = valoresDoDocumento({ ...base, cliente: { ...cliente, document: null, documento_tipo: 'RNE', documento_numero: 'V1234567' } })
+    expect(v['cliente.documento']).toBe('RNE V1234567')
+  })
+  it('sem nenhum: vazio (o documento fica incompleto)', () => {
+    const v = valoresDoDocumento({ ...base, cliente: { ...cliente, document: null } })
+    expect(v['cliente.cpf']).toBeNull()
+    expect(v['cliente.documento']).toBeNull()
+  })
+})

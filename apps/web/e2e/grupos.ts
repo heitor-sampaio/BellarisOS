@@ -66,6 +66,7 @@ export const ISOLADOS = [
   'contato-propaga.spec.ts',
   'credenciais-fora-da-sessao.spec.ts',
   'documentos-atendimento.spec.ts',
+  'documentos-passaporte.spec.ts',
   'documentos-contrato-pagamento.spec.ts',
   'documentos-editor-rico.spec.ts',
   'documentos-link-conversa.spec.ts',

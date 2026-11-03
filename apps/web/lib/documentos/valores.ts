@@ -21,6 +21,8 @@ export interface DadosDoDocumento {
     zip_code: string | null; address: string | null; address_number: string | null
     address_complement: string | null; neighborhood: string | null
     city: string | null; state: string | null
+    /** Quem não tem CPF: PASSAPORTE ou RNE, e o número (D-11; cli-09 no documento). */
+    documento_tipo?: string | null; documento_numero?: string | null
   }
   rede:     { name: string | null; document: string | null; phone: string | null; email: string | null }
   unidade:  { name: string | null; document: string | null; address: string | null; city: string | null; state: string | null; phone: string | null } | null
@@ -42,6 +44,18 @@ export function formatarDocumento(doc: string | null | undefined): string | null
   if (d.length === 11) return maskCPF(d)
   if (d.length === 14) return maskCNPJ(d)
   return vazio(doc)
+}
+
+const ROTULO_DO_DOCUMENTO: Record<string, string> = { PASSAPORTE: 'Passaporte', RNE: 'RNE' }
+
+/**
+ * O documento de quem não tem CPF, com o tipo na frente: "Passaporte
+ * AB123456" (cli-09, revisão do Heitor de 2026-11-02: o contrato saía sem
+ * documento da cliente estrangeira).
+ */
+export function documentoSemCpf(tipo: string | null | undefined, numero: string | null | undefined): string | null {
+  const n = vazio(numero)
+  return n && tipo && ROTULO_DO_DOCUMENTO[tipo] ? `${ROTULO_DO_DOCUMENTO[tipo]} ${n}` : null
 }
 
 /** O telefone guardado com DDI (55…) ou sem — sai sempre no formato nacional. */
@@ -84,7 +98,10 @@ export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string |
     'data.hoje_curta':     formatDate(d.agora),
 
     'cliente.nome':        vazio(c.name),
-    'cliente.cpf':         formatarDocumento(c.document),
+    // Sem CPF, o passaporte (ou o RNE), com o tipo: o contrato não sai sem
+    // documento da cliente (cli-09). `cliente.documento` diz sempre o tipo.
+    'cliente.cpf':         formatarDocumento(c.document) ?? documentoSemCpf(c.documento_tipo, c.documento_numero),
+    'cliente.documento':   formatarDocumento(c.document) ? `CPF ${formatarDocumento(c.document)}` : documentoSemCpf(c.documento_tipo, c.documento_numero),
     'cliente.nascimento':  formatarDataCivil(c.birth_date),
     'cliente.telefone':    formatarTelefone(c.phone),
     'cliente.email':       vazio(c.email),

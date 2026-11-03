@@ -30,6 +30,14 @@ DEVLOG ("Termos e contratos").
   desliga o atual e liga o escolhido numa transação só. Ligar um contrato de
   plano por `definirModeloAtivo` passa pelo mesmo caminho. O índice único
   continua sendo a garantia. Prova: `e2e/documentos-modelos.spec.ts`.
+- **O documento da cliente sem CPF** (cli-09, revisão do Heitor de
+  2026-11-02: "contrato sem documento da cliente vale menos"): `cliente.cpf`,
+  sem CPF, é o passaporte (ou o RNE) com o tipo — "Passaporte CB1234567" —, e
+  `cliente.documento` diz sempre o tipo ("CPF 123.456.789-01"). O termo da
+  cliente estrangeira não fica INCOMPLETO por falta de CPF. A evidência da
+  assinatura guarda e mostra o mesmo (`dadosDoAssinante`; no PDF,
+  "Passaporte CB***67"). Sem nenhum dos dois, continua INCOMPLETO. Prova:
+  `e2e/documentos-passaporte.spec.ts`, `tests/documentos-valores.test.ts`.
 - **Três tipos, cada um com as suas variáveis** (`lib/documentos/variaveis.ts`,
   catálogo FECHADO): o termo também serve ao plano, então não usa
   `agendamento.*`; o contrato do procedimento é o do avulso; só o contrato de

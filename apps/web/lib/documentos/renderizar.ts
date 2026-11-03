@@ -99,7 +99,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
   const admin = createAdminClient()
   const [cliente, rede, unidade, procedimento, agendamento] = await Promise.all([
     ler(admin.from('clients')
-      .select('name, document, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state')
+      .select('name, document, documento_tipo, documento_numero, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state')
       .eq('id', doc.client_id).eq('tenant_id', doc.tenant_id).single(), 'buscar o cliente do documento'),
     ler(admin.from('tenants').select('name, document, phone, email').eq('id', doc.tenant_id).single(), 'buscar a rede do documento'),
     doc.branch_id

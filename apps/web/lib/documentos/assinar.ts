@@ -7,6 +7,7 @@ import { ler } from '@/lib/db'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { gerarPdfAssinado } from './pdf'
+import { documentoSemCpf } from './valores'
 
 /**
  * O que os canais de assinatura têm em comum (clínica, papel, portal, link).
@@ -44,10 +45,12 @@ export async function ipEAparelho(): Promise<{ ip: string | null; ua: string | n
 
 export async function dadosDoAssinante(clientId: string): Promise<{ nome: string; documento: string | null }> {
   const admin = createAdminClient()
-  const c = await ler(admin.from('clients').select('name, document').eq('id', clientId).single(), 'buscar o cliente')
+  const c = await ler(admin.from('clients').select('name, document, documento_tipo, documento_numero').eq('id', clientId).single(), 'buscar o cliente')
   if (!c) throw new Error('Cliente do documento não encontrado.')
   const cpf = ((c.document as string | null) ?? '').replace(/\D/g, '')
-  return { nome: c.name as string, documento: cpf || null }
+  // Sem CPF, o passaporte ou o RNE, com o tipo (cli-09): a evidência da
+  // assinatura não fica sem documento da cliente estrangeira.
+  return { nome: c.name as string, documento: cpf || documentoSemCpf(c.documento_tipo as string | null, c.documento_numero as string | null) }
 }
 
 /**

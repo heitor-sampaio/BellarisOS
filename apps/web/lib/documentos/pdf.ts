@@ -46,8 +46,12 @@ const quando = (iso: string, tz: string) =>
   new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium', timeZone: tz }).format(new Date(iso))
 
 function mascararDocumento(doc: string | null): string | null {
-  const d = (doc ?? '').replace(/\D/g, '')
-  if (d.length === 11) return `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**`
+  const t = (doc ?? '').trim()
+  // O passaporte ou o RNE de quem não tem CPF (cli-09): o tipo e as pontas.
+  const estrangeiro = /^(Passaporte|RNE) (\S+)$/.exec(t)
+  if (estrangeiro) return `${estrangeiro[1]} ${estrangeiro[2]!.slice(0, 2)}***${estrangeiro[2]!.slice(-2)}`
+  const d = t.replace(/\D/g, '')
+  if (d.length === 11) return `CPF ***.${d.slice(3, 6)}.${d.slice(6, 9)}-**`
   return d ? '(informado)' : null
 }
 
@@ -155,7 +159,7 @@ export async function gerarPdfAssinado(tenantId: string, docId: string): Promise
   par('Documento', `${doc.title}${versao?.version ? ` (modelo, versão ${versao.version})` : ''}`)
   par('Rede', [rede?.name, rede?.document].filter(Boolean).join(' — '))
   if (unidade) par('Unidade', [unidade.name, unidade.document].filter(Boolean).join(' — '))
-  par('Assinante', [nome, mascararDocumento(assinatura.signer_document as string | null)].filter(Boolean).join(', CPF '))
+  par('Assinante', [nome, mascararDocumento(assinatura.signer_document as string | null)].filter(Boolean).join(', '))
   par('Canal', CANAL[assinatura.channel as string] ?? String(assinatura.channel))
   par('Identidade', IDENTIDADE[assinatura.identity_method as string] ?? String(assinatura.identity_method))
   par('Conduzido por', conduzidoPor)
