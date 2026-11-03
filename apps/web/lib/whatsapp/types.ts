@@ -145,5 +145,10 @@ export interface NumeroDeWhatsApp {
   isActive:  boolean
   /** Instância criada e paga por nós na uazapi. */
   managed:   boolean
+  /**
+   * Removido da clínica (r2-cfg-06): a linha fica para as conversas dele
+   * continuarem como estão, mas o número não fala mais nada.
+   */
+  removido:  boolean
   config:    WhatsAppConfig
 }

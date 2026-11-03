@@ -18,7 +18,7 @@ import { rotuloDaConexao } from '@/lib/whatsapp/rotulo'
 import { nomeDoNumeroNaMeta } from '@/lib/whatsapp/nome-na-meta'
 import { dispararHistoricoUazapi } from '@/lib/whatsapp/historico-uazapi'
 import { getCobrancaDoWhatsapp } from '@/lib/metrics/whatsapp'
-import { juntarConversasDoNumero, apagarNumeroJuntado } from '@/lib/whatsapp/remover'
+import { marcarNumeroComoRemovido } from '@/lib/whatsapp/remover'
 import type { CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
 
 export interface IntegrationConfig {
@@ -772,7 +772,7 @@ export async function removerNumeroWhatsApp(
 
   const alvo = await ler(admin
     .from('whatsapp_numbers').select('id, managed, is_default')
-    .eq('id', numeroId).eq('tenant_id', ctx.tenantId!)
+    .eq('id', numeroId).eq('tenant_id', ctx.tenantId!).is('removido_em', null)
     .maybeSingle(), 'buscar a caixa de WhatsApp')
   if (!alvo) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
 
@@ -783,14 +783,13 @@ export async function removerNumeroWhatsApp(
     }
   }
 
-  // As conversas do número perdem a caixa (SET NULL), e a pessoa que JÁ tem
-  // uma conversa sem número colidia no índice do ramo "sem número": a tela
-  // mostrava "duplicate key" e o número ficava (F7c, 2026-11-02). Junta-se
-  // primeiro (lib/whatsapp/remover.ts), e só então o número sai.
-  const juntou = await juntarConversasDoNumero(ctx.tenantId!, numeroId)
-  if (!juntou.ok) return juntou
-  const apagou = await apagarNumeroJuntado(ctx.tenantId!, numeroId, juntou.vazias)
-  if (!apagou.ok) return apagou
+  // O número sai da clínica e as conversas dele FICAM como estão (r2-cfg-06,
+  // o Heitor em 2026-11-03: "mantém as duas conversas no inbox"): a linha é
+  // marcada como removida, sem credencial (lib/whatsapp/remover.ts). Nada se
+  // junta — era a F7c (02/11), que fundia a conversa do número na "sem
+  // número" da mesma pessoa.
+  const removeu = await marcarNumeroComoRemovido(ctx.tenantId!, numeroId)
+  if (!removeu.ok) return removeu
 
   // Os templates da conta que ficou sem número saem daqui (na Meta ficam).
   await acompanharCatalogos(ctx.tenantId!)

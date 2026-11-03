@@ -32,12 +32,18 @@ export interface FiltrosInbox {
   funil:      string
   etapa:      string
   unidade:    string
+  /**
+   * Os números de WhatsApp (ids) — acumula: as conversas de QUALQUER um dos
+   * marcados. Inclui o removido (r2-cfg-06: "se a pessoa quiser, existem os
+   * filtros para isso"). A mesma conta de `inbox_pagina` (`p_filtros.numeros`).
+   */
+  numeros:    string[]
 }
 
 export const FILTROS_VAZIOS: FiltrosInbox = {
   canal: 'all', status: 'todos', naoLidas: false, aguardando: false,
   cliente: 'todos', comOportunidade: false,
-  tags: [], donos: [], funil: 'todos', etapa: 'todas', unidade: 'todas',
+  tags: [], donos: [], funil: 'todos', etapa: 'todas', unidade: 'todas', numeros: [],
 }
 
 /** Marcador de "sem dono" / "sem unidade": null não sobrevive num `value`. */
@@ -66,6 +72,7 @@ export function contarFiltros(f: FiltrosInbox): number {
     + (f.funil !== 'todos' ? 1 : 0)
     + (f.etapa !== 'todas' ? 1 : 0)
     + (f.unidade !== 'todas' ? 1 : 0)
+    + (f.numeros?.length ?? 0)
   )
 }
 
@@ -109,6 +116,8 @@ export function passaNosFiltros(c: Conversation, f: FiltrosInbox): boolean {
     if (unidade !== f.unidade) return false
   }
 
+  if ((f.numeros?.length ?? 0) > 0 && !f.numeros.includes(c.whatsapp_number_id ?? '')) return false
+
   return true
 }
 
@@ -119,6 +128,7 @@ interface Opcoes {
   funis:    { id: string; nome: string }[]
   etapas:   { id: string; nome: string; funil: string }[]
   unidades: { id: string; nome: string }[]
+  numeros:  { id: string; nome: string }[]
 }
 
 /** O que existe de fato nas conversas carregadas. */
@@ -129,8 +139,10 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
   const funis    = new Map<string, string>()
   const etapas   = new Map<string, { nome: string; funil: string }>()
   const unidades = new Map<string, string>()
+  const numeros  = new Map<string, string>()
 
   for (const c of conversas) {
+    if (c.whatsapp_number_id && c.numero_label) numeros.set(c.whatsapp_number_id, c.numero_label)
     canais.add(c.channel)
     for (const t of c.lead_tags ?? []) tags.add(t)
     if (c.owner_ids.length === 0) donos.set(SEM_DONO, 'Sem responsável')
@@ -152,6 +164,7 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
     funis:    [...funis].map(([id, nome]) => ({ id, nome })).sort(ordenar),
     etapas:   [...etapas].map(([id, v]) => ({ id, nome: v.nome, funil: v.funil })).sort(ordenar),
     unidades: [...unidades].map(([id, nome]) => ({ id, nome })).sort(ordenar),
+    numeros:  [...numeros].map(([id, nome]) => ({ id, nome })).sort(ordenar),
   }
 }
 
@@ -171,6 +184,7 @@ function juntarOpcoes(carregadas: Opcoes, rede?: OpcoesDoInbox | null): Opcoes {
     funis:    unir(rede.funis, carregadas.funis),
     etapas:   unir(rede.etapas, carregadas.etapas),
     unidades: unir([{ id: SEM_UNIDADE, nome: 'Rede (sem unidade)' }, ...rede.unidades], carregadas.unidades),
+    numeros:  unir(rede.numeros ?? [], carregadas.numeros),
   }
 }
 
@@ -448,6 +462,27 @@ export function InboxFiltros({
               </Secao>
             )}
 
+            {/* O número de WhatsApp — também o removido, com as conversas dele
+                (r2-cfg-06). Com um só já serve: separa as dele das outras
+                (Instagram, as sem número, as do número removido). */}
+            {opcoes.numeros.length > 0 && (
+              <Secao titulo="Número">
+                {/* Um select de largura cheia, como Funil e Unidade: o nome do
+                    número é longo, e a pastilha passava da largura do painel. */}
+                <select
+                  className="filtro-select"
+                  aria-label="Número de WhatsApp"
+                  value={filtros.numeros?.[0] ?? ''}
+                  onChange={e => onChange({ ...filtros, numeros: e.target.value ? [e.target.value] : [] })}
+                >
+                  <option value="">Todos os números</option>
+                  {opcoes.numeros.map(n => (
+                    <option key={n.id} value={n.id}>{n.nome}</option>
+                  ))}
+                </select>
+              </Secao>
+            )}
+
             {opcoes.unidades.length > 1 && (
               <Secao titulo="Unidade">
                 <select
@@ -540,6 +575,12 @@ export function ChipsDeFiltro({
     chips.push({
       rotulo: opcoes.unidades.find(u => u.id === filtros.unidade)?.nome ?? 'Unidade',
       limpar: () => onChange({ ...filtros, unidade: 'todas' }),
+    })
+  }
+  for (const id of filtros.numeros ?? []) {
+    chips.push({
+      rotulo: opcoes.numeros.find(n => n.id === id)?.nome ?? 'Número',
+      limpar: () => onChange({ ...filtros, numeros: filtros.numeros.filter(n => n !== id) }),
     })
   }
 

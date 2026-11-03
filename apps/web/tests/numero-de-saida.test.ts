@@ -15,7 +15,7 @@ function caixa(over: Partial<NumeroDeWhatsApp> & { id: string }): NumeroDeWhatsA
   return {
     tenantId: 't1', provider: 'uazapi', label: over.id, phone: null,
     phoneNumberId: null, wabaId: null, branchId: null, userIds: [],
-    isDefault: false, isActive: true, managed: false,
+    isDefault: false, isActive: true, managed: false, removido: false,
     config: { provider: 'uazapi', token: 'x' },
     ...over,
   }

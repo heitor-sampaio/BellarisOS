@@ -2,55 +2,50 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
- * Tirar um número de WhatsApp da rede sem quebrar nas conversas dele (F7c,
- * achado do Heitor em 2026-11-02).
+ * Tirar um número de WhatsApp da clínica SEM mexer nas conversas dele
+ * (r2-cfg-06, o Heitor em 2026-11-03: "não tem como juntar duas conversas em
+ * uma só e manter alguma coerência, ela estava falando com pessoas diferentes
+ * … mantém as duas conversas no inbox, porque o inbox é uma visualização
+ * unificada de todos os inbox; se a pessoa quiser, existem os filtros para
+ * isso").
  *
- * As conversas do número perdem a caixa (`whatsapp_number_id` SET NULL), e a
- * pessoa que JÁ tem uma conversa sem número — de uma conexão antiga — colidia
- * no índice único do ramo "sem número": o remover falhava com "duplicate key
- * value violates unique constraint" cru na tela, e o número ficava.
- *
- * Em dois passos, porque a instância gerenciada sai NO MEIO deles
- * (`removerConexaoUazapi`): primeiro se junta (repetível, não apaga nada),
- * depois a instância, por fim as conversas vazias e o número.
+ * Apagar a linha punha as conversas do número em "sem número" (ON DELETE SET
+ * NULL), e a da pessoa que já tinha uma conversa sem número colidia no índice
+ * único desse ramo — de 02/11 a 03/11 (F7c) o remover JUNTAVA as duas. Agora
+ * a linha FICA, marcada (`removido_em`, migration `20261103001401`): fora do
+ * ar, fora do padrão, sem a credencial (`config` vazio — o token não fica no
+ * banco), sem o `phone_number_id` (o número pode ser conectado de novo, e a
+ * entrega da Meta para ele não acha mais esta caixa) e sem as pessoas ligadas
+ * (elas podem falar por outro número). As conversas continuam apontando para
+ * ela, cada uma com as mensagens e o card dela; o inbox as mostra com
+ * "· número removido" e não responde por elas (`lib/inbox/numero-removido.ts`).
+ * Quem lê os números da clínica (Configurações, a escolha de saída) filtra
+ * `removido_em is null` (`getNumerosDaRede`).
  */
-
-export type Passo = { ok: true; vazias: string[] } | { ok: false; error: string }
-
-/**
- * Junta, numa transação (`juntar_conversas_do_numero`), cada conversa do
- * número que colidiria na conversa sem número que a pessoa já tinha — as
- * mensagens e as oportunidades vão para ela — e devolve as que ficaram vazias.
- */
-export async function juntarConversasDoNumero(tenantId: string, numeroId: string): Promise<Passo> {
-  const { data, error } = await createAdminClient().rpc('juntar_conversas_do_numero', {
-    p_numero: numeroId, p_tenant: tenantId,
-  })
-  if (error) {
-    if (error.code === 'P0002') return { ok: false, error: 'Conexão não encontrada nesta rede.' }
-    console.error('[whatsapp/remover] juntar as conversas:', error.message)
-    return { ok: false, error: 'Não consegui juntar as conversas deste número às que a clínica já tinha. Nada foi removido.' }
-  }
-  return { ok: true, vazias: (data ?? []) as string[] }
-}
-
-/** Tira as conversas que a junção esvaziou e, só então, o número. */
-export async function apagarNumeroJuntado(
-  tenantId: string, numeroId: string, vazias: string[],
+export async function marcarNumeroComoRemovido(
+  tenantId: string, numeroId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = createAdminClient()
-  if (vazias.length) {
-    const { error } = await admin.from('conversations').delete()
-      .eq('tenant_id', tenantId).eq('whatsapp_number_id', numeroId).in('id', vazias)
-    if (error) {
-      console.error('[whatsapp/remover] tirar as conversas vazias:', error.message)
-      return { ok: false, error: 'As conversas foram juntadas, mas o número não saiu. Tente remover de novo.' }
-    }
-  }
-  const { error } = await admin.from('whatsapp_numbers').delete().eq('id', numeroId).eq('tenant_id', tenantId)
-  if (error) {
-    console.error('[whatsapp/remover] apagar o número:', error.message)
+  const { error: erroDasPessoas } = await admin.from('whatsapp_number_users')
+    .delete().eq('whatsapp_number_id', numeroId).eq('tenant_id', tenantId)
+  if (erroDasPessoas) {
+    console.error('[whatsapp/remover] tirar as pessoas do número:', erroDasPessoas.message)
     return { ok: false, error: 'Não consegui remover o número. Tente de novo.' }
   }
+  const { data, error } = await admin.from('whatsapp_numbers')
+    .update({
+      removido_em: new Date().toISOString(), is_active: false, is_default: false,
+      // Sem instância paga (a gerenciada saiu na uazapi antes): não conta mais
+      // nas instâncias em uso nem nas da rede (actions/uazapi-connection.ts).
+      managed: false,
+      phone_number_id: null, config: {}, updated_at: new Date().toISOString(),
+    })
+    .eq('id', numeroId).eq('tenant_id', tenantId).is('removido_em', null)
+    .select('id')
+  if (error) {
+    console.error('[whatsapp/remover] marcar o número como removido:', error.message)
+    return { ok: false, error: 'Não consegui remover o número. Tente de novo.' }
+  }
+  if (!data?.length) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   return { ok: true }
 }

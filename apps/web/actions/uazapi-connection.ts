@@ -17,7 +17,7 @@ import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integr
 import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { cifrarSegredos } from '@/lib/integracoes/cofre'
 import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
-import { juntarConversasDoNumero, apagarNumeroJuntado } from '@/lib/whatsapp/remover'
+import { marcarNumeroComoRemovido } from '@/lib/whatsapp/remover'
 import { dispararHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
 
 /**
@@ -95,6 +95,8 @@ async function numeroDaRede(
   const numero = await getNumero(numeroId)
   if (!numero || numero.tenantId !== tenantId) return null
   if (numero.provider !== 'uazapi') return null
+  // O removido (r2-cfg-06) não tem mais instância nem credencial.
+  if (numero.removido) return null
   return numero
 }
 
@@ -582,12 +584,6 @@ export async function removerConexaoUazapi(
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   const config = numero.config as UazapiConfig
 
-  // As conversas que colidiriam com a "sem número" da mesma pessoa são
-  // juntadas ANTES (F7c, 2026-11-02; lib/whatsapp/remover.ts): se isso
-  // falhar, nem a instância sai — e juntar de novo é seguro.
-  const juntou = await juntarConversasDoNumero(ctx.tenantId!, numero.id)
-  if (!juntou.ok) return juntou
-
   try {
     await removerInstancia(baseDa(config), config.token)
   } catch (e) {
@@ -598,8 +594,10 @@ export async function removerConexaoUazapi(
     }
   }
 
-  const apagou = await apagarNumeroJuntado(ctx.tenantId!, numero.id, juntou.vazias)
-  if (!apagou.ok) return apagou
+  // A instância saiu; o número sai da clínica e as conversas dele FICAM como
+  // estão (r2-cfg-06, lib/whatsapp/remover.ts) — nada se junta.
+  const removeu = await marcarNumeroComoRemovido(ctx.tenantId!, numero.id)
+  if (!removeu.ok) return removeu
 
   // `removida` e não `pedido`: desligar o celular e apagar a instância levam ao
   // mesmo "não está mais no ar", mas só um deles é reversível apertando um

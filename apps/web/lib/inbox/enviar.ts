@@ -5,6 +5,7 @@ import { avisoDeCaixaDiferente } from '@/lib/whatsapp/escolha'
 import type { ChannelKind } from '@/lib/channels/types'
 import { gravar, ler, tentar } from '@/lib/db'
 import { falhaDoEnvio } from '@/lib/inbox/falhas'
+import { numeroRemovidoDaConversa, recusaDoNumeroRemovido } from '@/lib/inbox/numero-removido'
 
 /**
  * Quando o contato falou pela última vez NESTA caixa.
@@ -111,6 +112,11 @@ export async function enviarNaConversa(
 
   const channel = conv.channel as ChannelKind
   const caixaDaConversa = conv.whatsapp_number_id as string | null
+
+  // O número da conversa foi REMOVIDO da clínica (r2-cfg-06): ela fica no
+  // inbox como estava, mas não se responde por ela — e o motivo é dito.
+  const removido = await numeroRemovidoDaConversa(admin, caixaDaConversa)
+  if (removido) return { ok: false, error: recusaDoNumeroRemovido(removido) }
 
   // De onde sai? Um lugar só decide — antes havia um `if` com forma de WhatsApp
   // e um `else` que marcava a mensagem como "enviada" sem enviar nada.

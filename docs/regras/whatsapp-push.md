@@ -79,18 +79,35 @@ tabela veio remover.
   continua nascendo com `branch_id` nulo — a unidade vira tag depois.
 - **Cada número tem seu provedor.** uazapi e oficial convivem na mesma rede.
   Nada derruba a conexão vizinha para ativar a sua.
-- **Remover um número JUNTA as conversas que colidiriam** (F7c, achado do
-  Heitor em 2026-11-02, Bellaris Clinic). As conversas do número perdem a
-  caixa (SET NULL), e a pessoa que já tinha uma conversa SEM número (de uma
-  conexão antiga) batia no índice do ramo "sem número": a tela mostrava
-  "duplicate key value violates unique constraint" e o número ficava.
-  `removerNumeroWhatsApp` chama antes `juntar_conversas_do_numero` (migration
-  `20261102000701`, uma transação): a conversa que fica é a que a pessoa JÁ
-  tinha (a mais antiga), e as mensagens e as oportunidades
-  (`leads.conversation_id`) passam para ela; o resumo (última mensagem, não
-  lidas, aguardando, apelidos, tags) junta os dois. A do número fica vazia,
-  com o resumo zerado — a função é repetível — e sai antes do número. É o
-  único caso em que uma conversa sai do banco, e ela sai VAZIA. Prova:
+- **Remover um número NÃO junta as conversas: elas ficam como estão**
+  (r2-cfg-06, o Heitor em 2026-11-03: "não tem como juntar duas conversas em
+  uma só e manter alguma coerência, ela estava falando com pessoas diferentes
+  … mantém as duas conversas no inbox, porque o inbox é uma visualização
+  unificada de todos os inbox; se a pessoa quiser, existem os filtros para
+  isso"). Apagar a linha punha as conversas do número em "sem número" (SET
+  NULL), e a da pessoa que já tinha uma conversa sem número batia no índice
+  desse ramo ("duplicate key" na tela) — de 02/11 a 03/11 (F7c) o remover
+  juntava as duas (`juntar_conversas_do_numero`, que ficou sem uso). Agora a
+  linha FICA, marcada `whatsapp_numbers.removido_em` (migration
+  `20261103001401`; `marcarNumeroComoRemovido`, `lib/whatsapp/remover.ts`,
+  pelo `removerNumeroWhatsApp` e pelo `removerConexaoUazapi` — este depois de
+  apagar a instância): fora do ar, fora do padrão, sem `managed`, sem a
+  credencial (`config` vazio), sem o `phone_number_id` (o número pode ser
+  conectado de novo, numa linha nova) e sem as pessoas ligadas. As conversas
+  continuam apontando para ela, cada uma com as mensagens e o card dela:
+  - fora das Configurações e da escolha de saída: `getNumerosDaRede` filtra
+    `removido_em is null`; quem acha um número por id (`numeroDaRede`, o
+    salvar, o padrão) recusa o removido;
+  - no inbox, a conversa abre e aparece na lista com "Nome · número removido"
+    (sempre, mesmo sem outras caixas), e o painel de filtros tem **"Número"**
+    (`p_filtros.numeros` em `inbox_pagina`, as opções em `inbox_opcoes` —
+    os números da clínica e os removidos que têm conversa; `passaNosFiltros`
+    a mesma conta);
+  - responder diz por que não dá: texto, template e mídia recusam com "O
+    número desta conversa (X) foi removido da clínica: por ele não sai mais
+    nada…" (`lib/inbox/numero-removido.ts`), e o composer mostra o mesmo
+    texto no lugar do campo (`[data-numero-removido]`).
+  O que já foi juntado à mão na Bellaris Clinic fica como está. Prova:
   `e2e/whatsapp-remover-numero.spec.ts`.
 
 **Por onde a mensagem sai** — a regra é `escolherNumeroDeSaida`
@@ -451,5 +468,6 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Chamar a action de conectar (Meta, ou qualquer passo que a pessoa não pode repetir sozinha) sem try: o erro lançado escapa, o layout recarrega em silêncio e a tela parece ter dado certo
 ❌ Testar "a conexão da rede" (o padrão) quando a tela fala de UM número — é testWhatsAppConnection(provider, numeroId), e o resultado diz qual número respondeu
 ❌ Ligar um número oficial pela credencial manual sem inscrever a WABA (subscribed_apps) nem avisar — conecta e não chega mensagem
-❌ Apagar a linha de whatsapp_numbers sem juntar_conversas_do_numero antes (a conversa que perde a caixa colide com a "sem número" da mesma pessoa: "duplicate key" na tela)
+❌ Apagar a linha de whatsapp_numbers, ou juntar as conversas do número que sai — é marcarNumeroComoRemovido (r2-cfg-06: as conversas ficam como estão)
+❌ Ler os números da clínica (lista, escolha de saída) sem tirar os removidos (removido_em) — getNumerosDaRede já tira
 ```

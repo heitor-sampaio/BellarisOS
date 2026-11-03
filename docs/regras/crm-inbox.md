@@ -490,6 +490,9 @@ migration `20260928000007`), e o fim da lista busca a próxima pelo cursor
   agora — recarregar "do zero" encolheria a lista de quem rolou.
 - O alcance entra na mesma consulta: no modo "pela conversa" os leads do dono
   vêm de `leads_do_dono` (um array só; o select parava em 1000).
+- **O filtro "Número"** (r2-cfg-06, 2026-11-03): as conversas de um número
+  de WhatsApp — também o REMOVIDO, cujas conversas ficam no inbox
+  (`whatsapp-push.md`). `p_filtros.numeros`, `inbox_opcoes.numeros`.
 - Prova: `e2e/inbox-paginado.spec.ts`, numa rede `[e2e]` própria.
 
 **A fila do inbox é de CONVERSAS** — a mesma pessoa em duas caixas são duas

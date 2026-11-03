@@ -15,7 +15,7 @@ export function resolveProvider(config: WhatsAppConfig): WhatsAppProvider {
 /** As colunas que compõem uma `NumeroDeWhatsApp`. Uma lista só, para não divergirem. */
 const COLUNAS_DO_NUMERO =
   'id, tenant_id, provider, label, phone_e164, phone_number_id, waba_id, ' +
-  'config, is_active, is_default, managed, branch_id, ' +
+  'config, is_active, is_default, managed, branch_id, removido_em, ' +
   // Quem fala por ela — várias pessoas podem dividir o número.
   'whatsapp_number_users(user_id)'
 
@@ -35,6 +35,7 @@ type LinhaDoNumero = {
   config: Record<string, unknown> | null
   is_active: boolean; is_default: boolean; managed: boolean
   branch_id: string | null
+  removido_em: string | null
   whatsapp_number_users: { user_id: string }[] | null
 }
 
@@ -59,6 +60,7 @@ function numeroDaLinha(l: LinhaDoNumero): NumeroDeWhatsApp {
     isDefault: l.is_default,
     isActive:  l.is_active,
     managed:   l.managed,
+    removido:  !!l.removido_em,
     // Os segredos vêm CIFRADOS do banco (lib/integracoes/cofre.ts).
     config: { ...decifrarSegredos(l.config), provider: l.provider } as WhatsAppConfig,
   }
@@ -85,7 +87,11 @@ export async function getNumero(numeroId: string): Promise<NumeroDeWhatsApp | nu
   return data ? numeroDaLinha(data) : null
 }
 
-/** Todas as caixas da rede, padrão primeiro. Base de toda escolha de saída. */
+/**
+ * Todas as caixas da rede, padrão primeiro. Base de toda escolha de saída e da
+ * lista das Configurações. Sem as REMOVIDAS (r2-cfg-06): a linha delas fica só
+ * para as conversas antigas — o inbox as nomeia por conta própria.
+ */
 export async function getNumerosDaRede(tenantId: string): Promise<NumeroDeWhatsApp[]> {
   const { createAdminClient } = await import('@/lib/supabase/admin')
 
@@ -93,6 +99,7 @@ export async function getNumerosDaRede(tenantId: string): Promise<NumeroDeWhatsA
     .from('whatsapp_numbers')
     .select(COLUNAS_DO_NUMERO)
     .eq('tenant_id', tenantId)
+    .is('removido_em', null)
     .order('is_default', { ascending: false })
     .order('label')
 

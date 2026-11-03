@@ -6,16 +6,22 @@ import { chamarAcao } from './apoio/acao-direta'
 import { subirUazapiFalsa } from './apoio/uazapi-falsa'
 
 /**
- * Remover um número de WhatsApp que tem conversas (F7c, achado do Heitor em
- * 2026-11-02, Bellaris Clinic, contato …3707).
+ * Remover um número de WhatsApp que tem conversas.
  *
- * `conversations.whatsapp_number_id` é ON DELETE SET NULL, e o índice único
- * `uniq_conversations_sem_numero_external` (rede, canal, contato) WHERE sem
- * número recusava o remover quando o contato JÁ tinha uma conversa "sem número"
- * (de uma conexão antiga): a tela mostrava "duplicate key value violates unique
- * constraint" e o número ficava. Agora o remover JUNTA, numa transação, a
- * conversa do número na que já existia — as mensagens e as oportunidades vão
- * para ela — e só então apaga o número. Numa rede [e2e] própria.
+ * F7c (2026-11-02): `conversations.whatsapp_number_id` é ON DELETE SET NULL, e
+ * o índice único do ramo "sem número" recusava o remover quando a pessoa JÁ
+ * tinha uma conversa sem número ("duplicate key" na tela). A F7c juntava as
+ * duas conversas numa só.
+ *
+ * r2-cfg-06 (o Heitor, 03/11): NÃO junta mais — "não tem como juntar duas
+ * conversas em uma só e manter alguma coerência, ela estava falando com
+ * pessoas diferentes … mantém as duas conversas no inbox, porque o inbox é uma
+ * visualização unificada de todos os inbox; se a pessoa quiser, existem os
+ * filtros para isso". Removendo, o número SAI da clínica (das Configurações,
+ * da escolha de saída, da credencial) mas a linha fica marcada como removida:
+ * as conversas dele continuam como estão, cada uma com as mensagens e o card
+ * dela, na lista e no filtro "Número" ("· número removido"); responder nela
+ * diz por que não dá. Numa rede [e2e] própria.
  */
 
 const marca = Date.now().toString(36)
@@ -42,6 +48,9 @@ async function mensagem(conversa: string, texto: string, quando: Date, direcao: 
     channel: 'whatsapp', created_at: quando.toISOString(), is_read: true,
   })
 }
+
+const conteudos = async (conversa: string) =>
+  ((await db().from('messages').select('content').eq('conversation_id', conversa).order('created_at')).data ?? []).map(m => m.content)
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`rn${marca}`)
@@ -75,14 +84,15 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('remover o número com conversas: a conversa que colide JUNTA na que já existia, com as mensagens e as oportunidades', async ({ browser }) => {
+test('r2-cfg-06: remover o número NÃO junta — as duas conversas da pessoa ficam, cada uma com as mensagens e o card dela, e a do número removido abre, aparece no filtro e diz por que não responde', async ({ browser }) => {
+  test.setTimeout(150_000)
+  const rotulo = `${PREFIXO} Antigo ${marca}`
   const numero = await ins('whatsapp_numbers', {
-    tenant_id: rede!.tenantId, provider: 'official', label: `${PREFIXO} Antigo ${marca}`,
+    tenant_id: rede!.tenantId, provider: 'official', label: rotulo,
     is_active: false, is_default: false, phone_number_id: `7${sufixo}01`, waba_id: `6${sufixo}01`,
     config: { provider: 'official', phoneNumberId: `7${sufixo}01`, accessToken: 'x' },
   })
   const tel = `5548997${sufixo.slice(-6)}`
-  const outroTel = `5548996${sufixo.slice(-6)}`
   const setembro = new Date('2026-09-10T15:00:00Z')
   const ontem = new Date(Date.now() - 86_400_000)
 
@@ -106,50 +116,54 @@ test('remover o número com conversas: a conversa que colide JUNTA na que já ex
   await mensagem(doNumero.id, 'Quero remarcar', ontem)
   const leadNovo = await ins('leads', { tenant_id: rede!.tenantId, name: `${PREFIXO} Card novo ${marca}`, phone: tel, crm_stage_id: etapa, conversation_id: doNumero.id })
 
-  // E uma conversa do número que não colide com nada: só perde o número.
-  const solta = await ins('conversations', {
-    tenant_id: rede!.tenantId, channel: 'whatsapp', contact_phone: outroTel, contact_external_id: outroTel,
-    contact_name: `${PREFIXO} Outra ${marca}`, contact_aliases: [outroTel], whatsapp_number_id: numero.id,
-  })
-  await mensagem(solta.id, 'Tem horário?', ontem)
-
-  const naoLidas = async (id: string) =>
-    ((await db().from('conversations').select('unread_count').eq('id', id).single()).data?.unread_count as number) ?? 0
-  const naoLidasAntes = (await naoLidas(antiga.id)) + (await naoLidas(doNumero.id))
-  expect(naoLidasAntes).toBeGreaterThan(0)
-
   const r = await como(browser, p =>
     chamarAcao(p, 'actions/integrations.ts', 'removerNumeroWhatsApp', '/admin/settings', [numero.id]))
   expect(r.texto, 'o remover não mostra erro técnico').not.toMatch(/duplicate key|unique constraint/i)
   expect(r.texto).toContain('"ok":true')
 
-  const { data: caixa } = await db().from('whatsapp_numbers').select('id').eq('id', numero.id).maybeSingle()
-  expect(caixa, 'o número saiu').toBeNull()
-
-  // Uma conversa só da pessoa: a que já existia, com as três mensagens.
+  // Nada se move, nada se junta: as duas conversas, cada uma com as dela.
   const { data: daPessoa } = await db().from('conversations')
-    .select('id, whatsapp_number_id, last_message, unread_count')
-    .eq('tenant_id', rede!.tenantId).eq('contact_external_id', tel)
-  expect(daPessoa, 'as duas viraram uma').toHaveLength(1)
-  expect(daPessoa![0]!.id, 'fica a que já existia').toBe(antiga.id)
-  expect(daPessoa![0]!.whatsapp_number_id).toBeNull()
-  expect(daPessoa![0]!.last_message, 'a última mensagem é a mais recente das duas').toBe('Quero remarcar')
-  expect(daPessoa![0]!.unread_count, 'as não lidas vêm junto').toBe(naoLidasAntes)
-  const { data: msgs } = await db().from('messages').select('content').eq('conversation_id', antiga.id).order('created_at')
-  expect((msgs ?? []).map(m => m.content)).toEqual(['Oi, em setembro', 'Bom dia', 'Quero remarcar'])
+    .select('id, whatsapp_number_id').eq('tenant_id', rede!.tenantId).eq('contact_external_id', tel).order('created_at')
+  expect(daPessoa, 'as duas continuam').toEqual([
+    { id: antiga.id, whatsapp_number_id: null },
+    { id: doNumero.id, whatsapp_number_id: numero.id },
+  ])
+  expect(await conteudos(antiga.id)).toEqual(['Oi, em setembro'])
+  expect(await conteudos(doNumero.id)).toEqual(['Bom dia', 'Quero remarcar'])
+  const { data: cards } = await db().from('leads').select('id, conversation_id').in('id', [leadAntigo.id, leadNovo.id]).order('name')
+  expect((cards ?? []).map(c => c.conversation_id).sort(), 'cada card na sua').toEqual([antiga.id, doNumero.id].sort())
 
-  // As oportunidades apontam para a conversa que ficou.
-  const { data: cards } = await db().from('leads').select('id, conversation_id').in('id', [leadAntigo.id, leadNovo.id])
-  expect((cards ?? []).map(c => c.conversation_id)).toEqual([antiga.id, antiga.id])
+  // O número saiu da clínica: marcado como removido, sem a credencial, fora do ar.
+  const { data: caixa } = await db().from('whatsapp_numbers').select('removido_em, is_active, is_default, phone_number_id, config').eq('id', numero.id).single()
+  expect(caixa!.removido_em, 'marcado como removido').not.toBeNull()
+  expect([caixa!.is_active, caixa!.is_default, caixa!.phone_number_id, caixa!.config]).toEqual([false, false, null, {}])
 
-  // A que não colidia continua, sem o número, com a mensagem dela.
-  const { data: semColisao } = await db().from('conversations').select('id, whatsapp_number_id').eq('id', solta.id).maybeSingle()
-  expect(semColisao?.whatsapp_number_id).toBeNull()
-  const { count } = await db().from('messages').select('id', { count: 'exact', head: true }).eq('conversation_id', solta.id)
-  expect(count).toBe(1)
+  await como(browser, async p => {
+    // Fora das Configurações.
+    const lista = await chamarAcao(p, 'actions/integrations.ts', 'listarNumerosWhatsApp', '/admin/settings', [])
+    expect(lista.texto, 'o removido não aparece nas Configurações').not.toContain(rotulo)
+
+    // A conversa do número removido abre, com as mensagens e o aviso.
+    await p.goto(`/admin/inbox?c=${doNumero.id}`)
+    await expect(p.getByText('Quero remarcar').first()).toBeVisible()
+    const aviso = p.locator('[data-numero-removido]')
+    await expect(aviso).toContainText(`O número desta conversa (${rotulo}) foi removido`)
+    // E as duas estão na lista: a do número removido diz isso.
+    await expect(p.getByText(`${rotulo} · número removido`).first()).toBeVisible()
+
+    // O filtro "Número" a oferece; escolhido, só ela fica.
+    await p.getByTitle('Filtrar conversas').click()
+    await p.locator('.painel-de-filtros').getByLabel('Número de WhatsApp').selectOption({ label: `${rotulo} · número removido` })
+    await expect(p.getByText('Oi, em setembro')).toHaveCount(0)
+
+    // Responder diz por que não dá.
+    const envio = await chamarAcao(p, 'actions/inbox.ts', 'sendMessage', `/admin/inbox?c=${doNumero.id}`, [doNumero.id, 'Oi!'])
+    expect(envio.texto).toContain('foi removido')
+  })
+  expect(await conteudos(doNumero.id), 'nada gravado na conversa').toEqual(['Bom dia', 'Quero remarcar'])
 })
 
-test('remover a conexão gerenciada (WhatsApp Web) com conversa que colide também junta, e a instância sai', async ({ browser }) => {
+test('r2-cfg-06: remover a conexão gerenciada (WhatsApp Web) também não junta, e a instância sai', async ({ browser }) => {
   const uazapi = await subirUazapiFalsa()
   try {
     const numero = await ins('whatsapp_numbers', {
@@ -175,10 +189,11 @@ test('remover a conexão gerenciada (WhatsApp Web) com conversa que colide tamb�
     expect(r.texto).toContain('"ok":true')
     expect(uazapi.para('/instance').length, 'a instância foi apagada na uazapi').toBeGreaterThan(0)
 
-    const { data: caixa } = await db().from('whatsapp_numbers').select('id').eq('id', numero.id).maybeSingle()
-    expect(caixa).toBeNull()
-    const { data: msgs } = await db().from('messages').select('content').eq('conversation_id', antiga.id).order('created_at')
-    expect((msgs ?? []).map(m => m.content)).toEqual(['Antes', 'Depois'])
+    const { data: caixa } = await db().from('whatsapp_numbers').select('removido_em, config').eq('id', numero.id).single()
+    expect(caixa!.removido_em).not.toBeNull()
+    expect(caixa!.config, 'o token da instância não fica').toEqual({})
+    expect(await conteudos(antiga.id)).toEqual(['Antes'])
+    expect(await conteudos(doNumero.id)).toEqual(['Depois'])
   } finally {
     await uazapi.fechar()
   }
@@ -195,8 +210,8 @@ test('o remover recusa o número de outra rede (o id é conferido no banco)', as
     const r = await como(browser, p =>
       chamarAcao(p, 'actions/integrations.ts', 'removerNumeroWhatsApp', '/admin/settings', [alheio.id]))
     expect(r.texto).toContain('não encontrada nesta rede')
-    const { data } = await db().from('whatsapp_numbers').select('id').eq('id', alheio.id).maybeSingle()
-    expect(data, 'o número da outra rede fica').not.toBeNull()
+    const { data } = await db().from('whatsapp_numbers').select('id, removido_em').eq('id', alheio.id).maybeSingle()
+    expect(data, 'o número da outra rede fica, e não é marcado').toEqual({ id: alheio.id, removido_em: null })
   } finally {
     await db().from('whatsapp_numbers').delete().eq('tenant_id', outra.tenantId)
     await outra.limpar()

@@ -34,6 +34,7 @@ import {
 import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { passaNasCaixas, passaNoAlcanceDoDono, type AlcanceDoDono } from '@/lib/inbox/visibilidade'
 import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
+import { numeroRemovidoDaConversa, recusaDoNumeroRemovido, SUFIXO_DO_REMOVIDO } from '@/lib/inbox/numero-removido'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 
@@ -67,6 +68,8 @@ export interface Conversation {
   numero_provider: string | null
   /** Como a rede chama essa caixa. Aparece quando há mais de uma. */
   numero_label:    string | null
+  /** O número da conversa foi REMOVIDO da clínica (r2-cfg-06): fica, mas não se responde por ele. */
+  numero_removido?: boolean
   /**
    * A PESSOA desta thread (`contacts.id`).
    *
@@ -183,7 +186,7 @@ export interface ReplyPreview {
 
 /** A conversa crua: o que `anexarDadosDoCard` completa para virar `Conversation`. */
 type LinhaDeConversa = Omit<Conversation,
-  | 'branch_name' | 'lead_tags' | 'eh_cliente' | 'veio_de_anuncio' | 'numero_provider' | 'numero_label'
+  | 'branch_name' | 'lead_tags' | 'eh_cliente' | 'veio_de_anuncio' | 'numero_provider' | 'numero_label' | 'numero_removido'
   | 'owner_ids' | 'owner_names' | 'stage_ids' | 'stage_names' | 'funnel_ids' | 'funnel_names' | 'abertas'
 > & {
   branches?:    { name?: string } | null
@@ -287,6 +290,12 @@ export interface OpcoesDoInbox {
   etapas:   { id: string; nome: string; funil: string }[]
   tags:     string[]
   unidades: { id: string; nome: string }[]
+  /**
+   * Os números de WhatsApp da clínica — e os REMOVIDOS que ainda têm conversa,
+   * com "· número removido" (r2-cfg-06: "se a pessoa quiser, existem os
+   * filtros para isso").
+   */
+  numeros:  { id: string; nome: string }[]
 }
 
 export async function opcoesDoInbox(): Promise<OpcoesDoInbox> {
@@ -294,8 +303,11 @@ export async function opcoesDoInbox(): Promise<OpcoesDoInbox> {
   assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
   const data = await ler(createAdminClient().rpc('inbox_opcoes', { p_tenant: ctx.tenantId! }), 'carregar as opções do inbox')
-  const o = (data ?? {}) as Partial<OpcoesDoInbox>
-  return { donos: o.donos ?? [], funis: o.funis ?? [], etapas: o.etapas ?? [], tags: o.tags ?? [], unidades: o.unidades ?? [] }
+  const o = (data ?? {}) as Partial<Omit<OpcoesDoInbox, 'numeros'>> & { numeros?: { id: string; nome: string; removido?: boolean }[] }
+  return {
+    donos: o.donos ?? [], funis: o.funis ?? [], etapas: o.etapas ?? [], tags: o.tags ?? [], unidades: o.unidades ?? [],
+    numeros: (o.numeros ?? []).map(n => ({ id: n.id, nome: n.removido ? `${n.nome}${SUFIXO_DO_REMOVIDO}` : n.nome })),
+  }
 }
 
 /**
@@ -315,15 +327,17 @@ async function anexarDadosDoCard(conversas: LinhaDeConversa[], tenantId: string)
   // As caixas da rede, uma consulta só, mapeadas em memória — a rede tem
   // punhado delas, e um embed do PostgREST aqui repetiria o erro que este
   // arquivo já documenta: relacionamento ambíguo volta sem o campo, em silêncio.
-  const caixas = new Map<string, { provider: string; label: string }>()
+  // O número REMOVIDO (r2-cfg-06) continua nomeando as conversas dele, com
+  // "· número removido" — é assim que a lista e o filtro o mostram.
+  const caixas = new Map<string, { provider: string; label: string; removido: boolean }>()
   if (conversas.length > 0) {
     const { data, error } = await createAdminClient()
       .from('whatsapp_numbers')
-      .select('id, provider, label')
+      .select('id, provider, label, removido_em')
       .eq('tenant_id', tenantId)
     if (error) console.error('[getConversations] caixas:', error.message)
-    for (const n of (data ?? []) as { id: string; provider: string; label: string }[]) {
-      caixas.set(n.id, { provider: n.provider, label: n.label })
+    for (const n of (data ?? []) as { id: string; provider: string; label: string; removido_em: string | null }[]) {
+      caixas.set(n.id, { provider: n.provider, label: n.removido_em ? `${n.label}${SUFIXO_DO_REMOVIDO}` : n.label, removido: !!n.removido_em })
     }
   }
 
@@ -362,6 +376,7 @@ async function anexarDadosDoCard(conversas: LinhaDeConversa[], tenantId: string)
       veio_de_anuncio: !!c.attribution?.ad_id,
       numero_provider: caixa?.provider ?? null,
       numero_label:    caixa?.label    ?? null,
+      numero_removido: caixa?.removido ?? false,
       owner_ids: [], owner_names: [], stage_ids: [], stage_names: [],
       funnel_ids: [], funnel_names: [], abertas: 0,
     }
@@ -936,8 +951,10 @@ async function buscarOutrasThreads(
   const rotulos = new Map<string, string>()
   if (caixaIds.length > 0) {
     const caixas = await ler(admin
-      .from('whatsapp_numbers').select('id, label').in('id', caixaIds), 'carregar o nome das caixas')
-    for (const n of (caixas ?? []) as { id: string; label: string }[]) rotulos.set(n.id, n.label)
+      .from('whatsapp_numbers').select('id, label, removido_em').in('id', caixaIds), 'carregar o nome das caixas')
+    for (const n of (caixas ?? []) as { id: string; label: string; removido_em: string | null }[]) {
+      rotulos.set(n.id, n.removido_em ? `${n.label}${SUFIXO_DO_REMOVIDO}` : n.label)
+    }
   }
 
   return linhas.map(l => ({
@@ -1785,6 +1802,9 @@ export async function sendTemplateMessage(
   if ((conv as { status: string }).status === 'closed') {
     return { ok: false, error: 'Conversa encerrada' }
   }
+  // O número da conversa foi removido (r2-cfg-06): não se responde por ela.
+  const removido = await numeroRemovidoDaConversa(admin, (conv as { whatsapp_number_id: string | null }).whatsapp_number_id)
+  if (removido) return { ok: false, error: recusaDoNumeroRemovido(removido) }
 
   const { data: tpl, error: erroTpl } = await admin
     .from('message_templates')
@@ -1971,6 +1991,9 @@ export async function sendMediaMessage(
   if (problema) return { ok: false, error: problema }
 
   const caixaDaConversa = (conv as { whatsapp_number_id: string | null }).whatsapp_number_id
+  // O número da conversa foi removido (r2-cfg-06): não se responde por ela.
+  const removido = await numeroRemovidoDaConversa(createAdminClient(), caixaDaConversa)
+  if (removido) return { ok: false, error: recusaDoNumeroRemovido(removido) }
 
   const canal = await resolverCanal(ctx.tenantId!, channel, {
     tipo: 'conversa', numeroId: caixaDaConversa, userId: ctx.internalUserId,

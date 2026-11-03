@@ -27,6 +27,7 @@ import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-
 import { nomeDoAnuncio, legendaDoAnuncio } from '@/lib/ads/rotulo'
 import { destinoDoEvento } from '@/lib/inbox/lista'
 import { conversaCasaComBusca } from '@/lib/inbox/busca'
+import { recusaDoNumeroRemovido } from '@/lib/inbox/numero-removido-texto'
 import {
   InboxFiltros, ChipsDeFiltro, passaNosFiltros, contarFiltros,
   FILTROS_VAZIOS, type FiltrosInbox,
@@ -1584,7 +1585,10 @@ export function CRMInbox({
     && !canaisConectados.includes(selectedConv.channel)
 
   // Escrever sem poder enviar só gera a frustração de ver o erro depois.
-  const bloqueado = integrationRequired || !janela.aberta || janelaFechadaNaCaixaPropria
+  // O número da conversa foi REMOVIDO da clínica (r2-cfg-06): a conversa fica,
+  // e o campo dá lugar ao porquê.
+  const numeroRemovido = !!selectedConv?.numero_removido
+  const bloqueado = numeroRemovido || integrationRequired || !janela.aberta || janelaFechadaNaCaixaPropria
 
   // Template só existe no WhatsApp pela API oficial.
   const podeTemplate = canEdit
@@ -1782,7 +1786,8 @@ export function CRMInbox({
                 <ConvItem
                   key={c.id}
                   conv={c}
-                  caixa={variasCaixas ? c.numero_label : null}
+                  // O número REMOVIDO se diz sempre (r2-cfg-06), mesmo sem outras caixas.
+                  caixa={variasCaixas || c.numero_removido ? c.numero_label : null}
                   selected={c.id === selectedId}
                   onClick={() => handleSelect(c)}
                   nowMs={nowMs}
@@ -1984,8 +1989,23 @@ export function CRMInbox({
                 <div ref={bottomRef} />
               </div>
 
+              {/* O número desta conversa foi removido (r2-cfg-06): ela fica no
+                  inbox como estava, mas não se responde por ela. */}
+              {numeroRemovido && (
+                <div data-numero-removido role="status" style={{
+                  margin: '0 16px 8px',
+                  padding: '8px 12px', borderRadius: 8,
+                  background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
+                }}>
+                  <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{recusaDoNumeroRemovido(selectedConv.numero_label ?? 'sem nome')}</span>
+                </div>
+              )}
+
               {/* Integration warning */}
-              {integrationRequired && (
+              {integrationRequired && !numeroRemovido && (
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '8px 12px', borderRadius: 8,
@@ -2007,7 +2027,7 @@ export function CRMInbox({
                   O aviso vem ANTES de digitar porque depois é tarde: a mensagem
                   chegaria de um número estranho, numa conversa nova do lado
                   dele, e a resposta voltaria como outra conversa aqui. */}
-              {respondendoPelaOutra && (
+              {respondendoPelaOutra && !numeroRemovido && (
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '9px 12px', borderRadius: 8,
@@ -2041,7 +2061,7 @@ export function CRMInbox({
 
               {/* Janela de 24h da Meta. Sem isto a pessoa escreve, vê "enviado"
                   e a mensagem nunca chega — a API recusa fora da janela. */}
-              {!janela.aberta && !respondendoPelaOutra && (
+              {!janela.aberta && !respondendoPelaOutra && !numeroRemovido && (
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '8px 12px', borderRadius: 8,
