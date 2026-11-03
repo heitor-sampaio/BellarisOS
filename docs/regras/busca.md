@@ -59,6 +59,7 @@ URL — a busca não grava nada, e a tela de destino confere tudo de novo:
 | Agendar | na linha do cliente achado | `…/agenda?novo=1&cliente=<id>` |
 | Vender | na linha do cliente achado | `…/clients/<id>?acao=vender` |
 | Cadastrar «termo» como cliente | no FIM, quando nenhum cliente casou | `…/clients/new?nome=` ou `?telefone=` |
+| Reativar | na linha da cliente ARQUIVADA (A19) | `…/clients/<id>?acao=reativar` |
 
 - **Só aparece para quem a tela de destino libera**: agendar é `agenda:
   MANAGE` sem a agenda "só a própria" (`agendaPropria`, da topbar — aquela
@@ -71,6 +72,11 @@ URL — a busca não grava nada, e a tela de destino confere tudo de novo:
   páginas de cadastro. Cada uma tira os parâmetros da URL ao abrir — recarregar
   não reabre. O nome do cliente de `?cliente=` vem do SERVIDOR
   (`clienteParaAgendar`, da rede da sessão), nunca da URL.
+- **A cliente arquivada também se acha** (A19 da 5ª simulação): vem de
+  `busca_clientes_arquivados` (a mesma regra de casar), depois das ativas,
+  com "Arquivada" na linha e só a ação "Reativar" (nada de agendar nem
+  vender). Ela conta como cliente achado: o "Cadastrar «termo»" não aparece
+  (criaria a duplicata).
 - **"Cadastrar «termo»" vai no FIM**: no topo, o Enter cadastraria em vez de
   abrir a conversa ou a oportunidade achada.
 - **Teclado**: ↑↓ entre as linhas, → entra nas ações da linha (só com o cursor

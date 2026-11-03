@@ -60,7 +60,8 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
     const tipos = tiposPermitidos(ctx.permissions, c => temRecurso(ctx, c as ChaveDeFuncionalidade))
     const doBanco = tipos.filter(t => t !== 'conversa')
 
-    const [linhas, conversas] = await Promise.all([
+    // A cliente ARQUIVADA também se acha (A19), marcada, depois das ativas.
+    const [linhas, conversas, arquivadas] = await Promise.all([
       doBanco.length > 0
         ? ler(admin.rpc('busca_universal', {
             p_tenant:      ctx.tenantId,
@@ -75,10 +76,15 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
       tipos.includes('conversa')
         ? conversasQueCasam(admin, ctx, busca)
         : Promise.resolve([] as ResultadoDaBusca[]),
+      tipos.includes('cliente')
+        ? ler(admin.rpc('busca_clientes_arquivados', { p_tenant: ctx.tenantId, p_termo: busca, p_limite: POR_TIPO }),
+            'buscar as clientes arquivadas') as Promise<Omit<LinhaDaBusca, 'tipo'>[] | null>
+        : Promise.resolve([] as Omit<LinhaDaBusca, 'tipo'>[]),
     ])
 
     const resultados = [
       ...(linhas ?? []).map(resultadoDaLinha).filter((r): r is ResultadoDaBusca => r !== null),
+      ...(arquivadas ?? []).map(a => resultadoDaLinha({ ...a, tipo: 'cliente' })).filter((r): r is ResultadoDaBusca => r !== null),
       ...conversas,
     ]
 

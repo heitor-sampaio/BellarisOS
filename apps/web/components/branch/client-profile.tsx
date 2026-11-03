@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
-import { avisoDoAcessoCriado } from '@/lib/clients/textos-do-cadastro'
+import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { CancelarPacote } from '@/components/shared/cancelar-pacote'
@@ -1286,6 +1286,19 @@ export function ClientProfile({
   // o servidor também recusa (CLIENTE_ARQUIVADA).
   const arquivada = !client.isActive
   const motivoDoArquivo = 'Cliente arquivada: reative em "Mais ações" para agendar ou vender.'
+  // Arquivar não cancela o que ela tem marcado: a confirmação diz (A19).
+  const agendamentosAoArquivar = avisoDosAgendamentosAoArquivar(upcomingAppointments)
+
+  // `?acao=reativar` (a busca universal acha a arquivada, A19): abre o menu
+  // com o "Reativar cliente" à vista e tira o parâmetro da URL.
+  const aoPedirReativar = useEffectEvent(() => {
+    if (arquivada && podeEditarCadastro) setMenuAberto(true)
+    const q = new URLSearchParams(params.toString())
+    q.delete('acao')
+    const resto = q.toString()
+    router.replace(resto ? `${pathname}?${resto}` : pathname, { scroll: false })
+  })
+  useEffect(() => { if (acaoDaUrl === 'reativar') aoPedirReativar() }, [acaoDaUrl])
 
   // O prontuário aparece para quem pode vê-lo, mesmo antes do primeiro
   // atendimento (a anamnese já está lá): a dona não achava a aba (2026-10-20).
@@ -1465,8 +1478,19 @@ export function ClientProfile({
                     {client.isActive ? (
                       <BotaoComConfirmacao
                         acao={() => toggleClientStatus(client.id, false, slug)}
+                        aoFeito={() => setMenuAberto(false)}
                         titulo="Arquivar cliente?"
-                        explicacao={<><strong style={{ color: 'var(--text)' }}>{client.name}</strong> sai das listas e da busca, e não se agenda nem se vende para ela até reativar. O histórico e o prontuário ficam.</>}
+                        explicacao={<>
+                          <strong style={{ color: 'var(--text)' }}>{client.name}</strong> sai das listas, e não se agenda nem se vende para ela até reativar. O histórico e o prontuário ficam.
+                          {agendamentosAoArquivar && (
+                            <span style={{
+                              display: 'block', marginTop: 10, padding: '8px 10px', borderRadius: 'var(--radius-field-token)',
+                              background: 'var(--warning-soft)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)',
+                            }}>
+                              {agendamentosAoArquivar}
+                            </span>
+                          )}
+                        </>}
                         rotuloConfirmar="Arquivar"
                         title="Arquivar cliente"
                         className=""
@@ -1493,8 +1517,8 @@ export function ClientProfile({
                     )}
                     <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
                       {client.isActive
-                        ? 'Some das listas e da busca e deixa de contar como cliente nova. O histórico e o prontuário ficam.'
-                        : 'Volta a aparecer nas listas e na busca.'}
+                        ? 'Some das listas e deixa de contar como cliente nova. O histórico e o prontuário ficam.'
+                        : 'Volta a aparecer nas listas, e dá para agendar e vender de novo.'}
                     </p>
                     {erroStatus && (
                       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600, padding: '0 12px 8px' }}>{erroStatus}</p>

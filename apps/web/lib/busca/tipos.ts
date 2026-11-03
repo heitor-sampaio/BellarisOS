@@ -27,6 +27,8 @@ export interface ResultadoDaBusca {
   href?:     string
   /** As ações do registro (o cliente: agendar, vender — lib/busca/acoes.ts). */
   acoes?:    AcaoDaBusca[]
+  /** Só o cliente: a ficha está ARQUIVADA (A19) — a linha oferece "Reativar". */
+  arquivada?: boolean
 }
 
 export interface GrupoDaBusca {

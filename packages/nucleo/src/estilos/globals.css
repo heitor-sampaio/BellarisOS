@@ -314,6 +314,11 @@
     font-family: inherit;
   }
   .btn-secondary:hover { background: var(--brand-soft); }
+  /* Desabilitado PARECE desabilitado também no secundário e no fantasma (A19
+     da 5ª simulação): o "Vender" da ficha arquivada parecia um botão ativo. */
+  .btn-secondary:disabled, .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary:disabled:hover { background: var(--bg-app); }
+  .btn-ghost:disabled:hover { background: transparent; color: var(--text-muted); }
 
   .btn-ghost {
     display: inline-flex;

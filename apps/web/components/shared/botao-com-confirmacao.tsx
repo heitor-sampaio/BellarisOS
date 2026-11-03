@@ -12,7 +12,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
  * `acao` pode ser uma server action (a página do servidor passa a dela).
  */
 export function BotaoComConfirmacao({
-  acao, titulo, explicacao, rotuloConfirmar, children, title, className = 'btn-ghost', style,
+  acao, titulo, explicacao, rotuloConfirmar, children, title, className = 'btn-ghost', style, aoFeito,
 }: {
   acao:            () => Promise<unknown>
   /** A pergunta, que também é o nome da janela ("Desativar membro?"). */
@@ -23,6 +23,8 @@ export function BotaoComConfirmacao({
   title?:          string
   className?:      string
   style?:          React.CSSProperties
+  /** Depois de dar certo (o menu que abriu o botão se fecha — A19). */
+  aoFeito?:        () => void
 }) {
   const router = useRouter()
   const [aberta, setAberta] = useState(false)
@@ -36,6 +38,7 @@ export function BotaoComConfirmacao({
         const r = await acao() as { error?: string } | undefined
         if (r && typeof r === 'object' && r.error) { setErro(r.error); return }
         setAberta(false)
+        aoFeito?.()
         router.refresh()
       } catch {
         setErro('Não deu certo. Tente de novo.')

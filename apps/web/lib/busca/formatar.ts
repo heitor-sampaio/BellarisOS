@@ -54,7 +54,10 @@ export function resultadoDaLinha(l: LinhaDaBusca): ResultadoDaBusca | null {
 
   switch (tipo) {
     case 'cliente':
-      return { tipo, id: l.id, titulo, subtitulo: juntar([telefoneLegivel(l.subtitulo), texto(x.email)]) }
+      // A arquivada (A19) diz que está arquivada, antes do telefone.
+      return x.arquivada === true
+        ? { tipo, id: l.id, titulo, subtitulo: juntar(['Arquivada', telefoneLegivel(l.subtitulo), texto(x.email)]), arquivada: true }
+        : { tipo, id: l.id, titulo, subtitulo: juntar([telefoneLegivel(l.subtitulo), texto(x.email)]) }
 
     case 'oportunidade': {
       const desfecho = DESFECHO[texto(x.desfecho) ?? '']

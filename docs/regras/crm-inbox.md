@@ -169,6 +169,21 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `e2e/abrangencia-unidade.spec.ts`.
 - **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
   mostra marcada. Não há apagar.
+- **As sobras do arquivar** (A19 da 5ª simulação, 2026-11-02):
+  - a confirmação diz os agendamentos MARCADOS dela (agendado ou confirmado,
+    daqui para a frente: "Ela tem 1 agendamento marcado (12/11 às 10:00), que
+    continua na agenda: arquivar não o cancela") — `avisoDosAgendamentosAoArquivar`;
+  - o menu "Mais ações" fecha ao arquivar (`BotaoComConfirmacao.aoFeito`);
+  - a BUSCA UNIVERSAL acha a arquivada (`busca_clientes_arquivados`, a
+    regra de casar da `busca_universal`), com "Arquivada" na linha e a ação
+    "Reativar" (`acoesDaArquivada`, Clientes em Gerenciar), que abre a ficha
+    com o menu e o "Reativar cliente" à vista (`?acao=reativar`). Achada
+    uma arquivada, a busca não oferece "Cadastrar … como cliente" (era a
+    duplicata);
+  - o botão desligado PARECE desligado também no secundário e no fantasma
+    (`.btn-secondary:disabled`, `.btn-ghost:disabled`, em `globals.css`): o
+    "Vender" da arquivada parecia ativo.
+  Prova: `e2e/clientes-arquivar.spec.ts` (os testes A19).
 - Rede nova nasce com as oito padrão (`trg_rede_ganha_tags`,
   `private.tags_padrao()` — espelha `CLIENT_TAGS`).
 - Prova: `e2e/tags-da-rede.spec.ts`, `tests/tags.test.ts`.

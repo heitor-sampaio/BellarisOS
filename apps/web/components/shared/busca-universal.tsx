@@ -8,13 +8,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   ArrowRight, CalendarClock, CalendarPlus, Filter, Layers, Loader2, MessageCircle, Package,
   Search, ShoppingBag, Sparkles, User, UserPlus, UserRound, X,
+  RotateCcw,
 } from 'lucide-react'
 import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 import { buscarTudo } from '@/actions/busca'
 import { emitNavStart } from '@/components/shared/navigation-progress'
 import { paginasDaBusca, paginasQueCasam } from '@/lib/busca/paginas'
 import { destinoDoResultado } from '@/lib/busca/destino'
-import { acaoDeCadastrar, acoesDoCliente, acoesGerais, type AcaoDaBusca, type IdDaAcao } from '@/lib/busca/acoes'
+import { acaoDeCadastrar, acoesDaArquivada, acoesDoCliente, acoesGerais, type AcaoDaBusca, type IdDaAcao } from '@/lib/busca/acoes'
 import {
   GRUPOS, TERMO_MAXIMO, TERMO_MINIMO,
   type GrupoDaBusca, type ResultadoDaBusca, type TipoDaBusca,
@@ -56,6 +57,7 @@ const ICONE_DA_ACAO: Record<IdDaAcao, ReactNode> = {
   'cadastrar-termo':  <UserPlus size={15} />,
   agendar:            <CalendarPlus size={13} />,
   vender:             <ShoppingBag size={13} />,
+  reativar:           <RotateCcw size={13} />,
 }
 
 const ROTULO_DO_GRUPO = new Map(GRUPOS.map(g => [g.tipo, g.rotulo]))
@@ -133,7 +135,7 @@ export function BuscaUniversal({ slug, permissions, scopes, plano = null, agenda
     }
     // O cliente achado leva as ações dele na linha.
     const doServidor = (curto ? [] : achados).map(g => g.tipo !== 'cliente' ? g
-      : { ...g, itens: g.itens.map(r => ({ ...r, acoes: acoesDoCliente(quem, r.id) })) })
+      : { ...g, itens: g.itens.map(r => ({ ...r, acoes: r.arquivada ? acoesDaArquivada(quem, r.id, r.titulo) : acoesDoCliente(quem, r.id) })) })
     const gerais = acoesGerais({ ...quem, termo: limpo }).map(comoItem)
     const dasPaginas = paginasQueCasam(paginas, limpo)
     // Não achou cliente nenhum (com a busca já de volta): o atalho de cadastrar
@@ -383,7 +385,7 @@ export function BuscaUniversal({ slug, permissions, scopes, plano = null, agenda
                       id={idDaAcao(i, ai)}
                       role="option"
                       aria-selected={linhaAtiva && subAtivo === ai}
-                      aria-label={`${a.rotulo} para ${r.titulo}`}
+                      aria-label={a.acessivel ?? `${a.rotulo} para ${r.titulo}`}
                       className="busca-acao"
                       onPointerMove={() => { if (!linhaAtiva || subAtivo !== ai) { setAtivo(i); setSubAtivo(ai) } }}
                       onMouseDown={e => e.preventDefault()}

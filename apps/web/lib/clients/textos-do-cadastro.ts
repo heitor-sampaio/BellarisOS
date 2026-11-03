@@ -33,3 +33,25 @@ export function avisoDaUnidadeDeCadastro(variasUnidades: boolean): string | null
     ? 'Ela aparece na lista de Clientes desta unidade. As outras unidades a acham pela busca do Agendar e a atendem normalmente.'
     : null
 }
+
+/**
+ * O que arquivar diz dos agendamentos que ela ainda tem (A19 da 5ª
+ * simulação): arquivar não os cancela, e a confirmação não os citava — o
+ * horário continuava "Agendado" na agenda. Só os MARCADOS (agendado ou
+ * confirmado) daqui para a frente; o próximo com dia e hora em Brasília.
+ */
+export function avisoDosAgendamentosAoArquivar(
+  agendamentos: { scheduledAt: string; status: string }[], agora: Date = new Date(),
+): string | null {
+  const marcados = agendamentos
+    .filter(a => (a.status === 'SCHEDULED' || a.status === 'CONFIRMED') && new Date(a.scheduledAt) >= agora)
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+  if (!marcados.length) return null
+  const quando = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(marcados[0]!.scheduledAt)).replace(', ', ' às ')
+  const n = marcados.length
+  return n === 1
+    ? `Ela tem 1 agendamento marcado (${quando}), que continua na agenda: arquivar não o cancela. Se ela não vem mais, cancele na agenda.`
+    : `Ela tem ${n} agendamentos marcados (o próximo em ${quando}), que continuam na agenda: arquivar não os cancela. Se ela não vem mais, cancele na agenda.`
+}

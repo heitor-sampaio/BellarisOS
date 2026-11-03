@@ -17,12 +17,14 @@ import { TERMO_MINIMO } from '@/lib/busca/tipos'
  * de criar — por isso não ganha os atalhos de agendar.
  */
 
-export type IdDaAcao = 'novo-agendamento' | 'cadastrar-cliente' | 'cadastrar-termo' | 'agendar' | 'vender'
+export type IdDaAcao = 'novo-agendamento' | 'cadastrar-cliente' | 'cadastrar-termo' | 'agendar' | 'vender' | 'reativar'
 
 export interface AcaoDaBusca {
   id:     IdDaAcao
   rotulo: string
   href:   string
+  /** O nome para o leitor de tela, quando "<rótulo> para <nome>" não se lê bem. */
+  acessivel?: string
 }
 
 export interface QuemAge {
@@ -61,6 +63,17 @@ export function acoesDoCliente(q: QuemAge, clienteId: string): AcaoDaBusca[] {
   if (podeAgendar(q)) acoes.push({ id: 'agendar', rotulo: 'Agendar', href: `${rotaAgenda(q.pathname, q.slug)}?novo=1&cliente=${id}` })
   if (recebe(q.permissoes)) acoes.push({ id: 'vender', rotulo: 'Vender', href: `${rotaCliente(q.pathname, q.slug, clienteId)}?acao=vender` })
   return acoes
+}
+
+/**
+ * A cliente ARQUIVADA achada (A19 da 5ª simulação): não se agenda nem se vende
+ * para ela; a ação é reativar — a ficha abre com o "Reativar cliente" à vista
+ * (`?acao=reativar`). Antes ela nem aparecia, e a busca oferecia cadastrá-la
+ * de novo (a duplicata). Só para quem arquiva e reativa (Clientes em Gerenciar).
+ */
+export function acoesDaArquivada(q: QuemAge, clienteId: string, nome: string): AcaoDaBusca[] {
+  if (!podeCadastrar(q)) return []
+  return [{ id: 'reativar', rotulo: 'Reativar', acessivel: `Reativar ${nome}`, href: `${rotaCliente(q.pathname, q.slug, clienteId)}?acao=reativar` }]
 }
 
 /**
