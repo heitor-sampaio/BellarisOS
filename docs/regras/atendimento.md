@@ -116,6 +116,13 @@
   (quem é da rede vê o lápis que leva para lá). A sessão de unidade não lê
   membros da rede (RLS): essa lista vem pelo servidor. Prova:
   `e2e/equipe-dona-que-atende.spec.ts`.
+- **A Admin cadastra outra Admin direto** (eq-01, revisão do Heitor de
+  2026-11-02: "oferecer no cadastro; o caminho em dois passos não protege
+  nada"): o "Adicionar membro" da Equipe da rede oferece o cargo de sistema
+  Admin a quem É Admin (`cargoDeAdminId`); escolhido, a abrangência não se
+  pergunta — a Admin é da clínica toda (o servidor já gravava assim e recusa a
+  quem não é Admin, `assertRoleInTenant`). Quem gere a equipe sem ser Admin
+  não vê o cargo. Prova: `e2e/equipe-dona-que-atende.spec.ts` (eq-01).
 - Status: `SCHEDULED → CONFIRMED → ARRIVED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `arrivedAt`, `startedAt`, `completedAt`, `cancelledAt`
 - **Confirmar e chegar são passos diferentes** (2026-10-21, decisão do Heitor;

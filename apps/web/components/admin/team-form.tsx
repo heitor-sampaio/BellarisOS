@@ -16,6 +16,13 @@ interface AdminTeamFormProps {
   isNetworkAdmin: boolean
   /** `financial: MANAGE` com comissões no plano: quem atende já nasce com o percentual padrão. */
   podeComissao?:  boolean
+  /**
+   * O cargo de sistema Admin, quando quem cadastra É Admin (eq-01, revisão do
+   * Heitor de 2026-11-02: "oferecer no cadastro; o caminho em dois passos não
+   * protege nada"). Escolhido, a abrangência não se pergunta: a Admin é da
+   * clínica toda (o servidor grava assim, peça o formulário o que pedir).
+   */
+  cargoDeAdminId?: string | null
 }
 
 export function AdminTeamForm(props: AdminTeamFormProps) {
@@ -38,9 +45,12 @@ export function AdminTeamForm(props: AdminTeamFormProps) {
  * "Atende clientes" e a abrangência do anterior — o Marcos (Financeiro) nasceu
  * profissional (D8, regressão de 4e5bef5).
  */
-function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onFechar }: AdminTeamFormProps & { onFechar: () => void }) {
+function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, cargoDeAdminId = null, onFechar }: AdminTeamFormProps & { onFechar: () => void }) {
   const [atende, setAtende] = useState(false)
-  const [scope, setScope] = useState<'branch' | 'network'>('branch')
+  const [escolhido, setScope] = useState<'branch' | 'network'>('branch')
+  const [roleId, setRoleId] = useState('')
+  const ehAdmin = !!cargoDeAdminId && roleId === cargoDeAdminId
+  const scope = ehAdmin ? 'network' : escolhido
   const fala = useFala()
   const [state, action, pending] = useActionState(createTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
@@ -85,7 +95,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onF
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <label className="overline" htmlFor="tm-role">Cargo</label>
-                  <select id="tm-role" name="roleId" required className="field" defaultValue="">
+                  <select id="tm-role" name="roleId" required className="field" value={roleId} onChange={e => setRoleId(e.target.value)}>
                     <option value="" disabled>Selecione…</option>
                     {roles.map(r => (
                       <option key={r.id} value={r.id}>{r.label}</option>
@@ -98,8 +108,13 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onF
                   )}
                 </div>
 
-                {/* Abrangência */}
-                {isNetworkAdmin && (
+                {/* Abrangência — a Admin é sempre da clínica toda. */}
+                {ehAdmin && (
+                  <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    A Admin tem acesso à clínica toda, sem unidade fixa, e pode dar e alterar o cargo de Admin.
+                  </span>
+                )}
+                {isNetworkAdmin && !ehAdmin && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline">Abrangência</label>
                     <SegSelect
@@ -127,7 +142,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onF
                     </select>
                   </div>
                 )}
-                {scope === 'network' && (
+                {scope === 'network' && !ehAdmin && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     Acesso a todas as unidades, sem unidade fixa.
                   </span>

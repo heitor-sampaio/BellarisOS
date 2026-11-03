@@ -137,7 +137,8 @@ export default async function AdminTeamPage({
           </p>
         </div>
         {canManage && (
-          <AdminTeamForm branches={branches ?? []} roles={assignableRoles} isNetworkAdmin={ctx.branchId === null} podeComissao={podeComissao} />
+          <AdminTeamForm branches={branches ?? []} roles={rolesParaDar} isNetworkAdmin={ctx.branchId === null} podeComissao={podeComissao}
+            cargoDeAdminId={souAdmin && cargoDeAdmin ? cargoDeAdmin.id : null} />
         )}
       </div>
 

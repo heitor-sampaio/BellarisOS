@@ -267,3 +267,47 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
     expect((await membro(dona!.userId))?.role_id, 'a dona segue Admin').toBe(dona!.roleId)
   })
 })
+
+/**
+ * eq-01 (revisão do Heitor, 2026-11-02: "oferecer no cadastro; o caminho em
+ * dois passos não protege nada"): a Admin só promovia pela EDIÇÃO — cadastrava
+ * a sócia como Gerente e depois a editava para Admin. O "Adicionar membro"
+ * oferece o cargo de Admin a quem é Admin, e a Admin nasce da clínica toda.
+ * Quem gere a equipe sem ser Admin não o vê (o servidor já recusava).
+ */
+test('eq-01: a Admin cadastra a sócia já como Admin, sem unidade fixa; o gestor da equipe não vê o cargo', async ({ browser }) => {
+  const email = `e2e-socia-eq01-${marca}@bellaris.invalid`
+  const gestor = await criarMembro(`dae${marca}`, { tenant: rede!.tenantId, rotulo: 'Gestor', permissoes: [{ modulo: 'team', nivel: 'MANAGE' }] })
+  try {
+    await como(browser, gestor.estado, async p => {
+      await p.goto('/admin/team')
+      await p.getByRole('button', { name: 'Adicionar membro' }).click()
+      const opcoes = await p.locator('#tm-role option').allTextContents()
+      expect(opcoes.some(o => /^Admin/.test(o)), opcoes.join(' | ')).toBe(false)
+    })
+    await como(browser, dona!.estado, async p => {
+      await p.goto('/admin/team')
+      await p.getByRole('button', { name: 'Adicionar membro' }).click()
+      const janela = p.getByRole('dialog', { name: 'Novo membro da equipe' })
+      await janela.locator('#tm-name').fill(`${PREFIXO} Sócia nova ${marca}`)
+      await janela.locator('#tm-email').fill(email)
+      await janela.locator('#tm-role').selectOption({ value: dona!.roleId })
+      // A Admin é da clínica toda: a abrangência não se pergunta.
+      await expect(janela.locator('#tm-branch')).toHaveCount(0)
+      await expect(janela.getByText(/Admin tem acesso à clínica toda/)).toBeVisible()
+      await janela.locator('#tm-password').fill('Senha-forte-123')
+      await janela.getByRole('button', { name: 'Criar membro' }).click()
+      await expect(janela).toBeHidden({ timeout: 20_000 })
+    })
+    const { data: nova } = await db().from('users').select('role_id, branch_id').eq('email', email).single()
+    expect(nova).toEqual({ role_id: dona!.roleId, branch_id: null })
+  } finally {
+    const { data: u } = await db().from('users').select('id, auth_id').eq('email', email).maybeSingle()
+    if (u) {
+      await db().from('domain_events').delete().eq('entidade_id', u.id)
+      await db().from('users').delete().eq('id', u.id)
+      if (u.auth_id) await db().auth.admin.deleteUser(u.auth_id as string)
+    }
+    await gestor.limpar()
+  }
+})
