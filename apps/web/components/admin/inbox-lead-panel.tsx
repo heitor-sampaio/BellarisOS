@@ -39,7 +39,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { Vender } from '@/components/shared/vender'
 import { creditosParaAgendar } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 
 export interface PanelBranch { id: string; name: string; slug: string }
@@ -207,6 +207,10 @@ export function InboxLeadPanel({
   // Contato (editável, com salvamento automático)
   const [nome,     setNome]     = useState('')
   const [telefone, setTelefone] = useState('')
+  // O telefone aparece FORMATADO (A16 da 5ª simulação: "51994000050" cru) e,
+  // ao editar, como está gravado: formatar o valor faria o salvamento
+  // automático regravar o número da pessoa (é o destino da conversa).
+  const [editandoFone, setEditandoFone] = useState(false)
   const [tags,     setTags]     = useState<string[]>([])
   const [email,    setEmail]    = useState('')
   const [social,   setSocial]   = useState('')
@@ -392,7 +396,8 @@ export function InboxLeadPanel({
         <input className="field" value={nome} disabled={disabled} placeholder="Nome"
           onChange={e => setNome(e.target.value)}
           style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, padding: '7px 10px' }} />
-        <input className="field" value={telefone} disabled={disabled} placeholder="Telefone"
+        <input className="field" value={editandoFone ? telefone : maskPhone(telefone)} disabled={disabled} placeholder="Telefone"
+          onFocus={() => setEditandoFone(true)} onBlur={() => setEditandoFone(false)}
           onChange={e => setTelefone(e.target.value)}
           style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }} />
         {/* Da pessoa, como o nome (2026-10-13): o importador os traz, e a
@@ -688,7 +693,9 @@ export function InboxLeadPanel({
             branches={branches}
             conversationId={conversation.id}
             leadId={card.abertas[0]?.id}
-            prefill={{ name: nome, phone: telefone || undefined }}
+            // O e-mail é o da pessoa; sem ele, o da oportunidade (A16: a cópia do
+            // card tinha o e-mail, e o cadastro vinha sem).
+            prefill={{ name: nome, phone: telefone || undefined, email: email || [...card.abertas, ...card.concluidas].find(o => o.email)?.email || undefined }}
             onSuccess={handleConverted}
             showCancelButton
             onCancel={fecharCadastro}

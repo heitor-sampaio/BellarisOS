@@ -407,6 +407,12 @@ mesmo sem oportunidade, e o painel do inbox os mostra e edita na seção do
 contato (`atualizarContato`). Não propagam: a oportunidade tem a SUA cópia
 (`leads.email`, `social_media`), que é o card e se edita no card. Prova:
 `e2e/inbox-contato-email.spec.ts`.
+- O "Cadastrar cliente" do inbox vem com o e-mail da pessoa e, sem ele, o da
+  oportunidade (A16 da 5ª simulação: a cópia do card tinha o e-mail e o
+  cadastro vinha sem); o telefone do painel aparece FORMATADO (`maskPhone`) e,
+  ao editar, como está gravado — formatar o valor faria o salvamento
+  automático regravar o número da pessoa, que é o destino da conversa. Prova:
+  `e2e/inbox-contato-email.spec.ts` (A16).
 
 **As TAGS são da pessoa** (`contacts.tags`), e sempre eram — o comentário em
 `conversations.tags` já dizia "Tags do CONTATO: descrevem a pessoa, não o
