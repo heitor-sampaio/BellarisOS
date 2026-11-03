@@ -108,14 +108,20 @@ test('a tela de Documentos, com o prontuário "só os meus", mostra só os das c
   })
 })
 
-test('a ficha da cliente que ela não atende não lista os documentos', async ({ browser }) => {
+// doc-03 (o Heitor, 2026-11-02): "o histórico não é dado clínico, é o
+// histórico de ações feitas no cliente dentro do sistema". A lista dos
+// documentos segue o "só os meus"; a linha do tempo mostra TODAS as ações —
+// o "Assinado: …" também, sem conteúdo do documento.
+test('a ficha da cliente que ela não atende não lista os documentos, mas o histórico mostra o assinado (doc-03)', async ({ browser }) => {
   await como(browser, ela, async p => {
     await p.goto(`/${slug}/clients/${atendida}?aba=documentos`)
     await expect(p.locator(`[data-documento="${docs.dela}"]`), 'a cliente dela: lista').toBeVisible()
     await p.goto(`/${slug}/clients/${naoAtendida}?aba=documentos`)
     await expect(p.getByRole('heading', { level: 1 }).first()).toBeVisible()
     await expect(p.locator(`[data-documento="${docs.deOutra}"]`), 'a ficha da outra não lista').toHaveCount(0)
-    await expect(p.getByText(titulo('assinadoDeOutra')), 'nem o assinado, no histórico').toHaveCount(0)
+    await expect(p.locator(`[data-documento="${docs.assinadoDeOutra}"]`), 'nem o assinado, na lista').toHaveCount(0)
+    await p.goto(`/${slug}/clients/${naoAtendida}?aba=historico`)
+    await expect(p.getByText(`Assinado: ${titulo('assinadoDeOutra')}`), 'o histórico mostra a ação').toBeVisible()
   })
   await como(browser, todas, async p => {
     await p.goto(`/${slug}/clients/${naoAtendida}?aba=documentos`)

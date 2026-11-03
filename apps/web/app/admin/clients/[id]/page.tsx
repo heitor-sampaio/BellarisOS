@@ -360,10 +360,13 @@ export default async function AdminClientProfilePage({
   }
 
   // Termos e contratos assinados (os novos e o legado do checkout antigo).
-  // Os documentos seguem o prontuário "só os meus" (decisão do Heitor,
-  // 2026-10-29): da cliente que ela não atende, nem a lista nem o histórico.
+  // A LISTA dos documentos segue o prontuário "só os meus" (decisão do
+  // Heitor, 2026-10-29); a linha do tempo, NÃO (doc-03, 2026-11-02: "o
+  // histórico não é dado clínico, é o histórico de ações feitas no cliente
+  // dentro do sistema"): o "Assinado: <título>" aparece a quem vê a ficha. A
+  // linha leva só o título do modelo e o canal — nada do conteúdo.
   const veDocumentos = await clienteNoEscopo(admin, ctx, 'medical_records', id)
-  for (const doc of veDocumentos ? await assinadosDoCliente(ctx.tenantId, id) : []) {
+  for (const doc of await assinadosDoCliente(ctx.tenantId, id)) {
     history.push({ id: uid('ct'), date: doc.assinadoEm, type: 'CONSENT_SIGNED', title: `Assinado: ${doc.titulo}`, subtitle: doc.canal ? SUBTITULO_DO_CANAL[doc.canal] ?? null : null, amount: null, link: null })
   }
 

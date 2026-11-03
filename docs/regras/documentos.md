@@ -260,8 +260,13 @@ DEVLOG ("Termos e contratos").
   - a tela de Documentos e a ferramenta `documentos` do Copilot recortam no
     banco (`p_professional_id` em `documentos_emitidos_pagina`/`_resumo`,
     migration `20261029000901`; `profissionalDoRecorte`);
-  - a ficha da cliente que ela não atende não lista os documentos nem os
-    "Assinado: …" do histórico; a sessão de atendimento, idem;
+  - a ficha da cliente que ela não atende não lista os documentos; a sessão
+    de atendimento, idem. **A linha do tempo da ficha, sim** (doc-03, o
+    Heitor em 2026-11-02: "o histórico não é dado clínico, é o histórico de
+    ações feitas no cliente dentro do sistema"): o "Assinado: <título>"
+    aparece a quem vê a ficha, sem o recorte — a linha leva só o título do
+    modelo e o canal, nada do conteúdo. Nenhuma linha do histórico carrega
+    conteúdo clínico (sem título de foto, sem texto de evolução);
   - pelo id: `documentoAoAlcance` (toda action de `actions/documentos.ts` —
     abrir, colher, papel, gerar link, pela conversa, revogar, pedir no portal,
     dispensar, montar de novo, a trilha), a tela `/documentos/[id]/assinar` e o
