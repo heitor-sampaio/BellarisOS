@@ -9128,6 +9128,28 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F10 feita em 2026-11-03 — atendimento, plano, documentos, caixa e automações**
+(23 commits, a5c7066d…9f29e4e8; migrations `20261101001001–1003`). Alergia em
+Sim/Não com "Quais alergias?" e a faixa "Alergia: dipirona" (campo condicional
+genérico `mostrarSe` no construtor de fichas); "Evolução" com um nome só; a
+ficha de saúde vencida avisa e não bloqueia; planejamento sem pontos pergunta
+"Continuar?"; as obrigatórias conferidas também dentro de `concluir_atendimento`
+e `gerar_plano_da_avaliacao`; o produto do ponto vem do estoque e a dose do
+mapa aparece ao lado da baixa ("0,5 ml"); a foto abre grande, vai à cliente e
+apagar deixa "Foto clínica apagada por X"; o "Assinado" na linha do tempo sem
+o recorte do "só os meus"; passaporte/RNE no contrato sem CPF
+(`cliente.documento`); `pagamento.estornado` só do lançamento pago; o
+estorno diz "O atendimento volta a receber"; o dia sem espécie fecha sem
+digitar 0; o resumo de "Entrada + parcelas" e "até 4x"; "Fechar checkout" no
+plano proposto; trocar o pagamento depois de assinar pergunta; "Entregar ao
+cliente" cobre a tela; iniciar 30 min antes pergunta; o agendar mais rápido
+(leituras em paralelo, CRM e evento em `after()`); o aviso de plano × avulso
+com o mesmo procedimento (D-18); o modelo de retorno com o canal "Aviso no
+celular" na rede sem WhatsApp. Decisões da F10, para revisar: A41 (o desconto é
+de quem vende; as notas do profissional são clínicas) ficou só como regra; a
+divergência mapa × baixa só avisa; 30 min no iniciar; plano × avulso só avisa;
+"WhatsApp conectado" = número ativo na rede.
+
 **F9 feita em 2026-11-03 — clientes, cadastro, importação e o envio que grava uma vez**
 (10093ec9…b50007dd; migrations `20261101000901–904`). Um mecanismo só de
 idempotência: a tela gera uma chave por envio (`lib/use-envio-unico.ts`), o
