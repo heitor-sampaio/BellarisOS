@@ -65,7 +65,7 @@ export async function uploadClientDocument(
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
-  if (!branch) return { error: 'Filial não encontrada.' }
+  if (!branch) return { error: 'Unidade não encontrada.' }
 
   const admin = createAdminClient()
 

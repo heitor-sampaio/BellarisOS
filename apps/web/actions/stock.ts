@@ -405,11 +405,11 @@ async function adminUpdateMinStockInterno(productId: string, branchId: string, m
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
     if (ctx.branchId !== null && branchId !== ctx.branchId)
-      return { error: 'Operação não permitida fora da sua filial.' }
+      return { error: 'Operação não permitida fora da sua unidade.' }
 
     const admin = createAdminClient()
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
-      return { error: 'Produto ou filial não encontrado.' }
+      return { error: 'Produto ou unidade não encontrado.' }
     await gravar(admin.from('branch_product_stock').upsert({
       product_id: productId,
       branch_id:  branchId,
@@ -459,9 +459,9 @@ async function adminAddStockInterno(
     const productId = str(formData, 'productId')
     const branchId  = str(formData, 'branchId')
     if (!productId) return { error: 'Produto não identificado.' }
-    if (!branchId)  return { error: 'Selecione uma filial.' }
+    if (!branchId)  return { error: 'Selecione uma unidade.' }
     if (ctx.branchId !== null && branchId !== ctx.branchId)
-      return { error: 'Operação não permitida fora da sua filial.' }
+      return { error: 'Operação não permitida fora da sua unidade.' }
 
     const qtyRaw = str(formData, 'quantity')
     if (!qtyRaw) return { error: 'Quantidade é obrigatória.' }
@@ -519,9 +519,9 @@ async function adminTransferStockInterno(
     const fromBranchId = str(formData, 'fromBranchId')
     const toBranchId   = str(formData, 'toBranchId')
     if (!productId)    return { error: 'Produto não identificado.' }
-    if (!fromBranchId) return { error: 'Selecione a filial de origem.' }
-    if (!toBranchId)   return { error: 'Selecione a filial de destino.' }
-    if (fromBranchId === toBranchId) return { error: 'Origem e destino devem ser filiais diferentes.' }
+    if (!fromBranchId) return { error: 'Selecione a unidade de origem.' }
+    if (!toBranchId)   return { error: 'Selecione a unidade de destino.' }
+    if (fromBranchId === toBranchId) return { error: 'Origem e destino devem ser unidades diferentes.' }
 
     const qtyRaw = str(formData, 'quantity')
     if (!qtyRaw) return { error: 'Quantidade é obrigatória.' }
@@ -530,10 +530,10 @@ async function adminTransferStockInterno(
 
     const notes = str(formData, 'notes')
     if (ctx.branchId !== null && fromBranchId !== ctx.branchId)
-      return { error: 'Operação não permitida fora da sua filial.' }
+      return { error: 'Operação não permitida fora da sua unidade.' }
     const admin = createAdminClient()
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [fromBranchId, toBranchId])))
-      return { error: 'Produto ou filial não encontrado.' }
+      return { error: 'Produto ou unidade não encontrado.' }
 
     // As duas pernas, os dois saldos e o rendimento numa transação, com as
     // linhas travadas (estoque_transferir, 2026-10-08). Era ler os dois saldos
@@ -585,9 +585,9 @@ async function adminAdjustStockInterno(
     const productId = str(formData, 'productId')
     const branchId  = str(formData, 'branchId')
     if (!productId) return { error: 'Produto não identificado.' }
-    if (!branchId)  return { error: 'Selecione uma filial.' }
+    if (!branchId)  return { error: 'Selecione uma unidade.' }
     if (ctx.branchId !== null && branchId !== ctx.branchId)
-      return { error: 'Operação não permitida fora da sua filial.' }
+      return { error: 'Operação não permitida fora da sua unidade.' }
 
     const reason = str(formData, 'reason')
     if (!reason) return { error: 'Motivo do ajuste é obrigatório.' }
@@ -641,8 +641,8 @@ async function registrarPerdaInterno(
   const branchId  = str(formData, 'branchId')
   const loteId    = str(formData, 'loteId')
   if (!productId) return { error: 'Produto não identificado.' }
-  if (!branchId)  return { error: 'Selecione uma filial.' }
-  if (!alcancaUnidade(ctx, branchId)) return { error: 'Operação não permitida fora da sua filial.' }
+  if (!branchId)  return { error: 'Selecione uma unidade.' }
+  if (!alcancaUnidade(ctx, branchId)) return { error: 'Operação não permitida fora da sua unidade.' }
   const motivo = lerMotivoDaPerda(str(formData, 'motivo'))
   if (!motivo) return { error: 'Escolha o motivo da perda.' }
   const qtd = num(formData, 'quantity')
@@ -650,7 +650,7 @@ async function registrarPerdaInterno(
 
   const admin = createAdminClient()
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
-    return { error: 'Produto ou filial não encontrado.' }
+    return { error: 'Produto ou unidade não encontrado.' }
 
   const { error } = await admin.rpc('estoque_perda_em', {
     p_produto: productId, p_unidade: branchId, p_lote: loteId, p_quantidade: qtd,

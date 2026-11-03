@@ -1693,7 +1693,7 @@ export async function createClientAppointment(params: {
       .eq('tenant_id', cliente.tenant_id as string)
       .eq('is_active', true)
       .maybeSingle(), 'buscar a unidade')
-    if (!branch) return { error: 'Filial não encontrada.' }
+    if (!branch) return { error: 'Unidade não encontrada.' }
 
     // Catálogo da rede (branch_id nulo) ou local da unidade, ativo e marcado
     // para o app — a mesma consulta da página.

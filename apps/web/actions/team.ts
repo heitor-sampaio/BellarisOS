@@ -34,7 +34,7 @@ function resolveScope(
   }
   // Filial
   if (isNetworkWide) {
-    if (!branchId) return { error: 'Selecione a filial.' }
+    if (!branchId) return { error: 'Selecione a unidade.' }
     return { branchId }
   }
   // Quem é de uma filial só mexe na própria

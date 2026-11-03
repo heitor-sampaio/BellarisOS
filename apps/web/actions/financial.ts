@@ -47,15 +47,15 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
 
     const branchId      = str(formData, '_branchId')
     const slug          = str(formData, '_slug') ?? ''
-    if (!branchId) return { error: 'Filial não identificada.' }
+    if (!branchId) return { error: 'Unidade não identificada.' }
 
     // A unidade vem do formulário. Sem conferir, o lançamento caía na unidade
     // de QUALQUER rede — e quem é de unidade lançava na unidade vizinha.
-    if (ctx.branchId !== null && branchId !== ctx.branchId) return { error: 'Filial não identificada.' }
+    if (ctx.branchId !== null && branchId !== ctx.branchId) return { error: 'Unidade não identificada.' }
     const unidade = await ler(createAdminClient()
       .from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
       'conferir a unidade do lançamento')
-    if (!unidade) return { error: 'Filial não identificada.' }
+    if (!unidade) return { error: 'Unidade não identificada.' }
 
     const type          = str(formData, 'type') as 'INCOME' | 'EXPENSE' | null
     const category      = str(formData, 'category')

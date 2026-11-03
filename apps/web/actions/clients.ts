@@ -125,7 +125,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   }
 
   const branch   = await resolveBranch(ctx.tenantId!, branchId)
-  if (!branch) return { error: 'Filial inválida.' }
+  if (!branch) return { error: 'Unidade inválida.' }
 
   // "Reativar a ficha de X" (A20): a ficha arquivada do telefone volta como
   // está — o que se digitou aqui não é gravado —, ligada ao card ou à conversa
@@ -496,7 +496,7 @@ async function concederCredito(ctx: TenantContext, formData: FormData): Promise<
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
-  if (!branch) return { error: 'Filial não encontrada.' }
+  if (!branch) return { error: 'Unidade não encontrada.' }
 
   const admin = createAdminClient()
 
