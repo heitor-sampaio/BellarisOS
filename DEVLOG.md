@@ -9128,7 +9128,26 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
-**F7c feita em 2026-11-03 — o WhatsApp oficial (achados do Heitor de 02/11) e a F7b**
+**F8 feita em 2026-11-02 — a clínica de uma unidade não fala "rede", e o caminho das salas**
+(38337b12…25da9c7b; migration `20261101000801`, só a semente das categorias).
+Com UMA unidade, o /admin diz "CLÍNICA" no menu, "Admin" no cargo (a chave
+`NETWORK_ADMIN` é a mesma), "2 membros em toda a clínica", "1 ativo · 0
+inativos · catálogo da clínica", "Estoque da clínica", "Preferências globais da
+clínica"; os seletores de unidade (estoque, equipe, lançamento) já vêm
+preenchidos, e o Novo procedimento e o checkout escondem a unidade. Com a
+segunda unidade o vocabulário de rede volta (`lib/unidades/vocabulario.ts`,
+`UmaUnidadeProvider` nos dois layouts). "Filial" virou "unidade" em toda tela.
+As salas ficam em Configurações → Unidades (a busca "salas" leva ao cartão);
+"endereço" no lugar de "slug"; rótulos ligados aos campos; insumo "380,00";
+exemplos neutros nos campos; "Novo cliente"; a rede nova nasce com a categoria
+"Avaliação"; o F5 no passo da unidade do setup guarda o que foi digitado; os
+itens do menu são links (Ctrl+clique abre aba nova). O spec
+`rede-de-uma-unidade` voltou a passar. Decisões da F8, para revisar: "Admin" e
+não "Administradora"; "Avaliação" só na rede nova; o rascunho do setup no
+sessionStorage da aba; as recusas do servidor ainda dizem "Admin da rede"; o
+"Consolidado" do mapa ficou.
+
+**F7c feita em 2026-11-02 — o WhatsApp oficial (achados do Heitor de 02/11) e a F7b**
 (c9413ef1…75d70082; migrations `20261102000701–702`). Remover um número com
 conversas junta as que colidiriam (a mais antiga fica, com as mensagens e as
 oportunidades; `juntar_conversas_do_numero`), também no WhatsApp Web, que
