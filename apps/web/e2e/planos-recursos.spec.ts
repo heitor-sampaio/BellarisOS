@@ -199,9 +199,9 @@ test.describe.serial('o plano corta módulos inteiros na clínica — inclusive 
     await comSessao(browser, dono!.estado, async p => {
       await p.goto('/admin/dashboard')
       const menu = p.getByRole('complementary').getByRole('navigation')
-      await expect(menu.getByRole('button', { name: 'Agenda', exact: true })).toBeVisible()
-      await expect(menu.getByRole('button', { name: 'Estoque', exact: true })).toHaveCount(0)
-      await expect(menu.getByRole('button', { name: 'Automações', exact: true })).toHaveCount(0)
+      await expect(menu.getByRole('link', { name: 'Agenda', exact: true })).toBeVisible()
+      await expect(menu.getByRole('link', { name: 'Estoque', exact: true })).toHaveCount(0)
+      await expect(menu.getByRole('link', { name: 'Automações', exact: true })).toHaveCount(0)
 
       await p.goto('/admin/estoque')
       if (new URL(p.url()).pathname === '/admin/estoque') await expect(p.getByText(SEM_ACESSO)).toBeVisible()
@@ -226,7 +226,7 @@ test.describe.serial('o plano corta módulos inteiros na clínica — inclusive 
         ['00000000-0000-4000-8000-000000000000', outra.branchId, 9])
       // Passou da trava: chega à conferência do produto (que não existe).
       expect(r.texto).not.toMatch(/BELLARIS_SEM_ACESSO|Forbidden|Seu cargo não libera/)
-      expect(r.texto).toContain('Produto ou filial não encontrado')
+      expect(r.texto).toContain('Produto ou unidade não encontrado')
     })
   })
 })
@@ -295,7 +295,7 @@ test.describe.serial('o plano corta o que é parte de um módulo — inclusive p
         await p.goto('/admin/dashboard')
         const menu = p.getByRole('complementary').getByRole('navigation')
         for (const s of SUBFUNCIONALIDADES.filter(x => x.menu)) {
-          await expect(menu.getByRole('button', { name: s.menu!, exact: true }), `menu: ${s.chave}`).toHaveCount(comPlano ? 1 : 0)
+          await expect(menu.getByRole('link', { name: s.menu!, exact: true }), `menu: ${s.chave}`).toHaveCount(comPlano ? 1 : 0)
         }
         for (const s of SUBFUNCIONALIDADES.filter(x => x.tela)) {
           await p.goto(s.tela!)

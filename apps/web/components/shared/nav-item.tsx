@@ -1,6 +1,7 @@
 'use client'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useTransition, type ReactNode } from 'react'
+import { useState, useTransition, type MouseEvent, type ReactNode } from 'react'
+import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { emitNavStart } from '@/components/shared/navigation-progress'
 import { useSidebar } from '@/components/shared/sidebar-context'
@@ -24,7 +25,13 @@ export function NavItem({ icon, label, href }: NavItemProps) {
   const active     = pathname === href || pathname.startsWith(href + '/')
   const showActive = active || isPending
 
-  function handleClick() {
+  // É um LINK (A2 da 5ª simulação, 2026-11-02): o botão não abria em nova aba.
+  // O clique comum segue pela transição (a barra de progresso e o realce
+  // enquanto a página chega); com Ctrl/Cmd/Shift ou o botão do meio, o
+  // navegador abre a aba nova, como em qualquer link.
+  function handleClick(e: MouseEvent<HTMLAnchorElement>) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    e.preventDefault()
     if (active && !isPending) return
     emitNavStart()
     startT(() => router.push(href))
@@ -54,8 +61,10 @@ export function NavItem({ icon, label, href }: NavItemProps) {
     : 'none'
 
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
+      prefetch={false}
+      aria-current={active ? 'page' : undefined}
       onClick={handleClick}
       title={collapsed ? label : undefined}
       onMouseEnter={() => setHover(true)}
@@ -77,6 +86,7 @@ export function NavItem({ icon, label, href }: NavItemProps) {
         fontSize:       'var(--text-sm-sz)',
         fontWeight:     'var(--weight-bold)',
         border:         'none',
+        textDecoration: 'none',
         cursor:         active && !isPending ? 'default' : 'pointer',
         width:          '100%',
         textAlign:      'left',
@@ -102,6 +112,6 @@ export function NavItem({ icon, label, href }: NavItemProps) {
       }}>
         {label}
       </span>
-    </button>
+    </Link>
   )
 }

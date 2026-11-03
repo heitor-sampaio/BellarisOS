@@ -14,7 +14,8 @@ import { test, expect, type Page } from '@playwright/test'
 
 const menu = (page: Page) => page.locator('aside.main-sidebar nav')
 const titulo = (page: Page, nome: string) => menu(page).getByRole('button', { name: nome, exact: true })
-const item = (page: Page, nome: string) => menu(page).getByRole('button', { name: nome, exact: true })
+// Os itens são LINKS (A2 da 5ª simulação): dá para abrir em nova aba.
+const item = (page: Page, nome: string) => menu(page).getByRole('link', { name: nome, exact: true })
 
 test('fechar a categoria esconde os itens, sobrevive à recarga e deixa a página aberta à mostra', async ({ page }) => {
   await page.goto('/admin/dashboard')
@@ -41,6 +42,14 @@ test('fechar a categoria esconde os itens, sobrevive à recarga e deixa a págin
   await titulo(page, 'Vendas').click()
   await expect(titulo(page, 'Vendas')).toHaveAttribute('aria-expanded', 'true')
   await expect(item(page, 'Inbox')).toBeVisible()
+})
+
+test('os itens do menu são links de verdade: abrem em nova aba e navegam no clique (A2)', async ({ page }) => {
+  await page.goto('/admin/dashboard')
+  await expect(item(page, 'Agenda')).toHaveAttribute('href', '/admin/agenda')
+  await expect(item(page, 'Dashboard')).toHaveAttribute('aria-current', 'page')
+  await item(page, 'Agenda').click()
+  await expect(page).toHaveURL(/\/admin\/agenda/)
 })
 
 test.describe('no celular', () => {
