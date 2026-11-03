@@ -138,7 +138,7 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   opção (o "Cancelar" fica), e a escolhida vai ao `efetivar(c, payload,
   escolha)` — o executor recusa confirmar sem uma das opções do cartão. É o
   "Já existe a ficha de X" de `cadastrar_cliente` e do `agendar` com cliente
-  novo: "Cadastrar mesmo assim" e "Atualizar a ficha de X" (o mesmo
+  novo: "Cadastrar mesmo assim" e "Unificar com a ficha de X" (o mesmo
   `garantirClienteRapido` com `jaExiste`, `crm-inbox.md`). Prova: o caso
   r2-cli-01 de `e2e/copilot-gravacoes.spec.ts` (contra o build).
 - **O resumo do cartão volta ao modelo com o CPF mascarado**

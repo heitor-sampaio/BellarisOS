@@ -132,7 +132,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
     return null
   }
   const doEnvio = perguntaDe(state)
-  const pergunta = doEnvio ?? perguntaDe(digitos ? previa : null)
+  // Gravado, nenhuma pergunta: a conferência que chega DEPOIS do cadastro acharia a própria ficha nova.
+  const pergunta = state?.success ? null : doEnvio ?? perguntaDe(digitos ? previa : null)
 
   // A pergunta que veio do clique em "Cadastrar" aparece onde a pessoa está olhando.
   useEffect(() => {
@@ -160,7 +161,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   function reativar(id: string) {
     if (formRef.current) mandar(new FormData(formRef.current), { _arquivada: `reativar:${id}` }, false)
   }
-  /** "Atualizar a ficha de X" (r2-cli-01): envia já, com o que está no formulário, e abre a ficha. */
+  /** "Unificar com a ficha de X" (r2-cli-01, r3-f14-02): envia já, com o que está no formulário, e abre a ficha. */
   function atualizar(id: string) {
     if (formRef.current) mandar(new FormData(formRef.current), { _jaExiste: `atualizar:${id}` }, false)
   }
@@ -469,7 +470,7 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
   }
   if (pergunta.tipo === 'jaExiste') {
     // r2-cli-01 (o Heitor, 2026-11-03): já existe — cadastrar mesmo assim, ou
-    // atualizar a ficha que existe. Pelo CPF, só atualizar: o CPF é único.
+    // unificar com a ficha que existe (r3-f14-02). Pelo CPF, só unificar: o CPF é único.
     return (
       <div role="alert" data-ja-existe style={caixaDaPergunta}>
         <span>
@@ -483,11 +484,11 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
             </button>
           )}
           <button type="button" className="btn-secondary" disabled={pending} onClick={() => atualizar(pergunta.id)}>
-            Atualizar a ficha de {pergunta.nome}
+            Unificar com a ficha de {pergunta.nome}
           </button>
         </span>
         <span style={explicacao}>
-          Atualizar grava na ficha dela só o que foi preenchido aqui, sem apagar o que ela já tem (as observações se somam), e abre a ficha.
+          Unificar grava na ficha dela só o que foi preenchido aqui, sem apagar o que ela já tem (as observações se somam, as tags se juntam); o nome continua o da ficha. Depois, abre a ficha.
         </span>
       </div>
     )

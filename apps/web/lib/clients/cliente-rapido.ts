@@ -128,14 +128,14 @@ export async function garantirClienteRapido(
 
   const escolhida = resposta.atualizar ? jaExistem.find(f => f.id.toLowerCase() === resposta.atualizar) : null
   if (escolhida) {
-    // "Reativar a ficha de X" (a arquivada volta) / "Atualizar a ficha de X".
+    // "Reativar a ficha de X" (a arquivada volta) / "Unificar com a ficha de X" (sem trocar o nome dela, r3-f14-01).
     if (escolhida.arquivada) {
       await gravar(admin.from('clients').update({ is_active: true, updated_at: new Date().toISOString() })
         .eq('id', escolhida.id).eq('tenant_id', ctx.tenantId!).select('id').single(), 'reativar a ficha')
       await emitirEventoDeCliente(EVENTOS.CLIENTE_REATIVADO, escolhida.id, ctx)
     }
     const r = await atualizarFichaComOPreenchido(admin, ctx, escolhida.id, {
-      name: nome, phone: telefone, email: input.complemento?.email ?? null,
+      phone: telefone, email: input.complemento?.email ?? null,
       documento: input.complemento?.document ? { document: input.complemento.document, documento_tipo: null, documento_numero: null } : null,
       birth_date: input.complemento?.birthDate ?? null,
     })

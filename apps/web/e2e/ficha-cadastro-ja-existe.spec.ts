@@ -13,9 +13,12 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  * existente". Mesmo CPF, mesmo telefone, ou mesmo nome com a mesma data de
  * nascimento:
  * - nada se grava;
- * - "Já existe a ficha de X…", com "Cadastrar mesmo assim" e "Atualizar a ficha
- *   de X" — esta grava na ficha existente só o que foi preenchido agora, sem
- *   apagar o que está lá, e abre a ficha.
+ * - "Já existe a ficha de X…", com "Cadastrar mesmo assim" e "Unificar com a
+ *   ficha de X" — esta grava na ficha existente só o que foi preenchido agora,
+ *   sem apagar o que está lá, e abre a ficha (r3-f14-02, o Heitor: "Vamos
+ *   nomear esse procedimento de 'mesclar' ou 'unificar', assim fica mais claro
+ *   o que vai acontecer"). O NOME da ficha nunca muda por aqui (r3-f14-01): só
+ *   editando a ficha.
  * Substitui a trava calada dos 60 s: sem chave, o segundo envio também cai na
  * pergunta. Vale para o formulário e para o "+ Agendar" com nome e telefone.
  * Numa rede [e2e] própria.
@@ -81,23 +84,28 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('o mesmo telefone: "Já existe a ficha de X", nada se grava; "Atualizar a ficha" grava só o preenchido, sem apagar o que ela tem, e abre a ficha', async ({ browser }) => {
+test('o mesmo telefone: "Já existe a ficha de X", nada se grava; "Unificar com a ficha" grava só o preenchido, sem apagar o que ela tem nem trocar o nome, e abre a ficha', async ({ browser }) => {
   const fone = telefone()
   const valdir = nome('Valdir')
   const id = await ficha(valdir, fone, { document: '52998224725', birth_date: '1980-01-01', notes: 'Prefere manhã' })
   await como(browser, async p => {
-    await digitar(p, valdir, fone)
+    // Digitado às pressas, "Valdir S." — o nome da ficha não muda (r3-f14-01).
+    await digitar(p, nome('Valdir S.'), fone)
     const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toContainText(`Já existe a ficha de ${valdir} com este telefone.`)
     await expect(aviso.getByRole('button', { name: 'Cadastrar mesmo assim' })).toBeVisible()
+    await expect(aviso, 'o texto diz o que unificar faz, e que o nome fica').toContainText('Unificar grava na ficha dela')
+    await expect(aviso).toContainText('o nome continua o da ficha')
     expect(await fichasDe(valdir), 'nada se grava antes da resposta').toHaveLength(1)
     await p.locator('input[name="email"]').fill(`je${marca}@bellaris.invalid`)
     await p.locator('textarea[name="notes"]').fill('Alérgica a látex')
-    await aviso.getByRole('button', { name: `Atualizar a ficha de ${valdir}` }).click()
+    await aviso.getByRole('button', { name: `Unificar com a ficha de ${valdir}` }).click()
     await expect(p).toHaveURL(new RegExp(`/clients/${id}`))
   })
   expect(await fichasDe(valdir), 'nenhuma ficha nova').toHaveLength(1)
-  const { data } = await db().from('clients').select('email, notes, birth_date, document').eq('id', id).single()
+  expect(await fichasDe(nome('Valdir S.')), 'nenhuma ficha com o nome digitado').toHaveLength(0)
+  const { data } = await db().from('clients').select('name, email, notes, birth_date, document').eq('id', id).single()
+  expect(data!.name, 'o nome da ficha não muda pelo unificar (r3-f14-01)').toBe(valdir)
   expect(data!.email, 'o e-mail preenchido agora entra').toBe(`je${marca}@bellaris.invalid`)
   expect(data!.notes, 'as observações somam').toBe('Prefere manhã\nAlérgica a látex')
   expect(String(data!.birth_date).slice(0, 10), 'o nascimento em branco não apaga o dela').toBe('1980-01-01')
@@ -138,7 +146,7 @@ test('o mesmo nome com a mesma data de nascimento, de outro telefone, também pe
   expect(await fichasDe(rosa), 'a pessoa decidiu: duas fichas').toHaveLength(2)
 })
 
-test('o mesmo CPF: só "Atualizar a ficha" — o CPF é único na clínica', async ({ browser }) => {
+test('o mesmo CPF: só "Unificar com a ficha" — o CPF é único na clínica', async ({ browser }) => {
   const dono = nome('dona do CPF')
   const id = await ficha(dono, telefone(), { document: '39053344705' })
   await como(browser, async p => {
@@ -148,13 +156,13 @@ test('o mesmo CPF: só "Atualizar a ficha" — o CPF é único na clínica', asy
     const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toContainText(`Já existe a ficha de ${dono} com este CPF.`)
     await expect(aviso.getByRole('button', { name: 'Cadastrar mesmo assim' })).toHaveCount(0)
-    await aviso.getByRole('button', { name: `Atualizar a ficha de ${dono}` }).click()
+    await aviso.getByRole('button', { name: `Unificar com a ficha de ${dono}` }).click()
     await expect(p).toHaveURL(new RegExp(`/clients/${id}`))
   })
   const { data: doCpf } = await db().from('clients').select('id, name').eq('tenant_id', rede!.tenantId).eq('document', '39053344705')
-  // Uma ficha só, a que existia — com o nome preenchido agora (o "Atualizar"
-  // grava o que foi preenchido; decisão da F14, para o Heitor revisar).
-  expect(doCpf, 'nenhuma ficha nova').toEqual([{ id, name: nome('outro nome') }])
+  // Uma ficha só, a que existia — com o nome DELA: o nome digitado às pressas
+  // costuma ser o pior, e quem quer renomear abre a ficha (r3-f14-01).
+  expect(doCpf, 'nenhuma ficha nova, e o nome não muda').toEqual([{ id, name: dono }])
 })
 
 test('sem a chave da tela, o segundo envio do mesmo cadastro também pergunta — não vira o mesmo cadastro calado (era a trava dos 60 s)', async ({ browser }) => {
@@ -171,7 +179,7 @@ test('sem a chave da tela, o segundo envio do mesmo cadastro também pergunta �
   expect(await fichasDe(n)).toHaveLength(1)
 })
 
-test('o "+ Agendar" com nome e telefone de quem já tem ficha pergunta — "Atualizar a ficha" agenda nela, sem ficha nova', async ({ browser }) => {
+test('o "+ Agendar" com nome e telefone de quem já tem ficha pergunta — "Unificar com a ficha" agenda nela, sem ficha nova', async ({ browser }) => {
   const fone = telefone()
   const marli = nome('Marli')
   const id = await ficha(marli, fone)
@@ -193,7 +201,7 @@ test('o "+ Agendar" com nome e telefone de quem já tem ficha pergunta — "Atua
     await expect(aviso).toContainText(`Já existe a ficha de ${marli} com este telefone.`)
     await expect(aviso.getByRole('button', { name: 'Cadastrar mesmo assim' })).toBeVisible()
     expect((await db().from('appointments').select('id').eq('client_id', id)).data ?? [], 'nada agendado antes da resposta').toHaveLength(0)
-    await aviso.getByRole('button', { name: `Atualizar a ficha de ${marli}` }).click()
+    await aviso.getByRole('button', { name: `Unificar com a ficha de ${marli}` }).click()
     await expect(modal).toBeHidden()
   })
   const { data: ags } = await db().from('appointments').select('id').eq('client_id', id)
@@ -202,7 +210,7 @@ test('o "+ Agendar" com nome e telefone de quem já tem ficha pergunta — "Atua
   expect(await fichasDe(marli), 'nenhuma ficha nova').toHaveLength(1)
 })
 
-test('o agendar pelo CRM com nome e telefone de quem já tem ficha também pergunta; respondido "Atualizar", agenda nela', async ({ browser }) => {
+test('o agendar pelo CRM com nome e telefone de quem já tem ficha também pergunta; respondido "Unificar", agenda nela', async ({ browser }) => {
   const fone = telefone()
   const lia = nome('Lia')
   const id = await ficha(lia, fone)

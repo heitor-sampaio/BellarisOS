@@ -60,13 +60,18 @@
     e a leitura da resposta em `ja-existe-texto.ts`): nada se grava, e aparece
     "Já existe a ficha de Valdir com este telefone." com "Cadastrar mesmo
     assim" (`_jaExiste=cadastrar:<id>`, vale para AQUELA ficha e se acumula —
-    mãe e filha dividem número) e "Atualizar a ficha de Valdir"
-    (`atualizar:<id>`): grava na ficha existente SÓ o que foi preenchido
-    agora, sem apagar o que está lá (`atualizarFichaComOPreenchido`: o campo
-    vazio não mexe no dela, o preenchido toma o lugar — o nome também —, as
-    observações se SOMAM, as tags se juntam, o CPF diferente do que ela tem é
-    recusado), liga o card ou a conversa e abre a ficha. Pelo CPF, só
-    "Atualizar" (o CPF é único; o de uma ficha ARQUIVADA é recusado com o
+    mãe e filha dividem número) e **"Unificar com a ficha de Valdir"**
+    (`atualizar:<id>`; era "Atualizar a ficha", e o Heitor, em 2026-11-03:
+    "Vamos nomear esse procedimento de 'mesclar' ou 'unificar', assim fica
+    mais claro o que vai acontecer" — r3-f14-02): grava na ficha existente SÓ
+    o que foi preenchido agora, sem apagar o que está lá
+    (`atualizarFichaComOPreenchido`: o campo vazio não mexe no dela, o
+    preenchido toma o lugar, as observações se SOMAM, as tags se juntam, o CPF
+    diferente do que ela tem é recusado), liga o card ou a conversa e abre a
+    ficha. **O NOME da ficha nunca muda por aqui** (r3-f14-01, escolha do
+    Heitor: o nome digitado às pressas costuma ser o pior; renomear é editando
+    a ficha) — `PreenchidoAgora` nem tem o campo. Pelo CPF, só
+    "Unificar" (o CPF é único; o de uma ficha ARQUIVADA é recusado com o
     caminho da busca). Substituiu a pergunta da ficha rápida ("É a mesma
     pessoa?", de 2026-10-29) e o aviso da outra cliente do telefone (D13).
     Vale em TODO caminho de cadastro: o formulário (e o do inbox), o "+

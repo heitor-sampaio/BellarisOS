@@ -73,12 +73,12 @@ export function telefoneDoCopilot(texto: string): { digitos: string; gravar: str
 }
 
 interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; nascimento?: string; unidade?: string; criar_acesso?: boolean }
-interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean; jaExisteId?: string }
+interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean; jaExisteId?: string; jaExisteNome?: string }
 
 /**
  * As escolhas do cartão quando a ficha JÁ EXISTE (r2-cli-01, o Heitor em
  * 2026-11-03: "no Copilot, o cartão de confirmação mostra a mesma pergunta"):
- * "Cadastrar mesmo assim" (não no CPF: é único) e "Atualizar a ficha de X"
+ * "Cadastrar mesmo assim" (não no CPF: é único) e "Unificar com a ficha de X"
  * (ou "Reativar", na arquivada).
  */
 export function escolhasDaFichaQueJaExiste(f: FichaQueJaExiste) {
@@ -95,7 +95,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
   nome: 'cadastrar_cliente',
   tipo: 'escrita',
   modulo: 'clients', nivel: 'MANAGE',
-  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e CPF; a senha inicial é o CPF). Se já existir a ficha (mesmo CPF, mesmo telefone, ou mesmo nome e nascimento), o cartão pergunta à pessoa: cadastrar mesmo assim ou atualizar a ficha que existe.',
+  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e CPF; a senha inicial é o CPF). Se já existir a ficha (mesmo CPF, mesmo telefone, ou mesmo nome e nascimento), o cartão pergunta à pessoa: cadastrar mesmo assim ou unificar com a ficha que existe.',
   parametros: z.object({
     nome: z.string().min(2).max(120),
     telefone: z.string().min(8).max(24),
@@ -123,7 +123,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
       resumo: {
         titulo: 'Cadastrar cliente',
         ...(jaExiste ? {
-          aviso: `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: cadastre mesmo assim ou atualize a ficha que existe (só o que foi informado agora muda; nada dela se apaga).`,
+          aviso: `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: cadastre mesmo assim ou unifique com a ficha que existe (só o que foi informado agora entra nela; nada dela se apaga, e o nome continua o dela).`,
           escolhas: escolhasDaFichaQueJaExiste(jaExiste),
         } : {}),
         linhas: [
@@ -138,13 +138,13 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
         nome: a.nome.trim(), telefone, branchId: u.unidade!.id,
         email: emailNormalizado(a.email), cpf: a.cpf?.replace(/\D/g, '') || null, nascimento: a.nascimento ?? null,
         ...(a.criar_acesso ? { criarAcesso: true } : {}),
-        ...(jaExiste ? { jaExisteId: jaExiste.id } : {}),
+        ...(jaExiste ? { jaExisteId: jaExiste.id, jaExisteNome: jaExiste.nome } : {}),
       },
     }
   },
   async efetivar(c, p, escolha) {
     // A ficha que já existia: a escolha do cartão decide (r2-cli-01).
-    if (p.jaExisteId && escolha !== 'cadastrar' && escolha !== 'atualizar') return { erro: 'Escolha no cartão: cadastrar mesmo assim ou atualizar a ficha.' }
+    if (p.jaExisteId && escolha !== 'cadastrar' && escolha !== 'atualizar') return { erro: 'Escolha no cartão: cadastrar mesmo assim ou unificar com a ficha que existe.' }
     // Num insert só: e-mail, CPF e nascimento entram junto (sem update depois).
     const r = await garantirClienteRapido(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, branchId: p.branchId,
@@ -155,7 +155,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     if (r.error || !r.clientId) return { erro: r.error ?? 'Não foi possível cadastrar.' }
     if (!r.criado) revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     if (!r.criado && !p.criarAcesso) {
-      return { mensagem: `A ficha de ${p.nome} foi atualizada (nada dela se apagou).`, href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+      return { mensagem: `Unificado com a ficha de ${p.jaExisteNome ?? p.nome}: o que foi informado entrou nela, nada dela se apagou, e o nome continua o dela.`, href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
     }
     revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     const ficha = { href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }

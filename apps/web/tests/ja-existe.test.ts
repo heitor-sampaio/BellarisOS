@@ -14,8 +14,8 @@ describe('a pergunta "Já existe a ficha de X"', () => {
     expect(textoDaFichaQueJaExiste(ficha(A, { motivo: 'NOME_E_NASCIMENTO' }))).toBe('Já existe a ficha de Valdir com este nome e esta data de nascimento.')
     expect(textoDaFichaQueJaExiste(ficha(A, { arquivada: true }))).toBe('Já existe a ficha ARQUIVADA de Valdir com este telefone.')
   })
-  it('o botão: "Atualizar a ficha de X", ou "Reativar" na arquivada', () => {
-    expect(rotuloDoAtualizar(ficha(A))).toBe('Atualizar a ficha de Valdir')
+  it('o botão: "Unificar com a ficha de X" (r3-f14-02), ou "Reativar" na arquivada', () => {
+    expect(rotuloDoAtualizar(ficha(A))).toBe('Unificar com a ficha de Valdir')
     expect(rotuloDoAtualizar(ficha(A, { arquivada: true }))).toBe('Reativar a ficha de Valdir')
   })
   it('lê a resposta: cadastrar se acumula, atualizar é uma', () => {

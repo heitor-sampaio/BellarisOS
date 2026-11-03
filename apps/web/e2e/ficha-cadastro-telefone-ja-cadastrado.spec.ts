@@ -9,7 +9,7 @@ import { apagarClientes } from './apoio/limpeza'
  * - A20: o telefone de uma ficha ARQUIVADA não avisava — e virou o "Valdir
  *   Duplicado" (D10). Agora avisa e oferece "Reativar a ficha de …".
  * - A18: a pergunta do telefone (desde o r2-cli-01, 2026-11-03, "Já existe a
- *   ficha de X", com "Cadastrar mesmo assim" e "Atualizar a ficha") só aparecia depois do
+ *   ficha de X", com "Cadastrar mesmo assim" e "Unificar com a ficha") só aparecia depois do
  *   primeiro "Cadastrar", no pé da página, com a página rolada para cima — o
  *   clique parecia não fazer nada. Agora aparecem JUNTO ao telefone, assim que
  *   ele está completo, antes do clique.
@@ -118,7 +118,7 @@ test('A18: "Já existe a ficha de X" aparece junto ao telefone, antes do clique 
   })
 })
 
-test('A18: a ficha rápida também pergunta antes do clique; "Atualizar a ficha" completa a ficha dela', async ({ browser }) => {
+test('A18: a ficha rápida também pergunta antes do clique; "Unificar com a ficha" completa a ficha dela', async ({ browser }) => {
   const fone = telefone()
   const rapida = nome('rápida')
   const id = await ficha(rapida, fone, { document: null })
@@ -127,7 +127,7 @@ test('A18: a ficha rápida também pergunta antes do clique; "Atualizar a ficha"
     const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toBeVisible()
     await p.locator('input[name="email"]').fill(`e2e-tj${marca}@bellaris.invalid`)
-    await aviso.getByRole('button', { name: `Atualizar a ficha de ${rapida}` }).click()
+    await aviso.getByRole('button', { name: `Unificar com a ficha de ${rapida}` }).click()
     await expect(p).toHaveURL(new RegExp(`/clients/${id}`))
   })
   expect((await fichasDe(rapida)).length).toBe(1)

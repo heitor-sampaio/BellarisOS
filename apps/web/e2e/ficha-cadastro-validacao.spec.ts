@@ -167,9 +167,10 @@ test('o telefone de outro país de outra cliente também pergunta', async ({ bro
 // Decisão do Heitor (frente de cadastro, 2026-10-29): o cadastro completo que
 // acha uma ficha RÁPIDA (sem CPF, a do "agendar com nome e telefone") do mesmo
 // telefone a completava calado. Pergunta — desde o r2-cli-01 (03/11) com a
-// pergunta de toda ficha que já existe: "Atualizar a ficha de X" completa
-// aquela ficha; "Cadastrar mesmo assim" cria outra.
-test('a ficha rápida do mesmo telefone: "Atualizar a ficha de X" completa a ficha dela', async ({ browser }) => {
+// pergunta de toda ficha que já existe: "Unificar com a ficha de X" completa
+// aquela ficha, sem trocar o nome dela (r3-f14-01); "Cadastrar mesmo assim"
+// cria outra.
+test('a ficha rápida do mesmo telefone: "Unificar com a ficha de X" completa a ficha dela, e o nome continua o dela', async ({ browser }) => {
   const fone = telefone('0003')
   const { data: rapida, error } = await db().from('clients').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('rápida sim'), phone: fone, is_active: true,
@@ -185,12 +186,12 @@ test('a ficha rápida do mesmo telefone: "Atualizar a ficha de X" completa a fic
     expect(antes?.id, 'perguntar não completa nada').toBe(rapida!.id)
     expect(await fichasDe(nome('completa sim'))).toEqual([])
 
-    await pergunta.getByRole('button', { name: `Atualizar a ficha de ${nome('rápida sim')}` }).click()
+    await pergunta.getByRole('button', { name: `Unificar com a ficha de ${nome('rápida sim')}` }).click()
     await expect(p).toHaveURL(new RegExp(`/admin/clients/${rapida!.id}`))
   })
-  const [completa] = await fichasDe(nome('completa sim'))
-  expect(completa?.id, 'a ficha rápida foi completada, não duplicada').toBe(rapida!.id)
-  expect(await fichasDe(nome('rápida sim'))).toEqual([])
+  const [completa] = await fichasDe(nome('rápida sim'))
+  expect(completa?.id, 'a ficha rápida foi completada, não duplicada, e o nome continua o dela').toBe(rapida!.id)
+  expect(await fichasDe(nome('completa sim'))).toEqual([])
 })
 
 test('a ficha rápida do mesmo telefone: "Cadastrar mesmo assim" cria uma ficha nova e deixa a rápida como está', async ({ browser }) => {

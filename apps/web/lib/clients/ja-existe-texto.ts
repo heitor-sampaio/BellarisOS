@@ -15,7 +15,7 @@ export interface FichaQueJaExiste {
   /**
    * A ficha é ARQUIVADA (só nos caminhos rápidos — o "+ Agendar", o CRM, o
    * Copilot —, que não têm a pergunta própria da arquivada do formulário):
-   * "Atualizar" a reativa antes (r2-cli-02: a arquivada continua com "Reativar").
+   * "Unificar" a reativa antes (r2-cli-02: a arquivada continua com "Reativar").
    */
   arquivada?: boolean
 }
@@ -28,9 +28,14 @@ export function textoDaFichaQueJaExiste(f: Pick<FichaQueJaExiste, 'nome' | 'moti
   return `Já existe a ficha${f.arquivada ? ' ARQUIVADA' : ''} de ${f.nome} ${porque}.`
 }
 
-/** O botão que usa a ficha que existe: "Atualizar a ficha de X" — ou, na arquivada, "Reativar a ficha de X". */
+/**
+ * O botão que usa a ficha que existe: "Unificar com a ficha de X" (r3-f14-02,
+ * o Heitor: "Vamos nomear esse procedimento de 'mesclar' ou 'unificar', assim
+ * fica mais claro o que vai acontecer"; era "Atualizar a ficha de X") — ou, na
+ * arquivada, "Reativar a ficha de X".
+ */
 export function rotuloDoAtualizar(f: Pick<FichaQueJaExiste, 'nome' | 'arquivada'>): string {
-  return `${f.arquivada ? 'Reativar' : 'Atualizar'} a ficha de ${f.nome}`
+  return f.arquivada ? `Reativar a ficha de ${f.nome}` : `Unificar com a ficha de ${f.nome}`
 }
 
 /**

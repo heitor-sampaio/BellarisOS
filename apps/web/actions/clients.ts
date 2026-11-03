@@ -173,7 +173,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
 
   // O CPF é único na clínica: o de uma ficha ARQUIVADA não se cadastra de novo
   // (a busca acha a arquivada, com "Reativar"). O de uma ficha ativa cai na
-  // pergunta "Já existe a ficha de X" logo abaixo, só com "Atualizar a ficha".
+  // pergunta "Já existe a ficha de X" logo abaixo, só com "Unificar com a ficha".
   const doCpfArquivada = !document ? null : await ler(admin
     .from('clients').select('name').eq('tenant_id', ctx.tenantId!).eq('document', document).eq('is_active', false)
     .maybeSingle(), 'conferir se o CPF é de uma ficha arquivada') as { name: string } | null
@@ -185,11 +185,11 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   const doTelefone = await perguntaDoTelefone(admin, ctx, fone, respostasDoFormulario(formData), !!(leadId || conversationId),
     { cpf: document, nome: name, nascimento: birthDate })
   if ('pergunta' in doTelefone) return doTelefone.pergunta
-  // "Atualizar a ficha de X": grava nela só o que foi preenchido agora, sem
-  // apagar o que ela tem, e abre a ficha (r2-cli-01).
+  // "Unificar com a ficha de X": grava nela só o que foi preenchido agora, sem
+  // apagar o que ela tem nem trocar o nome dela (r3-f14-01), e abre a ficha (r2-cli-01).
   if ('atualizar' in doTelefone) {
     return atualizarPeloCadastro(ctx, doTelefone.atualizar, {
-      name, phone: fone.gravar, email, documento: doc.colunas, birth_date: birthDate, gender, notes, tags,
+      phone: fone.gravar, email, documento: doc.colunas, birth_date: birthDate, gender, notes, tags,
     }, { leadId, conversationId, slug, comAcesso, email, document })
   }
   const { pessoaDoCrm } = doTelefone
@@ -208,7 +208,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   }
   const authId = login && !('error' in login) ? login.authId : null
 
-  // 2) Cliente: a ficha nova. A que já existia só muda pelo "Atualizar a ficha" (acima).
+  // 2) Cliente: a ficha nova. A que já existia só muda pelo "Unificar com a ficha" (acima).
   const dadosDoCliente = {
     tenant_id: ctx.tenantId!, branch_id: branchId,
     name, phone: fone.gravar, email, ...doc.colunas,
@@ -313,8 +313,8 @@ type FichaDoTelefone = { id: string; nome: string; ativa: boolean; sem_cpf: bool
  *    nome com a mesma data de nascimento (r2-cli-01, o Heitor em 2026-11-03:
  *    "antes de gravar no banco, confere se já existe; se já existir, retorna
  *    avisando que já existe, perguntando se deseja cadastrar mesmo assim ou
- *    atualizar a ficha existente"): "Cadastrar mesmo assim" ou "Atualizar a
- *    ficha de X". Substitui a pergunta da ficha rápida ("É a mesma pessoa?")
+ *    atualizar a ficha existente"): "Cadastrar mesmo assim" ou "Unificar com
+ *    a ficha de X" (r3-f14-02). Substitui a pergunta da ficha rápida ("É a mesma pessoa?")
  *    e o aviso da outra cliente do telefone (mãe e filha) de antes.
  * 3. A pessoa do CRM (D-9) — até o lead perdido que voltou: "É a mesma pessoa
  *    do lead X?". Quem vem do card ou da conversa (`veioDoCrm`) já disse de
@@ -376,7 +376,7 @@ export async function conferirTelefoneDoCadastro(entrada: {
 }
 
 /**
- * "Atualizar a ficha de X" pelo cadastro (r2-cli-01): grava na ficha que já
+ * "Unificar com a ficha de X" pelo cadastro (r2-cli-01, r3-f14-02): grava na ficha que já
  * existia só o que foi preenchido agora, sem apagar o que ela tem
  * (`atualizarFichaComOPreenchido`), liga o card ou a conversa de onde veio o
  * cadastro e, com a caixa marcada e sem login ainda, dá o acesso ao app. A

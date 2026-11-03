@@ -41,7 +41,7 @@ export function PerguntaJaExiste({ ficha, pending, aoCadastrarMesmoAssim, aoAtua
         </button>
       </span>
       <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
-        {ficha.arquivada ? 'Reativar traz a ficha de volta, e o agendamento vai para ela.' : 'Atualizar usa a ficha dela, com o nome e o telefone digitados aqui.'}
+        {ficha.arquivada ? 'Reativar traz a ficha de volta, e o agendamento vai para ela.' : 'Unificar usa a ficha dela: o telefone digitado aqui entra nela, e o nome continua o da ficha.'}
       </span>
     </div>
   )

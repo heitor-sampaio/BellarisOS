@@ -16,7 +16,7 @@ type Admin = ReturnType<typeof createAdminClient>
  * nome e telefone, o agendar pelo CRM, o Copilot) procura a ficha ATIVA da
  * clínica com o mesmo CPF, o mesmo telefone, ou o mesmo nome com a mesma data
  * de nascimento. Achou: nada se grava, e a pessoa escolhe "Cadastrar mesmo
- * assim" ou "Atualizar a ficha de X". A ficha ARQUIVADA continua com a pergunta
+ * assim" ou "Unificar com a ficha de X". A ficha ARQUIVADA continua com a pergunta
  * dela ("Reativar a ficha", r2-cli-02).
  *
  * Isto substitui a trava calada dos 60 s (o mesmo nome com o mesmo telefone
@@ -81,9 +81,12 @@ export async function fichasQueJaExistem(
   return achadas
 }
 
-/** O que o cadastro trouxe, já no formato do banco. Vazio/nulo = não veio. */
+/**
+ * O que o cadastro trouxe, já no formato do banco. Vazio/nulo = não veio.
+ * Sem o NOME: o da ficha nunca muda por aqui (r3-f14-01, o Heitor escolheu: o
+ * nome digitado às pressas costuma ser o pior; quem quer renomear abre a ficha).
+ */
 export interface PreenchidoAgora {
-  name?:       string | null
   phone?:      string | null
   email?:      string | null
   /** As colunas do documento (`documentoDaFicha`): CPF em `document`, ou passaporte/RNE. */
@@ -95,11 +98,12 @@ export interface PreenchidoAgora {
 }
 
 /**
- * "Atualizar a ficha de X": grava na ficha existente SÓ o que foi preenchido
- * agora, sem apagar o que está lá — o campo vazio não mexe no dela; o
- * preenchido toma o lugar. Duas exceções, para não perder nada: as
- * observações SOMAM (a de agora vai abaixo da que existia) e as tags se
- * juntam. O CPF diferente do que a ficha já tem é recusado (é outra pessoa,
+ * "Unificar com a ficha de X" (r3-f14-02; era "Atualizar a ficha"): grava na
+ * ficha existente SÓ o que foi preenchido agora, sem apagar o que está lá — o
+ * campo vazio não mexe no dela; o preenchido toma o lugar. O NOME nunca muda
+ * por aqui (r3-f14-01): só editando a ficha. Duas exceções, para não perder
+ * nada: as observações SOMAM (a de agora vai abaixo da que existia) e as tags
+ * se juntam. O CPF diferente do que a ficha já tem é recusado (é outra pessoa,
  * ou um erro de digitação). Pelo núcleo da ficha (`atualizarClienteCore`): o
  * CPF repetido, o evento "dados alterados".
  */
@@ -114,7 +118,6 @@ export async function atualizarFichaComOPreenchido(
 
   const colunas: Record<string, unknown> = {}
   const texto = (v: string | null | undefined) => (typeof v === 'string' && v.trim() ? v.trim() : null)
-  if (texto(agora.name)) colunas.name = texto(agora.name)
   if (texto(agora.phone)) colunas.phone = texto(agora.phone)
   if (texto(agora.email)) colunas.email = texto(agora.email)!.toLowerCase()
   if (texto(agora.birth_date)) colunas.birth_date = texto(agora.birth_date)

@@ -170,7 +170,7 @@ test('cadastrar cliente: Confirmar cadastra, com o CPF conferido', async ({ brow
   expect(String(criado!.birth_date).slice(0, 10)).toBe('1992-03-04')
 })
 
-test('r2-cli-01: a ficha que já existe — o cartão pergunta "Cadastrar mesmo assim" ou "Atualizar a ficha de X", e nada se grava antes', async ({ browser }) => {
+test('r2-cli-01: a ficha que já existe — o cartão pergunta "Cadastrar mesmo assim" ou "Unificar com a ficha de X", e nada se grava antes', async ({ browser }) => {
   const telefone = '5548' + String(Date.now()).slice(-9)
   const nome = `${PREFIXO} Existe copg${marca}`
   const { data: existe, error } = await db().from('clients').insert({
@@ -183,7 +183,7 @@ test('r2-cli-01: a ficha que já existe — o cartão pergunta "Cadastrar mesmo 
     await expect(cartao).toContainText(`Já existe a ficha de ${nome} com este telefone.`)
     await expect(cartao.getByRole('button', { name: 'Cadastrar mesmo assim' })).toBeVisible()
     await expect(cartao.getByRole('button', { name: 'Confirmar' }), 'a escolha toma o lugar do Confirmar').toHaveCount(0)
-    await cartao.getByRole('button', { name: `Atualizar a ficha de ${nome}` }).click()
+    await cartao.getByRole('button', { name: `Unificar com a ficha de ${nome}` }).click()
     await expect(cartao.getByRole('status')).toContainText('Feito')
   })
   const { data: fichas } = await db().from('clients').select('id, email').eq('tenant_id', rede.outra.tenantId).eq('name', nome)
