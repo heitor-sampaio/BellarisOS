@@ -181,3 +181,58 @@ test('"Enviar para a recepção" também barra no servidor: sem a ficha obrigat�
     expect(plano, 'o plano não nasce sem a obrigatória').toBeNull()
   })
 })
+
+// atend-04 (revisão do Heitor, 2026-11-02: "regras de negócio devem ser
+// sempre validadas em backend"): a trava mora também DENTRO das gravações —
+// `concluir_atendimento` e `gerar_plano_da_avaliacao` recusam sozinhas, para
+// valer em qualquer caminho futuro que não passe pela action.
+test('atend-04: concluir_atendimento chamada direto, sem a action, recusa a obrigatória em branco', async () => {
+  const { id, cliente } = await atendimentoEmCurso('Funcao')
+  const chamar = (dados: Record<string, unknown>) => db().rpc('concluir_atendimento', {
+    p_agendamento: id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { notas: null, intercorrencias: null, comissoes: [], insumos: [], ...dados },
+  })
+  const r1 = await chamar({})
+  expect(r1.error?.message, 'sem anamnese').toContain('na anamnese.')
+  await responderAnamnese(cliente, rede!.tenantId)
+  const r2 = await chamar({})
+  expect(r2.error?.message, 'sem a ficha do procedimento').toBe('Falta preencher "Fototipo" na ficha do procedimento.')
+  expect(await status(id)).toBe('IN_PROGRESS')
+  // Controle: com a ficha, conclui.
+  const r3 = await chamar({ ficha: { formId: fichaId, name: FICHA, rows: [], answers: { fototipo: 'II' } } })
+  expect(r3.error).toBeNull()
+  expect(await status(id)).toBe('COMPLETED')
+})
+
+test('atend-04: gerar o plano da avaliação CONCLUÍDA também confere as obrigatórias (o que ficou gravado)', async ({ browser }) => {
+  const { id, cliente } = await atendimentoEmCurso('Concluida')
+  const respostas = await responderAnamnese(cliente, rede!.tenantId)
+  // Concluída sem a ficha do procedimento (como antes da trava, ou por um caminho que não confere).
+  expect((await db().from('appointments').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', id)).error).toBeNull()
+  const sessoes = [{ procedures: [{ procedureId: rede!.procedureId, price: 100 }] }]
+  await como(browser, async p => {
+    const rota = `/${slug}/agenda/${id}`
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'generateEvaluationPlan', rota,
+      [id, '', null, sessoes, '', '', '', slug, null])
+    expect(r.texto).toContain('na ficha do procedimento.')
+    expect((await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', id)).data, 'nenhum plano').toEqual([])
+  })
+  // A função também recusa sozinha.
+  const direto = await db().rpc('gerar_plano_da_avaliacao', {
+    p_agendamento: id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { profissional: profissional!.userId, sessoes: [{ procedimentos: [{ procedure_id: rede!.procedureId, price: 100 }] }] },
+  })
+  expect(direto.error?.message).toBe('Falta preencher "Fototipo" na ficha do procedimento.')
+  // Controle: com a ficha gravada, o plano nasce.
+  const { data: mr } = await db().from('medical_records').select('id').eq('client_id', cliente).single()
+  expect((await db().from('medical_record_entries').upsert({
+    medical_record_id: mr!.id, appointment_id: id, professional_id: profissional!.userId,
+    form_data: { ficha: { formId: fichaId, name: FICHA, rows: [], answers: { fototipo: 'III' } } },
+  }, { onConflict: 'appointment_id' })).error).toBeNull()
+  await como(browser, async p => {
+    await chamarAcao(p, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/${slug}/agenda/${id}`,
+      [id, '', null, sessoes, '', '', '', slug, null])
+  })
+  await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('evaluation_appointment_id', id)).data).toEqual([{ status: 'PROPOSED' }])
+  void respostas
+})

@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -194,6 +195,7 @@ test.describe.serial('desconto nas vendas', () => {
       branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,
       scheduled_at: new Date().toISOString(), duration_min: 30, price: 200, status: 'IN_PROGRESS',
     }).select('id').single<{ id: string }>()
+    await responderAnamnese(cliente, rede!.tenantId)
     const { error: eFim } = await db().rpc('concluir_atendimento', {
       p_agendamento: ap!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
       p_dados: { comissoes: [{

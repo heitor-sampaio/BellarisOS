@@ -928,6 +928,8 @@ async function finishSessionInterno(
         p_ator_nome:   userName,
         p_dados:       {
           notas: notes, intercorrencias: intercurrences, comissoes, insumos: m.insumos,
+          // A conferência das obrigatórias no banco (atend-04): sem o recurso, o planejador não barra.
+          sem_injetaveis: !temRecurso(ctx, 'injetaveis'),
           ...(temQueixas ? { queixas } : {}),
           ...(anamnese ? { anamnese } : {}),
           ...(ficha ? { ficha } : {}),

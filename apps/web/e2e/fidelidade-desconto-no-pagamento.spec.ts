@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * Fidelidade, fase 2 — pontos como desconto no pagamento
@@ -60,6 +61,7 @@ async function atendimentoConcluido(clientId: string, preco: number, comissao = 
     scheduled_at: new Date().toISOString(), duration_min: 30, price: preco, status: 'IN_PROGRESS',
   }).select('id').single<{ id: string }>()
   expect(error, 'criar o atendimento').toBeNull()
+  await responderAnamnese(clientId, rede!.tenantId)
   const { error: eFim } = await db().rpc('concluir_atendimento', {
     p_agendamento: ap!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
     p_dados: { comissoes: [{

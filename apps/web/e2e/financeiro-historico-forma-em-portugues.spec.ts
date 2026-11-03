@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * D18 (simulação de 2026-10-29): o histórico do atendimento registrava
@@ -23,6 +24,7 @@ async function pagoComo(dados: Record<string, unknown>): Promise<string> {
     scheduled_at: new Date().toISOString(), duration_min: 30, price: PRECO, status: 'IN_PROGRESS', source: 'INTERNAL',
   }).select('id').single<{ id: string }>()
   expect(eA).toBeNull()
+  await responderAnamnese(cliente, rede!.tenantId)
   expect((await db().rpc('concluir_atendimento', {
     p_agendamento: a!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
     p_dados: { insumos: [], comissoes: [] },

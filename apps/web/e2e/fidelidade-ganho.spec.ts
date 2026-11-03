@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 
 /**
  * Fidelidade — o ponto nasce no PAGAMENTO (migration 20260929000001).
@@ -154,6 +155,7 @@ test.describe.serial('fidelidade: ganho no pagamento', () => {
       branch_id: rede!.branchId, client_id: c, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,
       scheduled_at: new Date().toISOString(), duration_min: 30, price: 200, status: 'IN_PROGRESS',
     }).select('id').single<{ id: string }>()
+    await responderAnamnese(c, rede!.tenantId)
     const { error } = await db().rpc('concluir_atendimento', {
       p_agendamento: ap!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
       p_dados: { pontos: 500, insumos: [] },

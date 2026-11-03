@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamneseDoAgendamento } from './apoio/anamnese'
 
 /**
  * O estorno REABRE a cobrança (D6 da simulação de 2026-10-28).
@@ -85,6 +86,7 @@ test.beforeAll(async () => {
   }).select('id').single<{ id: string }>()
   expect(eA).toBeNull()
   ap = a!.id
+  await responderAnamneseDoAgendamento(ap, rede.tenantId)
   expect((await db().rpc('concluir_atendimento', {
     p_agendamento: ap, p_tenant: rede.tenantId, p_ator: null, p_ator_nome: null,
     p_dados: { insumos: [], comissoes: [{ procedure_id: proc, origem: 'AVULSO', treatment_plan_id: null, regra_tipo: 'PERCENTAGE', regra_valor: 10, preco: PRECO }] },
@@ -204,6 +206,7 @@ test('pagar de novo depois do estorno não manda outro "Purchase" à Meta', asyn
   }).select('id').single<{ id: string }>()
   expect(eA).toBeNull()
   const outro = a!.id
+  await responderAnamneseDoAgendamento(outro, rede!.tenantId)
   expect((await db().rpc('concluir_atendimento', {
     p_agendamento: outro, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
     p_dados: { insumos: [], comissoes: [] },

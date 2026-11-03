@@ -1072,8 +1072,16 @@ O resto do fluxo:
     pura (`campoVazio`/`primeiraObrigatoriaVazia` em `lib/anamnesis.ts`,
     `faltaNaAnamnese`/`faltaNaFichaDoProcedimento` em
     `lib/atendimento/obrigatorias.ts`): a tela e o servidor usam a mesma.
-    Fica no app, não em `concluir_atendimento` (o app calcula, a função
-    grava): a função chamada direto, sem o app, não confere.
+    **E a gravação confere de novo** (atend-04, revisão do Heitor de
+    2026-11-02: "regras de negócio devem ser sempre validadas em backend";
+    migration `20261101001002`): `concluir_atendimento` e
+    `gerar_plano_da_avaliacao` chamam `private.obrigatoria_que_falta` — a
+    mesma conta em SQL (`ficha_campo_vazio`, `ficha_campo_visivel`,
+    `ficha_primeira_obrigatoria_vazia`) e a MESMA mensagem — e recusam
+    (`check_violation`) a obrigatória em branco, para valer em qualquer
+    caminho que não passe pela action. O app manda `sem_injetaveis` no
+    `p_dados` (sem ele, o planejador conta). Mudou a conta de um lado, muda
+    do outro.
   - **Vale o que FICA gravado**: a anamnese que a tela manda gravar
     (`anamneseDaEquipeParaGravar`), senão a gravada — a que a cliente
     respondeu pelo app ou pelo link vale, e a obrigatória só falta quando não
@@ -1100,9 +1108,11 @@ O resto do fluxo:
     Quem responde é quem atende. A recepção não conclui (concluir pede
     `medical_records: MANAGE`), então não é barrada por isto.
   - Prova: `e2e/atendimento-obrigatorias-barram.spec.ts`,
-    `tests/obrigatorias-do-atendimento.test.ts`. Spec que finaliza sem ser
-    sobre isto responde a ficha de saúde antes (`responderAnamnese`,
-    `e2e/apoio/anamnese.ts`).
+    `tests/obrigatorias-do-atendimento.test.ts`; a da gravação,
+    `e2e/atendimento-obrigatorias-barram.spec.ts` ("atend-04"). Spec que
+    finaliza sem ser sobre isto responde a ficha de saúde antes
+    (`responderAnamnese`, `e2e/apoio/anamnese.ts`) — também o que conclui
+    pela FUNÇÃO (`responderAnamneseDoAgendamento`), que agora recusa.
 - **O plano da avaliação é UMA gravação** (revisão do Heitor, 2026-10-29;
   migration `20261029000801`). O "Enviar para a recepção" e o "Fechar agora"
   salvavam a ficha do procedimento numa action e depois geravam o plano em
@@ -1149,8 +1159,10 @@ O resto do fluxo:
   ligado à avaliação (`evaluation_appointment_id`): as dores, a evolução, a
   ficha e a anamnese daquele dia ficam como estão — a tela não as manda e
   `gerar_plano_da_avaliacao` não as grava com o atendimento COMPLETED, nem
-  desbloqueado. As obrigatórias não são conferidas de novo (passaram no
-  "Finalizar"); as dores não são exigidas. A tela diz que o registro fica
+  desbloqueado. As obrigatórias SÃO conferidas de novo, no que ficou gravado
+  (atend-04: a action e a função; era "já passaram no Finalizar" — e o
+  caminho que concluiu sem passar por ele gerava o plano); as dores não são
+  exigidas. A tela diz que o registro fica
   como está (`data-plano-da-avaliacao-concluida`), e o Planejamento por cima
   volta a não oferecer "Novo plano" (o plano se monta na tela, A29). Prova:
   `e2e/atendimento-plano-da-avaliacao-concluida.spec.ts`.
@@ -1212,6 +1224,7 @@ O resto do fluxo:
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores, a anamnese e a ficha do procedimento do "Finalizar"
 ❌ Ramo da tela do atendimento sem a ficha própria do procedimento (o avulso da rede que monta plano ficou sem ela de 2026-09-25 a 2026-10-29)
 ❌ Concluir o atendimento ou gerar o plano da avaliação sem oQueFaltaParaSeguir (a obrigatória barra; a trava não é só da tela)
+❌ Recriar concluir_atendimento ou gerar_plano_da_avaliacao sem a chamada a private.obrigatoria_que_falta (atend-04), ou mudar a conta das obrigatórias só no TypeScript (o SQL é o espelho)
 ❌ Decidir "campo vazio" por conta própria (é campoVazio/primeiraObrigatoriaVazia, lib/anamnesis.ts — a tela e o servidor dividem)
 ❌ Gravar o plano da avaliação (ficha, anamnese, plano, sessões, dores) fora de gerar_plano_da_avaliacao — é uma transação só, como a conclusão
 ❌ Gravar a ficha do procedimento com o form_id que veio do navegador (é a ficha ligada ao procedimento do agendamento, da rede: fichaParaConcluir)

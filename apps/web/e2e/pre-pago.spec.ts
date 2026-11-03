@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -137,6 +138,7 @@ test.describe.serial('procedimento pré-pago', () => {
     const ap = await agendar(cliente)
     const { data: u1 } = await db().from('procedure_sale_units').select('id').eq('sale_id', venda).eq('numero', 1).single()
     await db().from('procedure_sale_units').update({ appointment_id: ap }).eq('id', u1!.id)
+    await responderAnamnese(cliente, rede!.tenantId)
     const { error } = await db().rpc('concluir_atendimento', {
       p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
       p_dados: { comissoes: [{ procedure_id: rede!.procedureId, origem: 'PRE_PAGO', treatment_plan_id: null,

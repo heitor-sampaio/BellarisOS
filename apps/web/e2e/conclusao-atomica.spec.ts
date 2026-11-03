@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamneseDoAgendamento } from './apoio/anamnese'
 
 /**
  * A conclusão do atendimento numa transação só (`concluir_atendimento`,
@@ -57,7 +58,8 @@ test.afterAll(async () => {
   expect(falhas).toEqual([])
 })
 
-const concluir = (appt: string, insumos: unknown[]) => db().rpc('concluir_atendimento', {
+// A ficha de saúde respondida antes: desde o atend-04 a função recusa a obrigatória em branco.
+const concluir = async (appt: string, insumos: unknown[]) => (await responderAnamneseDoAgendamento(appt, f!.outra.tenantId), db().rpc('concluir_atendimento', {
   p_agendamento: appt,
   p_tenant:      f!.outra.tenantId,
   p_ator:        f!.outra.professionalId,
@@ -69,7 +71,7 @@ const concluir = (appt: string, insumos: unknown[]) => db().rpc('concluir_atendi
       regra_tipo: 'PERCENTAGE', regra_valor: 10, preco: 200,
     }],
   },
-})
+}))
 
 const insumoBom = (quantidade: number) => ({
   produto: f!.produto, quantidade: -quantidade, saldo_apos: 10 - quantidade,

@@ -43,3 +43,15 @@ export async function responderAnamnese(clienteId: string, tenantId: string): Pr
   if (e) throw new Error(`responder a anamnese: ${e.message}`)
   return respostas
 }
+
+/**
+ * A ficha de saúde respondida da cliente DESTE agendamento. Desde o atend-04
+ * (2026-11-02) a própria `concluir_atendimento` recusa a obrigatória em
+ * branco: spec que conclui pela função do banco, sem ser sobre a anamnese,
+ * chama isto antes.
+ */
+export async function responderAnamneseDoAgendamento(agendamentoId: string, tenantId: string): Promise<void> {
+  const { data, error } = await banco().from('appointments').select('client_id').eq('id', agendamentoId).single<{ client_id: string | null }>()
+  if (error) throw new Error(`ler a cliente do agendamento: ${error.message}`)
+  if (data?.client_id) await responderAnamnese(data.client_id, tenantId)
+}

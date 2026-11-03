@@ -1209,6 +1209,15 @@ async function generateEvaluationPlanInterno(
     // O planejamento escolhido sem nenhum ponto pede a confirmação explícita (atend-12).
     const vazio = ficha ? perguntaDoPlanejamentoVazio(ficha.rows, ficha.answers) : null
     if (vazio && opcoes.confirmarPlanejamentoVazio !== true) return { error: vazio, confirmarPlanejamentoVazio: true }
+  } else {
+    // A avaliação CONCLUÍDA também confere (atend-04, revisão do Heitor:
+    // "regras de negócio devem ser sempre validadas em backend"): vale o que
+    // ficou gravado — a função do banco confere de novo.
+    const falta = await oQueFaltaParaSeguir(admin, {
+      tenantId: ctx.tenantId!, appointmentId, procedureId: appt.procedure_id, clientId: appt.client_id,
+      semInjetaveis: !temRecurso(ctx, 'injetaveis'), anamneseNaTela: null, fichaNaTela: null,
+    })
+    if (falta) return { error: falta }
   }
 
   // ─── Grava, tudo ou nada ──────────────────────────────────────────────
@@ -1226,6 +1235,8 @@ async function generateEvaluationPlanInterno(
     p_dados: {
       profissional:   ctx.internalUserId,
       notas_do_plano: planNotes,
+      // A conferência das obrigatórias no banco (atend-04): sem o recurso, o planejador não barra.
+      sem_injetaveis: !temRecurso(ctx, 'injetaveis'),
       sessoes: sessions.map(s => ({
         procedimentos: s.procedures.map((p, j) => ({
           procedure_id: p.procedureId,

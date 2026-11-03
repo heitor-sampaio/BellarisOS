@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -43,6 +44,7 @@ async function avulsoConcluido(cliente: string, procedimento: string, preco = PR
     scheduled_at: new Date().toISOString(), duration_min: 30, price: preco, status: 'IN_PROGRESS', source: 'INTERNAL',
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
+  await responderAnamnese(cliente, rede!.tenantId)
   expect((await db().rpc('concluir_atendimento', {
     p_agendamento: data!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
     p_dados: { insumos: [], comissoes: [{ procedure_id: procedimento, origem: 'AVULSO', treatment_plan_id: null, regra_tipo: 'PERCENTAGE', regra_valor: 10, preco }] },
