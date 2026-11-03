@@ -566,6 +566,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     Fechamento do dia, a receita sem forma com `loyalty_discount` é `PONTOS`;
     todo o resto sem forma (a compra de estoque) é "Sem forma de pagamento".
   - Prova: `e2e/financeiro-credito-em-vezes.spec.ts`, `tests/financeiro-formas.test.ts`.
+- **A página do plano proposto tem "Fechar checkout"** (A44 da 5ª
+  simulação): em Tratamentos, quem RECEBE e não escreve no plano (a recepção,
+  sem o prontuário em Gerenciar) vê "Fechar checkout" no plano PROPOSTO — o
+  mesmo wizard do atendimento. O botão só existia na tela da avaliação; quem
+  escreve no plano segue com o "Aceitar plano". Prova:
+  `e2e/plano-fechar-checkout-na-pagina.spec.ts`.
 - **O checkout do plano cobra também o "atendimento de hoje"** (decisão do
   Heitor, 2026-10-20): o atendimento que GEROU o plano
   (`evaluation_appointment_id`), quando está concluído, tem preço, é avulso e

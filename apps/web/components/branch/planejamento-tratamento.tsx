@@ -438,6 +438,23 @@ export function PlanejamentoTratamento({
         </div>
       )}
 
+      {/* Quem recebe e não escreve no plano (a recepção) fecha o checkout do
+          plano proposto daqui (A44 da 5ª simulação: o botão só existia na tela
+          do atendimento da avaliação, e a página do plano "Aguardando
+          checkout" não tinha o que fazer). */}
+      {!editavel && podeReceber && aberto.status === 'PROPOSED' && (
+        <div data-fechar-checkout style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
+            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
+            Fechar checkout
+          </button>
+          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            Aguardando o checkout: o pagamento, os documentos e o agendamento das sessões.
+          </span>
+        </div>
+      )}
+
       {/* O plano fechado diz o que foi pago, o que falta e as sessões (J-42).
           Dizia só "O que estiver em aberto é recebido no check-in", e o
           check-in só cobra o que VENCEU. */}
