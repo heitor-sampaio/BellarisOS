@@ -11,10 +11,12 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  * conferia o dono ("é da recepção"). O clínico não vazou — mas o §11 diz que
  * o escopo vale também para o id, não só para a lista.
  *
- * Decisão: com a agenda OWN, a tela do atendimento de outro profissional
- * responde como se ele não existisse, "Página não encontrada" (A38 da 5ª
- * simulação, 2026-11-01: dizia "Seu cargo não libera esta tela", e o cargo
- * libera; o que não é dela é ESTE atendimento), e as actions pelo id recusam o
+ * Decisão: com a agenda OWN, a tela do atendimento de outro profissional diz
+ * "Este atendimento é de outra profissional", com o nome dela e o caminho de
+ * volta, e nada do atendimento (r2-atd-04, revisão do Heitor de 2026-11-03: o
+ * 404 parecia defeito; de 01/11 até ali era "Página não encontrada", e antes
+ * "Seu cargo não libera esta tela" — A38: o cargo libera; o que não é dela é
+ * ESTE atendimento), e as actions pelo id recusam o
  * agendamento de outro: check-in, iniciar pelo status, trocar o profissional,
  * remarcar, cancelar e salvar a evolução. A recepção (ALL) segue fazendo o de
  * todos — é o controle.
@@ -97,12 +99,20 @@ test.afterAll(async () => {
   await propria?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('"só os meus": a tela do atendimento de outra profissional é "não encontrada"; a dela abre, e a recepção abre a de todas', async ({ browser }) => {
+test('"só os meus": a tela do atendimento de outra profissional diz de quem é, sem nada dele; a dela abre, e a recepção abre a de todas', async ({ browser }) => {
   const daOutra = await agendado('Bianca', rede!.professionalId)
   const dela    = await agendado('Helena', propria!.userId)
+  const nomeDaOutra = (await db().from('users').select('name').eq('id', rede!.professionalId).single<{ name: string }>()).data!.name
   await como(browser, propria!, async p => {
     await p.goto(`/${slug}/agenda/${daOutra}`)
-    await expect(p.getByRole('heading', { name: NAO_ENCONTRADA }), 'a de outra').toBeVisible()
+    // r2-atd-04 (revisão do Heitor, 2026-11-03): o 404 parecia defeito. A tela
+    // diz de quem é o atendimento e o caminho de volta — e continua barrando.
+    const aviso = p.locator('[data-atendimento-de-outra]')
+    await expect(aviso.getByRole('heading', { name: 'Este atendimento é de outra profissional' }), 'a de outra').toBeVisible()
+    await expect(aviso, 'o nome de quem atende').toContainText(nomeDaOutra)
+    await expect(aviso.getByRole('link', { name: 'Voltar à agenda' })).toHaveAttribute('href', `/${slug}/agenda`)
+    await expect(p.getByRole('heading', { name: NAO_ENCONTRADA }), 'não é mais o 404').toHaveCount(0)
+    await expect(p.getByText(`Bianca om${marca}`), 'nada do atendimento vaza: nem a cliente').toHaveCount(0)
     await expect(p.getByText(SEM_ACESSO), 'A38: o cargo libera a tela; o que não é dela é este atendimento').toHaveCount(0)
     await p.goto(`/${slug}/agenda/${dela}`)
     await expect(p.getByText(`Helena om${marca}`).first(), 'a dela').toBeVisible()

@@ -145,10 +145,12 @@
 - **A agenda "só os meus" vale também pelo ID** (D4 da simulação de
   2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
   (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
-  agendamento de OUTRO profissional responde como se ele não existisse,
-  "Página não encontrada" (A38 da 5ª simulação, 2026-11-01: era `semAcesso()`,
-  "Seu cargo não libera esta tela" — e o cargo libera; o que não é dela é este
-  atendimento), e as actions pelo id o
+  agendamento de OUTRO profissional diz "Este atendimento é de outra
+  profissional", com o nome dela e "Voltar à agenda", e nada do atendimento
+  (`AtendimentoDeOutraProfissional`; r2-atd-04, revisão do Heitor de
+  2026-11-03: o 404 "Página não encontrada" da A38 parecia defeito — e antes
+  dele era `semAcesso()`, "Seu cargo não libera esta tela", e o cargo libera;
+  o que não é dela é este atendimento), e as actions pelo id o
   recusam — check-in (`checkinCore`), confirmar, remarcar, cancelar
   (`confirmarCore`/`remarcarCore`/`cancelarCore`, logo também o Copilot),
   iniciar pelo status (`updateAppointmentStatus`), trocar o profissional e
@@ -1302,7 +1304,7 @@ O resto do fluxo:
 ❌ Dizer "respondida" (selo, "algo mudou?", janela de 30 dias) sem anamneseRespondida / respostas não vazias — a ficha gravada vazia não é respondida
 ❌ Aceitar a ficha da CLIENTE (app ou link) sem oQueFaltaNaFicha no servidor
 ❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
-❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, notFound(), não semAcesso() (o cargo libera; o atendimento é que não é dela)
+❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, "Este atendimento é de outra profissional" (AtendimentoDeOutraProfissional), nem 404 nem semAcesso() (o cargo libera; o atendimento é que não é dela)
 ❌ Botão que grava o prontuário (gerar o plano, "Editar registro") para quem não tem o Prontuário em Gerenciar (canEditRecords)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros

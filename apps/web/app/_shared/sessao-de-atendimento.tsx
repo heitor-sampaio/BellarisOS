@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { ehInsumo } from '@/lib/estoque/uso'
 import { AppointmentSession } from '@/components/branch/appointment-session'
+import { AtendimentoDeOutraProfissional } from '@/components/branch/atendimento-de-outra-profissional'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
@@ -83,9 +84,14 @@ export async function SessaoDeAtendimento({
   // A agenda "só os meus" vale também para o id (§11; D4 da simulação de
   // 2026-10-28): a profissional abria pela URL o atendimento de outra e
   // marcava o check-in. A recepção (ALL) abre o de todos.
-  // Responde como se não existisse (A38, 2026-11-01): "Seu cargo não libera
-  // esta tela" mentia — o cargo libera; o que não é dela é ESTE atendimento.
-  if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) notFound()
+  // A tela diz de quem é, com o caminho de volta (r2-atd-04, revisão do
+  // Heitor de 2026-11-03: o 404 da A38 parecia defeito; antes dele, "Seu cargo
+  // não libera esta tela" mentia — o cargo libera; o que não é dela é ESTE
+  // atendimento). Continua barrando: só o nome de quem atende vai à tela.
+  if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) {
+    const daOutra = apptRaw.professional as unknown as { name: string | null } | null
+    return <AtendimentoDeOutraProfissional slug={slug} profissional={daOutra?.name ?? null} />
+  }
 
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
   type RawProf   = { id: string; name: string }
