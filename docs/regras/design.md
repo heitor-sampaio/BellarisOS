@@ -95,6 +95,27 @@ Princípios inegociáveis:
   do app; com o mesmo tom do fundo ela sumia na superfície em vez de convidar
   a digitar. O critério do que é busca é o ÍCONE DE LUPA, não o placeholder.
 - **Copy em pt-BR**, sentence case, moeda no formato `R$ 1.240`, percentuais com vírgula (`12,4%`).
+- **A clínica de UMA unidade não fala "rede"** (F8 da 5ª simulação,
+  2026-11-02, levando o D-19 de `docs/regras/indicadores.md` a toda tela). A
+  régua é a mesma, `redeTemUmaUnidade`; o texto passa por
+  `lib/unidades/vocabulario.ts`: "rede" vira "clínica" ("da rede" → "da
+  clínica", "Rede inteira" → "Clínica toda") e o cargo de sistema "Admin da
+  rede" se chama **"Admin"** — só o rótulo; a chave `NETWORK_ADMIN` é a mesma.
+  Com a segunda unidade, o texto volta como foi escrito.
+  - No servidor: `vocabulario(await redeTemUmaUnidade(ctx.tenantId!))(texto)`.
+    No navegador: `useFala()` ou `<Fala>{texto}</Fala>`
+    (`components/shared/uma-unidade.tsx`); os layouts dos dois portais põem a
+    régua no `UmaUnidadeProvider`.
+  - **"Filial" não existe mais na tela**: a palavra é "unidade", com uma ou
+    com dez.
+  - **Select de unidade obrigatório com UMA opção vem preenchido** (Estoque,
+    Equipe, lançamento); a pergunta que não tem o que perguntar some (crédito
+    para cliente, "Disponível nas unidades" e o preço por unidade do
+    procedimento, a unidade do checkout).
+  - Texto novo com "rede" na clínica passa pela fala. Prova:
+    `e2e/rede-de-uma-unidade.spec.ts` percorre as telas dos dois portais e os
+    modais e não acha "rede"/"filial"; com a segunda unidade, o vocabulário
+    volta (o controle). `tests/vocabulario-da-clinica.test.ts`.
 
 ### Formulários (2026-10-21)
 

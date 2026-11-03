@@ -101,7 +101,7 @@ test('a profissional da rede está no agendar das duas unidades; a de A, só em 
 test('a agenda e o dashboard da unidade B mostram a profissional da rede', async ({ browser }) => {
   await como(browser, gestora!.estado, async p => {
     await p.goto(`/${slugB}/agenda`)
-    await expect(p.getByText('Nenhum profissional cadastrado nesta filial.')).toHaveCount(0)
+    await expect(p.getByText('Nenhum profissional cadastrado nesta unidade.')).toHaveCount(0)
     await expect(p.getByText(nomeDaRede).first()).toBeVisible()
     await expect(p.getByText(nomeDeA)).toHaveCount(0)
 

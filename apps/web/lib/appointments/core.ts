@@ -177,7 +177,7 @@ export async function conferirPecasDoAgendamento(
       ? recusaDaSala(admin, { branchId: pecas.branchId, roomId: pecas.roomId, procedureId: pecas.procedureId })
       : Promise.resolve(pecas.roomId ? 'Sala não encontrada nesta unidade.' : null),
   ])
-  if (!unidade)      return 'Filial não encontrada.'
+  if (!unidade)      return 'Unidade não encontrada.'
   if (!profissional) return 'Profissional não encontrado.'
   if (!cliente)      return 'Cliente não encontrado.'
   // Arquivada não se agenda (J-23): só quem cria passa o cliente por aqui.
@@ -196,7 +196,7 @@ export async function createAppointmentCore(
   ctx: TenantContext,
   input: CreateAppointmentInput,
 ): Promise<{ id: string } | { error: string }> {
-  if (!input.branchId)                              return { error: 'Filial não identificada.' }
+  if (!input.branchId)                              return { error: 'Unidade não identificada.' }
   if (!input.clientId)                              return { error: 'Selecione um cliente.' }
 
   // O crédito vem primeiro: é ele que diz o procedimento e o preço. Um

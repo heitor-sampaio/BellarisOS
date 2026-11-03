@@ -5,6 +5,7 @@ import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { useFala } from '@/components/shared/uma-unidade'
 
 interface Branch { id: string; name: string }
 interface Role   { id: string; label: string }
@@ -40,6 +41,7 @@ export function AdminTeamForm(props: AdminTeamFormProps) {
 function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onFechar }: AdminTeamFormProps & { onFechar: () => void }) {
   const [atende, setAtende] = useState(false)
   const [scope, setScope] = useState<'branch' | 'network'>('branch')
+  const fala = useFala()
   const [state, action, pending] = useActionState(createTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
 
@@ -102,8 +104,8 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onF
                     <label className="overline">Abrangência</label>
                     <SegSelect
                       options={[
-                        { key: 'branch',  label: 'Uma filial' },
-                        { key: 'network', label: 'Rede inteira' },
+                        { key: 'branch',  label: 'Uma unidade' },
+                        { key: 'network', label: fala('Rede inteira') },
                       ]}
                       value={scope}
                       onSelect={k => setScope(k as 'branch' | 'network')}
@@ -114,8 +116,10 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onF
 
                 {scope === 'branch' && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor="tm-branch">Filial</label>
-                    <select id="tm-branch" name="branchId" required className="field" defaultValue="">
+                    <label className="overline" htmlFor="tm-branch">Unidade</label>
+                    <select id="tm-branch" name="branchId" required className="field"
+                      // Uma unidade só: já vem escolhida (F8).
+                      defaultValue={branches.length === 1 ? branches[0]!.id : ''}>
                       <option value="" disabled>Selecione…</option>
                       {branches.map(b => (
                         <option key={b.id} value={b.id}>{b.name}</option>
@@ -125,7 +129,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, onF
                 )}
                 {scope === 'network' && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    Acesso a todas as unidades, sem filial fixa.
+                    Acesso a todas as unidades, sem unidade fixa.
                   </span>
                 )}
 

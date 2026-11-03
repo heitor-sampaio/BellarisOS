@@ -28,7 +28,8 @@ function toSlug(name: string) {
 
 // -- Stepper ------------------------------------------------------------------
 
-const STEPS = ['Sua rede', 'Primeira unidade', 'Pronto!']
+// O setup nasce com UMA unidade: a clínica não fala "rede" (F8).
+const STEPS = ['Sua clínica', 'Primeira unidade', 'Pronto!']
 
 function Stepper({ current }: { current: number }) {
   return (
@@ -130,15 +131,15 @@ function StepNetwork({
           color: 'var(--text)',
           marginBottom: 4,
         }}>
-          Dados da sua rede
+          Dados da sua clínica
         </h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Essas informações identificam sua rede no sistema.
+          Essas informações identificam sua clínica no sistema.
         </p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label className="overline" htmlFor="net-name">Nome da rede *</label>
+        <label className="overline" htmlFor="net-name">Nome da clínica *</label>
         <input
           id="net-name"
           type="text"
@@ -287,7 +288,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           Primeira unidade
         </h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Cadastre a primeira filial da sua rede. Você poderá adicionar mais depois.
+          Cadastre a primeira unidade da sua clínica. Você poderá adicionar mais depois.
         </p>
       </div>
 
@@ -337,7 +338,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           onChange={e => setDocument(maskCPFouCNPJDigitando(e.target.value))}
         />
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O mesmo da rede, já preenchido. Troque se a unidade tiver CNPJ próprio.
+          O mesmo da clínica, já preenchido. Troque se a unidade tiver CNPJ próprio.
         </span>
       </div>
 
@@ -506,7 +507,7 @@ function StepDone({ tenantName }: { tenantName: string }) {
         maxWidth: 340,
         margin: '0 auto 32px',
       }}>
-        A rede <strong style={{ color: 'var(--text)' }}>{tenantName}</strong> está configurada. Você já pode começar a usar o painel completo.
+        A clínica <strong style={{ color: 'var(--text)' }}>{tenantName}</strong> está configurada. Você já pode começar a usar o painel completo.
       </p>
 
       <button

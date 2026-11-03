@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Fala } from '@/components/shared/uma-unidade'
 import { salvarComissaoDoProcedimento } from '@/actions/comissoes'
 import { CampoDeValor, paraNumero, paraTexto } from '@/components/admin/comissao-do-membro'
 import {
@@ -133,7 +134,7 @@ export function EditorDeComissao({ estado, onChange, profissionais, inicialComVa
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {profissionais.length === 0 && <p style={ajuda}>Ninguém atende clientes na rede ainda.</p>}
+          {profissionais.length === 0 && <p style={ajuda}><Fala>Ninguém atende clientes na rede ainda.</Fala></p>}
           {profissionais.map(p => {
             const l = estado.linhas[p.id] ?? { tipo: 'PADRAO' as const, valor: '' }
             return (

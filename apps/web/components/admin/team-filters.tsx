@@ -78,7 +78,7 @@ export function TeamFilters({
         value={initialBranch}
         onChange={e => handleSelect('branch', e.target.value)}
       >
-        <option value="">Todas as filiais</option>
+        <option value="">Todas as unidades</option>
         {branches.map(b => (
           <option key={b.id} value={b.id}>{b.name}</option>
         ))}

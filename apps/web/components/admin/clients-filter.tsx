@@ -48,7 +48,7 @@ export function ClientsFilter({ branches }: Props) {
         onChange={e => update('branch', e.target.value)}
  style={{ minWidth: 160 }}
       >
-        <option value="">Todas as filiais</option>
+        <option value="">Todas as unidades</option>
         {branches.map(b => (
           <option key={b.id} value={b.id}>{b.name}</option>
         ))}

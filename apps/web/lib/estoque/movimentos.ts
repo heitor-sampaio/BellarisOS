@@ -52,10 +52,10 @@ export interface EntradaDeEstoque {
 }
 
 export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: EntradaDeEstoque): Promise<{ ok: true; saldo: number } | { error: string }> {
-  if (ctx.branchId !== null && e.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua filial.' }
+  if (ctx.branchId !== null && e.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!(e.quantidade > 0)) return { error: 'Quantidade deve ser maior que zero.' }
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, e.productId, [e.branchId]))) {
-    return { error: 'Produto ou filial não encontrado.' }
+    return { error: 'Produto ou unidade não encontrado.' }
   }
 
   // Numa transação só, com a linha do saldo travada (estoque_entrada): duas
@@ -73,11 +73,11 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
 export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
   productId: string; branchId: string; novoSaldo: number; motivo: string
 }): Promise<{ ok: true; de: number } | { error: string }> {
-  if (ctx.branchId !== null && a.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua filial.' }
+  if (ctx.branchId !== null && a.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!a.motivo.trim()) return { error: 'Motivo do ajuste é obrigatório.' }
   if (Number.isNaN(a.novoSaldo) || a.novoSaldo < 0) return { error: 'Novo estoque não pode ser negativo.' }
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, a.productId, [a.branchId]))) {
-    return { error: 'Produto ou filial não encontrado.' }
+    return { error: 'Produto ou unidade não encontrado.' }
   }
 
   // Numa transação só, com a linha do saldo travada (estoque_ajuste).

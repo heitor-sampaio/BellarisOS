@@ -12,6 +12,7 @@ import { estenderJanela } from '@/lib/agenda/grade'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 import { contagemDaAgenda } from '@/lib/metrics/resultado'
+import { useFala } from '@/components/shared/uma-unidade'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -493,6 +494,7 @@ export function AdminAgendaView({
   view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio,
 }: Props) {
   const router = useRouter()
+  const fala = useFala()
   // `true` = veio do botão "Agendar" (sem hora nem unidade);
   // objeto = veio de um horário vazio da grade.
   const [agendando, setAgendando] = useState<true | { branchId: string; quando: string } | null>(null)
@@ -541,7 +543,7 @@ export function AdminAgendaView({
       {/* Cabeçalho */}
       <div>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>
-          ✦ Rede
+          ✦ {fala('Rede')}
         </p>
         <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
           Agenda

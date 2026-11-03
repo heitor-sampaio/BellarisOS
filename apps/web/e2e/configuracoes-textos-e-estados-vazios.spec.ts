@@ -47,7 +47,8 @@ test('A4: catálogo vazio — quem gere vê o botão que cadastra; quem não ger
   const slug = `e2e-un-txt${marca}`
   await como(browser, daUnidade, async p => {
     await p.goto(`/${slug}/procedures`)
-    await expect(p.getByText('O catálogo é da rede: peça a quem administra.')).toBeVisible()
+    // A rede de teste tem uma unidade: a clínica não fala "rede" (F8).
+    await expect(p.getByText('O catálogo é da clínica: peça a quem administra.')).toBeVisible()
     await expect(p.getByRole('link', { name: 'Cadastrar procedimento' })).toHaveCount(0)
   })
   await como(browser, gerente, async p => {
@@ -78,7 +79,8 @@ test('A7: salvar a ficha de pré-atendimento confirma', async ({ browser }) => {
 test('A8: na unidade, Geral não manda à aba Assinatura — diz que é de quem administra a rede', async ({ browser }) => {
   await como(browser, daUnidade, async p => {
     await p.goto(`/e2e-un-txt${marca}/settings?tab=general`)
-    await expect(p.getByText(/A assinatura fica com quem administra a rede/)).toBeVisible()
+    // A rede de teste tem uma unidade: a clínica não fala "rede" (F8).
+    await expect(p.getByText(/A assinatura fica com quem administra a clínica/)).toBeVisible()
     await expect(p.getByText(/aba Assinatura/)).toHaveCount(0)
   })
   await como(browser, gerente, async p => {

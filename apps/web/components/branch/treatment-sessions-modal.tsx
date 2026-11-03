@@ -170,10 +170,10 @@ export function SessionScheduler({
 
       {branches.length > 1 && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>FILIAL</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>UNIDADE</p>
           <select
             className="filtro-select"
-            aria-label="Filial da sessão"
+            aria-label="Unidade da sessão"
             value={branchId ?? ''}
             onChange={e => trocarFilial(e.target.value)}
           >

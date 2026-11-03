@@ -9,6 +9,7 @@ import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
+import { umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { lotesComSaldo, lotesVencendo, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { situacaoDoEstoque, estoqueBaixo } from '@/lib/estoque/situacao'
 
@@ -202,7 +203,9 @@ export default async function AdminEstoquePage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {unidade
               ? unidade.name
-              : `Visão consolidada da rede · ${branches.length} ${branches.length === 1 ? 'unidade' : 'unidades'}`}
+              // A clínica de uma unidade não fala "rede" (F8).
+              : umaUnidadeSo(branches.length) ? 'Estoque da clínica'
+              : `Visão consolidada da rede · ${branches.length} unidades`}
           </p>
         </div>
 

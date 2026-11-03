@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
 import { listarPlanejamentos, criarPlanoDoCliente, buscarClientesParaPlano } from '@/actions/treatment-plans'
 import { SegSelect } from '@/components/shared/seg-select'
+import { useFala } from '@/components/shared/uma-unidade'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { situacaoDoPlano, SITUACAO_DO_PLANO } from '@/lib/plano-de-tratamento/situacao'
 
@@ -60,6 +61,7 @@ export function PlanejamentosClient({
 }) {
   const router = useRouter()
   const base = basePath.replace(/\/$/, '')
+  const fala = useFala()
   const [planos, setPlanos] = useState(planosIniciais)
   const [busca,  setBusca]  = useState('')
   const [status, setStatus] = useState('')
@@ -124,7 +126,7 @@ export function PlanejamentosClient({
             Planejamentos
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {branchName ?? 'Rede'} · {planos.length} plano{planos.length !== 1 ? 's' : ''}
+            {branchName ?? fala('Rede')} · {planos.length} plano{planos.length !== 1 ? 's' : ''}
           </p>
         </div>
         {podeEditar && (

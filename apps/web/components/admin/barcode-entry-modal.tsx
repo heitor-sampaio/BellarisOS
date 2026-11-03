@@ -398,9 +398,10 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                 <input type="hidden" name="branchId" value={defaultBranchId} />
               ) : (
                 <FieldWrap>
-                  <Label>Filial de destino *</Label>
-                  <select name="branchId" required className="field" defaultValue="">
-                    <option value="" disabled>Selecionar filial…</option>
+                  <Label>Unidade de destino *</Label>
+                  {/* Uma unidade só: já vem escolhida (F8). */}
+                  <select name="branchId" required className="field" defaultValue={allBranches.length === 1 ? allBranches[0]!.id : ''}>
+                    <option value="" disabled>Selecionar unidade…</option>
                     {allBranches.map(b => (
                       <option key={b.id} value={b.id}>{b.name}</option>
                     ))}

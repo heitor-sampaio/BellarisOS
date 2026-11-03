@@ -5,6 +5,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClipboardList, ChevronRight, User } from 'lucide-react'
 import { lerTodas } from '@/lib/db'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { vocabulario } from '@/lib/unidades/vocabulario'
 
 /**
  * Planos de tratamento aguardando checkout — a mesma lista nos dois portais.
@@ -31,6 +33,8 @@ export async function ListaDeCheckout({
   assertPodeReceber(ctx)
 
   const ehRede = branchName === null
+  // A clínica de uma unidade não fala "rede" (F8).
+  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
   const admin  = createAdminClient()
 
   // O total vem das SESSÕES, que é o que o editor do plano grava. A consulta
@@ -87,7 +91,7 @@ export async function ListaDeCheckout({
           Checkout de novos pacientes
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {branchName ?? 'Rede'} · {plans.length} aguardando
+          {branchName ?? fala('Rede')} · {plans.length} aguardando
         </p>
       </div>
 

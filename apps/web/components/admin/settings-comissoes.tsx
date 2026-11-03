@@ -8,6 +8,7 @@ import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes } 
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
+import { Fala } from '@/components/shared/uma-unidade'
 
 /**
  * Configurações → Comissões: como a comissão acontece na rede, a tabela de
@@ -122,7 +123,7 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
       <div>
         <h2 style={titulo}>Como a comissão acontece</h2>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-          Vale para a rede inteira, a partir dos próximos atendimentos concluídos: o que já foi concluído segue a regra de quando foi.
+          <Fala>Vale para a rede inteira</Fala>, a partir dos próximos atendimentos concluídos: o que já foi concluído segue a regra de quando foi.
         </p>
       </div>
 
@@ -180,7 +181,7 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
         <p style={texto}>{PERIODOS[c.periodo].explicacao}</p>
       </Bloco>
 
-      {!podeEditar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Quem muda é quem administra a rede.</p>}
+      {!podeEditar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}><Fala>Quem muda é quem administra a rede.</Fala></p>}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {podeEditar && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>

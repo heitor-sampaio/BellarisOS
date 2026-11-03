@@ -109,7 +109,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
   if (professionals.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-        Nenhum profissional cadastrado nesta filial.
+        Nenhum profissional cadastrado nesta unidade.
       </div>
     )
   }

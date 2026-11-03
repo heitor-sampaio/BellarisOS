@@ -16,6 +16,8 @@ import { configDaRede } from '@/lib/fidelidade/leitura'
 import { opcoesDeModeloParaProcedimento } from '@/lib/documentos/modelos'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { vocabulario } from '@/lib/unidades/vocabulario'
 
 function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -44,6 +46,8 @@ export default async function AdminProceduresPage({
   // `?q=` filtra a lista (a busca universal abre a tela por aqui).
   const termo = termoDaUrl((await searchParams).q)
   const canEdit = ctx.permissions.procedures === 'MANAGE'
+  // A clínica de uma unidade não fala "rede" (F8).
+  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
   // Quanto cada um ganha é do financeiro (§9.7): gerir o catálogo não basta.
   // E a comissão do procedimento vale para a rede inteira.
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes') && ctx.branchId === null
@@ -146,7 +150,8 @@ export default async function AdminProceduresPage({
     id:                p.id,
     name:              p.name,
     unit:              p.unit,
-    branch_name:       p.branch_id ? (branchNameMap[p.branch_id] ?? '—') : 'Rede',
+    // O insumo da clínica toda não leva sufixo (A11: era "— Rede" em todos).
+    branch_name:       p.branch_id ? (branchNameMap[p.branch_id] ?? '—') : null,
     cost_price:        p.cost_price ?? null,
     consumption_unit:  p.consumption_unit ?? null,
     units_per_package: p.units_per_package ?? null,
@@ -181,7 +186,7 @@ export default async function AdminProceduresPage({
             Procedimentos
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {totalActive} ativos · {totalInactive} inativos · catálogo da rede
+            {totalActive} {totalActive === 1 ? 'ativo' : 'ativos'} · {totalInactive} {totalInactive === 1 ? 'inativo' : 'inativos'} · {fala('catálogo da rede')}
           </p>
         </div>
         {canEdit && (
@@ -242,7 +247,7 @@ export default async function AdminProceduresPage({
                   const availability = p.procedure_branch_availability as { branch_id: string }[] | null
                   const branchCount  = availability?.length ?? 0
                   const branchLabel  = branchCount === 0
-                    ? 'Toda a rede'
+                    ? fala('Toda a rede')
                     : `${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`
 
                   const existingForEdit = {

@@ -108,7 +108,8 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
             <input type="hidden" name="slug"      value={slugDaUnidade} />
             <input type="hidden" name="client_id" value={clientId} />
 
-            {escolheUnidade && (
+            {/* Uma unidade só: ela já vai no campo oculto, sem a pergunta (F8). */}
+            {escolheUnidade && branches!.length > 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <Label>Unidade *</Label>
                 <select className="field" value={unidadeId} onChange={e => setUnidadeId(e.target.value)}>

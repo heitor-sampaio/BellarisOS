@@ -770,7 +770,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {/* Filial + Profissional (compartilhados) */}
       <div className="card" style={{ padding: '18px 20px', marginBottom: 14 }}>
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-          Filial e profissional
+          {/* Com uma unidade só, não há unidade a escolher (F8). */}
+          {plan.branches.length > 1 ? 'Unidade e profissional' : 'Profissional'}
         </p>
 
         {/* Filial */}
@@ -778,7 +779,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           <div style={{ marginBottom: 14 }}>
             <select
               className="filtro-select"
-              aria-label="Filial do agendamento"
+              aria-label="Unidade do agendamento"
               value={schedBranchId ?? ''}
               onChange={e => trocarFilialDoAgendamento(e.target.value)}
             >
@@ -795,7 +796,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         {loadingProfs ? (
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando profissionais…</p>
         ) : schedProfs.length === 0 ? (
-          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Nenhum profissional nesta filial.</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Nenhum profissional nesta unidade.</p>
         ) : (
           <select
             className="filtro-select"

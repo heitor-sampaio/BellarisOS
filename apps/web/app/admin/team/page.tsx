@@ -13,6 +13,8 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { vocabulario } from '@/lib/unidades/vocabulario'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -88,7 +90,9 @@ export default async function AdminTeamPage({
     ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId)])
     : [null, []]
 
-  const allRoles = tenantRoles ?? []
+  // A clínica de uma unidade não fala "rede" (F8): o cargo "Admin da rede" é "Admin".
+  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
+  const allRoles = (tenantRoles ?? []).map(r => ({ ...r, label: fala(r.label) }))
   // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
   // O cargo de SISTEMA Admin da rede (`key` + `is_system`, nunca o rótulo —
@@ -129,7 +133,7 @@ export default async function AdminTeamPage({
             Equipe
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {contagemDeMembros(members.length, hasFilters ? 'encontrados' : 'em toda a rede')}
+            {fala(contagemDeMembros(members.length, hasFilters ? 'encontrados' : 'em toda a rede'))}
           </p>
         </div>
         {canManage && (
@@ -175,7 +179,7 @@ export default async function AdminTeamPage({
                     para achar alguém. */}
                 {([
                   { h: 'Membro',   cls: '' },
-                  { h: 'Filial',   cls: 'hide-mobile' },
+                  { h: 'Unidade',  cls: 'hide-mobile' },
                   { h: 'Cargo',    cls: 'hide-mobile' },
                   { h: 'Situação', cls: '' },
                   { h: '',         cls: '' },
@@ -195,7 +199,7 @@ export default async function AdminTeamPage({
               {members.map((m, i) => {
                 const branchName = (m.branches as unknown as { name: string } | null)?.name
                   ?? (m.branch_id ? branchMap[m.branch_id] : null)
-                  ?? (m.branch_id ? '—' : 'Rede inteira')
+                  ?? (m.branch_id ? '—' : fala('Rede inteira'))
                 const label = (m.role_id ? roleLabel[m.role_id] : null) ?? '—'
 
                 return (
@@ -232,7 +236,7 @@ export default async function AdminTeamPage({
                       </div>
                     </td>
 
-                    <td data-label="Filial" className="so-desktop" style={{ padding: '14px 20px' }}>
+                    <td data-label="Unidade" className="so-desktop" style={{ padding: '14px 20px' }}>
                       <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
                         {branchName}
                       </span>

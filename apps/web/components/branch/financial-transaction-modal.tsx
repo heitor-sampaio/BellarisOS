@@ -49,8 +49,10 @@ function parsePtBR(v: string): number {
 
 export function FinancialTransactionModal({ branchId, slug, branches, trigger }: Props) {
   const isAdminMode = !!branches && branches.length > 0
-  const [selectedBranchId,   setSelectedBranchId]   = useState(branchId ?? '')
-  const [selectedBranchSlug, setSelectedBranchSlug] = useState(slug ?? '')
+  // Uma unidade só: ela já vem escolhida, e a pergunta some (F8).
+  const unica = branches?.length === 1 ? branches[0]! : null
+  const [selectedBranchId,   setSelectedBranchId]   = useState(branchId ?? unica?.id ?? '')
+  const [selectedBranchSlug, setSelectedBranchSlug] = useState(slug ?? unica?.slug ?? '')
   const dialogRef = useRef<HTMLDialogElement>(null)
   const formRef   = useRef<HTMLFormElement>(null)
 
@@ -157,9 +159,9 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
             <input type="hidden" name="_slug"     value={selectedBranchSlug} />
 
             {/* Seletor de filial — apenas no modo admin */}
-            {isAdminMode && (
+            {isAdminMode && !unica && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label>Filial *</Label>
+                <Label>Unidade *</Label>
                 <select
                   required
                   className="field"
@@ -170,7 +172,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                     setSelectedBranchSlug(branch?.slug ?? '')
                   }}
                 >
-                  <option value="">Selecione a filial…</option>
+                  <option value="">Selecione a unidade…</option>
                   {branches!.map(b => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}

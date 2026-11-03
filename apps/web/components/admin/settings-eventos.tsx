@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 import { Activity, ChevronDown, ChevronRight, CircleSlash, RefreshCw } from 'lucide-react'
+import { Fala } from '@/components/shared/uma-unidade'
 import {
   listarEventosDeDominio, resumoDoCatalogo,
   type EventoNaLista, type LinhaDoCatalogo,
@@ -129,7 +130,7 @@ export function SettingsEventos({
           Eventos do sistema
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-          Tudo que acontece na rede vira um fato aqui, e é daqui que as automações
+          <Fala>Tudo que acontece na rede</Fala> vira um fato aqui, e é daqui que as automações
           vão puxar os gatilhos. A corrente guarda <strong>30 dias</strong>
           {desdeQuando ? ` — o registro mais antigo é de ${dia(desdeQuando)}.` : '.'}
         </p>
@@ -149,7 +150,7 @@ export function SettingsEventos({
           <div>
             <span className="overline">Catálogo</span>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 3 }}>
-              {linhas.length} eventos declarados · {nuncaVisto.length} ainda não ocorreram nesta rede
+              {linhas.length} eventos declarados · {nuncaVisto.length} <Fala>ainda não ocorreram nesta rede</Fala>
             </p>
           </div>
           <button
@@ -201,7 +202,7 @@ export function SettingsEventos({
 
         {linhas.every(l => l.vezes === 0) && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10 }}>
-            Nenhum evento ocorreu ainda nesta rede.
+            <Fala>Nenhum evento ocorreu ainda nesta rede.</Fala>
           </p>
         )}
       </div>

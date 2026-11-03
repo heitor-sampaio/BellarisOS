@@ -7,6 +7,7 @@ import { EditorDeDocumento, type ModeloEmEdicao } from '@/components/admin/edito
 import { definirModeloAtivo, definirEnvioDoLinkPelaConversa, tornarContratoDePlanoAtivo } from '@/actions/modelos-de-documento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { TipoDeModelo } from '@/lib/documentos/variaveis'
+import { Fala } from '@/components/shared/uma-unidade'
 
 /**
  * Configurações → Documentos: os modelos de termo e contrato da rede.
@@ -209,7 +210,7 @@ function EnvioDoLink({ pelaConversa, podeMudar }: { pelaConversa: boolean; podeM
       <div>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Envio do link de assinatura</h2>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, maxWidth: 560 }}>
-          Vale para a rede inteira, para os documentos e para a ficha de saúde (pré-atendimento). O link vale 7 dias, e o cliente confirma o CPF (ou a data de nascimento) antes de ver o documento ou as perguntas.
+          <Fala>Vale para a rede inteira</Fala>, para os documentos e para a ficha de saúde (pré-atendimento). O link vale 7 dias, e o cliente confirma o CPF (ou a data de nascimento) antes de ver o documento ou as perguntas.
         </p>
       </div>
       {podeMudar ? (
@@ -227,7 +228,7 @@ function EnvioDoLink({ pelaConversa, podeMudar }: { pelaConversa: boolean; podeM
           ? '"Enviar pela conversa" (na ficha do cliente) ou "Mandar pela conversa" (no agendamento, para a ficha de saúde) manda o link pelo WhatsApp da clínica, na conversa em que o cliente falou por último — pelo número que ele conhece, com o nome de quem enviou. Na API oficial, fora da janela de 24h (o cliente não escreveu no último dia) a mensagem não sai: a equipe copia o link ou abre no WhatsApp do aparelho.'
           : 'A equipe copia o link ou abre no WhatsApp do próprio aparelho. Nada sai pelo WhatsApp da clínica.'}
       </p>
-      {!podeMudar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Quem muda é quem administra a rede.</p>}
+      {!podeMudar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}><Fala>Quem muda é quem administra a rede.</Fala></p>}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
     </section>
   )

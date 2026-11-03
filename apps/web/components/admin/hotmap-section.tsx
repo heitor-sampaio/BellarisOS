@@ -177,7 +177,7 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--brand)', border: '2px solid var(--surface)', boxShadow: 'none' }} />
-              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Filial</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Unidade</span>
             </div>
             {LEGENDS[mode].map((l, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -201,7 +201,7 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
       ) : (
         <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            Cadastre endereços nas filiais e clientes para visualizar o mapa.
+            Cadastre o endereço das unidades e dos clientes para ver o mapa.
           </p>
         </div>
       )}

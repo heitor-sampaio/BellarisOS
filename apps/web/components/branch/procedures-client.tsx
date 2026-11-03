@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Clock, Star, Smartphone, Search } from 'lucide-react'
 import { contemSemAcento } from '@/lib/texto'
 import { rotaNoPortal } from '@/lib/rotas'
+import { useFala } from '@/components/shared/uma-unidade'
 
 /**
  * Catálogo de procedimentos na unidade — só leitura.
@@ -116,6 +117,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
 export function ProceduresClient({ procedures, categories, totalCount, precoMedio, buscaInicial = '', podeCadastrar = false }: Props) {
   const pathname = usePathname()
   const [activeTab, setActiveTab] = useState('Todos')
+  const fala = useFala()
   const [busca,     setBusca]     = useState(buscaInicial)
   // A busca universal pode trocar o `?q=` com a tela aberta.
   const [buscaVista, setBuscaVista] = useState(buscaInicial)
@@ -142,7 +144,7 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
             Procedimentos
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {totalCount} {totalCount === 1 ? 'procedimento' : 'procedimentos'} no catálogo da rede
+            {totalCount} {totalCount === 1 ? 'procedimento' : 'procedimentos'} {fala('no catálogo da rede')}
             {precoMedio > 0 && ` · preço médio ${fmtBRL(precoMedio)}`}
           </p>
         </div>
@@ -186,8 +188,8 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
         <div className="card" style={{ padding: '56px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
             {podeCadastrar
-              ? 'O catálogo da rede ainda está vazio.'
-              : 'O catálogo é da rede: peça a quem administra.'}
+              ? fala('O catálogo da rede ainda está vazio.')
+              : fala('O catálogo é da rede: peça a quem administra.')}
           </p>
           {podeCadastrar && (
             <Link href={rotaNoPortal(pathname, null, '/procedures')} className="btn-primary">Cadastrar procedimento</Link>

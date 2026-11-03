@@ -336,7 +336,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         {/* Filial */}
         {branches.length > 1 && (
           <select className="filtro-select" value={branchId} onChange={e => setBranchId(e.target.value)}>
-            <option value="">Todas as filiais</option>
+            <option value="">Todas as unidades</option>
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
@@ -565,7 +565,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                 <tr>
                   <th style={thStyle}>PRODUTO</th>
                   <th style={thStyle}>CATEGORIA</th>
-                  <th style={thStyle}>FILIAL</th>
+                  <th style={thStyle}>UNIDADE</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>ESTOQUE</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>MÍNIMO</th>
                   {!readOnly && <th style={{ ...thStyle, textAlign: 'right' }}>VALOR</th>}
@@ -589,7 +589,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                       <td data-label="Categoria" data-par style={{ padding: '12px 16px' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{row.category ?? '—'}</span>
                       </td>
-                      <td data-label="Filial" data-par style={{ padding: '12px 16px' }}>
+                      <td data-label="Unidade" data-par style={{ padding: '12px 16px' }}>
                         <span style={{
                           fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                           background: 'var(--bg-app)', color: 'var(--text-muted)',

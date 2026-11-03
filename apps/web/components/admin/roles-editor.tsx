@@ -17,6 +17,7 @@ import {
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Fala } from '@/components/shared/uma-unidade'
 import type {
   AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ReportTab,
 } from '@estetica-os/types'
@@ -305,7 +306,7 @@ function RoleCard({
           fontWeight: 'var(--weight-bold)', color: selected ? 'var(--brand)' : 'var(--text)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {role.label}
+          <Fala>{role.label}</Fala>
         </span>
         {unsaved && (
           <span
@@ -331,7 +332,7 @@ function RoleCard({
       </div>
 
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-        {role.is_system ? 'Acesso total à rede' : summarize(perms)}
+        {role.is_system ? <Fala>Acesso total à rede</Fala> : summarize(perms)}
       </p>
 
       {/* A contagem explica por que a exclusão é recusada, então conta ativos e
@@ -411,7 +412,7 @@ function SystemRoleCard({ role }: { role: EditorRole }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <Lock size={15} style={{ color: 'var(--brand)' }} />
         <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-          {role.label}
+          <Fala>{role.label}</Fala>
         </h3>
       </div>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', lineHeight: 'var(--leading-snug)' }}>
@@ -504,7 +505,7 @@ function PermissionMatrix({
 
       <div style={{ marginBottom: 20 }}>
         <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-          O que <span style={{ color: 'var(--brand)' }}>{role.label}</span> acessa
+          O que <span style={{ color: 'var(--brand)' }}><Fala>{role.label}</Fala></span> acessa
         </h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
           Cada área tem um nível. A frase abaixo do nível diz o que ele libera de verdade.
@@ -528,9 +529,9 @@ function PermissionMatrix({
         {MODULE_GROUPS.map(g => ({ ...g, modules: g.modules.filter(m => !foraDoPlano.includes(m)) })).filter(g => g.modules.length > 0).map(group => (
           <section key={group.key}>
             <div style={{ marginBottom: 8 }}>
-              <h4 className="overline">{group.label}</h4>
+              <h4 className="overline"><Fala>{group.label}</Fala></h4>
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
-                {group.hint}
+                <Fala>{group.hint}</Fala>
               </p>
             </div>
 
@@ -627,11 +628,11 @@ function ModuleRow({
           <div style={{
             fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
           }}>
-            {MODULE_LABELS[module]}
+            <Fala>{MODULE_LABELS[module]}</Fala>
             {/* O que o módulo abrange — antes escrito e nunca mostrado. */}
             {MODULE_HINTS[module] && (
               <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-faint)', marginLeft: 6 }}>
-                · {MODULE_HINTS[module]}
+                · <Fala>{MODULE_HINTS[module]}</Fala>
               </span>
             )}
           </div>
@@ -639,7 +640,7 @@ function ModuleRow({
             fontSize: 'var(--text-2xs)', color: enabled ? 'var(--text-soft)' : 'var(--text-faint)',
             marginTop: 3, lineHeight: 'var(--leading-snug)', maxWidth: 460,
           }}>
-            {LEVEL_COPY[module][level] ?? ''}
+            <Fala>{LEVEL_COPY[module][level] ?? ''}</Fala>
           </div>
           {/* Campanhas e Automações dizem sempre que são da rede (D-2,
               2026-10-29); os outros de rede, só quando ligados. */}
@@ -648,7 +649,7 @@ function ModuleRow({
               fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 4,
               fontStyle: 'italic',
             }}>
-              {soNaRede ?? NETWORK_ONLY_NOTE}
+              <Fala>{soNaRede ?? NETWORK_ONLY_NOTE}</Fala>
             </div>
           )}
           {sensitive && enabled && (
@@ -656,7 +657,7 @@ function ModuleRow({
               display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5,
               fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--warning)',
             }}>
-              <AlertTriangle size={11} /> {sensitive}
+              <AlertTriangle size={11} /> <Fala>{sensitive}</Fala>
             </div>
           )}
         </div>
@@ -688,7 +689,7 @@ function ModuleRow({
               fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 5,
               textAlign: 'right', lineHeight: 'var(--leading-snug)',
             }}>
-              {SCOPE_NOTE[module as ScopedModule]}
+              <Fala>{SCOPE_NOTE[module as ScopedModule]!}</Fala>
             </p>
           )}
         </div>
@@ -736,7 +737,7 @@ function CaixasDoInbox({
           textAlign: 'right', lineHeight: 'var(--leading-snug)',
         }}
       >
-        {atual.explicacao}
+        <Fala>{atual.explicacao}</Fala>
       </p>
     </div>
   )
@@ -783,7 +784,7 @@ function AbasDeRelatorio({
               }}
             >
               {on && <Check size={11} />}
-              {REPORT_TAB_LABELS[t]}
+              <Fala>{REPORT_TAB_LABELS[t]}</Fala>
             </button>
           )
         })}
@@ -815,7 +816,7 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
       <span className="overline">O que essa pessoa vai ver</span>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
         <PreviewLine title="Na unidade" items={branch} />
-        <PreviewLine title="Na rede"    items={network} />
+        <PreviewLine title={<Fala>Na rede</Fala>} items={network} />
       </div>
       {/* Relatórios em Ver sem aba nenhuma some do resumo: o resumo diz por
           quê, em vez de só o aviso pequeno ao lado da matriz (A5, 2026-11-01). */}
@@ -828,7 +829,7 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
   )
 }
 
-function PreviewLine({ title, items }: { title: string; items: string[] }) {
+function PreviewLine({ title, items }: { title: React.ReactNode; items: string[] }) {
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
       <span style={{
@@ -901,7 +902,7 @@ function SegmentedScope({ module, value, disabled, onChange }: {
           onClick={() => onChange(s)}
           style={{ ...segItem(value === s), padding: '4px 10px', fontSize: 'var(--text-2xs)' }}
         >
-          {s === 'OWN' ? labels.own : labels.all}
+          <Fala>{s === 'OWN' ? labels.own : labels.all}</Fala>
         </button>
       ))}
     </div>

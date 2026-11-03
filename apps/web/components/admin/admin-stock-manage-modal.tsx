@@ -71,6 +71,9 @@ function UnitSuffix({ unit }: { unit: string }) {
   )
 }
 
+/** A única unidade da lista, ou vazio quando há escolha a fazer. */
+const unicaUnidade = (lista: { id: string }[]) => lista.length === 1 ? lista[0]!.id : ''
+
 function BranchSelect({
   name, branches, allBranches, label, required, onChange, defaultValue,
 }: {
@@ -86,9 +89,10 @@ function BranchSelect({
   return (
     <FieldWrap>
       <Label>{label}{required && ' *'}</Label>
-      <select name={name} required={required} defaultValue={defaultValue ?? ''} className="field"
+      {/* Uma unidade só: já vem escolhida (F8 — era obrigatório e vazio). */}
+      <select name={name} required={required} defaultValue={defaultValue ?? unicaUnidade(allBranches)} className="field"
         onChange={e => onChange?.(e.target.value)}>
-        <option value="" disabled>Selecionar filial…</option>
+        <option value="" disabled>Selecionar unidade…</option>
         {allBranches.map(b => (
           <option key={b.id} value={b.id}>
             {b.name}{stockMap[b.id] !== undefined ? ` · ${stockMap[b.id]!.toLocaleString('pt-BR')}` : ''}
@@ -126,7 +130,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
         <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches}
-          label="Filial de destino" required />
+          label="Unidade de destino" required />
       )}
 
       <div className="form-2col">
@@ -272,7 +276,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
 }) {
   const [error,     setError]     = useState<string>()
   const [pending,   setPending]   = useState(false)
-  const [branchId,  setBranchId]  = useState(defaultBranchId ?? '')
+  const [branchId,  setBranchId]  = useState(defaultBranchId ?? unicaUnidade(allBranches))
   const [newQty,    setNewQty]    = useState('')
   const [confirmed, setConfirmed] = useState(false)
 
@@ -313,7 +317,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
         <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches}
-          label="Filial" required onChange={id => { setBranchId(id); setConfirmed(false) }} />
+          label="Unidade" required onChange={id => { setBranchId(id); setConfirmed(false) }} />
       )}
 
       {currentStock !== null && (
@@ -409,7 +413,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
 }) {
   const [error,    setError]    = useState<string>()
   const [pending,  setPending]  = useState(false)
-  const [branchId, setBranchId] = useState(defaultBranchId ?? '')
+  const [branchId, setBranchId] = useState(defaultBranchId ?? unicaUnidade(allBranches))
   const lotes = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -435,7 +439,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
         <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches}
-          label="Filial" required onChange={setBranchId} />
+          label="Unidade" required onChange={setBranchId} />
       )}
 
       <FieldWrap>
@@ -530,7 +534,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         Configure o estoque mínimo desejável de <strong style={{ color: 'var(--text)' }}>{product.name}</strong> em
-        cada filial. Abaixo deste valor, o produto será sinalizado como alerta.
+        cada unidade. Abaixo deste valor, o produto será sinalizado como alerta.
       </p>
 
       {visibleBranches.map(b => {

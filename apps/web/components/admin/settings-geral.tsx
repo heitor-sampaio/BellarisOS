@@ -6,6 +6,7 @@ import { maskCPFouCNPJDigitando, maskTelefoneDigitando } from '@estetica-os/util
 import { atualizarDadosDaRede, type DadosDaRede } from '@/actions/rede'
 import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
+import { useFala } from '@/components/shared/uma-unidade'
 
 /**
  * Configurações → Geral: os dados da própria rede.
@@ -47,12 +48,14 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
   // com os dígitos e o telefone no formato que aparece aqui — salvar não o muda.
   const [documento, setDocumento] = useState(maskCPFouCNPJDigitando(rede.document ?? ''))
   const [telefone, setTelefone] = useState(maskTelefoneDigitando(rede.phone ?? ''))
+  // A clínica de uma unidade não fala "rede" (F8).
+  const fala = useFala()
 
   return (
     <form action={enviar} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-          Dados da rede
+          {fala('Dados da rede')}
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
           Aparecem nos documentos e nas mensagens que a clínica manda.
@@ -60,7 +63,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
       </div>
 
       <div className="grade-de-campos">
-        <Campo rotulo="Nome da rede" obrigatorio>
+        <Campo rotulo={fala('Nome da rede')} obrigatorio>
           <input name="name" className="field" defaultValue={rede.name} disabled={!podeEditar} required />
         </Campo>
 
@@ -104,8 +107,8 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
         <SoLeitura rotulo="Endereço do portal" valor={`/${rede.slug}`}
           porque="Está em links já enviados — mudar é migração, não edição." />
         <SoLeitura rotulo="Plano" valor={nomeDoPlanoNaTela(rede.planName, rede.planStatus)}
-          porque={`${rotuloDaSituacao(rede.planStatus)}. ${naRede ? 'Veja faturas e pagamento na aba Assinatura.' : 'A assinatura fica com quem administra a rede.'}`} />
-        <SoLeitura rotulo="Rede criada em"
+          porque={`${rotuloDaSituacao(rede.planStatus)}. ${naRede ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')}`} />
+        <SoLeitura rotulo={fala('Rede criada em')}
           valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} />
       </div>
 

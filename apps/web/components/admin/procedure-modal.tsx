@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
 import { ProcedureForm, type ModelosDoProcedimento, type SalaDoCadastro, type ProfissionalDoCadastro } from './procedure-form'
 import type { DadosDaComissao } from './comissao-do-procedimento'
+import { useUmaUnidade } from '@/components/shared/uma-unidade'
 
 interface Branch  { id: string; name: string }
-interface Product { id: string; name: string; unit: string; branch_name: string; cost_price?: number | null }
+interface Product { id: string; name: string; unit: string; branch_name: string | null; cost_price?: number | null }
 
 interface ExistingProcedure {
   id: string
@@ -53,6 +54,7 @@ interface ProcedureModalProps {
 export function ProcedureModal({ salas = [], profissionais = [], branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias, comissao }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
+  const umaUnidade = useUmaUnidade()
 
   /**
    * Cada abertura monta um formulário NOVO (a `key` muda). O diálogo só
@@ -106,7 +108,7 @@ export function ProcedureModal({ salas = [], profissionais = [], branches, produ
                 {isEdit ? 'Editar procedimento' : 'Novo procedimento'}
               </h2>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                {isEdit ? existing!.name : 'Catálogo da rede · disponível em todas as filiais selecionadas'}
+                {isEdit ? existing!.name : umaUnidade ? 'Catálogo da clínica' : 'Catálogo da rede · disponível nas unidades selecionadas'}
               </p>
             </div>
             <button

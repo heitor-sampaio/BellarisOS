@@ -401,7 +401,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
 
           {/* Branches */}
           <div>
-            <SectionLabel>Filiais</SectionLabel>
+            <SectionLabel>Unidades</SectionLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {branches.map(b => (
                 <CheckRow
@@ -414,7 +414,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
               ))}
             </div>
             {branchIds.length === 0 && (
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 4 }}>Nenhuma selecionada = todas as filiais</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 4 }}>Nenhuma selecionada = todas as unidades</p>
             )}
           </div>
 

@@ -305,7 +305,7 @@ export function AdminFinancialView({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-            Financeiro da Rede
+            {umaUnidade ? 'Financeiro' : 'Financeiro da Rede'}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 3 }}>
             {periodLabel} · {statDaUnidade
@@ -538,7 +538,7 @@ export function AdminFinancialView({
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Data', 'Descrição', 'Cliente', 'Filial', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
+                {['Data', 'Descrição', 'Cliente', 'Unidade', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
                   <th key={h} style={{
                     padding: '10px 16px', textAlign: h === 'Valor' ? 'right' : 'left',
                     fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
@@ -581,7 +581,7 @@ export function AdminFinancialView({
                     <td data-label="Cliente" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: t.clienteNome ? 'var(--text)' : 'var(--text-faint)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {t.clienteNome ?? '—'}
                     </td>
-                    <td data-label="Filial" data-par style={{ padding: '11px 16px' }}>
+                    <td data-label="Unidade" data-par style={{ padding: '11px 16px' }}>
                       <span style={{
                         fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
                         background: 'var(--bg-app)', color: 'var(--text-muted)',

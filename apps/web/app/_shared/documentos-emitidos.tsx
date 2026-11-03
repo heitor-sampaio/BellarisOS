@@ -1,6 +1,8 @@
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { vocabulario } from '@/lib/unidades/vocabulario'
 import { resolvePeriod } from '@/lib/metrics'
 import { getDocumentosDoPainel, getResumoDosDocumentos, DOCUMENTOS_POR_PAGINA } from '@/lib/metrics/documentos'
 import { ehSituacao, ehTipoDeDocumento } from '@/lib/documentos/situacao'
@@ -86,7 +88,7 @@ export async function DocumentosEmitidos({
 
   return (
     <PainelDeDocumentos
-      escopo={unidade?.name ?? escolhida?.name ?? 'Rede'}
+      escopo={unidade?.name ?? escolhida?.name ?? vocabulario(await redeTemUmaUnidade(ctx.tenantId!))('Rede')}
       periodo={{ chave: periodo.key, rotulo: periodo.label, de: params.from, ate: params.to }}
       unidades={!unidade && !ctx.branchId && unidades.length > 1 ? unidades.map(u => ({ id: u.id, nome: u.name })) : null}
       unidadeEscolhida={escolhida?.id ?? null}

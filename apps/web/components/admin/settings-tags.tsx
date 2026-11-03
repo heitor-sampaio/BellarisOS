@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { Plus, Search, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { criarTag, renomearTag, arquivarTag, listarTagsComUso, type TagDaRede } from '@/actions/tags'
+import { Fala } from '@/components/shared/uma-unidade'
 
 /**
  * Configurações → Tags (2026-10-13): o vocabulário da rede, um só para a ficha
@@ -77,7 +78,7 @@ export function SettingsTags({ iniciais }: { iniciais: TagDaRede[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-        As tags da rede, as mesmas na ficha do cliente e no CRM. A que alguém grava por outro caminho
+        <Fala>As tags da rede</Fala>, as mesmas na ficha do cliente e no CRM. A que alguém grava por outro caminho
         — o card da oportunidade, a importação, uma automação — entra aqui sozinha. Renomear troca a
         tag em todos os clientes, contatos e oportunidades; arquivar tira das opções, mas quem já tem
         continua com ela.
@@ -120,7 +121,7 @@ export function SettingsTags({ iniciais }: { iniciais: TagDaRede[] }) {
 
         {visiveis.length === 0 && (
           <p style={{ padding: 16, margin: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-            {busca ? 'Nenhuma tag com esse nome.' : 'A rede ainda não tem tags.'}
+            {busca ? 'Nenhuma tag com esse nome.' : <Fala>A rede ainda não tem tags.</Fala>}
           </p>
         )}
 

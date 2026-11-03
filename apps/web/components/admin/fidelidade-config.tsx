@@ -7,6 +7,7 @@ import { salvarConfigFidelidade } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
 import type { ConfigFidelidade, ModoDeGanho } from '@/lib/fidelidade/config'
+import { Fala, useFala } from '@/components/shared/uma-unidade'
 
 /**
  * Configurações → Fidelidade: a rede liga o programa e escolhe as regras.
@@ -34,6 +35,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   /** A rede já tem pontos lançados: a abrangência fica travada. */
   temLancamentos?: boolean
 }) {
+  const fala = useFala()
   const [ligado,   setLigado]   = useState(inicial.enabled)
   const [modo,     setModo]     = useState<ModoDeGanho>(inicial.earn_mode)
   const [taxa,     setTaxa]     = useState(String(inicial.points_per_real).replace('.', ','))
@@ -280,21 +282,21 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
       <Bloco titulo="Onde os pontos valem">
         {podeEditar && !temLancamentos ? (
           <SegSelect
-            options={[{ key: 'rede', label: 'Rede inteira' }, { key: 'unidade', label: 'Só na unidade' }]}
+            options={[{ key: 'rede', label: fala('Rede inteira') }, { key: 'unidade', label: 'Só na unidade' }]}
             value={porUnidade ? 'unidade' : 'rede'}
             onSelect={k => setPorUnidade(k === 'unidade')}
             ariaLabel="Onde os pontos valem"
           />
         ) : (
           <strong data-testid="abrangencia-travada" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-            {porUnidade ? 'Só na unidade' : 'Rede inteira'}
+            {porUnidade ? 'Só na unidade' : fala('Rede inteira')}
           </strong>
         )}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
           {porUnidade
             ? 'Os pontos ganhos numa unidade só valem nela: o saldo é separado por unidade.'
             : 'Um saldo só: os pontos ganhos em qualquer unidade valem em todas.'}
-          {temLancamentos && ' Não dá para trocar depois que a rede já tem pontos lançados — mudaria o saldo de quem já tem.'}
+          {temLancamentos && fala(' Não dá para trocar depois que a rede já tem pontos lançados — mudaria o saldo de quem já tem.')}
         </p>
       </Bloco>
 
@@ -302,7 +304,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
         {/* Mudou de casa em 2026-09-30: é política de comissão, e mora com as
             outras (modo, descontos, período) em Configurações → Comissões. */}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          Agora se define em Configurações → Comissões, junto com as outras regras de comissão da rede.
+          <Fala>Agora se define em Configurações → Comissões, junto com as outras regras de comissão da rede.</Fala>
         </p>
       </Bloco>
 

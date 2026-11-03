@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale'
 import { unitTag, isUnitTag } from '@estetica-os/utils'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { useFala } from '@/components/shared/uma-unidade'
 import { opcoesDeTag, temTag, alternarTag } from '@/lib/tags/escolha'
 
 interface ClientItem {
@@ -61,6 +62,7 @@ export function ClientsSidebar({
 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
+  const fala     = useFala()
 
   const [search,           setSearch]           = useState('')
   const [filter,           setFilter]           = useState<Filter>('ativos')
@@ -224,7 +226,7 @@ export function ClientsSidebar({
             opcoes={tagsDisponiveis.map(t => ({ valor: t, rotulo: t }))}
             selecionadas={tagsEscolhidas}
             multiplo
-            textoListaVazia="A rede ainda não tem tags (Configurações → Tags)."
+            textoListaVazia={fala('A rede ainda não tem tags (Configurações → Tags).')}
             larguraPainel={220}
             classeBotao={classeGatilho(tagsEscolhidas.length > 0)}
             onEscolher={t => setTagsEscolhidas(prev => alternarTag(prev, t))}

@@ -92,7 +92,7 @@ const AREAS = [
     specs: /^(raiz-da-clinica|sessao-httponly|privacidade|autenticacao|nao-encontrada|rotas-com-sessao)/ },
   { nome: 'configurações e rede',
     chaves: ['settings', 'configurac', 'branch', 'unidade', 'tenant', 'rede', 'integrac', 'integration', 'lotes', 'historico', 'setup'],
-    specs: /^(configuracoes|estrutura|equipe|anuncios|abrangencia|credenciais|acoes-entre-redes|acoes-em-lote|setup)/ },
+    specs: /^(configuracoes|estrutura|equipe|anuncios|abrangencia|credenciais|acoes-entre-redes|acoes-em-lote|setup|rede-de-uma-unidade)/ },
   { nome: 'suporte e plataforma',
     chaves: ['suporte', 'plataforma', 'chamado', 'ajuda', 'lib/supabase/middleware'],
     specs: /^(suporte|clinico|chamados)/ },

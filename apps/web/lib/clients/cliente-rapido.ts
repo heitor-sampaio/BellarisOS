@@ -84,7 +84,7 @@ export async function garantirClienteRapido(
 
   if (!nome || nome.length < 2) return { error: 'Informe o nome de quem será atendido.' }
   if (digitos.length < 10)      return { error: 'Informe um telefone com DDD.' }
-  if (!input.branchId)          return { error: 'Filial não identificada.' }
+  if (!input.branchId)          return { error: 'Unidade não identificada.' }
 
   const branch = await ler(admin
     .from('branches')
@@ -92,7 +92,7 @@ export async function garantirClienteRapido(
     .eq('id', input.branchId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar a unidade')
-  if (!branch) return { error: 'Filial inválida.' }
+  if (!branch) return { error: 'Unidade inválida.' }
 
   // A comparação é feita no banco, sobre os dígitos (`cliente_por_telefone`).
   // `phone` guarda o que foi digitado — com máscara no formulário, cru quando

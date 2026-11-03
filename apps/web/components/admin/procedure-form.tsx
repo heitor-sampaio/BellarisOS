@@ -7,6 +7,7 @@ import { parseDinheiro, formatDinheiroCampo, DINHEIRO_INVALIDO } from '@estetica
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
+import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import {
   EditorDeComissao, entradaDaComissao, estadoInicialDaComissao, type DadosDaComissao,
 } from '@/components/admin/comissao-do-procedimento'
@@ -27,7 +28,8 @@ interface Product {
   id:                string
   name:              string
   unit:              string
-  branch_name:       string
+  /** A unidade do insumo; nulo = da clínica toda (sem sufixo). */
+  branch_name:       string | null
   cost_price?:       number | null
   consumption_unit?: string | null
   units_per_package?: number | null
@@ -163,6 +165,9 @@ export function ProcedureForm(props: ProcedureFormProps) {
 
 function ProcedureFormInner({ salas = [], profissionais = [], branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
   const pathname = usePathname()
+  // A clínica de uma unidade (D-19, F8): "disponível nas unidades" e o preço
+  // por unidade só fazem sentido com duas.
+  const umaUnidade = useUmaUnidade()
 
   // As salas em que é feito (D5, 2026-10-30): opcional. Só as ativas se
   // oferecem; sem marcada numa unidade, qualquer sala dela serve.
@@ -431,13 +436,13 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         </div>
       </div>
 
-      {/* -- Disponibilidade por filial -- */}
-      <div>
+      {/* -- Disponibilidade por unidade (só com duas ou mais) -- */}
+      {!umaUnidade && <div>
         <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
-          DISPONÍVEL NAS FILIAIS
+          DISPONÍVEL NAS UNIDADES
         </p>
         <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-          Sem seleção = disponível em toda a rede
+          Sem seleção = disponível em todas as unidades
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {branches.map(b => {
@@ -455,7 +460,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             )
           })}
         </div>
-      </div>
+      </div>}
 
       {/* -- Quem realiza (por-01) -- */}
       {profissionais.length > 0 && (
@@ -558,7 +563,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                   }}
                 >
                   {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.unit}) — {p.branch_name}</option>
+                    <option key={p.id} value={p.id}>{p.name} ({p.unit}){p.branch_name ? ` — ${p.branch_name}` : ''}</option>
                   ))}
                 </select>
 
@@ -662,8 +667,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         <AvisoDoDinheiro valor={price} />
       </Field>
 
-      {/* -- Personalizar valores por filial (acordeão) -- */}
-      {branches.length > 0 && (
+      {/* -- Personalizar valores por unidade (acordeão) -- */}
+      {branches.length > 0 && !umaUnidade && (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
           {/* Gatilho do acordeão */}
           <button
@@ -676,11 +681,11 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Personalizar valores por filial
+                Personalizar valores por unidade
               </span>
               {branchPricing.some(b => b.price !== '') && (
                 <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, background: 'var(--brand-soft)', color: 'var(--brand)', border: '1px solid var(--brand-soft-border)', borderRadius: 99, padding: '1px 7px' }}>
-                  {branchPricing.filter(b => b.price !== '').length} filial(is) com override
+                  {(n => `${n} ${n === 1 ? 'unidade' : 'unidades'} com preço próprio`)(branchPricing.filter(b => b.price !== '').length)}
                 </span>
               )}
             </div>
@@ -699,7 +704,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
               </p>
               {/* Header da tabela */}
               <div className="form-2col" style={{ background: 'var(--bg-app)', borderTop: '1px solid var(--hairline)', borderBottom: '1px solid var(--border)', padding: '6px 12px' }}>
-                {['Filial', 'Preço'].map(h => (
+                {['Unidade', 'Preço'].map(h => (
                   <span key={h} style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</span>
                 ))}
               </div>

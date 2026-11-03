@@ -14,6 +14,8 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { vocabulario } from '@/lib/unidades/vocabulario'
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -85,7 +87,9 @@ export default async function TeamPage({
   const members  = (todosOsMembros ?? []).filter(m => contemSemAcento([m.name, m.email], termo))
   const daRede   = (daRedeQueAtendem ?? []).filter(m => contemSemAcento([m.name], termo))
   const total    = members.length + daRede.length
-  const allRoles = tenantRoles ?? []
+  // A clínica de uma unidade não fala "rede" (F8): o cargo "Admin da rede" é "Admin".
+  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
+  const allRoles = (tenantRoles ?? []).map(r => ({ ...r, label: fala(r.label) }))
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
   const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
   const canManage = ctx.permissions.team === 'MANAGE'
@@ -259,7 +263,7 @@ export default async function TeamPage({
                       {(m.role_id ? roleLabel[m.role_id] : null) ?? '—'}
                     </span>
                     <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
-                    <span className="chip chip-info" style={{ marginLeft: 6 }}>Da rede</span>
+                    <span className="chip chip-info" style={{ marginLeft: 6 }}>{fala('Da rede')}</span>
                   </td>
                   <td style={{ padding: '14px 20px' }}>
                     <span className="chip chip-success">Ativo</span>

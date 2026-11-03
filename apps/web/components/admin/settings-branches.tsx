@@ -8,6 +8,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import Link from 'next/link'
 import { ler } from '@/lib/db'
 import { maskPhone } from '@estetica-os/utils'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 
 export async function SettingsBranches() {
   const ctx = await getTenantContext()
@@ -40,7 +41,8 @@ export async function SettingsBranches() {
             Unidades
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-            Gerencie as unidades da rede
+            {/* A clínica de uma unidade não fala "rede" (F8). */}
+            {await redeTemUmaUnidade(ctx.tenantId!) ? 'A unidade da clínica, e as próximas que nascerem' : 'Gerencie as unidades da rede'}
           </p>
         </div>
         <BranchForm />
@@ -66,7 +68,7 @@ export async function SettingsBranches() {
       {!branches?.length ? (
         <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            Nenhuma unidade cadastrada. Crie a primeira unidade da rede.
+            Nenhuma unidade cadastrada. Crie a primeira unidade da clínica.
           </p>
         </div>
       ) : (

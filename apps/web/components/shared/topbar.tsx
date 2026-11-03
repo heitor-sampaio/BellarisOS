@@ -13,6 +13,8 @@ import { Ajuda } from '@/components/shared/ajuda'
 import { AvisoDaAssinatura } from '@/components/shared/aviso-da-assinatura'
 import type { AvisoDaAssinatura as AvisoDaAssinaturaDados } from '@/lib/redes/aviso'
 import type { ResolvedPermissions, ResolvedScopes, SuporteNoContexto } from '@estetica-os/types'
+import { useUmaUnidade } from '@/components/shared/uma-unidade'
+import { rotuloDoCargo } from '@/lib/unidades/vocabulario'
 
 interface TopbarProps {
   userName:       string
@@ -51,6 +53,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
   const { toggle } = useSidebar()
+  const umaUnidade = useUmaUnidade()
 
   useEffect(() => {
     import('@capacitor/core').then(({ Capacitor }) => {
@@ -139,7 +142,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
               {firstName}
             </p>
             <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-              {roleLabel || ROLE_LABELS[userRole] || userRole}
+              {rotuloDoCargo(roleLabel || ROLE_LABELS[userRole] || userRole, umaUnidade)}
             </p>
           </div>
         </div>

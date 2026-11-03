@@ -45,7 +45,8 @@ export default async function AdminNewClientPage({ searchParams }: { searchParam
           Novo cliente
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          Rede · escolha a unidade de cadastro
+          {/* A clínica de uma unidade não fala "rede" nem pede a unidade (F8). */}
+          {branches.length === 1 ? branches[0]!.name : 'Rede · escolha a unidade de cadastro'}
         </p>
       </div>
 

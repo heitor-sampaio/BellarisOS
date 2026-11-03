@@ -11,6 +11,7 @@ import {
 import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
+import { useFala } from '@/components/shared/uma-unidade'
 import { ADMIN_MENU, menuSectionsFor } from '@/lib/menu'
 import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 
@@ -44,6 +45,8 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export function AdminSidebar({ permissions, scopes, plano = null }: { permissions: ResolvedPermissions; scopes?: Partial<ResolvedScopes>; plano?: { funcionalidades: readonly string[] } | null }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
+  // A clínica de uma unidade lê "Clínica" no lugar de "Rede" (F8).
+  const fala = useFala()
 
   // Recolhido = rosé; expandido = branco (original)
   const asideBg     = collapsed ? SIDEBAR_GRADIENT : 'var(--surface)'
@@ -98,7 +101,7 @@ export function AdminSidebar({ permissions, scopes, plano = null }: { permission
 
         {!collapsed && (
           <div style={{ padding: '0 12px', marginBottom: 6 }}>
-            <span className="overline">Rede</span>
+            <span className="overline">{fala('Rede')}</span>
           </div>
         )}
 

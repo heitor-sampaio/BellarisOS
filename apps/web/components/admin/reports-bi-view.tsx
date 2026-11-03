@@ -449,7 +449,7 @@ function TabFinanceiro(p: ReportsBiProps) {
     { key: 'what',      label: 'Parcela'    },
     { key: 'value',     label: 'Valor',      align: 'right',  render: (v) => fmtBRLFull(Number(v)) },
     { key: 'due',       label: 'Vencimento', align: 'center' },
-    { key: 'branch',    label: 'Filial'      },
+    { key: 'branch',    label: 'Unidade'     },
     {
       key: 'daysLeft', label: 'Dias', align: 'center',
       render: (v) => (

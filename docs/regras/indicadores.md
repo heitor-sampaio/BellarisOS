@@ -425,7 +425,9 @@ filtro de filial; Relatórios com o nome da unidade no lugar de "Rede" e sem
 para a rede" nem o seletor de unidade. Os números não mudam — só o que só
 faz sentido com duas. Seletor de unidade que já some com `length > 1` (agenda
 da rede, filtro dos Relatórios, estoque) segue a mesma regra. Prova:
-`e2e/rede-de-uma-unidade.spec.ts`.
+`e2e/rede-de-uma-unidade.spec.ts`. O VOCABULÁRIO das outras telas (o menu,
+o cargo "Admin", Equipe, Configurações…) segue a mesma régua desde a F8 da 5ª
+simulação: `docs/regras/design.md`, "A clínica de UMA unidade não fala rede".
 
 **O número diz o que conta** (J-55/J-56, 2026-10-30): a dica `<Dica>`
 (`components/shared/dica.tsx`, o "i" que abre a definição) fica ao lado do

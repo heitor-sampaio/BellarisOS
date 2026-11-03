@@ -7,6 +7,7 @@ import { Pencil, X } from 'lucide-react'
 import { updateTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { useFala } from '@/components/shared/uma-unidade'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 interface Role   { id: string; label: string }
@@ -79,7 +80,9 @@ export function TeamMemberEdit(props: Props) {
  */
 function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, cargoDeAdminId, onFechar }: Props & { onFechar: () => void }) {
   const [scopeEscolhido, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
-  const [filial, setFilial] = useState(member.branchId ?? '')
+  // Uma unidade só: já vem escolhida (F8).
+  const [filial, setFilial] = useState(member.branchId ?? (branches.length === 1 ? branches[0]!.id : ''))
+  const fala = useFala()
   // Cargo fora das opções nunca vira "o primeiro da lista": fica em "Selecione…".
   const cargoInicial = member.roleId && roles.some(r => r.id === member.roleId) ? member.roleId : ''
   const [cargo, setCargo] = useState(cargoInicial)
@@ -154,8 +157,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                     <label className="overline">Abrangência</label>
                     <SegSelect
                       options={[
-                        { key: 'branch',  label: 'Uma filial' },
-                        { key: 'network', label: 'Rede inteira' },
+                        { key: 'branch',  label: 'Uma unidade' },
+                        { key: 'network', label: fala('Rede inteira') },
                       ]}
                       value={scope}
                       onSelect={k => setScope(k as 'branch' | 'network')}
@@ -166,7 +169,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
 
                 {!cargoFixo && scope === 'branch' && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor={`tme-branch-${member.id}`}>Filial</label>
+                    <label className="overline" htmlFor={`tme-branch-${member.id}`}>Unidade</label>
                     <select
                       id={`tme-branch-${member.id}`} name="branchId" required className="field"
                       value={filial} onChange={e => setFilial(e.target.value)}
@@ -180,7 +183,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                 )}
                 {!cargoFixo && scope === 'network' && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    {paraAdmin ? 'A Admin da rede tem acesso total, em todas as unidades.' : 'Acesso a todas as unidades, sem filial fixa.'}
+                    {paraAdmin ? fala('A Admin da rede tem acesso total, em todas as unidades.') : 'Acesso a todas as unidades, sem unidade fixa.'}
                   </span>
                 )}
 

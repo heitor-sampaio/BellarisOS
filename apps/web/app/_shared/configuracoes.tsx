@@ -44,6 +44,8 @@ import { podeIncluirClinico } from '@/lib/suporte/regras'
 import { SettingsSuporte } from '@/components/admin/settings-suporte'
 import { SettingsAssinatura } from '@/components/admin/settings-assinatura'
 import { lerAssinatura } from '@/lib/redes/assinatura'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { vocabulario } from '@/lib/unidades/vocabulario'
 import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
@@ -112,6 +114,10 @@ export async function Configuracoes({
   metaStep, metaError, metaErrorReason, unidadeDaTela,
 }: Props) {
   const ctx = await getTenantContext()
+  // A clínica de uma unidade não fala "rede" (F8), e o aviso de que "muda para
+  // todas as unidades" não tem a quem avisar.
+  const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+  const fala = vocabulario(umaUnidade)
 
   const tabs = TABS.filter(t => abas.includes(t.key) && abaLiberada(t, m => can(ctx, m, 'MANAGE')) && abaNoPlano(t, ctx.plano))
 
@@ -126,9 +132,9 @@ export async function Configuracoes({
   // O topo diz o que a pessoa vê: a SDR, que só mexe em Tags e Importações,
   // lia "Cargos, modelos de ficha e integrações" (2026-10-21).
   const listaPt = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs.at(-1)}`
-  const subtituloDaTela = tabs.some(t => t.key === 'permissions')
+  const subtituloDaTela = fala(tabs.some(t => t.key === 'permissions')
     ? subtitulo
-    : `${listaPt(tabs.map(t => t.label.toLowerCase())).replace(/^./, c => c.toUpperCase())} da rede`
+    : `${listaPt(tabs.map(t => t.label.toLowerCase())).replace(/^./, c => c.toUpperCase())} da rede`)
 
   if (tabs.length === 0) {
     return (
@@ -348,7 +354,7 @@ export async function Configuracoes({
         </p>
       </div>
 
-      {aviso && (
+      {aviso && !umaUnidade && (
         <div style={{
           display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 24,
           background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px',
@@ -406,7 +412,7 @@ export async function Configuracoes({
               Cargos e acessos
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-              Crie um cargo com qualquer nome e defina, por módulo, o nível de acesso. O cargo <strong>Admin da rede</strong> tem acesso total e não pode ser editado.
+              Crie um cargo com qualquer nome e defina, por módulo, o nível de acesso. O cargo <strong>{fala('Admin da rede')}</strong> tem acesso total e não pode ser editado.
             </p>
           </div>
           {/* O atalho do editor aponta para `/admin/team`: quem decide se ele
@@ -481,7 +487,7 @@ export async function Configuracoes({
           // A mensalidade é da REDE: contrata quem é dela, com configurações; o suporte não.
           semContratar={ctx.suporte ? 'No modo suporte não dá para contratar: isto é feito pela própria clínica.'
             : ctx.branchId === null && can(ctx, 'settings', 'MANAGE') ? null
-            : 'Para contratar ou cancelar, fale com quem administra a rede.'}
+            : fala('Para contratar ou cancelar, fale com quem administra a rede.')}
         />
       )}
 

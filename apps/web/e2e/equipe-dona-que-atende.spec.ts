@@ -115,7 +115,7 @@ test('a Equipe da unidade lista quem é da rede e atende ali, sem deixar a unida
     await p.goto(`/${slug}/team`)
     const linha = p.getByRole('row', { name: new RegExp(nomeDaDona.replace(/[[\]]/g, '\\$&')) })
     await expect(linha).toBeVisible()
-    await expect(linha).toContainText('Da rede')
+    await expect(linha).toContainText('Da clínica') // uma unidade só: sem "rede" (F8)
     await expect(linha).toContainText('Atende')
     await expect(linha.getByTitle(/^Editar /), 'a unidade não edita quem é da rede').toHaveCount(0)
     await expect(linha.getByTitle('Desativar membro')).toHaveCount(0)
@@ -189,7 +189,7 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
       await p.getByTitle(`Editar ${PREFIXO} Colega dac${marca}`).click()
       const opcoes = p.getByRole('dialog').locator(`#tme-role-${colega!.userId} option`)
       await expect(opcoes.first()).toBeAttached()
-      expect(await opcoes.allTextContents(), 'a gerente não vê o cargo de Admin').not.toContain('Admin da rede')
+      expect(await opcoes.allTextContents(), 'a gerente não vê o cargo de Admin').not.toContain('Admin')
       const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
         userId: colega!.userId, roleId: dona!.roleId, scope: 'network', redirectPath: '/admin/team',
       })
@@ -203,7 +203,7 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
       await p.getByTitle(`Editar ${PREFIXO} Colega dac${marca}`).click()
       const opcoes = p.getByRole('dialog').locator(`#tme-role-${colega!.userId} option`)
       await expect(opcoes.first()).toBeAttached()
-      expect(await opcoes.allTextContents()).toContain('Admin da rede')
+      expect(await opcoes.allTextContents()).toContain('Admin') // "Admin da rede" na clínica de uma unidade (F8)
       const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
         userId: colega!.userId, roleId: dona!.roleId, scope: 'branch', branchId: rede!.branchId, redirectPath: '/admin/team',
       })

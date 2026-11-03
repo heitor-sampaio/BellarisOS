@@ -266,7 +266,7 @@ function AudienceRow({ rules }: { rules: Record<string, unknown> }) {
     return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Todos os clientes ativos da rede</p>
   }
 
-  if (r.branch_ids?.length)       items.push({ label: 'Filiais',    value: `${r.branch_ids.length} selecionada(s)` })
+  if (r.branch_ids?.length)       items.push({ label: 'Unidades',   value: `${r.branch_ids.length} selecionada(s)` })
   if (r.genders?.length)          items.push({ label: 'Gênero',     value: r.genders.join(', ') })
   if (r.procedure_ids?.length)    items.push({ label: 'Procedimentos', value: `${r.procedure_ids.length} selecionado(s)` })
   if (r.tags?.length)             items.push({ label: 'Tags',       value: r.tags.join(', ') })

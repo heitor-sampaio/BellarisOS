@@ -10,6 +10,7 @@ import { createProduct, updateProduct } from '@/actions/stock'
 import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
 import { USOS_DO_PRODUTO, lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Fala } from '@/components/shared/uma-unidade'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -634,7 +635,7 @@ export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
                 {isEdit ? 'Editar produto' : 'Novo produto'}
               </h2>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                {isEdit ? product.name : 'Adicionar ao catálogo da rede'}
+                {isEdit ? product.name : <Fala>Adicionar ao catálogo da rede</Fala>}
               </p>
             </div>
             <button type="button" onClick={close} style={{

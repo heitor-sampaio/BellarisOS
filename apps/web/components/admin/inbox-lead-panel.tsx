@@ -1229,7 +1229,7 @@ function ScheduleModal({
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={labelStyle}>Unidade</span>
             <select className="field" value={branchId} onChange={e => setBranchId(e.target.value)} style={selectStyle}>
-              {branches.length === 0 && <option value="">Nenhuma filial</option>}
+              {branches.length === 0 && <option value="">Nenhuma unidade</option>}
               {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </label>

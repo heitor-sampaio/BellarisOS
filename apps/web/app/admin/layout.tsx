@@ -11,6 +11,8 @@ import { Copilot } from '@/components/copilot/copilot'
 import { copilotNaTela } from '@/lib/copilot/disponivel'
 import { comAviso } from '@/lib/aviso-da-url'
 import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
+import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getTenantContext()
@@ -44,8 +46,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // inteiro. A falha fica no log e o sino começa em zero (o realtime corrige).
   if (unreadRes.error) console.error('[admin/layout] contar as notificações:', unreadRes.error.message)
   const initialUnread = unreadRes.count ?? 0
+  // A clínica de uma unidade não fala "rede" (D-19, F8): a régua vai às telas do navegador.
+  const umaUnidade = ctx.tenantId ? await redeTemUmaUnidade(ctx.tenantId) : false
 
   return (
+    <UmaUnidadeProvider valor={umaUnidade}>
     <SidebarProvider>
       <Suspense fallback={null}><AvisoDaUrl /></Suspense>
       <AdminSidebar permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} />
@@ -65,5 +70,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}
       {copilotNaTela(ctx) && <Suspense fallback={null}><Copilot /></Suspense>}
     </SidebarProvider>
+    </UmaUnidadeProvider>
   )
 }
