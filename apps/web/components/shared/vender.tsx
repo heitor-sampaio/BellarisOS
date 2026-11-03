@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ShoppingBag, X, AlertTriangle } from 'lucide-react'
+import { ShoppingBag, X, AlertTriangle, Plus } from 'lucide-react'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
 import { rotaDoRecebimento } from '@/components/shared/atendimentos-a-receber'
 import { formatBRL } from '@estetica-os/utils'
@@ -119,32 +119,41 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
 }
 
 /**
- * Produto (D4, decisão do Heitor, 2026-10-29): o produto de revenda, quantas
- * embalagens, o desconto e como vai ser pago. O estoque baixa na hora, pelo
- * lote que vence primeiro; sem estoque suficiente, o servidor recusa.
+ * Produto (D4, decisão do Heitor, 2026-10-29): os produtos de revenda, quantas
+ * embalagens de cada, o desconto e como vai ser pago. Vários produtos numa
+ * venda só, com um pagamento (ven-04, 2026-11-02: "a Carla leva 2 séruns e 1
+ * protetor"). O estoque baixa na hora, pelo lote que vence primeiro; sem
+ * estoque suficiente de um deles, o servidor recusa a venda inteira.
  */
 function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
   clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void
 }) {
   const router = useRouter()
-  const [prodId, setProdId] = useState(produtos[0]!.id)
-  const [quantidade, setQuantidade] = useState('1')
+  const [itens, setItens] = useState<{ prodId: string; quantidade: string }[]>(() => [{ prodId: produtos[0]!.id, quantidade: '1' }])
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
-  const prod = produtos.find(p => p.id === prodId) ?? produtos[0]!
-  const qtd = Math.max(0, Math.trunc(Number(quantidade) || 0))
-  const tabela = Math.round(prod.price * 100) * qtd / 100
+  const linhas = itens.map(i => {
+    const prod = produtos.find(p => p.id === i.prodId) ?? produtos[0]!
+    const qtd = Math.max(0, Math.trunc(Number(i.quantidade) || 0))
+    return { prod, qtd, subtotal: Math.round(prod.price * 100) * qtd / 100 }
+  })
+  const tabela = Math.round(linhas.reduce((s, l) => s + Math.round(l.subtotal * 100), 0)) / 100
   const conta = contaDoDesconto(tabela, desconto)
+  const quantidadesValidas = linhas.every(l => l.qtd >= 1 && l.qtd <= 100)
+  const livres = produtos.filter(p => !itens.some(i => i.prodId === p.id))
   // A chave do envio (D10): o duplo clique vende uma vez só.
   const envio = useEnvioUnico()
+  const mudar = (n: number, parte: Partial<{ prodId: string; quantidade: string }>) =>
+    setItens(xs => xs.map((x, i) => (i === n ? { ...x, ...parte } : x)))
 
   function vender() {
     setErro(recusaDoPagamento(estado, conta.liquido))
     if (recusaDoPagamento(estado, conta.liquido)) return
     iniciar(async () => {
-      const r = await venderProduto(clienteId, prod.id, branchId, qtd, montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
+      const r = await venderProduto(clienteId, linhas.map(l => ({ produtoId: l.prod.id, quantidade: l.qtd })), branchId, null,
+        montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
@@ -153,30 +162,51 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
   }
 
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
+  const fidelidade = produtos[0]?.fidelidade
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span className="overline">Produto</span>
-        <select className="field" aria-label="Produto" value={prodId} onChange={e => setProdId(e.target.value)}>
-          {produtos.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name} — {formatBRL(p.price)} · {p.disponivel > 0 ? `${p.disponivel} ${p.unidade} em estoque` : 'sem estoque'}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
-        <span style={rotulo}>Quantidade ({prod.unidade})</span>
-        <input className="field" type="number" min={1} max={100} step={1} inputMode="numeric" aria-label="Quantidade"
-          value={quantidade} onChange={e => setQuantidade(e.target.value)} />
-      </label>
+      {itens.map((item, n) => {
+        const sufixo = n === 0 ? '' : ` ${n + 1}`
+        const linha = linhas[n]!
+        return (
+          <div key={n} data-item-da-venda style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 240px', minWidth: 0 }}>
+              <span className="overline">Produto{sufixo}</span>
+              <select className="field" aria-label={`Produto${sufixo}`} value={item.prodId} onChange={e => mudar(n, { prodId: e.target.value })}>
+                {produtos.filter(p => p.id === item.prodId || !itens.some(i => i.prodId === p.id)).map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {formatBRL(p.price)} · {p.disponivel > 0 ? `${p.disponivel} ${p.unidade} em estoque` : 'sem estoque'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 130 }}>
+              <span style={rotulo}>Quantidade ({linha.prod.unidade})</span>
+              <input className="field" type="number" min={1} max={100} step={1} inputMode="numeric" aria-label={`Quantidade${sufixo}`}
+                value={item.quantidade} onChange={e => mudar(n, { quantidade: e.target.value })} />
+            </label>
+            {itens.length > 1 && (
+              <button type="button" className="btn-ghost" aria-label={`Tirar o produto${sufixo || ' 1'}`} style={{ padding: 8 }}
+                onClick={() => setItens(xs => xs.filter((_, i) => i !== n))}>
+                <X size={15} aria-hidden />
+              </button>
+            )}
+          </div>
+        )
+      })}
+      {livres.length > 0 && itens.length < 20 && (
+        <button type="button" className="btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-sm-sz)' }}
+          onClick={() => setItens(xs => [...xs, { prodId: livres[0]!.id, quantidade: '1' }])}>
+          <Plus size={14} aria-hidden /> Adicionar produto
+        </button>
+      )}
       <p data-resumo-do-produto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
-        {qtd} × {formatBRL(prod.price)} = {formatBRL(tabela)} · sai do estoque agora, pelo lote que vence primeiro
+        {linhas.map(l => `${l.qtd} × ${formatBRL(l.prod.price)}`).join(' + ')} = {formatBRL(tabela)} · sai do estoque agora, pelo lote que vence primeiro
       </p>
       {/* A48 da 5ª simulação: a venda de produto nasce sem pontuar, e a tela não dizia. */}
-      {prod.fidelidade && (
+      {fidelidade && (
         <p data-pontos-do-produto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {prod.fidelidade === 'PONTUA'
+          {fidelidade === 'PONTUA'
             ? 'A venda gera pontos de fidelidade quando for paga.'
             : 'A venda de produto não gera pontos de fidelidade (Configurações → Fidelidade).'}
         </p>
@@ -192,7 +222,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || qtd < 1 || qtd > 100}>
+        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || !quantidadesValidas}>
           {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
         </button>
       </div>

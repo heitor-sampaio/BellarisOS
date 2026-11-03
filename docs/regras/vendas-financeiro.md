@@ -233,6 +233,24 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   categoria "Venda de produto", com a cliente). Nunca despesa.
 - O custo do que saiu é o da entrada de cada lote que o FEFO tirou, na
   proporção (sem lote com custo, o custo de consumo do cadastro).
+- **Vários produtos numa venda, um pagamento só** (ven-04 da revisão,
+  2026-11-02: "a Carla leva 2 séruns e 1 protetor; a Bruna faz duas vendas
+  e recebe duas vezes"). A janela tem "Adicionar produto" (até 20, cada um
+  de 1 a 100; até 100 unidades na venda) e o resumo "2 × R$ 100,00 + 1 ×
+  R$ 90,00 = R$ 290,00". `venderProduto` recebe a lista de itens (um id
+  sozinho ainda vale) e `produto_vender_itens` (migration `20261101001103`)
+  grava numa transação: cada saldo travado na ordem do produto, a baixa de
+  cada um pelo FEFO, a venda e os itens (`product_sale_items`: produto,
+  quantidade, preço, custo e o movimento dele), UMA comissão sobre o total e
+  o dinheiro. Sem estoque de UM, nada grava. A venda guarda o total (tabela,
+  desconto, vendido, custo, unidades); as colunas de antes
+  (`product_id`, `preco_unitario`, `stock_movement_id`) ficam com o PRIMEIRO
+  item, e `descricao` ("2× Sérum + 1× Protetor") existe só no kit — é o
+  que as Vendas, o extrato da comissão e a descrição do lançamento dizem.
+  O estorno ("O produto voltou?") devolve CADA item ao saldo e aos lotes, e
+  a venda estornada que não voltou é perda por produto (`metrics_perdas`).
+  As vendas de antes (sem itens) seguem pelo cabeçalho. Prova:
+  `e2e/vendas-produto-varios.spec.ts`.
 - O dinheiro segue a regra única de receita (`metrics_receitas_pagas`): caixa,
   faturamento e ticket médio. O relatório de vendas ganha o tipo **Produto**
   (`metrics_vendas`: na data da venda, pelo vendido, "quem vendeu" na coluna
@@ -816,5 +834,6 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Ler dinheiro digitado com uma regra própria (Number(s.replace…), parseFloat em campo de texto) — é parseDinheiro, e o NaN dele é recusa, não zero
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
 ❌ Devolver e.message num catch de action (o 'Forbidden' da trava ia em inglês para a tela) — é mensagemDoErro
+❌ Vender produto fora de produto_vender_itens (a de um produto só, produto_vender, é a versão velha e nada a chama), ou ler os produtos de uma venda pelo product_id do cabeçalho (no kit é só o primeiro: são os product_sale_items)
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ```
