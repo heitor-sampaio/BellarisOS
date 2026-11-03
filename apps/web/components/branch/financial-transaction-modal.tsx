@@ -107,11 +107,13 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
       setSelectedBranchId(branchId ?? '')
       setSelectedBranchSlug(slug ?? '')
     } else {
-      setSelectedBranchId('')
-      setSelectedBranchSlug('')
+      // Uma unidade só: a pergunta some (F8), e a unidade continua escolhida.
+      // Zerar aqui deixava o lançamento sem unidade ("Unidade não identificada.").
+      setSelectedBranchId(unica?.id ?? '')
+      setSelectedBranchSlug(unica?.slug ?? '')
     }
     dialogRef.current?.showModal()
-  }, [isAdminMode, branchId, slug])
+  }, [isAdminMode, branchId, slug, unica])
   const close = useCallback(() => dialogRef.current?.close(), [])
 
   useEffect(() => {

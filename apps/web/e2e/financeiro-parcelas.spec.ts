@@ -116,7 +116,9 @@ test('despesa parcelada pela tela: uma despesa por parcela, cada uma no seu venc
     await p.goto('/admin/financeiro')
     await p.getByRole('button', { name: 'Novo lançamento' }).click()
     const dialogo = p.locator('dialog[open]')
-    await dialogo.locator('select').first().selectOption(rede!.branchId)
+    // A rede do teste tem UMA unidade: ela já vem escolhida e a pergunta some
+    // (F8, D-19). O primeiro seletor do modal é o da categoria.
+    await expect(dialogo.locator('select').filter({ has: p.locator('option', { hasText: 'Selecione a unidade…' }) })).toHaveCount(0)
     await dialogo.getByRole('button', { name: 'Despesa' }).click()
     await dialogo.locator('input[name="description"]').fill(descricao)
     await dialogo.locator('select[name="category"]').selectOption({ index: 1 })
