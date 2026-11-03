@@ -17,6 +17,7 @@ import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integr
 import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { cifrarSegredos } from '@/lib/integracoes/cofre'
 import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
+import { juntarConversasDoNumero, apagarNumeroJuntado } from '@/lib/whatsapp/remover'
 import { dispararHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
 
 /**
@@ -581,6 +582,12 @@ export async function removerConexaoUazapi(
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   const config = numero.config as UazapiConfig
 
+  // As conversas que colidiriam com a "sem número" da mesma pessoa são
+  // juntadas ANTES (F7c, 2026-11-02; lib/whatsapp/remover.ts): se isso
+  // falhar, nem a instância sai — e juntar de novo é seguro.
+  const juntou = await juntarConversasDoNumero(ctx.tenantId!, numero.id)
+  if (!juntou.ok) return juntou
+
   try {
     await removerInstancia(baseDa(config), config.token)
   } catch (e) {
@@ -591,12 +598,8 @@ export async function removerConexaoUazapi(
     }
   }
 
-  const { error } = await createAdminClient()
-    .from('whatsapp_numbers')
-    .delete()
-    .eq('id', numero.id)
-
-  if (error) return { ok: false, error: error.message }
+  const apagou = await apagarNumeroJuntado(ctx.tenantId!, numero.id, juntou.vazias)
+  if (!apagou.ok) return apagou
 
   // `removida` e não `pedido`: desligar o celular e apagar a instância levam ao
   // mesmo "não está mais no ar", mas só um deles é reversível apertando um

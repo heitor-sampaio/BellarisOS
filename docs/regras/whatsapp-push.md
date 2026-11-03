@@ -79,6 +79,19 @@ tabela veio remover.
   continua nascendo com `branch_id` nulo — a unidade vira tag depois.
 - **Cada número tem seu provedor.** uazapi e oficial convivem na mesma rede.
   Nada derruba a conexão vizinha para ativar a sua.
+- **Remover um número JUNTA as conversas que colidiriam** (F7c, achado do
+  Heitor em 2026-11-02, Bellaris Clinic). As conversas do número perdem a
+  caixa (SET NULL), e a pessoa que já tinha uma conversa SEM número (de uma
+  conexão antiga) batia no índice do ramo "sem número": a tela mostrava
+  "duplicate key value violates unique constraint" e o número ficava.
+  `removerNumeroWhatsApp` chama antes `juntar_conversas_do_numero` (migration
+  `20261102000701`, uma transação): a conversa que fica é a que a pessoa JÁ
+  tinha (a mais antiga), e as mensagens e as oportunidades
+  (`leads.conversation_id`) passam para ela; o resumo (última mensagem, não
+  lidas, aguardando, apelidos, tags) junta os dois. A do número fica vazia,
+  com o resumo zerado — a função é repetível — e sai antes do número. É o
+  único caso em que uma conversa sai do banco, e ela sai VAZIA. Prova:
+  `e2e/whatsapp-remover-numero.spec.ts`.
 
 **Por onde a mensagem sai** — a regra é `escolherNumeroDeSaida`
 (`lib/whatsapp/escolha.ts`), pura de propósito, nesta ordem:
@@ -396,4 +409,5 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Decidir o motivo de uma falha por pedaço do texto do erro ("OAuth", "24", "10") — é o código, em falhaDoEnvio
 ❌ Escrever preço da Meta fora de TABELA_DA_META, ou contar "cobrado" por regra nossa em vez do pricing.billable do status
 ❌ Gravar o pricing/erro do status por cima com nulo (o "read" chega sem pricing)
+❌ Apagar a linha de whatsapp_numbers sem juntar_conversas_do_numero antes (a conversa que perde a caixa colide com a "sem número" da mesma pessoa: "duplicate key" na tela)
 ```

@@ -18,6 +18,7 @@ import { rotuloDaConexao } from '@/lib/whatsapp/rotulo'
 import { nomeDoNumeroNaMeta } from '@/lib/whatsapp/nome-na-meta'
 import { dispararHistoricoUazapi } from '@/lib/whatsapp/historico-uazapi'
 import { getCobrancaDoWhatsapp } from '@/lib/metrics/whatsapp'
+import { juntarConversasDoNumero, apagarNumeroJuntado } from '@/lib/whatsapp/remover'
 import type { CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
 
 export interface IntegrationConfig {
@@ -742,8 +743,14 @@ export async function removerNumeroWhatsApp(
     }
   }
 
-  const { error } = await admin.from('whatsapp_numbers').delete().eq('id', numeroId)
-  if (error) return { ok: false, error: error.message }
+  // As conversas do número perdem a caixa (SET NULL), e a pessoa que JÁ tem
+  // uma conversa sem número colidia no índice do ramo "sem número": a tela
+  // mostrava "duplicate key" e o número ficava (F7c, 2026-11-02). Junta-se
+  // primeiro (lib/whatsapp/remover.ts), e só então o número sai.
+  const juntou = await juntarConversasDoNumero(ctx.tenantId!, numeroId)
+  if (!juntou.ok) return juntou
+  const apagou = await apagarNumeroJuntado(ctx.tenantId!, numeroId, juntou.vazias)
+  if (!apagou.ok) return apagou
 
   // Os templates da conta que ficou sem número saem daqui (na Meta ficam).
   await acompanharCatalogos(ctx.tenantId!)
