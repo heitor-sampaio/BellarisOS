@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { avulsosDoPlano, textoDoAvulso } from '@/lib/checkout/plano-e-avulso'
 import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MessageCircle, Sparkles } from 'lucide-react'
@@ -141,6 +142,15 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       : Promise.resolve(30),
     aClinicaDoEndereco(slug),
   ])
+  // O avulso agendado de um procedimento do plano proposto (A68): a cliente
+  // não sabia se pagaria os dois — o cartão do plano diz que ele é à parte.
+  const avulsosPorPlano = new Map<string, string[]>()
+  if (temProposto && redeDoCliente) {
+    await Promise.all(activePlans.filter(p => p.status === 'PROPOSED').map(async p => {
+      const lista = await avulsosDoPlano(admin, redeDoCliente, p.id)
+      if (lista.length) avulsosPorPlano.set(p.id, lista.map(textoDoAvulso))
+    }))
+  }
 
   // Termos e contratos esperando a assinatura dele (§9.4.1).
   const paraAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
@@ -369,7 +379,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             ))}
 
             {activePlans.filter(p => p.status === 'PROPOSED').map(plan => (
-              <PlanoProposto key={plan.id} plano={plan} validadeDias={validadeDias} whatsapp={aClinica?.whatsapp ?? null} telefone={aClinica?.telefone ?? null} />
+              <PlanoProposto key={plan.id} plano={plan} validadeDias={validadeDias} whatsapp={aClinica?.whatsapp ?? null} telefone={aClinica?.telefone ?? null}
+                avulsos={avulsosPorPlano.get(plan.id) ?? []} />
             ))}
 
             {activePlans.filter(p => p.status !== 'PROPOSED').map(plan => {
@@ -434,8 +445,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
  * procedimentos, o valor e a validade, e "Falar com a clínica". O app não
  * aceita: o aceite (e o pagamento) é na clínica.
  */
-function PlanoProposto({ plano, validadeDias, whatsapp, telefone }: {
+function PlanoProposto({ plano, validadeDias, whatsapp, telefone, avulsos = [] }: {
   plano: ActivePlan; validadeDias: number; whatsapp: string | null; telefone: string | null
+  /** O agendado à parte de um procedimento do plano (A68), em texto. */
+  avulsos?: string[]
 }) {
   const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
   const itens = sessoes.flatMap(s => s.treatment_plan_session_procedures ?? [])
@@ -470,6 +483,11 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone }: {
       <p style={{ fontSize: 'var(--text-sm-sz)', color: vencido ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
         {vencido ? `Proposta vencida em ${dia} — fale com a clínica para atualizar.` : `Válido até ${dia}.`} O aceite é feito na clínica.
       </p>
+      {avulsos.length > 0 && (
+        <p data-avulso-do-plano style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+          {avulsos.join('; ')}: ele não faz parte deste plano. Fale com a clínica se ele deveria ser uma sessão do plano.
+        </p>
+      )}
       {whatsapp ? (
         // A66: o WhatsApp abre com a mensagem pronta sobre ESTE plano.
         <a href={comMensagem(whatsapp, `Olá! Vi no app o plano de tratamento proposto (${sessoes.length} ${sessoes.length === 1 ? 'sessão' : 'sessões'}, ${formatBRL(valor)}) e quero conversar sobre ele.`)!}

@@ -1,13 +1,16 @@
 'use client'
 
 import { startTransition, useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar } from '@/actions/appointments'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { rotaNoPortal } from '@/lib/rotas'
 
 interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; /** Quem realiza (por-01; vazio = todas). */ realizam?: string[] }
@@ -54,6 +57,7 @@ export function AppointmentModal({
   const [state, formAction, pending] = useActionState(addAppointment, undefined)
   const [clientSearch, setClientSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const pathname = usePathname()
   const [showClientList, setShowClientList] = useState(false)
 
   // O cliente que veio escolhido: confere no servidor e já deixa selecionado.
@@ -252,6 +256,21 @@ export function AppointmentModal({
   // (a sala é opcional, H1), e a janela diz isso em vez de calar.
   const semSalaLivre = !salaId && salasDoServidor?.chave === chaveDasSalas && !!salasDoServidor.doProcedimento
     && salasOferecidas.length > 0 && salasOferecidas.every(s => !s.livre)
+
+  // -- O plano com o mesmo procedimento (D-18, A68) --------------------------
+  // A cliente tem plano proposto ou fechado com este procedimento: o agendar
+  // pergunta se não é pelo plano (avulso, ele é cobrado à parte).
+  const chaveDoPlano = selectedClient?.id && procedimentoDoAgendamento && !credito ? `${selectedClient.id}|${procedimentoDoAgendamento}` : ''
+  const [avisoDoPlano, setAvisoDoPlano] = useState<{ chave: string; texto: string; planId: string } | null>(null)
+  useEffect(() => {
+    if (!chaveDoPlano || !selectedClient?.id) return
+    let vivo = true
+    avisoDoPlanoAoAgendar(selectedClient.id, procedimentoDoAgendamento)
+      .then(r => { if (vivo) setAvisoDoPlano(r ? { chave: chaveDoPlano, ...r } : null) })
+      .catch(() => { /* sem aviso */ })
+    return () => { vivo = false }
+  }, [chaveDoPlano, selectedClient?.id, procedimentoDoAgendamento])
+  const avisoDoPlanoAgora = avisoDoPlano && avisoDoPlano.chave === chaveDoPlano ? avisoDoPlano : null
 
   // -- Avisos do horário (J-30, 2026-10-30) ----------------------------------
   // Antes de confirmar: o encaixe fora do horário da profissional e o choque
@@ -489,6 +508,17 @@ export function AppointmentModal({
                 </option>
               ))}
             </select>
+            {avisoDoPlanoAgora && (
+              <p data-aviso-do-plano role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
+                <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
+                <span>
+                  {avisoDoPlanoAgora.texto}{' '}
+                  <Link href={rotaNoPortal(pathname, dados.slug, `/planejamentos/${avisoDoPlanoAgora.planId}`)} style={{ color: 'var(--brand)', fontWeight: 700 }}>
+                    Abrir o plano
+                  </Link>
+                </span>
+              </p>
+            )}
           </Field>
           )}
 

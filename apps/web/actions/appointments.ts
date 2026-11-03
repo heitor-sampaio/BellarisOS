@@ -41,6 +41,8 @@ import type { AnamnesisRow } from '@/lib/anamnesis'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { perguntaDoInicioAdiantado } from '@/lib/appointments/inicio-adiantado'
+import { planosComOProcedimento, textoDoPlano } from '@/lib/checkout/plano-e-avulso'
+import { nomeParaSaudar } from '@/lib/saudacao'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
@@ -2101,5 +2103,31 @@ export async function buscarClientesParaAgendar(termo: string): Promise<{
     clientes: ((data ?? []) as { id: string; name: string; phone: string | null }[]).map(c => ({
       id: c.id, name: c.name, phone: c.phone ?? '',
     })),
+  }
+}
+
+/**
+ * O aviso do plano ao AGENDAR (D-18, "Reforça" item 12 da 5ª simulação): a
+ * cliente tem plano proposto ou fechado com o MESMO procedimento — "A Rosana
+ * tem um plano com Bioestimulador; agendar pelo plano?". Só aviso: o agendar
+ * continua.
+ */
+export async function avisoDoPlanoAoAgendar(clientId: string, procedureId: string): Promise<{ texto: string; planId: string } | null> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    const uuid = /^[0-9a-f-]{36}$/i
+    if (typeof clientId !== 'string' || !uuid.test(clientId) || typeof procedureId !== 'string' || !uuid.test(procedureId)) return null
+    const admin = createAdminClient()
+    const [planos, cli] = await Promise.all([
+      planosComOProcedimento(admin, ctx.tenantId!, clientId, procedureId),
+      ler(admin.from('clients').select('name').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente') as Promise<{ name: string } | null>,
+    ])
+    const plano = planos[0]
+    if (!plano || !cli) return null
+    return { texto: textoDoPlano(nomeParaSaudar(cli.name), plano), planId: plano.id }
+  } catch (e) {
+    console.error('[agenda] aviso do plano:', mensagemDoErro(e))
+    return null
   }
 }

@@ -1323,6 +1323,7 @@ import { fichaDePreAtendimento, anamneseDaEquipeParaGravar } from '@/lib/pre-ate
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 import { perguntaDoPlanejamentoVazio } from '@/lib/atendimento/retrato-dos-injetaveis'
+import { avulsosDoPlano, textoDoAvulso } from '@/lib/checkout/plano-e-avulso'
 import { deOutroProfissional, DE_OUTRO_PROFISSIONAL } from '@/lib/appointments/alteracoes'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
@@ -1984,4 +1985,26 @@ export async function pacotesParaODicaDoPlano(branchId: string): Promise<PacoteP
     id: p.id, name: p.name, price: p.price,
     itens: p.itens.map(i => ({ procedureId: i.procedureId, quantidade: i.quantidade })),
   }))
+}
+
+/**
+ * Os agendamentos AVULSOS da cliente, ainda por vir, de um procedimento do
+ * plano (A68 da 5ª simulação: o plano de 2× Bioestimulador e o Bioestimulador
+ * agendado à parte, sem ligação — "a cliente não sabe se paga os dois"). O
+ * checkout AVISA; quem fecha decide (cancelar o avulso ou ajustar o plano).
+ */
+export async function avulsosDoPlanoNoCheckout(planId: string): Promise<{ id: string; texto: string }[]> {
+  try {
+    const ctx = await getTenantContext()
+    assertPodeFecharPlano(ctx)
+    if (typeof planId !== 'string' || !/^[0-9a-f-]{36}$/i.test(planId)) return []
+    const admin = createAdminClient()
+    const plano = await ler(admin.from('treatment_plans').select('branch_id, branches!branch_id(tenant_id)')
+      .eq('id', planId).maybeSingle(), 'buscar o plano') as { branch_id: string; branches: { tenant_id: string } | null } | null
+    if (!plano || plano.branches?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plano.branch_id)) return []
+    return (await avulsosDoPlano(admin, ctx.tenantId!, planId)).map(a => ({ id: a.id, texto: textoDoAvulso(a) }))
+  } catch (e) {
+    console.error('[checkout] avulsos do plano:', mensagemDoErro(e))
+    return []
+  }
 }

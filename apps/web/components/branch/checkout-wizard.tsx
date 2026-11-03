@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { AlertTriangle, Check, ChevronRight, User, FileText, CreditCard, CalendarCheck, Stethoscope, Clock, FileSignature, ScrollText } from 'lucide-react'
-import { checkoutTreatmentPlan, cancelCheckout } from '@/actions/treatment-plans'
+import { checkoutTreatmentPlan, cancelCheckout, avulsosDoPlanoNoCheckout } from '@/actions/treatment-plans'
 import { prepararDocumentosDoCheckout, documentoParaAssinar } from '@/actions/documentos'
 import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { ResumoDeDocumento } from '@/lib/documentos/leitura'
@@ -12,7 +12,8 @@ import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/tre
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import type { Horario } from '@/lib/agenda/horario'
-import { rotaCliente } from '@/lib/rotas'
+import { rotaCliente, rotaAtendimento } from '@/lib/rotas'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { lerEntrada, erroDaEntrada } from '@/lib/checkout/entrada'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -116,6 +117,13 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [abrindo,    startAbrir]    = useTransition()
   // O contrato assinado para OUTRO pagamento (A45): o servidor pergunta antes de substituir.
   const [substitui,  setSubstitui]  = useState<{ titulo: string; pagamento: string } | null>(null)
+  // O avulso agendado de um procedimento do plano (A68): a cliente pagaria os dois.
+  const [avulsos, setAvulsos] = useState<{ id: string; texto: string }[]>([])
+  useEffect(() => {
+    let vivo = true
+    avulsosDoPlanoNoCheckout(plan.id).then(r => { if (vivo) setAvulsos(r) }).catch(() => {})
+    return () => { vivo = false }
+  }, [plan.id])
 
   const aberto = (d: ResumoDeDocumento) => d.status === 'A_GERAR' || d.status === 'PENDENTE' || d.status === 'INCOMPLETO'
   const documentosQueTravam = (docs ?? []).filter(d => aberto(d) && d.exigencia === 'BLOQUEIA')
@@ -425,6 +433,23 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   if (step === 0) return (
     <div>
       {progressBar}
+
+      {avulsos.length > 0 && (
+        <div data-avulso-do-plano role="note" style={{ padding: '12px 14px', marginBottom: 16, borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {avulsos.map(a => (
+              <p key={a.id} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700 }}>
+                {a.texto}.{' '}
+                <Link href={rotaAtendimento(pathname, slug, a.id)} style={{ color: 'var(--brand)' }}>Abrir</Link>
+              </p>
+            ))}
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              Fechado o plano, a cliente paga os dois. Se o agendamento é uma sessão deste plano, cancele o avulso e agende pela sessão.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Card do cliente */}
       <div className="card" style={{ padding: '16px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>

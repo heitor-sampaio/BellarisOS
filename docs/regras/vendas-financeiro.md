@@ -673,6 +673,22 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   plano foi proposto; vencida, o app diz "Proposta vencida em …". É só
   informação: o checkout na clínica não recusa o plano vencido. Prova:
   `e2e/portal-cliente-plano-proposto.spec.ts`, `e2e/configuracoes-geral.spec.ts`.
+- **O plano e o avulso do MESMO procedimento AVISAM** (D-18, "Reforça" item
+  12, e A68 da 5ª simulação: a Rosana via o plano de R$ 3.600 — 2×
+  Bioestimulador — e, ao lado, o Bioestimulador de R$ 1.800 agendado pelo
+  médico, sem ligação: "a cliente não sabe se paga os dois";
+  `lib/checkout/plano-e-avulso.ts`):
+  - o AGENDAR (modal da agenda), com a cliente e o procedimento escolhidos:
+    "Rosana tem um plano proposto com Bioestimulador (2 sessões · R$ 3.600,00).
+    Agendar pelo plano? Avulso, ele é cobrado à parte." — no plano fechado,
+    as sessões dele ainda sem agendamento —, com "Abrir o plano"
+    (`avisoDoPlanoAoAgendar`);
+  - o CHECKOUT do plano e o app da cliente (o cartão do plano proposto):
+    "Bioestimulador agendado à parte em 06/11 às 16:00 (R$ 1.800,00)" — o
+    agendado ainda por vir, sem plano, fora de pacote e de pré-pago, de um
+    procedimento do plano (`avulsosDoPlano`).
+  Só aviso: nada se liga sozinho nem se bloqueia; quem fecha cancela o avulso
+  e agenda pela sessão, ou ajusta o plano. Prova: `e2e/plano-e-avulso.spec.ts`.
 - **A cliente vê o saldo do crédito no app** (D-17, decisão do Heitor,
   2026-10-30): o Financeiro do portal mostra "Crédito na clínica" com o saldo
   da ficha da clínica do ENDEREÇO (`ctx.clientId`), só quando é maior que
