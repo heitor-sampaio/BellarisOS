@@ -2,8 +2,10 @@
 
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Plus, FileImage } from 'lucide-react'
+import { Camera, Plus, FileImage, Send, Smartphone, EyeOff, Loader2, X } from 'lucide-react'
 import { UploadForm } from '@/components/branch/client-documents-tab'
+import { JanelaModal } from '@/components/shared/janela-modal'
+import { enviarDocumentoACliente } from '@/actions/client-documents'
 
 export interface FotoDoAtendimento {
   id:        string
@@ -13,6 +15,8 @@ export interface FotoDoAtendimento {
   createdAt: string
   /** URL assinada (bucket privado). */
   url:       string
+  /** Quando foi ao app da cliente ("Enviar à cliente"); nulo = só a equipe vê. */
+  enviadoEm?: string | null
 }
 
 /**
@@ -34,6 +38,20 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
   const [anexando, setAnexando] = useState(false)
   const fechar = useCallback(() => { setAnexando(false); router.refresh() }, [router])
   const hoje = new Date().toLocaleDateString('pt-BR')
+  // A foto aberta grande (A37: clicar na miniatura não fazia nada).
+  const [vendo, setVendo] = useState<FotoDoAtendimento | null>(null)
+  const [enviando, setEnviando] = useState<string | null>(null)
+  const [erro, setErro] = useState<{ id: string; msg: string } | null>(null)
+
+  // "Enviar à cliente" (A37): o mesmo envio da aba Documentos da ficha — o
+  // app só mostra o que a clínica ENVIA, com o aviso genérico.
+  async function alternarEnvio(f: FotoDoAtendimento) {
+    setEnviando(f.id); setErro(null)
+    const r = await enviarDocumentoACliente(f.id, !f.enviadoEm)
+    setEnviando(null)
+    if (r.error) { setErro({ id: f.id, msg: r.error }); return }
+    router.refresh()
+  }
 
   return (
     <div data-fotos-do-atendimento className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -71,24 +89,54 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
         {fotos.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
             {fotos.map(f => (
-              <a key={f.id} href={f.url || undefined} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', flexDirection: 'column', gap: 6, textDecoration: 'none', color: 'var(--text)' }}>
-                <div style={{ aspectRatio: '1 / 1', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div key={f.id} data-foto-do-atendimento={f.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                <button type="button" onClick={() => setVendo(f)} aria-label={`Ver ${f.name || f.fileName}`}
+                  style={{ aspectRatio: '1 / 1', padding: 0, cursor: 'zoom-in', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {f.url && (f.mimeType ?? '').startsWith('image/')
                     // eslint-disable-next-line @next/next/no-img-element -- URL assinada e temporária: o otimizador do Next não serve aqui
                     ? <img src={f.url} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <FileImage size={22} style={{ color: 'var(--text-faint)' }} />}
-                </div>
+                </button>
                 {/* O título que a profissional deu (J-41): o nome do arquivo
                     ("IMG_0001.png") não diz nada — fica na dica. */}
                 <span data-titulo-da-foto title={f.fileName} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {f.name || f.fileName}
                 </span>
-              </a>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-2xs)', fontWeight: 600, color: f.enviadoEm ? 'var(--success)' : 'var(--text-faint)' }}>
+                  {f.enviadoEm ? <><Smartphone size={11} aria-hidden="true" /> No app da cliente</> : <><EyeOff size={11} aria-hidden="true" /> Só a equipe vê</>}
+                </span>
+                {podeAnexar && (
+                  <button type="button" onClick={() => alternarEnvio(f)} disabled={enviando === f.id} className="btn-ghost"
+                    style={{ alignSelf: 'flex-start', padding: '2px 6px', gap: 4, fontSize: 'var(--text-2xs)', fontWeight: 700, color: f.enviadoEm ? 'var(--text-muted)' : 'var(--brand)' }}>
+                    {enviando === f.id ? <Loader2 size={11} className="animate-spin" /> : !f.enviadoEm && <Send size={11} aria-hidden="true" />}
+                    {f.enviadoEm ? 'Tirar do app' : 'Enviar à cliente'}
+                  </button>
+                )}
+                {erro?.id === f.id && <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>{erro.msg}</span>}
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {vendo && (
+        <JanelaModal onFechar={() => setVendo(null)} rotulo={vendo.name || vendo.fileName} largura={760}>
+          <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h3 style={{ flex: 1, fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {vendo.name || vendo.fileName}
+              </h3>
+              <button type="button" onClick={() => setVendo(null)} className="btn-ghost" aria-label="Fechar" style={{ padding: '4px 6px' }}>
+                <X size={15} />
+              </button>
+            </div>
+            {vendo.url && (vendo.mimeType ?? '').startsWith('image/')
+              // eslint-disable-next-line @next/next/no-img-element -- URL assinada e temporária
+              ? <img src={vendo.url} alt={vendo.name || vendo.fileName} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)' }} />
+              : <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Não foi possível mostrar o arquivo. Ele fica na aba Documentos da ficha.</p>}
+          </div>
+        </JanelaModal>
+      )}
     </div>
   )
 }

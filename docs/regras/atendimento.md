@@ -686,7 +686,15 @@ const procedures = await ler(
   O cartão mostra o TÍTULO dado à foto (o nome do arquivo fica na dica — J-41),
   e anexar grava no histórico do atendimento a linha `FOTO_CLINICA`, "Foto
   clínica anexada" — texto FIXO, sem o título: o histórico aparece a quem tem
-  só a agenda, e o título pode dizer o que a foto mostra (J-36).
+  só a agenda, e o título pode dizer o que a foto mostra (J-36). **Apagar a
+  foto do atendimento também deixa rastro** (atend-02, revisão do Heitor de
+  2026-11-02): `FOTO_CLINICA_APAGADA`, "Foto clínica apagada por <nome>"
+  (o nome do ctx, com a marca "via suporte"), no mesmo `deleteClientDocument`
+  que marca `apagado_em`. **A miniatura abre a foto grande** e o cartão tem
+  "Enviar à cliente" / "Tirar do app" (A37 da 5ª simulação: clicar não fazia
+  nada, e o envio só existia na aba Documentos) — o mesmo
+  `enviarDocumentoACliente`, para quem anexa (`canEditRecords`; a action
+  confere `recusaDoAnexo`), com "Só a equipe vê" / "No app da cliente".
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
 - **No app da cliente aparece só o arquivo que a clínica ENVIA** (decisão do
   Heitor, 2026-10-30; migration `20261029001201`). Anexar (pela ficha ou pela

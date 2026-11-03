@@ -236,6 +236,14 @@ export async function deleteClientDocument(
       .update({ apagado_em: new Date().toISOString(), apagado_por: ctx.internalUserId, apagado_por_nome: ctx.userName || null })
       .eq('id', documentId).is('apagado_em', null)
       .select('id'), 'apagar o documento')
+    // A foto do atendimento apagada deixa rastro no histórico dele (atend-02,
+    // revisão do Heitor de 2026-11-02): a anexada já entrava. Texto FIXO com
+    // QUEM apagou — sem o título, que pode dizer o que a foto mostra.
+    if (doc.appointment_id && doc.category === 'foto_clinica') {
+      const quem = ctx.userName || ctx.roleLabel || 'Equipe'
+      await logHistory(admin, doc.appointment_id as string, ctx.internalUserId, quem,
+        'FOTO_CLINICA_APAGADA', `Foto clínica apagada por ${quem}`)
+    }
     revalidatePath(`/${slug}/clients/${clientId}`)
     revalidatePath(`/admin/clients/${clientId}`)
     if (doc.appointment_id) {

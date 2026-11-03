@@ -158,3 +158,49 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
     })
   })
 })
+
+test.describe.serial('a foto do atendimento: ver, enviar à cliente e apagar com rastro', () => {
+  let foto = ''
+  test.beforeAll(async () => {
+    const { data } = await db().from('client_documents').select('id').eq('appointment_id', atendimento).is('apagado_em', null)
+      .order('created_at').limit(1).single<{ id: string }>()
+    foto = data!.id
+  })
+
+  // A37 da 5ª simulação: a foto do atendimento não tinha "Enviar à cliente", e
+  // clicar na miniatura não fazia nada.
+  test('A37: a miniatura abre a foto grande, e "Enviar à cliente" a manda ao app (e "Tirar do app" desfaz)', async ({ browser }) => {
+    await como(profissional!, browser, async p => {
+      await p.goto(`/${slug}/agenda/${atendimento}`)
+      const cartao = p.locator(`[data-foto-do-atendimento="${foto}"]`)
+      await cartao.getByRole('button', { name: /^Ver / }).click()
+      const janela = p.getByRole('dialog')
+      await expect(janela.getByRole('img')).toBeVisible()
+      await janela.getByRole('button', { name: 'Fechar' }).click()
+      await expect(janela).toHaveCount(0)
+
+      await expect(cartao.getByText('Só a equipe vê')).toBeVisible()
+      await cartao.getByRole('button', { name: 'Enviar à cliente' }).click()
+      await expect.poll(async () => (await db().from('client_documents').select('enviado_em').eq('id', foto).single()).data?.enviado_em).not.toBeNull()
+      await expect(cartao.getByText('No app da cliente')).toBeVisible()
+      await cartao.getByRole('button', { name: 'Tirar do app' }).click()
+      await expect.poll(async () => (await db().from('client_documents').select('enviado_em').eq('id', foto).single()).data?.enviado_em).toBeNull()
+    })
+  })
+
+  // atend-02 (revisão do Heitor): apagar a foto clínica não deixava rastro na
+  // linha do tempo; só a anexada aparecia.
+  test('atend-02: apagar a foto clínica deixa "Foto clínica apagada por <nome>" no histórico do atendimento', async ({ browser }) => {
+    const { data: membro } = await db().from('users').select('name').eq('id', profissional!.userId).single<{ name: string }>()
+    await como(profissional!, browser, async p => {
+      p.on('dialog', d => d.accept())
+      await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
+      await p.locator(`[data-documento-da-ficha="${foto}"]`).getByTitle('Excluir').click()
+      await expect.poll(async () => (await db().from('client_documents').select('apagado_em').eq('id', foto).single()).data?.apagado_em).not.toBeNull()
+      await p.goto(`/${slug}/agenda/${atendimento}`)
+      await expect(p.locator('[data-historico-do-atendimento]').getByText(`Foto clínica apagada por ${membro!.name}`)).toBeVisible()
+    })
+    const { data: linhas } = await db().from('appointment_history').select('action, description').eq('appointment_id', atendimento).eq('action', 'FOTO_CLINICA_APAGADA')
+    expect(linhas).toEqual([{ action: 'FOTO_CLINICA_APAGADA', description: `Foto clínica apagada por ${membro!.name}` }])
+  })
+})
