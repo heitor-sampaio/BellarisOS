@@ -474,6 +474,20 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     `20261029001105`). Nos dois financeiros (a rede, cada unidade no recorte e
     a unidade), no escopo do financeiro ("só os meus": o ligado aos
     atendimentos dela). Prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
+- **O fluxo de caixa dos PRÓXIMOS meses** (r2-fin-04, o Heitor, 2026-11-03:
+  "crie o gráfico"). Nos dois financeiros, o cartão "Fluxo de caixa — próximos
+  6 meses" (`FluxoDeCaixa`, `components/shared/fluxo-de-caixa.tsx`): por mês
+  (Brasília, a partir do atual), o que ENTRA — o a receber da cliente (os
+  lançamentos de receita em aberto) e o que a operadora do cartão ainda
+  deposita (`recebiveis_do_cartao` vivos e não recebidos), empilhados — e o que
+  SAI (as despesas a pagar), pelo vencimento, num gráfico de barras e numa
+  tabela com o saldo de cada mês. O que já venceu e está em aberto conta no
+  mês atual. A conta é `metrics_fluxo_de_caixa` → `getFluxoDeCaixa`
+  (`lib/metrics/fluxo-de-caixa.ts`; migration `20261103001307`); na rede, o
+  do recorte e o de cada unidade (o filtro de unidade troca o gráfico). Os
+  concluídos sem pagamento (sem lançamento, sem vencimento) não entram. Com o
+  financeiro "só os meus", não aparece (é o dinheiro da unidade). Prova:
+  `e2e/financeiro-fluxo-de-caixa.spec.ts`.
 - **O total da LISTA do financeiro tem sinal** (J-48, 2026-10-30): "2
   lançamentos · resultado −R$ 2.400,00" — o pago que entrou menos o pago que
   saiu do que está filtrado na tela, sem os dois lados do estorno. A conta é

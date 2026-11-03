@@ -20,6 +20,8 @@ import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 import { ParcelasDaOperadora } from '@/components/shared/parcelas-da-operadora'
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
+import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
+import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 
 // --- Types --------------------------------------------------------
 
@@ -71,6 +73,8 @@ interface Props {
   aReceberDaOperadora: AReceberDaOperadora
   /** As parcelas da operadora com vencimento no período. */
   parcelasDaOperadora: ParcelaDaOperadora[]
+  /** r2-fin-04: o fluxo de caixa dos próximos meses da unidade. */
+  fluxoDeCaixa?: MesDoFluxo[]
   branchId:         string
   branchName:       string
   slug:             string
@@ -502,7 +506,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
-  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, concluidosSemPagamento, aReceberDaOperadora, parcelasDaOperadora, composicao,
+  totais, totaisAnteriores, ticketMedio, estoqueNoResultado, estoqueNoResultadoAnterior, aReceberEmAberto, concluidosSemPagamento, aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, composicao,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -794,6 +798,9 @@ export function FinancialHub({
           <CategoryBars items={expenseCategories} color="var(--danger)" />
         </div>
       </div>}
+
+      {/* r2-fin-04: o fluxo de caixa dos próximos meses (não com "só os meus": é da unidade). */}
+      {!ownScope && fluxoDeCaixa && <FluxoDeCaixa meses={fluxoDeCaixa} />}
 
       {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
       {!ownScope && <ParcelasDaOperadora parcelas={parcelasDaOperadora} podeMarcar={canWrite} slug={slug} />}

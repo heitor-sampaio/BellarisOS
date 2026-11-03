@@ -19,6 +19,8 @@ import type { ProximoVencimento } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 import { ParcelasDaOperadora } from '@/components/shared/parcelas-da-operadora'
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
+import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
+import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 
 // --- Types -------------------------------------------------------------------
 
@@ -95,6 +97,8 @@ interface Props {
   aReceberDaOperadora: { total: AReceberDaOperadora; porUnidade: Record<string, AReceberDaOperadora> }
   /** As parcelas da operadora com vencimento no período. */
   parcelasDaOperadora: ParcelaDaOperadora[]
+  /** r2-fin-04: o fluxo de caixa dos próximos meses — o do recorte e o de cada unidade. */
+  fluxoDeCaixa?: { total: MesDoFluxo[]; porUnidade: Record<string, MesDoFluxo[]> }
   /** O próximo vencimento da rede depois do período, de cada lado (getEmAberto). */
   totalProximoAReceber?: ProximoVencimento | null
   totalProximoAPagar?:   ProximoVencimento | null
@@ -212,7 +216,7 @@ function KpiCard({
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAReceberEmAberto, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
-  aReceberDaOperadora, parcelasDaOperadora,
+  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, branchSlugMap, branches, unidadeInicial = '',
@@ -502,6 +506,11 @@ export function AdminFinancialView({
         </table>
         </div>{/* end table-wrap */}
       </div>
+      )}
+
+      {/* r2-fin-04: o fluxo de caixa dos próximos meses (o da unidade filtrada, ou o do recorte). */}
+      {fluxoDeCaixa && (
+        <FluxoDeCaixa meses={filterBranch === 'all' ? fluxoDeCaixa.total : (fluxoDeCaixa.porUnidade[filterBranch] ?? [])} />
       )}
 
       {/* F2c: as parcelas que a operadora deposita, mês a mês. */}

@@ -12,6 +12,7 @@ import { ler, lerTodas } from '@/lib/db'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
+import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 
 export default async function FinancialPage({
@@ -167,6 +168,7 @@ export default async function FinancialPage({
         concluidosSemPagamento={concluidosSemPagamento}
         aReceberDaOperadora={operadora.total}
         parcelasDaOperadora={parcelasDaOperadora}
+        fluxoDeCaixa={ownFinancial ? undefined : (await getFluxoDeCaixa(argsDoNucleo)).total}
         composicao={composicao}
         branchId={branch.id}
         branchName={branch.name}

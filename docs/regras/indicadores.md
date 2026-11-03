@@ -69,6 +69,11 @@
     antecipada) NÃO soma receita. Prova:
     `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`
     (`vendas-financeiro.md` §9.6).
+  - **fluxo de caixa** (r2-fin-04, 2026-11-03) = por mês, dos próximos 6: o
+    a receber da cliente + o a receber da operadora − o a pagar, pelo
+    vencimento; o vencido em aberto no mês atual — `metrics_fluxo_de_caixa`
+    → `getFluxoDeCaixa`. As mesmas definições dos três cartões do Financeiro,
+    só que por mês (`vendas-financeiro.md` §9.6).
   - `serviceRevenue` — preço dos atendimentos concluídos, no eixo
     `appointments.aconteceu_em`
   - **O atendimento conta quando ACONTECEU** (D13, decisão do Heitor,

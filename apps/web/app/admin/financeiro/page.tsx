@@ -7,6 +7,7 @@ import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, get
 import { lerTodas } from '@/lib/db'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
+import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/financeiro/desconto-do-lancamento'
@@ -213,6 +214,7 @@ export default async function AdminFinanceiroPage({
         totalAPagar={emAbertoDaRede.aPagar}
         aReceberDaOperadora={operadora}
         parcelasDaOperadora={parcelasDaOperadora}
+        fluxoDeCaixa={await getFluxoDeCaixa({ tenantId: ctx.tenantId!, branchIds, porUnidade: true })}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}
         totalProximoAPagar={emAbertoDaRede.proximoAPagar}
         totalMovimentacoes={movimentacoes.total}
