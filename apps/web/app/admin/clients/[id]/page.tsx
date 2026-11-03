@@ -426,7 +426,7 @@ export default async function AdminClientProfilePage({
         pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branchId || null) : []}
         procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branchId || null) : []}
         produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branchId || null) : []}
-        equipeDaVenda={podeReceber(ctx) ? await equipeDaVenda(ctx.tenantId!, branchId || null) : []}
+        equipeDaVenda={podeReceber(ctx) ? await equipeDaVenda(ctx.tenantId!, branchId || null, ctx.internalUserId) : []}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}
         podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}

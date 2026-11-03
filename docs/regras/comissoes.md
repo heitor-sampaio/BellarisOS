@@ -114,7 +114,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   configurável pela clínica"; migration `20261029001306`): Configurações →
   Comissões → "Venda de produto", `commission_configs.produto_pct` (vazio = sem
   comissão; mesma permissão e abrangência da configuração). Vale para QUEM
-  REGISTROU a venda (`product_sales.sold_by`, como o pacote e o pré-pago), sobre
+  VENDEU (`product_sales.sold_by`, escolhido na venda — com-06, abaixo; era quem registrou), sobre
   o VENDIDO (com o desconto). A linha (`commission_lines.origem = 'PRODUTO'`,
   `product_sale_id`, sem atendimento — `appointment_id` e o do extrato aceitam
   nulo) nasce em `produto_vender`, antes do dinheiro, e libera com a venda
@@ -124,6 +124,23 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   maquininha da rede; não desconta insumos. O extrato (`comissoes_extrato`)
   diz a cliente e o produto; o fechamento é o de sempre. Prova:
   `e2e/vendas-produto.spec.ts` ("a comissão da venda de produto").
+- **"Quem vendeu" é escolhido na venda, separado de quem registrou** (com-06
+  da revisão, 2026-11-02; o Heitor: "às vezes quem vai registrar a venda é
+  recepção e quem vendeu foi a profissional (...) um campo para informar quem
+  foi quem realizou aquela venda. Se o campo ficar vazio, aviso e
+  confirmação. Campo vazio não gera comissão para ninguém"). A venda de
+  produto, de pacote e de pré-pago tem "Quem vendeu" (`CampoQuemVendeu`,
+  nasce com quem está registrando; "Ninguém" é uma opção). `sold_by` é QUEM
+  VENDEU — a comissão de venda (produto e pacote), a coluna Profissional das
+  Vendas e o "Meu faturamento" —, e quem registrou vai em `registrado_por`
+  (migration `20261101001106`). Vazio, a venda PERGUNTA — na tela
+  (`PerguntaDaVenda`) e no servidor (`quemVendeu`,
+  `lib/vendas/equipe-da-venda.ts`, devolve `confirmarSemVendedor` sem
+  gravar); confirmada, `sold_by` fica nulo e nenhuma linha de comissão de
+  venda nasce. A pessoa escolhida é conferida no servidor (da rede, ativa, e
+  da unidade ou da rede) e na função. O chamador que não manda o campo
+  (`vendedorId` ausente) segue como antes: quem registrou. Prova:
+  `e2e/vendas-quem-vendeu.spec.ts`.
 - **A comissão do PACOTE é do cadastro de cada pacote** (decisão do Heitor,
   2026-10-30; migration `20261029001501`): Vendas → Pacotes, seção "Comissão"
   do formulário (só para quem tem `financial: MANAGE`, da rede e com

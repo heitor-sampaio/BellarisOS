@@ -460,7 +460,7 @@ export default async function ClientProfilePage({
       pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branch.id as string) : []}
       procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branch.id as string) : []}
       produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branch.id as string) : []}
-      equipeDaVenda={podeReceber(ctx) ? await equipeDaVenda(ctx.tenantId!, branch.id as string) : []}
+      equipeDaVenda={podeReceber(ctx) ? await equipeDaVenda(ctx.tenantId!, branch.id as string, ctx.internalUserId) : []}
       prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
       podeAgendar={can(ctx, 'agenda', 'MANAGE')}
       podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}

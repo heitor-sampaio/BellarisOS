@@ -7,7 +7,7 @@ import { venderPacote } from '@/actions/pacotes'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
-import { PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
+import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
 
 /**
@@ -43,16 +43,23 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const envio = useEnvioUnico()
   // com-04: a profissional responsável, quando o pacote paga quem atende sobre o valor dele.
   const [responsavelId, setResponsavelId] = useState('')
-  const [pergunta, setPergunta] = useState<string | null>(null)
+  // "Quem vendeu" (com-06): nasce com quem registra; vazio, a venda pergunta.
+  const [vendedorId, setVendedorId] = useState(() => equipe.find(m => m.eu)?.id ?? '')
+  const [pergunta, setPergunta] = useState<{ texto: string; sem: 'VENDEDOR' | 'RESPONSAVEL' } | null>(null)
+  const [semVendedor, setSemVendedor] = useState(false)
   const quemAtende = equipe.filter(m => m.atende)
 
-  function vender(semResponsavel = false) {
+  function vender(resposta: { semVendedor?: boolean; semResponsavel?: boolean } = {}) {
     setErro(recusaDoPagamento(estado, conta.liquido))
     if (recusaDoPagamento(estado, conta.liquido)) return
+    const semV = resposta.semVendedor ?? semVendedor
+    if (resposta.semVendedor) setSemVendedor(true)
     iniciar(async () => {
       const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto), envio.chave(),
-        { responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel })
-      if (r.confirmarSemResponsavel) { setPergunta(r.confirmarSemResponsavel); return }
+        { vendedorId: vendedorId || null, semVendedor: semV,
+          responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: resposta.semResponsavel === true })
+      if (r.confirmarSemVendedor) { setPergunta({ texto: r.confirmarSemVendedor, sem: 'VENDEDOR' }); return }
+      if (r.confirmarSemResponsavel) { setPergunta({ texto: r.confirmarSemResponsavel, sem: 'RESPONSAVEL' }); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       onFim()
@@ -73,6 +80,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
         {pacote.composicao} ({pacote.totalSessions} sessões) · {formatBRL(pacote.price)}
         {pacote.validityDays ? ` · válido por ${pacote.validityDays} dias` : ''}
       </p>
+      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null); setSemVendedor(false) }} />
       {pacote.pedeResponsavel && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span className="overline">Profissional responsável</span>
@@ -96,8 +104,10 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {pergunta ? (
-        <PerguntaDaVenda texto={pergunta} pendente={pendente} rotuloConfirmar="Vender sem responsável"
-          aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
+        <PerguntaDaVenda texto={pergunta.texto} pendente={pendente}
+          rotuloConfirmar={pergunta.sem === 'RESPONSAVEL' ? 'Vender sem responsável' : 'Vender assim'}
+          aoConfirmar={() => vender(pergunta.sem === 'RESPONSAVEL' ? { semResponsavel: true } : { semVendedor: true })}
+          aoVoltar={() => setPergunta(null)} />
       ) : (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>

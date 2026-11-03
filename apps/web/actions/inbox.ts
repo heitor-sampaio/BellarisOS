@@ -835,7 +835,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       // primeiro, como o pacote e o pré-pago.
       const [pacotes, procs, produtos, equipe] = await Promise.all([
         pacotesAVenda(ctx.tenantId!, unidade), procedimentosAVenda(ctx.tenantId!, unidade), produtosAVenda(ctx.tenantId!, unidade),
-        equipeDaVenda(ctx.tenantId!, unidade),
+        equipeDaVenda(ctx.tenantId!, unidade, ctx.internalUserId),
       ])
       if (pacotes.length || procs.length || produtos.length) venda = { branchId: unidade, pacotes, procedimentos: procs, produtos, equipe }
     } else if (!unidade && !cliente) {

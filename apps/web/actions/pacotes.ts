@@ -15,7 +15,7 @@ import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assert
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { recusaDoMembroDaVenda } from '@/lib/vendas/equipe-da-venda'
+import { recusaDoMembroDaVenda, quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -93,8 +93,8 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
  * rateiam, então a comissão de cada sessão já sai sobre o vendido.
  */
 /** A equipe da venda (com-04/com-06): quem é a profissional responsável do pacote, e a resposta à pergunta de sem ninguém. */
-export interface EquipeDaVendaDoPacote { responsavelId?: string | null; semResponsavel?: boolean }
-type ResultadoDaVendaDoPacote = { error?: string; clientPackageId?: string; confirmarSemResponsavel?: string }
+export interface EquipeDaVendaDoPacote extends QuemVendeuDaTela { responsavelId?: string | null; semResponsavel?: boolean }
+type ResultadoDaVendaDoPacote = { error?: string; clientPackageId?: string; confirmarSemResponsavel?: string; confirmarSemVendedor?: string }
 
 /** A pergunta quando o pacote paga quem atende sobre o valor dele e ninguém foi marcado (com-04). */
 const PERGUNTA_SEM_RESPONSAVEL = 'Ninguém foi marcado como responsável: a comissão de quem atende deste pacote (sobre o valor dele) não vai para ninguém. Vender assim?'
@@ -156,6 +156,11 @@ async function venderPacoteUmaVez(
     const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
     if (recusaDaEntrada) return { error: recusaDaEntrada }
 
+    // Quem vendeu (com-06): leva a comissão de venda do pacote; vazio, só com a confirmação.
+    const vendeu = await quemVendeu(ctx.tenantId!, ctx.internalUserId ?? null, equipe, branchId)
+    if ('error' in vendeu) return { error: vendeu.error }
+    if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
+
     // com-04: o pacote que paga quem atende sobre o valor dele pede a
     // responsável; sem ninguém, pergunta antes (e confirmado, ninguém recebe).
     const responsavelId = typeof equipe?.responsavelId === 'string' && equipe.responsavelId ? equipe.responsavelId : null
@@ -174,7 +179,7 @@ async function venderPacoteUmaVez(
     const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId), vendido)
     const clientPackageId = await gravar(admin.rpc('pacote_vender_com_equipe', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_pacote: pacoteId, p_unidade: branchId,
-      p_ator: ctx.internalUserId ?? null, p_vendedor: ctx.internalUserId ?? null,
+      p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor,
       p_responsavel: pacote.comissao_responsavel_tipo ? responsavelId : null,
       p_lancamentos: lancamentos, p_sessoes: sessoes, p_desconto: reais,
     }), 'vender o pacote') as string

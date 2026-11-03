@@ -1,6 +1,27 @@
 'use client'
 
 import { AlertTriangle } from 'lucide-react'
+import type { MembroDaVenda } from '@/components/shared/vender'
+
+/**
+ * "Quem vendeu" (com-06, revisão de 2026-11-02 — o Heitor: "às vezes quem vai
+ * registrar a venda é recepção e quem vendeu foi a profissional"): leva a
+ * comissão da venda e aparece em Vendas. Nasce com quem está registrando;
+ * "Ninguém" é escolha, e a venda pergunta antes.
+ */
+export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
+  equipe: MembroDaVenda[]; valor: string; aoMudar: (id: string) => void
+}) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span className="overline">Quem vendeu</span>
+      <select className="field" aria-label="Quem vendeu" value={valor} onChange={e => aoMudar(e.target.value)}>
+        <option value="">Ninguém (sem comissão de venda)</option>
+        {equipe.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+      </select>
+    </label>
+  )
+}
 
 /**
  * A pergunta antes de vender (com-04/com-06, revisão de 2026-11-02 — o Heitor:

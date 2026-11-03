@@ -15,6 +15,7 @@ import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assert
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -41,21 +42,27 @@ export async function venderProcedimento(
   quantidade: unknown, validadeDias: unknown, pagamento: unknown, desconto?: unknown,
   /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
   envio?: string | null,
-): Promise<{ error?: string; saleId?: string; primeiraUnidadeId?: string }> {
+  /** "Quem vendeu" (com-06); sem o objeto, quem registra. */
+  equipe?: QuemVendeuDaTela | null,
+): Promise<ResultadoDaVendaDoPrePago> {
   try {
     const ctx = await getTenantContext()
+    // A pergunta (sem quem vendeu) não grava: solta a chave, e a resposta vende.
     return await umaVez(ctx.tenantId!, 'venderProcedimento', chaveDoEnvio(envio),
-      () => venderProcedimentoUmaVez(clienteId, procedimentoId, branchId, quantidade, validadeDias, pagamento, desconto))
+      () => venderProcedimentoUmaVez(clienteId, procedimentoId, branchId, quantidade, validadeDias, pagamento, desconto, equipe),
+      { gravou: r => !!r.saleId })
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
   }
 }
 
+type ResultadoDaVendaDoPrePago = { error?: string; saleId?: string; primeiraUnidadeId?: string; confirmarSemVendedor?: string }
+
 async function venderProcedimentoUmaVez(
   clienteId: string, procedimentoId: string, branchId: string,
-  quantidade: unknown, validadeDias: unknown, pagamento: unknown, desconto?: unknown,
-): Promise<{ error?: string; saleId?: string; primeiraUnidadeId?: string }> {
+  quantidade: unknown, validadeDias: unknown, pagamento: unknown, desconto: unknown, equipe: QuemVendeuDaTela | null | undefined,
+): Promise<ResultadoDaVendaDoPrePago> {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'pre_pago')
@@ -95,10 +102,15 @@ async function venderProcedimentoUmaVez(
     const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
     if (recusaDaEntrada) return { error: recusaDaEntrada }
 
+    // Quem vendeu (com-06): aparece nas Vendas; vazio, só com a confirmação.
+    const vendeu = await quemVendeu(ctx.tenantId!, ctx.internalUserId ?? null, equipe, branchId)
+    if ('error' in vendeu) return { error: vendeu.error }
+    if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
+
     const rotulo = `${qtd}× ${proc.name as string}`
-    const saleId = await gravar(admin.rpc('procedimento_vender', {
+    const saleId = await gravar(admin.rpc('procedimento_vender_com_equipe', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_procedimento: procedimentoId, p_unidade: branchId,
-      p_ator: ctx.internalUserId ?? null, p_quantidade: qtd, p_desconto: reais, p_validade_dias: validade,
+      p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor, p_quantidade: qtd, p_desconto: reais, p_validade_dias: validade,
       p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, rotulo), motivoDoDesconto(d.data, reais)),
       // Cada unidade com a sua parte do vendido: a base da comissão dela.
       p_unidades: ratear(Array.from({ length: qtd }, () => 1), vendido).map(preco => ({ preco })),

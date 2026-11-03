@@ -15,6 +15,7 @@ import { FormularioDoPacote, type PacoteAVenda } from '@/components/shared/vende
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 
 /**
  * "Vender" (decisão do Heitor, 2026-09-30): um botão só, e a janela pergunta
@@ -34,7 +35,7 @@ export interface ProdutoAVenda {
 }
 
 /** Alguém da equipe numa venda (com-04/com-06): a responsável do pacote sai de quem atende. */
-export interface MembroDaVenda { id: string; nome: string; atende: boolean }
+export interface MembroDaVenda { id: string; nome: string; atende: boolean; /** É quem está registrando (o padrão de "Quem vendeu"). */ eu?: boolean }
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
 
@@ -112,9 +113,9 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
               <SegSelect ariaLabel="O que vender" options={abas} value={aba} onSelect={k => setAba(k as Aba)} />
             )}
             {aba === 'PRODUTO' && produtos.length > 0
-              ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={fechar} />
+              ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={fechar} equipe={equipe} />
               : aba === 'PROCEDIMENTO' && procedimentos.length > 0
-              ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} />
+              ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} equipe={equipe} />
               : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} equipe={equipe} />}
           </div>
         </div>
@@ -130,9 +131,12 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
  * protetor"). O estoque baixa na hora, pelo lote que vence primeiro; sem
  * estoque suficiente de um deles, o servidor recusa a venda inteira.
  */
-function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
-  clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void
+function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
+  clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void; equipe: MembroDaVenda[]
 }) {
+  // "Quem vendeu" (com-06): nasce com quem registra; vazio, a venda pergunta.
+  const [vendedorId, setVendedorId] = useState(() => equipe.find(m => m.eu)?.id ?? '')
+  const [pergunta, setPergunta] = useState<string | null>(null)
   const router = useRouter()
   const [itens, setItens] = useState<{ prodId: string; quantidade: string }[]>(() => [{ prodId: produtos[0]!.id, quantidade: '1' }])
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
@@ -153,12 +157,13 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
   const mudar = (n: number, parte: Partial<{ prodId: string; quantidade: string }>) =>
     setItens(xs => xs.map((x, i) => (i === n ? { ...x, ...parte } : x)))
 
-  function vender() {
+  function vender(semVendedor = false) {
     setErro(recusaDoPagamento(estado, conta.liquido))
     if (recusaDoPagamento(estado, conta.liquido)) return
     iniciar(async () => {
       const r = await venderProduto(clienteId, linhas.map(l => ({ produtoId: l.prod.id, quantidade: l.qtd })), branchId, null,
-        montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
+        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor })
+      if (r.confirmarSemVendedor) { setPergunta(r.confirmarSemVendedor); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
@@ -208,6 +213,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
       <p data-resumo-do-produto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
         {linhas.map(l => `${l.qtd} × ${formatBRL(l.prod.price)}`).join(' + ')} = {formatBRL(tabela)} · sai do estoque agora, pelo lote que vence primeiro
       </p>
+      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }} />
       {/* A48 da 5ª simulação: a venda de produto nasce sem pontuar, e a tela não dizia. */}
       {fidelidade && (
         <p data-pontos-do-produto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
@@ -225,12 +231,16 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
         )}
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || !quantidadesValidas}>
-          {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
-        </button>
-      </div>
+      {pergunta ? (
+        <PerguntaDaVenda texto={pergunta} pendente={pendente} aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
+      ) : (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
+          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || !quantidadesValidas}>
+            {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -240,10 +250,13 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
  * quantos dias valem; o desconto e como vai ser pago. As unidades ficam na
  * ficha, para agendar.
  */
-function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, podeAgendar, aReceber }: {
+function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, podeAgendar, aReceber, equipe }: {
   clienteId: string; branchId: string; procedimentos: ProcedimentoAVenda[]; onFim: () => void; podeAgendar: boolean
-  aReceber: AtendimentoAReceber[]
+  aReceber: AtendimentoAReceber[]; equipe: MembroDaVenda[]
 }) {
+  // "Quem vendeu" (com-06): nasce com quem registra; vazio, a venda pergunta.
+  const [vendedorId, setVendedorId] = useState(() => equipe.find(m => m.eu)?.id ?? '')
+  const [pergunta, setPergunta] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   // Depois da venda: a primeira unidade, para o "Agendar agora".
@@ -264,12 +277,13 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   // A chave do envio (D10): o duplo clique vende uma vez só.
   const envio = useEnvioUnico()
 
-  function vender() {
+  function vender(semVendedor = false) {
     setErro(recusaDoPagamento(estado, conta.liquido))
     if (recusaDoPagamento(estado, conta.liquido)) return
     iniciar(async () => {
       const r = await venderProcedimento(clienteId, proc.id, branchId, qtd, validade.trim() ? Number(validade) : null,
-        montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
+        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor })
+      if (r.confirmarSemVendedor) { setPergunta(r.confirmarSemVendedor); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
@@ -335,6 +349,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
           </p>
         </div>
       )}
+      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }} />
       <p data-resumo-do-procedimento style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
         {qtd} × {formatBRL(proc.price)} = {formatBRL(tabela)} · as unidades ficam na ficha para agendar
       </p>
@@ -347,12 +362,16 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
         )}
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || qtd < 1 || qtd > 100}>
-          {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
-        </button>
-      </div>
+      {pergunta ? (
+        <PerguntaDaVenda texto={pergunta} pendente={pendente} aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
+      ) : (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
+          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || qtd < 1 || qtd > 100}>
+            {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

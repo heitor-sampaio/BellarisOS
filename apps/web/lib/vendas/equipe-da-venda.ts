@@ -9,14 +9,14 @@ import type { MembroDaVenda } from '@/components/shared/vender'
  * equipe). Os membros ativos da rede que alcançam a unidade — os da rede e os
  * dela. O servidor confere de novo na venda.
  */
-export async function equipeDaVenda(tenantId: string, branchId: string | null): Promise<MembroDaVenda[]> {
+export async function equipeDaVenda(tenantId: string, branchId: string | null, euId?: string | null): Promise<MembroDaVenda[]> {
   if (!branchId) return []
   const linhas = await lerTodas((de, ate) => createAdminClient().from('users')
     .select('id, name, provides_services')
     .eq('tenant_id', tenantId).eq('is_active', true)
     .or(`branch_id.is.null,branch_id.eq.${branchId}`)
     .order('name').order('id').range(de, ate), 'carregar a equipe da venda')
-  return (linhas ?? []).map(u => ({ id: u.id as string, nome: (u.name as string | null) ?? '—', atende: !!u.provides_services }))
+  return (linhas ?? []).map(u => ({ id: u.id as string, nome: (u.name as string | null) ?? '—', atende: !!u.provides_services, eu: !!euId && u.id === euId }))
 }
 
 /**
@@ -35,4 +35,29 @@ export async function recusaDoMembroDaVenda(
   if (data.branch_id && data.branch_id !== branchId) return `${opcoes.papel}: é de outra unidade.`
   if (opcoes.atende && !data.provides_services) return `${opcoes.papel}: escolha quem atende clientes.`
   return null
+}
+
+/** "Quem vendeu" da venda (com-06): o que a tela mandou. Sem `vendedorId` (um chamador de antes), é quem registra. */
+export interface QuemVendeuDaTela { vendedorId?: string | null; semVendedor?: boolean }
+
+/** A pergunta quando "Quem vendeu" fica vazio (com-06: "aviso e confirmação"). */
+export const PERGUNTA_SEM_VENDEDOR = 'Ninguém foi marcado em “Quem vendeu”: a venda fica sem vendedora e não gera comissão de venda para ninguém. Vender assim?'
+
+/**
+ * Quem vendeu, conferido (com-06, decisão do Heitor: "campo vazio não gera
+ * comissão para ninguém"): a pessoa escolhida, da equipe e ao alcance da
+ * unidade; vazio (`vendedorId: null`) só com a confirmação (`semVendedor`),
+ * senão a pergunta. Sem a chave `vendedorId` — um caminho que não tem o campo —,
+ * quem registrou, como antes.
+ */
+export async function quemVendeu(
+  tenantId: string, registrou: string | null, equipe: QuemVendeuDaTela | null | undefined, branchId: string,
+): Promise<{ vendedor: string | null } | { error: string } | { pergunta: string }> {
+  if (equipe == null || (!('vendedorId' in equipe) && equipe.semVendedor !== true)) return { vendedor: registrou }
+  const id = typeof equipe.vendedorId === 'string' && equipe.vendedorId ? equipe.vendedorId : null
+  if (id) {
+    const recusa = await recusaDoMembroDaVenda(tenantId, id, branchId, { papel: 'Quem vendeu' })
+    return recusa ? { error: recusa } : { vendedor: id }
+  }
+  return equipe.semVendedor === true ? { vendedor: null } : { pergunta: PERGUNTA_SEM_VENDEDOR }
 }

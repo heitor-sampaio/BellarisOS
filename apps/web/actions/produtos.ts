@@ -15,6 +15,7 @@ import { getTenantContext, alcancaUnidade, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
+import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -42,21 +43,27 @@ export async function venderProduto(
   quantidade: unknown, pagamento: unknown, desconto?: unknown,
   /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
   envio?: string | null,
-): Promise<{ error?: string; vendaId?: string }> {
+  /** "Quem vendeu" (com-06); sem o objeto, quem registra. */
+  equipe?: QuemVendeuDaTela | null,
+): Promise<ResultadoDaVendaDeProduto> {
   try {
     const ctx = await getTenantContext()
+    // A pergunta (sem quem vendeu) não grava: solta a chave, e a resposta vende.
     return await umaVez(ctx.tenantId!, 'venderProduto', chaveDoEnvio(envio),
-      () => venderProdutoUmaVez(clienteId, produtos, branchId, quantidade, pagamento, desconto))
+      () => venderProdutoUmaVez(clienteId, produtos, branchId, quantidade, pagamento, desconto, equipe),
+      { gravou: r => !!r.vendaId })
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
   }
 }
 
+type ResultadoDaVendaDeProduto = { error?: string; vendaId?: string; confirmarSemVendedor?: string }
+
 async function venderProdutoUmaVez(
   clienteId: string, produtos: string | ItemDaVenda[], branchId: string,
-  quantidade: unknown, pagamento: unknown, desconto?: unknown,
-): Promise<{ error?: string; vendaId?: string }> {
+  quantidade: unknown, pagamento: unknown, desconto: unknown, equipe: QuemVendeuDaTela | null | undefined,
+): Promise<ResultadoDaVendaDeProduto> {
   try {
     const ctx = await getTenantContext()
     if (!podeReceber(ctx)) throw semAcesso()
@@ -115,10 +122,14 @@ async function venderProdutoUmaVez(
     const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
     if (recusaDaEntrada) return { error: recusaDaEntrada }
     const rotulo = [...itens].map(([id, qtd]) => `${qtd}× ${porId.get(id)!.name as string}`).join(' + ')
+    // Quem vendeu (com-06): leva a comissão da venda; vazio, só com a confirmação.
+    const vendeu = await quemVendeu(ctx.tenantId!, ctx.internalUserId ?? null, equipe, branchId)
+    if ('error' in vendeu) return { error: vendeu.error }
+    if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
 
     const { data, error } = await admin.rpc('produto_vender_itens', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_unidade: branchId,
-      p_ator: ctx.internalUserId ?? null, p_vendedor: ctx.internalUserId ?? null,
+      p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor,
       p_itens: [...itens].map(([id, qtd]) => ({ product_id: id, quantity: qtd })),
       p_desconto: reais,
       p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, rotulo), motivoDoDesconto(d.data, reais)),
