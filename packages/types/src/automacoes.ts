@@ -279,7 +279,11 @@ export interface ConfigEsperaAte {
 }
 
 export interface ConfigAcaoMensagem {
-  canal: 'whatsapp' | 'instagram' | 'messenger'
+  /**
+   * `push` é o aviso no celular da cliente (o app e o navegador), sem
+   * conversa: o canal da rede que não tem WhatsApp conectado (A14).
+   */
+  canal: 'whatsapp' | 'instagram' | 'messenger' | 'push'
   /** Texto com `{{variaveis}}`, usado dentro da janela de 24h. */
   texto: string
   /**

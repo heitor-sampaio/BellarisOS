@@ -113,3 +113,17 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
 export function modeloDeAutomacao(chave: string): ModeloDeAutomacao | null {
   return MODELOS_DE_AUTOMACAO.find(m => m.chave === chave) ?? null
 }
+
+/**
+ * O modelo para a rede SEM WhatsApp conectado (A14): as mensagens nascem como
+ * aviso no celular da cliente (push), que chega sem conversa nenhuma. Nascer
+ * em WhatsApp numa rede sem número era um fluxo que ligava e nunca mandava.
+ */
+export function semWhatsapp(grafo: GrafoDeAutomacao): GrafoDeAutomacao {
+  return {
+    ...grafo,
+    nos: grafo.nos.map(n => n.tipo === NODES.ACAO_MENSAGEM && (n.config as { canal?: string }).canal === 'whatsapp'
+      ? { ...n, config: { ...n.config, canal: 'push' } }
+      : n),
+  }
+}

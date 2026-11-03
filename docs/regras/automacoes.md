@@ -134,6 +134,24 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   verdade; o validador acusa erro em toda regra que compara (tudo menos "está
   vazio"/"está preenchido") sem valor. É o que segura o modelo de retorno até
   a clínica escolher o procedimento. Prova: `e2e/automacoes-modelos.spec.ts`.
+- **Sem WhatsApp conectado, a mensagem vai como aviso no celular** (A14 da 5ª
+  simulação, 2026-11-03). "Conectado" = um `whatsapp_numbers` ATIVO da rede
+  (`redeTemWhatsapp`, `lib/automacoes/canal-da-rede.ts`, só no servidor). A
+  janela de modelos avisa, e o modelo nasce com `canal: 'push'`
+  (`semWhatsapp`, `lib/automacoes/modelos.ts`). O passo "Mandar mensagem"
+  ganhou o canal **Aviso no celular (push)** — `notifyClient`: o sino do
+  portal, o app e o navegador da cliente, sem conversa (a resposta não chega
+  no inbox); o título é o nome da clínica. O passo em WhatsApp numa rede sem
+  número mostra o aviso com "Mandar como aviso no celular".
+- **O seletor de campo não repete rótulo**, e o card diz o campo em
+  português (A14): o rótulo repetido leva de onde vem — "Situação do
+  agendamento", "Procedimento (do gatilho)" (`rotulosUnicos`); o card usa
+  `rotuloDoCaminho` ("Procedimento é Botox", nunca
+  "evento.dados.procedimentoNome é"), e a expressão escrita à mão passa como
+  está. Nos campos de procedimento (`CAMPOS_DE_PROCEDIMENTO`) com "é" / "não
+  é", o valor sai da lista dos procedimentos ativos da rede — o salvo que
+  saiu da lista aparece "(fora da lista)". Prova:
+  `e2e/automacoes-modelo-retorno-atritos.spec.ts`.
 - **O passo novo nasce LIGADO ao anterior** (J-14, 2026-10-30): o anterior é o
   passo aberto no painel ou, sem nenhum, o último que entrou; a ligação sai da
   primeira saída livre dele (no "Se", a Sim, depois a Não), e o passo nasce na

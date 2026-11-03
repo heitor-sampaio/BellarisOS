@@ -1,5 +1,6 @@
 import { NODES, rotuloDoEvento } from '@estetica-os/types'
 import type { TipoDeNo, GrupoDeCondicao, OperadorDeCondicao } from '@estetica-os/types'
+import { rotuloDoCaminho } from './disponiveis'
 
 /**
  * O que cada node faz, em uma frase.
@@ -20,6 +21,11 @@ const OPERADOR_TEXTO: Record<OperadorDeCondicao, string> = {
   preenchido: 'está preenchido',
   em:         'é um de',
   nao_em:     'não é nenhum de',
+}
+
+/** O canal da mensagem como a clínica o chama (o card dizia "push: Oi…" — A14). */
+const CANAL_TEXTO: Record<string, string> = {
+  whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger', push: 'Aviso no celular',
 }
 
 /** "1 dia", "2 dias": o card é lido por quem opera, e "1 dias" salta aos olhos (J-15). */
@@ -50,9 +56,10 @@ function descreverGrupo(grupo?: GrupoDeCondicao): string {
   const partes = regras.map(r => {
     const op = OPERADOR_TEXTO[r.operador] ?? r.operador
     const valor = Array.isArray(r.valor) ? r.valor.join(', ') : r.valor
+    const campo = rotuloDoCaminho(r.campo)
     return r.operador === 'vazio' || r.operador === 'preenchido'
-      ? `${r.campo} ${op}`
-      : `${r.campo} ${op} ${valor ?? ''}`.trim()
+      ? `${campo} ${op}`
+      : `${campo} ${op} ${valor ?? ''}`.trim()
   })
 
   const cola = grupo?.juncao === 'ou' ? ' ou ' : ' e '
@@ -118,7 +125,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
     }
 
     case NODES.ACAO_MENSAGEM:
-      return `${(c.canal as string) ?? 'canal'}: ${trecho(c.texto as string)}`
+      return `${CANAL_TEXTO[(c.canal as string) ?? ''] ?? (c.canal as string) ?? 'canal'}: ${trecho(c.texto as string)}`
 
     case NODES.ACAO_NOTIFICAR_EQUIPE: {
       const alvo = { usuario: 'uma pessoa', cargo: 'um cargo', unidade: 'a unidade' }[

@@ -1,5 +1,6 @@
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { listarAutomacoes } from '@/actions/automacoes'
+import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ListaDeAutomacoes } from '@/components/admin/automacoes/lista'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
@@ -16,7 +17,10 @@ export default async function AutomacoesPage() {
   // a navegação, não a URL.
   assertPermission(ctx, 'automations', 'VIEW')
 
-  const { automacoes, error } = await listarAutomacoes()
+  const [{ automacoes, error }, whatsappConectado] = await Promise.all([
+    listarAutomacoes(),
+    redeTemWhatsapp(ctx.tenantId!),
+  ])
 
   return (
     <>
@@ -27,6 +31,7 @@ export default async function AutomacoesPage() {
         automacoes={automacoes}
         podeEditar={can(ctx, 'automations', 'MANAGE')}
         erro={error}
+        whatsappConectado={whatsappConectado}
       />
     </>
   )

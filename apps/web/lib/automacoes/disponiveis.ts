@@ -227,3 +227,70 @@ function comoExemplo(valor: unknown): string {
   const texto = Array.isArray(valor) ? valor.join(', ') : String(valor)
   return texto.length > MAX_EXEMPLO ? `${texto.slice(0, MAX_EXEMPLO)}…` : texto
 }
+
+/**
+ * "do agendamento", "da cliente": o que desambigua um rótulo de entidade
+ * (A14 — o seletor tinha Situação ×3, Procedimento ×2, Valor ×2, Tags ×2).
+ */
+const DA_ENTIDADE: Record<string, string> = {
+  Cliente:      'da cliente',
+  Agendamento:  'do agendamento',
+  Oportunidade: 'da oportunidade',
+  Conversa:     'da conversa',
+}
+
+function sufixoDoGrupo(grupo: string): string {
+  if (DA_ENTIDADE[grupo]) return DA_ENTIDADE[grupo]!
+  if (grupo === 'O que chegou no gatilho') return '(do gatilho)'
+  if (grupo === 'O fato') return '(do fato)'
+  if (grupo.startsWith('Passo: ')) return `(${grupo.slice(7)})`
+  return `(${grupo})`
+}
+
+/**
+ * O rótulo de cada caminho, sem repetição na lista: o rótulo que aparece mais
+ * de uma vez leva de onde vem ("Situação do agendamento", "Procedimento (do
+ * gatilho)"). Sem isto, a pessoa escolhia entre três "Situação" iguais.
+ */
+export function rotulosUnicos(grupos: GrupoDeVariaveis[]): Map<string, string> {
+  const vezes = new Map<string, number>()
+  for (const g of grupos) for (const i of g.itens) vezes.set(i.rotulo, (vezes.get(i.rotulo) ?? 0) + 1)
+  const saida = new Map<string, string>()
+  const usados = new Set<string>()
+  for (const g of grupos) {
+    for (const i of g.itens) {
+      let rotulo = (vezes.get(i.rotulo) ?? 0) > 1 ? `${i.rotulo} ${sufixoDoGrupo(g.grupo)}` : i.rotulo
+      if (usados.has(rotulo)) rotulo = `${rotulo} · ${i.caminho}`
+      usados.add(rotulo)
+      saida.set(i.caminho, rotulo)
+    }
+  }
+  return saida
+}
+
+/**
+ * O caminho em português, para o card do quadro (A14: o card do "Se" dizia
+ * "evento.dados.procedimentoNome é Botox"). O campo do evento leva o rótulo do
+ * catálogo; o de entidade, o nome dela; a expressão escrita à mão passa como
+ * está — reescrevê-la seria mostrar outra coisa.
+ */
+export function rotuloDoCaminho(caminho: string): string {
+  for (const campos of Object.values(CAMPOS_DO_EVENTO)) {
+    const achado = campos.find(c => c.caminho === caminho)
+    if (achado) return achado.rotulo
+  }
+  for (const g of CAMPOS_DAS_ENTIDADES) {
+    const achado = g.itens.find(i => i.caminho === caminho)
+    if (achado) return `${achado.rotulo} ${DA_ENTIDADE[g.grupo] ?? ''}`.trim()
+  }
+  const doFato = CAMPOS_DO_FATO.find(c => c.caminho === caminho)
+  if (doFato) return doFato.rotulo
+  return caminho
+}
+
+/**
+ * Os campos que guardam o NOME de um procedimento: neles o valor da regra é
+ * escolhido numa lista dos procedimentos da clínica (A14 — era texto livre, e
+ * "botox" não casava com "Botox").
+ */
+export const CAMPOS_DE_PROCEDIMENTO = new Set(['evento.dados.procedimentoNome', 'agendamento.procedimento'])

@@ -40,3 +40,29 @@ describe('as alças do "Se" falam português', () => {
     expect(rotuloDaSaida('botox')).toBe('botox')
   })
 })
+
+/**
+ * A14 da 5ª simulação: o card do "Se o procedimento" mostrava o campo cru
+ * ("evento.dados.procedimentoNome é Botox").
+ */
+describe('o card do "Se" mostra o rótulo do campo, não o caminho', () => {
+  it('campo do evento vira o rótulo do catálogo', () => {
+    const grupo = { juncao: 'e' as const, regras: [{ campo: 'evento.dados.procedimentoNome', operador: 'igual' as const, valor: 'Botox' }] }
+    expect(resumoDoNo(NODES.CONDICAO_SE, { grupo })).toBe('Procedimento é Botox')
+  })
+  it('campo de entidade leva o nome da entidade', () => {
+    const grupo = { juncao: 'e' as const, regras: [{ campo: 'agendamento.status', operador: 'preenchido' as const }] }
+    expect(resumoDoNo(NODES.CONDICAO_SE, { grupo })).toBe('Situação do agendamento está preenchido')
+  })
+  it('expressão escrita à mão passa como está', () => {
+    const grupo = { juncao: 'e' as const, regras: [{ campo: "contem(evento.dados.texto, 'preço')", operador: 'preenchido' as const }] }
+    expect(resumoDoNo(NODES.CONDICAO_SE, { grupo })).toBe("contem(evento.dados.texto, 'preço') está preenchido")
+  })
+})
+
+describe('o card da mensagem diz o canal pelo nome', () => {
+  it('push é "Aviso no celular", whatsapp é "WhatsApp"', () => {
+    expect(resumoDoNo(NODES.ACAO_MENSAGEM, { canal: 'push', texto: 'Oi' })).toBe('Aviso no celular: Oi')
+    expect(resumoDoNo(NODES.ACAO_MENSAGEM, { canal: 'whatsapp', texto: 'Oi' })).toBe('WhatsApp: Oi')
+  })
+})

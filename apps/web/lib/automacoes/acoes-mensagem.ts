@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
+import { notifyClient } from '@/lib/notifications/notify'
+import { ler } from '@/lib/db'
 import type { ChannelKind } from '@/lib/channels/types'
 import type { ContextoDaExecucao } from './contexto'
 import type { AtorDaAutomacao } from './acoes-crm'
@@ -26,7 +28,8 @@ import type { AtorDaAutomacao } from './acoes-crm'
  */
 
 export interface PedidoDeMensagem {
-  canal:       ChannelKind
+  /** `push`: o aviso no celular da cliente, sem conversa (A14). */
+  canal:       ChannelKind | 'push'
   texto:       string
   templateId?: string | null
 }
@@ -88,6 +91,8 @@ export async function mandarMensagem(
   if (!texto) throw new Error('A mensagem está vazia.')
   if (!pedido.canal) throw new Error('Nenhum canal escolhido.')
 
+  if (pedido.canal === 'push') return avisoNoCelular(ator, contexto, texto)
+
   const alvo = await conversaPara(ator.tenantId, contexto, pedido.canal)
   if ('motivo' in alvo) return { resumo: { enviada: false, motivo: alvo.motivo } }
 
@@ -126,4 +131,21 @@ export async function mandarMensagem(
       texto: texto.length > 120 ? `${texto.slice(0, 120)}…` : texto,
     },
   }
+}
+
+/**
+ * O aviso no celular da cliente (A14): o canal da rede sem WhatsApp conectado.
+ * Chega no app e no navegador em que ela ativou os avisos, e fica no sino do
+ * portal — sem conversa, então não há resposta a esperar no inbox. O título é
+ * o nome da clínica: é ela quem fala.
+ */
+async function avisoNoCelular(ator: AtorDaAutomacao, contexto: ContextoDaExecucao, texto: string): Promise<ResultadoDaMensagem> {
+  const clienteId = (contexto.cliente as { id?: string } | null)?.id
+  if (!clienteId) {
+    return { resumo: { enviada: false, canal: 'push', motivo: 'Este fluxo não tem cliente — não há para quem mandar o aviso.' } }
+  }
+  const admin = createAdminClient()
+  const rede = await ler(admin.from('tenants').select('name').eq('id', ator.tenantId).maybeSingle(), 'buscar o nome da clínica') as { name: string } | null
+  await notifyClient(admin, clienteId, { type: 'automacao', title: rede?.name ?? 'Sua clínica', body: texto })
+  return { resumo: { enviada: true, canal: 'push' } }
 }

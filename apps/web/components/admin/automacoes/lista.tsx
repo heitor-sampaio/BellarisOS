@@ -19,8 +19,8 @@ import { JanelaModal } from '@/components/shared/janela-modal'
  */
 
 export function ListaDeAutomacoes({
-  automacoes, podeEditar, erro,
-}: { automacoes: AutomacaoNaLista[]; podeEditar: boolean; erro?: string }) {
+  automacoes, podeEditar, erro, whatsappConectado = true,
+}: { automacoes: AutomacaoNaLista[]; podeEditar: boolean; erro?: string; whatsappConectado?: boolean }) {
   const router = useRouter()
   const [criando, criar] = useTransition()
   const [nome, setNome]  = useState('')
@@ -110,6 +110,19 @@ export function ListaDeAutomacoes({
                 <X size={15} />
               </button>
             </div>
+            {!whatsappConectado && (
+              // A14: o modelo mandava por WhatsApp numa rede sem número.
+              <div data-sem-whatsapp role="note" style={{
+                display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 12px',
+                borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+              }}>
+                <AlertCircle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
+                  A clínica não tem WhatsApp conectado. As mensagens dos modelos vão como <strong>aviso no celular</strong> da
+                  cliente (no app e no navegador em que ela ativou os avisos). Conectado o WhatsApp, troque o canal no passo da mensagem.
+                </p>
+              </div>
+            )}
             {MODELOS_DE_AUTOMACAO.map(m => (
               <div key={m.chave} data-modelo={m.chave} className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', margin: 0 }}>{m.nome}</p>

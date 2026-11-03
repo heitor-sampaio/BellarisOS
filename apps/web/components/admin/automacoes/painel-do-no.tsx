@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trash2, X } from 'lucide-react'
 import { EVENTOS, NODES, INTERVALO_MINIMO_MIN, rotuloDoEvento } from '@estetica-os/types'
 import type {
@@ -9,7 +9,7 @@ import type {
 } from '@estetica-os/types'
 import { ROTULOS } from '@/lib/automacoes/validar'
 import {
-  variaveisDisponiveis, eventoDoGatilhoDe,
+  variaveisDisponiveis, eventoDoGatilhoDe, rotulosUnicos, CAMPOS_DE_PROCEDIMENTO,
   type GrupoDeVariaveis, type CampoVisto,
 } from '@/lib/automacoes/disponiveis'
 import { nomeDoPasso, chaveDoPasso } from '@/lib/automacoes/passos'
@@ -160,6 +160,7 @@ export function PainelDoNo({
           <EditorDeGrupo
             grupo={(c.grupo as GrupoDeCondicao) ?? { juncao: 'e', regras: [] }}
             variaveis={variaveis}
+            procedimentos={opcoes?.procedimentos ?? []}
             onChange={g => set({ grupo: g })}
             somenteLeitura={somenteLeitura}
           />
@@ -269,8 +270,27 @@ export function PainelDoNo({
                 <option value="whatsapp">WhatsApp</option>
                 <option value="instagram">Instagram</option>
                 <option value="messenger">Messenger</option>
+                <option value="push">Aviso no celular (push)</option>
               </select>
             </Campo>
+            {c.canal === 'whatsapp' && opcoes && !opcoes.whatsappConectado && (
+              // A14: o passo em WhatsApp numa rede sem número não manda nada.
+              <div data-sem-whatsapp role="note" style={{
+                display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px',
+                borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+              }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
+                  A clínica não tem WhatsApp conectado: por este canal, a mensagem não sai.
+                  Conecte em Configurações → Integrações, ou mande como aviso no celular da cliente.
+                </p>
+                {!somenteLeitura && (
+                  <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
+                    onClick={() => set({ canal: 'push' })}>
+                    Mandar como aviso no celular
+                  </button>
+                )}
+              </div>
+            )}
             <Campo rotulo="Mensagem">
               <TextoComVariaveis
                 valor={(c.texto as string) ?? ''}
@@ -280,13 +300,21 @@ export function PainelDoNo({
                 somenteLeitura={somenteLeitura}
                 placeholder="Oi {{cliente.nome}}, tudo bem?"
               />
-              <Dica>
-                A mensagem vai para a conversa aberta do cliente neste canal.
-                Fora das <strong>24 horas</strong> da última mensagem dele, a
-                Meta só aceita template aprovado — e esta versão ainda não
-                envia template, então o passo falha dizendo isso em vez de dar
-                um &quot;enviado&quot; que não chega.
-              </Dica>
+              {c.canal === 'push' ? (
+                <Dica>
+                  O aviso chega no celular da cliente (no app e no navegador em
+                  que ela ativou os avisos) e fica no sino do portal dela. Não
+                  abre conversa: a resposta não chega no inbox.
+                </Dica>
+              ) : (
+                <Dica>
+                  A mensagem vai para a conversa aberta do cliente neste canal.
+                  Fora das <strong>24 horas</strong> da última mensagem dele, a
+                  Meta só aceita template aprovado — e esta versão ainda não
+                  envia template, então o passo falha dizendo isso em vez de dar
+                  um &quot;enviado&quot; que não chega.
+                </Dica>
+              )}
             </Campo>
           </>
         )}
@@ -734,13 +762,17 @@ const OUTRO = '__outro__'
  * quem monta isto é a recepção da clínica.
  */
 function SelectDeCampo({
-  valor, grupos, onChange, somenteLeitura,
+  valor, grupos, onChange, somenteLeitura, rotulo,
 }: {
   valor:   string
   grupos:  GrupoDeVariaveis[]
   onChange: (v: string) => void
   somenteLeitura?: boolean
+  /** O nome acessível do seletor ("Campo da regra 1"). */
+  rotulo?: string
 }) {
+  // A14: "Situação" ×3 e "Procedimento" ×2 na mesma lista — o repetido leva de onde vem.
+  const rotulos = useMemo(() => rotulosUnicos(grupos), [grupos])
   const naLista = grupos.some(g => g.itens.some(i => i.caminho === valor))
   // Campo escrito à mão (ou herdado de um grafo antigo) abre já no modo livre:
   // cair na lista mostraria "Escolha o campo…" com um valor salvo por baixo.
@@ -754,6 +786,7 @@ function SelectDeCampo({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <input
           className="field" value={valor} disabled={somenteLeitura}
+          aria-label={rotulo}
           onChange={e => onChange(e.target.value)}
           placeholder="evento.dados.algumCampo"
           // O mesmo vermelho da lista de problemas do editor: um terceiro tom
@@ -785,6 +818,7 @@ function SelectDeCampo({
   return (
     <select
       className="field" value={valor} disabled={somenteLeitura}
+      aria-label={rotulo}
       onChange={e => {
         if (e.target.value === OUTRO) { setLivre(true); return }
         onChange(e.target.value)
@@ -795,7 +829,7 @@ function SelectDeCampo({
         <optgroup key={g.grupo} label={g.grupo}>
           {g.itens.map(i => (
             <option key={i.caminho} value={i.caminho}>
-              {i.exemplo ? `${i.rotulo} — ${i.exemplo}` : i.rotulo}
+              {i.exemplo ? `${rotulos.get(i.caminho) ?? i.rotulo} — ${i.exemplo}` : (rotulos.get(i.caminho) ?? i.rotulo)}
             </option>
           ))}
         </optgroup>
@@ -876,10 +910,12 @@ function TextoComVariaveis({
 }
 
 function EditorDeGrupo({
-  grupo, variaveis, onChange, somenteLeitura,
+  grupo, variaveis, onChange, somenteLeitura, procedimentos = [],
 }: {
   grupo: GrupoDeCondicao
   variaveis: GrupoDeVariaveis[]
+  /** Os procedimentos da rede: o valor de uma regra de procedimento sai daqui (A14). */
+  procedimentos?: string[]
   onChange: (g: GrupoDeCondicao) => void
   somenteLeitura?: boolean
 }) {
@@ -907,6 +943,7 @@ function EditorDeGrupo({
           <div key={i} className="card-sm" style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             <SelectDeCampo
               valor={r.campo} grupos={variaveis} somenteLeitura={somenteLeitura}
+              rotulo={`Campo da regra ${i + 1}`}
               onChange={v => mudarRegra(i, { campo: v })}
             />
             <select
@@ -915,13 +952,29 @@ function EditorDeGrupo({
             >
               {OPERADORES.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
             </select>
-            {!op?.semValor && (
+            {!op?.semValor && (CAMPOS_DE_PROCEDIMENTO.has(r.campo) && ['igual', 'diferente'].includes(r.operador) ? (
+              // A14: o procedimento era texto livre — "botox" não casava com
+              // "Botox". O nome sai da lista da clínica; o salvo que não está
+              // mais nela (renomeado, desativado) continua visível.
+              <select
+                className="field" value={String(r.valor ?? '')} disabled={somenteLeitura}
+                aria-label={`Valor da regra ${i + 1}`}
+                onChange={e => mudarRegra(i, { valor: e.target.value })}
+              >
+                <option value="">Escolha o procedimento…</option>
+                {r.valor && !procedimentos.includes(String(r.valor)) && (
+                  <option value={String(r.valor)}>{String(r.valor)} (fora da lista)</option>
+                )}
+                {procedimentos.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            ) : (
               <input
                 className="field" value={String(r.valor ?? '')} disabled={somenteLeitura}
+                aria-label={`Valor da regra ${i + 1}`}
                 onChange={e => mudarRegra(i, { valor: e.target.value })}
                 placeholder="valor"
               />
-            )}
+            ))}
             {!somenteLeitura && (
               <button
                 type="button" className="btn-ghost"

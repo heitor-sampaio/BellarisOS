@@ -12,7 +12,8 @@ import type {
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
-import { modeloDeAutomacao } from '@/lib/automacoes/modelos'
+import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
+import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ler, tentar } from '@/lib/db'
 
 /**
@@ -229,7 +230,8 @@ export async function criarAutomacaoDeModelo(chave: string): Promise<{ id?: stri
 
   const modelo = modeloDeAutomacao(String(chave ?? ''))
   if (!modelo) return { error: 'Modelo não encontrado.' }
-  const grafo = modelo.grafo()
+  // Sem WhatsApp conectado, as mensagens nascem como aviso no celular (A14).
+  const grafo = (await redeTemWhatsapp(ctx.tenantId!)) ? modelo.grafo() : semWhatsapp(modelo.grafo())
 
   const { data, error } = await createAdminClient()
     .from('automations')
@@ -533,6 +535,10 @@ export interface OpcoesDoEditor {
   pessoas:  { id: string; nome: string }[]
   tags:     string[]
   unidades: { id: string; nome: string }[]
+  /** Os procedimentos ativos da rede, pelo nome: o valor da regra de procedimento (A14). */
+  procedimentos: string[]
+  /** A rede tem WhatsApp conectado? Sem ele, o passo em WhatsApp avisa (A14). */
+  whatsappConectado: boolean
 }
 
 export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
@@ -541,7 +547,7 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
   const admin = createAdminClient()
   const tenant = ctx.tenantId!
 
-  const [funis, etapas, cargos, pessoas, vocabulario, unidades] = await Promise.all([
+  const [funis, etapas, cargos, pessoas, vocabulario, unidades, procedimentos, whatsappConectado] = await Promise.all([
     admin.from('crm_funnels').select('id, name, archived_at').eq('tenant_id', tenant).order('position'),
     admin.from('crm_stages').select('id, name, funnel_id, position').eq('tenant_id', tenant).order('position'),
     admin.from('tenant_roles').select('id, label').eq('tenant_id', tenant).order('label'),
@@ -552,6 +558,8 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
     // ação faria a automação brigar com o gatilho que a mantém.
     tagsAtivasDaRede(tenant),
     admin.from('branches').select('id, name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
+    admin.from('procedures').select('name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
+    redeTemWhatsapp(tenant),
   ])
 
   const tags = new Set<string>(vocabulario)
@@ -584,6 +592,8 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
     pessoas:  (pessoas.data ?? []).map(u => ({ id: u.id as string, nome: u.name as string })),
     tags:     [...tags].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     unidades: (unidades.data ?? []).map(b => ({ id: b.id as string, nome: b.name as string })),
+    procedimentos: [...new Set((procedimentos.data ?? []).map(p => p.name as string))],
+    whatsappConectado,
   }
 }
 

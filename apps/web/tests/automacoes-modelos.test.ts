@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { EVENTOS, NODES } from '@estetica-os/types'
 import type { ConfigCondicaoSe, ConfigGatilhoEvento, GrafoDeAutomacao } from '@estetica-os/types'
-import { MODELOS_DE_AUTOMACAO, modeloDeAutomacao } from '@/lib/automacoes/modelos'
+import { MODELOS_DE_AUTOMACAO, modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
 import { validarGrafo } from '@/lib/automacoes/validar'
 
 /**
@@ -87,5 +87,18 @@ describe('regra de condição sem valor', () => {
     expect(erros(grafoCom([], 'em')).some(m => /sem o valor/.test(m))).toBe(true)
     expect(erros(grafoCom(undefined, 'vazio')).some(m => /sem o valor/.test(m))).toBe(false)
     expect(erros(grafoCom('Toxina')).some(m => /sem o valor/.test(m))).toBe(false)
+  })
+})
+
+/** A14: a rede sem WhatsApp conectado recebe o modelo com o aviso no celular. */
+describe('o modelo numa rede sem WhatsApp', () => {
+  it('troca o canal whatsapp por push em todas as mensagens, e só nelas', () => {
+    for (const m of MODELOS_DE_AUTOMACAO) {
+      const grafo = semWhatsapp(m.grafo())
+      for (const no of grafo.nos.filter(n => n.tipo === NODES.ACAO_MENSAGEM)) {
+        expect((no.config as { canal: string }).canal, m.chave).toBe('push')
+      }
+      expect(grafo.nos.length).toBe(m.grafo().nos.length)
+    }
   })
 })
