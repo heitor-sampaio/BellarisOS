@@ -1,5 +1,6 @@
 import { test, expect, type Browser } from '@playwright/test'
-import { unidadeQueAtende, filiaisAtivas, type Filial } from './apoio/banco'
+import { banco, unidadeQueAtende, filiaisAtivas, type Filial } from './apoio/banco'
+import { criarOutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 
 /**
@@ -170,10 +171,29 @@ test.describe.serial('cliente final', () => {
     }
   })
 
-  test('não entra no portal de cliente de outra unidade', async ({ browser }) => {
+  // H5 (decisão do Heitor, 2026-11-01): "A cliente é da clínica, pode agendar
+  // em qualquer unidade da clínica" — o portal de OUTRA unidade da MESMA rede
+  // abre a mesma ficha (prova inteira em portal-cliente-outra-unidade.spec.ts).
+  // O que continua barrado é o portal de outra REDE.
+  test('entra no portal de cliente de outra unidade da mesma clínica', async ({ browser }) => {
     test.skip(!cliente, 'nenhuma unidade ativa')
     const outra = (await filiaisAtivas()).find(f => f.id !== unidade!.id)
     test.skip(!outra, 'a rede de dev tem uma unidade só')
-    await esperarBarrado(browser, cliente!.estado, `/${outra!.slug}/cliente/home`, 'cliente abriu o portal de outra unidade')
+    const { ctx, page } = await abrir(browser, cliente!.estado, `/${outra!.slug}/cliente/home`)
+    try {
+      await expect(page).toHaveURL(new RegExp(`/${outra!.slug}/cliente`))
+      await expect(page.getByText(SEM_ACESSO)).toHaveCount(0)
+    } finally { await ctx.close() }
+  })
+
+  test('não entra no portal de cliente de outra rede', async ({ browser }) => {
+    test.skip(!cliente, 'nenhuma unidade ativa')
+    const outraRede = await criarOutraRede(`pi${marca}`)
+    try {
+      const { data, error } = await banco().from('branches').select('slug').eq('id', outraRede.branchId).single<{ slug: string }>()
+      expect(error).toBeNull()
+      const foi = await esperarBarrado(browser, cliente!.estado, `/${data!.slug}/cliente/home`, 'cliente abriu o portal de outra rede')
+      expect(foi.startsWith(`/${data!.slug}/`), `cliente não pode ficar no portal da outra rede (${foi})`).toBe(false)
+    } finally { await outraRede.limpar() }
   })
 })
