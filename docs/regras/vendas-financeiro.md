@@ -464,6 +464,21 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     salva (`recusaDoPagamento` em `CamposDoPagamento`, `recusaDaEntrada` no
     checkout). Era `parseDinheiro(…) || 0`: "1,400.50" vendia com entrada
     R$ 0, calado. Prova: `e2e/pacotes-venda.spec.ts` ("entrada ilegível").
+  - **A entrada MAIOR que o total é recusada, não cortada** (ven-02 da
+    revisão, 2026-11-02: "o plano custa R$ 900 e a Bruna digita entrada de
+    R$ 1.000; grava R$ 900 sem dizer nada"). A regra é UMA,
+    `recusaDaEntradaAcimaDoTotal` (`lib/checkout/entrada.ts`): "A entrada
+    (R$ 1.000,00) passa do total do plano (R$ 900,00). Corrija a entrada." —
+    junto do campo, e o botão de seguir fica desligado (`recusaDoPagamento(e,
+    total)` em `CamposDoPagamento`; o checkout e o receber do plano no
+    check-in também). O SERVIDOR recusa com a mesma frase
+    (`recusaDaEntradaDoPagamento`, `lib/checkout/lancamentos.ts`) em
+    `venderPacote`, `venderProcedimento`, `venderProduto`,
+    `checkoutTreatmentPlan`, `prepararDocumentosDoCheckout`,
+    `definirPagamentoDoContrato` e `receberDoPlano`, antes de qualquer
+    gravação. Igual ao total passa (é tudo na entrada). O corte de
+    `lancamentosDoPagamento` fica só como rede de segurança. Prova:
+    `e2e/vendas-entrada-acima-do-total.spec.ts`.
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
 - **Cartão de crédito em N vezes é PAGO na hora PELA CLIENTE** (decisão do
   Heitor, 2026-10-20): quem paga a clínica é a maquininha, então para o
@@ -783,6 +798,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0
 ❌ Gravar texto para pessoas (histórico, descrição) com o código da forma (CASH, CREDIT_CARD) — é rotuloDaForma no app e private.rotulo_da_forma no banco
+❌ Cortar calado a entrada maior que o total (Math.min(entrada, total)) — é recusaDaEntradaAcimaDoTotal, na tela e no servidor (ven-02)
 ❌ Ler dinheiro digitado com uma regra própria (Number(s.replace…), parseFloat em campo de texto) — é parseDinheiro, e o NaN dele é recusa, não zero
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
 ❌ Devolver e.message num catch de action (o 'Forbidden' da trava ia em inglês para a tela) — é mensagemDoErro

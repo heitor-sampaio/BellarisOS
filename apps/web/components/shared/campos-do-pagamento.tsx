@@ -1,6 +1,6 @@
 'use client'
 
-import { lerEntrada, erroDaEntrada } from '@/lib/checkout/entrada'
+import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -81,17 +81,25 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
  * R$ 0 calado (frente de cadastro, 2026-10-29). Quem salva confere ANTES de
  * montar — o aviso é o de todo campo de dinheiro.
  */
-export function recusaDoPagamento(e: EstadoDoPagamento): string | null {
-  return e.forma === 'PARCELADO' ? erroDaEntrada(e.entrada) : null
+export function recusaDoPagamento(e: EstadoDoPagamento, total?: number, doQue = 'da venda'): string | null {
+  if (e.forma !== 'PARCELADO') return null
+  const ilegivel = erroDaEntrada(e.entrada)
+  if (ilegivel) return ilegivel
+  // A entrada acima do total é recusada, não cortada (ven-02); o servidor confere igual.
+  const lida = lerEntrada(e.entrada)
+  return total !== undefined && 'valor' in lida ? recusaDaEntradaAcimaDoTotal(lida.valor, total, doQue) : null
 }
 
-export function CamposDoPagamento({ estado, aoMudar, formas, total }: {
+export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da venda' }: {
   estado: EstadoDoPagamento
   aoMudar: (e: EstadoDoPagamento) => void
   formas: FormaDoPagamento[]
   /** O valor que se paga (já com o desconto): o resumo das parcelas e o valor da parcela no crédito (A46/A47). */
   total?: number
+  /** Completa a recusa da entrada acima do total: "da venda", "do atendimento". */
+  doQue?: string
 }) {
+  const recusaDaEntrada = recusaDoPagamento(estado, total, doQue)
   const mudar = (parte: Partial<EstadoDoPagamento>) => aoMudar({ ...estado, ...parte })
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
   const { forma } = estado
@@ -126,10 +134,10 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total }: {
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={rotulo}>Entrada (opcional)</span>
               <input className="field" inputMode="decimal" placeholder="0,00" value={estado.entrada}
-                onChange={e => mudar({ entrada: e.target.value })} aria-label="Entrada" />
-              {erroDaEntrada(estado.entrada) && (
-                <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
-                  {erroDaEntrada(estado.entrada)}
+                onChange={e => mudar({ entrada: e.target.value })} aria-label="Entrada" aria-invalid={!!recusaDaEntrada} />
+              {recusaDaEntrada && (
+                <span role="alert" data-recusa-da-entrada style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+                  {recusaDaEntrada}
                 </span>
               )}
             </label>
@@ -156,7 +164,7 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total }: {
           )}
         </div>
       )}
-      {forma === 'PARCELADO' && total !== undefined && !erroDaEntrada(estado.entrada) && (() => {
+      {forma === 'PARCELADO' && total !== undefined && !recusaDaEntrada && (() => {
         const lida = lerEntrada(estado.entrada)
         return <ResumoDasParcelas total={total} entrada={'valor' in lida ? lida.valor : 0} parcelas={estado.parcelas} />
       })()}

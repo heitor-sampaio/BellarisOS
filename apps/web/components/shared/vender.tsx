@@ -141,8 +141,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
   const envio = useEnvioUnico()
 
   function vender() {
-    setErro(recusaDoPagamento(estado))
-    if (recusaDoPagamento(estado)) return
+    setErro(recusaDoPagamento(estado, conta.liquido))
+    if (recusaDoPagamento(estado, conta.liquido)) return
     iniciar(async () => {
       const r = await venderProduto(clienteId, prod.id, branchId, qtd, montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
       if (r.error) { setErro(r.error); return }
@@ -192,7 +192,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || qtd < 1 || qtd > 100}>
+        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || qtd < 1 || qtd > 100}>
           {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
         </button>
       </div>
@@ -230,8 +230,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   const envio = useEnvioUnico()
 
   function vender() {
-    setErro(recusaDoPagamento(estado))
-    if (recusaDoPagamento(estado)) return
+    setErro(recusaDoPagamento(estado, conta.liquido))
+    if (recusaDoPagamento(estado, conta.liquido)) return
     iniciar(async () => {
       const r = await venderProcedimento(clienteId, proc.id, branchId, qtd, validade.trim() ? Number(validade) : null,
         montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
@@ -314,7 +314,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || qtd < 1 || qtd > 100}>
+        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || qtd < 1 || qtd > 100}>
           {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
         </button>
       </div>

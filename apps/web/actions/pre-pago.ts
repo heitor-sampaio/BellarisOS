@@ -16,7 +16,7 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear } from '@/lib/vendas/desconto'
@@ -92,6 +92,8 @@ async function venderProcedimentoUmaVez(
     if (recusa) return { error: recusa }
     const reais = descontoEmReais(tabela, d.data)
     const vendido = Math.round((tabela - reais) * 100) / 100
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
+    if (recusaDaEntrada) return { error: recusaDaEntrada }
 
     const rotulo = `${qtd}× ${proc.name as string}`
     const saleId = await gravar(admin.rpc('procedimento_vender', {

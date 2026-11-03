@@ -16,7 +16,7 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
@@ -141,6 +141,8 @@ async function venderPacoteUmaVez(
     if (recusa) return { error: recusa }
     const reais = descontoEmReais(preco, d.data)
     const vendido = Math.round((preco - reais) * 100) / 100
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
+    if (recusaDaEntrada) return { error: recusaDaEntrada }
 
     const lancamentos = lancamentosDoPagamento(vendido, lido.data, `Pacote ${pacote.name as string}`)
     // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio

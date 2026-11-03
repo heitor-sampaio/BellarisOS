@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { PagamentoDoPlano } from './pagamento'
 import { dividirEmParcelas, rotuloDaParcela } from './parcelas'
 import { vezesNoCartao } from './pagamento'
+import { recusaDaEntradaAcimaDoTotal } from './entrada'
 
 /**
  * Os lançamentos de uma venda paga de uma vez ou em partes — hoje, a venda de
@@ -48,6 +49,15 @@ export const EntradaDoPagamento = z.discriminatedUnion('forma', [
 )
 
 const centavos = (v: number) => Math.round(v * 100) / 100
+
+/**
+ * A entrada do "entrada + parcelas" acima do total é RECUSADA (ven-02): o
+ * servidor confere antes de montar os lançamentos — o corte de
+ * `lancamentosDoPagamento` fica só como rede de segurança.
+ */
+export function recusaDaEntradaDoPagamento(p: PagamentoDoPlano | null | undefined, total: number, doQue = 'da venda'): string | null {
+  return p?.forma === 'PARCELADO' ? recusaDaEntradaAcimaDoTotal(p.entrada, total, doQue) : null
+}
 
 export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotulo: string): Lancamento[] {
   const valor = centavos(total)

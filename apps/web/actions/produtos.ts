@@ -16,7 +16,7 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
@@ -87,6 +87,8 @@ async function venderProdutoUmaVez(
     if (recusa) return { error: recusa }
     const reais = descontoEmReais(tabela, d.data)
     const vendido = Math.round((tabela - reais) * 100) / 100
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
+    if (recusaDaEntrada) return { error: recusaDaEntrada }
 
     const { data, error } = await admin.rpc('produto_vender', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_produto: produtoId, p_unidade: branchId,

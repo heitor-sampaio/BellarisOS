@@ -36,6 +36,7 @@ import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { ROTULO_DO_EVENTO, ROTULO_DO_CANAL } from '@/lib/documentos/situacao'
 import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
+import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { TenantContext } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
@@ -240,8 +241,12 @@ export async function prepararDocumentosDoCheckout(
     if (!plano || rede !== ctx.tenantId || !alcancaUnidade(ctx, plano.branch_id as string)) return { error: 'Plano não encontrado.' }
     if (plano.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
 
-    const doDesconto = descontoDoPlano(await precosDoPlano(planId), d.data)
+    const precos = await precosDoPlano(planId)
+    const doDesconto = descontoDoPlano(precos, d.data)
     if ('error' in doDesconto) return { error: doDesconto.error }
+    // A entrada acima do total é recusada, não cortada (ven-02).
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamento, Math.round((precos.subtotal - doDesconto.reais) * 100) / 100, 'do plano')
+    if (recusaDaEntrada) return { error: recusaDaEntrada }
     // O contrato já assinado para OUTRO pagamento: pergunta antes de substituir
     // (A45 da 5ª simulação). Sem a confirmação explícita, nada muda.
     if (opcoes?.substituirContrato !== true) {
@@ -293,6 +298,8 @@ export async function definirPagamentoDoContrato(
     const preco = Number(ag?.price ?? 0)
     const recusa = recusaDoDesconto(preco, d.data)
     if (recusa) return { error: recusa }
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamento, Math.round((preco - descontoEmReais(preco, d.data)) * 100) / 100, 'do atendimento')
+    if (recusaDaEntrada) return { error: recusaDaEntrada }
     await garantirRenderizado(ctx.tenantId!, doc.id, {
       forcar: true, pagamento: { valor: pagamento, desconto: descontoEmReais(preco, d.data) },
     })

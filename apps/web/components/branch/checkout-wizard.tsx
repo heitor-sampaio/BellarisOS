@@ -15,7 +15,7 @@ import type { Horario } from '@/lib/agenda/horario'
 import { rotaCliente, rotaAtendimento } from '@/lib/rotas'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { lerEntrada, erroDaEntrada } from '@/lib/checkout/entrada'
+import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -160,7 +160,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // O ilegível NÃO vira R$ 0 calado (frente de cadastro, 2026-10-29): o aviso de
   // todo campo de dinheiro, e o checkout não avança (`recusaDaEntrada`).
   const entradaLida = lerEntrada(entrada)
-  const recusaDaEntrada = formaPgto === 'PARCELADO' ? erroDaEntrada(entrada) : null
+  // E a entrada acima do total é recusada, não cortada (ven-02 — "o plano custa
+  // R$ 900 e a Bruna digita entrada de R$ 1.000; grava R$ 900 sem dizer nada").
+  const recusaDaEntrada = formaPgto === 'PARCELADO'
+    ? erroDaEntrada(entrada) ?? ('valor' in entradaLida ? recusaDaEntradaAcimaDoTotal(entradaLida.valor, liquido, 'do plano') : null)
+    : null
   const entradaNum = Math.max(0, Math.min('valor' in entradaLida ? entradaLida.valor : 0, liquido))
   const saldo      = Math.round((liquido - entradaNum) * 100) / 100
   const valorParcela = parcelas > 0 ? saldo / parcelas : 0

@@ -13,6 +13,7 @@ import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
+import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
@@ -1399,6 +1400,10 @@ async function checkoutTreatmentPlanInterno(
   const precos = await precosDoPlano(planId)
   const doDesconto = descontoDoPlano(precos, entradaDoDesconto.data)
   if ('error' in doDesconto) return { error: doDesconto.error }
+  // A entrada acima do total é recusada, não cortada (ven-02): "o plano custa
+  // R$ 900 e a Bruna digita entrada de R$ 1.000; grava R$ 900 sem dizer nada".
+  const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamento, Math.round((precos.subtotal - doDesconto.reais) * 100) / 100, 'do plano')
+  if (recusaDaEntrada) return { error: recusaDaEntrada }
 
   const recusaDosDocumentos = await recusaDosDocumentosDoPlano(ctx.tenantId!, planId, pagamento, doDesconto.reais)
   if (recusaDosDocumentos) return { error: recusaDosDocumentos }

@@ -27,12 +27,14 @@ export function DefinirPagamento({ documentoId, atual, descontoAtual, total, aoT
   const [estado, setEstado] = useState(() => estadoDoPagamento(atual, 'NADA_AGORA'))
   const [desconto, setDesconto] = useState(() => estadoDoDesconto(descontoAtual))
   const recusa = total != null ? contaDoDesconto(total, desconto).recusa : null
+  // O que se paga (com o desconto): a entrada acima dele é recusada (ven-02).
+  const liquido = total != null ? contaDoDesconto(total, desconto).liquido : undefined
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, iniciar] = useTransition()
 
   function salvar() {
-    setErro(recusaDoPagamento(estado))
-    if (recusaDoPagamento(estado)) return
+    setErro(recusaDoPagamento(estado, liquido, 'do atendimento'))
+    if (recusaDoPagamento(estado, liquido, 'do atendimento')) return
     iniciar(async () => {
       const r = await definirPagamentoDoContrato(documentoId, montarPagamento(estado), total != null ? descontoDoEstado(desconto) : null)
       if (r.error) { setErro(r.error); return }
@@ -47,7 +49,7 @@ export function DefinirPagamento({ documentoId, atual, descontoAtual, total, aoT
         O contrato cita o pagamento: defina como o cliente vai pagar antes de colher a assinatura.
       </p>
       {total != null && total > 0 && <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} />}
-      <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['NADA_AGORA', 'AVISTA', 'PARCELADO', 'A_RECEBER']} />
+      <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['NADA_AGORA', 'AVISTA', 'PARCELADO', 'A_RECEBER']} total={liquido} doQue="do atendimento" />
       {estado.forma === 'NADA_AGORA' && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>O contrato diz o valor do atendimento, a receber no dia.</p>
       )}

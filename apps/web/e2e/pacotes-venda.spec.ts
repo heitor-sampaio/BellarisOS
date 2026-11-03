@@ -311,9 +311,9 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
       await dlg.getByLabel('Entrada').fill('1,400.50')
       await expect(dlg.getByText('Valor não entendido: use vírgula para os centavos')).toBeVisible()
-      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      // Com a entrada recusada, o "Vender por" fica desligado (ven-02, F11).
+      await expect(dlg.getByRole('button', { name: /Vender por/ })).toBeDisabled()
       await expect(dlg.getByRole('alert').filter({ hasText: 'Valor não entendido' }).first()).toBeVisible()
-      await p.waitForTimeout(1500)
     })
     const { data: vendas } = await db().from('client_packages').select('id').eq('client_id', cliente)
     expect(vendas, 'a venda com a entrada ilegível não foi gravada').toHaveLength(2)

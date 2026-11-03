@@ -37,8 +37,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
   const envio = useEnvioUnico()
 
   function vender() {
-    setErro(recusaDoPagamento(estado))
-    if (recusaDoPagamento(estado)) return
+    setErro(recusaDoPagamento(estado, conta.liquido))
+    if (recusaDoPagamento(estado, conta.liquido)) return
     iniciar(async () => {
       const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
       if (r.error) { setErro(r.error); return }
@@ -72,7 +72,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}</button>
+        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}</button>
       </div>
     </div>
   )
