@@ -9128,6 +9128,27 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F9 feita em 2026-11-03 — clientes, cadastro, importação e o envio que grava uma vez**
+(10093ec9…b50007dd; migrations `20261101000901–904`). Um mecanismo só de
+idempotência: a tela gera uma chave por envio (`lib/use-envio-unico.ts`), o
+servidor a reivindica em `envios_unicos` (`umaVez`, `lib/envio-unico.ts`) e o
+segundo envio recebe a mesma resposta sem gravar; sem chave, o mesmo nome com o
+mesmo telefone em 60 s é um cadastro só. Aplicado no cadastro da cliente, no
+lançamento, crédito interno, vendas (pacote, pré-pago, produto), entrada,
+transferência e perda de estoque e nos pontos; a lista do que não precisou e do
+que falta está em `docs/regras/convencoes.md` (`receberDoPlano` é o pendente).
+O telefone já cadastrado avisa junto ao campo antes do clique, e o da ficha
+arquivada oferece "Reativar a ficha de Valdir"; arquivar avisa do agendamento
+futuro; a busca acha a arquivada com "Reativar"; botão secundário desligado
+parece desligado; o inbox traz o e-mail do lead; telefone com "+" vale em todo
+caminho; a ficha ganhou barra de abas de verdade (A17); a prévia da importação
+diz o que vai juntar e "Completar a ficha de Marlene" se desmarca; a Admin
+oferece o cargo Admin no "Adicionar membro". Decisões da F9, para revisar: 60 s
+na trava pelo conteúdo; "Reativar" traz a ficha como estava; com a arquivada
+achada a busca não oferece "Cadastrar"; só dígitos, 12–15, sem 55 = número de
+fora; a ficha achada pelo CPF sempre junta; as chaves antigas não se apagam; o
+cargo Admin só na Equipe da rede.
+
 **F8 feita em 2026-11-02 — a clínica de uma unidade não fala "rede", e o caminho das salas**
 (38337b12…25da9c7b; migration `20261101000801`, só a semente das categorias).
 Com UMA unidade, o /admin diz "CLÍNICA" no menu, "Admin" no cargo (a chave
