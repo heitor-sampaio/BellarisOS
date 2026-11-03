@@ -156,4 +156,29 @@ edições do sistema". O mecanismo é UM:
 - Edição que regrava os mesmos valores já é idempotente; o que precisa disto é
   o que ACUMULA (criar, lançar, vender, mover estoque, dar pontos).
 - Prova: `e2e/ficha-cadastro-uma-vez.spec.ts` (o mesmo envio ao mesmo tempo,
-  sem chave, e a pergunta que não prende a chave).
+  sem chave, e a pergunta que não prende a chave) e
+  `e2e/vendas-envio-unico.spec.ts` (dinheiro, estoque e pontos: o mesmo envio
+  duas vezes ao mesmo tempo grava uma; um envio novo grava de novo).
+- **Onde está** (F9, 2026-11-02): o cadastro da cliente (`addClient`, e o
+  conteúdo em 60 s); o DINHEIRO — o lançamento manual
+  (`createTransactionAdvanced`), o crédito interno (`grantInternalCredit`, nas
+  duas telas), as vendas de pacote, de pré-pago e de produto (`venderPacote`,
+  `venderProcedimento`, `venderProduto`: a chave é o último argumento); o
+  ESTOQUE — a entrada (`adminAddStock`, também a do leitor de código de
+  barras), a transferência e a perda; os PONTOS — o ajuste e a troca por
+  recompensa (`ajustarPontos`, `resgatarRecompensa`: `envio` no objeto).
+- **Onde não precisou**: o que o ESTADO já barra — receber o atendimento
+  (`confirmPayment`: o "já pago" é conferido dentro da transação), o ajuste de
+  estoque (grava o saldo absoluto, repetir dá o mesmo saldo), o checkout e o
+  cancelamento do plano e do pacote (a situação muda na primeira), o estorno.
+- **Fica para depois** (não acumulam dinheiro nem estoque; o duplo clique
+  cria um segundo registro visível, que se arquiva): receber do plano
+  (`receberDoPlano` recusa sem saldo, mas duas chegadas AO MESMO TEMPO leem o
+  mesmo saldo — o próximo da lista), o agendamento (`addAppointment`: o choque
+  de horário já recusa o segundo do mesmo profissional), oportunidade e lead,
+  procedimento, produto e categoria do estoque, unidade, membro (o e-mail é
+  único), tag, sala, cargo, ficha, funil e etapa, motivo de perda, campanha,
+  automação, pacote e recompensa (o cadastro), plano do cliente.
+- As chaves velhas não se apagam: a tabela ganha uma linha pequena por envio.
+  Se crescer, a limpeza é um cron que apaga pelo cliente de serviço o que tem
+  mais de 30 dias.

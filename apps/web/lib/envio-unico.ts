@@ -42,11 +42,14 @@ export function chaveDoConteudo(...partes: (string | null | undefined)[]): strin
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`
 }
 
+/** A segunda chegada que esperou e a primeira ainda não terminou. */
+export const ENVIO_OCUPADO = 'Este envio ainda está sendo gravado. Confira em instantes antes de enviar de novo.'
+
 export interface OpcoesDoEnvio<R> {
   /** O resultado GRAVOU (é guardado e devolvido ao reenvio)? Por padrão: não tem `error`. */
   gravou?: (r: R) => boolean
-  /** O que devolver se a outra chegada ainda grava depois da espera. */
-  ocupada: () => R
+  /** O que devolver se a outra chegada ainda grava depois da espera. Por padrão, `{ error: ENVIO_OCUPADO }`. */
+  ocupada?: () => R
   /** Por quanto tempo o `feito` vale (intervalo do Postgres, ex.: '60 seconds'). Sem ele, para sempre. */
   validade?: string
   /** Quanto esperar a outra chegada terminar (ms). */
@@ -63,7 +66,7 @@ const temErro = (r: unknown) => !!r && typeof r === 'object' && 'error' in r && 
  * leitura do banco (`ler`).
  */
 export async function umaVez<R>(
-  tenantId: string, acao: string, chave: string | null, fazer: () => Promise<R>, opcoes: OpcoesDoEnvio<R>,
+  tenantId: string, acao: string, chave: string | null, fazer: () => Promise<R>, opcoes: OpcoesDoEnvio<R> = {},
 ): Promise<R> {
   if (!chave || !UUID.test(chave)) return fazer()
   const admin = createAdminClient()
@@ -76,7 +79,7 @@ export async function umaVez<R>(
     }), 'conferir se este envio já foi gravado') as Reivindicacao
     if (r.situacao === 'feito') return r.resultado as R
     if (r.situacao === 'sua') break
-    if (Date.now() > ate) return opcoes.ocupada()
+    if (Date.now() > ate) return opcoes.ocupada ? opcoes.ocupada() : ({ error: ENVIO_OCUPADO } as R)
     await new Promise(ok => setTimeout(ok, 250))
   }
 

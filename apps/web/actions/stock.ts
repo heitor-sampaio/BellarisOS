@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
@@ -438,7 +439,10 @@ export async function adminAddStock(
   ...args: Parameters<typeof adminAddStockInterno>
 ): ReturnType<typeof adminAddStockInterno> {
   try {
-    return await adminAddStockInterno(...args)
+    // O mesmo envio (a chave da tela) entra UMA vez (D10, lib/envio-unico.ts).
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'adminAddStock', chaveDoEnvio(args[1]), () => adminAddStockInterno(...args),
+      { gravou: r => !!r.success })
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -494,7 +498,10 @@ export async function adminTransferStock(
   ...args: Parameters<typeof adminTransferStockInterno>
 ): ReturnType<typeof adminTransferStockInterno> {
   try {
-    return await adminTransferStockInterno(...args)
+    // O mesmo envio (a chave da tela) transfere UMA vez (D10, lib/envio-unico.ts).
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'adminTransferStock', chaveDoEnvio(args[1]), () => adminTransferStockInterno(...args),
+      { gravou: r => !!r.success })
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -613,7 +620,10 @@ export async function registrarPerda(
   ...args: Parameters<typeof registrarPerdaInterno>
 ): ReturnType<typeof registrarPerdaInterno> {
   try {
-    return await registrarPerdaInterno(...args)
+    // O mesmo envio (a chave da tela) baixa UMA vez (D10, lib/envio-unico.ts).
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'registrarPerda', chaveDoEnvio(args[1]), () => registrarPerdaInterno(...args),
+      { gravou: r => !!r.success })
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

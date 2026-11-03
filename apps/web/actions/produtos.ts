@@ -15,6 +15,7 @@ import { getTenantContext, alcancaUnidade, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
@@ -29,6 +30,22 @@ const UUID = /^[0-9a-f-]{36}$/i
  * confere que fecham com o preço e que há estoque.
  */
 export async function venderProduto(
+  clienteId: string, produtoId: string, branchId: string,
+  quantidade: unknown, pagamento: unknown, desconto?: unknown,
+  /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
+  envio?: string | null,
+): Promise<{ error?: string; vendaId?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'venderProduto', chaveDoEnvio(envio),
+      () => venderProdutoUmaVez(clienteId, produtoId, branchId, quantidade, pagamento, desconto))
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function venderProdutoUmaVez(
   clienteId: string, produtoId: string, branchId: string,
   quantidade: unknown, pagamento: unknown, desconto?: unknown,
 ): Promise<{ error?: string; vendaId?: string }> {

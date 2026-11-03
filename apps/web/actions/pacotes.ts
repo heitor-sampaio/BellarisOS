@@ -15,6 +15,7 @@ import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assert
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
@@ -91,6 +92,21 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
  * rateiam, então a comissão de cada sessão já sai sobre o vendido.
  */
 export async function venderPacote(
+  clienteId: string, pacoteId: string, branchId: string, pagamento: unknown, desconto?: unknown,
+  /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
+  envio?: string | null,
+): Promise<{ error?: string; clientPackageId?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'venderPacote', chaveDoEnvio(envio),
+      () => venderPacoteUmaVez(clienteId, pacoteId, branchId, pagamento, desconto))
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function venderPacoteUmaVez(
   clienteId: string, pacoteId: string, branchId: string, pagamento: unknown, desconto?: unknown,
 ): Promise<{ error?: string; clientPackageId?: string }> {
   try {

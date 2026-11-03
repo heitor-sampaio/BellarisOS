@@ -6,6 +6,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { venderPacote } from '@/actions/pacotes'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 /**
  * Vender um pacote (decisão do Heitor, 2026-09-30): o pacote do catálogo, e
@@ -32,13 +33,16 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
   const pacote = pacotes.find(p => p.id === pacoteId) ?? pacotes[0]!
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
   const conta = contaDoDesconto(pacote.price, desconto)
+  // A chave do envio (D10): o duplo clique vende uma vez só.
+  const envio = useEnvioUnico()
 
   function vender() {
     setErro(recusaDoPagamento(estado))
     if (recusaDoPagamento(estado)) return
     iniciar(async () => {
-      const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto))
+      const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
       if (r.error) { setErro(r.error); return }
+      envio.renovar()
       onFim()
       router.refresh()
     })

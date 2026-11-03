@@ -3,6 +3,7 @@
 import { forwardRef, useImperativeHandle, useRef, useCallback, useActionState, useEffect, useState, useMemo } from 'react'
 import { X, Gift, Search, Check } from 'lucide-react'
 import { grantInternalCredit } from '@/actions/clients'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 export interface ClientCreditModalHandle { open: () => void }
 
@@ -45,6 +46,8 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
     const [open_dd,    setOpenDd]     = useState(false)
 
     const [state, formAction, pending] = useActionState(grantInternalCredit, null)
+    // A chave do envio (D10): o duplo clique concede uma vez só.
+    const envio = useEnvioUnico()
 
     const filtered = useMemo(
       () => search.length >= 2
@@ -66,8 +69,8 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
     useImperativeHandle(ref, () => ({ open }), [open])
 
     useEffect(() => {
-      if (state && !state.error) close()
-    }, [state, close])
+      if (state && !state.error) { envio.renovar(); close() }
+    }, [state, close, envio])
 
     function selectClient(id: string, name: string) {
       setClientId(id)
@@ -103,7 +106,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
         </div>
 
         <div style={{ padding: '24px 24px 28px' }}>
-          <form ref={formRef} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form ref={formRef} action={fd => { fd.set('_envio', envio.chave()); formAction(fd) }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <input type="hidden" name="branch_id" value={escolheUnidade ? unidadeId : branchId} />
             <input type="hidden" name="slug"      value={slugDaUnidade} />
             <input type="hidden" name="client_id" value={clientId} />

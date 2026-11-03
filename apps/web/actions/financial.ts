@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { lancarCore, marcarPagoCore } from '@/lib/financeiro/lancamento'
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
@@ -26,7 +27,19 @@ function num(fd: FormData, key: string): number | null {
 export async function createTransactionAdvanced(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
-) {
+): Promise<{ error?: string; success?: boolean }> {
+  try {
+    // O mesmo envio (a chave da tela) lança UMA vez (D10, lib/envio-unico.ts):
+    // o lançamento repetido somava em dobro no caixa.
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'createTransactionAdvanced', chaveDoEnvio(formData),
+      () => lancarPeloFormulario(formData), { gravou: r => !!r.success })
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
+async function lancarPeloFormulario(formData: FormData): Promise<{ error?: string; success?: boolean }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')

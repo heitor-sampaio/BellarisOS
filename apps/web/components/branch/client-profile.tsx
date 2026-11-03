@@ -8,6 +8,7 @@ import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, 
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { CancelarPacote } from '@/components/shared/cancelar-pacote'
 import { ClientDocumentsTab } from './client-documents-tab'
@@ -946,6 +947,8 @@ function GrantCreditForm({
 }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(grantInternalCredit, null)
+  // A chave do envio (D10): o duplo clique concede uma vez só (o formulário some ao conceder).
+  const envio = useEnvioUnico()
 
   if (state !== null && !state?.error && !pending) {
     onClose()
@@ -955,7 +958,7 @@ function GrantCreditForm({
 
   return (
     <form
-      action={action}
+      action={fd => { fd.set('_envio', envio.chave()); action(fd) }}
       style={{
         padding: '14px 20px',
         background: 'var(--brand-soft)',

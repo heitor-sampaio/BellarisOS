@@ -14,6 +14,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { FormularioDoPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 /**
  * "Vender" (decisão do Heitor, 2026-09-30): um botão só, e a janela pergunta
@@ -136,13 +137,16 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
   const qtd = Math.max(0, Math.trunc(Number(quantidade) || 0))
   const tabela = Math.round(prod.price * 100) * qtd / 100
   const conta = contaDoDesconto(tabela, desconto)
+  // A chave do envio (D10): o duplo clique vende uma vez só.
+  const envio = useEnvioUnico()
 
   function vender() {
     setErro(recusaDoPagamento(estado))
     if (recusaDoPagamento(estado)) return
     iniciar(async () => {
-      const r = await venderProduto(clienteId, prod.id, branchId, qtd, montarPagamento(estado), descontoDoEstado(desconto))
+      const r = await venderProduto(clienteId, prod.id, branchId, qtd, montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
       if (r.error) { setErro(r.error); return }
+      envio.renovar()
       router.refresh()
       onFim()
     })
@@ -222,14 +226,17 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   const conta = contaDoDesconto(tabela, desconto)
   // O mesmo procedimento já foi atendido e não foi pago: a venda nova cobraria de novo.
   const jaAtendido = aReceber.find(a => a.procedureId === proc.id) ?? null
+  // A chave do envio (D10): o duplo clique vende uma vez só.
+  const envio = useEnvioUnico()
 
   function vender() {
     setErro(recusaDoPagamento(estado))
     if (recusaDoPagamento(estado)) return
     iniciar(async () => {
       const r = await venderProcedimento(clienteId, proc.id, branchId, qtd, validade.trim() ? Number(validade) : null,
-        montarPagamento(estado), descontoDoEstado(desconto))
+        montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
       if (r.error) { setErro(r.error); return }
+      envio.renovar()
       router.refresh()
       if (podeAgendar && r.primeiraUnidadeId) { setVendida(r.primeiraUnidadeId); return }
       onFim()

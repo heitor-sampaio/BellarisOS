@@ -472,7 +472,11 @@ export async function grantInternalCredit(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'financial', 'MANAGE')
+  // O mesmo envio (a chave da tela) concede UMA vez (D10, lib/envio-unico.ts).
+  return umaVez(ctx.tenantId!, 'grantInternalCredit', chaveDoEnvio(formData), () => concederCredito(ctx, formData))
+}
 
+async function concederCredito(ctx: TenantContext, formData: FormData): Promise<{ error?: string }> {
   const clientId    = (formData.get('client_id')   as string | null)?.trim()
   const branchId    = (formData.get('branch_id')   as string | null)?.trim()
   const slug        = (formData.get('slug')         as string | null)?.trim()

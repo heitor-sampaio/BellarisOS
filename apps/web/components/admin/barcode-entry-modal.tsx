@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { X, Barcode, PackagePlus, RotateCcw, Loader2, Link2, Search } from 'lucide-react'
 import { findProductByBarcode, adminAddStock, saveBarcodeToProduct, searchProducts } from '@/actions/stock'
 import { useRouter } from 'next/navigation'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 type Branch = { id: string; name: string }
 
@@ -51,6 +52,8 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
   const [entryError,   setEntryError]   = useState<string>()
   const [success,      setSuccess]      = useState(false)
   const [isPending,    startTransition] = useTransition()
+  // A chave do envio (D10): a mesma entrada, reenviada, entra uma vez; a próxima leitura é outro envio.
+  const envio = useEnvioUnico()
 
   // Not-found flow
   const [searchQuery,  setSearchQuery]  = useState('')
@@ -135,10 +138,12 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
 
     const fd = new FormData(e.currentTarget)
     fd.set('productId', product.id)
+    fd.set('_envio', envio.chave())
 
     startTransition(async () => {
       const res = await adminAddStock(undefined, fd)
       if (res?.success) {
+        envio.renovar()
         setSuccess(true)
         router.refresh()
         setTimeout(() => {

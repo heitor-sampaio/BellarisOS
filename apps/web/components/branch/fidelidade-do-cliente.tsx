@@ -8,6 +8,7 @@ import { erroParaTela } from '@/lib/erro-na-tela'
 import { formatarPontos, rotuloDoLancamento } from '@/lib/fidelidade/formato'
 import type { FidelidadeDoPerfil, LinhaDoExtrato } from '@/lib/fidelidade/leitura'
 import { VouchersDoCliente } from '@/components/branch/vouchers-do-cliente'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 /**
  * Fidelidade na ficha do cliente: saldo, extrato e ajuste manual.
@@ -193,6 +194,8 @@ function FormularioDeAjuste({
   const [unidade, setUnidade] = useState(unidadePadrao)
   const [erro,    setErro]    = useState<string | null>(null)
   const [salvando, iniciar]   = useTransition()
+  // A chave do envio (D10): o duplo clique ajusta os pontos uma vez só.
+  const envio = useEnvioUnico()
 
   function salvar() {
     setErro(null)
@@ -202,10 +205,10 @@ function FormularioDeAjuste({
     iniciar(async () => {
       try {
         const res = await ajustarPontos({
-          clientId, branchId: unidade, pontos: sentido === 'CREDITO' ? n : -n, motivo: motivo.trim(),
+          clientId, branchId: unidade, pontos: sentido === 'CREDITO' ? n : -n, motivo: motivo.trim(), envio: envio.chave(),
         })
         if (res.error) setErro(res.error)
-        else onFeito()
+        else { envio.renovar(); onFeito() }
       } catch (e) {
         setErro(erroParaTela(e, 'Não foi possível ajustar os pontos.'))
       }

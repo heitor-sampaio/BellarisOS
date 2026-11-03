@@ -15,6 +15,7 @@ import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assert
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
@@ -36,6 +37,22 @@ function revalidarFicha() {
  * igual em centavos) e o dinheiro, numa transação (`procedimento_vender`).
  */
 export async function venderProcedimento(
+  clienteId: string, procedimentoId: string, branchId: string,
+  quantidade: unknown, validadeDias: unknown, pagamento: unknown, desconto?: unknown,
+  /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
+  envio?: string | null,
+): Promise<{ error?: string; saleId?: string; primeiraUnidadeId?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'venderProcedimento', chaveDoEnvio(envio),
+      () => venderProcedimentoUmaVez(clienteId, procedimentoId, branchId, quantidade, validadeDias, pagamento, desconto))
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function venderProcedimentoUmaVez(
   clienteId: string, procedimentoId: string, branchId: string,
   quantidade: unknown, validadeDias: unknown, pagamento: unknown, desconto?: unknown,
 ): Promise<{ error?: string; saleId?: string; primeiraUnidadeId?: string }> {

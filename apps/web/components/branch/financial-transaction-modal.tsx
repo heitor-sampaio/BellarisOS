@@ -3,6 +3,7 @@
 import { useRef, useCallback, useActionState, useEffect, useState, useMemo, isValidElement } from 'react'
 import { X, TrendingUp, TrendingDown, Tag, CalendarClock } from 'lucide-react'
 import { createTransactionAdvanced } from '@/actions/financial'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { dayKeyTZ } from '@/lib/datetime'
 import { CATEGORIAS_DE_RECEITA, CATEGORIAS_DE_DESPESA } from '@/lib/financeiro/categorias'
 
@@ -68,6 +69,8 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   const [firstDueDate,   setFirstDueDate]   = useState('')
 
   const [state, formAction, pending] = useActionState(createTransactionAdvanced, undefined)
+  // A chave do envio (D10): o duplo clique lança uma vez só.
+  const envio = useEnvioUnico()
   // Hoje no fuso da clínica, lido ao abrir (o "agora" muda entre aberturas).
   const [hojeBR, setHojeBR] = useState(() => dayKeyTZ(new Date()))
 
@@ -112,8 +115,8 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   const close = useCallback(() => dialogRef.current?.close(), [])
 
   useEffect(() => {
-    if (state?.success) close()
-  }, [state?.success, close])
+    if (state?.success) { envio.renovar(); close() }
+  }, [state?.success, close, envio])
 
   const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
@@ -154,7 +157,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
         </div>
 
         <div style={{ padding: '24px 24px 28px' }}>
-          <form ref={formRef} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form ref={formRef} action={fd => { fd.set('_envio', envio.chave()); formAction(fd) }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <input type="hidden" name="_branchId" value={selectedBranchId} />
             <input type="hidden" name="_slug"     value={selectedBranchSlug} />
 

@@ -7,6 +7,7 @@ import { erroParaTela } from '@/lib/erro-na-tela'
 import { formatarPontos, faltamPontos } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, descricaoDoVoucher, situacaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa, VoucherDoCliente } from '@/lib/fidelidade/leitura'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 /**
  * Recompensas e vouchers na ficha do cliente.
@@ -41,6 +42,8 @@ export function VouchersDoCliente({
   const [cancelando, setCancelando] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
   const [ocupado, iniciar] = useTransition()
+  // A chave do envio (D10): o duplo clique em "Trocar" troca os pontos uma vez só.
+  const envio = useEnvioUnico()
 
   function depois(fn: () => Promise<{ error?: string; aviso?: string }>) {
     setErro(null); setAviso(null)
@@ -93,8 +96,8 @@ export function VouchersDoCliente({
                 <button type="button" className="btn-primary" disabled={!alcanca || ocupado}
                   title={falta ?? undefined}
                   onClick={() => depois(async () => {
-                    const res = await resgatarRecompensa({ clientId, rewardId: r.id, branchId: unidade })
-                    if (!res.error) setTrocando(false)
+                    const res = await resgatarRecompensa({ clientId, rewardId: r.id, branchId: unidade, envio: envio.chave() })
+                    if (!res.error) { envio.renovar(); setTrocando(false) }
                     return res
                   })}>
                   Trocar

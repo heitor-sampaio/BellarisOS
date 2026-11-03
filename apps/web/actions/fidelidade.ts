@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDaConfig, type ConfigFidelidade } from '@/lib/fidelidade/config'
 import {
   configDaRede, redeTemLancamentos, saldoDoCliente, extratoDoCliente as lerExtrato, recompensasDaRede, vouchersDoCliente,
@@ -90,10 +91,18 @@ export async function ajustarPontos(entrada: {
   branchId: string
   pontos:   number
   motivo:   string
+  /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio ajusta UMA vez. */
+  envio?:   string | null
 }): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'loyalty', 'MANAGE')
+  return umaVez(ctx.tenantId!, 'ajustarPontos', chaveDoEnvio(entrada?.envio), () => ajustarPontosUmaVez(ctx, entrada))
+}
+
+async function ajustarPontosUmaVez(ctx: Awaited<ReturnType<typeof getTenantContext>>, entrada: {
+  clientId: string; branchId: string; pontos: number; motivo: string
+}): Promise<{ error?: string }> {
 
   const pontos = Math.trunc(Number(entrada?.pontos))
   if (!entrada?.clientId || !entrada?.branchId) return { error: 'Dados inválidos.' }
@@ -230,10 +239,18 @@ async function voucherAoAlcance(voucherId: string): Promise<
 
 export async function resgatarRecompensa(entrada: {
   clientId: string; rewardId: string; branchId: string
+  /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio troca os pontos UMA vez. */
+  envio?: string | null
 }): Promise<{ error?: string; voucherId?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'loyalty', 'MANAGE')
+  return umaVez(ctx.tenantId!, 'resgatarRecompensa', chaveDoEnvio(entrada?.envio), () => resgatarUmaVez(ctx, entrada))
+}
+
+async function resgatarUmaVez(ctx: Awaited<ReturnType<typeof getTenantContext>>, entrada: {
+  clientId: string; rewardId: string; branchId: string
+}): Promise<{ error?: string; voucherId?: string }> {
   if (!entrada?.clientId || !entrada?.rewardId || !entrada?.branchId) return { error: 'Dados inválidos.' }
   if (!alcancaUnidade(ctx, entrada.branchId)) return { error: 'Unidade não encontrada.' }
 

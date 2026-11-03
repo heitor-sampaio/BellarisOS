@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 
 /**
  * A chave do envio de um formulário (D10 da 5ª simulação; o servidor é
@@ -16,7 +16,8 @@ export function useEnvioUnico() {
   const atual = useRef<string | null>(null)
   const chave = useCallback(() => (atual.current ??= novaChave()), [])
   const renovar = useCallback(() => { atual.current = null }, [])
-  return { chave, renovar }
+  // O mesmo objeto a cada render: entra em lista de dependências sem reexecutar o efeito.
+  return useMemo(() => ({ chave, renovar }), [chave, renovar])
 }
 
 function novaChave(): string {

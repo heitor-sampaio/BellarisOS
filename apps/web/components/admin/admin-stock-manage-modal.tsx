@@ -11,6 +11,7 @@ import {
 } from '@/actions/stock'
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 type BranchStock = {
   branchId:     string
@@ -109,6 +110,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
   defaultBranchId?: string
   onClose: () => void; onSuccess: () => void
 }) {
+  const envio = useEnvioUnico()
   const [error, setError]     = useState<string>()
   const [pending, setPending] = useState(false)
 
@@ -117,8 +119,10 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
     try {
       const fd = new FormData(e.currentTarget)
       fd.set('productId', product.id)
+      // A chave do envio (D10): o duplo clique movimenta uma vez só.
+      fd.set('_envio', envio.chave())
       const res = await adminAddStock(undefined, fd)
-      if (res?.success) onSuccess()
+      if (res?.success) { envio.renovar(); onSuccess() }
       else setError(res?.error ?? 'Erro inesperado.')
     } catch { setError('Erro inesperado.') }
     finally { setPending(false) }
@@ -194,6 +198,7 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
   defaultBranchId?: string
   onClose: () => void; onSuccess: () => void
 }) {
+  const envio = useEnvioUnico()
   const [error,   setError]   = useState<string>()
   const [pending, setPending] = useState(false)
   const [fromId,  setFromId]  = useState(defaultBranchId ?? '')
@@ -207,8 +212,10 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
     try {
       const fd = new FormData(e.currentTarget)
       fd.set('productId', product.id)
+      // A chave do envio (D10): o duplo clique movimenta uma vez só.
+      fd.set('_envio', envio.chave())
       const res = await adminTransferStock(undefined, fd)
-      if (res?.success) onSuccess()
+      if (res?.success) { envio.renovar(); onSuccess() }
       else setError(res?.error ?? 'Erro inesperado.')
     } catch { setError('Erro inesperado.') }
     finally { setPending(false) }
@@ -411,6 +418,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
   defaultBranchId?: string
   onClose: () => void; onSuccess: () => void
 }) {
+  const envio = useEnvioUnico()
   const [error,    setError]    = useState<string>()
   const [pending,  setPending]  = useState(false)
   const [branchId, setBranchId] = useState(defaultBranchId ?? unicaUnidade(allBranches))
@@ -421,8 +429,10 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
     try {
       const fd = new FormData(e.currentTarget)
       fd.set('productId', product.id)
+      // A chave do envio (D10): o duplo clique movimenta uma vez só.
+      fd.set('_envio', envio.chave())
       const res = await registrarPerda(undefined, fd)
-      if (res?.success) onSuccess()
+      if (res?.success) { envio.renovar(); onSuccess() }
       else setError(res?.error ?? 'Erro inesperado.')
     } catch { setError('Erro inesperado.') }
     finally { setPending(false) }
