@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas, contar } from '@/lib/db'
 import { unitTag } from '@estetica-os/utils'
 import { mediaPorAtendimentoCobrado } from './resultado'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 
 /**
  * Contagens das telas da UNIDADE, agregadas no Postgres (migration
@@ -143,6 +144,41 @@ export async function getClientesParaReativarDaRede(args: {
       unidade: c.unidade, unidadeSlug: c.unidade_slug,
     })),
   }
+}
+
+/**
+ * O "Reativar clientes" de um RECORTE — a regra ÚNICA do dashboard (os dois
+ * portais) e do Copilot (r3-f13-10, o Heitor em 2026-11-03: "os dois têm de
+ * dar a mesma resposta"):
+ * - na clínica de UMA unidade, a clínica inteira — todas as clientes ativas,
+ *   com ou sem a tag da unidade (r2-ind-03: "na clínica de uma unidade, a
+ *   clínica e a unidade são a mesma coisa");
+ * - com várias e o recorte numa unidade, a dela (pela tag "Unidade: X");
+ * - com várias e sem recorte, a clínica inteira: sem visita em NENHUMA
+ *   unidade, com a unidade de cada uma.
+ * Quem mostra não escolhe entre a conta da unidade e a da rede: chama esta.
+ */
+export async function getClientesParaReativarDoRecorte(args: {
+  tenantId: string
+  /** A unidade do recorte (a do portal, a do `?unidade=`, a do pedido), ou nula = a clínica toda. */
+  unidade: { id: string; name: string } | null
+  desde: Date; limite?: number
+  /** "Só os meus" da agenda: as dela. */
+  professionalId?: string | null
+}): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; daUnidade: boolean }> {
+  const umaSo = await redeTemUmaUnidade(args.tenantId)
+  if (args.unidade && !umaSo) {
+    const r = await getClientesParaReativar({
+      tenantId: args.tenantId, branchId: args.unidade.id, tag: unitTag(args.unidade.name),
+      desde: args.desde, limite: args.limite, professionalId: args.professionalId,
+    })
+    return { total: r.total, lista: r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })), daUnidade: true }
+  }
+  const r = await getClientesParaReativarDaRede({
+    tenantId: args.tenantId, desde: args.desde, limite: args.limite, professionalId: args.professionalId,
+  })
+  // Com uma unidade só, dizer a unidade de cada uma é ruído (D-19).
+  return { total: r.total, lista: umaSo ? r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })) : r.lista, daUnidade: false }
 }
 
 /**

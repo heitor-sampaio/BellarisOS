@@ -28,8 +28,7 @@ import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
-import { getClientesParaReativar, getClientesParaReativarDaRede } from '@/lib/metrics/unidade'
-import { unitTag } from '@estetica-os/utils'
+import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
 import { differenceInDays } from 'date-fns'
 import { situacaoDoEstoque, estoqueBaixo, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
 
@@ -588,15 +587,14 @@ export default async function AdminDashboardPage({
   // "só os meus", as dela (o recorte da agenda).
   const noventaDias = addDaysTZ(now, -90)
   const umaSoNoRecorte = branches.length === 1 && !umaUnidade ? branches[0]! : null
+  // A regra é UMA, a do Copilot também (r3-f13-10): getClientesParaReativarDoRecorte.
   const paraReativar = !canClients
     ? { total: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null }[] }
-    : umaSoNoRecorte
-      ? await getClientesParaReativar({
-          tenantId: ctx.tenantId!, branchId: umaSoNoRecorte.id as string, tag: unitTag(umaSoNoRecorte.name as string),
-          desde: noventaDias, professionalId: agendaDela,
-        }).then(r => ({ total: r.total, lista: r.lista.map(c => ({ ...c, unidade: null })) }))
-      : await getClientesParaReativarDaRede({ tenantId: ctx.tenantId!, desde: noventaDias, professionalId: agendaDela })
-          .then(r => umaUnidade ? { total: r.total, lista: r.lista.map(c => ({ ...c, unidade: null })) } : r)
+    : await getClientesParaReativarDoRecorte({
+        tenantId: ctx.tenantId!,
+        unidade: branches.length === 1 ? { id: branches[0]!.id as string, name: branches[0]!.name as string } : null,
+        desde: noventaDias, professionalId: agendaDela,
+      })
   const quadrosDeClientes = canClients ? (
     <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
       <ClientesDoPeriodo

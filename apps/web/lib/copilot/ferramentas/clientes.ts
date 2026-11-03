@@ -5,7 +5,8 @@ import { can, ownerFilter, podeReceber, temRecurso } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
-import { getClientesParaReativar } from '@/lib/metrics/unidade'
+import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
+import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { addDaysTZ } from '@/lib/datetime'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
@@ -147,17 +148,21 @@ export const clientes: FerramentaDeLeitura<{
     const tagDaUnidade = u.unidade && variasUnidades ? unitTag(u.unidade.name) : null
 
     if (args.filtro === 'sem_visita') {
-      const alvo = u.unidade ? [u.unidade] : await unidadesDaRede(c)
+      // A MESMA regra do "Reativar clientes" do dashboard (r3-f13-10, o Heitor:
+      // "os dois têm de dar a mesma resposta"): na clínica de uma unidade, todas
+      // as clientes ativas, com ou sem a tag; com várias, a unidade pedida (pela
+      // tag) ou a clínica inteira — sem visita em nenhuma unidade. E, como lá,
+      // com a agenda "só os meus", as dela.
       const desde = addDaysTZ(new Date(), -(args.dias ?? 90))
-      const partes = await Promise.all(alvo.map(un => getClientesParaReativar({ tenantId: tenant, branchId: un.id, tag: unitTag(un.name), desde, limite: 50 })))
-      // Na rede: quem está em duas unidades aparece uma vez, há mais tempo sem vir primeiro.
-      const unicos = new Map<string, (typeof partes)[number]['lista'][number]>()
-      for (const x of partes.flatMap(p => p.lista)) {
-        const ja = unicos.get(x.id)
-        if (!ja || (x.ultimaVisita ?? '') > (ja.ultimaVisita ?? '')) unicos.set(x.id, x)
-      }
-      total = alvo.length === 1 ? partes[0]!.total : null
-      lista = [...unicos.values()].sort((a, b) => (a.ultimaVisita ?? '') < (b.ultimaVisita ?? '') ? -1 : 1).slice(0, 50).map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: x.ultimaVisita ? `última visita ${x.ultimaVisita.slice(0, 10)}` : 'nunca veio' }))
+      const r = await getClientesParaReativarDoRecorte({
+        tenantId: tenant, unidade: u.unidade ? { id: u.unidade.id, name: u.unidade.name } : null,
+        desde, limite: 50, professionalId: recorteDosModulos(c.ctx).agenda,
+      })
+      total = r.total
+      lista = r.lista.map(x => ({
+        id: x.id, name: x.name, phone: x.phone,
+        detalhe: [x.ultimaVisita ? `última visita ${x.ultimaVisita.slice(0, 10)}` : 'nunca veio', x.unidade].filter(Boolean).join(' · '),
+      }))
     } else if (args.filtro === 'novos') {
       const desde = addDaysTZ(new Date(), -(args.dias ?? 30)).toISOString()
       let q = c.admin.from('clients').select('id, name, phone, created_at').eq('tenant_id', tenant).eq('is_active', true)

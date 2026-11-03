@@ -260,3 +260,27 @@ test('o que a Meta cobrou no mês, por número — só para quem vê as integra�
     expect(oferecidas).not.toContain('cobranca_do_whatsapp')
   })
 })
+
+// r3-f13-10 (o Heitor, revisão de 03/11: "os dois têm de dar a mesma
+// resposta"): "quem eu devo reativar?" no Copilot é o "Reativar clientes" do
+// dashboard — na clínica de uma unidade, todas as clientes ativas, também a
+// que não tem a tag da unidade (importação, dado antigo).
+test('r3-f13-10: "sem visita" no Copilot é o "Reativar clientes" do dashboard — na clínica de uma unidade, também a cliente sem a tag', async ({ browser }) => {
+  const t = rede.outra.tenantId
+  const { data: semTag, error } = await db().from('clients').insert({
+    tenant_id: t, branch_id: rede.outra.branchId, name: `${PREFIXO} Sumida sem tag ${marca}`, phone: '(48) 99111-0000', is_active: true, tags: [],
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const desde = new Date(Date.now() - 90 * 86_400_000).toISOString()
+  const { data: doDashboard } = await db().rpc('metrics_clientes_para_reativar_rede', { p_tenant: t, p_desde: desde, p_limite: 50, p_professional_id: null })
+  const dash = doDashboard as { total: number; lista: { id: string }[] }
+  expect(dash.lista.map(c => c.id), 'o dashboard conta a sem tag').toContain(semTag!.id)
+
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/clients')
+    const { saida } = await chamar(p, 'clientes', { filtro: 'sem_visita' })
+    const ids = ((saida?.clientes ?? []) as { id: string }[]).map(c => c.id)
+    expect(ids, JSON.stringify(saida)).toContain(semTag!.id)
+    expect(saida?.total, 'o mesmo total do dashboard').toBe(dash.total)
+  })
+})

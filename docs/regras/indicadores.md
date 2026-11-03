@@ -525,7 +525,16 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   de uma unidade, a clínica e a unidade são a mesma coisa"): todas as
   clientes ativas, não só as com a tag "Unidade: X" — no /admin e no
   dashboard da unidade (`redeTemUmaUnidade` → `getClientesParaReativarDaRede`).
-  Prova: `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("r2-ind-03"). Com a agenda "só os meus", as dela. O desenho é um só nos dois
+  Prova: `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("r2-ind-03").
+  **E o Copilot dá a mesma resposta** (r3-f13-10, o Heitor, 2026-11-03: "os
+  dois têm de dar a mesma resposta"): a escolha entre a conta da unidade e a
+  da clínica mora num lugar só, `getClientesParaReativarDoRecorte`
+  (`lib/metrics/unidade.ts`), que os dois dashboards e o "sem visita" do
+  Copilot chamam (com a agenda "só os meus" também lá). O Copilot, sem
+  unidade, juntava as listas de cada unidade pela tag e deixava de fora a
+  cliente sem a tag. Prova: `tests/reativar-clientes-uma-regra.test.ts` (ninguém
+  fora de lá chama as duas contas), o caso r3-f13-10 de
+  `e2e/copilot-novidades.spec.ts` (contra o build). Com a agenda "só os meus", as dela. O desenho é um só nos dois
   portais (`components/shared/quadros-de-clientes.tsx`). Prova:
   `e2e/indicadores-reativar-clientes-da-rede.spec.ts`.
 

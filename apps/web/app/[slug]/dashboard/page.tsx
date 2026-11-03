@@ -13,9 +13,7 @@ import { RevenueBarChart } from '@/components/branch/revenue-bar-chart'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { unitTag } from '@estetica-os/utils'
-import { getClientesParaReativar, getClientesParaReativarDaRede } from '@/lib/metrics/unidade'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
   resolvePeriod, delta, occupancyPct,
@@ -185,13 +183,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     // r2-ind-03 (o Heitor: "na clínica de uma unidade, a clínica e a unidade
     // são a mesma coisa"): com UMA unidade, todas as clientes ativas da
     // clínica — não só as que têm a tag da unidade.
+    // A regra é UMA, a do /admin e a do Copilot também (r3-f13-10).
     canClients
-      ? redeTemUmaUnidade(ctx.tenantId!).then(umaSo => umaSo
-          ? getClientesParaReativarDaRede({ tenantId: ctx.tenantId!, desde: ninetyDaysAgo, professionalId: proId })
-          : getClientesParaReativar({
-              tenantId: ctx.tenantId!, branchId, tag: unitTag(branch.name), desde: ninetyDaysAgo,
-              professionalId: proId,
-            }))
+      ? getClientesParaReativarDoRecorte({
+          tenantId: ctx.tenantId!, unidade: { id: branchId, name: branch.name }, desde: ninetyDaysAgo, professionalId: proId,
+        })
       : Promise.resolve({ total: 0, lista: [] }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): dinheiro.

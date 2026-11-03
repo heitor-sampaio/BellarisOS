@@ -102,7 +102,10 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     `marcar_tags` marca só o que existe no vocabulário, com o nome dele, pelo
     núcleo da ficha (`atualizarClienteCore`). Criar tag é da tela.
   - **Recorte por unidade nas listas de clientes** só com mais de uma unidade:
-    na clínica única, o cliente sem a tag "Unidade: …" sumia da lista.
+    na clínica única, o cliente sem a tag "Unidade: …" sumia da lista. O
+    "sem visita" é o "Reativar clientes" do dashboard
+    (`getClientesParaReativarDoRecorte`, r3-f13-10: "os dois têm de dar a
+    mesma resposta").
   - **Oportunidade**: `criar_oportunidade` aceita valor e responsável (este só
     com `podeTrocarResponsavel`, e como a tela: cria e troca em seguida);
     `trocar_responsavel` pelo `trocarResponsavelCore`; a leitura diz se já é
