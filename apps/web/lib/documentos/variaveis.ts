@@ -56,7 +56,7 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'data.hoje_curta':       { grupo: 'Data',        rotulo: 'Data de hoje (dd/mm/aaaa)', tipos: TODOS, exemplo: '29/09/2026' },
 
   'cliente.nome':          { grupo: 'Cliente',     rotulo: 'Nome',              tipos: TODOS, exemplo: 'Marina Torres' },
-  'cliente.cpf':           { grupo: 'Cliente',     rotulo: 'CPF (ou passaporte/RNE)', tipos: TODOS, exemplo: '123.456.789-01' },
+  'cliente.cpf':           { grupo: 'Cliente',     rotulo: 'CPF', tipos: TODOS, exemplo: '123.456.789-01' },
   'cliente.documento':     { grupo: 'Cliente',     rotulo: 'Documento, com o tipo (CPF, passaporte ou RNE)', tipos: TODOS, exemplo: 'CPF 123.456.789-01' },
   'cliente.nascimento':    { grupo: 'Cliente',     rotulo: 'Data de nascimento', tipos: TODOS, exemplo: '14/03/1990' },
   'cliente.telefone':      { grupo: 'Cliente',     rotulo: 'Telefone',          tipos: TODOS, exemplo: '(47) 99123-4567' },
