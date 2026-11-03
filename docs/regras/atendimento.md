@@ -1135,7 +1135,12 @@ O resto do fluxo:
   (`medical_record_entries.queixas`, migration `20261028000302`), não
   `appointments.notes` — que é a observação INTERNA do agendamento e
   aparecia como dor na tela (A17). A dor nasce vazia; a observação aparece
-  à parte ("Observação do agendamento"). As dores só vão à tela com
+  à parte ("Observação do agendamento"). **Sem as dores, gerar o plano
+  aponta o CAMPO** (A35 da 5ª simulação): rola até ele, foca, destaca e diz
+  "Registre as dores/queixas do cliente." junto dele (`[data-campo="dores"]`)
+  — antes de conferir as obrigatórias, que vêm depois na página; era só a
+  frase acima do botão, no fim de uma página longa. O servidor continua
+  recusando com a mesma frase. Prova: `e2e/atendimento-campos-da-tela.spec.ts`. As dores só vão à tela com
   `canViewRecords`, aparecem na aba Prontuário da ficha e no pacote LGPD
   (parte clínica). O "Enviar para a recepção" grava nelas; o envio do plano
   em rascunho aceita as dores OU a observação, como antes.

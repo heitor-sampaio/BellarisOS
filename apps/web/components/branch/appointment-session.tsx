@@ -923,19 +923,34 @@ function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrence
 
 // -- Dores / Queixas do cliente (controlado pelo pai) --------------------------
 
-function DorasCard({ value, onChange, readonly }: {
+/** O que falta quando a avaliação gera o plano sem as dores (a mesma frase do servidor). */
+const FALTAM_AS_DORES = 'Registre as dores/queixas do cliente.'
+
+function DorasCard({ value, onChange, readonly, erro }: {
   value:    string
   onChange: (v: string) => void
   readonly: boolean
+  /** A35 da 5ª simulação: o erro junto do campo (era só acima do botão, no fim da página). */
+  erro?:    string | null
 }) {
+  const campo = useRef<HTMLTextAreaElement>(null)
+  // Apontado, o campo vem à vista e ganha o foco (a regra da obrigatória da ficha).
+  useEffect(() => {
+    if (!erro) return
+    campo.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    campo.current?.focus({ preventScroll: true })
+  }, [erro])
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="card" data-campo="dores" data-invalido={erro ? 'true' : undefined}
+      style={{ padding: 0, overflow: 'hidden', ...(erro ? { borderLeft: '3px solid var(--danger)' } : {}) }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
+        <label htmlFor="campo-dores" style={{ display: 'block', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</label>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas pelo cliente</p>
       </div>
       <div style={{ padding: '18px 20px' }}>
+        {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600, marginBottom: 6 }}>{erro}</p>}
         <textarea
+          id="campo-dores" ref={campo}
           rows={4} value={value} readOnly={readonly}
           onChange={e => onChange(e.target.value)}
           placeholder={readonly ? '—' : 'Anote o que o cliente relatou: queixas estéticas, objetivos, histórico de tratamentos anteriores…'}
@@ -1026,6 +1041,7 @@ export function AppointmentSession({
   const [evalSessionInterc,      setEvalSessionInterc]      = useState(appointment.savedIntercurrences ?? '')
   const [generating,             setGenerating]             = useState(false)
   const [genError,               setGenError]               = useState<string | null>(null)
+  const [erroDasDores,           setErroDasDores]           = useState<string | null>(null)
   const evalEditorRef = useRef<TreatmentPlanEditorRef>(null)
 
   // Checkout aberto sobre a tela, quando quem atende também recebe.
@@ -1052,6 +1068,11 @@ export function AppointmentSession({
     // plano: o registro daquele dia está travado e nada dele vai junto (o
     // servidor também não o regrava). As obrigatórias já passaram no "Finalizar".
     const concluida = appointment.status === 'COMPLETED'
+    // As dores primeiro — é a ordem da página (A35): o aviso vai junto do campo.
+    if (!concluida && canViewRecords && !evalComplaints.trim()) {
+      setErroDasDores(FALTAM_AS_DORES); setGenError(FALTAM_AS_DORES)
+      return
+    }
     // A obrigatória sem resposta barra o plano (revisão do Heitor, 2026-10-29).
     const falta = concluida ? null : conferirObrigatorias()
     if (falta) { setGenError(falta); return }
@@ -1072,6 +1093,7 @@ export function AppointmentSession({
     if (res.error || !res.planId) {
       setGenerating(false)
       setGenError(res.error ?? 'Não foi possível gerar o plano.')
+      if (res.error === FALTAM_AS_DORES) setErroDasDores(res.error)
       return
     }
     // A evolução e a ficha da avaliação foram gravadas junto: o rascunho não serve mais.
@@ -1976,8 +1998,9 @@ export function AppointmentSession({
                   {/* As dores são prontuário (D3): sem o módulo, nem aparecem. */}
                   {canViewRecords && <DorasCard
                     value={evalComplaints}
-                    onChange={setEvalComplaints}
+                    onChange={v => { setEvalComplaints(v); if (v.trim()) setErroDasDores(null) }}
                     readonly={editLocked}
+                    erro={erroDasDores}
                   />}
 
                   {/* Registro bloqueado (concluído): a anamnese se LÊ, não abre
