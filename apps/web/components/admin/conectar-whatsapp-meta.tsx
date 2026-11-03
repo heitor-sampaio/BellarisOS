@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, RotateCw } from 'lucide-react'
 import { conectarWhatsAppPelaMeta } from '@/actions/integrations'
+import { ehActionDeOutroDeploy } from '@/lib/erro-na-tela'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 
 /**
@@ -34,7 +35,7 @@ type Estado =
   | { fase: 'na-meta' }
   | { fase: 'gravando' }
   | { fase: 'ok'; avisos: string[] }
-  | { fase: 'erro'; texto: string }
+  | { fase: 'erro'; texto: string; recarregar?: boolean }
 
 declare global {
   interface Window {
@@ -128,7 +129,22 @@ export function ConectarWhatsAppPelaMeta({ configId, appId, modo, rotulo = 'Cone
       return
     }
     setEstado({ fase: 'gravando' })
-    const r = await conectarWhatsAppPelaMeta({ code, wabaId: s.wabaId, phoneNumberId: s.phoneNumberId, businessId: s.businessId, modo, rotulo: nomeDoNumero?.trim() || null })
+    // A action pode LANÇAR em vez de devolver `{ ok: false }` — e o caso
+    // típico é a página de um deploy anterior (2026-11-02, 22:10: "Failed to
+    // find Server Action"). Sem este try, o erro escapava do `void
+    // concluir(...)`, o script do layout recarregava a página em silêncio, e
+    // ela voltava como antes, com o número antigo conectado na lista: quem
+    // conectava achava que tinha dado certo. Aqui a recarga não serve (o
+    // código da Meta já foi usado): a tela diz o que aconteceu.
+    let r: Awaited<ReturnType<typeof conectarWhatsAppPelaMeta>>
+    try {
+      r = await conectarWhatsAppPelaMeta({ code, wabaId: s.wabaId, phoneNumberId: s.phoneNumberId, businessId: s.businessId, modo, rotulo: nomeDoNumero?.trim() || null })
+    } catch (e) {
+      setEstado(ehActionDeOutroDeploy(e)
+        ? { fase: 'erro', recarregar: true, texto: 'Esta página ficou desatualizada: o BellarisOS foi atualizado enquanto ela estava aberta. O número não foi conectado — nada foi gravado nem ligado na Meta. Recarregue a página e conecte de novo.' }
+        : { fase: 'erro', recarregar: true, texto: 'A conexão não terminou, e não dá para saber se o número chegou a ser gravado. Recarregue a página e confira a lista de números; se ele não estiver lá, conecte de novo.' })
+      return
+    }
     if (!r.ok) { setEstado({ fase: 'erro', texto: r.error }); return }
     setEstado({ fase: 'ok', avisos: r.avisos })
     router.refresh()
@@ -188,9 +204,16 @@ export function ConectarWhatsAppPelaMeta({ configId, appId, modo, rotulo = 'Cone
         </div>
       )}
       {estado.fase === 'erro' && (
-        <p role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>
-          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} /> {estado.texto}
-        </p>
+        <div role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+          <p style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>
+            <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} /> {estado.texto}
+          </p>
+          {estado.recarregar && (
+            <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
+              <RotateCw size={14} /> Recarregar a página
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

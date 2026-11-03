@@ -38,7 +38,7 @@ export function erroParaTela(e: unknown, padrao: string): string {
  * "Conectar por aqui" girava para sempre). O script do layout recarrega o que
  * escapa sem tratamento; quem PEGA o erro passa por aqui.
  */
-function ehActionDeOutroDeploy(e: unknown): boolean {
+export function ehActionDeOutroDeploy(e: unknown): boolean {
   if (!(e instanceof Error)) return false
   return e.name === 'UnrecognizedActionError'
     || (/Server Action/.test(e.message) && /was not found on the server/.test(e.message))

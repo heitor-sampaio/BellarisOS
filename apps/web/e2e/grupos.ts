@@ -213,6 +213,7 @@ export const ISOLADOS = [
   'whatsapp-historico-uazapi.spec.ts',
   'whatsapp-cobranca.spec.ts',
   'whatsapp-remover-numero.spec.ts',
+  'whatsapp-conectar-pela-meta-falha.spec.ts',
   'acoes-em-lote.spec.ts',
   'importacao-contatos.spec.ts',
   // Os ajustes de tela J (1ª rodada, 2026-10-30): cada um na sua rede [e2e].

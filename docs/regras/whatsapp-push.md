@@ -317,6 +317,19 @@ servidor), e a escolha da tela vira o `featureType` —
   só é gravada depois do `subscribed_apps` aceito. Falhou, fica como estava.
   Antes, escolher de novo na janela da Meta o número oficial que atende
   desligava a caixa e, com a recusa do `register`, a deixava fora do ar.
+- **A conexão que falha no meio DIZ o que aconteceu** (F7c, achado do Heitor
+  em 2026-11-02, 22:10). A página de um deploy anterior faz a action LANÇAR
+  ("Failed to find Server Action"); o erro escapava do `concluir`, o script
+  do layout recarregava a página em silêncio e ela voltava com o número
+  antigo conectado na lista — ele achou que tinha conectado. Agora o
+  `ConectarWhatsAppPelaMeta` pega o erro e mostra "Esta página ficou
+  desatualizada… O número não foi conectado — nada foi gravado nem ligado na
+  Meta" com o botão "Recarregar a página" (`ehActionDeOutroDeploy`,
+  `lib/erro-na-tela.ts`), sem recarregar sozinho: o código da Meta já foi
+  usado, e a recarga apagaria o aviso. Outro erro lançado diz que não dá para
+  saber se gravou e manda conferir a lista. Prova:
+  `e2e/whatsapp-conectar-pela-meta-falha.spec.ts` (SDK falso, a action
+  respondida como a de um build velho).
 - A caixa do cadastro tem `config.conexao = 'cadastro_incorporado'`, sem
   `verifyToken`/`appSecret` (vale o do app, §9.8.0). A tela NÃO recebe o
   token nem o PIN (`listarNumerosWhatsApp`), e o formulário manual só liga e
@@ -409,5 +422,6 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Decidir o motivo de uma falha por pedaço do texto do erro ("OAuth", "24", "10") — é o código, em falhaDoEnvio
 ❌ Escrever preço da Meta fora de TABELA_DA_META, ou contar "cobrado" por regra nossa em vez do pricing.billable do status
 ❌ Gravar o pricing/erro do status por cima com nulo (o "read" chega sem pricing)
+❌ Chamar a action de conectar (Meta, ou qualquer passo que a pessoa não pode repetir sozinha) sem try: o erro lançado escapa, o layout recarrega em silêncio e a tela parece ter dado certo
 ❌ Apagar a linha de whatsapp_numbers sem juntar_conversas_do_numero antes (a conversa que perde a caixa colide com a "sem número" da mesma pessoa: "duplicate key" na tela)
 ```
