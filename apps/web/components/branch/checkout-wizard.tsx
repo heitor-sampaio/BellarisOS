@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Check, ChevronRight, User, FileText, CreditCard, CalendarCheck, Stethoscope, Clock, FileSignature, ScrollText } from 'lucide-react'
+import { AlertTriangle, Check, ChevronRight, User, FileText, CreditCard, CalendarCheck, Stethoscope, Clock, FileSignature, ScrollText } from 'lucide-react'
 import { checkoutTreatmentPlan, cancelCheckout } from '@/actions/treatment-plans'
 import { prepararDocumentosDoCheckout, documentoParaAssinar } from '@/actions/documentos'
 import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
@@ -114,6 +114,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [assinando,  setAssinando]  = useState<DocumentoNaTela | null>(null)
   const [preparando, startPreparar] = useTransition()
   const [abrindo,    startAbrir]    = useTransition()
+  // O contrato assinado para OUTRO pagamento (A45): o servidor pergunta antes de substituir.
+  const [substitui,  setSubstitui]  = useState<{ titulo: string; pagamento: string } | null>(null)
 
   const aberto = (d: ResumoDeDocumento) => d.status === 'A_GERAR' || d.status === 'PENDENTE' || d.status === 'INCOMPLETO'
   const documentosQueTravam = (docs ?? []).filter(d => aberto(d) && d.exigencia === 'BLOQUEIA')
@@ -245,12 +247,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // -- Documentação: monta os documentos com o pagamento escolhido -----------
   // Voltar ao pagamento e trocá-lo monta de novo — e o contrato já assinado
   // com o pagamento antigo é substituído (o servidor decide, não a tela).
-  function irParaDocumentos() {
+  function irParaDocumentos(substituirContrato = false) {
     setError(recusaDaEntrada)
     if (recusaDaEntrada) return
+    setSubstitui(null)
     startPreparar(async () => {
-      const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento(), descontoDoEstado(desconto))
+      const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento(), descontoDoEstado(desconto), { substituirContrato })
       if (r.error) { setError(r.error); return }
+      if (r.substituiContrato) { setSubstitui(r.substituiContrato); return }
       setDocs(r.itens ?? [])
       setStep(2)
     })
@@ -674,8 +678,26 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       )}
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
+      {/* A45 da 5ª simulação: o contrato assinado virava SUBSTITUIDO sem aviso. */}
+      {substitui && (
+        <div data-substitui-contrato role="alert" style={{ padding: '12px 14px', marginBottom: 12, borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+            <span>O contrato “{substitui.titulo}” já foi assinado para outro pagamento ({substitui.pagamento}).</span>
+          </p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            Seguir com este pagamento substitui o contrato: o assinado fica guardado como substituído, e a cliente assina o novo.
+            Para manter o contrato, volte ao pagamento combinado.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button type="button" className="btn-secondary" onClick={() => setSubstitui(null)}>Manter o pagamento combinado</button>
+            <button type="button" className="btn-primary" disabled={preparando} onClick={() => irParaDocumentos(true)}>Substituir o contrato</button>
+          </div>
+        </div>
+      )}
+
       <button
-        onClick={irParaDocumentos} disabled={preparando || !!contaDesc.recusa}
+        onClick={() => irParaDocumentos()} disabled={preparando || !!contaDesc.recusa}
         style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: preparando ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {preparando ? 'Montando os documentos…' : 'Ir para a documentação'} <ChevronRight size={18} />
       </button>

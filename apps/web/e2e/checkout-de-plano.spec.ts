@@ -225,8 +225,14 @@ test.describe.serial('checkout de plano', () => {
       expect(comDesconto.texto).toContain('A forma de pagamento ou o desconto são diferentes dos do contrato assinado')
       expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data).toEqual([])
 
-      // Volta à documentação com o pagamento novo: o contrato antigo fica substituído.
-      await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, parcelado])
+      // A45: o pagamento novo PERGUNTA antes de substituir o contrato assinado —
+      // sem a confirmação, o servidor não troca nada.
+      const semConfirmar = await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, parcelado])
+      expect(semConfirmar.texto).toContain('substituiContrato')
+      expect((await docsDoPlano(planId)).filter(d => d.kind === 'CONTRATO_PLANO').map(c => c.status), 'nada trocado sem confirmar').toEqual(['ASSINADO'])
+
+      // Volta à documentação com o pagamento novo, confirmando: o contrato antigo fica substituído.
+      await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, parcelado, undefined, { substituirContrato: true }])
       const docs = await docsDoPlano(planId)
       const contratos = docs.filter(d => d.kind === 'CONTRATO_PLANO')
       expect(contratos.map(c => c.status).sort()).toEqual(['PENDENTE', 'SUBSTITUIDO'])
@@ -235,6 +241,33 @@ test.describe.serial('checkout de plano', () => {
 
       const semContrato = await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota, [planId, parcelado, [], slug])
       expect(semContrato.texto).toContain('Falta assinar')
+    })
+  })
+
+  // A45 da 5ª simulação: o contrato assinado virava SUBSTITUIDO ao mudar o
+  // pagamento sem aviso nenhum — quem operava só via "Colher assinatura" de novo.
+  test('A45: trocar o pagamento depois de assinar avisa, pela tela, antes de substituir o contrato', async ({ browser }) => {
+    test.setTimeout(150_000)
+    const { planId } = await plano('aviso')
+    await como(browser, async page => {
+      const rota = `/admin/checkout/${planId}`
+      await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, { forma: 'AVISTA', metodo: 'PIX' }])
+      for (const d of await docsDoPlano(planId)) await assinarNoPapel(d.id)
+
+      await page.goto(rota)
+      await page.getByRole('button', { name: 'Confirmar plano' }).click()
+      await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await page.getByLabel('Entrada', { exact: true }).fill('100')
+      await page.getByRole('button', { name: 'Ir para a documentação' }).click()
+      const aviso = page.locator('[data-substitui-contrato]')
+      await expect(aviso).toContainText('já foi assinado para outro pagamento')
+      await expect(aviso).toContainText('no Pix')
+      expect((await docsDoPlano(planId)).filter(d => d.kind === 'CONTRATO_PLANO').map(c => c.status), 'o aviso não troca nada').toEqual(['ASSINADO'])
+
+      await aviso.getByRole('button', { name: 'Substituir o contrato' }).click()
+      await expect(page.locator('[data-documento]').first()).toBeVisible()
+      await expect.poll(async () => (await docsDoPlano(planId)).filter(d => d.kind === 'CONTRATO_PLANO').map(c => c.status).sort())
+        .toEqual(['PENDENTE', 'SUBSTITUIDO'])
     })
   })
 

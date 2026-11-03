@@ -2,7 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
-import { pagamentoNormalizado, mesmoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { pagamentoNormalizado, mesmoPagamento, frasesDoPagamento, pagamentoDoRetrato, descontoDoRetrato, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { garantirRenderizado, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from './renderizar'
 
 /**
@@ -28,6 +28,22 @@ async function contratosAssinadosComPagamento(tenantId: string, planId: string):
     .select('id').in('id', versoes).eq('uses_payment', true), 'conferir quais contratos citam o pagamento')
   const citam = new Set((comPagamento ?? []).map(v => v.id as string))
   return ((assinados ?? []) as Contrato[]).filter(d => d.template_version_id && citam.has(d.template_version_id))
+}
+
+/**
+ * O contrato assinado que o pagamento escolhido SUBSTITUIRIA (A45 da 5ª
+ * simulação: virava SUBSTITUIDO sem aviso, e quem operava só via "Colher
+ * assinatura" de novo). O checkout pergunta antes; sem a confirmação, nada se
+ * troca. Devolve o título e o pagamento assinado, por extenso.
+ */
+export async function contratoQueSeriaSubstituido(
+  tenantId: string, planId: string, pagamento: PagamentoDoPlano | null, desconto = 0,
+): Promise<{ titulo: string; pagamento: string } | null> {
+  if (!(await redeTemRecurso(tenantId, 'documentos'))) return null
+  const normalizado = pagamentoNormalizado(pagamento, desconto)
+  const c = (await contratosAssinadosComPagamento(tenantId, planId)).find(x => !mesmoPagamento(x.payment_snapshot, normalizado))
+  if (!c) return null
+  return { titulo: c.title, pagamento: frasesDoPagamento(pagamentoDoRetrato(c.payment_snapshot), descontoDoRetrato(c.payment_snapshot)) }
 }
 
 /**

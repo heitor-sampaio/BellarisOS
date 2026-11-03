@@ -149,7 +149,13 @@ DEVLOG ("Termos e contratos").
   (`prepararDocumentosDoPlano`, `lib/documentos/plano.ts`). O retrato do
   pagamento (`pagamentoNormalizado`, `lib/checkout/pagamento.ts`) fica em
   `issued_documents.payment_snapshot`; trocar o pagamento depois de assinar
-  SUBSTITUI o contrato (`documento_substituir`).
+  SUBSTITUI o contrato (`documento_substituir`) — **e o checkout PERGUNTA
+  antes** (A45 da 5ª simulação: virava SUBSTITUIDO calado, e quem operava só
+  via "Colher assinatura" de novo): `prepararDocumentosDoCheckout` devolve
+  `substituiContrato` ("O contrato "X" já foi assinado para outro pagamento
+  (à vista no Pix)") e não troca nada; só com `{ substituirContrato: true }`
+  (o "Substituir o contrato" da tela) substitui. "Manter o pagamento
+  combinado" volta ao pagamento. Prova: `e2e/checkout-de-plano.spec.ts` ("A45").
 - **O contrato do PROCEDIMENTO também cita o pagamento** (decisão do Heitor,
   2026-09-30): `pagamento.*` vale em CONTRATO e CONTRATO_PLANO. No avulso o
   pagamento só é recebido depois do atendimento, então a recepção o DEFINE

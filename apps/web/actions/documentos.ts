@@ -27,7 +27,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { garantirRenderizado, sha256 } from '@/lib/documentos/renderizar'
-import { prepararDocumentosDoPlano } from '@/lib/documentos/plano'
+import { prepararDocumentosDoPlano, contratoQueSeriaSubstituido } from '@/lib/documentos/plano'
 import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from '@/lib/documentos/assinar'
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
@@ -220,7 +220,9 @@ export async function prepararDocumentosDoCheckout(
   planId: string, pagamento: unknown,
   /** O desconto do checkout (R$ ou %): o contrato cita o valor com ele. */
   desconto?: unknown,
-): Promise<{ itens?: ResumoDeDocumento[]; error?: string }> {
+  /** A resposta ao aviso do A45: só com ela o contrato assinado é substituído. */
+  opcoes?: { substituirContrato?: boolean },
+): Promise<{ itens?: ResumoDeDocumento[]; error?: string; substituiContrato?: { titulo: string; pagamento: string } }> {
   try {
     const ctx = await getTenantContext()
     if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
@@ -240,6 +242,12 @@ export async function prepararDocumentosDoCheckout(
 
     const doDesconto = descontoDoPlano(await precosDoPlano(planId), d.data)
     if ('error' in doDesconto) return { error: doDesconto.error }
+    // O contrato já assinado para OUTRO pagamento: pergunta antes de substituir
+    // (A45 da 5ª simulação). Sem a confirmação explícita, nada muda.
+    if (opcoes?.substituirContrato !== true) {
+      const troca = await contratoQueSeriaSubstituido(ctx.tenantId!, planId, pagamento, doDesconto.reais)
+      if (troca) return { substituiContrato: troca }
+    }
     const docs = await prepararDocumentosDoPlano(ctx.tenantId!, planId, pagamento, ctx.internalUserId ?? null, doDesconto.reais)
     return { itens: await resumirDocumentos(ctx.tenantId!, docs) }
   } catch (e) {
