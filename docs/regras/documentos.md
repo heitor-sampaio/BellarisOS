@@ -140,6 +140,13 @@ DEVLOG ("Termos e contratos").
   Com o botão apagado, a tela diz o que falta ("Para assinar, falta marcar
   que leu e concorda e assinar no quadro."). Prova:
   `e2e/documentos-assinar-sem-passo-extra.spec.ts`.
+- **"Entregar ao cliente" cobre a tela da equipe** (A40 da 5ª simulação: o
+  menu, a busca e o usuário da equipe ficavam à vista de quem assinava no
+  tablet). A tela da cliente (o documento, o aceite e a assinatura, e o
+  "Devolva o aparelho à equipe") vai para a camada de cima do navegador
+  (`TelaCheiaDaCliente`, um `<dialog>` com `showModal()` na tela inteira):
+  o resto fica coberto e inerte, e o Esc não a fecha. No portal e no link
+  ela já está na tela dela. Prova: `e2e/documentos-atendimento.spec.ts`.
 - ⚠️ **Releitura na mesma renderização: `abortSignal`.** O React memoriza
   `fetch` GET idênticos numa renderização — a releitura do documento depois de
   montá-lo devolvia a resposta velha. `lerDocumento` passa um sinal novo.

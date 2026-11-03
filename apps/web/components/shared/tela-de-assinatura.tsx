@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, BadgeCheck, FileSignature, Printer, ShieldCheck, Tablet, Upload } from 'lucide-react'
+import { TelaCheiaDaCliente } from '@/components/shared/tela-cheia-da-cliente'
 import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { VisualizadorDePdf } from '@/components/shared/visualizador-de-pdf'
 import { SignaturePad } from '@/components/shared/signature-pad'
@@ -180,7 +181,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
 
   // ── Modo do cliente: só o documento, o aceite e a assinatura ───────────────
   if (modo === 'cliente') {
-    return (
+    const daCliente = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 760, margin: '0 auto' }}>
         <div className="card-brand" style={{ padding: '14px 18px', borderRadius: 'var(--radius-card-token)' }}>
           <p style={{ fontWeight: 'var(--weight-extrabold)' }}>{noPortal ? `${nomeParaSaudar(doc.cliente.nome) || doc.cliente.nome}, leia` : `${doc.cliente.nome}, leia`} o documento e assine no fim.</p>
@@ -206,11 +207,14 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
         </div>
       </div>
     )
+    // Entregue pela equipe na clínica, a tela inteira é da cliente (A40); no
+    // portal e no link ela já está na tela dela.
+    return noPortal ? daCliente : <TelaCheiaDaCliente>{daCliente}</TelaCheiaDaCliente>
   }
 
   // ── Feito ──────────────────────────────────────────────────────────────────
   if (modo === 'feito') {
-    return (
+    const feito = (
       <div className="card" style={{ padding: '36px 24px', maxWidth: 560, margin: '0 auto', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
         <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <BadgeCheck size={26} color="var(--success)" />
@@ -227,6 +231,8 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
           : <Link href={voltar ?? '/'} className="btn-primary" style={{ marginTop: 8 }}>Voltar</Link>}
       </div>
     )
+    // Assinado no aparelho entregue: o "Devolva o aparelho à equipe" ainda é da cliente (A40).
+    return noPortal ? feito : <TelaCheiaDaCliente>{feito}</TelaCheiaDaCliente>
   }
 
   // ── Equipe (e papel) ───────────────────────────────────────────────────────

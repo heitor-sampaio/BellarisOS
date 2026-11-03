@@ -161,6 +161,19 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
       await expect(entregar).toBeDisabled()
       await page.getByText(/Conferi o documento de identidade/).click()
       await entregar.click()
+      // A40 da 5ª simulação: entregue à cliente, a tela é só dela — o menu, a
+      // busca e o usuário da equipe saem de vista (a camada de cima cobre tudo).
+      await expect(page.locator('[data-tela-da-cliente]')).toBeVisible()
+      // O que a cliente vê no lugar da busca e do menu é a tela dela.
+      const coberto = (seletor: string) => page.evaluate(sel => {
+        const alvo = document.querySelector(sel)
+        if (!alvo) return true
+        const r = alvo.getBoundingClientRect()
+        const noPonto = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+        return !!noPonto?.closest('[data-tela-da-cliente]')
+      }, seletor)
+      expect(await coberto('[aria-label="Busca universal"]'), 'a busca da equipe fica coberta').toBe(true)
+      expect(await coberto('nav'), 'o menu da equipe fica coberto').toBe(true)
 
       await page.getByText(/li e concordo com este documento/).click()
       await rabiscar(page)
