@@ -9128,6 +9128,27 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F7 feita em 2026-11-02 — indicadores, relatórios e "a dona vê tudo"** (30
+commits, 87fb7573…9c1362af; migrations `20261101000701–708`). Saiu o "Retorno
+em N dias" (conclusão, lista, cron e evento; a limpeza das colunas,
+`…0709`, espera a confirmação do Heitor). O ranking por procedimento e
+profissional é a receita PAGA dos atendimentos (a Limpeza a R$ 200, não 220);
+pagar com crédito interno não é receita de novo (R$ 300, não 600); a venda de
+produto entra no "Meu faturamento" de quem vendeu; "0 Cancelados · 1 Faltas";
+"Profissionais ativos" é quem atende; "—" em taxa sem base; "Aproveitamento"
+no lugar de "Ocupação" do /admin; a retenção e a conversão (só funis ativos)
+pela clínica inteira; a unidade desativada no "em aberto" da rede; o "A
+receber da cliente" com os atendimentos concluídos sem pagamento; "Despesas
+pagas" e "Custo do lucro" com nomes próprios; a perda como métrica ("Perdas no
+período", "Consumo com perdas"), fora do lucro; o aviso de dias anteriores com
+o agendado sem chegada, contado em lib/metrics e visível no /admin com a
+unidade (H3); "cliente dela" sem o cancelado; o mapa enquadra as unidades; os
+Relatórios aceitam `?unidade=`. Ficou para a F7b: o quadro "Reativar
+clientes" no /admin. Decisões da F7, para revisar: D3 pela receita paga do
+atendimento (pacote, pré-pago, plano e produto fora do ranking); a comissão de
+quem não atende numa linha abaixo da tabela; o procedimento sem custo sai do
+ranking de margem; a linha dos concluídos sem pagamento não soma ao cartão.
+
 **F6 feita em 2026-11-02 — a cliente em qualquer unidade, o portal e a agenda**
 (14 commits, c9a707d6…6f121ea0; migrations `20261101000601–602`). A Marlene,
 da Moinhos, abre o app da Zona Sul e fica nela; "Novo agendamento" pergunta "Em
