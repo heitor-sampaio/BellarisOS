@@ -86,6 +86,34 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
   )
 }
 
+/**
+ * O que o salvar devolveu além do "salvo": o erro e os avisos (a inscrição da
+ * conta nos webhooks, os templates). Os formulários manuais descartavam os
+ * dois — o número "conectava" e nada dizia que nenhuma mensagem chegaria.
+ */
+function RetornoDoSalvar({ erro, avisos }: { erro: string | null; avisos: string[] }) {
+  if (!erro && avisos.length === 0) return null
+  return (
+    <div role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {erro && (
+        <p style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>
+          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} /> {erro}
+        </p>
+      )}
+      {avisos.map(a => (
+        <p key={a} data-aviso-do-salvar style={{
+          display: 'flex', alignItems: 'flex-start', gap: 7, margin: 0,
+          padding: '9px 11px', borderRadius: 8, lineHeight: 'var(--leading-normal)',
+          background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
+        }}>
+          <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{a}</span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
 // --- uazapi: conta própria (formulário manual) --------------------------------------------------------
 
 function UazapiForm({ numero, nomeDoNumero }: { numero?: NumeroNaTela; nomeDoNumero?: string }) {
@@ -99,21 +127,32 @@ function UazapiForm({ numero, nomeDoNumero }: { numero?: NumeroNaTela; nomeDoNum
   const [isTesting,  startTest]       = useTransition()
   const [saved,      setSaved]        = useState(false)
 
+  // O número que ESTE formulário grava (senão cada "Testar" criava uma caixa nova).
+  const [idSalvo,    setIdSalvo]    = useState<string | null>(numero?.id ?? null)
+  const [retorno,    setRetorno]    = useState<{ erro: string | null; avisos: string[] }>({ erro: null, avisos: [] })
+
+  async function gravar() {
+    const res = await salvarNumeroWhatsApp(idSalvo, 'uazapi', { token, baseUrl }, isActive, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
+    if (res.numeroId) setIdSalvo(res.numeroId)
+    setRetorno({ erro: res.ok ? null : (res.error ?? 'Não consegui salvar.'), avisos: res.avisos ?? [] })
+    return res
+  }
+
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, isActive, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
+      const res = await gravar()
       if (res.ok) setSaved(true)
     })
   }
 
+  // Salva e testa o número DESTE formulário, não o padrão da rede (F7c).
   function handleTest() {
     setTestResult(null)
     startTest(async () => {
-      // Save first, then test
-      await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, true, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
-      const res = await testWhatsAppConnection('uazapi')
-      setTestResult(res)
+      const res = await gravar()
+      if (!res.ok || !res.numeroId) return
+      setTestResult(await testWhatsAppConnection('uazapi', res.numeroId))
     })
   }
 
@@ -151,6 +190,7 @@ function UazapiForm({ numero, nomeDoNumero }: { numero?: NumeroNaTela; nomeDoNum
       </div>
 
       {testResult && <ConnectionStatus ok={testResult.ok} detail={testResult.detail} />}
+      <RetornoDoSalvar erro={retorno.erro} avisos={retorno.avisos} />
 
       {saved && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 700 }}>
@@ -359,24 +399,38 @@ function OfficialForm({ numero, configIdDoCadastro, appIdDaMeta, nomeDoNumero }:
   const [isTesting,     startTest]        = useTransition()
   const [saved,         setSaved]         = useState(false)
 
+  // O número que ESTE formulário grava: o da lista, ou o criado no primeiro
+  // salvar/testar — senão cada "Testar" criava uma caixa nova.
+  const [idSalvo,       setIdSalvo]       = useState<string | null>(numero?.id ?? null)
+  const [retorno,       setRetorno]       = useState<{ erro: string | null; avisos: string[] }>({ erro: null, avisos: [] })
+
   if (numero && (numero.config as Record<string, unknown>)?.conexao === 'cadastro_incorporado') {
     return <CaixaDoCadastro numero={numero} configId={configIdDoCadastro} appId={appIdDaMeta} />
+  }
+
+  async function gravar() {
+    const res = await salvarNumeroWhatsApp(idSalvo, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, isActive, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
+    if (res.numeroId) setIdSalvo(res.numeroId)
+    setRetorno({ erro: res.ok ? null : (res.error ?? 'Não consegui salvar.'), avisos: res.avisos ?? [] })
+    return res
   }
 
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, isActive, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
+      const res = await gravar()
       if (res.ok) setSaved(true)
     })
   }
 
+  // Testa o número DESTE formulário (não o padrão da rede), e não o liga
+  // sozinho: o que vale é a caixa "Ativar" (F7c, 2026-11-02).
   function handleTest() {
     setTestResult(null)
     startTest(async () => {
-      await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, true, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
-      const res = await testWhatsAppConnection('official')
-      setTestResult(res)
+      const res = await gravar()
+      if (!res.ok || !res.numeroId) return
+      setTestResult(await testWhatsAppConnection('official', res.numeroId))
     })
   }
 
@@ -468,6 +522,7 @@ function OfficialForm({ numero, configIdDoCadastro, appIdDaMeta, nomeDoNumero }:
       </div>
 
       {testResult && <ConnectionStatus ok={testResult.ok} detail={testResult.detail} />}
+      <RetornoDoSalvar erro={retorno.erro} avisos={retorno.avisos} />
 
       {saved && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 700 }}>
@@ -502,6 +557,10 @@ function OfficialForm({ numero, configIdDoCadastro, appIdDaMeta, nomeDoNumero }:
           {origem}/api/webhooks/whatsapp
         </code>
         <p style={{ marginTop: 4 }}>Campos obrigatórios: <strong>messages</strong>, <strong>message_status_updates</strong></p>
+        <p style={{ marginTop: 4 }}>
+          Ao salvar com o número ligado, o BellarisOS inscreve a conta (WABA) nos webhooks do seu app com o token
+          informado. A URL e o Verify Token acima ficam no painel do seu app na Meta.
+        </p>
       </div>
       </CredencialManual>
     </div>

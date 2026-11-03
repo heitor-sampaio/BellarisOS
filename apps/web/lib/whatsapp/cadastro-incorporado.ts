@@ -67,8 +67,10 @@ async function chamar<T>(caminho: string, opcoes: {
   token?:  string
   query?:  Record<string, string>
   corpo?:  Record<string, unknown>
+  /** Outra Graph: a `graphBase` de uma caixa (costura de teste). */
+  base?:   string
 } = {}): Promise<Resposta<T>> {
-  const url = new URL(`${graphDoCadastro()}/${caminho}`)
+  const url = new URL(`${(opcoes.base ?? graphDoCadastro()).replace(/\/$/, '')}/${caminho}`)
   for (const [k, v] of Object.entries(opcoes.query ?? {})) url.searchParams.set(k, v)
   try {
     const res = await fetch(url, {
@@ -88,6 +90,21 @@ async function chamar<T>(caminho: string, opcoes: {
 }
 
 const soDigitos = (s: unknown): s is string => typeof s === 'string' && /^\d{1,30}$/.test(s)
+
+/**
+ * Inscreve a conta (WABA) nos webhooks do app DONO do token
+ * (`POST /{waba}/subscribed_apps`). Sem isto a Meta mostra o número conectado
+ * e não entrega mensagem nenhuma. O cadastro incorporado faz isso sozinho;
+ * a credencial colada à mão (app próprio da clínica) passou a fazer no salvar
+ * (F7c, 2026-11-02). Devolve o erro da Meta, ou nulo.
+ */
+export async function inscreverContaNosWebhooks(
+  wabaId: string, token: string, base?: string,
+): Promise<string | null> {
+  if (!soDigitos(wabaId)) return 'O WABA ID tem de ser só números.'
+  const r = await chamar(`${wabaId}/subscribed_apps`, { metodo: 'POST', token, base })
+  return r.ok ? null : (r.erro ?? 'erro sem descrição')
+}
 
 export async function conectarPeloCadastro(
   tenantId: string,

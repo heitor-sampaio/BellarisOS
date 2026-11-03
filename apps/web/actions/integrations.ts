@@ -11,7 +11,7 @@ import { ler, mensagemDoErro } from '@/lib/db'
 import { enderecoPublico } from '@/lib/whatsapp/endereco-publico'
 import { mascararSegredos, mesclarSegredos } from '@/lib/integracoes/sem-segredo'
 import { cifrarSegredos, decifrarSegredos } from '@/lib/integracoes/cofre'
-import { conectarPeloCadastro } from '@/lib/whatsapp/cadastro-incorporado'
+import { conectarPeloCadastro, inscreverContaNosWebhooks } from '@/lib/whatsapp/cadastro-incorporado'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import { acompanharCatalogos } from '@/lib/templates/catalogo'
 import { rotuloDaConexao } from '@/lib/whatsapp/rotulo'
@@ -134,12 +134,17 @@ export async function salvarNumeroWhatsApp(
     rotulo = rotuloDaConexao({ ...nome, daMeta: await nomeDoNumeroNaMeta(decifrarSegredos(cleanConfig)) })
   }
 
+  // A costura de teste (`graphBase`, a Graph falsa do E2E) nunca vem da tela,
+  // mas a config é remontada campo a campo: quem já a tinha no banco continua
+  // com ela — senão o próximo envio da caixa de teste iria à Meta de verdade.
+  const graphBase = typeof configAnterior.graphBase === 'string' ? configAnterior.graphBase : undefined
+
   const campos = {
     tenant_id:       ctx.tenantId!,
     provider,
     label:           rotulo,
     // Os segredos vão CIFRADOS ao banco (lib/integracoes/cofre.ts).
-    config:          cifrarSegredos(cleanConfig),
+    config:          cifrarSegredos({ ...cleanConfig, ...(graphBase ? { graphBase } : {}) }),
     phone_number_id: cleanConfig.phoneNumberId ?? null,
     waba_id:         cleanConfig.wabaId ?? null,
     is_active:       isActive,
@@ -181,10 +186,33 @@ export async function salvarNumeroWhatsApp(
     const contaNova = isActive && (!anterior?.is_active || anterior?.waba_id !== campos.waba_id)
     avisos = (await acompanharCatalogos(ctx.tenantId!, contaNova ? [campos.waba_id] : [])).avisos
     revalidatePath('/admin/templates')
+    // A conta nos webhooks (F7c, 2026-11-02): o salvar manual não inscrevia, e
+    // o número ficava "conectado" sem mensagem nenhuma chegar. Com o número
+    // ligado, a inscrição é feita com o token informado (é o app DONO do
+    // token que passa a receber). O que der errado não desfaz o salvar — a
+    // credencial é da clínica —, mas vira aviso: sem isso, nada chega.
+    if (isActive) avisos = [...avisos, ...await inscricaoDaCredencialManual(cleanConfig, graphBase)]
   }
 
   revalidatePath('/admin/settings')
   return { ok: true, numeroId: id, avisos }
+}
+
+/** Os avisos da inscrição da credencial colada à mão nos webhooks (vazio = inscrita). */
+async function inscricaoDaCredencialManual(
+  config: Record<string, string>, graphBase: string | undefined,
+): Promise<string[]> {
+  if (!config.wabaId) {
+    return ['Sem o WABA ID, o BellarisOS não consegue inscrever a conta nos webhooks: as mensagens só chegam '
+      + 'se a inscrição (subscribed_apps) e o webhook estiverem feitos no painel do seu app na Meta.']
+  }
+  // O token mantido pelo marcador vem CIFRADO do banco: a Meta recebe o texto.
+  const token = String(decifrarSegredos(config).accessToken ?? '')
+  const erro = await inscreverContaNosWebhooks(config.wabaId, token, graphBase)
+  if (!erro) return []
+  console.error('[salvarNumeroWhatsApp] subscribed_apps:', erro)
+  return [`A Meta não aceitou inscrever a conta ${config.wabaId} nos webhooks do seu app (${erro}). `
+    + 'Sem isso, nenhuma mensagem chega ao BellarisOS: confira se o token tem a permissão whatsapp_business_management.']
 }
 
 /**
@@ -322,13 +350,25 @@ export async function definirNumeroPadrao(
 
 export async function testWhatsAppConnection(
   provider: WhatsAppConfig['provider'],
+  /**
+   * O número DA TELA (F7c, 2026-11-02). Sem ele, testava-se o padrão da rede:
+   * o Heitor colava a credencial do número novo, testava, via "Conectado" — e
+   * era o número ANTIGO que tinha respondido.
+   */
+  numeroId?: string | null,
 ): Promise<{ ok: boolean; detail?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const { getNumerosDaRede, resolveProvider } = await import('@/lib/whatsapp/factory')
-  const candidatos = (await getNumerosDaRede(ctx.tenantId!))
-    .filter(n => n.isActive && n.provider === provider)
+  const daRede = await getNumerosDaRede(ctx.tenantId!)
+  if (numeroId) {
+    // Só um número desta rede; ligado ou não — testar a credencial antes de ligar é o uso.
+    const numero = daRede.find(n => n.id === numeroId && n.provider === provider)
+    if (!numero) return { ok: false, detail: 'Conexão não encontrada nesta rede' }
+    return resolveProvider(numero.config).testConnection()
+  }
+  const candidatos = daRede.filter(n => n.isActive && n.provider === provider)
 
   if (candidatos.length === 0) {
     return { ok: false, detail: 'Configuração não encontrada ou não ativa' }

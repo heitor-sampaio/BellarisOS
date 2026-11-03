@@ -336,6 +336,25 @@ servidor), e a escolha da tela vira o `featureType` —
   desliga essa caixa — gravar por cima apagaria a credencial. Trocar de conta
   é conectar de novo. O formulário manual continua, recolhido em "avançado",
   para a clínica com app PRÓPRIO na Meta.
+- **O formulário manual INSCREVE a conta nos webhooks** (F7c, achado do
+  Heitor em 2026-11-02; decisão: fazer a inscrição em vez de só avisar). Sem o
+  `subscribed_apps` o número ficava "conectado" e nenhuma mensagem chegava.
+  `salvarNumeroWhatsApp` oficial com o número LIGADO faz
+  `POST /{waba}/subscribed_apps` com o token informado
+  (`inscreverContaNosWebhooks`, `lib/whatsapp/cadastro-incorporado.ts`) — é o
+  app DONO do token que passa a receber. Falhou, ou não há WABA ID: salva
+  mesmo assim (a credencial é da clínica) e a tela mostra o AVISO ("Sem isso,
+  nenhuma mensagem chega…"); o webhook (URL e Verify Token) continua no
+  painel do app dela. Os formulários manuais passaram a mostrar o erro e os
+  avisos do salvar (`RetornoDoSalvar`), que descartavam.
+- **"Testar conexão" testa o número DA TELA e diz qual é** (F7c):
+  `testWhatsAppConnection(provider, numeroId)`; sem o id testava o padrão da
+  rede, e o Heitor via o número ANTIGO "Conectado". O oficial responde
+  "Conectado · +55 48 3333-0202 · Nome verificado". Testar salva sem ligar
+  (vale a caixa "Ativar") e no MESMO número: cada "Testar" criava uma caixa.
+  O salvar remonta a config campo a campo e carrega a `graphBase` que já
+  estava no banco (a costura de teste nunca vem da tela). Prova:
+  `e2e/whatsapp-credencial-manual.spec.ts`.
 - **Os webhooks da coexistência** (`lib/whatsapp/coexistencia.ts`; no painel da
   Meta, assinar `history`, `smb_app_state_sync` e `smb_message_echoes`):
   - `smb_message_echoes` — o que a clínica mandou PELO CELULAR: entra como
@@ -423,5 +442,7 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Escrever preço da Meta fora de TABELA_DA_META, ou contar "cobrado" por regra nossa em vez do pricing.billable do status
 ❌ Gravar o pricing/erro do status por cima com nulo (o "read" chega sem pricing)
 ❌ Chamar a action de conectar (Meta, ou qualquer passo que a pessoa não pode repetir sozinha) sem try: o erro lançado escapa, o layout recarrega em silêncio e a tela parece ter dado certo
+❌ Testar "a conexão da rede" (o padrão) quando a tela fala de UM número — é testWhatsAppConnection(provider, numeroId), e o resultado diz qual número respondeu
+❌ Ligar um número oficial pela credencial manual sem inscrever a WABA (subscribed_apps) nem avisar — conecta e não chega mensagem
 ❌ Apagar a linha de whatsapp_numbers sem juntar_conversas_do_numero antes (a conversa que perde a caixa colide com a "sem número" da mesma pessoa: "duplicate key" na tela)
 ```

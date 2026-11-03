@@ -356,8 +356,11 @@ export class OfficialAPIProvider implements WhatsAppProvider {
         headers: { 'Authorization': `Bearer ${this.config.accessToken}` },
       })
       if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` }
-      const data = await res.json()
-      return { ok: true, detail: data?.display_phone_number ?? undefined }
+      const data = await res.json() as { display_phone_number?: string; verified_name?: string } | null
+      // QUAL número respondeu — o telefone e o nome verificado na Meta (F7c,
+      // 2026-11-02): "Conectado" sozinho deixava passar o número antigo.
+      const qual = [data?.display_phone_number, data?.verified_name].filter(Boolean).join(' · ')
+      return { ok: true, detail: qual || undefined }
     } catch (err) {
       return { ok: false, detail: (err as { message?: string } | null)?.message }
     }

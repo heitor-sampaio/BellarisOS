@@ -17,7 +17,11 @@ import type { AddressInfo } from 'node:net'
  *  - qualquer outro    → `{}`
  */
 
-export interface ChamadaAGraph { metodo: string; caminho: string; corpo: Record<string, unknown> }
+export interface ChamadaAGraph {
+  metodo: string; caminho: string; corpo: Record<string, unknown>
+  /** O token do `Authorization: Bearer`, quando veio (qual credencial falou com a Meta). */
+  token?: string | null
+}
 
 export interface GraphFalsa {
   url: string
@@ -55,7 +59,8 @@ export async function subirGraphFalsa(porta = 0): Promise<GraphFalsa> {
       const caminho = (req.url ?? '').split('?')[0]!
       // Num GET, os parâmetros (o token, por exemplo) contam como o corpo.
       if (req.method === 'GET') corpo = Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams)
-      estado.chamadas.push({ metodo: req.method ?? '', caminho, corpo })
+      const token = String(req.headers.authorization ?? '').replace(/^Bearer /, '') || null
+      estado.chamadas.push({ metodo: req.method ?? '', caminho, corpo, token })
       if (falha && req.method === 'POST' && caminho.endsWith('/messages')) {
         res.writeHead(400, { 'content-type': 'application/json' })
         return res.end(JSON.stringify({ error: { ...falha, type: 'OAuthException', fbtrace_id: 'e2e' } }))
