@@ -3,11 +3,13 @@
 import { PerguntaDaPerda } from '@/components/branch/pergunta-da-perda'
 import { useEffect, useEffectEvent, useState, useTransition, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
-import { rotaCliente, rotaOportunidades } from '@/lib/rotas'
+import { rotaCliente, rotaOportunidades, rotaNoPortal } from '@/lib/rotas'
 import {
   UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package, ShoppingBag,
-  ArrowRight,
+  ArrowRight, AlertTriangle,
 } from 'lucide-react'
+import Link from 'next/link'
+import { avisoDoPlanoAoAgendar } from '@/actions/appointments'
 import {
   LEAD_SOURCES, sourceStyle,
   secondsSince, formatDurationShort, formatDurationLong,
@@ -1091,6 +1093,24 @@ function ScheduleModal({
 
   const durationMin = data?.procedures.find(p => p.id === procedureId)?.duration_min ?? 60
 
+  // O plano com o mesmo procedimento (D-18, A68; r2-age-07 — o Heitor, 03/11:
+  // "Pôr o aviso também no agendar pelo CRM"): a cliente já ligada tem plano
+  // proposto ou fechado com este procedimento — "Agendar pelo plano?". A
+  // MESMA conta do modal da agenda (avisoDoPlanoAoAgendar). Só aviso.
+  const pathname = usePathname()
+  const chaveDoPlano = clienteId && procedureId && !credito ? `${clienteId}|${procedureId}` : ''
+  const [avisoDoPlano, setAvisoDoPlano] = useState<{ chave: string; texto: string; planId: string } | null>(null)
+  useEffect(() => {
+    if (!chaveDoPlano || !clienteId) return
+    let vivo = true
+    avisoDoPlanoAoAgendar(clienteId, procedureId)
+      .then(r => { if (vivo) setAvisoDoPlano(r ? { chave: chaveDoPlano, ...r } : null) })
+      .catch(() => { /* sem aviso */ })
+    return () => { vivo = false }
+  }, [chaveDoPlano, clienteId, procedureId])
+  const avisoDoPlanoAgora = avisoDoPlano && avisoDoPlano.chave === chaveDoPlano ? avisoDoPlano : null
+  const slugDaUnidade = branches.find(b => b.id === branchId)?.slug ?? null
+
   // Trocou a unidade: o que era da anterior sai no render (e não num efeito).
   const [unidadeAnterior, setUnidadeAnterior] = useState(branchId)
   if (unidadeAnterior !== branchId) {
@@ -1252,6 +1272,18 @@ function ScheduleModal({
               {data?.procedures.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
+          {/* Fora do label: o aviso não entra no nome do campo. */}
+          {avisoDoPlanoAgora && (
+            <span data-aviso-do-plano role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 2 }}>
+              <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
+              <span>
+                {avisoDoPlanoAgora.texto}{' '}
+                <Link href={rotaNoPortal(pathname, slugDaUnidade, `/planejamentos/${avisoDoPlanoAgora.planId}`)} style={{ color: 'var(--brand)', fontWeight: 700 }}>
+                  Abrir o plano
+                </Link>
+              </span>
+            </span>
+          )}
 
           {/* Profissional */}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
-import { banco, PREFIXO } from './apoio/banco'
+import { banco, PREFIXO, apagarConversas } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
@@ -17,6 +17,8 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede
 let recepcao: MembroDeTeste
+let sdr: MembroDeTeste
+const conversas: string[] = []
 let cliente: ClienteDeTeste
 let slug = ''
 let planId = ''
@@ -38,6 +40,11 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
     permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'cashier', nivel: 'MANAGE' }],
   })
+  // O comercial que agenda pela conversa (r2-age-07).
+  sdr = await criarMembro(`peas${marca}`, {
+    tenant: rede.tenantId, rotulo: 'SDR',
+    permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+  })
   cliente = await clienteComSessao(`peac${marca}`, { id: rede.branchId, slug }, { tenant: rede.tenantId })
   // O plano proposto: 2 sessões de Bioestimulador, R$ 3.600.
   const { data: pl, error } = await db().from('treatment_plans').insert({
@@ -52,9 +59,10 @@ test.beforeAll(async () => {
 })
 test.afterAll(async () => {
   test.setTimeout(120_000)
+  await apagarConversas(conversas)
   await db().from('appointments').delete().eq('branch_id', rede.branchId)
   await db().from('treatment_plans').delete().eq('id', planId)
-  await recepcao?.limpar(); await cliente?.limpar(); await rede?.limpar()
+  await sdr?.limpar(); await recepcao?.limpar(); await cliente?.limpar(); await rede?.limpar()
 })
 
 test('o agendar avisa do plano com o mesmo procedimento: "agendar pelo plano?"', async ({ browser }) => {
@@ -66,6 +74,28 @@ test('o agendar avisa do plano com o mesmo procedimento: "agendar pelo plano?"',
     await expect(aviso).toContainText(`tem um plano proposto com ${procNome}`)
     await expect(aviso).toContainText('Agendar pelo plano?')
     await expect(aviso.getByRole('link', { name: 'Abrir o plano' })).toHaveAttribute('href', `/${slug}/planejamentos/${planId}`)
+  })
+})
+
+test('r2-age-07: o agendar pelo CRM (a conversa) também avisa do plano com o mesmo procedimento', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const { data: conv, error } = await db().from('conversations').insert({
+    tenant_id: rede.tenantId, status: 'open', channel: 'whatsapp', provider: 'uazapi', client_id: cliente.clientId,
+    last_message_at: new Date().toISOString(), last_message: 'oi', contact_name: `${PREFIXO} Rosana ${marca}`,
+    contact_phone: '55489' + String(Date.now()).slice(-8),
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  conversas.push(conv!.id)
+  await como(browser, sdr, async p => {
+    await p.goto(`/admin/inbox?c=${conv!.id}`)
+    await p.getByRole('button', { name: 'Agendar', exact: true }).click()
+    const janela = p.getByRole('dialog', { name: 'Novo agendamento' })
+    await expect(janela).toBeVisible()
+    await janela.getByRole('combobox', { name: 'Procedimento' }).selectOption(rede.procedureId)
+    const aviso = janela.locator('[data-aviso-do-plano]')
+    await expect(aviso).toContainText(`tem um plano proposto com ${procNome}`)
+    await expect(aviso).toContainText('Agendar pelo plano?')
+    await expect(aviso.getByRole('link', { name: 'Abrir o plano' })).toHaveAttribute('href', `/admin/planejamentos/${planId}`)
   })
 })
 

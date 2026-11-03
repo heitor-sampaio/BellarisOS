@@ -805,7 +805,10 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   Bioestimulador — e, ao lado, o Bioestimulador de R$ 1.800 agendado pelo
   médico, sem ligação: "a cliente não sabe se paga os dois";
   `lib/checkout/plano-e-avulso.ts`):
-  - o AGENDAR (modal da agenda), com a cliente e o procedimento escolhidos:
+  - o AGENDAR — o modal da agenda e, desde o r2-age-07 (o Heitor,
+    2026-11-03: "Pôr o aviso também no agendar pelo CRM"), o "Agendar" da
+    conversa/oportunidade no inbox, quando a conversa já tem a ficha —, com a
+    cliente e o procedimento escolhidos:
     "Rosana tem um plano proposto com Bioestimulador (2 sessões · R$ 3.600,00).
     Agendar pelo plano? Avulso, ele é cobrado à parte." — no plano fechado,
     as sessões dele ainda sem agendamento —, com "Abrir o plano"
