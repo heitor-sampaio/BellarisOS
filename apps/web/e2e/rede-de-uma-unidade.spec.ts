@@ -222,7 +222,8 @@ test.describe.serial('a clínica de uma unidade só', () => {
   test('nasce a segunda unidade: tudo volta', async ({ browser }) => {
     await como(browser, async p => {
       const r = await chamarAcaoComFormulario(p, 'actions/branches.ts', 'createBranch', '/admin/settings?tab=unidades',
-        ['$undefined'], { name: `${PREFIXO} Segunda ${marca}` })
+        // Sem CNPJ a unidade pergunta (cfg-01): a resposta vai junto.
+        ['$undefined'], { name: `${PREFIXO} Segunda ${marca}`, _cnpj: 'sem' })
       // A resposta traz a tela de Configurações re-renderizada (com props "error"
       // dela): o que vale é a linha do resultado da action.
       expect(r.texto).toMatch(/^1:{"success":true}/m)

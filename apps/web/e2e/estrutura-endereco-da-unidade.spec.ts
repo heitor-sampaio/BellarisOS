@@ -31,6 +31,8 @@ async function criarUnidadePelaTela(browser: Browser, gestor: MembroDeTeste, nom
     await page.getByRole('button', { name: 'Nova unidade' }).click()
     await page.locator('#br-name').fill(nome)
     await page.getByRole('button', { name: 'Criar unidade' }).click()
+    // Sem CNPJ, a unidade pergunta antes (cfg-01).
+    await page.getByRole('alertdialog', { name: 'Unidade sem CNPJ' }).getByRole('button', { name: 'Criar sem CNPJ' }).click()
     let slug = ''
     await expect.poll(async () => {
       const { data } = await db().from('branches').select('id, slug').eq('tenant_id', gestor === gestorA ? A.tenantId : B.tenantId).eq('name', nome).maybeSingle<{ id: string; slug: string }>()

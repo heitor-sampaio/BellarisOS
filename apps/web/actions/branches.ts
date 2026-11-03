@@ -8,11 +8,35 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { semAcesso } from '@/lib/sem-acesso'
 import { slugDoTexto, candidatosDeEndereco, escolherEndereco } from '@/lib/unidades/endereco'
+import { maskCPF, maskCNPJ } from '@estetica-os/utils'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
+
+/**
+ * A unidade nova SEM CNPJ pergunta antes (cfg-01, revisão do Heitor de
+ * 2026-11-02: "se em branco, avisa e confirma decisão. Talvez uma clínica
+ * possa ter 2 unidades físicas operando no mesmo CNPJ. Uma unidade física não
+ * precisa necessariamente de um novo CNPJ. Flexibilidade é a palavra").
+ * Nada se grava; a tela mostra o aviso com o CNPJ da rede para usar
+ * (`cnpjDaRede`, já formatado; nulo se a rede não tem) e "Criar sem CNPJ".
+ */
+export type RespostaDeCriarUnidade =
+  | { error: string }
+  | { success: boolean }
+  | { perguntaCnpj: { cnpjDaRede: string | null } }
+
+/** A resposta da pessoa ao "sem CNPJ": `rede` usa o da rede, `sem` cria sem. */
+const RESPOSTAS_DO_CNPJ = ['rede', 'sem'] as const
+
+function documentoLegivel(doc: string | null): string | null {
+  if (!doc) return null
+  const d = doc.replace(/\D/g, '')
+  return d.length === 14 ? maskCNPJ(d) : d.length === 11 ? maskCPF(d) : doc
+}
 
 export async function createBranch(
-  _prev: { error: string } | { success: boolean } | undefined,
+  _prev: RespostaDeCriarUnidade | undefined,
   formData: FormData,
-) {
+): Promise<RespostaDeCriarUnidade> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // Abrir unidade nova é decisão da REDE, não de quem tem unidade fixa (§11).
@@ -20,9 +44,12 @@ export async function createBranch(
 
   const name     = (formData.get('name') as string)?.trim()
   const slugRaw  = (formData.get('slug') as string)?.trim()
-  // Sem o campo, a unidade herda o CNPJ da rede (J-6: a primeira nascia sem
-  // nenhum). Com o campo, vale o que veio — vazio inclusive.
-  const documentoDoForm = formData.has('document') ? (formData.get('document') as string)?.trim() || null : undefined
+  // O CNPJ NUNCA vem da rede calado (cfg-01): vazio (ou sem o campo) pergunta,
+  // e só a resposta (`_cnpj`) decide — o da rede ou nenhum. Duas unidades
+  // com o mesmo CNPJ podem existir.
+  const documentoDoForm = (formData.get('document') as string | null)?.trim() || null
+  const respostaDoCnpj = RESPOSTAS_DO_CNPJ.find(r => r === formData.get('_cnpj')) ?? null
+  const stateRegistration = (formData.get('state_registration') as string)?.trim() || null
   const email    = (formData.get('email') as string)?.trim().toLowerCase() || null
   const phone    = (formData.get('phone') as string)?.trim() || null
   const address  = (formData.get('address') as string)?.trim() || null
@@ -50,31 +77,36 @@ export async function createBranch(
   // tempo batem no índice (23505): procura de novo.
   const rede = await ler(supabase.from('tenants').select('name, document').eq('id', ctx.tenantId!).single(), 'buscar a rede')
   const nomeDaClinica = (rede?.name as string | undefined) ?? ''
-  const document = documentoDoForm !== undefined ? documentoDoForm : ((rede?.document as string | null) ?? null)
+  const documentoDaRede = documentoLegivel((rede?.document as string | null) ?? null)
+  if (!documentoDoForm && !respostaDoCnpj) return { perguntaCnpj: { cnpjDaRede: documentoDaRede } }
+  const document = documentoDoForm ?? (respostaDoCnpj === 'rede' ? documentoDaRede : null)
+
+  // O mesmo envio (duplo clique) cria UMA unidade (D10, `lib/envio-unico.ts`).
+  return umaVez(ctx.tenantId!, 'createBranch', chaveDoEnvio(formData),
+    () => inserirUnidade(ctx.tenantId!, base, nomeDaClinica, {
+      name, document, state_registration: stateRegistration, email, phone, address, city, state, zip_code: zipCode,
+      ...(horario ? { horario } : {}),
+    }),
+    { gravou: r => 'success' in r })
+}
+
+/** Grava a unidade com um endereço livre (lib/unidades/endereco.ts). */
+async function inserirUnidade(
+  tenantId: string, base: string, nomeDaClinica: string, campos: Record<string, unknown>,
+): Promise<RespostaDeCriarUnidade> {
+  const supabase = createAdminClient()
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     const candidatos = candidatosDeEndereco(base, nomeDaClinica)
     const ocupados = await ler(supabase.from('branches').select('slug').in('slug', candidatos), 'conferir os endereços') as { slug: string }[] | null
     const slug = escolherEndereco(base, nomeDaClinica, new Set((ocupados ?? []).map(o => o.slug)))
     if (!slug) return { error: 'Não achei um endereço livre para esta unidade. Tente outro nome.' }
 
-    const { error: insertError } = await supabase.from('branches').insert({
-      tenant_id: ctx.tenantId!,
-      name,
-      slug,
-      document,
-      email,
-      phone,
-      address,
-      city,
-      state,
-      zip_code: zipCode,
-      ...(horario ? { horario } : {}),
-    })
+    const { error: insertError } = await supabase.from('branches').insert({ tenant_id: tenantId, slug, ...campos })
     if (insertError?.code === '23505') continue
     if (insertError) return { error: 'Erro ao criar unidade. Tente novamente.' }
 
     revalidatePath('/admin/branches')
-    revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
+    revalidateTag(`branches:${tenantId}`, { expire: 0 })
     return { success: true }
   }
   return { error: 'Erro ao criar unidade. Tente novamente.' }

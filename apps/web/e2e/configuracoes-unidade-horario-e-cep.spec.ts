@@ -65,6 +65,8 @@ test('o "Nova unidade" pergunta o horário de funcionamento, e a unidade nasce c
     await expect(cep).toBeFocused()
 
     await janela.getByRole('button', { name: 'Criar unidade' }).click()
+    // Sem CNPJ, a unidade pergunta antes (cfg-01).
+    await janela.getByRole('alertdialog', { name: 'Unidade sem CNPJ' }).getByRole('button', { name: 'Criar sem CNPJ' }).click()
     await expect(janela).toBeHidden({ timeout: 15_000 })
   })
   const { data } = await db().from('branches').select('horario, zip_code, city, state')

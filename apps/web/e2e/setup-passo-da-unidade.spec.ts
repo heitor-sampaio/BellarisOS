@@ -7,7 +7,9 @@ import { apagarRedeCriada } from './apoio/rede-criada'
  * O setup (/setup), ajustes de 2026-10-30:
  * - J-1: o telefone gravado com o DDI ("5548999990000") voltava cortado;
  * - J-3: recarregar no passo da unidade voltava ao passo 1;
- * - J-6: a primeira unidade nascia sem CNPJ — agora herda o da rede.
+ * - J-6: a primeira unidade nascia sem CNPJ — agora vem com o da rede
+ *   preenchido; apagado, pergunta (cfg-01, revisão de 2026-11-02: "se em
+ *   branco, avisa e confirma decisão").
  * - A1 (5ª simulação, 2026-11-02): recarregar o passo da unidade mantinha o
  *   passo e apagava o nome, o telefone e o horário digitados; e, concluído, a
  *   URL ficava em ?passo=unidade.
@@ -60,7 +62,13 @@ test('o telefone com DDI inteiro; recarregar fica no passo da unidade; a unidade
     await expect(p.getByLabel('Sábado abre'), 'A1: o horário mexido fica').not.toBeChecked()
 
     await expect(p.locator('#br-doc'), 'J-6: o CNPJ da rede vem preenchido').toHaveValue(comMascara(CNPJ))
+    // cfg-01: apagado, a unidade não nasce calada sem CNPJ — pergunta.
+    await p.locator('#br-doc').fill('')
     await p.getByRole('button', { name: /Continuar/ }).click()
+    const aviso = p.getByRole('alertdialog', { name: 'Unidade sem CNPJ' })
+    await expect(aviso).toBeVisible()
+    await expect(p.getByText('Tudo pronto!')).toHaveCount(0)
+    await aviso.getByRole('button', { name: `Usar o CNPJ da clínica (${comMascara(CNPJ)})` }).click()
     await expect(p.getByText('Tudo pronto!')).toBeVisible()
     await expect(p, 'A1: concluído, a URL não fica no passo da unidade').toHaveURL(/\/setup$/)
   } finally { await ctx.close() }

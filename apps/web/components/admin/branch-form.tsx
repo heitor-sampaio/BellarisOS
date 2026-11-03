@@ -1,12 +1,15 @@
 ﻿'use client'
 
-import { useActionState, useState } from 'react'
-import { Plus, X, Loader2 } from 'lucide-react'
-import { createBranch } from '@/actions/branches'
+import { useActionState, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { Plus, X, Loader2, AlertTriangle } from 'lucide-react'
+import { createBranch, type RespostaDeCriarUnidade } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { maskPhoneDigitando, maskCEPDigitando } from '@estetica-os/utils'
+import { maskPhoneDigitando, maskCEPDigitando, maskCPFouCNPJDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
+import { useFala } from '@/components/shared/uma-unidade'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -32,7 +35,32 @@ export function BranchForm() {
   const [slugTouched, setSlugTouched] = useState(false)
   // Enquanto ninguém mexeu no slug, ele acompanha o nome — derivado no render.
   const slug = slugTouched ? slugDigitado : toSlug(name)
-  const [formState, action, pending] = useActionState(createBranch, undefined)
+  const fala = useFala()
+  const envio = useEnvioUnico()
+  const formRef = useRef<HTMLFormElement>(null)
+  // O CNPJ em branco pergunta antes de criar (cfg-01): a resposta vai em `_cnpj`.
+  const [documento, setDocumento] = useState('')
+  const [respostaCnpj, setRespostaCnpj] = useState<'' | 'sem'>('')
+  const [formState, action, pending] = useActionState(
+    async (anterior: RespostaDeCriarUnidade | undefined, dados: FormData) => {
+      dados.set('_envio', envio.chave())
+      const r = await createBranch(anterior, dados)
+      if ('success' in r) envio.renovar()
+      return r
+    },
+    undefined,
+  )
+  const perguntaCnpj = formState && 'perguntaCnpj' in formState && !documento.trim() ? formState.perguntaCnpj : null
+  const erro = formState && 'error' in formState ? formState.error : null
+
+  /** A resposta ao "sem CNPJ": o campo (ou a resposta) muda, e o formulário vai de novo. */
+  function responderCnpj(r: { usar: string } | 'sem') {
+    flushSync(() => {
+      if (r === 'sem') setRespostaCnpj('sem')
+      else setDocumento(r.usar)
+    })
+    formRef.current?.requestSubmit()
+  }
 
   // Endereço — controlado para permitir preenchimento via CEP
   const [zipCode,    setZipCode]    = useState('')
@@ -43,16 +71,16 @@ export function BranchForm() {
   const [cepError,   setCepError]   = useState<string | null>(null)
   const [cepBuscado, setCepBuscado] = useState('')
 
-  if (formState?.success && open) {
+  if (formState && 'success' in formState && open) {
     setOpen(false)
-    setName(''); setSlug(''); setSlugTouched(false)
+    setName(''); setSlug(''); setSlugTouched(false); setDocumento(''); setRespostaCnpj('')
     setZipCode(''); setAddress(''); setCity(''); setUf('')
     setCepError(null); setCepBuscado('')
   }
 
   function handleClose() {
     setOpen(false)
-    setName(''); setSlug(''); setSlugTouched(false)
+    setName(''); setSlug(''); setSlugTouched(false); setDocumento(''); setRespostaCnpj('')
     setZipCode(''); setAddress(''); setCity(''); setUf('')
     setCepError(null); setCepBuscado('')
   }
@@ -101,7 +129,8 @@ export function BranchForm() {
               </button>
             </div>
 
-            <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <form ref={formRef} action={action} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <input type="hidden" name="_cnpj" value={respostaCnpj} />
 
               {/* -- Identificação -- */}
               <section>
@@ -156,13 +185,40 @@ export function BranchForm() {
                 <div className="form-2col">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline" htmlFor="br-doc">CNPJ</label>
-                    <input id="br-doc" name="document" type="text" className="field" placeholder="00.000.000/0001-00" />
+                    <input id="br-doc" name="document" type="text" inputMode="numeric" className="field" placeholder="00.000.000/0001-00"
+                      value={documento}
+                      onChange={e => { setDocumento(maskCPFouCNPJDigitando(e.target.value)); setRespostaCnpj('') }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline" htmlFor="br-ie">Inscrição Estadual</label>
                     <input id="br-ie" name="state_registration" type="text" className="field" placeholder="000.000.000.000" />
                   </div>
                 </div>
+                {perguntaCnpj && (
+                  <div role="alertdialog" aria-label="Unidade sem CNPJ" style={{
+                    display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: '12px 14px',
+                    borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+                  }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} aria-hidden />
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.45 }}>
+                        A unidade vai ficar sem CNPJ, e os documentos e o recibo dela saem sem ele.
+                        {perguntaCnpj.cnpjDaRede && fala(' Se ela opera com o CNPJ da rede, pode usar o mesmo: duas unidades podem ter o mesmo CNPJ.')}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <button type="button" className="btn-secondary" disabled={pending} onClick={() => responderCnpj('sem')}>
+                        Criar sem CNPJ
+                      </button>
+                      {perguntaCnpj.cnpjDaRede && (
+                        <button type="button" className="btn-primary" disabled={pending}
+                          onClick={() => responderCnpj({ usar: perguntaCnpj.cnpjDaRede! })}>
+                          {fala(`Usar o CNPJ da rede (${perguntaCnpj.cnpjDaRede})`)}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* -- Endereço -- */}
@@ -246,13 +302,13 @@ export function BranchForm() {
                 <EditorDeHorario nome="horario" valor={null} />
               </section>
 
-              {formState?.error && (
+              {erro && (
                 <p style={{
                   color: 'var(--warning)', background: 'var(--warning-soft)',
                   borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
                   fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
                 }}>
-                  {formState.error}
+                  {erro}
                 </p>
               )}
 

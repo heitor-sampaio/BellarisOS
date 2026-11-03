@@ -168,7 +168,8 @@ edições do sistema". O mecanismo é UM:
   barras), a transferência e a perda; os PONTOS — o ajuste e a troca por
   recompensa (`ajustarPontos`, `resgatarRecompensa`: `envio` no objeto);
   RECEBER o plano no check-in (`receberDoPlano`, a chave é o último
-  argumento — F11, 2026-11-03).
+  argumento — F11, 2026-11-03); a UNIDADE nova (`createBranch`, o "Nova
+  unidade" e o `/setup` — F12, 2026-11-03).
 - **Duas abas ao mesmo tempo (envios DIFERENTES) é outra coisa**: a chave não
   as junta. No dinheiro que lê um saldo, a função do banco TRAVA a linha e
   confere o saldo que o app leu: `plano_receber` (migration
@@ -183,7 +184,7 @@ edições do sistema". O mecanismo é UM:
 - **Fica para depois** (não acumulam dinheiro nem estoque; o duplo clique
   cria um segundo registro visível, que se arquiva): o agendamento (`addAppointment`: o choque
   de horário já recusa o segundo do mesmo profissional), oportunidade e lead,
-  procedimento, produto e categoria do estoque, unidade, membro (o e-mail é
+  procedimento, produto e categoria do estoque, membro (o e-mail é
   único), tag, sala, cargo, ficha, funil e etapa, motivo de perda, campanha,
   automação, pacote e recompensa (o cadastro), plano do cliente.
 - As chaves velhas não se apagam: a tabela ganha uma linha pequena por envio.

@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2, AlertTriangle } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
 import { maskCNPJDigitando, maskCPFouCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -255,7 +256,10 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
   const [cepLoading, setCepLoading] = useState(false)
   const [cepError,   setCepError]   = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
+  // O CNPJ apagado pergunta antes de criar (cfg-01): "sem CNPJ" ou o da clínica.
+  const [perguntaCnpj, setPerguntaCnpj] = useState<{ cnpjDaRede: string | null } | null>(null)
   const [pending,    startTransition] = useTransition()
+  const envio = useEnvioUnico()
   // O horário do rascunho remonta o editor (ele lê o valor só ao nascer).
   const [horarioSalvo, setHorarioSalvo] = useState<{ chave: number; valor: Horario | null }>({ chave: 0, valor: null })
   const formRef = useRef<HTMLFormElement>(null)
@@ -310,14 +314,20 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
     setUf(result.uf)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    enviar()
+  }
+
+  function enviar(opcoes: { documento?: string; semCnpj?: boolean } = {}) {
     setError(null)
 
     const formData = new FormData()
     formData.set('name',     name)
     formData.set('slug',     slug)
-    formData.set('document', document)
+    formData.set('document', opcoes.documento ?? document)
+    if (opcoes.semCnpj) formData.set('_cnpj', 'sem')
+    formData.set('_envio', envio.chave())
     formData.set('phone',    phone)
     formData.set('email',    email)
     formData.set('zip_code', zipCode)
@@ -325,14 +335,17 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
     formData.set('city',     city)
     formData.set('state',    uf)
     // O horário vem do editor (campo oculto do formulário).
-    const horario = new FormData(e.currentTarget as HTMLFormElement).get('horario')
+    const horario = formRef.current ? new FormData(formRef.current).get('horario') : null
     if (typeof horario === 'string') formData.set('horario', horario)
 
     startTransition(async () => {
       const result = await createBranch(undefined, formData)
-      if (result && 'error' in result) {
+      if ('error' in result) {
         setError(result.error ?? null)
+      } else if ('perguntaCnpj' in result) {
+        setPerguntaCnpj(result.perguntaCnpj)
       } else {
+        envio.renovar()
         gravarRascunho(null)
         onNext()
       }
@@ -404,6 +417,30 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           O mesmo da clínica, já preenchido. Troque se a unidade tiver CNPJ próprio.
         </span>
+        {perguntaCnpj && !document.trim() && (
+          <div role="alertdialog" aria-label="Unidade sem CNPJ" style={{
+            display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6, padding: '12px 14px',
+            borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} aria-hidden />
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.45 }}>
+                A unidade vai ficar sem CNPJ, e os documentos e o recibo dela saem sem ele.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-secondary" disabled={pending} onClick={() => enviar({ semCnpj: true })}>
+                Criar sem CNPJ
+              </button>
+              {perguntaCnpj.cnpjDaRede && (
+                <button type="button" className="btn-primary" disabled={pending}
+                  onClick={() => { const doc = perguntaCnpj.cnpjDaRede!; setDocument(doc); enviar({ documento: doc }) }}>
+                  {`Usar o CNPJ da clínica (${perguntaCnpj.cnpjDaRede})`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="form-2col">

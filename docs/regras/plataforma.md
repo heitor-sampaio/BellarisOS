@@ -164,6 +164,20 @@ um muro que não depende de cada trava do código.
   o telefone), a rede que já tem unidade ativa vai direto ao "Tudo pronto!"
   (sem isso, a única saída era criar uma segunda unidade), e o passo da
   unidade tem "Voltar". Prova: `e2e/setup-retoma.spec.ts`.
+- **A unidade nova NÃO herda o CNPJ da rede calada** (cfg-01, revisão do
+  Heitor de 2026-11-02: "se em branco, avisa e confirma decisão. Talvez uma
+  clínica possa ter 2 unidades físicas operando no mesmo CNPJ. Uma unidade
+  física não precisa necessariamente de um novo CNPJ. Flexibilidade é a
+  palavra"). `createBranch` com o CNPJ vazio (ou sem o campo) não grava:
+  devolve `perguntaCnpj` com o CNPJ da rede formatado, e a tela ("Nova
+  unidade" e o passo da unidade do `/setup`) mostra o aviso "A unidade vai
+  ficar sem CNPJ…" com "Usar o CNPJ da clínica (…)" — "da rede" com duas
+  unidades ou mais (`useFala`) — e "Criar sem CNPJ" (`_cnpj=sem`). Duas
+  unidades com o MESMO CNPJ podem existir (não há índice único). O `/setup`
+  continua trazendo o CNPJ da clínica preenchido, à vista (J-6). O "Nova
+  unidade" grava uma vez por envio (`umaVez`) e passou a gravar a inscrição
+  estadual (o campo existia e se perdia). Prova:
+  `e2e/configuracoes-unidade-cnpj.spec.ts`, `e2e/setup-passo-da-unidade.spec.ts`.
 - **Planos**: catálogo em `platform_plans` (não se apaga, desativa); a rede
   guarda o RETRATO do valor em `tenant_subscriptions.valor_centavos` — é o
   preço especial e o que o catálogo novo não muda. `tenants.plan_name` é a
@@ -605,6 +619,7 @@ um muro que não depende de cada trava do código.
 ❌ Mudar plan_status ou is_active sem expirar a marca rede:<id> — aqui E na clínica (o portão seguiria a situação velha)
 ❌ Mudar a situação da assinatura evento a evento no TS — é assinatura_aplicar_cobranca, por estado, no banco
 ❌ Criar rede fora de semearRede (o cadastro público e o sistema têm de nascer iguais)
+❌ Dar à unidade nova o CNPJ da rede sem a pessoa escolher (cfg-01: vazio pergunta, com "Usar o CNPJ da clínica" e "Criar sem CNPJ")
 ❌ Criar login da clínica e gravar o vínculo (claims, users, rede) fora de comLoginNovo — o passo que falha deixa um login sem vínculo
 ❌ Criar cliente ou assinatura no Asaas sem procurar antes pelo externalReference (o Asaas aceita duplicado)
 ❌ Webhook do Asaas que responde diferente de 200 para o que já gravou (o Asaas repete e, com 15 falhas, pausa a fila)
