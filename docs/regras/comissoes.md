@@ -145,6 +145,28 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     sessão) ou `NENHUMA` (sem linha). `linhasDoAtendimento` lê o retrato
     (`regraDaSessaoDePacote`) — vale também para quem não tem regra nenhuma —,
     e ela também só libera com o pacote pago inteiro (H4).
+  - **Ou sobre o VALOR DO PACOTE, para a profissional responsável** (com-04
+    da revisão, 2026-11-02; o Heitor: "se foi vendido um pacote de 900,
+    Renata recebe a comissão sobre o valor do pacote, no momento em que o
+    pagamento integral do pacote foi realizado (...) mas devemos manter o
+    sistema com a maior flexibilidade possível e a rede define como
+    operar"). Na execução do cadastro, "Valor do pacote" (% ou R$ fixo):
+    `service_packages.comissao_responsavel_tipo`/`_valor`, com a execução
+    por sessão `NENHUMA` (a restrição do banco garante). A venda pede a
+    "Profissional responsável" (só quem atende, da unidade; conferida por
+    `recusaDoMembroDaVenda`) e nasce UMA linha sobre o vendido, para ela:
+    `origem = 'PACOTE_VENDA'` com `pacote_responsavel = true` — a MESMA conta
+    da comissão de venda do pacote (`comissao_conta`): libera com o pacote
+    pago inteiro (o crediário espera a última parcela; o cartão em N vezes é
+    na hora) e cai na proporção do cancelado (F2b). As sessões não geram
+    linha. Sem responsável, a venda PERGUNTA ("Ninguém foi marcado como
+    responsável… Vender assim?"; `venderPacote` devolve
+    `confirmarSemResponsavel` sem gravar); confirmada, ninguém recebe essa
+    comissão. O extrato diz "Pacote X (responsável)"
+    (`comissoes_extrato` devolve a origem `PACOTE_RESPONSAVEL`). Grava
+    `pacote_vender_com_equipe` (migration `20261101001105`; o
+    `pacote_vender` de antes fica sem uso). Prova:
+    `e2e/comissoes-pacote-responsavel.spec.ts`.
   - **"Abater do pacote"** segue a execução do pacote: com `REGRA`, a linha
     avulsa vira a de pacote com a mesma regra (o de antes); com a do pacote, a
     avulsa é CANCELADA e nasce UMA linha com a regra dele (ou nenhuma).
@@ -281,6 +303,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Recortar comissão por scheduled_at do atendimento (o período é o do lançamento, released_at)
 ❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)
 ❌ Gravar a comissão de um procedimento sem recusaDaComissaoDaAdmin (quem não é Admin mexia no valor da Admin)
+❌ Criar a comissão da responsável do pacote com outra conta que não a da linha PACOTE_VENDA (pacote_responsavel = true) — ela é sobre o pacote pago inteiro e cai com o cancelamento, como a de venda
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ```

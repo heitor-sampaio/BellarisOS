@@ -15,6 +15,7 @@ import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assert
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { recusaDoMembroDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -91,15 +92,25 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
  * catálogo menos o desconto: é ele que o pagamento cobre e que as sessões
  * rateiam, então a comissão de cada sessão já sai sobre o vendido.
  */
+/** A equipe da venda (com-04/com-06): quem é a profissional responsável do pacote, e a resposta à pergunta de sem ninguém. */
+export interface EquipeDaVendaDoPacote { responsavelId?: string | null; semResponsavel?: boolean }
+type ResultadoDaVendaDoPacote = { error?: string; clientPackageId?: string; confirmarSemResponsavel?: string }
+
+/** A pergunta quando o pacote paga quem atende sobre o valor dele e ninguém foi marcado (com-04). */
+const PERGUNTA_SEM_RESPONSAVEL = 'Ninguém foi marcado como responsável: a comissão de quem atende deste pacote (sobre o valor dele) não vai para ninguém. Vender assim?'
+
 export async function venderPacote(
   clienteId: string, pacoteId: string, branchId: string, pagamento: unknown, desconto?: unknown,
   /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
   envio?: string | null,
-): Promise<{ error?: string; clientPackageId?: string }> {
+  equipe?: EquipeDaVendaDoPacote | null,
+): Promise<ResultadoDaVendaDoPacote> {
   try {
     const ctx = await getTenantContext()
+    // A pergunta (sem responsável) não grava: solta a chave, e a resposta vende.
     return await umaVez(ctx.tenantId!, 'venderPacote', chaveDoEnvio(envio),
-      () => venderPacoteUmaVez(clienteId, pacoteId, branchId, pagamento, desconto))
+      () => venderPacoteUmaVez(clienteId, pacoteId, branchId, pagamento, desconto, equipe ?? null),
+      { gravou: r => !!r.clientPackageId })
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
@@ -107,8 +118,9 @@ export async function venderPacote(
 }
 
 async function venderPacoteUmaVez(
-  clienteId: string, pacoteId: string, branchId: string, pagamento: unknown, desconto?: unknown,
-): Promise<{ error?: string; clientPackageId?: string }> {
+  clienteId: string, pacoteId: string, branchId: string, pagamento: unknown, desconto: unknown,
+  equipe: EquipeDaVendaDoPacote | null,
+): Promise<ResultadoDaVendaDoPacote> {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'pacotes')
@@ -127,7 +139,7 @@ async function venderPacoteUmaVez(
     const [unidade, cliente, pacote] = await Promise.all([
       ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
       ler(admin.from('clients').select('id, is_active').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
-      ler(admin.from('service_packages').select('id, name, price, is_active')
+      ler(admin.from('service_packages').select('id, name, price, is_active, comissao_responsavel_tipo')
         .eq('id', pacoteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o pacote'),
     ])
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
@@ -144,13 +156,27 @@ async function venderPacoteUmaVez(
     const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
     if (recusaDaEntrada) return { error: recusaDaEntrada }
 
+    // com-04: o pacote que paga quem atende sobre o valor dele pede a
+    // responsável; sem ninguém, pergunta antes (e confirmado, ninguém recebe).
+    const responsavelId = typeof equipe?.responsavelId === 'string' && equipe.responsavelId ? equipe.responsavelId : null
+    if (pacote.comissao_responsavel_tipo) {
+      if (responsavelId) {
+        const recusa = await recusaDoMembroDaVenda(ctx.tenantId!, responsavelId, branchId, { atende: true, papel: 'A profissional responsável' })
+        if (recusa) return { error: recusa }
+      } else if (equipe?.semResponsavel !== true) {
+        return { confirmarSemResponsavel: PERGUNTA_SEM_RESPONSAVEL }
+      }
+    }
+
     const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, `Pacote ${pacote.name as string}`), motivoDoDesconto(d.data, reais))
     // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio
     // pelo preço de tabela): é a base da comissão dela. O banco confere a soma.
     const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId), vendido)
-    const clientPackageId = await gravar(admin.rpc('pacote_vender', {
+    const clientPackageId = await gravar(admin.rpc('pacote_vender_com_equipe', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_pacote: pacoteId, p_unidade: branchId,
-      p_ator: ctx.internalUserId ?? null, p_lancamentos: lancamentos, p_sessoes: sessoes, p_desconto: reais,
+      p_ator: ctx.internalUserId ?? null, p_vendedor: ctx.internalUserId ?? null,
+      p_responsavel: pacote.comissao_responsavel_tipo ? responsavelId : null,
+      p_lancamentos: lancamentos, p_sessoes: sessoes, p_desconto: reais,
     }), 'vender o pacote') as string
 
     revalidatePath('/admin/clients/[id]', 'page')

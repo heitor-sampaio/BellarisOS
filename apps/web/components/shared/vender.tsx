@@ -33,9 +33,12 @@ export interface ProdutoAVenda {
   fidelidade?: 'PONTUA' | 'NAO_PONTUA' | null
 }
 
+/** Alguém da equipe numa venda (com-04/com-06): a responsável do pacote sai de quem atende. */
+export interface MembroDaVenda { id: string; nome: string; atende: boolean }
+
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
 
-export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos = [], compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [], desativadoPorque = null }: {
+export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos = [], compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [], desativadoPorque = null, equipe = [] }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
@@ -59,6 +62,8 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
   aReceber?:     AtendimentoAReceber[]
   /** O botão aparece desligado, com o motivo (a ficha arquivada, J-23). */
   desativadoPorque?: string | null
+  /** A equipe da unidade, para a responsável do pacote (com-04) e quem vendeu (com-06). */
+  equipe?: MembroDaVenda[]
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -110,7 +115,7 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
               ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={fechar} />
               : aba === 'PROCEDIMENTO' && procedimentos.length > 0
               ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} />
-              : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} />}
+              : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} equipe={equipe} />}
           </div>
         </div>
       </dialog>

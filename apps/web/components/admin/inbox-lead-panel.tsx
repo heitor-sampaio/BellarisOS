@@ -469,7 +469,7 @@ export function InboxLeadPanel({
             {card.venda && (cliente ? (
               card.venda.branchId && (
                 <Vender compacto clienteId={cliente.id} branchId={card.venda.branchId}
-                  pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} produtos={card.venda.produtos} abrirSinal={abrirVenda} />
+                  pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} produtos={card.venda.produtos} equipe={card.venda.equipe} abrirSinal={abrirVenda} />
               )
             ) : card.podeCadastrarCliente && (
               // Sem ficha, a venda passa pelo cadastro: o mesmo Clientes em Gerenciar.

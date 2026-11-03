@@ -27,11 +27,14 @@ const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar
 const CHIP: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'chip chip-muted', PAID: 'chip chip-success', AGUARDANDO: 'chip chip-warning' }
 const ORIGEM: Record<string, string> = {
   AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Sessão de pacote', PACOTE_VENDA: 'Venda de pacote', PRE_PAGO: 'Pré-pago', PRODUTO: 'Venda de produto',
+  PACOTE_RESPONSAVEL: 'Pacote (responsável)',
 }
 /** A origem da linha, com o nome do pacote quando é dele (2026-10-30): "Venda do pacote X", "Sessão do pacote X". */
 const origemDe = (l: LancamentoDoExtrato) => {
   if (!l.origem) return ''
   if (l.pacote && l.origem === 'PACOTE_VENDA') return `Venda do pacote ${l.pacote}`
+  // com-04: a comissão de quem atende sobre o valor do pacote, da profissional responsável.
+  if (l.pacote && l.origem === 'PACOTE_RESPONSAVEL') return `Pacote ${l.pacote} (responsável)`
   if (l.pacote && l.origem === 'PACOTE') return `Sessão do pacote ${l.pacote}`
   return ORIGEM[l.origem] ?? l.origem
 }

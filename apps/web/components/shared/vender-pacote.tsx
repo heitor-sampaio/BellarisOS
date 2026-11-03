@@ -7,6 +7,8 @@ import { venderPacote } from '@/actions/pacotes'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
+import type { MembroDaVenda } from '@/components/shared/vender'
 
 /**
  * Vender um pacote (decisão do Heitor, 2026-09-30): o pacote do catálogo, e
@@ -19,11 +21,15 @@ export interface PacoteAVenda {
   id: string; name: string; price: number; totalSessions: number
   /** "5× Limpeza + 3× Drenagem". */
   composicao: string; validityDays: number | null
+  /** O pacote paga quem atende sobre o valor dele (com-04): a venda pede a profissional responsável. */
+  pedeResponsavel?: boolean
 }
 
 /** O formulário da venda do pacote — dentro do "Vender" (`components/shared/vender.tsx`). */
-export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
+export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [] }: {
   clienteId: string; branchId: string; pacotes: PacoteAVenda[]; onFim: () => void
+  /** A equipe da unidade: a responsável sai de quem atende (com-04). */
+  equipe?: MembroDaVenda[]
 }) {
   const router = useRouter()
   const [pacoteId, setPacoteId] = useState(pacotes[0]!.id)
@@ -35,12 +41,18 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
   const conta = contaDoDesconto(pacote.price, desconto)
   // A chave do envio (D10): o duplo clique vende uma vez só.
   const envio = useEnvioUnico()
+  // com-04: a profissional responsável, quando o pacote paga quem atende sobre o valor dele.
+  const [responsavelId, setResponsavelId] = useState('')
+  const [pergunta, setPergunta] = useState<string | null>(null)
+  const quemAtende = equipe.filter(m => m.atende)
 
-  function vender() {
+  function vender(semResponsavel = false) {
     setErro(recusaDoPagamento(estado, conta.liquido))
     if (recusaDoPagamento(estado, conta.liquido)) return
     iniciar(async () => {
-      const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto), envio.chave())
+      const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto), envio.chave(),
+        { responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel })
+      if (r.confirmarSemResponsavel) { setPergunta(r.confirmarSemResponsavel); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       onFim()
@@ -53,7 +65,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span className="overline">Pacote</span>
-        <select className="field" aria-label="Pacote" value={pacoteId} onChange={e => setPacoteId(e.target.value)}>
+        <select className="field" aria-label="Pacote" value={pacoteId} onChange={e => { setPacoteId(e.target.value); setPergunta(null) }}>
           {pacotes.map(p => <option key={p.id} value={p.id}>{p.name} — {formatBRL(p.price)}</option>)}
         </select>
       </label>
@@ -61,6 +73,19 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
         {pacote.composicao} ({pacote.totalSessions} sessões) · {formatBRL(pacote.price)}
         {pacote.validityDays ? ` · válido por ${pacote.validityDays} dias` : ''}
       </p>
+      {pacote.pedeResponsavel && (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span className="overline">Profissional responsável</span>
+          <select className="field" aria-label="Profissional responsável" value={responsavelId}
+            onChange={e => { setResponsavelId(e.target.value); setPergunta(null) }}>
+            <option value="">Ninguém</option>
+            {quemAtende.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          </select>
+          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            Recebe a comissão de quem atende sobre o valor do pacote, quando ele estiver pago por inteiro.
+          </span>
+        </label>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={pacote.price} comMotivo />
@@ -70,10 +95,15 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
         )}
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {pergunta ? (
+        <PerguntaDaVenda texto={pergunta} pendente={pendente} rotuloConfirmar="Vender sem responsável"
+          aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
+      ) : (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}</button>
+        <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}</button>
       </div>
+      )}
     </div>
   )
 }

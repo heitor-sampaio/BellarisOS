@@ -30,7 +30,11 @@ export interface PacoteDoCatalogo {
 
 interface ItemDoRascunho { procedureId: string; quantidade: string }
 type VendaDoRascunho = 'NENHUMA' | TipoDeRegra
-interface ComissaoDoRascunho { venda: VendaDoRascunho; vendaValor: string; execucao: ExecucaoDoPacote; execucaoValor: string }
+interface ComissaoDoRascunho {
+  venda: VendaDoRascunho; vendaValor: string; execucao: ExecucaoDoPacote; execucaoValor: string
+  /** Com a execução "Valor do pacote" (com-04): % ou R$ fixo. */
+  pacoteTipo: TipoDeRegra
+}
 interface Rascunho {
   id?: string; name: string; itens: ItemDoRascunho[]; preco: string; validade: string; ativo: boolean
   comissao: ComissaoDoRascunho
@@ -39,6 +43,7 @@ interface Rascunho {
 const rascunhoDaComissao = (c: ComissaoDoPacote): ComissaoDoRascunho => ({
   venda: c.venda?.tipo ?? 'NENHUMA', vendaValor: c.venda ? paraTexto(c.venda.valor) : '',
   execucao: c.execucao.tipo, execucaoValor: c.execucao.valor != null ? paraTexto(c.execucao.valor) : '',
+  pacoteTipo: c.execucao.valorTipo ?? 'PERCENTAGE',
 })
 
 // Sem número de sessões escolhido por nós (2026-10-21: nascia com 5).
@@ -256,6 +261,11 @@ const EXECUCOES = [
   { key: 'PERCENTAGE',   label: 'Percentual' },
   { key: 'FIXED_AMOUNT', label: 'Valor fixo' },
   { key: 'NENHUMA',      label: 'Nenhuma' },
+  { key: 'PACOTE',       label: 'Valor do pacote' },
+]
+const SOBRE_O_PACOTE = [
+  { key: 'PERCENTAGE',   label: 'Percentual' },
+  { key: 'FIXED_AMOUNT', label: 'Valor fixo' },
 ]
 
 /** O rascunho da tela → a entrada da action, ou o que falta preencher. */
@@ -271,6 +281,11 @@ function comissaoDoRascunho(c: ComissaoDoRascunho): { entrada: ComissaoDoPacote 
     const v = lerValor(c.venda, c.vendaValor, 'venda')
     if (typeof v === 'string') return { erro: v }
     venda = { tipo: c.venda, valor: v }
+  }
+  if (c.execucao === 'PACOTE') {
+    const v = lerValor(c.pacoteTipo, c.execucaoValor, 'quem atende')
+    if (typeof v === 'string') return { erro: v }
+    return { entrada: { venda, execucao: { tipo: 'PACOTE', valorTipo: c.pacoteTipo, valor: v } } }
   }
   if (c.execucao === 'PERCENTAGE' || c.execucao === 'FIXED_AMOUNT') {
     const v = lerValor(c.execucao, c.execucaoValor, 'execução')
@@ -310,7 +325,7 @@ function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: 
         </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p style={titulo}>De execução — para quem atende cada sessão</p>
+        <p style={titulo}>De execução — para quem atende (por sessão ou sobre o pacote)</p>
         <div role="group" aria-label="Comissão de execução">
           <SegSelect ariaLabel="Comissão de execução" value={c.execucao} options={EXECUCOES}
             onSelect={k => mudar({ execucao: k as ExecucaoDoPacote })} />
@@ -318,10 +333,21 @@ function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: 
         {(c.execucao === 'PERCENTAGE' || c.execucao === 'FIXED_AMOUNT') && (
           <CampoDeValor tipo={c.execucao} valor={c.execucaoValor} onChange={v => mudar({ execucaoValor: v })} rotulo="Valor da comissão de execução" />
         )}
+        {/* com-04: "a rede define como operar" — por sessão feita, ou de uma vez, sobre o valor do pacote. */}
+        {c.execucao === 'PACOTE' && (
+          <>
+            <div role="group" aria-label="Comissão sobre o pacote">
+              <SegSelect ariaLabel="Comissão sobre o pacote" value={c.pacoteTipo} options={SOBRE_O_PACOTE}
+                onSelect={k => mudar({ pacoteTipo: k as TipoDeRegra })} />
+            </div>
+            <CampoDeValor tipo={c.pacoteTipo} valor={c.execucaoValor} onChange={v => mudar({ execucaoValor: v })} rotulo="Valor da comissão sobre o pacote" />
+          </>
+        )}
         <p style={ajuda}>
           {c.execucao === 'REGRA' ? 'Cada sessão paga a comissão de quem atende, pela regra dele (Equipe ou Procedimentos).'
             : c.execucao === 'PERCENTAGE' ? 'Sobre a parte da sessão no preço do pacote.'
             : c.execucao === 'FIXED_AMOUNT' ? 'O mesmo valor a cada sessão atendida.'
+            : c.execucao === 'PACOTE' ? 'Uma comissão só, sobre o valor vendido do pacote, para a profissional responsável escolhida na venda — quando o pacote estiver pago por inteiro (no cartão em várias vezes, na hora). As sessões não geram comissão.'
             : 'As sessões deste pacote não geram comissão para quem atende.'}
         </p>
       </div>

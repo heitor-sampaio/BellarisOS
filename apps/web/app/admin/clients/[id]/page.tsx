@@ -17,6 +17,7 @@ import { historicoDosAgendamentos } from '@/lib/clients/autores-do-historico'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { produtosAVenda } from '@/lib/produtos/leitura'
+import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -425,6 +426,7 @@ export default async function AdminClientProfilePage({
         pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branchId || null) : []}
         procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branchId || null) : []}
         produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branchId || null) : []}
+        equipeDaVenda={podeReceber(ctx) ? await equipeDaVenda(ctx.tenantId!, branchId || null) : []}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}
         podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}

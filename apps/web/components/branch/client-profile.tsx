@@ -33,7 +33,7 @@ import { ptBR } from 'date-fns/locale'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
-import { Vender, type ProcedimentoAVenda, type ProdutoAVenda } from '@/components/shared/vender'
+import { Vender, type ProcedimentoAVenda, type ProdutoAVenda, type MembroDaVenda } from '@/components/shared/vender'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
@@ -239,6 +239,8 @@ interface Props {
   procedimentosAVenda?:  ProcedimentoAVenda[]
   /** Os produtos de revenda à venda (D4; só para quem recebe). */
   produtosAVenda?:       ProdutoAVenda[]
+  /** A equipe da unidade, para a venda (com-04: a responsável do pacote; com-06: quem vendeu). */
+  equipeDaVenda?:        MembroDaVenda[]
   /** Os procedimentos pré-pagos do cliente, com as unidades. */
   prePagos?:             PrePagoDoCliente[]
   /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha, e o "+ Agendar" (A23). */
@@ -1238,7 +1240,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, podeEditarCadastro = false, podeVerPlanos = false,
+  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, podeEditarCadastro = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1444,7 +1446,7 @@ export function ClientProfile({
               que o cliente compra e como paga; agendar, quando ele vem. */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {podeReceber && currentBranchId && (
-              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} produtos={produtosAVenda}
+              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} produtos={produtosAVenda} equipe={equipeDaVenda}
                 podeAgendar={podeAgendar} abrirSinal={arquivada ? 0 : sinalDaVenda} aReceber={aReceber.itens}
                 desativadoPorque={arquivada ? motivoDoArquivo : null} />
             )}

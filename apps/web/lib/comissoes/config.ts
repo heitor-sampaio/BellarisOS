@@ -169,12 +169,18 @@ export function regraAplicavel(
  * - de EXECUÇÃO, para quem atende cada sessão — a regra do profissional (o de
  *   sempre, e o padrão), % da parte da sessão, valor fixo por sessão ou nenhuma.
  */
-export const EXECUCOES_DO_PACOTE = ['REGRA', 'PERCENTAGE', 'FIXED_AMOUNT', 'NENHUMA'] as const
+export const EXECUCOES_DO_PACOTE = ['REGRA', 'PERCENTAGE', 'FIXED_AMOUNT', 'NENHUMA', 'PACOTE'] as const
 export type ExecucaoDoPacote = typeof EXECUCOES_DO_PACOTE[number]
 
 export interface ComissaoDoPacote {
   venda:    Pick<RegraDeComissao, 'tipo' | 'valor'> | null
-  execucao: { tipo: ExecucaoDoPacote; valor: number | null }
+  /**
+   * `PACOTE` (com-04, 2026-11-02): UMA comissão sobre o valor do pacote, para
+   * a profissional RESPONSÁVEL escolhida na venda — `valorTipo` diz se é % ou
+   * R$ fixo. No banco: `comissao_responsavel_tipo`/`_valor`, com a execução
+   * por sessão NENHUMA.
+   */
+  execucao: { tipo: ExecucaoDoPacote; valor: number | null; valorTipo?: TipoDeRegra }
 }
 
 export const COMISSAO_DO_PACOTE_PADRAO: ComissaoDoPacote = { venda: null, execucao: { tipo: 'REGRA', valor: null } }
@@ -185,17 +191,25 @@ export const EntradaDaComissaoDoPacote = z.object({
     z.object({ tipo: z.enum(['REGRA', 'NENHUMA']), valor: z.null().optional().default(null) }),
     z.object({ tipo: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']), valor: z.number().min(0).max(1_000_000) })
       .refine(r => r.tipo !== 'PERCENTAGE' || r.valor <= 100, 'Percentual acima de 100%.'),
+    z.object({ tipo: z.literal('PACOTE'), valorTipo: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']), valor: z.number().min(0).max(1_000_000) })
+      .refine(r => r.valorTipo !== 'PERCENTAGE' || r.valor <= 100, 'Percentual acima de 100%.'),
   ]),
 })
 
 /** As colunas do banco (`service_packages` ou o retrato em `client_packages`) → a comissão do pacote. */
 export function comissaoDoPacoteDaLinha(l: {
   comissao_venda_tipo?: unknown; comissao_venda_valor?: unknown; comissao_execucao?: unknown; comissao_execucao_valor?: unknown
+  comissao_responsavel_tipo?: unknown; comissao_responsavel_valor?: unknown
 } | null | undefined): ComissaoDoPacote {
   const tipoV = l?.comissao_venda_tipo
   const venda = (tipoV === 'PERCENTAGE' || tipoV === 'FIXED_AMOUNT') && l?.comissao_venda_valor != null
     ? { tipo: tipoV as TipoDeRegra, valor: Number(l.comissao_venda_valor) } : null
-  const tipoE = EXECUCOES_DO_PACOTE.includes(l?.comissao_execucao as ExecucaoDoPacote) ? l!.comissao_execucao as ExecucaoDoPacote : 'REGRA'
+  const tipoR = l?.comissao_responsavel_tipo
+  if ((tipoR === 'PERCENTAGE' || tipoR === 'FIXED_AMOUNT') && l?.comissao_responsavel_valor != null) {
+    return { venda, execucao: { tipo: 'PACOTE', valorTipo: tipoR as TipoDeRegra, valor: Number(l.comissao_responsavel_valor) } }
+  }
+  const tipoE = EXECUCOES_DO_PACOTE.includes(l?.comissao_execucao as ExecucaoDoPacote) && l?.comissao_execucao !== 'PACOTE'
+    ? l!.comissao_execucao as ExecucaoDoPacote : 'REGRA'
   const comValor = tipoE === 'PERCENTAGE' || tipoE === 'FIXED_AMOUNT'
   if (comValor && l?.comissao_execucao_valor == null) return { venda, execucao: { tipo: 'REGRA', valor: null } }
   return { venda, execucao: { tipo: tipoE, valor: comValor ? Number(l!.comissao_execucao_valor) : null } }
@@ -207,6 +221,7 @@ export function rotuloDaComissaoDoPacote(c: ComissaoDoPacote): string {
   const e = c.execucao
   const execucao = e.tipo === 'REGRA' ? 'regra de cada profissional'
     : e.tipo === 'NENHUMA' ? 'nenhuma'
+    : e.tipo === 'PACOTE' ? `${rotuloDaRegra({ tipo: e.valorTipo ?? 'PERCENTAGE', valor: e.valor ?? 0 })} do pacote, para a profissional responsável`
     : e.tipo === 'PERCENTAGE' ? `${rotuloDaRegra({ tipo: 'PERCENTAGE', valor: e.valor ?? 0 })} da sessão`
     : `${rotuloDaRegra({ tipo: 'FIXED_AMOUNT', valor: e.valor ?? 0 })} por sessão`
   return `Venda: ${venda} · Execução: ${execucao}`
@@ -219,7 +234,8 @@ export function rotuloDaComissaoDoPacote(c: ComissaoDoPacote): string {
 export function regraDaSessaoDePacote(
   execucao: ComissaoDoPacote['execucao'], regras: RegraDeComissao[], procedureId: string | null, gerais: ComissoesGerais = new Map(),
 ): RegraDeComissao | null {
-  if (execucao.tipo === 'NENHUMA') return null
+  // "Valor do pacote" (com-04): a comissão é UMA linha da venda, da responsável — a sessão não gera.
+  if (execucao.tipo === 'NENHUMA' || execucao.tipo === 'PACOTE') return null
   if (execucao.tipo === 'REGRA' || execucao.valor == null) return regraAplicavel(regras, procedureId, gerais)
   return { procedure_id: procedureId, tipo: execucao.tipo, valor: execucao.valor }
 }

@@ -6,8 +6,9 @@ import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assert
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
-import type { ProcedimentoAVenda, ProdutoAVenda } from '@/components/shared/vender'
+import type { ProcedimentoAVenda, ProdutoAVenda, MembroDaVenda } from '@/components/shared/vender'
 import { produtosAVenda } from '@/lib/produtos/leitura'
+import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -699,7 +700,7 @@ export interface ConversationCard {
    * com várias unidades e contato sem ficha só sabe a unidade quando o
    * cadastro a escolhe. Nesse caso as listas vêm vazias: é só o sinal.
    */
-  venda: { branchId: string | null; pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[]; produtos: ProdutoAVenda[] } | null
+  venda: { branchId: string | null; pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[]; produtos: ProdutoAVenda[]; equipe?: MembroDaVenda[] } | null
   /** O plano da rede inclui oportunidades? Sem elas, o painel é só contato e cliente. */
   comOportunidades: boolean
   /** E a agenda? Sem ela, a conversa não marca horário. */
@@ -832,10 +833,11 @@ export async function getConversationCard(conversationId: string): Promise<Conve
     if (unidade && alcancaUnidade(ctx, unidade)) {
       // O produto (D4) exige a cliente: sem ficha, o botão abre o cadastro
       // primeiro, como o pacote e o pré-pago.
-      const [pacotes, procs, produtos] = await Promise.all([
+      const [pacotes, procs, produtos, equipe] = await Promise.all([
         pacotesAVenda(ctx.tenantId!, unidade), procedimentosAVenda(ctx.tenantId!, unidade), produtosAVenda(ctx.tenantId!, unidade),
+        equipeDaVenda(ctx.tenantId!, unidade),
       ])
-      if (pacotes.length || procs.length || produtos.length) venda = { branchId: unidade, pacotes, procedimentos: procs, produtos }
+      if (pacotes.length || procs.length || produtos.length) venda = { branchId: unidade, pacotes, procedimentos: procs, produtos, equipe }
     } else if (!unidade && !cliente) {
       const algum = await ler(admin.from('procedures').select('id')
         .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(1), 'conferir se há o que vender')
