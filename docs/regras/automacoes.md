@@ -122,7 +122,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   Fechado"): "não existe movimento automático padrão nos funis" (`crm-inbox.md`).
   O modelo "Agendou: o card muda de etapa" (`agendou-move-o-card`) nasce com a
   etapa vazia — a validação não deixa ligar até a clínica escolher a do funil
-  dela. Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`,
+  dela. **Ele nasce DESLIGADO e só se a clínica o pedir** (r2-cfg-04, o
+  Heitor em 2026-11-03: "pode manter o modelo, desativado, rede usa se
+  quiser"): não há semente de automação na rede nova (`semearRede`,
+  `crm_funil_padrao` e os gatilhos de `tenants` não criam automação); ele só
+  existe quando alguém escolhe "Usar um modelo", e nasce RASCUNHO, como todo
+  modelo. Em 03/11 nenhuma rede real o tinha (a única automação de mover
+  etapa fora das `[e2e]` é um rascunho da Bellaris Clinic de 24/09). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`,
   `tests/automacoes-modelos.test.ts`.
 - **"Definir responsável"** (`acao.atribuir`) usa o núcleo da tela,
   `trocarResponsavelCore` (`lib/crm/responsavel.ts`): a pessoa é da rede e

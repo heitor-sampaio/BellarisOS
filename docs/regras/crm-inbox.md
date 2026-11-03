@@ -601,6 +601,17 @@ linha do tempo continua dizendo que houve o agendamento. Para ter o
 movimento, o modelo "Agendou: o card muda de etapa" (`automacoes.md`). As
 redes que já existiam ficam com os funis e os cards como estão; o card só não
 anda mais ao agendar. Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`.
+**E nenhum outro fato move o card** (r2-cfg-04, o Heitor em 2026-11-03:
+"nenhum card se movimenta sozinho, toda e qualquer automação deve ser feita
+através dos módulos de automações"). Conferido em 03/11: a etapa
+(`leads.crm_stage_id`) só é gravada por `moverEtapaCore` (a pessoa: arraste,
+painel do inbox, mudar de funil, Copilot a pedido dela), `updateLead` (o modal)
+e as ações de automação (`moverDeEtapa`, `marcarDesfecho`). Concluir o
+atendimento, pagar, a conversa nova e o cadastro do cliente só escrevem na
+linha do tempo (`CONVERTED`, `APPOINTMENT_CREATED`) ou ligam a ficha; nenhuma
+função nem gatilho do banco grava a etapa (`crm_funil_padrao` só cria as
+etapas). A trava é `tests/card-so-anda-pela-pessoa.test.ts`: gravar a etapa
+em outro arquivo falha.
 
 **Quem monta o funil é Configurações** (D-1, decisão do Heitor, 2026-10-29):
 criar, renomear, reordenar, arquivar, apagar e escolher o padrão de funis e
