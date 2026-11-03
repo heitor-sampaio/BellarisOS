@@ -12,8 +12,10 @@ import { chamarAcaoComFormulario } from './apoio/acao-direta'
  *
  * - O MESMO envio (a chave `_envio`, gerada pela tela) grava uma vez só, mesmo
  *   chegando duas vezes ao mesmo tempo; o segundo recebe a mesma ficha.
- * - Sem a chave (outro caminho, outra aba), o servidor trava pelo conteúdo:
- *   o mesmo nome com o mesmo telefone, ao mesmo tempo, é uma ficha só.
+ * - Sem a chave (outro caminho, outra aba), as chegadas do mesmo nome com o
+ *   mesmo telefone se ENFILEIRAM: a primeira grava, e as outras caem na
+ *   pergunta "Já existe a ficha de X" (r2-cli-01, 2026-11-03 — era a trava
+ *   calada dos 60 s, que devolvia a mesma ficha).
  * Numa rede [e2e] própria.
  */
 
@@ -68,7 +70,7 @@ test('D10: o mesmo envio chegando duas vezes ao mesmo tempo grava UMA ficha, e o
   expect((await fichasDe(n)).length).toBe(1)
 })
 
-test('D10: sem a chave, o mesmo nome e telefone ao mesmo tempo também viram uma ficha só', async ({ browser }) => {
+test('D10: sem a chave, o mesmo nome e telefone ao mesmo tempo também viram uma ficha só — as outras chegadas perguntam', async ({ browser }) => {
   const n = nome('sem chave')
   const campos = { name: n, phone: telefone() }
   await como(browser, async p => {
@@ -76,12 +78,13 @@ test('D10: sem a chave, o mesmo nome e telefone ao mesmo tempo também viram uma
     const respostas = await Promise.all([cadastrar(p, campos), cadastrar(p, campos), cadastrar(p, campos)])
     const ids = new Set(respostas.map(r => idDa(r.texto)).filter(Boolean))
     expect(ids.size, respostas.map(r => r.texto.slice(0, 200)).join('\n')).toBe(1)
+    expect(respostas.filter(r => r.texto.includes('"jaExiste"')), 'as outras duas perguntam').toHaveLength(2)
   })
   expect((await fichasDe(n)).length).toBe(1)
 })
 
 test('D10: um envio que volta com pergunta não prende a chave — respondido, grava', async ({ browser }) => {
-  // A primeira ficha (rápida, sem CPF) faz o segundo cadastro perguntar "é a mesma pessoa?".
+  // A primeira ficha faz o segundo cadastro perguntar "Já existe a ficha de X" (r2-cli-01).
   const fone = telefone()
   const primeira = nome('primeira')
   const segunda = nome('segunda')
@@ -90,9 +93,9 @@ test('D10: um envio que volta com pergunta não prende a chave — respondido, g
     await p.goto('/admin/clients/new')
     expect(idDa((await cadastrar(p, { name: primeira, phone: fone, _envio: crypto.randomUUID() })).texto)).not.toBeNull()
     const pergunta = await cadastrar(p, { name: segunda, phone: fone, _envio: envio })
-    expect(pergunta.texto).toContain('mesmaPessoa')
+    expect(pergunta.texto).toContain('"jaExiste"')
     const outra = (await fichasDe(primeira))[0]!.id
-    const resposta = await cadastrar(p, { name: segunda, phone: fone, _envio: envio, _fichaRapida: `outra:${outra}`, _telefoneConfirmado: fone.replace(/\D/g, '') })
+    const resposta = await cadastrar(p, { name: segunda, phone: fone, _envio: envio, _jaExiste: `cadastrar:${outra}` })
     expect(idDa(resposta.texto), resposta.texto.slice(0, 300)).not.toBeNull()
   })
   expect((await fichasDe(segunda)).length).toBe(1)

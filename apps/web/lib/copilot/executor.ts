@@ -110,7 +110,9 @@ export async function executarChamada(
       paraOModelo: {
         status: 'aguardando_confirmacao',
         acao: resumoParaOModelo(preparo.resumo),
-        instrucao: 'Nada foi gravado ainda. Um cartão com Confirmar/Cancelar apareceu para a pessoa. Diga em uma frase o que vai ser feito e peça para ela confirmar no cartão. Não diga que já fez.',
+        instrucao: preparo.resumo.escolhas?.length
+          ? 'Nada foi gravado ainda. Um cartão com OPÇÕES apareceu para a pessoa (veja o aviso e as escolhas do resumo). Diga em uma frase o que o aviso diz e peça para ela escolher no cartão. Não diga que já fez.'
+          : 'Nada foi gravado ainda. Um cartão com Confirmar/Cancelar apareceu para a pessoa. Diga em uma frase o que vai ser feito e peça para ela confirmar no cartão. Não diga que já fez.',
       },
       cartao: { tipo: 'acao', acaoId: acao.id, resumo: preparo.resumo, status: 'pendente' },
     }
@@ -138,6 +140,8 @@ export async function decidirAcao(
   c: Omit<ContextoDaFerramenta, 'ctx'> & { ctx: TenantContext },
   acaoId: string,
   decisao: 'confirmar' | 'cancelar',
+  /** A opção escolhida no cartão com escolhas (`ResumoDaAcao.escolhas`). */
+  escolha?: string | null,
 ): Promise<{ status: StatusDaAcao; resultado?: ResultadoDaAcao | null; error?: string }> {
   const { admin } = c
   const ctx = contextoDoCopilot(c.ctx)
@@ -146,6 +150,11 @@ export async function decidirAcao(
     .eq('id', acaoId).eq('tenant_id', ctx.tenantId!).eq('user_id', ctx.internalUserId!)
     .maybeSingle(), 'ler a ação do Copilot') as LinhaDaAcao | null
   if (!atual) return { status: 'falhou', error: 'Ação não encontrada.' }
+
+  // O cartão com escolhas só se confirma com UMA delas (r2-cli-01).
+  if (decisao === 'confirmar' && atual.resumo.escolhas?.length && !atual.resumo.escolhas.some(e => e.chave === escolha)) {
+    return { status: atual.status, error: 'Escolha uma das opções do cartão.' }
+  }
 
   if (decisao === 'cancelar') {
     const cancelada = await ler(admin.from('copilot_acoes')
@@ -186,7 +195,7 @@ export async function decidirAcao(
 
   // O RESULTADO se calcula no try; o registro dele, fora: uma falha ao anotar
   // não pode virar "falhou" de algo que foi gravado.
-  const resultado = await efetivarAcao(c, ctx, atual)
+  const resultado = await efetivarAcao(c, ctx, atual, escolha ?? undefined)
 
   // Registrar o resultado NÃO pode lançar: a gravação já aconteceu (ou não), e
   // a pessoa precisa saber. Uma nova tentativa; falhando as duas, fica no log e
@@ -219,6 +228,7 @@ async function efetivarAcao(
   c: Omit<ContextoDaFerramenta, 'ctx'>,
   ctx: TenantContext,
   atual: LinhaDaAcao,
+  escolha?: string,
 ): Promise<{ status: 'feita' | 'falhou'; resultado: ResultadoDaAcao }> {
   const falhou = (mensagem: string) => ({ status: 'falhou' as const, resultado: { mensagem } })
   const ferramenta = ferramentasDoCargo(ctx).find(f => f.nome === atual.ferramenta)
@@ -238,7 +248,7 @@ async function efetivarAcao(
       || (atual.payload?.preparado !== undefined && canonico(preparo.payload) !== canonico(atual.payload.preparado))) {
       return falhou('A situação mudou desde o cartão. Peça de novo ao Copilot para conferir.')
     }
-    const r = await ferramenta.efetivar(cf, preparo.payload)
+    const r = await ferramenta.efetivar(cf, preparo.payload, escolha)
     if ('erro' in r) return falhou(r.erro)
     return { status: 'feita', resultado: r }
   } catch (e) {

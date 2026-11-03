@@ -8,6 +8,7 @@ import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro } from 
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
@@ -55,6 +56,16 @@ export function AppointmentModal({
   unidades, defaultDate, clienteInicialId = null, onClose, onSuccess,
 }: AppointmentModalProps) {
   const [state, formAction, pending] = useActionState(addAppointment, undefined)
+  // A resposta a "Já existe a ficha de X" do agendar com nome e telefone
+  // (r2-cli-01): vai em todo envio seguinte, como no cadastro de cliente.
+  const formRef = useRef<HTMLFormElement>(null)
+  const [respostaJaExiste, setRespostaJaExiste] = useState('')
+  function reenviar(resposta: string) {
+    if (!formRef.current) return
+    const dados = new FormData(formRef.current)
+    dados.set('_jaExiste', resposta)
+    startTransition(() => formAction(dados))
+  }
   const [clientSearch, setClientSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const pathname = usePathname()
@@ -324,9 +335,11 @@ export function AppointmentModal({
             erro ou não — a recusa por conflito apagava a observação digitada.
             Como o cadastro de cliente (client-form). */}
         <form
+          ref={formRef}
           onSubmit={e => {
             e.preventDefault()
             const dados = new FormData(e.currentTarget)
+            if (respostaJaExiste) dados.set('_jaExiste', respostaJaExiste)
             startTransition(() => formAction(dados))
           }}
           style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
@@ -584,6 +597,18 @@ export function AppointmentModal({
           <Field label="Observações internas" htmlFor="ag-notas">
             <textarea id="ag-notas" name="notes" rows={2} className="field" placeholder="Preferências, contraindicações…" style={{ resize: 'vertical' }} />
           </Field>
+
+          {state?.jaExiste && novoContato && !selectedClient && (
+            <PerguntaJaExiste
+              ficha={state.jaExiste} pending={pending}
+              aoCadastrarMesmoAssim={id => {
+                const resposta = [...respostaJaExiste.split(' ').filter(Boolean), `cadastrar:${id}`].join(' ')
+                setRespostaJaExiste(resposta)
+                reenviar(resposta)
+              }}
+              aoAtualizar={id => reenviar(`atualizar:${id}`)}
+            />
+          )}
 
           {state?.error && (
             <p role="alert" style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>

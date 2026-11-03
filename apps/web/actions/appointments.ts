@@ -27,6 +27,7 @@ import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/at
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -55,9 +56,9 @@ import {
 
 // --- Criar agendamento --------------------------------------------
 export async function addAppointment(
-  _prev: { error?: string; success?: boolean; id?: string } | undefined,
+  _prev: { error?: string; success?: boolean; id?: string; jaExiste?: FichaQueJaExiste } | undefined,
   formData: FormData,
-) {
+): Promise<{ error?: string; success?: boolean; id?: string; jaExiste?: FichaQueJaExiste }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'MANAGE')
@@ -91,7 +92,11 @@ export async function addAppointment(
         nome:     (formData.get('client_name')  as string) ?? '',
         telefone: (formData.get('client_phone') as string) ?? '',
         branchId,
+        // A resposta a "Já existe a ficha de X" (r2-cli-01).
+        jaExiste: (formData.get('_jaExiste') as string | null) ?? null,
       })
+      // A ficha que já existe: nada se grava — a janela pergunta (r2-cli-01).
+      if (novo.jaExiste) return { jaExiste: novo.jaExiste }
       if (novo.error || !novo.clientId) return { error: novo.error ?? 'Não foi possível registrar o cliente.' }
       clientId = novo.clientId
       revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })

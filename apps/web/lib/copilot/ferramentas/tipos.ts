@@ -67,7 +67,7 @@ export interface FerramentaDeEscrita<A = unknown, P = unknown> extends Base<A> {
   /** Resolve nomes em ids, confere alcance e conflito, e monta o resumo. Não grava nada. */
   preparar(c: ContextoDaFerramenta, args: A): Promise<Preparo<P>>
   /** Grava — só depois do "Confirmar". Confere tudo DE NOVO (o mundo mudou desde o preparo). */
-  efetivar(c: ContextoDaFerramenta, payload: P): Promise<Efetivado>
+  efetivar(c: ContextoDaFerramenta, payload: P, escolha?: string): Promise<Efetivado>
 }
 
 export type Ferramenta = FerramentaDeLeitura<any> | FerramentaDeEscrita<any, any> // eslint-disable-line @typescript-eslint/no-explicit-any

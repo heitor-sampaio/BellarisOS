@@ -7,6 +7,8 @@ import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } fro
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
+import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-escrita'
 import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
@@ -38,7 +40,7 @@ interface ArgsAgendar {
 }
 interface PayloadAgendar {
   branchId: string; procedureId: string; professionalId: string; scheduledAt: string
-  clientId: string | null; clienteNovo: { nome: string; telefone: string } | null; notes: string | null
+  clientId: string | null; clienteNovo: { nome: string; telefone: string; jaExisteId?: string } | null; notes: string | null
 }
 
 export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
@@ -71,6 +73,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     let clientId: string | null = null
     let nomeDoCliente: string
     let clienteNovo: PayloadAgendar['clienteNovo'] = null
+    let jaExiste: FichaQueJaExiste | undefined
     if (a.cliente) {
       const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
       if ('erro' in cl) return { erro: cl.erro }
@@ -80,18 +83,13 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       const fone = telefoneDoCopilot(a.clienteNovo!.telefone)
       if ('erro' in fone) return { erro: fone.erro }
       const telefone = fone.gravar
-      // Telefone que já é de alguém: é esse cliente (o cadastro rápido faria o mesmo).
-      const { data: existente, error: erroTel } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: fone.digitos })
-      if (erroTel) return { erro: 'Não consegui conferir o telefone agora.' }
-      if (existente) {
-        const nomes = await nomesPorId(c, 'clients', [existente as string])
-        clientId = existente as string
-        // Diz que achou pelo telefone: pode ser a mãe de quem vai ser atendida.
-        nomeDoCliente = `${nomes.get(clientId) ?? a.clienteNovo!.nome} (já cadastrada com este telefone)`
-      } else {
-        clienteNovo = { nome: a.clienteNovo!.nome.trim(), telefone }
-        nomeDoCliente = `${clienteNovo.nome} (cliente novo)`
-      }
+      clienteNovo = { nome: a.clienteNovo!.nome.trim(), telefone }
+      nomeDoCliente = `${clienteNovo.nome} (cliente novo)`
+      // A ficha que JÁ EXISTE com este telefone (r2-cli-01): não é mais usada
+      // calada — o cartão pergunta, como o "+ Agendar" da tela: cadastrar
+      // mesmo assim (pode ser a filha de quem tem o número) ou usar a ficha.
+      ;[jaExiste] = await fichasQueJaExistem(c.admin, c.ctx.tenantId!, { digitos: fone.digitos, nome: clienteNovo.nome }, { comArquivadas: true })
+      if (jaExiste) clienteNovo = { ...clienteNovo, jaExisteId: jaExiste.id }
     }
 
     const inicio = instanteDe(a.data, a.hora)
@@ -114,7 +112,10 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
           { rotulo: 'Valor', valor: dinheiro(proc.price) },
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
         ],
-        aviso: 'O cliente recebe a confirmação do agendamento.',
+        aviso: jaExiste
+          ? `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: agende numa ficha nova mesmo assim, ou na ficha que existe. O cliente recebe a confirmação do agendamento.`
+          : 'O cliente recebe a confirmação do agendamento.',
+        ...(jaExiste ? { escolhas: escolhasDaFichaQueJaExiste(jaExiste) } : {}),
       },
       payload: {
         branchId: unidade.id, procedureId: proc.id, professionalId: prof.id, scheduledAt: inicio.toISOString(),
@@ -122,10 +123,16 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       },
     }
   },
-  async efetivar(c, p) {
+  async efetivar(c, p, escolha) {
     let clientId = p.clientId
     if (!clientId && p.clienteNovo) {
-      const novo = await garantirClienteRapido(c.admin, c.ctx, { nome: p.clienteNovo.nome, telefone: p.clienteNovo.telefone, branchId: p.branchId })
+      // A ficha que já existia: a escolha do cartão decide (r2-cli-01).
+      if (p.clienteNovo.jaExisteId && escolha !== 'cadastrar' && escolha !== 'atualizar') return { erro: 'Escolha no cartão: ficha nova mesmo assim, ou a ficha que existe.' }
+      const novo = await garantirClienteRapido(c.admin, c.ctx, {
+        nome: p.clienteNovo.nome, telefone: p.clienteNovo.telefone, branchId: p.branchId,
+        jaExiste: p.clienteNovo.jaExisteId ? `${escolha}:${p.clienteNovo.jaExisteId}` : null,
+      })
+      if (novo.jaExiste) return { erro: `${textoDaFichaQueJaExiste(novo.jaExiste)} Nada foi gravado: peça de novo ao Copilot para escolher.` }
       if (novo.error || !novo.clientId) return { erro: novo.error ?? 'Não foi possível registrar o cliente.' }
       clientId = novo.clientId
       revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })

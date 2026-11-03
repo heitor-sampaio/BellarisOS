@@ -93,7 +93,7 @@ test('D13: o telefone incompleto é recusado', async ({ browser }) => {
   expect(await fichasDe(nome('fone curto'))).toEqual([])
 })
 
-test('D13: o telefone de outra cliente AVISA, e a recepção confirma (mãe e filha)', async ({ browser }) => {
+test('D13 (r2-cli-01): o telefone de outra cliente pergunta "Já existe a ficha de X", e a recepção cadastra mesmo assim (mãe e filha)', async ({ browser }) => {
   const fone = telefone('0002')
   const { data: mae, error } = await db().from('clients').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('mãe'), phone: fone, document: '52998224725', is_active: true,
@@ -103,7 +103,7 @@ test('D13: o telefone de outra cliente AVISA, e a recepção confirma (mãe e fi
   await como(browser, async p => {
     await preencher(p, { nome: nome('filha'), telefone: fone })
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
-    const aviso = p.getByRole('alert').filter({ hasText: 'já é de' })
+    const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toContainText(nome('mãe'))
     expect(await fichasDe(nome('filha')), 'o aviso não cadastra').toEqual([])
     // O nome digitado continua no campo: confirmar não pede para digitar de novo.
@@ -145,7 +145,7 @@ test('o telefone de outro país (com +) passa no cadastro e na aba Dados, como f
   expect(depois?.phone).toBe('+1 415 555 0100')
 })
 
-test('o telefone de outro país de outra cliente também AVISA', async ({ browser }) => {
+test('o telefone de outro país de outra cliente também pergunta', async ({ browser }) => {
   const fone = foneDeFora('602')
   const { error } = await db().from('clients').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('tia de fora'), phone: fone, document: '11144477735', is_active: true,
@@ -155,9 +155,9 @@ test('o telefone de outro país de outra cliente também AVISA', async ({ browse
   await como(browser, async p => {
     await preencher(p, { nome: nome('sobrinha de fora'), telefone: fone })
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
-    const aviso = p.getByRole('alert').filter({ hasText: 'já é de' })
+    const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toContainText(nome('tia de fora'))
-    await expect(aviso).toContainText(fone)
+    await expect(aviso).toContainText('com este telefone')
     await aviso.getByRole('button', { name: 'Cadastrar mesmo assim' }).click()
     await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
   })
@@ -166,9 +166,10 @@ test('o telefone de outro país de outra cliente também AVISA', async ({ browse
 
 // Decisão do Heitor (frente de cadastro, 2026-10-29): o cadastro completo que
 // acha uma ficha RÁPIDA (sem CPF, a do "agendar com nome e telefone") do mesmo
-// telefone a completava calado. Agora pergunta: Sim completa aquela ficha; Não
-// cria outra.
-test('a ficha rápida do mesmo telefone: "É a mesma pessoa?" — Sim completa a ficha dela', async ({ browser }) => {
+// telefone a completava calado. Pergunta — desde o r2-cli-01 (03/11) com a
+// pergunta de toda ficha que já existe: "Atualizar a ficha de X" completa
+// aquela ficha; "Cadastrar mesmo assim" cria outra.
+test('a ficha rápida do mesmo telefone: "Atualizar a ficha de X" completa a ficha dela', async ({ browser }) => {
   const fone = telefone('0003')
   const { data: rapida, error } = await db().from('clients').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('rápida sim'), phone: fone, is_active: true,
@@ -178,13 +179,13 @@ test('a ficha rápida do mesmo telefone: "É a mesma pessoa?" — Sim completa a
   await como(browser, async p => {
     await preencher(p, { nome: nome('completa sim'), telefone: fone })
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
-    const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa?' })
+    const pergunta = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(pergunta).toContainText(`Já existe a ficha de ${nome('rápida sim')} com este telefone`)
     const [antes] = await fichasDe(nome('rápida sim'))
     expect(antes?.id, 'perguntar não completa nada').toBe(rapida!.id)
     expect(await fichasDe(nome('completa sim'))).toEqual([])
 
-    await pergunta.getByRole('button', { name: 'Sim, é a mesma pessoa' }).click()
+    await pergunta.getByRole('button', { name: `Atualizar a ficha de ${nome('rápida sim')}` }).click()
     await expect(p).toHaveURL(new RegExp(`/admin/clients/${rapida!.id}`))
   })
   const [completa] = await fichasDe(nome('completa sim'))
@@ -192,7 +193,7 @@ test('a ficha rápida do mesmo telefone: "É a mesma pessoa?" — Sim completa a
   expect(await fichasDe(nome('rápida sim'))).toEqual([])
 })
 
-test('a ficha rápida do mesmo telefone: "Não, é outra pessoa" cria uma ficha nova e deixa a rápida como está', async ({ browser }) => {
+test('a ficha rápida do mesmo telefone: "Cadastrar mesmo assim" cria uma ficha nova e deixa a rápida como está', async ({ browser }) => {
   const fone = telefone('0004')
   const { data: rapida, error } = await db().from('clients').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('rápida não'), phone: fone, is_active: true,
@@ -202,8 +203,8 @@ test('a ficha rápida do mesmo telefone: "Não, é outra pessoa" cria uma ficha 
   await como(browser, async p => {
     await preencher(p, { nome: nome('outra pessoa'), telefone: fone })
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
-    const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa?' })
-    await pergunta.getByRole('button', { name: 'Não, é outra pessoa' }).click()
+    const pergunta = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
+    await pergunta.getByRole('button', { name: 'Cadastrar mesmo assim' }).click()
     await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
     expect(p.url()).not.toContain(rapida!.id)
   })

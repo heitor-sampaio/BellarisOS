@@ -12,6 +12,12 @@ export interface ResumoDaAcao {
   linhas: LinhaDoResumo[]
   /** Aviso a mais ("o cliente recebe a confirmação pelo WhatsApp"). */
   aviso?: string
+  /**
+   * Em vez do "Confirmar", uma ESCOLHA entre opções (r2-cli-01: "Já existe a
+   * ficha de X" — "Cadastrar mesmo assim" ou "Atualizar a ficha de X"). A
+   * escolhida vai ao `efetivar` da ferramenta; o "Cancelar" continua.
+   */
+  escolhas?: { chave: string; rotulo: string }[]
 }
 
 export type StatusDaAcao = 'pendente' | 'executando' | 'feita' | 'cancelada' | 'falhou' | 'vencida'

@@ -151,8 +151,11 @@ edições do sistema". O mecanismo é UM:
   sem gravar (erro, aviso, pergunta) solta a chave, e a resposta da pessoa
   grava. Sem chave, só faz — o caminho antigo continua valendo.
 - Sem a chave da tela (outra aba, o Copilot), a action pode travar pelo
-  CONTEÚDO: `chaveDoConteudo(...)` + `validade` (o cadastro da cliente: o
-  mesmo nome com o mesmo telefone em 60 s é o mesmo cadastro).
+  CONTEÚDO: `chaveDoConteudo(...)` + `validade`, ou só ENFILEIRAR as chegadas
+  (`soEnfileirar`: a segunda espera a primeira e faz de novo). O cadastro da
+  cliente enfileira: a segunda chegada acha a ficha que a primeira gravou e
+  pergunta "Já existe a ficha de X" (r2-cli-01, 2026-11-03; até ali o mesmo
+  nome com o mesmo telefone em 60 s era o mesmo cadastro, calado).
 - Edição que regrava os mesmos valores já é idempotente; o que precisa disto é
   o que ACUMULA (criar, lançar, vender, mover estoque, dar pontos).
 - Prova: `e2e/ficha-cadastro-uma-vez.spec.ts` (o mesmo envio ao mesmo tempo,
@@ -160,7 +163,7 @@ edições do sistema". O mecanismo é UM:
   `e2e/vendas-envio-unico.spec.ts` (dinheiro, estoque e pontos: o mesmo envio
   duas vezes ao mesmo tempo grava uma; um envio novo grava de novo).
 - **Onde está** (F9, 2026-11-02): o cadastro da cliente (`addClient`, e o
-  conteúdo em 60 s); o DINHEIRO — o lançamento manual
+  conteúdo enfileirado); o DINHEIRO — o lançamento manual
   (`createTransactionAdvanced`), o crédito interno (`grantInternalCredit`, nas
   duas telas), as vendas de pacote, de pré-pago e de produto (`venderPacote`,
   `venderProcedimento`, `venderProduto`: a chave é o último argumento); o

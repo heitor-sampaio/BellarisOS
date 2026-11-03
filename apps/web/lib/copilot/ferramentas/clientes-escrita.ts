@@ -6,6 +6,7 @@ import { ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { darAcessoAoCliente } from '@/lib/clients/acesso'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import { fichasQueJaExistem, textoDaFichaQueJaExiste, rotuloDoAtualizar, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { isUnitTag } from '@estetica-os/utils'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
@@ -72,7 +73,20 @@ export function telefoneDoCopilot(texto: string): { digitos: string; gravar: str
 }
 
 interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; nascimento?: string; unidade?: string; criar_acesso?: boolean }
-interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean }
+interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean; jaExisteId?: string }
+
+/**
+ * As escolhas do cartão quando a ficha JÁ EXISTE (r2-cli-01, o Heitor em
+ * 2026-11-03: "no Copilot, o cartão de confirmação mostra a mesma pergunta"):
+ * "Cadastrar mesmo assim" (não no CPF: é único) e "Atualizar a ficha de X"
+ * (ou "Reativar", na arquivada).
+ */
+export function escolhasDaFichaQueJaExiste(f: FichaQueJaExiste) {
+  return [
+    ...(f.podeCadastrarMesmoAssim ? [{ chave: 'cadastrar', rotulo: 'Cadastrar mesmo assim' }] : []),
+    { chave: 'atualizar', rotulo: rotuloDoAtualizar(f) },
+  ]
+}
 
 // Quem já usa o app em outra clínica (mesmo e-mail e CPF) entra na conta que tem (lib/clients/acesso.ts).
 const linhaDoAcesso = (email: string) => ({ rotulo: 'Acesso ao app', valor: `login ${email}, senha inicial = o CPF (se ela já usa o app em outra clínica, a senha continua a dela)` })
@@ -81,7 +95,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
   nome: 'cadastrar_cliente',
   tipo: 'escrita',
   modulo: 'clients', nivel: 'MANAGE',
-  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e CPF; a senha inicial é o CPF). Se o telefone já for de um cliente, diz quem é em vez de duplicar.',
+  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e CPF; a senha inicial é o CPF). Se já existir a ficha (mesmo CPF, mesmo telefone, ou mesmo nome e nascimento), o cartão pergunta à pessoa: cadastrar mesmo assim ou atualizar a ficha que existe.',
   parametros: z.object({
     nome: z.string().min(2).max(120),
     telefone: z.string().min(8).max(24),
@@ -98,17 +112,20 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     const telefone = fone.gravar
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
     if ('erro' in u) return { erro: u.erro }
-    const { data: existente, error } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: fone.digitos })
-    if (error) return { erro: 'Não consegui conferir o telefone agora.' }
-    if (existente) {
-      const ja = await ler(c.admin.from('clients').select('id, name').eq('id', existente as string).single(), 'ler o cliente') as { id: string; name: string }
-      return { erro: `Esse telefone já é de ${ja.name} (id ${ja.id}, ${rota(c, `/clients/${ja.id}`)}). Não cadastrei de novo.` }
-    }
-    const recusa = await conferirComplemento(c, a)
+    // A ficha que JÁ EXISTE (r2-cli-01): o cartão pergunta, como a tela.
+    const cpf = a.cpf?.replace(/\D/g, '') || null
+    const [jaExiste] = await fichasQueJaExistem(c.admin, c.ctx.tenantId!, {
+      cpf: cpf && cpfValido(cpf) ? cpf : null, digitos: fone.digitos, nome: a.nome, nascimento: a.nascimento ?? null,
+    }, { comArquivadas: true })
+    const recusa = await conferirComplemento(c, a, jaExiste?.id)
     if (recusa) return { erro: recusa }
     return {
       resumo: {
         titulo: 'Cadastrar cliente',
+        ...(jaExiste ? {
+          aviso: `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: cadastre mesmo assim ou atualize a ficha que existe (só o que foi informado agora muda; nada dela se apaga).`,
+          escolhas: escolhasDaFichaQueJaExiste(jaExiste),
+        } : {}),
         linhas: [
           { rotulo: 'Nome', valor: a.nome.trim() },
           { rotulo: 'Telefone', valor: telefone },
@@ -121,17 +138,25 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
         nome: a.nome.trim(), telefone, branchId: u.unidade!.id,
         email: emailNormalizado(a.email), cpf: a.cpf?.replace(/\D/g, '') || null, nascimento: a.nascimento ?? null,
         ...(a.criar_acesso ? { criarAcesso: true } : {}),
+        ...(jaExiste ? { jaExisteId: jaExiste.id } : {}),
       },
     }
   },
-  async efetivar(c, p) {
+  async efetivar(c, p, escolha) {
+    // A ficha que já existia: a escolha do cartão decide (r2-cli-01).
+    if (p.jaExisteId && escolha !== 'cadastrar' && escolha !== 'atualizar') return { erro: 'Escolha no cartão: cadastrar mesmo assim ou atualizar a ficha.' }
     // Num insert só: e-mail, CPF e nascimento entram junto (sem update depois).
     const r = await garantirClienteRapido(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, branchId: p.branchId,
       complemento: { email: p.email, document: p.cpf, birthDate: p.nascimento },
+      jaExiste: p.jaExisteId ? `${escolha}:${p.jaExisteId}` : null,
     })
+    if (r.jaExiste) return { erro: `${textoDaFichaQueJaExiste(r.jaExiste)} Nada foi gravado: peça de novo ao Copilot para escolher.` }
     if (r.error || !r.clientId) return { erro: r.error ?? 'Não foi possível cadastrar.' }
-    if (!r.criado) return { erro: 'Esse telefone acabou de ser cadastrado para outro cliente.' }
+    if (!r.criado) revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
+    if (!r.criado && !p.criarAcesso) {
+      return { mensagem: `A ficha de ${p.nome} foi atualizada (nada dela se apagou).`, href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+    }
     revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     const ficha = { href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
     // O acesso ao app, depois da ficha: falhar aqui não desfaz o cadastro (o

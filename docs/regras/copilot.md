@@ -132,6 +132,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   Financeiro, lê o dinheiro dela, como a tela. Os `lancamentos` seguem o
   módulo Financeiro (a tela do Financeiro). Prova:
   `tests/copilot-dinheiro-pelas-abas.test.ts`.
+- **O cartão pode trazer ESCOLHAS no lugar do "Confirmar"** (r2-cli-01, o
+  Heitor em 2026-11-03: "no Copilot, o cartão de confirmação mostra a mesma
+  pergunta"): `ResumoDaAcao.escolhas` (`{ chave, rotulo }[]`) vira um botão por
+  opção (o "Cancelar" fica), e a escolhida vai ao `efetivar(c, payload,
+  escolha)` — o executor recusa confirmar sem uma das opções do cartão. É o
+  "Já existe a ficha de X" de `cadastrar_cliente` e do `agendar` com cliente
+  novo: "Cadastrar mesmo assim" e "Atualizar a ficha de X" (o mesmo
+  `garantirClienteRapido` com `jaExiste`, `crm-inbox.md`). Prova: o caso
+  r2-cli-01 de `e2e/copilot-gravacoes.spec.ts` (contra o build).
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,

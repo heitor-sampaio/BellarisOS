@@ -54,6 +54,8 @@ export async function decidirAcaoDoCopilot(
   acaoId: string,
   decisao: 'confirmar' | 'cancelar',
   pagina: string,
+  /** A opção escolhida, no cartão com escolhas (r2-cli-01). */
+  escolha?: string | null,
 ): Promise<{ status: StatusDaAcao; resultado?: ResultadoDaAcao | null; error?: string }> {
   const ctx = await contextoDoPainel()
   if (typeof acaoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(acaoId)) return { status: 'falhou', error: 'Ação inválida.' }
@@ -62,7 +64,7 @@ export async function decidirAcaoDoCopilot(
   const primeiro = caminho.split('?')[0]!.split('/').filter(Boolean)[0] ?? 'admin'
   const r = await decidirAcao({
     ctx, admin: createAdminClient(), pagina: caminho, slugDoPortal: primeiro === 'admin' ? null : primeiro,
-  }, acaoId, decisao)
+  }, acaoId, decisao, typeof escolha === 'string' ? escolha.slice(0, 40) : null)
   // A tela por trás do painel mostra o que mudou (a agenda com o agendamento novo).
   if (r.status === 'feita') revalidatePath(caminho.split('?')[0]!)
   return r

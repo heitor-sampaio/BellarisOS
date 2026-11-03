@@ -54,6 +54,15 @@ export interface OpcoesDoEnvio<R> {
   validade?: string
   /** Quanto esperar a outra chegada terminar (ms). */
   esperaMs?: number
+  /**
+   * Só ENFILEIRAR: a segunda chegada espera a primeira terminar e então faz de
+   * novo (o "feito" nunca é devolvido). É o cadastro da cliente sem a chave da
+   * tela (r2-cli-01): a segunda chegada acha a ficha que a primeira gravou e
+   * pergunta "Já existe a ficha de X". Uma validade negativa, e não zero: o
+   * `atualizado_em` é gravado com o relógio do servidor do app, que pode estar
+   * adiante do relógio do banco.
+   */
+  soEnfileirar?: boolean
 }
 
 type Reivindicacao = { situacao: 'sua' | 'feito' | 'ocupada'; resultado?: unknown }
@@ -75,7 +84,7 @@ export async function umaVez<R>(
 
   for (;;) {
     const r = await ler(admin.rpc('envio_reivindicar', {
-      p_tenant: tenantId, p_acao: acao, p_chave: chave, p_validade: opcoes.validade ?? null,
+      p_tenant: tenantId, p_acao: acao, p_chave: chave, p_validade: opcoes.soEnfileirar ? '-1 day' : opcoes.validade ?? null,
     }), 'conferir se este envio já foi gravado') as Reivindicacao
     if (r.situacao === 'feito') return r.resultado as R
     if (r.situacao === 'sua') break

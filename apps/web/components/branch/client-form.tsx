@@ -114,19 +114,20 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
     if (!digitos) return
     let vivo = true
     const t = setTimeout(() => {
-      conferirTelefoneDoCadastro({ phone, respostas, leadId: leadId ?? null, conversationId: conversationId ?? null })
+      conferirTelefoneDoCadastro({ phone, respostas, leadId: leadId ?? null, conversationId: conversationId ?? null, cpf: tipoDoc === 'CPF' ? document : null })
         .then(r => { if (vivo) setPrevia(r) })
         .catch(() => { /* sem a conferência, o envio pergunta */ })
     }, 350)
     return () => { vivo = false; clearTimeout(t) }
-  }, [digitos, phone, respostas, leadId, conversationId])
+  }, [digitos, phone, respostas, leadId, conversationId, tipoDoc, document])
 
   /** A pergunta do telefone ainda sem resposta, para ESTE número. */
   function perguntaDe(r: ResultadoDoCadastro | null | undefined): Pergunta | null {
     if (!r || !digitos) return null
     if (r.arquivada?.telefone === digitos && respostas._arquivada !== `nova:${digitos}`) return { tipo: 'arquivada', ...r.arquivada }
-    if (r.mesmaPessoa?.telefone === digitos && !(respostas._fichaRapida ?? '').endsWith(`:${r.mesmaPessoa.id}`)) return { tipo: 'rapida', ...r.mesmaPessoa }
-    if (r.avisoTelefone?.telefone === digitos && respostas._telefoneConfirmado !== digitos) return { tipo: 'outra', ...r.avisoTelefone }
+    // A ficha que JÁ EXISTE (r2-cli-01): o CPF e o nome com o nascimento não dependem do telefone.
+    if (r.jaExiste && (r.jaExiste.motivo !== 'TELEFONE' || r.jaExiste.telefone === digitos)
+      && !(r.jaExiste.podeCadastrarMesmoAssim && (respostas._jaExiste ?? '').split(' ').includes(`cadastrar:${r.jaExiste.id}`))) return { tipo: 'jaExiste', ...r.jaExiste }
     if (r.mesmaPessoaDoLead?.telefone === digitos && !(respostas._pessoaDoCrm ?? '').endsWith(`:${r.mesmaPessoaDoLead.contatoId}`)) return { tipo: 'lead', ...r.mesmaPessoaDoLead }
     return null
   }
@@ -158,6 +159,14 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   /** "Reativar a ficha de X" (A20): envia já, e a resposta não fica para os próximos envios. */
   function reativar(id: string) {
     if (formRef.current) mandar(new FormData(formRef.current), { _arquivada: `reativar:${id}` }, false)
+  }
+  /** "Atualizar a ficha de X" (r2-cli-01): envia já, com o que está no formulário, e abre a ficha. */
+  function atualizar(id: string) {
+    if (formRef.current) mandar(new FormData(formRef.current), { _jaExiste: `atualizar:${id}` }, false)
+  }
+  /** "Cadastrar mesmo assim": vale para AQUELA ficha, e se junta às outras respostas. */
+  function cadastrarMesmoAssim(id: string) {
+    responder('_jaExiste', [...(respostas._jaExiste ?? '').split(' ').filter(Boolean), `cadastrar:${id}`].join(' '))
   }
 
   // Sem o reset automático do formulário: com ele, o aviso do telefone (e todo
@@ -260,7 +269,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         {/* A pergunta do telefone, logo abaixo dele (A18). */}
         {pergunta && (
           <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
-            <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar} />
+            <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
+              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} />
           </div>
         )}
 
@@ -412,8 +422,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
 
 type Pergunta =
   | ({ tipo: 'arquivada' } & NonNullable<ResultadoDoCadastro['arquivada']>)
-  | ({ tipo: 'rapida' } & NonNullable<ResultadoDoCadastro['mesmaPessoa']>)
-  | ({ tipo: 'outra' } & NonNullable<ResultadoDoCadastro['avisoTelefone']>)
+  | ({ tipo: 'jaExiste' } & NonNullable<ResultadoDoCadastro['jaExiste']>)
   | ({ tipo: 'lead' } & NonNullable<ResultadoDoCadastro['mesmaPessoaDoLead']>)
 
 const caixaDaPergunta: React.CSSProperties = {
@@ -424,15 +433,18 @@ const caixaDaPergunta: React.CSSProperties = {
 }
 const explicacao: React.CSSProperties = { fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }
 const destaque: React.CSSProperties = { color: 'var(--text)' }
+const POR_QUE = { CPF: 'com este CPF', TELEFONE: 'com este telefone', NOME_E_NASCIMENTO: 'com este nome e esta data de nascimento' } as const
 
 /**
  * A pergunta do telefone que já é de alguém (D13, D-9, a ficha rápida e,
  * desde a 5ª simulação, a ficha ARQUIVADA — A20), junto ao campo (A18).
  */
-function PerguntaDoTelefone({ pergunta, pending, responder, reativar }: {
+function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar, cadastrarMesmoAssim }: {
   pergunta: Pergunta; pending: boolean
   responder: (campo: string, valor: string) => void
   reativar: (id: string) => void
+  atualizar: (id: string) => void
+  cadastrarMesmoAssim: (id: string) => void
 }) {
   if (pergunta.tipo === 'arquivada') {
     return (
@@ -455,36 +467,27 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar }: {
       </div>
     )
   }
-  if (pergunta.tipo === 'outra') {
+  if (pergunta.tipo === 'jaExiste') {
+    // r2-cli-01 (o Heitor, 2026-11-03): já existe — cadastrar mesmo assim, ou
+    // atualizar a ficha que existe. Pelo CPF, só atualizar: o CPF é único.
     return (
-      <div role="alert" style={caixaDaPergunta}>
+      <div role="alert" data-ja-existe style={caixaDaPergunta}>
         <span>
-          O telefone {pergunta.exibir} já é de <b style={destaque}>{pergunta.nome}</b> nesta
-          clínica. Se é o mesmo número mesmo (mãe e filha, por exemplo), confirme.
-        </span>
-        <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_telefoneConfirmado', pergunta.telefone)}>
-          Cadastrar mesmo assim
-        </button>
-      </div>
-    )
-  }
-  if (pergunta.tipo === 'rapida') {
-    return (
-      <div role="alert" style={caixaDaPergunta}>
-        <span>
-          Já existe a ficha de <b style={destaque}>{pergunta.nome}</b> com este telefone, sem CPF
-          (cadastrada às pressas, ao agendar). É a mesma pessoa?
+          Já existe a ficha de <b style={destaque}>{pergunta.nome}</b> {POR_QUE[pergunta.motivo]}.
+          {pergunta.podeCadastrarMesmoAssim ? ' Se é outra pessoa (mãe e filha dividem o telefone), cadastre mesmo assim.' : ' O CPF é único na clínica.'}
         </span>
         <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `mesma:${pergunta.id}`)}>
-            Sim, é a mesma pessoa
-          </button>
-          <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `outra:${pergunta.id}`)}>
-            Não, é outra pessoa
+          {pergunta.podeCadastrarMesmoAssim && (
+            <button type="button" className="btn-secondary" disabled={pending} onClick={() => cadastrarMesmoAssim(pergunta.id)}>
+              Cadastrar mesmo assim
+            </button>
+          )}
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => atualizar(pergunta.id)}>
+            Atualizar a ficha de {pergunta.nome}
           </button>
         </span>
         <span style={explicacao}>
-          Sim completa a ficha dela com estes dados (o histórico fica junto). Não cadastra uma ficha nova.
+          Atualizar grava na ficha dela só o que foi preenchido aqui, sem apagar o que ela já tem (as observações se somam), e abre a ficha.
         </span>
       </div>
     )

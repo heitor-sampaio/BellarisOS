@@ -8,6 +8,7 @@
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import type { FichaQueJaExiste } from '@/lib/clients/ja-existe-texto'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
 import {
@@ -157,12 +158,14 @@ export interface CreateCrmAppointmentInput {
   contato?:       { nome: string; telefone: string } | null
   /** Usar o que o cliente já pagou: { tipo: 'PRE_PAGO' | 'PACOTE', id }. */
   credito?:       unknown
+  /** A resposta a "Já existe a ficha de X" (r2-cli-01): "cadastrar:<id>" ou "atualizar:<id>". */
+  jaExiste?:      string | null
 }
 
 /** Agenda a partir do CRM: garante o cliente e cria o agendamento. */
 export async function createCrmAppointment(
   input: CreateCrmAppointmentInput,
-): Promise<{ id?: string; error?: string }> {
+): Promise<{ id?: string; error?: string; jaExiste?: FichaQueJaExiste }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   // Agendar pela conversa é agenda: fora do plano da rede, não nasce agendamento.
@@ -220,7 +223,10 @@ export async function createCrmAppointment(
       telefone: dados.telefone,
       branchId: input.branchId,
       conversationId,
+      jaExiste: typeof input.jaExiste === 'string' ? input.jaExiste : null,
     })
+    // A ficha que já existe: nada se grava — a janela pergunta (r2-cli-01).
+    if (novo.jaExiste) return { jaExiste: novo.jaExiste }
     if (novo.error || !novo.clientId) return { error: novo.error ?? 'Não foi possível registrar o cliente.' }
     clientId = novo.clientId
 

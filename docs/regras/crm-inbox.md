@@ -51,18 +51,33 @@
     com 8 a 15 dígitos; a ficha importada guarda o de fora com o "+",
     `telefoneDaFichaImportada`). Prova: `e2e/clientes-telefone-de-outro-pais.spec.ts`,
     `tests/telefone-de-outro-pais.test.ts`;
-  - o telefone que já é de OUTRA cliente da rede (`cliente_por_telefone`)
-    AVISA e deixa confirmar ("Cadastrar mesmo assim", que vale para aquele
-    número) — mãe e filha dividem número;
-  - a ficha RÁPIDA (sem CPF, a do "agendar com nome e telefone") do mesmo
-    telefone faz a tela PERGUNTAR "Já existe a ficha de X com este telefone.
-    É a mesma pessoa?" (decisão do Heitor, frente de cadastro de
-    2026-10-29; antes o cadastro a completava calado): "Sim" completa aquela
-    ficha, "Não" cria uma nova (e não avisa de novo do número dela). A
-    resposta (`_fichaRapida`, `mesma:<id>` ou `outra:<id>`) vale para AQUELA
-    ficha, e o formulário a reenvia nos envios seguintes (uma pergunta pode
-    vir depois da outra). Na importação, a prévia mostra "Completar a ficha de
-    X" marcada e deixa desmarcar (cli-07, abaixo);
+  - **a ficha que JÁ EXISTE pergunta, antes de gravar** (r2-cli-01, o Heitor
+    em 2026-11-03: "antes de gravar no banco, confere se já existe; se já
+    existir, retorna avisando que já existe, perguntando se deseja cadastrar
+    mesmo assim ou atualizar a ficha existente"). A ficha ATIVA da rede com o
+    mesmo CPF, o mesmo telefone, ou o mesmo nome (sem caixa) com a mesma data
+    de nascimento (`fichasQueJaExistem`, `lib/clients/ja-existe.ts`; o texto
+    e a leitura da resposta em `ja-existe-texto.ts`): nada se grava, e aparece
+    "Já existe a ficha de Valdir com este telefone." com "Cadastrar mesmo
+    assim" (`_jaExiste=cadastrar:<id>`, vale para AQUELA ficha e se acumula —
+    mãe e filha dividem número) e "Atualizar a ficha de Valdir"
+    (`atualizar:<id>`): grava na ficha existente SÓ o que foi preenchido
+    agora, sem apagar o que está lá (`atualizarFichaComOPreenchido`: o campo
+    vazio não mexe no dela, o preenchido toma o lugar — o nome também —, as
+    observações se SOMAM, as tags se juntam, o CPF diferente do que ela tem é
+    recusado), liga o card ou a conversa e abre a ficha. Pelo CPF, só
+    "Atualizar" (o CPF é único; o de uma ficha ARQUIVADA é recusado com o
+    caminho da busca). Substituiu a pergunta da ficha rápida ("É a mesma
+    pessoa?", de 2026-10-29) e o aviso da outra cliente do telefone (D13).
+    Vale em TODO caminho de cadastro: o formulário (e o do inbox), o "+
+    Agendar" com nome e telefone e o agendar pelo CRM (`garantirClienteRapido`
+    com `jaExiste`, `PerguntaJaExiste` na janela; ali a arquivada do telefone
+    entra na mesma pergunta, com "Reativar a ficha de X") e o Copilot
+    (`cadastrar_cliente` e `agendar` com cliente novo: o cartão troca o
+    "Confirmar" pelas duas escolhas — `ResumoDaAcao.escolhas`, `copilot.md`).
+    Na importação, a prévia mostra "Completar a ficha de X" marcada e deixa
+    desmarcar (cli-07, abaixo). Prova: `e2e/ficha-cadastro-ja-existe.spec.ts`,
+    `tests/ja-existe.test.ts`, o caso r2-cli-01 de `e2e/copilot-gravacoes.spec.ts`;
   - o telefone de uma PESSOA do CRM (`contacts`, pelas formas do WhatsApp,
     `variantesDoTelefone`) que ainda não é cliente — o lead, até o PERDIDO
     que voltou, ou só a conversa — faz a tela perguntar "É a mesma pessoa do
@@ -83,16 +98,19 @@
     número vêm de `fichas_do_telefone` (ativas e arquivadas, da mais antiga);
   - **as perguntas aparecem JUNTO ao telefone, antes do clique** (A18): a
     tela confere assim que o número está completo, e a cada resposta
-    (`conferirTelefoneDoCadastro`, só lê), na ordem arquivada → ficha rápida →
-    outra cliente → pessoa do CRM (`perguntaDoTelefone`, a MESMA conta do
-    `addClient`, que confere de novo). Respondida antes do clique, a resposta
+    (`conferirTelefoneDoCadastro`, só lê, com o CPF já digitado), na ordem
+    arquivada → a ficha que já existe → pessoa do CRM (`perguntaDoTelefone`, a
+    MESMA conta do `addClient`, que confere de novo — e também o nome com o
+    nascimento, que só o envio tem). Respondida antes do clique, a resposta
     só fica guardada; a que veio do clique reenvia. Antes aparecia no pé da
     página só depois do primeiro "Cadastrar", e o clique parecia não fazer
     nada. Prova: `e2e/ficha-cadastro-telefone-ja-cadastrado.spec.ts`;
-  - **o cadastro grava uma vez** (D10): o mesmo envio (a chave da tela) e,
-    sem ela, o mesmo nome com o mesmo telefone em 60 s são um cadastro só —
-    o mecanismo de `convencoes.md` ("O envio que chega duas vezes"). Prova:
-    `e2e/ficha-cadastro-uma-vez.spec.ts`;
+  - **o cadastro grava uma vez** (D10): o mesmo envio (a chave da tela) é um
+    cadastro só — o mecanismo de `convencoes.md` ("O envio que chega duas
+    vezes"). Sem a chave, a trava calada dos 60 s SAIU (r2-cli-01): as
+    chegadas do mesmo nome e telefone se enfileiram (`umaVez` com
+    `soEnfileirar`), a primeira grava e as outras caem na pergunta "Já existe a
+    ficha de X". Prova: `e2e/ficha-cadastro-uma-vez.spec.ts`;
   - o erro do Auth vai à tela em português (`erroDoAuth`,
     `lib/erro-do-auth.ts`; também na Equipe e na troca de senha). A senha
     fraca, na cliente, é o CPF: a tela diz isso. Nunca a mensagem crua do

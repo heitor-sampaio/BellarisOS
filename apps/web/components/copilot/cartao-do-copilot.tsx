@@ -56,12 +56,12 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
     )
   }
 
-  function decidir(decisao: 'confirmar' | 'cancelar') {
+  function decidir(decisao: 'confirmar' | 'cancelar', escolha?: string) {
     if (cartao.tipo !== 'acao') return
     setErro(null)
     startTransition(async () => {
       try {
-        const r = await decidirAcaoDoCopilot(cartao.acaoId, decisao, pagina)
+        const r = await decidirAcaoDoCopilot(cartao.acaoId, decisao, pagina, escolha ?? null)
         if (r.error && r.status === 'falhou' && !r.resultado) { setErro(r.error); return }
         aoMudar?.({ ...cartao, status: r.status, resultado: r.resultado ?? (r.error ? { mensagem: r.error } : null) })
         // A tela por trás mostra o que mudou (o agendamento novo na agenda).
@@ -91,9 +91,18 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
 
       {status === 'pendente' && !pendente && (
         <div className="copilot-cartao-botoes">
-          <button type="button" className="btn-primary" onClick={() => decidir('confirmar')}>
-            <Check size={14} /> Confirmar
-          </button>
+          {/* O cartão com escolhas (r2-cli-01): uma opção por botão, no lugar do "Confirmar". */}
+          {resumo.escolhas?.length
+            ? resumo.escolhas.map((e, i) => (
+                <button key={e.chave} type="button" className={i === 0 ? 'btn-primary' : 'btn-secondary'} onClick={() => decidir('confirmar', e.chave)}>
+                  <Check size={14} /> {e.rotulo}
+                </button>
+              ))
+            : (
+              <button type="button" className="btn-primary" onClick={() => decidir('confirmar')}>
+                <Check size={14} /> Confirmar
+              </button>
+            )}
           <button type="button" className="btn-ghost" onClick={() => decidir('cancelar')}>
             <X size={14} /> Cancelar
           </button>

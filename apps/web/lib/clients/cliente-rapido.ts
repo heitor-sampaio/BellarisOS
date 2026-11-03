@@ -16,6 +16,7 @@ import { EVENTOS } from '@estetica-os/types'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -56,22 +57,34 @@ export interface ClienteRapidoInput {
    * e o evento "cliente criado" saía antes deles existirem. Não cria login.
    */
   complemento?: { email?: string | null; document?: string | null; birthDate?: string | null }
+  /**
+   * A resposta à pergunta "Já existe a ficha de X" (r2-cli-01): "cadastrar:<id>"
+   * (uma por ficha, separadas por espaço) ou "atualizar:<id>"
+   * (`lib/clients/ja-existe.ts`). Sem ela, a ficha que já existe PERGUNTA.
+   */
+  jaExiste?:       string | null
 }
 
 export interface ClienteRapidoResult {
   clientId?: string
-  /** `false` quando o telefone já era de alguém — reaproveitar é o certo. */
+  /** `false` quando a pessoa escolheu a ficha que já existia ("Atualizar a ficha de X"). */
   criado?:   boolean
   error?:    string
+  /** A ficha que JÁ EXISTE, sem resposta ainda: nada foi gravado — a tela pergunta (r2-cli-01). */
+  jaExiste?: FichaQueJaExiste
 }
 
 /**
  * Devolve o cliente para este nome + telefone, criando-o se ainda não existir.
  *
- * O telefone é a identidade aqui: é o único dado que a pessoa sempre dá e o
- * único pelo qual a clínica a reencontra. Dois agendamentos para o mesmo número
- * são a mesma pessoa — criar um cliente novo a cada ligação encheria a base de
- * duplicatas que ninguém junta depois.
+ * A ficha que JÁ EXISTE — o mesmo telefone (até a arquivada), o mesmo CPF, ou o
+ * mesmo nome com a mesma data de nascimento — não é mais reaproveitada calada
+ * (r2-cli-01, o Heitor em 2026-11-03: "antes de gravar no banco, confere se já
+ * existe; se já existir, retorna avisando que já existe, perguntando se deseja
+ * cadastrar mesmo assim ou atualizar a ficha existente"): sem a resposta
+ * (`jaExiste`), nada se grava e volta a ficha achada. "atualizar:<id>" usa a
+ * ficha (reativando a arquivada) e grava nela o que veio; "cadastrar:<id>"
+ * cria a nova mesmo assim.
  */
 export async function garantirClienteRapido(
   admin: Admin,
@@ -108,17 +121,30 @@ export async function garantirClienteRapido(
   // "47991234567" virarem duas pessoas.
   // `fichas_do_telefone` (a mais antiga primeiro, como `cliente_por_telefone`)
   // compara também o número de fora com menos de 10 dígitos.
-  const { data: doTelefone, error: buscaErr } = await admin
-    .rpc('fichas_do_telefone', { p_tenant: ctx.tenantId!, p_digitos: fone.digitos })
-  if (buscaErr) return { error: `Erro ao procurar o cliente: ${buscaErr.message}` }
-  const existente = ((doTelefone ?? []) as { id: string }[])[0]?.id ?? null
+  const resposta = respostaDoJaExiste(input.jaExiste)
+  const jaExistem = await fichasQueJaExistem(admin, ctx.tenantId!, {
+    digitos: fone.digitos, cpf: input.complemento?.document ?? null, nome, nascimento: input.complemento?.birthDate ?? null,
+  }, { comArquivadas: true })
 
-  if (existente) {
-    if (input.conversationId) {
-      await ligarContatoAoCliente(admin, ctx.tenantId!, input.conversationId, existente as string)
+  const escolhida = resposta.atualizar ? jaExistem.find(f => f.id.toLowerCase() === resposta.atualizar) : null
+  if (escolhida) {
+    // "Reativar a ficha de X" (a arquivada volta) / "Atualizar a ficha de X".
+    if (escolhida.arquivada) {
+      await gravar(admin.from('clients').update({ is_active: true, updated_at: new Date().toISOString() })
+        .eq('id', escolhida.id).eq('tenant_id', ctx.tenantId!).select('id').single(), 'reativar a ficha')
+      await emitirEventoDeCliente(EVENTOS.CLIENTE_REATIVADO, escolhida.id, ctx)
     }
-    return { clientId: existente as string, criado: false }
+    const r = await atualizarFichaComOPreenchido(admin, ctx, escolhida.id, {
+      name: nome, phone: telefone, email: input.complemento?.email ?? null,
+      documento: input.complemento?.document ? { document: input.complemento.document, documento_tipo: null, documento_numero: null } : null,
+      birth_date: input.complemento?.birthDate ?? null,
+    })
+    if (r.error) return { error: r.error }
+    if (input.conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, input.conversationId, escolhida.id)
+    return { clientId: escolhida.id, criado: false }
   }
+  const pendente = proximaSemResposta(jaExistem, resposta.cadastrar)
+  if (pendente) return { jaExiste: pendente }
 
   const { data: cliente, error } = await admin
     .from('clients')

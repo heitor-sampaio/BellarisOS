@@ -8,7 +8,8 @@ import { apagarClientes } from './apoio/limpeza'
  * O telefone que já é de alguém, no cadastro (5ª simulação, 2026-11-01):
  * - A20: o telefone de uma ficha ARQUIVADA não avisava — e virou o "Valdir
  *   Duplicado" (D10). Agora avisa e oferece "Reativar a ficha de …".
- * - A18: "É a mesma pessoa?" e "O telefone já é de…" só apareciam depois do
+ * - A18: a pergunta do telefone (desde o r2-cli-01, 2026-11-03, "Já existe a
+ *   ficha de X", com "Cadastrar mesmo assim" e "Atualizar a ficha") só aparecia depois do
  *   primeiro "Cadastrar", no pé da página, com a página rolada para cima — o
  *   clique parecia não fazer nada. Agora aparecem JUNTO ao telefone, assim que
  *   ele está completo, antes do clique.
@@ -99,13 +100,13 @@ test('A20: "É outra pessoa" cadastra a ficha nova, e a arquivada fica como est�
   expect((await fichasDe(arquivada))[0]!.is_active).toBe(false)
 })
 
-test('A18: "o telefone já é de…" aparece junto ao telefone, antes do clique em Cadastrar', async ({ browser }) => {
+test('A18: "Já existe a ficha de X" aparece junto ao telefone, antes do clique em Cadastrar', async ({ browser }) => {
   const fone = telefone()
   const mae = nome('mãe')
   await ficha(mae, fone, { document: '11144477735' })
   await como(browser, async p => {
     await digitar(p, nome('filha'), fone)
-    const aviso = p.getByRole('alert').filter({ hasText: 'já é de' })
+    const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toBeVisible()
     await expect(aviso).toContainText(mae)
     // Junto ao campo: entre o telefone e as observações, não no pé da página.
@@ -117,18 +118,16 @@ test('A18: "o telefone já é de…" aparece junto ao telefone, antes do clique 
   })
 })
 
-test('A18: "é a mesma pessoa?" da ficha rápida também aparece antes do clique; "Sim" completa a ficha dela', async ({ browser }) => {
+test('A18: a ficha rápida também pergunta antes do clique; "Atualizar a ficha" completa a ficha dela', async ({ browser }) => {
   const fone = telefone()
   const rapida = nome('rápida')
   const id = await ficha(rapida, fone, { document: null })
   await como(browser, async p => {
     await digitar(p, rapida, fone)
-    const aviso = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa?' })
+    const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toBeVisible()
-    await aviso.getByRole('button', { name: 'Sim, é a mesma pessoa' }).click()
-    await expect(aviso).toBeHidden()
     await p.locator('input[name="email"]').fill(`e2e-tj${marca}@bellaris.invalid`)
-    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    await aviso.getByRole('button', { name: `Atualizar a ficha de ${rapida}` }).click()
     await expect(p).toHaveURL(new RegExp(`/clients/${id}`))
   })
   expect((await fichasDe(rapida)).length).toBe(1)

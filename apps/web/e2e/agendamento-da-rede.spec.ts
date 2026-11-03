@@ -116,8 +116,13 @@ test('cada peça de outra rede é recusada; as da rede agendam', async ({ page, 
     expect.soft(await agendamentos(), 'unidade fixa agendando na outra').toHaveLength(0)
   }
 
-  // Controle: tudo da rede, pelo admin — agenda.
-  await pedir(page, {})
+  // Controle: tudo da rede, pelo admin — agenda. Se a ficha do contato já
+  // nasceu numa recusa acima (o profissional de outra rede barra depois do
+  // cadastro rápido), o agendar pergunta "Já existe a ficha de X" (r2-cli-01):
+  // a resposta é a ficha que existe.
+  const primeiro = await pedir(page, {})
+  const jaExiste = /"jaExiste":\{"id":"([0-9a-f-]{36})"/.exec(primeiro.texto)?.[1]
+  if (jaExiste) await pedir(page, { jaExiste: `atualizar:${jaExiste}` })
   await expect.poll(async () => (await agendamentos()).length, { message: 'as peças da rede agendam' }).toBe(1)
   const [ag] = await agendamentos()
   expect(ag!.branch_id).toBe(f!.unidade)

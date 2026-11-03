@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { avisoDoPlanoAoAgendar } from '@/actions/appointments'
+import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
+import type { FichaQueJaExiste } from '@/lib/clients/ja-existe-texto'
 import {
   LEAD_SOURCES, sourceStyle,
   secondsSince, formatDurationShort, formatDurationLong,
@@ -1167,8 +1169,14 @@ function ScheduleModal({
     ? (roomId === '-' ? '' : salasOferecidas.some(s => s.id === roomId) ? roomId : '')
     : (salasDoServidor?.chave === chaveDasSalas ? (salasDoServidor.sugerida ?? '') : '')
 
-  function handleSubmit() {
+  // "Já existe a ficha de X" (r2-cli-01): a ficha que já existe para o nome e
+  // o telefone digitados — nada foi gravado; a resposta agenda.
+  const [jaExiste, setJaExiste] = useState<FichaQueJaExiste | null>(null)
+  const [respostaJaExiste, setRespostaJaExiste] = useState('')
+
+  function handleSubmit(resposta: string = respostaJaExiste) {
     setError(null)
+    setJaExiste(null)
     if (!branchId)                        { setError('Selecione a unidade.'); return }
     if (!professionalId)                  { setError('Selecione o profissional.'); return }
     if (!procedureId)                     { setError('Selecione o procedimento.'); return }
@@ -1190,7 +1198,9 @@ function ScheduleModal({
         roomId: salaFinal || null,
         contato: clienteLigado ? null : { nome: nome.trim(), telefone: telefone.trim() },
         credito: credito ? { tipo: credito.tipo, id: credito.id } : null,
+        jaExiste: resposta || null,
       })
+      if (res.jaExiste) { setJaExiste(res.jaExiste); return }
       if (res.error) { setError(res.error); return }
       onScheduled()
     })
@@ -1338,6 +1348,18 @@ function ScheduleModal({
             )}
           </div>
 
+          {jaExiste && !clienteLigado && (
+            <PerguntaJaExiste
+              ficha={jaExiste} pending={saving}
+              aoCadastrarMesmoAssim={id => {
+                const resposta = [...respostaJaExiste.split(' ').filter(Boolean), `cadastrar:${id}`].join(' ')
+                setRespostaJaExiste(resposta)
+                handleSubmit(resposta)
+              }}
+              aoAtualizar={id => handleSubmit(`atualizar:${id}`)}
+            />
+          )}
+
           {error && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontWeight: 700 }}>
               {error}
@@ -1346,7 +1368,7 @@ function ScheduleModal({
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
-            <button type="button" className="btn-primary" onClick={handleSubmit} disabled={saving || !slot}>
+            <button type="button" className="btn-primary" onClick={() => handleSubmit()} disabled={saving || !slot}>
               <Check size={14} /> {saving ? 'Agendando…' : 'Agendar'}
             </button>
           </div>
