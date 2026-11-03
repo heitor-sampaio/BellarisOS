@@ -956,7 +956,9 @@ const procedures = await ler(
   e no editor do plano; a revenda, na venda de produto. Os produtos de antes
   herdaram do preço de venda: com preço, "Os dois"; sem, "Insumo" (na
   produção, 1 e 9). Era o liga/desliga "venda direta", que nada lia. Prova:
-  `e2e/estoque-uso-do-produto.spec.ts`.
+  `e2e/estoque-uso-do-produto.spec.ts`. O produto de revenda tem também a
+  "Comissão na venda deste produto" no cadastro, para quem muda comissão (o
+  Heitor, 2026-11-03 — a regra em `comissoes.md`).
 - **A saída por PERDA** (D-7, decisão do Heitor, 2026-10-29; migrations
   `20261029001303`/`304`): Gerenciar estoque → Movimentações → "Perda", com o
   LOTE (ou "sem lote — sai o que vence primeiro"), a quantidade em
