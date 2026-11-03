@@ -8,6 +8,7 @@ import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { lancarCore, marcarPagoCore } from '@/lib/financeiro/lancamento'
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
+import { logHistory } from '@/lib/appointments/avisos'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -205,7 +206,7 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
     // 2026-09-28 a unidade A estornava o lançamento da B.
     const tx = await ler(admin
       .from('financial_transactions')
-      .select('branch_id, product_sale_id, branches!inner(tenant_id)')
+      .select('branch_id, product_sale_id, appointment_id, branches!inner(tenant_id)')
       .eq('id', transactionId)
       .maybeSingle(), 'buscar o lançamento')
     const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
@@ -238,6 +239,15 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
       }),
       'estornar o lançamento',
     )
+    // O estorno do recebimento entra no histórico do atendimento (A51 da 5ª
+    // simulação: o histórico dizia "Pagamento recebido" duas vezes e nenhum
+    // estorno). Acessório: falhar aqui não desfaz o estorno (fica no log).
+    if (tx.appointment_id) {
+      await logHistory(admin, tx.appointment_id as string, ctx.internalUserId, ctx.userName || ctx.roleLabel || 'Equipe',
+        'PAYMENT_REVERSED', `Pagamento estornado — ${porque}`)
+      if (slug) revalidatePath(`/${slug}/agenda/${tx.appointment_id}`)
+      revalidatePath(`/admin/agenda/${tx.appointment_id}`)
+    }
 
     if (slug) revalidatePath(`/${slug}/financeiro`)
     revalidatePath('/admin/financeiro')

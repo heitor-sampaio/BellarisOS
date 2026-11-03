@@ -700,6 +700,17 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     a Meta não sabe do estorno e contaria duas compras. O evento interno
     `pagamento.recebido` continua.
     Prova: `e2e/financeiro-estorno-reabre.spec.ts`.
+  - **O estorno do atendimento DIZ isso** (A51/A52 da 5ª simulação): a
+    janela do estorno de um recebimento de atendimento avisa "O atendimento
+    volta a receber: a cobrança dele reabre…" (`ConfirmarEstorno
+    doAtendimento`); o histórico do agendamento ganha `PAYMENT_REVERSED`,
+    "Pagamento estornado — <motivo>" (`reverseTransaction`; dizia
+    "Pagamento recebido" duas vezes e nenhum estorno); recebido de novo, a
+    tela tira o `?receber=1` da URL e não mostra mais o "Fechar agora" (o
+    checkout do plano aqui mesmo — ao lado do "Pagamento confirmado" ele se lia
+    como receber de novo; o "Gerar plano e enviar à recepção" fica). Na lista
+    dos dois financeiros, o contra-lançamento é "Estorno" (não "Despesa") e
+    diz "Anula a receita estornada". Prova: `e2e/financeiro-estorno-atritos.spec.ts`.
 
 ---
 

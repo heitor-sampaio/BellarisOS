@@ -66,6 +66,8 @@ interface AdminTx {
   estorno_motivo?: string | null
   /** Da venda de produto: o estorno é da venda e pergunta se o produto voltou (H2). */
   product_sale_id?: string | null
+  /** O recebimento de um atendimento: estornar reabre a cobrança dele (A51). */
+  appointment_id?: string | null
 }
 
 interface Props {
@@ -217,7 +219,7 @@ export function AdminFinancialView({
   const router      = useRouter()
   const [estornando, startT] = useTransition()
   // O lançamento esperando a confirmação do estorno (era um clique só, sem volta).
-  const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean } | null>(null)
+  const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean } | null>(null)
   const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
   // A unidade da ação vem da própria transação — não há o que perguntar.
@@ -557,6 +559,7 @@ export function AdminFinancialView({
                 return (
                   <tr
                     key={t.id}
+                    data-lancamento={t.id}
                     style={{
                       borderBottom: i < Math.min(visibleTxs.length, 100) - 1 ? '1px solid var(--hairline)' : 'none',
                       transition: 'background 0.1s',
@@ -574,6 +577,10 @@ export function AdminFinancialView({
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                         {t.description || '—'}
                       </span>
+                      {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita. */}
+                      {t.category === 'Estorno' && (
+                        <span data-anula-a-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a receita estornada</span>
+                      )}
                       {t.estorno_motivo && (
                         <span data-motivo-do-estorno style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Motivo: {t.estorno_motivo}</span>
                       )}
@@ -594,8 +601,8 @@ export function AdminFinancialView({
                       {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes) : '—'}
                     </td>
                     <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
-                      <span className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
-                        {isIncome ? 'Receita' : 'Despesa'}
+                      <span data-tipo-do-lancamento className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
+                        {t.category === 'Estorno' ? 'Estorno' : isIncome ? 'Receita' : 'Despesa'}
                       </span>
                     </td>
                     {/* Situação — a tabela da rede era só leitura e nem dizia se
@@ -642,7 +649,7 @@ export function AdminFinancialView({
                         {/* Estorno não se estorna (o banco também recusa): desfazer é
                             coisa do financeiro, não um segundo clique. */}
                         {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
-                          <button type="button" onClick={() => setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id })} title="Estornar" style={{
+                          <button type="button" onClick={() => setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id })} title="Estornar" style={{
                             width: 30, height: 30, borderRadius: 7,
                             border: '1px solid var(--border)', background: 'var(--surface)',
                             color: 'var(--text-faint)', cursor: 'pointer',

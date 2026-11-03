@@ -77,7 +77,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
   const [estornando, startTx] = useTransition()
   // O lançamento esperando a confirmação do estorno. Era um clique só, sem
   // volta (simulação de um dia de clínica, 2026-10-20).
-  const [aEstornar, setAEstornar] = useState<{ id: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean } | null>(null)
+  const [aEstornar, setAEstornar] = useState<{ id: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean } | null>(null)
 
   // As actions devolvem `{ error }` quando não conseguem — descartar isso
   // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
@@ -224,7 +224,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                   const isReversed = tx.notes === 'Estornada'
 
                   return (
-                    <tr key={tx.id} style={{
+                    <tr key={tx.id} data-lancamento={tx.id} style={{
                       borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none',
                       background: isReversed ? 'var(--bg-app)' : i % 2 === 0 ? 'var(--surface)' : 'transparent',
                       opacity: isReversed ? 0.5 : 1,
@@ -259,6 +259,10 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isReversed ? 'var(--text-muted)' : 'var(--text)', lineHeight: 1.3 }}>
                               {tx.description}
                             </p>
+                            {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita. */}
+                            {tx.category === 'Estorno' && (
+                              <p data-anula-a-receita style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Anula a receita estornada</p>
+                            )}
                             {tx.estorno_motivo && (
                               <p data-motivo-do-estorno style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Motivo: {tx.estorno_motivo}</p>
                             )}
@@ -356,7 +360,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                           )}
                           {/* Estorno não se estorna — o banco também recusa. */}
                           {tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
-                            <button type="button" onClick={() => setAEstornar({ id: tx.id, descricao: tx.description, valor: tx.amount, vendaDeProduto: !!tx.product_sale_id })} title="Estornar" style={{
+                            <button type="button" onClick={() => setAEstornar({ id: tx.id, descricao: tx.description, valor: tx.amount, vendaDeProduto: !!tx.product_sale_id, doAtendimento: !!tx.appointment_id })} title="Estornar" style={{
                               width: 30, height: 30, borderRadius: 7,
                               border: '1px solid var(--border)', background: 'var(--surface)',
                               color: 'var(--text-faint)', cursor: 'pointer',

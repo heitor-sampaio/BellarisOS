@@ -19,7 +19,8 @@ import { JanelaModal } from '@/components/shared/janela-modal'
  * de produto?" (`cancelarVenda`, sobra da F3, 2026-11-01).
  */
 export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar }: {
-  alvo:        { descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean }
+  /** `doAtendimento`: o lançamento é o recebimento de um atendimento (A51: a cobrança dele reabre). */
+  alvo:        { descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean }
   estornando:  boolean
   onConfirmar: (motivo: string, voltou?: boolean) => void
   onVoltar:    () => void
@@ -44,6 +45,12 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar }: {
             ? 'Estorna a venda inteira: o que foi pago volta à cliente na mesma forma de pagamento, o que estava a receber é cancelado e a venda sai das Vendas e do custo. Não se desfaz.'
             : 'O estorno cria um lançamento ao contrário, na mesma forma de pagamento, e marca este como estornado. Não se desfaz.'}
         </p>
+        {/* A51 da 5ª simulação: a janela não dizia que a cobrança do atendimento reabre. */}
+        {alvo.doAtendimento && !produto && (
+          <p data-cobranca-reabre style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
+            O atendimento volta a receber: a cobrança dele reabre, e o “Confirmar pagamento” vale de novo.
+          </p>
+        )}
         {produto && (
           <div role="radiogroup" aria-labelledby="estorno-produto-voltou" data-produto-voltou
             style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

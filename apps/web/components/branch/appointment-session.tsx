@@ -1036,6 +1036,16 @@ export function AppointmentSession({
   // O mesmo critério do botão "Confirmar pagamento", logo abaixo.
   const aReceber = appointment.status === 'COMPLETED' && !paymentTransaction && canPayment
     && !isPartOfPlan && !isPackageSession && !isPrePago && appointment.price > 0
+  // Recebido, o `?receber=1` (a janela do pagamento aberta ao chegar) sai da
+  // URL (A51 da 5ª simulação): recarregar não reabre nada, e o endereço não
+  // diz "receber" de um atendimento pago.
+  useEffect(() => {
+    if (!paymentTransaction || typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has('receber')) return
+    url.searchParams.delete('receber')
+    router.replace(url.pathname + (url.search ? url.search : ''), { scroll: false })
+  }, [paymentTransaction, router])
   // Atendimento de R$ 0 (a avaliação) não tem o que receber (D9, 2026-10-27).
   const semCobranca = !(appointment.price > 0) && !isPartOfPlan && !isPackageSession && !isPrePago
   const [showPayment,   setShowPayment]   = useState(() => abrirRecebimento && aReceber)
@@ -2192,7 +2202,10 @@ export function AppointmentSession({
                       )}
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {podeReceber && (
+                        {/* Pago o atendimento, o "Fechar agora" (o checkout do plano aqui
+                            mesmo) sai: ao lado do "Pagamento confirmado" ele se lia como
+                            receber de novo (A51). O plano segue no "Gerar plano e enviar". */}
+                        {podeReceber && !(status === 'COMPLETED' && paymentTransaction) && (
                           <button
                             type="button"
                             disabled={generating}
