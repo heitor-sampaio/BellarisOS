@@ -90,3 +90,22 @@ test('A42: a evolução tem um nome só — no formulário e na janela de conclu
     await expect(janela.getByText('Observações finais')).toHaveCount(0)
   })
 })
+
+test('atend-05: a ficha de saúde vencida continua valendo, mas o atendimento avisa', async ({ browser }) => {
+  const vencida = await emCurso('Vencida')
+  const emDia = await emCurso('EmDia')
+  const oitoMeses = new Date(Date.now() - 240 * 86_400_000)
+  const { data: ag } = await db().from('appointments').select('client_id').eq('id', vencida).single<{ client_id: string }>()
+  const { data: mr } = await db().from('medical_records').select('general_anamnesis').eq('client_id', ag!.client_id).single()
+  expect((await db().from('medical_records')
+    .update({ general_anamnesis: { ...(mr!.general_anamnesis as object), respondidoEm: oitoMeses.toISOString() } })
+    .eq('client_id', ag!.client_id)).error).toBeNull()
+  const dia = oitoMeses.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${vencida}`)
+    await expect(p.locator('[data-ficha-vencida]')).toContainText(`está vencida (respondida em ${dia})`)
+    await p.goto(`/${slug}/agenda/${emDia}`)
+    await expect(p.getByRole('button', { name: 'Finalizar atendimento' })).toBeVisible()
+    await expect(p.locator('[data-ficha-vencida]')).toHaveCount(0)
+  })
+})

@@ -1070,7 +1070,15 @@ O resto do fluxo:
     tem resposta em lugar nenhum; a ficha da tela, senão a salva antes. As
     perguntas são as da ficha ATUAL (a de pré-atendimento da rede; a ligada ao
     procedimento). Resposta antiga, fora da validade da rede, ainda conta como
-    resposta.
+    resposta — **mas a tela AVISA** (atend-05, revisão do Heitor de
+    2026-11-02: "mantém como está mas com aviso de que a ficha de saúde está
+    vencida"): "A ficha de saúde de Carla está vencida (respondida em
+    05/03/2026). Ela continua valendo; peça a atualização."
+    (`[data-ficha-vencida]`, só para quem vê o prontuário). A conta é a do
+    gatilho do envio (`fichaDeSaudeVencida`, `lib/pre-atendimento/validade.ts`:
+    respondida há `pre_atendimento_validade_meses` ou mais). O texto não diz
+    "da"/"do": nada decide pelo nome. Prova: `e2e/atendimento-campos-da-tela.spec.ts`,
+    `tests/ficha-de-saude-vencida.test.ts`.
   - Sem ficha ligada ao procedimento, ou ficha sem obrigatória, nada barra.
     A foto e o planejador ficam fora da anamnese (a cliente responde pelo
     celular); o planejador da ficha, na rede sem o recurso de injetáveis (o

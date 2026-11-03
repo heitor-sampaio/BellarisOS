@@ -13,7 +13,8 @@ import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
 import { unidadeDoInsumo } from '@/lib/estoque/unidade-de-consumo'
-import { paraAnamneseGeral } from '@/lib/anamnese-geral'
+import { paraAnamneseGeral, anamneseRespondida } from '@/lib/anamnese-geral'
+import { fichaDeSaudeVencida } from '@/lib/pre-atendimento/validade'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
@@ -219,6 +220,14 @@ export async function SessaoDeAtendimento({
   // antiga, de campos fixos, convertida na hora).
   const fichaPreAtendimento = await fichaDePreAtendimento(admin, ctx.tenantId!)
   const anamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, fichaPreAtendimento) : null
+  // A ficha de saúde fora da validade da rede continua valendo, mas a tela
+  // AVISA (atend-05, revisão do Heitor de 2026-11-02).
+  const validadeMeses = anamneseRespondida(anamnesis)
+    ? ((await ler(admin.from('tenants').select('pre_atendimento_validade_meses').eq('id', ctx.tenantId!).single(),
+        'ler a validade da ficha de saúde')) as { pre_atendimento_validade_meses: number } | null)?.pre_atendimento_validade_meses ?? 6
+    : 0
+  const fichaDeSaudeVencidaEm = anamneseRespondida(anamnesis) && fichaDeSaudeVencida(anamnesis.respondidoEm, validadeMeses)
+    ? anamnesis.respondidoEm : null
 
   // Produtos do procedimento (insumos padrão)
   const defaultProducts: SessionProduct[] = ((procProductsRaw ?? []) as unknown as RawProcProduct[])
@@ -497,6 +506,7 @@ export async function SessaoDeAtendimento({
         appointment={appointment}
         client={client}
         anamnesis={anamnesis}
+        fichaDeSaudeVencidaEm={fichaDeSaudeVencidaEm}
         fichaPreAtendimento={fichaPreAtendimento}
         canEditRecords={canEditRecords}
         canViewRecords={canViewRecords}

@@ -29,6 +29,7 @@ import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle, type AnamneseGeralCartaoHandle } from '@/components/branch/anamnese-geral'
 import { alergiasDaAnamnese, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
+import { nomeParaSaudar } from '@/lib/saudacao'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/fotos-do-atendimento'
@@ -123,6 +124,8 @@ interface Props {
   client:             SessionClient
   /** A anamnese geral da cliente: as perguntas da ficha de pré-atendimento (2026-10-20). */
   anamnesis:          AnamneseGeral | null
+  /** A ficha de saúde respondida fora da validade da rede: quando foi (atend-05). */
+  fichaDeSaudeVencidaEm?: string | null
   /** A ficha de pré-atendimento ATUAL da rede (para responder ou corrigir). */
   fichaPreAtendimento: FichaDePreAtendimento
   /** A ficha do procedimento — uma só desde 2026-09-25. */
@@ -967,7 +970,7 @@ function DorasCard({ value, onChange, readonly, erro }: {
 // -- Main component ------------------------------------------------------------
 
 export function AppointmentSession({
-  appointment, client, anamnesis, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
+  appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
@@ -1676,6 +1679,21 @@ export function AppointmentSession({
 
         {/* A alergia em destaque, acima de tudo (só com o prontuário à vista). */}
         <AlertaDeAlergia alergias={alergiasDaAnamnese(anamneseNaTela)} />
+
+        {/* A ficha de saúde vencida continua valendo — o aviso é para pedir a atualização (atend-05). */}
+        {fichaDeSaudeVencidaEm && (
+          <div data-ficha-vencida role="note" style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+          }}>
+            <ClipboardList size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span>
+              A ficha de saúde de {nomeParaSaudar(client.name) || 'quem está sendo atendido'} está vencida (respondida em {new Date(fichaDeSaudeVencidaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}).
+              <span style={{ fontWeight: 600 }}> Ela continua valendo; peça a atualização.</span>
+            </span>
+          </div>
+        )}
 
         {erroAoIniciar && (
           <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroAoIniciar}</p>
