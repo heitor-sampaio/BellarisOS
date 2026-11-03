@@ -9128,6 +9128,55 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F13 feita em 2026-11-03 — cartão, estornos, vendas, comissão e indicadores**
+(393ea443…bfd3c3a8; migrations `20261103001301`…`001307`). A primeira das
+duas frentes que saíram da 2ª revisão (as 50 decisões de F1–F12, página
+https://claude.ai/artifact/4YV2LLkQsC83stGVkNXC27, respondida em 03/11: 31
+manter, 17 mudar; o Heitor pediu de novo "deixar a clínica decidir").
+- A parcela da operadora vence a cada N dias corridos da venda (padrão 30,
+  1–120), em Configurações → Comissões → "Taxas da maquininha", um prazo por
+  clínica (`tenants.cartao_prazo_dias`); gravado na parcela ao nascer.
+- "Marcar recebida" tem "Desfazer" com confirmação, só na parcela antecipada
+  (`recebivel_do_cartao_desfazer`).
+- Cartão (crédito e débito) não tem estorno em parte: o banco recusa reduzir
+  pagamento no cartão já pago. Cancelar pacote oferece as duas formas quando o
+  que volta é menor que um pagamento: "Estorno parcial" (desligada no cartão,
+  com o motivo) ou "Estornar o pagamento inteiro e lançar o usado de novo", na
+  forma que a recepção escolhe — o usado entra na receita do dia do
+  cancelamento (`pacote_cancelar_devolvendo`; `pacote_cancelar` virou invólucro).
+- "Quem vendeu" nasce vazio em produto, pacote e pré-pago; quem registra se
+  acha por "(você)".
+- O pacote e o pré-pago entram inteiros no "Meu faturamento" de quem vendeu
+  (`sold_by`), pela regra única de receita (no crediário, parcela a parcela);
+  a sessão de pacote não soma de novo. O ranking por profissional e por
+  procedimento é de EXECUÇÃO: soma a sessão de pacote pelo rateio, e os
+  rótulos dizem "receita dos atendimentos".
+- Comissão de venda de produto: "Uma regra sobre o total" ou "Por produto"
+  (% do vendido ou R$ por unidade, caindo na geral; o desconto do kit se
+  divide pelo preço de tabela).
+- "Fluxo de caixa — próximos 6 meses" no Financeiro (`metrics_fluxo_de_caixa`):
+  a receber da cliente e da operadora × a pagar; o vencido em aberto conta no
+  mês atual; some com o financeiro "só os meus".
+- O "Recibo" também na ficha, no Histórico → Pagamentos do app (que passou a
+  dizer "Estornado") e na tela do atendimento pago.
+- Na clínica de uma unidade, "Reativar clientes" conta todas as clientes ativas.
+- As Vendas sem o devolvido (ven-04) já valiam desde a F2b.
+
+Decisões da F13, para revisar: prazo único por clínica (não por bandeira);
+débito também sem estorno parcial; no fluxo de caixa ficam de fora os
+atendimentos concluídos sem pagamento (não têm vencimento); a regra por
+produto se edita em Comissões, não no cadastro do produto.
+
+**A 2ª completa de 03/11** (run 41656544404): compartilhados 570/0, isolados
+856/3 — a automação "Agendamento criado → Mover de etapa" sem o STAGE_CHANGED
+na hora em que o spec olhou, a perda em UI sem "O lote tem só 270 UI." contra
+o build (suspeita: mensagem lançada, que a produção troca) e a limpeza de
+`relatorios-so-os-meus` com statement timeout. Vão para a F14, com as duas
+respostas que vieram em conversa: o modelo "Agendou" fica, mas nasce
+desligado ("nenhum card se movimenta sozinho, toda automação pelo módulo de
+Automações"), e remover um número de WhatsApp não junta mais as conversas
+("ela estava falando com pessoas diferentes"; o inbox é unificado e tem filtro).
+
 **A completa de 03/11 depois das frentes** (run 41643155094: isolados 853/4,
 compartilhados 557/6). Três instabilidades (DNS da Cloudflare para o Supabase,
 504 do Auth no createUser, o banco parado ~20 s no "confirmar" de
