@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { addClient } from '@/actions/clients'
+import { addClient, conferirTelefoneDoCadastro, type ResultadoDoCadastro } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -92,14 +92,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const router   = useRouter()
   const pathname = usePathname()
 
-  // O telefone já é de outra cliente (D13): o aviso vale para ESTE número —
-  // trocou o número, ele some (e o servidor confere de novo).
   const digitos = telefoneDoCadastro(phone)?.digitos
-  const aviso = state?.avisoTelefone && state.avisoTelefone.telefone === digitos ? state.avisoTelefone : null
-  // A ficha rápida do mesmo telefone (frente de cadastro, 2026-10-29): "É a mesma pessoa?".
-  const mesmaPessoa = state?.mesmaPessoa && state.mesmaPessoa.telefone === digitos ? state.mesmaPessoa : null
-  // O telefone é de um lead do CRM (D-9): "É a mesma pessoa do lead X?".
-  const doLead = state?.mesmaPessoaDoLead && state.mesmaPessoaDoLead.telefone === digitos ? state.mesmaPessoaDoLead : null
 
   // As RESPOSTAS às perguntas do cadastro ("é a mesma pessoa?", "cadastrar
   // mesmo assim") vão em TODO envio seguinte: uma pergunta pode vir depois da
@@ -108,17 +101,63 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // ignora e pergunta de novo.
   const [respostas, setRespostas] = useState<Record<string, string>>({})
   const formRef = useRef<HTMLFormElement>(null)
+  const perguntaRef = useRef<HTMLDivElement>(null)
   // A chave do envio (D10): o reenvio do mesmo cadastro — o duplo clique — grava uma vez só.
   const envio = useEnvioUnico()
-  function mandar(dados: FormData, nova?: Record<string, string>) {
+
+  // A18 (5ª simulação): as perguntas do telefone só vinham depois do primeiro
+  // "Cadastrar", no pé da página — o clique parecia não fazer nada. Agora a
+  // tela confere assim que o telefone está completo (e a cada resposta) e
+  // pergunta JUNTO ao campo; o servidor confere de novo no envio.
+  const [previa, setPrevia] = useState<ResultadoDoCadastro | null>(null)
+  useEffect(() => {
+    if (!digitos) return
+    let vivo = true
+    const t = setTimeout(() => {
+      conferirTelefoneDoCadastro({ phone, respostas, leadId: leadId ?? null, conversationId: conversationId ?? null })
+        .then(r => { if (vivo) setPrevia(r) })
+        .catch(() => { /* sem a conferência, o envio pergunta */ })
+    }, 350)
+    return () => { vivo = false; clearTimeout(t) }
+  }, [digitos, phone, respostas, leadId, conversationId])
+
+  /** A pergunta do telefone ainda sem resposta, para ESTE número. */
+  function perguntaDe(r: ResultadoDoCadastro | null | undefined): Pergunta | null {
+    if (!r || !digitos) return null
+    if (r.arquivada?.telefone === digitos && respostas._arquivada !== `nova:${digitos}`) return { tipo: 'arquivada', ...r.arquivada }
+    if (r.mesmaPessoa?.telefone === digitos && !(respostas._fichaRapida ?? '').endsWith(`:${r.mesmaPessoa.id}`)) return { tipo: 'rapida', ...r.mesmaPessoa }
+    if (r.avisoTelefone?.telefone === digitos && respostas._telefoneConfirmado !== digitos) return { tipo: 'outra', ...r.avisoTelefone }
+    if (r.mesmaPessoaDoLead?.telefone === digitos && !(respostas._pessoaDoCrm ?? '').endsWith(`:${r.mesmaPessoaDoLead.contatoId}`)) return { tipo: 'lead', ...r.mesmaPessoaDoLead }
+    return null
+  }
+  const doEnvio = perguntaDe(state)
+  const pergunta = doEnvio ?? perguntaDe(digitos ? previa : null)
+
+  // A pergunta que veio do clique em "Cadastrar" aparece onde a pessoa está olhando.
+  useEffect(() => {
+    if (state && perguntaDe(state)) perguntaRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só quando chega a resposta do envio
+  }, [state])
+
+  function mandar(dados: FormData, nova?: Record<string, string>, guardar = true) {
     const todas = { ...respostas, ...nova }
-    if (nova) setRespostas(todas)
+    if (nova && guardar) setRespostas(todas)
     for (const [k, v] of Object.entries(todas)) dados.set(k, v)
     dados.set('_envio', envio.chave())
     startTransition(() => formAction(dados))
   }
+  /**
+   * Responde a pergunta. A que veio do envio reenvia (a pessoa já tinha
+   * clicado em "Cadastrar"); a de antes do clique só guarda a resposta — o
+   * resto do formulário ainda está sendo preenchido.
+   */
   function responder(campo: string, valor: string) {
-    if (formRef.current) mandar(new FormData(formRef.current), { [campo]: valor })
+    if (doEnvio && formRef.current) mandar(new FormData(formRef.current), { [campo]: valor })
+    else setRespostas(r => ({ ...r, [campo]: valor }))
+  }
+  /** "Reativar a ficha de X" (A20): envia já, e a resposta não fica para os próximos envios. */
+  function reativar(id: string) {
+    if (formRef.current) mandar(new FormData(formRef.current), { _arquivada: `reativar:${id}` }, false)
   }
 
   // Sem o reset automático do formulário: com ele, o aviso do telefone (e todo
@@ -218,6 +257,13 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           />
         </Field>
 
+        {/* A pergunta do telefone, logo abaixo dele (A18). */}
+        {pergunta && (
+          <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
+            <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar} />
+          </div>
+        )}
+
         {/* O "Documento" tem tipo (D-11): CPF, passaporte ou RNE. */}
         <Field label="Documento" grupo>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -307,71 +353,6 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           {state.error}
         </p>
       )}
-      {aviso && (
-        <div role="alert" style={{
-          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
-          color: 'var(--warning)', background: 'var(--warning-soft)',
-          borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
-          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
-        }}>
-          <span>
-            O telefone {aviso.exibir} já é de <b style={{ color: 'var(--text)' }}>{aviso.nome}</b> nesta
-            clínica. Se é o mesmo número mesmo (mãe e filha, por exemplo), confirme.
-          </span>
-          <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_telefoneConfirmado', aviso.telefone)}>
-            Cadastrar mesmo assim
-          </button>
-        </div>
-      )}
-      {mesmaPessoa && (
-        <div role="alert" style={{
-          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
-          color: 'var(--warning)', background: 'var(--warning-soft)',
-          borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
-          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
-        }}>
-          <span>
-            Já existe a ficha de <b style={{ color: 'var(--text)' }}>{mesmaPessoa.nome}</b> com este telefone, sem CPF
-            (cadastrada às pressas, ao agendar). É a mesma pessoa?
-          </span>
-          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `mesma:${mesmaPessoa.id}`)}>
-              Sim, é a mesma pessoa
-            </button>
-            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `outra:${mesmaPessoa.id}`)}>
-              Não, é outra pessoa
-            </button>
-          </span>
-          <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
-            Sim completa a ficha dela com estes dados (o histórico fica junto). Não cadastra uma ficha nova.
-          </span>
-        </div>
-      )}
-      {doLead && (
-        <div role="alert" style={{
-          display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
-          color: 'var(--warning)', background: 'var(--warning-soft)',
-          borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
-          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
-        }}>
-          <span>
-            {doLead.ehLead
-              ? <>Este telefone é de um lead do CRM{doLead.perdida ? ' (a oportunidade está perdida)' : ''}. É a mesma pessoa do lead <b style={{ color: 'var(--text)' }}>{doLead.nome}</b>?</>
-              : <>Este telefone é de uma conversa do inbox. É a mesma pessoa do contato <b style={{ color: 'var(--text)' }}>{doLead.nome}</b>?</>}
-          </span>
-          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `mesma:${doLead.contatoId}`)}>
-              Sim, é a mesma pessoa
-            </button>
-            <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `outra:${doLead.contatoId}`)}>
-              Não, é outra pessoa
-            </button>
-          </span>
-          <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
-            Sim liga a oportunidade e a conversa à ficha nova (o card passa a &ldquo;Já é cliente&rdquo;). Não cadastra sem ligar.
-          </span>
-        </div>
-      )}
       {state?.success && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
           <CheckCircle2 size={14} /> Cliente cadastrado com sucesso.
@@ -426,5 +407,106 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         </button>
       </div>
     </form>
+  )
+}
+
+type Pergunta =
+  | ({ tipo: 'arquivada' } & NonNullable<ResultadoDoCadastro['arquivada']>)
+  | ({ tipo: 'rapida' } & NonNullable<ResultadoDoCadastro['mesmaPessoa']>)
+  | ({ tipo: 'outra' } & NonNullable<ResultadoDoCadastro['avisoTelefone']>)
+  | ({ tipo: 'lead' } & NonNullable<ResultadoDoCadastro['mesmaPessoaDoLead']>)
+
+const caixaDaPergunta: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
+  color: 'var(--warning)', background: 'var(--warning-soft)',
+  borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
+  fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+}
+const explicacao: React.CSSProperties = { fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }
+const destaque: React.CSSProperties = { color: 'var(--text)' }
+
+/**
+ * A pergunta do telefone que já é de alguém (D13, D-9, a ficha rápida e,
+ * desde a 5ª simulação, a ficha ARQUIVADA — A20), junto ao campo (A18).
+ */
+function PerguntaDoTelefone({ pergunta, pending, responder, reativar }: {
+  pergunta: Pergunta; pending: boolean
+  responder: (campo: string, valor: string) => void
+  reativar: (id: string) => void
+}) {
+  if (pergunta.tipo === 'arquivada') {
+    return (
+      <div role="alert" style={caixaDaPergunta}>
+        <span>
+          O telefone {pergunta.exibir} é da ficha arquivada de <b style={destaque}>{pergunta.nome}</b>. Se é ela, reative a
+          ficha em vez de cadastrar de novo.
+        </span>
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => reativar(pergunta.id)}>
+            Reativar a ficha de {pergunta.nome}
+          </button>
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_arquivada', `nova:${pergunta.telefone}`)}>
+            É outra pessoa
+          </button>
+        </span>
+        <span style={explicacao}>
+          Reativar traz a ficha de volta como estava, com o histórico; o que foi digitado aqui não é gravado.
+        </span>
+      </div>
+    )
+  }
+  if (pergunta.tipo === 'outra') {
+    return (
+      <div role="alert" style={caixaDaPergunta}>
+        <span>
+          O telefone {pergunta.exibir} já é de <b style={destaque}>{pergunta.nome}</b> nesta
+          clínica. Se é o mesmo número mesmo (mãe e filha, por exemplo), confirme.
+        </span>
+        <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_telefoneConfirmado', pergunta.telefone)}>
+          Cadastrar mesmo assim
+        </button>
+      </div>
+    )
+  }
+  if (pergunta.tipo === 'rapida') {
+    return (
+      <div role="alert" style={caixaDaPergunta}>
+        <span>
+          Já existe a ficha de <b style={destaque}>{pergunta.nome}</b> com este telefone, sem CPF
+          (cadastrada às pressas, ao agendar). É a mesma pessoa?
+        </span>
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `mesma:${pergunta.id}`)}>
+            Sim, é a mesma pessoa
+          </button>
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_fichaRapida', `outra:${pergunta.id}`)}>
+            Não, é outra pessoa
+          </button>
+        </span>
+        <span style={explicacao}>
+          Sim completa a ficha dela com estes dados (o histórico fica junto). Não cadastra uma ficha nova.
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div role="alert" style={caixaDaPergunta}>
+      <span>
+        {pergunta.ehLead
+          ? <>Este telefone é de um lead do CRM{pergunta.perdida ? ' (a oportunidade está perdida)' : ''}. É a mesma pessoa do lead <b style={destaque}>{pergunta.nome}</b>?</>
+          : <>Este telefone é de uma conversa do inbox. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>}
+      </span>
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `mesma:${pergunta.contatoId}`)}>
+          Sim, é a mesma pessoa
+        </button>
+        <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `outra:${pergunta.contatoId}`)}>
+          Não, é outra pessoa
+        </button>
+      </span>
+      <span style={explicacao}>
+        Sim liga a oportunidade e a conversa à ficha nova (o card passa a &ldquo;Já é cliente&rdquo;). Não cadastra sem ligar.
+      </span>
+    </div>
   )
 }

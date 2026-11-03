@@ -88,6 +88,7 @@ export const ISOLADOS = [
   'fechamento-escopo-proprio.spec.ts',
   'ficha-cadastro-documento.spec.ts',
   'ficha-cadastro-mesma-pessoa-do-lead.spec.ts',
+  'ficha-cadastro-telefone-ja-cadastrado.spec.ts',
   'ficha-cadastro-uma-vez.spec.ts',
   'ficha-cadastro-validacao.spec.ts',
   'ficha-pre-atendimento.spec.ts',

@@ -13,7 +13,7 @@ import { enviarEventoCapi } from '@/lib/ads/capi'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { EVENTOS } from '@estetica-os/types'
 import { registrarEventoLead } from '@/lib/lead-events'
-import { ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
+import { ligarContatoAoCliente } from '@/lib/clients/cliente-rapido'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
@@ -55,6 +55,13 @@ export type AvisoDeTelefone = {
   exibir: string
 }
 
+/**
+ * O telefone é de uma ficha ARQUIVADA (A20 da 5ª simulação): a tela oferece
+ * "Reativar a ficha de X" (`_arquivada=reativar:<id>`) ou "É outra pessoa"
+ * (`_arquivada=nova:<dígitos>`, que vale para ESTE número).
+ */
+export type AvisoDeArquivada = { id: string; nome: string; telefone: string; exibir: string }
+
 /** A ficha RÁPIDA (sem CPF) do mesmo telefone: a tela pergunta "É a mesma pessoa?". */
 export type PerguntaDaFichaRapida = { id: string; nome: string; telefone: string }
 
@@ -63,6 +70,7 @@ export type ResultadoDoCadastro = {
   /** O acesso entrou na conta que ela JÁ tinha em outra clínica: a senha continua a dela (J-22). */
   contaLigada?: boolean
   avisoTelefone?: AvisoDeTelefone
+  arquivada?: AvisoDeArquivada
   mesmaPessoa?: PerguntaDaFichaRapida
   mesmaPessoaDoLead?: PerguntaDoLead
 }
@@ -118,6 +126,14 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
 
   const branch   = await resolveBranch(ctx.tenantId!, branchId)
   if (!branch) return { error: 'Filial inválida.' }
+
+  // "Reativar a ficha de X" (A20): a ficha arquivada do telefone volta como
+  // está — o que se digitou aqui não é gravado —, ligada ao card ou à conversa
+  // de onde veio o cadastro, como a de CPF que já existia.
+  const respostaArquivada = (formData.get('_arquivada') as string | null) ?? ''
+  if (respostaArquivada.startsWith('reativar:')) {
+    return reativarPeloCadastro(ctx, respostaArquivada.slice('reativar:'.length), { leadId, conversationId, slug })
+  }
 
   const name      = (formData.get('name') as string)?.trim()
   const phone     = (formData.get('phone') as string)?.trim()
@@ -191,56 +207,12 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
     return { error: 'Já existe um cliente com este CPF nesta rede.' }
   }
 
-  // Mesma pessoa, cadastrada às pressas para marcar um horário.
-  //
-  // O cadastro rápido grava nome e telefone e deixa CPF nulo. Sem procurar por
-  // aqui, completar a ficha depois criaria um segundo cliente com o mesmo
-  // telefone — e o histórico de atendimento ficaria dividido entre os dois.
-  //
-  // Completar calado juntava duas pessoas que dividem o número (decisão do
-  // Heitor, frente de cadastro de 2026-10-29): a tela PERGUNTA "É a mesma
-  // pessoa?". A resposta vem em `_fichaRapida` e vale para AQUELA ficha
-  // (`mesma:<id>` completa, `outra:<id>` cria uma nova) — trocou o telefone e
-  // achou outra ficha, pergunta de novo.
-  const rapida = await clienteRapidoDoTelefone(admin, ctx.tenantId!, phone)
-  const respostaRapida = formData.get('_fichaRapida')
-  if (rapida && respostaRapida !== `mesma:${rapida.id}` && respostaRapida !== `outra:${rapida.id}`) {
-    const dela = await ler(admin.from('clients').select('name').eq('id', rapida.id).eq('tenant_id', ctx.tenantId!).maybeSingle(),
-      'buscar a ficha rápida do telefone') as { name: string } | null
-    if (dela) return { mesmaPessoa: { id: rapida.id, nome: dela.name, telefone: fone.digitos } }
-  }
-  const jaExiste = rapida && respostaRapida === `mesma:${rapida.id}` ? rapida : null
-
-  // O telefone de OUTRA cliente (D13): avisa, e a recepção confirma — o
-  // `_telefoneConfirmado` vale para ESTE número (trocou o número, avisa de
-  // novo). A ficha rápida já respondida ("é a mesma" ou "é outra") não avisa
-  // de novo: a recepção acabou de dizer quem ela é.
-  if (formData.get('_telefoneConfirmado') !== fone.digitos) {
-    const outra = await ler(admin.rpc('cliente_por_telefone', { p_tenant: ctx.tenantId!, p_digitos: fone.digitos }),
-      'conferir se o telefone já é de outra cliente') as string | null
-    if (outra && outra !== rapida?.id) {
-      const dela = await ler(admin.from('clients').select('name').eq('id', outra).eq('tenant_id', ctx.tenantId!).maybeSingle(),
-        'buscar a cliente do telefone') as { name: string } | null
-      if (dela) return { avisoTelefone: { nome: dela.name, telefone: fone.digitos, exibir: fone.gravar } }
-    }
-  }
-
-  // O telefone de um LEAD do CRM (D-9, frente de cadastro de 2026-10-29) —
-  // até o perdido que voltou: "É a mesma pessoa do lead X?". Sim liga a
-  // oportunidade e a conversa à ficha; Não cadastra sem ligar. A resposta
-  // (`_pessoaDoCrm`) vale para AQUELA pessoa. Quem vem do card ou da conversa
-  // (`leadId`/`conversationId`) já disse de quem é.
-  let pessoaDoCrm: PessoaDoCrm | null = null
-  if (!leadId && !conversationId) {
-    const achada = await pessoaDoCrmDoTelefone(admin, ctx, fone.digitos)
-    const resposta = formData.get('_pessoaDoCrm')
-    if (achada && resposta === `mesma:${achada.contatoId}`) pessoaDoCrm = achada
-    else if (achada && resposta !== `outra:${achada.contatoId}`) {
-      return { mesmaPessoaDoLead: {
-        contatoId: achada.contatoId, nome: achada.nome, ehLead: !!achada.leadId, perdida: achada.perdida, telefone: fone.digitos,
-      } }
-    }
-  }
+  // As perguntas do telefone (a arquivada, a ficha rápida, a outra cliente,
+  // o lead do CRM) — as MESMAS que a tela faz antes do clique (A18,
+  // `conferirTelefoneDoCadastro`): o servidor confere de novo.
+  const doTelefone = await perguntaDoTelefone(admin, ctx, fone, respostasDoFormulario(formData), !!(leadId || conversationId))
+  if ('pergunta' in doTelefone) return doTelefone.pergunta
+  const { jaExiste, pessoaDoCrm } = doTelefone
   // A oportunidade que se converte: a do card, ou a do lead que a recepção disse ser a mesma pessoa.
   const leadDaConversao = leadId ?? pessoaDoCrm?.leadId ?? null
 
@@ -344,6 +316,119 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   // ou, na conta que ela já tinha (`contaLigada`), que a senha é a dela (J-22).
   const contaLigada = !!login && !('error' in login) && !login.novo
   return { success: true, clientId: client.id as string, acessoCriado: !!login, contaLigada }
+}
+
+type RespostasDoTelefone = { fichaRapida: string; telefoneConfirmado: string; pessoaDoCrm: string; arquivada: string }
+
+function respostasDoFormulario(f: FormData | Record<string, string | null | undefined>): RespostasDoTelefone {
+  const v = (k: string) => String((f instanceof FormData ? f.get(k) : f[k]) ?? '')
+  return { fichaRapida: v('_fichaRapida'), telefoneConfirmado: v('_telefoneConfirmado'), pessoaDoCrm: v('_pessoaDoCrm'), arquivada: v('_arquivada') }
+}
+
+type Admin = ReturnType<typeof createAdminClient>
+type FichaDoTelefone = { id: string; nome: string; ativa: boolean; sem_cpf: boolean }
+
+/**
+ * A PRÓXIMA pergunta do telefone do cadastro, na ordem, ou o que as respostas
+ * decidiram. Uma pergunta por vez: cada resposta vale para AQUELA ficha (ou
+ * para ESTE número), e o formulário as reenvia nos envios seguintes.
+ *
+ * 1. A ficha ARQUIVADA (A20 da 5ª simulação — o "Valdir Duplicado" do D10):
+ *    "Reativar a ficha de X" ou "É outra pessoa".
+ * 2. A ficha RÁPIDA ativa (sem CPF, a do "agendar com nome e telefone"): "É a
+ *    mesma pessoa?" — completar calado juntava duas pessoas que dividem o
+ *    número (frente de cadastro de 2026-10-29). "Sim" completa aquela ficha,
+ *    "Não" cria uma nova.
+ * 3. OUTRA cliente ativa (D13): avisa, e a recepção confirma — mãe e filha
+ *    dividem número. A ficha rápida já respondida não avisa de novo.
+ * 4. A pessoa do CRM (D-9) — até o lead perdido que voltou: "É a mesma pessoa
+ *    do lead X?". Quem vem do card ou da conversa (`veioDoCrm`) já disse de
+ *    quem é.
+ */
+async function perguntaDoTelefone(
+  admin: Admin, ctx: TenantContext, fone: { digitos: string; gravar: string }, r: RespostasDoTelefone, veioDoCrm: boolean,
+): Promise<{ pergunta: ResultadoDoCadastro } | { jaExiste: { id: string } | null; pessoaDoCrm: PessoaDoCrm | null }> {
+  const fichas = ((await ler(admin.rpc('fichas_do_telefone', { p_tenant: ctx.tenantId!, p_digitos: fone.digitos }),
+    'conferir as fichas do telefone')) ?? []) as FichaDoTelefone[]
+
+  if (r.arquivada !== `nova:${fone.digitos}`) {
+    const arquivada = fichas.find(f => !f.ativa)
+    if (arquivada) return { pergunta: { arquivada: { id: arquivada.id, nome: arquivada.nome, telefone: fone.digitos, exibir: fone.gravar } } }
+  }
+  const ativas = fichas.filter(f => f.ativa)
+
+  const rapida = ativas.find(f => f.sem_cpf) ?? null
+  if (rapida && r.fichaRapida !== `mesma:${rapida.id}` && r.fichaRapida !== `outra:${rapida.id}`) {
+    return { pergunta: { mesmaPessoa: { id: rapida.id, nome: rapida.nome, telefone: fone.digitos } } }
+  }
+  const jaExiste = rapida && r.fichaRapida === `mesma:${rapida.id}` ? { id: rapida.id } : null
+
+  if (r.telefoneConfirmado !== fone.digitos) {
+    const outra = ativas.find(f => f.id !== rapida?.id)
+    if (outra) return { pergunta: { avisoTelefone: { nome: outra.nome, telefone: fone.digitos, exibir: fone.gravar } } }
+  }
+
+  let pessoaDoCrm: PessoaDoCrm | null = null
+  if (!veioDoCrm) {
+    const achada = await pessoaDoCrmDoTelefone(admin, ctx, fone.digitos)
+    if (achada && r.pessoaDoCrm === `mesma:${achada.contatoId}`) pessoaDoCrm = achada
+    else if (achada && r.pessoaDoCrm !== `outra:${achada.contatoId}`) {
+      return { pergunta: { mesmaPessoaDoLead: {
+        contatoId: achada.contatoId, nome: achada.nome, ehLead: !!achada.leadId, perdida: achada.perdida, telefone: fone.digitos,
+      } } }
+    }
+  }
+  return { jaExiste, pessoaDoCrm }
+}
+
+/**
+ * As perguntas do telefone ANTES do clique em "Cadastrar" (A18 da 5ª
+ * simulação): "É a mesma pessoa?" e "O telefone já é de…" só apareciam depois
+ * do primeiro envio, no pé da página, e o clique parecia não fazer nada. A
+ * tela pergunta assim que o telefone está completo; `addClient` confere de
+ * novo. Só lê.
+ */
+export async function conferirTelefoneDoCadastro(entrada: {
+  phone: string; respostas?: Record<string, string>; leadId?: string | null; conversationId?: string | null
+}): Promise<ResultadoDoCadastro> {
+  const ctx = await getTenantContext()
+  if (!can(ctx, 'clients', 'MANAGE')) return {}
+  const fone = telefoneDoCadastro(entrada?.phone)
+  if (!fone) return {}
+  const admin = createAdminClient()
+  const leadId = entrada.leadId?.trim() || null
+  const conversationId = entrada.conversationId?.trim() || null
+  if (leadId && !(await leadAoAlcance(admin, ctx, leadId))) return {}
+  if (conversationId && !(await conversaAoAlcance(admin, ctx, conversationId))) return {}
+  const r = await perguntaDoTelefone(admin, ctx, fone, respostasDoFormulario(entrada.respostas ?? {}), !!(leadId || conversationId))
+  return 'pergunta' in r ? r.pergunta : {}
+}
+
+/** "Reativar a ficha de X" pelo cadastro (A20): a ficha volta como está, ligada ao card ou à conversa. */
+async function reativarPeloCadastro(
+  ctx: TenantContext, clientId: string, de: { leadId: string | null; conversationId: string | null; slug: string },
+): Promise<ResultadoDoCadastro> {
+  const admin = createAdminClient()
+  const antes = await ler(admin.from('clients').select('id, is_active').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+    'buscar a ficha arquivada') as { id: string; is_active: boolean } | null
+  if (!antes) return { error: 'Cliente não encontrada.' }
+  if (!antes.is_active) {
+    await gravar(admin.from('clients').update({ is_active: true, updated_at: new Date().toISOString() })
+      .eq('id', clientId).eq('tenant_id', ctx.tenantId!).select('id').single(), 'reativar a ficha')
+    await emitirEventoDeCliente(EVENTOS.CLIENTE_REATIVADO, clientId, ctx)
+  }
+  if (de.conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, de.conversationId, clientId)
+  if (de.leadId) {
+    await gravar(admin.from('leads').update({ client_id: clientId }).eq('id', de.leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
+    await registrarEventoLead({ tenantId: ctx.tenantId!, leadId: de.leadId, type: 'CONVERTED', actorUserId: ctx.internalUserId, actorName: ctx.userName || null })
+    revalidatePath('/admin/oportunidades')
+    revalidatePath(`/${de.slug}/oportunidades`)
+  }
+  if (de.conversationId) revalidatePath('/admin/inbox')
+  revalidatePath(`/${de.slug}/clients`)
+  revalidatePath('/admin/clients')
+  revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+  return { success: true, clientId }
 }
 
 // `updateClient` foi removida: a aba Dados da ficha (updateClientContactData)

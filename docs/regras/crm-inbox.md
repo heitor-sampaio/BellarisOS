@@ -67,6 +67,24 @@
     ligar. Resposta em `_pessoaDoCrm` (`mesma:`/`outra:<contato>`). Quem
     cadastra pelo card ou pela conversa não é perguntado (já disse quem é).
     Prova: `e2e/ficha-cadastro-mesma-pessoa-do-lead.spec.ts`;
+  - o telefone de uma ficha ARQUIVADA (A20 da 5ª simulação — virou o "Valdir
+    Duplicado" do D10) pergunta primeiro: "Reativar a ficha de X" (a ficha
+    volta como estava, com o histórico, ligada ao card ou à conversa de onde
+    veio o cadastro; o que se digitou não é gravado — `_arquivada=reativar:<id>`)
+    ou "É outra pessoa" (`nova:<dígitos>`, vale para o número). As fichas do
+    número vêm de `fichas_do_telefone` (ativas e arquivadas, da mais antiga);
+  - **as perguntas aparecem JUNTO ao telefone, antes do clique** (A18): a
+    tela confere assim que o número está completo, e a cada resposta
+    (`conferirTelefoneDoCadastro`, só lê), na ordem arquivada → ficha rápida →
+    outra cliente → pessoa do CRM (`perguntaDoTelefone`, a MESMA conta do
+    `addClient`, que confere de novo). Respondida antes do clique, a resposta
+    só fica guardada; a que veio do clique reenvia. Antes aparecia no pé da
+    página só depois do primeiro "Cadastrar", e o clique parecia não fazer
+    nada. Prova: `e2e/ficha-cadastro-telefone-ja-cadastrado.spec.ts`;
+  - **o cadastro grava uma vez** (D10): o mesmo envio (a chave da tela) e,
+    sem ela, o mesmo nome com o mesmo telefone em 60 s são um cadastro só —
+    o mecanismo de `convencoes.md` ("O envio que chega duas vezes"). Prova:
+    `e2e/ficha-cadastro-uma-vez.spec.ts`;
   - o erro do Auth vai à tela em português (`erroDoAuth`,
     `lib/erro-do-auth.ts`; também na Equipe e na troca de senha). A senha
     fraca, na cliente, é o CPF: a tela diz isso. Nunca a mensagem crua do
