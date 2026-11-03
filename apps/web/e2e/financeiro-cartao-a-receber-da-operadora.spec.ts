@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
+import { chamarAcao } from './apoio/acao-direta'
 
 /**
  * O cartão de crédito em N vezes vira N parcelas A RECEBER DA OPERADORA, mês a
@@ -11,8 +12,10 @@ import { responderAnamnese } from './apoio/anamnese'
  *
  * - a venda segue UM lançamento pago (a receita entra inteira no dia da venda,
  *   a comissão libera na hora — H4 — e os pontos saem na venda);
- * - a operadora deposita em parcelas: cada uma a receber no mesmo dia dos
- *   meses seguintes, com a taxa da maquininha rateada;
+ * - a operadora deposita em parcelas: cada uma a receber a cada N dias
+ *   corridos contados da venda (30 por padrão; a clínica muda em
+ *   Configurações → Comissões — r2-fin-01, o Heitor: "como a operadora paga
+ *   de verdade e configurável o prazo"), com a taxa da maquininha rateada;
  * - a cliente não deve nada: nem a ficha, nem o app, nem o Fechamento;
  * - a parcela vira recebida sozinha na data, e dá para marcar antes
  *   (antecipação) — sem somar receita;
@@ -23,6 +26,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let gestor: MembroDeTeste | null = null
+let dona: MembroDeTeste | null = null
 let cliente: ClienteDeTeste | null = null
 let slug = ''
 let proc = ''
@@ -42,6 +46,11 @@ function maisMeses(dia: string, k: number) {
   const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate()
   alvo.setUTCDate(Math.min(d, ultimo))
   return alvo.toISOString().slice(0, 10)
+}
+/** `k` dias corridos depois, "AAAA-MM-DD". */
+function maisDias(dia: string, k: number) {
+  const [a, m, d] = dia.split('-').map(Number) as [number, number, number]
+  return new Date(Date.UTC(a, m - 1, d + k)).toISOString().slice(0, 10)
 }
 
 async function comSessao(browser: Browser, estado: string, fn: (p: Page) => Promise<void>) {
@@ -128,6 +137,9 @@ test.beforeAll(async () => {
       { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' },
     ],
   })
+  // O portal da rede manda ao /setup a rede sem onboarding.
+  expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
+  dona = await criarMembro(`copd${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
   const { data, error } = await db().rpc('pacote_salvar', {
     p_tenant: rede.tenantId, p_id: null, p_nome: `${PREFIXO} Pacote cartão ${marca}`, p_preco: 3300, p_validade: null, p_ativo: true,
     p_itens: [{ procedure_id: proc, quantity: 3 }],
@@ -158,6 +170,7 @@ test.afterAll(async () => {
   }
   await cliente?.limpar()
   await gestor?.limpar()
+  await dona?.limpar()
   await rede?.limpar()
   expect(falhas).toEqual([])
 })
@@ -178,13 +191,14 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     const { data: l } = await db().from('financial_transactions').select('is_paid, cartao_vezes, amount').eq('id', venda).single()
     expect(l).toEqual({ is_paid: true, cartao_vezes: 3, amount: 1100 })
 
-    // A operadora: 3 parcelas, o mesmo dia nos 3 meses seguintes, a taxa de 4,5% rateada.
+    // A operadora: 3 parcelas, a cada 30 dias corridos da venda (o prazo
+    // padrão, r2-fin-01), a taxa de 4,5% rateada.
     const hoje = hojeSP()
     const parcelas = await parcelasDa(venda)
     expect(parcelas.map(p => [p.parcela_numero, p.parcela_total, p.valor, p.vencimento_dia, p.situacao])).toEqual([
-      [1, 3, 366.66, maisMeses(hoje, 1), 'A_RECEBER'],
-      [2, 3, 366.66, maisMeses(hoje, 2), 'A_RECEBER'],
-      [3, 3, 366.68, maisMeses(hoje, 3), 'A_RECEBER'],
+      [1, 3, 366.66, maisDias(hoje, 30), 'A_RECEBER'],
+      [2, 3, 366.66, maisDias(hoje, 60), 'A_RECEBER'],
+      [3, 3, 366.68, maisDias(hoje, 90), 'A_RECEBER'],
     ])
     expect(parcelas.every(p => p.taxa_pct === 4.5)).toBe(true)
     expect(Math.round(parcelas.reduce((s, p) => s + p.taxa, 0) * 100) / 100, 'a taxa de 4,5% sobre R$ 1.100').toBe(49.5)
@@ -281,6 +295,35 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     ])
     expect(n((await aReceberDaOperadora()).em_aberto)).toBe(0)
     expect(await devidoDoAtendimento(atendimentoDaVenda), 'o estorno devolve a comissão, como sempre').toBe(0)
+  })
+
+  test('a clínica muda o prazo da operadora para 15 dias em Configurações → Comissões, e a próxima venda cai a cada 15 dias', async ({ browser }) => {
+    await comSessao(browser, dona!.estado, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      const campo = p.getByLabel('Prazo da operadora (dias)')
+      await expect(campo, 'o padrão: 30 dias').toHaveValue('30')
+      await campo.fill('15')
+      await p.getByRole('button', { name: 'Salvar taxas' }).click()
+      await expect(p.getByRole('status').filter({ hasText: 'Salvo.' })).toBeVisible()
+    })
+    expect((await db().from('tenants').select('cartao_prazo_dias').eq('id', rede!.tenantId).single()).data?.cartao_prazo_dias).toBe(15)
+    const { data, error } = await db().from('financial_transactions').insert({
+      branch_id: rede!.branchId, client_id: cliente!.clientId, type: 'INCOME', category: 'Serviços',
+      description: `${PREFIXO} Venda com prazo de 15 dias ${marca}`, amount: 300, payment_method: 'CREDIT_CARD', cartao_vezes: 2,
+      is_paid: true, paid_at: new Date().toISOString(), created_by: 'e2e',
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    const hoje = hojeSP()
+    expect((await parcelasDa(data!.id)).map(x => [x.valor, x.vencimento_dia])).toEqual([[150, maisDias(hoje, 15)], [150, maisDias(hoje, 30)]])
+    // A venda que já existia não muda: o vencimento é retratado na venda.
+    expect((await parcelasDa(venda)).map(x => x.vencimento_dia)).toEqual([maisDias(hoje, 30), maisDias(hoje, 60), maisDias(hoje, 90)])
+    // Fora do intervalo, a action recusa.
+    await comSessao(browser, dona!.estado, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarPrazoDaOperadora', '/admin/settings', [0])
+      expect(r.texto).toContain('de 1 a 120 dias')
+    })
+    expect((await db().from('tenants').update({ cartao_prazo_dias: 30 }).eq('id', rede!.tenantId)).error).toBeNull()
   })
 
   test('a parcela vira recebida sozinha na data, sem ninguém clicar', async () => {

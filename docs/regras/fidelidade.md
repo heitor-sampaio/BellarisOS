@@ -31,7 +31,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   2026-10-29). Os inteiros (mínimo, meses, bônus, dias) continuam lendo o
   ponto como milhar. Prova: `e2e/fidelidade-opcionais.spec.ts` ("0.5").
 - **Cartão em N vezes pontua na VENDA, inteiro** (F2c, 2026-11-01): a
-  cliente pagou tudo na maquininha. O que a operadora deposita mês a mês
+  cliente pagou tudo na maquininha. O que a operadora deposita em parcelas
   (`recebiveis_do_cartao`) não é pagamento e não pontua de novo. Prova:
   `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`.
 - **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu

@@ -24,7 +24,7 @@ import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
-import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
+import { TETO_DE_VEZES, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -91,6 +91,31 @@ export async function salvarMaximoDeVezes(entrada: unknown): Promise<Resultado> 
     }
     const linhas = await gravar(createAdminClient().from('tenants')
       .update({ cartao_max_vezes: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o limite de vezes no crédito')
+    if (!linhas?.length) return { error: 'Rede não encontrada.' }
+    revalidar()
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * O prazo da operadora (r2-fin-01): a cada quantos dias corridos, contados da
+ * venda, ela deposita cada parcela do cartão em N vezes. Vale para a rede
+ * inteira e para as PRÓXIMAS vendas (o vencimento é retratado na parcela) —
+ * mesma permissão e abrangência das taxas.
+ */
+export async function salvarPrazoDaOperadora(entrada: unknown): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (ctx.branchId !== null) return { error: 'O prazo da operadora vale para a rede inteira: quem muda é quem administra a rede.' }
+    const n = Number(entrada)
+    const recusa = recusaDoPrazoDaOperadora(n)
+    if (recusa) return { error: recusa }
+    const linhas = await gravar(createAdminClient().from('tenants')
+      .update({ cartao_prazo_dias: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o prazo da operadora')
     if (!linhas?.length) return { error: 'Rede não encontrada.' }
     revalidar()
     return { ok: true }

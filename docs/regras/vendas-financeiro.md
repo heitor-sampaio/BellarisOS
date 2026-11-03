@@ -521,7 +521,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   `financial_transactions.cartao_vezes` (2–12, só no crédito — a restrição do
   banco confere). Para a comissão, é pagamento INTEGRAL (H4, 2026-11-01):
   libera na hora.
-  - **E a OPERADORA deposita mês a mês: N parcelas a receber DELA** (F2c da
+  - **E a OPERADORA deposita em N parcelas: a receber DELA** (F2c da
     5ª simulação; decisões do Heitor, 2026-11-01: "no financeiro mês a mês,
     como a receber" e "conta no mês do dia da venda"). O lançamento pago no
     crédito em 2+ vezes ganha, por gatilho (`trg_recebiveis_do_cartao`, vale
@@ -530,10 +530,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     comissão ou dívida da cliente as vê. Cada parcela tem o seu valor (a
     divisão em centavos, a sobra na última), a taxa da maquininha de N vezes
     retratada (`private.comissao_taxa_pct`, a mesma da comissão), o líquido e
-    o vencimento no MESMO DIA dos meses seguintes ao pagamento (o 31 vira o
-    último dia do mês curto, em Brasília): uma por mês. (Decisão desta frente,
-    para o Heitor revisar: a operadora real paga em D+30 corridos, mas aí um
-    mês fica sem parcela e outro com duas.)
+    o vencimento a cada N DIAS CORRIDOS contados da venda — a parcela k em
+    venda + k × N (r2-fin-01, o Heitor, 2026-11-03: "como a operadora paga de
+    verdade e configurável o prazo"; era o mesmo dia de cada mês). O N é da
+    clínica: Configurações → Comissões → "Prazo da operadora (dias)", junto
+    das taxas (`tenants.cartao_prazo_dias`, 30 por padrão, 1–120;
+    `salvarPrazoDaOperadora`, a mesma permissão e abrangência das taxas). Um
+    prazo só, não por bandeira nem por vezes: a taxa muda com as vezes, o
+    prazo da operadora não. O vencimento é retratado na parcela: mudar o
+    prazo vale para as próximas vendas. Migration `20261103001301`.
     - **A receita é da VENDA**: entra inteira no dia dela, pela regra única;
       a parcela recebida NÃO soma receita (`indicadores.md`).
     - **A baixa é na leitura, sem cron**: a parcela vira recebida SOZINHA
@@ -852,7 +857,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou
 ❌ Gravar due_date como "AAAA-MM-DD" cru (meia-noite UTC = 21h da VÉSPERA em Brasília) — use vencimentoDoDia (lib/financeiro/lancamento.ts)
 ❌ Dar baixa sem a guarda do já pago/estornado (marcarPagoCore confere a linha devolvida)
-❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da clínica; o que a operadora deposita mês a mês mora em recebiveis_do_cartao, nascido pelo gatilho
+❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da clínica; o que a operadora deposita em parcelas mora em recebiveis_do_cartao, nascido pelo gatilho
 ❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)

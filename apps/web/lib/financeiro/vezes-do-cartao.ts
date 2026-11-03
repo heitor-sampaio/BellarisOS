@@ -15,6 +15,21 @@
 
 export const TETO_DE_VEZES = 12
 
+/**
+ * O prazo da OPERADORA (r2-fin-01; o Heitor, 2026-11-03: "como a operadora
+ * paga de verdade e configurável o prazo"): a parcela k do cartão em N vezes
+ * vence k × N dias corridos depois da venda. A clínica muda em Configurações →
+ * Comissões (`tenants.cartao_prazo_dias`); o banco confere o intervalo.
+ */
+export const PRAZO_PADRAO_DA_OPERADORA = 30
+export const PRAZO_MAXIMO_DA_OPERADORA = 120
+/** A recusa do prazo digitado, ou `null`. */
+export function recusaDoPrazoDaOperadora(n: number): string | null {
+  return Number.isInteger(n) && n >= 1 && n <= PRAZO_MAXIMO_DA_OPERADORA
+    ? null
+    : `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`
+}
+
 const entre = (n: number) => Math.max(1, Math.min(TETO_DE_VEZES, Math.trunc(n)))
 
 export function maximoDeVezes(configurado: number | null | undefined, parcelasComTaxa: number[]): number {

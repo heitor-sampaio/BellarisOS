@@ -20,7 +20,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     venda de produto: quando a venda inteira está paga — o recebido (com os
     pontos, que são forma de pagamento) fecha com o preço vendido;
   - **crédito em N vezes é pago na hora** (`cartao_vezes`, um lançamento
-    pago): libera na hora. As parcelas que a OPERADORA deposita mês a mês
+    pago): libera na hora. As parcelas que a OPERADORA deposita em parcelas
     (`recebiveis_do_cartao`, F2c de 2026-11-01) moram fora de
     `financial_transactions`: a quitação olha a VENDA, e elas nunca deixam a
     comissão "aguardando" (prova:

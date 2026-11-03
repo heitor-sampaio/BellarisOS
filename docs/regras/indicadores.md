@@ -60,7 +60,7 @@
   - **O cartão em N vezes conta no dia da VENDA** (decisão do Heitor,
     2026-11-01: "conta no mês do dia da venda"): a receita é o lançamento
     pago, inteiro, no `paid_at` dele — a regra única não muda. As parcelas
-    que a OPERADORA deposita mês a mês (`recebiveis_do_cartao`) não são
+    que a OPERADORA deposita em parcelas (`recebiveis_do_cartao`) não são
     receita e não entram em `revenuePending`: são o "A receber da operadora"
     (`metrics_a_receber_da_operadora` → `getAReceberDaOperadora`,
     `lib/metrics/operadora.ts`: o em aberto com vencimento no período, o

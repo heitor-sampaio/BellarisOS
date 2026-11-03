@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
-import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes } from '@/actions/comissoes'
-import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
+import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora } from '@/actions/comissoes'
+import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
@@ -40,11 +40,13 @@ const PARCELAS_DO_CREDITO = Array.from({ length: 11 }, (_, i) => i + 2)
 /** Os campos de taxa são curtos: em grade, quantos couberem na linha. */
 const grade = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 } as const
 
-export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null }: {
+export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null, prazoDaOperadora = PRAZO_PADRAO_DA_OPERADORA }: {
   inicial:    ConfigDeComissao
   taxas:      TaxaDePagamento[]
   /** "Parcelar no crédito até" gravado pela rede (D-15); nulo = automático. */
   maximoDeVezes?: number | null
+  /** A cada quantos dias a operadora deposita cada parcela (r2-fin-01). */
+  prazoDaOperadora?: number
   /** Quem atende clientes e não tem comissão padrão configurada. */
   semRegra:   { id: string; nome: string }[]
   /** Quantos atendem (A12): sem ninguém, a tela não diz "todos têm comissão". */
@@ -54,7 +56,7 @@ export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, po
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ComoAcontece inicial={inicial} podeEditar={podeEditar} />
-      <TabelaDeTaxas inicial={taxas} podeEditar={podeEditar} maximoGravado={maximoGravado} />
+      <TabelaDeTaxas inicial={taxas} podeEditar={podeEditar} maximoGravado={maximoGravado} prazoGravado={prazoDaOperadora} />
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
         <h2 style={titulo}>Comissão de cada profissional</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
@@ -193,7 +195,7 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
   )
 }
 
-function TabelaDeTaxas({ inicial, podeEditar, maximoGravado }: { inicial: TaxaDePagamento[]; podeEditar: boolean; maximoGravado: number | null }) {
+function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado }: { inicial: TaxaDePagamento[]; podeEditar: boolean; maximoGravado: number | null; prazoGravado: number }) {
   const router = useRouter()
   const chave = (m: MetodoComTaxa, n: number) => `${m}/${n}`
   const [valores, setValores] = useState<Record<string, string>>(() =>
@@ -209,6 +211,8 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado }: { inicial: TaxaDe
     .filter(([k, v]) => k.startsWith('CREDIT_CARD/') && v.trim() !== '')
     .map(([k]) => Number(k.split('/')[1]))
   const automatico = maximoDeVezes(null, parcelasComTaxa)
+  // r2-fin-01: o prazo da operadora, em dias corridos.
+  const [prazo, setPrazo] = useState(String(prazoGravado))
 
   function salvar() {
     setErro(null)
@@ -221,11 +225,18 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado }: { inicial: TaxaDe
       const [metodo, parcelas] = k.split('/') as [MetodoComTaxa, string]
       lista.push({ metodo, parcelas: Number(parcelas), taxa_pct: n })
     }
+    const dias = Number(prazo.trim())
+    const recusaDoPrazo = recusaDoPrazoDaOperadora(dias)
+    if (recusaDoPrazo) { setErro(recusaDoPrazo); return }
     iniciar(async () => {
       const r = await salvarTaxasDaMaquininha(lista)
       if (r.error) { setErro(r.error); return }
       const m = await salvarMaximoDeVezes(maxVezes === '' ? null : Number(maxVezes))
       if (m.error) { setErro(m.error); return }
+      if (dias !== prazoGravado) {
+        const pz = await salvarPrazoDaOperadora(dias)
+        if (pz.error) { setErro(pz.error); return }
+      }
       setSalvo(true)
       router.refresh()
     })
@@ -272,6 +283,17 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado }: { inicial: TaxaDe
         </select>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas. Acima disso o sistema não deixa passar.
+        </span>
+      </label>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Prazo da operadora (dias)</span>
+        <input className="field" inputMode="numeric" aria-label="Prazo da operadora (dias)" disabled={!podeEditar} value={prazo}
+          style={{ maxWidth: 120 }}
+          onChange={e => { setPrazo(e.target.value.replace(/D/g, '').slice(0, 3)); setSalvo(false) }} />
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          No crédito em várias vezes, a operadora deposita cada parcela a cada {recusaDoPrazoDaOperadora(Number(prazo)) ? 'N' : prazo} dias
+          corridos contados da venda: em 3x, nos dias {[1, 2, 3].map(k => k * (Number(prazo) || 0)).join(', ')}. Vale para as próximas
+          vendas; de 1 a {PRAZO_MAXIMO_DA_OPERADORA} dias.
         </span>
       </label>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
