@@ -104,12 +104,24 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   const falhas: string[] = []
   const olhar = (o: string, r: { error: { message: string } | null }) => { if (r.error) falhas.push(`${o}: ${r.error.message}`) }
+  // O banco lento do CI (completa de 03/11 à tarde) cancelou o delete dos
+  // leads por "statement timeout", e o dos contatos falhou em seguida pela FK:
+  // duas falhas por uma. Repete o que caiu por tempo (o delete é idempotente),
+  // e os contatos só saem depois dos leads.
+  const comNovaTentativa = async (fazer: () => PromiseLike<{ error: { message: string; code?: string } | null }>) => {
+    let r = await fazer()
+    for (let i = 0; i < 2 && r.error && (r.error.code === '57014' || /statement timeout/i.test(r.error.message)); i++) r = await fazer()
+    return r
+  }
   if (rede) {
+    let leadsSairam = true
     if (leads.length) {
-      olhar('eventos', await db().from('lead_events').delete().in('lead_id', leads))
-      olhar('leads', await db().from('leads').delete().in('id', leads))
+      olhar('eventos', await comNovaTentativa(() => db().from('lead_events').delete().in('lead_id', leads)))
+      const r = await comNovaTentativa(() => db().from('leads').delete().in('id', leads))
+      olhar('leads', r)
+      leadsSairam = !r.error
     }
-    olhar('contatos', await db().from('contacts').delete().eq('tenant_id', rede.tenantId))
+    if (leadsSairam) olhar('contatos', await comNovaTentativa(() => db().from('contacts').delete().eq('tenant_id', rede!.tenantId)))
     olhar('etapas', await db().from('crm_stages').delete().eq('tenant_id', rede.tenantId))
     olhar('funis', await db().from('crm_funnels').delete().eq('tenant_id', rede.tenantId))
     olhar('sinais', await db().from('crm_quadro_sinais').delete().eq('tenant_id', rede.tenantId))

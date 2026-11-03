@@ -166,8 +166,11 @@ test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
     // automação acha a oportunidade aberta da cliente.
     await como(browser, recepcao!, p => agendarPelaAgenda(p, clientId, diaDaquiA2(), '17:00'))
     await expect.poll(() => etapaDe(leadId), { timeout: 20_000 }).toBe(etapas!.marcado)
-    const { data: mudou } = await db().from('lead_events').select('actor_name, to_stage_id').eq('lead_id', leadId).eq('type', 'STAGE_CHANGED')
-    expect(mudou).toEqual([{ actor_name: expect.stringMatching(/^Automação · /), to_stage_id: etapas!.marcado }])
+    // A linha do tempo é escrita DEPOIS do update da etapa (moverDeEtapa,
+    // lib/automacoes/acoes-crm.ts): ler logo depois de ver a etapa pegava a
+    // janela entre os dois — o "[]" da completa de 03/11 à tarde. Espera.
+    await expect.poll(async () => (await db().from('lead_events').select('actor_name, to_stage_id').eq('lead_id', leadId).eq('type', 'STAGE_CHANGED')).data,
+      { timeout: 20_000 }).toEqual([{ actor_name: expect.stringMatching(/^Automação · /), to_stage_id: etapas!.marcado }])
   })
 
   test('o fato da agenda que só conhece a cliente também acha o card: "Agendamento confirmado → Mover de etapa"', async ({ browser }) => {

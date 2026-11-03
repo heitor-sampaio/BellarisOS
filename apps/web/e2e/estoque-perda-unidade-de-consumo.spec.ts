@@ -95,7 +95,10 @@ test('mais UI do que o lote tem é recusado na unidade escolhida', async ({ brow
     await modal.getByLabel('Quantidade').fill('300')
     await modal.getByLabel('Motivo').selectOption('QUEBROU')
     await modal.getByRole('button', { name: 'Registrar perda' }).click()
-    await expect(modal.getByText('O lote tem só 270 UI.')).toBeVisible()
+    // 30 s: na completa de 03/11 à tarde o banco levou 13 s para responder a
+    // recusa (o log do Supabase tem o "O lote tem só 270 UI." chegando depois
+    // dos 15 s do teste); contra o build, local, ela aparece na hora.
+    await expect(modal.getByText('O lote tem só 270 UI.')).toBeVisible({ timeout: 30_000 })
   })
   expect(await saldo(), 'nada saiu').toEqual({ embalagens: 3, rendimento: 270 })
 })
