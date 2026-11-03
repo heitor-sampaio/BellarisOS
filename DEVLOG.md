@@ -9128,6 +9128,41 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F14 feita em 2026-11-03 — agenda, atendimento, cadastro duplicado, textos e WhatsApp**
+(63d7c2ea…b621dbd9; migration `20261103001401`). A segunda frente da 2ª revisão.
+- Iniciar antes do horário pergunta em qualquer antecedência ("faltam 10 min.
+  Iniciar mesmo assim?"), também no "Marcar chegada e iniciar".
+- O atendimento de outra profissional, aberto pela URL, diz "Este atendimento
+  é de outra profissional — Ele está na agenda de Renata Lima", sem nada dele.
+- "Filial" vira "unidade" nos quadros; as recusas e as dicas falam a língua da
+  clínica de uma unidade ("Só quem é Admin altera uma Admin.", "Nunca ocorreu
+  nesta clínica").
+- A comissão de cada produto se registra no CADASTRO do produto (pedido do
+  Heitor sobre a F13: "em cada produto se possa registrar"); Configurações →
+  Comissões guarda o modo e a regra geral, e mostra o resumo só de leitura.
+- A inscrição estadual diz "(opcional)" (nada a exigia).
+- O agendar pelo CRM também avisa do plano proposto com o mesmo procedimento.
+- O cadastro da cliente confere antes de gravar (mesmo CPF, mesmo telefone,
+  ou mesmo nome com mesma data de nascimento) e pergunta "Cadastrar mesmo
+  assim" × "Atualizar a ficha de X" — no formulário, no "+ Agendar", no CRM e
+  no Copilot. Saiu a trava calada dos 60 s.
+- O card só anda pela pessoa ou por uma automação da clínica (cfg-04):
+  conferidos agendar, concluir, pagar, conversa nova e cadastro — nenhum muda a
+  etapa; o modelo "Agendou" só nasce quando a clínica o escolhe, como
+  rascunho, e nenhuma rede real o tem. Trava: `tests/card-so-anda-pela-pessoa.test.ts`.
+- Remover um número de WhatsApp não junta mais as conversas (cfg-06): o número
+  fica marcado (`whatsapp_numbers.removido_em`), a conversa abre com "número
+  removido", o inbox ganhou o filtro "Número", e responder por ela é recusado
+  com o motivo.
+- As 3 falhas da 2ª completa: duas do teste (a corrida do evento da automação;
+  a limpeza frágil com o banco lento) e uma de banco lento no CI (a perda em
+  UI — a recusa já voltava como `{ error }`).
+
+Decisões da F14, para revisar: "Atualizar a ficha" grava também o nome
+digitado; as observações se somam e as tags se juntam; pelo CPF só existe
+"Atualizar"; a conversa do número removido não responde por outro número; a
+seção de comissão no produto só aparece a quem muda comissão.
+
 **F13 feita em 2026-11-03 — cartão, estornos, vendas, comissão e indicadores**
 (393ea443…bfd3c3a8; migrations `20261103001301`…`001307`). A primeira das
 duas frentes que saíram da 2ª revisão (as 50 decisões de F1–F12, página
@@ -9207,7 +9242,8 @@ gravada. Pendente (destrutivo, com o Heitor): `crm_stages.marca` — recriar
 Supabase): `…000502` (`senha_da_conta_confere`), `…000709` (o retorno:
 `retornos_a_marcar` e três colunas de `appointments`), as versões velhas de
 `produto_vender`/`procedimento_vender`/`pacote_vender` (antes, ~10 specs
-passam às novas), `crm_stages.marca` e `leads.stage`.
+passam às novas), `crm_stages.marca`, `leads.stage` e a função
+`juntar_conversas_do_numero(uuid, uuid)`, sem uso desde a F14.
 
 **F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
 migrations `20261101001101–1108`). Receber o plano no check-in é uma
