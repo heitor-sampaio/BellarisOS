@@ -39,7 +39,7 @@ export async function seedDefaultFunnel(tenantId: string): Promise<CRMFunnel[]> 
   const funis = await ler(admin.rpc('crm_funil_padrao', {
     p_tenant: tenantId,
     p_nome:   DEFAULT_FUNNEL_NAME,
-    p_etapas: DEFAULT_STAGES.map((s, i) => ({ name: s.name, color: s.color, position: i, outcome: s.outcome, marca: s.marca ?? null })),
+    p_etapas: DEFAULT_STAGES.map((s, i) => ({ name: s.name, color: s.color, position: i, outcome: s.outcome })),
   }).select(FUNNEL_COLS), 'criar o funil padrão')
   return (funis ?? []) as CRMFunnel[]
 }

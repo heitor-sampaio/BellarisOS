@@ -206,6 +206,13 @@ export interface DadosDeAgendamento extends DadosDeEvento {
   motivo?:         string | null
   /** Só em remarcação: de quando para quando. */
   deAgendadoPara?: string | null
+  /**
+   * Só no criado: a oportunidade ABERTA a que o agendamento se ligou (o card
+   * por onde se agendou, ou a aberta mais recente da cliente). É por ela que
+   * "Agendamento criado → Mover de etapa" acha o card (crm-05: o card não anda
+   * sozinho; quem quer, monta a automação).
+   */
+  leadId?:         string | null
 }
 
 /**

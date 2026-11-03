@@ -102,6 +102,33 @@ async function oportunidadeDaConversa(
 }
 
 /**
+ * A oportunidade de um fato que só conhece a CLIENTE (crm-05, 2026-11-03).
+ *
+ * O card não anda sozinho ("não existe movimento automático padrão nos funis";
+ * quem quer, faz pela automação): "Atendimento concluído → Mover para Fechado"
+ * precisa achar o card de um fato de agenda, que carrega só `clienteId`. É a
+ * oportunidade ABERTA mais recente da cliente — a mesma regra do agendar
+ * (`oportunidadeDoAgendamento`). Ganho e perdido não entram: um fato da agenda
+ * não reabre negócio fechado.
+ */
+async function oportunidadeDaCliente(
+  admin: ReturnType<typeof createAdminClient>,
+  evento: EventoDoGatilho,
+  tenantId: string,
+): Promise<string | null> {
+  const clienteId = idDaEntidade(evento, 'cliente')
+  if (!clienteId) return null
+  const abertas = await ler(admin
+    .from('leads').select('id, crm_stages!inner(outcome)')
+    .eq('tenant_id', tenantId)
+    .eq('client_id', clienteId)
+    .eq('crm_stages.outcome', 'OPEN')
+    .order('created_at', { ascending: false })
+    .limit(1), 'buscar a oportunidade aberta da cliente')
+  return (abertas?.[0]?.id as string | undefined) ?? null
+}
+
+/**
  * Garante que `contexto[alvo]` existe, buscando no banco se preciso.
  *
  * Devolve o próprio contexto, mutado. Quando não há id para a entidade, grava
@@ -120,7 +147,9 @@ export async function hidratar(
   const admin = createAdminClient()
 
   const id = idDaEntidade(evento, alvo)
-    ?? (alvo === 'lead' ? await oportunidadeDaConversa(admin, evento, tenantId) : null)
+    ?? (alvo === 'lead'
+      ? (await oportunidadeDaConversa(admin, evento, tenantId)) ?? (await oportunidadeDaCliente(admin, evento, tenantId))
+      : null)
   if (!id) { contexto[alvo] = null; return contexto }
 
   try {

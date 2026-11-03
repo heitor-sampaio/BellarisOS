@@ -20,7 +20,7 @@ let outra: OutraRede | null = null
 test.beforeAll(async () => { outra = await criarOutraRede(`fp${marca}`) })
 test.afterAll(async () => { await outra?.limpar() })
 
-const ETAPAS = DEFAULT_STAGES.map((s, i) => ({ name: s.name, color: s.color, position: i, outcome: s.outcome, marca: s.marca ?? null }))
+const ETAPAS = DEFAULT_STAGES.map((s, i) => ({ name: s.name, color: s.color, position: i, outcome: s.outcome }))
 
 test('oito primeiros acessos juntos: um funil, com as sete etapas, para todos', async () => {
   const b = banco()
@@ -43,7 +43,8 @@ test('oito primeiros acessos juntos: um funil, com as sete etapas, para todos', 
   expect(funis![0]).toMatchObject({ name: DEFAULT_FUNNEL_NAME, is_default: true })
   const { data: etapas } = await b.from('crm_stages').select('name, marca').eq('tenant_id', outra!.tenantId).order('position')
   expect(etapas!.map(e => e.name)).toEqual(DEFAULT_STAGES.map(s => s.name))
-  expect(etapas!.find(e => e.name === 'Agendado')?.marca).toBe('AGENDADO')
+  // crm-05: nenhuma etapa move o card sozinha — o funil padrão não marca nenhuma.
+  expect(etapas!.filter(e => e.marca !== null)).toEqual([])
 
   // A rede que JÁ tem funil não ganha outro, nem etapa a mais.
   await chamar()

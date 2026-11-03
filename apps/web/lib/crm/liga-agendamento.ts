@@ -4,12 +4,10 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { temRecurso } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { registrarEventoLead } from '@/lib/lead-events'
-import { moverEtapaCore } from '@/lib/crm/oportunidade'
-import { etapaParaAgendar, type EtapaDoFunil } from '@/lib/crm/etapa-agendado'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-export interface OportunidadeDoAgendamento { leadId: string; aberta: boolean; etapaId: string | null; funnelId: string | null }
+export interface OportunidadeDoAgendamento { leadId: string; aberta: boolean }
 
 /**
  * A oportunidade a que um agendamento se liga (D11/A12, 2026-10-27).
@@ -27,25 +25,31 @@ export async function oportunidadeDoAgendamento(
 ): Promise<OportunidadeDoAgendamento | null> {
   if (!temRecurso(ctx, 'oportunidades')) return null
   let q = admin.from('leads')
-    .select('id, crm_stage_id, crm_stages(funnel_id, outcome)')
+    .select('id, crm_stages(outcome)')
     .eq('tenant_id', ctx.tenantId!)
   q = leadIdDado ? q.eq('id', leadIdDado) : q.eq('client_id', clientId)
   const linhas = (await ler(q.order('created_at', { ascending: false }).limit(20), 'buscar a oportunidade da cliente') ?? []) as unknown as {
-    id: string; crm_stage_id: string | null
-    crm_stages: { funnel_id: string; outcome: string } | { funnel_id: string; outcome: string }[] | null
+    id: string
+    crm_stages: { outcome: string } | { outcome: string }[] | null
   }[]
   const lidas = linhas.map(l => {
     const e = Array.isArray(l.crm_stages) ? l.crm_stages[0] : l.crm_stages
-    return { leadId: l.id, etapaId: l.crm_stage_id, funnelId: e?.funnel_id ?? null, aberta: e?.outcome === 'OPEN' }
+    return { leadId: l.id, aberta: e?.outcome === 'OPEN' }
   })
   return (leadIdDado ? lidas[0] : lidas.find(l => l.aberta)) ?? null
 }
 
 /**
- * Depois do agendamento criado: o card vai para a etapa de agendado (a MARCA,
- * nunca o nome) e a linha do tempo diz o que aconteceu. O agendamento JÁ
- * EXISTE aqui — falha só é registrada: a tela não pode dizer "falhou" para um
- * agendamento criado.
+ * Depois do agendamento criado: a linha do tempo do card diz o que aconteceu.
+ * O agendamento JÁ EXISTE aqui — falha só é registrada: a tela não pode dizer
+ * "falhou" para um agendamento criado.
+ *
+ * ⚠️ O CARD NÃO ANDA (crm-05, revisão do Heitor de 2026-11-02: "não existe
+ * movimento automático padrão nos funis; caso queiram, podem fazer isso através
+ * do módulo de automações com as regras que quiserem"). Até ali ele ia para a
+ * etapa marcada "agendado" (A12, 2026-10-27). Quem quer o movimento monta
+ * "Agendamento criado → Mover de etapa" — o evento leva a oportunidade
+ * (`leadId`) para a automação achar o card.
  */
 export async function ligarAgendamentoAOportunidade(
   admin: Admin, ctx: TenantContext,
@@ -53,15 +57,6 @@ export async function ligarAgendamentoAOportunidade(
   agendamento: { procedureId: string | null; scheduledAt: string },
 ): Promise<void> {
   try {
-    if (o.aberta && o.funnelId && o.etapaId) {
-      const etapas = (await ler(admin.from('crm_stages').select('id, position, outcome, marca')
-        .eq('funnel_id', o.funnelId).eq('tenant_id', ctx.tenantId!), 'buscar as etapas do funil') ?? []) as EtapaDoFunil[]
-      const destino = etapaParaAgendar(etapas, o.etapaId)
-      if (destino) {
-        const r = await moverEtapaCore(admin, ctx, o.leadId, destino, { semAlcance: true })
-        if ('error' in r) console.error('[ligarAgendamentoAOportunidade] mover:', r.error)
-      }
-    }
     const proc = agendamento.procedureId
       ? await ler(admin.from('procedures').select('name').eq('id', agendamento.procedureId).maybeSingle(), 'buscar o procedimento')
       : null

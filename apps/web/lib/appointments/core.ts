@@ -289,7 +289,8 @@ export async function createAppointmentCore(
   // Depois da resposta (A33): o card do CRM e a corrente de eventos não
   // seguram o "Agendando…". O agendamento JÁ EXISTE — os dois só registram
   // (`ligarAgendamentoAOportunidade` e o emissor não lançam).
-  //  - O card anda para "agendado" e a linha do tempo dele diz o que houve.
+  //  - A linha do tempo do card diz o que houve — o card NÃO anda (crm-05: o
+  //    movimento é da automação, e o evento leva o card a ela no `leadId`).
   //  - A corrente de eventos sai daqui, e não das actions que chamam este
   //    core, porque são quatro caminhos de criação (agenda, inbox, checkout de
   //    plano, portal do cliente) e o fato é o mesmo — emitir em cada um seria
@@ -299,8 +300,9 @@ export async function createAppointmentCore(
     if (oportunidade) {
       await ligarAgendamentoAOportunidade(admin, ctx, oportunidade, { procedureId: input.procedureId, scheduledAt: input.scheduledAt })
     }
+    const leadId = oportunidade?.aberta ? oportunidade.leadId : null
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CRIADO, agendamentoId, { ...ctx, userName },
-      ctx.isClient ? { ator: { tipo: 'cliente', id: input.clientId }, origem: 'app' } : undefined)
+      ctx.isClient ? { ator: { tipo: 'cliente', id: input.clientId }, origem: 'app', leadId } : { leadId })
   })
 
   // Meta: agendar é o primeiro compromisso real de quem veio de um anúncio, e

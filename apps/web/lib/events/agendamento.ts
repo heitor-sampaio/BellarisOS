@@ -29,6 +29,8 @@ export async function emitirEventoDeAgendamento(
     /** Quando quem agiu não é o usuário logado (cliente pelo app, cron). */
     ator?: AtorDoEvento
     origem?: 'app' | 'webhook' | 'cron'
+    /** Criado: a oportunidade aberta a que o agendamento se ligou (crm-05). */
+    leadId?: string | null
   },
 ): Promise<void> {
   try {
@@ -67,6 +69,7 @@ export async function emitirEventoDeAgendamento(
     }
     if (extras?.motivo)         dados.motivo         = extras.motivo
     if (extras?.deAgendadoPara) dados.deAgendadoPara = extras.deAgendadoPara
+    if (extras?.leadId)         dados.leadId         = extras.leadId
 
     await emitirEvento(nome, {
       tenantId:   ctx.tenantId,

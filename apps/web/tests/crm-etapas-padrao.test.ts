@@ -16,7 +16,7 @@ describe('o funil padrão da rede nova', () => {
 })
 
 describe('a etapa de agendado do funil padrão', () => {
-  it('leva a marca AGENDADO — o código acha a etapa por ela, não pelo nome (A12)', () => {
-    expect(DEFAULT_STAGES.filter(s => s.marca === 'AGENDADO').map(s => s.name)).toEqual(['Agendado'])
+  it('não leva marca nenhuma — o card não anda sozinho para ela (crm-05; era a marca AGENDADO do A12)', () => {
+    expect(DEFAULT_STAGES.every(s => !('marca' in s))).toBe(true)
   })
 })

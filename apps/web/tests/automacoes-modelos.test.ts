@@ -51,6 +51,16 @@ describe('os modelos prontos de automação', () => {
     expect(grafo.ligacoes.find(l => l.de === se.id)?.saida).toBe('sim')
   })
 
+  it('o de agendou leva o card: começa no agendamento criado e pede a etapa antes de ligar (crm-05)', () => {
+    // "Não existe movimento automático padrão nos funis" — quem quer o card
+    // andando ao agendar liga este modelo e escolhe a etapa do SEU funil.
+    const grafo = modeloDeAutomacao('agendou-move-o-card')!.grafo()
+    expect(grafo.nos.map(n => n.tipo)).toEqual([NODES.GATILHO_EVENTO, NODES.ACAO_MOVER_ETAPA])
+    expect(grafo.nos[0]!.config).toEqual({ evento: 'agendamento.criado' })
+    const erros = validarGrafo(grafo).filter(p => p.grau === 'erro').map(p => p.mensagem)
+    expect(erros.some(m => /etapa de destino/.test(m))).toBe(true)
+  })
+
   it('a regra do "Se" sem valor não deixa ligar: a clínica escolhe o procedimento antes', () => {
     const grafo = modeloDeAutomacao('retorno-depois-do-atendimento')!.grafo()
     const erros = validarGrafo(grafo).filter(p => p.grau === 'erro').map(p => p.mensagem)

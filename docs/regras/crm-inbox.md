@@ -572,6 +572,18 @@ só, com a rede travada (`crm_funil_padrao`, só `service_role`, migration
 banco deixava funil sem etapa. Prova: `e2e/crm-funil-padrao.spec.ts`,
 `tests/crm-funil-padrao.test.ts`.
 
+**O card não anda sozinho** (crm-05, revisão do Heitor de 2026-11-02: "não
+existe movimento automático padrão nos funis; caso queiram, podem fazer isso
+através do módulo de automações com as regras que quiserem, lembre-se, o
+objetivo é ser o mais flexível possível"). Quem move é a pessoa (arraste,
+painel do inbox, modal, Copilot) ou uma AUTOMAÇÃO da clínica ("Mover de
+etapa", "Marcar ganho/perdido"). Agendar não leva mais o card à etapa
+"Agendado" (era o A12, pela `crm_stages.marca`, que ficou sem leitor); a
+linha do tempo continua dizendo que houve o agendamento. Para ter o
+movimento, o modelo "Agendou: o card muda de etapa" (`automacoes.md`). As
+redes que já existiam ficam com os funis e os cards como estão; o card só não
+anda mais ao agendar. Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`.
+
 **Quem monta o funil é Configurações** (D-1, decisão do Heitor, 2026-10-29):
 criar, renomear, reordenar, arquivar, apagar e escolher o padrão de funis e
 etapas, a cor e o desfecho da etapa e os motivos de perda pedem
@@ -653,6 +665,7 @@ o contato junto.
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Mostrar o nome da conversa (contact_name) em vez do da pessoa (contacts.name)
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
+❌ Mover o card sozinho por um fato do sistema (agendar, concluir, pagar) — "não existe movimento automático padrão nos funis": é a automação da clínica (crm-05)
 ❌ Levar lead a etapa perdida pela tela sem o motivo, ou gravar crm_stage_id fora de moverEtapaCore / camposDaPerda (o motivo e o perdido_em ficam velhos)
 ❌ Importar (planilha, lote) emitindo evento de domínio, ou trocando dado que a ficha já tem
 ❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois

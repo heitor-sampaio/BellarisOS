@@ -26,13 +26,16 @@ export interface CRMStage {
 
 export const DEFAULT_FUNNEL_NAME = 'Funil de vendas'
 
-/** Etapas que a rede recebe no primeiro acesso ao CRM. */
-export const DEFAULT_STAGES: { name: string; color: string; outcome: StageOutcome; marca?: 'AGENDADO' }[] = [
+/**
+ * Etapas que a rede recebe no primeiro acesso ao CRM. Nenhuma move o card
+ * sozinha (crm-05, 2026-11-03): o movimento é da automação que a clínica monta.
+ */
+export const DEFAULT_STAGES: { name: string; color: string; outcome: StageOutcome }[] = [
   { name: 'Novo',       color: '#c34d6b', outcome: 'OPEN' },
   { name: 'Em contato', color: '#7c4ddb', outcome: 'OPEN' },
   { name: 'Avaliação',  color: '#c98a1e', outcome: 'OPEN' },
   { name: 'Em negociação', color: '#b0568f', outcome: 'OPEN' },
-  { name: 'Agendado',   color: '#2563b0', outcome: 'OPEN', marca: 'AGENDADO' },
+  { name: 'Agendado',   color: '#2563b0', outcome: 'OPEN' },
   { name: 'Fechado',    color: '#3f9b6f', outcome: 'WON'  },
   { name: 'Perdido',    color: '#9e9e9e', outcome: 'LOST' },
 ]

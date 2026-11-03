@@ -108,6 +108,28 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
       ],
     }),
   },
+  {
+    // crm-05 (revisão do Heitor de 2026-11-02): "não existe movimento
+    // automático padrão nos funis; caso queiram, podem fazer isso através do
+    // módulo de automações". Até ali o card ia sozinho para a etapa "Agendado";
+    // este modelo é o mesmo movimento, ligado por quem quer, para a etapa do
+    // funil DELA (a etapa vazia não deixa ligar).
+    chave: 'agendou-move-o-card',
+    nome: 'Agendou: o card muda de etapa',
+    descricao: 'Quando uma cliente com oportunidade aberta é agendada, o card dela vai para a etapa que você escolher no funil.',
+    revisar: 'A etapa de destino.',
+    grafo: () => ({
+      nos: [
+        { id: 'n_agd_criado', tipo: NODES.GATILHO_EVENTO, nome: 'Agendamento criado', pos: { x: 80, y: 120 },
+          config: { evento: 'agendamento.criado' } },
+        { id: 'n_agd_mover', tipo: NODES.ACAO_MOVER_ETAPA, nome: 'Mover o card', pos: { x: 360, y: 120 },
+          config: {} },
+      ],
+      ligacoes: [
+        { id: 'l_agd_1', de: 'n_agd_criado', para: 'n_agd_mover' },
+      ],
+    }),
+  },
 ]
 
 export function modeloDeAutomacao(chave: string): ModeloDeAutomacao | null {

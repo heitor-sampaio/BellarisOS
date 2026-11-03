@@ -7,8 +7,15 @@ import { chamarAcao } from './apoio/acao-direta'
 /**
  * Agendar uma cliente que tem oportunidade ABERTA (D11/A12, simulação de
  * 2026-10-27): o agendamento nasce COMMERCIAL (era só pelo card, e só para quem
- * é da rede — o SDR de unidade nunca contava) e o card vai para a etapa de
- * "agendado" do funil, achada pela MARCA (a etapa aqui se chama "Marcado").
+ * é da rede — o SDR de unidade nunca contava) e a linha do tempo do card diz
+ * que houve o agendamento.
+ *
+ * O CARD NÃO ANDA SOZINHO (crm-05, revisão do Heitor de 2026-11-02: "não existe
+ * movimento automático padrão nos funis; caso queiram, podem fazer isso através
+ * do módulo de automações com as regras que quiserem"). Até ali ele ia para a
+ * etapa marcada "agendado" (aqui, "Marcado"); agora fica onde está, e a clínica
+ * que quiser o movimento monta a automação "Agendamento criado → Mover de
+ * etapa" — o último teste prova que ela funciona pela agenda, sem o card.
  */
 
 const marca = Date.now().toString(36)
@@ -18,6 +25,7 @@ let sdr: MembroDeTeste | null = null
 let recepcao: MembroDeTeste | null = null
 let slug = ''
 let etapas: { novo: string; marcado: string; ganho: string; perdido: string } | null = null
+const automacoes: string[] = []
 
 const diaDaquiA2 = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 2 * 86_400_000))
@@ -80,7 +88,14 @@ test.beforeAll(async () => {
   })
 })
 test.afterAll(async () => {
+  for (const id of automacoes) {
+    const { data: runs } = await db().from('automation_runs').select('id').eq('automation_id', id)
+    for (const r of runs ?? []) await db().from('automation_run_steps').delete().eq('run_id', r.id as string)
+    await db().from('automation_runs').delete().eq('automation_id', id)
+    await db().from('automations').delete().eq('id', id)
+  }
   if (rede) {
+    await db().from('domain_events').delete().eq('tenant_id', rede.tenantId)
     const { data } = await db().from('leads').select('id').eq('tenant_id', rede.tenantId)
     const ids = (data ?? []).map(l => l.id as string)
     if (ids.length) { await db().from('lead_events').delete().in('lead_id', ids); await db().from('leads').delete().in('id', ids) }
@@ -91,7 +106,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
-  test('pelo card, o SDR de UNIDADE agenda como comercial e o card vai para a etapa marcada', async ({ browser }) => {
+  test('pelo card, o SDR de UNIDADE agenda como comercial, e o card fica onde está (crm-05)', async ({ browser }) => {
     const { clientId, leadId } = await clienteComLead('Pelo card', etapas!.novo)
     await como(browser, sdr!, async p => {
       await p.goto(`/${slug}/oportunidades`)
@@ -102,17 +117,20 @@ test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
       expect(r.texto.slice(0, 400)).not.toMatch(/{"error"/)
     })
     expect((await agendamentosDe(clientId)).map(a => a.source)).toEqual(['COMMERCIAL'])
-    await expect.poll(() => etapaDe(leadId)).toBe(etapas!.marcado)
-    // O card e a linha do tempo dele andam depois da resposta (`after()`, A33): espera.
+    // A linha do tempo do card é escrita depois da resposta (`after()`, A33): espera.
     await expect.poll(async () => (await db().from('lead_events').select('type').eq('lead_id', leadId).eq('type', 'APPOINTMENT_CREATED')).data?.length)
       .toBe(1)
+    expect(await etapaDe(leadId), 'crm-05: nenhum movimento automático padrão').toBe(etapas!.novo)
+    expect((await db().from('lead_events').select('type').eq('lead_id', leadId).eq('type', 'STAGE_CHANGED')).data ?? []).toHaveLength(0)
   })
 
-  test('pela agenda, a recepção agenda a cliente com oportunidade aberta: COMMERCIAL e o card anda', async ({ browser }) => {
+  test('pela agenda, a recepção agenda a cliente com oportunidade aberta: COMMERCIAL, e o card fica onde está', async ({ browser }) => {
     const { clientId, leadId } = await clienteComLead('Pela agenda', etapas!.novo)
     await como(browser, recepcao!, p => agendarPelaAgenda(p, clientId, diaDaquiA2(), '11:00'))
     expect((await agendamentosDe(clientId)).map(a => a.source)).toEqual(['COMMERCIAL'])
-    await expect.poll(() => etapaDe(leadId)).toBe(etapas!.marcado)
+    await expect.poll(async () => (await db().from('lead_events').select('type').eq('lead_id', leadId).eq('type', 'APPOINTMENT_CREATED')).data?.length)
+      .toBe(1)
+    expect(await etapaDe(leadId), 'crm-05: nenhum movimento automático padrão').toBe(etapas!.novo)
   })
 
   test('sem oportunidade aberta nada muda: INTERNAL, e card perdido ou ganho fica onde está', async ({ browser }) => {
@@ -127,5 +145,58 @@ test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
     for (const c of [sem, perdida.clientId, ganha.clientId]) expect((await agendamentosDe(c)).map(a => a.source)).toEqual(['INTERNAL'])
     expect(await etapaDe(perdida.leadId)).toBe(etapas!.perdido)
     expect(await etapaDe(ganha.leadId)).toBe(etapas!.ganho)
+  })
+
+  test('quem quer o movimento monta a automação: "Agendamento criado → Mover de etapa" leva o card, pela agenda', async ({ browser }) => {
+    const { data: auto, error } = await db().from('automations').insert({
+      tenant_id: rede!.tenantId, nome: `${PREFIXO} Agendou, marcado ${marca}`, status: 'ATIVA', gatilhos: ['agendamento.criado'],
+      grafo: {
+        nos: [
+          { id: 'g', tipo: 'gatilho.evento', nome: 'Agendamento criado', pos: { x: 0, y: 0 }, config: { evento: 'agendamento.criado' } },
+          { id: 'm', tipo: 'acao.mover_etapa', nome: 'Para Marcado', pos: { x: 280, y: 0 }, config: { etapaId: etapas!.marcado } },
+        ],
+        ligacoes: [{ id: 'l1', de: 'g', para: 'm' }],
+      },
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    automacoes.push(auto!.id)
+
+    const { clientId, leadId } = await clienteComLead('Pela automação', etapas!.novo)
+    // A recepção agenda pela AGENDA: o fato não sabe de card nenhum — a
+    // automação acha a oportunidade aberta da cliente.
+    await como(browser, recepcao!, p => agendarPelaAgenda(p, clientId, diaDaquiA2(), '17:00'))
+    await expect.poll(() => etapaDe(leadId), { timeout: 20_000 }).toBe(etapas!.marcado)
+    const { data: mudou } = await db().from('lead_events').select('actor_name, to_stage_id').eq('lead_id', leadId).eq('type', 'STAGE_CHANGED')
+    expect(mudou).toEqual([{ actor_name: expect.stringMatching(/^Automação · /), to_stage_id: etapas!.marcado }])
+  })
+
+  test('o fato da agenda que só conhece a cliente também acha o card: "Agendamento confirmado → Mover de etapa"', async ({ browser }) => {
+    const { data: auto, error } = await db().from('automations').insert({
+      tenant_id: rede!.tenantId, nome: `${PREFIXO} Confirmou, marcado ${marca}`, status: 'ATIVA', gatilhos: ['agendamento.confirmado'],
+      grafo: {
+        nos: [
+          { id: 'g', tipo: 'gatilho.evento', nome: 'Agendamento confirmado', pos: { x: 0, y: 0 }, config: { evento: 'agendamento.confirmado' } },
+          { id: 'm', tipo: 'acao.mover_etapa', nome: 'Para Marcado', pos: { x: 280, y: 0 }, config: { etapaId: etapas!.marcado } },
+        ],
+        ligacoes: [{ id: 'l1', de: 'g', para: 'm' }],
+      },
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    automacoes.push(auto!.id)
+
+    const { clientId, leadId } = await clienteComLead('Confirmou', etapas!.novo)
+    // O agendamento entra direto no banco (sem evento de criado): o fato que
+    // dispara é o "confirmado", que carrega só a cliente.
+    const { data: ag, error: e2 } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: clientId, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+      scheduled_at: new Date(`${diaDaquiA2()}T18:00:00-03:00`).toISOString(), duration_min: 60, price: 0, status: 'SCHEDULED',
+    }).select('id').single<{ id: string }>()
+    expect(e2).toBeNull()
+    await como(browser, recepcao!, async p => {
+      await p.goto(`/${slug}/agenda`)
+      const r = await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', `/${slug}/agenda`, [ag!.id, 'CONFIRMED', slug])
+      expect(r.texto.slice(0, 400)).not.toMatch(/"error"/)
+    })
+    await expect.poll(() => etapaDe(leadId), { timeout: 20_000 }).toBe(etapas!.marcado)
   })
 })

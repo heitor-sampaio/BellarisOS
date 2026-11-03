@@ -246,11 +246,13 @@
   era `ctx.branchId === null`). Pelo card o agendamento é sempre COMMERCIAL. A cliente que agenda
   sozinha pelo app segue `CLIENT_APP`. Sem oportunidade aberta (nenhuma, ganha ou perdida) é
   `INTERNAL`. Fora do plano `oportunidades` não se liga nada.
-  Agendar também move o card para a etapa de agendado do funil, achada pela MARCA
-  (`crm_stages.marca = 'AGENDADO'`, nunca pelo nome: a clínica renomeia), sem recuar quem já
-  passou dela nem mexer em ganho/perdido (`etapaParaAgendar`), e escreve `APPOINTMENT_CREATED`
-  na linha do tempo (o núcleo, não a action). O funil padrão nasce com a marca; funil sem etapa
-  marcada não move o card. Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`.
+  Agendar escreve `APPOINTMENT_CREATED` na linha do tempo do card (o núcleo, não a action) e
+  **não move o card** (crm-05, revisão do Heitor de 2026-11-02: "não existe movimento automático
+  padrão nos funis; caso queiram, podem fazer isso através do módulo de automações com as regras
+  que quiserem"). Até ali ele ia para a etapa marcada "agendado" (`crm_stages.marca`, A12 de
+  2026-10-27); a coluna ficou e nada a lê. O `agendamento.criado` leva a oportunidade aberta
+  ligada (`dados.leadId`), e é por ela que "Agendamento criado → Mover de etapa" acha o card
+  (`automacoes.md`). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`.
 - **A cliente cancela e remarca pelo portal até o prazo da rede**
   (`tenants.portal_prazo_alteracao_horas`, 24h por padrão, Configurações →
   Geral; decisão do Heitor, 2026-10-21): o cartão da agenda abre o detalhe

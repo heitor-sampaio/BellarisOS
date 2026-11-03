@@ -112,6 +112,18 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   mais recente da PESSOA. Até 2026-09-27 mover etapa, desfecho, responsável e
   anotar num fluxo de "mensagem recebida" terminavam sempre em "sem
   oportunidade" — e o editor oferecia os quatro.
+- **A oportunidade de um fato de CLIENTE vem da cliente** (crm-05, 2026-11-03;
+  `oportunidadeDaCliente`): sem `leadId` no fato e sem conversa, é a
+  oportunidade ABERTA mais recente da cliente (`dados.clienteId`) — ganho e
+  perdido não entram. O `agendamento.criado` leva o `leadId` da oportunidade
+  a que o agendamento se ligou (o card por onde se agendou). É o que deixa a
+  clínica montar o movimento que o sistema deixou de fazer sozinho
+  ("Agendamento criado → Mover de etapa", "Atendimento concluído → Mover para
+  Fechado"): "não existe movimento automático padrão nos funis" (`crm-inbox.md`).
+  O modelo "Agendou: o card muda de etapa" (`agendou-move-o-card`) nasce com a
+  etapa vazia — a validação não deixa ligar até a clínica escolher a do funil
+  dela. Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts`,
+  `tests/automacoes-modelos.test.ts`.
 - **"Definir responsável"** (`acao.atribuir`) usa o núcleo da tela,
   `trocarResponsavelCore` (`lib/crm/responsavel.ts`): a pessoa é da rede e
   ATIVA, e a linha do tempo diz de quem para quem (até 2026-10-09 o "de" era
@@ -125,7 +137,8 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **Modelos prontos são OPÇÃO, ao lado do "Nova automação"** (D-4, decisão do
   Heitor, 2026-10-29): "Nova automação" continua começando vazia; "Usar um
   modelo" lista `MODELOS_DE_AUTOMACAO` (`lib/automacoes/modelos.ts` —
-  aniversário, retorno depois do atendimento, lembrete antes do agendamento) e
+  aniversário, retorno depois do atendimento, lembrete antes do agendamento e,
+  desde o crm-05, "Agendou: o card muda de etapa") e
   `criarAutomacaoDeModelo` grava o grafo DO SERVIDOR (o navegador manda só a
   chave), em RASCUNHO, para a clínica revisar. O procedimento fica no passo
   "Se", nunca no gatilho. Modelo novo usa só nodes e eventos do catálogo, e
