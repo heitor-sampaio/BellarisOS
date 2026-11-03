@@ -49,7 +49,7 @@ test.afterAll(async () => { await dona?.limpar(); await rede?.limpar() })
 test('a aba Prontuário aparece para quem pode ver o clínico — mesmo sem atendimento — com a anamnese', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/admin/clients/${cliente}`)
-    await p.getByRole('link', { name: 'Prontuário', exact: true }).click()
+    await p.getByRole('tab', { name: 'Prontuário', exact: true }).click()
     await expect(p.getByText(`Dipirona ${marca}`).first()).toBeVisible()
   })
 })

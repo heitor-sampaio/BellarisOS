@@ -39,14 +39,14 @@ test('a aba aberta está na URL, sobrevive à recarga e o voltar devolve a anter
   // Visão geral é a aba padrão e não suja a URL.
   await expect(page).toHaveURL(new RegExp(`/admin/clients/${clientId}$`))
 
-  await page.getByRole('link', { name: 'Financeiro', exact: true }).click()
+  await page.getByRole('tab', { name: 'Financeiro', exact: true }).click()
   await expect(page).toHaveURL(/[?&]aba=financeiro/)
 
   // Recarregar não perde o lugar — era o que o estado local não dava.
   await page.reload()
   await expect(page).toHaveURL(/[?&]aba=financeiro/)
 
-  await page.getByRole('link', { name: 'Planejamento', exact: true }).click()
+  await page.getByRole('tab', { name: 'Planejamento', exact: true }).click()
   await expect(page).toHaveURL(/[?&]aba=planejamento/)
 
   // …e o voltar anda UM passo, em vez de sair da ficha.
@@ -78,7 +78,7 @@ test('a sub-aba de planejamento e o que está aberto também moram na URL', asyn
 
   // Trocar de aba limpa o que era da aba de planejamento: manter `aberto` numa
   // outra aba deixaria lixo na URL e reabriria o item errado ao voltar.
-  await page.getByRole('link', { name: 'Histórico', exact: true }).click()
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(page).toHaveURL(/[?&]aba=historico/)
   await expect(page).not.toHaveURL(/planejamento=|aberto=/)
 })

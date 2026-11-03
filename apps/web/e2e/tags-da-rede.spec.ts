@@ -99,7 +99,7 @@ test('Configurações → Tags: cria, mostra o uso, e a ficha oferece a tag nova
 
     // A ficha: a tag nova para escolher, e a de fora marcada.
     await p.goto(`/admin/clients/${clienteId}`)
-    await p.getByRole('link', { name: 'Dados', exact: true }).click()
+    await p.getByRole('tab', { name: 'Dados', exact: true }).click()
     await expect(p.getByRole('button', { name: POS })).toHaveAttribute('aria-pressed', 'true')
     await expect(p.getByRole('button', { name: 'Retorno', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await p.getByRole('button', { name: `${PREFIXO} Noivas ${marca}` }).click()
@@ -158,11 +158,11 @@ test('arquivada sai das opções, mas fica em quem já tem', async ({ browser })
     // Outra ficha não a oferece; a que já tem continua mostrando.
     const outro = await outra.criarCliente(`Sem tags ${marca}`)
     await p.goto(`/admin/clients/${outro}`)
-    await p.getByRole('link', { name: 'Dados', exact: true }).click()
+    await p.getByRole('tab', { name: 'Dados', exact: true }).click()
     await expect(p.getByRole('button', { name: 'Gestante', exact: true })).toBeVisible()
     await expect(p.getByRole('button', { name: noivas })).toHaveCount(0)
     await p.goto(`/admin/clients/${clienteId}`)
-    await p.getByRole('link', { name: 'Dados', exact: true }).click()
+    await p.getByRole('tab', { name: 'Dados', exact: true }).click()
     await expect(p.getByRole('button', { name: noivas })).toHaveAttribute('aria-pressed', 'true')
   })
   expect((await vocabulario()).find(t => t.nome === noivas)?.arquivada_em).toBeTruthy()

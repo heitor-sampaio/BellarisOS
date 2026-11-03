@@ -167,6 +167,12 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   de `clients`, que recorta pela unidade de cadastro, o recusava com "Esta cliente é de outra
   unidade."). A RLS não foi alargada. Prova: `e2e/ficha-de-outra-unidade.spec.ts`,
   `e2e/abrangencia-unidade.spec.ts`.
+- **As abas da ficha são ABAS** (`tablist` "Abas da ficha" / `tab`, a escolhida com
+  `aria-selected`; continuam links, a aba mora na URL — A17 da 5ª simulação):
+  a aba "Oportunidades" e o "Oportunidades" do menu lateral (o quadro geral)
+  eram dois links com o mesmo nome, e quem procura pelo nome caía no quadro.
+  Teste que abre uma aba da ficha usa `getByRole('tab')`. Prova:
+  `e2e/clientes-ficha-aba-oportunidades.spec.ts`.
 - **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
   mostra marcada. Não há apagar.
 - **As sobras do arquivar** (A19 da 5ª simulação, 2026-11-02):

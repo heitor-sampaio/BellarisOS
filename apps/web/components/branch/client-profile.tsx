@@ -1560,11 +1560,18 @@ export function ClientProfile({
       <AlertaDeAlergia alergias={alergiasDaAnamnese(generalAnamnesis)} />
 
       {/* -- Tabs ------------------------------------------------------ */}
-      <div className="tabs-bar" style={{ gap: 0 }}>
+      {/* São ABAS (tablist/tab, a escolhida marcada) — A17 da 5ª simulação: a
+          aba "Oportunidades" e o "Oportunidades" do menu lateral (o quadro
+          geral) eram dois links com o mesmo nome, e quem procura pelo nome (o
+          leitor de tela, o robô) caía no quadro. Continuam links: a aba mora
+          na URL. */}
+      <div className="tabs-bar" role="tablist" aria-label="Abas da ficha" style={{ gap: 0 }}>
         {visibleTabs.map(t => (
           <Link
             key={t.key}
             href={linkDaAba(t.key)}
+            role="tab"
+            aria-selected={tab === t.key}
             // A barra rola na horizontal e a aba clicada some se a página pular
             // para o topo junto — o conteúdo troca logo abaixo dela.
             scroll={false}

@@ -146,7 +146,7 @@ test('D5, D6, A23: na ficha, quem só vê não edita os Dados, não agenda, não
     await expect(p.getByRole('button', { name: '+ Agendar' }), 'A23: sem a Agenda, sem "+ Agendar"').toHaveCount(0)
     await expect(p.getByPlaceholder(/Preferências, restrições/), 'as anotações só se leem').not.toBeEditable()
     // D6: sem a Agenda e sem o prontuário, não há Planejamento.
-    await expect(p.getByRole('main').getByRole('link', { name: 'Planejamento', exact: true })).toHaveCount(0)
+    await expect(p.getByRole('main').getByRole('tab', { name: 'Planejamento', exact: true })).toHaveCount(0)
 
     await p.goto(`/admin/clients/${cliente}?aba=dados`)
     await expect(p.locator('[data-cadastro-so-leitura]'), 'D5: a aba diz que é só leitura').toContainText('Seu cargo só consulta')

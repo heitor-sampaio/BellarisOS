@@ -235,7 +235,7 @@ test.describe.serial('cancelar pacote', () => {
 
       // A ficha: o pacote saiu do "Tratamento em andamento" e o cancelamento está no histórico.
       await expect(p.getByText('Nenhum pacote ativo.')).toBeVisible()
-      await p.getByRole('link', { name: 'Histórico' }).click()
+      await p.getByRole('tab', { name: 'Histórico' }).click()
       await expect(p.getByText(`Pacote cancelado: ${NOME}`)).toBeVisible()
     })
 
