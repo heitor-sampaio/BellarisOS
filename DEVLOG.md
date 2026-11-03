@@ -9128,6 +9128,22 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F7c feita em 2026-11-03 — o WhatsApp oficial (achados do Heitor de 02/11) e a F7b**
+(c9413ef1…75d70082; migrations `20261102000701–702`). Remover um número com
+conversas junta as que colidiriam (a mais antiga fica, com as mensagens e as
+oportunidades; `juntar_conversas_do_numero`), também no WhatsApp Web, que
+apagava a instância paga e deixava a linha. O "Conectar pela Meta" numa aba de
+um deploy anterior diz "Esta página ficou desatualizada… O número não foi
+conectado — nada foi gravado nem ligado na Meta", com "Recarregar a página".
+O formulário manual inscreve a conta nos webhooks (`subscribed_apps`) e avisa
+se a Meta recusar; o "Testar conexão" testa o número DA TELA, não o liga e diz
+"Conectado · +55 48 3333-0202 · Clínica Nova". O webhook registra no log a
+entrega que descarta. O /admin ganhou "Reativar clientes" da clínica inteira
+(com a unidade da última visita) e "Clientes no período" (F7b). Decisões da
+F7c, para revisar: na junção fica a conversa mais antiga; o "Testar conexão"
+não liga o número; o /admin com uma unidade no recorte mostra o quadro da
+unidade.
+
 **F7 feita em 2026-11-02 — indicadores, relatórios e "a dona vê tudo"** (30
 commits, 87fb7573…9c1362af; migrations `20261101000701–708`). Saiu o "Retorno
 em N dias" (conclusão, lista, cron e evento; a limpeza das colunas,
