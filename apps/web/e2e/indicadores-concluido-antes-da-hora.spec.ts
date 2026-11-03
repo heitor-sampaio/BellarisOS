@@ -42,8 +42,11 @@ test('o concluído antes da hora conta já; o concluído atrasado fica no dia ma
   expect(error).toBeNull()
   expect(core?.[0]).toMatchObject({ appointments_completed: 1, service_revenue: 180 })
 
+  // O ranking CONTA o adiantado já (as execuções seguem o eixo do atendimento).
+  // A receita dele é a PAGA dos atendimentos (D3 da 5ª simulação, 2026-11-02),
+  // no eixo do pagamento: nenhum dos dois foi pago, então é 0.
   const { data: prof } = await db().rpc('metrics_top_professionals', { ...janela, p_limit: 5 })
-  expect(prof).toEqual([expect.objectContaining({ appointments: 1, revenue: 180 })])
+  expect(prof).toEqual([expect.objectContaining({ appointments: 1, revenue: 0 })])
 
   const { data: porUnidade } = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, p_from: janela.p_from, p_to: janela.p_to })
   expect(porUnidade?.find((b: { branch_id: string }) => b.branch_id === rede!.branchId)).toMatchObject({ appointments_completed: 1, service_revenue: 180 })
