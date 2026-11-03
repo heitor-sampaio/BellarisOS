@@ -153,7 +153,8 @@ test('r2-cfg-06: remover o número NÃO junta — as duas conversas da pessoa fi
 
     // O filtro "Número" a oferece; escolhido, só ela fica.
     await p.getByTitle('Filtrar conversas').click()
-    await p.locator('.painel-de-filtros').getByLabel('Número de WhatsApp').selectOption({ label: `${rotulo} · número removido` })
+    await p.locator('.painel-de-filtros').getByRole('group', { name: 'Número de WhatsApp' })
+      .getByRole('button', { name: `${rotulo} · número removido` }).click()
     await expect(p.getByText('Oi, em setembro')).toHaveCount(0)
 
     // Responder diz por que não dá.
@@ -161,6 +162,53 @@ test('r2-cfg-06: remover o número NÃO junta — as duas conversas da pessoa fi
     expect(envio.texto).toContain('foi removido')
   })
   expect(await conteudos(doNumero.id), 'nada gravado na conversa').toEqual(['Bom dia', 'Quero remarcar'])
+})
+
+test('r3-f14-11: o filtro "Número" escolhe VÁRIOS números — Recepção + Comercial + o removido —, e fica de fora só o que não foi marcado', async ({ browser }) => {
+  test.setTimeout(150_000)
+  const agora = Date.now()
+  const caixa = async (r: string, removido = false) => ins('whatsapp_numbers', {
+    tenant_id: rede!.tenantId, provider: 'uazapi', label: `${PREFIXO} ${r} ${marca}`, is_default: false,
+    is_active: !removido, config: removido ? {} : { token: `tok-${r}-${marca}`, baseUrl: 'https://e2e.invalido' },
+    ...(removido ? { removido_em: new Date().toISOString() } : {}),
+  })
+  const recepcao = await caixa('Recepção')
+  const comercial = await caixa('Comercial')
+  const marketing = await caixa('Marketing')
+  const antigo = await caixa('Velho', true)
+  const conversa = async (numero: string, texto: string, i: number) => {
+    const tel = `5548993${sufixo.slice(-5)}${i}`
+    const quando = new Date(agora - i * 60_000).toISOString()
+    const id = (await ins('conversations', {
+      tenant_id: rede!.tenantId, channel: 'whatsapp', contact_phone: tel, contact_external_id: tel, contact_aliases: [tel],
+      contact_name: `${PREFIXO} Pessoa ${i} ${marca}`, whatsapp_number_id: numero,
+      last_message: texto, last_message_at: quando, last_inbound_at: quando,
+    })).id
+    await mensagem(id, texto, new Date(quando))
+  }
+  await conversa(recepcao.id, `Na recepção ${marca}`, 1)
+  await conversa(comercial.id, `No comercial ${marca}`, 2)
+  await conversa(marketing.id, `No marketing ${marca}`, 3)
+  await conversa(antigo.id, `No velho ${marca}`, 4)
+
+  await como(browser, async p => {
+    await p.goto('/admin/inbox')
+    await expect(p.getByText(`No marketing ${marca}`)).toBeVisible()
+    await p.getByTitle('Filtrar conversas').click()
+    const numeros = p.locator('.painel-de-filtros').getByRole('group', { name: 'Número de WhatsApp' })
+    await numeros.getByRole('button', { name: `${PREFIXO} Recepção ${marca}`, exact: true }).click()
+    await numeros.getByRole('button', { name: `${PREFIXO} Comercial ${marca}`, exact: true }).click()
+    await numeros.getByRole('button', { name: `${PREFIXO} Velho ${marca} · número removido` }).click()
+    await expect(numeros.getByRole('button', { pressed: true }), 'os três marcados juntos').toHaveCount(3)
+    await expect(p.getByText(`Na recepção ${marca}`)).toBeVisible()
+    await expect(p.getByText(`No comercial ${marca}`)).toBeVisible()
+    await expect(p.getByText(`No velho ${marca}`)).toBeVisible()
+    await expect(p.getByText(`No marketing ${marca}`), 'o que não foi marcado sai').toHaveCount(0)
+    // Desmarcar um tira só ele.
+    await numeros.getByRole('button', { name: `${PREFIXO} Comercial ${marca}`, exact: true }).click()
+    await expect(p.getByText(`No comercial ${marca}`)).toHaveCount(0)
+    await expect(p.getByText(`Na recepção ${marca}`)).toBeVisible()
+  })
 })
 
 test('r2-cfg-06: remover a conexão gerenciada (WhatsApp Web) também não junta, e a instância sai', async ({ browser }) => {

@@ -498,6 +498,11 @@ migration `20260928000007`), e o fim da lista busca a próxima pelo cursor
 - **O filtro "Número"** (r2-cfg-06, 2026-11-03): as conversas de um número
   de WhatsApp — também o REMOVIDO, cujas conversas ficam no inbox
   (`whatsapp-push.md`). `p_filtros.numeros`, `inbox_opcoes.numeros`.
+  VÁRIOS de uma vez (r3-f14-11, o Heitor: "a recepção que cuida de dois
+  números vê os dois juntos"): pastilhas que acumulam (`.chip-filtro` +
+  `aria-pressed`, no grupo "Número de WhatsApp"), uma por linha, o nome
+  longo cortado com reticências dentro do painel — era uma escolha só.
+  Prova: `e2e/whatsapp-remover-numero.spec.ts` ("r3-f14-11").
 - Prova: `e2e/inbox-paginado.spec.ts`, numa rede `[e2e]` própria.
 
 **A fila do inbox é de CONVERSAS** — a mesma pessoa em duas caixas são duas

@@ -204,14 +204,19 @@ const SITUACOES: { key: ConvStatus | 'todos'; label: string }[] = [
  * desmarcava "Pendentes".
  */
 function Pastilha({
-  ativa, children, onClick,
-}: { ativa: boolean; children: React.ReactNode; onClick: () => void }) {
+  ativa, children, onClick, largaAteOPainel,
+}: {
+  ativa: boolean; children: React.ReactNode; onClick: () => void
+  /** O nome longo (o do número) não passa da largura do painel: corta com reticências. */
+  largaAteOPainel?: boolean
+}) {
   return (
     <button
       type="button"
       className={ativa ? 'chip-filtro is-ativo' : 'chip-filtro'}
       aria-pressed={ativa}
       onClick={onClick}
+      style={largaAteOPainel ? { maxWidth: '100%' } : undefined}
     >
       {children}
     </button>
@@ -261,8 +266,8 @@ export function InboxFiltros({
   const opcoes = useMemo(() => juntarOpcoes(derivarOpcoes(conversas), rede), [conversas, rede])
   const ativos = contarFiltros(filtros)
 
-  function alternar(campo: 'tags' | 'donos', valor: string) {
-    const atual = filtros[campo]
+  function alternar(campo: 'tags' | 'donos' | 'numeros', valor: string) {
+    const atual = filtros[campo] ?? []
     onChange({
       ...filtros,
       [campo]: atual.includes(valor) ? atual.filter(v => v !== valor) : [...atual, valor],
@@ -464,22 +469,25 @@ export function InboxFiltros({
 
             {/* O número de WhatsApp — também o removido, com as conversas dele
                 (r2-cfg-06). Com um só já serve: separa as dele das outras
-                (Instagram, as sem número, as do número removido). */}
+                (Instagram, as sem número, as do número removido). VÁRIOS de uma
+                vez (r3-f14-11, o Heitor: "a recepção que cuida de dois números
+                vê os dois juntos"): o filtro ACUMULA, então é pastilha — uma por
+                linha, e o nome longo corta com reticências dentro do painel. */}
             {opcoes.numeros.length > 0 && (
               <Secao titulo="Número">
-                {/* Um select de largura cheia, como Funil e Unidade: o nome do
-                    número é longo, e a pastilha passava da largura do painel. */}
-                <select
-                  className="filtro-select"
-                  aria-label="Número de WhatsApp"
-                  value={filtros.numeros?.[0] ?? ''}
-                  onChange={e => onChange({ ...filtros, numeros: e.target.value ? [e.target.value] : [] })}
-                >
-                  <option value="">Todos os números</option>
+                <div role="group" aria-label="Número de WhatsApp"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
                   {opcoes.numeros.map(n => (
-                    <option key={n.id} value={n.id}>{n.nome}</option>
+                    <Pastilha key={n.id} largaAteOPainel
+                      ativa={(filtros.numeros ?? []).includes(n.id)}
+                      onClick={() => alternar('numeros', n.id)}
+                    >
+                      <span title={n.nome} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {n.nome}
+                      </span>
+                    </Pastilha>
                   ))}
-                </select>
+                </div>
               </Secao>
             )}
 
