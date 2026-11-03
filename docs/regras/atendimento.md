@@ -964,6 +964,16 @@ const procedures = await ler(
   para o Heitor). O relatório é a seção "Perdas no período" de Relatórios →
   Estoque (`metrics_perdas` → `getPerdas`, `indicadores.md`). Prova:
   `e2e/estoque-perda.spec.ts`.
+  - **A perda aceita a unidade de CONSUMO** (est-03 da revisão, 2026-11-02:
+    "um frasco aberto de toxina vence com 30 UI sobrando; a Bruna precisa
+    digitar '0,3 frasco'"). O produto com unidade de consumo mostra "Em:
+    frasco | UI" na perda, e a tela diz a equivalência ("= 0,3 frasco").
+    `registrarPerda` manda `unidade = CONSUMO` a `estoque_perda_em`
+    (migration `20261101001107`): o movimento `LOSS` sai da quantidade
+    digitada EXATA (−30 UI), o lote e o saldo descem o que ela vale em
+    embalagens, e a recusa fala na unidade escolhida ("O lote tem só 270
+    UI."). `estoque_perda` (em embalagens) passou a chamar a mesma função.
+    Prova: `e2e/estoque-perda-unidade-de-consumo.spec.ts`.
 - **A DEVOLUÇÃO da venda de produto estornada** (H2, decisão do Heitor,
   2026-11-01; migrations `20261101000301`/`302`): o estorno pergunta se o
   produto voltou. Voltou: movimento `SALE_RETURN` ("Devolução de venda" no

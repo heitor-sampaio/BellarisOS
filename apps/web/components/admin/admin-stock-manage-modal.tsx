@@ -12,6 +12,8 @@ import {
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { SegSelect } from '@/components/shared/seg-select'
+import { parseDecimal } from '@estetica-os/utils'
 
 type BranchStock = {
   branchId:     string
@@ -27,6 +29,9 @@ type ProductInfo = {
   branches: BranchStock[]
   /** Os lotes com saldo (a perda escolhe de qual lote sai — D-7). */
   lotes?:   { id: string; unidadeId: string; numero: string | null; validade: string | null; quantidade: number }[]
+  /** A unidade de consumo (ml, UI) e quanto a embalagem rende: a perda aceita as duas (est-03). */
+  consumptionUnit?: string | null
+  unitsPerPackage?: number | null
 }
 
 type AllBranch = { id: string; name: string }
@@ -423,12 +428,22 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
   const [pending,  setPending]  = useState(false)
   const [branchId, setBranchId] = useState(defaultBranchId ?? unicaUnidade(allBranches))
   const lotes = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
+  // est-03: com unidade de consumo, a perda também se digita nela ("30 UI").
+  const rende = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
+  const [emConsumo, setEmConsumo] = useState(false)
+  const [quantidade, setQuantidade] = useState('')
+  const lida = parseDecimal(quantidade, 4)
+  const equivale = rende && Number.isFinite(lida) && lida > 0
+    ? (emConsumo ? `= ${(lida / rende).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${product.unit}`
+                 : `= ${(lida * rende).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${product.consumptionUnit}`)
+    : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true); setError(undefined)
     try {
       const fd = new FormData(e.currentTarget)
       fd.set('productId', product.id)
+      fd.set('unidade', emConsumo ? 'CONSUMO' : 'EMBALAGEM')
       // A chave do envio (D10): o duplo clique movimenta uma vez só.
       fd.set('_envio', envio.chave())
       const res = await registrarPerda(undefined, fd)
@@ -466,14 +481,23 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
         </select>
       </FieldWrap>
 
+      {rende && (
+        <div role="group" aria-label="Unidade da perda" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={rotulo}>Em</span>
+          <SegSelect ariaLabel="Unidade da perda" value={emConsumo ? 'CONSUMO' : 'EMBALAGEM'}
+            options={[{ key: 'EMBALAGEM', label: product.unit }, { key: 'CONSUMO', label: product.consumptionUnit! }]}
+            onSelect={k => setEmConsumo(k === 'CONSUMO')} />
+        </div>
+      )}
       <div className="form-2col">
         <FieldWrap>
           <label htmlFor="perda-quantidade" style={rotulo}>Quantidade</label>
           <div style={{ position: 'relative' }}>
             <input id="perda-quantidade" name="quantity" type="text" inputMode="decimal" required className="field"
-              placeholder="0" style={{ paddingRight: 48 }} />
-            <UnitSuffix unit={product.unit} />
+              placeholder="0" style={{ paddingRight: 48 }} value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+            <UnitSuffix unit={emConsumo && product.consumptionUnit ? product.consumptionUnit : product.unit} />
           </div>
+          {equivale && <span data-equivale style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{equivale}</span>}
         </FieldWrap>
         <FieldWrap>
           <label htmlFor="perda-motivo" style={rotulo}>Motivo</label>

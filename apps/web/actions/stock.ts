@@ -614,7 +614,8 @@ async function adminAdjustStockInterno(
  * (ou, sem lote, o que vence primeiro), com o motivo, e SEM despesa — uma
  * transação (`estoque_perda`, a linha do saldo travada; recusa mais do que há
  * ou do que o lote tem). A quantidade é em embalagens, como a entrada e o
- * ajuste.
+ * ajuste — ou, com `unidade = CONSUMO`, na unidade de consumo do produto
+ * (est-03: "30 UI" do frasco aberto, sem a conta de cabeça; `estoque_perda_em`).
  */
 export async function registrarPerda(
   ...args: Parameters<typeof registrarPerdaInterno>
@@ -651,8 +652,9 @@ async function registrarPerdaInterno(
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
     return { error: 'Produto ou filial não encontrado.' }
 
-  const { error } = await admin.rpc('estoque_perda', {
+  const { error } = await admin.rpc('estoque_perda_em', {
     p_produto: productId, p_unidade: branchId, p_lote: loteId, p_quantidade: qtd,
+    p_em_consumo: str(formData, 'unidade') === 'CONSUMO',
     p_motivo: motivo, p_observacao: str(formData, 'notes'), p_autor: ctx.internalUserId,
   })
   if (error) {
