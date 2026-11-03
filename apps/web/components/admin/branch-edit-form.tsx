@@ -108,7 +108,7 @@ export function BranchEditForm({ branch }: Props) {
               placeholder="00.000.000/0001-00" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label className="overline" htmlFor="be-ie">Inscrição Estadual</label>
+            <label className="overline" htmlFor="be-ie">Inscrição Estadual (opcional)</label>
             <input id="be-ie" name="state_registration" type="text" className="field"
               defaultValue={branch.state_registration ?? ''}
               placeholder="000.000.000.000" />

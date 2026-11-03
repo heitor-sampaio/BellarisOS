@@ -76,6 +76,22 @@ test.describe.serial('o CNPJ da unidade nova', () => {
     expect(criadas[0]!.document?.replace(/\D/g, ''), 'o CNPJ da rede, escolhido').toBe(CNPJ)
   })
 
+  test('r2-cfg-05: a inscrição estadual é opcional — o campo diz, e a unidade nasce sem ela', async ({ browser }) => {
+    const nome = `${PREFIXO} Sem IE ${marca}`
+    await como(browser, async p => {
+      const janela = await abrirNovaUnidade(p, nome)
+      const ie = janela.getByLabel('Inscrição Estadual (opcional)')
+      await expect(ie).toBeVisible()
+      await expect(ie).not.toHaveAttribute('required', /.*/)
+      // Um CNPJ próprio (não o da rede): a unidade sem IE não depende de nada do CNPJ.
+      await janela.locator('#br-doc').fill('11222333000181')
+      await janela.getByRole('button', { name: 'Criar unidade' }).click()
+      await expect(janela).toBeHidden({ timeout: 15_000 })
+    })
+    const { data } = await db().from('branches').select('state_registration').eq('tenant_id', rede!.tenantId).eq('name', nome)
+    expect(data ?? []).toEqual([{ state_registration: null }])
+  })
+
   test('"Criar sem CNPJ" cria a unidade sem CNPJ', async ({ browser }) => {
     const nome = `${PREFIXO} Centro ${marca}`
     await como(browser, async p => {

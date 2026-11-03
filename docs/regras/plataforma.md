@@ -176,7 +176,10 @@ um muro que não depende de cada trava do código.
   unidades com o MESMO CNPJ podem existir (não há índice único). O `/setup`
   continua trazendo o CNPJ da clínica preenchido, à vista (J-6). O "Nova
   unidade" grava uma vez por envio (`umaVez`) e passou a gravar a inscrição
-  estadual (o campo existia e se perdia). Prova:
+  estadual (o campo existia e se perdia). **A inscrição estadual é OPCIONAL**
+  (r2-cfg-05, o Heitor, 2026-11-03: "manter, mas opcional"): o campo diz
+  "Inscrição Estadual (opcional)" no criar e no editar a unidade, e nem a tela
+  nem o servidor nem o banco a exigem (vazia grava nulo). Prova:
   `e2e/configuracoes-unidade-cnpj.spec.ts`, `e2e/setup-passo-da-unidade.spec.ts`.
 - **Planos**: catálogo em `platform_plans` (não se apaga, desativa); a rede
   guarda o RETRATO do valor em `tenant_subscriptions.valor_centavos` — é o

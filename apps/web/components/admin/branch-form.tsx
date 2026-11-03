@@ -190,7 +190,7 @@ export function BranchForm() {
                       onChange={e => { setDocumento(maskCPFouCNPJDigitando(e.target.value)); setRespostaCnpj('') }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor="br-ie">Inscrição Estadual</label>
+                    <label className="overline" htmlFor="br-ie">Inscrição Estadual (opcional)</label>
                     <input id="br-ie" name="state_registration" type="text" className="field" placeholder="000.000.000.000" />
                   </div>
                 </div>
