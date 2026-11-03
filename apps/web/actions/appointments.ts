@@ -184,7 +184,7 @@ async function updateAppointmentStatusInterno(
     throw new Error('Motivo de cancelamento obrigatório.')
   }
 
-  // Iniciar mais de 30 min antes do horário pede a confirmação (A32 da 5ª
+  // Iniciar antes do horário (qualquer tempo, r2-age-06) pede a confirmação (A32 da 5ª
   // simulação: a Tatiane iniciou às 11:07 o das 13:00, sem aviso).
   if (status === 'IN_PROGRESS' && opcoes?.inicioAdiantadoConfirmado !== true) {
     const pergunta = await perguntaDoInicio(appointmentId)
@@ -525,7 +525,7 @@ export async function startAppointment(
 async function startAppointmentInterno(
   appointmentId: string,
   slug: string,
-  /** A resposta à pergunta do início adiantado (A32): só com ela inicia mais de 30 min antes. */
+  /** A resposta à pergunta do início adiantado (A32): só com ela inicia antes do horário (r2-age-06). */
   opcoes: { inicioAdiantadoConfirmado?: boolean } = {},
 ): Promise<{ error?: string; confirmarInicioAdiantado?: boolean }> {
   try {
@@ -547,7 +547,7 @@ async function startAppointmentInterno(
       return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }
     }
 
-    // Mais de 30 min antes do horário: pergunta (A32). O servidor só inicia com a resposta.
+    // Antes do horário, em qualquer tempo: pergunta (A32, r2-age-06). O servidor só inicia com a resposta.
     if (opcoes?.inicioAdiantadoConfirmado !== true) {
       const pergunta = perguntaDoInicioAdiantado(appt.scheduled_at as string | null)
       if (pergunta) return { error: pergunta, confirmarInicioAdiantado: true }

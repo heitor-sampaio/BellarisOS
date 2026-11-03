@@ -158,12 +158,16 @@
   profissional abria pela URL o atendimento de outra e marcava o check-in ("o
   check-in comum não confere o profissional"). Prova:
   `e2e/agenda-so-os-meus-pelo-id.spec.ts`.
-- **Iniciar muito antes do horário PERGUNTA** (A32 da 5ª simulação: a
-  Tatiane iniciou às 11:07 o das 13:00, sem aviso). Mais de 30 min antes
-  (`ANTECEDENCIA_SEM_PERGUNTAR_MIN`, `perguntaDoInicioAdiantado`,
-  `lib/appointments/inicio-adiantado.ts`), o servidor recusa com "O
-  atendimento está marcado para as 13:00 — faltam 1 h 53 min. Iniciar mesmo
-  assim?" e só inicia com `{ inicioAdiantadoConfirmado: true }` — nos TRÊS
+- **Iniciar ANTES do horário PERGUNTA** (A32 da 5ª simulação: a
+  Tatiane iniciou às 11:07 o das 13:00, sem aviso). Em QUALQUER quantidade de
+  tempo antes do horário marcado (r2-age-06, o Heitor em 2026-11-03:
+  "confirma iniciar mesmo assim em qualquer período de tempo anterior ao
+  horário marcado"; de 03/11 até ali, só a partir de 30 min) —
+  `perguntaDoInicioAdiantado`, `lib/appointments/inicio-adiantado.ts` —, o
+  servidor recusa com "O atendimento está marcado para as 13:00 — faltam
+  1 h 53 min. Iniciar mesmo assim?" ("faltam menos de 1 min" no último
+  minuto); na hora marcada ou depois, inicia direto. Só inicia com
+  `{ inicioAdiantadoConfirmado: true }` — nos TRÊS
   caminhos: `startAppointment`, `updateAppointmentStatus` (IN_PROGRESS) e
   `chegarEIniciar` (este pergunta ANTES da chegada: sem a resposta, nem o
   check-in se marca). A tela do atendimento e a janela da agenda mostram a

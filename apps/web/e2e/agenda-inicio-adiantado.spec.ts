@@ -6,10 +6,13 @@ import { chamarAcao } from './apoio/acao-direta'
 
 /**
  * A32 da 5ª simulação: dava para iniciar o atendimento 1h30 a 2h antes do
- * horário, sem aviso (a Tatiane iniciou às 11:07 o das 13:00). Mais de 30
- * minutos antes, o início pede confirmação — e o SERVIDOR só inicia com ela,
- * nos três caminhos: `startAppointment`, `updateAppointmentStatus` e
- * `chegarEIniciar`.
+ * horário, sem aviso (a Tatiane iniciou às 11:07 o das 13:00). ANTES do
+ * horário marcado, em qualquer quantidade de tempo (r2-age-06, o Heitor em
+ * 2026-11-03: "confirma iniciar mesmo assim em qualquer período de tempo
+ * anterior ao horário marcado"; era só a partir de 30 min), o início pede
+ * confirmação — e o SERVIDOR só inicia com ela, nos três caminhos:
+ * `startAppointment`, `updateAppointmentStatus` e `chegarEIniciar`. Na hora
+ * marcada ou depois, inicia direto.
  */
 
 const marca = Date.now().toString(36)
@@ -101,8 +104,24 @@ test('"Marcar chegada e iniciar" também pergunta — e sem a resposta nem a che
   })
 })
 
-test('controle: 10 min antes inicia sem perguntar', async ({ browser }) => {
-  const id = await agendamento('ARRIVED', 10)
+test('r2-age-06: 10 min antes também pergunta, no "Iniciar atendimento" e no "Marcar chegada e iniciar"', async ({ browser }) => {
+  const chegou = await agendamento('ARRIVED', 10)
+  const confirmado = await agendamento('CONFIRMED', 10)
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${chegou}`)
+    await p.getByRole('button', { name: 'Iniciar atendimento' }).click()
+    await expect(p.locator('[data-inicio-adiantado]')).toContainText(/faltam (9|10) min\. Iniciar mesmo assim\?/)
+    expect(await status(chegou), 'sem a resposta, nada começa').toBe('ARRIVED')
+
+    await p.goto(`/${slug}/agenda/${confirmado}`)
+    await p.getByRole('button', { name: 'Marcar chegada e iniciar' }).click()
+    await expect(p.locator('[data-inicio-adiantado]')).toContainText('Iniciar mesmo assim?')
+    expect(await status(confirmado), 'nem a chegada se marca').toBe('CONFIRMED')
+  })
+})
+
+test('controle: na hora marcada (já passou) inicia sem perguntar', async ({ browser }) => {
+  const id = await agendamento('ARRIVED', -2)
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     await p.getByRole('button', { name: 'Iniciar atendimento' }).click()
