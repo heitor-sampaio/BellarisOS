@@ -6,7 +6,8 @@ import { ler } from '@/lib/db'
 import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
-import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
+import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, HORA, UUID, dinheiro, instanteDe, quandoLegivel, resolverCliente, resolverProcedimento,
@@ -48,7 +49,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id); data (AAAA-MM-DD) e hora (HH:MM, Brasília). Confira os horários livres antes. O cliente é avisado da confirmação.',
   parametros: z.object({
     cliente: z.string().min(2).max(120).optional(),
-    clienteNovo: z.object({ nome: z.string().min(2).max(120), telefone: z.string().min(10).max(20) }).optional(),
+    clienteNovo: z.object({ nome: z.string().min(2).max(120), telefone: z.string().min(8).max(24) }).optional(),
     procedimento: z.string().min(2).max(80),
     profissional: z.string().min(2).max(80),
     data: DATA, hora: HORA,
@@ -76,10 +77,11 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       clientId = cl.id
       nomeDoCliente = cl.name
     } else {
-      const telefone = digitosDoTelefone(a.clienteNovo!.telefone)
-      if (telefone.length < 10) return { erro: 'O telefone do cliente novo precisa do DDD.' }
+      const fone = telefoneDoCopilot(a.clienteNovo!.telefone)
+      if ('erro' in fone) return { erro: fone.erro }
+      const telefone = fone.gravar
       // Telefone que já é de alguém: é esse cliente (o cadastro rápido faria o mesmo).
-      const { data: existente, error: erroTel } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: telefone })
+      const { data: existente, error: erroTel } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: fone.digitos })
       if (erroTel) return { erro: 'Não consegui conferir o telefone agora.' }
       if (existente) {
         const nomes = await nomesPorId(c, 'clients', [existente as string])

@@ -1,6 +1,6 @@
 import type { ChaveDeCampo, Destino } from './campos'
 import { camposDoDestino } from './campos'
-import { cpfValido } from '@estetica-os/utils'
+import { cpfValido, maskPhone, telefoneInternacional } from '@estetica-os/utils'
 
 /**
  * Cada valor do CSV no formato que o sistema grava, e a linha validada
@@ -25,10 +25,23 @@ export function normalizarTelefone(bruto: string): string | null {
   const v = bruto.trim()
   if (!v) return null
   const d = soDigitos(v)
-  if (v.startsWith('+')) return d.length >= 10 && d.length <= 15 ? d : null
+  // O de outro país segue a regra do cadastro (`telefoneInternacional`: 8 a 15
+  // dígitos — cli-06, revisão do Heitor de 2026-11-02); o "+55" é o Brasil.
+  if (v.startsWith('+') && !d.startsWith('55')) return telefoneInternacional(v) ? d : null
   if (d.startsWith('55') && (d.length === 12 || d.length === 13)) return d
   if (d.length === 10 || d.length === 11) return `55${d}`
   return null
+}
+
+/**
+ * O telefone que a FICHA guarda, a partir do formato do WhatsApp da linha: o
+ * brasileiro com a máscara, como o cadastro grava (`(48) 99999-0000`); o de
+ * outro país com o "+" (cli-06) — sem ele, a ficha mostrava só os dígitos e o
+ * número passava por nacional.
+ */
+export function telefoneDaFichaImportada(fone: string): string {
+  if (fone.startsWith('55') && (fone.length === 12 || fone.length === 13)) return maskPhone(fone)
+  return `+${fone}`
 }
 
 /**

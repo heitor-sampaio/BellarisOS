@@ -4,7 +4,7 @@ import { startTransition, useActionState, useEffect, useEffectEvent, useState, u
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario } from '@/actions/appointments'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
-import { formatBRL, maskPhone, maskPhoneDigitando } from '@estetica-os/utils'
+import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -164,7 +164,8 @@ export function AppointmentModal({
     return () => clearTimeout(t)
   }, [clientSearch])
 
-  const telefoneOk = novoTelefone.replace(/\D/g, '').length >= 10
+  // A regra do cadastro: com DDD, ou de outro país com "+" (cli-06).
+  const telefoneOk = !!telefoneDoCadastro(novoTelefone)
   const contatoOk  = novoContato && novoNome.trim().length >= 2 && telefoneOk
   const podeAgendar = !!selectedClient || contatoOk
 
@@ -342,8 +343,9 @@ export function AppointmentModal({
                     <input
                       type="tel" name="client_phone" className="field"
                       placeholder="Telefone com DDD"
+                      title="De outro país, comece com + e o código (ex.: +351 912 345 678)"
                       value={novoTelefone}
-                      onChange={e => setNovoTelefone(maskPhoneDigitando(e.target.value))}
+                      onChange={e => setNovoTelefone(maskTelefoneDigitando(e.target.value))}
                     />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>

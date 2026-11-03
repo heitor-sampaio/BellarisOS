@@ -1,11 +1,11 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { cpfValido } from '@estetica-os/utils'
+import { cpfValido, telefoneDoCadastro } from '@estetica-os/utils'
 import { revalidateTag } from 'next/cache'
 import { ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { darAcessoAoCliente } from '@/lib/clients/acesso'
-import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
+import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { isUnitTag } from '@estetica-os/utils'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
@@ -60,6 +60,17 @@ function linhasDoComplemento(x: Complemento) {
   ]
 }
 
+/**
+ * O telefone que a pessoa disse ao Copilot, pela regra do cadastro
+ * (`telefoneDoCadastro`): o brasileiro com DDD, ou o de outro país com "+" e o
+ * código (cli-06, revisão do Heitor de 2026-11-02 — "a estrangeira também
+ * chega pelo Copilot"). Antes só os dígitos, e o "+351…" virava um número
+ * nacional sem sentido.
+ */
+export function telefoneDoCopilot(texto: string): { digitos: string; gravar: string } | { erro: string } {
+  return telefoneDoCadastro(texto) ?? { erro: 'Informe o telefone com DDD (ou, de outro país, com + e o código do país).' }
+}
+
 interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; nascimento?: string; unidade?: string; criar_acesso?: boolean }
 interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean }
 
@@ -73,7 +84,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
   descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e CPF; a senha inicial é o CPF). Se o telefone já for de um cliente, diz quem é em vez de duplicar.',
   parametros: z.object({
     nome: z.string().min(2).max(120),
-    telefone: z.string().min(10).max(20),
+    telefone: z.string().min(8).max(24),
     email: EMAIL.optional(),
     cpf: z.string().max(20).optional(),
     nascimento: DATA.optional(),
@@ -82,11 +93,12 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
   }),
   async preparar(c, a) {
     if (a.criar_acesso && (!a.email || !a.cpf)) return { erro: 'Para criar o acesso ao app, preciso do e-mail e do CPF do cliente.' }
-    const telefone = digitosDoTelefone(a.telefone)
-    if (telefone.length < 10) return { erro: 'Informe o telefone com DDD.' }
+    const fone = telefoneDoCopilot(a.telefone)
+    if ('erro' in fone) return { erro: fone.erro }
+    const telefone = fone.gravar
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
     if ('erro' in u) return { erro: u.erro }
-    const { data: existente, error } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: telefone })
+    const { data: existente, error } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: fone.digitos })
     if (error) return { erro: 'Não consegui conferir o telefone agora.' }
     if (existente) {
       const ja = await ler(c.admin.from('clients').select('id, name').eq('id', existente as string).single(), 'ler o cliente') as { id: string; name: string }
@@ -148,7 +160,7 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
   parametros: z.object({
     cliente: z.string().min(2).max(120),
     nome: z.string().min(2).max(120).optional(),
-    telefone: z.string().min(10).max(20).optional(),
+    telefone: z.string().min(8).max(24).optional(),
     email: EMAIL.optional(),
     cpf: z.string().max(20).optional(),
     nascimento: DATA.optional(),
@@ -163,9 +175,9 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
     const campos: Record<string, string> = {}
     if (a.nome) campos.name = a.nome.trim()
     if (a.telefone) {
-      const t = digitosDoTelefone(a.telefone)
-      if (t.length < 10) return { erro: 'O telefone precisa do DDD.' }
-      campos.phone = t
+      const t = telefoneDoCopilot(a.telefone)
+      if ('erro' in t) return { erro: t.erro }
+      campos.phone = t.gravar
     }
     if (a.email) campos.email = emailNormalizado(a.email)!
     if (a.cpf) campos.document = a.cpf.replace(/\D/g, '')

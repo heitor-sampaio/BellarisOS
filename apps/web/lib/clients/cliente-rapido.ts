@@ -10,7 +10,7 @@
 // Sem `'use server'`: é regra de negócio compartilhada pela agenda e pelo CRM.
 // Quem chama já autorizou.
 
-import { unitTag } from '@estetica-os/utils'
+import { unitTag, telefoneDoCadastro } from '@estetica-os/utils'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { EVENTOS } from '@estetica-os/types'
 import type { TenantContext } from '@estetica-os/types'
@@ -79,11 +79,19 @@ export async function garantirClienteRapido(
   input: ClienteRapidoInput,
 ): Promise<ClienteRapidoResult> {
   const nome     = input.nome?.trim()
-  const telefone = input.telefone?.trim()
-  const digitos  = digitosDoTelefone(telefone)
+  // A regra do cadastro (`telefoneDoCadastro`): o brasileiro com DDD, ou o de
+  // outro país com "+" e o código (cli-06, revisão do Heitor de 2026-11-02 —
+  // "a estrangeira também chega pelo agendar rápido e pelo Copilot"). A ficha
+  // grava como o cadastro: a máscara, ou o de fora como foi escrito.
+  // O número que vem do WhatsApp (o lead, a conversa) é só dígitos, sem o "+":
+  // com 12 a 15 e sem o 55, não é brasileiro — é o de fora.
+  const soDigitos = (input.telefone ?? '').trim()
+  const fone     = telefoneDoCadastro(input.telefone)
+    ?? (/^\d{12,15}$/.test(soDigitos) && !soDigitos.startsWith('55') ? telefoneDoCadastro(`+${soDigitos}`) : null)
 
   if (!nome || nome.length < 2) return { error: 'Informe o nome de quem será atendido.' }
-  if (digitos.length < 10)      return { error: 'Informe um telefone com DDD.' }
+  if (!fone) return { error: 'Informe um telefone com DDD (de outro país, comece com + e o código do país).' }
+  const telefone = fone.gravar
   if (!input.branchId)          return { error: 'Unidade não identificada.' }
 
   const branch = await ler(admin
@@ -98,9 +106,12 @@ export async function garantirClienteRapido(
   // `phone` guarda o que foi digitado — com máscara no formulário, cru quando
   // veio do WhatsApp — e comparar texto com texto fazia "(47) 99123-4567" e
   // "47991234567" virarem duas pessoas.
-  const { data: existente, error: buscaErr } = await admin
-    .rpc('cliente_por_telefone', { p_tenant: ctx.tenantId!, p_digitos: digitos })
+  // `fichas_do_telefone` (a mais antiga primeiro, como `cliente_por_telefone`)
+  // compara também o número de fora com menos de 10 dígitos.
+  const { data: doTelefone, error: buscaErr } = await admin
+    .rpc('fichas_do_telefone', { p_tenant: ctx.tenantId!, p_digitos: fone.digitos })
   if (buscaErr) return { error: `Erro ao procurar o cliente: ${buscaErr.message}` }
+  const existente = ((doTelefone ?? []) as { id: string }[])[0]?.id ?? null
 
   if (existente) {
     if (input.conversationId) {

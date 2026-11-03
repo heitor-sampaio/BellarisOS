@@ -7,7 +7,7 @@ import { gravar, ler } from '@/lib/db'
 import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 import type { ChaveDeCampo, Destino } from './campos'
-import { validarLinha, chaveDaPessoa, variantesDoTelefone, type DadosDaLinha } from './normalizar'
+import { validarLinha, chaveDaPessoa, variantesDoTelefone, telefoneDaFichaImportada, type DadosDaLinha } from './normalizar'
 import { referenciasDaRede } from './referencias'
 
 /**
@@ -276,8 +276,12 @@ const CAMPOS_DO_CLIENTE: ChaveDeCampo[] = [
 ]
 
 async function gravarCliente(
-  admin: Admin, p: Pedido, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
+  admin: Admin, p: Pedido, linhaDaPlanilha: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
 ): Promise<{ resultado: Resultado; clientId: string }> {
+  // A ficha guarda o telefone como o cadastro (o de fora com o "+", cli-06); a
+  // busca continua pelos dígitos.
+  const digitos = linhaDaPlanilha.phone as string | undefined
+  const dados: DadosDaLinha = { ...linhaDaPlanilha, ...(digitos ? { phone: telefoneDaFichaImportada(digitos) } : {}) }
   // Quem já existe: pelo CPF; sem achar, a ficha SEM CPF do mesmo telefone (o
   // cadastro rápido de quem marcou às pressas) — a regra do cadastro manual.
   // Telefone de uma ficha COM CPF pode ser de outra pessoa (mãe e filha).
@@ -288,7 +292,7 @@ async function gravarCliente(
   }
   if (!existente) {
     const { data: id, error } = await admin.rpc('cliente_por_telefone', {
-      p_tenant: p.tenant_id, p_digitos: dados.phone as string, p_sem_cpf: true,
+      p_tenant: p.tenant_id, p_digitos: digitos as string, p_sem_cpf: true,
     })
     if (error) throw new Error(`Procurar o cliente pelo telefone: ${error.message}`)
     if (id) existente = await ler(admin.from('clients').select('*').eq('id', id as string).maybeSingle(), 'buscar o cliente')

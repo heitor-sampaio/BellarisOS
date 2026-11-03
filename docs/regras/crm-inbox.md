@@ -42,7 +42,15 @@
     ("+351 912 345 678"; decisão do Heitor, frente de cadastro de
     2026-10-29) — a conta é `telefoneDoCadastro` (`@estetica-os/utils`), no
     cadastro e na aba Dados; o campo do cadastro não o mascara
-    (`maskTelefoneDigitando`). Sem o "+" não se adivinha o país;
+    (`maskTelefoneDigitando`). Sem o "+" não se adivinha o país. **Vale em
+    TODO caminho** (cli-06, revisão do Heitor de 2026-11-02: "a estrangeira
+    também chega pelo agendar rápido e pelo Copilot"): o "+ Agendar" com nome e
+    telefone (o campo e `garantirClienteRapido`, que grava como o cadastro e
+    lê o número só-dígitos do WhatsApp com 12 a 15 dígitos sem o 55 como de
+    fora), o Copilot (`telefoneDoCopilot`) e a importação (`normalizarTelefone`
+    com 8 a 15 dígitos; a ficha importada guarda o de fora com o "+",
+    `telefoneDaFichaImportada`). Prova: `e2e/clientes-telefone-de-outro-pais.spec.ts`,
+    `tests/telefone-de-outro-pais.test.ts`;
   - o telefone que já é de OUTRA cliente da rede (`cliente_por_telefone`)
     AVISA e deixa confirmar ("Cadastrar mesmo assim", que vale para aquele
     número) — mãe e filha dividem número;
