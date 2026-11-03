@@ -9128,6 +9128,27 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F12 feita em 2026-11-03 — configurações e CRM; fecha as frentes da 5ª simulação**
+(63dda29f…680a03f2; sem migration). Agendar não move mais o card para a etapa
+"Agendado" (crm-05: "não existe movimento automático padrão nos funis"): a
+linha do tempo continua com "Agendamento", e quem quiser o movimento liga o
+modelo "Agendou: o card muda de etapa", que nasce com a etapa vazia. A ação
+"Mover de etapa" passou a achar o card nos fatos da agenda (`leadId` no
+`agendamento.criado`; `oportunidadeDaCliente`, a aberta mais recente). A
+"Nova unidade" sem CNPJ pergunta, com "Usar o CNPJ da clínica (…)" ou "Criar
+sem CNPJ" (cfg-01), também no servidor; duas unidades podem ter o mesmo CNPJ;
+máscara no campo e `umaVez`. Decisões da F12, para revisar: o /setup segue
+trazendo o CNPJ preenchido; a oportunidade achada é só a aberta; o modelo
+"Agendou" não tem condição; a inscrição estadual da unidade nova passou a ser
+gravada. Pendente (destrutivo, com o Heitor): `crm_stages.marca` — recriar
+`crm_funil_padrao` sem ela e então o drop da coluna.
+
+**Limpezas destrutivas que esperam o Heitor** (o drop pede confirmação no
+Supabase): `…000502` (`senha_da_conta_confere`), `…000709` (o retorno:
+`retornos_a_marcar` e três colunas de `appointments`), as versões velhas de
+`produto_vender`/`procedimento_vender`/`pacote_vender` (antes, ~10 specs
+passam às novas), `crm_stages.marca` e `leads.stage`.
+
 **F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
 migrations `20261101001101–1108`). Receber o plano no check-in é uma
 transação com o plano travado (duas abas não recebem o mesmo saldo — a sobra
