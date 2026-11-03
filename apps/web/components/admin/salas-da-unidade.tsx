@@ -37,7 +37,8 @@ export function SalasDaUnidade({ branchId, salas }: { branchId: string; salas: S
   }
 
   return (
-    <section data-salas-da-unidade className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, marginTop: 24 }}>
+    <section id="salas" data-salas-da-unidade className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, marginTop: 24, scrollMarginTop: 'calc(var(--topbar-h) + 16px)' }}>
+      {/* id="salas": a busca "salas" chega aqui (A3 da 5ª simulação). */}
       <div>
         <h2 className="overline" style={{ marginBottom: 4 }}>Salas</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>

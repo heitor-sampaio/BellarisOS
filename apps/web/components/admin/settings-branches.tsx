@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { ler } from '@/lib/db'
 import { maskPhone } from '@estetica-os/utils'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
 
 export async function SettingsBranches() {
   const ctx = await getTenantContext()
@@ -27,6 +29,16 @@ export async function SettingsBranches() {
   const active   = branches?.filter(b => b.is_active).length ?? 0
   const inactive = total - active
 
+  // A clínica de UMA unidade tem as salas aqui mesmo, a um clique do menu (A3
+  // da 5ª simulação: o caminho era Ver detalhes → o fim da página). Com duas ou
+  // mais, as salas são de cada unidade, no "Ver detalhes" dela.
+  const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+  const unica = umaUnidade ? (branches ?? []).find(b => b.is_active) ?? null : null
+  const salasDaUnica = unica
+    ? ((await ler(createAdminClient().from('rooms').select('id, name, is_active')
+        .eq('branch_id', unica.id).order('name'), 'carregar as salas')) ?? []) as SalaDaUnidade[]
+    : null
+
   return (
     <div>
       <RealtimeRefresher tables={['branches']} />
@@ -42,7 +54,7 @@ export async function SettingsBranches() {
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
             {/* A clínica de uma unidade não fala "rede" (F8). */}
-            {await redeTemUmaUnidade(ctx.tenantId!) ? 'A unidade da clínica, e as próximas que nascerem' : 'Gerencie as unidades da rede'}
+            {umaUnidade ? 'A unidade da clínica e as salas dela' : 'Gerencie as unidades da rede'}
           </p>
         </div>
         <BranchForm />
@@ -171,6 +183,8 @@ export async function SettingsBranches() {
           })}
         </div>
       )}
+
+      {unica && salasDaUnica && <SalasDaUnidade branchId={unica.id} salas={salasDaUnica} />}
     </div>
   )
 }

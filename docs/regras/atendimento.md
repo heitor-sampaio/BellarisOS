@@ -362,6 +362,13 @@
   ela). Quem tem `settings: MANAGE`, na unidade ao alcance; o nome é único
   entre as ATIVAS da unidade (`rooms_nome_unico_na_unidade`). A sessão não
   grava sala pelo PostgREST (as políticas de escrita saíram): só o servidor.
+  - **O caminho das salas** (A3 da 5ª simulação, 2026-11-02): na clínica de
+    UMA unidade, o cartão "Salas" está na própria aba Configurações →
+    Unidades (era Ver detalhes → o fim da página); no portal da unidade, na
+    aba Unidade. A busca "salas" leva ao cartão (`#salas`,
+    `ANCORA_DO_APELIDO` em `lib/busca/paginas.ts`). Com duas ou mais
+    unidades, as salas são de cada uma, no "Ver detalhes". Prova:
+    `e2e/rede-de-uma-unidade.spec.ts` (A3), `tests/busca-universal.test.ts`.
   - **O procedimento se liga às salas em que é feito** (`procedure_rooms`, no
     cadastro do procedimento, "Salas em que é feito"). Ligação OPCIONAL e por
     UNIDADE: sem sala ligada nesta unidade, qualquer sala ativa dela serve;

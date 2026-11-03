@@ -164,6 +164,17 @@ test.describe.serial('a clínica de uma unidade só', () => {
     })
   })
 
+  test('A3: com UMA unidade, as salas estão na própria aba Unidades das Configurações', async ({ browser }) => {
+    await como(browser, async p => {
+      // O caminho era Configurações → Unidades → Ver detalhes → o fim da página.
+      await p.goto('/admin/settings?tab=unidades#salas')
+      const salas = p.locator('#salas[data-salas-da-unidade]')
+      await expect(salas).toBeVisible()
+      await expect(salas.getByRole('heading', { name: 'Salas' })).toBeVisible()
+      await expect(salas).toBeInViewport()
+    })
+  })
+
   test('nasce a segunda unidade: tudo volta', async ({ browser }) => {
     await como(browser, async p => {
       const r = await chamarAcaoComFormulario(p, 'actions/branches.ts', 'createBranch', '/admin/settings?tab=unidades',
@@ -184,6 +195,11 @@ test.describe.serial('a clínica de uma unidade só', () => {
 
       await p.goto(`/${slug}/dashboard`)
       await expect(p.getByText('Voltar para a rede')).toBeVisible()
+
+      // Com duas, as salas são de cada unidade (Ver detalhes), não da aba.
+      await p.goto('/admin/settings?tab=unidades')
+      await expect(p.getByRole('heading', { name: 'Unidades' })).toBeVisible()
+      await expect(p.locator('[data-salas-da-unidade]')).toHaveCount(0)
 
       // O vocabulário de rede volta com a segunda unidade (o controle do F8).
       expect(await falasDeRede(p, '/admin/team')).not.toEqual([])

@@ -98,7 +98,8 @@ describe('paginasQueCasam', () => {
   // achadas pelo nome do que elas têm — com a mesma regra de quem as abre.
   it('acha as telas que moram dentro de outra: salas, caixa, comissão', () => {
     expect(paginasQueCasam(paginas, 'sala')).toEqual([
-      expect.objectContaining({ id: 'settings:unidades', href: '/admin/settings?tab=unidades', subtitulo: 'Salas' }),
+      // A3 (5ª simulação): leva às SALAS, não ao topo da tela de unidades.
+      expect.objectContaining({ id: 'settings:unidades', href: '/admin/settings?tab=unidades#salas', subtitulo: 'Salas' }),
     ])
     expect(paginasQueCasam(paginas, 'caixa').map(r => r.id)).toContain('fechamento')
     expect(paginasQueCasam(paginas, 'comissao').map(r => r.id)).toContain('financial:comissoes')
@@ -114,7 +115,7 @@ describe('paginasQueCasam', () => {
   // salas dela) — a busca a acha no portal da unidade.
   it('na unidade, "sala" leva à aba Unidade', () => {
     expect(paginasQueCasam(paginasDaBusca('centro', ALL_PERMISSIONS), 'sala')).toEqual([
-      expect.objectContaining({ id: 'settings:unidade', href: '/centro/settings?tab=unidade', subtitulo: 'Salas' }),
+      expect.objectContaining({ id: 'settings:unidade', href: '/centro/settings?tab=unidade#salas', subtitulo: 'Salas' }),
     ])
   })
 

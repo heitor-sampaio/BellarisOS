@@ -73,6 +73,15 @@ const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
 }
 
 /**
+ * O apelido que é uma PARTE da tela leva à parte (A3 da 5ª simulação): "sala"
+ * abria o topo de Configurações → Unidades, e as salas ficavam no fim da página
+ * de cada unidade. A tela tem a seção com este id.
+ */
+const ANCORA_DO_APELIDO: Record<string, string> = {
+  salas: '#salas',
+}
+
+/**
  * Todas as páginas que esta pessoa abre, com o endereço do portal em que ela
  * está. `slug` nulo = portal da rede.
  */
@@ -134,7 +143,11 @@ export function paginasQueCasam(
   return paginas
     .filter(p => casaComTermo(termo, [p.titulo, ...p.apelidos]))
     .slice(0, limite)
-    .map(p => ({ tipo: 'pagina', id: p.key, titulo: p.titulo, subtitulo: apelidoQueCasou(p, termo), href: p.href }))
+    .map(p => {
+      const apelido = apelidoQueCasou(p, termo)
+      const ancora = apelido ? ANCORA_DO_APELIDO[apelido.toLowerCase()] ?? '' : ''
+      return { tipo: 'pagina' as const, id: p.key, titulo: p.titulo, subtitulo: apelido, href: p.href + ancora }
+    })
 }
 
 function apelidoQueCasou(p: PaginaDaBusca, termo: string): string | null {
