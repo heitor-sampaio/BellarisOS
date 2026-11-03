@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { euVendi } from './apoio/vender'
 
 /**
  * fin-01 da revisão das decisões (2026-11-02, "mudar"): "a Bruna dá R$ 20 de
@@ -93,6 +94,7 @@ test('a venda de produto com desconto tem o motivo (opcional), e ele vai ao lan�
     await expect(janela.getByLabel('Motivo do desconto'), 'sem desconto, sem o campo').toHaveCount(0)
     await janela.getByLabel('Desconto', { exact: true }).fill('10')
     await janela.getByLabel('Motivo do desconto').fill('Kit da casa')
+    await euVendi(janela)
     await janela.getByRole('button', { name: /^Vender por R\$\s90,00/ }).click()
     await expect(janela).toBeHidden()
   })

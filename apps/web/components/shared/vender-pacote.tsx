@@ -43,8 +43,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const envio = useEnvioUnico()
   // com-04: a profissional responsável, quando o pacote paga quem atende sobre o valor dele.
   const [responsavelId, setResponsavelId] = useState('')
-  // "Quem vendeu" (com-06): nasce com quem registra; vazio, a venda pergunta.
-  const [vendedorId, setVendedorId] = useState(() => equipe.find(m => m.eu)?.id ?? '')
+  // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
+  const [vendedorId, setVendedorId] = useState('')
   const [pergunta, setPergunta] = useState<{ texto: string; sem: 'VENDEDOR' | 'RESPONSAVEL' } | null>(null)
   const [semVendedor, setSemVendedor] = useState(false)
   const quemAtende = equipe.filter(m => m.atende)

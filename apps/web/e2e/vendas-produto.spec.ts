@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { euVendi } from './apoio/vender'
 
 /**
  * A VENDA DE PRODUTO (D4, decisão do Heitor, 2026-10-29): "Produto entra no
@@ -157,6 +158,7 @@ test.describe.serial('a venda de produto', () => {
       await expect(dlg.locator('[data-resumo-do-produto]')).toContainText('447,00')
       await dlg.getByLabel('Desconto', { exact: true }).fill('47')
       await dlg.getByLabel('Meio de pagamento').selectOption('PIX')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por R\$\s400,00$/ }).click()
       await expect(dlg).toBeHidden()
     })
@@ -185,6 +187,7 @@ test.describe.serial('a venda de produto', () => {
       const dlg = await abrirVendaDeProduto(p)
       await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
       await dlg.getByLabel('Quantidade').fill('5')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por/ }).click()
       await expect(dlg.getByRole('alert')).toContainText(/estoque insuficiente/i)
     })
@@ -223,6 +226,7 @@ test.describe.serial('a venda de produto', () => {
       await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
       await dlg.getByLabel('Quantidade').fill('1')
       await dlg.getByLabel('Meio de pagamento').selectOption('CASH')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por R\$\s149,00$/ }).click()
       await expect(dlg).toBeHidden()
     })
@@ -268,6 +272,7 @@ test.describe.serial('a venda de produto', () => {
         await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
         await dlg.getByLabel('Quantidade').fill('1')
         await dlg.getByRole('button', { name: forma, exact: true }).click()
+        await euVendi(dlg)
         await dlg.getByRole('button', { name: /^Vender por R\$\s149,00$/ }).click()
         await expect(dlg).toBeHidden()
       }

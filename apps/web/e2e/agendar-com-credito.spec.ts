@@ -4,6 +4,7 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { euVendi } from './apoio/vender'
 
 /**
  * Agendar usando o que o cliente já pagou (fase 3 de "Vender", 2026-09-30):
@@ -131,6 +132,7 @@ test.describe.serial('agendar com crédito', () => {
       const dlg = p.getByRole('dialog', { name: 'Vender' })
       await dlg.getByRole('button', { name: 'Procedimento', exact: true }).click()
       await dlg.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por/ }).click()
       const agora = dlg.locator('[data-agendar-agora]')
       await expect(agora).toBeVisible({ timeout: 15_000 })

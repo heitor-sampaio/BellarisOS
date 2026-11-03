@@ -94,7 +94,15 @@ test('a recepção registra e a profissional vendeu: a venda é dela, e a comiss
     await p.getByRole('button', { name: 'Vender' }).first().click()
     const janela = p.getByRole('dialog', { name: 'Vender' })
     await janela.getByRole('button', { name: 'Produto' }).click()
-    await expect(janela.getByLabel('Quem vendeu'), 'nasce com quem está registrando').toHaveValue(recepcao!.userId)
+    // r2-ven-12 (o Heitor: "nasce sempre vazio"): em toda venda, o campo nasce vazio.
+    await expect(janela.getByLabel('Quem vendeu'), 'o produto: nasce vazio').toHaveValue('')
+    await expect(janela.getByLabel('Quem vendeu').locator('option', { hasText: '(você)' }), 'quem registra se acha na lista').toHaveCount(1)
+    for (const aba of ['Pacote', 'Procedimento']) {
+      await janela.getByRole('button', { name: aba, exact: true }).click()
+      await expect(janela.getByLabel('Quem vendeu'), `${aba}: nasce vazio`).toHaveValue('')
+    }
+    await janela.getByRole('button', { name: 'Produto' }).click()
+    await expect(janela.getByLabel('Quem vendeu')).toHaveValue('')
     await janela.getByLabel('Quem vendeu').selectOption(rede!.professionalId)
     await janela.getByRole('button', { name: /^Vender por/ }).click()
     await expect(janela).toBeHidden()
@@ -112,7 +120,7 @@ test('"Quem vendeu" vazio: a venda pergunta, nada grava antes da resposta, e con
     await p.getByRole('button', { name: 'Vender' }).first().click()
     const janela = p.getByRole('dialog', { name: 'Vender' })
     await janela.getByRole('button', { name: 'Produto' }).click()
-    await janela.getByLabel('Quem vendeu').selectOption('')
+    // Vazio, como nasce: vender pergunta.
     await janela.getByRole('button', { name: /^Vender por/ }).click()
     const pergunta = janela.locator('[data-pergunta-da-venda]')
     await expect(pergunta).toContainText('Ninguém foi marcado em “Quem vendeu”')

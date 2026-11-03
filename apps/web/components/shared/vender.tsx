@@ -35,7 +35,7 @@ export interface ProdutoAVenda {
 }
 
 /** Alguém da equipe numa venda (com-04/com-06): a responsável do pacote sai de quem atende. */
-export interface MembroDaVenda { id: string; nome: string; atende: boolean; /** É quem está registrando (o padrão de "Quem vendeu"). */ eu?: boolean }
+export interface MembroDaVenda { id: string; nome: string; atende: boolean; /** É quem está registrando ("(você)" em "Quem vendeu", que nasce vazio — r2-ven-12). */ eu?: boolean }
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
 
@@ -134,8 +134,8 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
 function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
   clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void; equipe: MembroDaVenda[]
 }) {
-  // "Quem vendeu" (com-06): nasce com quem registra; vazio, a venda pergunta.
-  const [vendedorId, setVendedorId] = useState(() => equipe.find(m => m.eu)?.id ?? '')
+  // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
+  const [vendedorId, setVendedorId] = useState('')
   const [pergunta, setPergunta] = useState<string | null>(null)
   const router = useRouter()
   const [itens, setItens] = useState<{ prodId: string; quantidade: string }[]>(() => [{ prodId: produtos[0]!.id, quantidade: '1' }])
@@ -254,8 +254,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   clienteId: string; branchId: string; procedimentos: ProcedimentoAVenda[]; onFim: () => void; podeAgendar: boolean
   aReceber: AtendimentoAReceber[]; equipe: MembroDaVenda[]
 }) {
-  // "Quem vendeu" (com-06): nasce com quem registra; vazio, a venda pergunta.
-  const [vendedorId, setVendedorId] = useState(() => equipe.find(m => m.eu)?.id ?? '')
+  // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
+  const [vendedorId, setVendedorId] = useState('')
   const [pergunta, setPergunta] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()

@@ -130,7 +130,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   foi quem realizou aquela venda. Se o campo ficar vazio, aviso e
   confirmação. Campo vazio não gera comissão para ninguém"). A venda de
   produto, de pacote e de pré-pago tem "Quem vendeu" (`CampoQuemVendeu`,
-  nasce com quem está registrando; "Ninguém" é uma opção). `sold_by` é QUEM
+  nasce VAZIO em toda venda — r2-ven-12, o Heitor, 2026-11-03: "nasce sempre
+  vazio"; quem registra se acha na lista pelo "(você)", e vazio continua
+  valendo: ninguém, sem comissão de venda). `sold_by` é QUEM
   VENDEU — a comissão de venda (produto e pacote), a coluna Profissional das
   Vendas e o "Meu faturamento" —, e quem registrou vai em `registrado_por`
   (migration `20261101001106`). Vazio, a venda PERGUNTA — na tela

@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
+import { euVendi } from './apoio/vender'
 
 /**
  * Desconto em todas as vendas (decisão do Heitor, 2026-09-30 — migration
@@ -92,6 +93,7 @@ test.describe.serial('desconto nas vendas', () => {
       await dlg.getByRole('button', { name: '%', exact: true }).click()
       await dlg.getByLabel('Desconto', { exact: true }).fill('10')
       await expect(dlg.getByTestId('conta-do-desconto')).toContainText('720,00')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por R\$\s720,00$/ }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })
     })

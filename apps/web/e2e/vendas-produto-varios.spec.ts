@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { euVendi } from './apoio/vender'
 
 /**
  * ven-04 da revisão das decisões (2026-11-02, "mudar"): "a Carla leva 2 séruns
@@ -94,6 +95,7 @@ test('o kit pela ficha: 2 séruns + 1 protetor, um pagamento só — a venda, a 
     await janela.getByLabel('Quantidade 2', { exact: true }).fill('1')
     await expect(janela.locator('[data-resumo-do-produto]')).toContainText('290,00')
     await janela.getByLabel('Meio de pagamento').selectOption('PIX')
+    await euVendi(janela)
     await janela.getByRole('button', { name: /^Vender por R\$\s290,00$/ }).click()
     await expect(janela).toBeHidden()
   })

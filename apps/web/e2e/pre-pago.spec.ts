@@ -5,6 +5,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
+import { euVendi } from './apoio/vender'
 
 /**
  * Procedimento pré-pago (decisão do Heitor, 2026-09-30 — migration
@@ -117,6 +118,7 @@ test.describe.serial('procedimento pré-pago', () => {
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
       await dlg.getByLabel('Entrada').fill('210')
       await dlg.getByLabel('Parcelas').selectOption('2')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por R\$\s810,00$/ }).click()
       // Quem agenda vê o "Agendar agora" (fase 3); aqui fica para depois.
       await dlg.locator('[data-agendar-agora]').getByRole('button', { name: 'Cancelar' }).click()

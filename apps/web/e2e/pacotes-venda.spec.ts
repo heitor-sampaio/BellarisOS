@@ -6,6 +6,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarClientes } from './apoio/limpeza'
 import { responderAnamnese } from './apoio/anamnese'
+import { euVendi } from './apoio/vender'
 
 /**
  * Pacotes (2026-09-30): o catálogo em Procedimentos, a venda na ficha do
@@ -168,6 +169,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
       await dlg.getByLabel('Entrada').fill('100')
       await dlg.getByLabel('Parcelas').selectOption('3')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /Vender por/ }).click()
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length,
         { message: 'a venda grava' }).toBe(1)
@@ -290,6 +292,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
       await dlg.getByRole('button', { name: 'A receber' }).click()
       await expect(dlg.getByLabel('Vencimento')).toHaveValue('')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /Vender por/ }).click()
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length,
         { message: 'a segunda venda grava' }).toBe(2)
@@ -357,6 +360,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       const { data: novo } = await db().from('conversations').select('client_id').eq('id', semCliente).single()
       expect(novo?.client_id, 'o cadastro liga a conversa ao cliente novo').toBeTruthy()
       cadastrado = novo!.client_id as string
+      await euVendi(dlg2)
       await dlg2.getByRole('button', { name: /^Vender por/ }).click()
       await expect(dlg2).toBeHidden({ timeout: 15_000 })
       const { data: cp } = await db().from('client_packages').select('id, price').eq('client_id', cadastrado)
@@ -377,6 +381,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByRole('button', { name: 'À vista' }).click()
       await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
       await dlg.getByLabel('Vezes no cartão').selectOption('3')
+      await euVendi(dlg)
       await dlg.getByRole('button', { name: /Vender por/ }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })
     })

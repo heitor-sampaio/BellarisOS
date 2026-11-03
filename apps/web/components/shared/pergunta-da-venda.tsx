@@ -6,8 +6,9 @@ import type { MembroDaVenda } from '@/components/shared/vender'
 /**
  * "Quem vendeu" (com-06, revisão de 2026-11-02 — o Heitor: "às vezes quem vai
  * registrar a venda é recepção e quem vendeu foi a profissional"): leva a
- * comissão da venda e aparece em Vendas. Nasce com quem está registrando;
- * "Ninguém" é escolha, e a venda pergunta antes.
+ * comissão da venda e aparece em Vendas. Nasce VAZIO em toda venda (r2-ven-12;
+ * o Heitor: "nasce sempre vazio") — quem registra se acha pelo "(você)"; vazio
+ * continua valendo (ninguém, sem comissão), e a venda pergunta antes.
  */
 export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
   equipe: MembroDaVenda[]; valor: string; aoMudar: (id: string) => void
@@ -16,8 +17,8 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span className="overline">Quem vendeu</span>
       <select className="field" aria-label="Quem vendeu" value={valor} onChange={e => aoMudar(e.target.value)}>
-        <option value="">Ninguém (sem comissão de venda)</option>
-        {equipe.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+        <option value="">Escolha quem vendeu (vazio: ninguém, sem comissão de venda)</option>
+        {equipe.map(m => <option key={m.id} value={m.id}>{m.eu ? `${m.nome} (você)` : m.nome}</option>)}
       </select>
     </label>
   )
