@@ -476,7 +476,10 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     atendimentos dela). Prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`.
 - **O fluxo de caixa dos PRÓXIMOS meses** (r2-fin-04, o Heitor, 2026-11-03:
   "crie o gráfico"). Nos dois financeiros, o cartão "Fluxo de caixa — próximos
-  6 meses" (`FluxoDeCaixa`, `components/shared/fluxo-de-caixa.tsx`): por mês
+  6 meses" (`FluxoDeCaixa`, `components/shared/fluxo-de-caixa.tsx`) — **3, 6 ou
+  12 meses, a clínica escolhe no cartão** (r3-f13-11, o Heitor: "quem vende
+  pacote em 10x quer ver o ano"; 6 por padrão, o título acompanha: o servidor
+  manda os 12, a tela mostra os primeiros N): por mês
   (Brasília, a partir do atual), o que ENTRA — o a receber da cliente (os
   lançamentos de receita em aberto) e o que a operadora do cartão ainda
   deposita (`recebiveis_do_cartao` vivos e não recebidos), empilhados — e o que

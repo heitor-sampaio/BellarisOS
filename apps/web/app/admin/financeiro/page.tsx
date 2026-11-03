@@ -214,7 +214,7 @@ export default async function AdminFinanceiroPage({
         totalAPagar={emAbertoDaRede.aPagar}
         aReceberDaOperadora={operadora}
         parcelasDaOperadora={parcelasDaOperadora}
-        fluxoDeCaixa={await getFluxoDeCaixa({ tenantId: ctx.tenantId!, branchIds, porUnidade: true })}
+        fluxoDeCaixa={await getFluxoDeCaixa({ tenantId: ctx.tenantId!, branchIds, porUnidade: true, meses: 12 })}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}
         totalProximoAPagar={emAbertoDaRede.proximoAPagar}
         totalMovimentacoes={movimentacoes.total}

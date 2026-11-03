@@ -101,3 +101,33 @@ test('o fluxo de caixa dos próximos 6 meses: o que entra (da cliente e da opera
     }
   })
 })
+
+// r3-f13-11 (o Heitor, revisão de 03/11: "quem vende pacote em 10x quer ver o
+// ano"): a clínica escolhe 3, 6 ou 12 meses no cartão (padrão 6), e o título
+// acompanha. Os meses vêm todos do banco; a tela só mostra os N primeiros.
+test('r3-f13-11: o cartão escolhe 3, 6 ou 12 meses — 6 por padrão, e o título acompanha', async ({ browser }) => {
+  // A parcela que vence daqui a 10 meses só aparece no ano.
+  const longe = await lancar({ type: 'INCOME', category: 'Serviços', amount: 777, is_paid: false, due_date: dia10(10) })
+  try {
+    await como(browser, async p => {
+      for (const rota of ['/admin/financeiro', `/${slug}/financeiro`]) {
+        await p.goto(rota)
+        const card = p.locator('[data-fluxo-de-caixa]')
+        await expect(card.getByRole('heading')).toHaveText('Fluxo de caixa — próximos 6 meses')
+        await expect(card.locator('[data-mes]'), `${rota}: 6 por padrão`).toHaveCount(6)
+        await expect(card.getByRole('button', { name: '6 meses' })).toHaveAttribute('aria-pressed', 'true')
+
+        await card.getByRole('button', { name: '12 meses' }).click()
+        await expect(card.getByRole('heading')).toHaveText('Fluxo de caixa — próximos 12 meses')
+        await expect(card.locator('[data-mes]')).toHaveCount(12)
+        await expect(card.locator(`[data-mes="${mesMais(10)}"]`), 'a parcela de daqui a 10 meses').toContainText('R$ 777,00')
+
+        await card.getByRole('button', { name: '3 meses' }).click()
+        await expect(card.getByRole('heading')).toHaveText('Fluxo de caixa — próximos 3 meses')
+        await expect(card.locator('[data-mes]')).toHaveCount(3)
+      }
+    })
+  } finally {
+    await db().from('financial_transactions').delete().eq('id', longe)
+  }
+})

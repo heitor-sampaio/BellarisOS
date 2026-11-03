@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { numericAxisWidth } from '@/lib/chart-utils'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
+import { SegSelect } from '@/components/shared/seg-select'
 
 /**
  * O fluxo de caixa dos PRÓXIMOS meses (r2-fin-04; o Heitor, 2026-11-03: "crie
@@ -56,7 +58,16 @@ function Dica({ active, payload, label }: { active?: boolean; payload?: EntradaD
   )
 }
 
-export function FluxoDeCaixa({ meses }: { meses: MesDoFluxo[] }) {
+/**
+ * Quantos meses (r3-f13-11, o Heitor: "quem vende pacote em 10x quer ver o
+ * ano"): 3, 6 ou 12, 6 por padrão. O servidor manda os 12 (`getFluxoDeCaixa`
+ * com `meses: 12`); a tela mostra os primeiros N, sem refazer conta.
+ */
+const PERIODOS = [3, 6, 12] as const
+
+export function FluxoDeCaixa({ meses: todos }: { meses: MesDoFluxo[] }) {
+  const [quantos, setQuantos] = useState<number>(6)
+  const meses = todos.slice(0, quantos)
   if (!meses.length) return null
   const vazio = meses.every(m => m.daCliente === 0 && m.daOperadora === 0 && m.aPagar === 0)
   const eixo = numericAxisWidth(meses.flatMap(m => [m.daCliente + m.daOperadora, m.aPagar]), fmtEixo)
@@ -69,9 +80,15 @@ export function FluxoDeCaixa({ meses }: { meses: MesDoFluxo[] }) {
   return (
     <div className="card" data-fluxo-de-caixa style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <TrendingUp size={15} style={{ color: 'var(--brand)' }} aria-hidden />
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Fluxo de caixa — próximos {meses.length} meses</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Fluxo de caixa — próximos {meses.length} meses</h2>
+          <SegSelect
+            options={PERIODOS.map(n => ({ key: String(n), label: `${n} meses` }))}
+            value={String(quantos)}
+            onSelect={k => setQuantos(Number(k))}
+            ariaLabel="Quantos meses do fluxo de caixa"
+          />
         </div>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
           O que entra (o a receber da cliente e o que a operadora do cartão deposita) e o que sai (as despesas a pagar),

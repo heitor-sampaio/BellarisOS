@@ -168,7 +168,7 @@ export default async function FinancialPage({
         concluidosSemPagamento={concluidosSemPagamento}
         aReceberDaOperadora={operadora.total}
         parcelasDaOperadora={parcelasDaOperadora}
-        fluxoDeCaixa={ownFinancial ? undefined : (await getFluxoDeCaixa(argsDoNucleo)).total}
+        fluxoDeCaixa={ownFinancial ? undefined : (await getFluxoDeCaixa({ ...argsDoNucleo, meses: 12 })).total}
         composicao={composicao}
         branchId={branch.id}
         branchName={branch.name}
