@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { camposDoDestino, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
 import { processarImportacao, manterImportacoes } from '@/lib/importacao/processar'
+import { variantesDoTelefone } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
 
 /**
@@ -34,6 +35,8 @@ export interface PedidoDeImportacao {
   numeros?:     number[]
   /** `responsavelId: null` é "Sem responsável"; ausente, quem importa. */
   oportunidade: { etapaId: string; responsavelId?: string | null } | null
+  /** As linhas (numero) em que a prévia desmarcou "completar a ficha de X" (cli-07). */
+  naoCompletar?: number[]
 }
 
 /** A etapa é da rede E de um funil ativo: a de funil arquivado sumiria do quadro. */
@@ -117,6 +120,9 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
     tenant_id: ctx.tenantId!, branch_id: branchId, criada_por: ctx.internalUserId ?? null, destino,
     nome_arquivo: String(pedido.nomeArquivo ?? 'arquivo.csv').slice(0, 200),
     mapeamento, oportunidade, total: limpas.length,
+    nao_completar: destino === 'clientes' && Array.isArray(pedido.naoCompletar)
+      ? [...new Set(pedido.naoCompletar.filter(n => Number.isInteger(n) && n > 1))].slice(0, MAX_LINHAS)
+      : [],
   }).select('id').single<{ id: string }>()
   if (error) return { ok: false, error: `Não foi possível começar a importação: ${error.message}` }
 
@@ -135,6 +141,42 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
 
   after(() => processarImportacao(imp.id, ctx))
   return { ok: true, importacaoId: imp.id }
+}
+
+/** Quem uma linha da prévia encontra na rede (A15, cli-07). */
+export interface CruzamentoDaLinha { numero: number; nome: string; como: 'cpf' | 'telefone' | 'email' }
+
+/**
+ * A prévia diz o que vai ser FUNDIDO antes de importar (A15 da 5ª simulação:
+ * "10 linhas prontas", e a "Renata Quintas" sumiu na Luana Prado pelo
+ * telefone — só o resultado dizia "1 completado"). Quem cada linha encontra,
+ * com a regra da importação (`importacao_cruzamento`, a de
+ * `lib/importacao/processar.ts`). Só lê. As linhas vêm da prévia (já
+ * normalizadas); a importação valida tudo de novo.
+ */
+export async function cruzamentoDaImportacao(entrada: {
+  destino: Destino; linhas: { numero: number; phone?: string; document?: string; email?: string }[]
+}): Promise<{ itens: CruzamentoDaLinha[] } | { error: string }> {
+  const ctx = await getTenantContext()
+  const destino: Destino = entrada?.destino === 'contatos' ? 'contatos' : 'clientes'
+  if (!can(ctx, destino === 'clientes' ? 'clients' : 'crm', 'MANAGE')) return { itens: [] }
+  const linhas = (Array.isArray(entrada?.linhas) ? entrada.linhas : []).slice(0, MAX_LINHAS)
+  const texto = (v: unknown) => (typeof v === 'string' ? v.slice(0, 200) : '')
+  const corpo = linhas
+    .filter(l => Number.isInteger(l?.numero))
+    .map(l => {
+      const fone = texto(l.phone).replace(/\D/g, '')
+      return { numero: l.numero, cpf: texto(l.document).replace(/\D/g, ''), fone, fones: fone ? variantesDoTelefone(fone) : [], email: texto(l.email) }
+    })
+  if (!corpo.length) return { itens: [] }
+  try {
+    const achados = await ler(createAdminClient().rpc('importacao_cruzamento', {
+      p_tenant: ctx.tenantId!, p_destino: destino, p_linhas: corpo,
+    }), 'cruzar a planilha com o cadastro') as { numero: number; nome: string | null; como: CruzamentoDaLinha['como'] }[] | null
+    return { itens: (achados ?? []).map(a => ({ numero: a.numero, nome: a.nome ?? 'sem nome', como: a.como })) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
 }
 
 export interface AndamentoDaImportacao {

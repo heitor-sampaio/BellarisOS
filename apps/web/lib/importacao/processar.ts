@@ -48,6 +48,8 @@ interface Pedido {
   oportunidade: { etapaId: string; responsavelId: string | null } | null
   processadas: number; novas: number; completadas: number; sem_mudanca: number
   com_erro: number; oportunidades: number; erros: { linha: number; motivo: string }[]
+  /** As linhas em que a prévia desmarcou "completar a ficha de X" (cli-07): o telefone não junta. */
+  nao_completar: number[] | null
 }
 
 type Resultado = 'nova' | 'completada' | 'sem_mudanca'
@@ -88,7 +90,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
   const { data: p, error: erroDaVez } = await admin.from('importacoes')
     .update({ status: 'importando', execucao, iniciada_em: agora(), atualizada_em: agora(), erro: null })
     .eq('id', importacaoId).eq('status', 'pendente').eq('tenant_id', ctx.tenantId!)
-    .select('id, tenant_id, branch_id, destino, mapeamento, oportunidade, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erros')
+    .select('id, tenant_id, branch_id, destino, mapeamento, oportunidade, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erros, nao_completar')
     .maybeSingle<Pedido>()
   if (erroDaVez) { console.error('[importacao] reivindicar:', erroDaVez.message); return }
   if (!p) return   // outra passagem já pegou
@@ -145,7 +147,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
           if (erros.length < MAX_ERROS) erros.push({ linha: l.numero, motivo: problemas.join(' ') })
         } else {
           try {
-            const r = await gravarLinha(admin, p, ctx, dados, tagDaUnidade)
+            const r = await gravarLinha(admin, p, ctx, dados, tagDaUnidade, l.numero)
             placar[r.resultado === 'nova' ? 'novas' : r.resultado === 'completada' ? 'completadas' : 'sem_mudanca']++
             if (r.oportunidade) placar.oportunidades++
           } catch (e) {
@@ -209,14 +211,14 @@ async function pessoaDaLinha(admin: Admin, tenantId: string, dados: DadosDaLinha
 
 /** Uma linha válida: a pessoa (nova, completada ou igual) e a oportunidade, se pedida. */
 async function gravarLinha(
-  admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
+  admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null, numero: number,
 ): Promise<{ resultado: Resultado; oportunidade: boolean }> {
   // Sem telefone só no contato que só tem e-mail (D-10): a ficha exige o telefone.
   const fone = dados.phone as string | undefined
   let resultado: Resultado
   let clientId: string | null = null
   if (p.destino === 'clientes') {
-    const r = await gravarCliente(admin, p, dados, tagDaUnidade)
+    const r = await gravarCliente(admin, p, dados, tagDaUnidade, (p.nao_completar ?? []).includes(numero))
     resultado = r.resultado
     clientId = r.clientId
   } else {
@@ -277,6 +279,8 @@ const CAMPOS_DO_CLIENTE: ChaveDeCampo[] = [
 
 async function gravarCliente(
   admin: Admin, p: Pedido, linhaDaPlanilha: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
+  /** A prévia desmarcou "completar a ficha de X" nesta linha (cli-07): o telefone não junta. */
+  naoCompletarPeloTelefone = false,
 ): Promise<{ resultado: Resultado; clientId: string }> {
   // A ficha guarda o telefone como o cadastro (o de fora com o "+", cli-06); a
   // busca continua pelos dígitos.
@@ -290,7 +294,7 @@ async function gravarCliente(
     existente = await ler(admin.from('clients').select('*')
       .eq('tenant_id', p.tenant_id).eq('document', dados.document as string).maybeSingle(), 'buscar o cliente pelo CPF')
   }
-  if (!existente) {
+  if (!existente && !naoCompletarPeloTelefone) {
     const { data: id, error } = await admin.rpc('cliente_por_telefone', {
       p_tenant: p.tenant_id, p_digitos: digitos as string, p_sem_cpf: true,
     })

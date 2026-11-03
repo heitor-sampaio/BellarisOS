@@ -8,7 +8,7 @@ import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
 import { camposDoDestino, sugerirMapeamento, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
 import { validarLinha, marcarRepetidas, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
-import { importarContatos, andamentoDaImportacao, type AndamentoDaImportacao } from '@/actions/importacao'
+import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 
 /**
  * Importar contatos de um CSV (2026-10-13): arquivo → colunas → prévia →
@@ -130,6 +130,30 @@ export function ImportadorDeContatos(p: Props) {
   const prontas = validadas.filter(l => !l.erros.length).length
   const comErro = validadas.length - prontas
 
+  // O que vai ser FUNDIDO (A15 da 5ª simulação): quem cada linha pronta
+  // encontra na rede, pela regra da importação — antes só o resultado final
+  // dizia "1 completado". E a ficha completada pelo TELEFONE (sem CPF) se
+  // desmarca (cli-07: a filha com o telefone da mãe completava a ficha dela).
+  const chaveDoCruzamento = passo === 3 ? `${destino}|${validadas.length}|${mapa.join(',')}|${arquivo?.nome ?? ''}` : ''
+  const [cruzamento, setCruzamento] = useState<{ chave: string; itens: CruzamentoDaLinha[] } | null>(null)
+  const [naoCompletar, setNaoCompletar] = useState<Set<number>>(() => new Set())
+  useEffect(() => {
+    if (!chaveDoCruzamento) return
+    let vivo = true
+    const linhas = validadas.filter(l => !l.erros.length).map(l => ({
+      numero: l.numero,
+      phone: (l.dados.phone as string | undefined) ?? undefined,
+      document: (l.dados.document as string | undefined) ?? undefined,
+      email: (l.dados.email as string | undefined) ?? undefined,
+    }))
+    cruzamentoDaImportacao({ destino, linhas })
+      .then(r => { if (vivo && 'itens' in r) setCruzamento({ chave: chaveDoCruzamento, itens: r.itens }) })
+      .catch(() => { /* sem o cruzamento, a prévia só não diz quem junta */ })
+    return () => { vivo = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a chave resume as linhas
+  }, [chaveDoCruzamento])
+  const cruzados = cruzamento?.chave === chaveDoCruzamento ? cruzamento.itens : null
+
   function importar() {
     if (!arquivo) return
     setErroEnvio(null)
@@ -138,6 +162,7 @@ export function ImportadorDeContatos(p: Props) {
         destino, branchId: destino === 'clientes' ? branchId : null, nomeArquivo: arquivo.nome,
         mapeamento: mapa, linhas: arquivo.linhas, numeros: arquivo.numeros,
         oportunidade: comOportunidade && etapaId ? { etapaId, responsavelId: responsavelId || null } : null,
+        naoCompletar: destino === 'clientes' ? [...naoCompletar] : [],
       })
       if (!r.ok) { setErroEnvio(r.error); return }
       setImportacaoId(r.importacaoId)
@@ -163,7 +188,7 @@ export function ImportadorDeContatos(p: Props) {
   }, [importacaoId, rodando, router])
 
   function recomecar() {
-    setPasso(1); setArquivo(null); setImportacaoId(null); setAndamento(null); setComOportunidade(false); setErroEnvio(null)
+    setPasso(1); setArquivo(null); setImportacaoId(null); setAndamento(null); setComOportunidade(false); setErroEnvio(null); setNaoCompletar(new Set())
   }
 
   const exemplo = (i: number) => arquivo?.linhas.find(l => (l[i] ?? '').trim())?.[i]?.trim() ?? ''
@@ -327,6 +352,8 @@ export function ImportadorDeContatos(p: Props) {
                 ))}
               </ul>
             )}
+            <OQueJunta destino={destino} validadas={validadas} cruzados={cruzados} naoCompletar={naoCompletar}
+              alternar={n => setNaoCompletar(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })} />
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
               Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone ou, sem ele, pelo e-mail'}) só tem o que está em
               branco completado — nada do que a clínica já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags e a origem se juntam.'} A importação não dispara as
@@ -412,6 +439,110 @@ export function ImportadorDeContatos(p: Props) {
             )
           })()}
         </div>
+      )}
+    </div>
+  )
+}
+
+const listaDaPrevia: React.CSSProperties = {
+  margin: 0, paddingLeft: 0, listStyle: 'none', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
+  display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto',
+}
+const caixaDaPrevia: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px',
+  background: 'var(--bg-app)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius-field-token)',
+}
+const forte: React.CSSProperties = { color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }
+
+/**
+ * O que vai JUNTAR com quem já existe, na prévia (A15, cli-07):
+ * - clientes: a ficha do mesmo CPF (é a mesma pessoa), e a ficha SEM CPF do
+ *   mesmo telefone — essa com a caixa "Completar a ficha de X", que desmarcada
+ *   faz a linha virar uma ficha nova (mãe e filha dividem número);
+ * - contatos: a pessoa do mesmo telefone (ou, sem ele, do mesmo e-mail), a
+ *   linha que repete o telefone de outra linha, e quem entra sem telefone.
+ */
+function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
+  destino: Destino; validadas: LinhaValidada[]; cruzados: CruzamentoDaLinha[] | null
+  naoCompletar: Set<number>; alternar: (numero: number) => void
+}) {
+  const prontas = validadas.filter(l => !l.erros.length)
+  const nomeDaLinha = (n: number) => (prontas.find(l => l.numero === n)?.dados.name as string | undefined) || 'sem nome'
+  const itens = cruzados ?? []
+
+  if (destino === 'clientes') {
+    if (!itens.length) return null
+    const completam = itens.filter(i => i.como === 'cpf' || !naoCompletar.has(i.numero)).length
+    return (
+      <div style={caixaDaPrevia}>
+        <span style={forte}>
+          {completam > 0
+            ? `Vai completar ${plural(completam, 'ficha que já existe', 'fichas que já existem')}: só o que está em branco é preenchido.`
+            : 'Nenhuma ficha que já existe vai ser completada.'}
+        </span>
+        <ul style={listaDaPrevia}>
+          {itens.map(i => i.como === 'cpf' ? (
+            <li key={i.numero}>Linha {i.numero} · {nomeDaLinha(i.numero)} completa a ficha de <b style={forte}>{i.nome}</b> (o mesmo CPF)</li>
+          ) : (
+            <li key={i.numero}>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={!naoCompletar.has(i.numero)} onChange={() => alternar(i.numero)}
+                  aria-label={`Completar a ficha de ${i.nome}`} style={{ marginTop: 3, accentColor: 'var(--brand)' }} />
+                <span>
+                  Linha {i.numero} · {nomeDaLinha(i.numero)}{' '}
+                  {naoCompletar.has(i.numero)
+                    ? <>vira uma ficha nova (com o mesmo telefone de <b style={forte}>{i.nome}</b>)</>
+                    : <>completa a ficha de <b style={forte}>{i.nome}</b> (o mesmo telefone, ficha sem CPF)</>}
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {itens.some(i => i.como === 'telefone') && (
+          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+            Mãe e filha com o mesmo telefone? Desmarque, e a linha vira uma ficha nova.
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  // Contatos: quem junta com quem já existe, quem repete o telefone de outra linha, e quem não tem telefone.
+  const achados = new Set(itens.map(i => i.numero))
+  const primeiraDoTelefone = new Map<string, number>()
+  const naPlanilha: { numero: number; com: number }[] = []
+  for (const l of prontas) {
+    const fone = l.dados.phone as string | undefined
+    if (!fone) continue
+    const primeira = primeiraDoTelefone.get(fone)
+    if (primeira === undefined) primeiraDoTelefone.set(fone, l.numero)
+    else if (!achados.has(l.numero)) naPlanilha.push({ numero: l.numero, com: primeira })
+  }
+  const semTelefone = prontas.filter(l => !l.dados.phone)
+  if (!itens.length && !naPlanilha.length && !semTelefone.length) return null
+  const juntam = itens.length + naPlanilha.length
+  return (
+    <div style={caixaDaPrevia}>
+      {juntam > 0 && (
+        <>
+          <span style={forte}>
+            {plural(juntam, 'linha junta', 'linhas juntam')} com quem já existe — completa o que está em branco e junta as tags.
+          </span>
+          <ul style={listaDaPrevia}>
+            {itens.map(i => (
+              <li key={i.numero}>Linha {i.numero} · {nomeDaLinha(i.numero)} junta com <b style={forte}>{i.nome}</b> ({i.como === 'email' ? 'o mesmo e-mail' : 'o mesmo telefone'})</li>
+            ))}
+            {naPlanilha.map(r => (
+              <li key={r.numero}>Linha {r.numero} · {nomeDaLinha(r.numero)} junta com a linha {r.com} (o mesmo telefone)</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {semTelefone.length > 0 && (
+        <span>
+          <b style={forte}>{plural(semTelefone.length, 'sem telefone', 'sem telefone')}</b> — entra só com o e-mail
+          (linha {semTelefone.slice(0, 10).map(l => l.numero).join(', ')}{semTelefone.length > 10 ? '…' : ''}).
+        </span>
       )}
     </div>
   )

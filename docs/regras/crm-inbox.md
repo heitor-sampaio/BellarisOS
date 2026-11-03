@@ -61,8 +61,8 @@
     ficha, "Não" cria uma nova (e não avisa de novo do número dela). A
     resposta (`_fichaRapida`, `mesma:<id>` ou `outra:<id>`) vale para AQUELA
     ficha, e o formulário a reenvia nos envios seguintes (uma pergunta pode
-    vir depois da outra). A importação continua completando a ficha sem CPF
-    (não há quem responda);
+    vir depois da outra). Na importação, a prévia mostra "Completar a ficha de
+    X" marcada e deixa desmarcar (cli-07, abaixo);
   - o telefone de uma PESSOA do CRM (`contacts`, pelas formas do WhatsApp,
     `variantesDoTelefone`) que ainda não é cliente — o lead, até o PERDIDO
     que voltou, ou só a conversa — faz a tela perguntar "É a mesma pessoa do
@@ -321,6 +321,17 @@ dela — e vê Configurações só com essa aba.
   `p_sem_cpf`) — a regra do cadastro manual (telefone de ficha com CPF pode
   ser de outra pessoa). Contato: pelo telefone exato; sem telefone, pelo
   e-mail (sem caixa).
+- **A prévia diz o que vai JUNTAR** (A15 da 5ª simulação: "10 linhas prontas",
+  e a "Renata Quintas" sumiu na Luana Prado pelo telefone — só o resultado
+  dizia "1 completado"): quem cada linha pronta encontra na rede, pela regra
+  da importação (`cruzamentoDaImportacao` → `importacao_cruzamento`, só lê) —
+  "completa a ficha de X (o mesmo CPF)", "junta com X (o mesmo telefone)", a
+  linha que repete o telefone de outra, e quem entra sem telefone. **A ficha
+  SEM CPF completada pelo TELEFONE se desmarca** (cli-07, revisão do Heitor de
+  2026-11-02: a filha com o telefone da mãe completava a ficha rápida da mãe):
+  "Completar a ficha de Marlene" vem marcada; desmarcada, a linha vira ficha
+  nova (`importacoes.nao_completar`; o CPF continua juntando, é a mesma
+  pessoa). Prova: `e2e/importacao-previa-cruzamento.spec.ts`.
 - **O contato entra com o telefone OU o e-mail** (D-10, decisão do Heitor,
   frente de cadastro de 2026-10-29): a linha só com e-mail vira pessoa sem
   telefone (`identifiers` vazio), e a oportunidade dela vai para ESSA pessoa
