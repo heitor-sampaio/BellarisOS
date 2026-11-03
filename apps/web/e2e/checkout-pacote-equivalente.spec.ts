@@ -71,7 +71,8 @@ test('o checkout sugere o pacote e aplica o preço dele como desconto', async ({
     await expect(sugestao).toContainText('economia de R$')
     await expect(sugestao).toContainText('100,00')
     await sugestao.getByRole('button', { name: 'Fechar como pacote' }).click()
-    await expect(p.locator('[data-campo-desconto] input')).toHaveValue('100,00')
+    // O bloco do desconto também leva o "Motivo do desconto" (fin-01): o valor é o campo "Desconto".
+    await expect(p.locator('[data-campo-desconto]').getByLabel('Desconto', { exact: true })).toHaveValue('100,00')
     await expect(sugestao).toContainText('Preço do pacote aplicado')
   })
 })
