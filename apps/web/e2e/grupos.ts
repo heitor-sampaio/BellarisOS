@@ -125,6 +125,7 @@ export const ISOLADOS = [
   'indicadores-credito-interno.spec.ts',
   'indicadores-reativar-clientes-da-rede.spec.ts',
   'indicadores-venda-de-produto-de-quem-vendeu.spec.ts',
+  'indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts',
   'indicadores-receita-paga-por-procedimento.spec.ts',
   'relatorios-profissionais-ativos.spec.ts',
   'relatorios-procedimentos-agenda-dela.spec.ts',

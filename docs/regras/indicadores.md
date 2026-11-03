@@ -563,7 +563,18 @@ UM, o de `metrics_core`:
   PRODUTO que ela vendeu (`product_sale_id` → `product_sales.sold_by`), como
   nas Vendas — `metrics_receitas_pagas`, `metrics_core`, `metrics_series` e
   `metrics_top_clients` (migration `20261101000703`). Prova:
-  `e2e/indicadores-venda-de-produto-de-quem-vendeu.spec.ts`;
+  `e2e/indicadores-venda-de-produto-de-quem-vendeu.spec.ts`. E desde
+  2026-11-03 (r2-ven-15, o Heitor: "o pacote soma inteiro para quem vendeu,
+  é óbvio, não faz nem sentido não ser assim") o PACOTE e o PRÉ-PAGO que ela
+  vendeu (`client_package_id` → `client_packages.sold_by`,
+  `procedure_sale_id` → `procedure_sales.sold_by`; migration
+  `20261103001304`), pela regra única: no dia de cada pagamento — o pago à
+  vista, inteiro no dia da venda; o crediário, parcela a parcela, quando
+  entra. A sessão de pacote (ou a unidade pré-paga) que ela ATENDE não soma
+  de novo: a sessão não tem lançamento, e o dinheiro da venda já é de quem
+  vendeu. O "Meu faturamento" é de VENDA; o ranking por profissional é de
+  EXECUÇÃO (abaixo, "A receita por procedimento e por profissional"). Prova:
+  `e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts`;
 - **cliente dela**: quem tem agendamento NÃO CANCELADO com ela numa unidade
   do recorte (o total, os novos clientes, a demografia, a recorrência e o
   gasto). Até 2026-10-28 os novos clientes com profissional eram 0 por
