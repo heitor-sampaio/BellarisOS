@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Trash2, Check, Syringe, Plus, Minus, Maximize2 } from 'lucide-react'
 import { InjectableOutline, MAP_VIEWBOX, viewDe, partesDaView } from '@/components/shared/injectable-outline'
+import { formatarDose } from '@/lib/injetaveis/dose'
 import {
   INJECTABLE_UNITS, emptyInjectableMap, injectableTotals, newId,
   normalizeInjectableView, pointsOfView,
@@ -644,7 +645,25 @@ function PointRow({
           {index + 1}
         </span>
 
-        {canEdit ? (
+        {/* O produto vem do ESTOQUE (A36): com a lista, escolhe-se nela — o nome
+            é o do insumo, e é por ele que o "Finalizar" liga o mapa à baixa.
+            O que já estava escrito fora da lista continua, marcado. */}
+        {canEdit && products.length > 0 ? (
+          <select
+            value={point.product}
+            onChange={e => onChange({ product: e.target.value })}
+            aria-label="Produto"
+            aria-invalid={!point.product.trim() || undefined}
+            className="field"
+            style={{ flex: 1, minWidth: 0, padding: '5px 8px', fontSize: 'var(--text-xs-sz)', borderColor: point.product.trim() ? undefined : 'var(--warning)' }}
+          >
+            <option value="">Selecione…</option>
+            {point.product.trim() && !products.includes(point.product) && (
+              <option value={point.product}>{point.product} (fora do estoque)</option>
+            )}
+            {products.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        ) : canEdit ? (
           <input
             list={`inj-products-${point.id}`}
             value={point.product}
@@ -766,10 +785,8 @@ function DoseInput({
   )
 }
 
-/** Sem casas decimais quando é inteiro: "4 UI", não "4,00 UI". */
-function fmt(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
-}
+/** Sem casas decimais quando é inteiro: "4 UI", não "4,00 UI"; com vírgula, não ponto (A36). */
+const fmt = formatarDose
 
 /**
  * Par de opções da ilustração (rosto × corpo, feminino × masculino).

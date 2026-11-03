@@ -27,6 +27,8 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
+let TOXINA = ''
+
 test.beforeAll(async () => {
   rede = await criarOutraRede(`ipn${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
@@ -40,7 +42,9 @@ test.beforeAll(async () => {
   })
   // A rede tem produtos no catálogo: era o primeiro deles que todo ponto ganhava.
   await rede.criarProduto('Ácido hialurônico')
-  await rede.criarProduto('Toxina do catálogo')
+  const toxina = await rede.criarProduto('Toxina do catálogo')
+  // O produto do ponto se escolhe entre os do estoque (A36): o nome é o do catálogo.
+  TOXINA = (await db().from('products').select('name').eq('id', toxina).single<{ name: string }>()).data!.name
   const { data, error } = await db().from('injectable_maps').insert({
     tenant_id: rede.tenantId, branch_id: rede.branchId, name: `[e2e] Toxina ${marca}`, view: 'rosto_f', points: [],
   }).select('id').single<{ id: string }>()
@@ -76,10 +80,10 @@ test('o primeiro ponto nasce sem produto; o seguinte repete o último; a região
     const pontos = p.locator('[data-ponto-do-mapa]')
     await expect(pontos).toHaveCount(1)
     const primeiro = pontos.nth(0)
-    await expect(primeiro.getByPlaceholder('Produto'), 'nada de "Ácido hialurônico" escolhido sozinho').toHaveValue('')
+    await expect(primeiro.getByRole('combobox', { name: 'Produto' }), 'nada de "Ácido hialurônico" escolhido sozinho').toHaveValue('')
     await expect(primeiro.getByText('Escolha o produto')).toBeVisible()
 
-    await primeiro.getByPlaceholder('Produto').fill('Toxina botulínica')
+    await primeiro.getByRole('combobox', { name: 'Produto' }).selectOption(TOXINA)
     await primeiro.getByLabel('Plano').fill('4')
     await primeiro.getByLabel('Região (opcional)').fill('Glabela')
     await expect(primeiro.getByText('Escolha o produto')).toHaveCount(0)
@@ -87,7 +91,7 @@ test('o primeiro ponto nasce sem produto; o seguinte repete o último; a região
     await marcar(p, 0.55, 0.3)
     await expect(pontos).toHaveCount(2)
     const segundo = pontos.nth(1)
-    await expect(segundo.getByPlaceholder('Produto'), 'o ponto vizinho repete o produto do último').toHaveValue('Toxina botulínica')
+    await expect(segundo.getByRole('combobox', { name: 'Produto' }), 'o ponto vizinho repete o produto do último').toHaveValue(TOXINA)
     await expect(segundo.getByLabel('Plano'), 'e a dose').toHaveValue('4')
     await expect(segundo.getByLabel('Região (opcional)'), 'a região é de cada ponto').toHaveValue('')
 
@@ -97,8 +101,8 @@ test('o primeiro ponto nasce sem produto; o seguinte repete o último; a região
       return ((data?.points ?? []) as { product: string; dose: number; regiao?: string }[])
         .map(pt => ({ product: pt.product, dose: pt.dose, regiao: pt.regiao ?? null }))
     }).toEqual([
-      { product: 'Toxina botulínica', dose: 4, regiao: 'Glabela' },
-      { product: 'Toxina botulínica', dose: 4, regiao: null },
+      { product: TOXINA, dose: 4, regiao: 'Glabela' },
+      { product: TOXINA, dose: 4, regiao: null },
     ])
   })
 })

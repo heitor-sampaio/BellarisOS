@@ -45,6 +45,9 @@ import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { dosesDoMapaDoAtendimento } from '@/actions/injectable-map'
+import { divergenciasDaBaixa, textoDaDivergencia, formatarDose, type TotalDoMapa, type DivergenciaDaBaixa } from '@/lib/injetaveis/dose'
+import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
@@ -282,8 +285,14 @@ function textoDoPagamentoAoFinalizar(t: { plano: boolean; pacote: boolean; prePa
 }
 
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
-function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, pagamento, onClose }: {
+function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences, insumos, queixas, anamnese = null, ficha = null, pagamento, onClose, planejamentos = [], estoque = [], onAjustarInsumo }: {
   appointmentId: string; slug: string
+  /** Os planejamentos de injetáveis que a ficha da tela usa (A36: a dose do mapa × a baixa). */
+  planejamentos?: string[]
+  /** Os insumos do estoque da unidade (para incluir na baixa o produto do mapa). */
+  estoque?: AvailableProduct[]
+  /** Leva a dose do mapa para a baixa (o cartão de insumos da tela). */
+  onAjustarInsumo?: (d: DivergenciaDaBaixa) => void
   /** De onde vem o pagamento deste atendimento (J-40). */
   pagamento: string
   initialNotes: string | null; initialIntercurrences: string | null
@@ -298,6 +307,17 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
 }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(finishSession, null)
+  // A dose do mapa de injetáveis × a baixa (A36): o mapa gravava 0,5 ml e o
+  // estoque baixava 1 ml, sem aviso. A janela compara e oferece a do mapa.
+  const [totaisDoMapa, setTotaisDoMapa] = useState<TotalDoMapa[]>([])
+  const chaveDosPlanejamentos = planejamentos.join(',')
+  useEffect(() => {
+    let vivo = true
+    dosesDoMapaDoAtendimento(appointmentId, chaveDosPlanejamentos ? chaveDosPlanejamentos.split(',') : [])
+      .then(r => { if (vivo) setTotaisDoMapa(r.totais) }).catch(() => {})
+    return () => { vivo = false }
+  }, [appointmentId, chaveDosPlanejamentos])
+  const divergencias = onAjustarInsumo ? divergenciasDaBaixa(totaisDoMapa, insumos, estoque) : []
   // Concluiu, mas faltou insumo (o saldo ficou negativo): o modal não some
   // calado — mostra o que faltou e a pessoa fecha. Decisão de 2026-09-27:
   // avisar e deixar concluir.
@@ -361,6 +381,21 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
             <label htmlFor="conclusao-intercorrencias" className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
             <textarea id="conclusao-intercorrencias" name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
           </div>
+          {divergencias.map(d => (
+            <div key={d.productId} data-dose-do-mapa style={{ padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+                {textoDaDivergencia(d)}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn-secondary" onClick={() => onAjustarInsumo?.(d)}>
+                  {d.naBaixa === null
+                    ? `Incluir ${formatarDose(d.doMapa)} ${d.unidade} na baixa`
+                    : `Baixar ${formatarDose(d.doMapa)} ${d.unidade}, a dose do mapa`}
+                </button>
+              </div>
+            </div>
+          ))}
           {state?.error && !state.confirmarPlanejamentoVazio && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           {/* O planejamento sem ponto (atend-12): o servidor pergunta, e só a resposta conclui. */}
           {state?.confirmarPlanejamentoVazio && !pending && (
@@ -1031,6 +1066,8 @@ export function AppointmentSession({
   // formulário com ela, que só lê o valor inicial ao nascer.
   const [anamneseDigitada,   setAnamneseDigitada]   = useState<Record<string, unknown> | null>(null)
   const [anamneseDoRascunho, setAnamneseDoRascunho] = useState<Record<string, unknown> | null>(null)
+  // O mapa de injetáveis da ficha oferece os insumos do estoque (A36), como o Planejamento.
+  const produtosDoMapa = useMemo(() => availableProducts.map(p => p.name), [availableProducts])
   // A faixa da alergia acompanha o que está NA TELA (A34 da 5ª simulação): a
   // alergia digitada só virava faixa depois de concluir, porque a faixa lia a
   // anamnese salva. Com a anamnese mexida, valem as respostas da tela, contra
@@ -1429,7 +1466,7 @@ export function AppointmentSession({
             hideSaveButton={unified}
             semInjetaveis={!podeInjetaveis}
             onAnswersChange={setFichaDigitada}
-            injetaveis={{ clientId: client.id, branchId }}
+            injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa }}
           />
         ),
       } : null}
@@ -1458,7 +1495,7 @@ export function AppointmentSession({
           saveAction={salvarFicha}
           semInjetaveis={!podeInjetaveis}
           onAnswersChange={setFichaDigitada}
-          injetaveis={{ clientId: client.id, branchId }}
+          injetaveis={{ clientId: client.id, branchId, produtos: produtosDoMapa }}
         />
       </div>
     </section>
@@ -1591,6 +1628,17 @@ export function AppointmentSession({
           ficha={fichaDigitada}
           pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, prePago: isPrePago, semCobranca })}
           onClose={() => setShowFinish(false)}
+          // A36: a dose do mapa de injetáveis (o da ficha, na tela ou salvo) × a baixa.
+          planejamentos={ficha ? planejamentosDaFicha(ficha.rows, (fichaDigitada ?? respostasDaFicha) as Record<string, unknown>) : []}
+          estoque={availableProducts}
+          onAjustarInsumo={d => {
+            setInsumosAlterados(true)
+            setInsumos(prev => prev.some(i => i.productId === d.productId)
+              ? prev.map(i => i.productId === d.productId ? { ...i, quantity: d.doMapa } : i)
+              : [...prev, { productId: d.productId, name: d.nome, unit: d.unidade, quantity: d.doMapa }])
+            setCheckedIds(prev => new Set(prev).add(d.productId))
+            setVersaoDosInsumos(v => v + 1)
+          }}
         />
       )}
       {showPayment && (

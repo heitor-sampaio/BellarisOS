@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import { injectableTotals, type InjectableMapValue } from '@/lib/anamnesis'
+import { formatarDose } from '@/lib/injetaveis/dose'
 import {
   getPlanejamentoInjetavel, salvarPlanejamentoInjetavel, renomearPlanejamentoInjetavel,
   vincularClienteAoPlanejamento, registrarAplicacao,
@@ -140,7 +141,7 @@ export function MapaInjetavel({
               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
               background: 'var(--bg-app)', color: 'var(--text-muted)',
             }}>
-              {t.product}: {t.applied || t.planned} {t.unit}
+              {t.product}: {formatarDose(t.applied || t.planned)} {t.unit}
             </span>
           ))}
         </div>
@@ -248,7 +249,7 @@ export function MapaInjetavel({
               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
               background: 'var(--brand-soft)', color: 'var(--brand)',
             }}>
-              {t.product}: {t.planned} {t.unit}
+              {t.product}: {formatarDose(t.planned)} {t.unit}
             </span>
           ))}
         </div>
@@ -309,7 +310,7 @@ export function MapaInjetavel({
                 </span>
                 <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   {a.totais.length > 0
-                    ? a.totais.map(t => `${t.product} ${t.applied || t.planned} ${t.unit}`).join(' · ')
+                    ? a.totais.map(t => `${t.product} ${formatarDose(t.applied || t.planned)} ${t.unit}`).join(' · ')
                     : `${a.mapa.points.length} ponto(s)`}
                 </span>
               </button>

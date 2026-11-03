@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso, isOwnScope } from '@/lib/auth'
 import { mapaAoAlcance, mapaDaProfissional, clienteDaProfissional, mapaDoTenant } from '@/lib/injetaveis/alcance'
+import { agendamentoAoAlcance, deOutroProfissional } from '@/lib/appointments/alteracoes'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
@@ -523,5 +524,47 @@ function linhaDaLista(l: MapaLido, aplicacoes: ResumoAplicacoes): MapaNaLista {
     atualizadoEm:    (l.updated_at as string | null) ?? null,
     ultimaAplicacao: ap?.ultima ?? null,
     aplicacoes:      ap?.total ?? 0,
+  }
+}
+
+/**
+ * As doses do mapa de injetáveis DESTE atendimento, por produto (A36 da 5ª
+ * simulação): o "Finalizar" as compara com a baixa dos insumos. Vale a
+ * aplicação registrada no atendimento (a dose aplicada); sem ela, os
+ * planejamentos que a tela diz usar (o da ficha), da cliente do atendimento
+ * e ao alcance. Só leitura — e é prontuário: pede o módulo.
+ */
+export async function dosesDoMapaDoAtendimento(appointmentId: string, planejamentoIds: string[] = []): Promise<{
+  totais: { product: string; unit: string; total: number }[]
+}> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'medical_records', 'VIEW')
+    const admin = createAdminClient()
+    const appt = await agendamentoAoAlcance(admin, ctx, appointmentId)
+    if (!appt || deOutroProfissional(ctx, appt.professional_id)) return { totais: [] }
+    const cliente = (await ler(admin.from('appointments').select('client_id').eq('id', appointmentId).single(),
+      'buscar a cliente do atendimento') as { client_id: string | null } | null)?.client_id ?? null
+
+    const aplicacoes = await ler(admin.from('injectable_applications').select('totals')
+      .eq('appointment_id', appointmentId), 'buscar as aplicações do atendimento') as { totals: AplicacaoInjetavel['totais'] | null }[] | null
+    if (aplicacoes?.length) {
+      return { totais: aplicacoes.flatMap(a => (a.totals ?? []).map(t => ({ product: t.product, unit: t.unit, total: Number(t.applied) || Number(t.planned) || 0 }))) }
+    }
+
+    const totais: { product: string; unit: string; total: number }[] = []
+    for (const id of [...new Set(planejamentoIds)].slice(0, 5)) {
+      if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) continue
+      const mapa = await mapaDoTenant(admin, id, ctx)
+      if (!mapa || !cliente || mapa.client_id !== cliente) continue
+      const pts = await ler(admin.from('injectable_maps').select('view, points').eq('id', id).single(),
+        'ler o planejamento') as { view: string | null; points: unknown } | null
+      const valor = { view: (pts?.view ?? 'rosto_f') as InjectableMapValue['view'], points: Array.isArray(pts?.points) ? pts!.points as InjectableMapValue['points'] : [] }
+      for (const t of injectableTotals(valor)) totais.push({ product: t.product, unit: t.unit, total: t.planned })
+    }
+    return { totais }
+  } catch (e) {
+    console.error('[injetaveis] doses do mapa do atendimento:', mensagemDoErro(e))
+    return { totais: [] }
   }
 }

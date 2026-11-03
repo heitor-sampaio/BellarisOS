@@ -58,6 +58,12 @@ interface Props {
 export interface ContextoDosInjetaveis {
   clientId?: string
   branchId?: string
+  /**
+   * Os produtos que o ponto oferece: no atendimento, os INSUMOS do estoque da
+   * unidade (A36 — o nome do insumo liga o mapa à baixa). Sem eles, a lista
+   * de opções do campo na ficha, como antes.
+   */
+  produtos?: string[]
   linkDoPlanejamento?: (mapId: string) => string | null
 }
 
@@ -381,7 +387,7 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
         branchId={injetaveis.branchId}
         slug={slug}
         appointmentId={appointmentId}
-        produtos={f.options ?? []}
+        produtos={injetaveis.produtos?.length ? injetaveis.produtos : (f.options ?? [])}
         podeEditar
         abertoId={plan?.id ?? null}
         onAbrir={id => onChange(id ? { ...emptyInjectableMap(), planejamento: { id, nome: '' } } : emptyInjectableMap())}

@@ -768,8 +768,22 @@ const procedures = await ler(
   (a linha diz "Escolha o produto"); os seguintes repetem o produto, a dose e
   a unidade do ÚLTIMO marcado. Nascia com o primeiro produto do catálogo
   ("Ácido hialurônico") e dose 0. Cada ponto tem "Região (opcional)"
-  (`InjectablePoint.regiao`). A lista de produtos continua texto livre
-  (decisão pendente do Heitor). Prova: `e2e/injetaveis-ponto-novo.spec.ts`.
+  (`InjectablePoint.regiao`). Prova: `e2e/injetaveis-ponto-novo.spec.ts`.
+- **O produto do ponto vem do ESTOQUE, e o mapa se liga à baixa** (A36 da 5ª
+  simulação: o mapa gravava 0,5 ml e o estoque baixava 1 ml, sem aviso). O
+  ponto escolhe o produto numa LISTA — os insumos da unidade no atendimento
+  (`ContextoDosInjetaveis.produtos`, o mesmo do Planejamento), o catálogo na
+  tela de Injetáveis; o que estava escrito fora dela fica, marcado "(fora do
+  estoque)". Era texto livre com sugestões (a lista do campo na ficha, que no
+  atendimento deixou de ser a fonte). O "Finalizar" compara as doses do mapa
+  DESTE atendimento (a aplicação registrada; sem ela, o planejamento da
+  ficha — `dosesDoMapaDoAtendimento`) com a baixa, pelo nome do insumo e na
+  mesma unidade (`divergenciasDaBaixa`, `lib/injetaveis/dose.ts`): "O mapa
+  soma 8 UI de Toxina; a baixa está em 30 UI." com "Baixar 8 UI, a dose do
+  mapa" (ou "Incluir … na baixa"), que muda o cartão de insumos. Só avisa: a
+  baixa continua a da tela. A dose sai com vírgula em toda tela do mapa
+  (`formatarDose`: "0,5 ml"). Prova: `e2e/injetaveis-produto-do-estoque.spec.ts`,
+  `tests/injetaveis-dose.test.ts`.
 - **Os mapas de injetáveis seguem o prontuário "só os meus"** (decisão do
   Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer
   lugar"). Com `medical_records` OWN, a lista de Injetáveis

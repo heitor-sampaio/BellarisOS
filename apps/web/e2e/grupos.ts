@@ -234,6 +234,7 @@ export const ISOLADOS = [
   // A 2ª rodada (atendimento, plano, dashboard e relatórios).
   'atendimento-textos-do-fechamento.spec.ts',
   'injetaveis-ponto-novo.spec.ts',
+  'injetaveis-produto-do-estoque.spec.ts',
   'plano-novo-com-cliente.spec.ts',
   'plano-tela-mostra-o-pago.spec.ts',
   'indicadores-unidade-na-url.spec.ts',

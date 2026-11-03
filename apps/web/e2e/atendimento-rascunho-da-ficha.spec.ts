@@ -74,7 +74,9 @@ test('recarregar não perde a ficha do procedimento nem o planejamento aberto �
   const cliente = await rede!.criarCliente('Recarregar')
   await responderAnamnese(cliente, rede!.tenantId)
   const { data: mapa, error: eMapa } = await db().from('injectable_maps').insert({
-    tenant_id: rede!.tenantId, branch_id: rede!.branchId, client_id: cliente, name: `[e2e] ${NOME_DO_MAPA}`, view: 'rosto_f', points: [],
+    tenant_id: rede!.tenantId, branch_id: rede!.branchId, client_id: cliente, name: `[e2e] ${NOME_DO_MAPA}`, view: 'rosto_f',
+    // Com um ponto: o planejamento vazio pede confirmação ao finalizar (atend-12), e o teste é do rascunho.
+    points: [{ id: 'p1', x: 0.5, y: 0.3, product: 'Toxina botulínica', dose: 4, unit: 'UI', applied: null, view: 'rosto_f' }],
   }).select('id').single<{ id: string }>()
   expect(eMapa).toBeNull()
   const { data: ag, error } = await db().from('appointments').insert({
