@@ -99,8 +99,10 @@ test('parcelado: a entrada no dia, cada parcela no mês dela, e o "Pagar" quita 
     await expect(linhas).toHaveCount(1)
     await expect(linhas.first()).toContainText('parcela 2/3')
 
-    // "Pagar" na 2/3: só ela sai paga.
+    // "Pagar" na 2/3: só ela sai paga. No cartão, a baixa pergunta a bandeira
+    // antes (r3-f13-01, opcional): vazia, vale a regra geral.
     await linhas.first().getByRole('button', { name: 'Pagar' }).click()
+    await p.getByRole('dialog', { name: 'Receber no cartão' }).getByRole('button', { name: 'Confirmar recebimento' }).click()
     await expect.poll(async () => {
       const { data } = await db().from('financial_transactions').select('parcela_numero, is_paid')
         .eq('branch_id', rede!.branchId).not('parcela_numero', 'is', null).order('parcela_numero')
