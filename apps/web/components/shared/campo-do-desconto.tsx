@@ -11,7 +11,7 @@ import { descontoEmReais, recusaDoDesconto, type Desconto } from '@/lib/vendas/d
  * o servidor refaz; o valor que a tela mostra não é o que se grava.
  */
 
-export interface EstadoDoDesconto { tipo: Desconto['tipo']; texto: string }
+export interface EstadoDoDesconto { tipo: Desconto['tipo']; texto: string; motivo?: string }
 
 export const SEM_DESCONTO: EstadoDoDesconto = { tipo: 'VALOR', texto: '' }
 
@@ -30,7 +30,8 @@ function numero(texto: string): number {
 /** O estado → o que a action recebe (nulo = sem desconto). */
 export function descontoDoEstado(e: EstadoDoDesconto): Desconto | null {
   const valor = numero(e.texto)
-  return valor > 0 ? { tipo: e.tipo, valor } : null
+  const motivo = e.motivo?.trim()
+  return valor > 0 ? { tipo: e.tipo, valor, ...(motivo ? { motivo } : {}) } : null
 }
 
 /** O desconto em reais e o que sobra, para a tela mostrar o total. */
@@ -42,11 +43,16 @@ export function contaDoDesconto(total: number, e: EstadoDoDesconto): { reais: nu
   return { reais, liquido: Math.round((total - reais) * 100) / 100, recusa }
 }
 
-export function CampoDoDesconto({ estado, aoMudar, total }: {
+export function CampoDoDesconto({ estado, aoMudar, total, comMotivo = false }: {
   estado:  EstadoDoDesconto
   aoMudar: (e: EstadoDoDesconto) => void
   /** O valor sobre o qual o desconto é dado. */
   total:   number
+  /**
+   * Pede o motivo (opcional) quando há desconto — fin-01: ele vai ao lançamento
+   * e aparece na lista do Financeiro. O recebimento do atendimento tem o dele.
+   */
+  comMotivo?: boolean
 }) {
   const { reais, liquido, recusa } = contaDoDesconto(total, estado)
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
@@ -71,6 +77,14 @@ export function CampoDoDesconto({ estado, aoMudar, total }: {
           −{formatBRL(reais)} sobre {formatBRL(total)} · fica <strong style={{ color: 'var(--text)' }}>{formatBRL(liquido)}</strong>
         </p>
       ) : null}
+      {comMotivo && reais > 0 && !recusa && (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+          <span style={rotulo}>Motivo do desconto (opcional)</span>
+          <input className="field" aria-label="Motivo do desconto" maxLength={300}
+            placeholder="Ex.: cliente fiel, kit, cortesia da casa"
+            value={estado.motivo ?? ''} onChange={e => aoMudar({ ...estado, motivo: e.target.value })} />
+        </label>
+      )}
     </div>
   )
 }

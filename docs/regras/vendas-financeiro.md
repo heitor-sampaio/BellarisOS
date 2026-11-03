@@ -671,6 +671,20 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     `financial_transactions.desconto_motivo` (até 300 caracteres; sem
     desconto, nulo) e na linha do tempo ("com desconto de R$ 50,00 (Cliente
     fiel)"). Migration `20261029001503`. Prova: `e2e/vendas-desconto.spec.ts`.
+  - **O motivo em TODA venda, e na lista** (fin-01 da revisão, 2026-11-02;
+    o Heitor: "adicionar campo de texto livre para informar motivo, não
+    obrigatório"). Com desconto, o `CampoDoDesconto comMotivo` pede "Motivo
+    do desconto (opcional)" na venda de produto, de pacote, de pré-pago e no
+    checkout do plano; o motivo vai em `desconto_motivo` do PRIMEIRO
+    lançamento da venda (`comMotivoDoDesconto`; as três funções de venda o
+    leem — migration `20261101001102`). A lista do Financeiro (unidade e
+    rede) diz embaixo do valor "Desconto R$ 20,00 · cliente antiga"
+    (`descontosDosLancamentos`, `lib/financeiro/desconto-do-lancamento.ts`:
+    o avulso pelo `sale_discount` do lançamento; a venda pelo desconto
+    gravado nela, no lançamento que leva o motivo — um por venda, não um
+    por parcela). Venda com desconto e SEM motivo não ganha a linha (o
+    desconto dela aparece em Relatórios → Vendas). Prova:
+    `e2e/financeiro-motivo-do-desconto.spec.ts`.
   - **Contrato**: o desconto é parte do COMBINADO — vai no retrato do
     pagamento (`pagamentoNormalizado(p, desconto)`, só quando existe), e
     trocá-lo depois de assinar substitui o contrato como trocar a forma.

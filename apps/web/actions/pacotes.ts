@@ -16,12 +16,12 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
-import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
+import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { EntradaDaComissaoDoPacote } from '@/lib/comissoes/config'
 import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { lerPreviaDoCancelamento, agendamentosCancelados, type PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
@@ -144,7 +144,7 @@ async function venderPacoteUmaVez(
     const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
     if (recusaDaEntrada) return { error: recusaDaEntrada }
 
-    const lancamentos = lancamentosDoPagamento(vendido, lido.data, `Pacote ${pacote.name as string}`)
+    const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, `Pacote ${pacote.name as string}`), motivoDoDesconto(d.data, reais))
     // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio
     // pelo preço de tabela): é a base da comissão dela. O banco confere a soma.
     const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId), vendido)

@@ -581,7 +581,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           )
         })()}
         <div style={{ marginBottom: 16, maxWidth: 360 }}>
-          <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} />
+          <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} comMotivo />
         </div>
 
         {plan.atendimentoDeHoje && (

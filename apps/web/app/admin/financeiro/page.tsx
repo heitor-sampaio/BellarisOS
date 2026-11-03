@@ -9,6 +9,7 @@ import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
+import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/financeiro/desconto-do-lancamento'
 
 /** Lançamento como o select pede. */
 type LancamentoLido = {
@@ -16,7 +17,7 @@ type LancamentoLido = {
   payment_method: string | null; cartao_vezes: number | null; is_paid: boolean; paid_at: string | null; due_date: string | null
   created_at: string; branch_id: string; notes: string | null
   cliente: { name: string } | null
-}
+} & LancamentoComDesconto
 
 export default async function AdminFinanceiroPage({
   searchParams,
@@ -90,7 +91,7 @@ export default async function AdminFinanceiroPage({
     // PARA, em vez de virar um extrato vazio.
     lerTodas((de, ate) => admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
+      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
     // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
@@ -184,9 +185,11 @@ export default async function AdminFinanceiroPage({
     txCount:     movimentacoes.porUnidade[b.branchId] ?? 0,
   }))
 
-  // Transações enriquecidas com nome da filial
+  // Transações enriquecidas com nome da filial — e o desconto embaixo do valor (fin-01).
+  const descontos = await descontosDosLancamentos(txs)
   const transactions = txs.map(t => ({
     ...t,
+    desconto_texto: descontos[t.id] ?? null,
     branchName: branchNameMap[t.branch_id] ?? '—',
     clienteNome: t.cliente?.name ?? null,
     amount:     Number(t.amount),

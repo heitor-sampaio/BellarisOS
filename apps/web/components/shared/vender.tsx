@@ -183,7 +183,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim }: {
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
-        <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} />
+        <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
         <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} />
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
@@ -305,7 +305,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
-        <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} />
+        <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
         <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} />
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>

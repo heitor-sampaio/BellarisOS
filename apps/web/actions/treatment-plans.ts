@@ -1319,7 +1319,7 @@ import { rotuloDoPagamento, vezesNoCartao, type PagamentoDoPlano } from '@/lib/c
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
-import { EntradaDoDesconto } from '@/lib/vendas/desconto'
+import { EntradaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { paraAnamneseGeral, respostasDaFicha, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
@@ -1425,8 +1425,13 @@ async function checkoutTreatmentPlanInterno(
   const agora     = new Date().toISOString()
   const descricao = 'Plano de tratamento — checkout novo paciente'
 
+  // O motivo do desconto (fin-01) vai no PRIMEIRO lançamento do plano.
+  let motivoDoDescontoAinda = motivoDoDesconto(entradaDoDesconto.data, doDesconto.reais)
+
   /** Uma transação do plano; devolve o id ou aborta com erro. */
   async function lancar(campos: Record<string, unknown>) {
+    const motivo = motivoDoDescontoAinda
+    motivoDoDescontoAinda = null
     return admin
       .from('financial_transactions')
       .insert({
@@ -1439,6 +1444,7 @@ async function checkoutTreatmentPlanInterno(
         category:          'Serviços',
         description:       descricao,
         created_by:        ctx.internalUserId,
+        ...(motivo ? { desconto_motivo: motivo } : {}),
         ...campos,
       })
       .select('id')

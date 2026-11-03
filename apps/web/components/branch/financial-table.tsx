@@ -28,6 +28,8 @@ export interface Transaction {
   notes:          string | null
   /** Por que foi estornado (A36): na original e no estorno. */
   estorno_motivo?: string | null
+  /** O desconto e o motivo, embaixo do valor (fin-01): "Desconto R$ 20,00 · cliente antiga". */
+  desconto_texto?: string | null
   created_at:     string
   appointment_id: string | null
   /** Da venda de produto: o estorno é da venda e pergunta se o produto voltou (H2). */
@@ -313,6 +315,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                         }}>
                           {isIncome ? '+' : '- '}{fmtBRL(tx.amount)}
                         </span>
+                        {tx.desconto_texto && (
+                          <p data-desconto-do-lancamento style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+                            {tx.desconto_texto}
+                          </p>
+                        )}
                       </td>
 
                       {/* Status */}

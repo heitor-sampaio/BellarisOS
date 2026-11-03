@@ -30,6 +30,14 @@ export interface Lancamento {
   parcela_grupo?:  string
   /** Cartão de crédito em N vezes, PAGO na hora: a faixa da taxa da maquininha. */
   cartao_vezes?:   number
+  /** O motivo do desconto da venda (fin-01): só no PRIMEIRO lançamento, para a lista do Financeiro. */
+  desconto_motivo?: string
+}
+
+/** O motivo do desconto vai no primeiro lançamento da venda (fin-01) — um por venda, não um por parcela. */
+export function comMotivoDoDesconto(lancamentos: Lancamento[], motivo: string | null): Lancamento[] {
+  if (!motivo || !lancamentos.length) return lancamentos
+  return lancamentos.map((l, i) => (i === 0 ? { ...l, desconto_motivo: motivo } : l))
 }
 
 const METODOS = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const

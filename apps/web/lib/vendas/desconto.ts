@@ -13,13 +13,24 @@ import { formatBRL } from '@estetica-os/utils'
  *
  * Fora de `actions/`: todo export de um arquivo `'use server'` é endpoint.
  */
-export type Desconto = { tipo: 'VALOR' | 'PERCENTUAL'; valor: number }
+export type Desconto = {
+  tipo: 'VALOR' | 'PERCENTUAL'; valor: number
+  /** O porquê, opcional (fin-01, 2026-11-02): vai ao lançamento e à lista do Financeiro. */
+  motivo?: string | null
+}
 
 /** Como chega do navegador. Nulo = sem desconto. */
 export const EntradaDoDesconto = z.object({
   tipo:  z.enum(['VALOR', 'PERCENTUAL']),
   valor: z.number().finite().min(0),
+  motivo: z.string().max(300).nullable().optional(),
 }).nullable().optional()
+
+/** O motivo do desconto, limpo; nulo sem desconto ou sem texto. */
+export function motivoDoDesconto(d: Desconto | null | undefined, reais: number): string | null {
+  const m = d?.motivo?.trim()
+  return reais > 0 && m ? m.slice(0, 300) : null
+}
 
 const emCentavos = (v: number) => Math.round(v * 100)
 

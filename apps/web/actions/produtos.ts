@@ -16,10 +16,10 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
-import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
+import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 
 const UUID = /^[0-9a-f-]{36}$/i
 
@@ -93,7 +93,7 @@ async function venderProdutoUmaVez(
     const { data, error } = await admin.rpc('produto_vender', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_produto: produtoId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_quantidade: qtd, p_desconto: reais,
-      p_lancamentos: lancamentosDoPagamento(vendido, lido.data, `${qtd}× ${produto.name as string}`),
+      p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, `${qtd}× ${produto.name as string}`), motivoDoDesconto(d.data, reais)),
     })
     if (error) {
       // A recusa do banco (estoque insuficiente, desconto, revenda) é para a tela.

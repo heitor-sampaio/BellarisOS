@@ -64,6 +64,8 @@ interface AdminTx {
   notes:          string | null
   /** Por que foi estornado (A36): na original e no estorno. */
   estorno_motivo?: string | null
+  /** O desconto e o motivo, embaixo do valor (fin-01). */
+  desconto_texto?: string | null
   /** Da venda de produto: o estorno é da venda e pergunta se o produto voltou (H2). */
   product_sale_id?: string | null
   /** O recebimento de um atendimento: estornar reabre a cobrança dele (A51). */
@@ -631,6 +633,11 @@ export function AdminFinancialView({
 
                     <td data-label="Valor" data-par style={{ padding: '11px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isIncome ? 'var(--success)' : 'var(--text)', whiteSpace: 'nowrap' }}>
                       {isIncome ? '+' : '−'} {fmtBRL(t.amount)}
+                      {t.desconto_texto && (
+                        <span data-desconto-do-lancamento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+                          {t.desconto_texto}
+                        </span>
+                      )}
                     </td>
 
                     {/* Receber e estornar sem sair do portal da rede. */}

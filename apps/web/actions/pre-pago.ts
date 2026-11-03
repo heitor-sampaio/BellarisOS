@@ -16,10 +16,10 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
-import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear } from '@/lib/vendas/desconto'
+import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointments/core'
 
 const UUID = /^[0-9a-f-]{36}$/i
@@ -99,7 +99,7 @@ async function venderProcedimentoUmaVez(
     const saleId = await gravar(admin.rpc('procedimento_vender', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_procedimento: procedimentoId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_quantidade: qtd, p_desconto: reais, p_validade_dias: validade,
-      p_lancamentos: lancamentosDoPagamento(vendido, lido.data, rotulo),
+      p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, rotulo), motivoDoDesconto(d.data, reais)),
       // Cada unidade com a sua parte do vendido: a base da comissão dela.
       p_unidades: ratear(Array.from({ length: qtd }, () => 1), vendido).map(preco => ({ preco })),
     }), 'vender o procedimento') as string

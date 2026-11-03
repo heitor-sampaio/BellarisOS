@@ -10,6 +10,7 @@ import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, 
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
+import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 
@@ -77,7 +78,7 @@ export default async function FinancialPage({
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
   const lancamentos = await lerTodas((de, ate) => supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id')
     .eq('branch_id', branch.id)
     // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
     // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
@@ -99,8 +100,11 @@ export default async function FinancialPage({
   const nomes = await nomesDosRegistros(ctx.tenantId!, {
     clientes: (lancamentos ?? []).map(t => t.client_id as string | null),
   })
+  // O desconto embaixo do valor (fin-01).
+  const descontos = await descontosDosLancamentos(lancamentos ?? [])
   const transactions = (lancamentos ?? []).map(({ client_id, ...t }) => ({
     ...t,
+    desconto_texto: descontos[t.id as string] ?? null,
     cliente: client_id && nomes.clientes[client_id] ? { name: nomes.clientes[client_id] } : null,
   }))
 
