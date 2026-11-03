@@ -127,6 +127,11 @@ Princípios inegociáveis:
   layout raiz): o navegador escreve na língua DELE.
 - **Telefone com máscara enquanto se digita**: `maskPhoneDigitando`
   (@estetica-os/utils); para mostrar, `maskPhone`.
+- **O exemplo do campo não é de uma cidade** (A21 da 5ª simulação, uma
+  clínica de SC e outra do RS liam "(11) 99999-9999" e "SP"): telefone
+  "(00) 00000-0000", CEP "00000-000", UF "UF", cidade "Nome da cidade".
+- **Dinheiro no campo é texto com centavos** ("380,00"), nunca
+  `type="number"` (A11: o insumo de R$ 380 aparecia "380").
 - Aviso de "deu certo" é o `toast` do sonner (abaixo) — não um componente novo.
 - No celular (< 640px), a linha da ficha (`.anamnesis-row`) vira UMA coluna.
 

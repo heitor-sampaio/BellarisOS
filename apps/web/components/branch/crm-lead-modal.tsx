@@ -391,7 +391,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                     <input name="phone" type="tel" className="field" style={{ flex: 1 }}
                       aria-label="Telefone"
                       value={phone} onChange={e => setPhone(maskTelefoneDigitando(e.target.value))}
-                      placeholder="(11) 99999-9999" />
+                      placeholder="(00) 00000-0000" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>E-mail</span>

@@ -28,6 +28,7 @@ let dona: MembroDeTeste | null = null
 let slug = ''
 let segunda: string | null = null
 let produto = ''
+let clienteId = ''
 
 /** As palavras de rede, como palavra inteira ("Redefinir" e "redes sociais" passam). */
 const DE_REDE = /\b(rede|filial|filiais)\b/i
@@ -83,9 +84,11 @@ test.beforeAll(async () => {
   }).eq('id', rede.tenantId)).error).toBeNull()
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   // Um produto com saldo (o modal do estoque) e uma cliente (o crédito para cliente).
-  await rede.criarProduto('Serum', 5)
+  const produtoId = await rede.criarProduto('Serum', 5)
+  // O insumo de R$ 380 (A11: aparecia "380", sem centavos).
+  expect((await db().from('products').update({ cost_price: 380 }).eq('id', produtoId)).error).toBeNull()
   produto = `${PREFIXO} Serum uu${marca}`
-  await rede.criarCliente('Cliente')
+  clienteId = await rede.criarCliente('Cliente')
   dona = await criarMembro(`uud${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
 })
 
@@ -172,6 +175,47 @@ test.describe.serial('a clínica de uma unidade só', () => {
       await expect(salas).toBeVisible()
       await expect(salas.getByRole('heading', { name: 'Salas' })).toBeVisible()
       await expect(salas).toBeInViewport()
+    })
+  })
+
+  test('os atritos do cadastro: unidade, procedimento e cliente (A4, A11, A21, A22)', async ({ browser }) => {
+    await como(browser, async p => {
+      // A4: o modal da unidade diz "endereço", como o campo — não "slug".
+      await p.goto('/admin/settings?tab=unidades')
+      await p.getByRole('button', { name: 'Nova unidade' }).click()
+      const unidade = p.locator('dialog[open]')
+      await expect(unidade.getByLabel(/Endereço da unidade/)).toBeVisible()
+      await expect(unidade.getByText(/slug/i)).toHaveCount(0)
+      await expect(unidade.getByPlaceholder('(11)')).toHaveCount(0)
+      await unidade.getByRole('button', { name: 'Cancelar' }).click()
+
+      // A11: os rótulos ligados ao campo, o insumo com centavos e "1 ativo".
+      await p.goto('/admin/procedures')
+      await expect(p.getByText(/^1 ativo · 0 inativos/)).toBeVisible()
+      await p.getByRole('button', { name: 'Novo procedimento' }).click()
+      const proc = p.locator('dialog[open]')
+      await expect(proc.getByLabel('Duração (minutos) *')).toHaveValue('60')
+      await expect(proc.getByLabel(/Preço do procedimento/)).toBeVisible()
+      await expect(proc.getByLabel('Nome *')).toBeVisible()
+      await proc.getByRole('button', { name: 'Adicionar insumo' }).click()
+      await expect(proc.getByTitle('Custo por unidade')).toHaveValue('380,00')
+      await expect(proc.locator('option', { hasText: produto })).not.toContainText('—')
+
+      // A22: o botão de novo cliente diz o que faz; e "1 ativo", no singular.
+      await p.goto('/admin/clients')
+      await expect(p.locator('[data-contador-de-clientes]')).toHaveText('1 ativo')
+      await expect(p.getByRole('button', { name: 'Novo cliente' })).toContainText('Novo cliente')
+
+      // A21: com uma unidade, a ficha não pergunta "Unidades que frequenta";
+      // os exemplos não são de São Paulo.
+      await p.goto(`/admin/clients/${clienteId}?aba=dados`)
+      await expect(p.getByText('Telefone').first()).toBeVisible()
+      await expect(p.getByText('Unidades que frequenta')).toHaveCount(0)
+      await expect(p.getByPlaceholder('(11)')).toHaveCount(0)
+      await expect(p.getByPlaceholder('SP', { exact: true })).toHaveCount(0)
+
+      await p.goto('/admin/clients/new')
+      await expect(p.getByPlaceholder('(11)')).toHaveCount(0)
     })
   })
 

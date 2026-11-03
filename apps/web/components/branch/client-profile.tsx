@@ -681,7 +681,7 @@ function DadosTab({ client, slug, branches, podeEditar }: {
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Telefone</p>
           <input
             type="tel"
-            placeholder="(11) 99999-9999"
+            placeholder="(00) 00000-0000"
             value={phone}
             onChange={e => { setPhone(e.target.value); setSaved(false) }}
             style={fieldStyle}
@@ -755,7 +755,7 @@ function DadosTab({ client, slug, branches, podeEditar }: {
           </div>
           <div>
             <label style={labelStyle}>UF</label>
-            <input type="text" placeholder="SP" maxLength={2} value={state} onChange={e => { setState(e.target.value.toUpperCase()); setSaved(false) }} style={{ ...fieldStyle, textTransform: 'uppercase' }} />
+            <input type="text" placeholder="UF" maxLength={2} value={state} onChange={e => { setState(e.target.value.toUpperCase()); setSaved(false) }} style={{ ...fieldStyle, textTransform: 'uppercase' }} />
           </div>
         </div>
       </div>
@@ -784,8 +784,9 @@ function DadosTab({ client, slug, branches, podeEditar }: {
         </div>
       </div>
 
-      {/* Unidades que frequenta (tags "Unidade: <nome>") */}
-      <div>
+      {/* Unidades que frequenta (tags "Unidade: <nome>"). Com uma unidade só
+          não há o que escolher (A21 da 5ª simulação). */}
+      {branches.length > 1 && <div>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Unidades que frequenta</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {branches.map(b => {
@@ -832,7 +833,7 @@ function DadosTab({ client, slug, branches, podeEditar }: {
             </div>
           )
         })()}
-      </div>
+      </div>}
 
       </fieldset>
 

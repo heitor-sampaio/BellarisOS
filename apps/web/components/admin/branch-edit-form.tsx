@@ -85,7 +85,7 @@ export function BranchEditForm({ branch }: Props) {
             <input id="be-phone" name="phone" type="tel" className="field"
               defaultValue={branch.phone ? maskPhoneDigitando(branch.phone) : ''}
               onChange={e => { e.target.value = maskPhoneDigitando(e.target.value) }}
-              placeholder="(11) 99999-9999" />
+              placeholder="(00) 00000-0000" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label className="overline" htmlFor="be-email">E-mail</label>
@@ -141,7 +141,7 @@ export function BranchEditForm({ branch }: Props) {
               inputMode="numeric"
               onChange={e => { const v = maskCEPDigitando(e.target.value); setZipCode(v); setCepError(null); void buscarCep(v) }}
               onBlur={() => void buscarCep(zipCode)}
-              placeholder="01310-000"
+              placeholder="00000-000"
               maxLength={9}
             />
           </div>
@@ -166,7 +166,7 @@ export function BranchEditForm({ branch }: Props) {
             <input id="be-city" type="text" className="field"
               value={city}
               onChange={e => setCity(e.target.value)}
-              placeholder="São Paulo" />
+              placeholder="Nome da cidade" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label className="overline" htmlFor="be-state">UF</label>

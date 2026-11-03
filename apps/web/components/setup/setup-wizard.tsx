@@ -170,7 +170,7 @@ function StepNetwork({
             id="net-phone"
             type="text"
             className="field"
-            placeholder="(11) 99999-9999"
+            placeholder="(00) 00000-0000"
             value={phone}
             onChange={e => setPhone(maskPhoneDigitando(e.target.value))}
           />
@@ -349,7 +349,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
             id="br-phone"
             type="text"
             className="field"
-            placeholder="(11) 99999-9999"
+            placeholder="(00) 00000-0000"
             value={phone}
             onChange={e => setPhone(maskPhoneDigitando(e.target.value))}
           />
@@ -383,7 +383,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
             value={zipCode}
             onChange={e => { const v = maskCEPDigitando(e.target.value); setZipCode(v); setCepError(null); void buscarCep(v) }}
             onBlur={() => void buscarCep(zipCode)}
-            placeholder="01310-000"
+            placeholder="00000-000"
             maxLength={9}
           />
         </div>
@@ -415,7 +415,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
             className="field"
             value={city}
             onChange={e => setCity(e.target.value)}
-            placeholder="São Paulo"
+            placeholder="Nome da cidade"
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

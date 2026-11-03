@@ -197,7 +197,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             name="phone" type="tel" required className="field"
             value={phone}
             onChange={e => setPhone(maskTelefoneDigitando(e.target.value))}
-            placeholder="(11) 99999-9999"
+            placeholder="(00) 00000-0000"
           />
           <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
             De outro país? Comece com + e o código (ex.: +351 912 345 678).

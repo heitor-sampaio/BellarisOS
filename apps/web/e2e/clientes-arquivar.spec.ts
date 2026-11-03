@@ -74,7 +74,8 @@ test.describe.serial('arquivar a cliente', () => {
     try {
       const p = await ctx.newPage()
       await p.goto(`/${slug}/clients/${id}`)
-      await expect(p.getByRole('button', { name: 'Novo cliente' }), 'J-25: o "+" tem nome').toHaveAttribute('aria-label', 'Novo cliente')
+      // J-25 deu nome ao "+"; A22 (5ª simulação) pôs o texto à vista.
+      await expect(p.getByRole('button', { name: 'Novo cliente' }), 'J-25/A22: o botão diz o que faz').toHaveText('Novo cliente')
       await p.getByRole('button', { name: 'Mais ações' }).click()
       await p.getByRole('button', { name: 'Arquivar cliente' }).click()
       // J-23: pede confirmação antes.

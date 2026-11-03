@@ -93,7 +93,7 @@ export function BranchForm() {
                   Nova unidade
                 </h2>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                  O slug define a URL de acesso da equipe da unidade.
+                  O endereço da unidade é o caminho do portal dela (/nome-da-unidade).
                 </p>
               </div>
               <button className="btn-ghost" onClick={handleClose} style={{ padding: 6 }}>
@@ -139,7 +139,7 @@ export function BranchForm() {
                   <div className="form-2col">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-phone">Telefone</label>
-                      <input id="br-phone" name="phone" type="tel" className="field" placeholder="(11) 99999-9999"
+                      <input id="br-phone" name="phone" type="tel" className="field" placeholder="(00) 00000-0000"
                         onChange={e => { e.target.value = maskPhoneDigitando(e.target.value) }} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -191,7 +191,7 @@ export function BranchForm() {
                         inputMode="numeric"
                         onChange={e => { const v = maskCEPDigitando(e.target.value); setZipCode(v); setCepError(null); void buscarCep(v) }}
                         onBlur={() => void buscarCep(zipCode)}
-                        placeholder="01310-000"
+                        placeholder="00000-000"
                         maxLength={9}
                       />
                     </div>
@@ -219,7 +219,7 @@ export function BranchForm() {
                         id="br-city" type="text" className="field"
                         value={city}
                         onChange={e => setCity(e.target.value)}
-                        placeholder="São Paulo"
+                        placeholder="Nome da cidade"
                       />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

@@ -239,7 +239,7 @@ export function EditProfileForm({ client }: Props) {
                 type="text"
                 className="field"
                 defaultValue={client.city ?? ''}
-                placeholder="São Paulo"
+                placeholder="Nome da cidade"
               />
             </div>
           </div>

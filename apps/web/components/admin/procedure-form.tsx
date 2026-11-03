@@ -105,13 +105,20 @@ interface ProcedureFormProps {
   comissao?: DadosDaComissao
 }
 
+/**
+ * O rótulo ENVOLVE o campo (A11 da 5ª simulação; docs/regras/design.md,
+ * "Formulários"): solto, "Duração" e "Preço" não chegavam ao leitor de tela
+ * nem ao clique. A dica fica fora, para não entrar no nome do campo.
+ */
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-        {label}
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+          {label}
+        </span>
+        {children}
       </label>
-      {children}
       {hint && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{hint}</p>}
     </div>
   )
@@ -129,6 +136,34 @@ function fechaDinheiro(v: string) {
   const n = parseDinheiro(v)
   return Number.isFinite(n) ? formatDinheiroCampo(n) : v.trim()
 }
+/**
+ * O custo do insumo como todo dinheiro do sistema (A11 da 5ª simulação): era
+ * um campo numérico, e o insumo de R$ 380 aparecia "380", sem centavos. O texto
+ * acompanha o produto escolhido (o custo muda com ele) e fecha no formato ao
+ * sair do campo.
+ */
+function CustoDoInsumo({ valor, onValor }: { valor: number; onValor: (n: number) => void }) {
+  const [texto, setTexto] = useState(() => formatDinheiroCampo(valor))
+  const [visto, setVisto] = useState(valor)
+  if (valor !== visto) { setVisto(valor); setTexto(formatDinheiroCampo(valor)) }
+  return (
+    <input
+      type="text" inputMode="decimal" className="field"
+      style={{ width: 100, paddingLeft: 28 }}
+      value={texto}
+      onChange={e => {
+        const t = soDinheiro(e.target.value)
+        const n = parseDinheiro(t)
+        const numero = Number.isFinite(n) ? n : 0
+        setTexto(t); setVisto(numero); onValor(numero)
+      }}
+      onBlur={() => setTexto(fechaDinheiro(texto))}
+      placeholder="0,00"
+      title="Custo por unidade"
+    />
+  )
+}
+
 /** O campo tem texto que não é dinheiro. */
 const dinheiroInvalido = (v: string) => v.trim() !== '' && !Number.isFinite(parseDinheiro(v))
 
@@ -583,14 +618,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                 {/* Custo unitário */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-                  <input
-                    type="number" min={0} step={0.01} className="field"
-                    style={{ width: 100, paddingLeft: 28 }}
-                    value={ins.unit_cost}
-                    onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, unit_cost: parseFloat(e.target.value) || 0 } : x))}
-                    placeholder="0,00"
-                    title="Custo por unidade"
-                  />
+                  <CustoDoInsumo valor={ins.unit_cost}
+                    onValor={n => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, unit_cost: n } : x))} />
                 </div>
 
                 <button type="button" onClick={() => removeInsumo(i)} style={{

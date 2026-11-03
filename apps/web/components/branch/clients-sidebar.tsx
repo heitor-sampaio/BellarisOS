@@ -51,6 +51,9 @@ function lastVisitLabel(iso: string | null): string {
   return `Última visita: ${formatDistanceToNow(new Date(iso), { locale: ptBR, addSuffix: true })}`
 }
 
+/** "1 ativo", "2 ativos" (A11 da 5ª simulação: era "1 ativos"). */
+const ativos = (n: number) => `${n.toLocaleString('pt-BR')} ${n === 1 ? 'ativo' : 'ativos'}`
+
 export function ClientsSidebar({
   clients,
   basePath,
@@ -157,24 +160,19 @@ export function ClientsSidebar({
             </h2>
             <span data-contador-de-clientes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
               {selectedBranchId && selectedBranchName && ativosPorUnidade?.[selectedBranchId] !== undefined
-                ? `${ativosPorUnidade[selectedBranchId]!.toLocaleString('pt-BR')} ativos na ${selectedBranchName}`
-                : `${totalActive.toLocaleString('pt-BR')} ativos`}
+                ? `${ativos(ativosPorUnidade[selectedBranchId]!)} na ${selectedBranchName}`
+                : ativos(totalActive)}
             </span>
           </div>
           {addHref !== null && (
+            // Com o texto à vista (A22 da 5ª simulação): só o ícone, ninguém
+            // sabia o que o botão rosa fazia.
             <button
               type="button"
+              className="btn-primary"
               onClick={() => router.push(addHref!)}
-              style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                background: 'var(--brand)', color: 'var(--surface)',
-                border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-              title="Novo cliente"
-              aria-label="Novo cliente"
             >
-              <UserPlus size={14} />
+              <UserPlus size={14} /> Novo cliente
             </button>
           )}
         </div>
