@@ -679,9 +679,20 @@ profissional e `receita_dos_atendimentos`, e
 `20261103001305`). O nome passou a ser "receita dos atendimentos" ("Ranking —
 Profissionais por receita dos atendimentos", "Receita dos atendimentos
 (da clínica)"), e a dica diz que é a conta da EXECUÇÃO e que o "Meu
-faturamento" é a da VENDA. Pré-pago, plano e produto seguem fora. Não conta
-duas vezes: a sessão não tem lançamento. Prova:
-`e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts`.
+faturamento" é a da VENDA. Não conta duas vezes: a sessão não tem
+lançamento. **E também a unidade PRÉ-PAGA usada e a sessão de PLANO feita**
+(r3-f13-07, o Heitor, 2026-11-03: "para quem atende, sessão de pacote, de
+pré-pago ou de plano é o mesmo trabalho"; migration `20261103001501`): a
+parte da unidade no vendido (`procedure_sale_units.preco` — "3 limpezas por
+R$ 450" → R$ 150 por limpeza atendida) e a soma dos procedimentos da sessão
+no plano vendido (ACCEPTED/COMPLETED; `treatment_plan_session_procedures
+.price`, com o desconto rateado), no procedimento do atendimento, no dia da
+sessão, para quem atendeu — nas mesmas quatro contas. O plano cancelado fica
+de fora, como nas Vendas. Nenhuma das duas tem lançamento ligado ao
+atendimento, e o "Meu faturamento" (venda) não muda. Produto segue fora (não
+é atendimento). Prova:
+`e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com o
+caso r3-f13-07).
 
 **"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
 2026-11-02): ativo, com `provides_services` e ao alcance das unidades do

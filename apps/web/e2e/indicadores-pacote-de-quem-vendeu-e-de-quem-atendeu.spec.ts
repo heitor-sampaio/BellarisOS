@@ -29,6 +29,8 @@ let slug = ''
 let cliente = ''
 let proc = ''
 let pacote = ''
+let prePago = ''
+let plano = ''
 const de = () => new Date(Date.now() - 86_400_000).toISOString()
 const ate = () => new Date(Date.now() + 86_400_000).toISOString()
 const n = (v: unknown) => Number(v ?? 0)
@@ -88,6 +90,7 @@ test.beforeAll(async () => {
     p_lancamentos: [{ amount: 200, payment_method: 'PIX', is_paid: true }], p_unidades: [{ preco: 200 }],
   })
   expect(ePp, 'vender o pré-pago').toBeNull()
+  prePago = pp as string
   expect((await db().from('procedure_sales').select('sold_by').eq('id', pp as string).single()).data?.sold_by, 'quem vendeu o pré-pago').toBe(paula.userId)
 
   // A sessão 1 do pacote, a Paula atende; a sessão 2, a Renata.
@@ -121,6 +124,13 @@ test.afterAll(async () => {
       await passo('pacote da cliente', b.from('client_packages').delete().eq('id', pacote))
     }
     await passo('pacotes', b.from('service_packages').delete().eq('tenant_id', rede.tenantId))
+    if (plano) {
+      const { data: ss } = await b.from('treatment_plan_sessions').select('id').eq('plan_id', plano)
+      const sIds = (ss ?? []).map(s => s.id as string)
+      if (sIds.length) await passo('procedimentos da sessão', b.from('treatment_plan_session_procedures').delete().in('session_id', sIds))
+      await passo('sessões do plano', b.from('treatment_plan_sessions').delete().eq('plan_id', plano))
+      await passo('plano', b.from('treatment_plans').delete().eq('id', plano))
+    }
     const { data: vendas } = await b.from('procedure_sales').select('id').eq('tenant_id', rede.tenantId)
     const vIds = (vendas ?? []).map(v => v.id as string)
     if (vIds.length) {
@@ -193,4 +203,71 @@ test('r2-ind-01: no ranking por procedimento e por profissional (execução), a 
   // Com o recorte da Paula ("só os meus"): a execução dela.
   const { data: dela } = await db().rpc('metrics_top_professionals', { ...p, p_limit: 10, p_professional_id: paula!.userId })
   expect((dela as { revenue: number }[]).map(x => n(x.revenue))).toEqual([400])
+})
+
+// r3-f13-07 (o Heitor, revisão de 03/11: "para quem atende, sessão de pacote,
+// de pré-pago ou de plano é o mesmo trabalho"): a unidade PRÉ-PAGA usada e a
+// sessão de PLANO (vendido) feita também entram no ranking de execução, pelo
+// rateio — a parte da unidade (`procedure_sale_units.preco`) e a soma dos
+// procedimentos da sessão no plano —, no dia da sessão, para quem atendeu. O
+// "Meu faturamento" (venda) não muda: nenhuma das duas tem lançamento.
+test('r3-f13-07: a unidade pré-paga e a sessão de plano feitas também entram no ranking, pelo rateio — e o faturamento de venda não muda', async () => {
+  const p = { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: de(), p_to: ate() }
+  const concluirSemComissao = async (ap: string) => {
+    const { error } = await db().rpc('concluir_atendimento', {
+      p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null, p_dados: { insumos: [], comissoes: [] },
+    })
+    expect(error, 'concluir').toBeNull()
+  }
+
+  // A Renata atende a unidade pré-paga (R$ 200).
+  const apPp = await atendimento(rede!.professionalId, 200)
+  expect((await db().from('procedure_sale_units').update({ appointment_id: apPp }).eq('sale_id', prePago)).error).toBeNull()
+  await concluirSemComissao(apPp)
+  expect((await db().from('procedure_sale_units').select('status').eq('sale_id', prePago).single()).data?.status, 'a unidade foi usada').toBe('USADA')
+
+  // A Paula atende a sessão 1 de um plano vendido: dois procedimentos na sessão, R$ 100 + R$ 50.
+  const { data: tp, error: eTp } = await db().from('treatment_plans').insert({
+    client_id: cliente, branch_id: rede!.branchId, professional_id: paula!.userId, status: 'ACCEPTED', name: `${PREFIXO} Plano ${marca}`,
+  }).select('id').single<{ id: string }>()
+  expect(eTp, 'criar o plano').toBeNull()
+  plano = tp!.id
+  const apPl = await atendimento(paula!.userId, 150)
+  const { data: ses, error: eSes } = await db().from('treatment_plan_sessions').insert({ plan_id: plano, sort_order: 1, appointment_id: apPl }).select('id').single<{ id: string }>()
+  expect(eSes, 'a sessão do plano').toBeNull()
+  expect((await db().from('treatment_plan_session_procedures').insert([
+    { session_id: ses!.id, procedure_id: proc, price: 100, sort_order: 1 },
+    { session_id: ses!.id, procedure_id: proc, price: 50, sort_order: 2 },
+  ])).error).toBeNull()
+  await concluirSemComissao(apPl)
+
+  // Por profissional: a Paula, o avulso + a sessão de pacote + a de plano (100 + 300 + 150);
+  // a Renata, a sessão de pacote + a unidade pré-paga (300 + 200).
+  const { data: profs } = await db().rpc('metrics_top_professionals', { ...p, p_limit: 10 })
+  const porId = Object.fromEntries((profs as { professional_id: string; appointments: number; revenue: number }[])
+    .map(x => [x.professional_id, [n(x.appointments), n(x.revenue)]]))
+  expect(porId[paula!.userId], 'a Paula: 3 atendimentos, R$ 550').toEqual([3, 550])
+  expect(porId[rede!.professionalId], 'a Renata: 2 atendimentos, R$ 500').toEqual([2, 500])
+
+  const { data: procs } = await db().rpc('metrics_top_procedures', { ...p, p_limit: 10 })
+  expect((procs as { procedure_id: string; appointments: number; revenue: number }[]).map(x => [x.procedure_id, n(x.appointments), n(x.revenue)]))
+    .toEqual([[proc, 5, 1050]])
+
+  const { data: rel } = await db().rpc('metrics_relatorio', {
+    ...p, p_prev_from: de(), p_prev_to: de(), p_aba: 'procedimentos', p_granularidade: 'day',
+  })
+  const r = rel as { por_procedimento: { receita: number; execucoes: number }[]; por_profissional: { receita: number; atendimentos: number }[]; receita_dos_atendimentos: number }
+  expect(r.por_procedimento.map(x => [n(x.receita), n(x.execucoes)])).toEqual([[1050, 5]])
+  expect(r.por_profissional.map(x => [n(x.receita), n(x.atendimentos)]).sort((a, b) => b[0]! - a[0]!)).toEqual([[550, 3], [500, 2]])
+  expect(n(r.receita_dos_atendimentos)).toBe(1050)
+  const { data: cat } = await db().rpc('metrics_receita_por_categoria_de_procedimento', p)
+  expect((cat as { receita: number }[]).reduce((s, c) => s + n(c.receita), 0), 'a receita por categoria fecha com a tabela').toBe(1050)
+
+  // A VENDA não muda: o "Meu faturamento" da Paula continua R$ 1.200, o da Renata R$ 0, o da clínica R$ 1.200.
+  const { data: dela } = await db().rpc('metrics_core', { ...p, p_professional_id: paula!.userId })
+  expect(n(dela![0]!.revenue_cash)).toBe(1200)
+  const { data: daRenata } = await db().rpc('metrics_core', { ...p, p_professional_id: rede!.professionalId })
+  expect(n(daRenata![0]!.revenue_cash)).toBe(0)
+  const { data: clinica } = await db().rpc('metrics_core', p)
+  expect(n(clinica![0]!.revenue_cash)).toBe(1200)
 })
