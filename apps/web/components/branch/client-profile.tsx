@@ -1270,7 +1270,9 @@ export function ClientProfile({
   const pacoteCancelavel = podeCancelarPacote && !!activePackage && !activePackage.planId
 
   // Menu do cabeçalho: desativar e reativar o cliente.
-  const [menuAberto,      setMenuAberto]      = useState(false)
+  // `?acao=reativar` (a busca universal acha a arquivada, A19): a ficha abre
+  // com o menu e o "Reativar cliente" à vista.
+  const [menuAberto,      setMenuAberto]      = useState(() => params.get('acao') === 'reativar' && !client.isActive)
   const [alterandoStatus, setAlterandoStatus] = useState(false)
   const [erroStatus,      setErroStatus]      = useState<string | null>(null)
 
@@ -1289,10 +1291,8 @@ export function ClientProfile({
   // Arquivar não cancela o que ela tem marcado: a confirmação diz (A19).
   const agendamentosAoArquivar = avisoDosAgendamentosAoArquivar(upcomingAppointments)
 
-  // `?acao=reativar` (a busca universal acha a arquivada, A19): abre o menu
-  // com o "Reativar cliente" à vista e tira o parâmetro da URL.
+  // O `?acao=reativar` sai da URL (recarregar não reabre o menu).
   const aoPedirReativar = useEffectEvent(() => {
-    if (arquivada && podeEditarCadastro) setMenuAberto(true)
     const q = new URLSearchParams(params.toString())
     q.delete('acao')
     const resto = q.toString()
