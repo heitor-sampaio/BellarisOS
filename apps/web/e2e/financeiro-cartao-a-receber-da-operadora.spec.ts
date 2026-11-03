@@ -236,6 +236,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
   })
 
   test('o Financeiro mostra os dois a receber, nomeados, e a parcela antecipada não soma receita', async ({ browser }) => {
+    test.setTimeout(150_000)
     const hoje = hojeSP()
     const ate = maisMeses(hoje, 4)
     await comSessao(browser, gestor!.estado, async p => {
@@ -261,6 +262,25 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
       await expect(primeira).toContainText('Antecipada')
       await expect(kpi).toContainText('R$ 733,34')
 
+      // Foi engano: "Desfazer" pede confirmação e a parcela volta a receber
+      // (r2-fin-02, o Heitor: "mudar solicitando confirmação antes de desfazer").
+      await primeira.getByRole('button', { name: 'Desfazer' }).click()
+      const desfazer = p.getByRole('dialog', { name: 'Desfazer o recebimento da parcela' })
+      await expect(desfazer).toContainText('volta para a receber')
+      await desfazer.getByRole('button', { name: 'Voltar' }).click()
+      await expect(desfazer).toBeHidden()
+      await expect(primeira, 'sem confirmar, nada muda').toContainText('Antecipada')
+      await primeira.getByRole('button', { name: 'Desfazer' }).click()
+      await p.getByRole('dialog', { name: 'Desfazer o recebimento da parcela' }).getByRole('button', { name: 'Desfazer' }).click()
+      await expect(primeira).toContainText('A receber')
+      await expect(kpi).toContainText('R$ 1.100,00')
+
+      // E marca de novo (o resto do spec segue com ela antecipada).
+      await primeira.getByRole('button', { name: 'Marcar recebida' }).click()
+      await p.getByRole('dialog', { name: 'Marcar a parcela como recebida' }).getByRole('button', { name: 'Marcar recebida' }).click()
+      await expect(primeira).toContainText('Antecipada')
+      await expect(kpi).toContainText('R$ 733,34')
+
       // O financeiro da unidade mostra o mesmo.
       await p.goto(`/${slug}/financeiro?period=custom&from=${hoje}&to=${ate}`)
       await expect(p.locator('[data-kpi="a-receber-operadora"]')).toContainText('R$ 733,34')
@@ -282,7 +302,13 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
         await p.goto(`/admin/financeiro?period=custom&from=${hoje}&to=${maisMeses(hoje, 4)}`)
         await expect(p.locator('[data-recebiveis-da-operadora] [data-parcela-da-operadora]')).toHaveCount(3)
         await expect(p.locator('[data-recebiveis-da-operadora]').getByRole('button', { name: 'Marcar recebida' })).toHaveCount(0)
+        await expect(p.locator('[data-recebiveis-da-operadora]').getByRole('button', { name: 'Desfazer' })).toHaveCount(0)
+        // Nem pela action.
+        const primeira = (await parcelasDa(venda))[0]!
+        const r = await chamarAcao(p, 'actions/financial.ts', 'desfazerRecebimentoDaParcelaDaOperadora', '/admin/financeiro', [primeira.id])
+        expect(r.texto).not.toMatch(/"success":true/)
       })
+      expect((await parcelasDa(venda))[0]!.situacao, 'quem só vê não desfaz').toBe('ANTECIPADA')
     } finally { await leitor.limpar() }
   })
 
@@ -336,6 +362,9 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     expect(error).toBeNull()
     const parcelas = await parcelasDa(data!.id)
     expect(parcelas.map(x => [x.valor, x.situacao])).toEqual([[100, 'RECEBIDA'], [100, 'A_RECEBER']])
+    // A recebida na data não se desfaz: o "Desfazer" é só da antecipada (r2-fin-02).
+    const { error: eD } = await db().rpc('recebivel_do_cartao_desfazer', { p_tenant: rede!.tenantId, p_recebivel: parcelas[0]!.id, p_ator: 'e2e' })
+    expect(eD?.message).toMatch(/recebida na data/)
   })
 
   test('o pacote no crédito 3x cancelado com estorno: as parcelas da operadora acompanham o que voltou', async () => {

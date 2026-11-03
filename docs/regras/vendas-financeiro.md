@@ -546,7 +546,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       A_RECEBER, RECEBIDA, ANTECIPADA, CANCELADA, ESTORNADA). "Marcar
       recebida" é a antecipação (`anteciparParcelaDaOperadora`, com
       `financial: MANAGE` sem "só os meus" e a unidade ao alcance;
-      `recebivel_do_cartao_receber`).
+      `recebivel_do_cartao_receber`). **A antecipada tem "Desfazer"**
+      (r2-fin-02, o Heitor, 2026-11-03: "mudar solicitando confirmação antes
+      de desfazer"): a janela "Desfazer o recebimento?" confirma, e a parcela
+      volta a receber (`desfazerRecebimentoDaParcelaDaOperadora` →
+      `recebivel_do_cartao_desfazer`, a mesma permissão; migration
+      `20261103001302`). Só a antecipada: a que venceu foi recebida na data, e
+      o banco recusa desfazê-la.
     - **A cliente não deve nada**: a ficha, o app ("Financeiro") e o
       Fechamento não as veem. O Financeiro (os dois portais) mostra os dois a
       receber, NOMEADOS: "A receber da cliente" (o de sempre) e "A receber da

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { CreditCard } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { anteciparParcelaDaOperadora } from '@/actions/financial'
+import { anteciparParcelaDaOperadora, desfazerRecebimentoDaParcelaDaOperadora } from '@/actions/financial'
 import type { ParcelaDaOperadora, SituacaoDaParcela } from '@/lib/metrics/operadora'
 
 /**
@@ -16,7 +16,8 @@ import type { ParcelaDaOperadora, SituacaoDaParcela } from '@/lib/metrics/operad
  *
  * A cliente já pagou tudo na maquininha: isto é o que a operadora ainda
  * deposita, não dívida dela, e a receita já entrou no dia da venda. A parcela
- * vira recebida sozinha na data; "Marcar recebida" é a antecipação.
+ * vira recebida sozinha na data; "Marcar recebida" é a antecipação, e a
+ * antecipada tem "Desfazer", que pergunta antes (r2-fin-02).
  * Os números vêm de `lib/metrics/operadora` — aqui só se escreve.
  */
 
@@ -44,6 +45,7 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
 }) {
   const router = useRouter()
   const [aMarcar, setAMarcar] = useState<ParcelaDaOperadora | null>(null)
+  const [aDesfazer, setADesfazer] = useState<ParcelaDaOperadora | null>(null)
   const [marcando, iniciar] = useTransition()
 
   if (parcelas.length === 0) return null
@@ -61,6 +63,16 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
       if (r && 'error' in r && r.error) { toast.error(r.error); return }
       toast.success(`Parcela ${p.numero}/${p.total} marcada como recebida.`)
       setAMarcar(null)
+      router.refresh()
+    })
+  }
+
+  function desfazer(p: ParcelaDaOperadora) {
+    iniciar(async () => {
+      const r = await desfazerRecebimentoDaParcelaDaOperadora(p.id, slug)
+      if (r && 'error' in r && r.error) { toast.error(r.error); return }
+      toast.success(`Parcela ${p.numero}/${p.total} voltou para a receber.`)
+      setADesfazer(null)
       router.refresh()
     })
   }
@@ -146,6 +158,12 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
                             Marcar recebida
                           </button>
                         )}
+                        {p.situacao === 'ANTECIPADA' && (
+                          <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
+                            onClick={() => setADesfazer(p)}>
+                            Desfazer
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -172,6 +190,28 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
               <button type="button" className="btn-secondary" disabled={marcando} onClick={() => setAMarcar(null)}>Voltar</button>
               <button type="button" className="btn-primary" disabled={marcando} onClick={() => marcar(aMarcar)}>
                 {marcando ? 'Marcando…' : 'Marcar recebida'}
+              </button>
+            </div>
+          </div>
+        </JanelaModal>
+      )}
+
+      {aDesfazer && (
+        <JanelaModal rotulo="Desfazer o recebimento da parcela" largura={440} travado={marcando} onFechar={() => setADesfazer(null)}>
+          <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer o recebimento?</h2>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              <strong style={{ color: 'var(--text)' }}>{aDesfazer.descricao}</strong> · parcela {aDesfazer.numero}/{aDesfazer.total} ·{' '}
+              {formatBRL(aDesfazer.valor)}{aDesfazer.recebidaNa ? ` · marcada recebida em ${dataSP(aDesfazer.recebidaNa)}` : ''}
+            </p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              A parcela volta para a receber, com o vencimento em {dia(aDesfazer.vencimentoDia)}, e volta a contar no
+              “A receber da operadora”. A receita não muda.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn-secondary" disabled={marcando} onClick={() => setADesfazer(null)}>Voltar</button>
+              <button type="button" className="btn-primary" disabled={marcando} onClick={() => desfazer(aDesfazer)}>
+                {marcando ? 'Desfazendo…' : 'Desfazer'}
               </button>
             </div>
           </div>

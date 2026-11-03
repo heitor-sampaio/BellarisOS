@@ -268,6 +268,24 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
  * a unidade da parcela.
  */
 export async function anteciparParcelaDaOperadora(parcelaId: string, slug?: string) {
+  return mudarParcelaDaOperadora(parcelaId, slug, 'recebivel_do_cartao_receber', 'marcar a parcela como recebida')
+}
+
+/**
+ * Desfaz o "Marcar recebida" (r2-fin-02; o Heitor, 2026-11-03: "mudar
+ * solicitando confirmação antes de desfazer"): a parcela ANTECIPADA volta a
+ * receber. A que venceu (recebida sozinha na data), a cancelada e a
+ * estornada, o banco recusa. A confirmação é da tela. Mesma permissão e
+ * alcance do marcar.
+ */
+export async function desfazerRecebimentoDaParcelaDaOperadora(parcelaId: string, slug?: string) {
+  return mudarParcelaDaOperadora(parcelaId, slug, 'recebivel_do_cartao_desfazer', 'desfazer o recebimento da parcela')
+}
+
+async function mudarParcelaDaOperadora(
+  parcelaId: string, slug: string | undefined,
+  funcao: 'recebivel_do_cartao_receber' | 'recebivel_do_cartao_desfazer', oQue: string,
+) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
@@ -284,10 +302,10 @@ export async function anteciparParcelaDaOperadora(parcelaId: string, slug?: stri
       return { error: 'Parcela não encontrada.' }
     }
     await gravar(
-      admin.rpc('recebivel_do_cartao_receber', {
+      admin.rpc(funcao, {
         p_tenant: ctx.tenantId!, p_recebivel: parcelaId, p_ator: ctx.internalUserId ?? ctx.userId,
       }),
-      'marcar a parcela como recebida',
+      oQue,
     )
     if (slug) revalidatePath(`/${slug}/financeiro`)
     revalidatePath('/admin/financeiro')
