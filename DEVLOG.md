@@ -9128,6 +9128,26 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
+migrations `20261101001101–1108`). Receber o plano no check-in é uma
+transação com o plano travado (duas abas não recebem o mesmo saldo — a sobra
+da F9). A entrada acima do total avisa junto ao campo e o servidor recusa. O
+motivo do desconto aparece embaixo do valor no Financeiro ("Desconto R$ 10,00
+· Kit da casa"). A venda de produto leva vários produtos num pagamento só
+(`product_sale_items`, "2× Sérum + 1× Protetor"). A comissão de execução do
+pacote pode ser sobre o valor do pacote, para a profissional responsável
+escolhida na venda (com o pagamento integral, H4). "Quem vendeu" separado de
+quem registrou (`sold_by`). A perda aceita a unidade de consumo ("30 UI" =
+0,3 frasco). Fundo de troco opcional no Fechamento (`fundos_de_troco`). Recibo
+em PDF na lista do Financeiro e no app da cliente. Decisões da F11, para
+revisar: entrada igual ao total passa; o motivo vai só no primeiro lançamento;
+kit até 20 produtos, uma comissão sobre o total; a comissão sobre o pacote é a
+5ª opção e as sessões dele não comissionam; "Quem vendeu" nasce com quem
+registra; fundo de troco um por unidade e dia; o recibo ainda não está na ficha
+nem no atendimento. Pendente (destrutivo, com o Heitor): drop das versões
+velhas `produto_vender`, `procedimento_vender`, `pacote_vender` — antes, ~10
+specs que as usam para montar dados passam para as novas.
+
 **F10 feita em 2026-11-03 — atendimento, plano, documentos, caixa e automações**
 (23 commits, a5c7066d…9f29e4e8; migrations `20261101001001–1003`). Alergia em
 Sim/Não com "Quais alergias?" e a faixa "Alergia: dipirona" (campo condicional
