@@ -25,6 +25,7 @@ import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin } from '@/lib/com
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -40,7 +41,7 @@ export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultad
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'A configuração de comissões vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'A configuração de comissões vale para a rede inteira: quem muda é quem administra a rede.') }
     const lido = EntradaDaConfigDeComissao.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const c = lido.data
@@ -63,7 +64,7 @@ export async function salvarTaxasDaMaquininha(entrada: unknown): Promise<Resulta
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'As taxas valem para a rede inteira: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'As taxas valem para a rede inteira: quem muda é quem administra a rede.') }
     const lido = EntradaDasTaxas.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     await gravar(createAdminClient().rpc('comissao_taxas_definir', { p_tenant: ctx.tenantId!, p_taxas: lido.data }),
@@ -85,7 +86,7 @@ export async function salvarMaximoDeVezes(entrada: unknown): Promise<Resultado> 
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'O parcelamento vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'O parcelamento vale para a rede inteira: quem muda é quem administra a rede.') }
     const n = entrada === null || entrada === '' ? null : Number(entrada)
     if (n !== null && !(Number.isInteger(n) && n >= 1 && n <= TETO_DE_VEZES)) {
       return { error: `Escolha de 1 a ${TETO_DE_VEZES} vezes.` }
@@ -112,7 +113,7 @@ export async function salvarComissaoDosProdutos(entrada: unknown): Promise<Resul
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'A comissão dos produtos vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'A comissão dos produtos vale para a rede inteira: quem muda é quem administra a rede.') }
     const lido = EntradaDasComissoesDosProdutos.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const admin = createAdminClient()
@@ -140,7 +141,7 @@ export async function salvarPrazoDaOperadora(entrada: unknown): Promise<Resultad
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'O prazo da operadora vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'O prazo da operadora vale para a rede inteira: quem muda é quem administra a rede.') }
     const n = Number(entrada)
     const recusa = recusaDoPrazoDaOperadora(n)
     if (recusa) return { error: recusa }
@@ -207,7 +208,7 @@ export async function salvarComissaoDoProcedimento(procedimentoId: string, entra
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'A comissão do procedimento vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'A comissão do procedimento vale para a rede inteira: quem muda é quem administra a rede.') }
     if (typeof procedimentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(procedimentoId)) return { error: 'Procedimento não encontrado.' }
     const lido = EntradaDaComissaoDoProcedimento.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }

@@ -22,6 +22,7 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import type { PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -1040,7 +1041,7 @@ async function cancelTreatmentPlanInterno(
     .eq('plan_id', planId), 'contar as sessões do plano')
 
   if (sessionCount > 1 && ctx.branchId !== null) {
-    return { error: 'Tratamentos com múltiplas sessões só podem ser cancelados por quem tem abrangência de rede.' }
+    return { error: await falaDaRede(ctx.tenantId, 'Tratamentos com múltiplas sessões só podem ser cancelados por quem tem abrangência de rede.') }
   }
 
   const { error } = await admin

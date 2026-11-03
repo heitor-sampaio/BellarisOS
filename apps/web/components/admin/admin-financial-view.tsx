@@ -421,7 +421,7 @@ export function AdminFinancialView({
       {!umaUnidade && (
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Por filial</span>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Por unidade</span>
           <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{periodLabel}</span>
         </div>
 
@@ -431,9 +431,9 @@ export function AdminFinancialView({
         <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Filial', 'Receita', 'Despesas', 'Resultado', 'Comissões', 'Movim.', ''].map(h => (
+              {['Unidade', 'Receita', 'Despesas', 'Resultado', 'Comissões', 'Movim.', ''].map(h => (
                 <th key={h} style={{
-                  padding: '10px 16px', textAlign: h === 'Filial' ? 'left' : 'right',
+                  padding: '10px 16px', textAlign: h === 'Unidade' ? 'left' : 'right',
                   fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                   letterSpacing: '0.06em', textTransform: 'uppercase',
                   width: h === '' ? 80 : undefined,
@@ -534,7 +534,7 @@ export function AdminFinancialView({
             onChange={e => setFilterBranch(e.target.value)}
             style={{ width: 200 }}
           >
-            <option value="all">Todas as filiais</option>
+            <option value="all">Todas as unidades</option>
             {branchStats.map(b => (
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}

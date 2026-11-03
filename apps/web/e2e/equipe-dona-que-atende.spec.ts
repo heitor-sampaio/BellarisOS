@@ -103,7 +103,7 @@ test('a Admin da rede não muda o próprio cargo pela Equipe', async ({ browser 
     const r = await chamarAcaoComFormulario(p, 'actions/team.ts', 'updateTeamMember', '/admin/team', [undefined], {
       userId: dona!.userId, roleId: gerenteDaUnidade!.roleId, scope: 'network', redirectPath: '/admin/team',
     })
-    expect(r.texto, 'a action recusa').toMatch(/próprio cargo de Admin da rede/)
+    expect(r.texto, 'a action recusa').toMatch(/próprio cargo de Admin: peça/)
   })
   expect((await membro(dona!.userId))?.role_id, 'nada mudou').toBe(dona!.roleId)
 })
@@ -141,7 +141,7 @@ test('a última Admin da rede ativa não se desativa', async ({ browser }) => {
   try {
     await como(browser, gestora.estado, async p => {
       const r = await chamarAcao(p, 'actions/team.ts', 'deactivateTeamMember', '/admin/team', [dona!.userId, '/admin/team'])
-      expect(r.texto, 'a action diz por quê').toMatch(/única Admin da rede ativa/)
+      expect(r.texto, 'a action diz por quê').toMatch(/única Admin ativa: a clínica/)
     })
     expect((await membro(dona!.userId))?.is_active, 'a última admin segue ativa').toBe(true)
   } finally {
@@ -193,7 +193,7 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
       const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
         userId: colega!.userId, roleId: dona!.roleId, scope: 'network', redirectPath: '/admin/team',
       })
-      expect(r.texto, 'a action recusa').toMatch(/Só quem é Admin da rede/)
+      expect(r.texto, 'a action recusa').toMatch(/Só quem é Admin (dá|altera)/)
     })
     expect((await membro(colega!.userId))?.role_id, 'a colega segue no cargo dela').toBe(colega!.roleId)
 
@@ -225,12 +225,12 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
       const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
         userId: socia!.userId, roleId: socia!.roleId, scope: 'network', providesServices: 'on', redirectPath: '/admin/team',
       })
-      expect(r.texto, '"atende"').toMatch(/Só quem é Admin da rede/)
+      expect(r.texto, '"atende"').toMatch(/Só quem é Admin (dá|altera)/)
       const d = await chamarAcao(p, ARQ, 'deactivateTeamMember', '/admin/team', [socia!.userId, '/admin/team'])
-      expect(d.texto, 'desativar').toMatch(/Só quem é Admin da rede/)
+      expect(d.texto, 'desativar').toMatch(/Só quem é Admin (dá|altera)/)
       const c = await chamarAcao(p, 'actions/comissoes.ts', 'salvarRegrasDoProfissional', '/admin/team',
         [socia!.userId, { padrao: { tipo: 'PERCENTAGE', valor: 40 }, excecoes: [] }])
-      expect(c.texto, 'comissão').toMatch(/Só quem é Admin da rede/)
+      expect(c.texto, 'comissão').toMatch(/Só quem é Admin (dá|altera)/)
     })
     const s = await membro(socia!.userId)
     expect(s?.provides_services, 'o "atende" não mudou').toBe(false)
@@ -261,7 +261,7 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
       const eu = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
         userId: dona!.userId, roleId: gerenteDaUnidade!.roleId, scope: 'network', redirectPath: '/admin/team',
       })
-      expect(eu.texto, 'a si mesma não').toMatch(/próprio cargo de Admin da rede/)
+      expect(eu.texto, 'a si mesma não').toMatch(/próprio cargo de Admin: peça/)
     })
     expect((await membro(colega!.userId))?.role_id, 'a colega voltou ao cargo dela').toBe(colega!.roleId)
     expect((await membro(dona!.userId))?.role_id, 'a dona segue Admin').toBe(dona!.roleId)

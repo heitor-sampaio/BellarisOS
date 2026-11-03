@@ -4,6 +4,7 @@ import { can, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { adminsDaRede, souAdminDaRede } from '@/lib/equipe/admin-da-rede'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 import { EntradaDaComissaoDoProcedimento } from './config'
 import type { z } from 'zod'
 
@@ -73,7 +74,8 @@ export async function recusaDaComissaoDaAdmin(
   const tinha = new Set(antes.map(r => chave(r.professional_id, r.type, r.value)))
   const fica  = new Set(depois.map(p => chave(p.professional_id, p.tipo, p.valor)))
   const igual = tinha.size === fica.size && [...tinha].every(k => fica.has(k))
-  return igual ? null : RECUSA_DA_COMISSAO_DA_ADMIN
+  // Na clínica de uma unidade, na fala dela ("Admin", r2-cfg-02).
+  return igual ? null : falaDaRede(ctx.tenantId, RECUSA_DA_COMISSAO_DA_ADMIN)
 }
 
 /** Substitui o conjunto inteiro do procedimento (a função confere procedimento e profissionais da rede). */

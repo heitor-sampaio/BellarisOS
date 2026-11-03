@@ -107,7 +107,21 @@ Princípios inegociáveis:
     (`components/shared/uma-unidade.tsx`); os layouts dos dois portais põem a
     régua no `UmaUnidadeProvider`.
   - **"Filial" não existe mais na tela**: a palavra é "unidade", com uma ou
-    com dez.
+    com dez — também nos quadros que só aparecem com duas ou mais ("Ranking
+    de unidades", "Por unidade", "Aproveitamento por unidade", "ESTOQUE POR
+    UNIDADE", "Todas as unidades"; r2-cfg-01, revisão do Heitor de 2026-11-03).
+  - **A recusa que nasce no servidor e a dica (`title`) também falam assim**
+    (r2-cfg-02, revisão do Heitor de 2026-11-03: "Só quem é Admin da rede…" e
+    "Nunca ocorreu nesta rede" escapavam). A recusa passa por `falaDaRede(ctx.tenantId,
+    texto)` (`lib/unidades/uma-so.ts`) — as de mexer na Admin
+    (`recusaDeMexerNaAdmin`, a comissão da Admin, a Equipe) e as de abrangência
+    ("vale para a rede inteira: quem muda é quem administra a rede", nas
+    comissões, taxas, pacotes, fidelidade, documentos e planos); a dica, por
+    `fala()`. Na clínica de uma unidade: "Só quem é Admin altera uma Admin.".
+    Ficaram como estão as recusas de id que não é da rede ("…não encontrada
+    nesta rede"), que a tela não oferece. Prova: `e2e/rede-de-uma-unidade.spec.ts`
+    (as dicas de cada tela, a recusa da Admin e, com duas unidades, nenhum
+    "filial").
   - **Select de unidade obrigatório com UMA opção vem preenchido** (Estoque,
     Equipe, lançamento); a pergunta que não tem o que perguntar some (crédito
     para cliente, "Disponível nas unidades" e o preço por unidade do

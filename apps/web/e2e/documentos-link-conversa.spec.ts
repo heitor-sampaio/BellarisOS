@@ -157,7 +157,8 @@ test.describe.serial('documentos: link pela conversa do inbox', () => {
   test('quem é de uma unidade não liga a opção da rede', async ({ browser }) => {
     await como(browser, daUnidade!.estado, async page => {
       const r = await chamarAcao(page, 'actions/modelos-de-documento.ts', 'definirEnvioDoLinkPelaConversa', `/${slug}/settings?tab=documentos`, [true])
-      expect(r.texto).toContain('rede inteira')
+      // A rede de teste tem UMA unidade: "rede inteira" é "clínica toda" (r2-cfg-02).
+      expect(r.texto).toContain('clínica toda')
     })
     expect((await db().from('tenants').select('documentos_link_pela_conversa').eq('id', rede!.tenantId).single()).data)
       .toEqual({ documentos_link_pela_conversa: false })

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 import { Activity, ChevronDown, ChevronRight, CircleSlash, RefreshCw } from 'lucide-react'
-import { Fala } from '@/components/shared/uma-unidade'
+import { Fala, useFala } from '@/components/shared/uma-unidade'
 import {
   listarEventosDeDominio, resumoDoCatalogo,
   type EventoNaLista, type LinhaDoCatalogo,
@@ -83,6 +83,8 @@ export function SettingsEventos({
   const [mostrarTodos, setMostrarTodos] = useState(false)
   const [falha, setFalha]       = useState<string | null>(erro ?? null)
   const [carregando, iniciar]   = useTransition()
+  // A dica também fala a língua da clínica de uma unidade (r2-cfg-02).
+  const fala = useFala()
 
   const entidades = [...new Set(linhas.map(l => l.entidade))]
   const nuncaVisto = linhas.filter(l => l.vezes === 0)
@@ -178,7 +180,7 @@ export function SettingsEventos({
               onClick={() => { const n = filtroNome === l.nome ? '' : l.nome; setNome(n); recarregar(n, filtroOrigem) }}
               className={l.vezes === 0 ? 'chip chip-muted' : filtroNome === l.nome ? 'chip chip-brand' : 'chip chip-success'}
               style={{ cursor: 'pointer', border: 'none', opacity: l.vezes === 0 ? 0.75 : 1 }}
-              title={l.vezes === 0 ? 'Nunca ocorreu nesta rede' : `Último em ${dia(l.ultimoEm)}`}
+              title={l.vezes === 0 ? fala('Nunca ocorreu nesta rede') : `Último em ${dia(l.ultimoEm)}`}
             >
               {l.vezes === 0 ? <CircleSlash size={11} /> : <Activity size={11} />}
               {l.nome}

@@ -69,7 +69,7 @@ test('o dashboard da rede recorta a unidade do ?unidade=', async ({ browser }) =
     await p.goto(`/admin/dashboard?unidade=${unidadeB!.slug}`)
     await expect(p.getByRole('heading', { level: 1 }), 'o título é a unidade').toHaveText(unidadeB!.name)
     await expect(p.locator('[data-kpi="Atendimentos"]'), 'os números são os da unidade B').toContainText('0')
-    await expect(p.getByText('Ranking de filiais')).toHaveCount(0)
+    await expect(p.getByText('Ranking de unidades')).toHaveCount(0)
     await expect(p.getByRole('link', { name: 'Ver a rede inteira' })).toHaveAttribute('href', '/admin/dashboard')
 
     // Pelo id também, como no resto do portal da rede.

@@ -14,6 +14,7 @@ import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
 import { saidaDoVoucher } from '@/lib/estoque/baixa'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { voucherEmitido } from '@/lib/events/fidelidade'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 
 /**
  * Fidelidade — as ações da equipe. Todo export daqui é endpoint público
@@ -38,7 +39,7 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'settings', 'MANAGE')
-  if (ctx.branchId !== null) return { error: 'Só quem é da rede configura a fidelidade.' }
+  if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'Só quem é da rede configura a fidelidade.') }
 
   const lido = EntradaDaConfig.safeParse(entrada)
   if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
@@ -183,7 +184,7 @@ export async function salvarRecompensa(entrada: unknown): Promise<{ error?: stri
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'settings', 'MANAGE')
-  if (ctx.branchId !== null) return { error: 'Só quem é da rede mexe no catálogo.' }
+  if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'Só quem é da rede mexe no catálogo.') }
 
   const lido = EntradaDaRecompensa.safeParse(entrada)
   if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }

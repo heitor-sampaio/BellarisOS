@@ -61,7 +61,8 @@ const salvar = (p: Page, entrada: unknown) =>
 const porProfissional = (...linhas: [string, number][]) => ({
   modo: 'POR_PROFISSIONAL', profissionais: linhas.map(([id, valor]) => ({ professional_id: id, tipo: 'PERCENTAGE', valor })),
 })
-const RECUSA = 'Só quem é Admin da rede altera a comissão de uma Admin da rede.'
+// A rede de teste tem UMA unidade: a recusa fala "Admin", não "Admin da rede" (r2-cfg-02).
+const RECUSA = 'Só quem é Admin altera a comissão de uma Admin.'
 
 test('quem não é Admin da rede não põe, não muda e não tira o valor da Admin no procedimento; a Admin muda', async ({ browser }) => {
   await como(browser, financeiro!, async p => {

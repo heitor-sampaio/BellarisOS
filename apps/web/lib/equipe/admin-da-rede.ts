@@ -2,6 +2,7 @@ import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -53,5 +54,6 @@ export async function recusaDeMexerNaAdmin(
   if (!(await cargoEhAdminDaRede(admin, ctx.tenantId!, membro.role_id))) return null
   if (membro.id === ctx.internalUserId) return null
   if (await souAdminDaRede(admin, ctx)) return null
-  return 'Só quem é Admin da rede altera uma Admin da rede.'
+  // Na clínica de uma unidade, "Só quem é Admin altera uma Admin." (r2-cfg-02).
+  return falaDaRede(ctx.tenantId, 'Só quem é Admin da rede altera uma Admin da rede.')
 }

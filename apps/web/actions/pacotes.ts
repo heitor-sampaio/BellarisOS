@@ -30,6 +30,7 @@ import { lerPreviaDoCancelamento, agendamentosCancelados, type PreviaDoCancelame
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avisos'
 import { EVENTOS } from '@estetica-os/types'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -55,7 +56,7 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'pacotes')
     assertPermission(ctx, 'procedures', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'O catálogo de pacotes é da rede: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'O catálogo de pacotes é da rede: quem muda é quem administra a rede.') }
     const lido = EntradaDoPacote.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const p = lido.data

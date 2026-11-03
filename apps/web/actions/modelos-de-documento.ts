@@ -23,6 +23,7 @@ import { ensurePrivateBucket, getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '
 import { validarDocumentoDoEditor, TIPOS_DE_MODELO, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import type { DocumentoDoEditor } from '@/lib/documentos/editor/converter'
 import { medidasDaImagem } from '@/lib/documentos/editor/medidas-da-imagem'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 
 type Resultado = { error?: string; id?: string; versao?: number; novaVersao?: boolean }
 
@@ -334,7 +335,7 @@ export async function definirEnvioDoLinkPelaConversa(ligado: boolean): Promise<R
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
-    if (ctx.branchId !== null) return { error: 'Esta escolha vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'Esta escolha vale para a rede inteira: quem muda é quem administra a rede.') }
     if (typeof ligado !== 'boolean') return { error: 'Escolha inválida.' }
     const admin = createAdminClient()
     const linhas = await gravar(admin.from('tenants')

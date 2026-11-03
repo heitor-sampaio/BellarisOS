@@ -274,7 +274,7 @@ export default async function TeamPage({
                         href={`/admin/team?q=${encodeURIComponent(m.name)}`}
                         className="btn-ghost"
                         style={{ padding: '5px 8px', color: 'var(--brand)', display: 'inline-flex' }}
-                        title="Editar na Equipe da rede"
+                        title={fala('Editar na Equipe da rede')}
                       >
                         <Pencil size={15} />
                       </Link>

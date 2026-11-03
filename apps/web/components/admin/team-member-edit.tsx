@@ -131,7 +131,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                         <option value={cargoFixo.id}>{cargoFixo.label}</option>
                       </select>
                       <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        Você não muda o próprio cargo de {cargoFixo.label}: outra Admin da rede muda.
+                        Você não muda o próprio cargo de {cargoFixo.label}: {fala('outra Admin da rede muda.')}
                       </span>
                     </>
                   ) : (

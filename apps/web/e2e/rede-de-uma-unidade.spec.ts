@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { chamarAcaoComFormulario } from './apoio/acao-direta'
+import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 
 /**
  * D-19 (decisão do Heitor, 2026-10-29): "Com UMA unidade ativa, somem os termos
@@ -25,6 +25,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let dona: MembroDeTeste | null = null
+let gerente: MembroDeTeste | null = null
 let slug = ''
 let segunda: string | null = null
 let produto = ''
@@ -46,15 +47,26 @@ async function falasDoModal(p: Page, onde: string): Promise<string[]> {
   return texto.split('\n').map(l => l.trim()).filter(l => DE_REDE.test(l)).map(l => `${onde} → ${l}`)
 }
 
-/** Abre a tela e devolve as linhas VISÍVEIS que falam de rede ou filial. */
-async function falasDeRede(p: Page, url: string): Promise<string[]> {
+/**
+ * As DICAS (o `title` que aparece ao passar o mouse) que falam de rede ou
+ * filial — r2-cfg-02 (revisão do Heitor de 2026-11-03): "Nunca ocorreu nesta
+ * rede" escapava, porque o texto visível não as inclui.
+ */
+async function dicasDeRede(p: Page, onde: string): Promise<string[]> {
+  const dicas = await p.locator('body [title]').evaluateAll(els => els.map(e => e.getAttribute('title') ?? ''))
+  return dicas.filter(t => DE_REDE.test(t)).map(t => `${onde} → (dica) ${t}`)
+}
+
+/** Abre a tela e devolve as linhas VISÍVEIS (e as dicas) que falam de rede ou filial. */
+async function falasDeRede(p: Page, url: string, palavras: RegExp = DE_REDE): Promise<string[]> {
   await p.goto(url)
   await expect(p.locator('main')).toBeVisible()
   // A tela termina de chegar (as seções em streaming e os loading.tsx).
   await p.waitForLoadState('networkidle').catch(() => {})
   await expect(p.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 }).catch(() => {})
   const texto = await p.locator('body').innerText()
-  return texto.split('\n').map(l => l.trim()).filter(l => DE_REDE.test(l)).map(l => `${url} → ${l}`)
+  const linhas = texto.split('\n').map(l => l.trim()).filter(l => palavras.test(l)).map(l => `${url} → ${l}`)
+  return palavras === DE_REDE ? [...linhas, ...await dicasDeRede(p, url)] : linhas
 }
 
 const TELAS_DA_DONA = [
@@ -90,6 +102,8 @@ test.beforeAll(async () => {
   produto = `${PREFIXO} Serum uu${marca}`
   clienteId = await rede.criarCliente('Cliente')
   dona = await criarMembro(`uud${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
+  // A gerente da clínica: a Equipe em Gerenciar, sem ser Admin (r2-cfg-02).
+  gerente = await criarMembro(`uug${marca}`, { tenant: rede.tenantId, rotulo: 'Gerente', permissoes: [{ modulo: 'team', nivel: 'MANAGE' }] })
 })
 
 test.afterAll(async () => {
@@ -97,7 +111,7 @@ test.afterAll(async () => {
     const { error } = await db().from('branches').delete().eq('id', segunda)
     expect(error).toBeNull()
   }
-  await dona?.limpar()
+  await dona?.limpar(); await gerente?.limpar()
   await rede?.limpar()
 })
 
@@ -163,8 +177,38 @@ test.describe.serial('a clínica de uma unidade só', () => {
       achados.push(...await falasDoModal(p, 'Financeiro → Crédito para cliente'))
       await expect(p.locator('dialog[open]').getByText('Unidade *', { exact: true }), 'sem a pergunta da unidade').toHaveCount(0)
 
+      // r2-cfg-02: a dica dos eventos que nunca ocorreram ("Nunca ocorreu nesta rede").
+      await p.goto('/admin/settings?tab=eventos')
+      await p.getByRole('button', { name: /que nunca ocorreram/ }).click()
+      achados.push(...await dicasDeRede(p, 'Eventos → os que nunca ocorreram'))
+
       expect(achados).toEqual([])
     })
+  })
+
+  test('r2-cfg-02: com UMA unidade, a recusa de mexer na Admin diz "Admin", não "Admin da rede"', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: gerente!.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto('/admin/team')
+      const r = await chamarAcao(p, 'actions/team.ts', 'reactivateTeamMember', '/admin/team', [dona!.userId, '/admin/team'])
+      expect(r.texto).toContain('Só quem é Admin altera uma Admin.')
+      expect(r.texto).not.toMatch(/\brede\b/)
+    } finally { await ctx.close() }
+  })
+
+  test('r2-cfg-02: com UMA unidade, a dica do lápis de quem atende na Equipe da unidade não diz "rede"', async ({ browser }) => {
+    // A dona que atende aparece na Equipe da unidade, com o lápis que leva à Equipe da clínica.
+    expect((await db().from('users').update({ provides_services: true }).eq('id', dona!.userId)).error).toBeNull()
+    try {
+      await como(browser, async p => {
+        await p.goto(`/${slug}/team`)
+        await expect(p.getByText('Da rede', { exact: true }).or(p.getByText('Da clínica', { exact: true })).first()).toBeVisible()
+        expect(await dicasDeRede(p, `/${slug}/team`)).toEqual([])
+      })
+    } finally {
+      expect((await db().from('users').update({ provides_services: false }).eq('id', dona!.userId)).error).toBeNull()
+    }
   })
 
   test('A3: com UMA unidade, as salas estão na própria aba Unidades das Configurações', async ({ browser }) => {
@@ -233,10 +277,18 @@ test.describe.serial('a clínica de uma unidade só', () => {
 
       await p.goto('/admin/dashboard')
       await expect(p.getByText('Visão geral da rede')).toBeVisible()
-      await expect(p.getByText('Ranking de filiais')).toBeVisible()
+      // r2-cfg-01 (revisão do Heitor de 2026-11-03): "filial" não existe mais,
+      // nem nos quadros que só aparecem com duas unidades ou mais.
+      await expect(p.getByText('Ranking de unidades')).toBeVisible()
 
       await p.goto('/admin/financeiro')
-      await expect(p.getByText('Por filial', { exact: true })).toBeVisible()
+      await expect(p.getByText('Por unidade', { exact: true })).toBeVisible()
+
+      const DE_FILIAL = /\b(filial|filiais)\b/i
+      const comFilial: string[] = []
+      for (const url of ['/admin/dashboard', '/admin/financeiro', '/admin/estoque']) comFilial.push(...await falasDeRede(p, url, DE_FILIAL))
+      await expect(p.getByText('ESTOQUE POR UNIDADE')).toBeVisible()
+      expect(comFilial).toEqual([])
 
       await p.goto(`/${slug}/dashboard`)
       await expect(p.getByText('Voltar para a rede')).toBeVisible()

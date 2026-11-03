@@ -580,7 +580,7 @@ export function AdminDashboardView({
               com a agenda "só os meus", fica de fora (a evolução segue). */}
           {!agendaPropria && !umaUnidade && (<>
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de filiais</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de unidades</span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
           </div>
 
@@ -592,7 +592,7 @@ export function AdminDashboardView({
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['#', 'Filial', 'Receita', 'Atend.', 'Novos', 'Ticket médio', ''].map((h, i) => (
+                {['#', 'Unidade', 'Receita', 'Atend.', 'Novos', 'Ticket médio', ''].map((h, i) => (
                   <th key={i} style={{
                     padding: i === 0 ? '9px 8px 9px 18px' : '9px 16px',
                     textAlign: i <= 1 ? 'left' : (i === 6 ? 'right' : 'right'),
@@ -912,7 +912,7 @@ export function AdminDashboardView({
           horas livres; conta outra, nome outro)
       ══════════════════════════════════════════════════════════════ */}
       {can('agenda') && !agendaPropria && (<>
-      <SectionHeader title={umaUnidade ? 'Aproveitamento' : 'Aproveitamento por filial'} />
+      <SectionHeader title={umaUnidade ? 'Aproveitamento' : 'Aproveitamento por unidade'} />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

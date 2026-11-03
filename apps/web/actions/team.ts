@@ -13,6 +13,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { cargoEhAdminDaRede, souAdminDaRede, recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
 import { comLoginNovo } from '@/lib/login-novo'
 import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
+import { falaDaRede } from '@/lib/unidades/uma-so'
 
 // Resolve a abrangência (branch_id) de um membro a partir do form.
 // Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
@@ -61,7 +62,7 @@ async function assertRoleInTenant(
     .maybeSingle(), 'buscar o cargo')
   if (!role) return { error: 'Cargo inválido.' }
   if (await cargoEhAdminDaRede(admin, ctx.tenantId!, roleId)) {
-    if (!(await souAdminDaRede(admin, ctx))) return { error: 'Só quem é Admin da rede dá o cargo de Admin da rede.' }
+    if (!(await souAdminDaRede(admin, ctx))) return { error: await falaDaRede(ctx.tenantId, 'Só quem é Admin da rede dá o cargo de Admin da rede.') }
     return { ok: true, admin: true }
   }
   if (role.is_system) return { error: 'Esse cargo não pode ser atribuído pela equipe.' }
@@ -261,9 +262,9 @@ export async function updateTeamMember(
   // si mesma, e nunca da última Admin ativa — a rede ficaria sem ninguém com
   // acesso total.
   if (await cargoEhAdminDaRede(admin, ctx.tenantId!, member.role_id as string | null) && roleId !== member.role_id) {
-    if (member.id === ctx.internalUserId) return { error: 'Você não muda o próprio cargo de Admin da rede: peça a outra Admin.' }
+    if (member.id === ctx.internalUserId) return { error: await falaDaRede(ctx.tenantId, 'Você não muda o próprio cargo de Admin da rede: peça a outra Admin.') }
     if (await ehAUltimaAdminAtiva(admin, ctx.tenantId!, member as { id: string; is_active: boolean; role_id: string | null })) {
-      return { error: 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.' }
+      return { error: await falaDaRede(ctx.tenantId, 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.') }
     }
   }
   const mantemCargoDoSistema = !!cargoAtual?.is_system && roleId === member.role_id
@@ -383,7 +384,7 @@ export async function deactivateTeamMember(
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
   if (await ehAUltimaAdminAtiva(admin, ctx.tenantId!, membro)) {
-    return { error: 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.' }
+    return { error: await falaDaRede(ctx.tenantId, 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.') }
   }
   // Só outra Admin da rede desativa uma Admin (revisão do Heitor, 2026-10-29).
   const recusa = await recusaDeMexerNaAdmin(admin, ctx, membro)

@@ -396,7 +396,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                   {/* "TOTAL REDE" só quando há rede para somar (J-44): no portal
                       da unidade a coluna somava só a unidade. */}
                   <th style={thStyle}>{variasUnidades ? 'TOTAL REDE' : 'ESTOQUE'}</th>
-                  {variasUnidades && <th style={thStyle}>ESTOQUE POR FILIAL</th>}
+                  {variasUnidades && <th style={thStyle}>ESTOQUE POR UNIDADE</th>}
                   {!readOnly && <th style={{ ...thStyle, textAlign: 'right' }}>VALOR EM ESTOQUE</th>}
                   {!readOnly && <th style={{ ...thStyle, width: 68 }} />}
                   <th style={{ ...thStyle, width: 36 }} />
@@ -465,7 +465,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                           </div>
                         </td>
                         {variasUnidades && (
-                          <td data-label="Por filial" style={{ padding: '13px 16px' }}>
+                          <td data-label="Por unidade" style={{ padding: '13px 16px' }}>
                             <BranchPills branches={p.branches} produto={p} />
                           </td>
                         )}
