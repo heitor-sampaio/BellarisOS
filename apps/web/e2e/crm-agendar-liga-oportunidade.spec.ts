@@ -103,8 +103,9 @@ test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
     })
     expect((await agendamentosDe(clientId)).map(a => a.source)).toEqual(['COMMERCIAL'])
     await expect.poll(() => etapaDe(leadId)).toBe(etapas!.marcado)
-    const { data: eventos } = await db().from('lead_events').select('type').eq('lead_id', leadId).eq('type', 'APPOINTMENT_CREATED')
-    expect(eventos).toHaveLength(1)
+    // O card e a linha do tempo dele andam depois da resposta (`after()`, A33): espera.
+    await expect.poll(async () => (await db().from('lead_events').select('type').eq('lead_id', leadId).eq('type', 'APPOINTMENT_CREATED')).data?.length)
+      .toBe(1)
   })
 
   test('pela agenda, a recepção agenda a cliente com oportunidade aberta: COMMERCIAL e o card anda', async ({ browser }) => {

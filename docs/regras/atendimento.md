@@ -229,6 +229,15 @@
   a confirmação não se aplica.
   Prova: `e2e/prontuario-atritos.spec.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o agendamento do COMERCIAL, abaixo). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
+- **O núcleo do agendar lê junto o que não depende** (A33 da 5ª simulação:
+  "Agendando…" passou de 3,5 s, com 9 a 12 idas ao banco em série).
+  `createAppointmentCore` confere as peças, lê o procedimento, a oportunidade
+  aberta e o nome de quem agenda num `Promise.all`, e os conflitos de sala e
+  de profissional noutro; o card do CRM (`ligarAgendamentoAOportunidade`) e
+  o evento `agendamento.criado` saem em `after()`, depois da resposta. As
+  recusas e a ordem delas são as de antes. Teste que confere o card ou o
+  evento logo depois de agendar ESPERA (`expect.poll`). Prova: os specs da
+  agenda e `e2e/crm-agendar-liga-oportunidade.spec.ts`.
 - **A origem COMMERCIAL é da cliente com oportunidade ABERTA, não de quem agenda** (D11/A12 da
   simulação de 2026-10-27): `createAppointmentCore` procura a oportunidade aberta da cliente
   (`oportunidadeDoAgendamento`, `lib/crm/liga-agendamento.ts`; o card passa o `leadId` já

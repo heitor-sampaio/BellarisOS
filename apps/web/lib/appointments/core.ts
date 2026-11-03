@@ -215,46 +215,43 @@ export async function createAppointmentCore(
   if (!input.professionalId)                        return { error: 'Selecione um profissional.' }
   if (!input.scheduledAt)                           return { error: 'Informe data e hora.' }
 
-  // Tudo que vem do navegador tem de ser DA REDE, e a unidade ao alcance de
-  // quem agenda (§11). Até 2026-09-27 só o procedimento era conferido.
-  const recusa = await conferirPecasDoAgendamento(admin, ctx, input)
+  // As leituras que não dependem uma da outra vão JUNTAS (A33 da 5ª
+  // simulação: "Agendando…" passou de 3,5 s com 9 a 12 idas ao banco em
+  // série). A ordem das recusas é a de antes: as peças, depois o procedimento.
+  //  - Tudo que vem do navegador tem de ser DA REDE, e a unidade ao alcance de
+  //    quem agenda (§11). Até 2026-09-27 só o procedimento era conferido.
+  //  - O preço e a duração do procedimento.
+  //  - A cliente tem oportunidade aberta? Então o agendamento é do comercial
+  //    (D11, 2026-10-27): a origem não depende de quem agenda nem de por onde —
+  //    o SDR de unidade e a recepção que agenda pela ficha também contam. A
+  //    cliente que agenda sozinha pelo app segue CLIENT_APP.
+  //  - O nome de quem agenda (o histórico). A cliente pelo app (por-05) não é
+  //    membro: o nome não se busca em `users`.
+  const [recusa, doProcedimento, oportunidade, userName] = await Promise.all([
+    conferirPecasDoAgendamento(admin, ctx, input),
+    admin.from('procedures').select('price, duration_min')
+      .eq('id', input.procedureId).eq('tenant_id', ctx.tenantId!).single(),
+    oportunidadeDoAgendamento(admin, ctx, input.clientId, input.leadId),
+    ctx.userName ? Promise.resolve(ctx.userName) : ctx.isClient ? Promise.resolve('') : getUserName(admin, ctx.userId),
+  ])
   if (recusa) return { error: recusa }
-
-  // Preço/duração do procedimento (quando houver)
-  let procedure: { price: number; duration_min: number } | null = null
-  if (input.procedureId) {
-    const { data, error } = await admin
-      .from('procedures')
-      .select('price, duration_min')
-      .eq('id', input.procedureId)
-      .eq('tenant_id', ctx.tenantId!)
-      .single()
-    if (error || !data) return { error: 'Procedimento não encontrado.' }
-    procedure = data
-  }
+  if (doProcedimento.error || !doProcedimento.data) return { error: 'Procedimento não encontrado.' }
+  const procedure = doProcedimento.data as { price: number; duration_min: number }
 
   const durationMin = procedure?.duration_min ?? 60
   const start       = new Date(input.scheduledAt)
 
-  // Conflito de SALA (quando há sala + duração)
-  if (input.roomId && procedure && await horarioOcupado(admin, {
-    tenantId: ctx.tenantId!, roomId: input.roomId, branchId: input.branchId, inicio: start, duracaoMin: durationMin,
-  })) {
-    return { error: 'Esta sala já está ocupada nesse horário.' }
-  }
-
-  // Conflito de PROFISSIONAL (sempre) — impede duplo-agendamento do mesmo
-  // profissional, e diz a unidade quando o outro é de outra (A30).
-  const choque = await primeiroConflito(admin, {
-    tenantId: ctx.tenantId!, professionalId: input.professionalId, inicio: start, duracaoMin: durationMin,
-  })
+  // O conflito de SALA (quando há sala) e o de PROFISSIONAL (sempre — impede o
+  // duplo agendamento, e diz a unidade quando o outro é de outra: A30), juntos.
+  const [salaOcupada, choque] = await Promise.all([
+    input.roomId
+      ? horarioOcupado(admin, { tenantId: ctx.tenantId!, roomId: input.roomId, branchId: input.branchId, inicio: start, duracaoMin: durationMin })
+      : Promise.resolve(false),
+    primeiroConflito(admin, { tenantId: ctx.tenantId!, professionalId: input.professionalId, inicio: start, duracaoMin: durationMin }),
+  ])
+  if (salaOcupada) return { error: 'Esta sala já está ocupada nesse horário.' }
   if (choque) return { error: recusaDoConflito(choque, input.branchId) }
 
-  // A cliente tem oportunidade aberta? Então o agendamento é do comercial
-  // (D11, 2026-10-27): a origem não depende de quem agenda nem de por onde — o
-  // SDR de unidade e a recepção que agenda pela ficha também contam. A cliente
-  // que agenda sozinha pelo app segue CLIENT_APP.
-  const oportunidade = await oportunidadeDoAgendamento(admin, ctx, input.clientId, input.leadId)
   const origem = oportunidade?.aberta && (input.source ?? 'INTERNAL') === 'INTERNAL' ? 'COMMERCIAL' : (input.source ?? 'INTERNAL')
 
   const { data, error } = await admin
@@ -287,21 +284,24 @@ export async function createAppointmentCore(
     return { error: 'Este crédito acabou de ser usado em outro agendamento.' }
   }
 
-  // A cliente pelo app (por-05) não é membro: o nome não se busca em `users`.
-  const userName = ctx.userName || (ctx.isClient ? '' : await getUserName(admin, ctx.userId))
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
 
-  // O card anda para "agendado" e a linha do tempo dele diz o que houve.
-  if (oportunidade) {
-    await ligarAgendamentoAOportunidade(admin, ctx, oportunidade, { procedureId: input.procedureId, scheduledAt: input.scheduledAt })
-  }
-
-  // A corrente de eventos. Sai daqui, e não das actions que chamam este core,
-  // porque são quatro caminhos de criação (agenda, inbox, checkout de plano,
-  // portal do cliente) e o fato é o mesmo — emitir em cada um seria esquecer
-  // o quinto.
-  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CRIADO, data.id as string, { ...ctx, userName },
-    ctx.isClient ? { ator: { tipo: 'cliente', id: input.clientId }, origem: 'app' } : undefined)
+  // Depois da resposta (A33): o card do CRM e a corrente de eventos não
+  // seguram o "Agendando…". O agendamento JÁ EXISTE — os dois só registram
+  // (`ligarAgendamentoAOportunidade` e o emissor não lançam).
+  //  - O card anda para "agendado" e a linha do tempo dele diz o que houve.
+  //  - A corrente de eventos sai daqui, e não das actions que chamam este
+  //    core, porque são quatro caminhos de criação (agenda, inbox, checkout de
+  //    plano, portal do cliente) e o fato é o mesmo — emitir em cada um seria
+  //    esquecer o quinto.
+  const agendamentoId = data.id as string
+  after(async () => {
+    if (oportunidade) {
+      await ligarAgendamentoAOportunidade(admin, ctx, oportunidade, { procedureId: input.procedureId, scheduledAt: input.scheduledAt })
+    }
+    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CRIADO, agendamentoId, { ...ctx, userName },
+      ctx.isClient ? { ator: { tipo: 'cliente', id: input.clientId }, origem: 'app' } : undefined)
+  })
 
   // Meta: agendar é o primeiro compromisso real de quem veio de um anúncio, e
   // é o evento pelo qual a campanha é otimizada. Vai em `after()` para não
