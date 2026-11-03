@@ -1323,21 +1323,30 @@ export function AppointmentSession({
 
   // A profissional no agendamento que ainda não chegou: o mesmo check-in e o
   // mesmo início, num clique (A21, 2026-10-27).
-  async function handleChegarEIniciar() {
+  // O início muito antes do horário pergunta (A32): o servidor recusa sem a
+  // resposta e devolve a frase; "Iniciar mesmo assim" manda de novo, confirmado.
+  const [perguntaDoInicio, setPerguntaDoInicio] = useState<{ texto: string; chegar: boolean } | null>(null)
+
+  async function handleChegarEIniciar(confirmado = false) {
     setStarting(true)
     setErroAoIniciar(null)
-    const r = await chegarEIniciar(appointment.id, slug).catch(() => ({ error: 'Não foi possível marcar a chegada.' }))
+    setPerguntaDoInicio(null)
+    const r: { error?: string; confirmarInicioAdiantado?: boolean } = await chegarEIniciar(appointment.id, slug, { inicioAdiantadoConfirmado: confirmado })
+      .catch(() => ({ error: 'Não foi possível marcar a chegada.' }))
+    if (r?.confirmarInicioAdiantado && r.error) { setPerguntaDoInicio({ texto: r.error, chegar: true }); setStarting(false); return }
     if (r?.error) setErroAoIniciar(r.error)
     router.refresh()
     setStarting(false)
   }
 
-  async function handleStart() {
+  async function handleStart(confirmado = false) {
     setStarting(true)
     setErroAoIniciar(null)
+    setPerguntaDoInicio(null)
     // A recusa ("Falta assinar: …", ou o check-in que faltou) tem de aparecer:
     // antes o `{ error }` era descartado e o botão só voltava ao normal.
-    const r = await startAppointment(appointment.id, slug)
+    const r = await startAppointment(appointment.id, slug, { inicioAdiantadoConfirmado: confirmado })
+    if (r?.confirmarInicioAdiantado && r.error) { setPerguntaDoInicio({ texto: r.error, chegar: false }); setStarting(false); return }
     if (r?.error) setErroAoIniciar(r.error)
     router.refresh()
     setStarting(false)
@@ -1699,7 +1708,7 @@ export function AppointmentSession({
 
             {/* A profissional deste atendimento: chegada e início num gesto só (A21). */}
             {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && canManage && ehDaProfissional && (
-              <button type="button" onClick={handleChegarEIniciar} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
+              <button type="button" onClick={() => handleChegarEIniciar()} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
@@ -1723,7 +1732,7 @@ export function AppointmentSession({
 
             {/* Iniciar (Confirmado ou Chegou + canManage) */}
             {(status === 'ARRIVED' || (status === 'CONFIRMED' && !(canCheckin && ehDaProfissional))) && canManage && (
-              <button type="button" onClick={handleStart} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
+              <button type="button" onClick={() => handleStart()} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
@@ -1796,6 +1805,18 @@ export function AppointmentSession({
 
         {erroAoIniciar && (
           <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroAoIniciar}</p>
+        )}
+        {perguntaDoInicio && (
+          <div data-inicio-adiantado role="alert" style={{ padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <Clock size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+              {perguntaDoInicio.texto}
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-secondary" onClick={() => setPerguntaDoInicio(null)}>Agora não</button>
+              <button type="button" className="btn-primary" onClick={() => (perguntaDoInicio.chegar ? handleChegarEIniciar(true) : handleStart(true))}>Iniciar mesmo assim</button>
+            </div>
+          </div>
         )}
 
         {/* -- Termos e contratos do atendimento ----------------------------- */}

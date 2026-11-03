@@ -140,13 +140,19 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
     CANCELLED: 'Agendamento cancelado.',
   }
 
-  async function changeStatus(status: Parameters<typeof updateAppointmentStatus>[1]) {
+  // O início muito antes do horário pergunta (A32): a resposta manda de novo, confirmada.
+  const [perguntaDoInicio, setPerguntaDoInicio] = useState<{ texto: string; chegar: boolean } | null>(null)
+
+  async function changeStatus(status: Parameters<typeof updateAppointmentStatus>[1], inicioAdiantadoConfirmado = false) {
     setLoading(true)
     setErro(null)
+    setPerguntaDoInicio(null)
     const r = await updateAppointmentStatus(appointment.id, status, slug,
-      status === 'CANCELLED' ? cancelReason : undefined
+      status === 'CANCELLED' ? cancelReason : undefined,
+      { inicioAdiantadoConfirmado },
     )
     setLoading(false)
+    if (r?.confirmarInicioAdiantado && r.error) { setPerguntaDoInicio({ texto: r.error, chegar: false }); return }
     // O erro fica na janela: antes ela fechava como se tivesse dado certo.
     if (r?.error) { setErro(r.error); return }
     const aviso = AVISO[status]
@@ -159,11 +165,14 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
     }
   }
 
-  async function chegarEComecar() {
+  async function chegarEComecar(inicioAdiantadoConfirmado = false) {
     setLoading(true)
     setErro(null)
-    const r = await chegarEIniciar(appointment.id, slug).catch(() => ({ error: 'Não foi possível marcar a chegada.', chegou: false }))
+    setPerguntaDoInicio(null)
+    const r: { error?: string; chegou?: boolean; confirmarInicioAdiantado?: boolean } = await chegarEIniciar(appointment.id, slug, { inicioAdiantadoConfirmado })
+      .catch(() => ({ error: 'Não foi possível marcar a chegada.', chegou: false }))
     setLoading(false)
+    if (r?.confirmarInicioAdiantado && r.error) { setPerguntaDoInicio({ texto: r.error, chegar: true }); return }
     // Chegou mas não começou (documento a assinar): a tela do atendimento diz o quê.
     if (r?.error && !r.chegou) { setErro(r.error); return }
     if (r?.error) toast.error(r.error)
@@ -294,7 +303,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 check-in e o mesmo início, num gesto (A21, 2026-10-27). Ela não
                 via "Iniciar" no "Agendado", e a janela não dizia por quê. */}
             {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && isProfessional && ehODia && (
-              <button disabled={loading} onClick={chegarEComecar} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              <button disabled={loading} onClick={() => chegarEComecar()} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                 <Play size={14} /> Marcar chegada e iniciar
               </button>
             )}
@@ -357,6 +366,17 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             )}
 
             {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
+            {/* O início muito antes do horário (A32): o servidor pergunta. */}
+            {perguntaDoInicio && (
+              <div data-inicio-adiantado role="alert" style={{ padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 700 }}>{perguntaDoInicio.texto}</p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn-secondary" disabled={loading} onClick={() => setPerguntaDoInicio(null)}>Agora não</button>
+                  <button type="button" className="btn-primary" disabled={loading}
+                    onClick={() => (perguntaDoInicio.chegar ? chegarEComecar(true) : changeStatus('IN_PROGRESS', true))}>Iniciar mesmo assim</button>
+                </div>
+              </div>
+            )}
 
             {/* Falta e cancelamento: a recepção e, com "só os meus" e a agenda em
                 Gerenciar, a profissional no DELA (agenda-06, 2026-11-02). A

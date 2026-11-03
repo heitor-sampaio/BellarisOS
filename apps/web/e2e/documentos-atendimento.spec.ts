@@ -184,6 +184,8 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
       // Com o termo assinado, a sessão libera o início — o contrato só avisa.
       await page.goto(`/admin/agenda/${ag1}`)
       await page.getByRole('button', { name: 'Iniciar atendimento' }).click()
+      // Marcado para daqui a 1 h: o início adiantado pergunta (A32).
+      await page.locator('[data-inicio-adiantado]').getByRole('button', { name: 'Iniciar mesmo assim' }).click()
       await expect.poll(() => status(ag1)).toBe('IN_PROGRESS')
     })
 

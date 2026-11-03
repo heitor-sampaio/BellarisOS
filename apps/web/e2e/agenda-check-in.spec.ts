@@ -79,7 +79,8 @@ test.describe.serial('o check-in', () => {
     expect(depois.confirmed_at, 'chegar também confirma').toBeTruthy()
 
     await como(browser, async p => {
-      await chamarAcao(p, 'actions/appointments.ts', 'startAppointment', `/admin/agenda/${id}`, [id, ''])
+      // O horário de teste pode estar adiante: o início adiantado pergunta (A32), e o teste é do check-in.
+      await chamarAcao(p, 'actions/appointments.ts', 'startAppointment', `/admin/agenda/${id}`, [id, '', { inicioAdiantadoConfirmado: true }])
     })
     expect((await situacao(id)).status).toBe('IN_PROGRESS')
   })

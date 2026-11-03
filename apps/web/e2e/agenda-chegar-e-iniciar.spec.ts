@@ -28,7 +28,8 @@ async function agendado(rotulo: string, professionalId: string) {
   const { data, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: professionalId,
     status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0,
-    scheduled_at: new Date(`${HOJE}T${String(hora++).padStart(2, '0')}:00:00-03:00`).toISOString(),
+    // Agora, minutos atrás: iniciar mais de 30 min antes do horário pergunta (A32), e o teste é do gesto.
+    scheduled_at: new Date(Date.now() - (hora++) * 60_000).toISOString(),
   }).select('id').single<{ id: string }>()
   expect(error, 'agendar').toBeNull()
   return data!.id

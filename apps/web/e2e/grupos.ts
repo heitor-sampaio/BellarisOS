@@ -72,6 +72,7 @@ export const ISOLADOS = [
   'fechamento-do-dia-atritos.spec.ts',
   'vendas-resumo-do-pagamento.spec.ts',
   'plano-fechar-checkout-na-pagina.spec.ts',
+  'agenda-inicio-adiantado.spec.ts',
   'documentos-contrato-pagamento.spec.ts',
   'documentos-editor-rico.spec.ts',
   'documentos-link-conversa.spec.ts',

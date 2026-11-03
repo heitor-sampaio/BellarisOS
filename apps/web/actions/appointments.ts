@@ -40,6 +40,7 @@ import { planejamentosDaFicha, perguntaDoPlanejamentoVazio } from '@/lib/atendim
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
+import { perguntaDoInicioAdiantado } from '@/lib/appointments/inicio-adiantado'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
@@ -126,21 +127,35 @@ export async function addAppointment(
  */
 export async function updateAppointmentStatus(
   ...args: Parameters<typeof updateAppointmentStatusInterno>
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; confirmarInicioAdiantado?: boolean }> {
   try {
     await updateAppointmentStatusInterno(...args)
     return {}
   } catch (e) {
     if (e && typeof e === 'object' && 'digest' in e) throw e
+    // O início muito antes do horário (A32): a tela pergunta e manda de novo.
+    if (e instanceof InicioAdiantado) return { error: e.message, confirmarInicioAdiantado: true }
     return { error: mensagemDoErro(e) }
   }
+}
+
+/** O início adiantado sem a confirmação (A32): vira a pergunta da tela, não um erro. */
+class InicioAdiantado extends Error {}
+
+/** A pergunta do início adiantado (A32), lida do agendamento; nula quando pode iniciar. */
+async function perguntaDoInicio(appointmentId: string): Promise<string | null> {
+  const ag = await ler(createAdminClient().from('appointments').select('scheduled_at')
+    .eq('id', appointmentId).maybeSingle(), 'buscar o horário do agendamento') as { scheduled_at: string | null } | null
+  return perguntaDoInicioAdiantado(ag?.scheduled_at ?? null)
 }
 
 async function updateAppointmentStatusInterno(
   appointmentId: string,
   status: 'CONFIRMED' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW',
   slug: string,
-  cancellationReason?: string,
+  cancellationReason?: string | null,
+  /** A resposta à pergunta do início adiantado (A32): só com ela o IN_PROGRESS passa. */
+  opcoes: { inicioAdiantadoConfirmado?: boolean } = {},
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -165,6 +180,13 @@ async function updateAppointmentStatusInterno(
 
   if (status === 'CANCELLED' && !cancellationReason?.trim()) {
     throw new Error('Motivo de cancelamento obrigatório.')
+  }
+
+  // Iniciar mais de 30 min antes do horário pede a confirmação (A32 da 5ª
+  // simulação: a Tatiane iniciou às 11:07 o das 13:00, sem aviso).
+  if (status === 'IN_PROGRESS' && opcoes?.inicioAdiantadoConfirmado !== true) {
+    const pergunta = await perguntaDoInicio(appointmentId)
+    if (pergunta) throw new InicioAdiantado(pergunta)
   }
 
   const now = new Date().toISOString()
@@ -443,7 +465,11 @@ async function checkinAppointmentInterno(
  * Com a agenda "só os meus", só no agendamento DELA — o check-in comum não
  * confere o profissional (é da recepção).
  */
-export async function chegarEIniciar(appointmentId: string, slug: string): Promise<{ error?: string; chegou?: boolean }> {
+export async function chegarEIniciar(
+  appointmentId: string, slug: string,
+  /** A resposta à pergunta do início adiantado (A32). */
+  opcoes: { inicioAdiantadoConfirmado?: boolean } = {},
+): Promise<{ error?: string; chegou?: boolean; confirmarInicioAdiantado?: boolean }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'MANAGE')
@@ -453,6 +479,12 @@ export async function chegarEIniciar(appointmentId: string, slug: string): Promi
     if (isOwnScope(ctx, 'agenda') && ag.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode marcar a chegada e iniciar este atendimento.' }
     }
+    // O início adiantado pergunta ANTES da chegada (A32): sem a resposta, nem
+    // a chegada se marca — senão ficaria "chegou" sem ter começado.
+    if (opcoes?.inicioAdiantadoConfirmado !== true) {
+      const pergunta = await perguntaDoInicio(appointmentId)
+      if (pergunta) return { error: pergunta, confirmarInicioAdiantado: true }
+    }
 
     const chegada = await checkinCore(admin, ctx, appointmentId)
     if ('error' in chegada) return { error: chegada.error }
@@ -460,7 +492,7 @@ export async function chegarEIniciar(appointmentId: string, slug: string): Promi
     if (ag.professional_id !== ctx.internalUserId) notifyCheckin(appointmentId)
     revalidarAgendamento(ctx, appointmentId, slug || null)
 
-    const inicio = await startAppointmentInterno(appointmentId, slug)
+    const inicio = await startAppointmentInterno(appointmentId, slug, { inicioAdiantadoConfirmado: true })
     if (inicio.error) return { error: `Chegada registrada, mas o atendimento não começou: ${inicio.error}`, chegou: true }
     return {}
   } catch (e) {
@@ -491,7 +523,9 @@ export async function startAppointment(
 async function startAppointmentInterno(
   appointmentId: string,
   slug: string,
-): Promise<{ error?: string }> {
+  /** A resposta à pergunta do início adiantado (A32): só com ela inicia mais de 30 min antes. */
+  opcoes: { inicioAdiantadoConfirmado?: boolean } = {},
+): Promise<{ error?: string; confirmarInicioAdiantado?: boolean }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'VIEW')
@@ -499,7 +533,7 @@ async function startAppointmentInterno(
     const admin = createAdminClient()
     const appt = await ler(admin
       .from('appointments')
-      .select('id, status, professional_id, branches!inner(id, tenant_id)')
+      .select('id, status, professional_id, scheduled_at, branches!inner(id, tenant_id)')
       .eq('id', appointmentId)
       .single(), 'buscar o agendamento')
 
@@ -509,6 +543,12 @@ async function startAppointmentInterno(
 
     if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }
+    }
+
+    // Mais de 30 min antes do horário: pergunta (A32). O servidor só inicia com a resposta.
+    if (opcoes?.inicioAdiantadoConfirmado !== true) {
+      const pergunta = perguntaDoInicioAdiantado(appt.scheduled_at as string | null)
+      if (pergunta) return { error: pergunta, confirmarInicioAdiantado: true }
     }
 
     await gravar(admin

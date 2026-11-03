@@ -54,7 +54,8 @@ async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Prom
 function acoes(p: Page, rotaDaSessao: string) {
   return {
     checkin:   (id: string) => chamarAcao(p, 'actions/appointments.ts', 'checkinAppointment', rotaDaSessao, [id, slug]),
-    iniciar:   (id: string) => chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', `/${slug}/agenda`, [id, 'IN_PROGRESS', slug]),
+    // Confirmado o início adiantado (A32): o teste é do alcance, e o horário de teste pode estar adiante.
+    iniciar:   (id: string) => chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', `/${slug}/agenda`, [id, 'IN_PROGRESS', slug, null, { inicioAdiantadoConfirmado: true }]),
     trocar:    (id: string, para: string) => chamarAcao(p, 'actions/appointments.ts', 'reassignProfessional', rotaDaSessao, [id, para, slug]),
     remarcar:  (id: string, quando: string) => chamarAcaoComFormulario(p, 'actions/appointments.ts', 'rescheduleAppointment', `/${slug}/agenda`,
       [undefined], { _appointmentId: id, scheduled_at: quando, professional_id: '', _slug: slug }),
