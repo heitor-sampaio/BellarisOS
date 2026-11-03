@@ -5,6 +5,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { DicaDasVezes, ResumoDasParcelas } from '@/components/shared/resumo-das-vezes'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -84,10 +85,12 @@ export function recusaDoPagamento(e: EstadoDoPagamento): string | null {
   return e.forma === 'PARCELADO' ? erroDaEntrada(e.entrada) : null
 }
 
-export function CamposDoPagamento({ estado, aoMudar, formas }: {
+export function CamposDoPagamento({ estado, aoMudar, formas, total }: {
   estado: EstadoDoPagamento
   aoMudar: (e: EstadoDoPagamento) => void
   formas: FormaDoPagamento[]
+  /** O valor que se paga (já com o desconto): o resumo das parcelas e o valor da parcela no crédito (A46/A47). */
+  total?: number
 }) {
   const mudar = (parte: Partial<EstadoDoPagamento>) => aoMudar({ ...estado, ...parte })
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
@@ -115,6 +118,7 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
               <select className="field" value={estado.vezes} onChange={e => mudar({ vezes: Number(e.target.value) })} aria-label="Vezes no cartão">
                 {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
               </select>
+              {total !== undefined && <DicaDasVezes total={total} vezes={estado.vezes} opcoes={opcoesDeVezes} />}
               <AvisoDaTaxa vezes={estado.vezes} />
             </label>
           )}
@@ -152,6 +156,10 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
           )}
         </div>
       )}
+      {forma === 'PARCELADO' && total !== undefined && !erroDaEntrada(estado.entrada) && (() => {
+        const lida = lerEntrada(estado.entrada)
+        return <ResumoDasParcelas total={total} entrada={'valor' in lida ? lida.valor : 0} parcelas={estado.parcelas} />
+      })()}
     </>
   )
 }

@@ -70,6 +70,7 @@ export const ISOLADOS = [
   'financeiro-estorno-evento.spec.ts',
   'financeiro-estorno-atritos.spec.ts',
   'fechamento-do-dia-atritos.spec.ts',
+  'vendas-resumo-do-pagamento.spec.ts',
   'documentos-contrato-pagamento.spec.ts',
   'documentos-editor-rico.spec.ts',
   'documentos-link-conversa.spec.ts',

@@ -19,6 +19,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -652,6 +653,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 ))}
               </select>
             </label>
+            <DicaDasVezes total={liquido + (recebeHoje ? precoDeHoje : 0)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
             <AvisoDaTaxa vezes={vezesCartao} />
           </div>
         )}

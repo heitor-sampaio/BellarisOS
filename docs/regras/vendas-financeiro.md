@@ -530,6 +530,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     `prepararDocumentosDoCheckout`. Vale só para o cartão em N vezes; as
     parcelas do crediário ("entrada + parcelas") não mudaram. Prova:
     `e2e/financeiro-parcelas-no-credito.spec.ts`, `tests/financeiro-vezes-do-cartao.test.ts`.
+  - **A tela diz o limite e o valor da parcela** (A47 da 5ª simulação):
+    junto de todo "Vezes no cartão" (venda de pacote, pré-pago e produto, o
+    recebimento do avulso e do plano, o checkout), "Até 4x no crédito" e,
+    escolhidas as vezes, "· 3× R$ 1.100,00" (`DicaDasVezes`, a divisão de
+    `dividirEmParcelas`). E a venda em "Entrada + parcelas" mostra o resumo
+    antes do "Vender por…" (A46): "Entrada R$ 300,00 + 3× R$ 1.000,00"
+    (`ResumoDasParcelas`, `lib/checkout/resumo-do-pagamento.ts`; as
+    parcelas iguais se juntam). Prova: `e2e/vendas-resumo-do-pagamento.spec.ts`,
+    `tests/resumo-do-pagamento.test.ts`.
   - **O "3x" aparece** (A33, 2026-10-27): o nome da forma é UM
     (`rotuloDaForma`, `lib/financeiro/formas.ts` — "Crédito 3x" nas listas do
     financeiro, na ficha, no "Pagamento confirmado" do atendimento e no

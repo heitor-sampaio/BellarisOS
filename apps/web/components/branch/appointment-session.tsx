@@ -51,6 +51,7 @@ import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -607,6 +608,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                     <select name="cartao_vezes" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))} aria-label="Vezes no cartão">
                       {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
                     </select>
+                    <DicaDasVezes total={resgate.restante} vezes={vezes} opcoes={opcoesDeVezes} />
                     <AvisoDaTaxa vezes={vezes} />
                   </>
                 )}
@@ -763,6 +765,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                   <select id="vezes-no-cartao" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
                     {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                   </select>
+                  <DicaDasVezes total={plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
                   <AvisoDaTaxa vezes={vezes} />
                 </div>
               )}
