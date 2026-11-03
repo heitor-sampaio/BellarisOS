@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getFechamentoDoDia, getAvisosDoFechamento, getAReceberEmAberto } from '@/lib/metrics'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
-import { diaDoFechamento, janelaDoDia } from '@/lib/financeiro/fechamento'
+import { diaDoFechamento, janelaDoDia, diaAindaAberto } from '@/lib/financeiro/fechamento'
+import { normalizarHorario } from '@/lib/agenda/horario'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/fechamento-do-dia-tela'
 
@@ -23,7 +24,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
 }) {
   const dia = diaDoFechamento(diaPedido)
   const janela = janelaDoDia(dia)!
-  const [resumo, aReceber, feitos, emAberto] = await Promise.all([
+  const [resumo, aReceber, feitos, emAberto, unidade] = await Promise.all([
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
     // Os concluídos a receber da unidade, de qualquer dia (D5, 2026-10-27):
     // o que ficou sem pagamento ontem continua aqui até alguém receber.
@@ -35,7 +36,11 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
     // "Reforça", item 4: as parcelas e lançamentos a receber da unidade, de
     // qualquer vencimento — o mesmo "Em aberto" do Financeiro.
     getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds: [unidadeId] }),
+    // O horário da unidade: fechar HOJE antes do fim do expediente avisa (A50).
+    ler(createAdminClient().from('branches').select('horario').eq('id', unidadeId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+      'ler o horário da unidade') as Promise<{ horario: unknown } | null>,
   ])
+  const atendeAte = diaAindaAberto(dia, normalizarHorario(unidade?.horario ?? null))
 
   // Os avisos (J-49): o movimento depois do ÚLTIMO fechamento e as taxas do dia.
   const ultimo = ((feitos ?? []) as Record<string, unknown>[])[0]
@@ -66,6 +71,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         aReceber={aReceber}
         emAberto={emAberto.total}
         avisos={avisos}
+        atendeAte={atendeAte}
         // Receber o atendimento é do módulo de recebimentos (confirmPayment).
         podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
       />

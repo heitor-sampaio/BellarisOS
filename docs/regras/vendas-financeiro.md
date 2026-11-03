@@ -325,6 +325,14 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     Configurações → Comissões — `comissao_taxa_pct`), que não saem do saldo.
     (2) e (4) são `metrics_avisos_do_fechamento` (`getAvisosDoFechamento`;
     migration `20261029001504`). Prova: `e2e/fechamento-do-dia-avisos.spec.ts`.
+  - **Sem dinheiro em espécie, não se digita 0; e o dia aberto avisa** (A50
+    da 5ª simulação). Nada esperado e nenhum movimento em dinheiro no dia: o
+    "Dinheiro contado" é opcional, e em branco fecha com R$ 0,00. Hoje,
+    antes do fim do expediente da unidade (`diaAindaAberto`, o horário da
+    unidade naquele dia da semana), a tela diz "A unidade atende até 22:00: o
+    dia ainda está aberto. O que entrar depois deste fechamento pede fechar
+    de novo." — só aviso: fechar antes continua valendo. Prova:
+    `e2e/fechamento-do-dia-atritos.spec.ts`, `tests/fechamento-dia-aberto.test.ts`.
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
   de 2026-10-27, decisões do Heitor). A conta é UMA, no banco

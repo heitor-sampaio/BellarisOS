@@ -1,4 +1,5 @@
-import { startOfDayTZ, endOfDayTZ, dayKeyTZ } from '@/lib/datetime'
+import { startOfDayTZ, endOfDayTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import { intervalosDoDia, diaDaSemana, type Horario } from '@/lib/agenda/horario'
 
 /**
  * O dia do fechamento ("AAAA-MM-DD", no fuso da clínica) e a janela dele. Dia
@@ -15,4 +16,22 @@ export function janelaDoDia(dia: string, agora = new Date()): { from: Date; to: 
   const meioDia = new Date(`${dia}T12:00:00-03:00`)
   if (Number.isNaN(meioDia.getTime())) return null
   return { from: startOfDayTZ(meioDia), to: endOfDayTZ(meioDia) }
+}
+
+/**
+ * O dia ainda está ABERTO? (A50 da 5ª simulação: a recepção fechou às 11:48
+ * o dia de uma unidade que atende até as 22h, e nada avisou.) Hoje, antes do
+ * último fechamento da unidade naquele dia da semana, devolve até quando ela
+ * atende ("22:00"); outro dia, ou depois do horário, nulo. Só avisa: fechar
+ * antes continua valendo (o que entrar depois pede fechar de novo).
+ */
+export function diaAindaAberto(dia: string, horario: Horario | null, agora = new Date()): string | null {
+  if (dia !== dayKeyTZ(agora)) return null
+  const intervalos = intervalosDoDia(horario, null, diaDaSemana(dia))
+  if (!intervalos.length) return null
+  const ultimo = intervalos.reduce((a, b) => (b.ate > a.ate ? b : a))
+  const p = partsInTZ(agora)
+  const agoraMin = p.hour * 60 + p.minute
+  const [h, m] = ultimo.ate.split(':').map(Number)
+  return agoraMin < h! * 60 + m! ? ultimo.ate : null
 }

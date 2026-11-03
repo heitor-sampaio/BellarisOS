@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertTriangle, CheckCircle2, Info, Wallet } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, Info, Wallet } from 'lucide-react'
 import { fecharODia } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
@@ -33,7 +33,7 @@ function Diferenca({ valor }: { valor: number }) {
  * A tela do fechamento do dia (2026-10-21). Todo número vem do servidor
  * (metrics_fechamento_do_dia); aqui só se desenha e se manda o contado.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, podeReceberAtendimento = false, avisos }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, podeReceberAtendimento = false, avisos, atendeAte = null }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -48,6 +48,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   podeReceberAtendimento?: boolean
   /** Os números dos avisos (J-49), do banco. */
   avisos?: AvisosDoFechamento
+  /** Hoje, antes do fim do expediente: até quando a unidade atende (A50). */
+  atendeAte?: string | null
 }) {
   const router = useRouter()
   const [contado, setContado] = useState('')
@@ -62,11 +64,16 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
     router.push(`${basePath}?${q}`)
   }
 
+  // Sem dinheiro em espécie no dia (nada esperado, nenhum movimento em
+  // dinheiro), o contado em branco é zero (A50: exigia digitar 0).
+  const semDinheiro = resumo.esperadoDinheiro === 0 && !resumo.formas.some(f => f.forma === 'CASH')
+
   function fechar(e: React.FormEvent) {
     e.preventDefault()
     // A regra de todo campo de dinheiro (D3): "180.50" lia R$ 18.050,00.
-    const valor = parseDinheiro(contado)
-    if (contado.trim() === '' || !Number.isFinite(valor) || valor < 0) { setErro('Informe o dinheiro contado.'); return }
+    const vazio = contado.trim() === ''
+    const valor = vazio && semDinheiro ? 0 : parseDinheiro(contado)
+    if ((vazio && !semDinheiro) || !Number.isFinite(valor) || valor < 0) { setErro('Informe o dinheiro contado.'); return }
     setErro(null)
     start(async () => {
       const r = await fecharODia(unidadeId, dia, valor, obs)
@@ -154,11 +161,19 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           </p>
         )}
 
+        {/* A50: fechar antes do fim do expediente vale, mas avisa. */}
+        {podeFechar && atendeAte && (
+          <p data-dia-aberto role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+            <Clock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>A unidade atende até {atendeAte}: o dia ainda está aberto. O que entrar depois deste fechamento pede fechar de novo.</span>
+          </p>
+        )}
         {podeFechar && (
           <form onSubmit={fechar} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
-              Dinheiro contado (R$)
+              {semDinheiro ? 'Dinheiro contado (R$, opcional)' : 'Dinheiro contado (R$)'}
               <input className="field" inputMode="decimal" value={contado} onChange={e => setContado(e.target.value)} placeholder="0,00" style={{ width: 160 }} />
+              {semDinheiro && <span style={{ fontWeight: 500, color: 'var(--text-faint)' }}>Sem dinheiro em espécie hoje: em branco é R$ 0,00.</span>}
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', flex: '1 1 220px' }}>
               Observação
