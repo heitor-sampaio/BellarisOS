@@ -349,7 +349,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
       {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts} />}
 
-      <AbertosDeAntes slug={slug} abertos={abertos.abertos} semChegada={abertos.semChegada} />
+      <AbertosDeAntes base={`/${slug}/agenda`} abertos={abertos.abertos} semChegada={abertos.semChegada} />
 
       {/* -- Checkout pendente ----------------------------------- */}
       {canCheckout && (pendingCheckouts ?? 0) > 0 && (

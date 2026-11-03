@@ -99,3 +99,25 @@ test('com a agenda "só os meus", a profissional vê só o atendimento aberto de
     await expect(aviso).not.toContainText(nome('Agendado ontem'))
   })
 })
+
+test('H3: a dona vê o aviso no dashboard da REDE, com a unidade de cada um e o link do atendimento', async ({ browser }) => {
+  // "Ajuste para que a dona veja tudo, sempre" (H3): a dona da clínica única
+  // usa o /admin e nunca via o aviso, que só existia no dashboard da unidade.
+  expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)).error).toBeNull()
+  const dona = await criarMembro(`abd${marca}`, { tenant: rede!.tenantId, donoDaRede: true, permissoes: [] })
+  // Com duas unidades, cada linha diz a sua (com uma só, não há o que dizer — D-19).
+  const segunda = (await db().from('branches').insert({ tenant_id: rede!.tenantId, name: `[e2e] Segunda ${marca}`, slug: `e2e-abs-${marca}` })
+    .select('id').single<{ id: string }>()).data!.id
+  try {
+    await como(browser, dona.estado, async p => {
+      await p.goto('/admin/dashboard')
+      const aviso = p.locator('[data-abertos-de-antes]')
+      await expect(aviso.locator('[data-grupo="abertos"]')).toContainText('2 atendimentos de dias anteriores ainda abertos')
+      await expect(aviso.locator('[data-grupo="sem-chegada"]')).toContainText(nome('Agendado ontem'))
+      const unidade = (await db().from('branches').select('name').eq('id', rede!.branchId).single<{ name: string }>()).data!.name
+      await expect(aviso).toContainText(unidade)
+      await expect(aviso.getByRole('link', { name: new RegExp(nome('Chegou ontem').replace(/[[\]]/g, '\\$&')) }))
+        .toHaveAttribute('href', /^\/admin\/agenda\/[0-9a-f-]{36}$/)
+    })
+  } finally { await dona.limpar(); await db().from('branches').delete().eq('id', segunda) }
+})

@@ -32,18 +32,21 @@ export interface AbertoDeAntes {
   status: 'ARRIVED' | 'IN_PROGRESS' | 'SCHEDULED' | 'CONFIRMED'
   clientName: string
   professionalName: string
+  /** A unidade (H3: no dashboard da rede, cada linha diz a dela). */
+  branchName: string
 }
 
 export interface GrupoDeAbertos { total: number; itens: AbertoDeAntes[] }
 
 const VAZIO: GrupoDeAbertos = { total: 0, itens: [] }
 
-async function grupo(ctx: TenantContext, branchId: string, agora: Date, status: readonly string[]): Promise<GrupoDeAbertos> {
+async function grupo(ctx: TenantContext, unidades: string[], agora: Date, status: readonly string[]): Promise<GrupoDeAbertos> {
+  if (unidades.length === 0) return VAZIO
   const hoje = startOfDayTZ(agora)
   const desde = new Date(hoje.getTime() - JANELA_DIAS * 86_400_000)
   let q = createAdminClient().from('appointments')
-    .select('id, scheduled_at, status, clients(name), users!professional_id(name), branches!inner(tenant_id)', { count: 'exact' })
-    .eq('branch_id', branchId)
+    .select('id, scheduled_at, status, clients(name), users!professional_id(name), branches!inner(tenant_id, name)', { count: 'exact' })
+    .in('branch_id', unidades)
     .eq('branches.tenant_id', ctx.tenantId!)
     .in('status', [...status])
     .lt('scheduled_at', hoje.toISOString())
@@ -57,18 +60,24 @@ async function grupo(ctx: TenantContext, branchId: string, agora: Date, status: 
     total: count ?? (data ?? []).length,
     itens: ((data ?? []) as unknown as {
       id: string; scheduled_at: string; status: AbertoDeAntes['status']
-      clients: { name: string } | null; users: { name: string } | null
+      clients: { name: string } | null; users: { name: string } | null; branches: { name: string } | null
     }[]).map(a => ({
       id: a.id, scheduledAt: a.scheduled_at, status: a.status,
-      clientName: a.clients?.name ?? '—', professionalName: a.users?.name ?? '—',
+      clientName: a.clients?.name ?? '—', professionalName: a.users?.name ?? '—', branchName: a.branches?.name ?? '—',
     })),
   }
 }
 
-export async function abertosDeAntes(ctx: TenantContext, branchId: string, agora = new Date()): Promise<{ abertos: GrupoDeAbertos; semChegada: GrupoDeAbertos }> {
+/**
+ * `unidades`: a da unidade (o dashboard e a agenda dela) ou as da rede (o
+ * dashboard da rede — H3, "a dona vê tudo, sempre": a dona da clínica única usa
+ * o /admin e nunca via o aviso).
+ */
+export async function abertosDeAntes(ctx: TenantContext, unidades: string | string[], agora = new Date()): Promise<{ abertos: GrupoDeAbertos; semChegada: GrupoDeAbertos }> {
+  const ids = typeof unidades === 'string' ? [unidades] : unidades
   const [abertos, semChegada] = await Promise.all([
-    grupo(ctx, branchId, agora, STATUS_ABERTOS_DE_ANTES),
-    grupo(ctx, branchId, agora, STATUS_SEM_CHEGADA),
+    grupo(ctx, ids, agora, STATUS_ABERTOS_DE_ANTES),
+    grupo(ctx, ids, agora, STATUS_SEM_CHEGADA),
   ])
   return { abertos, semChegada }
 }

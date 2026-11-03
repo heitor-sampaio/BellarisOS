@@ -97,7 +97,7 @@ export default async function AgendaPage({ params, searchParams }: {
     // Os atendimentos de dias anteriores ainda abertos (J-32), com o "só os meus".
     abertosDeAntes(ctx, branchId),
   ])
-  const avisoDosAbertos = <AbertosDeAntes slug={slug} abertos={abertos.abertos} semChegada={abertos.semChegada} />
+  const avisoDosAbertos = <AbertosDeAntes base={`/${slug}/agenda`} abertos={abertos.abertos} semChegada={abertos.semChegada} />
   const horarioDaUnidade = normalizarHorario((horarioRaw[0] as { horario?: unknown } | null)?.horario)
   const horariosDosProfissionais: Record<string, Horario | null> = Object.fromEntries(
     ((horarioRaw[1] ?? []) as { id: string; horario: unknown }[]).map(p => [p.id, normalizarHorario(p.horario)]),

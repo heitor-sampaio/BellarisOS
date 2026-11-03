@@ -66,6 +66,12 @@ export interface AlertLowStock {
 
 export interface AdminDashboardProps {
   permissions:      ResolvedPermissions
+  /**
+   * Os atendimentos de dias anteriores ainda abertos e os agendados que
+   * passaram sem chegada, de todas as unidades do recorte (H3, "a dona vê
+   * tudo, sempre": só existiam no dashboard da unidade). Vem pronto do servidor.
+   */
+  avisoDosAbertos?: ReactNode
   userName:         string
   leadFunnel:       { name: string; count: number }[]
   funnels:          { id: string; name: string }[]
@@ -423,6 +429,7 @@ export function AdminDashboardView({
   pendingPlans, lowStockItems, stockStatus, zeroStockCount, lowStockCount, stockTurnover,
   evolutionData,
   branchOccupancy,
+  avisoDosAbertos,
   topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, recorteProprio = false, agendaPropria = false, procedureMargins,
   bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
@@ -486,6 +493,8 @@ export function AdminDashboardView({
       </div>
 
       {!hasAnyWidget && <DashboardEmptyState userName={userName} shortcuts={shortcuts} />}
+
+      {avisoDosAbertos}
 
       {/* -- KPI cards -- */}
       {(can('financial') || can('agenda') || can('clients')) && (

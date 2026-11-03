@@ -184,7 +184,10 @@
   A cliente das 23:50 sumia da agenda à meia-noite. O agendado/confirmado que
   passou sem ninguém mexer vem num GRUPO À PARTE (agenda-03, revisão de
   2026-11-02: "N agendamentos de dias anteriores passaram sem chegada —
-  marcar falta ou concluir?"); era deixado de fora. Respeita o "só os meus"
+  marcar falta ou concluir?"); era deixado de fora. O aviso aparece também
+  no dashboard da REDE (H3, "a dona vê tudo, sempre": a dona da clínica única
+  usa o /admin), das unidades do recorte, com a unidade de cada linha quando
+  há mais de uma e o link para `/admin/agenda/<id>`. Respeita o "só os meus"
   da agenda. Prova:
   `e2e/agenda-abertos-de-dias-anteriores.spec.ts`.
 - **O concluído mostra a hora REAL** ao lado da agendada (J-34): "23:30 ·

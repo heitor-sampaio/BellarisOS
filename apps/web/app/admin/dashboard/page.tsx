@@ -25,6 +25,8 @@ import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
+import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
+import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { situacaoDoEstoque, estoqueBaixo, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
 
 
@@ -568,6 +570,11 @@ export default async function AdminDashboardPage({
   if (rawFunil)  daRede.set('funil', rawFunil)
   const hrefDaRede = `/admin/dashboard${daRede.size ? `?${daRede}` : ''}`
 
+  // H3 ("a dona vê tudo, sempre"): o aviso dos atendimentos de dias anteriores
+  // ainda abertos e dos agendados sem chegada, das unidades do recorte — só
+  // existia no dashboard da unidade. Quem vê a agenda, com o "só os meus" dela.
+  const abertos = canAgenda ? await abertosDeAntes(ctx, branches.map(b => b.id as string)) : SEM_ABERTOS_DE_ANTES
+
   return (
     <>
       <RealtimeRefresher
@@ -575,6 +582,7 @@ export default async function AdminDashboardPage({
       />
       <AdminDashboardView
         permissions={ctx.permissions}
+        avisoDosAbertos={<AbertosDeAntes base="/admin/agenda" abertos={abertos.abertos} semChegada={abertos.semChegada} mostrarUnidade={branches.length > 1} />}
         userName={ctx.userName}
         leadFunnel={leadFunnel}
         funnels={funisAtivos.map(f => ({ id: f.id, name: f.name }))}
