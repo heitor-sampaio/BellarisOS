@@ -20,6 +20,8 @@ import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { pessoaDoCrmDoTelefone, ligarPessoaDoCrmAoCliente, type PessoaDoCrm } from '@/lib/clients/pessoa-do-crm'
 import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
 import { CPF_INVALIDO, documentoDaFicha, documentoEstrangeiroRepetido } from '@/lib/clients/documento'
+import { umaVez, chaveDoEnvio, chaveDoConteudo } from '@/lib/envio-unico'
+import type { TenantContext } from '@estetica-os/types'
 
 const TELEFONE_INCOMPLETO = 'Telefone incompleto: informe o DDD e o número (10 ou 11 dígitos). De outro país, comece com + e o código do país (ex.: +351 912 345 678).'
 
@@ -77,6 +79,24 @@ export async function addClient(
   // useActionState, derrubava a tela do inbox inteira (D4, 2026-11-01).
   if (!can(ctx, 'clients', 'MANAGE')) return { error: SO_CONSULTA_CLIENTES }
 
+  // D10 (5ª simulação): duas fichas "Valdir Duplicado" com 0,7 s de diferença.
+  // O MESMO envio (a chave `_envio` da tela) grava uma vez; e, sem chave, o
+  // mesmo nome com o mesmo telefone em 60 s é o mesmo cadastro — a segunda
+  // chegada espera a primeira e recebe a mesma ficha. O que volta com
+  // pergunta ou erro solta as duas chaves: a resposta da pessoa grava.
+  const opcoes = {
+    gravou:  (r: ResultadoDoCadastro) => r.success === true,
+    ocupada: (): ResultadoDoCadastro => ({ error: 'Este cadastro ainda está sendo gravado. Confira a lista de clientes em instantes antes de enviar de novo.' }),
+  }
+  const nomeDoEnvio = ((formData.get('name') as string | null) ?? '').trim().replace(/\s+/g, ' ')
+  const foneDoEnvio = ((formData.get('phone') as string | null) ?? '').replace(/\D/g, '')
+  const peloConteudo = nomeDoEnvio && foneDoEnvio.length >= 8 ? chaveDoConteudo(nomeDoEnvio, foneDoEnvio) : null
+  return umaVez(ctx.tenantId!, 'addClient', chaveDoEnvio(formData), () =>
+    umaVez(ctx.tenantId!, 'addClient:conteudo', peloConteudo, () => addClientInterno(ctx, formData), { ...opcoes, validade: '60 seconds' }),
+  opcoes)
+}
+
+async function addClientInterno(ctx: TenantContext, formData: FormData): Promise<ResultadoDoCadastro> {
   const branchId = formData.get('_branchId') as string
   const slug     = formData.get('_slug') as string
   // _leadId presente = criação a partir da conversão de um lead (mesma regra do cadastro manual).

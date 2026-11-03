@@ -11,6 +11,7 @@ import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDi
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
 
 const GENDERS = [
   { value: 'F', label: 'Feminino' },
@@ -107,10 +108,13 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // ignora e pergunta de novo.
   const [respostas, setRespostas] = useState<Record<string, string>>({})
   const formRef = useRef<HTMLFormElement>(null)
+  // A chave do envio (D10): o reenvio do mesmo cadastro — o duplo clique — grava uma vez só.
+  const envio = useEnvioUnico()
   function mandar(dados: FormData, nova?: Record<string, string>) {
     const todas = { ...respostas, ...nova }
     if (nova) setRespostas(todas)
     for (const [k, v] of Object.entries(todas)) dados.set(k, v)
+    dados.set('_envio', envio.chave())
     startTransition(() => formAction(dados))
   }
   function responder(campo: string, valor: string) {
@@ -126,6 +130,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   }
 
   const aoCadastrar = useEffectEvent(() => {
+    envio.renovar()
     const clientId = (state as unknown as { clientId?: string }).clientId
     // A confirmação sai antes de a tela mudar: o formulário some no modal ou na navegação.
     const r = state as unknown as { acessoCriado?: boolean; contaLigada?: boolean }

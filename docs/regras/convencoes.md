@@ -131,3 +131,29 @@ Postgres responder 22P02, e `ler` lançava — "A tela não conseguiu carregar" 
 lugar do 404 (D15 da simulação de 2026-10-29). Prova:
 `e2e/nao-encontrada.spec.ts` (todas as rotas `[id]` dos três portais),
 `tests/id-da-rota.test.ts`.
+
+### O envio que chega duas vezes grava uma vez (2026-11-02)
+
+D10 da 5ª simulação: um "Cadastrar cliente" criou duas fichas "Valdir
+Duplicado" com 0,7 s de diferença — o botão só se desligava com o `pending`.
+O Heitor: "se achar que precisa, use idempotência para todos os cadastros e
+edições do sistema". O mecanismo é UM:
+
+- A TELA pede a chave ao `useEnvioUnico()` (`lib/use-envio-unico.ts`) no
+  envio — `dados.set('_envio', envio.chave())` no FormData, ou `envio:
+  envio.chave()` no objeto — e chama `envio.renovar()` quando o envio GRAVOU
+  (o próximo cadastro do mesmo formulário aberto é outro envio). A chave nasce
+  no envio, não no render (hidratação).
+- A ACTION embrulha a gravação em `umaVez(tenant, 'nomeDaAcao', chave, fazer,
+  { gravou, ocupada })` (`lib/envio-unico.ts`), que reivindica a chave em
+  `envios_unicos` (rede + ação + chave, só o servidor) ANTES de gravar. A
+  segunda chegada espera a primeira e recebe o MESMO resultado; a que volta
+  sem gravar (erro, aviso, pergunta) solta a chave, e a resposta da pessoa
+  grava. Sem chave, só faz — o caminho antigo continua valendo.
+- Sem a chave da tela (outra aba, o Copilot), a action pode travar pelo
+  CONTEÚDO: `chaveDoConteudo(...)` + `validade` (o cadastro da cliente: o
+  mesmo nome com o mesmo telefone em 60 s é o mesmo cadastro).
+- Edição que regrava os mesmos valores já é idempotente; o que precisa disto é
+  o que ACUMULA (criar, lançar, vender, mover estoque, dar pontos).
+- Prova: `e2e/ficha-cadastro-uma-vez.spec.ts` (o mesmo envio ao mesmo tempo,
+  sem chave, e a pergunta que não prende a chave).
