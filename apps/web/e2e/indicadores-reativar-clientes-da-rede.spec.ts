@@ -118,3 +118,30 @@ test('com ?unidade=, o quadro é o da unidade (a Carla sumiu da primeira)', asyn
     await expect(quadro).toContainText(nome('Carla'))
   })
 })
+
+test('r2-ind-03: na clínica de UMA unidade, o quadro conta todas as clientes ativas — não só as com a tag da unidade', async ({ browser }) => {
+  // O Heitor (revisão de 03/11): "na clínica de uma unidade, a clínica e a unidade são a mesma coisa".
+  const umaSo = await criarOutraRede(`rcu${marca}`)
+  let donaDaUma: MembroDeTeste | null = null
+  try {
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', umaSo.tenantId)).error).toBeNull()
+    const slug = (await db().from('branches').select('slug').eq('id', umaSo.branchId).single<{ slug: string }>()).data!.slug
+    donaDaUma = await criarMembro(`rcud${marca}`, { tenant: umaSo.tenantId, donoDaRede: true, permissoes: [] })
+    // Cadastrada há 200 dias, sem a tag "Unidade: …" e sem nenhuma visita.
+    const semTag = await umaSo.criarCliente('Sem a tag')
+    expect((await db().from('clients').update({ created_at: diasAtras(200), tags: [] }).eq('id', semTag)).error).toBeNull()
+    const ctx = await browser.newContext({ storageState: donaDaUma.estado })
+    try {
+      const p = await ctx.newPage()
+      for (const rota of ['/admin/dashboard', `/${slug}/dashboard`]) {
+        await p.goto(rota)
+        const quadro = p.locator('[data-reativar-clientes]')
+        await expect(quadro, rota).toBeVisible()
+        await expect(quadro.locator('[data-cliente]', { hasText: `${PREFIXO} Sem a tag` }), `${rota}: a cliente sem a tag da unidade`).toBeVisible()
+      }
+    } finally { await ctx.close() }
+  } finally {
+    await donaDaUma?.limpar()
+    await umaSo.limpar()
+  }
+})

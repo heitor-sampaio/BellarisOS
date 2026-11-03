@@ -582,10 +582,12 @@ export default async function AdminDashboardPage({
   // F7b (H3): o "Reativar clientes" e o "Clientes no mês" só existiam no
   // dashboard da unidade. Na rede, as sumidas da CLÍNICA inteira (sem visita
   // em nenhuma unidade há 90 dias), com a unidade de cada uma; recortada a
-  // uma unidade (?unidade=, ou a clínica de uma só), o mesmo quadro da
-  // unidade. Com a agenda "só os meus", as dela (o recorte da agenda).
+  // uma unidade pelo ?unidade=, o mesmo quadro da unidade. Na clínica de UMA
+  // unidade, a clínica e a unidade são a mesma coisa (r2-ind-03, o Heitor):
+  // todas as clientes ativas, não só as com a tag da unidade. Com a agenda
+  // "só os meus", as dela (o recorte da agenda).
   const noventaDias = addDaysTZ(now, -90)
-  const umaSoNoRecorte = branches.length === 1 ? branches[0]! : null
+  const umaSoNoRecorte = branches.length === 1 && !umaUnidade ? branches[0]! : null
   const paraReativar = !canClients
     ? { total: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null }[] }
     : umaSoNoRecorte
@@ -594,6 +596,7 @@ export default async function AdminDashboardPage({
           desde: noventaDias, professionalId: agendaDela,
         }).then(r => ({ total: r.total, lista: r.lista.map(c => ({ ...c, unidade: null })) }))
       : await getClientesParaReativarDaRede({ tenantId: ctx.tenantId!, desde: noventaDias, professionalId: agendaDela })
+          .then(r => umaUnidade ? { total: r.total, lista: r.lista.map(c => ({ ...c, unidade: null })) } : r)
   const quadrosDeClientes = canClients ? (
     <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
       <ClientesDoPeriodo

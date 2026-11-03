@@ -513,9 +513,13 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   (`metrics_clientes_para_reativar_rede` → `getClientesParaReativarDaRede`,
   migration `20261102000702`): quem foi a outra unidade não está sumida —,
   com a unidade de cada uma (a da última visita concluída; quem nunca veio,
-  a do cadastro). Recortada a uma unidade (`?unidade=`, ou a clínica de uma
-  só), é o quadro da unidade (`metrics_clientes_para_reativar`, pela tag
-  dela). Com a agenda "só os meus", as dela. O desenho é um só nos dois
+  a do cadastro). Recortada a uma unidade pelo `?unidade=`, é o quadro da
+  unidade (`metrics_clientes_para_reativar`, pela tag dela). **Na clínica de
+  UMA unidade, é o da clínica** (r2-ind-03, o Heitor, 2026-11-03: "na clínica
+  de uma unidade, a clínica e a unidade são a mesma coisa"): todas as
+  clientes ativas, não só as com a tag "Unidade: X" — no /admin e no
+  dashboard da unidade (`redeTemUmaUnidade` → `getClientesParaReativarDaRede`).
+  Prova: `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("r2-ind-03"). Com a agenda "só os meus", as dela. O desenho é um só nos dois
   portais (`components/shared/quadros-de-clientes.tsx`). Prova:
   `e2e/indicadores-reativar-clientes-da-rede.spec.ts`.
 

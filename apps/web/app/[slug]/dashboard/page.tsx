@@ -14,7 +14,8 @@ import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { unitTag } from '@estetica-os/utils'
-import { getClientesParaReativar } from '@/lib/metrics/unidade'
+import { getClientesParaReativar, getClientesParaReativarDaRede } from '@/lib/metrics/unidade'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
   resolvePeriod, delta, occupancyPct,
@@ -181,11 +182,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     // Sem visita há 90 dias: o total e os três há mais tempo sem vir, contados
     // no banco. Eram três selects sem limite (clientes, visitas e todos os
     // atendimentos dos inativos) somados aqui — cortavam em 1000 (§13.1).
+    // r2-ind-03 (o Heitor: "na clínica de uma unidade, a clínica e a unidade
+    // são a mesma coisa"): com UMA unidade, todas as clientes ativas da
+    // clínica — não só as que têm a tag da unidade.
     canClients
-      ? getClientesParaReativar({
-          tenantId: ctx.tenantId!, branchId, tag: unitTag(branch.name), desde: ninetyDaysAgo,
-          professionalId: proId,
-        })
+      ? redeTemUmaUnidade(ctx.tenantId!).then(umaSo => umaSo
+          ? getClientesParaReativarDaRede({ tenantId: ctx.tenantId!, desde: ninetyDaysAgo, professionalId: proId })
+          : getClientesParaReativar({
+              tenantId: ctx.tenantId!, branchId, tag: unitTag(branch.name), desde: ninetyDaysAgo,
+              professionalId: proId,
+            }))
       : Promise.resolve({ total: 0, lista: [] }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): dinheiro.
