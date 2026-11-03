@@ -254,8 +254,8 @@ DEVLOG ("Termos e contratos").
   - Prova: `e2e/documentos-painel.spec.ts`.
 - **Os documentos emitidos seguem o prontuário "só os meus"** (decisão do
   Heitor, 2026-10-29). Com `medical_records` OWN, só os documentos das
-  clientes que ela atende — um agendamento com ela, qualquer um, inclusive
-  futuro (`clienteNoEscopo`, `lib/clientes/atendida-por.ts`, a regra do
+  clientes que ela atende — um agendamento com ela NÃO CANCELADO, inclusive
+  futuro (eq-02, 2026-11-02, migration `20261101000708`; `clienteNoEscopo`, `lib/clientes/atendida-por.ts`, a regra do
   prontuário OWN):
   - a tela de Documentos e a ferramenta `documentos` do Copilot recortam no
     banco (`p_professional_id` em `documentos_emitidos_pagina`/`_resumo`,

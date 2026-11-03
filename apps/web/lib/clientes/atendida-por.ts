@@ -7,9 +7,12 @@ import { ler } from '@/lib/db'
 type Admin = ReturnType<typeof createAdminClient>
 
 /**
- * "A cliente DELA": a que tem um agendamento com a profissional — qualquer um,
- * inclusive futuro (decisão do Heitor, 2026-10-29: marcar a cliente com ela já
- * abre o que é da cliente). É a regra do prontuário "só os meus"
+ * "A cliente DELA": a que tem um agendamento com a profissional — inclusive
+ * futuro (decisão do Heitor, 2026-10-29: marcar a cliente com ela já abre o
+ * que é da cliente), e NÃO CANCELADO (eq-02, revisão de 2026-11-02: UMA regra
+ * só, a do dashboard — a falta conta, o cancelado não; a Carla que desmarcou
+ * com a Renata não é mais "dela"). Vale também para os planos
+ * (`listarPlanejamentos`) e os documentos (`documentos_emitidos_*`). É a regra do prontuário "só os meus"
  * (`recusaDoAnexo`, `lib/injetaveis/alcance.ts`), dos planos com a agenda
  * "só os meus" e dos documentos emitidos.
  *
@@ -19,7 +22,7 @@ type Admin = ReturnType<typeof createAdminClient>
  */
 export async function clienteAtendidaPor(admin: Admin, profissionalId: string, clientId: string): Promise<boolean> {
   const meu = await ler(admin.from('appointments').select('id')
-    .eq('client_id', clientId).eq('professional_id', profissionalId).limit(1), 'conferir se a cliente é atendida por você')
+    .eq('client_id', clientId).eq('professional_id', profissionalId).neq('status', 'CANCELLED').limit(1), 'conferir se a cliente é atendida por você')
   return (meu ?? []).length > 0
 }
 

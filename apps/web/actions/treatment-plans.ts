@@ -593,7 +593,8 @@ export async function listarPlanejamentos(opcoes?: {
            treatment_plan_sessions(treatment_plan_session_procedures(price))`)
       .in('branch_id', alcance.map(b => b.id))
     if (recorte === 'daCliente') {
-      query = query.eq('clients.appointments.professional_id', dela!)
+      // eq-02: o agendamento CANCELADO não faz a cliente ser dela (a regra do dashboard).
+      query = query.eq('clients.appointments.professional_id', dela!).neq('clients.appointments.status', 'CANCELLED')
         .limit(1, { referencedTable: 'clients.appointments' })
     }
     if (recorte === 'montadoPorEla') query = query.eq('professional_id', dela!)

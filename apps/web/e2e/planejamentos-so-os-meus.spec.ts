@@ -26,7 +26,8 @@ let todos: MembroDeTeste | null = null
 let slug = ''
 let atendida = ''
 let deOutra = ''
-type Chave = 'daAtendida' | 'naoAtendida' | 'delaSemAgendamento'
+let desmarcou = ''
+type Chave = 'daAtendida' | 'naoAtendida' | 'delaSemAgendamento' | 'daDesmarcada'
 const planos: Record<Chave, { id: string; nome: string }> = {} as never
 
 async function como(m: MembroDeTeste, browser: Browser, fn: (p: Page) => Promise<void>) {
@@ -59,11 +60,21 @@ test.beforeAll(async () => {
     status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 100, scheduled_at: amanha,
   })
   expect(eAg, 'agendamento com ela').toBeNull()
+  // eq-02 (revisão de 2026-11-02): a cliente que DESMARCOU com ela (o único
+  // agendamento com ela está cancelado) não é "dela" — a regra do dashboard.
+  desmarcou = await rede.criarCliente('Desmarcou com ela')
+  const { error: eC } = await db().from('appointments').insert({
+    branch_id: rede.branchId, client_id: desmarcou, procedure_id: rede.procedureId, professional_id: ela.userId,
+    status: 'CANCELLED', cancelled_at: new Date().toISOString(), cancellation_reason: 'desmarcou',
+    source: 'INTERNAL', duration_min: 30, price: 100, scheduled_at: amanha,
+  })
+  expect(eC, 'agendamento cancelado com ela').toBeNull()
 
   const montar: [Chave, string, string][] = [
     ['daAtendida', atendida, rede.professionalId],      // montado por OUTRA, da cliente dela
     ['naoAtendida', deOutra, rede.professionalId],      // de outra, cliente que ela não atende
     ['delaSemAgendamento', deOutra, ela.userId],        // montado por ELA, sem agendamento com ela
+    ['daDesmarcada', desmarcou, rede.professionalId],   // de outra, cliente que desmarcou com ela
   ]
   for (const [chave, cliente, prof] of montar) {
     const nome = `${PREFIXO} Plano ${chave} ${marca}`
@@ -119,6 +130,19 @@ test('a lista de Planejamentos, com a agenda "só os meus", mostra os planos das
     for (const k of ['daAtendida', 'naoAtendida', 'delaSemAgendamento'] as const) {
       await expect(p.getByText(planos[k].nome)).toBeVisible()
     }
+  })
+})
+
+test('eq-02: a cliente que só tem agendamento CANCELADO com ela não é dela (lista, aba e prontuário)', async ({ browser }) => {
+  await como(ela!, browser, async p => {
+    await p.goto(`/${slug}/planejamentos`)
+    await expect(p.getByText(planos.daAtendida.nome)).toBeVisible()
+    await expect(p.getByText(planos.daDesmarcada.nome), 'o plano da cliente que desmarcou').toHaveCount(0)
+    const tela = `/${slug}/clients/${atendida}`
+    await p.goto(tela)
+    const r = await chamarAcao(p, ARQ, 'getPlanosDoCliente', tela, [desmarcou])
+    expect(r.texto, 'chegou à action').not.toContain('Server action not found')
+    expect(r.texto, 'o plano da cliente que desmarcou').not.toContain(planos.daDesmarcada.id)
   })
 })
 

@@ -760,7 +760,9 @@ const procedures = await ler(
   e `cancelTreatmentPlan`, só valem para o plano DELA (`planoDaProfissional`).
   **"O plano é da cliente, não da profissional"** (revisão do Heitor,
   2026-10-29): dela é o plano de toda cliente que ela atende — um agendamento
-  com ela, qualquer um, inclusive futuro (`clienteAtendidaPor`,
+  com ela NÃO CANCELADO, inclusive futuro (eq-02, 2026-11-02: UMA regra só, a
+  do dashboard — o cancelado não conta, a falta conta; prova:
+  `e2e/planejamentos-so-os-meus.spec.ts`) (`clienteAtendidaPor`,
   `lib/clientes/atendida-por.ts`, a regra do prontuário OWN) —, quem quer que o
   tenha montado, e o plano que ELA montou (`professional_id`), mesmo de
   cliente sem agendamento com ela. Quem cobre uma sessão precisa ver o que foi
