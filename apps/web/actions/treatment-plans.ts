@@ -12,6 +12,8 @@ import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
+import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
+import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -1663,10 +1665,17 @@ export type RecebimentoDoPlano =
  * novo, só que mais caro de achar.
  */
 export async function receberDoPlano(
-  ...args: Parameters<typeof receberDoPlanoInterno>
+  planId:        string,
+  recebimento:   RecebimentoDoPlano,
+  appointmentId: string | null,
+  slug:          string,
+  /** A chave do envio (D10, lib/envio-unico.ts): o duplo clique recebe UMA vez. */
+  envio?:        string | null,
 ): ReturnType<typeof receberDoPlanoInterno> {
   try {
-    return await receberDoPlanoInterno(...args)
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'receberDoPlano', chaveDoEnvio(envio),
+      () => receberDoPlanoInterno(planId, recebimento, appointmentId, slug))
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -1724,92 +1733,57 @@ async function receberDoPlanoInterno(
   const saldo = await emAbertoDoPlano(planId)
   if (!saldo || saldo.emAberto <= 0) return { error: 'Não há valor em aberto neste plano.' }
 
-  const agora          = new Date().toISOString()
-
-  if (recebimento.forma === 'AVISTA') {
-    const vezes = vezesNoCartao(recebimento)
-    // Quita os lançamentos pendentes do plano. `paid_at` é o eixo de
-    // `revenueCash`: a receita entra no caixa de hoje, não no dia do aceite.
-    const { error } = await admin
-      .from('financial_transactions')
-      .update({
-        is_paid:          true,
-        paid_at:          agora,
-        payment_method:   recebimento.metodo,
-        cartao_vezes:     vezes > 1 ? vezes : null,
-        updated_at:       agora,
-      })
-      .in('id', saldo.pendentes)
-    if (error) return { error: `Erro ao registrar o recebimento: ${error.message}` }
-
-    await gravar(admin.from('installments')
-      .update({ is_paid: true, paid_at: agora })
-      .in('transaction_id', saldo.pendentes), 'marcar as parcelas como pagas')
-
-  } else {
-    const entrada = Math.max(0, Math.min(recebimento.entrada, saldo.emAberto))
+  // O app calcula; `plano_receber` grava tudo numa transação, com o plano
+  // TRAVADO e o saldo conferido de novo (F11): duas chegadas ao mesmo tempo
+  // liam os mesmos R$ 300, e cada uma gravava a sua entrada e as suas parcelas.
+  const descricao = 'Plano de tratamento — recebimento no check-in'
+  let lancamentos: Record<string, unknown>[] = []
+  if (recebimento.forma === 'PARCELADO') {
+    // A entrada acima do que está em aberto é recusada, não cortada (ven-02).
+    const recusaDaEntrada = recusaDaEntradaAcimaDoTotal(recebimento.entrada, saldo.emAberto, 'em aberto do plano')
+    if (recusaDaEntrada) return { error: recusaDaEntrada }
+    const entrada = Math.max(0, Math.round(recebimento.entrada * 100) / 100)
     const resto   = Math.round((saldo.emAberto - entrada) * 100) / 100
     const vezes   = Math.max(1, Math.min(recebimento.parcelas, 48))
-
     if (entrada <= 0 && resto <= 0) return { error: 'Informe o valor da entrada.' }
 
     // O saldo anterior sai de cena inteiro e volta partido: o que foi recebido
     // agora e o que ficou parcelado são lançamentos diferentes, porque o caixa
     // conta pelo `paid_at` e uma transação só não pode estar nos dois lugares.
-    const { error: zerarErr } = await admin
-      .from('financial_transactions')
-      .update({
-        amount:     0,
-        notes:      'Substituído pelo recebimento no check-in',
-        updated_at: agora,
-      })
-      .in('id', saldo.pendentes)
-    if (zerarErr) return { error: `Erro ao atualizar o saldo do plano: ${zerarErr.message}` }
-
-    await gravar(admin.from('installments').delete().in('transaction_id', saldo.pendentes), 'apagar as parcelas do saldo anterior')
-
-    const base = {
-      branch_id:         plan.branch_id,
-      client_id:         plan.client_id,
-      treatment_plan_id: planId,
-      type:              'INCOME',
-      category:          'Serviços',
-      description:       'Plano de tratamento — recebimento no check-in',
-      created_by:        ctx.internalUserId,
-    }
-
     if (entrada > 0) {
-      const { error } = await admin.from('financial_transactions').insert({
-        ...base,
-        amount:           entrada,
-        payment_method:   recebimento.metodo,
-        is_paid:          true,
-        paid_at:          agora,
-        description:      `${base.description} — entrada`,
-        notes:            'Entrada do plano de tratamento',
-      })
-      if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
+      lancamentos.push({ amount: entrada, is_paid: true, description: `${descricao} — entrada`, notes: 'Entrada do plano de tratamento' })
     }
-
     // Cada parcela, um lançamento com o seu vencimento (2026-09-30).
     if (resto > 0) {
       const grupo = crypto.randomUUID()
-      const { error } = await admin.from('financial_transactions').insert(
-        dividirEmParcelas(resto, vezes, recebimento.primeiroVencimento).map(parcela => ({
-          ...base,
-          amount:         parcela.amount,
-          payment_method: recebimento.metodo,
-          is_paid:        false,
-          due_date:       parcela.due_date,
-          description:    `${base.description} — ${rotuloDaParcela(parcela)}`,
-          notes:          `Saldo do plano em ${vezes}x`,
-          parcela_numero: parcela.numero,
-          parcela_total:  parcela.total,
-          parcela_grupo:  grupo,
-        })),
-      )
-      if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
+      lancamentos = lancamentos.concat(dividirEmParcelas(resto, vezes, recebimento.primeiroVencimento).map(parcela => ({
+        amount:         parcela.amount,
+        is_paid:        false,
+        due_date:       parcela.due_date,
+        description:    `${descricao} — ${rotuloDaParcela(parcela)}`,
+        notes:          `Saldo do plano em ${vezes}x`,
+        parcela_numero: parcela.numero,
+        parcela_total:  parcela.total,
+        parcela_grupo:  grupo,
+      })))
     }
+  }
+
+  const { error: erroDoRecebimento } = await admin.rpc('plano_receber', {
+    p_tenant:      ctx.tenantId!,
+    p_plano:       planId,
+    p_pendentes:   saldo.pendentes,
+    p_esperado:    saldo.emAberto,
+    p_forma:       recebimento.forma,
+    p_metodo:      recebimento.metodo,
+    p_vezes:       recebimento.forma === 'AVISTA' ? vezesNoCartao(recebimento) : 1,
+    p_lancamentos: lancamentos,
+    p_ator:        ctx.internalUserId ?? 'sistema',
+  })
+  if (erroDoRecebimento) {
+    // A recusa do banco (o saldo já recebido, o crédito sem saldo) é para a tela.
+    if (erroDoRecebimento.code === 'P0001') return { error: erroDoRecebimento.message }
+    throw new Error(`Não consegui registrar o recebimento: ${erroDoRecebimento.message}`)
   }
 
   if (appointmentId) {

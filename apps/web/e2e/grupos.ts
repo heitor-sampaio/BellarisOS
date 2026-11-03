@@ -161,6 +161,7 @@ export const ISOLADOS = [
   'planos-comparativo.spec.ts',
   'vendas-desconto.spec.ts',
   'vendas-envio-unico.spec.ts',
+  'plano-recebimento-concorrente.spec.ts',
   'vendas-produto.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',

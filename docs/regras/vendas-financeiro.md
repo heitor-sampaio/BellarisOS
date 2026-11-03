@@ -615,6 +615,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   como "a vencer", sem botão, e se recebe no financeiro. Antes o banner
   oferecia "Receber R$ 600" de um plano parcelado: cobrança em dobro (a
   simulação de 2026-10-20 achou). Prova: `e2e/plano-recebimento.spec.ts`.
+  - **Uma transação, com o plano travado** (F11, sobra da F9): o app calcula o
+    que cobrar e os lançamentos novos, e `plano_receber` grava tudo de uma
+    vez — trava o plano, confere que o em aberto que o app leu continua em
+    aberto e com a mesma soma, e só então quita ou troca o saldo por entrada
+    + parcelas. Duas abas ao mesmo tempo: uma recebe, a outra ouve "Este
+    saldo já foi recebido ou mudou". A entrada acima do em aberto é recusada
+    (ven-02, abaixo). Prova: `e2e/plano-recebimento-concorrente.spec.ts`.
 - **A tela do plano FECHADO mostra o dinheiro e as sessões** (J-42,
   2026-10-30): "Valor do plano", "Recebido" e "A receber" (contados no banco,
   `metrics_financeiro_do_plano` → `getFinanceiroDoPlano`,
@@ -772,6 +779,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da clínica; o que a operadora deposita mês a mês mora em recebiveis_do_cartao, nascido pelo gatilho
 ❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
+❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
 ❌ Decidir na tela se um atendimento concluído está "a receber" (é atendimentos_a_receber), ou pedir pagamento de atendimento de R$ 0
 ❌ Gravar texto para pessoas (histórico, descrição) com o código da forma (CASH, CREDIT_CARD) — é rotuloDaForma no app e private.rotulo_da_forma no banco

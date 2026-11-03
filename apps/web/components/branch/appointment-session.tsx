@@ -52,6 +52,8 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
+import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -675,8 +677,13 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   })
   const [salvando, setSalvando] = useState(false)
   const [erro,     setErro]     = useState<string | null>(null)
+  // A chave do envio (D10): o duplo clique recebe uma vez só.
+  const envio = useEnvioUnico()
+  // A entrada acima do que está em aberto é recusada, não cortada (ven-02).
+  const recusaDaEntrada = forma === 'PARCELADO' ? recusaDaEntradaAcimaDoTotal(entrada, plano.emAberto, 'em aberto do plano') : null
 
   async function receber() {
+    if (recusaDaEntrada) { setErro(recusaDaEntrada); return }
     setSalvando(true); setErro(null)
     const res = await receberDoPlano(
       plano.planId,
@@ -685,9 +692,11 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
         : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString() },
       appointmentId,
       slug,
+      envio.chave(),
     )
     setSalvando(false)
     if (res.error) { setErro(res.error); return }
+    envio.renovar()
     setAberto(false)
     router.refresh()
   }
@@ -776,6 +785,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <label className="field-label">Entrada (R$)</label>
                       <input type="number" className="field" min={0} max={plano.emAberto} step="0.01"
+                        aria-invalid={!!recusaDaEntrada} aria-describedby={recusaDaEntrada ? 'recusa-da-entrada-do-plano' : undefined}
                         value={entrada} onChange={e => setEntrada(Math.max(0, Number(e.target.value)))} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -788,6 +798,10 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                     <label className="field-label">1º vencimento</label>
                     <input type="date" className="field" value={venc} onChange={e => setVenc(e.target.value)} />
                   </div>
+                  {recusaDaEntrada && (
+                    <p id="recusa-da-entrada-do-plano" role="alert" data-recusa-da-entrada
+                      style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{recusaDaEntrada}</p>
+                  )}
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {restante > 0
                       ? `${fmtBRL(restante)} em ${parcelas}x de ${fmtBRL(Math.round((restante / parcelas) * 100) / 100)}.`
@@ -800,7 +814,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
                 <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
-                <button type="button" onClick={receber} disabled={salvando} className="btn-primary"
+                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada} className="btn-primary"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
                   {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   {salvando ? 'Registrando…' : 'Confirmar recebimento'}

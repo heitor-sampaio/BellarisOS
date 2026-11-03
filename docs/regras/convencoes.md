@@ -166,15 +166,22 @@ edições do sistema". O mecanismo é UM:
   `venderProcedimento`, `venderProduto`: a chave é o último argumento); o
   ESTOQUE — a entrada (`adminAddStock`, também a do leitor de código de
   barras), a transferência e a perda; os PONTOS — o ajuste e a troca por
-  recompensa (`ajustarPontos`, `resgatarRecompensa`: `envio` no objeto).
+  recompensa (`ajustarPontos`, `resgatarRecompensa`: `envio` no objeto);
+  RECEBER o plano no check-in (`receberDoPlano`, a chave é o último
+  argumento — F11, 2026-11-03).
+- **Duas abas ao mesmo tempo (envios DIFERENTES) é outra coisa**: a chave não
+  as junta. No dinheiro que lê um saldo, a função do banco TRAVA a linha e
+  confere o saldo que o app leu: `plano_receber` (migration
+  `20261101001101`) trava o plano, confere que os lançamentos a cobrar ainda
+  estão em aberto com a soma mostrada, e só então quita ou troca o saldo por
+  entrada + parcelas; a segunda chegada ouve "Este saldo já foi recebido ou
+  mudou". Prova: `e2e/plano-recebimento-concorrente.spec.ts`.
 - **Onde não precisou**: o que o ESTADO já barra — receber o atendimento
   (`confirmPayment`: o "já pago" é conferido dentro da transação), o ajuste de
   estoque (grava o saldo absoluto, repetir dá o mesmo saldo), o checkout e o
   cancelamento do plano e do pacote (a situação muda na primeira), o estorno.
 - **Fica para depois** (não acumulam dinheiro nem estoque; o duplo clique
-  cria um segundo registro visível, que se arquiva): receber do plano
-  (`receberDoPlano` recusa sem saldo, mas duas chegadas AO MESMO TEMPO leem o
-  mesmo saldo — o próximo da lista), o agendamento (`addAppointment`: o choque
+  cria um segundo registro visível, que se arquiva): o agendamento (`addAppointment`: o choque
   de horário já recusa o segundo do mesmo profissional), oportunidade e lead,
   procedimento, produto e categoria do estoque, unidade, membro (o e-mail é
   único), tag, sala, cargo, ficha, funil e etapa, motivo de perda, campanha,
