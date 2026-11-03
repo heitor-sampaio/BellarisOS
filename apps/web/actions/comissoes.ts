@@ -19,9 +19,9 @@ import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assert
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
-import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento, EntradaDasComissoesDosProdutos } from '@/lib/comissoes/config'
+import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento, type ComissaoNoCadastroDoProduto } from '@/lib/comissoes/config'
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
-import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin } from '@/lib/comissoes/gravacao'
+import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin, podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
@@ -102,31 +102,28 @@ export async function salvarMaximoDeVezes(entrada: unknown): Promise<Resultado> 
 }
 
 /**
- * A comissão de venda de cada produto (r2-ven-10; o Heitor: "deixar a
- * clínica decidir, flexibilidade"), usada quando a clínica comissiona POR
- * PRODUTO: % do vendido do item ou R$ por unidade; sem regra, o produto cai na
- * geral. Vale para a rede inteira — mesma permissão e abrangência da
- * configuração. Só produto DESTA rede: o de outra é recusado.
+ * O que o CADASTRO do produto mostra da comissão de venda dele (r2-ven-10; o
+ * Heitor, 03/11: "se cada produto pode ter uma comissão diferente, o que faz
+ * sentido é que em cada produto se possa registrar uma comissão diferente"):
+ * como a clínica comissiona, a regra geral e a regra do produto. Nulo para quem
+ * não muda comissão — o cadastro esconde a seção, e `updateProduct` recusa o
+ * campo (`comissaoDoProdutoNoFormulario`). Só lê; produto de outra rede vem
+ * sem regra.
  */
-export async function salvarComissaoDosProdutos(entrada: unknown): Promise<Resultado> {
-  try {
-    const ctx = await getTenantContext()
-    assertRecurso(ctx, 'comissoes')
-    assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'A comissão dos produtos vale para a rede inteira: quem muda é quem administra a rede.') }
-    const lido = EntradaDasComissoesDosProdutos.safeParse(entrada)
-    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
-    const admin = createAdminClient()
-    for (const r of lido.data) {
-      const linhas = await gravar(admin.from('products')
-        .update({ comissao_tipo: r.tipo, comissao_valor: r.tipo ? r.valor : null })
-        .eq('id', r.productId).eq('tenant_id', ctx.tenantId!).select('id'), 'salvar a comissão do produto')
-      if (!linhas?.length) return { error: 'Produto não encontrado.' }
-    }
-    revalidar()
-    return { ok: true }
-  } catch (e) {
-    return { error: mensagemDoErro(e) }
+export async function comissaoNoCadastroDoProduto(productId: string | null): Promise<ComissaoNoCadastroDoProduto | null> {
+  const ctx = await getTenantContext()
+  if (!podeMudarComissaoDoProcedimento(ctx)) return null
+  const config = await configDeComissaoDaRede(ctx.tenantId!)
+  const produto = productId && /^[0-9a-f-]{36}$/i.test(productId)
+    ? await ler(createAdminClient().from('products').select('comissao_tipo, comissao_valor')
+        .eq('id', productId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a comissão do produto') as { comissao_tipo: string | null; comissao_valor: number | null } | null
+    : null
+  const tipo = produto?.comissao_tipo === 'PERCENTAGE' || produto?.comissao_tipo === 'FIXED_AMOUNT' ? produto.comissao_tipo : null
+  return {
+    modo:     config.produto_modo,
+    geralPct: config.produto_pct,
+    tipo,
+    valor:    tipo && produto?.comissao_valor != null ? Number(produto.comissao_valor) : null,
   }
 }
 

@@ -8,6 +8,7 @@ import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
+import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -97,6 +98,10 @@ async function createProductInterno(
 
     const usoEPreco = usoEPrecoDoFormulario(formData)
     if ('error' in usoEPreco) return { error: usoEPreco.error }
+    // A comissão de venda do produto, registrada no cadastro (o Heitor, 03/11):
+    // conferida ANTES de gravar — quem não muda comissão é recusado inteiro.
+    const comissao = comissaoDoProdutoNoFormulario(ctx, formData)
+    if (comissao.error) return { error: comissao.error }
 
     const categoryId = str(formData, 'category_id')
     const admin = createAdminClient()
@@ -138,6 +143,7 @@ async function createProductInterno(
       min_stock:         minStock,
       consumption_unit:  str(formData, 'consumption_unit'),
       units_per_package: num(formData, 'units_per_package'),
+      ...(comissao.patch ?? {}),
     }).select('id').single()
 
     if (error) return { error: error.message }
@@ -209,6 +215,9 @@ export async function updateProduct(
 
     const usoEPreco = usoEPrecoDoFormulario(formData)
     if ('error' in usoEPreco) return { error: usoEPreco.error }
+    // A comissão de venda do produto (o Heitor, 03/11), conferida antes de gravar.
+    const comissao = comissaoDoProdutoNoFormulario(ctx, formData)
+    if (comissao.error) return { error: comissao.error }
 
     const categoryId = str(formData, 'category_id')
     const admin = createAdminClient()
@@ -241,6 +250,7 @@ export async function updateProduct(
         min_stock:         num(formData, 'min_stock') ?? 0,
         consumption_unit:  str(formData, 'consumption_unit'),
         units_per_package: num(formData, 'units_per_package'),
+        ...(comissao.patch ?? {}),
         updated_at:        new Date().toISOString(),
       })
       .eq('id', productId)

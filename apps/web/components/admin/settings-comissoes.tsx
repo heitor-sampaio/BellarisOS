@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { rotaNoPortal } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
-import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarComissaoDosProdutos } from '@/actions/comissoes'
+import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora } from '@/actions/comissoes'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
-import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto, type TipoDeRegra } from '@/lib/comissoes/config'
-import { parseDecimal, parseDinheiro, NUMERO_INVALIDO, DINHEIRO_INVALIDO, formatBRL } from '@estetica-os/utils'
+import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
+import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
 
 /**
@@ -97,13 +98,15 @@ function Bloco({ titulo: t, children }: { titulo: string; children: React.ReactN
   )
 }
 
-/** O que a tela guarda de cada produto: o tipo e o texto do valor ("10" ou "3,00"). */
-type RegraDoProdutoNaTela = { tipo: TipoDeRegra | ''; valor: string }
-const textoDoValor = (p: ComissaoDoProduto) => p.valor == null ? '' : p.tipo === 'FIXED_AMOUNT'
-  ? p.valor.toFixed(2).replace('.', ',') : String(p.valor).replace('.', ',')
+/** A regra de um produto, para o resumo ("10% do vendido", "R$ 3,00 por unidade"). */
+const regraDoProduto = (p: ComissaoDoProduto) => p.valor == null || !p.tipo ? null : p.tipo === 'FIXED_AMOUNT'
+  ? `${formatBRL(p.valor)} por unidade` : `${String(p.valor).replace('.', ',')}% do vendido`
 
 function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComissao; podeEditar: boolean; produtos: ComissaoDoProduto[] }) {
   const router = useRouter()
+  // O Estoque do portal em que a pessoa está (lib/rotas).
+  const pathname = usePathname()
+  const hrefDoEstoque = rotaNoPortal(pathname, pathname.split('/')[1] || null, '/estoque')
   const [c, setC] = useState(inicial)
   const [erro, setErro] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
@@ -112,37 +115,15 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
   // A comissão da venda de produto (D4): texto do campo, lido como os outros
   // números com casas ("10" ou "7,5"); vazio = sem comissão.
   const [pctProduto, setPctProduto] = useState(inicial.produto_pct != null ? String(inicial.produto_pct).replace('.', ',') : '')
-  // r2-ven-10: a regra de cada produto (quando a clínica comissiona por produto).
-  const [regras, setRegras] = useState<Record<string, RegraDoProdutoNaTela>>(() =>
-    Object.fromEntries(produtos.map(p => [p.productId, { tipo: p.tipo ?? '', valor: textoDoValor(p) }])))
-  const mudarRegra = (id: string, r: Partial<RegraDoProdutoNaTela>) => { setRegras(a => ({ ...a, [id]: { ...a[id]!, ...r } })); setSalvo(false) }
 
   function salvar() {
     setErro(null)
     const texto = pctProduto.trim()
     const produto = texto ? parseDecimal(texto, 2) : null
     if (produto != null && Number.isNaN(produto)) { setErro(`Comissão na venda de produto: ${NUMERO_INVALIDO}`); return }
-    // As regras dos produtos que mudaram (r2-ven-10). Vazio = sem regra própria (cai na geral).
-    const mudadas: { productId: string; tipo: TipoDeRegra | null; valor: number | null }[] = []
-    if (c.produto_modo === 'POR_PRODUTO') {
-      for (const p of produtos) {
-        const r = regras[p.productId] ?? { tipo: '', valor: '' }
-        const texto = r.valor.trim()
-        const tipo: TipoDeRegra | null = texto ? (r.tipo || 'PERCENTAGE') : null
-        const valor = !tipo ? null : tipo === 'FIXED_AMOUNT' ? parseDinheiro(texto) : parseDecimal(texto, 2)
-        if (valor != null && Number.isNaN(valor)) {
-          setErro(`${p.nome}: ${tipo === 'FIXED_AMOUNT' ? DINHEIRO_INVALIDO : NUMERO_INVALIDO}`); return
-        }
-        if (tipo !== p.tipo || valor !== p.valor) mudadas.push({ productId: p.productId, tipo, valor })
-      }
-    }
     iniciar(async () => {
       const r = await salvarConfigDeComissao({ ...c, produto_pct: produto })
       if (r.error) { setErro(r.error); return }
-      if (mudadas.length) {
-        const rp = await salvarComissaoDosProdutos(mudadas)
-        if (rp.error) { setErro(rp.error); return }
-      }
       setSalvo(true)
       router.refresh()
     })
@@ -214,35 +195,37 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
                 : 'Vazio: a venda de produto não gera comissão.'}
             {' '}A comissão fica a pagar com a venda paga inteira: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. O estorno devolve.
           </p>
+          {/* A regra de CADA produto se registra no cadastro dele (o Heitor,
+              03/11: "em cada produto se possa registrar uma comissão
+              diferente"). Aqui, só o resumo do que o cadastro gravou — um
+              lugar só para editar. */}
           {c.produto_modo === 'POR_PRODUTO' && (
             <div data-comissao-por-produto style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <p className="overline">Comissão por produto</p>
+              <p style={texto}>
+                A comissão de cada produto se registra no cadastro do produto:{' '}
+                <Link href={hrefDoEstoque} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>Estoque</Link>
+                {' '}→ o lápis do produto → “Comissão na venda deste produto”.
+                {inicial.produto_modo !== 'POR_PRODUTO' && ' Salve a escolha “Por produto” antes.'}
+              </p>
               {produtos.length === 0 ? (
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   Nenhum produto de revenda ativo. Marque o uso “Revenda” e o preço de venda no cadastro do produto (Estoque).
                 </p>
               ) : produtos.map(p => {
-                const r = regras[p.productId] ?? { tipo: '', valor: '' }
-                const tipo = r.tipo || 'PERCENTAGE'
+                const regra = regraDoProduto(p)
                 return (
                   <div key={p.productId} data-produto style={{
-                    display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: 8, alignItems: 'center',
+                    display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center',
                     padding: '8px 10px', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)',
                   }}>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</p>
-                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        {formatBRL(p.preco)}{!r.valor.trim() ? ' · regra geral' : ''}
-                      </p>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{formatBRL(p.preco)}</p>
                     </div>
-                    <select className="field" aria-label="Tipo da comissão" disabled={!podeEditar} value={tipo} style={{ width: 'auto' }}
-                      onChange={e => mudarRegra(p.productId, { tipo: e.target.value as TipoDeRegra })}>
-                      <option value="PERCENTAGE">% do vendido</option>
-                      <option value="FIXED_AMOUNT">R$ por unidade</option>
-                    </select>
-                    <input className="field" inputMode="decimal" aria-label="Valor da comissão" disabled={!podeEditar}
-                      placeholder={tipo === 'FIXED_AMOUNT' ? '0,00' : 'Geral'} value={r.valor} style={{ width: 96 }}
-                      onChange={e => mudarRegra(p.productId, { valor: e.target.value })} />
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: regra ? 'var(--text)' : 'var(--text-muted)', flexShrink: 0 }}>
+                      {regra ?? 'regra geral'}
+                    </span>
                   </div>
                 )
               })}

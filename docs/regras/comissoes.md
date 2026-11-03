@@ -128,11 +128,28 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     2026-11-03: "deixar a clínica decidir, flexibilidade"). Em Configurações →
     Comissões → "Venda de produto", a clínica escolhe
     (`commission_configs.produto_modo`): "Uma regra sobre o total" (o de cima:
-    UMA linha sobre o vendido do kit inteiro) ou "Por produto" — a lista dos
-    produtos de revenda ativos, cada um com "% do vendido" ou "R$ por
-    unidade" (`products.comissao_tipo`/`comissao_valor`;
-    `salvarComissaoDosProdutos`, a mesma permissão e abrangência da
-    configuração, só produto da rede). Por produto, cada ITEM do kit nasce com
+    UMA linha sobre o vendido do kit inteiro) ou "Por produto" — cada produto
+    de revenda com "% do vendido" ou "R$ por unidade"
+    (`products.comissao_tipo`/`comissao_valor`).
+  - **A regra de cada produto se registra no CADASTRO dele** (o Heitor,
+    2026-11-03: "se cada produto pode ter uma comissão diferente, o que faz
+    sentido é que em cada produto se possa registrar uma comissão
+    diferente"): "Comissão na venda deste produto" no criar e no editar
+    produto (Estoque; `ComissaoDoProduto`, só para o produto de revenda ou "os
+    dois"), com o campo `comissao` gravado por `createProduct`/`updateProduct`
+    (`comissaoDoProdutoNoFormulario`, `lib/comissoes/gravacao.ts`, conferido
+    ANTES de gravar). Mostra e grava SÓ quem muda comissão — o Financeiro em
+    Gerenciar, comissões no plano e abrangência de rede
+    (`podeMudarComissaoDoProcedimento`; a gerente de unidade fixa e quem só
+    cuida do estoque não veem a seção, e o servidor recusa o campo: "Seu cargo
+    não muda a comissão dos produtos."). Com "Uma regra sobre o total", o
+    cadastro não oferece campo: diz "A clínica comissiona a venda de produto
+    por uma regra sobre o total (5% do vendido)…" com o caminho para
+    Configurações → Comissões (decisão da F14, para o Heitor revisar). Em
+    Configurações → Comissões ficam a escolha e a regra geral, e o RESUMO só
+    de leitura de cada produto ("10% do vendido", "R$ 3,00 por unidade",
+    "regra geral") com o caminho do Estoque — um lugar só para editar
+    (`salvarComissaoDosProdutos`, da F13, saiu). Por produto, cada ITEM do kit nasce com
     a sua linha (`item` = a ordem dele), sobre a parte dele no vendido (o
     desconto rateado pela tabela, a última parte com o arredondamento); o
     produto sem regra própria cai na geral (`produto_pct`, "Regra geral — o

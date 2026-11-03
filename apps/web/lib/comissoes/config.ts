@@ -73,12 +73,26 @@ export interface ComissaoDoProduto {
   valor:     number | null
 }
 
-export const EntradaDasComissoesDosProdutos = z.array(z.object({
-  productId: z.string().uuid(),
+/**
+ * A comissão de UM produto como o CADASTRO dele a manda (o Heitor, 03/11: "em
+ * cada produto se possa registrar uma comissão diferente"): o tipo e o valor,
+ * ou os dois nulos — sem regra própria, o produto cai na geral.
+ */
+export const EntradaDaComissaoDoProduto = z.object({
   tipo:      z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).nullable(),
   valor:     z.number().min(0, 'A comissão não pode ser negativa.').nullable(),
 }).refine(r => (r.tipo === null) === (r.valor === null), 'Diga o tipo e o valor da comissão do produto.')
-  .refine(r => r.tipo !== 'PERCENTAGE' || (r.valor ?? 0) <= 100, 'A comissão é de no máximo 100%.')).max(500)
+  .refine(r => r.tipo !== 'PERCENTAGE' || (r.valor ?? 0) <= 100, 'A comissão é de no máximo 100%.')
+
+/** O que o cadastro do produto mostra da comissão dele (nulo: quem abre não muda comissão). */
+export interface ComissaoNoCadastroDoProduto {
+  /** Como a clínica comissiona a venda de produto. */
+  modo:     ModoDaComissaoDoProduto
+  /** A regra geral (%), ou nulo: sem ela. */
+  geralPct: number | null
+  tipo:     TipoDeRegra | null
+  valor:    number | null
+}
 
 /** Uma linha do banco (ou nenhuma) → a configuração, com os padrões no que faltar. */
 export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unknown>> | null | undefined): ConfigDeComissao {

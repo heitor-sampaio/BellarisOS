@@ -11,6 +11,7 @@ import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
 import { USOS_DO_PRODUTO, lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
+import { ComissaoDoProduto } from '@/components/branch/comissao-do-produto'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -358,6 +359,9 @@ function ProductFields({
 
         {/* Só insumo: o preço de venda vai vazio (o servidor grava nulo). */}
         {!vendaDireta && <input type="hidden" name="sale_price" value="" />}
+
+        {/* A comissão de venda DESTE produto (o Heitor, 03/11): só de quem revende. */}
+        {vendaDireta && <ComissaoDoProduto productId={product?.id ?? null} />}
       </div>
 
       {/* Fornecedor + Estoque mínimo */}

@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { adminsDaRede, souAdminDaRede } from '@/lib/equipe/admin-da-rede'
 import { falaDaRede } from '@/lib/unidades/uma-so'
-import { EntradaDaComissaoDoProcedimento } from './config'
+import { EntradaDaComissaoDoProcedimento, EntradaDaComissaoDoProduto } from './config'
 import type { z } from 'zod'
 
 /**
@@ -23,6 +23,27 @@ export function podeMudarComissaoDoProcedimento(ctx: TenantContext): boolean {
 }
 
 export const SEM_PERMISSAO_DE_COMISSAO = 'Seu cargo não muda a comissão dos procedimentos.'
+export const SEM_PERMISSAO_DE_COMISSAO_DO_PRODUTO = 'Seu cargo não muda a comissão dos produtos.'
+
+/**
+ * O campo `comissao` do CADASTRO do produto (o Heitor, 03/11: a comissão de
+ * cada produto se registra nele): ausente = não mexe; presente, confere a
+ * permissão — a mesma da comissão do procedimento: o Financeiro em Gerenciar,
+ * comissões no plano e abrangência de rede (a gerente de unidade fixa não
+ * muda o que vale para a clínica toda, H7) — e valida ANTES de o produto ser
+ * gravado: a recusa não deixa meio cadastro. Devolve as colunas a gravar.
+ */
+export function comissaoDoProdutoNoFormulario(ctx: TenantContext, formData: FormData):
+  { patch: { comissao_tipo: string | null; comissao_valor: number | null } | null; error?: undefined } | { error: string; patch?: undefined } {
+  const bruto = formData.get('comissao')
+  if (bruto == null || bruto === '') return { patch: null }
+  if (!podeMudarComissaoDoProcedimento(ctx)) return { error: SEM_PERMISSAO_DE_COMISSAO_DO_PRODUTO }
+  let json: unknown
+  try { json = JSON.parse(String(bruto)) } catch { return { error: 'Comissão inválida.' } }
+  const lido = EntradaDaComissaoDoProduto.safeParse(json)
+  if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Comissão inválida.' }
+  return { patch: { comissao_tipo: lido.data.tipo, comissao_valor: lido.data.tipo ? lido.data.valor : null } }
+}
 
 /**
  * O campo `comissao` do formulário do procedimento: ausente = não mexe na
