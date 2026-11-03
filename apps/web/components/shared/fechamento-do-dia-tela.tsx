@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle2, Clock, Info, Wallet } from 'lucide-react'
-import { fecharODia } from '@/actions/fechamento'
+import { fecharODia, informarFundoDeTroco } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
@@ -33,7 +33,7 @@ function Diferenca({ valor }: { valor: number }) {
  * A tela do fechamento do dia (2026-10-21). Todo número vem do servidor
  * (metrics_fechamento_do_dia); aqui só se desenha e se manda o contado.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, podeReceberAtendimento = false, avisos, atendeAte = null }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -50,6 +50,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   avisos?: AvisosDoFechamento
   /** Hoje, antes do fim do expediente: até quando a unidade atende (A50). */
   atendeAte?: string | null
+  /** Quem informou o fundo de troco do dia, e quando (ven-03). */
+  fundoInformado?: { quem: string | null; quando: string } | null
 }) {
   const router = useRouter()
   const [contado, setContado] = useState('')
@@ -153,6 +155,14 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           </div>
         </div>
 
+        {resumo.fundoDeTroco != null && resumo.fundoDeTroco > 0 && (
+          <p data-esperado-conta style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: -6 }}>
+            {brl(resumo.fundoDeTroco)} de fundo de troco {resumo.saldoDinheiro < 0 ? '−' : '+'} {brl(Math.abs(resumo.saldoDinheiro))} do dia em espécie
+          </p>
+        )}
+
+        <FundoDeTroco unidadeId={unidadeId} dia={dia} valor={resumo.fundoDeTroco} informado={fundoInformado} podeInformar={podeFechar} />
+
         {ultimo && (
           <p style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <CheckCircle2 size={14} style={{ color: 'var(--success)' }} />
@@ -197,6 +207,68 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * O fundo de troco do dia (ven-03, 2026-11-02): OPCIONAL. Sem ele, o
+ * fechamento segue como sempre; informado, o esperado na gaveta soma o fundo
+ * (a conta é de lib/metrics). Informar de novo troca o valor; zero é sem fundo.
+ */
+function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
+  unidadeId: string; dia: string; valor: number | null
+  informado: { quem: string | null; quando: string } | null; podeInformar: boolean
+}) {
+  const router = useRouter()
+  const [editando, setEditando] = useState(false)
+  const [texto, setTexto] = useState(valor ? String(valor).replace('.', ',') : '')
+  const [erro, setErro] = useState<string | null>(null)
+  const [pendente, start] = useTransition()
+  const tem = valor != null && valor > 0
+
+  function salvar(e: React.FormEvent) {
+    e.preventDefault()
+    const v = texto.trim() === '' ? 0 : parseDinheiro(texto)
+    if (!Number.isFinite(v) || v < 0) { setErro('Informe o fundo de troco (R$ 0,00 ou mais).'); return }
+    setErro(null)
+    start(async () => {
+      const r = await informarFundoDeTroco(unidadeId, dia, v)
+      if ('error' in r) { setErro(r.error); return }
+      setEditando(false)
+      router.refresh()
+    })
+  }
+
+  return (
+    <div data-fundo-de-troco style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10, borderTop: '1px solid var(--hairline)' }}>
+      {!editando && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: tem ? 'var(--text)' : 'var(--text-muted)', fontWeight: tem ? 700 : 500 }}>
+            {tem ? `Fundo de troco: ${brl(valor!)}` : 'Sem fundo de troco hoje (opcional).'}
+            {tem && informado && (
+              <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · informado por {informado.quem ?? '—'} às {hora(informado.quando)}</span>
+            )}
+          </p>
+          {podeInformar && (
+            <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-sm-sz)' }} onClick={() => setEditando(true)}>
+              {tem ? 'Mudar o fundo' : 'Informar fundo de troco'}
+            </button>
+          )}
+        </div>
+      )}
+      {editando && (
+        <form onSubmit={salvar} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+            Fundo de troco (R$)
+            <input className="field" inputMode="decimal" value={texto} onChange={e => setTexto(e.target.value)} placeholder="0,00" style={{ width: 160 }} />
+            <span style={{ fontWeight: 500, color: 'var(--text-faint)' }}>O dinheiro que já estava na gaveta no começo do dia.</span>
+          </label>
+          <button type="submit" className="btn-secondary" disabled={pendente}>{pendente ? 'Salvando…' : 'Salvar fundo'}</button>
+          <button type="button" className="btn-ghost" disabled={pendente} onClick={() => { setEditando(false); setErro(null) }}>Cancelar</button>
+        </form>
+      )}
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
     </div>
   )
 }

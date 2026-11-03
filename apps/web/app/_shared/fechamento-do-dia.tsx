@@ -25,7 +25,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
   const dia = diaDoFechamento(diaPedido)
   const janela = janelaDoDia(dia)!
   const [resumo, aReceber, feitos, emAberto, unidade] = await Promise.all([
-    getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
+    getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to, dia }),
     // Os concluídos a receber da unidade, de qualquer dia (D5, 2026-10-27):
     // o que ficou sem pagamento ontem continua aqui até alguém receber.
     getAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId }),
@@ -40,6 +40,11 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
     ler(createAdminClient().from('branches').select('horario').eq('id', unidadeId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
       'ler o horário da unidade') as Promise<{ horario: unknown } | null>,
   ])
+  // Quem informou o fundo de troco do dia (ven-03), para a tela dizer.
+  const fundo = resumo.fundoDeTroco != null
+    ? await ler(createAdminClient().from('fundos_de_troco').select('informado_por_nome, informado_em')
+        .eq('tenant_id', ctx.tenantId!).eq('branch_id', unidadeId).eq('dia', dia).maybeSingle(), 'ler o fundo de troco') as { informado_por_nome: string | null; informado_em: string } | null
+    : null
   const atendeAte = diaAindaAberto(dia, normalizarHorario(unidade?.horario ?? null))
 
   // Os avisos (J-49): o movimento depois do ÚLTIMO fechamento e as taxas do dia.
@@ -72,6 +77,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         emAberto={emAberto.total}
         avisos={avisos}
         atendeAte={atendeAte}
+        fundoInformado={fundo ? { quem: fundo.informado_por_nome, quando: fundo.informado_em } : null}
         // Receber o atendimento é do módulo de recebimentos (confirmPayment).
         podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
       />

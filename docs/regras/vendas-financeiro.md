@@ -351,6 +351,22 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     dia ainda está aberto. O que entrar depois deste fechamento pede fechar
     de novo." — só aviso: fechar antes continua valendo. Prova:
     `e2e/fechamento-do-dia-atritos.spec.ts`, `tests/fechamento-dia-aberto.test.ts`.
+  - **Fundo de troco OPCIONAL** (ven-03 da revisão, 2026-11-02; o Heitor:
+    "flexibilidade, precisamos dar as opções para que a rede possa operar da
+    maneira que melhor lhe convier"). "Informar fundo de troco" no
+    Fechamento (quem fecha o dia; `informarFundoDeTroco`, unidade ao
+    alcance): o dinheiro que já estava na gaveta no começo do dia, um por
+    unidade e dia em `fundos_de_troco` (informar de novo troca; zero é sem
+    fundo). Informado, o "Dinheiro em espécie esperado" é o fundo + o saldo
+    em dinheiro do dia ("R$ 100,00 de fundo de troco − R$ 50,00 do dia em
+    espécie"), e a conta é de `getFechamentoDoDia` (`lib/metrics`,
+    `fundoDeTroco`/`saldoDinheiro`/`esperadoDinheiro`, em centavos); o
+    aviso "saiu mais dinheiro em espécie do que entrou" só aparece quando o
+    esperado COM o fundo fica negativo, e o fechamento guarda o fundo no
+    retrato (`fechamentos_do_dia.fundo_de_troco`). Sem fundo, tudo segue
+    como antes. A taxa da maquininha estimada continua a linha informativa
+    de sempre: não sai do saldo nem do fundo. Migration `20261101001108`.
+    Prova: `e2e/fechamento-do-dia-fundo-de-troco.spec.ts`.
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
   de 2026-10-27, decisões do Heitor). A conta é UMA, no banco

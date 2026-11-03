@@ -168,6 +168,7 @@ export const ISOLADOS = [
   'comissoes-pacote-responsavel.spec.ts',
   'vendas-quem-vendeu.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',
+  'fechamento-do-dia-fundo-de-troco.spec.ts',
   'vendas-produto.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',

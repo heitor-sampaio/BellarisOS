@@ -394,8 +394,15 @@ export interface FechamentoDoDia {
   /** Uma linha por forma de pagamento (CASH, PIX…; SEM_FORMA = pago com pontos/sem forma). */
   formas: LinhaDoFechamento[]
   total:  LinhaDoFechamento
-  /** O dinheiro em espécie que deve estar na gaveta: o saldo de CASH do dia. */
+  /**
+   * O dinheiro em espécie que deve estar na gaveta: o fundo de troco do dia
+   * (quando informado — ven-03, 2026-11-02) + o saldo de CASH do dia.
+   */
   esperadoDinheiro: number
+  /** O saldo em espécie do DIA (entradas − saídas em dinheiro), sem o fundo. */
+  saldoDinheiro: number
+  /** O fundo de troco informado para o dia; nulo sem fundo (segue como antes). */
+  fundoDeTroco: number | null
 }
 
 /**
@@ -403,11 +410,20 @@ export interface FechamentoDoDia {
  * 2026-10-21): entradas pela regra de receita de sempre, saídas pagas, estorno
  * fora dos dois lados. O total vem do banco.
  */
-export async function getFechamentoDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<FechamentoDoDia> {
-  const { data, error } = await createAdminClient().rpc('metrics_fechamento_do_dia', {
-    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
-  })
+export async function getFechamentoDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date; dia?: string }): Promise<FechamentoDoDia> {
+  const admin = createAdminClient()
+  const [{ data, error }, fundo] = await Promise.all([
+    admin.rpc('metrics_fechamento_do_dia', {
+      p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+    }),
+    // O fundo de troco do dia (ven-03): opcional; sem ele, o esperado é só o dia.
+    args.dia
+      ? admin.from('fundos_de_troco').select('valor')
+          .eq('tenant_id', args.tenantId).eq('branch_id', args.branchId).eq('dia', args.dia).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
   logRpcError('metrics_fechamento_do_dia', error)
+  if (fundo.error) throw new Error(`Não consegui ler o fundo de troco: ${fundo.error.message}`)
   const linhas = ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
     forma: String(r.forma), entradas: n(r.entradas), saidas: n(r.saidas), saldo: n(r.saldo), lancamentos: n(r.lancamentos),
   }))
@@ -415,8 +431,14 @@ export async function getFechamentoDoDia(args: { tenantId: string; branchId: str
   return {
     formas: linhas.filter(l => l.forma !== 'TOTAL').sort((x, y) => y.entradas - x.entradas),
     total,
-    esperadoDinheiro: linhas.find(l => l.forma === 'CASH')?.saldo ?? 0,
+    ...comFundo(linhas.find(l => l.forma === 'CASH')?.saldo ?? 0, fundo.data ? n((fundo.data as { valor: unknown }).valor) : null),
   }
+}
+
+/** O esperado na gaveta: o fundo + o saldo do dia, em centavos (a conta mora aqui, não na tela). */
+function comFundo(saldoDinheiro: number, fundoDeTroco: number | null) {
+  const centavos = Math.round(saldoDinheiro * 100) + Math.round((fundoDeTroco ?? 0) * 100)
+  return { saldoDinheiro, fundoDeTroco, esperadoDinheiro: centavos / 100 }
 }
 
 export interface AvisosDoFechamento {
