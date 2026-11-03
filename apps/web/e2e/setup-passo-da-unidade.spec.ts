@@ -8,6 +8,9 @@ import { apagarRedeCriada } from './apoio/rede-criada'
  * - J-1: o telefone gravado com o DDI ("5548999990000") voltava cortado;
  * - J-3: recarregar no passo da unidade voltava ao passo 1;
  * - J-6: a primeira unidade nascia sem CNPJ — agora herda o da rede.
+ * - A1 (5ª simulação, 2026-11-02): recarregar o passo da unidade mantinha o
+ *   passo e apagava o nome, o telefone e o horário digitados; e, concluído, a
+ *   URL ficava em ?passo=unidade.
  */
 const marca = Date.now().toString(36)
 const db = () => banco()
@@ -44,14 +47,22 @@ test('o telefone com DDI inteiro; recarregar fica no passo da unidade; a unidade
     await p.getByRole('button', { name: /Continuar/ }).click()
     await expect(p.locator('#br-name')).toBeVisible()
 
+    // A1: o que se digitou no passo da unidade sobrevive ao recarregar.
+    await p.locator('#br-name').fill(`${PREFIXO} Unidade ${marca}`)
+    await p.locator('#br-phone').fill('48988887777')
+    await p.getByLabel('Sábado abre').uncheck()
+
     await p.reload()
     await expect(p.locator('#br-name'), 'J-3: recarregar fica no passo da unidade').toBeVisible()
     await expect(p.locator('#net-name')).toHaveCount(0)
+    await expect(p.locator('#br-name'), 'A1: o nome digitado fica').toHaveValue(`${PREFIXO} Unidade ${marca}`)
+    await expect(p.locator('#br-phone'), 'A1: o telefone digitado fica').toHaveValue('(48) 98888-7777')
+    await expect(p.getByLabel('Sábado abre'), 'A1: o horário mexido fica').not.toBeChecked()
 
     await expect(p.locator('#br-doc'), 'J-6: o CNPJ da rede vem preenchido').toHaveValue(comMascara(CNPJ))
-    await p.locator('#br-name').fill(`${PREFIXO} Unidade ${marca}`)
     await p.getByRole('button', { name: /Continuar/ }).click()
     await expect(p.getByText('Tudo pronto!')).toBeVisible()
+    await expect(p, 'A1: concluído, a URL não fica no passo da unidade').toHaveURL(/\/setup$/)
   } finally { await ctx.close() }
 
   const { data: b } = await db().from('branches').select('document').eq('tenant_id', tenantId).single<{ document: string | null }>()

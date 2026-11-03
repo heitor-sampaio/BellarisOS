@@ -1,7 +1,8 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { Check, Loader2 } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
@@ -209,6 +210,31 @@ function StepNetwork({
 
 // -- Step 2 — Primeira unidade -------------------------------------------------
 
+/**
+ * O rascunho do passo da unidade (A1 da 5ª simulação, 2026-11-02): recarregar
+ * mantinha o passo (J-3) e apagava o nome, o telefone e o horário digitados.
+ * Fica no sessionStorage da aba — conveniência de quem digita, não estado: sem
+ * ele (aba privada, armazenamento bloqueado), o passo abre vazio, como antes.
+ */
+const RASCUNHO_DA_UNIDADE = 'bellaris:setup:unidade'
+interface RascunhoDaUnidade {
+  name: string; document: string; slug: string; slugTouched: boolean
+  phone: string; email: string; zipCode: string; address: string; city: string; uf: string
+  horario: string | null
+}
+function lerRascunho(): RascunhoDaUnidade | null {
+  try {
+    const t = window.sessionStorage.getItem(RASCUNHO_DA_UNIDADE)
+    return t ? JSON.parse(t) as RascunhoDaUnidade : null
+  } catch { return null }
+}
+function gravarRascunho(r: RascunhoDaUnidade | null) {
+  try {
+    if (r) window.sessionStorage.setItem(RASCUNHO_DA_UNIDADE, JSON.stringify(r))
+    else window.sessionStorage.removeItem(RASCUNHO_DA_UNIDADE)
+  } catch { /* sem armazenamento: o passo só não lembra */ }
+}
+
 function StepBranch({ onNext, onBack, documentoDaRede }: {
   onNext: () => void; onBack: () => void
   /** O CNPJ da rede: a primeira unidade o herda, editável (J-6). */
@@ -230,6 +256,43 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
   const [cepError,   setCepError]   = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
   const [pending,    startTransition] = useTransition()
+  // O horário do rascunho remonta o editor (ele lê o valor só ao nascer).
+  const [horarioSalvo, setHorarioSalvo] = useState<{ chave: number; valor: Horario | null }>({ chave: 0, valor: null })
+  const formRef = useRef<HTMLFormElement>(null)
+  const restaurado = useRef(false)
+
+  // Volta o rascunho depois de montar (no servidor não há sessionStorage).
+  useEffect(() => {
+    const r = lerRascunho()
+    restaurado.current = true
+    if (!r) return
+    /* eslint-disable react-hooks/set-state-in-effect -- o rascunho só existe no navegador */
+    setName(r.name); setDocument(r.document); setSlug(r.slug); setSlugTouched(r.slugTouched)
+    setPhone(r.phone); setEmail(r.email); setZipCode(r.zipCode); setAddress(r.address); setCity(r.city); setUf(r.uf)
+    if (r.horario) {
+      try { setHorarioSalvo({ chave: 1, valor: normalizarHorario(JSON.parse(r.horario)) }) } catch { /* horário ilegível: o padrão */ }
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [])
+
+  // O horário mora no campo oculto do editor: lido do formulário a cada mexida.
+  const horarioDoFormulario = () => {
+    const v = formRef.current ? new FormData(formRef.current).get('horario') : null
+    return typeof v === 'string' && v ? v : null
+  }
+  const [horarioMexido, setHorarioMexido] = useState<string | null>(null)
+  useEffect(() => {
+    if (!restaurado.current) return
+    // Nada digitado não apaga o rascunho: o efeito roda ANTES de o rascunho
+    // voltar ao estado (e duas vezes no modo estrito), com os campos vazios.
+    if (!name && !slugDigitado && !phone && !email && !zipCode && !address && !city && !uf && !horarioMexido) return
+    gravarRascunho({
+      name, document, slug: slugDigitado, slugTouched, phone, email, zipCode, address, city, uf,
+      horario: horarioMexido ?? (horarioSalvo.valor ? JSON.stringify(horarioSalvo.valor) : null),
+    })
+  }, [name, document, slugDigitado, slugTouched, phone, email, zipCode, address, city, uf, horarioMexido, horarioSalvo])
+  // Depois do clique ou da troca dentro do editor, o campo oculto já mudou no próximo quadro.
+  const lerHorarioDepois = () => requestAnimationFrame(() => setHorarioMexido(horarioDoFormulario()))
 
   // Busca o endereço assim que o CEP chega a 8 dígitos (sem esperar sair do campo).
   const [cepBuscado, setCepBuscado] = useState('')
@@ -270,13 +333,14 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
       if (result && 'error' in result) {
         setError(result.error ?? null)
       } else {
+        gravarRascunho(null)
         onNext()
       }
     })
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ marginBottom: 4 }}>
         <h2 style={{
           fontSize: 'var(--text-title)',
@@ -437,7 +501,9 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           O padrão é segunda a sábado, das 8h às 20h. Ajuste o que for diferente — dá para mudar depois em Configurações.
         </span>
-        <EditorDeHorario nome="horario" valor={null} />
+        <div onChange={lerHorarioDepois} onClick={lerHorarioDepois}>
+          <EditorDeHorario key={horarioSalvo.chave} nome="horario" valor={horarioSalvo.valor} />
+        </div>
       </div>
 
       {error && (
@@ -564,7 +630,9 @@ export function SetupWizard({ rede: inicial, temUnidade, noPassoDaUnidade = fals
       )}
       {step === 1 && (
         <StepBranch documentoDaRede={rede.documento}
-          onNext={() => setStep(2)} onBack={() => { setStep(0); passoNaUrl(null) }} />
+          // Concluída a unidade, a URL sai do passo (A1): recarregar o fim já
+          // cai no fim, pela unidade que existe.
+          onNext={() => { setStep(2); passoNaUrl(null) }} onBack={() => { setStep(0); passoNaUrl(null) }} />
       )}
       {step === 2 && (
         <StepDone tenantName={rede.nome} />
