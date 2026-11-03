@@ -59,9 +59,10 @@ const vocabulario = async () => ((await db().from('procedure_categories').select
   { nome: string; arquivada_em: string | null }[]
 const categoriaDe = async (chave: string) => (await db().from('procedures').select('category').eq('id', procs[chave]!).single()).data!.category as string
 
-test('a rede nova nasce com as quinze, e a categoria gravada em qualquer lugar entra sozinha', async () => {
+test('a rede nova nasce com as dezesseis (com "Avaliação", A10), e a categoria gravada em qualquer lugar entra sozinha', async () => {
   const nomes = (await vocabulario()).map(c => c.nome)
-  expect(nomes).toEqual(expect.arrayContaining(['Toxina botulínica', 'Preenchimento', 'Fios', 'Peeling', 'Outros', FACIAL]))
+  // A10 da 5ª simulação: a avaliação grátis foi para "Bioestimuladores".
+  expect(nomes).toEqual(expect.arrayContaining(['Avaliação', 'Toxina botulínica', 'Preenchimento', 'Fios', 'Peeling', 'Outros', FACIAL]))
   expect(nomes.filter(n => n.toLowerCase() === 'peeling'), 'sem caixa: "peeling" é "Peeling"').toHaveLength(1)
 })
 

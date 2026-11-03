@@ -427,7 +427,8 @@
   Categorias): eram quinze fixas no código. `procedures.category` continua
   TEXTO (relatórios agrupam pelo nome); a tabela é o vocabulário — cresce
   sozinho por gatilho em `procedures`, sem caixa, e a rede nova nasce com as
-  quinze (`private.categorias_de_procedimento_padrao`). Renomear troca em todos
+  dezesseis (`private.categorias_de_procedimento_padrao`; "Avaliação" entrou em
+  2026-11-02, A10 da 5ª simulação — migration `20261101000801`, só para a rede nova). Renomear troca em todos
   os procedimentos e junta se o nome já existe
   (`renomear_categoria_de_procedimento`); arquivar tira das opções. O cadastro
   sempre oferece a categoria ATUAL do procedimento, mesmo arquivada ou de fora
