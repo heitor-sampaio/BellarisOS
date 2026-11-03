@@ -9128,6 +9128,12 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**A 3ª completa de 03/11, depois de F13–F15** (run 41728707195): isolados
+895/1, compartilhados 571/1 — as duas falhas eram dos specs (364fbf37): o
+"Pagar" da parcela no cartão passou a abrir "Receber no cartão" (a bandeira),
+e a cliente do teste do Copilot nascia hoje, quando o "Reativar clientes" só
+conta quem foi cadastrada antes da janela. Nenhum defeito do sistema.
+
 **F15 feita em 2026-11-03 — a revisão das decisões de F13 e F14**
 (c4a21a09…71275513; migrations `20261103001501`–`1502`). O Heitor revisou 22
 decisões de F13/F14 (https://claude.ai/artifact/3YydsMjt36Bj994dBsLZHU): 13
