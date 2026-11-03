@@ -131,6 +131,13 @@ um default deixaria um webhook novo voltar a jogar o número fora em silêncio. 
   a assinatura confere com o `META_APP_SECRET`. Sem nenhum dos dois, recusa —
   HMAC com chave vazia qualquer um calcula. Prova: `e2e/api-sem-credencial.spec.ts`.
 
+**A entrega sem caixa responde 200, mas deixa rastro** (F7c, 2026-11-02): o
+`/api/webhooks/whatsapp` que recebe um `phone_number_id` de nenhuma caixa da
+API oficial responde 200 (a Meta reenviaria sem parar) e registra
+`console.warn` com o id — era a primeira pista do "conectei e nenhuma
+mensagem chega", e não havia log nenhum. Prova:
+`tests/webhook-whatsapp-descarte.test.ts`.
+
 **O histórico do WhatsApp Web vem ao conectar** (2026-10-13,
 `lib/whatsapp/historico-uazapi.ts`). Ao parear, o WhatsApp manda à instância
 um recorte recente das conversas (ele decide quanto) e a uazapi o guarda.

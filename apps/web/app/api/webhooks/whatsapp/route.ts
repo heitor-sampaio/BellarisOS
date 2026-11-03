@@ -83,7 +83,14 @@ export async function POST(req: NextRequest) {
   // entrega do segundo cairia em 401 — e o log diria "assinatura inválida", que
   // é a pista errada.
   const numero = await getNumeroPorPhoneNumberId(phoneNumberId)
-  if (!numero || numero.provider !== 'official') return NextResponse.json({ ok: true })
+  if (!numero || numero.provider !== 'official') {
+    // 200 de propósito (a Meta reenviaria sem parar), mas NÃO calado (F7c,
+    // 2026-11-02): é a primeira pista do "conectei e nenhuma mensagem chega"
+    // — a Meta entregando o número antigo, ou um que saiu do sistema.
+    console.warn('[webhook/whatsapp] entrega descartada: phone_number_id sem caixa da API oficial:', phoneNumberId,
+      numero ? `(é de uma caixa ${numero.provider})` : '')
+    return NextResponse.json({ ok: true })
+  }
 
   const tenantId = numero.tenantId
   const provider = new OfficialAPIProvider(numero.config as OfficialConfig)
