@@ -57,7 +57,9 @@ async function atendimentoEmCurso(rotulo: string, extra: Record<string, unknown>
 }
 
 const dores = (p: Page) => p.getByPlaceholder('Anote o que o cliente relatou: queixas estéticas, objetivos, histórico de tratamentos anteriores…')
-const alergia = (p: Page) => p.locator('[data-anamnese-geral] [data-campo="allergies"] textarea')
+// A alergia é Sim/Não (atend-15): o texto vai no "Quais alergias?", que o "Sim" abre.
+const alergia = (p: Page) => p.locator('[data-anamnese-geral] [data-campo="allergiesDetalhe"] textarea')
+const temAlergia = (p: Page) => p.locator('[data-anamnese-geral] [data-campo="allergies"]').getByLabel('Sim', { exact: true })
 const evolucao = (p: Page) => p.getByPlaceholder('Técnicas utilizadas, regiões tratadas, evolução do cliente…')
 const dose = (p: Page) => p.locator('input[type="number"][step="0.001"]').first()
 
@@ -105,6 +107,7 @@ test('"Finalizar" grava as dores e a anamnese junto com a evolução, sem mexer 
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     await dores(p).fill(DORES)
+    await temAlergia(p).check()
     await alergia(p).fill(ALERGIA)
     await evolucao(p).fill(EVOLUCAO)
     await finalizar(p, id)
@@ -113,7 +116,7 @@ test('"Finalizar" grava as dores e a anamnese junto com a evolução, sem mexer 
   expect(entrada?.notes, 'a evolução').toBe(EVOLUCAO)
   expect((entrada as Record<string, unknown> | null)?.queixas, 'as dores vão ao prontuário do atendimento').toBe(DORES)
   const { data: mr } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
-  expect(mr?.general_anamnesis, 'a anamnese digitada vai à ficha da cliente').toMatchObject({ versao: 2, origem: 'EQUIPE', respostas: { allergies: ALERGIA } })
+  expect(mr?.general_anamnesis, 'a anamnese digitada vai à ficha da cliente').toMatchObject({ versao: 2, origem: 'EQUIPE', respostas: { allergies: 'Sim', allergiesDetalhe: ALERGIA } })
   const { data: ag } = await db().from('appointments').select('notes').eq('id', id).single()
   expect(ag?.notes, 'a observação interna continua a mesma').toBe(OBSERVACAO)
 })
@@ -123,6 +126,7 @@ test('recarregar não perde as dores, a anamnese nem a dose do insumo — e a do
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     await dores(p).fill(DORES)
+    await temAlergia(p).check()
     await alergia(p).fill(ALERGIA)
     await dose(p).fill('32')
     await dose(p).press('Tab')
@@ -147,7 +151,7 @@ test('a anamnese que a cliente respondeu, sem ninguém mexer, não vira "pela eq
   const respondidoEm = new Date(Date.now() - 2 * 86_400_000).toISOString()
   const daCliente = {
     versao: 2, ficha: { formId: null, nome: 'Pré-atendimento', rows: [] },
-    respostas: { ...respostas, allergies: `dipirona ${marca}` }, respondidoEm, origem: 'CLIENTE_APP', respondidoPor: null,
+    respostas: { ...respostas, allergies: 'Sim', allergiesDetalhe: `dipirona ${marca}` }, respondidoEm, origem: 'CLIENTE_APP', respondidoPor: null,
   }
   expect((await db().from('medical_records').upsert({ client_id: cliente, general_anamnesis: daCliente }, { onConflict: 'client_id' })).error).toBeNull()
   await como(browser, async p => {
