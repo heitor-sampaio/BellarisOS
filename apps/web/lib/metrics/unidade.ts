@@ -112,6 +112,40 @@ export async function getClientesParaReativar(args: {
 }
 
 /**
+ * As clientes a reativar da REDE (F7b, H3: "a dona vê tudo, sempre"): sem
+ * visita em NENHUMA unidade da clínica desde `desde`, com a unidade de cada
+ * uma — a da última visita; quem nunca veio, a do cadastro
+ * (`metrics_clientes_para_reativar_rede`). A da unidade continua
+ * `getClientesParaReativar`.
+ */
+export interface ClienteParaReativarDaRede {
+  id: string; name: string; phone: string | null; ultimaVisita: string | null
+  unidade: string | null; unidadeSlug: string | null
+}
+
+export async function getClientesParaReativarDaRede(args: {
+  tenantId: string; desde: Date; limite?: number
+  /** "Só os meus": só as clientes dela (agendamento não cancelado com ela). */
+  professionalId?: string | null
+}): Promise<{ total: number; lista: ClienteParaReativarDaRede[] }> {
+  const data = await ler(createAdminClient().rpc('metrics_clientes_para_reativar_rede', {
+    p_tenant: args.tenantId, p_desde: args.desde.toISOString(), p_limite: args.limite ?? 3,
+    p_professional_id: args.professionalId ?? null,
+  }), 'buscar os clientes da rede para reativar')
+  const d = (data ?? {}) as {
+    total?: number
+    lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null; unidade: string | null; unidade_slug: string | null }[]
+  }
+  return {
+    total: Number(d.total ?? 0),
+    lista: (d.lista ?? []).map(c => ({
+      id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita,
+      unidade: c.unidade, unidadeSlug: c.unidade_slug,
+    })),
+  }
+}
+
+/**
  * As clientes ATIVAS da rede e as que frequentam cada unidade (a tag
  * "Unidade: <nome>", o mesmo critério do filtro de Clientes) — contadas no
  * banco (A24 da 5ª simulação, 2026-11-02). Em `/admin/clients?unidade=` a

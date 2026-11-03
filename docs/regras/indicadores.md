@@ -504,6 +504,18 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios.
+- **O dashboard da rede tem os quadros de clientes da unidade** (F7b, H3: "a
+  dona vê tudo, sempre"): "Clientes no período" (o mesmo núcleo dos cartões,
+  no período escolhido, até agora) e "Reativar clientes". Na rede, as
+  sumidas da CLÍNICA inteira — sem visita em NENHUMA unidade há 90 dias
+  (`metrics_clientes_para_reativar_rede` → `getClientesParaReativarDaRede`,
+  migration `20261102000702`): quem foi a outra unidade não está sumida —,
+  com a unidade de cada uma (a da última visita concluída; quem nunca veio,
+  a do cadastro). Recortada a uma unidade (`?unidade=`, ou a clínica de uma
+  só), é o quadro da unidade (`metrics_clientes_para_reativar`, pela tag
+  dela). Com a agenda "só os meus", as dela. O desenho é um só nos dois
+  portais (`components/shared/quadros-de-clientes.tsx`). Prova:
+  `e2e/indicadores-reativar-clientes-da-rede.spec.ts`.
 
 **Cada número segue o escopo do SEU módulo** (decisão do Heitor, 2026-10-29 —
 revê o "qualquer OWN recorta tudo" de 28/10): a AGENDA e as CLIENTES seguem o

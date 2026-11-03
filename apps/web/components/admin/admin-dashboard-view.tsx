@@ -72,6 +72,11 @@ export interface AdminDashboardProps {
    * tudo, sempre": só existiam no dashboard da unidade). Vem pronto do servidor.
    */
   avisoDosAbertos?: ReactNode
+  /**
+   * "Clientes no período" e "Reativar clientes" (F7b, H3): só existiam no
+   * dashboard da unidade. Vêm prontos do servidor, com os números de lib/metrics.
+   */
+  quadrosDeClientes?: ReactNode
   userName:         string
   leadFunnel:       { name: string; count: number }[]
   funnels:          { id: string; name: string }[]
@@ -430,6 +435,7 @@ export function AdminDashboardView({
   evolutionData,
   branchOccupancy,
   avisoDosAbertos,
+  quadrosDeClientes,
   topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, recorteProprio = false, agendaPropria = false, procedureMargins,
   bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
@@ -1466,6 +1472,8 @@ export function AdminDashboardView({
         </div>
 
       </div>
+
+      {quadrosDeClientes}
       </>)}
 
       {/* ══════════════════════════════════════════════════════════════

@@ -13,7 +13,7 @@ import { RevenueBarChart } from '@/components/branch/revenue-bar-chart'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { unitTag, iniciaisDoNome } from '@estetica-os/utils'
+import { unitTag } from '@estetica-os/utils'
 import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
@@ -22,42 +22,13 @@ import {
 } from '@/lib/metrics'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
-import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
+import { ChevronRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
+import { AvatarDaCliente as Avatar, ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
 
-// --- Avatar colorido determinístico ------------------------------
-const PALETTE = [
-  { bg: 'var(--success-soft)', color: 'var(--success)' },
-  { bg: 'var(--cat-4-soft)', color: 'var(--cat-4)' },
-  { bg: 'var(--info-soft)', color: 'var(--info)' },
-  { bg: 'var(--cat-5-soft)', color: 'var(--cat-5)' },
-  { bg: 'var(--hairline)', color: 'var(--success)' },
-  { bg: 'var(--hairline)', color: 'var(--danger)' },
-]
-function avatarColor(name: string) {
-  const h = [...name].reduce((a, c) => a + c.charCodeAt(0), 0)
-  return PALETTE[h % PALETTE.length]!
-}
-function initials(name: string) {
-  return iniciaisDoNome(name)
-}
-
-// --- Avatar pill --------------------------------------------------
-function Avatar({ name, size = 32 }: { name: string; size?: number }) {
-  const c = avatarColor(name)
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: c.bg, color: c.color,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.32, fontWeight: 800,
-    }}>
-      {initials(name)}
-    </div>
-  )
-}
+// O avatar da cliente é o dos quadros de clientes (um desenho só, F7b).
 
 // --- Status chips -------------------------------------------------
 const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }> = {
@@ -303,7 +274,6 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
     { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
   ]
-  const funnelMax = Math.max(1, ...funnel.map(f => f.count))
 
   // -- Reativar clientes -----------------------------------------
   // A ordem (quem há mais tempo sem vir primeiro; quem nunca veio no fim) vem
@@ -578,89 +548,21 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             CRM — e não tem lead nenhum: são os clientes e os agendamentos do
             mês (a simulação de 2026-10-20 viu o caixa achar que via o CRM). */}
         {canClients && (
-        <div className="card">
-          <div style={{ marginBottom: 4 }}>
-            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-              Clientes no mês
-            </h2>
-          </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>{proId ? 'As suas novas clientes e os seus agendamentos neste mês, até agora' : 'Novos clientes e agendamentos da unidade neste mês, até agora'}</p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {funnel.map((f, i) => {
-              const barPct = funnelMax > 0 ? Math.round((f.count / Math.max(funnelMax, 1)) * 100) : 0
-              return (
-                <div key={i} data-etapa={f.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 110, flexShrink: 0 }}>{f.label}</span>
-                  <div style={{ flex: 1, height: 22, borderRadius: 6, background: 'var(--bg-app)', overflow: 'hidden', position: 'relative' }}>
-                    <div style={{
-                      position: 'absolute', left: 0, top: 0, bottom: 0,
-                      width: `${Math.max(barPct, f.count > 0 ? 12 : 0)}%`,
-                      background: f.color, borderRadius: 6,
-                    }} />
-                  </div>
-                  {/* O número fora da barra: dentro, em branco, sumia nas barras claras. */}
-                  <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--text)', minWidth: 28, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    {f.count}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+          <ClientesDoPeriodo
+            titulo="Clientes no mês"
+            subtitulo={proId ? 'As suas novas clientes e os seus agendamentos neste mês, até agora' : 'Novos clientes e agendamentos da unidade neste mês, até agora'}
+            etapas={funnel}
+          />
         )}
 
         {/* Reativar clientes */}
         {canClients && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginBottom: 4 }}>
-            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              Reativar clientes
-              <span style={{ color: 'var(--brand)', fontWeight: 700 }}>✦</span>
-            </h2>
-          </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Sem visita há mais de 90 dias</p>
-
-          {toReactivate.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', paddingTop: 8, flex: 1 }}>
-              Todos os clientes retornaram 🎉
-            </p>
-          ) : (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-                {toReactivate.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Avatar name={c.name} size={34} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.name}
-                      </p>
-                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
-                        {c.daysSince !== null ? `Última visita há ${c.daysSince} dias` : 'Nunca veio'}
-                      </p>
-                    </div>
-                    <Link href={`/${slug}/agenda`} style={{
-                      width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'var(--bg-app)', border: '1px solid var(--border)', color: 'var(--text-muted)', textDecoration: 'none',
-                    }} title="Agendar">
-                      <ArrowUpRight size={13} />
-                    </Link>
-                  </div>
-                ))}
-              </div>
-
-              {inactiveCount > 3 && (
-                <Link href={`/${slug}/clients?status=active`} style={{
-                  display: 'block', textAlign: 'center', marginTop: 16,
-                  padding: '8px', borderRadius: 10, border: '1px solid var(--border)',
-                  fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'none',
-                }}>
-                  Ver {inactiveCount - 3} clientes inativos
-                </Link>
-              )}
-            </>
-          )}
-        </div>
+          <ReativarClientes
+            clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince }))}
+            total={inactiveCount}
+            hrefAgendar={`/${slug}/agenda`}
+            hrefVerTodas={`/${slug}/clients?status=active`}
+          />
         )}
 
       </div>

@@ -110,6 +110,7 @@ export const ISOLADOS = [
   'inbox-paginado.spec.ts',
   'indicadores-ticket-medio.spec.ts',
   'indicadores-credito-interno.spec.ts',
+  'indicadores-reativar-clientes-da-rede.spec.ts',
   'indicadores-venda-de-produto-de-quem-vendeu.spec.ts',
   'indicadores-receita-paga-por-procedimento.spec.ts',
   'relatorios-profissionais-ativos.spec.ts',

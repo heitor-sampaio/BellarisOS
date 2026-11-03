@@ -12,7 +12,7 @@ import type {
   AlertLowStock,
 } from '@/components/admin/admin-dashboard-view'
 import { AdminDashboardDynamic as AdminDashboardView } from '@/components/admin/admin-dashboard-dynamic'
-import { startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
+import { startOfDayTZ, endOfDayTZ, addDaysTZ } from '@/lib/datetime'
 import {
   resolvePeriod, percent, EMPTY_CORE,
   getByBranch, getSeries, getTopProcedures, getTopProfessionals,
@@ -27,6 +27,10 @@ import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
+import { ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
+import { getClientesParaReativar, getClientesParaReativarDaRede } from '@/lib/metrics/unidade'
+import { unitTag } from '@estetica-os/utils'
+import { differenceInDays } from 'date-fns'
 import { situacaoDoEstoque, estoqueBaixo, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
 
 
@@ -575,6 +579,45 @@ export default async function AdminDashboardPage({
   // existia no dashboard da unidade. Quem vê a agenda, com o "só os meus" dela.
   const abertos = canAgenda ? await abertosDeAntes(ctx, branches.map(b => b.id as string)) : SEM_ABERTOS_DE_ANTES
 
+  // F7b (H3): o "Reativar clientes" e o "Clientes no mês" só existiam no
+  // dashboard da unidade. Na rede, as sumidas da CLÍNICA inteira (sem visita
+  // em nenhuma unidade há 90 dias), com a unidade de cada uma; recortada a
+  // uma unidade (?unidade=, ou a clínica de uma só), o mesmo quadro da
+  // unidade. Com a agenda "só os meus", as dela (o recorte da agenda).
+  const noventaDias = addDaysTZ(now, -90)
+  const umaSoNoRecorte = branches.length === 1 ? branches[0]! : null
+  const paraReativar = !canClients
+    ? { total: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null }[] }
+    : umaSoNoRecorte
+      ? await getClientesParaReativar({
+          tenantId: ctx.tenantId!, branchId: umaSoNoRecorte.id as string, tag: unitTag(umaSoNoRecorte.name as string),
+          desde: noventaDias, professionalId: agendaDela,
+        }).then(r => ({ total: r.total, lista: r.lista.map(c => ({ ...c, unidade: null })) }))
+      : await getClientesParaReativarDaRede({ tenantId: ctx.tenantId!, desde: noventaDias, professionalId: agendaDela })
+  const quadrosDeClientes = canClients ? (
+    <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <ClientesDoPeriodo
+        titulo="Clientes no período"
+        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : 'Novos clientes e agendamentos da clínica'} · ${periodLabel}, até agora`}
+        etapas={[
+          { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
+          { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },
+          { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
+          { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
+        ]}
+      />
+      <ReativarClientes
+        clientes={paraReativar.lista.map(c => ({
+          id: c.id, name: c.name, unidade: c.unidade,
+          diasSemVir: c.ultimaVisita ? differenceInDays(now, new Date(c.ultimaVisita)) : null,
+        }))}
+        total={paraReativar.total}
+        hrefAgendar="/admin/agenda"
+        hrefVerTodas={umaSoNoRecorte && !umaUnidade ? `/admin/clients?unidade=${umaSoNoRecorte.slug as string}` : '/admin/clients'}
+      />
+    </div>
+  ) : null
+
   return (
     <>
       <RealtimeRefresher
@@ -582,6 +625,7 @@ export default async function AdminDashboardPage({
       />
       <AdminDashboardView
         permissions={ctx.permissions}
+        quadrosDeClientes={quadrosDeClientes}
         avisoDosAbertos={<AbertosDeAntes base="/admin/agenda" abertos={abertos.abertos} semChegada={abertos.semChegada} mostrarUnidade={branches.length > 1} />}
         userName={ctx.userName}
         leadFunnel={leadFunnel}
