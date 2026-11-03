@@ -20,7 +20,7 @@ import { join, relative, sep } from 'node:path'
 const RAIZ = join(__dirname, '..')
 const PERMITIDOS = new Set(['actions/leads.ts', 'lib/automacoes/acoes-crm.ts', 'lib/crm/oportunidade.ts'])
 const GRAVA_A_ETAPA = [
-  /\.update\(\s*\{[^)]*?\bcrm_stage_id\b/s,     // .update({ crm_stage_id: … })
+  /\.update\(\s*\{[^)]*?\bcrm_stage_id\b/,      // .update({ crm_stage_id: … }) — o [^)] já atravessa as linhas
   /\b\w+\.crm_stage_id\s*=(?!=)/,               // patch.crm_stage_id = …
   /\bconst\s+\w+\s*=\s*\{\s*crm_stage_id\s*:|\?\s*\{\s*crm_stage_id\s*:/, // const patch = { crm_stage_id: … } (ou num ternário)
 ]
