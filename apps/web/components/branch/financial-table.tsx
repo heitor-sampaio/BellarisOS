@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import {
   Search, X, TrendingUp, TrendingDown, CheckCircle2,
-  Clock, RotateCcw, ChevronUp, ChevronDown, XCircle,
+  Clock, RotateCcw, ChevronUp, ChevronDown, XCircle, FileText,
 } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { useRouter } from 'next/navigation'
@@ -364,6 +364,17 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                               <CheckCircle2 size={12} />
                               Pagar
                             </button>
+                          )}
+                          {/* ven-06: o recibo do que foi pago (PDF — imprimir ou baixar). */}
+                          {isIncome && tx.is_paid && !isReversed && tx.category !== 'Estorno' && (
+                            <a href={`/api/recibos/${tx.id}`} target="_blank" rel="noopener" aria-label="Recibo" title="Recibo (PDF): imprimir ou baixar" style={{
+                            width: 30, height: 30, borderRadius: 7,
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            color: 'var(--text-faint)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <FileText size={12} />
+                          </a>
                           )}
                           {/* Estorno não se estorna — o banco também recusa. */}
                           {tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (

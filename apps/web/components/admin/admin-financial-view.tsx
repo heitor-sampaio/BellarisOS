@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
   ArrowUpRight, ArrowDownRight,
-  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle, CreditCard,
+  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle, CreditCard, FileText,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
@@ -652,6 +652,17 @@ export function AdminFinancialView({
                           }}>
                             <CheckCircle2 size={12} /> Pagar
                           </button>
+                        )}
+                        {/* ven-06: o recibo do que foi pago (PDF — imprimir ou baixar). */}
+                        {isIncome && t.is_paid && !estornada && t.category !== 'Estorno' && (
+                          <a href={`/api/recibos/${t.id}`} target="_blank" rel="noopener" aria-label="Recibo" title="Recibo (PDF): imprimir ou baixar" style={{
+                            width: 30, height: 30, borderRadius: 7,
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            color: 'var(--text-faint)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <FileText size={12} />
+                          </a>
                         )}
                         {/* Estorno não se estorna (o banco também recusa): desfazer é
                             coisa do financeiro, não um segundo clique. */}

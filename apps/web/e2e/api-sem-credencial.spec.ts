@@ -74,6 +74,11 @@ test('o PDF de um documento assinado exige sessão', async ({ request }) => {
   expect(r.status()).toBe(401)
 })
 
+test('o recibo de um pagamento (PDF) exige sessão', async ({ request }) => {
+  const r = await request.get('/api/recibos/00000000-0000-4000-8000-000000000000', { maxRedirects: 0 })
+  expect(r.status()).toBe(401)
+})
+
 test('o link público de assinatura: sem token válido, nada abre nem assina', async ({ request }) => {
   // A defesa destas rotas é o próprio link (token + CPF), não a sessão.
   const falso = 'A'.repeat(43)

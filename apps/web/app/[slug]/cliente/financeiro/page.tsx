@@ -138,6 +138,13 @@ export default async function ClientFinancialPage() {
               }}>
                 {r.estornado ? 'Estornado' : r.is_paid ? 'Pago' : 'Pendente'}
               </span>
+              {/* ven-06: o recibo do que ela pagou (PDF). */}
+              {r.is_paid && !r.estornado && (
+                <a href={`/api/recibos/${r.id}`} target="_blank" rel="noopener" data-recibo
+                  style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)' }}>
+                  Recibo
+                </a>
+              )}
             </div>
           </div>
         ))}

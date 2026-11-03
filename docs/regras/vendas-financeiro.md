@@ -772,6 +772,19 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   `formatDia`), e o atendimento avulso concluído e não pago aparece "A pagar
   na clínica" — a conta de `atendimentos_a_receber` (`getAtendimentosAReceber`),
   a mesma do Fechamento e da ficha. Prova: `e2e/portal-cliente-pagamentos.spec.ts`.
+- **O RECIBO do pagamento, em PDF** (ven-06 da revisão, 2026-11-02; o
+  Heitor: "um recibo simples em PDF, pelo app ou impresso"). Todo lançamento
+  de receita PAGO e vivo (sem estorno) tem "Recibo" na lista dos dois
+  financeiros, e a cliente tem "Recibo" no Financeiro do app. É
+  `GET /api/recibos/[id]` (abre o PDF no navegador — imprimir ou baixar):
+  sessão; da equipe, quem recebe ou vê o financeiro da unidade inteira, com
+  a rede e a unidade ao alcance; da cliente, só o pagamento de uma ficha DELA.
+  Do a receber ou do estornado, 404. O texto (`reciboDoLancamento`,
+  `lib/financeiro/recibo.ts`, pelo gerador simples de `lib/pdf.ts`): nº,
+  quem pagou (com o CPF, ou o passaporte/RNE), a quantia, o referente, a
+  forma ("Crédito 3x"), quando, o desconto e o motivo quando há, e quem
+  recebeu (clínica, unidade, CNPJ, endereço, telefone) — e "Este recibo não
+  substitui a nota fiscal." Prova: `e2e/financeiro-recibo.spec.ts`.
 - **Estornar pede confirmação** (`ConfirmarEstorno`, nos financeiros da rede e
   da unidade; 2026-10-20): mostra o lançamento e o valor e avisa que não se
   desfaz. Era um clique só.
