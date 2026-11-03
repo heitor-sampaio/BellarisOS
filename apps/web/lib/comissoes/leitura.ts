@@ -4,15 +4,33 @@ import { ler, lerTodas } from '@/lib/db'
 import {
   configDaLinha, linhasDaComissao, precoDaSessaoDePacote, comissaoDoPacoteDaLinha, regraDaSessaoDePacote,
   type ConfigDeComissao, type RegraDeComissao, type TaxaDePagamento, type TipoDeRegra, type MetodoComTaxa,
-  type ItemExecutado, type LinhaDeComissao, type ComissoesGerais,
+  type ItemExecutado, type LinhaDeComissao, type ComissoesGerais, type ComissaoDoProduto,
 } from './config'
 
 /** A configuração de comissões da rede (os padrões, se ela nunca salvou). */
 export async function configDeComissaoDaRede(tenantId: string): Promise<ConfigDeComissao> {
   const linha = await ler(createAdminClient().from('commission_configs')
-    .select('modo, desconta_insumos, desconta_taxa, base_com_pontos, periodo, produto_pct')
+    .select('modo, desconta_insumos, desconta_taxa, base_com_pontos, periodo, produto_pct, produto_modo')
     .eq('tenant_id', tenantId).maybeSingle(), 'ler a configuração de comissões')
   return configDaLinha(linha)
+}
+
+/**
+ * Os produtos de REVENDA da rede (ativos) e a comissão de venda de cada um
+ * (r2-ven-10) — a lista da "Comissão por produto" de Configurações → Comissões.
+ */
+export async function comissoesDosProdutos(tenantId: string): Promise<ComissaoDoProduto[]> {
+  const linhas = await lerTodas<Record<string, unknown>>((de, ate) => createAdminClient().from('products')
+    .select('id, name, sale_price, comissao_tipo, comissao_valor')
+    .eq('tenant_id', tenantId).eq('is_active', true).in('uso', ['REVENDA', 'AMBOS'])
+    .order('name').order('id').range(de, ate), 'ler a comissão dos produtos')
+  return (linhas ?? []).map(p => ({
+    productId: String(p.id),
+    nome:      String(p.name),
+    preco:     Number(p.sale_price ?? 0),
+    tipo:      p.comissao_tipo === 'PERCENTAGE' || p.comissao_tipo === 'FIXED_AMOUNT' ? p.comissao_tipo : null,
+    valor:     p.comissao_valor == null ? null : Number(p.comissao_valor),
+  }))
 }
 
 export async function taxasDaRede(tenantId: string): Promise<TaxaDePagamento[]> {

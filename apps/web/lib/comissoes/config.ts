@@ -31,11 +31,20 @@ export interface ConfigDeComissao {
    * vendeu, liberada quando a venda é paga. Nulo = sem comissão.
    */
   produto_pct:      number | null
+  /**
+   * r2-ven-10 (o Heitor: "deixar a clínica decidir, flexibilidade"): TOTAL —
+   * uma regra sobre o total da venda (`produto_pct`); POR_PRODUTO — cada
+   * produto com a sua (`products.comissao_*`), e o sem regra cai na geral.
+   */
+  produto_modo:     ModoDaComissaoDoProduto
 }
+
+export const MODOS_DA_COMISSAO_DO_PRODUTO = ['TOTAL', 'POR_PRODUTO'] as const
+export type ModoDaComissaoDoProduto = typeof MODOS_DA_COMISSAO_DO_PRODUTO[number]
 
 export const CONFIG_PADRAO: ConfigDeComissao = {
   modo: 'INTEGRAL', desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
-  produto_pct: null,
+  produto_pct: null, produto_modo: 'TOTAL',
 }
 
 export const EntradaDaConfigDeComissao = z.object({
@@ -47,7 +56,29 @@ export const EntradaDaConfigDeComissao = z.object({
   periodo:          z.enum(PERIODOS),
   // Sem o campo (um chamador antigo), sem comissão de produto.
   produto_pct:      z.number().min(0, 'A comissão não pode ser negativa.').max(100, 'A comissão é de no máximo 100%.').nullable().optional().default(null),
+  // Sem o campo (um chamador antigo), uma regra sobre o total.
+  produto_modo:     z.enum(MODOS_DA_COMISSAO_DO_PRODUTO).optional().default('TOTAL'),
 })
+
+/**
+ * A comissão de venda de UM produto (r2-ven-10), quando a clínica comissiona
+ * por produto: % do vendido do item, ou R$ por unidade vendida. Sem regra
+ * (`tipo` nulo), o produto cai na regra geral.
+ */
+export interface ComissaoDoProduto {
+  productId: string
+  nome:      string
+  preco:     number
+  tipo:      TipoDeRegra | null
+  valor:     number | null
+}
+
+export const EntradaDasComissoesDosProdutos = z.array(z.object({
+  productId: z.string().uuid(),
+  tipo:      z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).nullable(),
+  valor:     z.number().min(0, 'A comissão não pode ser negativa.').nullable(),
+}).refine(r => (r.tipo === null) === (r.valor === null), 'Diga o tipo e o valor da comissão do produto.')
+  .refine(r => r.tipo !== 'PERCENTAGE' || (r.valor ?? 0) <= 100, 'A comissão é de no máximo 100%.')).max(500)
 
 /** Uma linha do banco (ou nenhuma) → a configuração, com os padrões no que faltar. */
 export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unknown>> | null | undefined): ConfigDeComissao {
@@ -59,6 +90,7 @@ export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unkn
     base_com_pontos:  l.base_com_pontos === 'VALOR_PAGO' ? 'VALOR_PAGO' : 'PRECO',
     periodo:          l.periodo === 'QUINZENAL' || l.periodo === 'SEMANAL' ? l.periodo : 'MENSAL',
     produto_pct:      l.produto_pct == null || !(Number(l.produto_pct) > 0) ? null : Number(l.produto_pct),
+    produto_modo:     l.produto_modo === 'POR_PRODUTO' ? 'POR_PRODUTO' : 'TOTAL',
   }
 }
 

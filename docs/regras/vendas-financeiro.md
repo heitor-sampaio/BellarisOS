@@ -268,7 +268,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   sozinho ainda vale) e `produto_vender_itens` (migration `20261101001103`)
   grava numa transação: cada saldo travado na ordem do produto, a baixa de
   cada um pelo FEFO, a venda e os itens (`product_sale_items`: produto,
-  quantidade, preço, custo e o movimento dele), UMA comissão sobre o total e
+  quantidade, preço, custo e o movimento dele), a comissão (uma sobre o total, ou uma por item quando a clínica comissiona por produto — r2-ven-10, `comissoes.md`) e
   o dinheiro. Sem estoque de UM, nada grava. A venda guarda o total (tabela,
   desconto, vendido, custo, unidades); as colunas de antes
   (`product_id`, `preco_unitario`, `stock_movement_id`) ficam com o PRIMEIRO

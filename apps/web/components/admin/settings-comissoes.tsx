@@ -4,10 +4,10 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
-import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora } from '@/actions/comissoes'
+import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarComissaoDosProdutos } from '@/actions/comissoes'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
-import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa } from '@/lib/comissoes/config'
-import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
+import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto, type TipoDeRegra } from '@/lib/comissoes/config'
+import { parseDecimal, parseDinheiro, NUMERO_INVALIDO, DINHEIRO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
 
 /**
@@ -40,13 +40,15 @@ const PARCELAS_DO_CREDITO = Array.from({ length: 11 }, (_, i) => i + 2)
 /** Os campos de taxa são curtos: em grade, quantos couberem na linha. */
 const grade = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 } as const
 
-export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null, prazoDaOperadora = PRAZO_PADRAO_DA_OPERADORA }: {
+export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null, prazoDaOperadora = PRAZO_PADRAO_DA_OPERADORA, produtos = [] }: {
   inicial:    ConfigDeComissao
   taxas:      TaxaDePagamento[]
   /** "Parcelar no crédito até" gravado pela rede (D-15); nulo = automático. */
   maximoDeVezes?: number | null
   /** A cada quantos dias a operadora deposita cada parcela (r2-fin-01). */
   prazoDaOperadora?: number
+  /** Os produtos de revenda e a comissão de cada um (r2-ven-10). */
+  produtos?: ComissaoDoProduto[]
   /** Quem atende clientes e não tem comissão padrão configurada. */
   semRegra:   { id: string; nome: string }[]
   /** Quantos atendem (A12): sem ninguém, a tela não diz "todos têm comissão". */
@@ -55,7 +57,7 @@ export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, po
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <ComoAcontece inicial={inicial} podeEditar={podeEditar} />
+      <ComoAcontece inicial={inicial} podeEditar={podeEditar} produtos={produtos} />
       <TabelaDeTaxas inicial={taxas} podeEditar={podeEditar} maximoGravado={maximoGravado} prazoGravado={prazoDaOperadora} />
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
         <h2 style={titulo}>Comissão de cada profissional</h2>
@@ -95,7 +97,12 @@ function Bloco({ titulo: t, children }: { titulo: string; children: React.ReactN
   )
 }
 
-function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; podeEditar: boolean }) {
+/** O que a tela guarda de cada produto: o tipo e o texto do valor ("10" ou "3,00"). */
+type RegraDoProdutoNaTela = { tipo: TipoDeRegra | ''; valor: string }
+const textoDoValor = (p: ComissaoDoProduto) => p.valor == null ? '' : p.tipo === 'FIXED_AMOUNT'
+  ? p.valor.toFixed(2).replace('.', ',') : String(p.valor).replace('.', ',')
+
+function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComissao; podeEditar: boolean; produtos: ComissaoDoProduto[] }) {
   const router = useRouter()
   const [c, setC] = useState(inicial)
   const [erro, setErro] = useState<string | null>(null)
@@ -105,15 +112,37 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
   // A comissão da venda de produto (D4): texto do campo, lido como os outros
   // números com casas ("10" ou "7,5"); vazio = sem comissão.
   const [pctProduto, setPctProduto] = useState(inicial.produto_pct != null ? String(inicial.produto_pct).replace('.', ',') : '')
+  // r2-ven-10: a regra de cada produto (quando a clínica comissiona por produto).
+  const [regras, setRegras] = useState<Record<string, RegraDoProdutoNaTela>>(() =>
+    Object.fromEntries(produtos.map(p => [p.productId, { tipo: p.tipo ?? '', valor: textoDoValor(p) }])))
+  const mudarRegra = (id: string, r: Partial<RegraDoProdutoNaTela>) => { setRegras(a => ({ ...a, [id]: { ...a[id]!, ...r } })); setSalvo(false) }
 
   function salvar() {
     setErro(null)
     const texto = pctProduto.trim()
     const produto = texto ? parseDecimal(texto, 2) : null
     if (produto != null && Number.isNaN(produto)) { setErro(`Comissão na venda de produto: ${NUMERO_INVALIDO}`); return }
+    // As regras dos produtos que mudaram (r2-ven-10). Vazio = sem regra própria (cai na geral).
+    const mudadas: { productId: string; tipo: TipoDeRegra | null; valor: number | null }[] = []
+    if (c.produto_modo === 'POR_PRODUTO') {
+      for (const p of produtos) {
+        const r = regras[p.productId] ?? { tipo: '', valor: '' }
+        const texto = r.valor.trim()
+        const tipo: TipoDeRegra | null = texto ? (r.tipo || 'PERCENTAGE') : null
+        const valor = !tipo ? null : tipo === 'FIXED_AMOUNT' ? parseDinheiro(texto) : parseDecimal(texto, 2)
+        if (valor != null && Number.isNaN(valor)) {
+          setErro(`${p.nome}: ${tipo === 'FIXED_AMOUNT' ? DINHEIRO_INVALIDO : NUMERO_INVALIDO}`); return
+        }
+        if (tipo !== p.tipo || valor !== p.valor) mudadas.push({ productId: p.productId, tipo, valor })
+      }
+    }
     iniciar(async () => {
       const r = await salvarConfigDeComissao({ ...c, produto_pct: produto })
       if (r.error) { setErro(r.error); return }
+      if (mudadas.length) {
+        const rp = await salvarComissaoDosProdutos(mudadas)
+        if (rp.error) { setErro(rp.error); return }
+      }
       setSalvo(true)
       router.refresh()
     })
@@ -162,17 +191,64 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
       </Bloco>
 
       <Bloco titulo="Venda de produto">
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 260 }}>
-          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Comissão na venda de produto (%)</span>
-          <input className="field" inputMode="decimal" value={pctProduto} disabled={!podeEditar} placeholder="Sem comissão"
-            aria-label="Comissão na venda de produto (%)"
-            onChange={e => { setPctProduto(e.target.value); setSalvo(false) }} />
-        </label>
-        <p style={texto}>
-          {pctProduto.trim()
-            ? 'Quem registra a venda na ficha ganha esse percentual do valor vendido (com o desconto), quando a venda estiver paga inteira: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. O estorno devolve.'
-            : 'Vazio: a venda de produto não gera comissão.'}
-        </p>
+        {/* r2-ven-10 (o Heitor: "deixar a clínica decidir, flexibilidade"). */}
+        <div role="group" aria-label="Comissão da venda de produto" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {podeEditar
+            ? <SegSelect ariaLabel="Como a venda de produto comissiona" value={c.produto_modo}
+                onSelect={k => mudar('produto_modo', k as ConfigDeComissao['produto_modo'])}
+                options={[{ key: 'TOTAL', label: 'Uma regra sobre o total' }, { key: 'POR_PRODUTO', label: 'Por produto' }]} />
+            : <strong style={{ fontSize: 'var(--text-sm-sz)' }}>{c.produto_modo === 'POR_PRODUTO' ? 'Por produto' : 'Uma regra sobre o total'}</strong>}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 260 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>
+              {c.produto_modo === 'POR_PRODUTO' ? 'Regra geral — o produto sem a sua (%)' : 'Comissão na venda de produto (%)'}
+            </span>
+            <input className="field" inputMode="decimal" value={pctProduto} disabled={!podeEditar} placeholder="Sem comissão"
+              aria-label="Comissão na venda de produto (%)"
+              onChange={e => { setPctProduto(e.target.value); setSalvo(false) }} />
+          </label>
+          <p style={texto}>
+            {c.produto_modo === 'POR_PRODUTO'
+              ? 'Cada produto comissiona pela sua regra, sobre a parte dele no valor vendido (com o desconto rateado) — no kit, item a item. O produto sem regra própria usa a regra geral; sem as duas, não gera comissão.'
+              : pctProduto.trim()
+                ? 'Quem vendeu ganha esse percentual do valor vendido (com o desconto), uma comissão sobre o total — também no kit.'
+                : 'Vazio: a venda de produto não gera comissão.'}
+            {' '}A comissão fica a pagar com a venda paga inteira: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. O estorno devolve.
+          </p>
+          {c.produto_modo === 'POR_PRODUTO' && (
+            <div data-comissao-por-produto style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p className="overline">Comissão por produto</p>
+              {produtos.length === 0 ? (
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                  Nenhum produto de revenda ativo. Marque o uso “Revenda” e o preço de venda no cadastro do produto (Estoque).
+                </p>
+              ) : produtos.map(p => {
+                const r = regras[p.productId] ?? { tipo: '', valor: '' }
+                const tipo = r.tipo || 'PERCENTAGE'
+                return (
+                  <div key={p.productId} data-produto style={{
+                    display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: 8, alignItems: 'center',
+                    padding: '8px 10px', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)',
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</p>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                        {formatBRL(p.preco)}{!r.valor.trim() ? ' · regra geral' : ''}
+                      </p>
+                    </div>
+                    <select className="field" aria-label="Tipo da comissão" disabled={!podeEditar} value={tipo} style={{ width: 'auto' }}
+                      onChange={e => mudarRegra(p.productId, { tipo: e.target.value as TipoDeRegra })}>
+                      <option value="PERCENTAGE">% do vendido</option>
+                      <option value="FIXED_AMOUNT">R$ por unidade</option>
+                    </select>
+                    <input className="field" inputMode="decimal" aria-label="Valor da comissão" disabled={!podeEditar}
+                      placeholder={tipo === 'FIXED_AMOUNT' ? '0,00' : 'Geral'} value={r.valor} style={{ width: 96 }}
+                      onChange={e => mudarRegra(p.productId, { valor: e.target.value })} />
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </Bloco>
 
       <Bloco titulo="Fechamento das comissões">

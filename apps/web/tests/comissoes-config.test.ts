@@ -18,8 +18,8 @@ describe('configDaLinha', () => {
     expect(configDaLinha({ modo: 'OUTRO', periodo: 'ANUAL', base_com_pontos: 'X' })).toEqual(CONFIG_PADRAO)
   })
   it('lê o que foi salvo', () => {
-    expect(configDaLinha({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: '7.50' }))
-      .toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: 7.5 })
+    expect(configDaLinha({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: '7.50', produto_modo: 'POR_PRODUTO' }))
+      .toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: 7.5, produto_modo: 'POR_PRODUTO' })
   })
   it('o modo é um só: o pagamento integral (H4, 2026-11-01)', () => {
     expect(CONFIG_PADRAO.modo).toBe('INTEGRAL')

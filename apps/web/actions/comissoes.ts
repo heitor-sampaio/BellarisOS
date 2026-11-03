@@ -19,7 +19,7 @@ import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assert
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
-import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento } from '@/lib/comissoes/config'
+import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento, EntradaDasComissoesDosProdutos } from '@/lib/comissoes/config'
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
@@ -48,6 +48,7 @@ export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultad
     await gravar(admin.from('commission_configs').upsert({
       tenant_id: ctx.tenantId!, modo: c.modo, desconta_insumos: c.desconta_insumos, desconta_taxa: c.desconta_taxa,
       base_com_pontos: c.base_com_pontos, periodo: c.periodo, produto_pct: c.produto_pct && c.produto_pct > 0 ? c.produto_pct : null,
+      produto_modo: c.produto_modo,
       updated_at: new Date().toISOString(), updated_by: ctx.internalUserId ?? null,
     }, { onConflict: 'tenant_id' }).select('tenant_id').single(), 'salvar a configuração de comissões')
     revalidar()
@@ -92,6 +93,35 @@ export async function salvarMaximoDeVezes(entrada: unknown): Promise<Resultado> 
     const linhas = await gravar(createAdminClient().from('tenants')
       .update({ cartao_max_vezes: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o limite de vezes no crédito')
     if (!linhas?.length) return { error: 'Rede não encontrada.' }
+    revalidar()
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * A comissão de venda de cada produto (r2-ven-10; o Heitor: "deixar a
+ * clínica decidir, flexibilidade"), usada quando a clínica comissiona POR
+ * PRODUTO: % do vendido do item ou R$ por unidade; sem regra, o produto cai na
+ * geral. Vale para a rede inteira — mesma permissão e abrangência da
+ * configuração. Só produto DESTA rede: o de outra é recusado.
+ */
+export async function salvarComissaoDosProdutos(entrada: unknown): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (ctx.branchId !== null) return { error: 'A comissão dos produtos vale para a rede inteira: quem muda é quem administra a rede.' }
+    const lido = EntradaDasComissoesDosProdutos.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+    const admin = createAdminClient()
+    for (const r of lido.data) {
+      const linhas = await gravar(admin.from('products')
+        .update({ comissao_tipo: r.tipo, comissao_valor: r.tipo ? r.valor : null })
+        .eq('id', r.productId).eq('tenant_id', ctx.tenantId!).select('id'), 'salvar a comissão do produto')
+      if (!linhas?.length) return { error: 'Produto não encontrado.' }
+    }
     revalidar()
     return { ok: true }
   } catch (e) {

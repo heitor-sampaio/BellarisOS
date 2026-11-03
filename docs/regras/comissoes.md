@@ -124,6 +124,22 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   maquininha da rede; não desconta insumos. O extrato (`comissoes_extrato`)
   diz a cliente e o produto; o fechamento é o de sempre. Prova:
   `e2e/vendas-produto.spec.ts` ("a comissão da venda de produto").
+  - **Uma regra sobre o total OU por produto** (r2-ven-10, o Heitor,
+    2026-11-03: "deixar a clínica decidir, flexibilidade"). Em Configurações →
+    Comissões → "Venda de produto", a clínica escolhe
+    (`commission_configs.produto_modo`): "Uma regra sobre o total" (o de cima:
+    UMA linha sobre o vendido do kit inteiro) ou "Por produto" — a lista dos
+    produtos de revenda ativos, cada um com "% do vendido" ou "R$ por
+    unidade" (`products.comissao_tipo`/`comissao_valor`;
+    `salvarComissaoDosProdutos`, a mesma permissão e abrangência da
+    configuração, só produto da rede). Por produto, cada ITEM do kit nasce com
+    a sua linha (`item` = a ordem dele), sobre a parte dele no vendido (o
+    desconto rateado pela tabela, a última parte com o arredondamento); o
+    produto sem regra própria cai na geral (`produto_pct`, "Regra geral — o
+    produto sem a sua"); sem as duas, o item não gera linha. A conta de cada
+    linha é a de sempre (`comissao_conta`: libera com a venda paga inteira;
+    o estorno da venda cancela todas). Grava `produto_vender_itens`
+    (migration `20261103001306`). Prova: `e2e/comissoes-produto-por-produto.spec.ts`.
 - **"Quem vendeu" é escolhido na venda, separado de quem registrou** (com-06
   da revisão, 2026-11-02; o Heitor: "às vezes quem vai registrar a venda é
   recepção e quem vendeu foi a profissional (...) um campo para informar quem

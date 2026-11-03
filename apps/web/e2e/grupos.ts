@@ -126,6 +126,7 @@ export const ISOLADOS = [
   'indicadores-reativar-clientes-da-rede.spec.ts',
   'indicadores-venda-de-produto-de-quem-vendeu.spec.ts',
   'indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts',
+  'comissoes-produto-por-produto.spec.ts',
   'indicadores-receita-paga-por-procedimento.spec.ts',
   'relatorios-profissionais-ativos.spec.ts',
   'relatorios-procedimentos-agenda-dela.spec.ts',
