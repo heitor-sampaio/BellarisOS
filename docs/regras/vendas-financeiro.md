@@ -689,7 +689,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   em centavos; a tela usa `CampoDoDesconto`): o servidor a refaz a partir do
   pedido, e a função do banco confere.
   - **Pacote**: `client_packages.price` é o VENDIDO (`preco_tabela` −
-    `desconto`, quem deu é `sold_by`); pagamento e sessões fecham com ele.
+    `desconto`; quem deu é quem registrou, `registrado_por` — `sold_by` é quem VENDEU, com-06); pagamento e sessões fecham com ele.
   - **Plano**: o desconto é RATEADO nos procedimentos do plano
     (`plano_aplicar_desconto`, maior resto — nenhum passa do preço de antes):
     `price` vira o vendido e o de antes fica em `preco_tabela`
@@ -863,6 +863,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Ler dinheiro digitado com uma regra própria (Number(s.replace…), parseFloat em campo de texto) — é parseDinheiro, e o NaN dele é recusa, não zero
 ❌ Ler "o lançamento do atendimento" (appointment_id) sem tirar o estornado — o atendimento pode ter o estornado e o recebimento novo (maybeSingle quebra; o "pago" mente)
 ❌ Devolver e.message num catch de action (o 'Forbidden' da trava ia em inglês para a tela) — é mensagemDoErro
+❌ Gravar sold_by como quem registrou a venda quando a tela disse outra pessoa (ou ninguém) em "Quem vendeu" — sold_by é quem vendeu, registrado_por é quem registrou (com-06)
 ❌ Vender produto fora de produto_vender_itens (a de um produto só, produto_vender, é a versão velha e nada a chama), ou ler os produtos de uma venda pelo product_id do cabeçalho (no kit é só o primeiro: são os product_sale_items)
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ```
