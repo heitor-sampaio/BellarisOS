@@ -9128,6 +9128,17 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**A completa de 03/11 depois das frentes** (run 41643155094: isolados 853/4,
+compartilhados 557/6). Três instabilidades (DNS da Cloudflare para o Supabase,
+504 do Auth no createUser, o banco parado ~20 s no "confirmar" de
+fase2-agenda); cinco specs que não acompanharam decisões (H5 no portal de outra
+unidade, D3 no ranking pela receita paga, o vocabulário de uma unidade, o
+"Motivo do desconto" no bloco do desconto, o telefone mascarado do Copilot).
+Dois defeitos, consertados (99b18f1f…0ff3e92e): na clínica de uma unidade o
+"Novo lançamento" não gravava ("Unidade não identificada." — o modal zerava a
+unidade que a F8 escondeu; b908f8e3), e as mensagens das actions ainda diziam
+"filial" (75b4cf6e).
+
 **F12 feita em 2026-11-03 — configurações e CRM; fecha as frentes da 5ª simulação**
 (63dda29f…680a03f2; sem migration). Agendar não move mais o card para a etapa
 "Agendado" (crm-05: "não existe movimento automático padrão nos funis"): a
