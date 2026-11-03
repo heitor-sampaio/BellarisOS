@@ -36,7 +36,7 @@ import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/vou
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
-import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
+import { planejamentosDaFicha, perguntaDoPlanejamentoVazio } from '@/lib/atendimento/retrato-dos-injetaveis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
@@ -693,9 +693,15 @@ export async function finishSession(
 }
 
 async function finishSessionInterno(
-  _prev: { error?: string; avisos?: string[] } | null,
+  _prev: { error?: string; avisos?: string[]; confirmarPlanejamentoVazio?: boolean } | null,
   formData: FormData,
-): Promise<{ error?: string; /** Insumos que ficaram com saldo negativo — conclui mesmo assim. */ avisos?: string[] }> {
+): Promise<{
+  error?: string
+  /** Insumos que ficaram com saldo negativo — conclui mesmo assim. */
+  avisos?: string[]
+  /** O planejamento da ficha não tem ponto: a tela pergunta, e só a resposta conclui (atend-12). */
+  confirmarPlanejamentoVazio?: boolean
+}> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'VIEW')
@@ -902,6 +908,12 @@ async function finishSessionInterno(
       anamneseNaTela: anamnese, fichaNaTela: daTela && ficha ? ficha.answers : null,
     })
     if (falta) return { error: falta }
+
+    // O planejamento escolhido sem nenhum ponto (atend-12, revisão do Heitor:
+    // "avisar e confirmar se deseja continuar"): o servidor só conclui com a
+    // confirmação EXPLÍCITA — a tela pergunta com esta resposta.
+    const vazio = ficha ? perguntaDoPlanejamentoVazio(ficha.rows, ficha.answers) : null
+    if (vazio && formData.get('confirmar_planejamento_vazio') !== '1') return { error: vazio, confirmarPlanejamentoVazio: true }
 
     // ─── Grava, tudo ou nada ──────────────────────────────────────────────
     const userName = ctx.userName || await getUserName(admin, ctx.userId)

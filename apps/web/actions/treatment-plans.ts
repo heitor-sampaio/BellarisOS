@@ -1141,7 +1141,9 @@ async function generateEvaluationPlanInterno(
    * 2026-10-29): vão na MESMA gravação do plano. Nulas = a salva antes fica.
    */
   fichaDaTela:           Record<string, unknown> | null = null,
-): Promise<{ error?: string; planId?: string }> {
+  /** A resposta à pergunta do planejamento sem ponto (atend-12): só com ela o plano nasce. */
+  opcoes:                { confirmarPlanejamentoVazio?: boolean } = {},
+): Promise<{ error?: string; planId?: string; confirmarPlanejamentoVazio?: boolean }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
   // A avaliação grava prontuário E monta o plano: é do plano de tratamento.
@@ -1204,6 +1206,9 @@ async function generateEvaluationPlanInterno(
       semInjetaveis: !temRecurso(ctx, 'injetaveis'), anamneseNaTela: anamnese, fichaNaTela: ficha?.answers ?? null,
     })
     if (falta) return { error: falta }
+    // O planejamento escolhido sem nenhum ponto pede a confirmação explícita (atend-12).
+    const vazio = ficha ? perguntaDoPlanejamentoVazio(ficha.rows, ficha.answers) : null
+    if (vazio && opcoes.confirmarPlanejamentoVazio !== true) return { error: vazio, confirmarPlanejamentoVazio: true }
   }
 
   // ─── Grava, tudo ou nada ──────────────────────────────────────────────
@@ -1306,6 +1311,7 @@ import { paraAnamneseGeral, respostasDaFicha, type AnamneseGeral } from '@/lib/a
 import { fichaDePreAtendimento, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
+import { perguntaDoPlanejamentoVazio } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { deOutroProfissional, DE_OUTRO_PROFISSIONAL } from '@/lib/appointments/alteracoes'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'

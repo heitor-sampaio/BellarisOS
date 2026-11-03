@@ -262,3 +262,49 @@ test('na ficha da cliente, o retrato se lê e leva ao planejamento; a ficha anti
     await expect(p.getByRole('heading', { name: `[e2e] ${NOME_DO_MAPA}` })).toBeVisible()
   })
 })
+
+test('atend-12: o planejamento escolhido sem nenhum ponto pede confirmação — e o servidor só conclui com ela', async ({ browser }) => {
+  const vazia = await cliente('Plano vazio')
+  const NOME = `Sem pontos ${marca}`
+  await mapaDa(vazia, NOME, [])
+  const id = await atendimentoEmCurso(vazia)
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    const campo = p.locator('[data-campo="mapa"]')
+    await campo.getByText(NOME).click()
+    await expect(campo.getByRole('heading', { name: `[e2e] ${NOME}` })).toBeVisible()
+    await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
+    await p.getByRole('button', { name: 'Confirmar conclusão' }).click()
+    // O servidor não concluiu: pede a confirmação.
+    await expect(p.locator('[data-planejamento-vazio]')).toContainText(`O planejamento "[e2e] ${NOME}" não tem nenhum ponto. Continuar?`)
+    expect((await db().from('appointments').select('status').eq('id', id).single()).data?.status).toBe('IN_PROGRESS')
+    await p.getByRole('button', { name: 'Continuar sem pontos' }).click()
+    await expect.poll(async () => (await db().from('appointments').select('status').eq('id', id).single()).data?.status).toBe('COMPLETED')
+  })
+  const mapa = await mapaNaFicha(id)
+  expect(mapa?.planejamento?.nome).toBe(`[e2e] ${NOME}`)
+  expect(mapa?.points).toEqual([])
+})
+
+test('atend-12: gerar o plano com o planejamento sem ponto também pergunta, e só a resposta gera', async ({ browser }) => {
+  const vazia = await cliente('Plano vazio 2')
+  const NOME = `Sem pontos plano ${marca}`
+  await mapaDa(vazia, NOME, [])
+  const id = await atendimentoEmCurso(vazia)
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    await p.getByPlaceholder('Anote o que o cliente relatou: queixas estéticas, objetivos, histórico de tratamentos anteriores…').fill(`Rugas ${marca}`)
+    const campo = p.locator('[data-campo="mapa"]')
+    await campo.getByText(NOME).click()
+    await expect(campo.getByRole('heading', { name: `[e2e] ${NOME}` })).toBeVisible()
+    await p.getByRole('button', { name: 'Nova sessão' }).click()
+    await p.getByRole('button', { name: 'Adicionar procedimento' }).click()
+    await p.locator('select').filter({ hasText: 'Selecionar procedimento…' }).selectOption({ label: `[e2e] Toxina ${marca}` })
+    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await expect(p.getByRole('alertdialog').locator('[data-planejamento-vazio]')).toContainText(`O planejamento "[e2e] ${NOME}" não tem nenhum ponto. Continuar?`)
+    expect((await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', id)).data, 'sem a resposta, nada').toEqual([])
+    await p.getByRole('button', { name: 'Continuar sem pontos' }).click()
+    await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('evaluation_appointment_id', id)).data)
+      .toEqual([{ status: 'PROPOSED' }])
+  })
+})

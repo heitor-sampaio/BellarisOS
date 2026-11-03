@@ -77,3 +77,23 @@ export function comRetratos(
   }
   return { answers: saida }
 }
+
+/**
+ * O planejamento escolhido SEM nenhum ponto (atend-12, revisão do Heitor de
+ * 2026-11-02: "se o planejamento escolhido não tiver nenhum ponto, avisar e
+ * confirmar se deseja continuar"). Escolher o planejamento cumpre o campo,
+ * mesmo vazio; mas um mapa vazio não registra a aplicação — então o
+ * "Finalizar" e o gerar plano pedem a confirmação, e o SERVIDOR só segue com
+ * ela explícita. Lê as respostas JÁ RETRATADAS (os pontos do planejamento
+ * gravado, não os do navegador). Devolve a pergunta, ou nulo.
+ */
+export function perguntaDoPlanejamentoVazio(rows: AnamnesisRow[], answers: Record<string, unknown>): string | null {
+  for (const campo of camposDoPlanejador(rows)) {
+    const v = answers?.[campo] as { planejamento?: { nome?: unknown } | null; points?: unknown } | undefined
+    if (!v || typeof v !== 'object' || !v.planejamento) continue
+    if (Array.isArray(v.points) && v.points.length > 0) continue
+    const nome = typeof v.planejamento.nome === 'string' && v.planejamento.nome.trim() ? v.planejamento.nome.trim() : SEM_NOME
+    return `O planejamento "${nome}" não tem nenhum ponto. Continuar?`
+  }
+  return null
+}

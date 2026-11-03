@@ -740,7 +740,17 @@ const procedures = await ler(
     refaz com o planejamento de agora (o resto da ficha fica como foi salvo);
     se o planejamento saiu do alcance, a ficha salva fica como está.
   - Voltar à lista no campo é tirar o planejamento da ficha. A obrigatória
-    aceita o planejamento escolhido, mesmo sem ponto.
+    aceita o planejamento escolhido, mesmo sem ponto — **mas o planejamento
+    sem nenhum ponto PERGUNTA** (atend-12, revisão do Heitor de 2026-11-02:
+    "se o planejamento escolhido não tiver nenhum ponto, avisar e confirmar se
+    deseja continuar"): o "Finalizar" e o gerar plano recusam com "O
+    planejamento "X" não tem nenhum ponto. Continuar?"
+    (`perguntaDoPlanejamentoVazio`, sobre o RETRATO lido no servidor) e só
+    seguem com a confirmação explícita (`confirmar_planejamento_vazio` no
+    formulário da conclusão; `{ confirmarPlanejamentoVazio: true }` no
+    `generateEvaluationPlan`). A tela mostra a pergunta e "Continuar sem
+    pontos". Prova: `e2e/atendimento-ficha-planejador-injetaveis.spec.ts`
+    ("atend-12").
   - **Na leitura** (aba Prontuário da ficha, o atendimento bloqueado), o
     retrato aparece com o nome e a data ("como estava em…") e, se o
     planejamento existe e quem vê pode abri-lo (`planejamentosAbriveisDasFichas`,
@@ -1083,7 +1093,7 @@ O resto do fluxo:
     A foto e o planejador ficam fora da anamnese (a cliente responde pelo
     celular); o planejador da ficha, na rede sem o recurso de injetáveis (o
     campo é só para ver), não barra. O planejamento escolhido vale mesmo sem
-    ponto.
+    ponto, com a confirmação do atend-12 (§9.4).
   - **Quem não vê o clínico** (prontuário "só os meus" num atendimento de
     outra, com a agenda de todas): a tela não tem os campos e não aponta nada;
     o servidor recusa do mesmo jeito, com só o NOME da pergunta na mensagem.

@@ -361,7 +361,20 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
             <label htmlFor="conclusao-intercorrencias" className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
             <textarea id="conclusao-intercorrencias" name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
           </div>
-          {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
+          {state?.error && !state.confirmarPlanejamentoVazio && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
+          {/* O planejamento sem ponto (atend-12): o servidor pergunta, e só a resposta conclui. */}
+          {state?.confirmarPlanejamentoVazio && !pending && (
+            <div data-planejamento-vazio role="alert" style={{ padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+                {state.error}
+              </p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem pontos, a ficha não registra onde nem quanto foi aplicado.</p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button type="submit" name="confirmar_planejamento_vazio" value="1" className="btn-secondary">Continuar sem pontos</button>
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
             <button type="submit" disabled={pending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 9, border: 'none', background: 'var(--success)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', minWidth: 180, justifyContent: 'center' }}>
@@ -948,13 +961,13 @@ function DorasCard({ value, onChange, readonly, erro }: {
     <div className="card" data-campo="dores" data-invalido={erro ? 'true' : undefined}
       style={{ padding: 0, overflow: 'hidden', ...(erro ? { borderLeft: '3px solid var(--danger)' } : {}) }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <label htmlFor="campo-dores" style={{ display: 'block', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</label>
+        <h3 id="titulo-dores" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas pelo cliente</p>
       </div>
       <div style={{ padding: '18px 20px' }}>
         {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600, marginBottom: 6 }}>{erro}</p>}
         <textarea
-          id="campo-dores" ref={campo}
+          id="campo-dores" ref={campo} aria-labelledby="titulo-dores"
           rows={4} value={value} readOnly={readonly}
           onChange={e => onChange(e.target.value)}
           placeholder={readonly ? '—' : 'Anote o que o cliente relatou: queixas estéticas, objetivos, histórico de tratamentos anteriores…'}
@@ -1046,6 +1059,7 @@ export function AppointmentSession({
   const [generating,             setGenerating]             = useState(false)
   const [genError,               setGenError]               = useState<string | null>(null)
   const [erroDasDores,           setErroDasDores]           = useState<string | null>(null)
+  const [perguntaDoPlano,        setPerguntaDoPlano]        = useState<{ texto: string; fecharAgora: boolean } | null>(null)
   const evalEditorRef = useRef<TreatmentPlanEditorRef>(null)
 
   // Checkout aberto sobre a tela, quando quem atende também recebe.
@@ -1065,8 +1079,9 @@ export function AppointmentSession({
    * é a fila da recepção. Desistir no meio do checkout não perde nada: o plano
    * já está na fila de qualquer jeito.
    */
-  async function gerarPlano(fecharAgora: boolean) {
+  async function gerarPlano(fecharAgora: boolean, confirmarPlanejamentoVazio = false) {
     setGenError(null)
+    setPerguntaDoPlano(null)
     // A avaliação CONCLUÍDA também gera o plano (revisão do Heitor, 2026-10-29:
     // "é preciso avaliar primeiro pra depois decidir o que fazer") — só o
     // plano: o registro daquele dia está travado e nada dele vai junto (o
@@ -1092,8 +1107,14 @@ export function AppointmentSession({
       ? await generateEvaluationPlan(appointment.id, '', null, currentSessions, currentNotes, '', '', slug, null)
       : await generateEvaluationPlan(
           appointment.id, evalComplaints, anamnese?.respostas ?? null, currentSessions, currentNotes,
-          evalSessionNotes, evalSessionInterc, slug, fichaDigitada,
+          evalSessionNotes, evalSessionInterc, slug, fichaDigitada, { confirmarPlanejamentoVazio },
         )
+    // O planejamento sem ponto (atend-12): o servidor pergunta; a resposta gera de novo.
+    if (res.confirmarPlanejamentoVazio && res.error) {
+      setGenerating(false)
+      setPerguntaDoPlano({ texto: res.error, fecharAgora })
+      return
+    }
     if (res.error || !res.planId) {
       setGenerating(false)
       setGenError(res.error ?? 'Não foi possível gerar o plano.')
@@ -1506,6 +1527,23 @@ export function AppointmentSession({
               // A avaliação concluída voltou a montar o plano na tela (2026-10-29).
               planoNaTela={!isPartOfPlan && podeMontarPlano && (status === 'COMPLETED' || !isDone) && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
             />
+          </div>
+        </JanelaModal>
+      )}
+
+      {/* O planejamento escolhido sem ponto, ao gerar o plano (atend-12). */}
+      {perguntaDoPlano && (
+        <JanelaModal onFechar={() => setPerguntaDoPlano(null)} rotulo="Planejamento sem pontos" papel="alertdialog" largura={460}>
+          <div data-planejamento-vazio style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <AlertTriangle size={16} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
+              {perguntaDoPlano.texto}
+            </p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem pontos, a ficha não registra onde nem quanto foi aplicado.</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn-secondary" onClick={() => setPerguntaDoPlano(null)}>Voltar</button>
+              <button type="button" className="btn-primary" onClick={() => gerarPlano(perguntaDoPlano.fecharAgora, true)}>Continuar sem pontos</button>
+            </div>
           </div>
         </JanelaModal>
       )}
