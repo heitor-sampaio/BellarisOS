@@ -9128,6 +9128,35 @@ desconto na lista, "Quem vendeu", perda em unidade de consumo) e **F12**
 (CNPJ da unidade nova sem herança calada; sem movimento automático padrão no
 funil, só por automação).
 
+**F15 feita em 2026-11-03 — a revisão das decisões de F13 e F14**
+(c4a21a09…71275513; migrations `20261103001501`–`1502`). O Heitor revisou 22
+decisões de F13/F14 (https://claude.ai/artifact/3YydsMjt36Bj994dBsLZHU): 13
+manter, 8 mudar, 1 em conversa (o crediário próprio no "Meu faturamento" —
+mantido: o cartão N× entra inteiro na venda porque a operadora garante; o
+crediário entra a cada parcela paga, porque o risco é da clínica).
+- **Prazo e taxas por BANDEIRA** ("lembre-se, flexibilidade"): Visa,
+  Mastercard, Elo, Amex, Hipercard e Outras, em "Taxas da maquininha"; a
+  configuração de antes é a regra geral de quem não tem regra própria
+  (`tenants.cartao_por_bandeira`). Todo pagamento no cartão tem "Bandeira
+  (opcional)" (`financial_transactions.cartao_bandeira`); trocar a bandeira
+  antes de a operadora pagar refaz prazo, taxa e comissão.
+- "Atualizar a ficha" virou **"Unificar com a ficha de X"**, e o nome da
+  ficha nunca muda por ele.
+- Na conversa do número removido, **"Responder pelo X"** escolhe um número no
+  ar e abre (ou cria) a conversa da pessoa nele, com o card e a ficha.
+- O filtro "Número" do inbox aceita vários; o fluxo de caixa escolhe 3, 6 ou
+  12 meses; o Copilot usa a mesma lista do dashboard no "Reativar clientes"
+  (`getClientesParaReativarDoRecorte`); o ranking de execução soma também a
+  unidade pré-paga e a sessão de plano vendido, pelo rateio.
+- Mantidos, entre outros: o modelo "Agendou" sem condição ("é modelo de
+  automação, a clínica decide se usa").
+
+Decisões da F15, para revisar: a escolha do fluxo de caixa não fica guardada
+(volta a 6); a sessão de plano soma no procedimento do atendimento; a taxa da
+bandeira vale até o número de vezes que ela tem; o "Novo lançamento" manual
+não tem bandeira (só a baixa e o Copilot). Os casos do Copilot que só rodam
+contra o build (`copilot-novidades`, `copilot-gravacoes`) ficaram para a completa.
+
 **F14 feita em 2026-11-03 — agenda, atendimento, cadastro duplicado, textos e WhatsApp**
 (63d7c2ea…b621dbd9; migration `20261103001401`). A segunda frente da 2ª revisão.
 - Iniciar antes do horário pergunta em qualquer antecedência ("faltam 10 min.
