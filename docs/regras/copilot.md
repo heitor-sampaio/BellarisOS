@@ -125,6 +125,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   críticos (o consumo dos atendimentos dela vai). A comissão do núcleo, com
   o recorte, é a dela e vai. Prova: `e2e/copilot-indicadores-so-os-meus.spec.ts`
   (contra o build, como todo `copilot-*`).
+- **O dinheiro de Relatórios segue as ABAS do cargo, também no Copilot**
+  (decisão do Heitor, 2026-11-01: "concordo"). `indicadores` é a única
+  ferramenta com o dinheiro dos Relatórios e recusa a aba que o cargo não tem
+  (`podeVerRelatorio`) antes de ler qualquer número; com a aba e sem o
+  Financeiro, lê o dinheiro dela, como a tela. Os `lancamentos` seguem o
+  módulo Financeiro (a tela do Financeiro). Prova:
+  `tests/copilot-dinheiro-pelas-abas.test.ts`.
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,
