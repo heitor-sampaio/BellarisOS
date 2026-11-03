@@ -818,7 +818,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 - **O RECIBO do pagamento, em PDF** (ven-06 da revisão, 2026-11-02; o
   Heitor: "um recibo simples em PDF, pelo app ou impresso"). Todo lançamento
   de receita PAGO e vivo (sem estorno) tem "Recibo" na lista dos dois
-  financeiros, e a cliente tem "Recibo" no Financeiro do app. É
+  financeiros, e a cliente tem "Recibo" no Financeiro do app. **E também**
+  (r2-ven-13, o Heitor, 2026-11-03) na aba Financeiro da ficha da cliente
+  (os dois portais; não para quem tem o financeiro "só os meus" sem receber,
+  que a rota recusa), no Histórico → Pagamentos do app (que passou a dizer
+  "Estornado" no estornado, como o Financeiro do app) e na tela do
+  atendimento pago, ao lado do "Pagamento confirmado" (para quem recebe). É
   `GET /api/recibos/[id]` (abre o PDF no navegador — imprimir ou baixar):
   sessão; da equipe, quem recebe ou vê o financeiro da unidade inteira, com
   a rede e a unidade ao alcance; da cliente, só o pagamento de uma ficha DELA.

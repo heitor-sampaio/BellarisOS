@@ -26,6 +26,9 @@ let slug = ''
 let pago = ''
 let aberto = ''
 let deOutraCliente = ''
+/** Um avulso concluído e pago no Pix (o recibo na tela do atendimento — r2-ven-13). */
+let atendimentoPago = ''
+let pagoDoAtendimento = ''
 
 async function como<T>(browser: Browser, estado: string, fn: (p: Page) => Promise<T>) {
   const ctx = await browser.newContext({ storageState: estado })
@@ -53,14 +56,31 @@ test.beforeAll(async () => {
   deOutraCliente = await lancar(outraCliente, { description: `Peeling ${marca}`, amount: 250, payment_method: 'PIX', is_paid: true, paid_at: new Date().toISOString() })
   caixa = await criarMembro(`rcb${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
-    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'VIEW' }],
+    permissoes: [
+      { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'VIEW' },
+      { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW' },
+    ],
   })
+  const agora = new Date().toISOString()
+  const { data: ap, error: eAp } = await db().from('appointments').insert({
+    branch_id: rede.branchId, client_id: cliente.clientId, procedure_id: rede.procedureId, professional_id: rede.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 150, scheduled_at: agora, completed_at: agora,
+  }).select('id').single<{ id: string }>()
+  expect(eAp).toBeNull()
+  atendimentoPago = ap!.id
+  const { data: tx, error: eTx } = await db().rpc('confirmar_pagamento_do_atendimento', {
+    p_agendamento: atendimentoPago, p_tenant: rede.tenantId, p_ator: null, p_ator_nome: 'e2e',
+    p_dados: { metodo: 'PIX', cartao_vezes: 1, pontos: 0, desconto: 0, valor_final: 150 },
+  })
+  expect(eTx, 'pagar o atendimento').toBeNull()
+  pagoDoAtendimento = tx as string
   alheio = await criarMembro(`rcba${marca}`, {
     tenant: outra.tenantId, rotulo: 'Financeiro de outra rede', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
   })
 })
 test.afterAll(async () => {
   if (rede) await db().from('financial_transactions').delete().eq('branch_id', rede.branchId)
+  if (atendimentoPago) await db().from('appointments').delete().eq('id', atendimentoPago)
   await caixa?.limpar(); await alheio?.limpar(); await cliente?.limpar()
   await rede?.limpar(); await outra?.limpar()
 })
@@ -83,6 +103,20 @@ test('a recepção tira o recibo do pagamento pela lista do Financeiro: um PDF c
   })
 })
 
+test('r2-ven-13: o "Recibo" também na aba Financeiro da ficha e na tela do atendimento pago', async ({ browser }) => {
+  await como(browser, caixa.estado, async p => {
+    await p.goto(`/${slug}/clients/${cliente.clientId}`)
+    await p.getByRole('tab', { name: 'Financeiro' }).click()
+    await expect(p.locator(`[data-lancamento="${pago}"]`).getByRole('link', { name: 'Recibo' }), 'a ficha: o pago')
+      .toHaveAttribute('href', `/api/recibos/${pago}`)
+    await expect(p.locator(`[data-lancamento="${aberto}"]`).getByRole('link', { name: 'Recibo' }), 'a ficha: o a receber, não').toHaveCount(0)
+
+    await p.goto(`/${slug}/agenda/${atendimentoPago}`)
+    await expect(p.getByText(/Pagamento confirmado/)).toBeVisible()
+    await expect(p.getByRole('link', { name: 'Recibo' }), 'a tela do atendimento pago').toHaveAttribute('href', `/api/recibos/${pagoDoAtendimento}`)
+  })
+})
+
 test('quem é de outra rede não tira o recibo', async ({ browser }) => {
   await como(browser, alheio.estado, async p => {
     await p.goto('/admin/financeiro')
@@ -93,10 +127,18 @@ test('quem é de outra rede não tira o recibo', async ({ browser }) => {
 test('a cliente baixa o recibo dela no app — e não o de outra cliente', async ({ browser }) => {
   await como(browser, cliente.estado, async p => {
     await p.goto(`/${slug}/cliente/financeiro`)
-    await expect(p.getByRole('link', { name: 'Recibo' })).toHaveAttribute('href', `/api/recibos/${pago}`)
+    // Dois pagos dela (a limpeza e o atendimento do r2-ven-13): o recibo de cada um.
+    await expect(p.locator(`a[href="/api/recibos/${pago}"]`)).toHaveText('Recibo')
     const r = await p.request.get(`/api/recibos/${pago}`)
     expect(r.status()).toBe(200)
     expect(textoDoPdf(await r.body())).toContain(`Limpeza de pele ${marca}`)
     expect((await p.request.get(`/api/recibos/${deOutraCliente}`)).status()).toBe(404)
+
+    // r2-ven-13: também no Histórico → Pagamentos (o pago tem; o pendente, não).
+    await p.goto(`/${slug}/cliente/historico`)
+    await p.getByRole('button', { name: /Pagamentos/ }).click()
+    const doPago = p.locator('[data-pagamento]', { hasText: `Limpeza de pele ${marca}` })
+    await expect(doPago.getByRole('link', { name: 'Recibo' })).toHaveAttribute('href', `/api/recibos/${pago}`)
+    await expect(p.locator('[data-pagamento]', { hasText: `Parcela ${marca}` }).getByRole('link', { name: 'Recibo' })).toHaveCount(0)
   })
 })

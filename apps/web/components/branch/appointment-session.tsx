@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
-  XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList,
+  XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList, FileText,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -1984,8 +1984,15 @@ export function AppointmentSession({
                   ✓ Atendimento concluído em {format(new Date(appointment.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </p>
                 {paymentTransaction ? (
-                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
-                    Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes)} · {fmtBRL(paymentTransaction.amount)}
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span>Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes)} · {fmtBRL(paymentTransaction.amount)}</span>
+                    {/* r2-ven-13: o recibo do pagamento (PDF), para quem recebe. */}
+                    {canPayment && (
+                      <a href={`/api/recibos/${paymentTransaction.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                        <FileText size={12} aria-hidden /> Recibo
+                      </a>
+                    )}
                   </p>
                 ) : isPartOfPlan ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>

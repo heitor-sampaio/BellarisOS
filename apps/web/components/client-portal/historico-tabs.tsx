@@ -207,13 +207,23 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                   R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 2 }}>
-                  {p.is_paid
-                    ? <CheckCircle2 size={11} color="var(--success)" />
-                    : <Clock3 size={11} color="var(--warning)" />}
-                  <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: p.is_paid ? 'var(--success)' : 'var(--warning)' }}>
-                    {p.is_paid ? 'Pago' : 'Pendente'}
+                  {p.estornado
+                    ? null
+                    : p.is_paid
+                      ? <CheckCircle2 size={11} color="var(--success)" />
+                      : <Clock3 size={11} color="var(--warning)" />}
+                  {/* O estornado não é "Pago": o dinheiro voltou (como no Financeiro do app). */}
+                  <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: p.estornado ? 'var(--text-muted)' : p.is_paid ? 'var(--success)' : 'var(--warning)' }}>
+                    {p.estornado ? 'Estornado' : p.is_paid ? 'Pago' : 'Pendente'}
                   </span>
                 </div>
+                {/* r2-ven-13: o recibo do que ela pagou (PDF), também aqui. */}
+                {p.is_paid && !p.estornado && !p.aPagarNaClinica && (
+                  <a href={`/api/recibos/${p.id}`} target="_blank" rel="noopener" data-recibo
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                    <FileText size={11} aria-hidden /> Recibo
+                  </a>
+                )}
               </div>
             </div>
           ))}

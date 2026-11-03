@@ -34,6 +34,8 @@ export type PagamentoItem = {
   parcela?:       string | null
   /** O atendimento avulso concluído e não pago (A64): não é um lançamento, é `atendimentos_a_receber`. */
   aPagarNaClinica?: boolean
+  /** Estornado: o dinheiro voltou — não é "Pago" nem tem recibo (como o Financeiro do app). */
+  estornado?:     boolean
 }
 
 export type DocumentoItem = {
@@ -58,7 +60,7 @@ type AtendimentoLido = {
 }
 type PagamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
-  is_paid: boolean; paid_at: string | null
+  is_paid: boolean; paid_at: string | null; notes: string | null
   due_date: string | null; data_de_referencia: string | null; parcela_numero: number | null; parcela_total: number | null
   appointments: { procedures: { name: string } | null } | null
 }
@@ -84,7 +86,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     // Pagamentos = transações financeiras ligadas ao cliente
     ler(admin.from('financial_transactions')
       .select(`
-        id, description, amount, payment_method, cartao_vezes, is_paid, paid_at,
+        id, description, amount, payment_method, cartao_vezes, is_paid, paid_at, notes,
         due_date, data_de_referencia, parcela_numero, parcela_total,
         appointments(procedures(name))
       `)
@@ -133,6 +135,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     is_paid:        Boolean(r.is_paid),
     paid_at:        r.paid_at,
     procedure_name: r.appointments?.procedures?.name ?? null,
+    estornado:      r.notes === 'Estornada',
     // A64: o vencimento e a parcela — "Pendente" sozinho não dizia quando.
     vencimento:     r.is_paid ? null : (r.due_date ?? r.data_de_referencia ?? null),
     parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
