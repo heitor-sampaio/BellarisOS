@@ -6,7 +6,8 @@ import { chamarAcao } from './apoio/acao-direta'
 
 /**
  * A frente "agenda" da simulação de 2026-10-27: D8, A17, A18, A19, A20, A23
- * e a sobra da frente 3 (a janela não oferece "Cancelar" a quem a action recusa).
+ * e o agenda-06 (a janela de "só os meus" oferece "Cancelar" e "Não
+ * compareceu" no agendamento dela — era a sobra da frente 3, ao contrário).
  */
 
 const marca = Date.now().toString(36)
@@ -69,14 +70,22 @@ test('A18: a chegada de outro dia é recusada, e a janela não oferece "Chegou"'
   expect(data!.status).toBe('SCHEDULED')
 })
 
-test('sobra da frente 3: "só os meus" não vê Cancelar nem Não compareceu na janela', async ({ browser }) => {
-  await agendar('Dela', propria!.userId, HOJE, '07:00')
+// A regra mudou com o agenda-06 da F6 (59cdcb68, revisão do Heitor de
+// 2026-11-02 — "a profissional cancela o que é dela"): a janela de quem tem
+// "só os meus" mostra "Cancelar" e "Não compareceu" no agendamento DELA. Este
+// caso dizia o contrário (a sobra da frente 3, de quando a action recusava).
+// O "de outra" e a recusa da action estão em agenda-so-os-meus-pelo-id.
+test('agenda-06: "só os meus" vê Cancelar e Não compareceu na janela do agendamento DELA', async ({ browser }) => {
+  // A falta só é oferecida depois do início: um que começou há uma hora, hoje.
+  const umaHoraAtras = new Date(Date.now() - 60 * 60_000)
+  const hora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(umaHoraAtras)
+  const dia = fmt(umaHoraAtras)
+  await agendar('Dela', propria!.userId, dia, hora)
   await como(browser, propria!, async p => {
-    await p.goto(`/admin/agenda?date=${HOJE}`)
+    await p.goto(`/admin/agenda?date=${dia}`)
     await p.locator(`[title*="Dela ad${marca}"]`).first().click()
-    await expect(p.getByRole('button', { name: 'Marcar chegada e iniciar' })).toBeVisible()
-    await expect(p.getByRole('button', { name: 'Cancelar' })).toHaveCount(0)
-    await expect(p.getByRole('button', { name: 'Não compareceu' })).toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Cancelar', exact: true })).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Não compareceu' })).toBeVisible()
   })
 })
 
