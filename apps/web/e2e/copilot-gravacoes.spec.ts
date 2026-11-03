@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { telefoneDoCadastro } from '@estetica-os/utils'
 import { banco, PREFIXO } from './apoio/banco'
 import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
 import { chamarAcao } from './apoio/acao-direta'
@@ -141,7 +142,8 @@ test('cadastrar cliente: Cancelar descarta; o cartão vencido recusa', async ({ 
     await outro.getByRole('button', { name: 'Confirmar' }).click()
     await expect(outro.getByRole('status')).toContainText('venceu')
   })
-  const { data: criados } = await db().from('clients').select('id').eq('tenant_id', rede.outra.tenantId).like('phone', `%${telefone.slice(-8)}%`)
+  // Pelo NOME: desde a cli-06 o Copilot grava o telefone como o cadastro ("(48) 9…-…"), e os dígitos seguidos não casam.
+  const { data: criados } = await db().from('clients').select('id').eq('tenant_id', rede.outra.tenantId).eq('name', `${PREFIXO} Novo copg${marca}`)
   expect(criados, 'nada cadastrado').toEqual([])
 })
 
@@ -160,7 +162,10 @@ test('cadastrar cliente: Confirmar cadastra, com o CPF conferido', async ({ brow
     await cartao.getByRole('button', { name: 'Confirmar' }).click()
     await expect(cartao.getByRole('status')).toContainText('Feito')
   })
-  const { data: criado } = await db().from('clients').select('name, email, birth_date, tags').eq('tenant_id', rede.outra.tenantId).like('phone', `%${telefone.slice(-8)}%`).single()
+  const { data: criado, error: eCriado } = await db().from('clients').select('name, phone, email, birth_date, tags').eq('tenant_id', rede.outra.tenantId).eq('name', `${PREFIXO} Cpf copg${marca}`).single()
+  expect(eCriado).toBeNull()
+  // O telefone vai como no cadastro da tela (cli-06): com DDD e a máscara.
+  expect(criado!.phone).toBe(telefoneDoCadastro(telefone)!.gravar)
   expect(criado!.email).toBe(`copg${marca}@bellaris.invalid`)
   expect(String(criado!.birth_date).slice(0, 10)).toBe('1992-03-04')
 })
