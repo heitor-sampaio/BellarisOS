@@ -112,6 +112,25 @@ test('o mesmo telefone: "Já existe a ficha de X", nada se grava; "Unificar com 
   expect(data!.document, 'o CPF dela fica').toBe('52998224725')
 })
 
+test('A17: antes de unificar, a pergunta mostra como a ficha fica — o nome dela, o e-mail e o telefone', async ({ browser }) => {
+  // A Daniela já tinha ficha; a recepção digitou "Renata", com outro e-mail, e
+  // unificou: ficou "Daniela" com o e-mail da Renata, sem a tela ter dito antes.
+  const fone = telefone()
+  const daniela = nome('Daniela')
+  await ficha(daniela, fone, { email: `daniela-${marca}@bellaris.invalid` })
+  await como(browser, async p => {
+    await digitar(p, nome('Renata'), fone)
+    const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
+    await expect(aviso).toContainText(daniela)
+    const fica = aviso.locator('[data-unificar-fica]')
+    await expect(fica).toContainText(`Nome: ${daniela} (o da ficha)`)
+    await expect(fica).toContainText(`E-mail: daniela-${marca}@bellaris.invalid (o da ficha)`)
+    await p.locator('input[name="email"]').fill(`renata-${marca}@bellaris.invalid`)
+    await expect(fica).toContainText(`E-mail: renata-${marca}@bellaris.invalid (o digitado agora, no lugar de daniela-${marca}@bellaris.invalid)`)
+    await expect(fica).toContainText('Telefone:')
+  })
+})
+
 test('o mesmo telefone: "Cadastrar mesmo assim" cria a ficha nova (mãe e filha), e a outra fica como está', async ({ browser }) => {
   const fone = telefone()
   const mae = nome('mãe')

@@ -18,6 +18,12 @@ export interface FichaQueJaExiste {
    * "Unificar" a reativa antes (r2-cli-02: a arquivada continua com "Reativar").
    */
   arquivada?: boolean
+  /**
+   * O e-mail e o telefone que a ficha JÁ tem (A17 da 6ª simulação): a
+   * pergunta mostra, antes de unificar, como ela fica — o nome dela, e o
+   * e-mail e o telefone digitados no lugar dos dela (ou os dela, sem nada).
+   */
+  naFicha?: { email: string | null; telefone: string | null }
 }
 
 /** "Já existe a ficha de Valdir com este telefone." */

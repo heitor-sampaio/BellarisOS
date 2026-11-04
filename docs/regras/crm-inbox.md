@@ -70,7 +70,13 @@
     diferente do que ela tem é recusado), liga o card ou a conversa e abre a
     ficha. **O NOME da ficha nunca muda por aqui** (r3-f14-01, escolha do
     Heitor: o nome digitado às pressas costuma ser o pior; renomear é editando
-    a ficha) — `PreenchidoAgora` nem tem o campo. Pelo CPF, só
+    a ficha) — `PreenchidoAgora` nem tem o campo. **A pergunta mostra antes
+    como a ficha fica** (A17 da 6ª simulação, 2026-11-04: a Daniela ficou com
+    o e-mail da Renata sem a tela ter dito): "Se unificar, a ficha fica
+    assim: Nome: Daniela (o da ficha) · Telefone … · E-mail:
+    renata@… (o digitado agora, no lugar de daniela@…)", acompanhando o que
+    se digita (`ComoFicaAoUnificar`, `[data-unificar-fica]`; o e-mail e o
+    telefone dela vêm em `FichaQueJaExiste.naFicha`). Pelo CPF, só
     "Unificar" (o CPF é único; o de uma ficha ARQUIVADA é recusado com o
     caminho da busca). Substituiu a pergunta da ficha rápida ("É a mesma
     pessoa?", de 2026-10-29) e o aviso da outra cliente do telefone (D13).

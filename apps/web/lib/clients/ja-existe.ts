@@ -78,6 +78,16 @@ export async function fichasQueJaExistem(
       'conferir se o nome e o nascimento já têm ficha') as { id: string; name: string }[] | null
     for (const c of doNome ?? []) junta(c.id, c.name, 'NOME_E_NASCIMENTO')
   }
+  // O que a ficha já tem (A17): a pergunta mostra como ela fica ao unificar.
+  if (achadas.length) {
+    const dados = await ler(admin.from('clients').select('id, email, phone').eq('tenant_id', tenantId)
+      .in('id', achadas.map(f => f.id)), 'ler o e-mail e o telefone das fichas que já existem') as
+      { id: string; email: string | null; phone: string | null }[] | null
+    for (const f of achadas) {
+      const d = (dados ?? []).find(x => x.id === f.id)
+      if (d) f.naFicha = { email: d.email, telefone: d.phone }
+    }
+  }
   return achadas
 }
 

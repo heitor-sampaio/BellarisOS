@@ -271,7 +271,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         {pergunta && (
           <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
             <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
-              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} />
+              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone }} />
           </div>
         )}
 
@@ -437,15 +437,46 @@ const destaque: React.CSSProperties = { color: 'var(--text)' }
 const POR_QUE = { CPF: 'com este CPF', TELEFONE: 'com este telefone', NOME_E_NASCIMENTO: 'com este nome e esta data de nascimento' } as const
 
 /**
+ * Como a ficha FICA ao unificar (A17 da 6ª simulação: a Daniela ficou com o
+ * e-mail da Renata, e a tela não tinha dito). O nome é sempre o da ficha
+ * (r3-f14-01); o e-mail e o telefone digitados tomam o lugar dos dela, e o
+ * campo vazio deixa o dela — a regra de `atualizarFichaComOPreenchido`.
+ */
+function ComoFicaAoUnificar({ nome, naFicha, digitado }: {
+  nome: string
+  naFicha?: { email: string | null; telefone: string | null }
+  digitado: { email: string; telefone: string }
+}) {
+  const linha = (rotulo: string, agora: string, dela: string | null) => {
+    const a = agora.trim()
+    if (!a) return dela ? `${rotulo}: ${dela} (o da ficha)` : `${rotulo}: — (a ficha não tem)`
+    if (!dela) return `${rotulo}: ${a} (o digitado agora)`
+    if (dela === a) return `${rotulo}: ${a} (o mesmo da ficha)`
+    return `${rotulo}: ${a} (o digitado agora, no lugar de ${dela})`
+  }
+  const foneDela = naFicha?.telefone ? telefoneParaExibir(naFicha.telefone) : null
+  return (
+    <span data-unificar-fica style={{ display: 'flex', flexDirection: 'column', gap: 2, fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
+      <span style={{ color: 'var(--text-muted)' }}>Se unificar, a ficha fica assim:</span>
+      <span>Nome: {nome} (o da ficha)</span>
+      <span>{linha('Telefone', digitado.telefone, foneDela)}</span>
+      <span>{linha('E-mail', digitado.email, naFicha?.email ?? null)}</span>
+    </span>
+  )
+}
+
+/**
  * A pergunta do telefone que já é de alguém (D13, D-9, a ficha rápida e,
  * desde a 5ª simulação, a ficha ARQUIVADA — A20), junto ao campo (A18).
  */
-function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar, cadastrarMesmoAssim }: {
+function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar, cadastrarMesmoAssim, digitado }: {
   pergunta: Pergunta; pending: boolean
   responder: (campo: string, valor: string) => void
   reativar: (id: string) => void
   atualizar: (id: string) => void
   cadastrarMesmoAssim: (id: string) => void
+  /** O e-mail e o telefone digitados agora (A17: como a ficha fica ao unificar). */
+  digitado: { email: string; telefone: string }
 }) {
   if (pergunta.tipo === 'arquivada') {
     return (
@@ -490,6 +521,7 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
         <span style={explicacao}>
           Unificar grava na ficha dela só o que foi preenchido aqui, sem apagar o que ela já tem (as observações se somam, as tags se juntam); o nome continua o da ficha. Depois, abre a ficha.
         </span>
+        <ComoFicaAoUnificar nome={pergunta.nome} naFicha={pergunta.naFicha} digitado={digitado} />
       </div>
     )
   }
