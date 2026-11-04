@@ -424,6 +424,13 @@
   lugar do valor (`pagosAntes`, `lib/appointments/pago-antes.ts`; na janela,
   "Já pago"). Era "VALOR R$ 140,00", lido como cobrança pendente. Prova:
   `e2e/agenda-pago-antes.spec.ts`.
+- **A agendada não está "para agendar"** (A27 da 6ª simulação, 2026-11-04;
+  princípio 3): o pré-pago diz "2 para agendar · 1 agendada" na ficha e no
+  app, e o cartão do pacote/plano "2 sessões restantes · 1 agendada"
+  (`contagemDoPago`, `textoDoParaAgendar`, `textoDasRestantes`,
+  `lib/pre-pago/contagem.ts`: a unidade/sessão disponível com agendamento
+  ligado é agendada). Era "3 para agendar" até a conclusão. Prova:
+  `e2e/pre-pago-agendados.spec.ts`, `tests/pre-pago-contagem.test.ts`.
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).
