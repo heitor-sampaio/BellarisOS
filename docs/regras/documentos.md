@@ -118,6 +118,15 @@ DEVLOG ("Termos e contratos").
   AGENDAMENTO; check-in, os de INICIO_ATENDIMENTO; cancelar/falta cancela os
   abertos; trocar o procedimento troca os documentos) — o agendamento nasce em
   cinco INSERTs. Agendamento de plano não emite (o plano tem os dele).
+- **O texto concorda com o sexo da ficha** (A50 da 6ª simulação,
+  2026-11-04: o termo dizia "fui informada(o)" ao Bruno, com o sexo
+  cadastrado). Ao montar, o par "a(o)"/"o(a)" no fim de uma palavra — ou
+  sozinho, "o(a) paciente" — vira a forma do sexo da ficha (F: "informada",
+  "a paciente"; M: "informado", "o paciente"); sem o dado, ou "Outro", fica
+  como a clínica escreveu (`concordarComOGenero`, `lib/documentos/concordancia.ts`,
+  só no texto do MODELO, não no valor das variáveis — o `ajustar` de
+  `interpolar`). O documento montado é o que se assina e o que o hash cobre.
+  Prova: `tests/documentos-concordancia.test.ts`.
 - **O gatilho só cria a linha (A_GERAR)**; o texto é montado pelo app
   (`lib/documentos/renderizar.ts` → `documento_registrar_render`), e toda tela
   que mostra um documento chama `garantirRenderizado` antes. Faltou dado

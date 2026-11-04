@@ -23,6 +23,8 @@ export interface DadosDoDocumento {
     city: string | null; state: string | null
     /** Quem não tem CPF: PASSAPORTE ou RNE, e o número (D-11; cli-09 no documento). */
     documento_tipo?: string | null; documento_numero?: string | null
+    /** O sexo da ficha (F, M, O ou vazio): a concordância do texto do modelo (A50). */
+    gender?: string | null
   }
   rede:     { name: string | null; document: string | null; phone: string | null; email: string | null }
   unidade:  { name: string | null; document: string | null; address: string | null; city: string | null; state: string | null; phone: string | null } | null

@@ -163,6 +163,8 @@ export function interpolar(
   doc: DocumentoDoModelo,
   resolver: (variavel: string) => string | null,
   ehOpcional: (variavel: string) => boolean,
+  /** Ajuste do TEXTO do modelo (não do valor da variável): a concordância pelo sexo da ficha (A50). */
+  ajustar: (texto: string) => string = t => t,
 ): { documento: DocumentoResolvido; faltando: string[] } {
   const faltando = new Set<string>()
 
@@ -176,7 +178,7 @@ export function interpolar(
           if (!ehOpcional(t.variavel)) faltando.add(t.variavel)
           texto = ''
         } else texto = valor
-      } else texto = t.texto
+      } else texto = ajustar(t.texto)
       if (!texto) continue
       juntarTrecho(saida, { texto, ...soEstilo(t) })
     }

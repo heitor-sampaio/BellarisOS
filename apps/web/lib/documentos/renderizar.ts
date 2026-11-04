@@ -1,4 +1,5 @@
 import 'server-only'
+import { concordarComOGenero, type SexoDaFicha } from '@/lib/documentos/concordancia'
 import { createHash } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
@@ -99,7 +100,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
   const admin = createAdminClient()
   const [cliente, rede, unidade, procedimento, agendamento] = await Promise.all([
     ler(admin.from('clients')
-      .select('name, document, documento_tipo, documento_numero, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state')
+      .select('name, document, documento_tipo, documento_numero, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state, gender')
       .eq('id', doc.client_id).eq('tenant_id', doc.tenant_id).single(), 'buscar o cliente do documento'),
     ler(admin.from('tenants').select('name, document, phone, email').eq('id', doc.tenant_id).single(), 'buscar a rede do documento'),
     doc.branch_id
@@ -193,8 +194,11 @@ export async function garantirRenderizado(
     // retrato nenhum o pagamento ainda não foi combinado e o documento espera.
     const definido = !!opcoes.pagamento || doc.payment_snapshot != null
     const desconto = opcoes.pagamento ? (opcoes.pagamento.desconto ?? 0) : descontoDoRetrato(doc.payment_snapshot)
-    const valores = valoresDoDocumento(await dadosDoDocumento(doc, pagamento, definido, desconto))
-    const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, ehOpcional)
+    const dados = await dadosDoDocumento(doc, pagamento, definido, desconto)
+    const valores = valoresDoDocumento(dados)
+    // "fui informada(o)" na forma do sexo da ficha (A50); sem o dado, como está.
+    const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, ehOpcional,
+      t => concordarComOGenero(t, dados.cliente.gender as SexoDaFicha))
     conteudo = formaCanonica(r.documento)
     texto = textoDoDocumento(r.documento)
     hash = sha256(conteudo)
