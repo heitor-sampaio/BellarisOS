@@ -64,6 +64,13 @@ export async function updateSession(request: NextRequest) {
     const user = claimsData?.claims ?? null
 
     const pathname = request.nextUrl.pathname
+    // O pedido que não é GET (a action, o formulário enviado antes de o React
+    // hidratar) se redireciona com 303: o navegador segue com GET. O 307
+    // padrão REPETE o POST, e a action chegava a uma tela que não a tem —
+    // "Failed to find Server Action", o 500 do primeiro login do Bruno (D17
+    // da 6ª simulação: POST /login → POST /…/cliente → POST /update-password).
+    const redirecionar = (url: URL) =>
+      NextResponse.redirect(url, request.method === 'GET' || request.method === 'HEAD' ? 307 : 303)
     const isAuthRoute = pathname === '/login' || pathname === '/register'
       || pathname === '/reset-password' || pathname === '/update-password'
       // A volta do link de e-mail: é ela que ABRE a sessão (app/auth/confirm).
@@ -100,7 +107,7 @@ export async function updateSession(request: NextRequest) {
     if (!user && !isAuthRoute && !isPublicRoute) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
-      return NextResponse.redirect(url)
+      return redirecionar(url)
     }
 
     // A PLATAFORMA (a equipe do BellarisOS) mora em outros apps, em outros
@@ -114,7 +121,7 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.search = '?acesso=plataforma'
-      const resposta = NextResponse.redirect(url)
+      const resposta = redirecionar(url)
       // Leva os cookies apagados nesta mesma resposta.
       supabaseResponse.cookies.getAll().forEach(c => resposta.cookies.set(c))
       return resposta
@@ -136,7 +143,7 @@ export async function updateSession(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = '/update-password'
         url.search = '?primeiro=1'
-        const resposta = NextResponse.redirect(url)
+        const resposta = redirecionar(url)
         supabaseResponse.cookies.getAll().forEach(c => resposta.cookies.set(c))
         return resposta
       }

@@ -49,6 +49,17 @@ um muro que não depende de cada trava do código.
   volta ao login. A regra é uma só: `aceitaNoHost`/`recusaDoHost`
   (`lib/plataforma/destino.ts`). O login de cada app recusa pelo mesmo
   motivo (`entrarNaPlataforma`, `lib/plataforma/acesso.ts`).
+- **O proxy da clínica redireciona o POST com 303, e o login só envia
+  hidratado** (D17 da 6ª simulação, 2026-11-04): o 500 do primeiro login do
+  Bruno foi `POST /login 307` → `POST /…/cliente 307` → `POST
+  /update-password 500` ("Failed to find Server Action", log do Railway às
+  06:37:25Z; o Supabase sem nenhum 5xx). O formulário saiu antes de o React
+  hidratar (o POST nativo da action), o Next desenhou /login já com a sessão e
+  redirecionou com 307, que REPETE o POST — e o 307 da senha provisória no
+  proxy repetiu de novo. Agora o "Entrar" fica desligado até hidratar
+  (`useSyncExternalStore`), e todo redirecionamento do proxy
+  (`lib/supabase/middleware.ts`, `redirecionar`) de um pedido que não é
+  GET/HEAD é 303. Prova: `e2e/autenticacao-login-antes-da-hidratacao.spec.ts`.
 - **A clínica recusa a marca da plataforma**: o proxy dela desfaz a sessão e
   manda a `/login?acesso=plataforma` ("a equipe da plataforma entra por…"); o
   `buildContext` (ANTES do padrão CLIENT — sem `role`, o atendente viraria
@@ -595,6 +606,7 @@ um muro que não depende de cada trava do código.
 
 ```
 ❌ Route handler com efeito (encerrar, deslogar, gravar) que roda no pedido RSC/prefetch do Next — responda 200 sem RSC e deixe a navegação inteira agir (pedidoInternoDoNext)
+❌ Redirecionar no proxy um pedido que não é GET com 307 (repete o POST da action numa tela que não a tem: "Failed to find Server Action", D17) — é `redirecionar`, 303
 ❌ Tela ou action de funcionalidade que é PARTE de um módulo (pacotes, inbox, campanhas…) sem assertRecurso, ou rotina sem tela sem redeTemRecurso
 ❌ Acrescentar chave ao catálogo de lib/planos/recursos.ts sem migration nova decidindo os planos e retratos que já existem
 ❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual

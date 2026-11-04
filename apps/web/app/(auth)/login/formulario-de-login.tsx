@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useState, useSyncExternalStore } from 'react'
 import { loginAction } from '@/actions/auth'
 import Link from 'next/link'
 
@@ -13,6 +13,11 @@ const AVISOS_DE_ACESSO: Record<string, string> = {
 
 export function FormularioDeLogin() {
   const [state, action, pending] = useActionState(loginAction, undefined)
+  // O "Entrar" só liga com a tela HIDRATADA (D17 da 6ª simulação): antes, o
+  // clique mandava o POST nativo da action, o Next desenhava /login já com a
+  // sessão e redirecionava com 307 — que repete o POST até uma tela que não
+  // tem a action ("Failed to find Server Action", um 500 no primeiro login).
+  const hidratado = useSyncExternalStore(() => () => {}, () => true, () => false)
   const [avisoDeAcesso, setAvisoDeAcesso] = useState<string | null>(null)
   useEffect(() => {
     const motivo = new URLSearchParams(window.location.search).get('acesso')
@@ -107,7 +112,7 @@ export function FormularioDeLogin() {
 
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !hidratado}
           className="btn-primary"
           style={{ justifyContent: 'center', marginTop: 4 }}
         >
