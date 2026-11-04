@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Check, Calendar, Clock, User, Users, Sparkles, MapPin } from 'lucide-react'
 import { getClientAvailableSlots, createClientAppointment } from '@/actions/appointments'
+import { toast } from 'sonner'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 
@@ -116,7 +117,13 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
       })
       if (res.error) {
         setError(res.error)
-      } else if (res.documentosParaAssinar) {
+        return
+      }
+      // A48 da 6ª simulação: no "Sem preferência", ninguém dizia quem ficou com o horário.
+      toast.success('Horário marcado', {
+        description: `${res.quemAtende ? `Com ${res.quemAtende}, ` : ''}${fmtDate(date)} às ${time}.`,
+      })
+      if (res.documentosParaAssinar) {
         // O procedimento pede termo ou contrato: direto para ele.
         router.push(`/${slug}/cliente/documentos?agendamento=${res.id}`)
       } else {

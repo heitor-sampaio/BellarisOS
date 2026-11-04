@@ -380,7 +380,10 @@
   `computeAvailableSlots` — a escolhida passa depois pelas mesmas
   conferências de quem a cliente escolheu. As candidatas são só as que
   REALIZAM o procedimento ("Quem realiza", §9.3; sem ninguém marcado, todas as
-  que atendem na unidade). Prova:
+  que atendem na unidade). **Confirmado, o app diz quem ficou** (A48 da 6ª
+  simulação, 2026-11-04: o resumo dizia só "Sem preferência"): o aviso
+  "Horário marcado — Com Bia, quarta, 05/11 às 10:00." (`quemAtende` de
+  `createClientAppointment`; vale também para quem escolheu). Prova:
   `e2e/portal-cliente-sem-preferencia.spec.ts`, `tests/sem-preferencia.test.ts`.
 - **A cliente agenda em QUALQUER unidade da clínica pelo app** (H5, decisão do
   Heitor, 2026-11-01: "A cliente é da clínica, pode agendar em qualquer

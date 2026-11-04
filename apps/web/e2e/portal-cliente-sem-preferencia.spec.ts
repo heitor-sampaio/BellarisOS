@@ -101,8 +101,13 @@ test.describe.serial('agendar sem preferência de profissional', () => {
     })
   })
 
-  test('ao confirmar, vai para quem tem MENOS atendimentos no dia', async ({ browser }) => {
-    await como(browser, cliente!, p => agendarSemPreferencia(p, dia(3), '10:00'))
+  test('ao confirmar, vai para quem tem MENOS atendimentos no dia — e o app diz quem ficou (A48)', async ({ browser }) => {
+    const { data: dela } = await db().from('users').select('name').eq('id', bia!.userId).single<{ name: string }>()
+    await como(browser, cliente!, async p => {
+      await agendarSemPreferencia(p, dia(3), '10:00')
+      // A48 da 6ª simulação: o resumo não dizia quem ficou com o horário.
+      await expect(p.locator('[data-sonner-toast]').filter({ hasText: 'Horário marcado' })).toContainText(`Com ${dela!.name}`)
+    })
     const ag = await doDia(dia(3), '10:00')
     expect(ag?.professional_id).toBe(bia!.userId)
     expect(ag?.source).toBe('CLIENT_APP')

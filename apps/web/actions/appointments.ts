@@ -1688,7 +1688,7 @@ export async function createClientAppointment(params: {
   professionalId: string | null
   scheduledAt:    string
   slug:           string
-}): Promise<{ error?: string; id?: string; documentosParaAssinar?: number }> {
+}): Promise<{ error?: string; id?: string; documentosParaAssinar?: number; /** Quem ficou com o horário (A48: o "Sem preferência" não dizia). */ quemAtende?: string }> {
   try {
     const ctx = await getTenantContext()
     assertClient(ctx)
@@ -1757,7 +1757,7 @@ export async function createClientAppointment(params: {
     // toda unidade (D1, 2026-10-28): é a lista que a tela ofereceu.
     const { data: prof, error: profErr } = await admin
       .from('users')
-      .select('id')
+      .select('id, name')
       .eq('id', professionalId)
       .eq('tenant_id', branch.tenant_id as string)
       .or(filtroDeQuemAtendeNaUnidade(params.branchId))
@@ -1819,7 +1819,7 @@ export async function createClientAppointment(params: {
     // portal leva o cliente direto a eles.
     const documentosParaAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
       .eq('appointment_id', appt.id as string).in('status', ['A_GERAR', 'PENDENTE', 'INCOMPLETO']), 'contar os documentos do agendamento')
-    return { id: appt.id as string, documentosParaAssinar }
+    return { id: appt.id as string, documentosParaAssinar, quemAtende: (prof.name as string | null) ?? undefined }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
