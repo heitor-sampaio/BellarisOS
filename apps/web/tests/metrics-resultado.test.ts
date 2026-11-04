@@ -28,12 +28,20 @@ describe('mediaPorAtendimentoCobrado — a média da ficha da cliente (outra con
 describe('resultadoDoPeriodo', () => {
   it('lucro = receita − despesa; margem = lucro ÷ receita, em %', () => {
     expect(resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 250, ...SEM_ESTOQUE_NO_RESULTADO }))
-      .toEqual({ lucro: 750, margemPct: 75, despesaOperacional: 250, insumoConsumido: 0 })
+      .toEqual({ lucro: 750, margemPct: 75, despesaOperacional: 250, insumoConsumido: 0, taxasDaMaquininha: 0, comissoes: 0 })
   })
   it('o lucro desconta o insumo CONSUMIDO, e a compra de estoque fica no caixa e fora do lucro (2026-10-29)', () => {
     // Despesa paga R$ 700 (R$ 200 de aluguel + R$ 500 de compra de estoque) e R$ 30 de insumo consumido.
     expect(resultadoDoPeriodo({ revenueCash: 1000, expensesCash: 700, compraDeEstoque: 500, consumoDeInsumo: 30 }))
-      .toEqual({ lucro: 770, margemPct: 77, despesaOperacional: 200, insumoConsumido: 30 })
+      .toEqual({ lucro: 770, margemPct: 77, despesaOperacional: 200, insumoConsumido: 30, taxasDaMaquininha: 0, comissoes: 0 })
+  })
+  it('o lucro desconta as taxas da maquininha e as comissões; a despesa do fechamento das comissões fica no caixa (o Heitor, 2026-11-04)', () => {
+    // Receita R$ 2.100; despesa paga R$ 300 (R$ 200 de aluguel + R$ 100 do fechamento das comissões);
+    // taxas R$ 38; comissões lançadas R$ 100. Lucro = 2.100 − 200 − 38 − 100 = R$ 1.762.
+    expect(resultadoDoPeriodo({
+      revenueCash: 2100, expensesCash: 300, compraDeEstoque: 0, consumoDeInsumo: 0,
+      taxasDaMaquininha: 38, comissoes: 100, despesaDeComissoes: 100,
+    })).toEqual({ lucro: 1762, margemPct: 1762 / 2100 * 100, despesaOperacional: 200, insumoConsumido: 0, taxasDaMaquininha: 38, comissoes: 100 })
   })
   it('sem receita, a margem não existe (não é 0%)', () => {
     expect(resultadoDoPeriodo({ revenueCash: 0, expensesCash: 2400, ...SEM_ESTOQUE_NO_RESULTADO }).margemPct).toBeNull()

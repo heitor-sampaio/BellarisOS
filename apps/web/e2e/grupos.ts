@@ -125,6 +125,7 @@ export const ISOLADOS = [
   'fidelidade-vouchers.spec.ts',
   'inbox-paginado.spec.ts',
   'indicadores-avaliacao-com-uma-nota.spec.ts',
+  'indicadores-lucro-desconta-taxas-e-comissoes.spec.ts',
   'indicadores-dashboard-dinheiro-so-com-financeiro.spec.ts',
   'indicadores-ticket-medio.spec.ts',
   'indicadores-credito-interno.spec.ts',

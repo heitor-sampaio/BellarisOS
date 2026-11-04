@@ -167,6 +167,40 @@
     aparece em "Perdas no período" (`metrics_perdas`, motivo
     `VENDA_ESTORNADA`, no dia do estorno). Na 5ª simulação o protetor
     estornado ainda tirava R$ 45 do lucro ("Lucro 2.754" em vez de 2.799).
+    **E desconta as TAXAS DA MAQUININHA e as COMISSÕES** (decisão do Heitor,
+    2026-11-04, a pergunta da 6ª simulação: "pode descontar as duas"):
+    **lucro = receita paga − (despesa paga − compra de estoque − despesa de
+    comissões) − insumo e produto vendido − taxas da maquininha − comissões
+    lançadas**; a margem acompanha.
+    - As taxas são as que o Fechamento do dia mostra, no dia em que a receita
+      ENTROU (o conjunto de `metrics_receitas_pagas`): a GRAVADA nas parcelas
+      da operadora (`recebiveis_do_cartao.taxa`, o crédito de 1x a 12x, com a
+      sobra do arredondamento na última) e, sem parcelas (débito, Pix, as
+      vendas no cartão de antes), o recebimento × a taxa da configuração
+      (`private.comissao_taxa_pct`).
+    - As comissões são as LANÇADAS no período (`released_at`) — a conta de
+      Financeiro → Comissões.
+    - **Sem contar duas vezes**: o "Fechar e pagar" lança a despesa PAGA
+      "Comissões"; ela fica no CAIXA (os cartões de despesa, o Fechamento, o
+      fluxo) e SAI da despesa operacional do lucro, como a "Compra de
+      estoque". Ex.: R$ 100 de comissão lançados em outubro e pagos em
+      novembro tiram R$ 100 do lucro de OUTUBRO; os R$ 100 de despesa de
+      novembro aparecem nas despesas de novembro e não mexem no lucro dele.
+      Num mês: receita R$ 2.100 (Pix 1.000 a 1%, débito 500 a 2%, crédito 2x
+      600 a 3%), aluguel R$ 200, comissão lançada e paga R$ 100: despesas
+      (caixa) R$ 300, taxas R$ 38, lucro 2.100 − 200 − 38 − 100 = R$ 1.762
+      (era R$ 1.800).
+    - A conta é `metrics_custos_da_venda` e, por fatia,
+      `metrics_series_dos_custos_da_venda` (migration `20261104002104`),
+      somadas às do estoque em `getResultadoDoEstoque`/`getSeriesDoResultado`
+      e descontadas em `resultadoDoPeriodo`/`pontosDaEvolucao` — valem nos
+      Relatórios (visão geral, financeiro e o DRE, que ganhou "− Taxas da
+      maquininha" e "− Comissões"), no "Lucro Líquido" do financeiro da
+      unidade, no "Resultado líquido" do da rede (e de cada unidade), no
+      "Custo do lucro" da evolução (dashboard e Relatórios) e no Copilot. A
+      "taxa estimada" do Fechamento continua informativa (não sai do saldo).
+      Prova: `e2e/indicadores-lucro-desconta-taxas-e-comissoes.spec.ts`,
+      `tests/metrics-resultado.test.ts`, `tests/metrics-evolucao.test.ts`.
   - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
     pago pela regra de receita, a receita de serviço, os concluídos e os
     cobrados). A ficha a chama com a cliente e a janela inteira (`getDoCliente`:

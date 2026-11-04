@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import { conversaoDasOportunidades, ticketMedio, type EstoqueNoResultado } from './resultado'
+import type { FatiaDoResultado } from './evolucao'
 
 /**
  * Acesso às funções de agregação do Postgres (migration 20260909000001).
@@ -270,30 +271,61 @@ export async function getAReceberEmAberto(args: { tenantId: string; branchIds?: 
  * atendimentos dela — a compra, então, é zero.
  */
 export async function getResultadoDoEstoque(args: Args): Promise<{ total: EstoqueNoResultado; porUnidade: Record<string, EstoqueNoResultado> }> {
-  const { data, error } = await createAdminClient().rpc('metrics_resultado', {
-    ...baseArgs(args), p_professional_id: args.professionalId ?? null,
-  })
+  const admin = createAdminClient()
+  const params = { ...baseArgs(args), p_professional_id: args.professionalId ?? null }
+  // E as taxas da maquininha e as comissões (o Heitor, 2026-11-04: "pode
+  // descontar as duas"), com a despesa do fechamento das comissões, que sai
+  // do lucro (`metrics_custos_da_venda`).
+  const [{ data, error }, { data: custos, error: erroCustos }] = await Promise.all([
+    admin.rpc('metrics_resultado', params),
+    admin.rpc('metrics_custos_da_venda', params),
+  ])
   logRpcError('metrics_resultado', error)
-  const linha = (r: Record<string, unknown> | undefined): EstoqueNoResultado =>
-    ({ compraDeEstoque: n(r?.compra_de_estoque), consumoDeInsumo: n(r?.consumo_de_insumo) })
+  logRpcError('metrics_custos_da_venda', erroCustos)
   const linhas = (data as Record<string, unknown>[] | null) ?? []
+  const linhasDosCustos = (custos as Record<string, unknown>[] | null) ?? []
+  const custoDa = (branchId: unknown) => linhasDosCustos.find(r => (r.branch_id ?? null) === (branchId ?? null))
+  const linha = (r: Record<string, unknown> | undefined, branchId: unknown): EstoqueNoResultado => {
+    const c = custoDa(branchId)
+    return {
+      compraDeEstoque: n(r?.compra_de_estoque), consumoDeInsumo: n(r?.consumo_de_insumo),
+      taxasDaMaquininha: n(c?.taxas_da_maquininha), comissoes: n(c?.comissoes), despesaDeComissoes: n(c?.despesa_de_comissoes),
+    }
+  }
+  const unidades = new Set([...linhas, ...linhasDosCustos].filter(r => r.branch_id != null).map(r => String(r.branch_id)))
   return {
-    total: linha(linhas.find(r => r.branch_id == null)),
-    porUnidade: Object.fromEntries(linhas.filter(r => r.branch_id != null).map(r => [String(r.branch_id), linha(r)])),
+    total: linha(linhas.find(r => r.branch_id == null), null),
+    porUnidade: Object.fromEntries([...unidades].map(id => [id, linha(linhas.find(r => String(r.branch_id) === id), id)])),
   }
 }
 
 /** As mesmas parcelas por fatia, para o gráfico de evolução (`metrics_series_do_resultado`). */
 export async function getSeriesDoResultado(
   args: Args & { granularity?: 'hour' | 'day' | 'week' | 'month' },
-): Promise<{ bucket: string; compraDeEstoque: number; consumoDeInsumo: number }[]> {
-  const { data, error } = await createAdminClient().rpc('metrics_series_do_resultado', {
-    ...baseArgs(args), p_granularity: args.granularity ?? 'day', p_professional_id: args.professionalId ?? null,
-  })
+): Promise<FatiaDoResultado[]> {
+  const admin = createAdminClient()
+  const params = { ...baseArgs(args), p_granularity: args.granularity ?? 'day', p_professional_id: args.professionalId ?? null }
+  const [{ data, error }, { data: custos, error: erroCustos }] = await Promise.all([
+    admin.rpc('metrics_series_do_resultado', params),
+    admin.rpc('metrics_series_dos_custos_da_venda', params),
+  ])
   logRpcError('metrics_series_do_resultado', error)
-  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
-    bucket: String(r.bucket), compraDeEstoque: n(r.compra_de_estoque), consumoDeInsumo: n(r.consumo_de_insumo),
-  }))
+  logRpcError('metrics_series_dos_custos_da_venda', erroCustos)
+  // As duas séries pela fatia (o mesmo instante, do banco): cada uma tem as que tiveram movimento.
+  const porFatia = new Map<string, FatiaDoResultado>()
+  const fatia = (bucket: unknown) => {
+    const k = new Date(String(bucket)).toISOString()
+    let f = porFatia.get(k)
+    if (!f) { f = { bucket: String(bucket), compraDeEstoque: 0, consumoDeInsumo: 0, taxasDaMaquininha: 0, comissoes: 0, despesaDeComissoes: 0 }; porFatia.set(k, f) }
+    return f
+  }
+  for (const r of (data as Record<string, unknown>[] | null) ?? []) {
+    const f = fatia(r.bucket); f.compraDeEstoque = n(r.compra_de_estoque); f.consumoDeInsumo = n(r.consumo_de_insumo)
+  }
+  for (const r of (custos as Record<string, unknown>[] | null) ?? []) {
+    const f = fatia(r.bucket); f.taxasDaMaquininha = n(r.taxas_da_maquininha); f.comissoes = n(r.comissoes); f.despesaDeComissoes = n(r.despesa_de_comissoes)
+  }
+  return [...porFatia.values()]
 }
 
 /**

@@ -11,7 +11,15 @@ export interface PontoDaEvolucao {
 }
 
 /** As parcelas do estoque no resultado, por fatia (`metrics_series_do_resultado`). */
-export interface FatiaDoResultado { bucket: string; compraDeEstoque: number; consumoDeInsumo: number }
+/**
+ * As parcelas do resultado por fatia: as do estoque (`metrics_series_do_resultado`)
+ * e, desde 2026-11-04, as taxas da maquininha, as comissões lançadas e a despesa
+ * do fechamento delas (`metrics_series_dos_custos_da_venda`).
+ */
+export interface FatiaDoResultado {
+  bucket: string; compraDeEstoque: number; consumoDeInsumo: number
+  taxasDaMaquininha?: number; comissoes?: number; despesaDeComissoes?: number
+}
 
 /**
  * Os pontos do gráfico de evolução (Relatórios e dashboard da rede), a partir
@@ -38,7 +46,11 @@ export function pontosDaEvolucao(
     const p       = porFatia.get(k)
     const e       = estoquePorFatia.get(k)
     const revenue = p?.revenue ?? 0
-    const cost    = (p?.expenses ?? 0) - (e?.compraDeEstoque ?? 0) + (e?.consumoDeInsumo ?? 0)
+    // O custo do LUCRO: a despesa sem a compra de estoque e sem o fechamento das
+    // comissões, mais o insumo, as taxas da maquininha e as comissões lançadas.
+    const centavos = (v: number | undefined) => Math.round((v ?? 0) * 100)
+    const cost    = (centavos(p?.expenses) - centavos(e?.compraDeEstoque) - centavos(e?.despesaDeComissoes)
+      + centavos(e?.consumoDeInsumo) + centavos(e?.taxasDaMaquininha) + centavos(e?.comissoes)) / 100
     return { day, revenue, cost, profit: revenue - cost }
   }
 

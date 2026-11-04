@@ -486,9 +486,10 @@ function TabFinanceiro(p: ReportsBiProps) {
       <div className="rg-2" style={{ gap: 16 }}>
         {!p.soOsMeus && (
           <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
-            {/* As despesas operacionais (sem a compra de estoque, que fica no
-                caixa) e os insumos consumidos: os dois descontam do lucro. */}
-            <DreWaterfall receita={revenue} despesas={resultado.despesaOperacional} insumos={resultado.insumoConsumido} lucro={profit} />
+            {/* As despesas operacionais (sem a compra de estoque e sem o fechamento das comissões, que ficam no
+                caixa), os insumos, as taxas da maquininha e as comissões lançadas: todos descontam do lucro. */}
+            <DreWaterfall receita={revenue} despesas={resultado.despesaOperacional} insumos={resultado.insumoConsumido}
+              taxas={resultado.taxasDaMaquininha} comissoes={resultado.comissoes} lucro={profit} />
           </SCard>
         )}
         <SCard title="Receita por Forma de Pagamento">

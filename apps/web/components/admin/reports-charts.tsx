@@ -238,13 +238,17 @@ export function MiniAreaChart({
 // resultado (movimentação de estoque nunca gera despesa — D13 revisto,
 // 2026-10-28). A linha ficava fixa em R$ 0,00 ao lado do KPI de consumo.
 export function DreWaterfall({
-  receita, despesas, insumos, lucro,
+  receita, despesas, insumos, taxas = 0, comissoes = 0, lucro,
 }: {
   receita: number
   /** A despesa paga SEM a compra de estoque (que fica no caixa). */
   despesas: number
   /** O insumo consumido nos atendimentos e o custo do produto vendido (D4, 2026-10-30) — o estoque que saiu para gerar a receita. */
   insumos: number
+  /** As taxas da maquininha dos recebimentos do período (o Heitor, 2026-11-04: "pode descontar as duas"). */
+  taxas?: number
+  /** As comissões lançadas no período (o pagamento delas fica só no caixa). */
+  comissoes?: number
   lucro: number
 }) {
   // Os números vêm prontos de lib/metrics (resultadoDoPeriodo); aqui só a
@@ -253,6 +257,8 @@ export function DreWaterfall({
     { label: 'Receita Bruta',          v: receita,       color: 'var(--brand)', pct: 100 },
     { label: '− Despesas Operacionais', v: despesas,      color: 'var(--warning)', pct: receita > 0 ? (despesas / receita) * 100 : 0 },
     { label: '− Insumos e produtos vendidos', v: insumos,       color: 'var(--danger)',  pct: receita > 0 ? (insumos / receita) * 100 : 0 },
+    { label: '− Taxas da maquininha',   v: taxas,         color: 'var(--danger)',  pct: receita > 0 ? (taxas / receita) * 100 : 0 },
+    { label: '− Comissões',             v: comissoes,     color: 'var(--danger)',  pct: receita > 0 ? (comissoes / receita) * 100 : 0 },
     {
       label: '= Lucro',
       v: lucro,

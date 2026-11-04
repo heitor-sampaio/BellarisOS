@@ -57,7 +57,11 @@ export function participacaoPct(parte: number, total: number): number | null {
 }
 
 export interface ResultadoDoPeriodo {
-  /** Receita paga − despesa operacional paga − insumo consumido (decisão do Heitor, 2026-10-29). */
+  /**
+   * Receita paga − despesa operacional paga − insumo consumido (decisão do
+   * Heitor, 2026-10-29) − taxas da maquininha − comissões (2026-11-04: "pode
+   * descontar as duas").
+   */
   lucro:     number
   /** Lucro ÷ receita, em %. Nulo sem receita: não é 0%. */
   margemPct: number | null
@@ -65,6 +69,10 @@ export interface ResultadoDoPeriodo {
   despesaOperacional: number
   /** O insumo consumido nos atendimentos, ao custo do movimento: entra no lucro. */
   insumoConsumido: number
+  /** As taxas da maquininha dos recebimentos do período (as do Fechamento): entram no lucro. */
+  taxasDaMaquininha: number
+  /** As comissões LANÇADAS no período (Financeiro → Comissões): entram no lucro. */
+  comissoes: number
 }
 
 /** As parcelas do resultado que não estão no núcleo (`metrics_resultado`, `getResultadoDoEstoque`). */
@@ -73,6 +81,19 @@ export interface EstoqueNoResultado {
   compraDeEstoque: number
   /** O insumo consumido nos atendimentos (custo do movimento): desconta do lucro. */
   consumoDeInsumo: number
+  /**
+   * As taxas da maquininha (`metrics_custos_da_venda`): a gravada nas parcelas da
+   * operadora e, sem elas (débito, Pix), a da configuração — as do Fechamento,
+   * no dia em que a receita entrou. Descontam do lucro.
+   */
+  taxasDaMaquininha?: number
+  /** As comissões LANÇADAS no período (`released_at`): descontam do lucro. */
+  comissoes?: number
+  /**
+   * A despesa paga da categoria "Comissões" (o "Fechar e pagar"): conta no
+   * CAIXA e NÃO no lucro — a comissão já descontou quando foi lançada.
+   */
+  despesaDeComissoes?: number
 }
 
 /**
@@ -82,12 +103,24 @@ export interface EstoqueNoResultado {
  * caixa (é o que saiu) e fora do lucro — senão o produto seria descontado
  * duas vezes. Até 2026-10-29 o lucro era receita − despesa paga, e o consumo
  * era só informativo.
+ *
+ * Desde 2026-11-04 (o Heitor: "pode descontar as duas") o lucro desconta
+ * também as TAXAS DA MAQUININHA e as COMISSÕES LANÇADAS no período; a despesa
+ * paga do fechamento das comissões (categoria "Comissões") fica no caixa e sai
+ * da despesa operacional — senão a comissão descontaria duas vezes:
+ * lucro = receita − (despesa − compra de estoque − despesa de comissões)
+ *         − insumo − taxas − comissões.
  */
 export function resultadoDoPeriodo(n: { revenueCash: number; expensesCash: number } & EstoqueNoResultado): ResultadoDoPeriodo {
-  const despesaOperacional = n.expensesCash - n.compraDeEstoque
-  const lucro = n.revenueCash - despesaOperacional - n.consumoDeInsumo
+  // Em centavos: as cinco parcelas somadas em reais deixavam 1762.0000000002.
+  const c = (v: number | undefined) => Math.round((v ?? 0) * 100)
+  const despesaOperacional = (c(n.expensesCash) - c(n.compraDeEstoque) - c(n.despesaDeComissoes)) / 100
+  const lucro = (c(n.revenueCash) - c(despesaOperacional) - c(n.consumoDeInsumo) - c(n.taxasDaMaquininha) - c(n.comissoes)) / 100
   const r = ratio(lucro, n.revenueCash)
-  return { lucro, margemPct: r === null ? null : r * 100, despesaOperacional, insumoConsumido: n.consumoDeInsumo }
+  return {
+    lucro, margemPct: r === null ? null : r * 100, despesaOperacional, insumoConsumido: n.consumoDeInsumo,
+    taxasDaMaquininha: n.taxasDaMaquininha ?? 0, comissoes: n.comissoes ?? 0,
+  }
 }
 
 export const SEM_ESTOQUE_NO_RESULTADO: EstoqueNoResultado = { compraDeEstoque: 0, consumoDeInsumo: 0 }

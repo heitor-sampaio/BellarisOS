@@ -251,8 +251,10 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       const grafico = p.locator('div.card').filter({ hasText: 'Evolução do Período' }).first()
       const custo = grafico.getByText('Custo do lucro', { exact: true }).locator('xpath=following-sibling::p[1]')
       // O lucro desconta o insumo CONSUMIDO (decisão do Heitor, 2026-10-29): o
-      // custo do gráfico é o do lucro — a despesa (zero) mais os 5 ml a R$ 0,90.
-      expect(brl(await custo.innerText()), 'o custo do gráfico é o do lucro: o insumo consumido entra').toBe(4.5)
+      // custo do gráfico é o do lucro — a despesa (zero) mais os 5 ml a R$ 0,90 —
+      // e, desde 2026-11-04 ("pode descontar as duas"), a comissão lançada
+      // (R$ 17,55, acima): 4,50 + 17,55 = R$ 22,05.
+      expect(brl(await custo.innerText()), 'o custo do gráfico é o do lucro: o insumo consumido e a comissão entram').toBe(22.05)
 
       await p.goto('/admin/reports?period=month&tab=financeiro')
       await expect(p.getByText('Insumos e produtos vendidos', { exact: true })).toBeVisible()

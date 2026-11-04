@@ -47,3 +47,18 @@ describe('pontosDaEvolucao com o estoque no resultado (2026-10-29)', () => {
     expect(pontos).toEqual([{ day: 1, revenue: 1000, cost: 230, profit: 770 }])
   })
 })
+
+describe('pontosDaEvolucao com as taxas e as comissões (o Heitor, 2026-11-04)', () => {
+  it('o custo do lucro soma as taxas e as comissões lançadas, e tira a despesa do fechamento das comissões', () => {
+    const de  = new Date('2026-11-01T03:00:00Z')
+    const ate = new Date('2026-11-02T02:59:59.999Z')
+    // Receita R$ 2.100; despesa paga R$ 300 (R$ 100 é o fechamento das comissões);
+    // taxas R$ 38; comissões R$ 100: custo 200 + 38 + 100 = R$ 338, lucro R$ 1.762.
+    const pontos = pontosDaEvolucao(
+      [{ bucket: '2026-11-01T03:00:00Z', revenue: 2100, expenses: 300 }],
+      { granularidade: 'day', de, ate },
+      [{ bucket: '2026-11-01T03:00:00Z', compraDeEstoque: 0, consumoDeInsumo: 0, taxasDaMaquininha: 38, comissoes: 100, despesaDeComissoes: 100 }],
+    )
+    expect(pontos).toEqual([{ day: 1, revenue: 2100, cost: 338, profit: 1762 }])
+  })
+})

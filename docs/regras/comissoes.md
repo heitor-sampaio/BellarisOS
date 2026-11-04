@@ -327,6 +327,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     cria `commission_payouts` e a **despesa paga** (categoria "Comissões", na
     unidade) e marca os lançamentos `PAID` com `payout_id`. Trava por
     profissional e unidade: dois cliques fecham uma vez.
+  - **No lucro, a comissão entra quando é LANÇADA, e a despesa do fechamento
+    fica só no caixa** (decisão do Heitor, 2026-11-04: o lucro desconta as
+    comissões; `indicadores.md`, "Lucro e margem"): a despesa paga
+    "Comissões" sai da despesa operacional do lucro, senão a comissão
+    descontaria duas vezes.
   - Fechamento não se reabre: estorno depois dele vira lançamento negativo
     no próximo. Saldo negativo não fecha.
   - **Estornar um fechamento** (`estornarFechamento` →
@@ -365,5 +370,6 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Gravar a comissão de um procedimento sem recusaDaComissaoDaAdmin (quem não é Admin mexia no valor da Admin)
 ❌ Criar a comissão da responsável do pacote com outra conta que não a da linha PACOTE_VENDA (pacote_responsavel = true) — ela é sobre o pacote pago inteiro e cai com o cancelamento, como a de venda
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
+❌ Contar no lucro a despesa paga "Comissões" do fechamento (a comissão já desconta quando é lançada — 2026-11-04): ela fica só no caixa
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ```

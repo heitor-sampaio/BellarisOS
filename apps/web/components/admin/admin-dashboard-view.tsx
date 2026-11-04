@@ -520,7 +520,8 @@ export function AdminDashboardView({
         />}
         {can('financial') && !recorteProprio && <KpiCard
           // A54: o cartão é o CAIXA (decisão 5d) e o nome diz isso — o "Custo do
-          // lucro" do gráfico soma também os insumos e os produtos vendidos.
+          // lucro" do gráfico soma também os insumos, os produtos vendidos, as taxas
+          // da maquininha e as comissões (2026-11-04).
           label={`Despesas pagas ${rotulo.doPeriodo}`}
           dica={DEFINICOES.despesa}
           value={totalCost}
