@@ -42,8 +42,17 @@ export interface ResumoDeVendas {
 export const ehTipoDeVenda = (v: unknown): v is TipoDeVenda =>
   typeof v === 'string' && (TIPOS_DE_VENDA as readonly string[]).includes(v)
 
-/** A descrição como a lista e a exportação a mostram ("3× Botox" no pré-pago). */
+/** A descrição que já diz a quantidade de cada item ("1× Protetor + 1× Sérum"). */
+const JA_TEM_QUANTIDADE = /^\d+× /
+
+/**
+ * A descrição como a lista e a exportação a mostram ("3× Botox" no pré-pago).
+ * A venda de produto gravada desde a F11 já traz os itens com a quantidade
+ * (`product_sales.descricao`): não ganha outro prefixo (D12 da 6ª simulação,
+ * era "2× 1× Protetor + 1× Sérum"). A de antes, só com o nome, ganha.
+ */
 export function descricaoDaVenda(v: Pick<Venda, 'tipo' | 'descricao' | 'quantidade'>): string {
+  if (v.tipo === 'PRODUTO' && JA_TEM_QUANTIDADE.test(v.descricao)) return v.descricao
   if (v.tipo === 'PRE_PAGO' || v.tipo === 'PRODUTO') return `${v.quantidade}× ${v.descricao}`
   if (v.tipo === 'PACOTE' || v.tipo === 'PLANO') {
     return v.quantidade > 0 ? `${v.descricao} · ${v.quantidade} ${v.quantidade === 1 ? 'sessão' : 'sessões'}` : v.descricao
