@@ -7,7 +7,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
 import { camposDoDestino, sugerirMapeamento, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
-import { validarLinha, marcarRepetidas, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
+import { validarLinha, marcarRepetidas, nomeDiferente, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 
 /**
@@ -471,9 +471,47 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
   const itens = cruzados ?? []
 
   if (destino === 'clientes') {
-    if (!itens.length) return null
+    // A14: o mesmo telefone de uma linha anterior, com OUTRO nome (Karina ×
+    // Bianca) — a clínica escolhe: junta (o padrão, a regra do telefone) ou
+    // vira a ficha separada. A que cruza com uma ficha da rede já está acima.
+    const cruzadas = new Set(itens.map(i => i.numero))
+    const mesmoTelefone = prontas.filter(l => l.mesmoTelefone && !cruzadas.has(l.numero))
+    if (!itens.length && !mesmoTelefone.length) return null
     const completam = itens.filter(i => i.como === 'cpf' || !naoCompletar.has(i.numero)).length
     return (
+      <>
+      {mesmoTelefone.length > 0 && (
+        <div style={caixaDaPrevia} data-mesmo-telefone-na-planilha>
+          <span style={forte}>
+            {plural(mesmoTelefone.length, 'linha tem', 'linhas têm')} o telefone de outra linha, com outro nome.
+          </span>
+          <ul style={listaDaPrevia}>
+            {mesmoTelefone.map(l => {
+              const nome = nomeDaLinha(l.numero)
+              const de = l.mesmoTelefone!
+              const separada = naoCompletar.has(l.numero)
+              return (
+                <li key={l.numero}>
+                  <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!separada} onChange={() => alternar(l.numero)}
+                      aria-label={`Juntar ${nome} com ${de.nome} (linha ${de.numero})`} style={{ marginTop: 3, accentColor: 'var(--brand)' }} />
+                    <span>
+                      Linha {l.numero} · {nome} tem o mesmo telefone da linha {de.numero} · {de.nome}:{' '}
+                      {separada
+                        ? <>{nome} vira uma ficha separada, com o mesmo telefone</>
+                        : <>junta com a ficha de <b style={forte}>{de.nome}</b> (completa só o que está em branco; o nome que fica é {de.nome})</>}
+                    </span>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
+          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+            Mãe e filha com o mesmo telefone? Desmarque, e cada uma ganha a sua ficha.
+          </span>
+        </div>
+      )}
+      {itens.length > 0 && (
       <div style={caixaDaPrevia}>
         <span style={forte}>
           {completam > 0
@@ -504,6 +542,8 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
           </span>
         )}
       </div>
+      )}
+      </>
     )
   }
 
@@ -521,6 +561,11 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
   const semTelefone = prontas.filter(l => !l.dados.phone)
   if (!itens.length && !naPlanilha.length && !semTelefone.length) return null
   const juntam = itens.length + naPlanilha.length
+  // A14: com OUTRO nome, a prévia diz qual fica — no CRM o telefone é uma
+  // pessoa só (a conversa do WhatsApp é uma), e o nome dela não é trocado.
+  const nomeQueFica = (nome: string) => <> — o nome que fica é <b style={forte}>{nome}</b></>
+  const algumNomeDiferente = naPlanilha.some(r => nomeDiferente(nomeDaLinha(r.numero), nomeDaLinha(r.com)))
+    || itens.some(i => nomeDiferente(nomeDaLinha(i.numero), i.nome))
   return (
     <div style={caixaDaPrevia}>
       {juntam > 0 && (
@@ -530,12 +575,26 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
           </span>
           <ul style={listaDaPrevia}>
             {itens.map(i => (
-              <li key={i.numero}>Linha {i.numero} · {nomeDaLinha(i.numero)} junta com <b style={forte}>{i.nome}</b> ({i.como === 'email' ? 'o mesmo e-mail' : 'o mesmo telefone'})</li>
+              <li key={i.numero}>
+                Linha {i.numero} · {nomeDaLinha(i.numero)} junta com <b style={forte}>{i.nome}</b> ({i.como === 'email' ? 'o mesmo e-mail' : 'o mesmo telefone'})
+                {nomeDiferente(nomeDaLinha(i.numero), i.nome) && nomeQueFica(i.nome)}
+              </li>
             ))}
-            {naPlanilha.map(r => (
-              <li key={r.numero}>Linha {r.numero} · {nomeDaLinha(r.numero)} junta com a linha {r.com} (o mesmo telefone)</li>
-            ))}
+            {naPlanilha.map(r => {
+              const outro = nomeDiferente(nomeDaLinha(r.numero), nomeDaLinha(r.com))
+              return (
+                <li key={r.numero}>
+                  Linha {r.numero} · {nomeDaLinha(r.numero)} junta com a linha {r.com}{outro && <> · {nomeDaLinha(r.com)}</>} (o mesmo telefone)
+                  {outro && nomeQueFica(nomeDaLinha(r.com))}
+                </li>
+              )
+            })}
           </ul>
+          {algumNomeDiferente && (
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+              No CRM, um telefone é uma pessoa só. Duas pessoas no mesmo telefone? Importe como clientes: cada uma ganha a sua ficha.
+            </span>
+          )}
         </>
       )}
       {semTelefone.length > 0 && (

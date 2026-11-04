@@ -173,7 +173,21 @@ const UFS = new Set(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export type DadosDaLinha = Partial<Record<ChaveDeCampo, string | string[]>>
-export interface LinhaValidada { numero: number; dados: DadosDaLinha; erros: string[] }
+export interface LinhaValidada {
+  numero: number; dados: DadosDaLinha; erros: string[]
+  /**
+   * A14: o telefone desta linha já veio numa linha anterior com OUTRO nome
+   * (Karina × Bianca). Na ficha a clínica escolhe juntar ou criar separada; no
+   * contato a linha junta (D-10), e a prévia diz qual nome fica.
+   */
+  mesmoTelefone?: { numero: number; nome: string }
+}
+
+/** Dois nomes que são outros (sem caixa, acento e espaço a mais); sem nome não é "outro". */
+export function nomeDiferente(a: string | undefined | null, b: string | undefined | null): boolean {
+  if (!a?.trim() || !b?.trim()) return false
+  return semAcento(a) !== semAcento(b)
+}
 
 /** Até onde vai cada texto livre (a ficha tem os seus limites de tela). */
 const MAX_TEXTO = 500
@@ -320,6 +334,11 @@ export function validarLinha(
  * não há repetida (D-10, decisão do Heitor de 2026-10-29): a segunda linha do
  * mesmo telefone JUNTA as tags e a origem à pessoa que a primeira criou, e
  * completa só o vazio.
+ * A14 da 6ª simulação (2026-11-04): o mesmo TELEFONE com OUTRO nome (Karina ×
+ * Bianca) não é repetida. Na ficha, a linha passa com `mesmoTelefone` e a
+ * prévia dá a escolha: juntar (o padrão — completa o vazio da ficha da outra,
+ * como a ficha que já existe) ou ficha separada (`naoCompletar`). No contato
+ * ela junta (D-10), e a prévia diz qual nome fica.
  */
 /** Quem é "a mesma pessoa" dentro da planilha (a regra de marcarRepetidas). */
 export function chaveDaPessoa(destino: Destino, dados: DadosDaLinha): string {
@@ -328,14 +347,23 @@ export function chaveDaPessoa(destino: Destino, dados: DadosDaLinha): string {
 }
 
 export function marcarRepetidas(destino: Destino, linhas: LinhaValidada[]): LinhaValidada[] {
-  if (destino === 'contatos') return linhas
   const vistas = new Map<string, number>()
+  const nomes = new Map<number, string | undefined>()
   return linhas.map(l => {
     if (l.erros.length) return l
+    const nome = l.dados.name as string | undefined
     const chave = chaveDaPessoa(destino, l.dados)
+    // O contato só com e-mail não tem telefone para repetir.
+    if (destino === 'contatos' && !l.dados.phone) return l
     const primeira = vistas.get(chave)
-    if (primeira !== undefined) return { ...l, erros: [`Repetida na planilha (igual à linha ${primeira}).`] }
-    vistas.set(chave, l.numero)
-    return l
+    if (primeira === undefined) { vistas.set(chave, l.numero); nomes.set(l.numero, nome); return l }
+    // A14: o mesmo TELEFONE com outro nome não é a linha repetida — é a
+    // escolha da clínica (ficha) ou a pessoa que junta (contato, D-10).
+    const nomeDaPrimeira = nomes.get(primeira)
+    if (chave.startsWith('fone:') && nomeDiferente(nome, nomeDaPrimeira)) {
+      return { ...l, mesmoTelefone: { numero: primeira, nome: nomeDaPrimeira! } }
+    }
+    if (destino === 'contatos') return l
+    return { ...l, erros: [`Repetida na planilha (igual à linha ${primeira}).`] }
   })
 }

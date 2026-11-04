@@ -119,3 +119,55 @@ test('A15: nos contatos, a prévia diz quem junta pelo telefone e quem entra sem
     await expect(previa).toContainText('1 sem telefone')
   })
 })
+
+test('A14: na ficha, o mesmo telefone com outro nome mostra os dois nomes e deixa escolher juntar ou criar separada', async ({ browser }) => {
+  const foneA = `(47) 9${fim}-0001`
+  const foneB = `(47) 9${fim}-0002`
+  const bianca = `${PREFIXO} Bianca ${marca}`
+  const karina = `${PREFIXO} Karina ${marca}`
+  const clara = `${PREFIXO} Clara ${marca}`
+  const clarinha = `${PREFIXO} Clarinha ${marca}`
+  const conteudo = [
+    'Nome,Celular,E-mail',
+    `${bianca},${foneA},bianca-${marca}@exemplo.com`,
+    `${karina},${foneA},karina-${marca}@exemplo.com`,
+    `${clara},${foneB},`,
+    `${clarinha},${foneB},clarinha-${marca}@exemplo.com`,
+  ].join('\n')
+  await como(browser, admin, async p => {
+    const previa = await ateAPrevia(p, `mesmo-telefone-${marca}.csv`, conteudo, 'Como clientes')
+    // Nenhuma é "repetida": são outros nomes.
+    await expect(previa).toContainText('4 linhas prontas')
+    await expect(previa).toContainText(`Linha 3 · ${karina} tem o mesmo telefone da linha 2 · ${bianca}`)
+    const juntarKarina = previa.getByRole('checkbox', { name: `Juntar ${karina} com ${bianca} (linha 2)` })
+    await expect(juntarKarina).toBeChecked()
+    await juntarKarina.uncheck()
+    await expect(previa).toContainText(`${karina} vira uma ficha separada`)
+    // A Clarinha fica marcada: junta com a Clara (completa o que está em branco).
+    await expect(previa.getByRole('checkbox', { name: `Juntar ${clarinha} com ${clara} (linha 4)` })).toBeChecked()
+    await p.getByRole('button', { name: /Importar 4 linhas/ }).click()
+    await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
+  })
+  const { data: fichas } = await db().from('clients').select('name, email').eq('tenant_id', rede.tenantId)
+    .in('name', [bianca, karina, clara, clarinha]).order('name')
+  expect(fichas).toEqual([
+    { name: bianca, email: `bianca-${marca}@exemplo.com` },
+    { name: clara, email: `clarinha-${marca}@exemplo.com` },
+    { name: karina, email: `karina-${marca}@exemplo.com` },
+  ])
+})
+
+test('A14: no contato, o mesmo telefone com outro nome diz os dois nomes e qual fica', async ({ browser }) => {
+  const fone = `(47) 9${fim}-0003`
+  const conteudo = [
+    'Nome,WhatsApp',
+    `Bianca Planilha,${fone}`,
+    `Karina Planilha,${fone}`,
+  ].join('\n')
+  await como(browser, admin, async p => {
+    const previa = await ateAPrevia(p, `contatos-mesmo-telefone-${marca}.csv`, conteudo, 'Como contatos do CRM')
+    await expect(previa).toContainText('Linha 3 · Karina Planilha junta com a linha 2 · Bianca Planilha (o mesmo telefone)')
+    await expect(previa).toContainText('o nome que fica é Bianca Planilha')
+    await expect(previa).toContainText('Duas pessoas no mesmo telefone? Importe como clientes')
+  })
+})

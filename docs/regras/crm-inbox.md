@@ -393,7 +393,23 @@ dela — e vê Configurações só com essa aba.
   criou e junta as tags; a ORIGEM da linha (`op_origem`) entra como tag da
   pessoa (como a do anúncio, `deriveLeadSource`), também na pessoa nova. Na
   ficha (clientes) a repetida continua recusada (mesmo CPF, ou sem CPF o
-  mesmo telefone). Prova: `e2e/importacao-contatos.spec.ts` ("só com e-mail").
+  mesmo telefone COM O MESMO NOME). Prova: `e2e/importacao-contatos.spec.ts` ("só com e-mail").
+- **O mesmo telefone com OUTRO nome na planilha** (A14 da 6ª simulação,
+  2026-11-04; princípios 1 e 3: a Karina sumia na Bianca, calada): não é a
+  repetida. **Na ficha**, a prévia mostra "Linha 3 · Karina tem o mesmo
+  telefone da linha 2 · Bianca" com a caixa "Juntar Karina com Bianca",
+  marcada (o padrão é a regra do telefone: completa só o vazio da ficha da
+  Bianca, como a ficha que já existe); desmarcada, a Karina vira a ficha dela,
+  com o mesmo telefone (`importacoes.nao_completar`, o mesmo do cli-07). O
+  nome compara sem caixa, acento e espaço (`nomeDiferente`); o mesmo nome
+  segue "Repetida na planilha". **No contato** não há escolha: um telefone é
+  uma pessoa só (a conversa do WhatsApp é uma, e dois contatos com o mesmo
+  identificador é o defeito do §9.2.1), e a prévia diz "… junta com a linha 2
+  · Bianca (o mesmo telefone) — o nome que fica é Bianca", também na pessoa
+  que já existe, e manda importar como clientes quem são duas pessoas.
+  `marcarRepetidas` (a prévia) e `processarImportacao` (o servidor) dividem a
+  regra. Prova: `e2e/importacao-previa-cruzamento.spec.ts` ("A14"),
+  `tests/importacao.test.ts`.
 - **Cliente novo**: tag da unidade (é por ela que a lista filtra) e conta de
   fidelidade (`fidelidade_conta`); **SEM acesso ao portal** (cria-se na ficha).
   A importação de clientes não cria contato do CRM: a ficha se liga à pessoa

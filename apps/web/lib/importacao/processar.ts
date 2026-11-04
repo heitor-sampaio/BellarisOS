@@ -7,7 +7,7 @@ import { gravar, ler } from '@/lib/db'
 import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 import type { ChaveDeCampo, Destino } from './campos'
-import { validarLinha, chaveDaPessoa, variantesDoTelefone, telefoneDaFichaImportada, type DadosDaLinha } from './normalizar'
+import { validarLinha, chaveDaPessoa, nomeDiferente, variantesDoTelefone, telefoneDaFichaImportada, type DadosDaLinha } from './normalizar'
 import { referenciasDaRede } from './referencias'
 
 /**
@@ -100,7 +100,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
     com_erro: p.com_erro, oportunidades: p.oportunidades,
   }
   const erros = [...(p.erros ?? [])]
-  const vistas = new Map<string, number>()
+  const vistas = new Map<string, { numero: number; nome: string | undefined }>()
   /** Grava o andamento — só se esta passagem ainda é a dona da importação. */
   const sinal = async (extra: Record<string, unknown> = {}) => {
     const { data, error } = await admin.from('importacoes')
@@ -136,11 +136,16 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
       for (const l of linhas) {
         const { dados, erros: problemas } = validarLinha(p.destino, p.mapeamento, l.valores, refs)
         // A repetida é só da ficha (clientes): no contato, a segunda linha junta à pessoa (D-10).
+        // A14: o mesmo telefone com OUTRO nome não é repetida — junta pelo
+        // telefone (a regra de gravarCliente) ou, desmarcada na prévia, vira a
+        // ficha separada (`nao_completar`).
         if (!problemas.length && p.destino === 'clientes') {
           const chave = chaveDaPessoa(p.destino, dados)
           const primeira = vistas.get(chave)
-          if (primeira !== undefined) problemas.push(`Repetida na planilha (igual à linha ${primeira}).`)
-          else vistas.set(chave, l.numero)
+          if (primeira === undefined) vistas.set(chave, { numero: l.numero, nome: dados.name as string | undefined })
+          else if (!(chave.startsWith('fone:') && nomeDiferente(dados.name as string | undefined, primeira.nome))) {
+            problemas.push(`Repetida na planilha (igual à linha ${primeira.numero}).`)
+          }
         }
         if (problemas.length) {
           placar.com_erro++

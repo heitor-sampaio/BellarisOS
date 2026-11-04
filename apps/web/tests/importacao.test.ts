@@ -222,11 +222,41 @@ describe('marcarRepetidas', () => {
       { numero: 2, dados: { name: 'A', phone: '5548999990000', document: '52998224725' }, erros: [] },
       { numero: 3, dados: { name: 'B', phone: '5548111110000', document: '52998224725' }, erros: [] },
       { numero: 4, dados: { name: 'C', phone: '5548222220000' }, erros: [] },
-      { numero: 5, dados: { name: 'D', phone: '5548222220000' }, erros: [] },
+      { numero: 5, dados: { name: 'c ', phone: '5548222220000' }, erros: [] },
       // Com CPF diferente, o mesmo telefone é outra pessoa (mãe e filha).
       { numero: 6, dados: { name: 'E', phone: '5548999990000', document: '16899535009' }, erros: [] },
     ])
     expect(r.map(l => l.erros)).toEqual([[], ['Repetida na planilha (igual à linha 2).'], [], ['Repetida na planilha (igual à linha 4).'], []])
+  })
+})
+
+// A14 da 6ª simulação: o mesmo telefone com OUTRO nome (Karina × Bianca) não
+// é a mesma linha repetida — a prévia mostra os dois nomes e a clínica escolhe
+// juntar (o padrão, a regra do telefone) ou criar a ficha separada.
+describe('marcarRepetidas — o mesmo telefone com outro nome (A14)', () => {
+  it('na ficha, não é "repetida": a linha passa e diz de qual linha é o telefone', () => {
+    const r = marcarRepetidas('clientes', [
+      { numero: 2, dados: { name: 'Bianca Souza', phone: '5548222220000' }, erros: [] },
+      { numero: 3, dados: { name: 'Karina Souza', phone: '5548222220000' }, erros: [] },
+      { numero: 4, dados: { name: 'BIANCA  souza', phone: '5548222220000' }, erros: [] },
+    ])
+    expect(r.map(l => l.erros)).toEqual([[], [], ['Repetida na planilha (igual à linha 2).']])
+    expect(r[1]!.mesmoTelefone).toEqual({ numero: 2, nome: 'Bianca Souza' })
+    expect(r[0]!.mesmoTelefone).toBeUndefined()
+  })
+  it('no contato, a linha junta (D-10) e também diz de qual linha é o telefone', () => {
+    const r = marcarRepetidas('contatos', [
+      { numero: 2, dados: { name: 'Bianca', phone: '5548222220000' }, erros: [] },
+      { numero: 3, dados: { name: 'Karina', phone: '5548222220000' }, erros: [] },
+    ])
+    expect(r.map(l => l.erros)).toEqual([[], []])
+    expect(r[1]!.mesmoTelefone).toEqual({ numero: 2, nome: 'Bianca' })
+  })
+  it('nomeDiferente ignora caixa, acento e espaço; sem nome não é diferente', async () => {
+    const { nomeDiferente } = await import('@/lib/importacao/normalizar')
+    expect(nomeDiferente('Márcia  Lima', 'marcia lima')).toBe(false)
+    expect(nomeDiferente('Karina', 'Bianca')).toBe(true)
+    expect(nomeDiferente(undefined, 'Bianca')).toBe(false)
   })
 })
 
