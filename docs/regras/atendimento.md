@@ -1168,6 +1168,11 @@ const procedures = await ler(
     próprio: o custo dele é o do movimento de entrada ligado (o lote que veio
     por transferência fica sem custo, "—").
   - Prova: `e2e/estoque-tela-consumo-e-lotes.spec.ts`, `tests/estoque-situacao.test.ts`.
+  - **Sem produto nenhum, a tela diz isso** (A2 da 6ª simulação,
+    2026-11-04): "Nenhum produto cadastrado", que os insumos vêm antes dos
+    procedimentos que os usam, e o "Novo produto" ali mesmo
+    (`[data-estoque-vazio]`); "Ajuste os filtros" fica para a busca que não
+    achou. Prova: `e2e/estoque-vazio.spec.ts`.
   - **Sem estoque é não ter saldo POSITIVO no recorte** (D10 da 6ª
     simulação, 2026-11-04; princípio 3): o saldo NEGATIVO (a baixa que
     faltou, §10) e o produto ativo sem NENHUMA linha de saldo na unidade

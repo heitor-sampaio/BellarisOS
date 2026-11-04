@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { Fragment, useState, useMemo, useRef, useEffect } from 'react'
-import { Search, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, PackageX, Settings, Barcode, Pencil } from 'lucide-react'
+import { Search, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, PackageX, Settings, Barcode, Pencil, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { AdminStockManageModal } from './admin-stock-manage-modal'
 import { BarcodeEntryModal } from './barcode-entry-modal'
@@ -377,7 +377,30 @@ export function AdminStockView({ products, branches, categories, productCategori
 
       {/* Tabela */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {(view === 'consolidado' ? filtered.length : rowsByUnit.length) === 0 ? (
+        {products.length === 0 ? (
+          // A2 da 6ª simulação: a clínica nova lia "ajuste os filtros" sem filtro nenhum.
+          <div data-estoque-vazio style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <PackageX size={36} style={{ color: 'var(--text-faint)', marginBottom: 8 }} />
+            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum produto cadastrado</p>
+            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', maxWidth: 360 }}>
+              Cadastre os insumos antes dos procedimentos que os usam — e os produtos que a clínica vende.
+            </p>
+            {!readOnly && (
+              <div style={{ marginTop: 10 }}>
+                <StockProductModal
+                  suppliers={suppliers ?? []}
+                  categories={productCategories ?? []}
+                  branches={defaultBranchId ? undefined : branches}
+                  trigger={
+                    <button type="button" className="btn-primary">
+                      <Plus size={15} /> Novo produto
+                    </button>
+                  }
+                />
+              </div>
+            )}
+          </div>
+        ) : (view === 'consolidado' ? filtered.length : rowsByUnit.length) === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <PackageX size={36} style={{ color: 'var(--text-faint)', margin: '0 auto 12px' }} />
             <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum produto encontrado</p>
