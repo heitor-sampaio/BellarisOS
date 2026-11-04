@@ -813,15 +813,18 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       migration `20261103001303`). O estorno é acompanhado pelo gatilho, na
       mesma transação: cai o que ainda não foi recebido (CANCELADA); o já
       recebido é ESTORNADO (a operadora toma de volta: `estornado`).
-    - **O crédito À VISTA (1x) ainda não vira recebível** (D4 da 6ª
-      simulação, F20 — parado na restrição `recebiveis_do_cartao_check`, que
-      só aceita de 2 a 12 parcelas; trocá-la pede confirmação no Supabase, e
-      o SQL está no branch `f20-d4-credito-1x`). ⚠️ O gatilho NÃO pode fazer
-      a parcela do 1x antes da restrição mudar: em 2026-11-04 a migration
-      `20261104002001` tentou, e toda venda no crédito 1x foi recusada pelo
-      banco por alguns minutos (desfeito em `20261104002002`; prova:
-      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`, "o crédito 1x
-      grava").
+    - **O crédito À VISTA (1x) também vira recebível** (D4 da 6ª simulação,
+      F20; migration `20261104002050`): UMA parcela, no prazo da bandeira
+      (ou no da clínica), com a taxa do 1x — como as N vezes. O débito e o Pix
+      seguem recebidos no dia: não há prazo configurado para eles (princípio
+      4). A receita continua da venda, no dia dela (princípio 5); o Fechamento
+      não muda (a taxa do 1x já era estimada), e o "A receber da operadora", a
+      lista e o fluxo de caixa passam a mostrar o 1x. As vendas no 1x de antes
+      ficam sem parcela. ⚠️ A restrição `recebiveis_do_cartao_check` aceita
+      `parcela_total` de 1 a 12 desde esta migration: o gatilho com o 1x
+      ANTES dela recusa toda venda no crédito à vista (foi o que a
+      `20261104002001` fez por alguns minutos). Prova:
+      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts` ("D4").
     - As vendas antigas no cartão N× (3 na produção em 2026-11-01: Aurora
       R$ 600, Jasmim R$ 150, Lótus R$ 280) ficam como estão, sem parcelas.
     - Migration `20261101000261`. Prova:

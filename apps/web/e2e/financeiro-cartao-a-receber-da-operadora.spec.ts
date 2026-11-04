@@ -407,6 +407,11 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
 })
 
 /**
+ * D4 da 6ª simulação: o crédito À VISTA também vira recebível da operadora —
+ * a operadora deposita em 30 (ou no prazo da bandeira) dias, com a taxa do 1x,
+ * como as N vezes. O débito e o Pix seguem recebidos no dia: não há prazo
+ * configurado para eles (princípio 4 do CLAUDE.md, "não chutar número").
+ *
  * D13: a taxa por parcela leva a sobra do arredondamento na última, como o
  * valor — Visa 2x de R$ 750 a 2,38% são 8,93 + 8,92 = R$ 17,85, o mesmo que o
  * Fechamento estima (era 8,93 + 8,93 = R$ 17,86).
@@ -422,12 +427,30 @@ test.describe('F20: a sobra da taxa e a lista da operadora', () => {
     return data!.id
   }
 
-  test('o crédito 1x grava, sem parcela da operadora até a restrição aceitar o 1x (D4 espera o Heitor)', async () => {
-    // A 20261104002001 fez o gatilho tentar a parcela do 1x, e a restrição
-    // recebiveis_do_cartao_check (2 a 12 parcelas) passou a recusar TODA venda
-    // no crédito à vista. Este teste prende que o 1x continua gravando.
-    const tx = await lancar(100, 'CREDIT_CARD', { cartao_bandeira: 'VISA' })
-    expect(await parcelasDa(tx)).toEqual([])
+  test('D4: o crédito 1x vira UMA parcela da operadora, no prazo da bandeira e com a taxa do 1x; débito e Pix não', async () => {
+    expect((await db().from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 1, taxa_pct: 1.19 })).error).toBeNull()
+    expect((await db().from('tenants').update({ cartao_por_bandeira: { ELO: { prazo: 32, taxas: {} } } }).eq('id', rede!.tenantId)).error).toBeNull()
+    try {
+      const hoje = hojeSP()
+      const elo = await lancar(1000, 'CREDIT_CARD', { cartao_bandeira: 'ELO' })
+      expect((await parcelasDa(elo)).map(p => [p.parcela_numero, p.parcela_total, p.valor, p.taxa_pct, p.taxa, p.liquido, p.vencimento_dia, p.situacao]),
+        'Elo 1x: o prazo de 32 dias da Elo, a taxa do 1x da regra geral').toEqual([
+        [1, 1, 1000, 1.19, 11.9, 988.1, maisDias(hoje, 32), 'A_RECEBER'],
+      ])
+      const semBandeira = await lancar(100, 'CREDIT_CARD')
+      expect((await parcelasDa(semBandeira)).map(p => [p.valor, p.taxa, p.vencimento_dia]), 'sem bandeira: o prazo geral').toEqual([
+        [100, 1.19, maisDias(hoje, 30)],
+      ])
+      // O débito e o Pix: recebidos no dia, sem parcela da operadora.
+      expect(await parcelasDa(await lancar(248, 'DEBIT_CARD', { cartao_bandeira: 'VISA' })), 'débito').toEqual([])
+      expect(await parcelasDa(await lancar(100, 'PIX')), 'Pix').toEqual([])
+      // O estorno do crédito 1x cancela a parcela, como no N vezes.
+      expect((await db().rpc('estornar_transacao', { p_transacao: elo, p_tenant: rede!.tenantId, p_ator: 'e2e', p_motivo: 'e2e' })).error).toBeNull()
+      expect((await parcelasDa(elo)).map(p => [p.situacao, p.valor])).toEqual([['CANCELADA', 0]])
+    } finally {
+      expect((await db().from('tenants').update({ cartao_por_bandeira: {} }).eq('id', rede!.tenantId)).error).toBeNull()
+      expect((await db().from('payment_fees').delete().eq('tenant_id', rede!.tenantId).eq('metodo', 'CREDIT_CARD').eq('parcelas', 1)).error).toBeNull()
+    }
   })
 
   test('D13: a sobra do arredondamento da taxa vai na última parcela (Visa 2x de R$ 750 a 2,38% = 8,93 + 8,92)', async () => {

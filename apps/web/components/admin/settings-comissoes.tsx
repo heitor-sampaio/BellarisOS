@@ -570,7 +570,7 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
             onChange={e => { setPrazo(e.target.value.replace(/\D/g, '').slice(0, 3)); setSalvo(false) }} />
         )}
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          No crédito em várias vezes, a operadora deposita cada parcela a cada {recusaDoPrazoDaOperadora(Number(prazoMostrado)) ? 'N' : prazoMostrado} dias
+          No crédito (à vista ou em várias vezes), a operadora deposita cada parcela a cada {recusaDoPrazoDaOperadora(Number(prazoMostrado)) ? 'N' : prazoMostrado} dias
           corridos contados da venda: em 3x, nos dias {[1, 2, 3].map(k => k * (Number(prazoMostrado) || 0)).join(', ')}. Vale para as próximas
           vendas; de 1 a {PRAZO_MAXIMO_DA_OPERADORA} dias.
         </span>
