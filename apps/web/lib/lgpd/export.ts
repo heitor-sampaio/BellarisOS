@@ -9,6 +9,7 @@ import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
 import { flattenFields, type AnamnesisRow } from '@/lib/anamnesis'
 import { lerTodas } from '@/lib/db'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { planoParaOTitular, linhaDoPlano, linhaDaComunicacao, type PlanoLido } from '@/lib/lgpd/plano'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -180,8 +181,11 @@ export async function buildClientExport(
       .select('created_at, title, body, type, is_read').eq('client_id', clientId)
       .order('created_at', { ascending: false }).order('id').range(de, ate), 'reunir as comunicações')
       .then(data => ({ data, error: null })),
+    // Com as sessões, os procedimentos e os valores (A21 da 6ª simulação): o
+    // plano saía só com a data e a situação. Sem a anotação da profissional.
     admin.from('treatment_plans')
-      .select('created_at, status, branch_id').eq('client_id', clientId),
+      .select('created_at, status, branch_id, treatment_plan_sessions(sort_order, treatment_plan_session_procedures(price, procedures(name)))')
+      .eq('client_id', clientId).order('created_at', { ascending: false }),
     admin.from('branches').select('id, name').eq('tenant_id', client.tenant_id),
     // Termos e contratos (§9.4.1): na parte GERAL, porque não carregam dado
     // clínico (o catálogo de variáveis não tem nenhum). Com as evidências do
@@ -222,6 +226,8 @@ export async function buildClientExport(
 
   const branchName = new Map((branches ?? []).map(b => [b.id as string, b.name as string]))
   const unit = (id: string | null | undefined) => (id ? branchName.get(id) ?? '—' : '—')
+  const planos = ((plans ?? []) as unknown as PlanoLido[])
+    .map(p => planoParaOTitular(p, SITUACAO_DO_PLANO[p.status] ?? String(p.status), unit(p.branch_id)))
 
   // ─── Parte clínica (só com aprovação) ──────────────────────────────────────
   let medical: Json | null = null
@@ -367,9 +373,7 @@ export async function buildClientExport(
         } : null,
       }
     }),
-    planosDeTratamento: (plans ?? []).map(p => ({
-      data: p.created_at, situacao: SITUACAO_DO_PLANO[p.status as string] ?? String(p.status), unidade: unit(p.branch_id),
-    })),
+    planosDeTratamento: planos,
     fichasDeSaude,
     comunicacoes: (notifications ?? []).map(n => ({ data: n.created_at, titulo: n.title, mensagem: n.body, lida: Boolean(n.is_read) })),
     prontuario:   includeMedical ? prontuarioLegivel(medical) : foraDoPacote.json,
@@ -463,9 +467,14 @@ export async function buildClientExport(
         + (p.respondidaEm ? ` em ${fmtDateTime(p.respondidaEm)}` : '') + (p.respondidaPor ? ` por ${p.respondidaPor}` : '')),
     },
     {
+      title: `Planos de tratamento (${planos.length})`,
+      emptyLabel: 'Nenhum plano de tratamento.',
+      lines: planos.map(p => linhaDoPlano(p, fmtDate)),
+    },
+    {
       title: `Comunicações recebidas (${(notifications ?? []).length})`,
       emptyLabel: 'Nenhuma comunicação registrada.',
-      lines: (notifications ?? []).slice(0, 50).map(n => `${fmtDate(n.created_at)} — ${String(n.title ?? '')}`),
+      lines: (notifications ?? []).slice(0, 50).map(n => linhaDaComunicacao(n as { created_at: string; title: string | null })),
     },
   ]
 

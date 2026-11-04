@@ -2,7 +2,8 @@
 
 import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, can } from '@/lib/auth'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LGPD_BUCKET } from '@/lib/lgpd/export'
 import { processExportRequest } from '@/lib/lgpd/processar'
@@ -102,6 +103,8 @@ export async function getMyDataRequests(): Promise<LgpdRequestRow[]> {
     .select('id, type, status, requested_at, completed_at, include_medical, medical_status, expires_at, error_message, export_pdf_path')
     .eq('client_id', ctx.clientId)
     .eq('type', 'export')
+    // O pacote que a EQUIPE gerou pela ficha (A21) não é pedido dela.
+    .neq('requested_via', 'equipe')
     .order('requested_at', { ascending: false })
     .limit(10), 'carregar os pedidos de LGPD')
 
@@ -244,4 +247,112 @@ export async function reviewMedicalData(
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
+}
+
+// ─── Equipe, pela ficha (A21 da 6ª simulação) ────────────────────────────────
+//
+// A LGPD só se pedia pelo PORTAL: a cliente sem o app, ou que pede no balcão,
+// ficava sem caminho. Quem tem Clientes em Gerenciar exporta pela ficha; o
+// prontuário só entra com o Prontuário em Gerenciar (a mesma régua de liberar),
+// e então já sai liberado, com o acesso registrado. O pedido fica registrado
+// como da equipe (`requested_via = 'equipe'`, quem pediu e o nome do ctx).
+
+export interface ExportacaoDaFicha {
+  id:              string
+  status:          string
+  requestedAt:     string
+  completedAt:     string | null
+  expiresAt:       string | null
+  incluiProntuario: boolean
+  pedidoPor:       string | null
+  temArquivos:     boolean
+  erro:            string | null
+}
+
+/** A ficha é da rede (H5): qualquer unidade. */
+async function fichaDaRede(tenantId: string, clientId: string) {
+  if (typeof clientId !== 'string' || !/^[0-9a-f-]{36}$/i.test(clientId)) return null
+  return ler(createAdminClient().from('clients').select('id, tenant_id').eq('id', clientId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a cliente')
+}
+
+/** O último pacote que a equipe gerou para esta cliente (a janela da ficha). */
+export async function exportacaoDaFicha(clientId: string): Promise<ExportacaoDaFicha | null> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'clients', 'MANAGE')
+  if (!(await fichaDaRede(ctx.tenantId!, clientId))) return null
+  const r = await ler(createAdminClient().from('lgpd_requests')
+    .select('id, status, requested_at, completed_at, expires_at, include_medical, medical_status, requested_by_name, export_pdf_path, error_message')
+    .eq('client_id', clientId).eq('tenant_id', ctx.tenantId!).eq('type', 'export').eq('requested_via', 'equipe')
+    .order('requested_at', { ascending: false }).limit(1).maybeSingle(), 'buscar o pacote da ficha')
+  if (!r) return null
+  return {
+    id: r.id as string, status: r.status as string, requestedAt: r.requested_at as string,
+    completedAt: r.completed_at as string | null, expiresAt: r.expires_at as string | null,
+    incluiProntuario: !!r.include_medical && r.medical_status === 'approved',
+    pedidoPor: r.requested_by_name as string | null, temArquivos: !!r.export_pdf_path,
+    erro: r.status === 'failed' ? 'Não foi possível gerar o pacote. Gere de novo.' : null,
+  }
+}
+
+/** Gera o pacote pela ficha. */
+export async function exportarDadosPelaEquipe(
+  clientId: string, o: { incluirProntuario?: boolean } = {},
+): Promise<{ ok: true } | { error: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'clients', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'exportar os dados da cliente')
+    if (travado) return { error: travado }
+    const incluir = o?.incluirProntuario === true
+    if (incluir && !can(ctx, 'medical_records', 'MANAGE')) {
+      return { error: 'Incluir o prontuário pede o Prontuário em Gerenciar.' }
+    }
+    if (!(await fichaDaRede(ctx.tenantId!, clientId))) return { error: 'Cliente não encontrada.' }
+
+    const agora = new Date().toISOString()
+    const { data: criado, error } = await createAdminClient().from('lgpd_requests').insert({
+      client_id: clientId, tenant_id: ctx.tenantId!, type: 'export', status: 'pending', requested_via: 'equipe',
+      requested_by: ctx.internalUserId ?? null, requested_by_name: ctx.userName || null,
+      include_medical: incluir, medical_status: incluir ? 'approved' : 'not_requested',
+      ...(incluir ? { medical_reviewed_by: ctx.internalUserId ?? null, medical_reviewed_at: agora } : {}),
+    }).select('id').single()
+    if (error) {
+      if (error.code === '23505') return { error: 'Já há um pacote desta cliente sendo gerado (dela, pelo app, ou da equipe). Aguarde alguns minutos.' }
+      return { error: `Não foi possível gerar o pacote: ${error.message}` }
+    }
+    // O prontuário sai da clínica por decisão de alguém: fica no registro de acessos.
+    if (incluir) await registrarAcessoAoProntuario(ctx, clientId, 'lgpd', criado.id as string)
+    after(() => processExportRequest(criado.id as string))
+    return { ok: true }
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
+/** Os links do pacote gerado pela ficha (10 min). Com o prontuário dentro, pede o Prontuário em Gerenciar. */
+export async function baixarExportacaoPelaEquipe(requestId: string): Promise<{ pdf?: string; json?: string; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'clients', 'MANAGE')
+  if (typeof requestId !== 'string' || !/^[0-9a-f-]{36}$/i.test(requestId)) return { error: 'Pacote não encontrado.' }
+  const admin = createAdminClient()
+  const row = await ler(admin.from('lgpd_requests')
+    .select('tenant_id, requested_via, status, expires_at, include_medical, medical_status, export_json_path, export_pdf_path')
+    .eq('id', requestId).maybeSingle(), 'buscar o pacote')
+  if (!row || row.tenant_id !== ctx.tenantId || row.requested_via !== 'equipe') return { error: 'Pacote não encontrado.' }
+  if (row.include_medical && row.medical_status === 'approved' && !can(ctx, 'medical_records', 'MANAGE')) {
+    return { error: 'Este pacote tem o prontuário: baixar pede o Prontuário em Gerenciar.' }
+  }
+  if (row.status !== 'completed') return { error: 'O pacote ainda está sendo gerado.' }
+  if (row.expires_at && new Date(row.expires_at as string) < new Date()) return { error: 'O prazo de download expirou. Gere de novo.' }
+  const assinar = async (caminho: string | null, nome: string) => {
+    if (!caminho) return undefined
+    const { data, error } = await admin.storage.from(LGPD_BUCKET).createSignedUrl(caminho, 600, { download: nome })
+    if (error) console.error('[lgpd] assinar o download da equipe:', error.message)
+    return data?.signedUrl ?? undefined
+  }
+  const [pdf, json] = await Promise.all([
+    assinar(row.export_pdf_path as string | null, 'dados-da-cliente.pdf'),
+    assinar(row.export_json_path as string | null, 'dados-da-cliente.json'),
+  ])
+  return { pdf, json }
 }

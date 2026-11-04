@@ -250,6 +250,25 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   ficar para trás. O pacote sai em PDF (legível) + JSON (portabilidade) no
   bucket privado `lgpd-exports`, com download por signed URL e validade de
   30 dias. Um pedido em aberto por cliente, garantido por índice único parcial.
+- **A equipe também exporta, pela FICHA** (A21 da 6ª simulação,
+  2026-11-04; até aqui só o portal pedia, e a cliente sem o app ficava sem
+  caminho): "Mais ações" → "Exportar dados (LGPD)" (`ExportarLgpdDaFicha`,
+  `exportarDadosPelaEquipe`) para quem tem Clientes em Gerenciar — o MESMO
+  pacote, em segundo plano, com o download na janela
+  (`baixarExportacaoPelaEquipe`, link de 10 min). O pedido fica registrado:
+  `requested_via = 'equipe'`, `requested_by` (users.id, sem chave
+  estrangeira) e `requested_by_name` (o do ctx; migration
+  `20261104002202`). **O prontuário só com o Prontuário em Gerenciar** (a
+  régua de liberar): incluído, o pedido já nasce liberado e o acesso vai a
+  `prontuario_acessos`; baixar o pacote com prontuário pede o mesmo. O
+  suporte não exporta (`bloqueioDoSuporte`). O pacote da equipe não aparece
+  nos pedidos da cliente no app. Prova: `e2e/lgpd-exportacao-pela-equipe.spec.ts`.
+- **O plano vai com as sessões, os procedimentos e os valores; a
+  comunicação, com a hora** (A21): `planosDeTratamento` traz `total` e
+  `sessoes[{ numero, procedimentos[{ procedimento, valor }] }]` (sem a
+  anotação da profissional), e o PDF ganhou a seção "Planos de tratamento"; as
+  comunicações no PDF dizem dia e hora (`lib/lgpd/plano.ts`). Prova: o mesmo
+  spec e `tests/lgpd-plano-no-pacote.test.ts`.
 - **O pedido diz o PRAZO** (A60 da 5ª simulação; `data-request-card.tsx`): em
   preparo, "costuma ficar pronto em poucos minutos"; com o prontuário à espera
   da clínica, "responde até DD/MM (15 dias do pedido)" — o prazo da LGPD

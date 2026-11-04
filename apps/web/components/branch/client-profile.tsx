@@ -4,7 +4,7 @@ import React, { useActionState, useEffect, useEffectEvent, useState, useRef } fr
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
@@ -16,6 +16,7 @@ import type { ClientDocumentItem } from './client-documents-tab'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-renderer'
 import { AttendanceRecordCard } from './attendance-record-card'
+import { ExportarLgpdDaFicha } from './exportar-lgpd-da-ficha'
 import { AnamneseGeralCartao } from './anamnese-geral'
 import { alergiasDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
@@ -261,6 +262,8 @@ interface Props {
    * pode ver só pode ver").
    */
   podeEditarCadastro?:   boolean
+  /** Incluir o prontuário no pacote LGPD da ficha (A21): `medical_records: MANAGE`. */
+  podeExportarProntuario?: boolean
   /** Os planos de tratamento (Agenda em Ver, a de `getPlanosDoCliente`); sem eles, o Planejamento é só injetáveis (D6). */
   podeVerPlanos?:        boolean
   /** Cancelar o pacote (F2b, 2026-11-01): `financial: MANAGE`. */
@@ -1266,7 +1269,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, podeEditarCadastro = false, podeVerPlanos = false,
+  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1304,6 +1307,7 @@ export function ClientProfile({
   // `?acao=reativar` (a busca universal acha a arquivada, A19): a ficha abre
   // com o menu e o "Reativar cliente" à vista.
   const [menuAberto,      setMenuAberto]      = useState(() => params.get('acao') === 'reativar' && !client.isActive)
+  const [exportandoLgpd,  setExportandoLgpd]  = useState(false)
   const [alterandoStatus, setAlterandoStatus] = useState(false)
   const [erroStatus,      setErroStatus]      = useState<string | null>(null)
 
@@ -1546,6 +1550,16 @@ export function ClientProfile({
                         <CheckCircle2 size={14} /> Reativar cliente
                       </button>
                     )}
+                    {/* A LGPD também pela equipe (A21): a cliente que pede no balcão ou não tem o app. */}
+                    <button type="button" onClick={() => { setMenuAberto(false); setExportandoLgpd(true) }}
+                      style={{
+                        width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8,
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                      }}>
+                      <FileDown size={14} /> Exportar dados (LGPD)
+                    </button>
                     <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
                       {client.isActive
                         ? 'Some das listas e deixa de contar como cliente nova. O histórico e o prontuário ficam.'
@@ -1562,6 +1576,10 @@ export function ClientProfile({
           </div>
         </div>
       </div>
+
+      {exportandoLgpd && (
+        <ExportarLgpdDaFicha clientId={client.id} podeIncluirProntuario={podeExportarProntuario} onFechar={() => setExportandoLgpd(false)} />
+      )}
 
       {/* -- KPI row --------------------------------------------------- */}
       <div className="kpi-grid" style={{ gap: 8 }}>

@@ -442,6 +442,7 @@ export default async function AdminClientProfilePage({
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}
         podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}
+        podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
         podeVerPlanos={can(ctx, 'agenda', 'VIEW')}
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
         isNetworkWide={ctx.branchId === null}
