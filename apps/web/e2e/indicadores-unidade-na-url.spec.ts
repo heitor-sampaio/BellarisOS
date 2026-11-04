@@ -71,6 +71,8 @@ test('o dashboard da rede recorta a unidade do ?unidade=', async ({ browser }) =
     await expect(p.locator('[data-kpi="Atendimentos"]'), 'os números são os da unidade B').toContainText('0')
     await expect(p.getByText('Ranking de unidades')).toHaveCount(0)
     await expect(p.getByRole('link', { name: 'Ver a rede inteira' })).toHaveAttribute('href', '/admin/dashboard')
+    // A42 da 6ª simulação: o total de clientes é o da CLÍNICA (H5 — a cliente é da clínica), e o recorte diz isso.
+    await expect(p.getByText(/[0-9]+ clientes da clínica/).first()).toBeVisible()
 
     // Pelo id também, como no resto do portal da rede.
     await p.goto(`/admin/dashboard?unidade=${rede!.branchId}`)

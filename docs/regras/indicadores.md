@@ -511,6 +511,10 @@ Os **Relatórios** também (A57 da 5ª, 2026-11-02): `?unidade=<id|endereço>`,
 com `?branch=<id>` como apelido, e o seletor de unidade grava `?unidade=`
 (prova: `e2e/relatorios-unidade-na-url.spec.ts`).
 Prova: `e2e/indicadores-unidade-na-url.spec.ts`.
+Recortado a uma unidade, o total de clientes continua o da CLÍNICA (H5: "a
+cliente é da clínica") — e a tela diz "N clientes da clínica" no subtítulo e
+no cartão de novos clientes (A42 da 6ª simulação, 2026-11-04: "13 clientes"
+em cada unidade parecia ser de cada uma). Prova: o mesmo spec.
 
 **O mapa do dashboard enquadra as UNIDADES** (D15 da 5ª, 2026-11-02): a
 unidade é localizada pelo CEP dela (a cidade só sem CEP —
