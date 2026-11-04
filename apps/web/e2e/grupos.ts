@@ -31,6 +31,7 @@ export const ISOLADOS = [
   'autenticacao-login-antes-da-hidratacao.spec.ts',
   'agenda-encaixe-avisa.spec.ts',
   'agenda-grade-madrugada.spec.ts',
+  'agenda-janela-termo.spec.ts',
   'agenda-rede-unidade-fechada.spec.ts',
   'agenda-minha-agenda-data-e-rotulos.spec.ts',
   'agenda-minha-ocupacao.spec.ts',

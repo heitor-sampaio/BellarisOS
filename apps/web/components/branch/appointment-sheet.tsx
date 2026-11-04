@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
+import { DocumentosDaJanela } from './documentos-da-janela'
 
 interface AppointmentEvent {
   id:               string
@@ -279,6 +280,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             </div>
           )}
         </div>
+
+        {/* Os termos e contratos: assinados ou não, e o que bloqueia o início (A34). */}
+        {isActive && <DocumentosDaJanela appointmentId={appointment.id} />}
 
         {/* A ficha de pré-atendimento: pendente (com o link) ou respondida. */}
         {isActive && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={!isProfessional} />}

@@ -127,6 +127,15 @@ DEVLOG ("Termos e contratos").
   recebeu; `documento_assinar` só aceita se bater com o gravado.
 - **O bloqueio é gatilho** (`trg_documentos_bloqueiam_inicio`): nenhuma porta
   põe IN_PROGRESS com documento BLOQUEIA aberto. Dispensar (com motivo) cumpre.
+- **A janela da agenda diz os documentos do agendamento** (A34 da 6ª
+  simulação, 2026-11-04: só a sessão dizia, e a recepção descobria ao iniciar):
+  `DocumentosDaJanela` (`[data-documentos-do-agendamento]`,
+  `documentosDaJanela` em `actions/documentos-da-janela.ts`) lista o título e
+  a situação — "Assinado", "Falta assinar · bloqueia o início", "Faltam dados
+  do cadastro", "Em preparação" — sem o conteúdo, a quem vê a agenda, com o
+  agendamento da rede, ao alcance da unidade e, no "só os meus", dela. Colher
+  a assinatura continua na sessão e na ficha. Prova:
+  `e2e/agenda-janela-termo.spec.ts`.
 - **Assinar é UMA função** para todos os canais (`documento_assinar`): trava,
   confere hash, grava a evidência (`document_signatures`, imutável, sem
   cascade) e o status numa transação. `termo.assinado` sai depois, em TS;
