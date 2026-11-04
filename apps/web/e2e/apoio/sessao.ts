@@ -150,6 +150,12 @@ export async function criarMembro(
      * que vale "inclusive para o dono" (o plano da rede).
      */
     donoDaRede?: boolean
+    /**
+     * O membro entra num cargo que a rede JÁ tem, pela chave (`BRANCH_ADMIN`,
+     * o "Gerente" modelo…), em vez de um cargo novo — é o que prova a matriz
+     * com que o cargo modelo nasce. `permissoes` fica sem uso.
+     */
+    cargoDaRede?: string
   },
 ): Promise<MembroDeTeste> {
   const db     = banco()
@@ -179,9 +185,9 @@ export async function criarMembro(
   }
 
   try {
-    if (opcoes.donoDaRede) {
+    if (opcoes.donoDaRede || opcoes.cargoDaRede) {
       const { data: dono, error: erroDono } = await db.from('tenant_roles').select('id')
-        .eq('tenant_id', tenant).eq('key', 'NETWORK_ADMIN').single<{ id: string }>()
+        .eq('tenant_id', tenant).eq('key', opcoes.cargoDaRede ?? 'NETWORK_ADMIN').single<{ id: string }>()
       if (erroDono || !dono) throw new Error(`achar o cargo de dono da rede: ${erroDono?.message}`)
       roleId = dono.id
     } else {

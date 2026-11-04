@@ -241,6 +241,7 @@ export const ISOLADOS = [
   'permissoes-escopo-sem-modulo.spec.ts',
   // F4 da 5ª simulação (2026-11-01): o botão só para quem pode e a gerente só na unidade.
   'permissoes-gerente-de-unidade.spec.ts',
+  'permissoes-gerente-modelo.spec.ts',
   'permissoes-quem-so-ve.spec.ts',
   'comissoes-procedimento-da-admin.spec.ts',
   'injetaveis-sem-prontuario.spec.ts',

@@ -579,6 +579,12 @@ um muro que não depende de cada trava do código.
   (são dados para a unidade dela, não configuração).
 - Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
   é DELA.
+- **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
+  simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
+  descreve): sem o módulo, a gerente fixa não chegava à aba Unidade até a dona
+  liberar. `private.cargos_modelo_semear` (migration `20261104002101`); as
+  redes que já existiam não mudam sozinhas (princípio 6), só as `[e2e]`.
+  Prova: `e2e/permissoes-gerente-modelo.spec.ts`.
 - Prova: `e2e/permissoes-gerente-de-unidade.spec.ts` (a action direta de cada
   área recusada para a gerente, com a dona como controle; a aba Unidade; as
   telas).
