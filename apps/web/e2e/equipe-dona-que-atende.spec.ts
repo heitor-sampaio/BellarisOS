@@ -123,6 +123,13 @@ test('a Equipe da unidade lista quem é da rede e atende ali, sem deixar a unida
     await expect(p.getByTitle(`Editar ${nomeDaGerente}`)).toBeVisible()
     // A sócia (da rede, não atende) não entra na lista da unidade.
     await expect(p.getByText(`${PREFIXO} Socia das${marca}`)).toHaveCount(0)
+    // A12 da 6ª simulação: a lista recortada diz o recorte (a Carol via 3 de 7, sem saber por quê).
+    const { data: unidade } = await db().from('branches').select('name').eq('id', rede!.branchId).single<{ name: string }>()
+    await expect(p.locator('[data-recorte-da-equipe]')).toContainText(`Equipe da unidade ${unidade!.name}`)
+    await expect(p.locator('[data-recorte-da-equipe]')).toContainText('atende aqui')
+    // A13: "Adicionar membro" diz em que unidade a pessoa entra.
+    await p.getByRole('button', { name: 'Adicionar membro' }).click()
+    await expect(p.getByRole('dialog', { name: 'Novo membro' })).toContainText(`Entra na unidade ${unidade!.name}`)
   })
 })
 

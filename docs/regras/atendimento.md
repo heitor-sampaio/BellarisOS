@@ -139,7 +139,12 @@
   quem é da rede e atende ali (ativo), com o chip "Da rede", só o nome e o
   cargo, e SEM ações: cargo, comissão e acesso se mexem na Equipe da rede
   (quem é da rede vê o lápis que leva para lá). A sessão de unidade não lê
-  membros da rede (RLS): essa lista vem pelo servidor. Prova:
+  membros da rede (RLS): essa lista vem pelo servidor. **E diz o recorte**
+  (A12 da 6ª simulação, 2026-11-04: a gerente fixa via 3 de 7 sem saber por
+  quê): "Equipe da unidade Casa Forte: quem é dela e quem é da rede e atende
+  aqui. Quem é da rede e não atende fica na Equipe da rede."
+  (`[data-recorte-da-equipe]`); o "Adicionar membro" dela diz "Entra na
+  unidade Casa Forte." (A13). Prova:
   `e2e/equipe-dona-que-atende.spec.ts`.
 - **A Admin cadastra outra Admin direto** (eq-01, revisão do Heitor de
   2026-11-02: "oferecer no cadastro; o caminho em dois passos não protege

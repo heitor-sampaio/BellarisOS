@@ -11,9 +11,11 @@ interface TeamFormProps {
   branchId: string
   slug:     string
   roles:    Role[]
+  /** A unidade em que a pessoa entra (A13: a gerente não via onde). */
+  unidade?: string | null
 }
 
-export function TeamForm({ branchId, slug, roles }: TeamFormProps) {
+export function TeamForm({ branchId, slug, roles, unidade = null }: TeamFormProps) {
   const [open, setOpen] = useState(false)
   // O sucesso fecha o formulário na própria action, quando a resposta chega.
   const [state, action, pending] = useActionState(
@@ -42,7 +44,7 @@ export function TeamForm({ branchId, slug, roles }: TeamFormProps) {
                   Novo membro
                 </h2>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                  A senha temporária deve ser trocada no primeiro acesso.
+                  {unidade ? <>Entra na unidade <b style={{ color: 'var(--text)' }}>{unidade}</b>. </> : null}A senha temporária deve ser trocada no primeiro acesso.
                 </p>
               </div>
               <button className="btn-ghost" onClick={() => setOpen(false)} style={{ padding: 6 }}>

@@ -114,9 +114,13 @@ export default async function TeamPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {contagemDeMembros(total, termo ? 'encontrados' : 'cadastrados')}
           </p>
+          {/* A12 da 6ª simulação: a gerente via 3 de 7 sem saber o recorte. */}
+          <p data-recorte-da-equipe style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
+            {fala(`Equipe da unidade ${branch?.name ?? ''}: quem é dela e quem é da rede e atende aqui. Quem é da rede e não atende fica na Equipe da rede.`)}
+          </p>
         </div>
         {canManage && (
-          <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} />
+          <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} unidade={branch?.name ?? null} />
         )}
       </div>
 
