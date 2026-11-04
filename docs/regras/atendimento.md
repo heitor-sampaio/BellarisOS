@@ -372,6 +372,11 @@
   de 5 min (`getCachedFichasDoLogin`): a unidade nova aparece no app em até
   5 min. Prova: `e2e/portal-cliente-outra-unidade.spec.ts`,
   `tests/ficha-da-requisicao.test.ts`.
+  **O aviso "Horário marcado" diz a unidade** quando a clínica tem mais de
+  uma ativa (A28 da 6ª simulação, 2026-11-04): "Botox em 05/11 às 10:00, na
+  unidade Boa Viagem." (`textoDoHorarioMarcado`, `unidadeParaOAviso`, nos dois
+  avisos de agendamento novo). Prova: `e2e/pacote-sessao-agendar.spec.ts`,
+  `tests/texto-do-horario-marcado.test.ts`.
 - **O agendar do app passa pelo NÚCLEO da agenda** (por-05, revisão do Heitor
   de 2026-11-02): `createClientAppointment` confere o que é do app (o
   procedimento visível no app, o horário entre os livres, quem atende na

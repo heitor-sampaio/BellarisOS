@@ -142,6 +142,11 @@ test('a sessão do plano grava a sala — e o servidor recusa a sala de outra un
     const { data: lig } = await db().from('treatment_plan_sessions').select('appointment_id').eq('id', sessao!.id).single()
     const { data: ap } = await db().from('appointments').select('room_id').eq('id', lig!.appointment_id as string).single()
     expect(ap?.room_id).toBe(sala)
+    // A28 da 6ª simulação: com mais de uma unidade, o "Horário marcado" diz ONDE.
+    const unidade = (await db().from('branches').select('name').eq('id', rede!.branchId).single<{ name: string }>()).data!.name
+    await expect.poll(async () => ((await db().from('client_notifications').select('body')
+      .eq('client_id', plano.clientId).eq('title', 'Horário marcado')).data ?? []).map(n => n.body as string).join(' | '))
+      .toContain(`na unidade ${unidade}`)
   } finally {
     await db().from('rooms').delete().eq('branch_id', b2!.id)
     await db().from('branches').delete().eq('id', b2!.id)

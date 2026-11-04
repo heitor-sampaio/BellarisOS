@@ -23,6 +23,8 @@ import { filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import type { CandidataDoHorario } from '@/lib/appointments/sem-preferencia'
 import { recusaDaSala } from '@/lib/appointments/salas'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
+import { textoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
+import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -432,7 +434,7 @@ export function notifyAppointmentCreated(appointmentId: string): void {
     const admin = createAdminClient()
     const data = await ler(admin
       .from('appointments')
-      .select('client_id, professional_id, scheduled_at, clients(name), procedures(name)')
+      .select('client_id, professional_id, branch_id, scheduled_at, clients(name), procedures(name)')
       .eq('id', appointmentId)
       .maybeSingle(), 'buscar o agendamento')
     if (!data) return
@@ -448,7 +450,8 @@ export function notifyAppointmentCreated(appointmentId: string): void {
     await avisarCliente(admin, clientId, {
       // "Marcado", não "confirmado": a clínica ainda não confirmou (simulação de 2026-10-20).
       type: 'appointment_confirmed', title: 'Horário marcado',
-      body: `${procedureName} em ${when}.`, data: payload,
+      // Com mais de uma unidade, diz onde (A28).
+      body: textoDoHorarioMarcado(procedureName, when, await unidadeParaOAviso(admin, (data.branch_id ?? null) as string | null)), data: payload,
     })
     await avisarDoPreAtendimento(admin, avisarCliente, appointmentId)
     if (professionalId) {

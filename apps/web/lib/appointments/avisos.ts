@@ -7,6 +7,8 @@ import { ler, tentar } from '@/lib/db'
 import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
+import { textoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
+import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
 
 /**
  * O histórico e os avisos da AGENDA, divididos pelas actions (actions/appointments.ts)
@@ -93,8 +95,9 @@ export function notifyNewAppointment(appointmentId: string, ator?: string | null
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
       // "Marcado", não "confirmado": a clínica ainda não confirmou (simulação de 2026-10-20).
+      // Com mais de uma unidade, diz onde (A28).
       type: 'appointment_confirmed', title: 'Horário marcado',
-      body: `${c.procedureName} em ${when}.`, data,
+      body: textoDoHorarioMarcado(c.procedureName, when, await unidadeParaOAviso(admin, c.branchId)), data,
     })
     await avisarDoPreAtendimento(admin, avisarCliente, appointmentId)
     await notificarInteressados(admin,
