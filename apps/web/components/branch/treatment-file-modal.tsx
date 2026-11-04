@@ -15,7 +15,7 @@ import type { ProfileClient, ProfilePackage } from './client-profile'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { RespostasDaAnamnese } from '@/components/branch/anamnese-geral'
 import { quemRespondeu } from '@/lib/anamnese-geral'
-import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
+import { situacaoDaExecucao } from '@/lib/plano-de-tratamento/situacao'
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -294,7 +294,8 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
     return () => { supabase.removeChannel(channel) }
   }, [activePackage.planId, fetchDetails])
 
-  const situacao = situacaoDoPlano(details?.status ?? 'ACCEPTED')
+  // O andamento (A22): "A começar · 0 de 2 sessões", não "FECHADO".
+  const situacao = situacaoDaExecucao(details?.status ?? 'ACCEPTED', activePackage.usedSessions, activePackage.totalSessions)
   const status  = { label: situacao.label, color: situacao.cor, bg: situacao.fundo }
   const pct     = activePackage.totalSessions > 0
     ? Math.round((activePackage.usedSessions / activePackage.totalSessions) * 100)
@@ -348,11 +349,11 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
               <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75 }}>
                 FICHA DE TRATAMENTO
               </p>
-              <span style={{
+              <span data-situacao-do-tratamento style={{
                 fontSize: 'var(--text-overline)', fontWeight: 800, padding: '2px 7px', borderRadius: 99,
-                background: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em',
+                background: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em', textTransform: 'uppercase',
               }}>
-                {status.label.toUpperCase()}
+                {status.label}
               </span>
             </div>
             <p style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2 }}>

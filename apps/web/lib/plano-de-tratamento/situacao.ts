@@ -22,3 +22,21 @@ export const SITUACAO_DO_PLANO: Record<string, SituacaoDoPlano> = {
 export function situacaoDoPlano(status: string): SituacaoDoPlano {
   return SITUACAO_DO_PLANO[status] ?? { label: status, cor: 'var(--text-muted)', fundo: 'var(--bg-app)' }
 }
+
+/**
+ * A situação da EXECUÇÃO, na ficha de tratamento (A22 da 6ª simulação): o
+ * plano fechado no checkout (ACCEPTED) aparecia "FECHADO" com 0 de 2 sessões
+ * feitas — lido como "terminado". Ali o que importa é o andamento: "A começar",
+ * "Em andamento" ou "Concluído", com quantas foram feitas. Os outros estados
+ * são os do plano. "Fechado" continua sendo o nome do estado comercial (J-37)
+ * nas listas de planos.
+ */
+export function situacaoDaExecucao(status: string, feitas: number, total: number): SituacaoDoPlano {
+  if (status !== 'ACCEPTED' && status !== 'COMPLETED') return situacaoDoPlano(status)
+  const sessoes = `${feitas} de ${total} ${total === 1 ? 'sessão' : 'sessões'}`
+  if (status === 'COMPLETED' || (total > 0 && feitas >= total)) {
+    return { label: `Concluído · ${sessoes}`, cor: 'var(--success)', fundo: 'var(--success-bg)' }
+  }
+  if (feitas === 0) return { label: `A começar · ${sessoes}`, cor: 'var(--info)', fundo: 'var(--info-soft)' }
+  return { label: `Em andamento · ${sessoes}`, cor: 'var(--brand)', fundo: 'var(--brand-soft)' }
+}

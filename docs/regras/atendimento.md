@@ -440,6 +440,14 @@
   `lib/pre-pago/contagem.ts`: a unidade/sessão disponível com agendamento
   ligado é agendada). Era "3 para agendar" até a conclusão. Prova:
   `e2e/pre-pago-agendados.spec.ts`, `tests/pre-pago-contagem.test.ts`.
+- **A ficha de tratamento diz o ANDAMENTO** (A22 da 6ª simulação,
+  2026-11-04): o plano fechado no checkout aparecia "FECHADO" com 0 de 2
+  sessões feitas. O selo da ficha (`[data-situacao-do-tratamento]`) é
+  `situacaoDaExecucao` (`lib/plano-de-tratamento/situacao.ts`): "A começar ·
+  0 de 2 sessões", "Em andamento · 1 de 2 sessões", "Concluído · 2 de 2
+  sessões"; os outros estados são os do plano. "Fechado" segue como o nome
+  do estado comercial (J-37) nas listas de planos. Prova:
+  `e2e/pre-pago-agendados.spec.ts`, `tests/situacao-da-execucao.test.ts`.
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).

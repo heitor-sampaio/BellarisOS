@@ -95,5 +95,10 @@ test('o pacote: o cartão diz quantas das restantes já estão agendadas', async
   await comSessao(browser, recepcao!.estado, async p => {
     await p.goto(`/admin/clients/${cliente!.clientId}`)
     await expect(p.getByText('2 sessões restantes · 1 agendada')).toBeVisible()
+    // A22: a ficha de tratamento não diz "FECHADO" com 0 de 2 sessões feitas.
+    await p.getByText('TRATAMENTO EM ANDAMENTO').first().click()
+    const selo = p.locator('[data-situacao-do-tratamento]')
+    await expect(selo).toHaveText(/A começar · 0 de 2 sessões/i)
+    await expect(selo).not.toHaveText(/fechado/i)
   })
 })
