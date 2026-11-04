@@ -1133,6 +1133,13 @@ O resto do fluxo:
   (`products:<rede>`): criar, editar e ativar produto o expiram com
   `revalidateTag(tag, { expire: 0 })` — com `'max'` o produto novo não
   aparecia na próxima tela. Prova: `e2e/atendimento-fechamento.spec.ts`.
+- **CONCLUÍDO, a tela mostra os insumos da BAIXA** (D9 da 6ª simulação,
+  2026-11-04; princípio 3): o `PROCEDURE_USAGE` do atendimento, somado por
+  produto, na unidade do movimento (`app/_shared/sessao-de-atendimento.tsx`).
+  Era o cadastro do procedimento (ou a sessão do plano): o insumo acrescentado
+  na hora sumia — "Nenhum insumo registrado" com a baixa no banco — e o do
+  cadastro que não foi usado aparecia. Prova:
+  `e2e/atendimento-concluido-mostra-a-baixa.spec.ts`.
 - **O "Finalizar" leva a evolução que está NA TELA**: o modal abre com o que a
   profissional escreveu na página (avaliação ou ficha), não com o gravado —
   sem "Salvar" antes, a evolução se perdia (simulação de 2026-10-20).

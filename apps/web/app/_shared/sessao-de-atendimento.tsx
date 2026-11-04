@@ -274,7 +274,31 @@ export async function SessaoDeAtendimento({
         })))
     : []
 
-  const products = planSessionProducts.length > 0 ? planSessionProducts : defaultProducts
+  // CONCLUÍDO, os insumos são os da BAIXA feita (D9 da 6ª simulação): o
+  // `PROCEDURE_USAGE` do atendimento, somado por produto, na unidade do
+  // movimento (a de consumo). Era o cadastro do procedimento ou a sessão do
+  // plano — o insumo acrescentado na hora sumia ("Nenhum insumo registrado"
+  // com a baixa no banco), e o do cadastro que não foi usado aparecia.
+  const insumosDaBaixa: SessionProduct[] | null = apptRaw.status === 'COMPLETED'
+    ? await (async () => {
+        type RawBaixa = { product_id: string; quantity: number | string; products: { name: string; unit: string; consumption_unit: string | null; units_per_package: number | null } | null }
+        const baixas = (await ler(admin.from('stock_movements')
+          .select('product_id, quantity, products(name, unit, consumption_unit, units_per_package)')
+          .eq('appointment_id', apptRaw.id as string).eq('branch_id', branchId).eq('type', 'PROCEDURE_USAGE')
+          .order('created_at'), 'ler a baixa do atendimento') ?? []) as unknown as RawBaixa[]
+        const porProduto = new Map<string, SessionProduct>()
+        for (const b of baixas) {
+          if (!b.products) continue
+          const atual = porProduto.get(b.product_id)
+          const q = Math.abs(Number(b.quantity))
+          if (atual) atual.quantity += q
+          else porProduto.set(b.product_id, { productId: b.product_id, name: b.products.name, unit: unidadeDoInsumo(b.products), quantity: q })
+        }
+        return [...porProduto.values()].map(p => ({ ...p, quantity: Math.round(p.quantity * 10_000) / 10_000 }))
+      })()
+    : null
+
+  const products = insumosDaBaixa ?? (planSessionProducts.length > 0 ? planSessionProducts : defaultProducts)
 
   // Os INSUMOS ativos da rede (para o profissional adicionar avulso) — o
   // produto só de revenda não é insumo (D-6).
