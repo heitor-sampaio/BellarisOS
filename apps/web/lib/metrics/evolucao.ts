@@ -5,6 +5,12 @@ import type { SeriesPoint } from '@/lib/metrics/queries'
 export interface PontoDaEvolucao {
   /** A hora (0–23) ou o dia do período (1…n): o eixo do gráfico. */
   day:     number
+  /**
+   * O que o ponto É, para o tooltip e o eixo (A44 da 6ª simulação: o hover
+   * dizia "Dia 3" para as 03h do "Hoje"): "03h" por hora; a DATA ("04/11"),
+   * no fuso do negócio, por dia.
+   */
+  rotulo:  string
   revenue: number
   cost:    number
   profit:  number
@@ -42,7 +48,7 @@ export function pontosDaEvolucao(
     janela.granularidade === 'hour' ? String(partsInTZ(new Date(bucket)).hour) : dayKeyTZ(bucket)
   const porFatia = new Map(serie.map(p => [chave(p.bucket), p]))
   const estoquePorFatia = new Map(doResultado.map(p => [chave(p.bucket), p]))
-  const ponto = (k: string, day: number): PontoDaEvolucao => {
+  const ponto = (k: string, day: number, rotulo: string): PontoDaEvolucao => {
     const p       = porFatia.get(k)
     const e       = estoquePorFatia.get(k)
     const revenue = p?.revenue ?? 0
@@ -51,13 +57,16 @@ export function pontosDaEvolucao(
     const centavos = (v: number | undefined) => Math.round((v ?? 0) * 100)
     const cost    = (centavos(p?.expenses) - centavos(e?.compraDeEstoque) - centavos(e?.despesaDeComissoes)
       + centavos(e?.consumoDeInsumo) + centavos(e?.taxasDaMaquininha) + centavos(e?.comissoes)) / 100
-    return { day, revenue, cost, profit: revenue - cost }
+    return { day, rotulo, revenue, cost, profit: revenue - cost }
   }
 
   if (janela.granularidade === 'hour') {
-    return Array.from({ length: 24 }, (_, h) => ponto(String(h), h))
+    return Array.from({ length: 24 }, (_, h) => ponto(String(h), h, `${String(h).padStart(2, '0')}h`))
   }
   const MS_DIA = 86_400_000
   const dias = Math.max(1, Math.floor((janela.ate.getTime() - janela.de.getTime()) / MS_DIA) + 1)
-  return Array.from({ length: dias }, (_, i) => ponto(dayKeyTZ(startOfDayTZ(addDaysTZ(janela.de, i))), i + 1))
+  return Array.from({ length: dias }, (_, i) => {
+    const k = dayKeyTZ(startOfDayTZ(addDaysTZ(janela.de, i)))
+    return ponto(k, i + 1, `${k.slice(8, 10)}/${k.slice(5, 7)}`)
+  })
 }

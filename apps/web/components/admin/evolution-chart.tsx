@@ -8,6 +8,8 @@ import { numericAxisWidth } from '@/lib/chart-utils'
 
 export interface ChartPoint {
   day:     number
+  /** "03h" ou a data ("04/11") — o tooltip e o eixo (A44). */
+  rotulo?: string
   revenue: number
   cost:    number
   profit:  number
@@ -46,7 +48,7 @@ function fmtAxis(v: number) {
 }
 
 /** O que o Recharts entrega ao `content` do Tooltip — só o que é lido aqui. */
-interface EntradaDoTooltip { dataKey?: string | number; color?: string; value?: unknown }
+interface EntradaDoTooltip { dataKey?: string | number; color?: string; value?: unknown; payload?: { rotulo?: string } }
 
 function CustomTooltip({ active, payload, label }: {
   active?: boolean; payload?: EntradaDoTooltip[]; label?: string | number
@@ -63,7 +65,8 @@ function CustomTooltip({ active, payload, label }: {
       minWidth: 180,
     }}>
       <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
-        Dia {label}
+        {/* O que o ponto é (A44): "03h" ou a data — era sempre "Dia {eixo}". */}
+        {payload[0]?.payload?.rotulo ?? label}
       </p>
       {payload.map(entry => (
         <div key={String(entry.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, marginBottom: 6 }}>
@@ -147,7 +150,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day', soReceit
             tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint, var(--text-faint))', fontFamily: 'var(--font-sans-custom)' }}
             tickLine={false}
             axisLine={{ stroke: 'var(--border, var(--border))' }}
-            tickFormatter={v => granularity === 'hour' ? `${v}h` : String(v)}
+            tickFormatter={v => granularity === 'hour' ? `${v}h` : (data.find(d => d.day === v)?.rotulo ?? String(v))}
             interval={data.length <= 10 ? 0 : Math.floor(data.length / 6)}
           />
 

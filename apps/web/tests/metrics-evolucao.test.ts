@@ -18,8 +18,8 @@ describe('pontosDaEvolucao', () => {
       { granularidade: 'day', de, ate },
     )
     expect(pontos).toEqual([
-      { day: 1, revenue: 180, cost: 40, profit: 140 },
-      { day: 2, revenue: 0, cost: 0, profit: 0 },
+      { day: 1, rotulo: '01/10', revenue: 180, cost: 40, profit: 140 },
+      { day: 2, rotulo: '02/10', revenue: 0, cost: 0, profit: 0 },
     ])
   })
 
@@ -29,7 +29,7 @@ describe('pontosDaEvolucao', () => {
       { granularidade: 'hour', de, ate: new Date('2026-10-02T02:59:59.999Z') },
     )
     expect(pontos).toHaveLength(24)
-    expect(pontos[10]).toEqual({ day: 10, revenue: 100, cost: 0, profit: 100 })
+    expect(pontos[10]).toEqual({ day: 10, rotulo: '10h', revenue: 100, cost: 0, profit: 100 })
     expect(pontos.filter(p => p.revenue !== 0)).toHaveLength(1)
   })
 })
@@ -44,7 +44,7 @@ describe('pontosDaEvolucao com o estoque no resultado (2026-10-29)', () => {
       { granularidade: 'day', de, ate },
       [{ bucket: '2026-10-01T03:00:00Z', compraDeEstoque: 500, consumoDeInsumo: 30 }],
     )
-    expect(pontos).toEqual([{ day: 1, revenue: 1000, cost: 230, profit: 770 }])
+    expect(pontos).toEqual([{ day: 1, rotulo: '01/10', revenue: 1000, cost: 230, profit: 770 }])
   })
 })
 
@@ -59,6 +59,18 @@ describe('pontosDaEvolucao com as taxas e as comissões (o Heitor, 2026-11-04)',
       { granularidade: 'day', de, ate },
       [{ bucket: '2026-11-01T03:00:00Z', compraDeEstoque: 0, consumoDeInsumo: 0, taxasDaMaquininha: 38, comissoes: 100, despesaDeComissoes: 100 }],
     )
-    expect(pontos).toEqual([{ day: 1, revenue: 2100, cost: 338, profit: 1762 }])
+    expect(pontos).toEqual([{ day: 1, rotulo: '01/11', revenue: 2100, cost: 338, profit: 1762 }])
+  })
+})
+
+// A44 da 6ª simulação: em 04/11 de madrugada, o hover do gráfico do dashboard ("Hoje", por HORA) dizia
+// "DIA 3" — o rótulo do tooltip era sempre "Dia {eixo}", e o eixo por hora é a hora. E por dia, o eixo é
+// o dia do PERÍODO (1, 2, 3…), não a data.
+describe('o rótulo de cada ponto da evolução (A44)', () => {
+  it('por hora, a hora ("03h"); por dia, a data no fuso do negócio ("01/10")', () => {
+    const porHora = pontosDaEvolucao([], { granularidade: 'hour', de: new Date('2026-11-04T03:00:00Z'), ate: new Date('2026-11-04T06:30:00Z') })
+    expect(porHora[3]?.rotulo).toBe('03h')
+    const porDia = pontosDaEvolucao([], { granularidade: 'day', de: new Date('2026-10-01T03:00:00Z'), ate: new Date('2026-10-03T02:59:59.999Z') })
+    expect(porDia.map(p => p.rotulo)).toEqual(['01/10', '02/10'])
   })
 })

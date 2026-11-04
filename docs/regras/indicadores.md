@@ -554,7 +554,12 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   continua uma LISTA do período, até o fim dele (acima).
   Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
-  dos Relatórios.
+  dos Relatórios. **Cada ponto diz o que é** (A44 da 6ª simulação,
+  2026-11-04): `rotulo` — "03h" na série por hora (o "Hoje"), a DATA ("04/11",
+  no fuso do negócio) na série por dia; o tooltip e o eixo o usam. Era "Dia
+  {eixo}" sempre: no "Hoje" de madrugada, o hover das 03h dizia "DIA 3", e por
+  dia o eixo era o dia do período (1, 2, 3…), não a data. Prova:
+  `tests/metrics-evolucao.test.ts`.
 - **O dashboard da rede tem os quadros de clientes da unidade** (F7b, H3: "a
   dona vê tudo, sempre"): "Clientes no período" (o mesmo núcleo dos cartões,
   no período escolhido, até agora) e "Reativar clientes". Na rede, as
