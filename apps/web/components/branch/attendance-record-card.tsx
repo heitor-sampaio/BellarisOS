@@ -125,11 +125,15 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
           </div>
         )}
 
-        {/* A evolução do atendimento (prontuário) */}
-        {evolucao && (evolucao.texto || evolucao.intercorrencias || evolucao.queixas) && (
+        {/* A evolução do atendimento (prontuário). Concluído sem nada escrito,
+            diz isso (A19) — o atendimento aconteceu. */}
+        {evolucao && (
           <div style={sectionDivider} data-evolucao>
             <SectionOverline label="Evolução do atendimento" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {!evolucao.texto && !evolucao.intercorrencias && !evolucao.queixas && (
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem evolução registrada.</p>
+              )}
               {evolucao.queixas && <TextoClinico label="Dores do cliente" texto={evolucao.queixas} />}
               {evolucao.texto && <TextoClinico label="Evolução" texto={evolucao.texto} />}
               {evolucao.intercorrencias && <TextoClinico label="Intercorrências" texto={evolucao.intercorrencias} />}

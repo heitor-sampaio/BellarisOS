@@ -724,6 +724,11 @@ const procedures = await ler(
   Brasília — `diaDoAtendimento`), o mesmo da aba Documentos; era o da gravação, e
   o das 23:30 concluído à meia-noite aparecia no dia seguinte (J-56). Prova: `e2e/prontuario-evolucao.spec.ts`,
   `tests/prontuario-registros.test.ts`.
+  **O atendimento CONCLUÍDO entra mesmo sem registro** (A19 da 6ª simulação,
+  2026-11-04): concluído sem evolução, a aba dizia "Nenhum atendimento
+  registrado ainda" e a cliente parecia nunca ter sido atendida. Ele entra
+  (`buildRecordForms` com os concluídos), e o cartão diz "Sem evolução
+  registrada.". Prova: o mesmo spec ("A19").
 - **Quem abriu o prontuário fica registrado** (2026-10-27, decisões do Heitor;
   `lib/prontuario/acessos.ts`, tabela `prontuario_acessos`). Toda leitura
   clínica: a ficha da cliente (com os anexos clínicos), a sessão de

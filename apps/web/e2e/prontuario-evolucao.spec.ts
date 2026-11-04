@@ -52,3 +52,28 @@ test('a aba Prontuário mostra o atendimento SEM ficha, com a evolução e a int
     await expect(p.getByText('Nenhum atendimento registrado ainda.')).toHaveCount(0)
   } finally { await ctx.close() }
 })
+
+// A19 da 6ª simulação (2026-11-04): o atendimento CONCLUÍDO sem evolução não
+// aparecia no prontuário ("Nenhum atendimento registrado ainda") — a Márcia e
+// o Jorge pareciam nunca ter sido atendidos.
+test('A19: o atendimento concluído sem evolução aparece, com "Sem evolução registrada."', async ({ browser }) => {
+  const outra = await rede!.criarCliente('Marcia')
+  const { data: ag, error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: outra, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 0,
+    scheduled_at: new Date(Date.now() - 5 * 3600_000).toISOString(), completed_at: new Date(Date.now() - 4 * 3600_000).toISOString(),
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const { data: pr } = await db().from('medical_records').insert({ client_id: outra }).select('id').single<{ id: string }>()
+  // Concluído sem nada escrito: a conclusão grava a entrada vazia.
+  expect((await db().from('medical_record_entries').insert({
+    medical_record_id: pr!.id, appointment_id: ag!.id, professional_id: rede!.professionalId, notes: null, intercurrences: null, form_data: null,
+  })).error).toBeNull()
+  const ctx = await browser.newContext({ storageState: dona!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/admin/clients/${outra}?aba=fichas`)
+    await expect(p.getByText('Nenhum atendimento registrado ainda.')).toHaveCount(0)
+    await expect(p.locator('[data-evolucao]').getByText('Sem evolução registrada.')).toBeVisible()
+  } finally { await ctx.close() }
+})

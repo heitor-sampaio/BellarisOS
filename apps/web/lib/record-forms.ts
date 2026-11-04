@@ -52,13 +52,18 @@ function texto(v: string | null | undefined): string | null {
  * Os atendimentos com REGISTRO clínico, mais recente primeiro: a evolução, a
  * intercorrência, as dores (D3, 2026-10-28) e a ficha do procedimento. Basta um — a avaliação
  * não tem ficha ligada, e a evolução dela sumia da aba Prontuário (D4 da
- * simulação de 2026-10-27). Só a entrada sem nada fica de fora.
+ * simulação de 2026-10-27). A entrada sem nada fica de fora — MENOS a do
+ * atendimento CONCLUÍDO (A19 da 6ª simulação): concluído sem evolução, a aba
+ * dizia "Nenhum atendimento registrado ainda", e a cliente parecia nunca ter
+ * sido atendida. Ele entra, e o cartão diz "Sem evolução registrada.".
  */
 export function buildRecordForms(
   entries: RawMreEntry[],
   procedureNameById: Map<string, string>,
   /** A hora marcada de cada atendimento (J-56): o dia que a entrada mostra. */
   horaMarcadaPorId: Map<string, string> = new Map(),
+  /** Os atendimentos CONCLUÍDOS: entram mesmo sem registro (A19). */
+  concluidos: Set<string> = new Set(),
 ): ProfileRecordEntry[] {
   return entries
     .flatMap<ProfileRecordEntry>(e => {
@@ -66,8 +71,8 @@ export function buildRecordForms(
       const evolucao        = texto(e.notes)
       const intercorrencias = texto(e.intercurrences)
       const queixas         = texto(e.queixas)
-      if (!ficha && !evolucao && !intercorrencias && !queixas) return []
       const appointmentId = e.appointment_id ?? ''
+      if (!ficha && !evolucao && !intercorrencias && !queixas && !concluidos.has(appointmentId)) return []
       return [{
         appointmentId,
         createdAt:     e.created_at ?? '',

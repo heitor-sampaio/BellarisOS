@@ -52,6 +52,14 @@ describe('buildRecordForms', () => {
     expect(r[0]!.evolucao).toBe('Aplicado ácido 5 ml')
   })
 
+  it('A19: o atendimento CONCLUÍDO entra mesmo sem registro nenhum (o card diz "Sem evolução registrada.")', () => {
+    const r = buildRecordForms([
+      { appointment_id: 'a3', notes: null, intercurrences: null, form_data: null, created_at: '2026-11-04T07:00:00Z' },
+    ], nomes, new Map(), new Set(['a3']))
+    expect(r).toHaveLength(1)
+    expect(r[0]).toMatchObject({ appointmentId: 'a3', procedureName: 'Peeling', evolucao: null, ficha: null })
+  })
+
   it('não lista a entrada sem registro nenhum (texto em branco conta como vazio)', () => {
     const r = buildRecordForms([
       { appointment_id: 'a3', notes: '   ', intercurrences: '', form_data: null, created_at: '2026-10-27T17:00:00Z' },

@@ -274,7 +274,8 @@ export default async function AdminClientProfilePage({
   // quando ele vai à tela; o admin da rede vê o registro na própria ficha.
   if (canViewRecords) await registrarAcessoAoProntuario(ctx, id, 'ficha')
   const acessosDoProntuario = await acessosAoProntuario(ctx, id)
-  const recordForms  = canViewRecords ? buildRecordForms(mreEntries, apptNameById, new Map(allAppointments.map(a => [a.id, a.scheduledAt]))) : []
+  const recordForms  = canViewRecords ? buildRecordForms(mreEntries, apptNameById, new Map(allAppointments.map(a => [a.id, a.scheduledAt])),
+    new Set(allAppointments.filter(a => a.status === 'COMPLETED').map(a => a.id))) : []
   // O planejador de injetáveis retratado na ficha leva ao planejamento — se
   // ele existe e quem vê pode abri-lo (2026-10-29).
   const planejamentosQueAbrem = canViewRecords
