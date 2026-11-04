@@ -270,4 +270,71 @@ test.describe.serial('o cartão por bandeira', () => {
     expect((await db().from('tenants').select('cartao_por_bandeira').eq('id', rede!.tenantId).single()).data?.cartao_por_bandeira)
       .toEqual({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } })
   })
+  // r4-f15-01 (o Heitor, revisão das decisões da F15): o campo vazio da
+  // bandeira é a regra geral DAQUELAS vezes. A Elo só tem o 3x (3%); a geral
+  // tem 3x 4,5% e 5x 6%. A venda Elo em 5x usa os 6% da geral — era os 3% da
+  // Elo (a maior faixa dela até 5x). A Elo em 3x segue com os 3% dela.
+  test('r4-f15-01: a venda Elo em 5x, sem a taxa de 5x na Elo, usa a regra geral de 5x — não a faixa de 3x da Elo', async () => {
+    // A Elo como o primeiro teste a deixa (aqui também, para rodar sozinho com -g).
+    expect((await db().from('tenants').update({ cartao_por_bandeira: { ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } } }).eq('id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 5, taxa_pct: 6 })).error).toBeNull()
+    const pagar = async (ap: string, vezes: number) => {
+      const { data, error } = await db().rpc('confirmar_pagamento_do_atendimento', {
+        p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+        p_dados: { metodo: 'CREDIT_CARD', cartao_vezes: vezes, pontos: 0, desconto: 0, valor_final: 1100, cartao_bandeira: 'ELO' },
+      })
+      expect(error, 'pagar').toBeNull()
+      return data as string
+    }
+    const em5 = await atendimentoConcluido()
+    const tx5 = await pagar(em5, 5)
+    expect((await parcelasDa(tx5)).map(x => x.taxa_pct), 'as parcelas da operadora com os 6% da geral').toEqual([6, 6, 6, 6, 6])
+    // 10% de (R$ 1.100 − 6%) = R$ 103,40.
+    expect(await devido(em5), 'a comissão com a taxa geral de 5x').toBe(103.4)
+
+    const em3 = await atendimentoConcluido()
+    const tx3 = await pagar(em3, 3)
+    expect((await parcelasDa(tx3)).map(x => x.taxa_pct), 'na Elo em 3x, a dela').toEqual([3, 3, 3])
+    expect(await devido(em3)).toBe(106.7)
+  })
+
+  // r4-f15-01, o botão (o Heitor: "a taxa é por parcela, por exemplo 1.15% por
+  // parcela, então a taxa total é a taxa vezes a quantidade de parcelas"): só
+  // preenche os campos (1x a 12x = a taxa × as vezes), não mexe no débito e
+  // não grava sozinho — grava no "Salvar taxas" de sempre.
+  test('r4-f15-01: "Preencher pela taxa por parcela" preenche o crédito 1x a 12x, na regra geral e na bandeira, sem gravar', async ({ browser }) => {
+    expect((await db().from('tenants').update({ cartao_por_bandeira: { ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } } }).eq('id', rede!.tenantId)).error).toBeNull()
+    const antesGeral = ((await db().from('payment_fees').select('metodo, parcelas, taxa_pct').eq('tenant_id', rede!.tenantId).order('parcelas')).data ?? [])
+      .map(f => [f.metodo, f.parcelas, n(f.taxa_pct)])
+    const esperado = ['1,15', '2,30', '3,45', '4,60', '5,75', '6,90', '8,05', '9,20', '10,35', '11,50', '12,65', '13,80']
+    await como(browser, dona!, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      const card = p.locator('[aria-label="Taxas da maquininha"]')
+      const conferir = async () => {
+        await expect(card.getByLabel('Taxa Crédito à vista')).toHaveValue(esperado[0]!)
+        for (let k = 2; k <= 12; k++) await expect(card.getByLabel(`Taxa ${k}x`), `${k}x`).toHaveValue(esperado[k - 1]!)
+      }
+      const preencher = async () => {
+        await card.getByRole('button', { name: 'Preencher pela taxa por parcela' }).click()
+        await card.getByLabel('Taxa por parcela (%)').fill('1,15')
+        await card.getByRole('button', { name: 'Preencher', exact: true }).click()
+      }
+      // A regra geral.
+      await preencher()
+      await conferir()
+      await expect(card.getByLabel('Taxa Débito'), 'o débito não muda').toHaveValue('')
+      // A Elo: o 3x dela (3%) também é trocado; cada campo segue editável.
+      await card.getByLabel('Bandeira').selectOption({ label: 'Elo' })
+      await expect(card.getByLabel('Taxa 3x')).toHaveValue('3')
+      await preencher()
+      await conferir()
+      await card.getByLabel('Taxa 12x').fill('13')
+      await expect(card.getByLabel('Taxa 12x'), 'editável à mão').toHaveValue('13')
+    })
+    // Nada foi gravado sem o "Salvar taxas".
+    expect(((await db().from('payment_fees').select('metodo, parcelas, taxa_pct').eq('tenant_id', rede!.tenantId).order('parcelas')).data ?? [])
+      .map(f => [f.metodo, f.parcelas, n(f.taxa_pct)])).toEqual(antesGeral)
+    expect((await db().from('tenants').select('cartao_por_bandeira').eq('id', rede!.tenantId).single()).data?.cartao_por_bandeira)
+      .toEqual({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } })
+  })
 })

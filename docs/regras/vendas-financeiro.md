@@ -593,9 +593,27 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       a tela diz "Com regra própria: Elo"). O de antes é a **REGRA GERAL**:
       vale para a bandeira sem regra própria (o campo vazio mostra a geral) e
       para o pagamento sem bandeira — a clínica que não mexe não vê diferença.
-      A taxa da bandeira é a dela até as vezes do pagamento (a maior faixa
-      cadastrada), senão a geral (`private.comissao_taxa_pct` com a
-      bandeira); o prazo, o dela, senão o geral (`private.prazo_da_operadora`).
+      **O campo vazio da bandeira é a regra geral DAQUELAS vezes** (r4-f15-01,
+      o Heitor, revisão das decisões da F15, 2026-11-03; migration
+      `20261103001602`): a bandeira vale com a taxa EXATA daquele número de
+      vezes (e o débito); senão vale a regra geral daquelas vezes — o número
+      que a tela mostra no campo vazio. Sem herdar faixa da bandeira: a Elo só
+      com o 3x (3%) e a geral com o 5x (6%) → a venda Elo em 5x usa 6%; a Elo
+      em 3x, os 3% dela. (A regra geral segue caindo na maior quantidade
+      cadastrada abaixo: a Elo em 4x, sem 4x em nenhuma das duas, usa o 3x da
+      geral.) É `private.comissao_taxa_pct` com a bandeira e, na tela,
+      `taxaDoCreditoNaBandeira` (`lib/financeiro/bandeiras.ts`, o aviso da
+      taxa); o prazo, o dela, senão o geral (`private.prazo_da_operadora`).
+    - **"Preencher pela taxa por parcela"** (r4-f15-01; o Heitor: "a taxa é
+      por parcela, por exemplo 1.15% por parcela, então a taxa total é a taxa
+      vezes a quantidade de parcelas"): em "Taxas da maquininha", na regra
+      geral e em cada bandeira, a pessoa digita a taxa por parcela (1,15%) e o
+      botão preenche o crédito 1x a 12x com a taxa × as vezes, em duas casas
+      (1x 1,15%, 2x 2,30% … 12x 13,80%; `creditoPelaTaxaPorParcela`). Só
+      preenche os campos — grava no "Salvar taxas" de sempre, cada campo
+      segue editável, o débito não muda —, e a tabela continua sendo a verdade
+      do cálculo: não há coluna de "taxa por parcela" no banco. Acima de
+      8,33% por parcela (o 12x passaria de 100%) a tela recusa.
     - **O pagamento no cartão diz a bandeira, opcional** ("Bandeira (opcional)",
       `CampoDaBandeira`): o recebimento do atendimento e do plano no check-in,
       o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —
@@ -954,6 +972,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da clínica; o que a operadora deposita em parcelas mora em recebiveis_do_cartao, nascido pelo gatilho
 ❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
 ❌ Ler a taxa ou o prazo do cartão sem a bandeira do pagamento (é private.comissao_taxa_pct com a bandeira e private.prazo_da_operadora; o de 3 argumentos é só a regra geral)
+❌ Dar à bandeira a taxa de OUTRA quantidade de vezes dela (a Elo do 3x no 5x) — sem a taxa exata na bandeira, vale a regra geral daquelas vezes (r4-f15-01)
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)

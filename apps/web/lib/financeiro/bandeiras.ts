@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { PRAZO_MAXIMO_DA_OPERADORA, TETO_DE_VEZES } from './vezes-do-cartao'
+import { taxaQueVale } from './formas'
 
 /**
  * A BANDEIRA do cartão (r3-f13-01; o Heitor, 2026-11-03: "Lembre-se,
@@ -96,4 +97,33 @@ export function lerCartaoPorBandeira(bruto: unknown): CartaoPorBandeira {
     saida[b] = { ...(typeof regra.prazo === 'number' ? { prazo: regra.prazo } : {}), taxas }
   }
   return saida
+}
+
+/**
+ * A taxa do crédito em N vezes numa bandeira — o espelho, para a tela, de
+ * `private.comissao_taxa_pct` com a bandeira (r4-f15-01; o Heitor, revisão das
+ * decisões da F15: o campo vazio da bandeira é a regra geral). A da bandeira só
+ * vale com a taxa EXATA daquelas vezes; senão vale a regra geral daquelas vezes
+ * (`taxaQueVale`, que cai na maior parcela cadastrada abaixo). Sem herdar faixa
+ * da bandeira: a Elo só com o 3x não dá a sua taxa ao 5x.
+ */
+export function taxaDoCreditoNaBandeira(
+  geral: { parcelas: number; taxa_pct: number }[], regra: Pick<RegraDaBandeira, 'taxas'> | undefined, vezes: number,
+): { cadastrada: boolean; daBandeira: boolean; parcelas: number | null; taxa: number } {
+  const daBandeira = regra?.taxas[chaveDaTaxa('CREDIT_CARD', vezes)]
+  if (typeof daBandeira === 'number' && Number.isFinite(daBandeira)) return { cadastrada: true, daBandeira: true, parcelas: vezes, taxa: daBandeira }
+  return { ...taxaQueVale(geral, vezes), daBandeira: false }
+}
+
+/**
+ * "Preencher pela taxa por parcela" (r4-f15-01; o Heitor: "a taxa é por
+ * parcela, por exemplo 1.15% por parcela, então a taxa total é a taxa vezes a
+ * quantidade de parcelas"): o crédito de 1x a 12x = a taxa × as vezes, em duas
+ * casas. Só preenche a tabela da tela; a tabela continua sendo a verdade.
+ */
+export function creditoPelaTaxaPorParcela(taxaPorParcela: number): { parcelas: number; taxa: number }[] {
+  return Array.from({ length: TETO_DE_VEZES }, (_, i) => {
+    const parcelas = i + 1
+    return { parcelas, taxa: Math.round(Number((taxaPorParcela * parcelas).toPrecision(12)) * 100) / 100 }
+  })
 }

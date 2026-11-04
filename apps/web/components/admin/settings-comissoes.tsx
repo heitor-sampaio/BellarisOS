@@ -6,7 +6,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira } from '@/actions/comissoes'
-import { BANDEIRAS, chaveDaTaxa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
+import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
+import { taxaQueVale } from '@/lib/financeiro/formas'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
@@ -303,6 +304,44 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
   // O prazo da explicação: o da bandeira escolhida, ou o geral.
   const prazoMostrado = bandeira && daBandeira.prazo.trim() ? daBandeira.prazo : prazo
 
+  // r4-f15-01: o campo vazio da bandeira mostra a regra geral DAQUELAS vezes — a
+  // que vale (private.comissao_taxa_pct): a das vezes exatas, senão a da maior
+  // quantidade preenchida abaixo na geral.
+  const geralQueVale = (m: MetodoComTaxa, n: number) => {
+    const doMetodo = Object.entries(valores)
+      .map(([k, v]) => [k, Number(v.trim().replace(',', '.'))] as const)
+      .filter(([k, v]) => k.startsWith(`${m}/`) && Number.isFinite(v) && valores[k]!.trim() !== '')
+      .map(([k, v]) => ({ parcelas: Number(k.split('/')[1]), taxa_pct: v }))
+    return virgula(taxaQueVale(doMetodo, m === 'CREDIT_CARD' ? n : 1).taxa)
+  }
+
+  // r4-f15-01 (o Heitor: "a taxa é por parcela, por exemplo 1.15% por parcela,
+  // então a taxa total é a taxa vezes a quantidade de parcelas"): preenche o
+  // crédito 1x a 12x da tabela aberta (a geral ou a da bandeira) com a taxa ×
+  // as vezes. Só os campos: grava no "Salvar taxas" de sempre, e cada um
+  // continua editável. O débito não muda.
+  const [porParcelaAberto, setPorParcelaAberto] = useState(false)
+  const [taxaPorParcela, setTaxaPorParcela] = useState('')
+  const [erroPorParcela, setErroPorParcela] = useState<string | null>(null)
+  function preencherPelaTaxaPorParcela() {
+    const texto = taxaPorParcela.trim()
+    const pct = texto ? parseDecimal(texto, 4) : NaN
+    if (Number.isNaN(pct)) { setErroPorParcela(`Taxa por parcela: ${NUMERO_INVALIDO}`); return }
+    const teto = Math.floor((100 / TETO_DE_VEZES) * 100) / 100
+    if (pct < 0 || pct > teto) {
+      setErroPorParcela(`Use uma taxa por parcela entre 0 e ${virgula(teto)}% (em ${TETO_DE_VEZES}x ela não passa de 100%).`)
+      return
+    }
+    const novos = Object.fromEntries(creditoPelaTaxaPorParcela(pct)
+      .map(t => [chave('CREDIT_CARD', t.parcelas), t.taxa.toFixed(2).replace('.', ',')]))
+    if (bandeira) mudarNaBandeira({ valores: { ...daBandeira.valores, ...novos } })
+    else setValores(v => ({ ...v, ...novos }))
+    setSalvo(false)
+    setErroPorParcela(null)
+    setPorParcelaAberto(false)
+    setTaxaPorParcela('')
+  }
+
   function salvar() {
     setErro(null)
     const lista: TaxaDePagamento[] = []
@@ -362,7 +401,7 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         {bandeira ? (
           // Na bandeira, o vazio é a regra geral: o campo diz qual.
           <input className="field" inputMode="decimal" aria-label={`Taxa ${rotulo}`} disabled={!podeEditar}
-            placeholder={`${valores[chave(m, n)]?.trim() || '0'} (geral)`}
+            placeholder={`${geralQueVale(m, n)} (geral)`}
             value={daBandeira.valores[chave(m, n)] ?? ''}
             onChange={e => { mudarNaBandeira({ valores: { ...daBandeira.valores, [chave(m, n)]: e.target.value } }); setSalvo(false) }}
             style={{ paddingRight: 28 }} />
@@ -403,12 +442,43 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         {campo('DEBIT_CARD', 1, 'Débito')}
         {campo('CREDIT_CARD', 1, 'Crédito à vista')}
       </div>
-      <p className="overline">Crédito parcelado</p>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <p className="overline">Crédito parcelado</p>
+        {podeEditar && !porParcelaAberto && (
+          <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(true); setErroPorParcela(null) }}>
+            Preencher pela taxa por parcela
+          </button>
+        )}
+      </div>
+      {podeEditar && porParcelaAberto && (
+        <div data-por-parcela style={{
+          display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
+          borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
+        }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 160 }}>
+              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Taxa por parcela (%)</span>
+              <input className="field" inputMode="decimal" placeholder="Ex.: 1,15" autoFocus value={taxaPorParcela}
+                onChange={e => { setTaxaPorParcela(e.target.value); setErroPorParcela(null) }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); preencherPelaTaxaPorParcela() } }} />
+            </label>
+            <button type="button" className="btn-primary" onClick={preencherPelaTaxaPorParcela}>Preencher</button>
+            <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(false); setErroPorParcela(null) }}>Cancelar</button>
+          </div>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x a 12x fica com a taxa × as vezes (1,15% → 2x 2,30%, 3x 3,45%… 12x 13,80%).
+            {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
+          </p>
+          {erroPorParcela && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroPorParcela}</p>}
+        </div>
+      )}
       <div style={grade}>
         {PARCELAS_DO_CREDITO.map(n => campo('CREDIT_CARD', n, `${n}x`))}
       </div>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        Parcela sem taxa própria usa a da maior quantidade preenchida abaixo dela.
+        {bandeira
+          ? 'Campo vazio usa a regra geral daquelas vezes (o número mostrado nele), não a de outra quantidade desta bandeira.'
+          : 'Parcela sem taxa própria usa a da maior quantidade preenchida abaixo dela.'}
       </p>
       {!bandeira && <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
         <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Parcelar no crédito até</span>

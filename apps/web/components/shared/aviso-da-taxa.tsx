@@ -3,15 +3,14 @@
 import { useEffect, useState } from 'react'
 import { Info } from 'lucide-react'
 import { taxasDoCartaoDeCredito, cartaoPorBandeiraDaRede } from '@/actions/comissoes'
-import { taxaQueVale } from '@/lib/financeiro/formas'
-import { ehBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
+import { ehBandeira, taxaDoCreditoNaBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 
 /**
  * O aviso de quem recebe no cartão de crédito em N vezes sem a taxa da
  * maquininha de N vezes cadastrada (A33 da simulação de 2026-10-27): a
  * comissão então usa a da maior parcela cadastrada abaixo dela, ou nenhuma, e
  * a tela não dizia. As taxas se cadastram em Configurações → Comissões (1x a
- * 12x). Só aparece no crédito; a conta é `taxaQueVale` (o espelho da do banco).
+ * 12x). Só aparece no crédito; a conta é `taxaDoCreditoNaBandeira` (o espelho da do banco).
  */
 export function AvisoDaTaxa({ vezes, bandeira }: { vezes: number; bandeira?: string }) {
   const [taxas, setTaxas] = useState<{ parcelas: number; taxa_pct: number }[] | null>(null)
@@ -25,14 +24,9 @@ export function AvisoDaTaxa({ vezes, bandeira }: { vezes: number; bandeira?: str
     return () => { vivo = false }
   }, [])
   if (!taxas) return null
-  // r3-f13-01: a bandeira com a sua taxa até estas vezes vale; senão, a regra geral.
-  const daBandeira = ehBandeira(bandeira)
-    ? Object.entries(porBandeira[bandeira]?.taxas ?? {}).filter(([k]) => k.startsWith('CREDIT_CARD:'))
-        .map(([k, v]) => ({ parcelas: Number(k.split(':')[1]), taxa_pct: v }))
-    : []
-  const naBandeira = taxaQueVale(daBandeira, vezes)
-  if (naBandeira.parcelas !== null) return null
-  const vale = taxaQueVale(taxas, vezes)
+  // r4-f15-01: a bandeira vale com a taxa EXATA destas vezes; senão, a regra
+  // geral destas vezes (a conta de private.comissao_taxa_pct com a bandeira).
+  const vale = taxaDoCreditoNaBandeira(taxas, ehBandeira(bandeira) ? porBandeira[bandeira] : undefined, vezes)
   if (vale.cadastrada) return null
   const rotulo = vezes === 1 ? 'à vista' : `${vezes}x`
   const pct = (n: number) => `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { EntradaDoCartaoPorBandeira, bandeiraDoPagamento, lerCartaoPorBandeira, semBandeirasVazias } from '@/lib/financeiro/bandeiras'
+import { EntradaDoCartaoPorBandeira, bandeiraDoPagamento, lerCartaoPorBandeira, semBandeirasVazias, taxaDoCreditoNaBandeira, creditoPelaTaxaPorParcela } from '@/lib/financeiro/bandeiras'
 import { lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
 
 /** r3-f13-01 (o Heitor, 2026-11-03: "Prazo por bandeira. Taxas também configuráveis por bandeira."). */
@@ -29,5 +29,26 @@ describe('o cartão por bandeira', () => {
     expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'CREDIT_CARD:13': 1 } } }).success).toBe(false)
     expect(semBandeirasVazias({ ELO: { taxas: {} }, VISA: { prazo: 28, taxas: {} } })).toEqual({ VISA: { prazo: 28, taxas: {} } })
     expect(lerCartaoPorBandeira({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3, lixo: 1 } }, XPTO: {} })).toEqual({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } })
+  })
+
+  // r4-f15-01 (o Heitor, revisão das decisões da F15): o campo vazio da bandeira
+  // é a regra geral DAQUELAS vezes — sem herdar a faixa de outras vezes da bandeira.
+  it('a taxa do crédito na bandeira: a das vezes exatas dela, senão a regra geral daquelas vezes', () => {
+    const geral = [{ parcelas: 3, taxa_pct: 4.5 }, { parcelas: 5, taxa_pct: 6 }]
+    const elo = { taxas: { 'CREDIT_CARD:3': 3 } }
+    expect(taxaDoCreditoNaBandeira(geral, elo, 3), 'a Elo em 3x: a dela').toEqual({ cadastrada: true, daBandeira: true, parcelas: 3, taxa: 3 })
+    expect(taxaDoCreditoNaBandeira(geral, elo, 5), 'a Elo em 5x: a geral de 5x, não os 3% da Elo').toEqual({ cadastrada: true, daBandeira: false, parcelas: 5, taxa: 6 })
+    expect(taxaDoCreditoNaBandeira(geral, elo, 4), 'a Elo em 4x: a geral de 4x (que cai na de 3x da geral)').toEqual({ cadastrada: false, daBandeira: false, parcelas: 3, taxa: 4.5 })
+    expect(taxaDoCreditoNaBandeira(geral, elo, 2), 'a Elo em 2x: a geral, que não tem').toEqual({ cadastrada: false, daBandeira: false, parcelas: null, taxa: 0 })
+    expect(taxaDoCreditoNaBandeira(geral, undefined, 5), 'sem bandeira: a geral').toEqual({ cadastrada: true, daBandeira: false, parcelas: 5, taxa: 6 })
+  })
+
+  // r4-f15-01, o botão (o Heitor: "a taxa é por parcela, por exemplo 1.15% por
+  // parcela, então a taxa total é a taxa vezes a quantidade de parcelas").
+  it('preencher pela taxa por parcela: 1x a 12x = a taxa × as vezes, em duas casas', () => {
+    expect(creditoPelaTaxaPorParcela(1.15).map(x => [x.parcelas, x.taxa])).toEqual([
+      [1, 1.15], [2, 2.3], [3, 3.45], [4, 4.6], [5, 5.75], [6, 6.9], [7, 8.05], [8, 9.2], [9, 10.35], [10, 11.5], [11, 12.65], [12, 13.8],
+    ])
+    expect(creditoPelaTaxaPorParcela(0.333).map(x => x.taxa).slice(0, 3), 'arredonda em duas casas').toEqual([0.33, 0.67, 1])
   })
 })
