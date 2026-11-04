@@ -142,6 +142,7 @@ export default async function AdminAgendaPage({
         janela={janela}
         podeAgendar={ctx.permissions.agenda === 'MANAGE'}
         escopoProprio={agendaOwner !== null}
+        meuId={ctx.internalUserId ?? null}
       />
     </>
   )

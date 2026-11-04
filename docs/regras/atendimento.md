@@ -162,7 +162,14 @@
   como em todo check-in) e depois o MESMO `startAppointment` (a trava dos
   documentos). Com a agenda "só os meus", só no agendamento dela. Sem o
   check-in no cargo, a tela diz que a recepção marca a chegada. Prova:
-  `e2e/agenda-chegar-e-iniciar.spec.ts`.
+  `e2e/agenda-chegar-e-iniciar.spec.ts`. **E quem é a profissional DAQUELE
+  agendamento, qualquer que seja o escopo** (A25 da 6ª simulação,
+  2026-11-04): a dona que atende, com a agenda de todas, chegava ao dela em
+  quatro cliques e uma confirmação ("Chegou" → "Iniciar" → "mesmo assim"); a
+  janela (dos dois portais) oferece "Marcar chegada e iniciar" quando o
+  agendamento é do membro logado e ele tem a agenda em Gerenciar (`meuId`).
+  O início adiantado continua perguntando (r2-age-06). Prova:
+  `e2e/agenda-dona-chega-e-inicia.spec.ts`.
 - **A agenda "só os meus" vale também pelo ID** (D4 da simulação de
   2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
   (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um

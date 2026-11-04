@@ -34,6 +34,8 @@ interface AppointmentEvent {
   motivoDoCancelamento?: string | null
   /** A hora REAL da conclusão (J-34). */
   completedAt?:     string | null
+  /** A profissional do agendamento: quem é ela marca a chegada e inicia num gesto (A25). */
+  professionalId?:  string | null
 }
 
 interface AppointmentSheetProps {
@@ -56,6 +58,8 @@ interface AppointmentSheetProps {
    * agenda "só os meus" lista só os dela, e a action confere de novo.
    */
   podeGerenciar?: boolean
+  /** O membro logado (users.id): no agendamento DELE, "Marcar chegada e iniciar" (A25). */
+  meuId?: string | null
   onClose:     () => void
 }
 
@@ -78,8 +82,12 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, onClose }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
+  // A dona (ou a gerente) que atende, no agendamento DELA: o gesto da
+  // profissional, em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação: eram
+  // quatro cliques e uma confirmação). A action é a mesma (chegarEIniciar).
+  const ehMeu = !!meuId && appointment.professionalId === meuId && podeGerenciar
   // Cancelar e "Não compareceu": a recepção (todas) e a profissional "só os
   // meus" com a agenda em Gerenciar, no dela (agenda-06).
   const podeCancelar = !isProfessional || podeGerenciar
@@ -306,7 +314,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             {/* A profissional no agendamento que ainda não chegou: o mesmo
                 check-in e o mesmo início, num gesto (A21, 2026-10-27). Ela não
                 via "Iniciar" no "Agendado", e a janela não dizia por quê. */}
-            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && isProfessional && ehODia && (
+            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && (isProfessional || ehMeu) && ehODia && (
               <button disabled={loading} onClick={() => chegarEComecar()} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                 <Play size={14} /> Marcar chegada e iniciar
               </button>

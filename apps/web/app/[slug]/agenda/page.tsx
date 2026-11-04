@@ -215,6 +215,7 @@ export default async function AgendaPage({ params, searchParams }: {
         canWrite={canManageAgenda}
         userRole={ctx.role}
         escopoProprio={isOwnScope(ctx, 'agenda')}
+        meuId={ctx.internalUserId ?? null}
         dataInicial={dataInicial}
         comCancelados={comCancelados}
       />

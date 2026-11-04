@@ -21,6 +21,8 @@ type AgendaView = 'day' | 'week'
 interface Branch      { id: string; name: string; slug: string; /** O horário de funcionamento (A26); sem ele, a grade não sombreia. */ horario?: Horario | null }
 interface Appointment {
   id:              string
+  /** A profissional (A25: no agendamento dela, "Marcar chegada e iniciar"). */
+  professional_id?: string | null
   scheduled_at:    string
   started_at:      string | null
   completed_at:    string | null
@@ -61,6 +63,8 @@ interface Props {
   podeAgendar:  boolean
   /** Cargo com alcance "só a própria agenda": não muda status do agendamento. */
   escopoProprio: boolean
+  /** O membro logado: no agendamento dele, "Marcar chegada e iniciar" (A25). */
+  meuId?: string | null
 }
 
 // -- Constantes visuais --------------------------------------------------------
@@ -509,7 +513,7 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null,
 }: Props) {
   const router = useRouter()
   const fala = useFala()
@@ -710,11 +714,13 @@ export function AdminAgendaView({
             clientId:         selecionado.client_id ?? null,
             start:            selecionado.scheduled_at,
             motivoDoCancelamento: selecionado.cancellation_reason ?? null,
+            professionalId:   selecionado.professional_id ?? null,
           }}
           slug={todasUnidades.find(b => b.id === selecionado.branch_id)?.slug ?? ''}
           userRole=""
           escopoProprio={escopoProprio}
           podeGerenciar={podeAgendar}
+          meuId={meuId}
           onClose={() => { setSelecionado(null); router.refresh() }}
         />
       )}
