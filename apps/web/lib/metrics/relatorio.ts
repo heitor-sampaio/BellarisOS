@@ -28,6 +28,14 @@ export interface Relatorio {
    * profissional, cuja `receita` é a mesma conta. Era o preço dos concluídos.
    */
   receitaDosAtendimentos: number
+  /**
+   * F16-1 (o Heitor, 2026-11-03: "se não tem execução não tem valor"): as
+   * EXECUÇÕES de procedimento do período e do anterior (aba Procedimentos) — a
+   * sessão de plano vendido conta uma por procedimento dela
+   * (`metrics_procedimentos_executados`). É o "Total Execuções", que fecha com
+   * a soma da tabela por procedimento; era o número de atendimentos.
+   */
+  execucoes: { atual: number; anterior: number }
   /** Receita PAGA dos atendimentos por categoria do procedimento (aba Procedimentos). */
   receitaPorCategoriaDeProcedimento: { categoria: string; receita: number }[]
   agendamentosPorStatus: { status: string; n: number }[]
@@ -95,6 +103,7 @@ export async function getRelatorio(args: {
     porProcedimento:     lista(r.por_procedimento).map(x => ({ nome: String(x.nome), categoria: String(x.categoria), receita: num(x.receita), execucoes: num(x.execucoes) })),
     porProfissional:     lista(r.por_profissional).map(x => ({ nome: String(x.nome), receita: num(x.receita), atendimentos: num(x.atendimentos) })),
     receitaDosAtendimentos: num(r.receita_dos_atendimentos),
+    execucoes: { atual: num(r.execucoes_total), anterior: num(r.execucoes_total_anterior) },
     receitaPorCategoriaDeProcedimento: lista(categorias).map(x => ({ categoria: String(x.categoria), receita: num(x.receita) })),
     agendamentosPorStatus: lista(r.agendamentos_por_status).map(x => ({ status: String(x.status), n: num(x.n) })),
     porDiaDaSemana:      lista(r.por_dia_da_semana).map(x => ({ dia: num(x.dia), n: num(x.n) })),

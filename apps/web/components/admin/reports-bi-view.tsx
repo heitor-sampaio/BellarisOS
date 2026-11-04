@@ -876,7 +876,7 @@ function AgeRankCard({ data }: {
 // TAB: PROCEDIMENTOS
 // -----------------------------------------------------------------------------
 function TabProcedimentos(p: ReportsBiProps) {
-  const { relatorio: r, core, corePrev } = p
+  const { relatorio: r } = p
   const faixas = r.procedimentosPorFaixa
 
   // Top 3 por faixa etária, na ordem das faixas. Vêm ranqueados do banco.
@@ -890,12 +890,13 @@ function TabProcedimentos(p: ReportsBiProps) {
   const topByAgeVolume = porFaixa(faixas.volume, l => `${l.n} exec.`, l => l.nome)
   const topByAgeMargin = porFaixa(faixas.margem, l => `${l.margem.toFixed(1).replace('.', ',')}%`, l => l.nome)
 
-  // Os atendimentos concluídos (o núcleo) e a receita PAGA deles (D3 da 5ª:
-  // era o preço dos concluídos — o não pago e a sessão de pacote entravam) —
-  // e o MESMO ticket médio do sistema inteiro (§13.1, lib/metrics: o pago
-  // pelas clientes ÷ as que pagaram, 2026-10-29). Os rankings abaixo são por
-  // procedimento, com a mesma receita paga.
-  const totalExec   = core.appointmentsCompleted
+  // As EXECUÇÕES de procedimento (F16-1: a sessão de plano conta uma por
+  // procedimento dela — o total fecha com a soma da tabela abaixo) e a
+  // receita PAGA delas (D3 da 5ª: era o preço dos concluídos — o não pago e a
+  // sessão de pacote entravam) — e o MESMO ticket médio do sistema inteiro
+  // (§13.1, lib/metrics: o pago pelas clientes ÷ as que pagaram, 2026-10-29).
+  // Os rankings abaixo são por procedimento, com a mesma receita paga.
+  const totalExec   = r.execucoes.atual
   const totalRev    = r.receitaDosAtendimentos
   const avgTicket   = p.ticketMedio
   const topByName   = [...r.porProcedimento].sort((a, b) => b.receita - a.receita)
@@ -936,7 +937,7 @@ function TabProcedimentos(p: ReportsBiProps) {
         {/* Só "Total Execuções" tem delta: o anterior da receita paga dos
             atendimentos não é carregado. O ticket é o do sistema (por
             cliente), sem o anterior carregado. */}
-        <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, corePrev.appointmentsCompleted)} showDelta />
+        <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, r.execucoes.anterior)} showDelta />
         <KpiCard label="Receita dos atendimentos" value={totalRev} format="brl" dica={DEFINICOES.receitaDosAtendimentos} />
         {/* A55: o ticket é o do sistema (por CLIENTE) e o nome diz isso; a
             média por execução (a receita paga ÷ as execuções) vem ao lado. */}

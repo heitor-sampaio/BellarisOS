@@ -696,14 +696,32 @@ Preenchimento R$ 1.200, cada um na sua categoria (era Botox R$ 2.000). O
 conjunto das quatro contas tem a coluna `procedure_id` (a do procedimento da
 sessão no plano; nula no resto, que segue o do atendimento) e a conta por
 procedimento lê `coalesce(t.procedure_id, a.procedure_id)`. O ranking de
-PROFISSIONAIS e o total não mudam (quem atendeu, R$ 2.000), e as EXECUÇÕES
-seguem o atendimento: o Preenchimento aparece com 0 execuções e R$ 1.200,
-como o pago no período sem execução nele (decisão da F16, para o Heitor
-revisar). Nenhuma das duas tem lançamento ligado ao
-atendimento, e o "Meu faturamento" (venda) não muda. Produto segue fora (não
-é atendimento). Prova:
+PROFISSIONAIS e o total não mudam (quem atendeu, R$ 2.000). Nenhuma das duas
+tem lançamento ligado ao atendimento, e o "Meu faturamento" (venda) não muda.
+Produto segue fora (não é atendimento).
+**E cada procedimento da sessão conta a SUA execução** (F16-1, o Heitor,
+revisão das decisões da F16, 2026-11-03: "não faz sentido ter 0 execuções e
+ter um valor, se não tem execução não tem valor"; migration
+`20261103001701`): Botox 1 execução · R$ 800, Preenchimento 1 execução ·
+R$ 1.200, no dia da sessão. A régua é UMA, `metrics_procedimentos_executados
+(atendimento, procedimento)`: as linhas da sessão do plano vendido
+(ACCEPTED/COMPLETED, o recorte da receita) — o mesmo procedimento duas vezes
+na sessão são duas execuções, como as duas linhas de comissão —, senão o
+procedimento do atendimento. Valem por ela as execuções e a recorrência de
+`metrics_top_procedures`, a tabela por procedimento e o volume por faixa
+etária de `metrics_relatorio`, e o "Total Execuções" da aba Procedimentos
+(`execucoes_total`/`execucoes_total_anterior`; era o número de atendimentos
+do núcleo, e deixaria de fechar com a soma da tabela). A NOTA da avaliação
+fica no procedimento do atendimento (é do atendimento), e a margem por faixa
+segue o preço do atendimento. O ranking e a tabela por PROFISSIONAL contam
+ATENDIMENTOS: a sessão é um atendimento (+1, com os R$ 2.000) — decisão da
+F17, para o Heitor revisar. Prova:
 `e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com os
-casos r3-f13-07 e r4-f15-03).
+casos r3-f13-07 e r4-f15-03 / F16-1).
+**O que ainda dá valor sem execução** (F17, para o Heitor decidir — mudaria
+o dia em que o dinheiro conta): o avulso pago num período e feito em outro
+(concluído 31/10, pago 03/11 → em novembro "Limpeza 0 execuções ·
+R$ 180"). A receita segue o dia do pagamento (a regra única).
 
 **"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
 2026-11-02): ativo, com `provides_services` e ao alcance das unidades do
