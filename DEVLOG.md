@@ -9134,6 +9134,34 @@ funil, só por automação).
 e a cliente do teste do Copilot nascia hoje, quando o "Reativar clientes" só
 conta quem foi cadastrada antes da janela. Nenhum defeito do sistema.
 
+**F18 feita em 2026-11-04 — avaliação por procedimento, Pix, vezes na baixa e no Copilot, execução no dia**
+(31c8b677…26b078e2; migrations `20261104001801`–`1804`). Primeira frente sob os
+princípios de produto do CLAUDE.md §1 — nenhuma pergunta ao Heitor.
+- **"O que a cliente avalia"** (Configurações → Geral): o atendimento e cada
+  procedimento (padrão), só o atendimento, ou só cada procedimento. Na sessão
+  Botox + Preenchimento a cliente dá "Atendimento", "Botox" e "Preenchimento";
+  o ranking por procedimento usa a do procedimento, o da profissional a do
+  atendimento. As antigas: "Profissional" virou a nota do atendimento.
+  Gravação numa transação (`avaliar_atendimento`).
+- **Taxas da maquininha:** as linhas do crédito só até o "Parcelar no crédito
+  até" (o gravado acima não se apaga); a taxa do Pix já existia e a tela diz
+  "só se a sua operadora cobrar".
+- **As vezes do crédito** na baixa ("Receber no cartão") e no Copilot ("R$ 1.200
+  no crédito em 3x" → 3 × R$ 400 da operadora).
+- **Avulso pago noutro período conta no dia em que foi FEITO** nas contas de
+  execução (`metrics_receitas_pagas_dos_executados`): a Limpeza de 31/10 paga
+  em 03/11 é de outubro; caixa, faturamento e Fechamento seguem o pagamento.
+- ⚠️ **Queda de ~15 min na produção**: a primeira tabela de notas tinha PK com FK
+  para appointments e procedures, o PostgREST a leu como junção e todo embed
+  `appointments → procedures(name)` deu PGRST201 (agenda, atendimento, ficha).
+  O E2E pegou; a `…1804` consertou sem drop. A regra entrou no CLAUDE.md §14.
+
+Decididas pelos princípios (não vão ao Heitor): "só o atendimento" dá a nota
+dele a cada procedimento; "só cada procedimento" dá à profissional a média; sem
+nota de procedimento, vale a do atendimento; o mesmo procedimento duas vezes é
+avaliado uma vez; "Automático" mostra todas as linhas, "Só à vista" esconde o
+parcelado e diz por quê.
+
 **F17 feita em 2026-11-04 — as respostas às decisões da F16**
 (35d8bb19…deea494e; migrations `20261103001701`–`1703`).
 - **Nada de valor sem execução** (o Heitor: "se não tem execução não tem
@@ -9333,7 +9361,8 @@ Supabase): `…000502` (`senha_da_conta_confere`), `…000709` (o retorno:
 passam às novas), `crm_stages.marca`, `leads.stage` e a função
 `juntar_conversas_do_numero(uuid, uuid)`, sem uso desde a F14, e o teto de
 100% de `payment_fees` (`payment_fees_taxa_pct_check`; a F17 contorna com
-`taxa_pct_sem_teto` e um gatilho que limita `taxa_pct` a 100).
+`taxa_pct_sem_teto` e um gatilho que limita `taxa_pct` a 100), e a tabela
+`private.avaliacoes_dos_procedimentos_juncao_descartada` (só linhas de teste, F18).
 
 **F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
 migrations `20261101001101–1108`). Receber o plano no check-in é uma

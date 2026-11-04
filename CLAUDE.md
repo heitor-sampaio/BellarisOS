@@ -670,6 +670,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Ler uma LISTA que cresce sem paginar (lerTodas) — o PostgREST corta em 1000 em silêncio, e .limit(2000) também vira 1000; filtrar no app DEPOIS de ler um lote (aniversário, "sem retorno") é o mesmo corte — o filtro vai para o banco
 ❌ Somar dinheiro por uma regra própria em vez de partir de metrics_receitas_pagas
 ❌ Migration que cria função sem notify pgrst, 'reload schema' no fim
+❌ Tabela nova com chave estrangeira para DUAS tabelas na chave primária (ex.: appointments e procedures): o PostgREST a lê como junção e o embed entre as duas quebra no sistema inteiro com PGRST201 — derrubou agenda, atendimento e ficha por ~15 min em 2026-11-04 (docs/regras/atendimento.md)
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Exibir data SEM hora (nascimento) com formatDate/new Date — é meia-noite UTC e vira a véspera em Brasília; use formatDia/idadeEm (@estetica-os/utils)
 ❌ Comparar período parcial com período anterior inteiro
