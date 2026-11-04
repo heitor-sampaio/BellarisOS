@@ -1687,6 +1687,33 @@ teste. O `copilot-leituras` pedia os horários livres de "amanhã", que caiu
 num domingo, e o horário padrão fecha no domingo. O teste agora pula o
 domingo (7f80ad62).
 
+### 2026-11-04 — Sexta simulação: o dinheiro novo numa clínica só, e a clínica de duas unidades com sócia e gerente
+
+Pedido do Heitor: dois times de agentes em cenários ainda não cobertos, só
+anotando. Rodaram em produção na quarta 04/11, das 02h48 às 04h30, com 14
+agentes (run `wf_16baa39f-383`):
+
+- **Time A, "[sim] Clínica Begônia"** (BH, uma unidade): o dinheiro de
+  F13–F18 — taxa e prazo por bandeira, vezes no cartão, a receber da
+  operadora, comissão por produto, kit, cancelamentos no Pix e no cartão,
+  avaliação por procedimento.
+- **Time B, "[sim] Clínica Camélia"** (Recife, duas unidades): sócia
+  promovida a Admin, gerente fixa, cargo próprio, unificar fichas, a cliente
+  de duas clínicas, termo por link e `/verificar`, desativar com repasse, LGPD.
+
+**Dinheiro:** as contas fecharam nos dois times (banco, dashboard,
+Financeiro, Fechamento, Relatórios e CSV); as taxas por bandeira e por vezes
+valeram como configuradas. O que falha são as bordas: o pré-pago cancelado no
+cartão (D1), o crédito 1x fora do "a receber da operadora" (D4), a entrada do
+plano sem vezes (D5), o crediário gravado como cartão (D6).
+
+**Defeitos:** 17 (15 confirmados, 1 provável, 1 não reproduzido), 2
+regressões (D7 da F12, D12 da F11). Duas de alta: D1 e o dashboard da rede
+mostrando dinheiro à comercial e à recepção (D2). **Atritos:** 52. **Para o
+Heitor:** uma só — se o "Lucro líquido" desconta taxas e comissões.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-04 (6ª)".
+
 ### 2026-10-30 — A completa depois das frentes: 6 falhas em 1.241, corrigidas
 
 A completa no GitHub Actions (run 41151753519, contra o build de 53b4a803)
@@ -9098,6 +9125,176 @@ avisaria a cliente) → F10; usar crédito interno conta a receita duas vezes
   estiver bloqueada, sem o oráculo de senha (F5).
 - **Login sem vínculo:** "não deve ter como ter um login sem vínculo, ou é
   rede ou é unidade" (F5).
+
+### Da simulação de 2026-11-04 (6ª: 17 defeitos e 52 atritos em aberto)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`, com as
+capturas, os 12 achados que eram regra ou engano, o dinheiro esperado ×
+sistema e o que ficou sem testar. A 5ª rodada está em
+`.sim/arquivo-2026-11-01/`. Os ids D1…D17 e A1…A52 são desta rodada.
+
+O consolidador conferiu cada defeito no código e não corrigiu nada. Cada
+defeito diz o princípio do CLAUDE.md §1 que contraria: esses se corrigem sem
+perguntar, com TDD. Caminhos relativos a `apps/web/`:
+
+**Alta**
+- **D1.** Cancelar a unidade de um pré-pago pago no cartão (Visa 2x, R$ 750,
+  cancelada 1 de 3) grava uma despesa "Devolução" de R$ 250 PENDENTE e sem
+  forma; o "A pagar" sobe, os recebíveis da operadora (375 + 375) ficam
+  inteiros, os pontos não mudam e ninguém pergunta estorno ou crédito.
+  `procedimento_cancelar_unidade` ainda é a de 30/09
+  (`20260930000022_procedimento_pre_pago.sql:193-298`, `actions/pre-pago.ts`).
+  Sobra da F2b e da F13. Princípios 1 e 3: o mesmo fluxo do pacote
+  (`pacote_cancelar_devolvendo` — estorno ou crédito; no cartão, estornar
+  inteiro e lançar o usado; cair o recebível; acertar os pontos).
+- **D2.** O dashboard da rede mostra dinheiro a quem não tem Financeiro: a
+  comercial (Relatórios só com a aba Comercial) vê Faturamento, Lucro e o
+  ranking de unidades por receita (`can('reports') || can('financial')`), a
+  recepção vê os rankings de procedimento por receita e por margem
+  (`can('procedures')`). `components/admin/admin-dashboard-view.tsx:562-574,
+  1001-1074`, `app/admin/dashboard/page.tsx:70-80`. Sobra da F7; é o exemplo
+  do §11 ("o comercial vê o funil sem ver o faturamento"). Passar por
+  `podeVerRelatorio(ctx, 'financeiro')`.
+
+**Média**
+- **D3.** O card "A receber da operadora" (R$ 2.360, próximo em 04/12) não
+  leva a lista: `ParcelasDaOperadora` só traz o que VENCE no período e some
+  sem nada, e no mês da venda tudo vence depois. Mostrar todo o em aberto,
+  por mês, e o card levar até ela (`app/[slug]/financeiro/page.tsx:72`,
+  `app/admin/financeiro/page.tsx:140`). Princípio 3.
+- **D4.** O crédito 1x não vira recebível da operadora (o gatilho de
+  `20261101000261` só cria parcelas de 2+ vezes), embora a tela de taxas
+  configure o prazo e a taxa do 1x por bandeira: R$ 2.000 "entraram" no dia.
+  Gerar 1 parcela no prazo da bandeira, com a taxa do 1x; o débito, sem prazo
+  configurado, segue recebido no dia. Princípios 3 e 5.
+- **D5.** A entrada do checkout do plano no crédito não tem "Vezes no cartão",
+  só a bandeira (`checkout-wizard.tsx:293-313`, o schema parcelado de
+  `lib/checkout/lancamentos.ts:52-90` sem `vezes`). Sobra da F18. Princípio 3.
+- **D6.** O crediário da clínica (o saldo do plano em 2 × R$ 1.700) é gravado
+  com o meio da entrada (`CREDIT_CARD`, `lancamentos.ts:96-101`), e o contrato
+  diz "2 parcelas de R$ 1.700,00 no cartão de crédito"; o app mostra
+  "Crédito". Princípio 3.
+- **D7. Regressão da F12** (680a03f2): a unidade nova que passa pela pergunta
+  do CNPJ perde telefone, e-mail e inscrição estadual — campos não
+  controlados que o `<form action>` do React 19 limpa depois da 1ª submissão
+  (`components/admin/branch-form.tsx:56-63, 169-195`).
+- **D8.** Depois de "Gerar plano e enviar", a sessão troca de estado: os
+  "Insumos utilizados" somem e Evolução e Intercorrências aparecem vazias (e
+  vão vazias ao modal de conclusão) — dois estados, `evalSessionNotes` e
+  `notes` (`components/branch/appointment-session.tsx:1129-1130, 1237,
+  1321-1322, 2090-2160`). Conferir se a conclusão sobrescreve a evolução
+  gravada. Princípio 3.
+- **D9.** O atendimento concluído diz "Nenhum insumo registrado" com a baixa
+  feita: a tela monta os insumos do cadastro do procedimento ou da sessão do
+  plano, nunca da baixa (`app/_shared/sessao-de-atendimento.tsx:277`). Ler o
+  `PROCEDURE_USAGE`. Princípio 3.
+- **D10.** Estoque negativo (−1) ou sem nenhuma entrada não conta como baixo
+  nem "sem estoque": `zerados` é `= 0` e `criticos` é `> 0`, e o produto sem
+  linha em `branch_product_stock` não entra
+  (`20261028000803_so_os_meus_nos_relatorios.sql:471-490`); o dashboard diz
+  "Estoque Saudável". Princípio 3.
+- **D15.** O Gerente modelo nasce sem Configurações, e a gerente fixa não
+  chega à aba Unidade que a H7 deu a ela (`20261021000003_cargos_modelo.sql:23-28`).
+  Semear `settings: MANAGE` no Gerente: a H7 já recusa o que é da clínica toda.
+  Princípio 1.
+- **D17.** Um "Internal Server Error" (POST 500) no primeiro login do Bruno em
+  `/update-password?primeiro=1`, ~03:35 BRT; passou na segunda tentativa.
+  NÃO REPRODUZIDO (as outras 12 contas passaram): olhar o log do Railway
+  dessa hora antes de descartar.
+
+**Baixa**
+- **D11.** As avaliações só aparecem a partir de 3 notas (`MIN_RATINGS = 3`,
+  `app/admin/dashboard/page.tsx:446-460`) e o vazio diz "Sem avaliações no
+  período" com notas gravadas. Mostrar com 1 nota ou dizer "a partir de 3", e
+  levar a regra a `lib/metrics`. Princípio 3.
+- **D12. Regressão da F11** (d41bdfe8): Vendas e CSV mostram "2× 1× Protetor
+  + 1× Sérum" — `descricaoDaVenda` antepõe a quantidade a um `descricao` que
+  já tem os itens (`lib/metrics/vendas-comum.ts:47`).
+- **D13.** A taxa da operadora arredonda por parcela (8,93 + 8,93 = 17,86;
+  o Fechamento estima 17,85): jogar a sobra na última, como no valor
+  (`20261101000261`, a coluna gerada `taxa`). Princípio 3.
+- **D14.** A oportunidade sem origem aparece como "Orgânico"
+  (`lib/crm/oportunidade.ts:110`): é "Não informado". Princípio 4.
+- **D16.** (provável) A exportação LGPD conta `fotos: 0` com a foto do
+  atendimento anexada: conta `record_photos` do prontuário, e a foto da sessão
+  vai pelos documentos da cliente (`lib/lgpd/export.ts:94-96, 231`).
+
+**Atritos A1–A52** (os com princípio entre colchetes se corrigem sem perguntar):
+- Setup e configurações: A1 procedimento grátis — o navegador recusa o preço
+  vazio; A2 estoque vazio diz "ajuste os filtros" sem filtro; A3 o setup não
+  sugere a ordem (equipe e estoque antes do procedimento) nem os próximos
+  passos; A4 dois endereços (o da rede e o da unidade) sem dizer qual dar à
+  cliente [3]; A5 "Preencher pela taxa por parcela" sobrescreve o 1x calado
+  [3]; A6 título de outro procedimento no "Editar" (talvez do robô); A8 o
+  contrato de plano criado nasce inativo, calado; A9 a aba "Comercial" é o
+  funil; A10 rebaixar uma Admin não pede confirmação [2]; A11 quem deixa de
+  seguir a unidade parte de 08–20 (`HORARIO_PADRAO`) [4].
+- Equipe: A12 a equipe da gerente fixa é recortada sem dizer; A13 "Adicionar
+  membro" pela gerente não diz a unidade.
+- CRM e importação: A14 telefone repetido com NOME diferente junta calado,
+  sem escolha [1, 3]; A15 contatos importados sem oportunidade não aparecem em
+  lugar nenhum; A16 a oportunidade não tem "Agendar" e o cadastro com o
+  telefone de um lead não liga os dois; A17 "Unificar" não mostra antes o que
+  fica.
+- Ficha: A18 Planejamento para a recepção sem botão (`/planejamentos/novo`
+  404); A19 atendimento sem evolução não aparece no prontuário; A20 "a
+  cliente/Ela" para o Bruno; A21 a LGPD só pelo portal, e o plano sai sem
+  itens nem valor; A22 "FECHADO" com 0 de 2 sessões.
+- Agenda: A23 o cartão de 30 min sem procedimento nem sala; A24 a sessão de
+  pacote/plano oferece horários passados e não tem procedimento nem sala;
+  A25 a dona chega ao atendimento em 4 cliques; A26 a agenda da rede não
+  sombreia a unidade fechada; A27 "3 para agendar" só baixa ao concluir; A28
+  a notificação "Horário marcado" não diz a unidade.
+- Atendimento: A29 a evolução em dois lugares (D8); A30 a anamnese
+  obrigatória aponta um campo por vez; A31 a recepção pediu de novo a
+  anamnese revisada; A32 recarregar a sessão perdeu o rascunho (a conferir);
+  A33 miniatura branca logo após anexar; A34 o modal não diz se o termo está
+  assinado; A35 o texto de "Acessos ao prontuário" (já anotado como A43 da
+  5ª); A36 a sessão Botox + Preenchimento aparece só "Botox".
+- Caixa: A37 o Pix é padrão silencioso e `?receber=1` confirma num clique
+  (gravou errado de verdade) [3]; A38 três frases diferentes sobre o Botox
+  de hoje no checkout do plano; A39 o campo das vezes sem rótulo, e o recibo
+  sem a bandeira; A40 o kit não pontua e a ficha não diz por quê; A41 os
+  três "faturamentos" da profissional (já anotado).
+- Dashboard: A42 "13 clientes" no drill-down da unidade sem dizer "da
+  clínica"; A43 a desativada sem "(inativa)" nas comissões; A44 "DIA 3" num
+  hover de 04/11 de madrugada (fuso no rótulo? não investigado).
+- Portal: A45 o cartão do plano não abre; A46 o pacote cancelado não aparece
+  cancelado, nem o estorno em Pagamentos; A47 texto interno ("checkout novo
+  paciente — parcela 1/2", `actions/treatment-plans.ts:1428`) chega à cliente;
+  A48 "Sem preferência" não diz quem ficou; **A49 a ficha de pré-atendimento
+  não tem caminho manual com o envio automático desligado** (o mais repetido
+  do time B: "Enviar a ficha" só existe com um pendente,
+  `pre-atendimento-do-agendamento.tsx:40`) [1]; A50 "fui informada(o)" com o
+  nome conhecido.
+- Copilot e menu: A51 o Copilot some no trial (J-7) sem explicar [3]; A52 a
+  profissional vê "Financeiro" e "Faturamento do mês R$ 0".
+
+**Para o Heitor decidir** (a única regra em dúvida): o "Lucro líquido"
+desconta as taxas da maquininha e as comissões? Hoje (decisão de 29/10) é
+receita paga − despesa paga − insumo: na Begônia, "Lucro líquido R$ 4.768 ·
+Margem 95,2%" com R$ 117,47 de taxas e R$ 580,45 de comissões a pagar — sobra
+de fato ~R$ 4.070. Recomendação do consolidador: descontar a taxa conhecida e
+a comissão liberada (duas linhas novas no DRE), ou renomear o card para
+"Resultado antes de taxas e comissões".
+
+Decidido pelos princípios, sem perguntar: D1 segue o pacote; D4 segue a regra
+do N vezes; A14 ganha a escolha como a importação para ficha existente; A49 é
+envio manual, sem mudar o padrão desligado.
+
+**Ficou sem testar:** o Copilot inteiro (as duas redes em trial), antecipar
+uma parcela da operadora (D3), pagar o crediário e liberar a comissão do plano,
+a 2ª sessão do plano, o checkout do plano do Bruno, o "Receber" no check-in,
+a ficha de pré-atendimento respondida, a importação com oportunidade, reativar
+a desativada, o fechamento mensal de comissões, push/WhatsApp/automações
+ligadas e a virada do dia (rodou de madrugada).
+
+Os dados ficaram em produção: "[sim] Clínica Begônia" (`begonia-savassi`) e
+"[sim] Clínica Camélia" (`camelia-boa-viagem`, `camelia-casa-forte`), logins
+`sim6a-*` e `sim6b-*@bellaris.invalid` (credenciais só em `.sim`). Em aberto
+lá: o crediário da Paula, a devolução pendente de R$ 250 do Jorge (D1), o plano
+do Bruno aguardando checkout, um encaixe às 03:00 em 05/11 na Casa Forte e o
+Gel condutor em −1.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
