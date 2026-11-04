@@ -135,6 +135,31 @@ test.describe.serial('o CNPJ da unidade nova', () => {
     expect((await unidade(nome)).map(u => u.document)).toEqual([null])
   })
 
+  // D7 da 6ª simulação (regressão da F12): o telefone, o e-mail e a IE eram
+  // campos soltos, e o <form action> do React limpava o formulário depois da
+  // 1ª submissão (a que volta com a pergunta) — o "Usar o CNPJ" reenviava
+  // vazios, e a Casa Forte nasceu sem telefone e sem e-mail.
+  test('D7: depois da pergunta do CNPJ, o telefone, o e-mail e a inscrição estadual ficam', async ({ browser }) => {
+    const nome = `${PREFIXO} Casa Forte ${marca}`
+    await como(browser, async p => {
+      const janela = await abrirNovaUnidade(p, nome)
+      await janela.locator('#br-phone').pressSequentially('8133334444')
+      await janela.locator('#br-email').fill('casaforte@bellaris.invalid')
+      await janela.locator('#br-ie').fill('123.456.789.000')
+      await janela.getByRole('button', { name: 'Criar unidade' }).click()
+      const aviso = janela.getByRole('alertdialog', { name: 'Unidade sem CNPJ' })
+      await expect(aviso).toBeVisible({ timeout: 15_000 })
+      // Ainda na tela, depois da 1ª submissão.
+      await expect(janela.locator('#br-phone')).toHaveValue('(81) 3333-4444')
+      await expect(janela.locator('#br-email')).toHaveValue('casaforte@bellaris.invalid')
+      await aviso.getByRole('button', { name: `Usar o CNPJ da rede (${CNPJ_COM_MASCARA})` }).click()
+      await expect(janela).toBeHidden({ timeout: 15_000 })
+    })
+    const { data } = await db().from('branches').select('phone, email, state_registration').eq('tenant_id', rede!.tenantId).eq('name', nome)
+    expect((data ?? []).map(u => ({ ...u, phone: u.phone?.replace(/\D/g, '') ?? null })))
+      .toEqual([{ phone: '8133334444', email: 'casaforte@bellaris.invalid', state_registration: '123.456.789.000' }])
+  })
+
   test('o mesmo envio duas vezes ao mesmo tempo cria UMA unidade (D10)', async ({ browser }) => {
     const nome = `${PREFIXO} Duplo ${marca}`
     const envio = crypto.randomUUID()

@@ -41,6 +41,12 @@ export function BranchForm() {
   // O CNPJ em branco pergunta antes de criar (cfg-01): a resposta vai em `_cnpj`.
   const [documento, setDocumento] = useState('')
   const [respostaCnpj, setRespostaCnpj] = useState<'' | 'sem'>('')
+  // Telefone, e-mail e IE também em estado (D7 da 6ª simulação): soltos, o
+  // <form action> do React os limpava depois da 1ª submissão — a que volta
+  // com a pergunta do CNPJ —, e a resposta reenviava os três vazios.
+  const [telefone, setTelefone] = useState('')
+  const [email, setEmail] = useState('')
+  const [inscricao, setInscricao] = useState('')
   const [formState, action, pending] = useActionState(
     async (anterior: RespostaDeCriarUnidade | undefined, dados: FormData) => {
       dados.set('_envio', envio.chave())
@@ -74,6 +80,7 @@ export function BranchForm() {
   if (formState && 'success' in formState && open) {
     setOpen(false)
     setName(''); setSlug(''); setSlugTouched(false); setDocumento(''); setRespostaCnpj('')
+    setTelefone(''); setEmail(''); setInscricao('')
     setZipCode(''); setAddress(''); setCity(''); setUf('')
     setCepError(null); setCepBuscado('')
   }
@@ -81,6 +88,7 @@ export function BranchForm() {
   function handleClose() {
     setOpen(false)
     setName(''); setSlug(''); setSlugTouched(false); setDocumento(''); setRespostaCnpj('')
+    setTelefone(''); setEmail(''); setInscricao('')
     setZipCode(''); setAddress(''); setCity(''); setUf('')
     setCepError(null); setCepBuscado('')
   }
@@ -169,11 +177,12 @@ export function BranchForm() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-phone">Telefone</label>
                       <input id="br-phone" name="phone" type="tel" className="field" placeholder="(00) 00000-0000"
-                        onChange={e => { e.target.value = maskPhoneDigitando(e.target.value) }} />
+                        value={telefone} onChange={e => setTelefone(maskPhoneDigitando(e.target.value))} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-email">E-mail</label>
-                      <input id="br-email" name="email" type="email" className="field" placeholder="contato@bellaris.com" />
+                      <input id="br-email" name="email" type="email" className="field" placeholder="contato@bellaris.com"
+                        value={email} onChange={e => setEmail(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -191,7 +200,8 @@ export function BranchForm() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline" htmlFor="br-ie">Inscrição Estadual (opcional)</label>
-                    <input id="br-ie" name="state_registration" type="text" className="field" placeholder="000.000.000.000" />
+                    <input id="br-ie" name="state_registration" type="text" className="field" placeholder="000.000.000.000"
+                      value={inscricao} onChange={e => setInscricao(e.target.value)} />
                   </div>
                 </div>
                 {perguntaCnpj && (
