@@ -18,7 +18,7 @@ import { iniciaisDoNome } from '@estetica-os/utils'
 import { resultadoDoPeriodo, type EstoqueNoResultado } from '@/lib/metrics/resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
-import { ParcelasDaOperadora } from '@/components/shared/parcelas-da-operadora'
+import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcelas-da-operadora'
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
@@ -697,7 +697,11 @@ export function FinancialHub({
             cliente já pagou tudo; não é dívida dela (lib/metrics/operadora). */}
         <KpiCardFull
           chave="a-receber-operadora"
-          nota={<NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto} />}
+          nota={<>
+            <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto} />
+            {/* D3: o cartão leva à lista das parcelas. */}
+            <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} />
+          </>}
           label="A receber da operadora"
           curr={aReceberDaOperadora.aReceber} prev={0}
           icon={<CreditCard size={13} style={{ color: 'var(--success)' }} />}

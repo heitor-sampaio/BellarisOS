@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { Fragment, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CreditCard } from 'lucide-react'
@@ -19,7 +19,33 @@ import type { ParcelaDaOperadora, SituacaoDaParcela } from '@/lib/metrics/operad
  * vira recebida sozinha na data; "Marcar recebida" é a antecipação, e a
  * antecipada tem "Desfazer", que pergunta antes (r2-fin-02).
  * Os números vêm de `lib/metrics/operadora` — aqui só se escreve.
+ *
+ * A lista é TODO o em aberto, de qualquer vencimento, mais o que vence no
+ * período, agrupada pelo MÊS do depósito (D3 da 6ª simulação: o cartão dizia
+ * R$ 2.360 em aberto, e a lista do mês vinha vazia — tudo vencia no mês
+ * seguinte). O cartão "A receber da operadora" leva até ela (`LinkDasParcelas`).
  */
+
+/** O âncora da lista, para o cartão do "A receber da operadora" levar até ela. */
+export const ANCORA_DAS_PARCELAS = 'recebiveis-da-operadora'
+
+/** "Ver as parcelas" no cartão do "A receber da operadora" (D3): leva à lista. */
+export function LinkDasParcelas({ temParcelas }: { temParcelas: boolean }) {
+  if (!temParcelas) return null
+  return (
+    <a href={`#${ANCORA_DAS_PARCELAS}`} data-link-das-parcelas
+      style={{ display: 'inline-block', marginTop: 4, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)' }}>
+      Ver as parcelas
+    </a>
+  )
+}
+
+/** "dezembro de 2026" → "Dezembro de 2026", do "AAAA-MM" do vencimento. */
+function nomeDoMes(mes: string): string {
+  const nome = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${mes}-15T12:00:00Z`))
+  return nome.charAt(0).toUpperCase() + nome.slice(1)
+}
 
 /** "05/11/2026" — o dia vem do banco já no fuso da clínica ("2026-11-05"). */
 const dia = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
@@ -34,7 +60,7 @@ const SITUACAO: Record<SituacaoDaParcela, { rotulo: string; fundo: string; cor: 
 }
 
 export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
-  /** As parcelas com vencimento no período (getParcelasDaOperadora). */
+  /** Todo o em aberto e o que vence no período (getParcelasDaOperadora), por vencimento. */
   parcelas:   ParcelaDaOperadora[]
   /** Lança no financeiro (`financial: MANAGE`): marca a parcela antecipada. */
   podeMarcar: boolean
@@ -49,6 +75,7 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
   const [marcando, iniciar] = useTransition()
 
   if (parcelas.length === 0) return null
+  const colunas = 7 + (unidades ? 1 : 0) + (podeMarcar ? 1 : 0)
 
   const th: React.CSSProperties = {
     fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
@@ -78,17 +105,17 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
   }
 
   return (
-    <div data-recebiveis-da-operadora>
+    <div data-recebiveis-da-operadora id={ANCORA_DAS_PARCELAS} style={{ scrollMarginTop: 'calc(var(--topbar-h) + 16px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <CreditCard size={15} style={{ color: 'var(--brand)' }} />
         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          Cartão em várias vezes: a receber da operadora
+          Cartão de crédito: a receber da operadora
         </p>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
-        A cliente já pagou tudo na maquininha e a receita entrou no dia da venda. Aqui está o que a operadora
-        deposita, pelo vencimento: cada parcela a cada N dias da venda (o prazo da operadora, em Configurações →
-        Comissões). Cada parcela vira recebida sozinha na data.
+        A cliente já pagou tudo na maquininha e a receita entrou no dia da venda. Aqui está todo o em aberto que a
+        operadora ainda deposita, por mês de depósito, e o que venceu no período: cada parcela a cada N dias da venda
+        (o prazo da operadora, em Configurações → Comissões). Cada parcela vira recebida sozinha na data.
       </p>
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-wrap">
@@ -110,8 +137,21 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
               {parcelas.map((p, i) => {
                 const s = SITUACAO[p.situacao]
                 const morta = p.situacao === 'CANCELADA' || p.situacao === 'ESTORNADA'
+                const mes = p.vencimentoDia.slice(0, 7)
+                const abreMes = i === 0 || parcelas[i - 1]!.vencimentoDia.slice(0, 7) !== mes
                 return (
-                  <tr key={p.id} data-parcela-da-operadora data-numero={p.numero} data-situacao={p.situacao}
+                  <Fragment key={p.id}>
+                  {abreMes && (
+                    <tr data-mes-da-operadora={mes}>
+                      <td colSpan={colunas} data-label="" style={{
+                        padding: '8px 16px', background: 'var(--bg-app)', borderBottom: '1px solid var(--hairline)',
+                        fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text-soft)', letterSpacing: '0.04em',
+                      }}>
+                        {nomeDoMes(mes)}
+                      </td>
+                    </tr>
+                  )}
+                  <tr data-parcela-da-operadora data-numero={p.numero} data-situacao={p.situacao}
                     style={{ borderBottom: i < parcelas.length - 1 ? '1px solid var(--hairline)' : 'none', opacity: morta ? 0.6 : 1 }}>
                     <td data-label="Vencimento" data-par style={{ ...td, whiteSpace: 'nowrap', color: 'var(--text-muted)', fontWeight: 600 }}>
                       {dia(p.vencimentoDia)}
@@ -167,6 +207,7 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
                       </td>
                     )}
                   </tr>
+                  </Fragment>
                 )
               })}
             </tbody>

@@ -405,3 +405,69 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     expect((await parcelasDa(novo!.id)).map(x => [x.situacao, x.valor])).toEqual([['A_RECEBER', 550], ['A_RECEBER', 550]])
   })
 })
+
+/**
+ * D13: a taxa por parcela leva a sobra do arredondamento na última, como o
+ * valor — Visa 2x de R$ 750 a 2,38% são 8,93 + 8,92 = R$ 17,85, o mesmo que o
+ * Fechamento estima (era 8,93 + 8,93 = R$ 17,86).
+ */
+test.describe('F20: a sobra da taxa e a lista da operadora', () => {
+  async function lancar(amount: number, metodo: string, extra: Record<string, unknown> = {}) {
+    const { data, error } = await db().from('financial_transactions').insert({
+      branch_id: rede!.branchId, client_id: cliente!.clientId, type: 'INCOME', category: 'Serviços',
+      description: `${PREFIXO} Cartão ${metodo} ${amount} ${marca}`, amount, payment_method: metodo,
+      is_paid: true, paid_at: new Date().toISOString(), created_by: 'e2e', ...extra,
+    }).select('id').single<{ id: string }>()
+    expect(error, 'lançar').toBeNull()
+    return data!.id
+  }
+
+  test('o crédito 1x grava, sem parcela da operadora até a restrição aceitar o 1x (D4 espera o Heitor)', async () => {
+    // A 20261104002001 fez o gatilho tentar a parcela do 1x, e a restrição
+    // recebiveis_do_cartao_check (2 a 12 parcelas) passou a recusar TODA venda
+    // no crédito à vista. Este teste prende que o 1x continua gravando.
+    const tx = await lancar(100, 'CREDIT_CARD', { cartao_bandeira: 'VISA' })
+    expect(await parcelasDa(tx)).toEqual([])
+  })
+
+  test('D13: a sobra do arredondamento da taxa vai na última parcela (Visa 2x de R$ 750 a 2,38% = 8,93 + 8,92)', async () => {
+    expect((await db().from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 2, taxa_pct: 2.38 })).error).toBeNull()
+    try {
+      const tx = await lancar(750, 'CREDIT_CARD', { cartao_vezes: 2, cartao_bandeira: 'VISA' })
+      const parcelas = await parcelasDa(tx)
+      expect(parcelas.map(p => [p.valor, p.taxa, p.liquido])).toEqual([[375, 8.93, 366.07], [375, 8.92, 366.08]])
+      expect(Math.round(parcelas.reduce((s, p) => s + p.taxa, 0) * 100) / 100, 'a taxa da venda: 2,38% de R$ 750').toBe(17.85)
+    } finally {
+      expect((await db().from('payment_fees').delete().eq('tenant_id', rede!.tenantId).eq('metodo', 'CREDIT_CARD').eq('parcelas', 2)).error).toBeNull()
+    }
+  })
+
+  test('D3: a lista mostra TODO o em aberto da operadora, por mês de depósito, e o cartão leva até ela (nos dois portais)', async ({ browser }) => {
+    const tx = await lancar(600, 'CREDIT_CARD', { cartao_vezes: 2 })
+    const parcelas = await parcelasDa(tx)
+    expect(parcelas.map(p => p.situacao)).toEqual(['A_RECEBER', 'A_RECEBER'])
+    const mesDe = (dia: string) => new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+      .format(new Date(`${dia}T12:00:00Z`))
+    const descricao = `${PREFIXO} Cartão CREDIT_CARD 600 ${marca}`
+    for (const rota of ['/admin/financeiro', `/${slug}/financeiro`]) {
+      await comSessao(browser, gestor!.estado, async p => {
+        // O período padrão (o mês): as duas parcelas vencem nos próximos meses.
+        await p.goto(rota)
+        const kpi = p.locator('[data-kpi="a-receber-operadora"]')
+        const link = kpi.getByRole('link', { name: 'Ver as parcelas' })
+        await expect(link).toHaveAttribute('href', '#recebiveis-da-operadora')
+        const lista = p.locator('#recebiveis-da-operadora')
+        const daVenda = lista.locator('[data-parcela-da-operadora]').filter({ hasText: descricao })
+        await expect(daVenda).toHaveCount(2)
+        for (const pa of parcelas) {
+          await expect(lista.locator(`[data-mes-da-operadora="${pa.vencimento_dia.slice(0, 7)}"]`))
+            .toContainText(new RegExp(mesDe(pa.vencimento_dia), 'i'))
+        }
+        // O "Marcar recebida" (a antecipação) está na lista, para quem lança.
+        await expect(daVenda.getByRole('button', { name: 'Marcar recebida' })).toHaveCount(2)
+        await link.click()
+        await expect(p).toHaveURL(/#recebiveis-da-operadora$/)
+      })
+    }
+  })
+})

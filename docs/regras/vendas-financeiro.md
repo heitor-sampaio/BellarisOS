@@ -577,7 +577,11 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     `financial_transactions` de propósito: nada que conta receita, ponto,
     comissão ou dívida da cliente as vê. Cada parcela tem o seu valor (a
     divisão em centavos, a sobra na última), a taxa da maquininha de N vezes
-    retratada (`private.comissao_taxa_pct`, a mesma da comissão), o líquido e
+    retratada (`private.comissao_taxa_pct`, a mesma da comissão) — e a TAXA
+    também fecha com a da venda: a sobra do arredondamento vai na última
+    parcela (D13 da 6ª simulação; `recebiveis_do_cartao.taxa_sobra`, migration
+    `20261104002001`): Visa 2x de R$ 750 a 2,38% são 8,93 + 8,92 = R$ 17,85, o
+    que o Fechamento estima (eram 8,93 + 8,93) —, o líquido e
     o vencimento a cada N DIAS CORRIDOS contados da venda — a parcela k em
     venda + k × N (r2-fin-01, o Heitor, 2026-11-03: "como a operadora paga de
     verdade e configurável o prazo"; era o mesmo dia de cada mês). O N é da
@@ -736,9 +740,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       Fechamento não as veem. O Financeiro (os dois portais) mostra os dois a
       receber, NOMEADOS: "A receber da cliente" (o de sempre) e "A receber da
       operadora" (`getAReceberDaOperadora`, pelo vencimento no período, com o
-      próximo vencimento e todo o em aberto), e a lista "Cartão em várias
-      vezes: a receber da operadora" com as parcelas que vencem no período
-      (`ParcelasDaOperadora`). Com o financeiro "só os meus", não aparece.
+      próximo vencimento e todo o em aberto), e a lista "Cartão de crédito: a
+      receber da operadora" (`ParcelasDaOperadora`) com TODO o em aberto, de
+      qualquer vencimento, mais o que vence no período, agrupada pelo MÊS do
+      depósito — e o cartão tem "Ver as parcelas", que leva até ela (D3 da 6ª
+      simulação: o cartão dizia "Em aberto R$ 2.360" e a lista do mês vinha
+      vazia, porque tudo vencia no mês seguinte; `recebiveis_do_cartao_da_tela`,
+      migration `20261104002003`; prova:
+      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`, "D3"). Com o
+      financeiro "só os meus", não aparece.
     - **O estorno no cartão é sempre do pagamento INTEIRO** (r2-fin-03, o
       Heitor, 2026-11-03: "estornar no cartão estorna a venda inteira, todas
       as operadoras fazem assim"): crédito à vista ou em N vezes, e débito.
@@ -749,6 +759,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       migration `20261103001303`). O estorno é acompanhado pelo gatilho, na
       mesma transação: cai o que ainda não foi recebido (CANCELADA); o já
       recebido é ESTORNADO (a operadora toma de volta: `estornado`).
+    - **O crédito À VISTA (1x) ainda não vira recebível** (D4 da 6ª
+      simulação, F20 — parado na restrição `recebiveis_do_cartao_check`, que
+      só aceita de 2 a 12 parcelas; trocá-la pede confirmação no Supabase, e
+      o SQL está no branch `f20-d4-credito-1x`). ⚠️ O gatilho NÃO pode fazer
+      a parcela do 1x antes da restrição mudar: em 2026-11-04 a migration
+      `20261104002001` tentou, e toda venda no crédito 1x foi recusada pelo
+      banco por alguns minutos (desfeito em `20261104002002`; prova:
+      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`, "o crédito 1x
+      grava").
     - As vendas antigas no cartão N× (3 na produção em 2026-11-01: Aurora
       R$ 600, Jasmim R$ 150, Lótus R$ 280) ficam como estão, sem parcelas.
     - Migration `20261101000261`. Prova:

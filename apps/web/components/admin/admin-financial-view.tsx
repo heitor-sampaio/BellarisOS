@@ -19,7 +19,7 @@ import { toast } from 'sonner'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import type { ProximoVencimento } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
-import { ParcelasDaOperadora } from '@/components/shared/parcelas-da-operadora'
+import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcelas-da-operadora'
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
@@ -97,7 +97,7 @@ interface Props {
    * pagou tudo) — o total das ativas e cada unidade (lib/metrics/operadora).
    */
   aReceberDaOperadora: { total: AReceberDaOperadora; porUnidade: Record<string, AReceberDaOperadora> }
-  /** As parcelas da operadora com vencimento no período. */
+  /** As parcelas da operadora: todo o em aberto e o que vence no período (D3). */
   parcelasDaOperadora: ParcelaDaOperadora[]
   /** r2-fin-04: o fluxo de caixa dos próximos meses — o do recorte e o de cada unidade. */
   fluxoDeCaixa?: { total: MesDoFluxo[]; porUnidade: Record<string, MesDoFluxo[]> }
@@ -413,7 +413,11 @@ export function AdminFinancialView({
           chave="a-receber-operadora"
           label="A receber da operadora"
           value={fmtBRL(operadora.aReceber)}
-          nota={<NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto} />}
+          nota={<>
+            <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto} />
+            {/* D3: o cartão leva à lista das parcelas. */}
+            <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} />
+          </>}
           icon={<CreditCard size={16} color="var(--brand)" />}
         />
         <KpiCard

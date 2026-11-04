@@ -77,12 +77,17 @@ export interface ParcelaDaOperadora {
 
 type Linha = Record<string, unknown>
 
-/** As parcelas com VENCIMENTO no período (a lista do Financeiro, mês a mês). */
+/**
+ * A lista do Financeiro: as parcelas que vencem no período MAIS todo o em
+ * aberto, de qualquer vencimento (D3 da 6ª simulação: o cartão dizia R$ 2.360
+ * em aberto e a lista sumia, porque tudo vencia no mês seguinte). A conta do
+ * que entra é do banco (`recebiveis_do_cartao_da_tela`).
+ */
 export async function getParcelasDaOperadora(args: {
   tenantId: string; branchIds?: string[] | null; from: Date; to: Date
 }): Promise<ParcelaDaOperadora[]> {
   const linhas = await lerTodas<Linha>((de, ate) => createAdminClient()
-    .rpc('recebiveis_do_cartao_lista', {
+    .rpc('recebiveis_do_cartao_da_tela', {
       p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null,
       p_from: args.from.toISOString(), p_to: args.to.toISOString(),
     })
