@@ -127,3 +127,46 @@ test('"Não, é outra pessoa": cadastra sem ligar nada', async ({ browser }) => 
   const { data: conversa } = await db().from('conversations').select('client_id').eq('id', conversaId).single<{ client_id: string | null }>()
   expect(conversa?.client_id).toBeNull()
 })
+
+test('A16: o lead criado à mão, com o telefone digitado "(48) 9…", também pergunta — e a pessoa nasce no formato do WhatsApp', async ({ browser }) => {
+  // A Pri criou a Alice no quadro com "(81) 99600-0070": a pessoa nascia com o
+  // identificador "81996000070" (sem o 55), e nem o cadastro da recepção nem a
+  // conversa do WhatsApp a achavam.
+  const nacional = `489${sufixo}0003`
+  const digitado = `(48) 9${sufixo}-0003`
+  const { data: lead, error } = await db().from('leads').insert({
+    tenant_id: rede!.tenantId, name: nome('lead do quadro'), phone: digitado, crm_stage_id: etapaAberta,
+  }).select('id, contato_id').single<{ id: string; contato_id: string }>()
+  expect(error).toBeNull()
+  const { data: pessoa } = await db().from('contacts').select('identifiers').eq('id', lead!.contato_id).single<{ identifiers: string[] }>()
+  expect(pessoa?.identifiers, 'a pessoa nasce com o telefone no formato do WhatsApp').toContain(`55${nacional}`)
+
+  await como(browser, async p => {
+    await preencher(p, { nome: nome('do quadro'), telefone: nacional })
+    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa' })
+    await expect(pergunta).toContainText(`É a mesma pessoa do lead ${nome('lead do quadro')}?`)
+    await pergunta.getByRole('button', { name: 'Sim, é a mesma pessoa' }).click()
+    await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
+  })
+  const ficha = await fichaDe(nome('do quadro'))
+  const { data: ligado } = await db().from('leads').select('client_id').eq('id', lead!.id).single<{ client_id: string | null }>()
+  expect(ligado?.client_id, 'a oportunidade passa a ser da cliente').toBe(ficha!.id)
+})
+
+test('A16: a pessoa antiga, gravada sem o 55 ("4899…"), também é achada pelo cadastro', async ({ browser }) => {
+  const nacional = `489${sufixo}0004`
+  const { data: pessoa, error } = await db().from('contacts').insert({
+    tenant_id: rede!.tenantId, name: nome('pessoa antiga'), phone: nacional, identifiers: [nacional],
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const { error: e2 } = await db().from('leads').insert({
+    tenant_id: rede!.tenantId, name: nome('lead antigo'), phone: nacional, crm_stage_id: etapaAberta, contato_id: pessoa!.id,
+  })
+  expect(e2).toBeNull()
+  await como(browser, async p => {
+    await preencher(p, { nome: nome('antiga'), telefone: nacional })
+    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    await expect(p.getByRole('alert').filter({ hasText: 'É a mesma pessoa' })).toContainText(nome('lead antigo'))
+  })
+})

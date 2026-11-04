@@ -56,6 +56,18 @@ export function variantesDoTelefone(fone: string): string[] {
   return [fone]
 }
 
+/**
+ * As formas com que a PESSOA pode estar gravada (A16 da 6ª simulação): as do
+ * WhatsApp (`variantesDoTelefone`) e, do celular brasileiro, as mesmas SEM o
+ * 55 — o gatilho do lead gravava assim o telefone digitado no quadro até
+ * 2026-11-04 (migration 20261104002301), e essa pessoa continua existindo.
+ */
+export function formasParaAcharAPessoa(fone: string): string[] {
+  const whats = variantesDoTelefone(fone)
+  const semDdi = whats.filter(f => f.startsWith('55') && (f.length === 12 || f.length === 13)).map(f => f.slice(2))
+  return [...whats, ...semDdi]
+}
+
 /** CPF: 11 dígitos, com os verificadores conferidos (a conta é UMA, `cpfValido`). */
 export function normalizarCpf(bruto: string): string | null {
   const c = soDigitos(bruto)

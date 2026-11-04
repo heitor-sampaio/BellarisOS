@@ -4,7 +4,7 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
-import { variantesDoTelefone } from '@/lib/importacao/normalizar'
+import { formasParaAcharAPessoa } from '@/lib/importacao/normalizar'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { ligarContatoAoCliente } from '@/lib/clients/cliente-rapido'
 
@@ -37,7 +37,7 @@ export type PessoaDoCrm = {
 /** O telefone do cadastro (dígitos de `telefoneDoCadastro`) no formato do WhatsApp, com as variantes do nono dígito. */
 function formasDoTelefone(digitos: string): string[] {
   const whatsapp = digitos.length === 10 || digitos.length === 11 ? `55${digitos}` : digitos
-  return variantesDoTelefone(whatsapp)
+  return formasParaAcharAPessoa(whatsapp)
 }
 
 export async function pessoaDoCrmDoTelefone(admin: Admin, ctx: TenantContext, digitos: string): Promise<PessoaDoCrm | null> {

@@ -260,6 +260,14 @@ describe('marcarRepetidas — o mesmo telefone com outro nome (A14)', () => {
   })
 })
 
+describe('formasParaAcharAPessoa (A16)', () => {
+  it('as formas do WhatsApp e, do celular brasileiro, as mesmas sem o 55 (a pessoa gravada assim antes)', async () => {
+    const { formasParaAcharAPessoa } = await import('@/lib/importacao/normalizar')
+    expect(formasParaAcharAPessoa('5581996000070')).toEqual(['5581996000070', '558196000070', '81996000070', '8196000070'])
+    expect(formasParaAcharAPessoa('14155551234')).toEqual(['14155551234'])
+  })
+})
+
 describe('variantesDoTelefone', () => {
   it('o celular brasileiro com e sem o nono dígito (o WhatsApp manda dos dois jeitos)', async () => {
     const { variantesDoTelefone } = await import('@/lib/importacao/normalizar')
