@@ -56,7 +56,7 @@ export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, pa
     parcelas: atual?.forma === 'PARCELADO' ? atual.parcelas : 3,
     data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento) : hojeMais(30),
     vencimento: atual?.forma === 'A_RECEBER' && atual.vencimento ? diaDe(atual.vencimento) : '',
-    vezes:    atual?.forma === 'AVISTA' ? (atual.vezes ?? 1) : 1,
+    vezes:    atual?.forma === 'AVISTA' || atual?.forma === 'PARCELADO' ? (atual.vezes ?? 1) : 1,
     bandeira: atual && atual.forma !== 'A_RECEBER' ? (atual.bandeira ?? '') : '',
   }
 }
@@ -80,7 +80,9 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
   // ilegível não chega aqui: quem salva confere `recusaDoPagamento` antes.
   const lida = lerEntrada(e.entrada)
   const valorEntrada = 'valor' in lida ? lida.valor : 0
-  return { forma: 'PARCELADO', metodo: e.metodo, entrada: valorEntrada, parcelas: e.parcelas, primeiroVencimento: dataIso, ...bandeira }
+  // D5: as vezes da ENTRADA no crédito (a maquininha); as parcelas são da clínica.
+  const vezes = e.metodo === 'CREDIT_CARD' && valorEntrada > 0 && e.vezes > 1 ? { vezes: e.vezes } : {}
+  return { forma: 'PARCELADO', metodo: e.metodo, entrada: valorEntrada, parcelas: e.parcelas, primeiroVencimento: dataIso, ...vezes, ...bandeira }
 }
 
 /**
@@ -127,13 +129,18 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
               {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </label>
-          {forma === 'AVISTA' && estado.metodo === 'CREDIT_CARD' && (
+          {(forma === 'AVISTA' || forma === 'PARCELADO') && estado.metodo === 'CREDIT_CARD' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={rotulo}>Vezes no cartão</span>
+              {/* D5: na entrada + parcelas, as vezes são da ENTRADA (a maquininha). */}
+              <span style={rotulo}>{forma === 'PARCELADO' ? 'Vezes no cartão (a entrada)' : 'Vezes no cartão'}</span>
               <select className="field" value={estado.vezes} onChange={e => mudar({ vezes: Number(e.target.value) })} aria-label="Vezes no cartão">
                 {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
               </select>
-              {total !== undefined && <DicaDasVezes total={total} vezes={estado.vezes} opcoes={opcoesDeVezes} />}
+              {(() => {
+                const lida = forma === 'PARCELADO' ? lerEntrada(estado.entrada) : null
+                const base = forma === 'PARCELADO' ? (lida && 'valor' in lida ? lida.valor : 0) : total
+                return base !== undefined && <DicaDasVezes total={base} vezes={estado.vezes} opcoes={opcoesDeVezes} />
+              })()}
               <AvisoDaTaxa vezes={estado.vezes} bandeira={estado.bandeira} />
             </label>
           )}

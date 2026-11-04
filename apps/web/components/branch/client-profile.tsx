@@ -120,6 +120,13 @@ export interface ProfileTransaction {
   isCheckout?:   boolean
   /** Cartão de crédito em N vezes (2–12), pago na hora. */
   cartaoVezes?:  number | null
+  /**
+   * A forma pronta para a tela (`formaDoLancamento`): o meio pelo nome; a
+   * parcela do crediário sem meio, "Com a clínica" (D6). Ausente: o meio puro.
+   */
+  forma?:        string | null
+  /** A40: a venda de produto paga que não pontua (fidelidade ligada, produto sem pontos). */
+  semPontos?:    boolean
   /** O recebimento estornado (`notes = 'Estornada'`) — não é "Pago" (D6, 2026-10-28). */
   estornada?:    boolean
   /** A contra-transação do estorno (`category = 'Estorno'`). */
@@ -1134,13 +1141,19 @@ function FinanceiroTab({
                       </div>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      {t.paymentMethod && (
-                        <span style={{
+                      {(t.forma !== undefined ? t.forma : t.paymentMethod && rotuloDaForma(t.paymentMethod, t.cartaoVezes)) && (
+                        <span data-forma-do-lancamento style={{
                           fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 8px', borderRadius: 10,
                           background: 'var(--bg-app)', color: 'var(--text-muted)',
                           whiteSpace: 'nowrap',
                         }}>
-                          {rotuloDaForma(t.paymentMethod, t.cartaoVezes)}
+                          {t.forma !== undefined ? t.forma : rotuloDaForma(t.paymentMethod, t.cartaoVezes)}
+                        </span>
+                      )}
+                      {/* A40: por que a venda de produto não deu pontos (como a janela "Vender"). */}
+                      {t.semPontos && (
+                        <span data-sem-pontos style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
+                          Venda de produto não pontua
                         </span>
                       )}
                     </td>

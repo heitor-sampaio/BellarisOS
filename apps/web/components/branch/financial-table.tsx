@@ -87,10 +87,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
   // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
   // pessoa veria se a operação simplesmente não tivesse efeito ainda.
   // r3-f13-01: no cartão, a baixa pergunta a bandeira antes (opcional).
-  const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string; valor: number } | null>(null)
-  function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number) {
+  // D6: a receita SEM meio (a parcela do crediário) pergunta a forma na mesma janela.
+  const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string | null; valor: number } | null>(null)
+  function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number, forma?: string | null) {
     startTx(async () => {
-      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null)
+      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null)
       if (r?.error) toast.error(r.error)
       else { setNoCartao(null); router.refresh() }
     })
@@ -141,7 +142,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
     {noCartao && (
       <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
         valor={noCartao.valor}
-        aoConfirmar={(b, v) => handleMarkPaid(noCartao.id, b, v)} aoFechar={() => setNoCartao(null)} />
+        aoConfirmar={(b, v, f) => handleMarkPaid(noCartao.id, b, v, f)} aoFechar={() => setNoCartao(null)} />
     )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Filtros */}
@@ -364,8 +365,8 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                       <td data-label="" style={{ padding: '13px 16px' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {!tx.is_paid && !isReversed && canPay && (
-                            <button type="button" onClick={() => tx.type === 'INCOME' && temBandeira(tx.payment_method)
-                              ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method!, valor: Number(tx.amount) })
+                            <button type="button" onClick={() => tx.type === 'INCOME' && (temBandeira(tx.payment_method) || !tx.payment_method)
+                              ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method ?? null, valor: Number(tx.amount) })
                               : handleMarkPaid(tx.id)} title="Marcar como pago" style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
                               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,

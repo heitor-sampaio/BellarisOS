@@ -122,7 +122,13 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     (`points_per_real`) — também no modo "por procedimento", que o produto não
     tem os pontos do procedimento. A regra mora em
     `fidelidade_pontos_do_pagamento` (o lançamento com `product_sale_id`).
-    Prova: `e2e/vendas-produto.spec.ts`.
+    Prova: `e2e/vendas-produto.spec.ts`. **E diz por quê** (A40 da 6ª
+    simulação, 2026-11-04): com a fidelidade ligada e o produto sem pontuar,
+    o lançamento pago da venda diz "Venda de produto não pontua" na aba
+    Financeiro da ficha e no Financeiro do app (`vendaDeProdutoNaoPontua`,
+    `lib/fidelidade/leitura.ts`; `data-sem-pontos`), como a janela "Vender"
+    — a Paula e a Sofia acharam que os pontos do kit tinham sumido. Com a
+    fidelidade desligada, nada. Prova: `e2e/fidelidade-produto-nao-pontua.spec.ts`.
   - **Troca pelo portal** (`client_redeem`): o cliente troca pontos por
     recompensa em `/[slug]/cliente/fidelidade` (`actions/fidelidade-portal.ts`),
     com o saldo da unidade daquele portal quando a abrangência é por unidade.

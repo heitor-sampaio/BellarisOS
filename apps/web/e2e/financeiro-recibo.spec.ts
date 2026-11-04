@@ -142,3 +142,35 @@ test('a cliente baixa o recibo dela no app — e não o de outra cliente', async
     await expect(p.locator('[data-pagamento]', { hasText: `Parcela ${marca}` }).getByRole('link', { name: 'Recibo' })).toHaveCount(0)
   })
 })
+
+// A39 da 6ª simulação: o recibo, a confirmação do pagamento e o app diziam
+// "Crédito 5x" sem a bandeira que a recepção escolheu.
+test('A39: o recibo, a tela do atendimento pago e o app dizem a bandeira — "Crédito Visa 5x"', async ({ browser }) => {
+  const agora = new Date().toISOString()
+  const { data: ap, error: eAp } = await db().from('appointments').insert({
+    branch_id: rede.branchId, client_id: cliente.clientId, procedure_id: rede.procedureId, professional_id: rede.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 500, scheduled_at: agora, completed_at: agora,
+  }).select('id').single<{ id: string }>()
+  expect(eAp).toBeNull()
+  try {
+    const { data: tx, error } = await db().rpc('confirmar_pagamento_do_atendimento', {
+      p_agendamento: ap!.id, p_tenant: rede.tenantId, p_ator: null, p_ator_nome: 'e2e',
+      p_dados: { metodo: 'CREDIT_CARD', cartao_vezes: 5, cartao_bandeira: 'VISA', pontos: 0, desconto: 0, valor_final: 500 },
+    })
+    expect(error, 'pagar no Visa 5x').toBeNull()
+    await como(browser, caixa.estado, async p => {
+      const pdf = textoDoPdf(await (await p.request.get(`/api/recibos/${tx as string}`)).body())
+      expect(pdf).toContain('Crédito Visa 5x')
+      await p.goto(`/${slug}/agenda/${ap!.id}`)
+      await expect(p.getByText(/Pagamento confirmado — Crédito Visa 5x/)).toBeVisible()
+    })
+    await como(browser, cliente.estado, async p => {
+      await p.goto(`/${slug}/cliente/financeiro`)
+      await expect(p.getByText('Crédito Visa 5x')).toBeVisible()
+    })
+  } finally {
+    await db().from('financial_transactions').delete().eq('appointment_id', ap!.id)
+    await db().from('commission_lines').delete().eq('appointment_id', ap!.id)
+    await db().from('appointments').delete().eq('id', ap!.id)
+  }
+})

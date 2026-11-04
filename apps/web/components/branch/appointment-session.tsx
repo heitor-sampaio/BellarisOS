@@ -158,9 +158,10 @@ interface Props {
   canReassign:        boolean
   canPayment:         boolean
   isProfessional:     boolean
-  paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null } | null
+  /** A39: com a bandeira, "Crédito Visa 5x". */
+  paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null } | null
   /** O último recebimento ESTORNADO, quando não há outro vivo: a cobrança reabriu (D6, 2026-10-28). */
-  pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; motivo: string | null } | null
+  pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; motivo: string | null } | null
   /** Sessões livres de pacote da cliente, do mesmo procedimento: "Abater do pacote" (D9). */
   pacotesParaAbater?: PacoteParaAbater[]
   treatmentProcedures:   TreatmentProcedure[]
@@ -611,7 +612,9 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                 </select>
                 {metodoEscolhido === 'CREDIT_CARD' && (
                   <>
-                    <select name="cartao_vezes" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))} aria-label="Vezes no cartão">
+                    {/* A39: o campo das vezes tem rótulo, como os outros. */}
+                    <label className="field-label" htmlFor="pagamento-vezes" style={{ marginTop: 6 }}>Vezes no cartão</label>
+                    <select id="pagamento-vezes" name="cartao_vezes" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
                       {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
                     </select>
                     <DicaDasVezes total={resgate.restante} vezes={vezes} opcoes={opcoesDeVezes} />
@@ -696,7 +699,9 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
       plano.planId,
       forma === 'AVISTA'
         ? (metodo === 'CREDIT_CARD' && vezes > 1 ? { forma: 'AVISTA', metodo, vezes, ...comBandeira } : { forma: 'AVISTA', metodo, ...comBandeira })
-        : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString(), ...comBandeira },
+        // D5: a entrada no crédito também em N vezes na maquininha.
+        : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString(),
+            ...(metodo === 'CREDIT_CARD' && entrada > 0 && vezes > 1 ? { vezes } : {}), ...comBandeira },
       appointmentId,
       slug,
       envio.chave(),
@@ -775,13 +780,14 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                 </select>
               </div>
 
-              {forma === 'AVISTA' && metodo === 'CREDIT_CARD' && (
+              {metodo === 'CREDIT_CARD' && (forma === 'AVISTA' || entrada > 0) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label className="field-label" htmlFor="vezes-no-cartao">Vezes no cartão</label>
+                  {/* D5: na entrada + parcelas, as vezes são da ENTRADA (a maquininha). */}
+                  <label className="field-label" htmlFor="vezes-no-cartao">{forma === 'PARCELADO' ? 'Vezes no cartão (a entrada)' : 'Vezes no cartão'}</label>
                   <select id="vezes-no-cartao" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
                     {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                   </select>
-                  <DicaDasVezes total={plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
+                  <DicaDasVezes total={forma === 'PARCELADO' ? entrada : plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
                   <AvisoDaTaxa vezes={vezes} bandeira={bandeira} />
                 </div>
               )}
@@ -1993,7 +1999,7 @@ export function AppointmentSession({
                 </p>
                 {paymentTransaction ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span>Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes)} · {fmtBRL(paymentTransaction.amount)}</span>
+                    <span>Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes, { bandeira: paymentTransaction.cartaoBandeira })} · {fmtBRL(paymentTransaction.amount)}</span>
                     {/* r2-ven-13: o recibo do pagamento (PDF), para quem recebe. */}
                     {canPayment && (
                       <a href={`/api/recibos/${paymentTransaction.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar"
@@ -2025,7 +2031,7 @@ export function AppointmentSession({
                       // O estorno reabre a cobrança (D6, 2026-10-28): diz o que
                       // foi estornado, e o "Confirmar pagamento" volta a valer.
                       <p data-pagamento-estornado style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                        Pagamento estornado — {rotuloDaForma(pagamentoEstornado.paymentMethod, pagamentoEstornado.cartaoVezes)} · {fmtBRL(pagamentoEstornado.amount)}
+                        Pagamento estornado — {rotuloDaForma(pagamentoEstornado.paymentMethod, pagamentoEstornado.cartaoVezes, { bandeira: pagamentoEstornado.cartaoBandeira })} · {fmtBRL(pagamentoEstornado.amount)}
                         {pagamentoEstornado.motivo ? ` (${pagamentoEstornado.motivo})` : ''}. O atendimento voltou a receber.
                       </p>
                     )}

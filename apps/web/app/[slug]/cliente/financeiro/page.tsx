@@ -3,7 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { formatBRL } from '@estetica-os/utils'
-import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { formaDoLancamento } from '@/lib/financeiro/formas'
+import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 
 type TxRow = {
   id:             string
@@ -17,12 +18,17 @@ type TxRow = {
   procedure_name: string | null
   /** Estornado (`notes = 'Estornada'`): o dinheiro voltou à cliente (D6, 2026-10-28). */
   estornado:      boolean
+  /** A forma pronta: a parcela do crediário sem meio é "Com a clínica" (D6 da 6ª simulação). */
+  forma:          string | null
+  /** A40: a venda de produto paga que não pontua (fidelidade ligada, produto sem pontos). */
+  semPontos:      boolean
 }
 
 /** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
 type LancamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
-  is_paid: boolean; paid_at: string | null; created_at: string; notes: string | null
+  is_paid: boolean; paid_at: string | null; created_at: string; notes: string | null; parcela_numero: number | null
+  cartao_bandeira: string | null; product_sale_id: string | null
   appointments: { procedures: { name: string } | null } | null
 }
 
@@ -35,7 +41,7 @@ export default async function ClientFinancialPage() {
   const data = await ler(admin
     .from('financial_transactions')
     .select(`
-      id, description, amount, payment_method, cartao_vezes, is_paid, paid_at, created_at, notes,
+      id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, product_sale_id,
       appointments(procedures(name))
     `)
     // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
@@ -44,6 +50,9 @@ export default async function ClientFinancialPage() {
     .eq('type', 'INCOME')
     .order('created_at', { ascending: false }), 'carregar os lançamentos do cliente')
 
+  // A40: com a fidelidade ligada e o produto sem pontos, a venda diz por quê.
+  const fichaDaRede = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).single(), 'buscar o cliente')
+  const produtoNaoPontua = fichaDaRede ? await vendaDeProdutoNaoPontua(fichaDaRede.tenant_id as string, admin) : false
   const rows: TxRow[] = ((data ?? []) as unknown as LancamentoLido[]).map(r => ({
     id:             r.id,
     description:    r.description,
@@ -55,6 +64,8 @@ export default async function ClientFinancialPage() {
     created_at:     r.created_at,
     procedure_name: r.appointments?.procedures?.name ?? null,
     estornado:      r.notes === 'Estornada',
+    forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
+    semPontos:      produtoNaoPontua && !!r.product_sale_id && Boolean(r.is_paid) && r.notes !== 'Estornada',
   }))
 
   // O total é o LTV do cliente, do banco (pago, sem estorno) — a mesma conta
@@ -118,8 +129,11 @@ export default async function ClientFinancialPage() {
                 {r.paid_at
                   ? new Date(r.paid_at).toLocaleDateString('pt-BR')
                   : new Date(r.created_at).toLocaleDateString('pt-BR')}
-                {r.payment_method && ` · ${rotuloDaForma(r.payment_method, r.cartao_vezes)}`}
+                {r.forma && ` · ${r.forma}`}
               </p>
+              {r.semPontos && (
+                <p data-sem-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Venda de produto não pontua</p>
+              )}
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
               <p style={{

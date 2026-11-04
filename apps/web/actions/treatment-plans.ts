@@ -1425,7 +1425,9 @@ async function checkoutTreatmentPlanInterno(
   if (sessions.length === 0) return { error: 'Plano sem sessões cadastradas.' }
 
   const agora     = new Date().toISOString()
-  const descricao = 'Plano de tratamento — checkout novo paciente'
+  // A47 da 6ª simulação: a descrição chega à cliente (o app, o recibo): sem
+  // texto interno ("checkout novo paciente"). "Plano de tratamento — parcela 1/2".
+  const descricao = 'Plano de tratamento'
 
   // O motivo do desconto (fin-01) vai no PRIMEIRO lançamento do plano.
   let motivoDoDescontoAinda = motivoDoDesconto(entradaDoDesconto.data, doDesconto.reais)
@@ -1514,6 +1516,8 @@ async function checkoutTreatmentPlanInterno(
     const vezes   = Math.max(1, Math.min(pagamento.parcelas, 48))
 
     if (entrada > 0) {
+      // D5: a entrada no crédito também em N vezes na maquininha.
+      const vezesDaEntrada = vezesNoCartao(pagamento)
       const { data, error } = await lancar({
         amount:           entrada,
         payment_method:   pagamento.metodo,
@@ -1521,6 +1525,7 @@ async function checkoutTreatmentPlanInterno(
         paid_at:          agora,
         description:      `${descricao} — entrada`,
         notes:            'Entrada do plano de tratamento',
+        ...(vezesDaEntrada > 1 ? { cartao_vezes: vezesDaEntrada } : {}),
         ...(bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) ? { cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) } : {}),
       })
       if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
@@ -1532,9 +1537,11 @@ async function checkoutTreatmentPlanInterno(
     if (saldo > 0) {
       const grupo = crypto.randomUUID()
       for (const parcela of dividirEmParcelas(saldo, vezes, pagamento.primeiroVencimento)) {
+        // D6: o crediário da CLÍNICA nasce sem meio (escolhe-se ao receber) —
+        // não é o cartão da entrada.
         const { data, error } = await lancar({
           amount:         parcela.amount,
-          payment_method: pagamento.metodo,
+          payment_method: null,
           is_paid:        false,
           due_date:       parcela.due_date,
           description:    `${descricao} — ${rotuloDaParcela(parcela)}`,
@@ -1670,7 +1677,8 @@ async function checkoutTreatmentPlanInterno(
 export type RecebimentoDoPlano =
   /** `vezes`: o cartão de crédito em N vezes, pago na hora (2026-10-20). */
   | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string }
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string }
+  /** `metodo`, `vezes` e `bandeira` são da entrada (D5); as parcelas são da clínica, sem meio (D6). */
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number }
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1752,7 +1760,8 @@ async function receberDoPlanoInterno(
   // O app calcula; `plano_receber` grava tudo numa transação, com o plano
   // TRAVADO e o saldo conferido de novo (F11): duas chegadas ao mesmo tempo
   // liam os mesmos R$ 300, e cada uma gravava a sua entrada e as suas parcelas.
-  const descricao = 'Plano de tratamento — recebimento no check-in'
+  // A47: a descrição chega à cliente — sem texto interno.
+  const descricao = 'Plano de tratamento'
   let lancamentos: Record<string, unknown>[] = []
   if (recebimento.forma === 'PARCELADO') {
     // A entrada acima do que está em aberto é recusada, não cortada (ven-02).
@@ -1793,7 +1802,8 @@ async function receberDoPlanoInterno(
     p_esperado:    saldo.emAberto,
     p_forma:       recebimento.forma,
     p_metodo:      recebimento.metodo,
-    p_vezes:       recebimento.forma === 'AVISTA' ? vezesNoCartao(recebimento) : 1,
+    // D5: as vezes do que é pago agora no crédito — o à vista ou a entrada.
+    p_vezes:       vezesNoCartao(recebimento),
     p_lancamentos: lancamentos,
     p_ator:        ctx.internalUserId ?? 'sistema',
   })
@@ -1827,7 +1837,7 @@ async function receberDoPlanoInterno(
       description:     `Plano de tratamento recebido — R$ ${saldo.emAberto.toFixed(2).replace('.', ',')} — ${
         recebimento.forma === 'AVISTA'
           ? (vezesNoCartao(recebimento) > 1 ? rotuloDaForma(recebimento.metodo, vezesNoCartao(recebimento)) : `${rotuloDaForma(recebimento.metodo)} à vista`)
-          : `entrada + ${recebimento.parcelas}x em ${rotuloDaForma(recebimento.metodo)}`
+          : rotuloDoPagamento(recebimento)
       }`,
     }), 'registrar no histórico do agendamento')
   }

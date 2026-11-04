@@ -3,6 +3,7 @@ import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assinadosDoCliente } from '@/lib/documentos/leitura'
 import { ler } from '@/lib/db'
+import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 import { notasDaAvaliacao, type NotaNaTela } from '@/lib/avaliacao/notas'
@@ -34,6 +35,8 @@ export type PagamentoItem = {
   vencimento?:    string | null
   /** "Parcela 2 de 3" (A64). */
   parcela?:       string | null
+  /** A forma pronta (`formaDoLancamento`): a parcela do crediário sem meio é "Com a clínica" (D6). */
+  forma?:         string | null
   /** O atendimento avulso concluído e não pago (A64): não é um lançamento, é `atendimentos_a_receber`. */
   aPagarNaClinica?: boolean
   /** Estornado: o dinheiro voltou — não é "Pago" nem tem recibo (como o Financeiro do app). */
@@ -61,7 +64,7 @@ type AtendimentoLido = {
   procedures: { name: string } | null; professionals: { name: string } | null
 }
 type PagamentoLido = {
-  id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
+  id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
   is_paid: boolean; paid_at: string | null; notes: string | null
   due_date: string | null; data_de_referencia: string | null; parcela_numero: number | null; parcela_total: number | null
   appointments: { procedures: { name: string } | null } | null
@@ -88,7 +91,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     // Pagamentos = transações financeiras ligadas ao cliente
     ler(admin.from('financial_transactions')
       .select(`
-        id, description, amount, payment_method, cartao_vezes, is_paid, paid_at, notes,
+        id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, notes,
         due_date, data_de_referencia, parcela_numero, parcela_total,
         appointments(procedures(name))
       `)
@@ -144,6 +147,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     // A64: o vencimento e a parcela — "Pendente" sozinho não dizia quando.
     vencimento:     r.is_paid ? null : (r.due_date ?? r.data_de_referencia ?? null),
     parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
+    forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
   }))
   // A64: o atendimento avulso concluído e não pago (a conta de
   // `atendimentos_a_receber`, a mesma do Fechamento e da ficha) — não tinha

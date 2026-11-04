@@ -199,7 +199,8 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                     : p.aPagarNaClinica
                       ? 'A pagar na clínica'
                       : p.vencimento ? `vence em ${formatDia(p.vencimento)}` : 'Pendente'}
-                  {p.payment_method && !p.aPagarNaClinica && ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}`}
+                  {/* D6: a parcela do crediário sem meio diz "Com a clínica" (a forma pronta da página). */}
+                  {!p.aPagarNaClinica && (p.forma !== undefined ? (p.forma ? ` · ${p.forma}` : '') : p.payment_method ? ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}` : '')}
                 </p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>

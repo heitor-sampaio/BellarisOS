@@ -46,7 +46,7 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
   const admin = createAdminClient()
   const [tx, unidade, rede, cliente] = await Promise.all([
     ler(admin.from('financial_transactions')
-      .select('id, description, amount, payment_method, cartao_vezes, paid_at, sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id')
+      .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, paid_at, sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id')
       .eq('id', l.id).single(), 'ler o lançamento do recibo'),
     ler(admin.from('branches').select('name, document, address, city, state, phone').eq('id', l.branchId).single(), 'ler a unidade do recibo'),
     ler(admin.from('tenants').select('name, document').eq('id', l.tenantId).single(), 'ler a clínica do recibo'),
@@ -67,7 +67,8 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
     ...(doc ? [['Documento', doc] as [string, string]] : []),
     ['A quantia de', formatBRL(Number(tx.amount))],
     ['Referente a', String(tx.description ?? '—')],
-    ['Forma de pagamento', tx.payment_method ? rotuloDaForma(String(tx.payment_method), (tx.cartao_vezes as number | null) ?? null) : 'Sem forma (pontos)'],
+    // A39: com a bandeira ("Crédito Visa 5x").
+    ['Forma de pagamento', tx.payment_method ? rotuloDaForma(String(tx.payment_method), (tx.cartao_vezes as number | null) ?? null, { bandeira: (tx.cartao_bandeira as string | null) ?? null }) : 'Sem forma (pontos)'],
     ['Pago em', tx.paid_at ? dataHora(String(tx.paid_at)) : '—'],
     ...(descontos[String(tx.id)] ? [['Desconto', descontos[String(tx.id)]!.replace(/^Desconto ?·? ?/, '')] as [string, string]] : []),
   ]

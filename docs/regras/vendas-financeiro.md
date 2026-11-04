@@ -691,6 +691,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       máximo a parcela inteira) e a estimativa do Fechamento segue só
       informativa. Prova: `e2e/financeiro-cartao-por-bandeira.spec.ts`
       ("F16-3"), `tests/cartao-por-bandeira.test.ts`, `tests/comissoes-config.test.ts`.
+    - **A bandeira aparece onde a forma aparece** (A39 da 6ª simulação,
+      2026-11-04): o recibo, o "Pagamento confirmado" da tela do atendimento,
+      a ficha e o app (Financeiro e Histórico → Pagamentos) dizem "Crédito
+      Visa 5x" (`rotuloDaForma(…, { bandeira })`; o nome da bandeira é o de
+      `BANDEIRAS`, `tests/financeiro-formas.test.ts` trava). No "Confirmar
+      pagamento", o campo das vezes tem o rótulo "Vezes no cartão", e os
+      rótulos `.field-label` (a classe que os formulários usavam e não
+      existia) têm um tamanho só. Prova: `e2e/financeiro-recibo.spec.ts`
+      ("A39").
     - **O pagamento no cartão diz a bandeira, opcional** ("Bandeira (opcional)",
       `CampoDaBandeira`): o recebimento do atendimento e do plano no check-in,
       o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —
@@ -795,6 +804,44 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
   check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
   Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.
+  - **O crediário NÃO é cartão** (D6 da 6ª simulação, 2026-11-04): as
+    parcelas do saldo, que a cliente paga à CLÍNICA, nascem SEM meio de
+    pagamento (`payment_method` nulo) — o meio se escolhe ao receber cada uma.
+    Nasciam com o meio da entrada (`CREDIT_CARD`), e o contrato dizia "+ 2
+    parcelas de R$ 1.700,00 no cartão de crédito". O meio, as vezes e a
+    bandeira do "entrada + parcelas" são da ENTRADA. O contrato
+    (`pagamento.forma`) diz "entrada de R$ 1.000,00 no cartão de crédito em 3x
+    + 2 parcelas de R$ 1.700,00 com a clínica, a primeira em 04/12/2026"
+    (`pagamento.metodo` é o da entrada; sem entrada, vazio), a tela e a linha
+    do tempo dizem o mesmo (`frasesDoPagamento`, `rotuloDoPagamento`: "entrada
+    de R$ 1.000,00 em Crédito 3x + 2x com a clínica"), e a ficha e o app
+    mostram a parcela sem meio como "Com a clínica" (`formaDoLancamento`,
+    `lib/financeiro/formas.ts`). O "Pagar" do Financeiro (os dois portais) de
+    uma receita sem meio abre "Receber", com "Forma de pagamento" vazia e
+    obrigatória — e, no cartão, a bandeira e as vezes (`ReceberNoCartao`,
+    `markTransactionPaid(…, forma)`): era dar baixa sem forma nenhuma. As
+    portas: `lancamentosDoPagamento` (pacote, pré-pago, produto), o checkout
+    do plano e `plano_receber` (migration `20261104002005`). As parcelas já
+    gravadas com meio (17 nas redes [sim] e de teste, em 2026-11-04) ficaram
+    como estão. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`,
+    `tests/checkout-crediario-da-clinica.test.ts`.
+  - **A ENTRADA no crédito também tem as vezes** (D5 da 6ª simulação): no
+    "Entrada + parcelas" com a entrada no cartão de crédito, "Vezes no cartão
+    (a entrada)" — no checkout do plano, no `CamposDoPagamento` (pacote,
+    pré-pago, produto, contrato) e no recebimento do plano no check-in —, com
+    o limite da clínica, a dica do valor e o aviso da taxa, como o à vista. A
+    entrada é UM lançamento pago com `cartao_vezes`, e a operadora a deposita
+    em N (`recebiveis_do_cartao`, com a taxa daquelas vezes e da bandeira).
+    `PagamentoDoPlano` PARCELADO ganhou `vezes`; `vezesNoCartao` devolve as
+    da entrada (o servidor recusa acima do limite em todas as portas, e o
+    atendimento de hoje que entra junto no checkout vai nas mesmas vezes); o
+    retrato do contrato as guarda só quando passam de 1. Prova:
+    `e2e/checkout-entrada-no-cartao.spec.ts`.
+  - **A descrição não leva texto interno** (A47 da 6ª simulação): o plano
+    grava "Plano de tratamento — entrada" e "Plano de tratamento — parcela
+    1/2" (era "— checkout novo paciente —" e "— recebimento no check-in —",
+    que chegavam ao app e ao recibo da cliente; os de antes foram trocados na
+    migration `20261104002006`).
   - **A clínica diz até quantas vezes** (D-15, decisão do Heitor,
     2026-10-29: "A clínica configura 'parcela até Nx'. O padrão é o maior
     número de parcelas com taxa cadastrada."): Configurações → Comissões →
@@ -1093,6 +1140,8 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
 ❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)
 ❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade_devolvendo
+❌ Gravar a parcela do crediário da clínica com o meio da entrada (é sem meio, escolhido ao receber — D6), ou dizer no contrato que ela é "no cartão de crédito"
+❌ Gravar na descrição de um lançamento texto interno da tela ("checkout novo paciente") — ela chega à cliente (A47)
 ❌ Registrar o que volta de um cancelamento como despesa "Devolução" a pagar — é estorno ou crédito na clínica, a escolha da recepção (D1, 6ª simulação)
 ❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou
 ❌ Gravar due_date como "AAAA-MM-DD" cru (meia-noite UTC = 21h da VÉSPERA em Brasília) — use vencimentoDoDia (lib/financeiro/lancamento.ts)

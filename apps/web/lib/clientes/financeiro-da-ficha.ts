@@ -2,6 +2,8 @@ import type { TenantContext } from '@estetica-os/types'
 import { can, isOwnScope, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
+import { formaDoLancamento } from '@/lib/financeiro/formas'
+import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
 import type { ProfileTransaction, ProfileInternalCredit } from '@/components/branch/client-profile'
 
@@ -32,8 +34,9 @@ const VAZIO: ListaAReceber = { itens: [], total: { n: 0, valor: 0 } }
 
 type Linha = {
   id: string; type: string; description: string; amount: number | string; payment_method: string | null
-  cartao_vezes: number | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null
-  notes: string | null; category: string | null; appointment_id: string | null
+  cartao_vezes: number | null; cartao_bandeira: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null
+  notes: string | null; category: string | null; appointment_id: string | null; parcela_numero: number | null
+  product_sale_id: string | null
   appointment: { scheduled_at: string; professional_id: string | null; procedures: { name: string } | null } | null
 }
 
@@ -49,7 +52,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   const [linhas, totaisRaw, aReceber, creditos] = await Promise.all([
     lerTodas<unknown>((de, ate) => {
       let q = admin.from('financial_transactions')
-        .select(`id, type, description, amount, payment_method, cartao_vezes, is_paid, paid_at, created_at, due_date, notes, category, appointment_id,
+        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, product_sale_id,
           branches!inner(tenant_id),
           appointment:appointments!financial_transactions_appointment_id_fkey${meu ? '!inner' : ''}(scheduled_at, professional_id, procedures(name))`)
         .eq('client_id', clientId).eq('branches.tenant_id', ctx.tenantId!)
@@ -65,12 +68,19 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   ])
 
   const t = ((totaisRaw ?? []) as { pago: number | string; a_receber: number | string; credito: number | string | null }[])[0]
+  // A40 da 6ª simulação: com a fidelidade ligada e a venda de produto sem
+  // pontuar (a regra de padrão, D4), o lançamento da venda diz por quê — a
+  // ficha mostrava o pago e nada sobre os pontos que não vieram.
+  const produtoNaoPontua = await vendaDeProdutoNaoPontua(ctx.tenantId!, admin)
   const transactions: ProfileTransaction[] = (linhas as Linha[]).map(l => ({
     id:            l.id,
     description:   l.description,
     amount:        Number(l.amount),
     paymentMethod: l.payment_method,
     cartaoVezes:   l.cartao_vezes,
+    semPontos:     produtoNaoPontua && !!l.product_sale_id && l.is_paid && l.type === 'INCOME' && l.notes !== 'Estornada',
+    // D6: a parcela do crediário sem meio diz "Com a clínica".
+    forma:         formaDoLancamento({ metodo: l.payment_method, vezes: l.cartao_vezes, bandeira: l.cartao_bandeira, pago: l.is_paid, parcela: l.parcela_numero }),
     isPaid:        l.is_paid,
     paidAt:        l.paid_at,
     createdAt:     l.created_at,

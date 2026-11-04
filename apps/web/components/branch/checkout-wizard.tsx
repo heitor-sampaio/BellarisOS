@@ -298,6 +298,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         entrada:            entradaNum,
         parcelas,
         primeiroVencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
+        // D5: as vezes da ENTRADA no crédito (a maquininha).
+        ...(paymentMethod === 'CREDIT_CARD' && entradaNum > 0 && vezesCartao > 1 ? { vezes: vezesCartao } : {}),
         ...comBandeira,
       }
     }
@@ -618,8 +620,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 )}
               </div>
               <div>
-                <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
-                <select value={parcelas} onChange={e => setParcelas(Number(e.target.value))} className="field" style={{ marginTop: 5 }}>
+                <label htmlFor="checkout-parcelas-do-saldo" style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
+                <select id="checkout-parcelas-do-saldo" value={parcelas} onChange={e => setParcelas(Number(e.target.value))} className="field" style={{ marginTop: 5 }}>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
                     <option key={n} value={n}>{n}x</option>
                   ))}
@@ -681,17 +683,18 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             </button>
           ))}
         </div>
-        {formaPgto === 'AVISTA' && paymentMethod === 'CREDIT_CARD' && (
+        {/* D5: na entrada + parcelas, a ENTRADA no crédito também em N vezes. */}
+        {(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && paymentMethod === 'CREDIT_CARD' && (
           <div style={{ marginBottom: 16, maxWidth: 220 }}>
             <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
-              Vezes no cartão
+              {formaPgto === 'PARCELADO' ? 'Vezes no cartão (a entrada)' : 'Vezes no cartão'}
               <select value={vezesCartao} onChange={e => setVezesCartao(Number(e.target.value))} className="field" style={{ marginTop: 5 }} aria-label="Vezes no cartão">
                 {opcoesDeVezes.map(n => (
                   <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>
                 ))}
               </select>
             </label>
-            <DicaDasVezes total={liquido + (recebeHoje ? precoDeHoje : 0)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
+            <DicaDasVezes total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
             <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} />
           </div>
         )}

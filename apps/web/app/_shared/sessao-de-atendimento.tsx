@@ -151,7 +151,7 @@ export async function SessaoDeAtendimento({
       .from('financial_transactions')
       // Todos os lançamentos do atendimento: o estornado fica no histórico e o
       // recebimento de depois é outro lançamento (D6 da simulação de 2026-10-28).
-      .select('id, payment_method, amount, cartao_vezes, is_paid, notes, estorno_motivo, created_at')
+      .select('id, payment_method, amount, cartao_vezes, cartao_bandeira, is_paid, notes, estorno_motivo, created_at')
       .eq('appointment_id', id)
       .eq('type', 'INCOME')
       .order('created_at', { ascending: false }), 'carregar o pagamento do atendimento'),
@@ -447,17 +447,17 @@ export async function SessaoDeAtendimento({
   // recusado depois de a pessoa digitar tudo.
   const canEditRecords = canManage && can(ctx, 'medical_records', 'MANAGE')
 
-  type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null; is_paid: boolean; notes: string | null; estorno_motivo: string | null }
+  type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null; cartao_bandeira: string | null; is_paid: boolean; notes: string | null; estorno_motivo: string | null }
   const lancamentos = (paymentRaw ?? []) as RawPayment[]
   // "Pagamento confirmado" é o recebimento PAGO e vivo. O estornado reabre a
   // cobrança (D6, 2026-10-28): a tela diz que foi estornado e oferece receber.
   const pago      = lancamentos.find(l => l.is_paid && l.notes !== 'Estornada') ?? null
   const estornado = pago ? null : (lancamentos.find(l => l.notes === 'Estornada') ?? null)
   const paymentTransaction = pago
-    ? { id: pago.id, paymentMethod: pago.payment_method, amount: Number(pago.amount), cartaoVezes: pago.cartao_vezes }
+    ? { id: pago.id, paymentMethod: pago.payment_method, amount: Number(pago.amount), cartaoVezes: pago.cartao_vezes, cartaoBandeira: pago.cartao_bandeira }
     : null
   const pagamentoEstornado = estornado
-    ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, motivo: estornado.estorno_motivo }
+    ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, cartaoBandeira: estornado.cartao_bandeira, motivo: estornado.estorno_motivo }
     : null
 
   // "Abater do pacote" (D9, 2026-10-28): o avulso concluído e a receber, com

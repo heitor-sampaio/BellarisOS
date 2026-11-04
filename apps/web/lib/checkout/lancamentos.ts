@@ -53,10 +53,12 @@ export const EntradaDoPagamento = z.discriminatedUnion('forma', [
   z.object({
     forma: z.literal('PARCELADO'), metodo: z.enum(METODOS),
     entrada: z.number().min(0), parcelas: z.number().int().min(1).max(12), primeiroVencimento: data, bandeira: BANDEIRA,
+    /** D5: as vezes na maquininha da ENTRADA no crédito. */
+    vezes: z.number().int().min(1).max(12).optional(),
   }),
   z.object({ forma: z.literal('A_RECEBER'), metodo: z.enum(METODOS).nullable(), vencimento: data.nullable() }),
 ]).refine(
-  p => p.forma !== 'AVISTA' || !p.vezes || p.vezes === 1 || p.metodo === 'CREDIT_CARD',
+  p => p.forma === 'A_RECEBER' || !p.vezes || p.vezes === 1 || p.metodo === 'CREDIT_CARD',
   'Parcelar na maquininha só no cartão de crédito.',
 )
 
@@ -87,15 +89,22 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
   const saldo = centavos(valor - entrada)
   const saida: Lancamento[] = []
   if (entrada > 0) {
-    saida.push({ amount: entrada, payment_method: p.metodo, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}`, sufixo: 'entrada', ...comBandeira })
+    // D5: a entrada no crédito também em N vezes na maquininha (pago agora).
+    const vezes = vezesNoCartao(p)
+    saida.push({
+      amount: entrada, payment_method: p.metodo, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}`, sufixo: 'entrada',
+      ...(vezes > 1 ? { cartao_vezes: vezes } : {}), ...comBandeira,
+    })
   }
   if (saldo > 0) {
     // Cada parcela, um lançamento com o seu vencimento — e não o saldo inteiro
-    // num lançamento só, que o financeiro mostrava no mês da venda.
+    // num lançamento só, que o financeiro mostrava no mês da venda. D6: é o
+    // crediário da CLÍNICA, sem meio — o meio se escolhe ao receber (não é
+    // o cartão da entrada).
     const grupo = crypto.randomUUID()
     for (const parcela of dividirEmParcelas(saldo, Math.min(12, p.parcelas), p.primeiroVencimento)) {
       saida.push({
-        amount: parcela.amount, payment_method: p.metodo, is_paid: false, due_date: parcela.due_date,
+        amount: parcela.amount, payment_method: null, is_paid: false, due_date: parcela.due_date,
         notes: `${rotuloDaParcela(parcela)} — ${rotulo}`, sufixo: rotuloDaParcela(parcela),
         parcela_numero: parcela.numero, parcela_total: parcela.total, parcela_grupo: grupo,
       })

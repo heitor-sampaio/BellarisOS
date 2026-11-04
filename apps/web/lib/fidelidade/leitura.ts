@@ -193,3 +193,14 @@ export async function extratoDoCliente(
   }))
   return { linhas: linhas.slice(0, limite), temMais: linhas.length > limite }
 }
+
+/**
+ * A venda de produto NÃO pontua nesta rede, com a fidelidade ligada (A40 da 6ª
+ * simulação): é o que a ficha e o app dizem no lançamento da venda — "Venda de
+ * produto não pontua", como a janela "Vender". Com a fidelidade desligada,
+ * falso: nenhum sinal de pontos aparece.
+ */
+export async function vendaDeProdutoNaoPontua(tenantId: string, admin: Admin = createAdminClient()): Promise<boolean> {
+  const cfg = await configDaRede(tenantId, admin)
+  return cfg.enabled && !cfg.pontua_venda_de_produto
+}

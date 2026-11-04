@@ -235,10 +235,11 @@ export function AdminFinancialView({
   // `{ error }`, e engolir isso deixava a tela dar um refresh e mostrar a linha
   // exatamente como estava — indistinguível de "ainda não atualizou".
   // r3-f13-01: no cartão, a baixa pergunta a bandeira antes (opcional).
-  const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string; valor: number } | null>(null)
-  function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number) {
+  // D6: a receita SEM meio (a parcela do crediário) pergunta a forma na mesma janela.
+  const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string | null; valor: number } | null>(null)
+  function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null) {
     startT(async () => {
-      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null)
+      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null)
       if (r?.error) toast.error(r.error)
       else { setNoCartao(null); router.refresh() }
     })
@@ -315,7 +316,7 @@ export function AdminFinancialView({
       {noCartao && (
         <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
           valor={noCartao.valor}
-          aoConfirmar={(b, v) => marcarPago(noCartao.id, noCartao.slug, b, v)} aoFechar={() => setNoCartao(null)} />
+          aoConfirmar={(b, v, f) => marcarPago(noCartao.id, noCartao.slug, b, v, f)} aoFechar={() => setNoCartao(null)} />
       )}
 
       {/* Header: título (esquerda) + seletores e botão (direita) */}
@@ -666,8 +667,8 @@ export function AdminFinancialView({
                     <td data-label="" style={{ padding: '11px 16px' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         {!t.is_paid && !estornada && canPay && (
-                          <button type="button" onClick={() => t.type === 'INCOME' && temBandeira(t.payment_method)
-                            ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method!, valor: Number(t.amount) })
+                          <button type="button" onClick={() => t.type === 'INCOME' && (temBandeira(t.payment_method) || !t.payment_method)
+                            ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount) })
                             : marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,
                             fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,

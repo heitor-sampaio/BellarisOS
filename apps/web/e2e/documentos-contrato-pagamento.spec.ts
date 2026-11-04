@@ -105,13 +105,14 @@ test.describe.serial('documentos: pagamento no contrato do procedimento', () => 
       await form.getByLabel('Parcelas').selectOption('3')
       await form.getByLabel('Vencimento').fill('2026-11-10')
       await form.getByRole('button', { name: 'Salvar pagamento' }).click()
-      await expect(linha.getByText(/Pagamento: Entrada de R\$\s40,00 \+ 3x no cartão de crédito, a primeira em 10\/11\/2026/)).toBeVisible()
+      // D6 (6ª simulação): o cartão é da entrada; as parcelas, da clínica.
+      await expect(linha.getByText(/Pagamento: Entrada de R\$\s40,00 no cartão de crédito \+ 3x com a clínica, a primeira em 10\/11\/2026/)).toBeVisible()
       await expect(linha.getByRole('link', { name: 'Colher assinatura' })).toBeVisible()
     })
     const d = await docDoContrato()
     expect(d.status).toBe('PENDENTE')
     expect(d.payment_snapshot).toEqual({ forma: 'PARCELADO', metodo: 'CREDIT_CARD', entrada: 40, parcelas: 3, primeiroVencimento: '2026-11-10' })
-    expect(d.content as string).toMatch(/Valor de R\$\s100,00, pago assim: entrada de R\$\s40,00 \+ 3 parcelas de R\$\s20,00 no cartão de crédito, a primeira em 10\/11\/2026\./)
+    expect(d.content as string).toMatch(/Valor de R\$\s100,00, pago assim: entrada de R\$\s40,00 no cartão de crédito \+ 3 parcelas de R\$\s20,00 com a clínica, a primeira em 10\/11\/2026\./)
   })
 
   test('trocar antes de assinar monta o contrato de novo; a recepção recebe com o meio combinado', async ({ browser }) => {

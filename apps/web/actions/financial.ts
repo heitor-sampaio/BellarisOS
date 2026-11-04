@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
-import { lancarCore, marcarPagoCore } from '@/lib/financeiro/lancamento'
+import { lancarCore, marcarPagoCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 import { logHistory } from '@/lib/appointments/avisos'
 
@@ -157,15 +157,23 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
   }
 }
 
-export async function markTransactionPaid(transactionId: string, slug: string, bandeira?: string | null, vezes?: number | null) {
+export async function markTransactionPaid(
+  transactionId: string, slug: string, bandeira?: string | null, vezes?: number | null,
+  /**
+   * D6 da 6ª simulação: a forma, para o lançamento que não tem meio (a parcela
+   * do crediário da clínica nasce sem), escolhida na baixa.
+   */
+  forma?: string | null,
+) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'cashier', 'MANAGE')
+    if (forma != null && !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma)) return { error: 'Forma de pagamento inválida.' }
 
     // O núcleo (lib/financeiro/lancamento.ts) é o mesmo do Copilot: confere a
     // rede e a unidade ao alcance antes de escrever. A bandeira (r3-f13-01)
     // só vale no cartão; as vezes (F17-5), só no crédito.
-    const r = await marcarPagoCore(createAdminClient(), ctx, transactionId, null, bandeira ?? null, vezes ?? null)
+    const r = await marcarPagoCore(createAdminClient(), ctx, transactionId, forma ?? null, bandeira ?? null, vezes ?? null)
     if ('error' in r) return { error: r.error }
 
     // Os dois portais operam o mesmo caixa: quem abre pela rede precisa ver o

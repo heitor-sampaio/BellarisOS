@@ -19,8 +19,13 @@ export type PagamentoDoPlano =
    * própria clínica, cada parcela a receber. 1 (ou ausente) é o à vista de sempre.
    */
   | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string }
-  /** `bandeira` (r3-f13-01): a da entrada paga agora no cartão. */
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string }
+  /**
+   * `metodo`, `vezes` e `bandeira` são da ENTRADA, paga agora (D5 da 6ª
+   * simulação: a entrada no crédito também em N vezes na maquininha). As
+   * parcelas do saldo são o CREDIÁRIO da clínica: nascem sem meio, que se
+   * escolhe ao receber (D6 — não são cartão).
+   */
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number }
   /** Vencimento opcional: "a receber" sem data combinada é válido. */
   | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string | null }
 
@@ -32,10 +37,11 @@ export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
   if (!p)                      return 'em aberto, a receber no atendimento'
   if (p.forma === 'AVISTA')    return vezesNoCartao(p) > 1 ? rotuloDaForma(p.metodo, vezesNoCartao(p)) : `${rotuloDaForma(p.metodo)} à vista`
   if (p.forma === 'A_RECEBER') return 'a receber'
+  // D6: as parcelas são com a CLÍNICA; o meio é só o da entrada.
   const entrada = p.entrada > 0
-    ? `entrada de R$ ${p.entrada.toFixed(2).replace('.', ',')} + `
+    ? `entrada de ${formatBRL(p.entrada).replace(/\s/g, ' ')} em ${rotuloDaForma(p.metodo, vezesNoCartao(p))} + `
     : ''
-  return `${entrada}${p.parcelas}x em ${rotuloDaForma(p.metodo)}`
+  return `${entrada}${p.parcelas}x com a clínica`
 }
 
 const METODO: Record<string, string> = {
@@ -49,10 +55,22 @@ const metodo = (m: string | null | undefined) => (m ? METODO[m] ?? `em ${m}` : n
 
 const centavos = (v: number) => Math.round(v * 100) / 100
 
-/** As vezes do cartão de crédito à vista; 1 em qualquer outro caso. */
+/**
+ * As vezes na maquininha do que é pago AGORA no cartão de crédito: o à vista,
+ * ou a entrada do "entrada + parcelas" (D5); 1 em qualquer outro caso.
+ */
 export function vezesNoCartao(p: PagamentoDoPlano | null | undefined): number {
-  if (!p || p.forma !== 'AVISTA' || p.metodo !== 'CREDIT_CARD') return 1
+  if (!p || p.metodo !== 'CREDIT_CARD') return 1
+  if (p.forma === 'PARCELADO' && !(p.entrada > 0)) return 1
+  if (p.forma !== 'AVISTA' && p.forma !== 'PARCELADO') return 1
   return Math.max(1, Math.min(12, Math.round(Number(p.vezes) || 1)))
+}
+
+/** "no cartão de crédito em 3x", "no Pix" — o meio da entrada (D5). */
+function meioDaEntrada(p: PagamentoDoPlano): string | null {
+  const m = metodo(p.metodo)
+  const vezes = vezesNoCartao(p)
+  return m && vezes > 1 ? `${m} em ${vezes}x` : m
 }
 
 /** Para a TELA: o combinado numa frase curta, com o meio de pagamento por extenso. */
@@ -65,8 +83,9 @@ function fraseSemDesconto(p: PagamentoDoPlano | null): string {
   if (!p) return 'No atendimento'
   if (p.forma === 'AVISTA') return vezesNoCartao(p) > 1 ? `No cartão de crédito em ${vezesNoCartao(p)}x` : `À vista, ${metodo(p.metodo)}`
   if (p.forma === 'A_RECEBER') return `A receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
-  const entrada = p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} + ` : ''
-  return `${entrada}${p.parcelas}x ${metodo(p.metodo)}, a primeira em ${formatDate(p.primeiroVencimento)}`.replace(/^./, c => c.toUpperCase())
+  // D6: as parcelas são o crediário da clínica; o meio é o da entrada.
+  const entrada = p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} ${meioDaEntrada(p)} + ` : ''
+  return `${entrada}${p.parcelas}x com a clínica, a primeira em ${formatDate(p.primeiroVencimento)}`.replace(/^./, c => c.toUpperCase())
 }
 
 /**
@@ -119,14 +138,16 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
   }
   const saldo = centavos(total - p.entrada)
   const parcela = p.parcelas > 0 ? centavos(saldo / p.parcelas) : saldo
-  const parcelas = `${p.parcelas} parcela${p.parcelas > 1 ? 's' : ''} de ${formatBRL(parcela)} ${metodo(p.metodo)}, a primeira em ${formatDate(p.primeiroVencimento)}`
+  // D6: o saldo é o crediário da CLÍNICA — não vai "no cartão de crédito".
+  const parcelas = `${p.parcelas} parcela${p.parcelas > 1 ? 's' : ''} de ${formatBRL(parcela)} com a clínica, a primeira em ${formatDate(p.primeiroVencimento)}`
   return {
-    'pagamento.metodo':              metodo(p.metodo),
+    // O meio é o da entrada (sem entrada, nenhum).
+    'pagamento.metodo':              p.entrada > 0 ? meioDaEntrada(p) : null,
     'pagamento.entrada':             p.entrada > 0 ? formatBRL(p.entrada) : null,
     'pagamento.parcelas':            String(p.parcelas),
     'pagamento.valor_parcela':       formatBRL(parcela),
     'pagamento.primeiro_vencimento': formatDate(p.primeiroVencimento),
-    'pagamento.forma':               p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} + ${parcelas}` : parcelas,
+    'pagamento.forma':               p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} ${meioDaEntrada(p)} + ${parcelas}` : parcelas,
   }
 }
 
@@ -154,6 +175,8 @@ function normalizadoSemDesconto(p: PagamentoDoPlano | null): Record<string, stri
   return {
     forma: 'PARCELADO', metodo: p.metodo, entrada: centavos(p.entrada),
     parcelas: p.parcelas, primeiroVencimento: dia(p.primeiroVencimento),
+    // D5: as vezes da entrada só entram quando passam de 1 (o retrato de antes segue igual).
+    ...(vezesNoCartao(p) > 1 ? { vezes: vezesNoCartao(p) } : {}),
   }
 }
 
@@ -179,6 +202,7 @@ export function pagamentoDoRetrato(retrato: unknown): PagamentoDoPlano | null {
     case 'PARCELADO': return {
       forma: 'PARCELADO', metodo: String(r.metodo), entrada: Number(r.entrada) || 0,
       parcelas: Number(r.parcelas) || 1, primeiroVencimento: dia(r.primeiroVencimento),
+      ...(Number(r.vezes) > 1 ? { vezes: Number(r.vezes) } : {}),
     }
     default:          return null
   }

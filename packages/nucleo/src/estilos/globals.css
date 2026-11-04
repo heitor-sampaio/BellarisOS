@@ -367,6 +367,16 @@
   .field:focus { border-color: var(--brand); }
   .field::placeholder { color: var(--text-faint); }
 
+  /* O rótulo de um campo (A39 da 6ª simulação): a classe era usada nos
+     formulários e não existia — "Bandeira (opcional)" e "Forma de pagamento"
+     saíam no tamanho do corpo, maiores que os rótulos em volta. */
+  .field-label {
+    display: block;
+    font-size: var(--text-xs-sz);
+    font-weight: var(--weight-bold);
+    color: var(--text-muted);
+  }
+
   /* Modal (<dialog> nativo) — estilos base para todos os modais */
   dialog.modal {
     position: fixed;

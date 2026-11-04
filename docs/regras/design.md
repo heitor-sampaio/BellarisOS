@@ -137,6 +137,10 @@ Princípios inegociáveis:
   com `htmlFor`/`id`. Rótulo solto não chega ao leitor de tela nem ao clique.
   Grupo de botões/opções não vai dentro de `<label>` (o clique apertaria o
   primeiro): `role="group"` com `aria-label`/`aria-labelledby`.
+- **O rótulo do campo é `.field-label`** (A39 da 6ª simulação, 2026-11-04):
+  `--text-xs-sz`, bold, `--text-muted`, em bloco — a classe era usada nos
+  formulários e não existia no CSS, e "Bandeira (opcional)" saía maior que os
+  rótulos em volta. Rótulo novo usa a classe, não um tamanho escrito à mão.
 - **A validação do navegador fala português** (`ValidacaoEmPortugues`, no
   layout raiz): o navegador escreve na língua DELE.
 - **Telefone com máscara enquanto se digita**: `maskPhoneDigitando`

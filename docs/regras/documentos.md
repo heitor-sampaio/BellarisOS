@@ -176,6 +176,14 @@ DEVLOG ("Termos e contratos").
     não muda.
   - O recebimento na recepção já vem com o meio combinado
     (`pagamentoCombinadoDoAtendimento`) — orienta, não trava.
+  - **No "entrada + parcelas", o meio é da ENTRADA** (D5/D6 da 6ª simulação,
+    2026-11-04): `pagamento.forma` diz "entrada de R$ 1.000,00 no cartão de
+    crédito em 3x + 2 parcelas de R$ 1.700,00 com a clínica, a primeira em
+    04/12/2026" — as parcelas são o crediário da clínica, não o cartão (dizia
+    "+ 2 parcelas … no cartão de crédito"). `pagamento.metodo` é o meio da
+    entrada (sem entrada, vazio). O retrato guarda as vezes da entrada quando
+    passam de 1. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`,
+    `e2e/documentos-contrato-pagamento.spec.ts`.
 - **A trava do checkout vem ANTES do dinheiro** (`recusaDosDocumentosDoPlano`
   em `checkoutTreatmentPlanInterno`): documento que BLOQUEIA aberto, ou contrato
   assinado para OUTRO pagamento, recusam. Ela EMITE antes de conferir — quem
