@@ -9296,6 +9296,40 @@ lá: o crediário da Paula, a devolução pendente de R$ 250 do Jorge (D1), o pl
 do Bruno aguardando checkout, um encaixe às 03:00 em 05/11 na Casa Forte e o
 Gel condutor em −1.
 
+**Respondido pelo Heitor (2026-11-04): "pode descontar as duas, e corrige
+tudo"** — o lucro passa a descontar as taxas da maquininha e as comissões
+(F21). Quatro frentes em fila (F20 dinheiro → F21 os defeitos que sobram →
+F22 e F23 os atritos); os testes seguem locais e cada frente faz UM push só,
+no fim (cada push publica os 4 serviços no Railway).
+
+**F20 feita em 2026-11-04 — o dinheiro** (16619b35…00498373, 8d4828ff;
+migrations `20261104002001`–`2006` e `2050`):
+- **D1:** cancelar a unidade do pré-pago segue o pacote: "Estorno" ou
+  "Crédito na clínica"; no cartão, estorna o pagamento inteiro (os
+  recebíveis caem) e lança o usado de novo; os pontos acompanham. Nada de
+  "Devolução" a pagar.
+- **D3:** "Ver as parcelas" no cartão "A receber da operadora" leva à lista
+  de todo o em aberto, por mês de depósito, com "Marcar recebida".
+- **D4:** o crédito 1x vira UMA parcela da operadora, no prazo e com a taxa
+  da bandeira; débito e Pix seguem recebidos no dia (princípio 4).
+  ⚠️ A `2001` pôs o 1x no gatilho antes de a restrição aceitar
+  `parcela_total = 1`: por ~5 min (12:52–12:56 UTC) toda venda no crédito à
+  vista foi recusada (nada gravado pela metade); desfeito na `2002`, e a
+  `2050` aplicou na ordem certa.
+- **D13:** a sobra da taxa vai na última parcela (8,93 + 8,92 = 17,85).
+- **D5/D6:** "Vezes no cartão (a entrada)" em toda "Entrada + parcelas" no
+  crédito; o crediário nasce sem meio e o contrato diz "entrada de R$ 1.000,00
+  no cartão de crédito em 3x + 2 parcelas de R$ 1.700,00 com a clínica"; a
+  ficha e o app mostram "Com a clínica".
+- **A5, A37–A40, A46, A47:** o aviso quando o "Preencher" muda o 1x; a forma
+  de pagamento nasce vazia em toda cobrança (`?receber=1` só abre); o
+  checkout do plano diz uma coisa só sobre o atendimento de hoje; "Crédito
+  Visa 5x" no recibo e no app; "Venda de produto não pontua" na ficha e no
+  app; o pacote cancelado e o estorno no app; "Plano de tratamento — parcela
+  1/2" sem texto interno.
+- Nenhuma pergunta ao Heitor. Mexeu no `globals.css` (`.field-label`), no
+  gatilho dos recebíveis e em todas as cobranças: vale uma completa.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
