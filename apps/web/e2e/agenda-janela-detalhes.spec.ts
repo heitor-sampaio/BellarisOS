@@ -84,3 +84,20 @@ test('a janela e o cartão mostram a sala e a duração; o cancelado ganha "Reag
     await expect(novo).toContainText(`${PREFIXO} Janela ${marca}`)
   })
 })
+
+// A23 da 6ª simulação: o cartão de 30 min mostrava só "03:50 Paula Reis", sem o procedimento nem a sala.
+test('A23: o cartão curto (30 min) diz o procedimento e a sala', async ({ browser }) => {
+  const { data, error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId, room_id: sala,
+    status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: new Date(`${DIA}T16:00:00-03:00`).toISOString(),
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const nomeDoProc = (await db().from('procedures').select('name').eq('id', rede!.procedureId).single<{ name: string }>()).data!.name
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    const cartao = p.locator(`[data-agendamento="${data!.id}"]`).first()
+    await expect(cartao).toContainText(nomeDoProc)
+    await expect(cartao).toContainText(nomeDaSala)
+    await expect(cartao, 'e a dica diz tudo, mesmo cortado').toHaveAttribute('title', new RegExp(nomeDaSala))
+  })
+})

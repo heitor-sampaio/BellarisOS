@@ -406,7 +406,10 @@
 - **A janela do agendamento diz duração, sala e unidade** (A29 da 5ª
   simulação; `[data-detalhes-do-agendamento]`), o cartão da grade diz a sala,
   e o cancelado (e a falta) ganha "Reagendar" — o novo agendamento já com a
-  cliente (`?novo=1&cliente=`), para quem cancela. Prova:
+  cliente (`?novo=1&cliente=`), para quem cancela. **O cartão curto (30
+  min) diz o procedimento e a sala** numa segunda linha, e todo cartão tem a
+  dica com hora, cliente, procedimento, sala e duração (A23 da 6ª simulação:
+  mostrava só "03:50 Paula Reis"). Prova:
   `e2e/agenda-janela-detalhes.spec.ts`.
 - **O concluído adiantado libera o resto do horário e a sala** (A31 da 5ª
   simulação): o CONCLUÍDO ocupa só até a conclusão (`fimDaOcupacao`,

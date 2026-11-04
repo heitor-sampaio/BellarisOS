@@ -206,6 +206,8 @@ function ProfColumn({
           <div
             key={ev.id}
             data-agendamento={ev.id}
+            // O cartão curto corta o texto (A23): a dica diz tudo.
+            title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`].filter(Boolean).join(' · ')}
             draggable={isDraggable}
             onDragStart={isDraggable ? e => { e.stopPropagation(); onDragStart(e, ev.id) } : undefined}
             onDragEnd={isDraggable ? onDragEnd : undefined}
@@ -253,6 +255,13 @@ function ProfColumn({
               {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt) ?? 'concluído'}</span>}
             </div>
+            {/* O bloco curto (30 min): o procedimento e a sala numa segunda linha (A23 da 6ª
+                simulação — mostrava só "03:50 Paula Reis"). */}
+            {height <= 42 && (
+              <div style={{ fontSize: 'var(--text-overline)', lineHeight: 1.25, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {[ev.procedureName, ev.roomName].filter(Boolean).join(' · ')}
+              </div>
+            )}
             {height > 42 && (
               <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: isCompleted ? 'var(--text-muted)' : 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.clientName}
