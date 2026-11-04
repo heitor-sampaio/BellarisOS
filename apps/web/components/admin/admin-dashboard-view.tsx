@@ -90,6 +90,8 @@ export interface AdminDashboardProps {
   funilTemGanho:    boolean
   marketing:        { connected: boolean; spend: number; reach: number; activeCampaigns: number; totalCampaigns: number; notifActive: number } | null
   monthLabel:       string
+  /** O cargo vê o dinheiro do dashboard: o Financeiro ou a aba Financeiro dos Relatórios (D2). */
+  veDinheiro:       boolean
   totalRevenue:      number
   totalCost:         number
   totalAppointments: number
@@ -426,7 +428,7 @@ function StatusPill({ label, count, colorKey }: { label: string; count: number; 
 export function AdminDashboardView({
   permissions, userName, leadFunnel, funnels, activeFunnelId,
   leadsTotal, leadsGanhos, conversionRate, funilTemGanho, marketing,
-  monthLabel,
+  monthLabel, veDinheiro,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio, clientesQuePagaram,
   totalClientsEver, branchCount, umaUnidade = false, unidadeRecortada = null, hrefDaRede = '/admin/dashboard',
   prevRevenue, prevAppointments, prevNewClients,
@@ -559,19 +561,19 @@ export function AdminDashboardView({
       )}
 
       {/* -- Middle: ranking + hoje -- */}
-      {(can('reports') || can('financial') || can('agenda') || can('stock')) && (
+      {(veDinheiro || can('agenda') || can('stock')) && (
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16 }}>
 
         {/* "Só os meus": a evolução só da receita DELA — sem o custo, o lucro
             e o ranking de filiais, que são o dinheiro da rede (D7). */}
-        {(can('reports') || can('financial')) && recorteProprio && (
+        {veDinheiro && recorteProprio && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} soReceita />
         </div>
         )}
 
         {/* Ranking de filiais + gráfico de evolução (com o lucro). */}
-        {(can('reports') || can('financial')) && !recorteProprio && (
+        {veDinheiro && !recorteProprio && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Gráfico animado */}
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} />
@@ -1047,8 +1049,8 @@ export function AdminDashboardView({
         </div>
 
         {/* Receita por procedimento: com "só os meus", a dos atendimentos dela. */}
-        {/* Ranking - Procedimentos pela receita PAGA dos atendimentos (D3 da 5ª) */}
-        <div className="card" style={{ padding: '18px 20px' }}>
+        {/* Ranking - Procedimentos pela receita PAGA dos atendimentos (D3 da 5ª); só com o dinheiro (D2). */}
+        {veDinheiro && <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por receita dos atendimentos<Dica rotulo={DEFINICOES.receitaDosAtendimentos.rotulo}>{DEFINICOES.receitaDosAtendimentos.texto}</Dica></span>
           </div>
@@ -1064,11 +1066,11 @@ export function AdminDashboardView({
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Ranking - Procedimentos por margem: o custo do catálogo, da rede —
             fora do "só os meus" (D7). */}
-        {!recorteProprio && (<>
+        {veDinheiro && !recorteProprio && (<>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por margem</span>
@@ -1216,8 +1218,8 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Ranking — Vendas (a receita de cada um; com "só os meus", só a linha dela) */}
-        <div className="card" style={{ padding: '18px 20px' }}>
+        {/* Ranking — Vendas (a receita de cada um; com "só os meus", só a linha dela). Só com o dinheiro (D2). */}
+        {veDinheiro && <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Profissionais por receita dos atendimentos<Dica rotulo={DEFINICOES.receitaDosAtendimentos.rotulo}>{DEFINICOES.receitaDosAtendimentos.texto}</Dica></span>
           </div>
@@ -1234,7 +1236,7 @@ export function AdminDashboardView({
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Ranking — Comissão: é do financeiro de todos, não da equipe. */}
         {verComissoesDaEquipe && <div className="card" style={{ padding: '18px 20px' }}>
@@ -1319,10 +1321,10 @@ export function AdminDashboardView({
       {can('clients') && (<>
       <SectionHeader title="Clientes" />
 
-      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16 }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: veDinheiro ? '2fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 16 }}>
 
         {/* Ranking — Valor gasto (com "só os meus", o que as clientes dela pagaram pelos atendimentos dela) */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {veDinheiro && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Valor gasto</span>
           </div>
@@ -1371,7 +1373,7 @@ export function AdminDashboardView({
             </table>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Ranking — Recorrência */}
         <div className="card" style={{ padding: '18px 20px' }}>

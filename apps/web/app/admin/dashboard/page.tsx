@@ -1,4 +1,4 @@
-import { getTenantContext, temRecurso } from '@/lib/auth'
+import { getTenantContext, temRecurso, can, podeVerRelatorio } from '@/lib/auth'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -76,6 +76,13 @@ export default async function AdminDashboardPage({
   const canReports    = perm.reports    !== 'NONE'
   const canCrm        = perm.crm        !== 'NONE'
   const canMarketing  = perm.marketing  !== 'NONE'
+  // O DINHEIRO do dashboard (faturamento, custo, lucro, ticket, a evolução, o
+  // ranking de unidades, os rankings de receita e de margem, o valor gasto
+  // das clientes, o LTV por CEP) só vai a quem tem o Financeiro ou a aba
+  // Financeiro dos Relatórios — a régua da F7 nos Relatórios e no Copilot (D2
+  // da 6ª simulação; CLAUDE.md §11: "o time comercial vê o funil sem ver o
+  // faturamento"). Sem ela, o dado nem sai do servidor: as props vão vazias.
+  const veDinheiro = can(ctx, 'financial', 'VIEW') || podeVerRelatorio(ctx, 'financeiro')
   // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
   const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports
 
@@ -655,12 +662,13 @@ export default async function AdminDashboardPage({
         customFrom={rawFrom}
         customTo={rawTo}
         granularity={granularity}
-        totalRevenue={totalRevenue}
-        totalCost={totalCost}
+        veDinheiro={veDinheiro}
+        totalRevenue={veDinheiro ? totalRevenue : 0}
+        totalCost={veDinheiro ? totalCost : 0}
         totalAppointments={totalAppointments}
         newClients={newClients}
-        ticketMedio={ticketMedio}
-        clientesQuePagaram={clientesQuePagaram}
+        ticketMedio={veDinheiro ? ticketMedio : 0}
+        clientesQuePagaram={veDinheiro ? clientesQuePagaram : 0}
         totalClientsEver={totalClientsEver ?? 0}
         branchCount={branches.length}
         // Recortada a uma unidade, os quadros "por filial" saem como na
@@ -668,10 +676,10 @@ export default async function AdminDashboardPage({
         umaUnidade={umaUnidade || !!unidadeRecortada}
         unidadeRecortada={unidadeRecortada}
         hrefDaRede={hrefDaRede}
-        prevRevenue={prevRevenue}
+        prevRevenue={veDinheiro ? prevRevenue : 0}
         prevAppointments={prevAppointments}
         prevNewClients={prevClientsCount ?? 0}
-        branchStats={branchStats}
+        branchStats={veDinheiro ? branchStats : []}
         todayTotal={todayAppts.length}
         todayByBranch={todayByBranch}
         pendingPlans={pendingPlans}
@@ -680,30 +688,30 @@ export default async function AdminDashboardPage({
         zeroStockCount={zeroStockCount}
         lowStockCount={lowStockCount}
         stockTurnover={stockTurnover}
-        evolutionData={evolutionData}
+        evolutionData={veDinheiro ? evolutionData : []}
         branchOccupancy={branchOccupancy}
         topProcedures={topProcedures}
-        topProceduresByRevenue={topProceduresByRevenue}
+        topProceduresByRevenue={veDinheiro ? topProceduresByRevenue : []}
         topRecurring={topRecurring}
         topProfessionals={topProfessionals}
-        topProfessionalsByRevenue={topProfessionalsByRevenue}
+        topProfessionalsByRevenue={veDinheiro ? topProfessionalsByRevenue : []}
         topProfessionalsByCommission={topProfessionalsByCommission}
         verComissoesDaEquipe={verComissoesDaEquipe}
         recorteProprio={recorteProprio}
         agendaPropria={agendaDela !== null}
-        procedureMargins={procedureMargins}
+        procedureMargins={veDinheiro ? procedureMargins : []}
 
         bestRatedPros={bestRatedPros}
         worstRatedPros={worstRatedPros}
         bestRatedProcedures={bestRatedProcedures}
         worstRatedProcedures={worstRatedProcedures}
-        topClients={topClients}
+        topClients={veDinheiro ? topClients : []}
         topClientsByRecurrence={topClientsByRecurrence}
         clientAgeGroups={clientAgeGroups}
         topClientsByLocation={topClientsByLocation}
         hotmapRawBranches={hotmapRawBranches}
         hotmapRawCepCounts={hotmapRawCepCounts}
-        hotmapRawCepLtv={hotmapRawCepLtv}
+        hotmapRawCepLtv={veDinheiro ? hotmapRawCepLtv : {}}
       />
     </>
   )

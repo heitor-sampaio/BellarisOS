@@ -565,6 +565,20 @@ dinheiro dos Relatórios que o cargo tiver marcada mostra a clínica. Prova:
 Os parágrafos abaixo (28/10) descrevem os PREDICADOS de cada recorte, que não
 mudaram; o que mudou é qual módulo decide cada número.
 
+**O dinheiro do dashboard da rede é de quem vê o dinheiro** (D2 da 6ª
+simulação, 2026-11-04; sobra da F7 — o exemplo do CLAUDE.md §11, "o time
+comercial vê o funil sem ver o faturamento"): o faturamento, o custo, o lucro,
+o ticket, a evolução, o ranking de unidades, os rankings de procedimento e de
+profissional por receita e por margem, o "Valor gasto" das clientes e o LTV
+por CEP vão a quem tem o Financeiro OU a aba Financeiro dos Relatórios
+(`veDinheiro = can(ctx, 'financial') || podeVerRelatorio(ctx, 'financeiro')`,
+a régua dos Relatórios e do Copilot). Sem ela as props vão VAZIAS — o valor
+nem chega ao navegador — e a tela esconde os cartões. A comercial só com a aba
+Comercial via o gráfico e o ranking de unidades (`can('reports')`), a
+recepção os rankings de receita e margem (`can('procedures')`). O dashboard
+da unidade já pedia o Financeiro. Prova:
+`e2e/indicadores-dashboard-dinheiro-so-com-financeiro.spec.ts`.
+
 **Dashboard com "só os meus" (D7 da simulação de 2026-10-28; "quem tem 'só os
 meus' vê 'só os meus', em qualquer lugar", decisão do Heitor no mesmo dia)**:
 com o módulo em OWN — e ABERTO no cargo: o OWN de um módulo NONE não vale (D6
