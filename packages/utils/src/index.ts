@@ -22,6 +22,7 @@ export {
   type AttributionInput,
   type InboundReferralAttribution,
   type DerivedSource,
+  type ResolvedSource,
 } from './lead-source'
 export {
   AWAITING_THRESHOLDS,

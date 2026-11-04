@@ -50,9 +50,9 @@ describe('origem do lead', () => {
       .toBe('instagram')
   })
 
-  it('sem atribuição, vale a escolha manual; sem nada, orgânico', () => {
+  it('sem atribuição, vale a escolha manual; sem nada, sem origem (D14)', () => {
     expect(resolveLeadSource({}, 'Indicação')).toEqual({ source: 'Indicação', tags: ['Indicação'] })
-    expect(resolveLeadSource({}, '  ')).toEqual({ source: 'Orgânico', tags: ['Orgânico'] })
+    expect(resolveLeadSource({}, '  ')).toEqual({ source: null, tags: [] })
     // Com atribuição, a escolha manual não apaga o anúncio.
     expect(resolveLeadSource({ fbclid: 'x' }, 'Indicação').source).toBe('Meta Ads')
   })

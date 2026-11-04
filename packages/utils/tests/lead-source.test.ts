@@ -43,9 +43,11 @@ describe('resolveLeadSource', () => {
     expect(resolveLeadSource({}, 'Indicação').source).toBe('Indicação')
   })
 
-  it('sem nada, orgânico', () => {
-    expect(resolveLeadSource({}, '   ').source).toBe('Orgânico')
-    expect(resolveLeadSource({}, null).source).toBe('Orgânico')
+  // D14 da 6ª simulação (2026-11-04; princípio 4, "não chutar"): o lead criado
+  // com "Não informado" aparecia "Orgânico", que ninguém escolheu.
+  it('sem nada, sem origem (a tela diz "Não informado") e sem tag de origem', () => {
+    expect(resolveLeadSource({}, '   ')).toEqual({ source: null, tags: [] })
+    expect(resolveLeadSource({}, null)).toEqual({ source: null, tags: [] })
   })
 })
 

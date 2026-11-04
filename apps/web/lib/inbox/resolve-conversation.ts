@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { InboundMsg, ChannelKind, SendProvider, CaixaReceptora, StatusUpdate } from '@/lib/channels/types'
 import { textoDaFalhaDaMeta } from '@/lib/inbox/falhas'
 import { guardarMidia } from '@/lib/inbox/media'
-import { resolveLeadSource } from '@estetica-os/utils'
+import { deriveLeadSource } from '@estetica-os/utils'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
 import { ler } from '@/lib/db'
@@ -165,7 +165,7 @@ export async function resolveConversation(
   // Origem e identificadores de anúncio, do referral click-to-WhatsApp quando
   // houver. Só o que veio: campo vazio no jsonb é pior que campo ausente, porque
   // parece resposta quando é falta de resposta.
-  const derived = resolveLeadSource({ referral: msg.referral })
+  const derived = deriveLeadSource({ referral: msg.referral })
   const atribuicao: Record<string, unknown> = { source: derived.source }
   if (derived.utm_source) atribuicao.utm_source = derived.utm_source
   if (derived.ctwa_clid)  atribuicao.ctwa_clid  = derived.ctwa_clid

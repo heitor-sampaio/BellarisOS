@@ -125,17 +125,25 @@ export function deriveLeadSource(input: AttributionInput): DerivedSource {
   return { source: 'Orgânico', tags: ['Orgânico'] }
 }
 
+/** A origem da criação manual: a escolhida, ou nenhuma ("Não informado"). */
+export interface ResolvedSource extends Omit<DerivedSource, 'source'> {
+  source: string | null
+}
+
 /**
  * Resolve a origem de um lead na CRIAÇÃO manual: se há atribuição, deriva;
- * senão respeita a escolha do dropdown; sem nada -> Orgânico.
+ * senão respeita a escolha do dropdown; sem nada, SEM origem — a tela diz
+ * "Não informado" (D14 da 6ª simulação, princípio 4: era "Orgânico", que
+ * ninguém escolheu). A conversa que chega sem anúncio é outra coisa: ali a
+ * origem é conhecida, e `deriveLeadSource` diz "Orgânico".
  */
 export function resolveLeadSource(
   input: AttributionInput,
   manualSource?: string | null,
-): DerivedSource {
+): ResolvedSource {
   if (hasAttribution(input)) return deriveLeadSource(input)
-  const source = (manualSource && manualSource.trim()) || 'Orgânico'
-  return { source, tags: [source] }
+  const source = (manualSource && manualSource.trim()) || null
+  return { source, tags: source ? [source] : [] }
 }
 
 /** Deduplica tags preservando ordem (tag de origem primeiro). */

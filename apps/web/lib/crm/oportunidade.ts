@@ -107,7 +107,7 @@ export async function criarOportunidadeCore(
   if (!nome) return { error: 'Nome é obrigatório.' }
   if (!o.telefone && !o.email && !o.social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
 
-  // Origem canônica: se há atribuição, deriva; senão respeita a escolhida; sem nada -> Orgânico.
+  // Origem canônica: se há atribuição, deriva; senão respeita a escolhida; sem nada, sem origem ("Não informado", D14).
   const derived = resolveLeadSource({ fbclid: o.fbclid ?? null, gclid: o.gclid ?? null, utm_source: o.utmSource ?? null, utm_medium: o.utmMedium ?? null }, o.origem ?? null)
   const tags = mergeTags(derived.tags, o.tags ?? [])
   const etapaInicial = await resolverEtapa(ctx.tenantId!, o.crmStageId ?? null, o.funnelId ?? null)
