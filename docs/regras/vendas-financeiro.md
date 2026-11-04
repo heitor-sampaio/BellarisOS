@@ -221,12 +221,31 @@ o procedimento avulso pago antes.
   canceladas; H4, 2026-11-01, `comissoes.md`). O gatilho do pagamento acerta.
 - **Falta ou cancelamento do agendamento DEVOLVE a unidade** (gatilho
   `trg_pre_pago_libera`): pode remarcar. Decisão do Heitor.
-- **Cancelar a unidade** (`procedimento_cancelar_unidade`, com motivo, só a
-  DISPONÍVEL e não agendada): a venda passa a valer menos; o a receber que
-  sobrou diminui primeiro (e as parcelas em aberto, da última para a
-  primeira); o que o cliente pagou além disso vira **DEVOLUÇÃO a pagar** no
-  financeiro (despesa não paga, categoria "Devolução") — "registra para fazer
-  estorno" (decisão do Heitor).
+- **Cancelar a unidade vai pelo fluxo do PACOTE** (D1 da 6ª simulação,
+  2026-11-04; a regra de 30/09, "registra para fazer estorno" como DEVOLUÇÃO a
+  pagar, ficou para trás com as decisões do pacote — F2b: a clínica escolhe;
+  F13/r2-fin-03: no cartão, o pagamento inteiro). Com motivo, só a DISPONÍVEL
+  e não agendada, por quem recebe (`podeReceber`) e com a unidade ao alcance:
+  "Cancelar" no card "Procedimentos pagos" abre a janela "Cancelar unidade"
+  (`CancelarUnidadePrePaga`), com a conta que o BANCO fez
+  (`procedimento_cancelar_unidade_devolvendo` com `p_simular`,
+  `previaDoCancelamentoDaUnidade`): a venda passa a valer o vendido menos as
+  unidades canceladas; o a receber que passa disso cai ANTES (a parcela
+  inteira sai `Estornada`, a que cai em parte diminui); o pago além disso
+  volta como a recepção escolher — ESTORNO (o de sempre; o pagamento pego em
+  parte, estorno parcial ou o pagamento inteiro estornado e o que fica lançado
+  de novo, na forma escolhida — no CARTÃO só o inteiro, e os recebíveis da
+  operadora dele caem pelo gatilho) ou CRÉDITO NA CLÍNICA (`internal_credits`,
+  "Cancelamento da unidade 2 de Peeling"; o dinheiro e os pontos ficam). A
+  escolha é o mesmo componente do pacote (`EscolhaDaDevolucao`). Os pontos
+  seguem o estorno; a comissão das unidades usadas se acerta pela venda que
+  ficou. Confirmar manda o "a devolver" que a janela mostrou (`p_esperado`); o
+  banco recusa se mudou. A unidade guarda o retrato da conta
+  (`procedure_sale_units.cancelamento`). A "Devolução" a pagar que a versão de
+  antes gravou (na produção, a do Jorge na Begônia, R$ 250, dado de [sim])
+  ficou como está e desconta do que volta. `procedimento_cancelar_unidade`
+  virou um invólucro sem a escolha (por estorno; no cartão, recusa). Migration
+  `20261104002004`. Prova: `e2e/pre-pago-cancelar-unidade.spec.ts`.
 - **Fidelidade por procedimento**: os pontos das unidades ativas, na proporção
   do pago (como o plano). O pacote passou a ganhar do mesmo jeito (dava zero).
 - Na ficha: card "Procedimentos pagos" (`ProcedimentosPagos`); no portal, em
@@ -1073,7 +1092,8 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Recortar a lista do financeiro por created_at (é data_de_referencia: pago no pagamento, em aberto no vencimento)
 ❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
 ❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)
-❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade
+❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade_devolvendo
+❌ Registrar o que volta de um cancelamento como despesa "Devolução" a pagar — é estorno ou crédito na clínica, a escolha da recepção (D1, 6ª simulação)
 ❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou
 ❌ Gravar due_date como "AAAA-MM-DD" cru (meia-noite UTC = 21h da VÉSPERA em Brasília) — use vencimentoDoDia (lib/financeiro/lancamento.ts)
 ❌ Dar baixa sem a guarda do já pago/estornado (marcarPagoCore confere a linha devolvida)

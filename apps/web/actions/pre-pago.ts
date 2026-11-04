@@ -9,7 +9,8 @@
  * Todo export é endpoint público: cada um confere permissão, rede e alcance.
  */
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { z } from 'zod'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -22,6 +23,9 @@ import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointments/core'
+import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
+import { BANDEIRAS, bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
+import { lerPreviaDaUnidade, type PreviaDoCancelamentoDaUnidade } from '@/lib/pre-pago/cancelamento'
 
 const UUID = /^[0-9a-f-]{36}$/i
 
@@ -127,38 +131,94 @@ async function venderProcedimentoUmaVez(
   }
 }
 
+/** A unidade pré-paga da rede, com a unidade da clínica ao alcance (§11). Nula quando não é. */
+async function unidadeAoAlcance(
+  admin: ReturnType<typeof createAdminClient>, ctx: Awaited<ReturnType<typeof getTenantContext>>, unidadeId: unknown,
+): Promise<{ clientId: string } | null> {
+  if (typeof unidadeId !== 'string' || !UUID.test(unidadeId)) return null
+  const unidade = await ler(admin.from('procedure_sale_units')
+    .select('id, procedure_sales!inner(tenant_id, branch_id, client_id)')
+    .eq('id', unidadeId).maybeSingle(), 'buscar a unidade')
+  const venda = unidade?.procedure_sales as unknown as { tenant_id: string; branch_id: string; client_id: string } | undefined
+  if (!unidade || venda?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, venda.branch_id)) return null
+  return { clientId: venda.client_id }
+}
+
 /**
- * Cancela uma unidade ainda disponível, com motivo. O que o cliente pagou além
- * do que a venda passou a valer fica registrado como DEVOLUÇÃO a pagar no
- * financeiro (e, se ele ainda devia, o a receber diminui antes) —
- * `procedimento_cancelar_unidade`, numa transação.
+ * A conta do cancelamento de uma unidade, ANTES de cancelar (D1 da 6ª
+ * simulação, o fluxo do pacote): o que a venda passa a valer, o a receber que
+ * cai e o que volta. É a MESMA função que grava, simulando: a tela não refaz
+ * conta nenhuma.
  */
-export async function cancelarUnidadePrePaga(
-  unidadeId: string, motivo: unknown,
-): Promise<{ error?: string; devolver?: number; reduzido?: number }> {
+export async function previaDoCancelamentoDaUnidade(
+  unidadeId: string,
+): Promise<{ error?: string; previa?: PreviaDoCancelamentoDaUnidade }> {
   try {
     const ctx = await getTenantContext()
     if (!podeReceber(ctx)) throw semAcesso()
-    if (typeof unidadeId !== 'string' || !UUID.test(unidadeId)) return { error: 'Dados inválidos.' }
-    const texto = typeof motivo === 'string' ? motivo.trim() : ''
-    if (!texto) return { error: 'Informe o motivo do cancelamento.' }
-    if (texto.length > 500) return { error: 'Motivo longo demais.' }
-
     const admin = createAdminClient()
-    const unidade = await ler(admin.from('procedure_sale_units')
-      .select('id, procedure_sales!inner(tenant_id, branch_id)')
-      .eq('id', unidadeId).maybeSingle(), 'buscar a unidade')
-    const venda = unidade?.procedure_sales as unknown as { tenant_id: string; branch_id: string } | undefined
-    if (!unidade || venda?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, venda.branch_id)) {
-      return { error: 'Unidade não encontrada.' }
-    }
+    if (!await unidadeAoAlcance(admin, ctx, unidadeId)) return { error: 'Unidade não encontrada.' }
+    const j = await ler(admin.rpc('procedimento_cancelar_unidade_devolvendo', {
+      p_tenant: ctx.tenantId!, p_unidade: unidadeId, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName ?? null,
+      p_motivo: null, p_destino: null, p_esperado: null, p_simular: true, p_estorno: null, p_novo: null,
+    }), 'calcular o cancelamento da unidade') as Record<string, unknown>
+    return { previa: lerPreviaDaUnidade(j) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
 
-    const r = await gravar(admin.rpc('procedimento_cancelar_unidade', {
-      p_tenant: ctx.tenantId!, p_unidade: unidadeId, p_ator: ctx.internalUserId ?? null, p_motivo: texto,
-    }), 'cancelar a unidade') as { devolver: number; reduzido: number }
+const EntradaDoCancelamentoDaUnidade = z.object({
+  motivo:   z.string().trim().min(1, 'Informe o motivo do cancelamento.').max(500, 'Motivo longo demais.'),
+  destino:  z.enum(['ESTORNO', 'CREDITO']).nullable(),
+  /** O "a devolver" que a janela mostrou: mudou no meio, o banco recusa. */
+  esperado: z.number().min(0),
+  /** Como estornar o pagamento que volta em parte; no cartão, só o inteiro. */
+  estorno:  z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
+  novo:     z.object({
+    metodo:   z.enum(FORMAS_DE_PAGAMENTO),
+    vezes:    z.number().int().min(1).max(12),
+    bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).nullable().optional(),
+  }).nullable().optional(),
+})
+
+/**
+ * Cancela uma unidade ainda disponível, pelo fluxo do pacote (D1 da 6ª
+ * simulação): o a receber que passa do que a venda vale cai antes, e o pago
+ * além disso volta como a recepção escolher — ESTORNO (no cartão, o pagamento
+ * inteiro estornado e o que fica lançado de novo; os recebíveis da operadora
+ * caem juntos) ou CRÉDITO NA CLÍNICA. Era uma "Devolução" a pagar, sem forma
+ * — `procedimento_cancelar_unidade_devolvendo`, numa transação.
+ */
+export async function cancelarUnidadePrePaga(
+  unidadeId: string, entrada: unknown,
+): Promise<{ error?: string; devolver?: number; reduzido?: number; destino?: 'ESTORNO' | 'CREDITO' | null }> {
+  try {
+    const ctx = await getTenantContext()
+    if (!podeReceber(ctx)) throw semAcesso()
+    const lido = EntradaDoCancelamentoDaUnidade.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+    const admin = createAdminClient()
+    const unidade = await unidadeAoAlcance(admin, ctx, unidadeId)
+    if (!unidade) return { error: 'Unidade não encontrada.' }
+    const novo = lido.data.estorno === 'INTEIRO' ? lido.data.novo ?? null : null
+    if (novo && novo.metodo === 'CREDIT_CARD') {
+      const recusa = await recusaDasVezesDaRede(ctx.tenantId!, novo.vezes)
+      if (recusa) return { error: recusa }
+    }
+    const r = await gravar(admin.rpc('procedimento_cancelar_unidade_devolvendo', {
+      p_tenant: ctx.tenantId!, p_unidade: unidadeId, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName ?? null,
+      p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_esperado: lido.data.esperado, p_simular: false,
+      p_estorno: lido.data.estorno ?? null,
+      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1, bandeira: bandeiraDoPagamento(novo.metodo, novo.bandeira) } : null,
+    }), 'cancelar a unidade') as Record<string, unknown>
 
     revalidarFicha()
-    return { devolver: Number(r.devolver), reduzido: Number(r.reduzido) }
+    revalidateTag(`client:${unidade.clientId}`, { expire: 0 })
+    return {
+      devolver: Number(r.devolver ?? 0), reduzido: Number(r.reduzido ?? 0),
+      destino: (r.destino as 'ESTORNO' | 'CREDITO' | null | undefined) ?? null,
+    }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

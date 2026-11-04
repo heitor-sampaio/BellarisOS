@@ -9,14 +9,11 @@ import { ptBR } from 'date-fns/locale'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoCancelamentoDoPacote, cancelarPacote } from '@/actions/pacotes'
-import type { ComoEstornar, DestinoDaDevolucao, EscolhaDosAgendamentos, PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
-import { rotuloDaForma } from '@/lib/financeiro/formas'
+import type { EscolhaDosAgendamentos, PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
-import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
-import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
-
-/** As formas do pagamento novo do usado (r2-ven-05). */
-const FORMAS_DO_USADO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
+import {
+  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, type EscolhaDaDevolucaoEstado,
+} from '@/components/shared/escolha-da-devolucao'
 
 /**
  * "Cancelar pacote" (F2b da 5ª simulação; decisão do Heitor, 2026-11-01:
@@ -37,14 +34,11 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
   const router = useRouter()
   const [previa, setPrevia] = useState<PreviaDoCancelamento | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [destino, setDestino] = useState<DestinoDaDevolucao | null>(null)
+  // Como devolver, e como estornar o pagamento pego em parte (com a forma, as
+  // vezes e a bandeira do pagamento novo do usado): EscolhaDaDevolucao.
+  const [escolha, setEscolha] = useState<EscolhaDaDevolucaoEstado>(ESCOLHA_INICIAL)
   const [agendamentos, setAgendamentos] = useState<EscolhaDosAgendamentos | null>(null)
   const [motivo, setMotivo] = useState('')
-  const [comoEstornar, setComoEstornar] = useState<ComoEstornar | null>(null)
-  const [novoMetodo, setNovoMetodo] = useState<string>('')
-  const [novoVezes, setNovoVezes] = useState(1)
-  // r3-f13-01: a bandeira do cartão do pagamento novo, opcional.
-  const [novaBandeira, setNovaBandeira] = useState('')
   const opcoesDeVezes = useOpcoesDeVezes()
   const [cancelando, iniciar] = useTransition()
 
@@ -56,35 +50,29 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
       else {
         setPrevia(r.previa)
         // No cartão só existe o estorno inteiro: já vem escolhido.
-        if (r.previa.parcial?.cartao) setComoEstornar('INTEIRO')
+        if (r.previa.parcial?.cartao) setEscolha(e => ({ ...e, comoEstornar: 'INTEIRO' }))
       }
     })
     return () => { vivo = false }
   }, [clientPackageId])
 
   const temAgendadas = (previa?.agendamentos.length ?? 0) > 0
-  const emParte = previa && previa.devolver > 0 && destino === 'ESTORNO' ? previa.parcial : null
   const pronto = !!previa && motivo.trim().length > 0
-    && (previa.devolver <= 0 || destino !== null)
+    && escolhaCompleta(previa.devolver, previa.parcial, escolha)
     && (!temAgendadas || agendamentos !== null)
-    && (!emParte || (comoEstornar === 'PARCIAL' && !emParte.cartao) || (comoEstornar === 'INTEIRO' && novoMetodo !== ''))
 
   function confirmar() {
     if (!previa) return
     iniciar(async () => {
       const r = await cancelarPacote(clientPackageId, {
         motivo: motivo.trim(),
-        destino: previa.devolver > 0 ? destino : null,
+        ...escolhaParaAAcao(previa.devolver, previa.parcial, escolha),
         agendamentos: temAgendadas ? agendamentos : null,
         esperado: previa.devolver,
-        estorno: emParte ? comoEstornar : null,
-        novo: emParte && comoEstornar === 'INTEIRO'
-          ? { metodo: novoMetodo, vezes: novoMetodo === 'CREDIT_CARD' ? novoVezes : 1, bandeira: novaBandeira || null }
-          : null,
       })
       if (r.error) { toast.error(r.error); return }
       toast.success(previa.devolver > 0
-        ? destino === 'CREDITO'
+        ? escolha.destino === 'CREDITO'
           ? `Pacote cancelado. ${formatBRL(previa.devolver)} ficaram de crédito na clínica.`
           : `Pacote cancelado. ${formatBRL(previa.devolver)} estornados à cliente.`
         : 'Pacote cancelado.')
@@ -150,84 +138,8 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
               </div>
             </div>
 
-            {previa.devolver > 0 && (
-              <div role="radiogroup" aria-labelledby="cancelar-pacote-destino" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span id="cancelar-pacote-destino" className="field-label">Como devolver {formatBRL(previa.devolver)}? *</span>
-                <label style={opcao}>
-                  <input type="radio" name="cancelar-pacote-destino" checked={destino === 'ESTORNO'} disabled={cancelando}
-                    onChange={() => setDestino('ESTORNO')} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-                  <span>Estorno <span style={{ color: 'var(--text-muted)' }}>— o dinheiro volta à cliente na forma em que ela pagou{previa.fidelidade ? ', e os pontos dele saem do saldo' : ''}</span></span>
-                </label>
-                <label style={opcao}>
-                  <input type="radio" name="cancelar-pacote-destino" checked={destino === 'CREDITO'} disabled={cancelando}
-                    onChange={() => setDestino('CREDITO')} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-                  <span>Crédito na clínica <span style={{ color: 'var(--text-muted)' }}>— fica de saldo para ela usar em outro atendimento</span></span>
-                </label>
-              </div>
-            )}
-
-            {emParte && (
-              <div data-como-estornar role="radiogroup" aria-labelledby="cancelar-pacote-como-estornar" style={{
-                display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px',
-                borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)',
-              }}>
-                <span id="cancelar-pacote-como-estornar" className="field-label">
-                  Como estornar o {rotuloDaForma(emParte.metodo, emParte.vezes)} de {formatBRL(emParte.valor)}? *
-                </span>
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                  Voltam {formatBRL(emParte.volta)} deste pagamento; {formatBRL(emParte.fica)} são do que a cliente usou.
-                </p>
-                <label style={{ ...opcao, cursor: emParte.cartao ? 'not-allowed' : 'pointer', opacity: emParte.cartao ? 0.6 : 1 }}>
-                  <input type="radio" name="cancelar-pacote-como-estornar" checked={comoEstornar === 'PARCIAL'}
-                    disabled={cancelando || emParte.cartao}
-                    onChange={() => setComoEstornar('PARCIAL')} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-                  <span>
-                    Estorno parcial{' '}
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      — o pagamento passa a valer {formatBRL(emParte.fica)} e um “Estorno parcial” de {formatBRL(emParte.volta)} leva o resto
-                    </span>
-                    {emParte.cartao && (
-                      <span data-motivo-sem-parcial style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-                        No cartão, a operadora estorna o pagamento inteiro: o estorno parcial não existe.
-                      </span>
-                    )}
-                  </span>
-                </label>
-                <label style={opcao}>
-                  <input type="radio" name="cancelar-pacote-como-estornar" checked={comoEstornar === 'INTEIRO'} disabled={cancelando}
-                    onChange={() => setComoEstornar('INTEIRO')} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-                  <span>
-                    Estornar o pagamento inteiro e lançar o usado de novo{' '}
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      — {formatBRL(emParte.valor)} voltam e {formatBRL(emParte.fica)} entram de novo, na forma que você escolher
-                    </span>
-                  </span>
-                </label>
-                {comoEstornar === 'INTEIRO' && (
-                  <div className="form-2col" style={{ paddingLeft: 24 }}>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span className="field-label">Forma do pagamento do usado *</span>
-                      <select className="field" aria-label="Forma do pagamento do usado" value={novoMetodo} disabled={cancelando}
-                        onChange={e => { setNovoMetodo(e.target.value); setNovoVezes(1) }}>
-                        <option value="">Selecione…</option>
-                        {FORMAS_DO_USADO.map(f => <option key={f} value={f}>{rotuloDaForma(f, null, { longo: true })}</option>)}
-                      </select>
-                    </label>
-                    {novoMetodo === 'CREDIT_CARD' && (
-                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span className="field-label">Vezes no cartão</span>
-                        <select className="field" aria-label="Vezes no cartão" value={novoVezes} disabled={cancelando}
-                          onChange={e => setNovoVezes(Number(e.target.value))}>
-                          {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : n + 'x'}</option>)}
-                        </select>
-                        <DicaDasVezes total={emParte.fica} vezes={novoVezes} opcoes={opcoesDeVezes} />
-                      </label>
-                    )}
-                    <CampoDaBandeira metodo={novoMetodo} valor={novaBandeira} aoMudar={setNovaBandeira} />
-                  </div>
-                )}
-              </div>
-            )}
+            <EscolhaDaDevolucao prefixo="cancelar-pacote" devolver={previa.devolver} parcial={previa.parcial}
+              fidelidade={previa.fidelidade} estado={escolha} aoMudar={setEscolha} desligado={cancelando} opcoesDeVezes={opcoesDeVezes} />
 
             {temAgendadas && (
               <div data-agendamentos-do-pacote role="radiogroup" aria-labelledby="cancelar-pacote-agendadas" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

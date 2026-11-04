@@ -68,7 +68,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   ligado ao contra-lançamento "Estorno parcial"). Devolvido como CRÉDITO na
   clínica, os pontos ficam: o dinheiro não voltou (e pagar com crédito interno
   não pontua). Parcela a receber que caiu nunca deu ponto. Prova:
-  `e2e/pacote-cancelar.spec.ts`.
+  `e2e/pacote-cancelar.spec.ts`. **A unidade cancelada do pré-pago** segue a
+  mesma regra (D1 da 6ª simulação, 2026-11-04): o estorno tira os pontos do
+  que voltou, o crédito na clínica os deixa. Prova:
+  `e2e/pre-pago-cancelar-unidade.spec.ts`.
 - **Catálogo de recompensas e vouchers** (fase 3): a rede cadastra recompensas
   (`loyalty_rewards`: procedimento grátis, desconto R$ ou %, produto) em
   Configurações → Fidelidade. A EQUIPE troca os pontos na ficha

@@ -83,10 +83,7 @@ export function lerPreviaDoCancelamento(j: Record<string, unknown>): PreviaDoCan
     usado:         num(j.usado),
     pago:          num(j.pago),
     aReceber:      num(j.a_receber),
-    parcelas:      lista<Record<string, unknown>>(j.parcelas).map(p => ({
-      id: String(p.id), descricao: String(p.descricao ?? ''), vencimento: (p.vencimento as string | null) ?? null,
-      valor: num(p.valor), cai: num(p.cai), fica: num(p.fica),
-    })),
+    parcelas:      lerParcelasQueCaem(j.parcelas),
     cai:           num(j.cai),
     devolver:      num(j.devolver),
     fidelidade:    j.fidelidade === true,
@@ -98,7 +95,16 @@ export function lerPreviaDoCancelamento(j: Record<string, unknown>): PreviaDoCan
   }
 }
 
-function lerParcial(v: unknown): PagamentoEmParte | null {
+/** As parcelas a receber que caem, do jsonb do banco (pacote e pré-pago). */
+export function lerParcelasQueCaem(v: unknown): ParcelaQueCai[] {
+  return (Array.isArray(v) ? v : [] as Record<string, unknown>[]).map((p: Record<string, unknown>) => ({
+    id: String(p.id), descricao: String(p.descricao ?? ''), vencimento: (p.vencimento as string | null) ?? null,
+    valor: num(p.valor), cai: num(p.cai), fica: num(p.fica),
+  }))
+}
+
+/** O pagamento que volta em parte, do jsonb do banco (pacote e pré-pago). */
+export function lerParcial(v: unknown): PagamentoEmParte | null {
   if (!v || typeof v !== 'object') return null
   const p = v as Record<string, unknown>
   return {

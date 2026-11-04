@@ -16,8 +16,8 @@ import { euVendi } from './apoio/vender'
  *   dinheiro (`procedimento_vender`).
  * - A unidade no atendimento: a conclusão a usa, a recepção não cobra de novo,
  *   a comissão (PRE_PAGO) libera com a venda paga inteira (H4, 2026-11-01).
- * - Falta devolve a unidade; cancelar a unidade reduz o a receber ou registra
- *   a devolução.
+ * - Falta devolve a unidade; cancelar a unidade reduz o a receber e devolve o
+ *   resto como estorno ou crédito (D1 da 6ª: pre-pago-cancelar-unidade.spec.ts).
  *
  * Numa rede [e2e] própria.
  */
@@ -187,8 +187,9 @@ test.describe.serial('procedimento pré-pago', () => {
       await p.goto(`/admin/clients/${c}`)
       const card = p.locator('[data-procedimentos-pagos]')
       await card.getByRole('button', { name: 'Cancelar', exact: true }).first().click()
-      await card.getByLabel('Motivo do cancelamento').fill('Desistiu da segunda sessão')
-      await card.getByRole('button', { name: 'Cancelar unidade' }).click()
+      const dlg = p.getByRole('dialog', { name: 'Cancelar unidade' })
+      await dlg.getByLabel('Motivo do cancelamento').fill('Desistiu da segunda sessão')
+      await dlg.getByRole('button', { name: 'Cancelar unidade' }).click()
       await expect(card.getByRole('status')).toContainText('O a receber diminuiu R$')
     })
     const { data: txs } = await db().from('financial_transactions').select('type, amount, is_paid').eq('procedure_sale_id', v)
@@ -198,7 +199,9 @@ test.describe.serial('procedimento pré-pago', () => {
     expect(us![0]!.cancel_reason).toBe('Desistiu da segunda sessão')
   })
 
-  test('cancelar unidade já paga: registra a devolução; agendada, recusa', async ({ browser }) => {
+  // D1 da 6ª simulação: o que foi pago além volta como estorno ou crédito na
+  // clínica (e2e/pre-pago-cancelar-unidade.spec.ts); a "Devolução" a pagar saiu.
+  test('cancelar unidade já paga: o que volta vira crédito na clínica, sem "Devolução" a pagar; agendada, recusa', async ({ browser }) => {
     const c = await rede!.criarCliente('Cancela pago')
     const v = await vender(c, 2, [{ amount: 600, payment_method: 'PIX', is_paid: true }])
     const { data: us } = await db().from('procedure_sale_units').select('id').eq('sale_id', v).order('numero')
@@ -207,14 +210,17 @@ test.describe.serial('procedimento pré-pago', () => {
     await db().from('procedure_sale_units').update({ appointment_id: ap }).eq('id', us![1]!.id)
     await comSessao(browser, gestor!, async p => {
       const rota = `/admin/clients/${c}`
-      const agendada = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota, [us![1]!.id, 'teste'])
+      const agendada = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota,
+        [us![1]!.id, { motivo: 'teste', destino: 'CREDITO', esperado: 300 }])
       expect(agendada.texto).toContain('cancele o agendamento antes')
-      const r = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota, [us![0]!.id, 'Mudou de cidade'])
+      const r = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota,
+        [us![0]!.id, { motivo: 'Mudou de cidade', destino: 'CREDITO', esperado: 300 }])
       expect(r.texto).toContain('"devolver":300')
     })
-    const { data: dev } = await db().from('financial_transactions').select('type, category, amount, is_paid, notes')
-      .eq('procedure_sale_id', v).eq('type', 'EXPENSE').single()
-    expect({ ...dev, amount: n(dev!.amount) }).toEqual({ type: 'EXPENSE', category: 'Devolução', amount: 300, is_paid: false, notes: 'Mudou de cidade' })
+    const { data: dev } = await db().from('financial_transactions').select('id').eq('procedure_sale_id', v).eq('type', 'EXPENSE')
+    expect(dev, 'nenhuma despesa de devolução').toEqual([])
+    const { data: cred } = await db().from('internal_credits').select('amount').eq('client_id', c)
+    expect(cred?.map(x => n(x.amount))).toEqual([300])
   })
 
   test('recusas: quem só vê não vende nem cancela; a sessão não escreve pelo PostgREST', async ({ browser }) => {
@@ -226,7 +232,8 @@ test.describe.serial('procedimento pré-pago', () => {
       const r = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota,
         [c, rede!.procedureId, rede!.branchId, 1, null, { forma: 'AVISTA', metodo: 'PIX' }, null])
       expect(r.texto).not.toContain('saleId')
-      const x = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota, [u!.id, 'tentativa'])
+      const x = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota,
+        [u!.id, { motivo: 'tentativa', destino: 'CREDITO', esperado: 300 }])
       expect(x.texto).not.toContain('devolver')
     })
     expect((await db().from('procedure_sales').select('id').eq('client_id', c)).data?.length).toBe(1)

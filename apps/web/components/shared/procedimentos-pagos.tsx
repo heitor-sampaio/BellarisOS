@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Receipt } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
-import { cancelarUnidadePrePaga, agendarUnidadePrePaga } from '@/actions/pre-pago'
+import { agendarUnidadePrePaga } from '@/actions/pre-pago'
+import { CancelarUnidadePrePaga } from '@/components/shared/cancelar-unidade-pre-paga'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import type { PrePagoDoCliente, UnidadePrePaga } from '@/lib/pre-pago/leitura'
 
@@ -15,8 +16,8 @@ const diaEHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZo
 /**
  * Os procedimentos pré-pagos do cliente, na ficha (2026-09-30): o que ele
  * comprou, o que ainda tem para agendar e o que já usou. Cancelar uma unidade
- * pede motivo e registra a devolução no financeiro (decisão do Heitor: "se
- * cancelar, registra para fazer estorno").
+ * vai pelo fluxo do pacote (D1 da 6ª simulação): a janela mostra a conta e
+ * pergunta como devolver — estorno ou crédito na clínica.
  */
 interface Agenda { podeAgendar: boolean; branches: { id: string; name: string }[]; currentBranchId: string }
 
@@ -75,24 +76,8 @@ function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga
   const router = useRouter()
   const [cancelando, setCancelando] = useState(false)
   const [agendando, setAgendando] = useState(false)
-  const [motivo, setMotivo] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
-  const [pendente, iniciar] = useTransition()
   const livre = u.status === 'DISPONIVEL' && !u.agendamentoEm
-
-  function cancelar() {
-    setErro(null)
-    iniciar(async () => {
-      const r = await cancelarUnidadePrePaga(u.id, motivo)
-      if (r.error) { setErro(r.error); return }
-      setCancelando(false)
-      setAviso(r.devolver && r.devolver > 0
-        ? `Devolução de ${formatBRL(r.devolver)} registrada no financeiro.`
-        : r.reduzido && r.reduzido > 0 ? `O a receber diminuiu ${formatBRL(r.reduzido)}.` : 'Unidade cancelada.')
-      router.refresh()
-    })
-  }
 
   return (
     <li data-unidade-pre-paga style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 'var(--text-xs-sz)' }}>
@@ -133,16 +118,8 @@ function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga
         />
       )}
       {cancelando && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input className="field" aria-label="Motivo do cancelamento" placeholder="Motivo (obrigatório)"
-            value={motivo} onChange={e => setMotivo(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
-          <button type="button" className="btn-ghost" onClick={() => { setCancelando(false); setErro(null) }} disabled={pendente}>Voltar</button>
-          <button type="button" className="btn-secondary" onClick={cancelar} disabled={pendente || !motivo.trim()}>
-            {pendente ? 'Cancelando…' : 'Cancelar unidade'}
-          </button>
-        </div>
+        <CancelarUnidadePrePaga unidadeId={u.id} onFechar={() => setCancelando(false)} onCancelada={setAviso} />
       )}
-      {erro && <p role="alert" style={{ color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {aviso && <p role="status" style={{ color: 'var(--text-soft)' }}>{aviso}</p>}
     </li>
   )
