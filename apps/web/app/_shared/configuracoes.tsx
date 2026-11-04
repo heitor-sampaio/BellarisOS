@@ -34,6 +34,7 @@ import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { SegSelect } from '@/components/shared/seg-select'
 import { SettingsGeral } from '@/components/admin/settings-geral'
+import { enderecosDoAppDaClinica } from '@/lib/unidades/app-da-cliente'
 import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
 import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
@@ -551,7 +552,8 @@ export async function Configuracoes({
 
       {conteudo === 'general' && (
         dadosDaRede
-          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaClinica(ctx)} naRede={ctx.branchId === null} />
+          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaClinica(ctx)} naRede={ctx.branchId === null}
+              appDaCliente={await enderecosDoAppDaClinica(ctx.tenantId!)} />
           : (
             <div className="card">
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

@@ -18,12 +18,17 @@ import { O_QUE_A_CLIENTE_AVALIA, ROTULO_DO_QUE_AVALIA } from '@/lib/avaliacao/no
  *
  * O que NÃO se edita aqui está na tela, em cinza, e não escondido:
  *
- * - **o endereço do portal** (`slug`), porque ele está em link já mandado, em
- *   QR Code impresso e no que o cliente guardou no navegador. Trocá-lo por um
- *   campo de formulário quebraria tudo isso em silêncio;
+ * - **o endereço do app da cliente** — o da UNIDADE (`/<unidade>/cliente`),
+ *   inteiro (A4 da 6ª simulação: aqui aparecia o identificador da rede,
+ *   `tenants.slug`, que não abre tela nenhuma, e a dona não sabia qual dar à
+ *   cliente);
  * - **o plano**, que quem define é a assinatura.
  */
-export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: DadosDaRede; podeEditar: boolean; /** A aba Assinatura só existe no portal da rede. */ naRede?: boolean }) {
+export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = [] }: {
+  rede: DadosDaRede; podeEditar: boolean; /** A aba Assinatura só existe no portal da rede. */ naRede?: boolean
+  /** O endereço do app da cliente, por unidade ativa (A4) — inteiro, para mandar. */
+  appDaCliente?: { unidade: string; url: string }[]
+}) {
   const [estado, enviar, enviando] = useActionState(atualizarDadosDaRede, undefined)
   const [salvo, setSalvo] = useState(false)
 
@@ -111,8 +116,21 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
         display: 'flex', flexWrap: 'wrap', gap: 20,
         borderTop: '1px solid var(--hairline)', paddingTop: 14,
       }}>
-        <SoLeitura rotulo="Endereço do portal" valor={`/${rede.slug}`}
-          porque="Está em links já enviados — mudar é migração, não edição." />
+        {/* A4 da 6ª simulação: era o identificador da rede ("/{rede.slug}"), que
+            não abre tela nenhuma, e a dona não sabia qual endereço dar à cliente. */}
+        <div data-app-da-cliente style={{ minWidth: 150, maxWidth: '100%' }}>
+          <p className="overline" style={{ marginBottom: 2 }}>App da cliente</p>
+          {appDaCliente.map(a => (
+            <p key={a.url} style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>
+              {appDaCliente.length > 1 && <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{a.unidade}: </span>}
+              {a.url}
+            </p>
+          ))}
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, maxWidth: 320 }}>
+            É o endereço que se dá à cliente: ela entra com o e-mail (a senha inicial é o CPF), e o acesso se cria na ficha dela.
+            {appDaCliente.length > 1 ? ' Qualquer unidade abre a mesma ficha.' : ''}
+          </p>
+        </div>
         <SoLeitura rotulo="Plano" valor={nomeDoPlanoNaTela(rede.planName, rede.planStatus)}
           porque={`${rotuloDaSituacao(rede.planStatus)}. ${naRede ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')}`} />
         <SoLeitura rotulo={fala('Rede criada em')}

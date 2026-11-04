@@ -175,6 +175,16 @@ um muro que não depende de cada trava do código.
   o telefone), a rede que já tem unidade ativa vai direto ao "Tudo pronto!"
   (sem isso, a única saída era criar uma segunda unidade), e o passo da
   unidade tem "Voltar". Prova: `e2e/setup-retoma.spec.ts`.
+- **O endereço que se dá à cliente é o do APP DA CLIENTE, inteiro** (A4 da
+  6ª simulação, 2026-11-04; princípio 3): Configurações → Geral mostrava como
+  "Endereço do portal" o identificador da rede (`/{tenants.slug}`), que não
+  abre tela nenhuma, e Unidades o da unidade (`/begonia-savassi`); a dona não
+  sabia qual dar. Agora Geral diz "App da cliente:
+  https://…/begonia-savassi/cliente" (por unidade ativa, com "Qualquer
+  unidade abre a mesma ficha" quando há mais de uma) e para que serve, e o
+  cartão de cada unidade em Unidades diz o dela (`lib/unidades/app-da-cliente.ts`,
+  com o domínio de `origemPublicaDe`). O identificador da rede saiu da tela.
+  Prova: `e2e/configuracoes-endereco-do-app.spec.ts`.
 - **O fim do `/setup` sugere os próximos passos, NA ORDEM** (A3 da 6ª
   simulação, 2026-11-04: o procedimento nascia antes da equipe e do estoque —
   "Ninguém atende…", "o insumo precisa existir antes"): Equipe → Estoque →

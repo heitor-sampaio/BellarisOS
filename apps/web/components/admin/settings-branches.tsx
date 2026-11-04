@@ -3,6 +3,7 @@ import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { getTenantContext } from '@/lib/auth'
 import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
+import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
 import { MapPin, Mail, Phone, Power, PowerOff, ChevronRight } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import Link from 'next/link'
@@ -24,6 +25,9 @@ export async function SettingsBranches() {
     `)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: true }), 'carregar as unidades')
+
+  // O endereço do app da cliente de cada unidade (A4): é este que se dá a ela.
+  const origem = await origemDoApp()
 
   const total    = branches?.length ?? 0
   const active   = branches?.filter(b => b.is_active).length ?? 0
@@ -112,6 +116,11 @@ export async function SettingsBranches() {
                     }}>
                       /{branch.slug}
                     </code>
+                    {branch.is_active && (
+                      <p data-app-da-cliente-da-unidade style={{ fontSize: "var(--text-2xs)", color: "var(--text-muted)", marginTop: 4, overflowWrap: "anywhere" }}>
+                        App da cliente: <b style={{ color: "var(--text)" }}>{enderecoDoAppDaCliente(origem, branch.slug)}</b>
+                      </p>
+                    )}
                   </div>
                   <span className={branch.is_active ? 'chip chip-success' : 'chip chip-muted'} style={{ flexShrink: 0, marginLeft: 10 }}>
                     {branch.is_active ? 'Ativa' : 'Inativa'}
