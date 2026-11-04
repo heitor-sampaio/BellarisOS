@@ -76,7 +76,11 @@ export default async function AdminAgendaPage({
   // `?unidade=centro` ainda é legível para quem olha a URL. Valor desconhecido
   // (ou unidade desativada) cai na rede inteira, em vez de numa tela vazia.
   const unidadeId = todasUnidades.find(b => b.id === unidade || b.slug === unidade)?.id ?? ''
-  const branches  = unidadeId ? todasUnidades.filter(b => b.id === unidadeId) : todasUnidades
+  // Cada coluna leva o horário DA unidade: a grade sombreia o fechado dela e
+  // marca o encaixe (A26 da 6ª simulação).
+  const comHorario = (b: { id: string; name: string; slug: string }) =>
+    ({ ...b, horario: normalizarHorario(todasUnidadesComHorario.find(x => x.id === b.id)?.horario) })
+  const branches  = (unidadeId ? todasUnidades.filter(b => b.id === unidadeId) : todasUnidades).map(comHorario)
   const branchIds = branches.map(b => b.id)
   // A grade do dia abre no horário de funcionamento: o mais cedo e o mais tarde
   // entre as unidades mostradas, estendido pelos agendamentos (D5, 2026-10-28).

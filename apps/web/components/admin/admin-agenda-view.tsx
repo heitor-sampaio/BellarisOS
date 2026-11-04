@@ -9,6 +9,7 @@ import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { estenderJanela } from '@/lib/agenda/grade'
+import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, type Horario } from '@/lib/agenda/horario'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 import { contagemDaAgenda } from '@/lib/metrics/resultado'
@@ -17,7 +18,7 @@ import { useFala } from '@/components/shared/uma-unidade'
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
 
-interface Branch      { id: string; name: string; slug: string }
+interface Branch      { id: string; name: string; slug: string; /** O horário de funcionamento (A26); sem ele, a grade não sombreia. */ horario?: Horario | null }
 interface Appointment {
   id:              string
   scheduled_at:    string
@@ -252,6 +253,13 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
               positioned.push({ appt: a, col, totalCols })
             }
 
+            // O fechado DESTA unidade, sombreado (A26): ao lado de uma 24 h, a
+            // madrugada de quem abre às 10:00 parecia livre. O clique continua
+            // agendando ali (o encaixe é permitido, §9.1).
+            const foras = b.horario !== undefined
+              ? forasDoHorario(intervalosDoDia(b.horario, null, diaDaSemana(dia)), inicio * 60, fim * 60)
+              : []
+
             return (
               <div
                 key={b.id}
@@ -271,6 +279,13 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                   cursor: onHorarioVazio ? 'copy' : undefined,
                 }}
               >
+                {foras.map(f => (
+                  <div key={`fora-${f.de}`} data-fora-do-horario aria-hidden style={{
+                    position: 'absolute', left: 0, right: 0, top: (f.de / 60 - inicio) * HOUR_H, height: (f.ate - f.de) / 60 * HOUR_H,
+                    background: 'var(--bg-app)', pointerEvents: 'none',
+                  }} />
+                ))}
+
                 {/* Linhas de hora */}
                 {HOURS.map((_, i) => (
                   <div key={i} style={{
@@ -299,6 +314,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                   const h   = apptHeight(a)
                   const w   = `calc(${100 / totalCols}% - 6px)`
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
+                  const encaixe = b.horario !== undefined && !desmarcado(a) && foraDoHorarioDaUnidade(b.horario, a.scheduled_at, apptDuration(a))
 
                   return (
                     // Clicar abre a folha do agendamento — confirmar, dar
@@ -309,8 +325,9 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       key={a.id}
                       type="button"
                       data-agendamento={a.id}
+                      data-encaixe={encaixe ? '' : undefined}
                       onClick={() => onSelecionar(a)}
-                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}`}
+                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${encaixe ? ' · Encaixe: fora do horário da unidade' : ''}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}`}
                       style={{
                         opacity:      desmarcado(a) ? 0.6 : 1,
                         position: 'absolute',
@@ -334,6 +351,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                           {a.procedures?.name ?? '—'}
                         </span>
                         <SeloDaFicha estado={a.ficha} />
+                        {encaixe && <span className="chip chip-warning" style={{ fontSize: 'var(--text-overline)', padding: '0 5px', flexShrink: 0 }}>Encaixe</span>}
                       </div>
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, textDecoration: desmarcado(a) ? 'line-through' : undefined }}>
                         {a.clients?.name ?? '—'}

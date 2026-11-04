@@ -41,6 +41,15 @@
     de 01/11/2026 às 10:40." (`limiteLegivel`, `ValidacaoEmPortugues`; era o
     ISO "2026-11-01T10:40"). Prova: `e2e/agenda-encaixe-avisa.spec.ts`,
     `tests/validacao-limite-legivel.test.ts`.
+  - **Na agenda da REDE, cada coluna de unidade sombreia o fechado DELA, e o
+    encaixe fica marcado** (A26 da 6ª simulação, 2026-11-04): ao lado de uma
+    unidade 24 h, a madrugada de quem abre às 10:00 parecia livre, e o
+    agendamento das 03:00 ficava sem destaque. A grade do dia
+    (`admin-agenda-view.tsx`) sombreia `forasDoHorario` do horário da
+    unidade (`[data-fora-do-horario]`; o clique continua agendando), e o bloco
+    que cai fora dele leva "Encaixe" (`foraDoHorarioDaUnidade`,
+    `lib/agenda/horario.ts`, Brasília; `[data-encaixe]`). Prova:
+    `e2e/agenda-rede-unidade-fechada.spec.ts`, `tests/agenda-horario.test.ts`.
   - **Desmarcar "Segue o horário da unidade"** (Equipe) parte do horário da
     unidade do membro, não do comercial (J-9, `horarioDeQuemDeixaDeSeguir`);
     o membro da rede parte da unidade quando a rede tem uma só. Prova:

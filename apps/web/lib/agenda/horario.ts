@@ -144,6 +144,23 @@ export function diaDaSemana(data: string): number {
   return new Date(`${data.slice(0, 10)}T12:00:00Z`).getUTCDay()
 }
 
+/**
+ * O agendamento cai FORA do horário da unidade (o encaixe, §9.1)? Pelo
+ * relógio de Brasília: o dia e os minutos do início, até o fim. A agenda da
+ * rede o marca "Encaixe" (A26 da 6ª simulação: o das 03:00 da Casa Forte,
+ * fechada de madrugada, ficava sem destaque). O que atravessa a meia-noite
+ * conta como fora.
+ */
+export function foraDoHorarioDaUnidade(unidade: Horario | null, inicioIso: string, duracaoMin: number): boolean {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date(inicioIso))
+  const v = (t: string) => partes.find(p => p.type === t)?.value ?? '00'
+  const data = `${v('year')}-${v('month')}-${v('day')}`
+  const inicio = (Number(v('hour')) % 24) * 60 + Number(v('minute'))
+  return !cabeNoHorario(intervalosDoDia(unidade, null, diaDaSemana(data)), inicio, inicio + Math.max(1, duracaoMin))
+}
+
 const NOME_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 /** Segunda primeiro, domingo no fim — a semana de quem agenda. */
 const ORDEM_DA_SEMANA = [1, 2, 3, 4, 5, 6, 0]

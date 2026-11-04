@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HORARIO_PADRAO, normalizarHorario, horarioDeQuemDeixaDeSeguir, textoDosIntervalos, cabeNoHorario, forasDoHorario, intervalosDoDia, slotsDoDia, capacidadeEmMinutos, janelaDaGrade, diaDaSemana,
+  HORARIO_PADRAO, normalizarHorario, horarioDeQuemDeixaDeSeguir, textoDosIntervalos, cabeNoHorario, forasDoHorario, intervalosDoDia, slotsDoDia, capacidadeEmMinutos, janelaDaGrade, diaDaSemana, foraDoHorarioDaUnidade,
   type Horario,
 } from '@/lib/agenda/horario'
 
@@ -107,5 +107,21 @@ describe('janelaDoDia — a grade da Minha agenda ("Reforça", item 8)', () => {
     expect(janelaDoDia([{ de: '08:00', ate: '12:00' }])).toEqual({ inicio: 8, fim: 12 })
     expect(janelaDoDia([{ de: '07:30', ate: '12:00' }, { de: '18:00', ate: '21:30' }])).toEqual({ inicio: 7, fim: 22 })
     expect(janelaDoDia([])).toBeNull()
+  })
+})
+
+// A26 da 6ª simulação: o encaixe na agenda da rede, pelo horário DA unidade.
+describe('foraDoHorarioDaUnidade', () => {
+  const dezADezoito = { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, [{ de: '10:00', ate: '18:00' }]])) }
+  it('pelo relógio de Brasília, do início ao fim', () => {
+    // 03:00 em Brasília = 06:00 UTC.
+    expect(foraDoHorarioDaUnidade(dezADezoito, '2026-11-05T06:00:00Z', 30)).toBe(true)
+    expect(foraDoHorarioDaUnidade(dezADezoito, '2026-11-05T14:00:00Z', 30)).toBe(false)
+    // 17:45 + 30 min passa das 18:00.
+    expect(foraDoHorarioDaUnidade(dezADezoito, '2026-11-05T20:45:00Z', 30)).toBe(true)
+  })
+  it('sem cadastro, o padrão (segunda a sábado, 08–20): domingo é fora', () => {
+    expect(foraDoHorarioDaUnidade(null, '2026-11-08T13:00:00Z', 30)).toBe(true)
+    expect(foraDoHorarioDaUnidade(null, '2026-11-09T13:00:00Z', 30)).toBe(false)
   })
 })
