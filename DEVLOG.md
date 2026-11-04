@@ -9396,6 +9396,37 @@ pré-atendimento** (0ec4ca0a…15d3fd97; migrations `20261104002201`–`2202`):
   `lib/appointments/core.ts` e nas janelas da agenda e do atendimento dos
   dois portais: vale uma completa.
 
+**F23 feita em 2026-11-04 — atritos de unidade, equipe, CRM, cadastro e
+portal** (79647cd7…7821368f; migrations `20261104002301`–`2302`). Com ela,
+a 6ª simulação está toda tratada (D1–D17 e A1–A52):
+- **CRM:** na importação, o mesmo telefone com outro nome mostra os dois e
+  deixa escolher na ficha (padrão: juntar); no contato não há "separado" —
+  um telefone é uma pessoa (A14). O card tem "Agendar" (A16); o lead criado
+  à mão grava o telefone com o 55, e o cadastro acha "a mesma pessoa do
+  lead" (as 34 antigas sem 55 não foram reescritas — princípio 6, a busca
+  as acha). A pessoa importada sem oportunidade aparece no Ctrl K para quem
+  tem o CRM em Gerenciar e vira oportunidade (A15). "Unificar" mostra antes
+  como a ficha fica (A17).
+- **Equipe:** rebaixar uma Admin pede confirmação, também no servidor (A10);
+  quem deixa de seguir a unidade parte da união dos horários das unidades,
+  não de 08–20 (A11, princípio 4); a equipe da gerente fixa diz o recorte e
+  "Entra na unidade Casa Forte." (A12/A13).
+- **Portal e app:** o cartão do plano abre com as sessões, o pago e o a
+  pagar (A45, sem o "valor total" que ignora desconto); "Sem preferência"
+  diz quem ficou com o horário (A48); o aviso de acesso criado é neutro
+  (A20).
+- **Clínica nova:** preço vazio vale R$ 0,00 com aviso (A1); estoque vazio
+  diz "Nenhum produto cadastrado" com "Novo produto" (A2); o fim do setup
+  sugere Equipe → Estoque → Procedimentos → Taxas (A3); o endereço do app
+  da cliente aparece inteiro em Geral e em Unidades (A4); o contrato salvo
+  inativo diz como ativar (A8); a aba Planejamento sem o botão diz quem
+  monta, e `/planejamentos/novo` não dá 404 (A18); o Copilot fora do plano
+  aparece explicado a quem administra (A51; a API segue 403).
+- **Não reproduzido:** A6 (o título do "Editar" sempre o da linha).
+- Nenhuma pergunta ao Heitor. Mexeu nos layouts dos dois portais, no
+  `globals.css` do núcleo, na busca e no gatilho do lead. O Heitor pediu a
+  completa ao fim das quatro frentes.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
