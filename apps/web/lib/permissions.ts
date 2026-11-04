@@ -181,7 +181,7 @@ export const REPORT_TAB_LABELS: Record<ReportTab, string> = {
   procedimentos: 'Procedimentos',
   profissionais: 'Profissionais',
   estoque:       'Estoque',
-  comercial:     'Comercial',
+  comercial:     'Funil comercial',
 }
 
 /** O que cada aba entrega, para quem monta o cargo saber o que está liberando. */

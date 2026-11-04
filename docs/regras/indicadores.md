@@ -520,6 +520,11 @@ mesmo ponto centraliza com zoom de bairro. Pela cidade, Moinhos e Zona Sul
 caíam no mesmo ponto e o mapa abria só na Zona Sul. Prova:
 `tests/mapa-enquadra-as-unidades.test.ts` (o geocoding é externo).
 
+**A aba do funil se chama "Funil comercial"** (A9 da 6ª simulação,
+2026-11-04: "Comercial" não dizia que é o funil de oportunidades): o mesmo nome
+no cargo (`REPORT_TAB_LABELS.comercial`) e na tela de Relatórios, que o lê
+de lá. A chave continua `comercial`. Prova: `tests/aba-comercial-funil.test.ts`.
+
 **Taxa sem denominador é "—", não 0%** (ind-10, revisão de 2026-11-02:
 "0% diz que foi ruim; '—' diz que não houve"): a taxa de conclusão (no
 total e por unidade), a retenção e o giro dos Relatórios mostram "—" quando

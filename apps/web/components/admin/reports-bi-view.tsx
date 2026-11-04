@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { REPORT_TAB_LABELS } from '@/lib/permissions'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES, type DefinicaoDoNumero } from '@/lib/metrics/definicoes'
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
@@ -45,7 +46,7 @@ const TABS: { key: Tab; label: string }[] = [
   // Era a tela /admin/comercial, com entrada própria no menu. O assunto é
   // relatório — funil, conversão e ranking — e o módulo que a governa já era
   // `reports`, então virou aba em vez de destino separado.
-  { key: 'comercial',      label: 'Comercial'      },
+  { key: 'comercial',      label: REPORT_TAB_LABELS.comercial },
 ]
 
 /** Painel comercial, calculado no servidor (ver `painelComercial`). */
