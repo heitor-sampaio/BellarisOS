@@ -204,7 +204,7 @@ export async function createTeamMember(
 }
 
 export async function updateTeamMember(
-  _prevState: { error: string } | { success: boolean } | undefined,
+  _prevState: { error: string } | { success: boolean } | { pergunta: string } | undefined,
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
@@ -235,7 +235,7 @@ export async function updateTeamMember(
 
   const member = await ler(admin
     .from('users')
-    .select('id, auth_id, branch_id, role_id, is_active')
+    .select('id, auth_id, branch_id, role_id, is_active, name')
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar o usuário')
@@ -265,6 +265,12 @@ export async function updateTeamMember(
     if (member.id === ctx.internalUserId) return { error: await falaDaRede(ctx.tenantId, 'Você não muda o próprio cargo de Admin da rede: peça a outra Admin.') }
     if (await ehAUltimaAdminAtiva(admin, ctx.tenantId!, member as { id: string; is_active: boolean; role_id: string | null })) {
       return { error: await falaDaRede(ctx.tenantId, 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.') }
+    }
+    // A10 da 6ª simulação: rebaixar a dona não perguntava nada. A Admin
+    // decide (princípio 2: no máximo, avisar) — mas confirmando.
+    if (formData.get('_rebaixarAdmin') !== 'sim') {
+      return { pergunta: await falaDaRede(ctx.tenantId,
+        `${(member as { name?: string | null }).name ?? 'Esta pessoa'} é Admin da rede: com o cargo novo, deixa de ter acesso total e passa a ver só o que o cargo libera. Trocar o cargo mesmo assim?`) }
     }
   }
   const mantemCargoDoSistema = !!cargoAtual?.is_system && roleId === member.role_id

@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { normalizarHorario, horarioDeQuemDeixaDeSeguir } from '@/lib/agenda/horario'
 import { Pencil, X } from 'lucide-react'
@@ -91,6 +92,13 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
   const scope = paraAdmin ? 'network' : scopeEscolhido
   const [state, action, pending] = useActionState(updateTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
+  // A10: rebaixar uma Admin pergunta antes (o servidor também — sem o "sim",
+  // devolve a pergunta). O "atende" é controlado: o React 19 limpa o campo
+  // solto do formulário depois de cada envio, e a resposta reenvia.
+  const pergunta = state && 'pergunta' in state ? state.pergunta : null
+  const [rebaixar, setRebaixar] = useState(false)
+  const [atende, setAtende] = useState(member.providesServices)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // Fecha quando chega o resultado de sucesso.
   const sucesso = !!(state && 'success' in state && state.success)
@@ -115,8 +123,9 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
               </button>
             </div>
 
-            <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form ref={formRef} action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <input type="hidden" name="userId" value={member.id} />
+              <input type="hidden" name="_rebaixarAdmin" value={rebaixar ? 'sim' : ''} />
               <input type="hidden" name="redirectPath" value={redirectPath} />
               <input type="hidden" name="scope" value={scope} />
 
@@ -190,7 +199,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                 <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input
                     type="checkbox" name="providesServices"
-                    defaultChecked={member.providesServices}
+                    checked={atende} onChange={e => setAtende(e.target.checked)}
                     style={{ width: 16, height: 16, accentColor: 'var(--brand)' }}
                   />
                   <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
@@ -213,6 +222,27 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                 }}>
                   {stateError}
                 </p>
+              )}
+
+              {pergunta && !rebaixar && cargo !== cargoInicial && (
+                <div role="alert" data-rebaixar-admin style={{
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                  color: 'var(--warning)', background: 'var(--warning-soft)',
+                  borderRadius: 'var(--radius-field-token)', padding: '10px 12px',
+                  fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+                }}>
+                  <span>{pergunta}</span>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" className="btn-primary" disabled={pending}
+                      onClick={() => { flushSync(() => setRebaixar(true)); formRef.current?.requestSubmit() }}>
+                      Trocar o cargo mesmo assim
+                    </button>
+                    <button type="button" className="btn-secondary" disabled={pending}
+                      onClick={() => setCargo(cargoInicial)}>
+                      Manter como Admin
+                    </button>
+                  </div>
+                </div>
               )}
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>

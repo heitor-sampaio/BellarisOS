@@ -148,6 +148,15 @@
   pergunta — a Admin é da clínica toda (o servidor já gravava assim e recusa a
   quem não é Admin, `assertRoleInTenant`). Quem gere a equipe sem ser Admin
   não vê o cargo. Prova: `e2e/equipe-dona-que-atende.spec.ts` (eq-01).
+- **Rebaixar uma Admin pergunta antes** (A10 da 6ª simulação, 2026-11-04;
+  princípio 2: a Admin decide, no máximo avisar): trocar o cargo de quem é
+  Admin da rede mostra "Marta é Admin da rede: com o cargo novo, deixa de ter
+  acesso total e passa a ver só o que o cargo libera. Trocar o cargo mesmo
+  assim?" com "Trocar o cargo mesmo assim" e "Manter como Admin"
+  (`[data-rebaixar-admin]`). O servidor pergunta também: `updateTeamMember`
+  sem `_rebaixarAdmin=sim` devolve `{ pergunta }` e não grava. As recusas de
+  antes continuam (a própria Admin, a última ativa). Prova:
+  `e2e/equipe-dona-que-atende.spec.ts` ("A10").
 - Status: `SCHEDULED → CONFIRMED → ARRIVED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `arrivedAt`, `startedAt`, `completedAt`, `cancelledAt`
 - **Confirmar e chegar são passos diferentes** (2026-10-21, decisão do Heitor;

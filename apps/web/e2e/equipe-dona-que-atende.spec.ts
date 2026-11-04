@@ -251,13 +251,30 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
     expect((await membro(socia!.userId))?.provides_services, 'controle: a Admin marcou').toBe(true)
   })
 
-  test('uma Admin rebaixa outra (que não é a última); a si mesma, não', async ({ browser }) => {
+  test('uma Admin rebaixa outra (que não é a última), confirmando antes (A10); a si mesma, não', async ({ browser }) => {
+    const nomeDaColega = `${PREFIXO} Colega dac${marca}`
     await como(browser, dona!.estado, async p => {
       await p.goto('/admin/team')
+      // A10 da 6ª simulação: rebaixar a Marta (dona) não perguntava nada. Avisa
+      // e confirma (princípio 2: a clínica decide; no máximo, avisar).
+      await p.getByTitle(`Editar ${nomeDaColega}`).click()
+      const modal = p.getByRole('dialog')
+      await modal.locator(`#tme-role-${colega!.userId}`).selectOption(colega!.roleId)
+      await modal.getByRole('button', { name: 'Salvar', exact: true }).click()
+      const pergunta = modal.locator('[data-rebaixar-admin]')
+      await expect(pergunta).toContainText(`${nomeDaColega} é Admin`)
+      await expect(pergunta).toContainText('deixa de ter acesso total')
+      expect((await membro(colega!.userId))?.role_id, 'perguntar não troca o cargo').toBe(dona!.roleId)
+
+      // Pela action direta, sem a confirmação, também só pergunta.
       const r = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
         userId: colega!.userId, roleId: colega!.roleId, scope: 'network', redirectPath: '/admin/team',
       })
-      expect(r.texto, 'rebaixa a outra').toContain('"success":true')
+      expect(r.texto, 'sem confirmar, pergunta').toContain('deixa de ter acesso total')
+      expect((await membro(colega!.userId))?.role_id).toBe(dona!.roleId)
+
+      await pergunta.getByRole('button', { name: 'Trocar o cargo mesmo assim' }).click()
+      await expect(modal).toBeHidden({ timeout: 15_000 })
       const eu = await chamarAcaoComFormulario(p, ARQ, 'updateTeamMember', '/admin/team', [undefined], {
         userId: dona!.userId, roleId: gerenteDaUnidade!.roleId, scope: 'network', redirectPath: '/admin/team',
       })
