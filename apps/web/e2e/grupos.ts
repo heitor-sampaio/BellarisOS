@@ -158,6 +158,7 @@ export const ISOLADOS = [
   'portal-cliente-varias-clinicas.spec.ts',
   'pre-pago.spec.ts',
   'pre-pago-cancelar-unidade.spec.ts',
+  'pre-pago-agendados.spec.ts',
   'checkout-entrada-no-cartao.spec.ts',
   'fidelidade-produto-nao-pontua.spec.ts',
   'vendas-forma-nasce-vazia.spec.ts',

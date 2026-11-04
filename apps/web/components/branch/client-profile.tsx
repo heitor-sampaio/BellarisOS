@@ -42,6 +42,7 @@ import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
+import { textoDasRestantes } from '@/lib/pre-pago/contagem'
 
 // -- Types --------------------------------------------------------------------
 
@@ -94,6 +95,8 @@ export interface ProfilePackage {
   name:          string
   totalSessions: number
   usedSessions:  number
+  /** Das restantes, quantas já têm agendamento (A27). */
+  scheduledSessions?: number
   procedureId:   string
   procedureName: string
   price:         number
@@ -1651,7 +1654,7 @@ export function ClientProfile({
               </div>
               {activePackage.totalSessions - activePackage.usedSessions > 0 && (
                 <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.7, marginTop: 6 }}>
-                  {activePackage.totalSessions - activePackage.usedSessions} sessões restantes
+                  {textoDasRestantes(activePackage.totalSessions - activePackage.usedSessions, activePackage.scheduledSessions ?? 0)}
                 </p>
               )}
             </div>

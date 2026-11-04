@@ -122,7 +122,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, service_packages(name, procedure_id, price, procedures(name, duration_min))')
+      .select('id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, service_packages(name, procedure_id, price, procedures(name, duration_min)), package_sessions(status, appointment_id)')
       .eq('client_id', id)
       .order('purchased_at', { ascending: false })
       .limit(10), 'carregar os pacotes'),
@@ -216,6 +216,9 @@ export default async function AdminClientProfilePage({
       name:          sp?.name ?? 'Pacote',
       totalSessions: activePkg.total_sessions,
       usedSessions:  activePkg.used_sessions,
+      // As restantes já agendadas (A27): o cartão diz "2 sessões restantes · 1 agendada".
+      scheduledSessions: ((activePkg as { package_sessions?: { status: string; appointment_id: string | null }[] }).package_sessions ?? [])
+        .filter(s => s.status === 'AVAILABLE' && !!s.appointment_id).length,
       procedureId:   sp?.procedure_id ?? '',
       procedureName: proc?.name ?? sp?.name ?? '—',
       price:         Number(sp?.price ?? 0) / (activePkg.total_sessions || 1),
@@ -246,6 +249,9 @@ export default async function AdminClientProfilePage({
       name:          planName,
       totalSessions: totalSess,
       usedSessions:  completedSess,
+      scheduledSessions: (appts ?? []).filter(
+        (a: { status: string; treatment_plan_id: string | null }) => ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status) && a.treatment_plan_id === plan.id
+      ).length,
       procedureId:   firstProc?.procedure_id ?? '',
       procedureName: planName,
       price:         Number(firstProc?.price ?? 0),

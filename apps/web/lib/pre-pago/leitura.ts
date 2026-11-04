@@ -3,6 +3,7 @@ import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { ProcedimentoAVenda } from '@/components/shared/vender'
+import { contagemDoPago } from '@/lib/pre-pago/contagem'
 
 /**
  * Procedimento pré-pago (2026-09-30): o que se vende e o que o cliente tem.
@@ -45,7 +46,10 @@ export interface PrePagoDoCliente {
   venceEm:      string | null
   /** Calculado no servidor (a tela não lê o relógio na renderização). */
   vencida:      boolean
+  /** Disponíveis SEM agendamento (A27: a agendada não está "para agendar"). */
   disponiveis:  number
+  /** Disponíveis com agendamento ligado. */
+  agendadas:    number
   unidades:     UnidadePrePaga[]
 }
 
@@ -71,7 +75,11 @@ export async function prePagosDoCliente(tenantId: string, clientId: string): Pro
       id: v.id, procedimento: v.procedures?.name ?? 'Procedimento', procedureId: v.procedure_id, branchId: v.branch_id,
       quantidade: v.quantity, price: Number(v.price), desconto: Number(v.desconto), vendidoEm: v.sold_at, venceEm: v.expires_at,
       vencida: v.expires_at != null && new Date(v.expires_at).getTime() < Date.now(),
-      disponiveis: unidades.filter(u => u.status === 'DISPONIVEL').length, unidades,
+      ...(() => {
+        const c = contagemDoPago(unidades.map(u => ({ status: u.status, agendada: !!u.agendamentoId })))
+        return { disponiveis: c.paraAgendar, agendadas: c.agendadas }
+      })(),
+      unidades,
     }
   })
 }

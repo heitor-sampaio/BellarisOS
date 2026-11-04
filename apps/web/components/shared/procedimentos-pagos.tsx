@@ -8,6 +8,7 @@ import { agendarUnidadePrePaga } from '@/actions/pre-pago'
 import { CancelarUnidadePrePaga } from '@/components/shared/cancelar-unidade-pre-paga'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import type { PrePagoDoCliente, UnidadePrePaga } from '@/lib/pre-pago/leitura'
+import { textoDoParaAgendar } from '@/lib/pre-pago/contagem'
 
 const TZ = 'America/Sao_Paulo'
 const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: TZ })
@@ -50,7 +51,7 @@ function Venda({ venda: v, podeCancelar, agenda }: { venda: PrePagoDoCliente; po
         style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>{v.quantidade}× {v.procedimento}</span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: v.disponiveis > 0 ? 'var(--brand)' : 'var(--text-muted)', fontWeight: 700 }}>
-          {v.disponiveis > 0 ? `${v.disponiveis} para agendar` : 'nada para agendar'}
+          {textoDoParaAgendar({ paraAgendar: v.disponiveis, agendadas: v.agendadas })}
         </span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginLeft: 'auto' }}>
           {formatBRL(v.price)}{v.desconto > 0 ? ` (desconto de ${formatBRL(v.desconto)})` : ''} · {dia(v.vendidoEm)}

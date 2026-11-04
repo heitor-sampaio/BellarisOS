@@ -11,6 +11,7 @@ import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
+import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -103,7 +104,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
     saldoDoCliente(ctx.clientId!, null, admin),
     // Procedimentos pré-pagos (2026-09-30): o que ele ainda tem para agendar.
     ler(admin.from('procedure_sales')
-      .select('id, quantity, expires_at, procedures(name), procedure_sale_units(status)')
+      .select('id, quantity, expires_at, procedures(name), procedure_sale_units(status, appointment_id)')
       .eq('client_id', ctx.clientId!)
       .order('sold_at', { ascending: false })
       .limit(10), 'buscar os procedimentos pré-pagos'),
@@ -125,9 +126,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const fidelidadeLigada = redeDoCliente ? (await configDaRede(redeDoCliente, admin)).enabled : false
 
   const prePagos = ((prePagosRes ?? []) as unknown as {
-    id: string; quantity: number; expires_at: string | null; procedures: { name: string } | null; procedure_sale_units: { status: string }[]
-  }[]).map(v => ({ ...v, disponiveis: (v.procedure_sale_units ?? []).filter(u => u.status === 'DISPONIVEL').length }))
-    .filter(v => v.disponiveis > 0)
+    id: string; quantity: number; expires_at: string | null; procedures: { name: string } | null; procedure_sale_units: { status: string; appointment_id: string | null }[]
+  }[]).map(v => ({ ...v, contagem: contagemDoPago((v.procedure_sale_units ?? []).map(u => ({ status: u.status, agendada: !!u.appointment_id }))) }))
+    // A agendada não está "para agendar" (A27), mas o cartão fica enquanto houver alguma em aberto.
+    .filter(v => v.contagem.paraAgendar + v.contagem.agendadas > 0)
 
   const hasActiveTreatments = activePkgs.length > 0 || activePlans.length > 0 || prePagos.length > 0
 
@@ -370,7 +372,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                       {v.procedures?.name ?? 'Procedimento'}
                     </p>
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      {v.disponiveis} de {v.quantity} já pago{v.quantity > 1 ? 's' : ''}, para agendar
+                      {v.quantity} já pago{v.quantity > 1 ? 's' : ''} · {textoDoParaAgendar(v.contagem)}
                       {v.expires_at ? ` · válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
                     </p>
                   </div>
