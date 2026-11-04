@@ -52,8 +52,12 @@
     `e2e/agenda-rede-unidade-fechada.spec.ts`, `tests/agenda-horario.test.ts`.
   - **Desmarcar "Segue o horário da unidade"** (Equipe) parte do horário da
     unidade do membro, não do comercial (J-9, `horarioDeQuemDeixaDeSeguir`);
-    o membro da rede parte da unidade quando a rede tem uma só. Prova:
-    `e2e/equipe-horario-parte-da-unidade.spec.ts`.
+    o membro da rede parte da unidade quando a rede tem uma só e, com várias,
+    da UNIÃO dos horários delas (A11 da 6ª simulação, 2026-11-04, princípio
+    4: o Dr. Igor partia de 08–20 com a Boa Viagem em 24 h e a Casa Forte em
+    06–22; `uniaoDosHorarios`, a unidade sem cadastro conta como o padrão
+    dela). Prova: `e2e/equipe-horario-parte-da-unidade.spec.ts`,
+    `tests/agenda-horario.test.ts` ("A11").
   - **O X do segundo período TIRA aquele período** (A7 da 5ª simulação,
     2026-11-01; `components/shared/editor-de-horario.tsx`): era "Tirar a
     pausa", que juntava os dois — a profissional de 07–12 e 18–22 ficava

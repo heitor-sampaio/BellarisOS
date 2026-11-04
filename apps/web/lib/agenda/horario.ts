@@ -61,11 +61,34 @@ export function normalizarHorario(v: unknown): Horario | null {
  * 2026-10-30): o horário da unidade do membro — a dona que só tira a quarta
  * não redigita a semana, nem ganha o sábado em que a unidade não abre. O
  * membro da REDE (atende em todas) parte da unidade quando a rede tem uma só;
- * com várias, do padrão. Unidade sem cadastro: o padrão.
+ * com várias, da UNIÃO dos horários delas (A11 da 6ª simulação, princípio 4:
+ * partia do 08–20 com as unidades em 24 h e em 06–22 — um horário que
+ * nenhuma tinha). Unidade sem cadastro: o padrão (é o horário dela).
  */
 export function horarioDeQuemDeixaDeSeguir(unidades: { id: string; horario?: unknown }[], branchId: string | null): Horario {
+  if (!branchId && unidades.length > 1) {
+    return uniaoDosHorarios(unidades.map(u => normalizarHorario(u.horario) ?? HORARIO_PADRAO))
+  }
   const unidade = branchId ? unidades.find(u => u.id === branchId) : unidades.length === 1 ? unidades[0] : undefined
   return normalizarHorario(unidade?.horario) ?? HORARIO_PADRAO
+}
+
+/** Os horários juntos, dia a dia: os períodos que se tocam ou se cruzam viram um só. */
+export function uniaoDosHorarios(horarios: Horario[]): Horario {
+  const saida: Horario = { dias: {} }
+  const dias = new Set(horarios.flatMap(h => Object.keys(h.dias)))
+  for (const dia of [...dias].sort()) {
+    const todos = horarios.flatMap(h => doDia(h, Number(dia)) ?? [])
+      .map(i => [minutos(i.de), minutos(i.ate)] as const).sort((a, b) => a[0] - b[0])
+    const juntos: [number, number][] = []
+    for (const [de, ate] of todos) {
+      const ultimo = juntos[juntos.length - 1]
+      if (ultimo && de <= ultimo[1]) ultimo[1] = Math.max(ultimo[1], ate)
+      else juntos.push([de, ate])
+    }
+    ;(saida.dias as Record<string, Intervalo[]>)[dia] = juntos.map(([de, ate]) => ({ de: hhmm(de), ate: hhmm(ate) }))
+  }
+  return saida
 }
 
 /**

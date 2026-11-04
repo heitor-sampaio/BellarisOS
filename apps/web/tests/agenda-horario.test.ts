@@ -74,9 +74,22 @@ describe('o horário de quem deixa de seguir a unidade (J-9)', () => {
   it('unidade sem cadastro: o padrão', () => {
     expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }, { id: 'b', horario: null }], 'b')).toEqual(HORARIO_PADRAO)
   })
-  it('o membro da rede parte da unidade quando a rede tem uma só; com várias, do padrão', () => {
+  it('o membro da rede parte da unidade quando a rede tem uma só', () => {
     expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }], null)).toEqual(daUnidade)
-    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: daUnidade }, { id: 'b' }], null)).toEqual(HORARIO_PADRAO)
+  })
+  // A11 da 6ª simulação: o Dr. Igor (rede) partia de 08–20 com a Boa Viagem em
+  // 24 h e a Casa Forte em 06–22 — um horário que nenhuma das duas tem.
+  it('com várias unidades, o membro da rede parte da UNIÃO dos horários delas (A11, princípio 4)', () => {
+    const vinteEQuatro = { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, [{ de: '00:00', ate: '24:00' }]])) }
+    const seisAsDez = { dias: { 0: [], 1: [{ de: '06:00', ate: '22:00' }], 2: [{ de: '06:00', ate: '22:00' }], 6: [] } }
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: vinteEQuatro }, { id: 'b', horario: seisAsDez }], null)).toEqual(vinteEQuatro)
+    const manha = { dias: { 0: [], 1: [{ de: '08:00', ate: '12:00' }], 2: [] } }
+    const tarde = { dias: { 0: [], 1: [{ de: '11:00', ate: '18:00' }], 2: [{ de: '14:00', ate: '18:00' }] } }
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: manha }, { id: 'b', horario: tarde }], null))
+      .toEqual({ dias: { 0: [], 1: [{ de: '08:00', ate: '18:00' }], 2: [{ de: '14:00', ate: '18:00' }] } })
+    // A unidade sem cadastro conta como o padrão dela (seg a sáb, 08–20).
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: seisAsDez }, { id: 'b' }], null).dias[1]).toEqual([{ de: '06:00', ate: '22:00' }])
+    expect(horarioDeQuemDeixaDeSeguir([{ id: 'a', horario: seisAsDez }, { id: 'b' }], null).dias[6]).toEqual([{ de: '08:00', ate: '20:00' }])
   })
 })
 
