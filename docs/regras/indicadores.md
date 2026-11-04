@@ -661,10 +661,19 @@ bruta"/"Receita Gerada": entravam o avulso concluído e não pago, a sessão de
 pacote/pré-pago já vendida e o preço sem o desconto (Laser R$ 1.200 contra
 R$ 780 de receita no mês). O nome é "receita paga", com a dica
 `DEFINICOES.receitaDosAtendimentos`. Pacote, pré-pago, plano e produto não
-são de um atendimento e não entram aqui. As execuções seguem o eixo do
-atendimento; a receita, o do pagamento — o pago no período sem execução nele
-vem com 0 execuções (o ranking que CONTA o deixa de fora). O ranking por
-receita do dashboard pede a lista larga (50) e ordena pela receita.
+são de um atendimento e não entram aqui. **A receita entra no dia da
+EXECUÇÃO** (F18, o Heitor: "contar no dia que foi feita"; princípio 5 do
+CLAUDE.md): o pagamento do avulso conta no `aconteceu_em` do atendimento
+concluído, qualquer que seja o dia em que foi pago — a Limpeza feita em 31/10
+e paga em 03/11 é "1 execução · R$ 180" em OUTUBRO, e novembro não mostra
+nada dela; o relatório de outubro muda quando o pagamento chega depois
+(aceito). A régua é `metrics_receitas_pagas_dos_executados` (o predicado
+inteiro da regra única, sobre os lançamentos dos atendimentos concluídos no
+período; migration `20261104001801`), nas quatro contas. O caixa, o
+faturamento, o Fechamento e o "Meu faturamento" seguem no dia do pagamento
+(`metrics_receitas_pagas` não mudou). Assim nenhuma linha fica com valor e 0
+execuções. O ranking por receita do dashboard pede a lista larga (50) e
+ordena pela receita.
 `serviceRevenue` (o preço dos concluídos) continua no núcleo, com o nome
 "receita de serviço". Prova: `e2e/indicadores-receita-paga-por-procedimento.spec.ts`.
 **A sessão de PACOTE entra pelo rateio** (r2-ind-01, o Heitor, 2026-11-03:
@@ -718,10 +727,10 @@ ATENDIMENTOS: a sessão é um atendimento (+1, com os R$ 2.000) — decisão da
 F17, para o Heitor revisar. Prova:
 `e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com os
 casos r3-f13-07 e r4-f15-03 / F16-1).
-**O que ainda dá valor sem execução** (F17, para o Heitor decidir — mudaria
-o dia em que o dinheiro conta): o avulso pago num período e feito em outro
-(concluído 31/10, pago 03/11 → em novembro "Limpeza 0 execuções ·
-R$ 180"). A receita segue o dia do pagamento (a regra única).
+**O avulso pago noutro período** era o último caminho de "0 execuções ·
+R$ X" (F17); desde a F18 ele conta no dia da execução (acima). Prova:
+`e2e/indicadores-receita-paga-por-procedimento.spec.ts` ("o avulso pago
+noutro mês").
 
 **"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
 2026-11-02): ativo, com `provides_services` e ao alcance das unidades do

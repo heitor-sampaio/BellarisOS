@@ -112,3 +112,58 @@ test('o ranking por procedimento e por profissional é a receita PAGA dos atendi
     await expect(pg.getByText('Receita Gerada')).toHaveCount(0)
   })
 })
+
+// O Heitor, à decisão da F17 (opção a): "contar no dia que foi feita". O
+// ranking e o relatório de EXECUÇÃO contam a receita do avulso no dia em que
+// o atendimento foi FEITO, não no do pagamento — como a sessão de pacote
+// (princípio 5: "sem execução, sem valor"). A Limpeza concluída em 31/10 e
+// paga em 03/11: outubro "Limpeza · 1 execução · R$ 180"; novembro nada dela.
+// O caixa (a regra única de receita) continua no dia do pagamento.
+test('o avulso pago noutro mês conta no mês em que foi FEITO — e o caixa segue no do pagamento', async () => {
+  const cliente = await rede!.criarCliente('Noutro mes')
+  const { data: ag, error } = await db().from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: limpeza, professional_id: rede!.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 180,
+    scheduled_at: '2021-10-31T13:00:00-03:00', completed_at: '2021-10-31T13:40:00-03:00',
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede!.branchId, client_id: cliente, appointment_id: ag!.id, type: 'INCOME', category: 'Serviços',
+    description: `[e2e] limpeza paga depois ${marca}`, amount: 180, payment_method: 'PIX', is_paid: true,
+    paid_at: '2021-11-03T12:00:00-03:00', created_by: 'e2e',
+  })).error).toBeNull()
+
+  const outubro = { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: '2021-10-01T00:00:00-03:00', p_to: '2021-10-31T23:59:59-03:00' }
+  const novembro = { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: '2021-11-01T00:00:00-03:00', p_to: '2021-11-30T23:59:59-03:00' }
+  const conta = async (p: typeof outubro) => {
+    const [procs, profs, rel, cat] = await Promise.all([
+      db().rpc('metrics_top_procedures', { ...p, p_limit: 10 }),
+      db().rpc('metrics_top_professionals', { ...p, p_limit: 10 }),
+      db().rpc('metrics_relatorio', { ...p, p_prev_from: p.p_from, p_prev_to: p.p_from, p_aba: 'procedimentos', p_granularidade: 'day' }),
+      db().rpc('metrics_receita_por_categoria_de_procedimento', p),
+    ])
+    for (const r of [procs, profs, rel, cat]) expect(r.error).toBeNull()
+    const r = rel.data as { por_procedimento: { nome: string; receita: number; execucoes: number }[]; por_profissional: { receita: number; atendimentos: number }[]; receita_dos_atendimentos: number }
+    return {
+      procedimentos: (procs.data as { procedure_name: string; appointments: number; revenue: number }[])
+        .map(x => [x.procedure_name.replace(` ${marca}`, ''), Number(x.appointments), Number(x.revenue)]),
+      profissionais: (profs.data as { appointments: number; revenue: number }[]).map(x => [Number(x.appointments), Number(x.revenue)]),
+      relatorio: r.por_procedimento.map(x => [x.nome.replace(` ${marca}`, ''), Number(x.execucoes), Number(x.receita)]),
+      porProfissional: r.por_profissional.map(x => [Number(x.atendimentos), Number(x.receita)]),
+      receitaDosAtendimentos: Number(r.receita_dos_atendimentos),
+      categorias: (cat.data as { categoria: string; receita: number }[]).map(c => [c.categoria, Number(c.receita)]),
+    }
+  }
+  expect(await conta(outubro), 'outubro: a execução e o dinheiro dela').toEqual({
+    procedimentos: [['[e2e] Limpeza', 1, 180]], profissionais: [[1, 180]],
+    relatorio: [['[e2e] Limpeza', 1, 180]], porProfissional: [[1, 180]],
+    receitaDosAtendimentos: 180, categorias: [['Facial', 180]],
+  })
+  expect(await conta(novembro), 'novembro: nada — nenhuma linha com valor e 0 execuções').toEqual({
+    procedimentos: [], profissionais: [], relatorio: [], porProfissional: [], receitaDosAtendimentos: 0, categorias: [],
+  })
+  // O caixa: o pagamento de 03/11 é receita de novembro.
+  const { data: caixa, error: ec } = await db().rpc('metrics_receitas_pagas', { ...novembro, p_professional_id: null })
+  expect(ec).toBeNull()
+  expect((caixa as { amount: number }[]).reduce((s, t) => s + Number(t.amount), 0), 'o caixa de novembro tem os R$ 180').toBe(180)
+})
