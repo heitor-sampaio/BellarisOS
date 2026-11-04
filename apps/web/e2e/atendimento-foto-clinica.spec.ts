@@ -78,6 +78,10 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
       await fotos.getByRole('button', { name: 'Anexar foto' }).last().click()
       await expect.poll(async () => (await fotosDo(atendimento)).length).toBe(1)
       await expect(fotos.getByRole('img', { name: /Foto clínica/ }), 'a foto aparece na tela do atendimento').toBeVisible()
+      // A33 da 6ª simulação ("a miniatura aparece em branco logo depois de anexar"): a imagem CARREGA
+      // logo após anexar — o branco era o arquivo de teste do robô (10 px; aqui, 1×1 transparente).
+      await expect.poll(() => fotos.getByRole('img', { name: /Foto clínica/ }).first()
+        .evaluate(e => (e as HTMLImageElement).complete && (e as HTMLImageElement).naturalWidth > 0), { message: 'a miniatura carregou' }).toBe(true)
     })
     const anexadas = await fotosDo(atendimento)
     expect(anexadas).toHaveLength(1)
