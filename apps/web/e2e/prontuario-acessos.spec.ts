@@ -137,3 +137,26 @@ test('o registro não se lê pela sessão nem se altera', async () => {
   expect(error, 'nem o servidor altera um acesso registrado').not.toBeNull()
   expect((await acessos()).map(a => a.ator_nome)).not.toContain('outra pessoa')
 })
+
+// A35 da 6ª simulação: o Igor (da rede, prontuário em Gerenciar com "só os meus") via a lista, e o texto
+// não dizia que ela vale para ele também. O texto diz a regra inteira (podeVerAcessosAoProntuario).
+test('A35: quem tem o prontuário "só os meus", sem unidade fixa, vê a lista — e o texto diz isso', async ({ browser }) => {
+  const igor = await criarMembro(`pai${marca}`, { tenant: rede!.tenantId, rotulo: 'Medico da rede', permissoes: [
+    { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' },
+  ] })
+  try {
+    expect((await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: igor.userId,
+      status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: new Date(Date.now() + 86_400_000).toISOString(),
+    })).error).toBeNull()
+    await como(browser, igor, async p => {
+      await p.goto(`/admin/clients/${cliente}?aba=fichas`)
+      const secao = p.getByRole('region', { name: 'Acessos ao prontuário' })
+      await expect(secao).toBeVisible()
+      await expect(secao).toContainText('também com o escopo “só os meus”')
+    })
+  } finally {
+    await db().from('appointments').delete().eq('professional_id', igor.userId)
+    await igor.limpar()
+  }
+})

@@ -23,8 +23,9 @@ export function AcessosAoProntuario({ itens, total }: { itens: AcessoNaFicha[]; 
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 10 }}>
         {/* A regra é `podeVerAcessosAoProntuario`: sem unidade fixa e com o
             prontuário em Gerenciar — o texto dizia "só a administração da
-            rede", e o médico da rede via a lista (A43, 2026-11-01). */}
-        Quem viu os dados de saúde desta cliente, e por onde. Esta lista aparece para quem tem o Prontuário em Gerenciar, sem unidade fixa.
+            rede", e o médico da rede via a lista (A43, 2026-11-01). O escopo
+            não muda a regra: com "só os meus" também (A35 da 6ª simulação). */}
+        Quem viu os dados de saúde desta cliente, e por onde. Esta lista aparece para quem tem o Prontuário em Gerenciar, sem unidade fixa — também com o escopo “só os meus”.
         {total > itens.length && ` Mostrando os ${itens.length} mais recentes.`}
       </p>
       {itens.length === 0 ? (

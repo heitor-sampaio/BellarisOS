@@ -777,7 +777,10 @@ const procedures = await ler(
     a regra de verdade — "quem tem o Prontuário em Gerenciar, sem unidade
     fixa" (A43 da 5ª simulação, 2026-11-01: dizia "só a administração da
     rede", e o médico da rede, com o prontuário em Gerenciar, via a lista).
-    A regra ficou; decisão para o Heitor revisar.
+    A regra ficou; decisão para o Heitor revisar. O escopo não muda a regra,
+    e o texto diz isso desde a A35 da 6ª simulação (2026-11-04): "… sem
+    unidade fixa — também com o escopo “só os meus”" (o Igor, médico da rede
+    com o prontuário "só os meus", via a lista e o texto parecia excluí-lo).
   - Só o servidor lê e grava (RLS sem política); um acesso não se altera
     (gatilho); `user_id` sem chave estrangeira — o registro sobrevive ao
     membro, e o nome é o do ctx (com a marca "via suporte").
