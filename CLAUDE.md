@@ -34,6 +34,28 @@ E o **site** (`apps/site`, bellarisos.com — 2026-10-17): a página de quem
 ainda não conhece o sistema, com os preços do sistema e o teste grátis.
 Regras em `docs/regras/site.md`.
 
+### Os princípios de produto — decida por eles (o Heitor, 2026-11-04)
+
+"Tem que seguir as regras de negócio. Se tem uma regra de negócio não clara,
+aí me pergunta; se não, segue a regra." Decisão pequena que um destes
+princípios resolve, decida e anote no DEVLOG — não leve ao Heitor. Leve só a
+regra de negócio que não está clara ou que contraria um deles.
+
+1. **Flexibilidade: a clínica decide.** Na dúvida entre dois comportamentos,
+   é configuração da clínica, com um padrão sensato.
+2. **Não recusar o valor que a clínica escolheu** (taxa, percentual, preço,
+   prazo): no máximo, avisar. Só o que é impossível (negativo, a rede errada,
+   sem permissão) é recusado.
+3. **O que a tela mostra é o que vale na conta.** Nada de regra escondida
+   (herdar a taxa de outra faixa, número que a tela não diz).
+4. **Não chutar número.** Faltou o dado (a taxa daquelas vezes), vale zero e
+   a tela avisa — nunca o valor de outro caso parecido.
+5. **Sem execução, sem valor**: o indicador de execução conta o dinheiro no
+   dia em que o atendimento foi feito; o caixa e o faturamento, no dia em que
+   o dinheiro entrou.
+6. **Nada se move sozinho**: automação nasce como modelo desligado; a clínica
+   liga se quiser.
+
 ---
 
 ## 2. Stack
