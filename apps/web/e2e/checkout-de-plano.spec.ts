@@ -133,6 +133,8 @@ test.describe.serial('checkout de plano', () => {
 
       // Pagamento ANTES da documentação: o contrato cita o pagamento.
       await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      // A37 (6ª simulação): a forma nasce vazia.
+      await page.getByRole('button', { name: 'Pix', exact: true }).click()
       await page.getByLabel('Entrada', { exact: true }).fill('100')
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
 
@@ -258,6 +260,7 @@ test.describe.serial('checkout de plano', () => {
       await page.goto(rota)
       await page.getByRole('button', { name: 'Confirmar plano' }).click()
       await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await page.getByRole('button', { name: 'Pix', exact: true }).click()
       await page.getByLabel('Entrada', { exact: true }).fill('100')
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
       const aviso = page.locator('[data-substitui-contrato]')
@@ -323,6 +326,7 @@ test.describe.serial('checkout de plano', () => {
         await page.goto(`/${slug}/checkout/${planId}`)
         await page.getByRole('button', { name: 'Confirmar plano' }).click()
         await page.getByRole('button', { name: 'À vista' }).click()
+        await page.getByRole('button', { name: 'Pix', exact: true }).click()
         await page.getByRole('button', { name: 'Ir para a documentação' }).click()
         const linhas = page.locator('[data-documento]')
         await expect(linhas).toHaveCount(3)

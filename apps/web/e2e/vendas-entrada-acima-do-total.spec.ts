@@ -81,6 +81,8 @@ test('checkout do plano: a entrada acima do total avisa junto do campo e não se
     await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
     await janela.getByLabel('Entrada').fill('60')
     await expect(janela.getByRole('alert').filter({ hasText: 'passa do total do plano' })).toContainText('R$ 50,00')
+    // A37: a forma nasce vazia; escolhida, o que segura é a entrada.
+    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
     await janela.getByRole('button', { name: /Ir para a documentação/ }).click()
     await expect(janela.getByRole('button', { name: /Ir para a documentação/ }), 'continua no pagamento').toBeVisible()
   })

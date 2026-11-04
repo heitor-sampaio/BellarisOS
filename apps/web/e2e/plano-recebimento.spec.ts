@@ -79,6 +79,8 @@ test.describe.serial('receber o plano no atendimento', () => {
       .filter({ has: page.getByText('Receber o plano de tratamento') })
       .filter({ has: page.getByRole('button', { name: 'Confirmar recebimento' }) }).last()
     await modal.getByRole('button', { name: 'Entrada + parcelas' }).click()
+    // A37 (6ª simulação): a forma nasce vazia.
+    await modal.getByLabel('Forma de pagamento').selectOption('PIX')
     const numeros = modal.locator('input[type="number"]')
     await numeros.nth(0).fill('100')   // Entrada (R$)
     await numeros.nth(1).fill('2')     // Parcelas
@@ -114,6 +116,7 @@ test.describe.serial('receber o plano no atendimento', () => {
     await page.reload()
     await expect(page.getByText(/em aberto R\$\s100,00/)).toBeVisible()
     await page.getByRole('button', { name: /Receber R\$\s100,00/ }).click()
+    await page.getByLabel('Forma de pagamento').selectOption('PIX')
     await page.getByRole('button', { name: 'Confirmar recebimento' }).click()
     await expect.poll(async () => {
       const { data } = await db.from('financial_transactions').select('parcela_numero')

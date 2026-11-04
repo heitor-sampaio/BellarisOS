@@ -51,7 +51,8 @@ const diaDe = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZ
 export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, padrao: FormaDoPagamento): EstadoDoPagamento {
   return {
     forma:    atual ? atual.forma : padrao,
-    metodo:   atual?.metodo ?? 'PIX',
+    // A37 da 6ª simulação: a forma nasce VAZIA (o Pix era o padrão calado).
+    metodo:   atual?.metodo ?? '',
     entrada:  atual?.forma === 'PARCELADO' ? String(atual.entrada).replace('.', ',') : '',
     parcelas: atual?.forma === 'PARCELADO' ? atual.parcelas : 3,
     data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento) : hojeMais(30),
@@ -74,7 +75,7 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
       ? { forma: 'AVISTA', metodo: e.metodo, vezes: e.vezes, ...bandeira }
       : { forma: 'AVISTA', metodo: e.metodo, ...bandeira }
   }
-  if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo, vencimento: e.vencimento ? iso(e.vencimento) : null }
+  if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo || null, vencimento: e.vencimento ? iso(e.vencimento) : null }
   const dataIso = iso(e.data)
   // A regra de todo campo de dinheiro ("1.400" é mil e quatrocentos — D3). O
   // ilegível não chega aqui: quem salva confere `recusaDoPagamento` antes.
@@ -91,6 +92,13 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
  * montar — o aviso é o de todo campo de dinheiro.
  */
 export function recusaDoPagamento(e: EstadoDoPagamento, total?: number, doQue = 'da venda'): string | null {
+  // A37: o que se recebe agora pede a forma — ela nasce vazia.
+  if ((e.forma === 'AVISTA' || e.forma === 'PARCELADO') && !e.metodo) return 'Escolha a forma de pagamento.'
+  return recusaDaEntradaDoEstado(e, total, doQue)
+}
+
+/** Só a entrada (a que aparece junto do campo). */
+function recusaDaEntradaDoEstado(e: EstadoDoPagamento, total?: number, doQue = 'da venda'): string | null {
   if (e.forma !== 'PARCELADO') return null
   const ilegivel = erroDaEntrada(e.entrada)
   if (ilegivel) return ilegivel
@@ -108,7 +116,7 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
   /** Completa a recusa da entrada acima do total: "da venda", "do atendimento". */
   doQue?: string
 }) {
-  const recusaDaEntrada = recusaDoPagamento(estado, total, doQue)
+  const recusaDaEntrada = recusaDaEntradaDoEstado(estado, total, doQue)
   const mudar = (parte: Partial<EstadoDoPagamento>) => aoMudar({ ...estado, ...parte })
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
   const { forma } = estado
@@ -124,8 +132,9 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
       {forma !== 'NADA_AGORA' && (
         <div className="form-2col">
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={rotulo}>Meio de pagamento</span>
+            <span style={rotulo}>Meio de pagamento{forma === 'A_RECEBER' ? ' (opcional)' : ' *'}</span>
             <select className="field" value={estado.metodo} onChange={e => mudar({ metodo: e.target.value })} aria-label="Meio de pagamento">
+              <option value="">{forma === 'A_RECEBER' ? 'Não informado' : 'Selecione…'}</option>
               {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </label>

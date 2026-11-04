@@ -1383,6 +1383,8 @@ async function checkoutTreatmentPlanInterno(
   // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
   const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
   if (recusaDasVezes) return { error: recusaDasVezes }
+  // A37: o que se recebe agora pede a forma (a tela a deixa nascer vazia).
+  if (pagamento && pagamento.forma !== 'A_RECEBER' && !pagamento.metodo) return { error: 'Escolha a forma de pagamento.' }
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -1736,6 +1738,8 @@ async function receberDoPlanoInterno(
   // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
   const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(recebimento))
   if (recusaDasVezes) return { error: recusaDasVezes }
+  // A37: a forma nasce vazia na tela; sem ela, não se recebe.
+  if (!recebimento.metodo) return { error: 'Escolha a forma de pagamento.' }
 
   // O agendamento só serve para registrar o recebimento no histórico dele — e
   // tem de ser DESTE plano (uma sessão dele ou a avaliação que o gerou). Antes

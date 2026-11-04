@@ -4,7 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
-import { euVendi } from './apoio/vender'
+import { euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * r3-f13-01 (o Heitor, revisão de 2026-11-03: "Lembre-se, flexibilidade.
@@ -229,6 +229,7 @@ test.describe.serial('o cartão por bandeira', () => {
       await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
       await dlg.getByLabel('Vezes no cartão').selectOption('3')
       await dlg.getByLabel('Bandeira').selectOption({ label: 'Elo' })
+      await pagoNoPix(dlg)
       await euVendi(dlg)
       await dlg.getByRole('button', { name: /Vender por/ }).click()
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length, { message: 'vendido' }).toBe(1)

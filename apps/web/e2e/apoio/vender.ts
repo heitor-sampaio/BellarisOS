@@ -12,3 +12,14 @@ export async function euVendi(janela: Locator) {
   await expect(minha, 'a opção de quem está registrando').toHaveCount(1)
   await campo.selectOption(await minha.getAttribute('value') ?? '')
 }
+
+/**
+ * A forma de pagamento nasce VAZIA em toda tela de cobrança (A37 da 6ª
+ * simulação: o Pix era o padrão calado). Nos specs que vendem pela tela e não
+ * testam a forma, o Pix é escolhido aqui — só quando nada foi escolhido.
+ */
+export async function pagoNoPix(janela: Locator) {
+  const campo = janela.getByLabel('Meio de pagamento')
+  if (await campo.count() === 0) return
+  if (await campo.inputValue() === '') await campo.selectOption('PIX')
+}

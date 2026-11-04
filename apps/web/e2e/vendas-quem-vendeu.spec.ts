@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { pagoNoPix } from './apoio/vender'
 
 /**
  * com-06 da revisão das decisões (2026-11-02). O Heitor: "às vezes quem vai
@@ -104,6 +105,7 @@ test('a recepção registra e a profissional vendeu: a venda é dela, e a comiss
     await janela.getByRole('button', { name: 'Produto' }).click()
     await expect(janela.getByLabel('Quem vendeu')).toHaveValue('')
     await janela.getByLabel('Quem vendeu').selectOption(rede!.professionalId)
+    await pagoNoPix(janela)
     await janela.getByRole('button', { name: /^Vender por/ }).click()
     await expect(janela).toBeHidden()
   })
@@ -121,6 +123,7 @@ test('"Quem vendeu" vazio: a venda pergunta, nada grava antes da resposta, e con
     const janela = p.getByRole('dialog', { name: 'Vender' })
     await janela.getByRole('button', { name: 'Produto' }).click()
     // Vazio, como nasce: vender pergunta.
+    await pagoNoPix(janela)
     await janela.getByRole('button', { name: /^Vender por/ }).click()
     const pergunta = janela.locator('[data-pergunta-da-venda]')
     await expect(pergunta).toContainText('Ninguém foi marcado em “Quem vendeu”')

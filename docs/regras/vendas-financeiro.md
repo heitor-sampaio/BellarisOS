@@ -581,6 +581,19 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     `lancamentosDoPagamento` fica só como rede de segurança. Prova:
     `e2e/vendas-entrada-acima-do-total.spec.ts`.
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
+- **A forma nasce VAZIA em toda tela de cobrança** (A37 da 6ª simulação,
+  2026-11-04; princípio 3): o "Confirmar pagamento" do atendimento (que o
+  `?receber=1` abre sozinho — e só abre, nunca confirma), o "Receber" do plano
+  no check-in, o checkout do plano (nenhum meio marcado) e o `CamposDoPagamento`
+  (o "Vender" de pacote, pré-pago e produto, e o pagamento do contrato); o
+  "Pagar" de uma receita sem meio no Financeiro (D6) também. O que se recebe
+  agora (à vista, a entrada) não confirma sem ela — o botão espera, e o
+  servidor recusa ("Escolha a forma de pagamento."). O "a receber" segue com
+  a forma opcional ("Não informado"). Só o meio COMBINADO no contrato vem
+  escolhido. O Pix era o padrão calado: um clique gravou o peeling do Jorge
+  no Pix, que ele pagou no cartão. Nos specs, `pagoNoPix`
+  (`e2e/apoio/vender.ts`) escolhe o Pix onde a forma não é o assunto. Prova:
+  `e2e/vendas-forma-nasce-vazia.spec.ts`.
 - **Cartão de crédito em N vezes é PAGO na hora PELA CLIENTE** (decisão do
   Heitor, 2026-10-20): quem paga a clínica é a maquininha, então para o
   cliente está quitado. É o "À vista" com o meio Cartão de crédito e "Vezes
@@ -1147,6 +1160,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)
 ❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade_devolvendo
 ❌ Gravar a parcela do crediário da clínica com o meio da entrada (é sem meio, escolhido ao receber — D6), ou dizer no contrato que ela é "no cartão de crédito"
+❌ Deixar uma forma de pagamento escolhida de antemão numa tela de cobrança (o Pix calado — A37): nasce vazia, salvo o meio combinado no contrato
 ❌ Gravar na descrição de um lançamento texto interno da tela ("checkout novo paciente") — ela chega à cliente (A47)
 ❌ Registrar o que volta de um cancelamento como despesa "Devolução" a pagar — é estorno ou crédito na clínica, a escolha da recepção (D1, 6ª simulação)
 ❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou

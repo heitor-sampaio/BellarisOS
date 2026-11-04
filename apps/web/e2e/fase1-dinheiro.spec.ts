@@ -71,6 +71,10 @@ test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', as
   const linhaPendente = page.locator('tr').filter({ hasText: descricaoPendente }).first()
   await expect(linhaPendente).toBeVisible()
   await linhaPendente.getByTitle('Marcar como pago').click()
+  // D6 da 6ª simulação: a receita sem forma pergunta a forma ao receber.
+  const receber = page.getByRole('dialog', { name: 'Receber' })
+  await receber.getByLabel('Forma de pagamento').selectOption('PIX')
+  await receber.getByRole('button', { name: 'Confirmar recebimento' }).click()
 
   await expect.poll(async () => {
     const { data } = await db.from('financial_transactions')

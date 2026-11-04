@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { euVendi } from './apoio/vender'
+import { euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * com-04 da revisão das decisões (2026-11-02). O Heitor: "a comissão devida é
@@ -122,6 +122,7 @@ test('a venda pela ficha escolhe a responsável; no Pix, os 10% de R$ 900 (R$ 90
     await janela.getByLabel('Pacote', { exact: true }).selectOption(pacote)
     await janela.getByLabel('Profissional responsável').selectOption(rede!.professionalId)
     await janela.getByLabel('Meio de pagamento').selectOption('PIX')
+    await pagoNoPix(janela)
     await euVendi(janela)
     await janela.getByRole('button', { name: /^Vender por R\$\s900,00$/ }).click()
     await expect(janela).toBeHidden()

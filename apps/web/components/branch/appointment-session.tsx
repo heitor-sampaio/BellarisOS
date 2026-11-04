@@ -489,7 +489,10 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
   pacotesParaAbater?: PacoteParaAbater[]
   onClose: () => void
 }) {
-  const metodoInicial = PAYMENT_METHODS.some(m => m.value === pagamentoCombinado?.metodo) ? pagamentoCombinado!.metodo! : 'PIX'
+  // A37 da 6ª simulação: a forma nasce VAZIA (o Pix era o padrão calado, e o
+  // ?receber=1 abre esta janela sozinha — um clique gravava no Pix). Só o meio
+  // combinado no contrato vem escolhido.
+  const metodoInicial = PAYMENT_METHODS.some(m => m.value === pagamentoCombinado?.metodo) ? pagamentoCombinado!.metodo! : ''
   // Controlado só para saber se é crédito: aí aparecem as vezes na maquininha.
   const [metodoEscolhido, setMetodoEscolhido] = useState(metodoInicial)
   const [vezes, setVezes] = useState(1)
@@ -606,8 +609,9 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="field-label">Forma de pagamento *</label>
-                <select name="payment_method" className="field" value={metodoEscolhido} onChange={e => setMetodoEscolhido(e.target.value)} aria-label="Forma de pagamento">
+                <label className="field-label" htmlFor="pagamento-forma">Forma de pagamento *</label>
+                <select id="pagamento-forma" name="payment_method" className="field" value={metodoEscolhido} onChange={e => setMetodoEscolhido(e.target.value)} required>
+                  <option value="">Selecione…</option>
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
                 {metodoEscolhido === 'CREDIT_CARD' && (
@@ -642,7 +646,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
           {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
-            <button type="submit" disabled={pending || !!doDesconto.recusa} className="btn-primary"
+            <button type="submit" disabled={pending || !!doDesconto.recusa || (!totalZero && !metodoEscolhido)} className="btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
               {pending ? 'Registrando…' : 'Confirmar pagamento'}
@@ -674,7 +678,8 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   const router = useRouter()
   const [aberto,  setAberto]  = useState(false)
   const [forma,   setForma]   = useState<'AVISTA' | 'PARCELADO'>('AVISTA')
-  const [metodo,  setMetodo]  = useState('PIX')
+  // A37: a forma nasce vazia — escolhe-se antes de receber.
+  const [metodo,  setMetodo]  = useState('')
   const [entrada, setEntrada] = useState(0)
   const [parcelas, setParcelas] = useState(3)
   const [vezes,   setVezes]   = useState(1)
@@ -774,8 +779,9 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="field-label">Forma de pagamento *</label>
-                <select className="field" value={metodo} onChange={e => setMetodo(e.target.value)}>
+                <label className="field-label" htmlFor="plano-forma">Forma de pagamento *</label>
+                <select id="plano-forma" className="field" value={metodo} onChange={e => setMetodo(e.target.value)}>
+                  <option value="">Selecione…</option>
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
@@ -828,7 +834,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
                 <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
-                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada} className="btn-primary"
+                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || !metodo} className="btn-primary"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
                   {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   {salvando ? 'Registrando…' : 'Confirmar recebimento'}

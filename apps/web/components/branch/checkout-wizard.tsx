@@ -136,7 +136,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // diferentes. Quem aceita é o cliente, na sala; quem recebe é o balcão, na
   // chegada da primeira sessão. Cobrar aqui obrigava a profissional a operar
   // caixa — ou o plano a ficar parado numa fila esperando a recepção.
-  const [paymentMethod, setPaymentMethod] = useState('PIX')
+  // A37 da 6ª simulação: a forma nasce VAZIA — o Pix era o padrão calado.
+  const [paymentMethod, setPaymentMethod] = useState('')
   const [formaPgto,     setFormaPgto]     = useState<'NADA_AGORA' | 'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('NADA_AGORA')
   const [entrada,       setEntrada]       = useState('')
   const [parcelas,      setParcelas]      = useState(3)
@@ -259,6 +260,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     }) ?? null
   }
 
+  // A37: o que se recebe agora (à vista, entrada + parcelas) pede a forma.
+  const semForma = (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && !paymentMethod
+
   // -- Documentação: monta os documentos com o pagamento escolhido -----------
   // Voltar ao pagamento e trocá-lo monta de novo — e o contrato já assinado
   // com o pagamento antigo é substituído (o servidor decide, não a tela).
@@ -306,7 +310,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     if (formaPgto === 'A_RECEBER') {
       return {
         forma:      'A_RECEBER',
-        metodo:     paymentMethod,
+        metodo:     paymentMethod || null,
         vencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
       }
     }
@@ -670,6 +674,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <button
               key={m.value}
               type="button"
+              data-meio-do-checkout
+              aria-pressed={paymentMethod === m.value}
               onClick={() => setPaymentMethod(m.value)}
               style={{
                 padding: '14px', borderRadius: 10, textAlign: 'center', fontWeight: 700, fontSize: 'var(--text-base-sz)',
@@ -739,7 +745,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       )}
 
       <button
-        onClick={() => irParaDocumentos()} disabled={preparando || !!contaDesc.recusa}
+        onClick={() => irParaDocumentos()} disabled={preparando || !!contaDesc.recusa || semForma}
         style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: preparando ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {preparando ? 'Montando os documentos…' : 'Ir para a documentação'} <ChevronRight size={18} />
       </button>

@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { euVendi } from './apoio/vender'
+import { euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * D5 e D6 da 6ª simulação (F20), e o A47.
@@ -160,6 +160,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await dlg.getByLabel('Parcelas').selectOption('2')
       await dlg.getByLabel('Vezes no cartão').selectOption('2')
       await expect(dlg.getByText(/2× R\$\s150,00/).first()).toBeVisible()
+      await pagoNoPix(dlg)
       await euVendi(dlg)
       await dlg.getByRole('button', { name: /Vender por/ }).click()
       await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length).toBe(1)
