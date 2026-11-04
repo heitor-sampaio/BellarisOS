@@ -9134,6 +9134,34 @@ funil, só por automação).
 e a cliente do teste do Copilot nascia hoje, quando o "Reativar clientes" só
 conta quem foi cadastrada antes da janela. Nenhum defeito do sistema.
 
+**F17 feita em 2026-11-04 — as respostas às decisões da F16**
+(35d8bb19…deea494e; migrations `20261103001701`–`1703`).
+- **Nada de valor sem execução** (o Heitor: "se não tem execução não tem
+  valor"): cada procedimento da sessão de plano conta a SUA execução
+  (`metrics_procedimentos_executados`, a fonte única); o "Total Execuções" é a
+  soma da tabela.
+- **Sem a taxa EXATA daquelas vezes, 0%** (opção A; "usar a de outras vezes pode
+  levar a erros de cálculo"): a linha vazia avisa em "Taxas da maquininha" ("Sem
+  taxa: as vendas em 4x saem sem desconto da operadora"), e o Fechamento lista as
+  vendas no cartão sem taxa (`metrics_vendas_sem_taxa_do_fechamento`).
+- **Nenhum teto de taxa** ("juros podem passar facilmente de 100% no
+  acumulado"), só não negativa; a comissão e o depósito da operadora nunca ficam
+  abaixo de 0. Limite técnico 999,99% (a coluna). O CHECK de 100% de
+  `payment_fees` fica para o drop com o Heitor.
+- **Crédito em N vezes no "Novo lançamento"** da receita paga: "Vezes no cartão"
+  até o limite da clínica, e a operadora deposita em N (diferente do
+  "Parcelado", que é a cliente pagando a clínica).
+
+Decisões da F17, para revisar: o ranking por profissional conta atendimentos
+(a sessão de dois procedimentos é +1); o mesmo procedimento duas vezes na
+sessão conta duas execuções; a avaliação fica no procedimento do atendimento;
+o Pix e o crédito acima do limite de vezes não avisam "Sem taxa"; o pendente no
+crédito e o Copilot seguem 1x. **Em aberto, para o Heitor:** o avulso concluído
+num mês e pago no outro aparece "0 execuções · R$ 180" no mês do pagamento —
+(a) contar no dia da execução, (b) linha "pago neste período, feito em outro",
+(c) esconder as linhas sem execução. Mexeu em `lib/financeiro/lancamento.ts`,
+`lib/metrics/queries.ts` e nas taxas do banco: vale completa.
+
 **F16 feita em 2026-11-03 — a revisão das decisões da F15**
 (9435c727…01ee9d52; migrations `20261103001601`–`1602`). O Heitor revisou as
 4 decisões da F15 (https://claude.ai/artifact/6rcCqTsMz5WhqRCQPBSLfN, respostas
@@ -9303,7 +9331,9 @@ Supabase): `…000502` (`senha_da_conta_confere`), `…000709` (o retorno:
 `retornos_a_marcar` e três colunas de `appointments`), as versões velhas de
 `produto_vender`/`procedimento_vender`/`pacote_vender` (antes, ~10 specs
 passam às novas), `crm_stages.marca`, `leads.stage` e a função
-`juntar_conversas_do_numero(uuid, uuid)`, sem uso desde a F14.
+`juntar_conversas_do_numero(uuid, uuid)`, sem uso desde a F14, e o teto de
+100% de `payment_fees` (`payment_fees_taxa_pct_check`; a F17 contorna com
+`taxa_pct_sem_teto` e um gatilho que limita `taxa_pct` a 100).
 
 **F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
 migrations `20261101001101–1108`). Receber o plano no check-in é uma
