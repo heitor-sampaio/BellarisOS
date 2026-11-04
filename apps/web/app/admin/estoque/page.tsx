@@ -11,7 +11,7 @@ import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { lotesComSaldo, lotesVencendo, type LoteDoProduto } from '@/lib/estoque/lotes'
-import { situacaoDoEstoque, estoqueBaixo } from '@/lib/estoque/situacao'
+import { contarSituacoes } from '@/lib/estoque/situacao'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
 type ProdutoLido = {
@@ -169,17 +169,13 @@ export default async function AdminEstoquePage({
   const saldosVisiveis = (p: (typeof products)[number]) =>
     unidadeId ? p.branches.filter(b => b.branchId === unidadeId) : p.branches
 
-  // No mínimo OU abaixo (o alerta de sempre), no rendimento — J-43.
-  const abaixoMinimo = products.filter(p =>
-    saldosVisiveis(p).some(b => estoqueBaixo(situacaoDoEstoque(
-      { embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock },
-      { unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage }))),
-  ).length
-
-  const semEstoque = products.filter(p => {
-    const saldos = saldosVisiveis(p)
-    return saldos.length > 0 && saldos.every(b => b.currentStock === 0)
-  }).length
+  // No mínimo OU abaixo (o alerta de sempre), no rendimento — J-43. Sem
+  // estoque é não ter saldo POSITIVO no recorte: o negativo e o produto sem
+  // nenhuma linha de saldo contam (D10, lib/estoque/situacao.ts).
+  const { baixo: abaixoMinimo, semEstoque } = contarSituacoes(products.map(p => ({
+    saldos:  saldosVisiveis(p).map(b => ({ embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock })),
+    medidas: { unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage },
+  })))
 
   // Conta lotes, não produtos distintos — e diz QUAIS produtos (J-45).
   const vencendo        = lotesVencendo(lotes, in30Days)

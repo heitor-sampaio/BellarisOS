@@ -13,7 +13,7 @@ import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/un
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 import { lotesComSaldo, lotesVencendo, type LoteDoProduto } from '@/lib/estoque/lotes'
-import { situacaoDoEstoque, estoqueBaixo } from '@/lib/estoque/situacao'
+import { contarSituacoes } from '@/lib/estoque/situacao'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
 type ProdutoLido = {
@@ -153,18 +153,14 @@ export default async function BranchStockPage({
       ])
     : [0, 0, [] as LoteDoProduto[], new Map<string, number>()]
 
-  // No mínimo OU abaixo (o alerta de sempre), no rendimento — J-43.
-  const abaixoMinimo = products.filter(p =>
-    p.branches.some(b => estoqueBaixo(situacaoDoEstoque(
-      { embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock },
-      { unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage }))),
-  ).length
-
-  // `every` sobre lista vazia é true: sem a guarda de comprimento, todo produto
-  // do catálogo da rede que nunca teve estoque nesta filial entrava na conta.
-  const semEstoque = products.filter(p =>
-    p.branches.length > 0 && p.branches.every(b => b.currentStock === 0),
-  ).length
+  // No mínimo OU abaixo (o alerta de sempre), no rendimento — J-43. Sem
+  // estoque é não ter saldo POSITIVO nesta unidade: o negativo e o produto ativo
+  // sem nenhuma linha de saldo aqui contam (D10 — a tabela já os mostra como
+  // "Sem estoque registrado"; o cartão dizia 0).
+  const { baixo: abaixoMinimo, semEstoque } = contarSituacoes(products.map(p => ({
+    saldos:  p.branches.map(b => ({ embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock })),
+    medidas: { unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage },
+  })))
 
   // Conta LOTES, não produtos — cinco lotes do mesmo produto vencendo são cinco
   // avisos. Lotes já vencidos entram no alerta em vez de sumirem dele. E diz

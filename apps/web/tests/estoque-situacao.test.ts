@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo, formatarQuantidadeComUnidade,
+  contarSituacoes, semEstoqueNoRecorte,
 } from '@/lib/estoque/situacao'
 
 /**
@@ -48,5 +49,29 @@ describe('a situação', () => {
     expect(situacaoDoEstoque({ embalagens: -1, rendimento: -20, minimo: 0 }, toxina)).toBe('SEM_ESTOQUE')
     expect(estoqueBaixo('OK')).toBe(false)
     expect(estoqueBaixo('SEM_ESTOQUE')).toBe(false)
+  })
+})
+
+/**
+ * D10 da 6ª simulação: sem estoque é não ter saldo POSITIVO no recorte — o
+ * negativo (a baixa que faltou) e o produto sem nenhuma linha de saldo contam.
+ */
+describe('sem estoque no recorte (D10)', () => {
+  it('o saldo negativo é sem estoque', () => {
+    expect(semEstoqueNoRecorte([{ embalagens: -1, rendimento: null, minimo: 2 }], serum)).toBe(true)
+  })
+  it('o produto sem nenhuma linha de saldo é sem estoque', () => {
+    expect(semEstoqueNoRecorte([], serum)).toBe(true)
+  })
+  it('basta uma unidade com saldo positivo para não ser', () => {
+    expect(semEstoqueNoRecorte([{ embalagens: 0, rendimento: null, minimo: 0 }, { embalagens: 3, rendimento: null, minimo: 0 }], serum)).toBe(false)
+  })
+  it('conta por produto: sem estoque e baixo não se somam', () => {
+    expect(contarSituacoes([
+      { saldos: [{ embalagens: -1, rendimento: null, minimo: 2 }], medidas: serum },
+      { saldos: [], medidas: serum },
+      { saldos: [{ embalagens: 2, rendimento: null, minimo: 2 }], medidas: serum },
+      { saldos: [{ embalagens: 9, rendimento: null, minimo: 2 }], medidas: serum },
+    ])).toEqual({ semEstoque: 2, baixo: 1 })
   })
 })

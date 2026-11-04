@@ -20,7 +20,7 @@ import {
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
-import { ler, contar } from '@/lib/db'
+import { ler, lerTodas, contar } from '@/lib/db'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
@@ -30,7 +30,7 @@ import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
 import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
 import { differenceInDays } from 'date-fns'
-import { situacaoDoEstoque, estoqueBaixo, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
+import { situacaoDoEstoque, estoqueBaixo, contarSituacoes, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
 
 
 
@@ -43,7 +43,7 @@ type PlanoPendente = {
   clients: { name: string } | null; branches: { name: string; slug: string } | null
 }
 type SaldoLido = {
-  current_stock: Num; min_stock: Num; current_rendimento: Num | null; branch_id: string
+  product_id: string; current_stock: Num; min_stock: Num; current_rendimento: Num | null; branch_id: string
   products: { name: string; is_active: boolean; unit: string; consumption_unit: string | null; units_per_package: Num | null } | null
   branches: { name: string; slug: string } | null
 }
@@ -238,12 +238,22 @@ export default async function AdminDashboardPage({
       return ler(q.order('created_at', { ascending: true }).limit(20), 'carregar os planos aguardando checkout')
     })(),
 
-    // Estoque: produtos com min_stock configurado OU zerados (para indicador de saúde)
-    ler(admin.from('branch_product_stock')
-      .select('current_stock, min_stock, current_rendimento, branch_id, products(name, is_active, unit, consumption_unit, units_per_package), branches(name, slug)')
-      .in('branch_id', branchIds)
-      .or('min_stock.gt.0,current_stock.eq.0')
-      .order('current_stock', { ascending: true }), 'carregar os saldos de estoque'),
+    // Estoque: TODOS os saldos do recorte e os produtos ativos da rede — sem
+    // estoque é não ter saldo positivo no recorte, e o produto sem nenhuma
+    // linha conta (D10; a mesma conta da tela de estoque, contarSituacoes).
+    // Era `min_stock > 0 ou current_stock = 0`, e o negativo e o sem linha
+    // sumiam: "Estoque Saudável" com o Gel em −1.
+    Promise.all([
+      lerTodas((de, ate) => admin.from('branch_product_stock')
+        .select('product_id, current_stock, min_stock, current_rendimento, branch_id, products(name, is_active, unit, consumption_unit, units_per_package), branches(name, slug)')
+        .in('branch_id', branchIds)
+        .order('current_stock', { ascending: true }).order('product_id').order('branch_id')
+        .range(de, ate), 'carregar os saldos de estoque'),
+      lerTodas((de, ate) => admin.from('products')
+        .select('id, unit, consumption_unit, units_per_package')
+        .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
+        .order('id').range(de, ate), 'carregar os produtos ativos'),
+    ]).then(([saldos, produtos]) => ({ saldos, produtos })),
 
     // Margem por procedimento — contada no banco, com o custo da unidade de
     // consumo do insumo (era o da embalagem, feito aqui na página).
@@ -270,7 +280,7 @@ export default async function AdminDashboardPage({
     getTicketMedio(doDinheiro),
   ]) : [
     { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [], [], [], [],
-    [], [], [], [], 0, { total: 0, idades: [], cidades: [], ceps: [] } as Demografia,
+    [], [], { saldos: [], produtos: [] }, [], 0, { total: 0, idades: [], cidades: [], ceps: [] } as Demografia,
     { total: 0, idades: [], cidades: [], ceps: [] } as Demografia, null,
   ]
 
@@ -331,7 +341,7 @@ export default async function AdminDashboardPage({
     createdAt:  p.created_at,
   }))
 
-  const allBps = (bpsRaw ?? []) as unknown as SaldoLido[]
+  const allBps = (bpsRaw.saldos ?? []) as unknown as SaldoLido[]
 
   // A situação de cada saldo pela regra da tela de estoque (J-43): no
   // rendimento, com "No mínimo" separado de "Abaixo do mínimo".
@@ -353,10 +363,21 @@ export default async function AdminDashboardPage({
     }))
 
   // -- Indicador de saúde do estoque --------------------------------
-  const zeroStockCount = allBps.filter(b =>
-    Number(b.current_stock) === 0 && b.products?.is_active !== false
-  ).length
-  const lowStockCount = comSituacao.filter(s => estoqueBaixo(s.situacao)).length
+  // Por PRODUTO no recorte, a mesma conta da tela de estoque (D10): sem
+  // estoque é nenhum saldo positivo — o negativo e o produto ativo sem
+  // nenhuma linha contam.
+  const saldosDoProduto = new Map<string, typeof comSituacao>()
+  for (const s of comSituacao) {
+    const lista = saldosDoProduto.get(s.b.product_id) ?? []
+    lista.push(s)
+    saldosDoProduto.set(s.b.product_id, lista)
+  }
+  const { semEstoque: zeroStockCount, baixo: lowStockCount } = contarSituacoes(
+    (bpsRaw.produtos as { id: string; unit: string; consumption_unit: string | null; units_per_package: Num | null }[]).map(p => ({
+      saldos:  (saldosDoProduto.get(p.id) ?? []).map(s => s.saldo),
+      medidas: { unit: p.unit ?? '', consumption_unit: p.consumption_unit, units_per_package: p.units_per_package },
+    })),
+  )
   const stockStatus: 'critical' | 'warning' | 'healthy' =
     zeroStockCount > 0 ? 'critical' : lowStockCount > 0 ? 'warning' : 'healthy'
   // Despesas do período. Simétrico à receita: só o que foi efetivamente pago

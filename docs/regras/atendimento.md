@@ -1054,6 +1054,18 @@ const procedures = await ler(
     próprio: o custo dele é o do movimento de entrada ligado (o lote que veio
     por transferência fica sem custo, "—").
   - Prova: `e2e/estoque-tela-consumo-e-lotes.spec.ts`, `tests/estoque-situacao.test.ts`.
+  - **Sem estoque é não ter saldo POSITIVO no recorte** (D10 da 6ª
+    simulação, 2026-11-04; princípio 3): o saldo NEGATIVO (a baixa que
+    faltou, §10) e o produto ativo sem NENHUMA linha de saldo na unidade
+    (nunca entrou nada) contam. A conta por produto é UMA,
+    `semEstoqueNoRecorte`/`contarSituacoes` (`lib/estoque/situacao.ts`): os
+    cartões "Sem estoque"/"Estoque baixo" das duas telas de estoque e o cartão
+    do dashboard da rede ("Produtos zerados", que deixa de dizer "Saudável");
+    Relatórios → Estoque conta `current_stock <= 0` sobre cada produto ativo ×
+    cada unidade ativa do recorte (`metrics_relatorio`, migration
+    `20261104002102`). Era `= 0` sobre as linhas que existiam: o Gel em −1 un
+    e a luva sem entrada não contavam. Prova:
+    `e2e/estoque-negativo-e-sem-saldo.spec.ts`.
 - **Movimentação de estoque NUNCA gera despesa** (D13 revisto, decisão do
   Heitor, 2026-10-28: "tanto entrada quanto saída, não gera despesa. Os
   valores são informados apenas para base de cálculo de insumos, custo,

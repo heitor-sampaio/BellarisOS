@@ -88,6 +88,29 @@ export function estoqueBaixo(sit: SituacaoDoEstoque): boolean {
   return sit === 'ABAIXO' || sit === 'NO_MINIMO'
 }
 
+/**
+ * O produto está SEM ESTOQUE no recorte quando nenhuma unidade dele tem saldo
+ * POSITIVO (D10 da 6ª simulação, 2026-11-04). Conta o saldo NEGATIVO — a baixa
+ * que faltou, que fica negativa "para a falta aparecer" — e o produto ativo
+ * sem NENHUMA linha de saldo no recorte (nunca entrou nada ali). Era `=== 0`
+ * sobre as linhas que existiam: o Gel em −1 e a luva sem entrada não contavam,
+ * e o dashboard dizia "Estoque Saudável".
+ */
+export function semEstoqueNoRecorte(saldos: SaldoDaUnidade[], p: MedidasDoProduto): boolean {
+  return !saldos.some(s => situacaoDoEstoque(s, p) !== 'SEM_ESTOQUE')
+}
+
+/** Quantos produtos estão sem estoque e quantos com estoque baixo (no mínimo ou abaixo), no recorte. */
+export function contarSituacoes(produtos: { saldos: SaldoDaUnidade[]; medidas: MedidasDoProduto }[]): { semEstoque: number; baixo: number } {
+  let semEstoque = 0
+  let baixo = 0
+  for (const p of produtos) {
+    if (semEstoqueNoRecorte(p.saldos, p.medidas)) semEstoque++
+    else if (p.saldos.some(s => estoqueBaixo(situacaoDoEstoque(s, p.medidas)))) baixo++
+  }
+  return { semEstoque, baixo }
+}
+
 /** "268", "2,68", "1.500" — até duas casas, sem zeros à toa. */
 export function formatarQuantidade(n: number): string {
   return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
