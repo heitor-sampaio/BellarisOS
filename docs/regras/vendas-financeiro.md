@@ -619,7 +619,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —
       `CamposDoPagamento`), o pagamento novo do usado no cancelamento do
       pacote, a baixa no Financeiro de um lançamento no cartão ("Receber no
-      cartão", `ReceberNoCartao`) e o Copilot (`lancar`, `marcar_pago`).
+      cartão", `ReceberNoCartao`), o "Novo lançamento" do Financeiro — a
+      RECEITA PAGA no cartão (r4-f15-02, o Heitor, revisão das decisões da
+      F15: "flexibilidade, e é o mesmo campo opcional dos outros lugares";
+      `createTransactionAdvanced` → `lancarCore`; a receita lançada em aberto
+      tem a bandeira perguntada na baixa, e a despesa não tem bandeira) — e o
+      Copilot (`lancar`, `marcar_pago`).
       Gravada em `financial_transactions.cartao_bandeira` (só no crédito e no
       débito — a restrição do banco confere; `private.bandeira_do_cartao`
       recusa a desconhecida). A taxa da bandeira vale onde a taxa já valia —

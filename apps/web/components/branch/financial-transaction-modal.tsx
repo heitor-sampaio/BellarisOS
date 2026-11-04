@@ -6,6 +6,7 @@ import { createTransactionAdvanced } from '@/actions/financial'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { dayKeyTZ } from '@/lib/datetime'
 import { CATEGORIAS_DE_RECEITA, CATEGORIAS_DE_DESPESA } from '@/lib/financeiro/categorias'
+import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 
 interface Props {
   branchId?:  string
@@ -67,6 +68,9 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   const [recurringFreq,  setRecurringFreq]  = useState('monthly')
   const [recurringCount, setRecurringCount] = useState('6')
   const [firstDueDate,   setFirstDueDate]   = useState('')
+  // r4-f15-02: a forma (para saber se é cartão) e a bandeira, opcional.
+  const [formaDePagamento, setFormaDePagamento] = useState('')
+  const [bandeira,         setBandeira]         = useState('')
 
   const [state, formAction, pending] = useActionState(createTransactionAdvanced, undefined)
   // A chave do envio (D10): o duplo clique lança uma vez só.
@@ -103,6 +107,8 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
     setRecurringFreq('monthly')
     setRecurringCount('6')
     setFirstDueDate('')
+    setFormaDePagamento('')
+    setBandeira('')
     if (!isAdminMode) {
       setSelectedBranchId(branchId ?? '')
       setSelectedBranchSlug(slug ?? '')
@@ -321,13 +327,23 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
             {(
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <Label htmlFor="lanc-forma">Forma de pagamento</Label>
-                <select id="lanc-forma" name="payment_method" className="field">
+                <select id="lanc-forma" name="payment_method" className="field"
+                  value={formaDePagamento} onChange={e => setFormaDePagamento(e.target.value)}>
                   <option value="">Não informado</option>
                   {Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
                 </select>
               </div>
+            )}
+
+            {/* r4-f15-02 (o Heitor, revisão das decisões da F15): a receita paga no
+                cartão diz a bandeira, opcional — o mesmo campo dos outros lugares,
+                com o mesmo efeito no prazo e na taxa. Vazia, a regra geral. Em
+                aberto, a bandeira é perguntada na baixa ("Receber no cartão"). */}
+            {type === 'INCOME' && isPaid && (
+              <CampoDaBandeira metodo={formaDePagamento} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" gap={5}
+                rotuloComoLabel="" estiloDoRotulo={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }} />
             )}
 
             {/* Pago? + Vencimento */}

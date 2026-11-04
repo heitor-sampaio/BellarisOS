@@ -337,4 +337,35 @@ test.describe.serial('o cartão por bandeira', () => {
     expect((await db().from('tenants').select('cartao_por_bandeira').eq('id', rede!.tenantId).single()).data?.cartao_por_bandeira)
       .toEqual({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } })
   })
+  // r4-f15-02 (o Heitor, revisão das decisões da F15): o "Novo lançamento" do
+  // Financeiro, na RECEITA paga no cartão (crédito ou débito), pergunta o mesmo
+  // "Bandeira (opcional)" dos outros lugares e a grava. Fora do cartão, ou na
+  // despesa, não pergunta.
+  test('r4-f15-02: o "Novo lançamento" de uma receita no cartão tem "Bandeira (opcional)", e a grava', async ({ browser }) => {
+    const descricao = `${PREFIXO} Receita no crédito ${marca}`
+    await como(browser, gestor!, async p => {
+      await p.goto(`/${slug}/financeiro`)
+      await p.getByRole('button', { name: 'Novo lançamento' }).click()
+      const dialogo = p.locator('dialog[open]').filter({ hasText: 'Novo lançamento' })
+      await dialogo.getByLabel('Descrição *').fill(descricao)
+      await dialogo.getByLabel('Categoria *').selectOption('Atendimento')
+      await dialogo.getByLabel('Valor bruto (R$) *').fill('300')
+      const forma = dialogo.getByLabel('Forma de pagamento')
+      await forma.selectOption('PIX')
+      await expect(dialogo.getByLabel('Bandeira'), 'no Pix não há bandeira').toHaveCount(0)
+      await forma.selectOption('DEBIT_CARD')
+      await expect(dialogo.getByLabel('Bandeira'), 'no débito, sim').toBeVisible()
+      await dialogo.getByRole('button', { name: 'Despesa' }).click()
+      await expect(dialogo.getByLabel('Bandeira'), 'na despesa, não').toHaveCount(0)
+      await dialogo.getByRole('button', { name: 'Receita' }).click()
+      // Trocar o tipo troca a lista de categorias (e a zera): de novo a da receita.
+      await dialogo.getByLabel('Categoria *').selectOption('Atendimento')
+      await forma.selectOption('CREDIT_CARD')
+      await dialogo.getByLabel('Bandeira').selectOption({ label: 'Elo' })
+      await dialogo.getByRole('button', { name: 'Lançar' }).click()
+      await expect.poll(async () => (await db().from('financial_transactions').select('payment_method, is_paid, cartao_bandeira')
+        .eq('branch_id', rede!.branchId).eq('description', descricao).maybeSingle()).data, { message: 'lançado na Elo' })
+        .toEqual({ payment_method: 'CREDIT_CARD', is_paid: true, cartao_bandeira: 'ELO' })
+    })
+  })
 })
