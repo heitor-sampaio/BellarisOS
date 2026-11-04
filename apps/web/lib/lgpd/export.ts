@@ -93,7 +93,7 @@ function prontuarioLegivel(medical: Json | null): Json | null {
         doresRelatadas: e.queixas ?? null,
         insumos: e.products_used ?? null,
         fichaDoProcedimento: f ? { ficha: f.nome ?? 'Ficha do procedimento', respostas: respostasLegiveis(f, f.respostas) } : null,
-        fotos: ((e.record_photos ?? []) as unknown[]).length,
+        fotos: Number(e.fotos_do_atendimento ?? ((e.record_photos ?? []) as unknown[]).length),
       }
     }),
   }
@@ -173,7 +173,7 @@ export async function buildClientExport(
       .select('purchased_at, expires_at, total_sessions, used_sessions, cancelado_em, service_packages(name)')
       .eq('client_id', clientId),
     admin.from('client_documents')
-      .select('created_at, name, category, file_name, mime_type, file_size, apagado_em').eq('client_id', clientId),
+      .select('created_at, name, category, file_name, mime_type, file_size, apagado_em, appointment_id').eq('client_id', clientId),
     // TODAS (2026-10-22): tinha teto de 200, e o pacote do titular saía
     // incompleto parecendo completo. Em páginas — o PostgREST corta em 1000.
     lerTodas((de, ate) => admin.from('client_notifications')
@@ -247,7 +247,14 @@ export async function buildClientExport(
       medical = {
         criadoEm:      record?.created_at ?? null,
         anamneseGeral: record?.general_anamnesis ?? null,
-        atendimentos:  record?.medical_record_entries ?? [],
+        // A foto do atendimento entra pela tela DELE (o cartão "Fotos do
+        // atendimento", client_documents com appointment_id) — e conta nele, com
+        // as de record_photos (D16 da 6ª simulação: o pacote dizia "fotos: 0").
+        atendimentos:  (record?.medical_record_entries ?? []).map(e => ({
+          ...e,
+          fotos_do_atendimento: ((e.record_photos ?? []) as unknown[]).length
+            + (documents ?? []).filter(d => d.appointment_id && d.appointment_id === e.appointment_id && d.category === 'foto_clinica' && !d.apagado_em).length,
+        })),
         fichasDeSaude: fichasRespondidas,
       }
     }
@@ -481,7 +488,7 @@ export async function buildClientExport(
         emptyLabel: 'Nenhum registro de atendimento.',
         lines: entries.map(e => {
           const prof = (e.users as { name?: string } | null)?.name ?? '—'
-          const fotos = ((e.record_photos ?? []) as unknown[]).length
+          const fotos = Number(e.fotos_do_atendimento ?? ((e.record_photos ?? []) as unknown[]).length)
           const notas = String(e.notes ?? '').replace(/\s+/g, ' ').trim()
           const inter = String(e.intercurrences ?? '').replace(/\s+/g, ' ').trim()
           const dores = String(e.queixas ?? '').replace(/\s+/g, ' ').trim()

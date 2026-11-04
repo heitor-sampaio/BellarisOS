@@ -281,6 +281,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   "Pronto"), deixa baixar a parte geral e NÃO oferece "Solicitar meus dados";
   `requestDataExport` recusa o segundo pedido. Prova:
   `e2e/lgpd-portal-pacote-legivel.spec.ts`.
+- **As fotos de cada atendimento contam a foto da TELA dele** (D16 da 6ª
+  simulação, 2026-11-04): no prontuário liberado, o `fotos` de cada
+  atendimento soma `record_photos` e a foto clínica anexada pelo cartão
+  "Fotos do atendimento" (`client_documents` com o `appointment_id` dele,
+  categoria `foto_clinica`, não apagada) — no JSON e no PDF. Dizia "fotos: 0"
+  com a foto anexada. O arquivo continua listado em "Documentos anexados".
+  Prova: `e2e/lgpd-exportacao.spec.ts`.
 - **A ficha de saúde (pré-atendimento) no pacote** (2026-10-21): o
   HISTÓRICO (`fichasDeSaude`: quando foi mandada, ficha completa ou
   confirmação, a situação, quando e por onde foi respondida) vai na parte

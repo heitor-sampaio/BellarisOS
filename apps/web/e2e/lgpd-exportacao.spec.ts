@@ -41,8 +41,30 @@ test.describe.serial('LGPD: exportação de dados', () => {
     cliente = await clienteComSessao(`lgpd${marca}`, unidade)
     intruso = await clienteComSessao(`lgpdx${marca}`, unidade)
     // Um prontuário com anamnese — é por ele que se sabe se a parte clínica entrou.
-    await banco().from('medical_records').upsert(
+    const { data: prontuario } = await banco().from('medical_records').upsert(
       { client_id: cliente.clientId, general_anamnesis: { allergies: ALERGIA } }, { onConflict: 'client_id' })
+      .select('id').single<{ id: string }>()
+    // D16 da 6ª simulação: um atendimento com a foto clínica anexada pela tela
+    // dele (`client_documents.appointment_id`, o cartão "Fotos do atendimento")
+    // — o pacote dizia "fotos: 0", porque só contava `record_photos`.
+    const rede = (await banco().from('clients').select('tenant_id').eq('id', cliente.clientId).single<{ tenant_id: string }>()).data!.tenant_id
+    const { data: prof } = await banco().from('users').select('id').eq('tenant_id', rede)
+      .eq('provides_services', true).eq('is_active', true).limit(1).single<{ id: string }>()
+    const { data: proc } = await banco().from('procedures').select('id').eq('tenant_id', rede)
+      .eq('is_active', true).limit(1).single<{ id: string }>()
+    const { data: atendimento, error: eA } = await banco().from('appointments').insert({
+      branch_id: unidade.id, client_id: cliente.clientId, professional_id: prof!.id, procedure_id: proc!.id,
+      source: 'INTERNAL', duration_min: 30, price: 0, status: 'COMPLETED',
+      scheduled_at: new Date(Date.now() - 2 * 3600_000).toISOString(), completed_at: new Date(Date.now() - 3600_000).toISOString(),
+    }).select('id').single<{ id: string }>()
+    expect(eA, 'o atendimento').toBeNull()
+    expect((await banco().from('medical_record_entries').insert({
+      medical_record_id: prontuario!.id, appointment_id: atendimento!.id, professional_id: prof!.id, notes: 'evolução',
+    })).error, 'a entrada do prontuário').toBeNull()
+    expect((await banco().from('client_documents').insert({
+      branch_id: unidade.id, client_id: cliente.clientId, appointment_id: atendimento!.id, category: 'foto_clinica',
+      name: `${PREFIXO} foto do atendimento ${marca}`, file_name: 'foto.png', file_path: `e2e/${marca}/foto.png`,
+    })).error, 'a foto do atendimento').toBeNull()
     // Uma ficha de pré-atendimento respondida (2026-10-21): o HISTÓRICO vai na
     // parte geral; as respostas, que são de saúde, só com o prontuário.
     const { data: c } = await banco().from('clients').select('tenant_id').eq('id', cliente.clientId).single<{ tenant_id: string }>()
@@ -164,6 +186,8 @@ test.describe.serial('LGPD: exportação de dados', () => {
     const pacote = await jsonDoPacote(row!.export_json_path)
     expect(pacote.solicitacao.incluiProntuario).toBe(true)
     expect(JSON.stringify(pacote.prontuario), 'agora o prontuário está no pacote').toContain(ALERGIA)
+    // D16: a foto anexada na tela do atendimento conta nele.
+    expect((pacote.prontuario as { atendimentos: { fotos: number }[] }).atendimentos.map(a => a.fotos), 'as fotos do atendimento').toEqual([1])
     expect((pacote.prontuario as { fichasDeSaude?: unknown }).fichasDeSaude, 'e as respostas da ficha de saúde, pergunta a pergunta').toEqual([
       expect.objectContaining({ respostas: [{ pergunta: 'Alergias', resposta: RESPOSTA_DA_FICHA }] }),
     ])
