@@ -288,10 +288,21 @@ export function campoVisivel(f: AnamnesisField, respostas: Record<string, unknow
 export function primeiraObrigatoriaVazia(
   rows: AnamnesisRow[], respostas: Record<string, unknown>, ignorar: AnamnesisFieldType[] = [],
 ): AnamnesisField | null {
+  return obrigatoriasVazias(rows, respostas, ignorar)[0] ?? null
+}
+
+/**
+ * TODAS as obrigatórias vazias, na ordem da ficha (A30 da 6ª simulação: a tela
+ * apontava uma por vez, e quem finalizava descobria a próxima só no clique
+ * seguinte). A mesma conta da primeira — é ela, sem parar na primeira.
+ */
+export function obrigatoriasVazias(
+  rows: AnamnesisRow[], respostas: Record<string, unknown>, ignorar: AnamnesisFieldType[] = [],
+): AnamnesisField[] {
   const campos = flattenFields({ rows })
-  return campos.find(f =>
+  return campos.filter(f =>
     f.required && f.type !== 'section' && !ignorar.includes(f.type) && campoVisivel(f, respostas, campos)
-    && campoVazio(respostas[f.id])) ?? null
+    && campoVazio(respostas[f.id]))
 }
 
 /** Retorna mensagem de erro se o schema for inválido; null se ok. */

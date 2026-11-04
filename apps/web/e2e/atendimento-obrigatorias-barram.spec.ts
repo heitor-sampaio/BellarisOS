@@ -89,29 +89,42 @@ test.afterAll(async () => {
   await profissional?.limpar(); await rede?.limpar()
 })
 
-test('"Finalizar" não conclui com obrigatória em branco: a tela aponta a anamnese, depois a ficha, e só então conclui', async ({ browser }) => {
+test('"Finalizar" não conclui com obrigatória em branco: a tela aponta TODAS de uma vez, a janela diz quais, e só então conclui (A30)', async ({ browser }) => {
   const { id } = await atendimentoEmCurso('Sophie')
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     await expect(p.getByText(FICHA).first()).toBeVisible()
 
-    // 1. A anamnese vazia: a primeira obrigatória dela é apontada.
+    // 1. Tudo em branco: a janela de concluir diz TUDO o que falta — a anamnese e a ficha —, sem o "Confirmar".
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
+    const falta = p.locator('[data-o-que-falta]')
+    await expect(falta, 'a janela diz o que falta').toBeVisible()
+    for (const rotulo of ['Grávida ou amamentando?', 'Tem alguma alergia?', 'Medicamentos em uso', 'Condições de saúde', 'Fototipo']) {
+      await expect(falta.getByText(rotulo, { exact: true }), `a janela lista "${rotulo}"`).toBeVisible()
+    }
+    await expect(p.getByRole('button', { name: 'Confirmar conclusão' }), 'não conclui com obrigatória em branco').toHaveCount(0)
+    await falta.getByRole('button', { name: 'Responder agora' }).click()
+    await expect(falta).toHaveCount(0)
+
+    // Todas marcadas na página, de uma vez; a tela rola até a primeira (a anamnese).
     const gestacao = campo(p, ANAMNESE, 'isPregnantOrBreastfeeding')
-    await expect(gestacao, 'a tela aponta a obrigatória da anamnese').toHaveAttribute('data-invalido', 'true')
+    for (const c of ['isPregnantOrBreastfeeding', 'allergies', 'medications', 'healthConditions']) {
+      await expect(campo(p, ANAMNESE, c), `a anamnese marca "${c}"`).toHaveAttribute('data-invalido', 'true')
+    }
+    const fototipo = campo(p, FICHA_DO_PROCEDIMENTO, 'fototipo')
+    await expect(fototipo, 'e a ficha marca o fototipo junto').toHaveAttribute('data-invalido', 'true')
     await expect(gestacao).toBeInViewport()
-    await expect(p.getByRole('button', { name: 'Confirmar conclusão' }), 'a janela de concluir não abre').toHaveCount(0)
 
     await gestacao.getByLabel('Não se aplica').check()
     await campo(p, ANAMNESE, 'allergies').getByLabel('Não', { exact: true }).check()
     for (const c of ['medications', 'healthConditions']) await campo(p, ANAMNESE, c).locator('textarea').fill(`Nega ${marca}`)
 
-    // 2. A ficha do procedimento: o fototipo em branco é apontado.
+    // 2. Só a ficha falta: a janela diz só ela.
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
-    const fototipo = campo(p, FICHA_DO_PROCEDIMENTO, 'fototipo')
-    await expect(fototipo, 'a tela aponta a obrigatória da ficha').toHaveAttribute('data-invalido', 'true')
+    await expect(falta.getByText('Fototipo', { exact: true })).toBeVisible()
+    await expect(falta.getByText('Medicamentos em uso', { exact: true })).toHaveCount(0)
+    await falta.getByRole('button', { name: 'Responder agora' }).click()
     await expect(fototipo).toBeInViewport()
-    await expect(p.getByRole('button', { name: 'Confirmar conclusão' })).toHaveCount(0)
     expect(await status(id), 'nada foi concluído').toBe('IN_PROGRESS')
 
     // 3. Tudo respondido: conclui.
@@ -122,6 +135,34 @@ test('"Finalizar" não conclui com obrigatória em branco: a tela aponta a anamn
   })
   const { data } = await db().from('medical_record_entries').select('form_data').eq('appointment_id', id).single()
   expect((data?.form_data as { ficha?: { answers?: unknown } } | null)?.ficha?.answers).toMatchObject({ fototipo: 'III' })
+})
+
+test('A31: a recepção (sem o prontuário) não recebe a anamnese para responder de novo', async ({ browser }) => {
+  const recepcao = await criarMembro(`obr${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Recepcao',
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
+  })
+  try {
+    const { id, cliente } = await atendimentoEmCurso('Marcia')
+    await responderAnamnese(cliente, rede!.tenantId)
+    // O controle: quem atende vê a anamnese revisada.
+    await como(browser, async p => {
+      await p.goto(`/${slug}/agenda/${id}`)
+      await expect(p.getByText('Anamnese revisada')).toBeVisible()
+    })
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/${slug}/agenda/${id}`)
+      await expect(p.getByText('Marcia').first(), 'a tela abriu').toBeVisible()
+      await expect(p.locator(ANAMNESE), 'nenhum formulário da anamnese para a recepção').toHaveCount(0)
+      await expect(p.locator('[data-campo="allergies"]')).toHaveCount(0)
+    } finally {
+      await ctx.close()
+    }
+  } finally {
+    await recepcao.limpar()
+  }
 })
 
 test('o servidor recusa o "Finalizar" sem a obrigatória — a trava não é só da tela', async ({ browser }) => {
@@ -156,6 +197,10 @@ test('a anamnese que a cliente respondeu pelo app vale: só a ficha do procedime
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
+    const falta = p.locator('[data-o-que-falta]')
+    await expect(falta.getByText('Fototipo', { exact: true })).toBeVisible()
+    await expect(falta.getByText('Na anamnese'), 'a anamnese respondida não entra na lista').toHaveCount(0)
+    await falta.getByRole('button', { name: 'Responder agora' }).click()
     await expect(campo(p, FICHA_DO_PROCEDIMENTO, 'fototipo')).toHaveAttribute('data-invalido', 'true')
     await expect(campo(p, ANAMNESE, 'isPregnantOrBreastfeeding'), 'a anamnese respondida não é apontada')
       .not.toHaveAttribute('data-invalido', 'true')

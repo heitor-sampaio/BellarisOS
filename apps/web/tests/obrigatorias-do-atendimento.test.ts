@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { campoVazio, primeiraObrigatoriaVazia, type AnamnesisRow } from '@/lib/anamnesis'
-import { faltaNaAnamnese, faltaNaFichaDoProcedimento } from '@/lib/atendimento/obrigatorias'
+import { campoVazio, primeiraObrigatoriaVazia, obrigatoriasVazias, type AnamnesisRow } from '@/lib/anamnesis'
+import { faltaNaAnamnese, faltaNaFichaDoProcedimento, rotulosQueFaltamNaAnamnese } from '@/lib/atendimento/obrigatorias'
 
 /**
  * Revisão do Heitor, 2026-10-29: "tudo que for obrigatório é obrigatório e
@@ -54,5 +54,16 @@ describe('a primeira obrigatória vazia', () => {
     ]
     expect(faltaNaAnamnese(saude, {})).toEqual({ onde: 'anamnese', campo: 'allergies', rotulo: 'Alergias', mensagem: 'Falta responder "Alergias" na anamnese.' })
     expect(faltaNaAnamnese(saude, { allergies: 'Nega' })).toBeNull()
+  })
+})
+
+describe('TODAS as obrigatórias vazias (A30 da 6ª simulação: a tela apontava uma por vez)', () => {
+  it('na ordem da ficha, sem o título; a primeira é a mesma de primeiraObrigatoriaVazia', () => {
+    expect(obrigatoriasVazias(ficha, {}).map(f => f.id)).toEqual(['fototipo', 'mapa', 'foto'])
+    expect(obrigatoriasVazias(ficha, {}, ['injectable_map']).map(f => f.id)).toEqual(['fototipo', 'foto'])
+    expect(obrigatoriasVazias(ficha, { fototipo: 'I' })[0]?.id).toBe(primeiraObrigatoriaVazia(ficha, { fototipo: 'I' })?.id)
+  })
+  it('na anamnese, os rótulos, sem a foto e o planejador (a cliente responde pelo celular)', () => {
+    expect(rotulosQueFaltamNaAnamnese(ficha, {})).toEqual(['Fototipo'])
   })
 })

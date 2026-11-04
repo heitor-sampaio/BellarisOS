@@ -1201,10 +1201,16 @@ O resto do fluxo:
   pré-atendimento da rede) ou na FICHA DO PROCEDIMENTO — barra o "Finalizar
   atendimento", o "Enviar para a recepção" e o "Fechar agora". Era o
   contrário ("a cliente já foi atendida", D2/D3 de 28/10 e D1 de 29/10).
-  - **A tela aponta** a primeira que falta — a anamnese antes da ficha, a
-    ordem da página — rolando até o campo, com o foco e a mensagem junto dele
-    (`validar()` do `AnamnesisFormRenderer`; com a anamnese só para ler, o
-    cartão abre para editar e aponta). A janela de concluir nem abre.
+  - **A tela aponta TODAS de uma vez** (A30 da 6ª simulação, 2026-11-04;
+    era uma por clique): cada obrigatória vazia — da anamnese e da ficha —
+    fica marcada com a mensagem junto dela, e a tela rola até a PRIMEIRA da
+    página (a anamnese antes da ficha), com o foco (`validar()` do
+    `AnamnesisFormRenderer`, `obrigatoriasVazias` em `lib/anamnesis.ts`; com
+    a anamnese só para ler, o cartão abre para editar e marca). O "Finalizar"
+    abre a janela "Faltam N respostas obrigatórias" (`[data-o-que-falta]`),
+    com a lista inteira por lugar ("Na anamnese", "Na ficha do
+    procedimento") e "Responder agora" — SEM o "Confirmar conclusão". O
+    gerar plano diz a mesma lista na frase do erro.
   - **O servidor recusa** (`oQueFaltaParaSeguir`,
     `lib/atendimento/obrigatorias-no-servidor.ts`) em `finishSession` e em
     `generateEvaluationPlan` — a trava não é só do navegador. A conta é UMA,
@@ -1245,10 +1251,15 @@ O resto do fluxo:
     outra, com a agenda de todas): a tela não tem os campos e não aponta nada;
     o servidor recusa do mesmo jeito, com só o NOME da pergunta na mensagem.
     Quem responde é quem atende. A recepção não conclui (concluir pede
-    `medical_records: MANAGE`), então não é barrada por isto.
+    `medical_records: MANAGE`), então não é barrada por isto — **e não recebe
+    a anamnese para responder** (A31 da 6ª simulação, 2026-11-04): sem o
+    prontuário a anamnese nem é lida, e o formulário da avaliação mostrava à
+    recepção a ficha inteira em branco ("pediu de novo a anamnese da Márcia"
+    enquanto a profissional via "Anamnese revisada"). A anamnese, nos dois
+    formulários, só aparece com `canViewRecords`.
   - Prova: `e2e/atendimento-obrigatorias-barram.spec.ts`,
     `tests/obrigatorias-do-atendimento.test.ts`; a da gravação,
-    `e2e/atendimento-obrigatorias-barram.spec.ts` ("atend-04"). Spec que
+    `e2e/atendimento-obrigatorias-barram.spec.ts` ("atend-04", "A30", "A31"). Spec que
     finaliza sem ser sobre isto responde a ficha de saúde antes
     (`responderAnamnese`, `e2e/apoio/anamnese.ts`) — também o que conclui
     pela FUNÇÃO (`responderAnamneseDoAgendamento`), que agora recusa.

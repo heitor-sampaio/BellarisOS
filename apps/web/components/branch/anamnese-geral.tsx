@@ -3,11 +3,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, Edit2, X } from 'lucide-react'
-import { AnamnesisFormRenderer, type AnamnesisFormHandle, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
+import { AnamnesisFormRenderer, type AnamnesisFormHandle, type AnamnesisAnswers, type ValidacaoDaFicha } from '@/components/branch/anamnesis-form-renderer'
 import { salvarAnamneseGeral } from '@/actions/pre-atendimento'
 import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { campoVisivel, type AnamnesisRow } from '@/lib/anamnesis'
-import { faltaNaAnamnese } from '@/lib/atendimento/obrigatorias'
+import { faltaNaAnamnese, rotulosQueFaltamNaAnamnese } from '@/lib/atendimento/obrigatorias'
 
 /**
  * A anamnese geral da cliente (2026-10-20): as perguntas da FICHA DE
@@ -55,7 +55,7 @@ export function RespostasDaAnamnese({ rows, respostas }: { rows: AnamnesisRow[];
  * atendimento — revisão do Heitor, 2026-10-29). Com a ficha só para ler e uma
  * obrigatória sem resposta, o cartão abre para editar e aponta o campo.
  */
-export interface AnamneseGeralCartaoHandle { validar: () => { error?: string } }
+export interface AnamneseGeralCartaoHandle { validar: (o?: { rolar?: boolean }) => ValidacaoDaFicha }
 
 export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
   anamnese:   AnamneseGeral | null
@@ -75,20 +75,20 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
   const [editando, setEditando] = useState((!respondida || !!rascunho) && canEdit)
   const renderer = useRef<AnamnesisFormHandle>(null)
   // Abriu para editar por causa de uma obrigatória: aponta o campo depois de montar.
-  const [apontar, setApontar] = useState(false)
+  const [apontar, setApontar] = useState<{ rolar: boolean } | null>(null)
   useEffect(() => {
     if (!apontar || !editando) return
-    renderer.current?.validar()
-    setApontar(false) // eslint-disable-line react-hooks/set-state-in-effect -- um pedido só, cumprido depois de o formulário existir
+    renderer.current?.validar({ rolar: apontar.rolar })
+    setApontar(null) // eslint-disable-line react-hooks/set-state-in-effect -- um pedido só, cumprido depois de o formulário existir
   }, [apontar, editando])
 
   useImperativeHandle(ref, () => ({
-    validar() {
-      if (editando) return renderer.current?.validar() ?? {}
+    validar(o = {}) {
+      if (editando) return renderer.current?.validar(o) ?? {}
       const falta = faltaNaAnamnese(fichaAtual.rows, anamnese?.respostas ?? {})
       if (!falta) return {}
-      if (canEdit) { setEditando(true); setApontar(true) }
-      return { error: falta.mensagem }
+      if (canEdit) { setEditando(true); setApontar({ rolar: o.rolar !== false }) }
+      return { error: falta.mensagem, faltam: rotulosQueFaltamNaAnamnese(fichaAtual.rows, anamnese?.respostas ?? {}) }
     },
   }))
 
@@ -161,8 +161,8 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
 /** Na AVALIAÇÃO a anamnese é salva junto com o plano: o handle colhe as respostas. */
 export interface AnamneseNaAvaliacaoHandle {
   coletar: () => Promise<{ respostas?: Record<string, unknown>; error?: string }>
-  /** Aponta a primeira obrigatória vazia, sem colher (o "Finalizar" — 2026-10-29). */
-  validar: () => { error?: string }
+  /** Aponta as obrigatórias vazias, sem colher (o "Finalizar" — 2026-10-29; todas de uma vez desde o A30). */
+  validar: (o?: { rolar?: boolean }) => ValidacaoDaFicha
 }
 
 export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
@@ -183,7 +183,7 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
       if (r?.error) return { error: r.error }
       return { respostas: colhidas.current ?? {} }
     },
-    validar: () => renderer.current?.validar() ?? {},
+    validar: (o?: { rolar?: boolean }) => renderer.current?.validar(o) ?? {},
   }))
 
   return (

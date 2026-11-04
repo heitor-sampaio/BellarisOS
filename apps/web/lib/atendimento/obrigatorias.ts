@@ -1,4 +1,4 @@
-import { primeiraObrigatoriaVazia, type AnamnesisRow, type AnamnesisFieldType } from '@/lib/anamnesis'
+import { primeiraObrigatoriaVazia, obrigatoriasVazias, type AnamnesisRow, type AnamnesisFieldType } from '@/lib/anamnesis'
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
 
 /**
@@ -25,6 +25,11 @@ export interface FaltaNoAtendimento {
 export function faltaNaAnamnese(rows: AnamnesisRow[], respostas: Record<string, unknown>): FaltaNoAtendimento | null {
   const f = primeiraObrigatoriaVazia(rows, respostas, TIPOS_FORA_DO_PRE_ATENDIMENTO)
   return f ? { onde: 'anamnese', campo: f.id, rotulo: f.label, mensagem: `Falta responder "${f.label}" na anamnese.` } : null
+}
+
+/** Os rótulos de TODAS as obrigatórias vazias da anamnese (A30: a tela diz a lista inteira de uma vez). */
+export function rotulosQueFaltamNaAnamnese(rows: AnamnesisRow[], respostas: Record<string, unknown>): string[] {
+  return obrigatoriasVazias(rows, respostas, TIPOS_FORA_DO_PRE_ATENDIMENTO).map(f => f.label)
 }
 
 /**

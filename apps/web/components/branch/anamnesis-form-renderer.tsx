@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Save, Upload, X, ImageIcon, CheckCircle2, Syringe, ExternalLink } from 'lucide-react'
 import {
-  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor, primeiraObrigatoriaVazia, campoVisivel,
+  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor, obrigatoriasVazias, campoVisivel,
   type AnamnesisField, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
@@ -22,11 +22,15 @@ type SaveArgs = { appointmentId: string; slug: string; answers: Record<string, u
 /**
  * Handle imperativo: salvar via um botão externo ("salvar tudo") e CONFERIR as
  * obrigatórias sem salvar (o "Finalizar" e o "Enviar para a recepção" — revisão
- * do Heitor, 2026-10-29): aponta o primeiro campo vazio, como o salvar.
+ * do Heitor, 2026-10-29): marca TODOS os campos vazios de uma vez e rola até o
+ * primeiro (A30 da 6ª simulação — era um por vez). `faltam` são os rótulos,
+ * para a tela dizer a lista inteira; `rolar: false` só marca (outro cartão,
+ * mais acima na página, já tem a primeira).
  */
+export interface ValidacaoDaFicha { error?: string; faltam?: string[] }
 export interface AnamnesisFormHandle {
   save:    () => Promise<{ error?: string }>
-  validar: () => { error?: string }
+  validar: (o?: { rolar?: boolean }) => ValidacaoDaFicha
 }
 
 interface Props {
@@ -75,15 +79,23 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
   const [saving, setSaving]   = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [error, setError]     = useState<string | null>(null)
-  // O primeiro campo obrigatório vazio (2026-10-27, A47): a tela rola até ele, põe o foco, destaca e escreve a mensagem junto dele.
-  const [invalido, setInvalido] = useState<{ id: string; msg: string } | null>(null)
+  // Os campos obrigatórios vazios (A47 de 2026-10-27; TODOS desde o A30 da 6ª
+  // simulação): cada um destacado com a mensagem junto dele; a tela rola até o
+  // primeiro e põe o foco nele.
+  const [invalidos, setInvalidos] = useState<Record<string, string>>({})
+  const [alvo, setAlvo] = useState<{ id: string; vez: number } | null>(null)
   const raiz = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (!invalido) return
-    const campo = Array.from(raiz.current?.querySelectorAll<HTMLElement>('[data-campo]') ?? []).find(e => e.dataset.campo === invalido.id)
+    if (!alvo) return
+    const campo = Array.from(raiz.current?.querySelectorAll<HTMLElement>('[data-campo]') ?? []).find(e => e.dataset.campo === alvo.id)
     campo?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     campo?.querySelector<HTMLElement>('input, textarea, select, button')?.focus({ preventScroll: true })
-  }, [invalido])
+  }, [alvo])
+  const tirarInvalido = (id: string) => setInvalidos(v => {
+    if (!(id in v)) return v
+    const { [id]: _tirado, ...resto } = v // eslint-disable-line @typescript-eslint/no-unused-vars
+    return resto
+  })
   const todosOsCampos = flattenFields({ rows })
   // path da foto → signed URL (temporária) para exibir
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
@@ -108,7 +120,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
     setAnswers(next)
     onAnswersChange?.(next)
     setSavedAt(null)
-    setInvalido(v => (v?.id === id ? null : v))
+    tirarInvalido(id)
   }
   function toggleCheckbox(id: string, opt: string) {
     const cur = Array.isArray(answers[id]) ? (answers[id] as string[]) : []
@@ -116,21 +128,28 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
     setAnswers(next)
     onAnswersChange?.(next)
     setSavedAt(null)
-    setInvalido(v => (v?.id === id ? null : v))
+    tirarInvalido(id)
   }
 
   /**
-   * A primeira obrigatória vazia, apontada na tela (rola, foca, destaca). O
-   * planejador sem o recurso de injetáveis fica só para ver: não barra.
+   * As obrigatórias vazias, TODAS apontadas na tela (destaca cada uma; rola e
+   * foca a primeira). O planejador sem o recurso de injetáveis fica só para
+   * ver: não barra.
    */
-  function validar(): { error?: string } {
+  function validar(o: { rolar?: boolean } = {}): ValidacaoDaFicha {
     if (!canEdit) return {}
-    setError(null); setInvalido(null)
-    const missing = primeiraObrigatoriaVazia(rows, answers, semInjetaveis ? ['injectable_map'] : [])
-    if (!missing) return {}
-    const msg = `Preencha "${missing.label}".`
-    setError(msg); setInvalido({ id: missing.id, msg })
-    return { error: msg }
+    setError(null); setInvalidos({})
+    const vazias = obrigatoriasVazias(rows, answers, semInjetaveis ? ['injectable_map'] : [])
+    const primeira = vazias[0]
+    if (!primeira) return {}
+    const marcados: Record<string, string> = {}
+    for (const f of vazias) marcados[f.id] = `Preencha "${f.label}".`
+    const msg = vazias.length === 1
+      ? `Preencha "${primeira.label}".`
+      : `Preencha os ${vazias.length} campos obrigatórios: ${vazias.map(f => `"${f.label}"`).join(', ')}.`
+    setError(msg); setInvalidos(marcados)
+    if (o.rolar !== false) setAlvo(a => ({ id: primeira.id, vez: (a?.vez ?? 0) + 1 }))
+    return { error: msg, faltam: vazias.map(f => f.label) }
   }
 
   async function save(): Promise<{ error?: string }> {
@@ -160,7 +179,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
               <FieldView
                 key={f.id} field={f} value={answers[f.id]} canEdit={canEdit && !(semInjetaveis && f.type === 'injectable_map')}
                 appointmentId={appointmentId} slug={slug} injetaveis={injetaveis}
-                erro={invalido?.id === f.id ? invalido.msg : undefined}
+                erro={invalidos[f.id]}
                 photoUrl={typeof answers[f.id] === 'string' ? photoUrls[answers[f.id] as string] : undefined}
                 onPhotoUploaded={(path, url) => setPhotoUrls(m => ({ ...m, [path]: url }))}
                 onChange={v => setAnswer(f.id, v)}

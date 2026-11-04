@@ -244,6 +244,48 @@ const PAYMENT_METHODS = [
 
 // -- Modais --------------------------------------------------------------------
 
+/** Um grupo do que falta para finalizar: onde (a anamnese, a ficha) e os rótulos. */
+interface GrupoQueFalta { onde: string; rotulos: string[] }
+
+/**
+ * A janela do "Finalizar" com obrigatória em branco (A30 da 6ª simulação): diz
+ * TUDO o que falta, de uma vez — a anamnese e a ficha do procedimento —, sem
+ * o "Confirmar conclusão" ("tudo que é obrigatório barra"). Os campos já estão
+ * marcados na página; "Responder agora" fecha e deixa a tela no primeiro.
+ */
+function OQueFaltaParaFinalizar({ grupos, onFechar }: { grupos: GrupoQueFalta[]; onFechar: () => void }) {
+  const total = grupos.reduce((n, g) => n + g.rotulos.length, 0)
+  return (
+    <JanelaModal onFechar={onFechar} rotulo="O que falta para finalizar" largura={460}>
+      <div data-o-que-falta>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AlertTriangle size={16} style={{ color: 'var(--warning)' }} aria-hidden="true" />
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>
+            {total === 1 ? 'Falta 1 resposta obrigatória' : `Faltam ${total} respostas obrigatórias`}
+          </h2>
+          <button type="button" onClick={onFechar} className="btn-ghost" style={{ padding: '4px 6px' }} aria-label="Fechar"><X size={15} /></button>
+        </div>
+        <div style={{ padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            O atendimento só se finaliza com elas respondidas. Os campos estão marcados na página.
+          </p>
+          {grupos.map(g => (
+            <div key={g.onde}>
+              <p className="field-label">{g.onde}</p>
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {g.rotulos.map(r => <li key={r} style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}>{r}</li>)}
+              </ul>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-primary" onClick={onFechar}>Responder agora</button>
+          </div>
+        </div>
+      </div>
+    </JanelaModal>
+  )
+}
+
 function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; slug: string; onClose: () => void }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(cancelAppointmentSession, null)
@@ -1070,6 +1112,8 @@ export function AppointmentSession({
 
   const [showCancel,    setShowCancel]    = useState(false)
   const [showFinish,    setShowFinish]    = useState(false)
+  // O que falta para finalizar, a lista inteira (A30): a janela diz, a página marca.
+  const [oQueFalta,     setOQueFalta]     = useState<GrupoQueFalta[] | null>(null)
   // O mesmo critério do botão "Confirmar pagamento", logo abaixo.
   const aReceber = appointment.status === 'COMPLETED' && !paymentTransaction && canPayment
     && !isPartOfPlan && !isPackageSession && !isPrePago && appointment.price > 0
@@ -1186,7 +1230,7 @@ export function AppointmentSession({
     }
     // A obrigatória sem resposta barra o plano (revisão do Heitor, 2026-10-29).
     const falta = concluida ? null : conferirObrigatorias()
-    if (falta) { setGenError(falta); return }
+    if (falta) { setGenError(falta.mensagem); return }
     setGenerating(true)
     const currentSessions = evalEditorRef.current?.getSessions() ?? []
     const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
@@ -1264,12 +1308,18 @@ export function AppointmentSession({
    * confere de novo. Quem não vê o clínico não tem os campos na tela: aí quem
    * decide é o servidor, e a recusa dele aparece na janela.
    */
-  function conferirObrigatorias(): string | null {
+  function conferirObrigatorias(): { mensagem: string; grupos: GrupoQueFalta[] } | null {
     if (!canViewRecords) return null
+    // TODAS de uma vez (A30 da 6ª simulação: era uma por clique). A tela rola
+    // até a primeira da página — a anamnese, se faltar algo nela.
     const anamnese = (anamneseDaAvaliacao.current ?? anamneseDoCartao.current)?.validar()
-    if (anamnese?.error) return anamnese.error
-    const daFicha = fichaRef.current?.validar()
-    return daFicha?.error ?? null
+    const daFicha = fichaRef.current?.validar({ rolar: !anamnese?.error })
+    if (!anamnese?.error && !daFicha?.error) return null
+    const grupos: GrupoQueFalta[] = []
+    if (anamnese?.error) grupos.push({ onde: 'Na anamnese', rotulos: anamnese.faltam ?? [] })
+    if (daFicha?.error) grupos.push({ onde: 'Na ficha do procedimento', rotulos: daFicha.faltam ?? [] })
+    const mensagem = grupos.map(g => `${g.onde.toLowerCase()}: ${g.rotulos.map(r => `"${r}"`).join(', ')}`).join('; ')
+    return { mensagem: `Falta responder ${mensagem}.`, grupos }
   }
 
   // O rascunho das anotações (A31, 2026-10-27): recarregar a página perdia o
@@ -1510,10 +1560,10 @@ export function AppointmentSession({
   const renderFichaCard = (insumosNode?: ReactNode, unified = false) => (
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
-      generalAnamnesis={
+      generalAnamnesis={canViewRecords ? (
         <AnamneseGeralCartao ref={anamneseDoCartao} embedded anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={canEditRecords}
           key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
-      }
+      ) : null}
       procedureNode={procedureNode}
       insumos={insumosNode ?? null}
       ficha={ficha && ficha.rows.length > 0 ? {
@@ -1675,6 +1725,7 @@ export function AppointmentSession({
       )}
 
       {showCancel  && <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)} />}
+      {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} />}
       {showFinish  && (
         <FinishModal
           appointmentId={appointment.id} slug={slug}
@@ -1789,7 +1840,11 @@ export function AppointmentSession({
               </span>
             )}
             {status === 'IN_PROGRESS' && canManage && canEditRecords && (
-              <button type="button" onClick={() => { if (!conferirObrigatorias()) setShowFinish(true) }}
+              <button type="button" onClick={() => {
+                const falta = conferirObrigatorias()
+                if (falta) setOQueFalta(falta.grupos)
+                else setShowFinish(true)
+              }}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} /> Finalizar atendimento
               </button>
@@ -2196,7 +2251,10 @@ export function AppointmentSession({
                   {editLocked ? (
                     canViewRecords && <AnamneseGeralCartao anamnese={anamnesis} fichaAtual={fichaPreAtendimento} clientId={client.id} canEdit={false} />
                   ) : (
-                    <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento}
+                    // A31 da 6ª simulação: sem o prontuário a anamnese nem é lida
+                    // (`anamnesis` vem nula) — e a recepção recebia o formulário
+                    // inteiro em branco, como se a cliente nunca tivesse respondido.
+                    canViewRecords && <AnamneseNaAvaliacao ref={anamneseDaAvaliacao} anamnese={anamnesis} fichaAtual={fichaPreAtendimento}
                       key={anamneseDoRascunho ? 'rascunho' : 'gravada'} rascunho={anamneseDoRascunho} onMudou={setAnamneseDigitada} />
                   )}
 
