@@ -4,7 +4,7 @@ import { avulsosDoPlano, textoDoAvulso } from '@/lib/checkout/plano-e-avulso'
 import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MessageCircle, Sparkles } from 'lucide-react'
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, formatDia } from '@estetica-os/utils'
 import { aClinicaDoEndereco, comMensagem } from '@/lib/clientes/a-clinica'
 import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
@@ -13,6 +13,7 @@ import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
+import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -55,6 +56,8 @@ type ActivePlan = {
   // profissional (`professional_notes`) e a da sessão são clínicas (D-18).
   treatment_plan_sessions: Array<{
     sort_order: number | null
+    /** O agendamento da sessão (A45: feita, agendada ou a agendar). */
+    appointments?: { status: string; scheduled_at: string; completed_at: string | null } | null
     treatment_plan_session_procedures: Array<{ price: number | string | null; procedures: { name: string } | null }>
   }>
 }
@@ -96,7 +99,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, treatment_plan_sessions(sort_order, treatment_plan_session_procedures(price, procedures(name)))')
+      .select('id, status, created_at, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, procedures(name)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -131,6 +134,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // desligado = nenhum sinal de pontos, nem com saldo.
   const redeDoCliente = (clientRes as { tenant_id: string | null } | null)?.tenant_id ?? null
   const fidelidadeLigada = redeDoCliente ? (await configDaRede(redeDoCliente, admin)).enabled : false
+  // O plano FECHADO abre (A45): as sessões e o dinheiro dele, de lib/metrics.
+  const financeiroDosPlanos = new Map(redeDoCliente ? await Promise.all(activePlans
+    .filter(p => p.status === 'ACCEPTED')
+    .map(async p => [p.id, await getFinanceiroDoPlano(redeDoCliente, p.id)] as const)) : [])
 
   const prePagos = ((prePagosRes ?? []) as unknown as {
     id: string; quantity: number; expires_at: string | null; procedures: { name: string } | null; procedure_sale_units: { status: string; appointment_id: string | null }[]
@@ -392,7 +399,11 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 avulsos={avulsosPorPlano.get(plan.id) ?? []} />
             ))}
 
-            {activePlans.filter(p => p.status !== 'PROPOSED').map(plan => {
+            {activePlans.filter(p => p.status === 'ACCEPTED' && financeiroDosPlanos.has(p.id)).map(plan => (
+              <PlanoFechado key={plan.id} plano={plan} financeiro={financeiroDosPlanos.get(plan.id)!} slug={slug} />
+            ))}
+
+            {activePlans.filter(p => p.status !== 'PROPOSED' && !financeiroDosPlanos.has(p.id)).map(plan => {
               const procs = (plan.treatment_plan_sessions ?? [])
                 .flatMap(s => s.treatment_plan_session_procedures ?? [])
                 .map(p => p.procedures?.name)
@@ -507,6 +518,70 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone, avulsos = [] }
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>Telefone da clínica: {telefone}</p>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * O plano FECHADO como a cliente o vê (A45 da 6ª simulação): o cartão abre
+ * (`<details>`) e diz cada sessão — feita, agendada ou a agendar — e o
+ * dinheiro: o pago e o a pagar, com o próximo vencimento. Os números são os
+ * de `getFinanceiroDoPlano` (lib/metrics); a tela não soma. Nada clínico: só
+ * os procedimentos e as datas.
+ */
+function PlanoFechado({ plano, financeiro, slug }: { plano: ActivePlan; financeiro: FinanceiroDoPlano; slug: string }) {
+  const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  const { total, feitas, agendadas } = financeiro.sessoes
+  const proximo = financeiro.lancamentos.filter(l => !l.pago && l.vencimento).map(l => l.vencimento!).sort()[0] ?? null
+  const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+  const situacao = (a: ActivePlan['treatment_plan_sessions'][number]['appointments']) => {
+    if (a?.status === 'COMPLETED') return { texto: `Feita em ${dia(a.completed_at ?? a.scheduled_at)}`, cor: 'var(--success)' }
+    if (a && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status)) {
+      return { texto: `Agendada para ${dia(a.scheduled_at)} às ${hora(a.scheduled_at)}`, cor: 'var(--info)' }
+    }
+    return { texto: 'A agendar', cor: 'var(--text-muted)' }
+  }
+  return (
+    <details data-plano-fechado className="card cartao-que-abre" style={{ padding: '14px 18px' }}>
+      <summary style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', listStyle: 'none' }}>
+        <Sparkles size={15} color="var(--brand)" aria-hidden="true" />
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Plano de tratamento</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+            {feitas} de {total} {total === 1 ? 'sessão feita' : 'sessões feitas'}
+            {agendadas > 0 ? ` · ${agendadas} ${agendadas === 1 ? 'agendada' : 'agendadas'}` : ''}
+          </p>
+        </div>
+        <ChevronRight size={16} color="var(--text-faint)" aria-hidden="true" className="seta-do-cartao" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+      </summary>
+      <div data-plano-detalhe style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
+        <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sessoes.map((s, i) => {
+            const sit = situacao(s.appointments)
+            return (
+              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: 1, fontSize: 'var(--text-sm-sz)' }}>
+                <span style={{ color: 'var(--text-soft)', overflowWrap: 'anywhere' }}>
+                  <b style={{ color: 'var(--text-faint)' }}>Sessão {i + 1}</b>{' '}
+                  {(s.treatment_plan_session_procedures ?? []).map(x => x.procedures?.name ?? 'Procedimento').join(' + ') || '—'}
+                </span>
+                <span style={{ color: sit.cor, fontWeight: 600, fontSize: 'var(--text-xs-sz)' }}>{sit.texto}</span>
+              </li>
+            )
+          })}
+        </ol>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
+          <span>Pago {formatBRL(financeiro.recebido)}</span>
+          <span style={{ color: financeiro.aReceber > 0 ? 'var(--warning)' : 'var(--text-muted)' }}>
+            A pagar {formatBRL(financeiro.aReceber)}
+            {proximo ? ` · próxima em ${formatDia(proximo)}` : ''}
+          </span>
+        </div>
+        <Link href={`/${slug}/cliente/financeiro`} prefetch={false}
+          style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 700 }}>
+          Ver os pagamentos
+        </Link>
+      </div>
+    </details>
   )
 }
 

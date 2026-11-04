@@ -209,6 +209,7 @@ export const ISOLADOS = [
   'portal-cliente-agendar-horarios.spec.ts',
   'portal-cliente-credito-interno.spec.ts',
   'portal-cliente-plano-proposto.spec.ts',
+  'portal-cliente-plano-fechado.spec.ts',
   'portal-cliente-a-clinica.spec.ts',
   'portal-cliente-prazo-na-tela.spec.ts',
   'portal-cliente-documentos-do-agendamento.spec.ts',

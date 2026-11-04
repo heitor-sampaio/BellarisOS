@@ -415,6 +415,14 @@
   (fora do app, inativo ou de outra unidade), diz "<procedimento>: agende com
   a clínica", com o WhatsApp. Era "Agendar procedimento", cuja lista não tinha
   o Laser. Prova: `e2e/agenda-pago-antes.spec.ts` ("A63").
+- **O cartão do plano FECHADO abre** (A45 da 6ª simulação, 2026-11-04): na
+  home do app, "Plano de tratamento · 1 de 3 sessões feitas · 1 agendada", e
+  aberto (`<details>`, `.cartao-que-abre`) cada sessão com os procedimentos e
+  a situação ("Feita em 28/10", "Agendada para 11/11 às 10:00", "A agendar")
+  e o dinheiro: "Pago R$ X" e "A pagar R$ Y · próxima em DD/MM/AAAA", com o
+  link para os pagamentos. Os números são os de `getFinanceiroDoPlano`
+  (`lib/metrics/plano.ts`, a regra única de receita); nada clínico vai.
+  Prova: `e2e/portal-cliente-plano-fechado.spec.ts`.
 - **O agendar do app diz QUANDO cada profissional atende** (J-60) e tem
   "Hoje"/"Amanhã" e os horários por Manhã/Tarde/Noite (J-59, o mesmo
   `gruposDeHorario` do remarcar). O texto é `resumoDoHorario`

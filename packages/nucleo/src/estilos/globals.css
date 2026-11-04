@@ -2666,3 +2666,9 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .pre-atendimento-agendamento-link .field { font-size: var(--text-xs-sz); background: var(--surface); }
 .pre-atendimento-agendamento-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
 .pre-atendimento-agendamento-botao { padding: 6px 12px; font-size: var(--text-xs-sz); display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+
+/* O cartão que ABRE (`<details>`, A45 da 6ª simulação: o plano fechado no
+   app): sem o marcador do navegador; a seta à direita gira ao abrir. */
+.cartao-que-abre > summary::-webkit-details-marker { display: none; }
+.cartao-que-abre > summary .seta-do-cartao { transition: transform 150ms ease; }
+.cartao-que-abre[open] > summary .seta-do-cartao { transform: rotate(90deg); }
