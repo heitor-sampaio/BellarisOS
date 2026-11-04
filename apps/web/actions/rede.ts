@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { O_QUE_A_CLIENTE_AVALIA, oQueAvalia, type OQueAClienteAvalia } from '@/lib/avaliacao/notas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { maskPhone } from '@estetica-os/utils'
@@ -21,6 +22,8 @@ export interface DadosDaRede {
   prazoPortalHoras: number
   /** Por quantos dias o plano PROPOSTO vale (o "Válido até" do app, D-18). */
   validadeDoPlanoDias: number
+  /** F17-3: o que a cliente avalia ao confirmar o atendimento pelo app (padrão: os dois). */
+  oQueAClienteAvalia: OQueAClienteAvalia
   /** Somente leitura — quem muda isso é a assinatura, não esta tela. */
   planName:   string | null
   planStatus: string | null
@@ -34,7 +37,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
   const t = await ler(
     createAdminClient()
       .from('tenants')
-      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at, portal_prazo_alteracao_horas, plano_validade_dias')
+      .select('id, name, slug, document, email, phone, website, plan_name, plan_status, created_at, portal_prazo_alteracao_horas, plano_validade_dias, avaliacao_o_que')
       .eq('id', ctx.tenantId!)
       .maybeSingle(),
     'carregar os dados da rede',
@@ -51,6 +54,7 @@ export async function lerDadosDaRede(): Promise<DadosDaRede | null> {
     website:    (t.website as string | null) ?? null,
     prazoPortalHoras: Number(t.portal_prazo_alteracao_horas ?? 24),
     validadeDoPlanoDias: Number((t as { plano_validade_dias?: number }).plano_validade_dias ?? 30),
+    oQueAClienteAvalia: oQueAvalia((t as { avaliacao_o_que?: string }).avaliacao_o_que),
     planName:   (t.plan_name as string | null) ?? null,
     planStatus: (t.plan_status as string | null) ?? null,
     criadaEm:   t.created_at as string,
@@ -104,6 +108,12 @@ export async function atualizarDadosDaRede(
     return { error: 'A validade do plano proposto vai de 1 a 365 dias.' }
   }
 
+  // F17-3: o que a cliente avalia no app. Sem o campo (outro formulário), fica como está.
+  const oQueAvaliaPedido = texto('avaliacao_o_que')
+  if (oQueAvaliaPedido && !(O_QUE_A_CLIENTE_AVALIA as readonly string[]).includes(oQueAvaliaPedido)) {
+    return { error: 'O que a cliente avalia: escolha uma das opções.' }
+  }
+
   let website = texto('website')
   if (website && !/^https?:\/\//i.test(website)) website = `https://${website}`
 
@@ -120,6 +130,7 @@ export async function atualizarDadosDaRede(
         website,
         portal_prazo_alteracao_horas: prazo,
         plano_validade_dias: validadeDoPlano,
+        ...(oQueAvaliaPedido ? { avaliacao_o_que: oQueAvaliaPedido } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', ctx.tenantId!)

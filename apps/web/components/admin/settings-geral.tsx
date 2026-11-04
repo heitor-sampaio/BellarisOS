@@ -7,6 +7,7 @@ import { atualizarDadosDaRede, type DadosDaRede } from '@/actions/rede'
 import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
 import { useFala } from '@/components/shared/uma-unidade'
+import { O_QUE_A_CLIENTE_AVALIA, ROTULO_DO_QUE_AVALIA } from '@/lib/avaliacao/notas'
 
 /**
  * Configurações → Geral: os dados da própria rede.
@@ -91,6 +92,12 @@ export function SettingsGeral({ rede, podeEditar, naRede = true }: { rede: Dados
         <Campo rotulo="Prazo do portal (horas)" dica="Até quantas horas antes a cliente cancela ou remarca pelo app. Depois, só falando com a clínica.">
           <input name="portal_prazo_alteracao_horas" type="number" min={0} max={720} step={1} className="field"
             defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
+        </Campo>
+
+        <Campo rotulo="O que a cliente avalia" dica="Ao confirmar o atendimento pelo app. A nota do atendimento vale para a profissional; a de cada procedimento, para o ranking de procedimentos.">
+          <select name="avaliacao_o_que" className="field" defaultValue={rede.oQueAClienteAvalia} disabled={!podeEditar}>
+            {O_QUE_A_CLIENTE_AVALIA.map(o => <option key={o} value={o}>{ROTULO_DO_QUE_AVALIA[o]}</option>)}
+          </select>
         </Campo>
 
         <Campo rotulo="Validade do plano proposto (dias)" dica="O app da cliente mostra o plano proposto com “Válido até”, contando desde quando foi proposto.">

@@ -1,5 +1,6 @@
 'use client'
 
+import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
@@ -83,8 +84,8 @@ export interface SessionAppointment {
   clientConfirmedAt:   string | null
   /** A cliente tem o app (login): só então se espera a confirmação por ele. */
   clientTemApp?:       boolean
-  clientRating:        number | null
-  procedureRating:     number | null
+  /** F17-3: as notas que a cliente deu ao confirmar — "Atendimento", e cada procedimento pelo nome. */
+  notasDaCliente:      NotaNaTela[]
   clientFeedback:      string | null
 }
 
@@ -2040,11 +2041,9 @@ export function AppointmentSession({
                     <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
                       ✓ Confirmado pelo cliente em {format(new Date(appointment.clientConfirmedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
-                    {(appointment.procedureRating != null || appointment.clientRating != null) && (
-                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
-                        {appointment.procedureRating != null && <>Procedimento {appointment.procedureRating}/5</>}
-                        {appointment.procedureRating != null && appointment.clientRating != null && ' · '}
-                        {appointment.clientRating != null && <>Profissional {appointment.clientRating}/5</>}
+                    {appointment.notasDaCliente.length > 0 && (
+                      <p data-avaliacao-da-cliente style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
+                        {textoDasNotas(appointment.notasDaCliente)}
                       </p>
                     )}
                     {appointment.clientFeedback && (

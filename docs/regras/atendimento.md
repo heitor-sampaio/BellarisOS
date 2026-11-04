@@ -234,6 +234,43 @@
   "⏳ Aguardando confirmação…", lido como pagamento pendente); sem o app, que
   a confirmação não se aplica.
   Prova: `e2e/prontuario-atritos.spec.ts`.
+- **A avaliação da cliente: o atendimento e cada procedimento** (F17-3, o
+  Heitor: "a ser configurado pela clínica, mas, a princípio, avaliação do
+  atendimento e avaliação por procedimento também"). A cliente avalia no app,
+  ao confirmar o atendimento concluído ("Confirmar e avaliar", no Histórico →
+  `/[slug]/cliente/atendimentos/[id]/confirmar`), com estrelas opcionais e o
+  comentário. **O que ela avalia é da clínica** (Configurações → Geral, "O que
+  a cliente avalia", `tenants.avaliacao_o_que`): "O atendimento e cada
+  procedimento" (`OS_DOIS`, o padrão), "Só o atendimento" ou "Só cada
+  procedimento"; a gerente de unidade fixa não muda (`recusaDaConfigDaClinica`).
+  - A nota do **ATENDIMENTO** ("Atendimento — como foi, com a Dra. X") é
+    `appointments.client_rating` e vale para o atendimento e a profissional.
+    Era o "Profissional" de antes.
+  - A de **cada procedimento** feito nele — a sessão de plano Botox +
+    Preenchimento pede as duas; o mesmo procedimento duas vezes na sessão, uma
+    — mora em `avaliacoes_dos_procedimentos` (só o servidor; o id do
+    procedimento SEM chave estrangeira, abaixo). Os procedimentos são os de
+    `metrics_procedimentos_executados` (`procedimentosDoAtendimento`,
+    `lib/avaliacao/leitura.ts`).
+  - Grava UMA transação, `avaliar_atendimento` (`confirmAndRateAppointment`):
+    o agendamento travado, só a dona da ficha, só concluído e não confirmado,
+    só o que a clínica pede (a configuração é lida lá dentro), e recusa o
+    procedimento que não foi feito ("Esta avaliação tem um procedimento que
+    não foi feito neste atendimento.").
+  - Nos rankings (`indicadores.md`): o por procedimento usa a nota de cada
+    procedimento; o por profissional, a do atendimento. Com "Só o
+    atendimento", cada procedimento do atendimento fica com a nota dele; com
+    "Só cada procedimento", a profissional fica com a média das notas daquele
+    atendimento (decididos pelo princípio 3). A avaliação de ANTES continua
+    valendo: a nota do atendimento e a de procedimento (`procedure_rating`) no
+    procedimento do agendamento.
+  - A equipe vê "Atendimento 4/5 · Botox 5/5 · Preenchimento 4/5" na tela do
+    atendimento (`[data-avaliacao-da-cliente]`) e na linha do tempo da ficha
+    ("Avaliou: …"); a cliente, no Histórico do app (`notasDaAvaliacao`,
+    `lib/avaliacao/notas.ts`).
+  - Prova: `e2e/portal-cliente-avaliacao-por-procedimento.spec.ts`,
+    `e2e/portal-cliente.spec.ts` ("confirma e avalia"),
+    `tests/historico-autor-e-avaliacao.test.ts`.
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o agendamento do COMERCIAL, abaixo). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
 - **O núcleo do agendar lê junto o que não depende** (A33 da 5ª simulação:
   "Agendando…" passou de 3,5 s, com 9 a 12 idas ao banco em série).
@@ -1325,4 +1362,6 @@ O resto do fluxo:
 ❌ Mostrar no portal da cliente um client_documents sem enviado_em (a clínica decide o que vai ao app)
 ❌ Recriar um "Retorno em N dias" (regra, lista ou cron) — é um agendamento novo (aut-04)
 ❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409
+❌ Gravar a avaliação da cliente fora de avaliar_atendimento, ou ler a nota de um procedimento fora de metrics_notas_dos_procedimentos (a configuração e a avaliação de antes moram ali)
+❌ Tabela nova com chave estrangeira para appointments E para procedures na chave primária: o PostgREST a lê como junção e TODO embed appointments → procedures(name) quebra com PGRST201 (foi a avaliacoes_dos_procedimentos por ~15 min, 2026-11-04 — migration 20261104001804)
 ```

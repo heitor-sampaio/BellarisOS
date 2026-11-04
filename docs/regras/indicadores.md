@@ -720,9 +720,14 @@ procedimento do atendimento. Valem por ela as execuções e a recorrência de
 `metrics_top_procedures`, a tabela por procedimento e o volume por faixa
 etária de `metrics_relatorio`, e o "Total Execuções" da aba Procedimentos
 (`execucoes_total`/`execucoes_total_anterior`; era o número de atendimentos
-do núcleo, e deixaria de fechar com a soma da tabela). A NOTA da avaliação
-fica no procedimento do atendimento (é do atendimento), e a margem por faixa
-segue o preço do atendimento. O ranking e a tabela por PROFISSIONAL contam
+do núcleo, e deixaria de fechar com a soma da tabela). A NOTA de cada
+procedimento é a que a cliente deu A ELE (F17-3, `atendimento.md`):
+`metrics_notas_dos_procedimentos(atendimento)` — as notas por procedimento;
+sem nenhuma ("Só o atendimento"), cada procedimento feito fica com a nota do
+atendimento, e o do agendamento com a nota de procedimento de antes, quando
+houver. A da profissional (`metrics_top_professionals`) é a do atendimento;
+sem ela ("Só cada procedimento"), a média das dos procedimentos daquele
+atendimento. A margem por faixa segue o preço do atendimento. O ranking e a tabela por PROFISSIONAL contam
 ATENDIMENTOS: a sessão é um atendimento (+1, com os R$ 2.000) — decisão da
 F17, para o Heitor revisar. Prova:
 `e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com os

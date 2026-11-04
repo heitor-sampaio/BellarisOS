@@ -6,6 +6,8 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ConfirmAppointmentForm } from '@/components/client-portal/confirm-appointment-form'
 import { ler } from '@/lib/db'
+import { oQueAClinicaAvalia, procedimentosDoAtendimento } from '@/lib/avaliacao/leitura'
+import { avaliaOAtendimento, avaliaOsProcedimentos } from '@/lib/avaliacao/notas'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +25,7 @@ export default async function ConfirmAppointmentPage({
   const admin = createAdminClient()
   const appt = await ler(admin
     .from('appointments')
-    .select('id, client_id, status, client_confirmed_at, scheduled_at, procedures(name), professionals:users!professional_id(name)')
+    .select('id, client_id, status, client_confirmed_at, scheduled_at, procedure_id, procedures(name), professionals:users!professional_id(name), branches!inner(tenant_id)')
     .eq('id', id)
     .maybeSingle(), 'buscar o agendamento')
 
@@ -39,6 +41,16 @@ export default async function ConfirmAppointmentPage({
 
   const procedureName    = (appt!.procedures as unknown as { name?: string } | null)?.name ?? 'Procedimento'
   const professionalName = (appt!.professionals as unknown as { name?: string } | null)?.name ?? 'Profissional'
+  // F17-3: o que a clínica pede — o atendimento, cada procedimento feito, ou os dois.
+  const tenant = (appt!.branches as unknown as { tenant_id: string }).tenant_id
+  const [oQue, procedimentos] = await Promise.all([
+    oQueAClinicaAvalia(admin, tenant),
+    procedimentosDoAtendimento(admin, appt!.id as string, (appt!.procedure_id as string | null) ?? null),
+  ])
+  const pedeOsProcedimentos = avaliaOsProcedimentos(oQue)
+  const textoDoPedido = avaliaOAtendimento(oQue)
+    ? (pedeOsProcedimentos ? 'Se quiser, avalie o atendimento e cada procedimento.' : 'Se quiser, avalie o atendimento.')
+    : 'Se quiser, avalie cada procedimento.'
 
   return (
     <div>
@@ -53,7 +65,7 @@ export default async function ConfirmAppointmentPage({
         Confirmar atendimento
       </h1>
       <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 20 }}>
-        Confirme que este atendimento foi realizado. Se quiser, avalie o procedimento e a profissional.
+        Confirme que este atendimento foi realizado. {textoDoPedido}
       </p>
 
       <ConfirmAppointmentForm
@@ -62,6 +74,8 @@ export default async function ConfirmAppointmentPage({
         procedureName={procedureName}
         professionalName={professionalName}
         scheduledAt={appt!.scheduled_at as string}
+        avaliaOAtendimento={avaliaOAtendimento(oQue)}
+        procedimentos={pedeOsProcedimentos ? procedimentos : []}
       />
     </div>
   )

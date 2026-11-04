@@ -1,3 +1,5 @@
+import { notasDaAvaliacao, textoDasNotas, type NotaDoProcedimento } from '@/lib/avaliacao/notas'
+
 /**
  * A confirmação e a chegada na linha do tempo da cliente (A23, 2026-10-27):
  * só o agendamento, o atendimento e o cancelamento apareciam. As datas já
@@ -24,6 +26,8 @@ export interface AvaliacaoDoAgendamento {
   client_confirmed_at?: string | null
   procedure_rating?: number | null; client_rating?: number | null
   client_feedback?: string | null
+  /** F17-3: as notas de cada procedimento (`notasDosProcedimentos`, lib/avaliacao/leitura). */
+  notas_dos_procedimentos?: NotaDoProcedimento[]
 }
 
 /**
@@ -33,10 +37,11 @@ export interface AvaliacaoDoAgendamento {
 export function eventoDaAvaliacao(a: AvaliacaoDoAgendamento, link: string | null) {
   if (!a.client_confirmed_at) return null
   const comentario = a.client_feedback?.trim() || null
-  if (a.procedure_rating == null && a.client_rating == null && !comentario) return null
+  // F17-3: a nota do atendimento e a de cada procedimento ("Atendimento 4/5 · Botox 5/5").
+  const notas = notasDaAvaliacao({ client_rating: a.client_rating, procedure_rating: a.procedure_rating, procedureName: a.procedureName }, a.notas_dos_procedimentos ?? [])
+  if (!notas.length && !comentario) return null
   const partes = [
-    a.procedure_rating != null ? `Procedimento ${a.procedure_rating}/5` : null,
-    a.client_rating != null ? `Profissional ${a.client_rating}/5` : null,
+    notas.length ? textoDasNotas(notas) : null,
     comentario ? `“${comentario}”` : null,
   ].filter(Boolean)
   return {

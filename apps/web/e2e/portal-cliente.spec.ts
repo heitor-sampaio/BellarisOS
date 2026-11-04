@@ -191,22 +191,28 @@ test.describe.serial('portal do cliente', () => {
       const estrelas = (grupo: string, n: number) =>
         // A67: cada estrela tem nome próprio, com o grupo (eram 10 '1 estrela'…'5 estrelas' repetidos).
         page.getByRole('group', { name: grupo }).getByRole('button', { name: `${grupo}: ${n} de 5 estrelas` })
-      await estrelas('Procedimento', 5).click()
-      await estrelas('Profissional', 4).click()
+      // F17-3: a nota do atendimento e a de cada procedimento (o padrão da clínica é os dois).
+      const { data: ag } = await db().from('appointments').select('procedure_id, procedures(name)').eq('id', primeiro!.id).single()
+      const nomeDoProcedimento = (ag!.procedures as unknown as { name: string }).name
+      await estrelas(nomeDoProcedimento, 5).click()
+      await estrelas('Atendimento', 4).click()
       await page.getByPlaceholder('Conte como foi seu atendimento (opcional)').fill(`${PREFIXO} ótimo`)
       await page.getByRole('button', { name: 'Confirmar que realizei o atendimento' }).click()
       await expect(page).toHaveURL(new RegExp('/cliente/historico'))
 
       const { data } = await db().from('appointments')
         .select('client_confirmed_at, procedure_rating, client_rating, client_feedback').eq('id', primeiro!.id).single()
-      expect(data).toMatchObject({ procedure_rating: 5, client_rating: 4, client_feedback: `${PREFIXO} ótimo` })
+      expect(data).toMatchObject({ client_rating: 4, client_feedback: `${PREFIXO} ótimo` })
       expect(data!.client_confirmed_at).not.toBeNull()
+      expect((await db().from('avaliacoes_dos_procedimentos').select('procedure_id, nota').eq('appointment_id', primeiro!.id)).data)
+        .toEqual([{ procedure_id: ag!.procedure_id, nota: 5 }])
 
       // De novo, pela action: não reescreve a avaliação.
       await chamarAcao(page, 'actions/appointments.ts', 'confirmAndRateAppointment', `/${f!.unidade.slug}/cliente/historico`,
         [{ appointmentId: primeiro!.id, slug: f!.unidade.slug, procedureRating: 1, professionalRating: 1, feedback: 'mudou' }])
-      const { data: depois } = await db().from('appointments').select('procedure_rating, client_feedback').eq('id', primeiro!.id).single()
-      expect(depois).toMatchObject({ procedure_rating: 5, client_feedback: `${PREFIXO} ótimo` })
+      const { data: depois } = await db().from('appointments').select('client_rating, client_feedback').eq('id', primeiro!.id).single()
+      expect(depois).toMatchObject({ client_rating: 4, client_feedback: `${PREFIXO} ótimo` })
+      expect((await db().from('avaliacoes_dos_procedimentos').select('nota').eq('appointment_id', primeiro!.id)).data).toEqual([{ nota: 5 }])
     } finally {
       await fechar()
     }

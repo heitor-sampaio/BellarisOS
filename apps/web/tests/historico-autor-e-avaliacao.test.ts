@@ -28,8 +28,17 @@ describe('eventoDaAvaliacao', () => {
   it('as notas e o comentário viram um evento', () => {
     expect(eventoDaAvaliacao({ id: ID, procedureName: 'Limpeza', client_confirmed_at: '2026-10-01T12:00:00Z',
       procedure_rating: 5, client_rating: 4, client_feedback: ' Adorei ' }, null)).toMatchObject({
-      type: 'APPOINTMENT_RATED', title: 'Avaliou: Limpeza', subtitle: 'Procedimento 5/5 · Profissional 4/5 · “Adorei”',
+      // A avaliação de antes: a nota do atendimento (era "Profissional") e a do procedimento do agendamento.
+      type: 'APPOINTMENT_RATED', title: 'Avaliou: Limpeza', subtitle: 'Atendimento 4/5 · Limpeza 5/5 · “Adorei”',
     })
+  })
+  it('F17-3: a nota do atendimento e a de cada procedimento da sessão, na ordem dada', () => {
+    expect(eventoDaAvaliacao({ id: ID, procedureName: 'Botox', client_confirmed_at: '2026-10-01T12:00:00Z', client_rating: 3,
+      notas_dos_procedimentos: [{ procedureId: 'b', nome: 'Botox', nota: 5 }, { procedureId: 'p', nome: 'Preenchimento', nota: 4 }] }, null)?.subtitle)
+      .toBe('Atendimento 3/5 · Botox 5/5 · Preenchimento 4/5')
+    // Só os procedimentos (a clínica não pede o atendimento).
+    expect(eventoDaAvaliacao({ id: ID, procedureName: 'Botox', client_confirmed_at: '2026-10-01T12:00:00Z',
+      notas_dos_procedimentos: [{ procedureId: 'b', nome: 'Botox', nota: 2 }] }, null)?.subtitle).toBe('Botox 2/5')
   })
   it('sem confirmação, ou confirmado sem nota nem comentário, não há evento', () => {
     expect(eventoDaAvaliacao({ id: ID, procedureName: 'Limpeza', client_confirmed_at: null, procedure_rating: 5 }, null)).toBeNull()

@@ -265,6 +265,7 @@ export const ISOLADOS = [
   'indicadores-dicas-das-taxas.spec.ts',
   'relatorios-status-com-os-abertos.spec.ts',
   'relatorios-mais-realizado-empate.spec.ts',
+  'portal-cliente-avaliacao-por-procedimento.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

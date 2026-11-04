@@ -1863,11 +1863,21 @@ export async function getSchedulingDaySlots(
 }
 
 // --- Cliente confirma o atendimento (substitui a ficha de papel) + avalia -------
+//
+// F17-3 (o Heitor: "a ser configurado pela clínica, mas, a princípio,
+// avaliação do atendimento e avaliação por procedimento também"): a nota do
+// ATENDIMENTO (`professionalRating`, o client_rating — vale para a
+// profissional) e uma para CADA procedimento feito nele
+// (`notasDosProcedimentos`), conforme a clínica pede
+// (`tenants.avaliacao_o_que`). `procedureRating` é o caminho de antes: a nota
+// do procedimento do agendamento. Tudo grava numa transação
+// (`avaliar_atendimento`), com o agendamento travado.
 export async function confirmAndRateAppointment(params: {
   appointmentId:      string
   slug:               string
   professionalRating?: number | null
   procedureRating?:    number | null
+  notasDosProcedimentos?: { procedureId: string; nota: number }[] | null
   feedback?:           string | null
 }): Promise<{ error?: string; ok?: true }> {
   try {
@@ -1878,7 +1888,7 @@ export async function confirmAndRateAppointment(params: {
 
     const appt = await ler(admin
       .from('appointments')
-      .select('id, client_id, professional_id, status, client_confirmed_at, procedures(name)')
+      .select('id, client_id, professional_id, procedure_id, status, client_confirmed_at, procedures(name)')
       .eq('id', params.appointmentId)
       .maybeSingle(), 'buscar o agendamento')
 
@@ -1894,21 +1904,30 @@ export async function confirmAndRateAppointment(params: {
       return n
     }
     const professionalRating = clean(params.professionalRating)
-    const procedureRating    = clean(params.procedureRating)
+    const pedidas = [
+      ...(params.notasDosProcedimentos ?? []),
+      // O caminho de antes: a nota do procedimento do agendamento.
+      ...(params.procedureRating != null && appt.procedure_id ? [{ procedureId: appt.procedure_id as string, nota: params.procedureRating }] : []),
+    ]
+    const notas: { procedure_id: string; nota: number }[] = []
+    for (const p of pedidas) {
+      const nota = clean(p.nota)
+      if (nota == null || typeof p.procedureId !== 'string') continue
+      if (notas.some(n => n.procedure_id === p.procedureId)) continue
+      notas.push({ procedure_id: p.procedureId, nota })
+    }
     const feedback = params.feedback?.trim() ? params.feedback.trim().slice(0, 1000) : null
 
-    const { error } = await admin
-      .from('appointments')
-      .update({
-        client_confirmed_at: new Date().toISOString(),
-        client_rating:       professionalRating,
-        procedure_rating:    procedureRating,
-        client_feedback:     feedback,
-      })
-      .eq('id', params.appointmentId)
-      .eq('client_id', ctx.clientId!)   // guarda dupla de posse
-
-    if (error) return { error: `Erro ao confirmar: ${error.message}` }
+    // A transação recusa o procedimento que não foi feito no atendimento e
+    // grava só o que a clínica pede (a configuração é lida lá dentro).
+    const { error } = await admin.rpc('avaliar_atendimento', {
+      p_appointment: params.appointmentId, p_client: ctx.clientId!, p_nota_atendimento: professionalRating,
+      p_comentario: feedback, p_notas: notas,
+    })
+    if (error) {
+      if (error.code === 'P0001') return { error: error.message }
+      return { error: 'Não consegui confirmar o atendimento. Tente de novo.' }
+    }
 
     revalidatePath(`/${params.slug}/cliente/home`)
     revalidatePath(`/${params.slug}/cliente/historico`)

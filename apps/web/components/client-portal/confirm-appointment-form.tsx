@@ -11,17 +11,23 @@ interface Props {
   procedureName:    string
   professionalName: string
   scheduledAt:      string
+  /** F17-3: a clínica pede a nota do atendimento (vale para a profissional). */
+  avaliaOAtendimento?: boolean
+  /** F17-3: os procedimentos feitos no atendimento, um de cada, quando a clínica pede a nota de cada um. */
+  procedimentos?:   { id: string; nome: string }[]
 }
 
-function StarRating({ value, onChange, label }: {
+function StarRating({ value, onChange, label, dica }: {
   value: number
   onChange: (v: number) => void
   label: string
+  dica?: string
 }) {
   const [hover, setHover] = useState(0)
   return (
     <div>
-      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{label}</p>
+      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: dica ? 2 : 8 }}>{label}</p>
+      {dica && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 8 }}>{dica}</p>}
       {/* A67: cada estrela diz o grupo e a nota ("Procedimento: 4 de 5
           estrelas"), e a marcada se anuncia (aria-pressed). Eram dez botões
           "1 estrela"…"5 estrelas", iguais nos dois grupos. */}
@@ -53,10 +59,12 @@ function StarRating({ value, onChange, label }: {
 
 export function ConfirmAppointmentForm({
   appointmentId, slug, procedureName, professionalName, scheduledAt,
+  avaliaOAtendimento = true, procedimentos = [],
 }: Props) {
   const router = useRouter()
-  const [procedureRating,    setProcedureRating]    = useState(0)
-  const [professionalRating, setProfessionalRating] = useState(0)
+  // F17-3: a nota do atendimento e a de cada procedimento.
+  const [notaDoAtendimento, setNotaDoAtendimento] = useState(0)
+  const [notas, setNotas] = useState<Record<string, number>>({})
   const [feedback, setFeedback] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -69,8 +77,10 @@ export function ConfirmAppointmentForm({
     const res = await confirmAndRateAppointment({
       appointmentId,
       slug,
-      professionalRating: professionalRating || null,
-      procedureRating:    procedureRating || null,
+      professionalRating: avaliaOAtendimento ? (notaDoAtendimento || null) : null,
+      notasDosProcedimentos: procedimentos
+        .filter(p => (notas[p.id] ?? 0) > 0)
+        .map(p => ({ procedureId: p.id, nota: notas[p.id]! })),
       feedback:           feedback || null,
     })
     if (res.error) {
@@ -105,8 +115,14 @@ export function ConfirmAppointmentForm({
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           Avalie (opcional)
         </p>
-        <StarRating label="Procedimento" value={procedureRating} onChange={setProcedureRating} />
-        <StarRating label="Profissional" value={professionalRating} onChange={setProfessionalRating} />
+        {avaliaOAtendimento && (
+          <StarRating label="Atendimento" dica={`Como foi o atendimento, com ${professionalName}.`}
+            value={notaDoAtendimento} onChange={setNotaDoAtendimento} />
+        )}
+        {procedimentos.map(p => (
+          <StarRating key={p.id} label={p.nome} value={notas[p.id] ?? 0}
+            onChange={v => setNotas(atual => ({ ...atual, [p.id]: v }))} />
+        ))}
         <div>
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>Comentário</p>
           <textarea

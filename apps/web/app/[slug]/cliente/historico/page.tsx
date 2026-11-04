@@ -5,6 +5,8 @@ import { assinadosDoCliente } from '@/lib/documentos/leitura'
 import { ler } from '@/lib/db'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
+import { notasDaAvaliacao, type NotaNaTela } from '@/lib/avaliacao/notas'
+import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 
 // -- Types ----------------------------------------------------------
 export type ProcedimentoItem = {
@@ -13,8 +15,8 @@ export type ProcedimentoItem = {
   procedure_name:      string
   professional_name:   string | null
   confirmed:           boolean
-  procedure_rating:    number | null
-  professional_rating: number | null
+  /** F17-3: as notas que ela deu — "Atendimento" e cada procedimento pelo nome. */
+  notas:               NotaNaTela[]
   /** O comentário que ela deixou ao avaliar (J-26: não voltava ao histórico). */
   feedback:            string | null
 }
@@ -114,14 +116,17 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   ])
 
   // -- Procedimentos ----------------------------------------------
-  const procedimentos: ProcedimentoItem[] = ((procedimentosRes ?? []) as unknown as AtendimentoLido[]).map(r => ({
+  const lidos = (procedimentosRes ?? []) as unknown as AtendimentoLido[]
+  // F17-3: as notas que ela deu a cada procedimento.
+  const notasDasAvaliacoes = await notasDosProcedimentos(admin, lidos.filter(r => r.client_confirmed_at).map(r => r.id))
+  const procedimentos: ProcedimentoItem[] = lidos.map(r => ({
     id:                  r.id,
     scheduled_at:        r.scheduled_at,
     procedure_name:      r.procedures?.name ?? 'Procedimento',
     professional_name:   r.professionals?.name ?? null,
     confirmed:           r.client_confirmed_at != null,
-    procedure_rating:    r.procedure_rating != null ? Number(r.procedure_rating) : null,
-    professional_rating: r.client_rating != null ? Number(r.client_rating) : null,
+    notas:               notasDaAvaliacao({ client_rating: r.client_rating, procedure_rating: r.procedure_rating, procedureName: r.procedures?.name ?? 'Procedimento' },
+      notasDasAvaliacoes.get(r.id) ?? []),
     feedback:            r.client_feedback?.trim() || null,
   }))
 

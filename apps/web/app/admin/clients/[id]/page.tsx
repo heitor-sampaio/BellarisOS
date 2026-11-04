@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
+import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { historicoDosAgendamentos } from '@/lib/clients/autores-do-historico'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
@@ -312,6 +313,9 @@ export default async function AdminClientProfilePage({
     history.push({ id: uid('aa'), date: appAccountCreatedAt, type: 'APP_ACCOUNT', title: 'Conta criada no app', subtitle: null, amount: null, link: null })
   }
 
+  // F17-3: as notas que a cliente deu a cada procedimento, dos atendimentos que ela confirmou.
+  const notasDasAvaliacoes = await notasDosProcedimentos(admin,
+    ((appts ?? []) as { id: string; client_confirmed_at?: string | null }[]).filter(a => a.client_confirmed_at).map(a => a.id))
   for (const a of (appts ?? [])) {
     const proc   = (a.procedures as { name?: string } | null)?.name ?? '—'
     const prof   = (a.professional as { name?: string } | null)?.name ?? '—'
@@ -320,7 +324,8 @@ export default async function AdminClientProfilePage({
       { id: a.id, procedureName: proc, confirmed_at: a.confirmed_at ?? null, arrived_at: a.arrived_at ?? null }, `/admin/agenda/${a.id}`))
     // A avaliação que a cliente deixou no app, com o comentário (J-26).
     const avaliacao = eventoDaAvaliacao({ id: a.id, procedureName: proc, client_confirmed_at: a.client_confirmed_at,
-      procedure_rating: a.procedure_rating, client_rating: a.client_rating, client_feedback: a.client_feedback }, `/admin/agenda/${a.id}`)
+      procedure_rating: a.procedure_rating, client_rating: a.client_rating, client_feedback: a.client_feedback,
+      notas_dos_procedimentos: notasDasAvaliacoes.get(a.id) ?? [] }, `/admin/agenda/${a.id}`)
     if (avaliacao) history.push(avaliacao)
 
     if (a.status === 'COMPLETED' && a.completed_at) {

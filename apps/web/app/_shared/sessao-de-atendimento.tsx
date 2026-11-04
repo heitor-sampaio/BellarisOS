@@ -5,6 +5,8 @@ import { documentosDoAgendamento, pagamentoCombinadoDoAtendimento } from '@/lib/
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
+import { notasDaAvaliacao } from '@/lib/avaliacao/notas'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { ehInsumo } from '@/lib/estoque/uso'
 import { AppointmentSession } from '@/components/branch/appointment-session'
@@ -395,8 +397,9 @@ export async function SessaoDeAtendimento({
     internalNotes:       apptRaw.notes ?? null,
     clientConfirmedAt:   apptRaw.client_confirmed_at ?? null,
     clientTemApp:        !!(apptRaw.client as { auth_id?: string | null } | null)?.auth_id,
-    clientRating:        apptRaw.client_rating ?? null,
-    procedureRating:     apptRaw.procedure_rating ?? null,
+    // F17-3: as notas que a cliente deu — o atendimento e cada procedimento.
+    notasDaCliente:      notasDaAvaliacao({ client_rating: apptRaw.client_rating, procedure_rating: apptRaw.procedure_rating, procedureName: proc?.name ?? 'Procedimento' },
+      apptRaw.client_confirmed_at ? ((await notasDosProcedimentos(admin, [apptRaw.id as string])).get(apptRaw.id as string) ?? []) : []),
     clientFeedback:      apptRaw.client_feedback ?? null,
   }
 
