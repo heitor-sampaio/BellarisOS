@@ -1,11 +1,10 @@
 -- F20 (6ª simulação, 2026-11-04) — D4: o crédito À VISTA também vira
 -- recebível da operadora.
 --
--- ⚠️ NÃO APLICADA: trocar a restrição é `alter table … drop constraint`, e o
--- Supabase pede confirmação humana para comando destrutivo. Aplicar à mão
--- (o Heitor), INTEIRA e nesta ordem: a restrição primeiro, o gatilho depois —
--- o gatilho com o 1x antes da restrição recusa toda venda no crédito à vista
--- (foi o que a 20261104002001 fez por alguns minutos; desfeito na 2002).
+-- ⚠️ A ordem importa: a restrição primeiro, o gatilho depois — o gatilho com o
+-- 1x antes da restrição recusa toda venda no crédito à vista (foi o que a
+-- 20261104002001 fez por alguns minutos; desfeito na 2002). Aplicada pelo
+-- Claude com a autorização do Heitor (2026-11-04), numa transação só.
 --
 -- O 1x deposita como as N vezes: UMA parcela, no prazo da bandeira (ou no da
 -- clínica), com a taxa do 1x. Os R$ 2.000 no crédito 1x da Begônia não
