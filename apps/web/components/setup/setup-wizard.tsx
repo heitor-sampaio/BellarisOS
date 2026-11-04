@@ -569,10 +569,10 @@ function StepDone({ tenantName }: { tenantName: string }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
-  function handleFinish() {
+  function handleFinish(destino = '/admin/dashboard') {
     startTransition(async () => {
       await completeOnboarding()
-      router.push('/admin/dashboard')
+      router.push(destino)
     })
   }
 
@@ -613,8 +613,27 @@ function StepDone({ tenantName }: { tenantName: string }) {
         A clínica <strong style={{ color: 'var(--text)' }}>{tenantName}</strong> está configurada. Você já pode começar a usar o painel completo.
       </p>
 
+      {/* A3 da 6ª simulação: a ordem que evita o "ninguém atende" e o "o insumo precisa existir antes". */}
+      <div data-proximos-passos style={{ textAlign: 'left', maxWidth: 380, margin: '0 auto 28px' }}>
+        <p className="overline" style={{ marginBottom: 10 }}>Próximos passos, nesta ordem</p>
+        <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {PROXIMOS_PASSOS.map((passo, i) => (
+            <li key={passo.titulo}>
+              <button type="button" onClick={() => handleFinish(passo.href)} disabled={pending} className="card card-hover"
+                style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
+                <span style={{ fontWeight: 'var(--weight-extrabold)', color: 'var(--brand)', minWidth: 16 }}>{i + 1}</span>
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{passo.titulo}</span>
+                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{passo.porque}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+
       <button
-        onClick={handleFinish}
+        onClick={() => handleFinish()}
         disabled={pending}
         className="btn-primary"
         style={{ justifyContent: 'center', padding: '12px 28px', fontSize: 'var(--text-base-sz)' }}
@@ -631,6 +650,18 @@ function StepDone({ tenantName }: { tenantName: string }) {
     </div>
   )
 }
+
+/**
+ * Os próximos passos do fim do setup (A3 da 6ª simulação), na ordem em que um
+ * depende do outro: o procedimento pede quem o realiza e os insumos que
+ * consome, e a taxa da maquininha vale desde a primeira venda no cartão.
+ */
+const PROXIMOS_PASSOS = [
+  { titulo: 'Equipe', porque: 'Quem atende: sem profissional, o procedimento não tem quem o realize.', href: '/admin/team' },
+  { titulo: 'Estoque', porque: 'Os insumos: o procedimento só baixa o que já está cadastrado.', href: '/admin/estoque' },
+  { titulo: 'Procedimentos', porque: 'O catálogo, com quem realiza, os insumos e o preço.', href: '/admin/procedures' },
+  { titulo: 'Taxas da maquininha', porque: 'O que a operadora desconta em cada forma e bandeira.', href: '/admin/settings?tab=comissoes' },
+] as const
 
 // -- Wizard root ---------------------------------------------------------------
 

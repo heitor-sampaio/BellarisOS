@@ -71,3 +71,23 @@ test('com unidade: o setup vai ao fim, sem oferecer outra unidade', async ({ bro
     await expect(p.locator('#br-slug')).toHaveCount(0)
   })
 })
+
+/**
+ * A3 da 6ª simulação (2026-11-04): o setup acabava sem dizer o que vem depois,
+ * e a Sofia cadastrou o procedimento antes da equipe e do estoque ("Ninguém
+ * atende…", "o insumo precisa existir antes"). O fim sugere os próximos
+ * passos, NA ORDEM, e cada um leva à tela dele (concluindo o setup).
+ */
+test('A3: o fim do setup sugere os próximos passos na ordem — equipe, estoque, procedimentos, taxas', async ({ browser }) => {
+  await como(browser, donaComUnidade!, async p => {
+    await p.goto('/setup')
+    const passos = p.locator('[data-proximos-passos] li')
+    await expect(passos).toHaveCount(4)
+    await expect(passos.nth(0)).toContainText('Equipe')
+    await expect(passos.nth(1)).toContainText('Estoque')
+    await expect(passos.nth(2)).toContainText('Procedimentos')
+    await expect(passos.nth(3)).toContainText('Taxas da maquininha')
+    await passos.nth(0).getByRole('button').click()
+    await expect(p).toHaveURL(/\/admin\/team/, { timeout: 20_000 })
+  })
+})

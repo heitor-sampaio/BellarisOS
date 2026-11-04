@@ -175,6 +175,12 @@ um muro que não depende de cada trava do código.
   o telefone), a rede que já tem unidade ativa vai direto ao "Tudo pronto!"
   (sem isso, a única saída era criar uma segunda unidade), e o passo da
   unidade tem "Voltar". Prova: `e2e/setup-retoma.spec.ts`.
+- **O fim do `/setup` sugere os próximos passos, NA ORDEM** (A3 da 6ª
+  simulação, 2026-11-04: o procedimento nascia antes da equipe e do estoque —
+  "Ninguém atende…", "o insumo precisa existir antes"): Equipe → Estoque →
+  Procedimentos → Taxas da maquininha, cada um com o porquê
+  (`PROXIMOS_PASSOS`, `[data-proximos-passos]`), e o clique conclui o setup e
+  leva à tela dele. Prova: `e2e/setup-retoma.spec.ts` ("A3").
 - **A unidade nova NÃO herda o CNPJ da rede calada** (cfg-01, revisão do
   Heitor de 2026-11-02: "se em branco, avisa e confirma decisão. Talvez uma
   clínica possa ter 2 unidades físicas operando no mesmo CNPJ. Uma unidade
