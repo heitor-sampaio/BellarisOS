@@ -39,6 +39,7 @@ const SUBTITULO_DO_CANAL: Record<string, string> = {
 import { ler } from '@/lib/db'
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import { registrarAcessoAoProntuario, acessosAoProntuario } from '@/lib/prontuario/acessos'
+import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
@@ -178,11 +179,8 @@ export default async function ClientProfilePage({
     const allProcNames = [...new Set(sessions.flatMap(s =>
       s.treatment_plan_session_procedures.map(p => p.procedures?.name ?? '—')
     ))]
-    const planName = allProcNames.length === 1
-      ? allProcNames[0]!
-      : allProcNames.length > 1
-        ? `${allProcNames[0]} + ${allProcNames.length - 1} mais`
-        : 'Tratamento'
+    // Pelos procedimentos (A36): era "Botox + 1 mais".
+    const planName = nomeDosProcedimentos(allProcNames) ?? 'Tratamento'
     activePackage = {
       id:            plan.id,
       name:          planName,

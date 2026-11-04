@@ -182,6 +182,7 @@ export const ISOLADOS = [
   'vendas-desconto.spec.ts',
   'vendas-envio-unico.spec.ts',
   'plano-recebimento-concorrente.spec.ts',
+  'plano-sessao-com-dois-procedimentos.spec.ts',
   'vendas-entrada-acima-do-total.spec.ts',
   'financeiro-motivo-do-desconto.spec.ts',
   'vendas-produto-varios.spec.ts',

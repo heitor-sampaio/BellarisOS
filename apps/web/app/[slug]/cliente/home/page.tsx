@@ -11,6 +11,7 @@ import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
+import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
 
 // -- Helpers --------------------------------------------------------
@@ -114,8 +115,14 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // Sem o tratamento ("Dona Ivone" é Ivone) e com as boas-vindas pelo sexo (D17/D19).
   const firstName    = nomeParaSaudar(clientName) || 'você'
   const bemVinda     = boasVindas((clientRes as { gender: string | null } | null)?.gender)
-  const nextAppt     = nextApptRes as NextAppt | null
-  const pendingConfirm = (pendingConfirmRes ?? []) as unknown as NextAppt[]
+  // A sessão de plano com mais de um procedimento diz todos (A36).
+  const nomesDasSessoes = await nomesDasSessoesDoPlano(admin, [
+    (nextApptRes as unknown as NextAppt | null)?.id ?? '', ...((pendingConfirmRes ?? []) as unknown as NextAppt[]).map(a => a.id),
+  ])
+  const comONomeDaSessao = (a: NextAppt): NextAppt =>
+    nomesDasSessoes.has(a.id) ? { ...a, procedures: { ...a.procedures, name: nomesDasSessoes.get(a.id)! } } : a
+  const nextAppt     = nextApptRes ? comONomeDaSessao(nextApptRes as unknown as NextAppt) : null
+  const pendingConfirm = ((pendingConfirmRes ?? []) as unknown as NextAppt[]).map(comONomeDaSessao)
   const allPackages  = (packagesRes ?? []) as unknown as ActivePackage[]
   const activePkgs   = allPackages.filter(p => Number(p.used_sessions) < Number(p.total_sessions))
   const activePlans  = (plansRes ?? []) as unknown as ActivePlan[]

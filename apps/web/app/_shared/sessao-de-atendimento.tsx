@@ -25,6 +25,7 @@ import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { deOutroProfissional } from '@/lib/appointments/alteracoes'
 import { creditosDoCliente } from '@/lib/creditos/credito'
+import { nomeDaSessao } from '@/lib/plano-de-tratamento/nome'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -195,7 +196,7 @@ export async function SessaoDeAtendimento({
     isPartOfPlan
       ? ler(admin
           .from('treatment_plan_sessions')
-          .select('treatment_plan_session_procedures(products)')
+          .select('treatment_plan_session_procedures(products, sort_order, procedures(name))')
           .eq('appointment_id', id)
           .maybeSingle(), 'carregar a sessão do plano')
       : Promise.resolve(null),
@@ -407,7 +408,8 @@ export async function SessaoDeAtendimento({
     price:               parseFloat(String(apptRaw.price ?? 0)),
     durationMin:         Number(proc?.duration_min ?? apptRaw.duration_min ?? 0),
     clientNotes:         apptRaw.client_notes ?? null,
-    procedureName:       proc?.name ?? '—',
+    // A sessão do plano com mais de um procedimento diz todos (A36): era só o do agendamento.
+    procedureName:       (planSessionRaw && nomeDaSessao((planSessionRaw as unknown as { treatment_plan_session_procedures: { sort_order: number | null; procedures: { name: string | null } | null }[] | null }).treatment_plan_session_procedures)) || (proc?.name ?? '—'),
     procedureCategory:   proc?.category ?? '',
     professionalId:      prof?.id ?? '',
     professionalName:    prof?.name ?? '—',

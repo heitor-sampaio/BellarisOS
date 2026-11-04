@@ -448,6 +448,15 @@
   sessões"; os outros estados são os do plano. "Fechado" segue como o nome
   do estado comercial (J-37) nas listas de planos. Prova:
   `e2e/pre-pago-agendados.spec.ts`, `tests/situacao-da-execucao.test.ts`.
+- **A sessão de plano com mais de um procedimento diz todos** (A36 da 6ª
+  simulação, 2026-11-04): o agendamento tem UM procedimento, e a sessão
+  Botox + Preenchimento aparecia só "Botox" na tela do atendimento e no app;
+  o plano se chamava "Botox + 1 mais". O nome é `nomeDosProcedimentos` /
+  `nomeDaSessao` (`lib/plano-de-tratamento/nome.ts`: na ordem, sem repetir,
+  até três e depois "+ N mais"): o título do atendimento, o cartão do plano na
+  ficha, a Agenda e a home do app (`nomesDasSessoesDoPlano`). Prova:
+  `e2e/plano-sessao-com-dois-procedimentos.spec.ts`,
+  `tests/nome-dos-procedimentos.test.ts`.
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).

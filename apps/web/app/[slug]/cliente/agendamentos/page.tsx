@@ -6,6 +6,7 @@ import { ler, contar } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
+import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -68,8 +69,15 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
     : false
 
   // O que já foi pago antes (D12): pré-pago, pacote, plano — sem o "R$" a pagar.
-  const jaPagos = await pagosAntes(admin, (data ?? []).map(a => a.id as string))
-  const appointments = ((data ?? []) as unknown as Appt[]).map(a => ({ ...a, pagoAntes: jaPagos.get(a.id) ?? null }))
+  const [jaPagos, nomesDasSessoes] = await Promise.all([
+    pagosAntes(admin, (data ?? []).map(a => a.id as string)),
+    // A sessão de plano com mais de um procedimento diz todos (A36).
+    nomesDasSessoesDoPlano(admin, (data ?? []).map(a => a.id as string)),
+  ])
+  const appointments = ((data ?? []) as unknown as Appt[]).map(a => ({
+    ...a, pagoAntes: jaPagos.get(a.id) ?? null,
+    procedures: nomesDasSessoes.has(a.id) ? { ...a.procedures, name: nomesDasSessoes.get(a.id)! } : a.procedures,
+  }))
   // A mesma regra da home (D14): o que ainda vai acontecer, em aberto.
   const { proximos: upcoming, historico: past } = separarAgendaDoPortal(appointments)
 
