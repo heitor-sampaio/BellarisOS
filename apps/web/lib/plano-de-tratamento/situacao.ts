@@ -40,3 +40,6 @@ export function situacaoDaExecucao(status: string, feitas: number, total: number
   if (feitas === 0) return { label: `A começar · ${sessoes}`, cor: 'var(--info)', fundo: 'var(--info-soft)' }
   return { label: `Em andamento · ${sessoes}`, cor: 'var(--brand)', fundo: 'var(--brand-soft)' }
 }
+
+/** Quem monta o plano (A18 da 6ª simulação): o "Novo plano" pede o Prontuário em Gerenciar, e a tela sem o botão diz isso. */
+export const TEXTO_QUEM_MONTA = 'Quem monta o plano é quem tem o Prontuário em Gerenciar (a profissional, na avaliação ou aqui).'

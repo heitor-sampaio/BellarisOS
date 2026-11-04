@@ -14,7 +14,7 @@ import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
+import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -271,7 +271,10 @@ export function PlanejamentoTratamento({
           </div>
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum plano ainda</p>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 320 }}>
-            O plano de tratamento é do cliente: pode ser montado agora, revisado depois e fechado quando ele decidir.
+            {podeEditar
+              ? 'O plano de tratamento é do cliente: pode ser montado agora, revisado depois e fechado quando ele decidir.'
+              // A18: sem o prontuário não há botão — a tela diz por quê e quem monta.
+              : <>{TEXTO_QUEM_MONTA} Quando houver um, ele aparece aqui.</>}
           </p>
         </div>
       ) : (

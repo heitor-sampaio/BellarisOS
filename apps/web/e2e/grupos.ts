@@ -254,6 +254,7 @@ export const ISOLADOS = [
   'injetaveis-confirmar-so-no-atendimento.spec.ts',
   'injetaveis-so-os-meus.spec.ts',
   'planejamentos-so-os-meus.spec.ts',
+  'planejamentos-quem-monta.spec.ts',
   'relatorios-so-os-meus.spec.ts',
   'permissoes-escopo-sem-modulo.spec.ts',
   // F4 da 5ª simulação (2026-11-01): o botão só para quem pode e a gerente só na unidade.

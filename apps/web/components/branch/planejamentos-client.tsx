@@ -3,13 +3,13 @@
 import { useEffect, useState, useTransition } from 'react'
 import { maskPhone } from '@estetica-os/utils'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
 import { listarPlanejamentos, criarPlanoDoCliente, buscarClientesParaPlano } from '@/actions/treatment-plans'
 import { SegSelect } from '@/components/shared/seg-select'
 import { useFala } from '@/components/shared/uma-unidade'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { situacaoDoPlano, SITUACAO_DO_PLANO } from '@/lib/plano-de-tratamento/situacao'
+import { situacaoDoPlano, SITUACAO_DO_PLANO, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
 
 /**
  * Tela de planejamentos: lista, busca e criação.
@@ -67,7 +67,9 @@ export function PlanejamentosClient({
   const [status, setStatus] = useState('')
   const [buscando, startBusca] = useTransition()
 
-  const [novoAberto, setNovoAberto] = useState(false)
+  // `/planejamentos/novo` chega aqui com ?novo=1 (A18): abre o "Novo plano" para quem monta.
+  const pediuNovo = useSearchParams().get('novo') === '1'
+  const [novoAberto, setNovoAberto] = useState(() => podeEditar && pediuNovo)
   const [novoNome,   setNovoNome]   = useState('')
   const [criando,    setCriando]    = useState(false)
   const [erro,       setErro]       = useState<string | null>(null)
@@ -129,11 +131,16 @@ export function PlanejamentosClient({
             {branchName ?? fala('Rede')} · {planos.length} plano{planos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {podeEditar && (
+        {podeEditar ? (
           <button type="button" onClick={() => setNovoAberto(true)} className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <Plus size={15} /> Novo plano
           </button>
+        ) : (
+          // A18: sem o "Novo plano", a tela diz quem monta.
+          <p data-quem-monta style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', maxWidth: 360 }}>
+            {TEXTO_QUEM_MONTA}
+          </p>
         )}
       </div>
 

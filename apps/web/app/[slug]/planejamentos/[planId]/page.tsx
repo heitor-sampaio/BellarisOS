@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -12,6 +12,9 @@ export default async function BranchPlanoPage({
   params: Promise<{ slug: string; planId: string }>
 }) {
   const { slug, planId } = await params
+  // A18 da 6ª simulação: "/planejamentos/novo" dava 404 — o novo plano é o
+  // "Novo plano" da lista, que abre por ?novo=1 (para quem monta).
+  if (planId === 'novo') redirect(`/${slug}/planejamentos?novo=1`)
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
   idOu404(planId)
   const ctx = await getTenantContext()

@@ -985,6 +985,14 @@ const procedures = await ler(
   ficha não oferece "+ Agendar" sem a Agenda em Gerenciar, nem "Adicionar
   primeiro documento" a quem não anexa (A23). Prova:
   `e2e/permissoes-quem-so-ve.spec.ts`.
+  **Sem o "Novo plano", a tela diz quem monta** (A18 da 6ª simulação,
+  2026-11-04): montar o plano pede o Prontuário em Gerenciar, e a recepção lia
+  "pode ser montado agora…" sem botão. A aba Planejamento vazia e a tela
+  Planejamentos dizem "Quem monta o plano é quem tem o Prontuário em Gerenciar
+  (a profissional, na avaliação ou aqui)." (`TEXTO_QUEM_MONTA`,
+  `lib/plano-de-tratamento/situacao.ts`). E `/planejamentos/novo` (os dois
+  portais) não é 404: leva à lista com `?novo=1`, que abre o "Novo plano"
+  para quem monta. Prova: `e2e/planejamentos-quem-monta.spec.ts`.
 - **Os planos de tratamento seguem a agenda "só os meus"** (decisão do Heitor,
   2026-10-28). Com `agenda` OWN, a tela Planejamentos (`listarPlanejamentos`),
   os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
