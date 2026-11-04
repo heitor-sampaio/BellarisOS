@@ -186,7 +186,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
             <EmptyState message="Nenhum pagamento registrado." />
           )}
           {pagamentos.map(p => (
-            <div key={p.id} data-pagamento className="card" style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div key={p.id} data-pagamento data-estorno={p.estorno || undefined} className="card" style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                   {p.procedure_name ?? p.description}
@@ -202,24 +202,31 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                   {/* D6: a parcela do crediário sem meio diz "Com a clínica" (a forma pronta da página). */}
                   {!p.aPagarNaClinica && (p.forma !== undefined ? (p.forma ? ` · ${p.forma}` : '') : p.payment_method ? ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}` : '')}
                 </p>
+                {/* A46: o pagamento de um pacote cancelado diz isso. */}
+                {p.pacoteCancelado && (
+                  <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+                    Pacote cancelado em {new Date(p.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                  </p>
+                )}
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-                  R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {/* A46: o estorno é dinheiro que voltou a ela, com o sinal. */}
+                  {p.estorno ? '− ' : ''}R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 2 }}>
-                  {p.estornado
+                  {p.estornado || p.estorno
                     ? null
                     : p.is_paid
                       ? <CheckCircle2 size={11} color="var(--success)" />
                       : <Clock3 size={11} color="var(--warning)" />}
                   {/* O estornado não é "Pago": o dinheiro voltou (como no Financeiro do app). */}
-                  <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: p.estornado ? 'var(--text-muted)' : p.is_paid ? 'var(--success)' : 'var(--warning)' }}>
-                    {p.estornado ? 'Estornado' : p.is_paid ? 'Pago' : 'Pendente'}
+                  <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: p.estornado || p.estorno ? 'var(--text-muted)' : p.is_paid ? 'var(--success)' : 'var(--warning)' }}>
+                    {p.estorno ? 'Estorno' : p.estornado ? 'Estornado' : p.is_paid ? 'Pago' : 'Pendente'}
                   </span>
                 </div>
                 {/* r2-ven-13: o recibo do que ela pagou (PDF), também aqui. */}
-                {p.is_paid && !p.estornado && !p.aPagarNaClinica && (
+                {p.is_paid && !p.estornado && !p.estorno && !p.aPagarNaClinica && (
                   <a href={`/api/recibos/${p.id}`} target="_blank" rel="noopener" data-recibo
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
                     <FileText size={11} aria-hidden /> Recibo

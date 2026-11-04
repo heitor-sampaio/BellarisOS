@@ -37,6 +37,10 @@ export type PagamentoItem = {
   parcela?:       string | null
   /** A forma pronta (`formaDoLancamento`): a parcela do crediário sem meio é "Com a clínica" (D6). */
   forma?:         string | null
+  /** A46: o estorno devolvido à cliente (a contra-transação): dinheiro que SAIU, com o sinal. */
+  estorno?:       boolean
+  /** A46: o pagamento de um pacote cancelado — o dia do cancelamento. */
+  pacoteCancelado?: string | null
   /** O atendimento avulso concluído e não pago (A64): não é um lançamento, é `atendimentos_a_receber`. */
   aPagarNaClinica?: boolean
   /** Estornado: o dinheiro voltou — não é "Pago" nem tem recibo (como o Financeiro do app). */
@@ -67,6 +71,8 @@ type PagamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
   is_paid: boolean; paid_at: string | null; notes: string | null
   due_date: string | null; data_de_referencia: string | null; parcela_numero: number | null; parcela_total: number | null
+  type: string; category: string | null
+  client_packages: { cancelado_em: string | null } | null
   appointments: { procedures: { name: string } | null } | null
 }
 type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string }
@@ -92,13 +98,15 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     ler(admin.from('financial_transactions')
       .select(`
         id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, notes,
-        due_date, data_de_referencia, parcela_numero, parcela_total,
+        due_date, data_de_referencia, parcela_numero, parcela_total, type, category,
+        client_packages(cancelado_em),
         appointments(procedures(name))
       `)
       // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
       // agendamento, e ficava fora da lista do próprio cliente.
       .eq('client_id', ctx.clientId!)
-      .eq('type', 'INCOME')
+      // A46: o estorno devolvido a ela também (era só a receita).
+      .or('type.eq.INCOME,category.eq.Estorno')
       .order('created_at', { ascending: false })
       .limit(50), 'carregar os pagamentos'),
 
@@ -148,6 +156,8 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     vencimento:     r.is_paid ? null : (r.due_date ?? r.data_de_referencia ?? null),
     parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
     forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
+    estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
+    pacoteCancelado: r.client_packages?.cancelado_em ?? null,
   }))
   // A64: o atendimento avulso concluído e não pago (a conta de
   // `atendimentos_a_receber`, a mesma do Fechamento e da ficha) — não tinha

@@ -22,6 +22,10 @@ type TxRow = {
   forma:          string | null
   /** A40: a venda de produto paga que não pontua (fidelidade ligada, produto sem pontos). */
   semPontos:      boolean
+  /** A46: o estorno devolvido à cliente (a contra-transação): saiu, com o sinal. */
+  estorno:        boolean
+  /** A46: o pagamento de um pacote cancelado — o dia do cancelamento. */
+  pacoteCancelado: string | null
 }
 
 /** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
@@ -29,6 +33,7 @@ type LancamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
   is_paid: boolean; paid_at: string | null; created_at: string; notes: string | null; parcela_numero: number | null
   cartao_bandeira: string | null; product_sale_id: string | null
+  type: string; category: string | null; client_packages: { cancelado_em: string | null } | null
   appointments: { procedures: { name: string } | null } | null
 }
 
@@ -42,12 +47,14 @@ export default async function ClientFinancialPage() {
     .from('financial_transactions')
     .select(`
       id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, product_sale_id,
+      type, category, client_packages(cancelado_em),
       appointments(procedures(name))
     `)
     // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
     // agendamento, e ficava fora da lista do próprio cliente.
     .eq('client_id', ctx.clientId!)
-    .eq('type', 'INCOME')
+    // A46: o estorno devolvido a ela também aparece (era só a receita).
+    .or('type.eq.INCOME,category.eq.Estorno')
     .order('created_at', { ascending: false }), 'carregar os lançamentos do cliente')
 
   // A40: com a fidelidade ligada e o produto sem pontos, a venda diz por quê.
@@ -66,6 +73,8 @@ export default async function ClientFinancialPage() {
     estornado:      r.notes === 'Estornada',
     forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
     semPontos:      produtoNaoPontua && !!r.product_sale_id && Boolean(r.is_paid) && r.notes !== 'Estornada',
+    estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
+    pacoteCancelado: r.client_packages?.cancelado_em ?? null,
   }))
 
   // O total é o LTV do cliente, do banco (pago, sem estorno) — a mesma conta
@@ -120,7 +129,7 @@ export default async function ClientFinancialPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {rows.map(r => (
-          <div key={r.id} className="card" style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div key={r.id} data-estorno={r.estorno || undefined} className="card" style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                 {r.procedure_name ?? r.description}
@@ -131,6 +140,11 @@ export default async function ClientFinancialPage() {
                   : new Date(r.created_at).toLocaleDateString('pt-BR')}
                 {r.forma && ` · ${r.forma}`}
               </p>
+              {r.pacoteCancelado && (
+                <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
+                  Pacote cancelado em {new Date(r.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                </p>
+              )}
               {r.semPontos && (
                 <p data-sem-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Venda de produto não pontua</p>
               )}
@@ -141,19 +155,19 @@ export default async function ClientFinancialPage() {
                 color: r.estornado ? 'var(--text-faint)' : 'var(--text)',
                 textDecoration: r.estornado ? 'line-through' : undefined,
               }}>
-                R$ {r.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                {r.estorno ? '− ' : ''}R$ {r.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
               {/* O estornado não é "Pago": o dinheiro voltou (D6, 2026-10-28), e
                   o Total investido acima já não o conta. */}
               <span style={{
                 fontSize: 'var(--text-overline)',
                 fontWeight: 700,
-                color:      r.estornado ? 'var(--text-muted)' : r.is_paid ? 'var(--success)' : 'var(--warning)',
+                color:      r.estornado || r.estorno ? 'var(--text-muted)' : r.is_paid ? 'var(--success)' : 'var(--warning)',
               }}>
-                {r.estornado ? 'Estornado' : r.is_paid ? 'Pago' : 'Pendente'}
+                {r.estorno ? 'Estorno' : r.estornado ? 'Estornado' : r.is_paid ? 'Pago' : 'Pendente'}
               </span>
               {/* ven-06: o recibo do que ela pagou (PDF). */}
-              {r.is_paid && !r.estornado && (
+              {r.is_paid && !r.estornado && !r.estorno && (
                 <a href={`/api/recibos/${r.id}`} target="_blank" rel="noopener" data-recibo
                   style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)' }}>
                   Recibo

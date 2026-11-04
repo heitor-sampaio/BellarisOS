@@ -154,6 +154,7 @@ export const ISOLADOS = [
   'checkout-entrada-no-cartao.spec.ts',
   'fidelidade-produto-nao-pontua.spec.ts',
   'vendas-forma-nasce-vazia.spec.ts',
+  'portal-cliente-pacote-cancelado.spec.ts',
   'quadro-tempo-real.spec.ts',
   'sessao-httponly.spec.ts',
   'suporte-entrada.spec.ts',

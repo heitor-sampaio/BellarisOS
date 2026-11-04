@@ -165,7 +165,14 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
     Histórico ("Pacote cancelado: X — 4 sessões canceladas · R$ 2.200,00 em
     crédito na clínica · Motivo: …"); no app da cliente, sai dos tratamentos
     em curso; o lembrete de vencimento (cron) não o lembra; o pacote LGPD diz
-    "cancelado em".
+    "cancelado em". **E o app diz o que aconteceu com o dinheiro** (A46 da 6ª
+    simulação, 2026-11-04): no Histórico → Pagamentos e no Financeiro, o
+    pagamento do pacote diz "Pacote cancelado em 04/11/2026"
+    (`data-pacote-cancelado`), e o ESTORNO devolvido a ela aparece como
+    saída — "− R$ 600,00 · Estorno" (`data-estorno`; a contra-transação,
+    `category = 'Estorno'`, com o `client_id` dela). A Márcia via só "Pacote
+    R$ 200 Pix Pago". O "Total investido" segue o do banco. Prova:
+    `e2e/portal-cliente-pacote-cancelado.spec.ts`.
   - Prova: `e2e/pacote-cancelar.spec.ts`.
 - A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
