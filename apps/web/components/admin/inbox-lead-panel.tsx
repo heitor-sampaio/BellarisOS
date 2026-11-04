@@ -1052,11 +1052,16 @@ function NovaOportunidade({
 
 // --- Modal de agendamento ----------------------------------------------------
 
-function ScheduleModal({
+/**
+ * O agendar da OPORTUNIDADE: o do painel do inbox e o do card do quadro (A16
+ * da 6ª simulação: o card não tinha "Agendar"). Sem conversa, vale a de origem
+ * do lead (ou nenhuma) — quem decide é `createCrmAppointment`.
+ */
+export function ScheduleModal({
   leadId, conversationId, clienteLigado, clienteId, contatoInicial, branches, onClose, onScheduled,
 }: {
   leadId:         string
-  conversationId: string
+  conversationId: string | null
   /** Nome do cliente já ligado à conversa, ou `null` quando ainda não há ficha. */
   clienteLigado:  string | null
   /** O cliente já ligado: é dele que vêm os créditos (o que já pagou). */

@@ -5,7 +5,8 @@ import {
   useState, forwardRef, useImperativeHandle, useId,
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare } from 'lucide-react'
+import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare, CalendarPlus } from 'lucide-react'
+import { ScheduleModal } from '@/components/admin/inbox-lead-panel'
 import { createLead, updateLead, responsaveisParaOportunidade } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
 import { rotaInbox } from '@/lib/rotas'
@@ -68,6 +69,12 @@ interface CRMLeadModalProps {
   existing?:       ExistingLead
   trigger?:        React.ReactNode
   onLeadCreated?:  (lead: Lead) => void
+  /**
+   * "Agendar" no card (A16 da 6ª simulação): as unidades em que se agenda e a
+   * ficha já ligada ao lead. Ausente, o botão não aparece (sem o CRM em
+   * Gerenciar ou sem a agenda no plano).
+   */
+  agendar?:        { unidades: CRMBranch[]; clienteId: string | null }
 }
 
 /**
@@ -92,10 +99,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
   function CRMLeadModal(
     {
       slug, branchName, branches, unidades, stages, funnels, funnelId, procedures,
-      initialStageId, existing, trigger, onLeadCreated,
+      initialStageId, existing, trigger, onLeadCreated, agendar,
     },
     ref,
   ) {
+    const [agendando, setAgendando] = useState(false)
     const isEdit    = !!existing
     const action    = isEdit ? updateLead : createLead
     const dialogRef = useRef<HTMLDialogElement>(null)
@@ -336,6 +344,15 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 >
                   <MessageSquare size={13} />
                   {abrindoConversa ? 'Abrindo…' : 'Ir para a conversa'}
+                </button>
+              )}
+              {/* A16: o card agenda como o painel do inbox — a ficha nasce
+                  com o nome e o telefone do lead e fica ligada a ele. */}
+              {isEdit && agendar && agendar.unidades.length > 0 && (
+                <button type="button" className="btn-secondary"
+                  onClick={() => { close(); setAgendando(true) }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                  <CalendarPlus size={13} /> Agendar
                 </button>
               )}
 
@@ -615,6 +632,19 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
             </form>
           </div>
         </dialog>
+
+        {agendando && existing && agendar && (
+          <ScheduleModal
+            leadId={existing.id}
+            conversationId={null}
+            clienteLigado={agendar.clienteId ? existing.name : null}
+            clienteId={agendar.clienteId}
+            contatoInicial={{ nome: existing.name, telefone: telefoneDoCampo(existing.phone) }}
+            branches={agendar.unidades}
+            onClose={() => setAgendando(false)}
+            onScheduled={() => { setAgendando(false); router.refresh() }}
+          />
+        )}
       </>
     )
   },

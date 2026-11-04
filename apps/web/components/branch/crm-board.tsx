@@ -436,6 +436,8 @@ interface CRMBoardProps {
   leadAberto?:  string | null
   /** "Converter" o lead em cliente pede Clientes em Gerenciar (D4, 2026-11-01). */
   podeCadastrarCliente?: boolean
+  /** "Agendar" no card (A16 da 6ª simulação): o CRM em Gerenciar e a agenda no plano. */
+  podeAgendar?: boolean
 }
 
 // --- Cores suaves a partir de hex --------------------------------
@@ -480,7 +482,7 @@ function MenuItem({
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
   lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs, podeCadastrarCliente = false,
-  isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
+  unidadesParaAgendar, isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
 }: {
   lead:           Lead
   slug:           string
@@ -493,6 +495,8 @@ function LeadCard({
   branches?:      { id: string; name: string; slug: string }[]
   networkMode?:   boolean
   podeCadastrarCliente?: boolean
+  /** As unidades do "Agendar" do card (A16); nulo, sem o botão. */
+  unidadesParaAgendar?: { id: string; name: string; slug: string }[] | null
   /** Nulo antes de montar — ver o useState lá embaixo. */
   nowMs:          number | null
   isDragging:     boolean
@@ -637,6 +641,7 @@ function LeadCard({
           lead_procedures: lead.lead_procedures.map(lp => ({ procedure_id: lp.procedure_id })),
           owner_id: lead.owner_id ?? null, owner_name: lead.owner_name ?? null,
         }}
+        agendar={unidadesParaAgendar ? { unidades: unidadesParaAgendar, clienteId: lead.client_id } : undefined}
       />
 
       {/* Mover para outro funil */}
@@ -983,7 +988,12 @@ const semRelogio = () => null
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId, unidades,
   procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [], podeCadastrarCliente = false,
+  podeAgendar = false,
 }: CRMBoardProps) {
+  // O "Agendar" do card (A16): na rede, as unidades dela; na unidade, ela.
+  const unidadesParaAgendar = !podeAgendar ? null
+    : networkMode ? (branches ?? [])
+    : branchId ? [{ id: branchId, name: branchName ?? '', slug }] : null
   // Levar o card à etapa de desfecho perdido pergunta o motivo antes de mover.
   const [perdaPendente, setPerdaPendente] = useState<{ id: string; etapa: string } | null>(null)
   const [perdendo, setPerdendo] = useState(false)
@@ -1275,6 +1285,7 @@ export function CRMBoard({
                   procedures={procedures} branches={branches}
                   networkMode={networkMode}
                   podeCadastrarCliente={podeCadastrarCliente}
+                  unidadesParaAgendar={unidadesParaAgendar}
                   nowMs={nowMs}
                   isDragging={draggingId === lead.id}
                   onDragStart={handleDragStart}

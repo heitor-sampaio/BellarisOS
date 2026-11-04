@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
 import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -230,6 +230,7 @@ export default async function BranchOportunidadesPage({
         slug={slug}
         leadAberto={leadAberto}
         podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
+        podeAgendar={can(ctx, 'crm', 'MANAGE') && temRecurso(ctx, 'agenda')}
       />
     </div>
   )

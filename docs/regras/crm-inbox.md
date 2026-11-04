@@ -94,6 +94,12 @@
     Conversões), as outras ganham `client_id` e CONVERTED. "Não" cadastra sem
     ligar. Resposta em `_pessoaDoCrm` (`mesma:`/`outra:<contato>`). Quem
     cadastra pelo card ou pela conversa não é perguntado (já disse quem é).
+    **A pessoa do lead criado à mão também é achada** (A16 da 6ª simulação,
+    2026-11-04: a Alice, criada no quadro com "(81) 99600-0070", virou uma
+    ficha solta na recepção, e a Pri não soube que ela agendou): o gatilho do
+    lead gravava o identificador "81996000070", sem o 55. Agora a pessoa nasce
+    no formato do WhatsApp (abaixo), e a busca do cadastro olha também a forma
+    antiga, sem o 55 (`formasParaAcharAPessoa`, `lib/importacao/normalizar.ts`).
     Prova: `e2e/ficha-cadastro-mesma-pessoa-do-lead.spec.ts`;
   - o telefone de uma ficha ARQUIVADA (A20 da 5ª simulação — virou o "Valdir
     Duplicado" do D10) pergunta primeiro: "Reativar a ficha de X" (a ficha
@@ -570,6 +576,19 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   pessoa da conversa de origem, senão a do telefone (só dígitos, o formato do
   webhook), senão uma nova. O cadastro manual (`createLead`) nunca gravou
   `conversation_id`, e o lead nascia sem pessoa — o motivo de não ser código.
+  **O telefone digitado vira o do WhatsApp** (A16 da 6ª simulação; migration
+  `20261104002301`): o número nacional (10 ou 11 dígitos, sem "+") ganha o
+  55, a busca olha as duas formas do celular e a forma antiga sem o 55, e a
+  pessoa nova nasce com o 55. O escrito com "+" é de outro país e fica como
+  veio. As pessoas gravadas sem o 55 antes disso não foram reescritas: as
+  buscas do gatilho e do cadastro as acham.
+- **A oportunidade tem "Agendar"** (A16 da 6ª simulação, 2026-11-04): o
+  card do quadro (os dois portais) tem o botão ao lado de "Ir para a
+  conversa", a MESMA janela do painel do inbox (`ScheduleModal`,
+  `createCrmAppointment`): nome e telefone do lead, a ficha nasce ligada ao
+  card (`leads.client_id`), o agendamento é COMMERCIAL e a linha do tempo
+  do card diz que houve o agendamento. Aparece com o CRM em Gerenciar e a
+  agenda no plano (`podeAgendar`). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts` ("A16").
 - `on delete restrict`: pessoa com oportunidade não se apaga.
 - **Oportunidade não se apaga** (decisão do Heitor, 2026-09-28): apagar levava
   o histórico junto (`lead_events` em cascata). A que não vai adiante é marcada

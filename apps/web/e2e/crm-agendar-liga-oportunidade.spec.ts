@@ -203,3 +203,40 @@ test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
     await expect.poll(() => etapaDe(leadId), { timeout: 20_000 }).toBe(etapas!.marcado)
   })
 })
+
+test('A16: a oportunidade tem "Agendar" — o SDR agenda pelo card aberto no quadro, e a ficha nasce ligada ao card', async ({ browser }) => {
+  test.setTimeout(180_000)
+  // A Pri não tinha onde agendar a Alice a partir do card do quadro (só pelo
+  // inbox): a recepção cadastrou e agendou à parte, e o card nunca soube.
+  const fone = `(48) 9${String(Date.now()).slice(-4)}-0016`
+  const nome = `${PREFIXO} Alice do quadro ${marca}`
+  const { data: lead, error } = await db().from('leads').insert({
+    tenant_id: rede!.tenantId, name: nome, phone: fone, crm_stage_id: etapas!.novo,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const { diaEmQueAUnidadeAbre } = await import('./apoio/datas')
+  const dia = diaEmQueAUnidadeAbre(3)
+
+  await como(browser, sdr!, async p => {
+    await p.goto(`/${slug}/oportunidades?lead=${lead!.id}`)
+    const card = p.getByRole('dialog').filter({ hasText: 'Editar lead' })
+    await expect(card).toBeVisible()
+    const agendar = card.getByRole('button', { name: 'Agendar', exact: true })
+    await expect(agendar).toBeVisible()
+    await agendar.click()
+    const janela = p.getByRole('dialog').filter({ hasText: 'Novo agendamento' })
+    await expect(janela).toBeVisible()
+    await expect(janela.getByPlaceholder('Nome')).toHaveValue(nome)
+    await janela.getByLabel('Procedimento').selectOption(rede!.procedureId)
+    await janela.getByLabel('Profissional').selectOption(rede!.professionalId)
+    await janela.getByLabel('Dia').fill(dia)
+    await janela.getByRole('button', { name: '10:00', exact: true }).click()
+    await janela.getByRole('button', { name: 'Agendar', exact: true }).click()
+    await expect(janela).toBeHidden({ timeout: 15_000 })
+  })
+  const { data: ligado } = await db().from('leads').select('client_id').eq('id', lead!.id).single<{ client_id: string | null }>()
+  expect(ligado?.client_id, 'a ficha nasce ligada ao card').toBeTruthy()
+  expect((await agendamentosDe(ligado!.client_id!)).map(a => a.source)).toEqual(['COMMERCIAL'])
+  await expect.poll(async () => (await db().from('lead_events').select('type').eq('lead_id', lead!.id).eq('type', 'APPOINTMENT_CREATED')).data?.length)
+    .toBe(1)
+})

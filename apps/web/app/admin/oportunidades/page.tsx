@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
@@ -205,6 +205,7 @@ export default async function AdminOportunidadesPage({
             networkMode
             branches={branches}
             leadAberto={leadAberto}
+            podeAgendar={can(ctx, 'crm', 'MANAGE') && temRecurso(ctx, 'agenda')}
           />
         </>
       )}
