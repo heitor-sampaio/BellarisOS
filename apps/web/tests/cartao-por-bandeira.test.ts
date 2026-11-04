@@ -38,7 +38,7 @@ describe('o cartão por bandeira', () => {
     const elo = { taxas: { 'CREDIT_CARD:3': 3 } }
     expect(taxaDoCreditoNaBandeira(geral, elo, 3), 'a Elo em 3x: a dela').toEqual({ cadastrada: true, daBandeira: true, parcelas: 3, taxa: 3 })
     expect(taxaDoCreditoNaBandeira(geral, elo, 5), 'a Elo em 5x: a geral de 5x, não os 3% da Elo').toEqual({ cadastrada: true, daBandeira: false, parcelas: 5, taxa: 6 })
-    expect(taxaDoCreditoNaBandeira(geral, elo, 4), 'a Elo em 4x: a geral de 4x (que cai na de 3x da geral)').toEqual({ cadastrada: false, daBandeira: false, parcelas: 3, taxa: 4.5 })
+    expect(taxaDoCreditoNaBandeira(geral, elo, 4), 'a Elo em 4x: nem a Elo nem a geral têm o 4x — 0% (F16-2: nunca a de outras vezes)').toEqual({ cadastrada: false, daBandeira: false, parcelas: null, taxa: 0 })
     expect(taxaDoCreditoNaBandeira(geral, elo, 2), 'a Elo em 2x: a geral, que não tem').toEqual({ cadastrada: false, daBandeira: false, parcelas: null, taxa: 0 })
     expect(taxaDoCreditoNaBandeira(geral, undefined, 5), 'sem bandeira: a geral').toEqual({ cadastrada: true, daBandeira: false, parcelas: 5, taxa: 6 })
   })

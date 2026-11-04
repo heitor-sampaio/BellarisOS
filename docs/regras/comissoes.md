@@ -290,10 +290,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - As linhas de ANTES seguem o modo retratado: ATENDIMENTO (devida desde a
     conclusão; o estorno do pagamento a zera) e PAGAMENTO (plano e pacote na
     proporção do que receberam).
-  - Taxa: `private.comissao_taxa_pct` (a do meio; no crédito, a da maior
-    parcela cadastrada até a do recebimento; com a BANDEIRA do pagamento, a
-    dela das vezes EXATAS, senão a geral daquelas vezes — r3-f13-01, sem
-    herdar faixa da bandeira desde o r4-f15-01). No plano, ponderada pelo que
+  - Taxa: `private.comissao_taxa_pct` (a do meio; no crédito, a das vezes
+    EXATAS do recebimento; com a BANDEIRA do pagamento, a dela das vezes
+    exatas, senão a geral daquelas vezes — r3-f13-01, sem herdar faixa da
+    bandeira desde o r4-f15-01; sem nenhuma das duas, 0% — F16-2, nunca a de
+    outras vezes: a comissão é sobre o valor cheio). No plano, ponderada pelo que
     cada recebimento pagou. As vezes do recebimento: `cartao_vezes` (crédito
     em N vezes, pago na hora — 2026-10-20), senão `parcela_total`, senão 1.
     O avulso usava sempre 1x.

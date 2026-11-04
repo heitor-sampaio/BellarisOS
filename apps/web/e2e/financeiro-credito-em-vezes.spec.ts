@@ -101,7 +101,9 @@ test.describe.serial('as formas de pagamento', () => {
       await janela.getByLabel('Forma de pagamento').selectOption('CREDIT_CARD')
       await janela.getByLabel('Vezes no cartão').selectOption('3')
       await expect(janela.locator('[data-aviso-taxa]')).toContainText(/3x/)
-      await expect(janela.locator('[data-aviso-taxa]')).toContainText('4,50%')
+      // F16-2: sem a taxa exata, 0% — não mais a do 2x (4,50%).
+      await expect(janela.locator('[data-aviso-taxa]')).toContainText('sem desconto da operadora (0%)')
+      await expect(janela.locator('[data-aviso-taxa]')).not.toContainText('4,50%')
       await janela.getByLabel('Vezes no cartão').selectOption('2')
       await expect(janela.locator('[data-aviso-taxa]')).toHaveCount(0)
     })

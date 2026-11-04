@@ -34,17 +34,14 @@ export function rotuloDaFormaDoFechamento(chave: string): string {
 
 /**
  * A taxa da maquininha que vale para o crédito em N vezes — o espelho, para a
- * tela, de `private.comissao_taxa_pct`: a das vezes exatas; sem ela, a da
- * maior parcela cadastrada até N; sem nenhuma, zero. `cadastrada` diz se a
- * das vezes exatas existe (o aviso do A33).
+ * tela, de `private.comissao_taxa_pct`: a das vezes EXATAS; sem ela, zero —
+ * nunca a de outras vezes (F16-2, o Heitor, 2026-11-03: o fallback "pode
+ * levar a erros de cálculos"). `cadastrada` diz se ela existe (o aviso do A33).
  */
 export function taxaQueVale(taxas: { parcelas: number; taxa_pct: number }[], vezes: number): {
   cadastrada: boolean; parcelas: number | null; taxa: number
 } {
   const exata = taxas.find(t => t.parcelas === vezes)
   if (exata) return { cadastrada: true, parcelas: vezes, taxa: Number(exata.taxa_pct) }
-  const abaixo = taxas.filter(t => t.parcelas <= vezes).sort((a, b) => b.parcelas - a.parcelas)[0]
-  return abaixo
-    ? { cadastrada: false, parcelas: abaixo.parcelas, taxa: Number(abaixo.taxa_pct) }
-    : { cadastrada: false, parcelas: null, taxa: 0 }
+  return { cadastrada: false, parcelas: null, taxa: 0 }
 }

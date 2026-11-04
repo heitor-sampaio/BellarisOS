@@ -298,6 +298,65 @@ test.describe.serial('o cartão por bandeira', () => {
     expect(await devido(em3)).toBe(106.7)
   })
 
+  // F16-2 (o Heitor, revisão das decisões da F16, opção A: o fallback "pode
+  // levar a erros de cálculos"): sem a taxa EXATA daquelas vezes, nem na
+  // bandeira nem na regra geral, a taxa é 0% — nunca a de outras vezes. A Elo
+  // só tem o 3x; a geral, o 3x (4,5%) e o 5x (6%); ninguém tem o 4x. A venda
+  // Elo em 4x sai com 0% (era os 4,5% do 3x da geral), e a sem bandeira também.
+  // Nada é recusado. E a clínica fica sabendo: a linha do 4x nas "Taxas da
+  // maquininha" e o Fechamento do dia avisam.
+  test('F16-2: sem a taxa exata das vezes (nem na Elo nem na geral), a venda Elo 4x sai com 0% — e a tela e o Fechamento avisam', async ({ browser }) => {
+    expect((await db().from('tenants').update({ cartao_por_bandeira: { ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } } }).eq('id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').delete().eq('tenant_id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').insert([
+      { tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 4.5 },
+      { tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 5, taxa_pct: 6 },
+    ])).error).toBeNull()
+    const pagar = async (ap: string, bandeira?: string) => {
+      const { data, error } = await db().rpc('confirmar_pagamento_do_atendimento', {
+        p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+        p_dados: { metodo: 'CREDIT_CARD', cartao_vezes: 4, pontos: 0, desconto: 0, valor_final: 1100, ...(bandeira ? { cartao_bandeira: bandeira } : {}) },
+      })
+      expect(error, 'pagar: nada é recusado').toBeNull()
+      return data as string
+    }
+    const naElo = await atendimentoConcluido()
+    const txElo = await pagar(naElo, 'ELO')
+    expect((await parcelasDa(txElo)).map(x => x.taxa_pct), 'a Elo em 4x: 0% (não os 4,5% do 3x da geral)').toEqual([0, 0, 0, 0])
+    // 10% de R$ 1.100 sem desconto da operadora.
+    expect(await devido(naElo), 'a comissão sobre o valor cheio').toBe(110)
+    const semBandeira = await atendimentoConcluido()
+    const txGeral = await pagar(semBandeira)
+    expect((await parcelasDa(txGeral)).map(x => x.taxa_pct), 'sem bandeira em 4x: 0% (não os 4,5% do 3x)').toEqual([0, 0, 0, 0])
+
+    await como(browser, dona!, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      const card = p.locator('[aria-label="Taxas da maquininha"]')
+      const linha = (rotulo: string) => card.locator('label').filter({ has: p.getByLabel(`Taxa ${rotulo}`, { exact: true }) })
+      // A regra geral: o 4x (e o 2x, o débito, o crédito à vista) sem taxa; o 3x e o 5x não.
+      await expect(linha('4x'), 'o 4x da regra geral avisa').toContainText('Sem taxa: as vendas em 4x saem sem desconto da operadora.')
+      await expect(linha('4x')).toHaveAttribute('data-sem-taxa', '')
+      await expect(linha('Débito')).toContainText('Sem taxa: as vendas no débito saem sem desconto da operadora.')
+      await expect(linha('3x').locator('[data-aviso-sem-taxa]'), 'o 3x tem').toHaveCount(0)
+      await expect(linha('5x').locator('[data-aviso-sem-taxa]'), 'o 5x tem').toHaveCount(0)
+      await expect(linha('6x').locator('[data-aviso-sem-taxa]'), 'acima do "parcelar até" (5x, automático), não avisa').toHaveCount(0)
+      await expect(linha('Pix').locator('[data-aviso-sem-taxa]'), 'o Pix sem taxa é comum: não avisa').toHaveCount(0)
+      // Na Elo: o 4x (nem ela nem a geral) avisa; o 5x vazio usa a geral (tem), o 3x é dela.
+      await card.getByLabel('Bandeira').selectOption({ label: 'Elo' })
+      await expect(linha('4x'), 'o 4x da Elo avisa').toContainText('Sem taxa: as vendas em 4x saem sem desconto da operadora.')
+      await expect(linha('5x').locator('[data-aviso-sem-taxa]'), 'o 5x vazio na Elo usa a geral').toHaveCount(0)
+      await expect(linha('3x').locator('[data-aviso-sem-taxa]')).toHaveCount(0)
+    })
+
+    await como(browser, gestor!, async p => {
+      await p.goto(`/${slug}/fechamento`)
+      const aviso = p.locator('[data-aviso="sem-taxa"]')
+      await expect(aviso, 'o Fechamento do dia avisa a venda no cartão sem taxa').toContainText('Sem taxa da maquininha')
+      await expect(aviso).toContainText('Crédito 4x (Elo)')
+      await expect(aviso).toContainText('Configurações → Comissões')
+    })
+  })
+
   // r4-f15-01, o botão (o Heitor: "a taxa é por parcela, por exemplo 1.15% por
   // parcela, então a taxa total é a taxa vezes a quantidade de parcelas"): só
   // preenche os campos (1x a 12x = a taxa × as vezes), não mexe no débito e

@@ -37,8 +37,10 @@ describe('taxaQueVale', () => {
   it('a das vezes exatas, quando cadastrada', () => {
     expect(taxaQueVale(taxas, 2)).toEqual({ cadastrada: true, parcelas: 2, taxa: 4.5 })
   })
-  it('sem ela, a maior cadastrada até as vezes (a regra de private.comissao_taxa_pct)', () => {
-    expect(taxaQueVale(taxas, 3)).toEqual({ cadastrada: false, parcelas: 2, taxa: 4.5 })
+  // F16-2 (o Heitor, 2026-11-03, opção A): sem a taxa EXATA daquelas vezes, a
+  // taxa é 0% — nunca a de outras vezes ("pode levar a erros de cálculos").
+  it('sem ela, nenhuma: 0% — nunca a de outras vezes (a regra de private.comissao_taxa_pct)', () => {
+    expect(taxaQueVale(taxas, 3)).toEqual({ cadastrada: false, parcelas: null, taxa: 0 })
   })
   it('sem nenhuma até as vezes, nenhuma', () => {
     expect(taxaQueVale([], 3)).toEqual({ cadastrada: false, parcelas: null, taxa: 0 })

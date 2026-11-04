@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
@@ -305,8 +306,8 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
   const prazoMostrado = bandeira && daBandeira.prazo.trim() ? daBandeira.prazo : prazo
 
   // r4-f15-01: o campo vazio da bandeira mostra a regra geral DAQUELAS vezes — a
-  // que vale (private.comissao_taxa_pct): a das vezes exatas, senão a da maior
-  // quantidade preenchida abaixo na geral.
+  // que vale (private.comissao_taxa_pct): a das vezes exatas, senão 0 (F16-2:
+  // nunca a de outras vezes).
   const geralQueVale = (m: MetodoComTaxa, n: number) => {
     const doMetodo = Object.entries(valores)
       .map(([k, v]) => [k, Number(v.trim().replace(',', '.'))] as const)
@@ -394,8 +395,22 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     })
   }
 
+  // F16-2 (o Heitor, opção A): sem a taxa EXATA daquelas vezes — nem na
+  // bandeira, nem na regra geral — a venda sai com 0%, sem desconto da
+  // operadora. A linha diz isso. Não avisa o Pix (sem taxa é comum) nem o
+  // crédito acima do "Parcelar no crédito até" (não se vende ali).
+  const limiteDeVezes = maxVezes === '' ? automatico : Number(maxVezes)
+  const vazio = (texto: string | undefined) => !texto || texto.trim() === ''
+  const semTaxa = (m: MetodoComTaxa, n: number) => {
+    if (m === 'PIX' || (m === 'CREDIT_CARD' && n > limiteDeVezes)) return false
+    if (!vazio(valores[chave(m, n)])) return false
+    return !bandeira || vazio(daBandeira.valores[chave(m, n)])
+  }
+  const avisoSemTaxa = (m: MetodoComTaxa, n: number) =>
+    m === 'DEBIT_CARD' ? 'no débito' : n === 1 ? 'no crédito à vista' : `em ${n}x`
+
   const campo = (m: MetodoComTaxa, n: number, rotulo: string) => (
-    <label key={chave(m, n)} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <label key={chave(m, n)} {...(semTaxa(m, n) ? { 'data-sem-taxa': '' } : {})} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>{rotulo}</span>
       <div style={{ position: 'relative' }}>
         {bandeira ? (
@@ -412,6 +427,16 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         )}
         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>%</span>
       </div>
+      {semTaxa(m, n) && (
+        <span data-aviso-sem-taxa role="note" style={{
+          display: 'flex', gap: 4, alignItems: 'flex-start', padding: '4px 6px', borderRadius: 'var(--radius-field-token)',
+          background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          fontSize: 'var(--text-2xs)', color: 'var(--text)', lineHeight: 1.35,
+        }}>
+          <AlertTriangle size={11} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+          <span>Sem taxa: as vendas {avisoSemTaxa(m, n)} saem sem desconto da operadora.</span>
+        </span>
+      )}
     </label>
   )
 
@@ -477,8 +502,8 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
       </div>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
         {bandeira
-          ? 'Campo vazio usa a regra geral daquelas vezes (o número mostrado nele), não a de outra quantidade desta bandeira.'
-          : 'Parcela sem taxa própria usa a da maior quantidade preenchida abaixo dela.'}
+          ? 'Campo vazio usa a regra geral daquelas vezes (o número mostrado nele), não a de outra quantidade. Sem nenhuma das duas, a venda sai sem desconto da operadora (0%).'
+          : 'Parcela sem taxa própria sai sem desconto da operadora (0%) — nunca com a taxa de outra quantidade.'}
       </p>
       {!bandeira && <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
         <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Parcelar no crédito até</span>

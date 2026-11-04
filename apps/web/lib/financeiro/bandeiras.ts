@@ -104,8 +104,9 @@ export function lerCartaoPorBandeira(bruto: unknown): CartaoPorBandeira {
  * `private.comissao_taxa_pct` com a bandeira (r4-f15-01; o Heitor, revisão das
  * decisões da F15: o campo vazio da bandeira é a regra geral). A da bandeira só
  * vale com a taxa EXATA daquelas vezes; senão vale a regra geral daquelas vezes
- * (`taxaQueVale`, que cai na maior parcela cadastrada abaixo). Sem herdar faixa
- * da bandeira: a Elo só com o 3x não dá a sua taxa ao 5x.
+ * (`taxaQueVale`, também só a exata); sem nenhuma das duas, 0% (F16-2). Sem
+ * herdar faixa: a Elo só com o 3x não dá a sua taxa ao 5x, nem o 3x da geral
+ * ao 4x.
  */
 export function taxaDoCreditoNaBandeira(
   geral: { parcelas: number; taxa_pct: number }[], regra: Pick<RegraDaBandeira, 'taxas'> | undefined, vezes: number,

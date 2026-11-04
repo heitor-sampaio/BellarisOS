@@ -9,7 +9,8 @@ import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
-import { rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { parseDinheiro } from '@estetica-os/utils'
 
 export interface FechamentoFeito {
@@ -298,6 +299,19 @@ function AvisosDoDia({ resumo, aReceber, emAberto = 0, avisos, fechadoAs }: {
   }
   if (resumo.esperadoDinheiro < 0) {
     lista.push({ chave: 'dinheiro-negativo', texto: `Saiu mais dinheiro em espécie do que entrou hoje (${brl(Math.abs(resumo.esperadoDinheiro))} a mais): confira as saídas pagas em dinheiro.` })
+  }
+  // F16-2 (o Heitor, opção A): a venda no cartão sem a taxa exata cadastrada
+  // saiu com 0% — sem desconto da operadora. A clínica fica sabendo aqui.
+  const semTaxa = avisos?.vendasSemTaxa ?? []
+  if (semTaxa.length) {
+    const formas = semTaxa.map(x => {
+      const b = rotuloDaBandeira(x.bandeira)
+      return `${rotuloDaForma(x.metodo, x.vezes)}${b ? ` (${b})` : ''}: ${x.vendas} ${x.vendas === 1 ? 'venda' : 'vendas'}, ${brl(x.valor)}`
+    }).join('; ')
+    lista.push({
+      chave: 'sem-taxa',
+      texto: `Sem taxa da maquininha cadastrada — saiu sem desconto da operadora: ${formas}. Cadastre a taxa em Configurações → Comissões.`,
+    })
   }
   const taxas = avisos?.taxas ?? 0
   if (!lista.length && taxas <= 0) return null

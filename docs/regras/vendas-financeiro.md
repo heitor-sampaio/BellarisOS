@@ -369,7 +369,11 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     estimadas do dia (cada recebimento × a taxa da forma, a tabela de
     Configurações → Comissões — `comissao_taxa_pct`), que não saem do saldo.
     (2) e (4) são `metrics_avisos_do_fechamento` (`getAvisosDoFechamento`;
-    migration `20261029001504`). Prova: `e2e/fechamento-do-dia-avisos.spec.ts`.
+    migration `20261029001504`). E (5), F16-2: a venda no cartão do dia sem
+    taxa da maquininha cadastrada para a forma, as vezes e a bandeira — saiu
+    sem desconto da operadora (`metrics_vendas_sem_taxa_do_fechamento`, §9.6
+    "Sem a taxa EXATA"). Prova: `e2e/fechamento-do-dia-avisos.spec.ts`,
+    `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-2").
   - **Sem dinheiro em espécie, não se digita 0; e o dia aberto avisa** (A50
     da 5ª simulação). Nada esperado e nenhum movimento em dinheiro no dia: o
     "Dinheiro contado" é opcional, e em branco fecha com R$ 0,00. Hoje,
@@ -599,11 +603,29 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       vezes (e o débito); senão vale a regra geral daquelas vezes — o número
       que a tela mostra no campo vazio. Sem herdar faixa da bandeira: a Elo só
       com o 3x (3%) e a geral com o 5x (6%) → a venda Elo em 5x usa 6%; a Elo
-      em 3x, os 3% dela. (A regra geral segue caindo na maior quantidade
-      cadastrada abaixo: a Elo em 4x, sem 4x em nenhuma das duas, usa o 3x da
-      geral.) É `private.comissao_taxa_pct` com a bandeira e, na tela,
-      `taxaDoCreditoNaBandeira` (`lib/financeiro/bandeiras.ts`, o aviso da
-      taxa); o prazo, o dela, senão o geral (`private.prazo_da_operadora`).
+      em 3x, os 3% dela. É `private.comissao_taxa_pct` com a bandeira e, na
+      tela, `taxaDoCreditoNaBandeira` (`lib/financeiro/bandeiras.ts`, o aviso
+      da taxa); o prazo, o dela, senão o geral (`private.prazo_da_operadora`).
+    - **Sem a taxa EXATA daquelas vezes, a taxa é 0%** (F16-2, o Heitor,
+      revisão das decisões da F16, opção A — o fallback "pode levar a erros
+      de cálculos"; migration `20261103001702`): nem na bandeira nem na regra
+      geral → 0%, nunca a de outras vezes. Nada em 4x, a venda Elo 4x sai com
+      0% — comissão sobre o valor cheio, o depósito previsto da operadora é o
+      valor da venda (era o 3x da geral). Débito e 1x seguem a mesma regra.
+      Nada é recusado: a venda grava normalmente. A taxa que existe mora em
+      `private.taxa_da_maquininha` (a da bandeira, senão a geral exata,
+      `private.taxa_geral_exata`; ou nula), e `comissao_taxa_pct` é ela ou 0.
+      **A clínica fica sabendo**: em "Taxas da maquininha", a linha sem taxa
+      (na regra geral; na bandeira, quando nem ela nem a geral têm) aparece em
+      destaque de aviso — "Sem taxa: as vendas em 4x saem sem desconto da
+      operadora." (`data-sem-taxa`) —, menos o Pix (sem taxa é comum) e o
+      crédito acima do "Parcelar no crédito até" (não se vende ali; decisões
+      da F17, para o Heitor revisar); e o Fechamento do dia com venda no
+      cartão sem taxa diz "Sem taxa da maquininha cadastrada — saiu sem
+      desconto da operadora: Crédito 4x (Elo): 1 venda, R$ 1.100,00…"
+      (`metrics_vendas_sem_taxa_do_fechamento`, aviso `sem-taxa`). Prova:
+      `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-2"),
+      `tests/financeiro-formas.test.ts`, `tests/cartao-por-bandeira.test.ts`.
     - **"Preencher pela taxa por parcela"** (r4-f15-01; o Heitor: "a taxa é
       por parcela, por exemplo 1.15% por parcela, então a taxa total é a taxa
       vezes a quantidade de parcelas"): em "Taxas da maquininha", na regra
@@ -707,9 +729,10 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     portal da cliente); o Fechamento do dia separa o crédito por vezes
     (`CREDIT_CARD:3`, "Cartão de crédito 3x"). Escolher N vezes sem a taxa
     da maquininha de N vezes cadastrada AVISA quem recebe (`AvisoDaTaxa`):
-    a comissão usa a da maior parcela cadastrada abaixo (`taxaQueVale`, o
-    espelho de `private.comissao_taxa_pct`) ou nenhuma. As taxas vão de
-    à vista a 12x em Configurações → Comissões.
+    a venda sai sem desconto da operadora (0%), também na comissão
+    (`taxaQueVale`, o espelho de `private.comissao_taxa_pct` — F16-2: nunca
+    a de outras vezes). As taxas vão de à vista a 12x em Configurações →
+    Comissões.
   - **A linha do tempo também diz a forma pelo nome** (D18 da simulação de
     2026-10-29; migration `20261029000301`): "Pagamento confirmado via
     Crédito 3x", "via Dinheiro" — era "via CREDIT_CARD em 3x". No banco,
@@ -978,6 +1001,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
 ❌ Ler a taxa ou o prazo do cartão sem a bandeira do pagamento (é private.comissao_taxa_pct com a bandeira e private.prazo_da_operadora; o de 3 argumentos é só a regra geral)
 ❌ Dar à bandeira a taxa de OUTRA quantidade de vezes dela (a Elo do 3x no 5x) — sem a taxa exata na bandeira, vale a regra geral daquelas vezes (r4-f15-01)
+❌ Cair na taxa de OUTRA quantidade de vezes, na bandeira ou na regra geral (o 3x no 4x) — sem a taxa exata, é 0% e a tela avisa (F16-2); a taxa que existe é private.taxa_da_maquininha
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)

@@ -446,6 +446,12 @@ export interface AvisosDoFechamento {
   taxas: number
   /** Lançamentos do dia pagos DEPOIS do último fechamento (zero sem fechamento). */
   movimentosDepois: number
+  /**
+   * F16-2: as vendas no cartão do dia SEM taxa da maquininha cadastrada para a
+   * forma, as vezes e a bandeira delas — saíram sem desconto da operadora (0%).
+   * `metrics_vendas_sem_taxa_do_fechamento`; o Pix sem taxa não entra.
+   */
+  vendasSemTaxa: { metodo: string; vezes: number; bandeira: string | null; vendas: number; valor: number }[]
 }
 
 /**
@@ -457,13 +463,19 @@ export interface AvisosDoFechamento {
 export async function getAvisosDoFechamento(args: {
   tenantId: string; branchId: string; from: Date; to: Date; desde: string | null
 }): Promise<AvisosDoFechamento> {
-  const { data, error } = await createAdminClient().rpc('metrics_avisos_do_fechamento', {
-    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
-    p_desde: args.desde,
-  })
+  const janela = { p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString() }
+  const [{ data, error }, semTaxa] = await Promise.all([
+    createAdminClient().rpc('metrics_avisos_do_fechamento', { ...janela, p_desde: args.desde }),
+    createAdminClient().rpc('metrics_vendas_sem_taxa_do_fechamento', janela),
+  ])
   logRpcError('metrics_avisos_do_fechamento', error)
+  logRpcError('metrics_vendas_sem_taxa_do_fechamento', semTaxa.error)
   const r = ((data as Record<string, unknown>[] | null) ?? [])[0] ?? {}
-  return { taxas: n(r.taxas), movimentosDepois: n(r.movimentos_depois) }
+  const vendasSemTaxa = ((semTaxa.data as Record<string, unknown>[] | null) ?? []).map(x => ({
+    metodo: String(x.metodo), vezes: n(x.vezes), bandeira: (x.bandeira as string | null) ?? null,
+    vendas: n(x.vendas), valor: n(x.valor),
+  }))
+  return { taxas: n(r.taxas), movimentosDepois: n(r.movimentos_depois), vendasSemTaxa }
 }
 
 export interface ComposicaoFinanceira {
