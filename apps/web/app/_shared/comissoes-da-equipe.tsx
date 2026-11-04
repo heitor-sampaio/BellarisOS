@@ -1,4 +1,6 @@
 import { can, ownerFilter } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import type { TenantContext } from '@estetica-os/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FinanceiroComissoes } from '@/components/shared/financeiro-comissoes'
@@ -37,11 +39,21 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
     tenantId: ctx.tenantId!, branchIds: doFiltro, inicio: periodo.inicio, fim: periodo.fim,
     profissionalId: soAsProprias,
   }
-  const [resumo, extrato, fechamentos] = await Promise.all([
+  const [resumoLido, extrato, fechamentos] = await Promise.all([
     resumoDasComissoes(recorte),
     extratoDasComissoes(recorte),
     fechamentosRecentes(ctx.tenantId!, doFiltro, soAsProprias),
   ])
+  // Quem foi desativado segue com a comissão dele, MARCADO (A43 da 6ª
+  // simulação: a Nina desativada aparecia como qualquer outra) — "(inativo)",
+  // a marca do filtro "Responsável" do quadro (H6).
+  const ids = [...new Set(resumoLido.map(r => r.professionalId))]
+  const inativos = new Set(ids.length
+    ? ((await ler(createAdminClient().from('users').select('id').eq('tenant_id', ctx.tenantId!).eq('is_active', false).in('id', ids),
+        'ver quem foi desativado')) ?? []).map(u => u.id as string)
+    : [])
+  const marcar = (id: string, nome: string) => (inativos.has(id) ? `${nome} (inativo)` : nome)
+  const resumo = resumoLido.map(r => ({ ...r, professionalName: marcar(r.professionalId, r.professionalName) }))
 
   // Os totais somam as LINHAS do resumo, que já vêm agregadas no banco (uma
   // por profissional e unidade) — não há teto de linhas a truncar aqui.

@@ -103,3 +103,16 @@ test('quem vê o financeiro de todos continua com "Financeiro" e "Faturamento do
     await expect(p.locator('[data-minhas-comissoes]')).toHaveCount(0)
   })
 })
+
+// A43 da 6ª simulação: depois de desativada, a Nina seguia na tabela de comissões sem a marca.
+test('A43: quem foi desativado aparece "(inativo)" nas comissões', async ({ browser }) => {
+  expect((await db().from('users').update({ is_active: false }).eq('id', dela!.userId)).error).toBeNull()
+  try {
+    await comSessao(browser, gestor!, async p => {
+      await p.goto(`/${slug}/financeiro/comissoes`)
+      await expect(p.locator(`[data-comissoes-de="${dela!.userId}"]`)).toContainText('(inativo)')
+    })
+  } finally {
+    await db().from('users').update({ is_active: true }).eq('id', dela!.userId)
+  }
+})

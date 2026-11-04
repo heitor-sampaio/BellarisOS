@@ -353,6 +353,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 - Prova: `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-calculo.spec.ts`,
   `e2e/comissoes-pagamento-integral.spec.ts` e `e2e/comissoes-fechamento.spec.ts`; os valores do eixo novo no
   `e2e/indicadores-cenario.spec.ts`.
+- **Quem foi desativado aparece "(inativo)" em Financeiro → Comissões** (A43
+  da 6ª simulação, 2026-11-04): a comissão dele continua (a pagar, lançada,
+  paga), com a marca do filtro "Responsável" do quadro (H6) — era igual à de
+  quem está ativo (`ComissoesDaEquipe`). Prova:
+  `e2e/comissoes-minhas-no-menu.spec.ts` ("A43").
 
 ---
 
