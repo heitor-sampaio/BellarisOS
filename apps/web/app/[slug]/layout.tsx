@@ -10,7 +10,8 @@ import { avisoDaAssinatura } from '@/lib/redes/aviso'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
 import { Suspense } from 'react'
 import { Copilot } from '@/components/copilot/copilot'
-import { copilotNaTela } from '@/lib/copilot/disponivel'
+import { CopilotForaDoPlano } from '@/components/copilot/copilot-fora-do-plano'
+import { copilotNaTela, copilotForaDoPlanoNaTela, redeEmTeste } from '@/lib/copilot/disponivel'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { ENDERECOS_RESERVADOS } from '@/lib/unidades/endereco'
@@ -132,6 +133,10 @@ export default async function BranchLayout({
       </main>
       {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}
       {copilotNaTela(ctx) && <Suspense fallback={null}><Copilot /></Suspense>}
+      {/* Fora do plano, explicado a quem administra a clínica (A51). */}
+      {!copilotNaTela(ctx) && copilotForaDoPlanoNaTela(ctx) && (
+        <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
+      )}
     </SidebarProvider>
     </UmaUnidadeProvider>
   )

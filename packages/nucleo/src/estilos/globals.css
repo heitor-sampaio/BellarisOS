@@ -2672,3 +2672,14 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .cartao-que-abre > summary::-webkit-details-marker { display: none; }
 .cartao-que-abre > summary .seta-do-cartao { transition: transform 150ms ease; }
 .cartao-que-abre[open] > summary .seta-do-cartao { transform: rotate(90deg); }
+
+/* O Copilot fora do plano (A51 da 6ª simulação): o mesmo lugar do botão, sem
+   o preenchimento de marca — não é uma ação, é um aviso —, e o painel só com
+   a altura do texto no computador. */
+.copilot-botao.copilot-botao-fora {
+  background: var(--surface); color: var(--brand);
+  border: 1px solid var(--border); box-shadow: var(--shadow-popover);
+}
+.copilot-botao.copilot-botao-fora:hover { background: var(--bg-app); }
+@media (min-width: 1024px) { .copilot-painel.copilot-painel-fora { height: auto; } }
+.copilot-painel-fora .copilot-vazio a { color: var(--brand); font-weight: var(--weight-bold); }

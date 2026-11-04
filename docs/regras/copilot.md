@@ -27,6 +27,17 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   das outras funcionalidades: ele custa por uso —, o Copilot NO CARGO, a
   `OPENAI_API_KEY` configurada e fora da sessão de suporte. A rota, as actions
   e o layout conferem o mesmo.
+- **Fora do plano, ele aparece EXPLICADO a quem administra a clínica** (A51
+  da 6ª simulação, 2026-11-04; princípio 3: no teste grátis — "tudo, menos o
+  Copilot", J-7 — ele sumia calado). Da rede e com Configurações em
+  Gerenciar (`copilotForaDoPlanoNaTela`): o mesmo lugar do botão, sem o
+  preenchimento de marca ("Copilot: fora do plano"), abre só o aviso — "O
+  Copilot não está no seu plano de teste." (`redeEmTeste`, lido na hora) ou
+  "O Copilot não faz parte do plano da clínica." — e o link para
+  Configurações → Assinatura (`CopilotForaDoPlano`). Nada se libera: a rota
+  segue 403. A equipe não ganha um botão que não usa. Prova:
+  `e2e/copilot-fora-do-plano.spec.ts` (roda no `next dev`: não precisa da
+  OpenAI) e o caso "rede sem o Copilot no plano" de `e2e/copilot-esqueleto.spec.ts`.
 - **O cargo** (o módulo `copilot` da matriz, pedido do Heitor de 2026-10-08):
   Sem acesso, **Ver** (só as consultas: o modelo nem recebe as gravações) e
   **Gerenciar** (também as gravações — cada uma ainda exige o módulo dela). O

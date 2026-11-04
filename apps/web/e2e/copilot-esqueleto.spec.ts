@@ -114,6 +114,8 @@ test('rede sem o Copilot no plano — ou sem plano nenhum: nem botão, nem rota,
       await p.goto('/admin/dashboard')
       await p.waitForLoadState('networkidle')
       await expect(p.getByRole('button', { name: 'Copilot', exact: true })).toHaveCount(0)
+      // A51: no lugar, o aviso de que o Copilot não está no plano (só a quem administra).
+      await expect(p.getByRole('button', { name: 'Copilot: fora do plano' })).toBeVisible()
       const r = await p.request.post('/api/copilot', { headers: { origin: process.env.E2E_BASE_URL! }, multipart: { texto: 'oi', pagina: '/admin' } })
       expect(r.status()).toBe(403)
     })

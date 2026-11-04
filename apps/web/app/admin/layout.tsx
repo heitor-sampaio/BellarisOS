@@ -8,7 +8,8 @@ import { avisoDaAssinatura } from '@/lib/redes/aviso'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
 import { Suspense } from 'react'
 import { Copilot } from '@/components/copilot/copilot'
-import { copilotNaTela } from '@/lib/copilot/disponivel'
+import { CopilotForaDoPlano } from '@/components/copilot/copilot-fora-do-plano'
+import { copilotNaTela, copilotForaDoPlanoNaTela, redeEmTeste } from '@/lib/copilot/disponivel'
 import { comAviso } from '@/lib/aviso-da-url'
 import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
 import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
@@ -69,6 +70,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </main>
       {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}
       {copilotNaTela(ctx) && <Suspense fallback={null}><Copilot /></Suspense>}
+      {/* Fora do plano, explicado a quem administra a clínica (A51). */}
+      {!copilotNaTela(ctx) && copilotForaDoPlanoNaTela(ctx) && (
+        <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
+      )}
     </SidebarProvider>
     </UmaUnidadeProvider>
   )
