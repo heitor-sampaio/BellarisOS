@@ -657,7 +657,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       (1x 1,15%, 2x 2,30% … 12x 13,80%; `creditoPelaTaxaPorParcela`). Só
       preenche os campos — grava no "Salvar taxas" de sempre, cada campo
       segue editável, o débito não muda —, e a tabela continua sendo a verdade
-      do cálculo: não há coluna de "taxa por parcela" no banco.
+      do cálculo: não há coluna de "taxa por parcela" no banco. **O 1x também
+      muda, e a tela DIZ** (A5 da 6ª simulação, 2026-11-04; decidido pelo
+      princípio 3, mantendo o "1x a 12x" do Heitor): o texto diz "de 1x (à
+      vista, inclusive)", e quando o 1x tinha outro valor aparece "O crédito à
+      vista (1x) também mudou: era 1,19%, agora 1,15%. Confira antes de
+      salvar." (`data-aviso-do-1x`). Prova:
+      `e2e/financeiro-cartao-por-bandeira.spec.ts` ("A5").
     - **As linhas do crédito só até o "Parcelar no crédito até"** (F17-4, o
       Heitor: "as linhas só devem aparecer se estiverem dentro do range de
       parcelas que são oferecidas"): com o limite escolhido (até 5x), a tabela

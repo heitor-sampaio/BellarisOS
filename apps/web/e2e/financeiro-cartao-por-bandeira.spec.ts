@@ -396,6 +396,26 @@ test.describe.serial('o cartão por bandeira', () => {
     expect((await db().from('tenants').select('cartao_por_bandeira').eq('id', rede!.tenantId).single()).data?.cartao_por_bandeira)
       .toEqual({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } })
   })
+  // A5 da 6ª simulação: o "Preencher pela taxa por parcela" também troca o
+  // crédito 1x (é a regra do r4-f15-01, "1x a 12x") — e agora DIZ, quando o 1x
+  // tinha outro valor (princípio 3: nada de mudança calada).
+  test('A5: "Preencher pela taxa por parcela" diz que mudou o crédito à vista (1x), quando ele tinha outro valor', async ({ browser }) => {
+    await como(browser, dona!, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      const card = p.locator('[aria-label="Taxas da maquininha"]')
+      await card.getByLabel('Taxa Crédito à vista').fill('1,19')
+      await card.getByRole('button', { name: 'Preencher pela taxa por parcela' }).click()
+      await card.getByLabel('Taxa por parcela (%)').fill('1,15')
+      await card.getByRole('button', { name: 'Preencher', exact: true }).click()
+      await expect(card.getByLabel('Taxa Crédito à vista')).toHaveValue('1,15')
+      await expect(card.locator('[data-aviso-do-1x]')).toContainText('O crédito à vista (1x) também mudou: era 1,19%, agora 1,15%')
+      // Com o 1x já igual, preencher de novo não avisa.
+      await card.getByRole('button', { name: 'Preencher pela taxa por parcela' }).click()
+      await card.getByLabel('Taxa por parcela (%)').fill('1,15')
+      await card.getByRole('button', { name: 'Preencher', exact: true }).click()
+      await expect(card.locator('[data-aviso-do-1x]')).toHaveCount(0)
+    })
+  })
   // r4-f15-02 (o Heitor, revisão das decisões da F15): o "Novo lançamento" do
   // Financeiro, na RECEITA paga no cartão (crédito ou débito), pergunta o mesmo
   // "Bandeira (opcional)" dos outros lugares e a grava. Fora do cartão, ou na

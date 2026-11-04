@@ -332,6 +332,10 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
   const [porParcelaAberto, setPorParcelaAberto] = useState(false)
   const [taxaPorParcela, setTaxaPorParcela] = useState('')
   const [erroPorParcela, setErroPorParcela] = useState<string | null>(null)
+  // A5 da 6ª simulação: o preencher troca também o crédito 1x (a regra do
+  // r4-f15-01 é "1x a 12x"), e diz isso quando o 1x tinha outro valor
+  // (princípio 3: nada muda calado).
+  const [avisoDo1x, setAvisoDo1x] = useState<string | null>(null)
   function preencherPelaTaxaPorParcela() {
     const texto = taxaPorParcela.trim()
     const pct = texto ? parseDecimal(texto, 4) : NaN
@@ -346,6 +350,11 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     if (recusa) { setErroPorParcela(`Em ${preenchido[preenchido.length - 1]!.parcelas}x: ${recusa}`); return }
     const novos = Object.fromEntries(preenchido
       .map(t => [chave('CREDIT_CARD', t.parcelas), t.taxa.toFixed(2).replace('.', ',')]))
+    const antesDo1x = ((bandeira ? daBandeira.valores : valores)[chave('CREDIT_CARD', 1)] ?? '').trim()
+    const depoisDo1x = novos[chave('CREDIT_CARD', 1)] as string | undefined
+    setAvisoDo1x(antesDo1x && depoisDo1x && parseDecimal(antesDo1x, 4) !== parseDecimal(depoisDo1x, 4)
+      ? `O crédito à vista (1x) também mudou: era ${antesDo1x}%, agora ${depoisDo1x}%. Confira antes de salvar.`
+      : null)
     if (bandeira) mudarNaBandeira({ valores: { ...daBandeira.valores, ...novos } })
     else setValores(v => ({ ...v, ...novos }))
     setSalvo(false)
@@ -526,11 +535,19 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
             <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(false); setErroPorParcela(null) }}>Cancelar</button>
           </div>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 2x 2,30%, 3x 3,45%…).
+            {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x (à vista, inclusive) a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 1x 1,15%, 2x 2,30%, 3x 3,45%…).
             {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
           </p>
           {erroPorParcela && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroPorParcela}</p>}
         </div>
+      )}
+      {avisoDo1x && (
+        <p role="status" data-aviso-do-1x style={{
+          fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)', padding: '8px 12px',
+          borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+        }}>
+          {avisoDo1x}
+        </p>
       )}
       <div style={grade}>
         {parcelasNaTela.map(n => campo('CREDIT_CARD', n, `${n}x`))}
