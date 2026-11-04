@@ -686,13 +686,24 @@ pré-pago ou de plano é o mesmo trabalho"; migration `20261103001501`): a
 parte da unidade no vendido (`procedure_sale_units.preco` — "3 limpezas por
 R$ 450" → R$ 150 por limpeza atendida) e a soma dos procedimentos da sessão
 no plano vendido (ACCEPTED/COMPLETED; `treatment_plan_session_procedures
-.price`, com o desconto rateado), no procedimento do atendimento, no dia da
-sessão, para quem atendeu — nas mesmas quatro contas. O plano cancelado fica
-de fora, como nas Vendas. Nenhuma das duas tem lançamento ligado ao
+.price`, com o desconto rateado), no dia da sessão, para quem atendeu — nas
+mesmas quatro contas. O plano cancelado fica de fora, como nas Vendas.
+**No ranking por PROCEDIMENTO, cada procedimento da sessão conta no SEU**
+(r4-f15-03, o Heitor, revisão das decisões da F15, 2026-11-03: "dividir pelos
+procedimentos da sessão"; migration `20261103001601`): sessão Botox R$ 800 +
+Preenchimento R$ 1.200, atendimento marcado "Botox" → Botox R$ 800 e
+Preenchimento R$ 1.200, cada um na sua categoria (era Botox R$ 2.000). O
+conjunto das quatro contas tem a coluna `procedure_id` (a do procedimento da
+sessão no plano; nula no resto, que segue o do atendimento) e a conta por
+procedimento lê `coalesce(t.procedure_id, a.procedure_id)`. O ranking de
+PROFISSIONAIS e o total não mudam (quem atendeu, R$ 2.000), e as EXECUÇÕES
+seguem o atendimento: o Preenchimento aparece com 0 execuções e R$ 1.200,
+como o pago no período sem execução nele (decisão da F16, para o Heitor
+revisar). Nenhuma das duas tem lançamento ligado ao
 atendimento, e o "Meu faturamento" (venda) não muda. Produto segue fora (não
 é atendimento). Prova:
-`e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com o
-caso r3-f13-07).
+`e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com os
+casos r3-f13-07 e r4-f15-03).
 
 **"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
 2026-11-02): ativo, com `provides_services` e ao alcance das unidades do

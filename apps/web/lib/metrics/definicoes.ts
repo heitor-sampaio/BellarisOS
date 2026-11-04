@@ -50,7 +50,7 @@ export const DEFINICOES = {
     rotulo: 'O que a receita dos atendimentos conta',
     texto: 'O valor dos atendimentos FEITOS, para quem atendeu: o que a cliente pagou pelo avulso (pelo dia do PAGAMENTO, '
       + 'horário de Brasília, com o desconto e sem estornos) e, na sessão de pacote, de pré-pago ou de plano, a parte dela '
-      + 'no que foi vendido, no dia da sessão. É a conta da EXECUÇÃO; o "Meu faturamento" é a da VENDA (o pacote e o '
+      + 'no que foi vendido, no dia da sessão (na de plano, cada procedimento da sessão conta no seu). É a conta da EXECUÇÃO; o "Meu faturamento" é a da VENDA (o pacote e o '
       + 'pré-pago inteiros para quem vendeu). O concluído ainda não pago não entra; o produto também não (está '
       + 'no faturamento e nas Vendas).',
   },

@@ -31,6 +31,7 @@ let proc = ''
 let pacote = ''
 let prePago = ''
 let plano = ''
+let plano2 = ''
 const de = () => new Date(Date.now() - 86_400_000).toISOString()
 const ate = () => new Date(Date.now() + 86_400_000).toISOString()
 const n = (v: unknown) => Number(v ?? 0)
@@ -124,12 +125,12 @@ test.afterAll(async () => {
       await passo('pacote da cliente', b.from('client_packages').delete().eq('id', pacote))
     }
     await passo('pacotes', b.from('service_packages').delete().eq('tenant_id', rede.tenantId))
-    if (plano) {
-      const { data: ss } = await b.from('treatment_plan_sessions').select('id').eq('plan_id', plano)
+    for (const pl of [plano, plano2].filter(Boolean)) {
+      const { data: ss } = await b.from('treatment_plan_sessions').select('id').eq('plan_id', pl)
       const sIds = (ss ?? []).map(s => s.id as string)
       if (sIds.length) await passo('procedimentos da sessão', b.from('treatment_plan_session_procedures').delete().in('session_id', sIds))
-      await passo('sessões do plano', b.from('treatment_plan_sessions').delete().eq('plan_id', plano))
-      await passo('plano', b.from('treatment_plans').delete().eq('id', plano))
+      await passo('sessões do plano', b.from('treatment_plan_sessions').delete().eq('plan_id', pl))
+      await passo('plano', b.from('treatment_plans').delete().eq('id', pl))
     }
     const { data: vendas } = await b.from('procedure_sales').select('id').eq('tenant_id', rede.tenantId)
     const vIds = (vendas ?? []).map(v => v.id as string)
@@ -270,4 +271,80 @@ test('r3-f13-07: a unidade pré-paga e a sessão de plano feitas também entram 
   expect(n(daRenata![0]!.revenue_cash)).toBe(0)
   const { data: clinica } = await db().rpc('metrics_core', p)
   expect(n(clinica![0]!.revenue_cash)).toBe(1200)
+})
+
+// r4-f15-03 (o Heitor, revisão das decisões da F15, 03/11): a sessão de plano
+// com DOIS procedimentos conta cada um no SEU procedimento, pelo preço dele no
+// plano — e não inteira no procedimento do atendimento. Sessão Botox R$ 800 +
+// Preenchimento R$ 1.200, atendimento marcado "Botox": Botox +R$ 800,
+// Preenchimento +R$ 1.200 (na categoria dele). O ranking de PROFISSIONAIS não
+// muda (quem atendeu, +R$ 2.000), e o total da tela também não (+R$ 2.000).
+// As execuções seguem o atendimento (o Botox, +1).
+test('r4-f15-03: a sessão de plano entra no ranking por procedimento dividida pelos procedimentos da sessão', async () => {
+  const p = { p_tenant: rede!.tenantId, p_branch_ids: [rede!.branchId], p_from: de(), p_to: ate() }
+  type Proc = { procedure_id: string; appointments: number; revenue: number }
+  type Rel = { por_procedimento: { nome: string; categoria: string; receita: number; execucoes: number }[]; por_profissional: { receita: number }[]; receita_dos_atendimentos: number }
+  const categoriaDoPreench = `e2e-preench-${marca}`
+  const { data: pr2, error: ePr2 } = await db().from('procedures').insert({
+    tenant_id: rede!.tenantId, name: `${PREFIXO} Preenchimento ${marca}`, category: categoriaDoPreench, duration_min: 30, price: 1200,
+  }).select('id, name').single<{ id: string; name: string }>()
+  expect(ePr2, 'criar o Preenchimento').toBeNull()
+  const nomeDoBotox = `${PREFIXO} Laser ${marca}`
+
+  const fotografar = async () => {
+    const { data: procs, error: e1 } = await db().rpc('metrics_top_procedures', { ...p, p_limit: 10 })
+    expect(e1).toBeNull()
+    const porProc = Object.fromEntries((procs as Proc[]).map(x => [x.procedure_id, [n(x.appointments), n(x.revenue)]]))
+    const { data: profs, error: e2 } = await db().rpc('metrics_top_professionals', { ...p, p_limit: 10 })
+    expect(e2).toBeNull()
+    const porProf = Object.fromEntries((profs as { professional_id: string; revenue: number }[]).map(x => [x.professional_id, n(x.revenue)]))
+    const { data: rel, error: e3 } = await db().rpc('metrics_relatorio', { ...p, p_prev_from: de(), p_prev_to: de(), p_aba: 'procedimentos', p_granularidade: 'day' })
+    expect(e3).toBeNull()
+    const r = rel as Rel
+    const relProc = Object.fromEntries(r.por_procedimento.map(x => [x.nome, [n(x.execucoes), n(x.receita), x.categoria] as const]))
+    const relTotalProf = r.por_profissional.reduce((s, x) => s + n(x.receita), 0)
+    const { data: cat, error: e4 } = await db().rpc('metrics_receita_por_categoria_de_procedimento', p)
+    expect(e4).toBeNull()
+    const porCat = Object.fromEntries((cat as { categoria: string; receita: number }[]).map(c => [c.categoria, n(c.receita)]))
+    return { porProc, porProf, relProc, relTotalProf, total: n(r.receita_dos_atendimentos), porCat }
+  }
+  const antes = await fotografar()
+
+  // O plano vendido, com a sessão Botox R$ 800 + Preenchimento R$ 1.200; o atendimento é "Botox".
+  const { data: tp, error: eTp } = await db().from('treatment_plans').insert({
+    client_id: cliente, branch_id: rede!.branchId, professional_id: paula!.userId, status: 'ACCEPTED', name: `${PREFIXO} Plano 2 ${marca}`,
+  }).select('id').single<{ id: string }>()
+  expect(eTp, 'criar o plano').toBeNull()
+  plano2 = tp!.id
+  const ap = await atendimento(paula!.userId, 2000)
+  const { data: ses, error: eSes } = await db().from('treatment_plan_sessions').insert({ plan_id: plano2, sort_order: 1, appointment_id: ap }).select('id').single<{ id: string }>()
+  expect(eSes, 'a sessão do plano').toBeNull()
+  expect((await db().from('treatment_plan_session_procedures').insert([
+    { session_id: ses!.id, procedure_id: proc, price: 800, sort_order: 1 },
+    { session_id: ses!.id, procedure_id: pr2!.id, price: 1200, sort_order: 2 },
+  ])).error).toBeNull()
+  const { error: eConc } = await db().rpc('concluir_atendimento', {
+    p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null, p_dados: { insumos: [], comissoes: [] },
+  })
+  expect(eConc, 'concluir').toBeNull()
+
+  const depois = await fotografar()
+  const [exB0, rB0] = antes.porProc[proc] ?? [0, 0]
+  const [exB1, rB1] = depois.porProc[proc] ?? [0, 0]
+  expect([exB1! - exB0!, rB1! - rB0!], 'o Botox: +1 execução, +R$ 800 (não R$ 2.000)').toEqual([1, 800])
+  expect(depois.porProc[pr2!.id], 'o Preenchimento: 0 execuções, R$ 1.200').toEqual([0, 1200])
+  expect(depois.porProf[paula!.userId]! - (antes.porProf[paula!.userId] ?? 0), 'a Paula (quem atendeu): +R$ 2.000').toBe(2000)
+
+  // Os Relatórios: a tabela por procedimento, a por profissional e o total.
+  const botoxAntes = antes.relProc[nomeDoBotox]
+  const botoxDepois = depois.relProc[nomeDoBotox]!
+  expect([botoxDepois[0] - (botoxAntes?.[0] ?? 0), botoxDepois[1] - (botoxAntes?.[1] ?? 0)], 'Relatórios: o Botox +1, +R$ 800').toEqual([1, 800])
+  expect(depois.relProc[pr2!.name], 'Relatórios: o Preenchimento, na categoria dele').toEqual([0, 1200, categoriaDoPreench])
+  expect(depois.relTotalProf - antes.relTotalProf, 'Relatórios por profissional: +R$ 2.000').toBe(2000)
+  expect(depois.total - antes.total, 'o total da tela: +R$ 2.000').toBe(2000)
+
+  // A receita por categoria: a de cada procedimento, e fecha com o total.
+  expect((depois.porCat['e2e'] ?? 0) - (antes.porCat['e2e'] ?? 0), 'a categoria do Botox: +R$ 800').toBe(800)
+  expect(depois.porCat[categoriaDoPreench], 'a categoria do Preenchimento: R$ 1.200').toBe(1200)
+  expect(Object.values(depois.porCat).reduce((s, v) => s + v, 0), 'a receita por categoria fecha com o total').toBe(depois.total)
 })
