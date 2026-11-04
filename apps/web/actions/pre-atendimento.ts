@@ -114,7 +114,8 @@ async function agendamentoAoAlcance(ctx: Awaited<ReturnType<typeof getTenantCont
 }
 
 export interface SituacaoDoPreAtendimento {
-  estado: 'PENDENTE' | 'RESPONDIDO' | null
+  /** NAO_ENVIADA: nada pendente nem respondido para este agendamento — a equipe manda à mão (A49). */
+  estado: 'PENDENTE' | 'RESPONDIDO' | 'NAO_ENVIADA' | null
   modo?: 'COMPLETO' | 'CONFIRMAR'
   respondidoEm?: string | null
   /** O cadastro tem CPF ou nascimento — sem um dos dois, não há link. */
@@ -164,7 +165,9 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
     }
   }
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }
-  return { estado: null, podeLink }
+  // Nenhuma ficha mandada (o envio automático da rede desligado, ou respondida
+  // há pouco): a equipe manda à mão daqui (A49 da 6ª simulação).
+  return { estado: 'NAO_ENVIADA', podeLink, pelaConversa, clienteId: ap.client_id as string }
 }
 
 export interface LinkDoPreAtendimento {
@@ -238,20 +241,29 @@ export async function enviarFichaPelaConversa(appointmentId: string): Promise<{ 
   }
 }
 
-/** O link novo da ficha pendente (revoga o anterior), com a mensagem pronta. */
+/**
+ * O link novo da ficha pendente (revoga o anterior), com a mensagem pronta.
+ * Sem pendente — o envio automático da rede desligado, ou a ficha respondida
+ * há pouco —, abre um para ESTE agendamento na hora (A49 da 6ª simulação: a
+ * ficha não tinha caminho manual). O padrão da rede não muda.
+ */
 async function criarLinkDaFicha(
   ctx: Awaited<ReturnType<typeof getTenantContext>>,
-  ap: { client_id: string; branch_id: string },
+  ap: { id: string; client_id: string; branch_id: string },
 ): Promise<{ error: string } | { link: LinkDoPreAtendimento }> {
   const admin = createAdminClient()
-  const pendente = await preAtendimentoPendente(admin, ap.client_id)
-  if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de pré-atendimento esperando resposta.' }
   const cliente = await ler(admin.from('clients').select('name, document, birth_date, phone').eq('id', ap.client_id).single(), 'buscar a cliente')
   const temCpf = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0
   if (!temCpf && !cliente?.birth_date) {
     // Sem nada para conferir, o link (com dado de saúde) valeria para quem o tivesse na mão.
     return { error: 'O cadastro da cliente não tem CPF nem data de nascimento, e o link precisa de um dos dois para conferir quem abre. Complete o cadastro.' }
   }
+  let pendente = await preAtendimentoPendente(admin, ap.client_id)
+  if (!pendente) {
+    await gravar(admin.rpc('pre_atendimento_abrir_manual', { p_tenant: ctx.tenantId!, p_appointment: ap.id }), 'abrir a ficha de pré-atendimento')
+    pendente = await preAtendimentoPendente(admin, ap.client_id)
+  }
+  if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de pré-atendimento esperando resposta.' }
 
   const { token, hash } = novoToken()
   const expiraEm = new Date(Date.now() + VALIDADE_DO_LINK_DIAS * 86_400_000).toISOString()

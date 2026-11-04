@@ -106,6 +106,7 @@ export const ISOLADOS = [
   'ficha-cadastro-uma-vez.spec.ts',
   'ficha-cadastro-validacao.spec.ts',
   'ficha-pre-atendimento.spec.ts',
+  'ficha-pre-atendimento-envio-manual.spec.ts',
   'ficha-pre-atendimento-obrigatoria.spec.ts',
   'financeiro-a-pagar-vencimento.spec.ts',
   'financeiro-a-receber-concluido.spec.ts',

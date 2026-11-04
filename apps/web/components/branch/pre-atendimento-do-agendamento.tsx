@@ -18,7 +18,10 @@ import {
  * pela conversa, pelo WhatsApp da clínica — 2026-10-21). Só o estado: as respostas
  * são do prontuário, e aparecem na sessão.
  *
- * Sem envio ligado na rede (nenhuma ficha mandada), não mostra nada.
+ * Nenhuma ficha mandada para este agendamento (o envio automático da rede
+ * desligado, que é o padrão, ou a ficha respondida há pouco): quem tem a agenda
+ * em Gerenciar manda daqui mesmo — "Enviar a ficha" abre o pendente na hora
+ * (A49 da 6ª simulação). Quem só vê não vê o bloco.
  */
 export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }: { appointmentId: string; slug?: string; podeMandar: boolean }) {
   const pathname = usePathname()
@@ -38,6 +41,8 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
   }, [appointmentId])
 
   if (!situacao?.estado) return null
+  const naoEnviada = situacao.estado === 'NAO_ENVIADA'
+  if (naoEnviada && !podeMandar) return null
 
   if (situacao.estado === 'RESPONDIDO') {
     return (
@@ -80,9 +85,15 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
   return (
     <div data-pre-atendimento-do-agendamento className="pre-atendimento-agendamento">
       <div className="pre-atendimento-agendamento-topo">
-        <span className="chip chip-warning">
-          <ClipboardList size={12} aria-hidden="true" /> Ficha de saúde pendente
-        </span>
+        {naoEnviada && !link && !enviado ? (
+          <span className="chip chip-muted">
+            <ClipboardList size={12} aria-hidden="true" /> Ficha de saúde
+          </span>
+        ) : (
+          <span className="chip chip-warning">
+            <ClipboardList size={12} aria-hidden="true" /> Ficha de saúde pendente
+          </span>
+        )}
         {podeMandar && situacao.podeLink && !link && !enviado && (
           <div className="pre-atendimento-agendamento-acoes">
             {situacao.pelaConversa && (
@@ -96,10 +107,17 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
           </div>
         )}
       </div>
+      {naoEnviada && !link && !enviado && (
+        <p className="pre-atendimento-agendamento-texto">A ficha de saúde não foi enviada para este agendamento.</p>
+      )}
       <p className="pre-atendimento-agendamento-texto">
-        {situacao.podeLink
-          ? 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
-          : 'Complete o CPF ou a data de nascimento para enviar o link. Sem eles, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
+        {naoEnviada && !link && !enviado
+          ? situacao.podeLink
+            ? 'Enviar a ficha gera o link: ela confirma o CPF (ou o nascimento) e responde pelo celular — e, se tiver o app, a ficha aparece lá também.'
+            : 'Complete o CPF ou a data de nascimento para enviar o link — ou responda a ficha aqui, no atendimento.'
+          : situacao.podeLink
+            ? 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
+            : 'Complete o CPF ou a data de nascimento para enviar o link. Sem eles, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
       </p>
       {!situacao.podeLink && situacao.clienteId && (
         <Link href={`${rotaCliente(pathname, slug, situacao.clienteId)}?aba=dados`} className="btn-secondary pre-atendimento-agendamento-botao" style={{ alignSelf: 'flex-start' }}>

@@ -596,7 +596,17 @@ const procedures = await ler(
     (pendente/respondida) — as respostas são do prontuário. Cliente sem CPF
     nem nascimento: a janela diz "Complete o CPF ou a data de nascimento para
     enviar o link" e leva ao cadastro (`?aba=dados`, via `lib/rotas`). "Ficha já
-    respondida" mostra o telefone/WhatsApp da UNIDADE para corrigir algo. Erro
+    respondida" mostra o telefone/WhatsApp da UNIDADE para corrigir algo.
+    **"Enviar a ficha" está SEMPRE na janela** (A49 da 6ª simulação,
+    2026-11-04; princípio 1): sem pendente — o envio automático da rede
+    desligado, que é o padrão (princípio 6), ou a ficha respondida há pouco —,
+    a janela diz "A ficha de saúde não foi enviada para este agendamento." e
+    o botão (e o "Mandar pela conversa") abre o pendente na hora, para ESTE
+    agendamento (`pre_atendimento_abrir_manual`, só o servidor; o modo do
+    gatilho, sem a janela de 30 dias — aqui é a clínica que pediu), e gera o
+    link. O padrão da rede não muda; quem só vê a agenda não vê o bloco nem
+    abre nada; o suporte não manda (`bloqueioDoSuporte`). Prova:
+    `e2e/ficha-pre-atendimento-envio-manual.spec.ts`. Erro
     de validação (no link e nas fichas): rola ao primeiro campo obrigatório
     vazio, foca, destaca e escreve a mensagem junto dele.
   - **A ficha não se responde vazia** (D2 da simulação de 2026-10-28,
