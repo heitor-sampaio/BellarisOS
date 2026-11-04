@@ -9134,6 +9134,18 @@ funil, só por automação).
 e a cliente do teste do Copilot nascia hoje, quando o "Reativar clientes" só
 conta quem foi cadastrada antes da janela. Nenhum defeito do sistema.
 
+**A completa de 04/11 de madrugada** (run 41774967717, 09819c83): isolados
+902/4, compartilhados 552/11. Nenhuma falha era do sistema (F19, f608472b):
+13 foram o banco do Supabase lento e depois REINICIANDO no meio da rodada
+(`postgres_logs` "starting PostgreSQL 17.6" às 05:24:56Z, 521 do Cloudflare de
+05:23:53 a 05:24:59, respostas de 10–49 s antes), provado cruzando o horário de
+cada trace com o `query_logs`; 2 eram specs com corrida (o aviso que o refresh
+desmonta no A61; o corpo da resposta perdido no inbox-caixas-do-cargo). O apoio
+do E2E tenta de novo no 5xx do Auth e o `tenantId()` mostra o erro de verdade;
+`docs/regras/e2e.md` ensina a reconhecer o banco caído. A observar: se a carga
+das duas metades juntas (4–5 mil req/min) pressiona o banco. Sobra antiga:
+`criarOutraRede` deixa unidade e membro para a varredura (~20 avisos por rodada).
+
 **F18 feita em 2026-11-04 — avaliação por procedimento, Pix, vezes na baixa e no Copilot, execução no dia**
 (31c8b677…26b078e2; migrations `20261104001801`–`1804`). Primeira frente sob os
 princípios de produto do CLAUDE.md §1 — nenhuma pergunta ao Heitor.
