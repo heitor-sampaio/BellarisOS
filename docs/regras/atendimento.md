@@ -1148,6 +1148,17 @@ O resto do fluxo:
   sempre e "Observações finais" na janela de concluir — o mesmo
   `medical_record_entries.notes`), o nome da aba Prontuário, com o rótulo
   ligado ao campo. Prova: `e2e/atendimento-campos-da-tela.spec.ts`.
+  **E é UM estado só na tela** (D8 e A29 da 6ª simulação, 2026-11-04;
+  princípio 3): o formulário da avaliação e o de sempre (o do plano gerado)
+  tinham dois estados para o mesmo campo, e depois de "Gerar plano e enviar à
+  recepção" a tela trocava para o segundo — Evolução e Intercorrências vazias,
+  sem o cartão "Insumos utilizados" —, e o "Finalizar" levava o vazio. Agora
+  o que se escreveu continua, o cartão de insumos fica no ramo do plano gerado
+  até concluir, e o rascunho guarda um campo só (o de antes, com dois, vale
+  pelo que tem texto). **A conclusão nunca troca a evolução gravada por
+  vazio**: `concluir_atendimento` mantém a evolução e a intercorrência que já
+  estavam no prontuário quando a da conclusão vem em branco (migration
+  `20261104002103`). Prova: `e2e/atendimento-plano-gerado-mantem-a-sessao.spec.ts`.
 - **E leva também as dores e a anamnese digitadas, na MESMA transação** (D3
   da simulação de 2026-10-28, decisão do Heitor): só o "Enviar para a
   recepção" (que exige plano) as mandava. `finishSession` recebe `queixas`

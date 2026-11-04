@@ -1138,8 +1138,16 @@ export function AppointmentSession({
     return r
   }
   const [evalPlanNotes,          setEvalPlanNotes]          = useState(existingPlan?.notes ?? '')
-  const [evalSessionNotes,       setEvalSessionNotes]       = useState(appointment.savedNotes ?? '')
-  const [evalSessionInterc,      setEvalSessionInterc]      = useState(appointment.savedIntercurrences ?? '')
+  // A evolução e a intercorrência são UM estado só na tela (D8 da 6ª simulação,
+  // e A29): o formulário da avaliação e o de sempre (o do plano gerado) eram dois
+  // estados para o mesmo campo, e depois de "Gerar plano e enviar" a tela trocava
+  // para o segundo — vazio — e o "Finalizar" levava o vazio ao prontuário.
+  const [notes,          setNotes]          = useState(appointment.savedNotes ?? '')
+  const [intercurrences, setIntercurrences] = useState(appointment.savedIntercurrences ?? '')
+  const evalSessionNotes  = notes
+  const evalSessionInterc = intercurrences
+  const setEvalSessionNotes  = setNotes
+  const setEvalSessionInterc = setIntercurrences
   const [generating,             setGenerating]             = useState(false)
   const [genError,               setGenError]               = useState<string | null>(null)
   const [erroDasDores,           setErroDasDores]           = useState<string | null>(null)
@@ -1245,9 +1253,7 @@ export function AppointmentSession({
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
   const editLocked = isDone && !isUnlocked
 
-  // Observações (controladas) + salvar unificado da ficha
-  const [notes,          setNotes]          = useState(appointment.savedNotes ?? '')
-  const [intercurrences, setIntercurrences] = useState(appointment.savedIntercurrences ?? '')
+  // Observações (controladas, o estado acima) + salvar unificado da ficha
   const fichaRef = useRef<AnamnesisFormHandle>(null)
 
   /**
@@ -1276,10 +1282,11 @@ export function AppointmentSession({
     if (!podeRascunhar) return
     const r = lerRascunho(appointment.id)
     /* eslint-disable react-hooks/set-state-in-effect -- o sessionStorage só existe no navegador: ler na renderização desencontraria a hidratação */
-    if (r?.notes !== undefined)          setNotes(r.notes)
-    if (r?.intercurrences !== undefined) setIntercurrences(r.intercurrences)
-    if (r?.evalNotes !== undefined)      setEvalSessionNotes(r.evalNotes)
-    if (r?.evalInterc !== undefined)     setEvalSessionInterc(r.evalInterc)
+    // Um campo só (D8): o rascunho de antes podia ter os dois — vale o que tem texto.
+    const notasDoRascunho  = r?.notes || r?.evalNotes
+    const intercDoRascunho = r?.intercurrences || r?.evalInterc
+    if (notasDoRascunho !== undefined)  setNotes(notasDoRascunho)
+    if (intercDoRascunho !== undefined) setIntercurrences(intercDoRascunho)
     if (r?.queixas !== undefined)        setEvalComplaints(r.queixas)
     if (r?.anamnese) { setAnamneseDoRascunho(r.anamnese); setAnamneseDigitada(r.anamnese) }
     if (r?.ficha)    { setFichaDoRascunho(r.ficha); setFichaDigitada(r.ficha) }
@@ -1295,7 +1302,7 @@ export function AppointmentSession({
   useEffect(() => {
     if (!rascunhoPronto.current || !podeRascunhar) return
     gravarRascunho(appointment.id, {
-      notes, intercurrences, evalNotes: evalSessionNotes, evalInterc: evalSessionInterc,
+      notes, intercurrences,
       // As dores, a anamnese e os insumos também (D3): recarregar apagava os três.
       ...(evalComplaints !== (appointment.complaints ?? '') ? { queixas: evalComplaints } : {}),
       ...(anamneseDigitada ? { anamnese: anamneseDigitada as Record<string, string | string[]> } : {}),
@@ -1303,7 +1310,7 @@ export function AppointmentSession({
       // E a ficha do procedimento (2026-10-29), com o planejamento escolhido no planejador.
       ...(fichaDigitada ? { ficha: fichaDigitada as Record<string, RespostaDaFicha> } : {}),
     })
-  }, [appointment.id, appointment.complaints, podeRascunhar, notes, intercurrences, evalSessionNotes, evalSessionInterc,
+  }, [appointment.id, appointment.complaints, podeRascunhar, notes, intercurrences,
       evalComplaints, anamneseDigitada, insumosAlterados, insumos, checkedIds, fichaDigitada])
   useEffect(() => { if (isDone) limparRascunho(appointment.id) }, [isDone, appointment.id])
 
@@ -1673,9 +1680,9 @@ export function AppointmentSession({
           appointmentId={appointment.id} slug={slug}
           // O que está NA TELA, não o que foi gravado: a evolução escrita na
           // página sem "Salvar" se perdia ao finalizar (simulação de 2026-10-20).
-          // A avaliação ainda sem plano tem o formulário dela; os outros, o de sempre.
-          initialNotes={usaFormularioDaAvaliacao ? evalSessionNotes : notes}
-          initialIntercurrences={usaFormularioDaAvaliacao ? evalSessionInterc : intercurrences}
+          // Um estado só para a evolução e a intercorrência, nos dois formulários (D8).
+          initialNotes={notes}
+          initialIntercurrences={intercurrences}
           insumos={confirmedInsumos}
           // As dores e a anamnese da tela vão na conclusão (D3, 2026-10-28). As
           // dores só existem no formulário da avaliação; a anamnese, onde foi digitada.
@@ -2160,6 +2167,9 @@ export function AppointmentSession({
                     existingPlan={existingPlan} procedureProductsMap={procedureProductsMap}
                     availableProducts={availableProducts}
                   />
+                  {/* Os insumos de HOJE continuam até concluir (D8): gerar o plano não
+                      encerra o atendimento, e quem usou outra dose corrige aqui. */}
+                  {canEditRecords && <InsumoCard key={versaoDosInsumos} {...insumoProps} />}
                   <ObservacoesCard
                     notes={notes}
                     intercurrences={intercurrences}

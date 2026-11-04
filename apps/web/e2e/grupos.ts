@@ -228,6 +228,7 @@ export const ISOLADOS = [
   'ficha-documentos-um-cancelar.spec.ts',
   'atendimento-concluido-mostra-a-baixa.spec.ts',
   'atendimento-foto-clinica.spec.ts',
+  'atendimento-plano-gerado-mantem-a-sessao.spec.ts',
   'atendimento-rascunho.spec.ts',
   'atendimento-alergia-sim-nao.spec.ts',
   'atendimento-campos-da-tela.spec.ts',
