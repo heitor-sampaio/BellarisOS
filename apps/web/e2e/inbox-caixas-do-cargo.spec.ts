@@ -33,19 +33,27 @@ const segredo = (nome: string) => `segredo-${nome.replace(/\W+/g, '-')}`
  * a tela chama `getMessages(id)` na hora — era exatamente por aqui que a
  * conversa escondida vazava. Olhar a RESPOSTA, e não a tela, é o que prova: a
  * tela não desenha a conversa que não está na lista, com ou sem o furo.
+ *
+ * O corpo é lido pela rota (`route.fetch`), não por `response.text()`: o
+ * Chromium às vezes não guarda o corpo da resposta de uma action (na completa
+ * de 04/11 o do `getMessages` voltou vazio, com o servidor tendo lido as
+ * mensagens), e um corpo perdido calado faria a conversa ESCONDIDA "passar".
  */
 async function respostasAoAbrir(browser: Browser, membro: MembroDeTeste, conversationId: string) {
   const ctx  = await browser.newContext({ storageState: membro.estado })
   const page = await ctx.newPage()
-  const corpos: Promise<string>[] = []
-  page.on('response', r => {
-    if (r.request().method() === 'POST' && r.request().headers()['next-action']) {
-      corpos.push(r.text().catch(() => ''))
-    }
+  const corpos: string[] = []
+  await page.route('**/admin/inbox**', async route => {
+    const req = route.request()
+    if (req.method() !== 'POST' || !req.headers()['next-action']) return route.continue()
+    const resposta = await route.fetch()
+    const corpo = await resposta.text()
+    corpos.push(corpo)
+    await route.fulfill({ response: resposta, body: corpo })
   })
   await page.goto(`/admin/inbox?c=${conversationId}`)
   await page.waitForLoadState('networkidle')
-  const tudo = (await Promise.all(corpos)).join('\n')
+  const tudo = corpos.join('\n')
   await ctx.close()
   return { tudo, chamadas: corpos.length }
 }

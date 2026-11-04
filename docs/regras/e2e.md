@@ -162,5 +162,17 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     `query_logs` (`source = 'edge_logs'`, na janela do teste) mostra até onde
     as consultas chegaram. Se pararam antes das da página, a leitura nem saiu
     do runner.
+  - **Várias falhas sem relação, juntas no fim da rodada, é o banco.** Antes de
+    caçar spec por spec, tire o horário de cada falha do `trace.zip` (o
+    `wallTime` do `context-options`) e compare com o `query_logs`:
+    `edge_logs` por minuto (contagem, 5xx e o maior `response.origin_time`) e
+    `postgres_logs` com "starting PostgreSQL". Na completa de 2026-11-04 o
+    banco engasgou (respostas de 10 a 49 s, `/auth/v1/token` em 504) e
+    reiniciou às 05:24:56: 13 das 15 falhas caíam nessas janelas. Sinais no
+    log do teste: "Não achei o tenant" com o JSON do Cloudflare (521), action
+    em "Salvando…" para sempre, "abrir a sessão" com HTTP 504.
+  - Mensagem de sucesso que mora num componente que o `router.refresh()`
+    desmonta (o bloco de alterar some quando o agendamento é cancelado) pisca
+    e some: o teste confere o estado que FICA na tela, não ela.
   - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
     `<script>` sem nonce. Ele não existe no build.

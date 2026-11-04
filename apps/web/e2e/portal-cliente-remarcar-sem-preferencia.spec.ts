@@ -121,7 +121,12 @@ test('A61: o cancelamento sem motivo não repete "cancelado pela cliente no app"
     await p.goto(`/${slug}/cliente/agendamentos/${id}`)
     await p.getByRole('button', { name: 'Cancelar agendamento' }).click()
     await p.getByRole('button', { name: 'Confirmar cancelamento' }).click()
-    await expect(p.getByText('Agendamento cancelado.')).toBeVisible()
+    // O que a cliente vê e FICA: a linha "Cancelado — <motivo>" do cartão. O
+    // "Agendamento cancelado." é do bloco de alterar, que some no refresh
+    // (agendamento cancelado não se altera) — na completa de 04/11 ele
+    // apareceu e sumiu antes de o teste olhar, com o cancelamento gravado.
+    await expect(p.getByText('Cancelado — Pela cliente no app', { exact: true })).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Cancelar agendamento' })).toHaveCount(0)
   })
   const a = (await db().from('appointments').select('cancellation_reason, sem_preferencia').eq('id', id).single()).data
   expect(a?.cancellation_reason).toBe('Pela cliente no app')

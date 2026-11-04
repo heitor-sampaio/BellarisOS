@@ -82,7 +82,7 @@ export async function sessaoDeTeste(authId: string, email: string): Promise<{ cl
   let motivo = ''
   for (let i = 0; i < esperas.length; i++) {
     if (esperas[i]) {
-      console.warn(`[e2e] limite do Auth: esperando ${esperas[i]} s para abrir a sessão`)
+      console.warn(`[e2e] ${motivo}: esperando ${esperas[i]} s para abrir a sessão`)
       await new Promise(ok => setTimeout(ok, esperas[i]! * 1000))
     }
     const r = i % 2 === 0
@@ -93,8 +93,14 @@ export async function sessaoDeTeste(authId: string, email: string): Promise<{ cl
         return cliente.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' })
       })()
     if (r.data.session) return { cliente, sessao: r.data.session }
-    motivo = r.error?.message ?? 'a sessão não veio'
-    if (!/rate limit/i.test(motivo)) break
+    const erro = r.error as { message?: string; status?: number; name?: string } | null
+    motivo = `${erro?.message || 'a sessão não veio'}${erro?.status ? ` (HTTP ${erro.status})` : ''}`
+    // O Auth que caiu (5xx, ou o fetch que nem voltou) também tenta de novo:
+    // na completa de 04/11 o /token levou 49 s e respondeu 504 com o banco
+    // engasgado, e o teste morreu em "abrir a sessão: {}". Abrir sessão de
+    // novo não grava nada que precise de cuidado.
+    const caiu = (erro?.status ?? 0) >= 500 || erro?.name === 'AuthRetryableFetchError'
+    if (!/rate limit/i.test(motivo) && !caiu) break
   }
   throw new Error(`abrir a sessão: ${motivo}`)
 }

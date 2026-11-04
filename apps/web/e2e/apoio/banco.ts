@@ -59,7 +59,9 @@ export async function tenantId(): Promise<string> {
     .not('name', 'like', `${PREFIXO}%`)
     .order('created_at', { ascending: true })
     .limit(1).single()
-  if (error) throw new Error(`Não achei o tenant: ${error.message}`)
+  // Com o banco fora do ar, o erro é o JSON do Cloudflare, sem `message`
+  // (na completa de 04/11 saía "Não achei o tenant: undefined").
+  if (error) throw new Error(`Não achei o tenant: ${error.message ?? JSON.stringify(error).slice(0, 300)}`)
   return data.id as string
 }
 
