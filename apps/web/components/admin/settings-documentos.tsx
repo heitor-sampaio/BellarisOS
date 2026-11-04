@@ -50,7 +50,12 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
   const [ocupado, setOcupado] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
-  function pronto() {
+  // A8 da 6ª simulação: o contrato de plano novo nasce inativo quando já há um
+  // ativo (D-5) — a lista diz, logo depois de salvar, e como ativar.
+  const [salvoInativo, setSalvoInativo] = useState<string | null>(null)
+
+  function pronto(r?: { nasceuInativo?: boolean; nome?: string }) {
+    setSalvoInativo(r?.nasceuInativo ? (r.nome ?? '').trim() : null)
     setVista({ modo: 'lista' })
     router.refresh()
   }
@@ -71,6 +76,7 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
     setErro(null)
     setOcupado(m.id)
     const r = await tornarContratoDePlanoAtivo(m.id)
+    if (!r.error) setSalvoInativo(null)
     setOcupado(null)
     if (r.error) setErro(r.error)
     else router.refresh()
@@ -101,6 +107,15 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
       </p>
 
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {salvoInativo !== null && (
+        <p role="status" data-contrato-inativo style={{
+          fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', background: 'var(--warning-soft)',
+          borderRadius: 'var(--radius-field-token)', padding: '9px 12px', fontWeight: 'var(--weight-semibold)',
+        }}>
+          O contrato de plano “{salvoInativo}” foi salvo inativo: a clínica já tem um ativo, e só um vale por vez.
+          Para usar este, clique em “Tornar ativo” na linha dele, em Contrato de plano.
+        </p>
+      )}
 
       {GRUPOS.map(g => {
         const doGrupo = modelos.filter(m => m.tipo === g.tipo)

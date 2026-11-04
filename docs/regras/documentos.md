@@ -29,7 +29,11 @@ DEVLOG ("Termos e contratos").
   (`tornarContratoDePlanoAtivo` → `documento_contrato_de_plano_ativar`)
   desliga o atual e liga o escolhido numa transação só. Ligar um contrato de
   plano por `definirModeloAtivo` passa pelo mesmo caminho. O índice único
-  continua sendo a garantia. Prova: `e2e/documentos-modelos.spec.ts`.
+  continua sendo a garantia. **Salvo inativo, a tela diz** (A8 da 6ª
+  simulação, 2026-11-04: só a dica da seção dizia): "O contrato de plano “B”
+  foi salvo inativo: a clínica já tem um ativo, e só um vale por vez. Para
+  usar este, clique em “Tornar ativo”…" (`nasceuInativo` do salvar,
+  `[data-contrato-inativo]`). Prova: `e2e/documentos-modelos.spec.ts`.
 - **O documento da cliente sem CPF** (cli-09, revisão do Heitor de
   2026-11-02: "contrato sem documento da cliente vale menos"): `cliente.cpf`,
   sem CPF, é o passaporte (ou o RNE) com o tipo — "Passaporte CB1234567" —, e

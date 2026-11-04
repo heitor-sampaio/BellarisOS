@@ -265,7 +265,14 @@ test.describe.serial('documentos: modelos da rede', () => {
         await page.keyboard.type(', pago em ')
         await variavel(page, 'pagamento.forma')
         await page.getByRole('button', { name: 'Salvar modelo' }).click()
-        await expect(page.getByText(nome)).toBeVisible()
+        await expect(page.getByText(nome).first()).toBeVisible()
+        // A8 da 6ª simulação: o segundo nascia inativo calado — só quem lia a
+        // dica da seção percebia. A tela diz, ao salvar, e como ativar.
+        if (nome === nomeB) {
+          const aviso = page.locator('[data-contrato-inativo]')
+          await expect(aviso).toContainText(`“${nomeB}” foi salvo inativo`)
+          await expect(aviso).toContainText('Tornar ativo')
+        }
       }
       await expect(page.getByText(/já tem um contrato de plano ativo/)).toHaveCount(0)
 

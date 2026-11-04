@@ -25,7 +25,7 @@ import type { DocumentoDoEditor } from '@/lib/documentos/editor/converter'
 import { medidasDaImagem } from '@/lib/documentos/editor/medidas-da-imagem'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 
-type Resultado = { error?: string; id?: string; versao?: number; novaVersao?: boolean }
+type Resultado = { error?: string; id?: string; versao?: number; novaVersao?: boolean; /** A8: o contrato de plano novo ficou inativo (a rede já tem um ativo). */ nasceuInativo?: boolean }
 
 const MOMENTOS   = ['AGENDAMENTO', 'INICIO_ATENDIMENTO'] as const
 const EXIGENCIAS = ['BLOQUEIA', 'AVISA'] as const
@@ -100,7 +100,16 @@ async function salvar(
     p_usa_pagamento:   conteudo.origem === 'EDITOR' ? conteudo.usaPagamento : false,
     p_ator:            ator,
   }), 'salvar o modelo de documento')
-  return r as { id: string; versao: number; novaVersao: boolean }
+  const salvo = r as { id: string; versao: number; novaVersao: boolean }
+  // A8 da 6ª simulação: o contrato de plano NOVO nasce inativo quando a rede já
+  // tem um ativo (D-5) — calado, só a dica da seção dizia. A tela avisa e diz
+  // como ativar.
+  if (c.tipo === 'CONTRATO_PLANO' && !c.id) {
+    const m = await ler(admin.from('document_templates').select('is_active')
+      .eq('id', salvo.id).eq('tenant_id', tenantId).maybeSingle(), 'conferir se o contrato de plano ficou ativo') as { is_active: boolean } | null
+    if (m && !m.is_active) return { ...salvo, nasceuInativo: true }
+  }
+  return salvo
 }
 
 // ─── Modelo do editor ────────────────────────────────────────────────────────

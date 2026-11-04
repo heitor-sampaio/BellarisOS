@@ -97,7 +97,8 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
   origemInicial:  'EDITOR' | 'ARQUIVO'
   /** URLs temporárias das imagens dos modelos (o editor mostra, não guarda). */
   imagens:        Record<string, string>
-  onPronto:       () => void
+  /** A8: `nasceuInativo` — o contrato de plano novo ficou inativo; a lista avisa. */
+  onPronto:       (r?: { nasceuInativo?: boolean; nome?: string }) => void
   onVoltar:       () => void
 }) {
   const [tipo, setTipo]           = useState<TipoDeModelo>(existente?.tipo ?? tipoInicial)
@@ -134,7 +135,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
         momento: tipo === 'CONTRATO_PLANO' ? null : momento,
         exigencia,
       }
-      let r: { error?: string }
+      let r: { error?: string; nasceuInativo?: boolean }
       if (origem === 'EDITOR') {
         // Cópia em JSON puro: o ProseMirror cria os `attrs` sem protótipo, e o
         // React mandaria esses objetos à action como referência temporária
@@ -149,7 +150,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
         r = await salvarModeloDeArquivo(fd)
       }
       if (r.error) { setErro(r.error); return }
-      onPronto()
+      onPronto({ nasceuInativo: r.nasceuInativo, nome })
     })
   }
 
