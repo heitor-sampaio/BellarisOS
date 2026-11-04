@@ -557,6 +557,13 @@
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
+- **O preço vazio é R$ 0,00 — o procedimento gratuito** (A1 da 6ª simulação,
+  2026-11-04; princípios 2 e 4): a avaliação grátis tinha só o "0,00" de
+  exemplo, e o navegador recusava o campo vazio. O campo não é mais
+  obrigatório; vazio ou zero, a tela diz "o procedimento fica gratuito — o
+  atendimento não tem o que cobrar" (`[data-preco-gratuito]`), e o servidor
+  grava 0 (`dinheiroDoFormulario`; negativo e ilegível seguem recusados).
+  Prova: `e2e/procedimento-preco-em-reais.spec.ts` ("A1").
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um procedimento
 - `ProcedureProduct`: insumos consumidos por execução — base do consumo automático de estoque
 - **"Quem realiza"** (por-01, revisão do Heitor de 2026-11-02: "já deveria ter

@@ -78,3 +78,36 @@ test('"1.400" no preço é R$ 1.400,00, e o ambíguo é recusado com aviso', asy
   const { data } = await banco().from('procedures').select('price').eq('name', nome).single()
   expect(Number(data!.price)).toBe(1400)
 })
+
+/**
+ * A1 da 6ª simulação (2026-11-04): o procedimento grátis (a avaliação) tinha o
+ * preço com "0,00" só de exemplo, e o navegador recusava o campo vazio
+ * ("Preencha este campo"). R$ 0,00 é valor da clínica (princípio 2), e o vazio
+ * vale zero COM o aviso (princípio 4).
+ */
+test('A1: o preço vazio é R$ 0,00 — a tela avisa que fica gratuito, e grava', async ({ page }) => {
+  const gratis = nomeDeTeste('Proc gratis')
+  try {
+    await page.goto('/admin/procedures')
+    await page.getByRole('button', { name: 'Novo procedimento' }).click()
+    const dialogo = page.locator('dialog[open]')
+    await dialogo.locator('input[name="name"]').fill(gratis)
+    await dialogo.locator('select[name="category"]').selectOption('Outros')
+    await dialogo.locator('input[name="duration_min"]').fill('30')
+    await expect(dialogo.locator('input[name="price"]')).toHaveValue('')
+    await expect(dialogo.locator('[data-preco-gratuito]')).toContainText('gratuito')
+    await dialogo.getByRole('button', { name: 'Criar procedimento' }).click()
+    await expect(dialogo).toBeHidden()
+    const { data } = await banco().from('procedures').select('price').eq('name', gratis).single()
+    expect(Number(data!.price)).toBe(0)
+  } finally {
+    const db = banco()
+    const { data } = await db.from('procedures').select('id').eq('name', gratis).maybeSingle<{ id: string }>()
+    if (data) {
+      await db.from('domain_events').delete().eq('entidade_id', data.id)
+      await db.from('procedure_price_history').delete().eq('procedure_id', data.id)
+      await db.from('procedure_branch_availability').delete().eq('procedure_id', data.id)
+      await db.from('procedures').delete().eq('id', data.id)
+    }
+  }
+})

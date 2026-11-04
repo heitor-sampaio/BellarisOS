@@ -75,10 +75,11 @@ function dinheiroDoFormulario(formData: FormData): { price: number; laborCost: n
     if (Number.isNaN(n)) return { error: `${rotulo}: ${DINHEIRO_INVALIDO}` }
     return n
   }
-  const precoTexto = String(formData.get('price') ?? '').trim()
+  // O preço vazio é R$ 0,00 — o procedimento gratuito (A1 da 6ª simulação,
+  // princípios 2 e 4: o valor é da clínica, e a tela avisa que fica gratuito).
   const price = lerCampo('price', 'Preço')
   if (typeof price !== 'number') return price
-  if (!precoTexto || price < 0) return { error: 'Preço inválido.' }
+  if (price < 0) return { error: 'Preço inválido.' }
   const laborCost = lerCampo('labor_cost', 'Mão de obra')
   if (typeof laborCost !== 'number') return laborCost
   const otherCosts = lerCampo('other_costs', 'Outros custos')

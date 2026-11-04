@@ -691,9 +691,15 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       <Field label="Preço do procedimento (R$) *" hint="Edite a margem ou o preço — o outro se ajusta automaticamente.">
         <div style={{ position: 'relative' }}>
           <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-          <input name="price" type="text" required className="field" value={price} onChange={handlePriceCalcInput} onBlur={e => setPrice(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30, fontWeight: 700 }} />
+          {/* A1 da 6ª simulação: sem `required` — o vazio é R$ 0,00 (princípio 4), e a linha abaixo diz isso. */}
+          <input name="price" type="text" className="field" value={price} onChange={handlePriceCalcInput} onBlur={e => setPrice(fechaDinheiro(e.target.value))} inputMode="decimal" placeholder="0,00" style={{ paddingLeft: 30, fontWeight: 700 }} />
         </div>
         <AvisoDoDinheiro valor={price} />
+        {!dinheiroInvalido(price) && (!price.trim() || parseDinheiro(price) === 0) && (
+          <p data-preco-gratuito style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)' }}>
+            {price.trim() ? 'R$ 0,00' : 'Sem preço, vale R$ 0,00'}: o procedimento fica gratuito — o atendimento não tem o que cobrar.
+          </p>
+        )}
       </Field>
 
       {/* -- Personalizar valores por unidade (acordeão) -- */}
