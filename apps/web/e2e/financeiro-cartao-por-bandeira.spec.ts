@@ -541,4 +541,64 @@ test.describe.serial('o cartão por bandeira', () => {
       await expect(p.locator('[data-taxas-do-dia]')).toContainText('Taxas da maquininha no dia')
     })
   })
+
+  // F17-4 (o Heitor: "pix normalmente não tem taxa mas às vezes tem, então deve
+  // poder configurar; as linhas só devem aparecer se estiverem dentro do range
+  // de parcelas que são oferecidas"). A clínica parcela até 5x: as linhas de
+  // crédito vão de 1x a 5x (6x–12x nem aparecem, na regra geral e na bandeira),
+  // o "Preencher pela taxa por parcela" preenche só elas, e o 8x gravado antes
+  // (acima do limite) não se apaga. Aumentar o limite traz as linhas de volta:
+  // as vazias com o aviso. O Pix tem a sua taxa, e ela vale no Fechamento e na
+  // comissão.
+  test('F17-4: as linhas do crédito só até o "Parcelar no crédito até", e o Pix com a sua taxa', async ({ browser }) => {
+    expect((await db().from('tenants').update({ cartao_max_vezes: 5, cartao_por_bandeira: {} }).eq('id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').delete().eq('tenant_id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').insert([
+      { tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 4.5 },
+      { tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 8, taxa_pct: 9 },
+    ])).error).toBeNull()
+    await como(browser, dona!, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      const card = p.locator('[aria-label="Taxas da maquininha"]')
+      await expect(card.getByLabel('Parcelar no crédito até')).toHaveValue('5')
+      for (let k = 2; k <= 5; k++) await expect(card.getByLabel(`Taxa ${k}x`), `${k}x aparece`).toBeVisible()
+      for (let k = 6; k <= 12; k++) await expect(card.getByLabel(`Taxa ${k}x`), `${k}x não aparece`).toHaveCount(0)
+      await card.getByRole('button', { name: 'Preencher pela taxa por parcela' }).click()
+      await card.getByLabel('Taxa por parcela (%)').fill('1,15')
+      await card.getByRole('button', { name: 'Preencher', exact: true }).click()
+      await expect(card.getByLabel('Taxa Crédito à vista')).toHaveValue('1,15')
+      await expect(card.getByLabel('Taxa 5x')).toHaveValue('5,75')
+      await expect(card.getByLabel('Taxa Pix')).toHaveValue('')
+      await card.getByLabel('Taxa Pix').fill('0,99')
+      // Na bandeira, as mesmas linhas.
+      await card.getByLabel('Bandeira').selectOption({ label: 'Elo' })
+      await expect(card.getByLabel('Taxa 5x')).toBeVisible()
+      await expect(card.getByLabel('Taxa 6x')).toHaveCount(0)
+      await card.getByLabel('Bandeira').selectOption({ value: '' })
+      await card.getByRole('button', { name: 'Salvar taxas' }).click()
+      await expect(card.getByRole('status').filter({ hasText: 'Salvo.' })).toBeVisible()
+      // Aumentar o limite traz as linhas: o 8x gravado, o 6x e o 7x vazios, com o aviso.
+      await card.getByLabel('Parcelar no crédito até').selectOption('8')
+      await expect(card.getByLabel('Taxa 8x')).toHaveValue('9')
+      const linha = (rotulo: string) => card.locator('label').filter({ has: p.getByLabel(`Taxa ${rotulo}`, { exact: true }) })
+      await expect(linha('6x')).toContainText('Sem taxa: as vendas em 6x saem sem desconto da operadora.')
+      await expect(linha('7x')).toHaveAttribute('data-sem-taxa', '')
+      await expect(card.getByLabel('Taxa 9x')).toHaveCount(0)
+    })
+    const gravadas = ((await db().from('payment_fees').select('metodo, parcelas, taxa_pct').eq('tenant_id', rede!.tenantId)).data ?? [])
+      .map(f => `${f.metodo}:${f.parcelas}:${n(f.taxa_pct)}`).sort()
+    expect(gravadas, 'só 1x a 5x preenchidos; o 8x de antes fica; o Pix com 0,99').toEqual([
+      'CREDIT_CARD:1:1.15', 'CREDIT_CARD:2:2.3', 'CREDIT_CARD:3:3.45', 'CREDIT_CARD:4:4.6', 'CREDIT_CARD:5:5.75', 'CREDIT_CARD:8:9', 'PIX:1:0.99',
+    ].sort())
+
+    // O Pix com taxa vale onde a taxa já vale: a comissão (desconta a taxa) e o Fechamento.
+    const ap = await atendimentoConcluido(1000)
+    const { error } = await db().rpc('confirmar_pagamento_do_atendimento', {
+      p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+      p_dados: { metodo: 'PIX', pontos: 0, desconto: 0, valor_final: 1000 },
+    })
+    expect(error).toBeNull()
+    // 10% de (R$ 1.000 − 0,99%) = R$ 99,01.
+    expect(await devido(ap), 'a comissão desconta a taxa do Pix').toBe(99.01)
+  })
 })

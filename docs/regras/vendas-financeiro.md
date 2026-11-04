@@ -635,6 +635,22 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       preenche os campos — grava no "Salvar taxas" de sempre, cada campo
       segue editável, o débito não muda —, e a tabela continua sendo a verdade
       do cálculo: não há coluna de "taxa por parcela" no banco.
+    - **As linhas do crédito só até o "Parcelar no crédito até"** (F17-4, o
+      Heitor: "as linhas só devem aparecer se estiverem dentro do range de
+      parcelas que são oferecidas"): com o limite escolhido (até 5x), a tabela
+      mostra o crédito de 1x a 5x — na regra geral e em cada bandeira —, e o
+      6x a 12x nem aparecem; o "Preencher pela taxa por parcela" preenche só
+      as que aparecem. O seletor do limite fica logo acima do crédito
+      parcelado. Com "Só à vista", o crédito parcelado some e a tela diz por
+      quê. No **Automático** todas as linhas aparecem: o limite sai delas (a
+      maior com taxa) — decisão da F18, para o Heitor revisar. O que está
+      gravado acima do limite NÃO se apaga (fica no formulário e é regravado
+      no "Salvar taxas"), e aumentar o limite traz as linhas de volta, as
+      vazias com o aviso "Sem taxa". **O Pix tem a sua taxa** (na regra geral;
+      Pix não tem bandeira): `payment_fees` `PIX`, que já valia no líquido da
+      comissão e na estimativa do Fechamento; vazio é sem taxa, sem aviso, e a
+      tela diz "o Pix, só se a sua operadora cobrar". Prova:
+      `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F17-4").
     - **Nenhum teto nas taxas** (F16-3, o Heitor: "não é pra recusar nada,
       juros podem passar facilmente de 100% no acumulado"; migration
       `20261103001703`): na regra geral e nas bandeiras, e no "Preencher pela

@@ -300,6 +300,14 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     .filter(([k, v]) => k.startsWith('CREDIT_CARD/') && v.trim() !== '')
     .map(([k]) => Number(k.split('/')[1]))
   const automatico = maximoDeVezes(null, parcelasComTaxa)
+  // F17-4 (o Heitor: "as linhas só devem aparecer se estiverem dentro do range
+  // de parcelas que são oferecidas"): com o limite escolhido, o crédito aparece
+  // de 1x até ele — na regra geral e na bandeira. No "Automático" o limite SAI
+  // das linhas (a maior com taxa), então todas aparecem. O que está gravado
+  // acima do limite fica no estado e é regravado no "Salvar taxas": esconder
+  // não apaga.
+  const ateQuantasVezes = maxVezes === '' ? TETO_DE_VEZES : Number(maxVezes)
+  const parcelasNaTela = PARCELAS_DO_CREDITO.filter(n => n <= ateQuantasVezes)
   // r2-fin-01: o prazo da operadora, em dias corridos.
   const [prazo, setPrazo] = useState(String(prazoGravado))
   // O prazo da explicação: o da bandeira escolhida, ou o geral.
@@ -332,9 +340,10 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     // de 100% no acumulado"): sem teto — só não negativa (e o limite do
     // registro, que o 12x não pode passar).
     if (pct < 0) { setErroPorParcela('A taxa por parcela não pode ser negativa.'); return }
-    const preenchido = creditoPelaTaxaPorParcela(pct)
+    // F17-4: só as linhas que aparecem (até o "Parcelar no crédito até").
+    const preenchido = creditoPelaTaxaPorParcela(pct).filter(t => t.parcelas <= ateQuantasVezes)
     const recusa = recusaDaTaxaDaMaquininha(preenchido[preenchido.length - 1]!.taxa)
-    if (recusa) { setErroPorParcela(`Em ${TETO_DE_VEZES}x: ${recusa}`); return }
+    if (recusa) { setErroPorParcela(`Em ${preenchido[preenchido.length - 1]!.parcelas}x: ${recusa}`); return }
     const novos = Object.fromEntries(preenchido
       .map(t => [chave('CREDIT_CARD', t.parcelas), t.taxa.toFixed(2).replace('.', ',')]))
     if (bandeira) mudarNaBandeira({ valores: { ...daBandeira.valores, ...novos } })
@@ -450,7 +459,7 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
       <div>
         <h2 style={titulo}>Taxas da maquininha</h2>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, maxWidth: 600 }}>
-          O percentual que a operadora cobra em cada forma de pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito do cliente não têm taxa.
+          O percentual que a operadora cobra em cada forma de pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito do cliente não têm taxa; o Pix, só se a sua operadora cobrar (vazio é sem taxa).
         </p>
       </div>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
@@ -472,6 +481,27 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         {campo('DEBIT_CARD', 1, 'Débito')}
         {campo('CREDIT_CARD', 1, 'Crédito à vista')}
       </div>
+      {!bandeira && <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Parcelar no crédito até</span>
+        <select className="field" aria-label="Parcelar no crédito até" disabled={!podeEditar} value={maxVezes}
+          onChange={e => { setMaxVezes(e.target.value); setSalvo(false) }}>
+          <option value="">Automático — até {automatico === 1 ? 'à vista' : `${automatico}x`} (a maior parcela com taxa)</option>
+          {opcoesDeVezes(TETO_DE_VEZES).map(n => <option key={n} value={String(n)}>{n === 1 ? 'Só à vista' : `Até ${n}x`}</option>)}
+        </select>
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas. Acima disso o sistema não deixa passar — e as linhas do crédito abaixo vão só até aqui.
+        </span>
+      </label>}
+      {bandeira && maxVezes !== '' && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          As linhas do crédito vão até {ateQuantasVezes === 1 ? 'à vista' : `${ateQuantasVezes}x`}, o “Parcelar no crédito até” da clínica (na regra geral).
+        </p>
+      )}
+      {parcelasNaTela.length === 0 ? (
+        <p data-so-a-vista style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          A clínica recebe no crédito só à vista: o crédito parcelado não aparece. Para parcelar, escolha até quantas vezes{bandeira ? ' na regra geral' : ' acima'}.
+        </p>
+      ) : (<>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <p className="overline">Crédito parcelado</p>
         {podeEditar && !porParcelaAberto && (
@@ -496,31 +526,21 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
             <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(false); setErroPorParcela(null) }}>Cancelar</button>
           </div>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x a 12x fica com a taxa × as vezes (1,15% → 2x 2,30%, 3x 3,45%… 12x 13,80%).
+            {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 2x 2,30%, 3x 3,45%…).
             {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
           </p>
           {erroPorParcela && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroPorParcela}</p>}
         </div>
       )}
       <div style={grade}>
-        {PARCELAS_DO_CREDITO.map(n => campo('CREDIT_CARD', n, `${n}x`))}
+        {parcelasNaTela.map(n => campo('CREDIT_CARD', n, `${n}x`))}
       </div>
+      </>)}
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
         {bandeira
           ? 'Campo vazio usa a regra geral daquelas vezes (o número mostrado nele), não a de outra quantidade. Sem nenhuma das duas, a venda sai sem desconto da operadora (0%).'
           : 'Parcela sem taxa própria sai sem desconto da operadora (0%) — nunca com a taxa de outra quantidade.'}
       </p>
-      {!bandeira && <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Parcelar no crédito até</span>
-        <select className="field" aria-label="Parcelar no crédito até" disabled={!podeEditar} value={maxVezes}
-          onChange={e => { setMaxVezes(e.target.value); setSalvo(false) }}>
-          <option value="">Automático — até {automatico === 1 ? 'à vista' : `${automatico}x`} (a maior parcela com taxa)</option>
-          {opcoesDeVezes(TETO_DE_VEZES).map(n => <option key={n} value={String(n)}>{n === 1 ? 'Só à vista' : `Até ${n}x`}</option>)}
-        </select>
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas. Acima disso o sistema não deixa passar.
-        </span>
-      </label>}
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
         <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Prazo da operadora (dias)</span>
         {bandeira ? (
