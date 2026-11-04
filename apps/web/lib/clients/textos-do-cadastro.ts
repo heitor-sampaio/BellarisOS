@@ -11,14 +11,16 @@
  */
 export function avisoDoAcessoCriado({ contaLigada, email }: { contaLigada: boolean; email: string }): { titulo: string; descricao: string } {
   const login = email.trim() ? ` (${email.trim().toLowerCase()})` : ''
+  // Neutro (A20 da 6ª simulação: dizia "a cliente" e "Ela" para o Bruno): o
+  // que a CLÍNICA diz não decide pelo sexo da ficha.
   return contaLigada
     ? {
-        titulo: 'Ficha ligada à conta que ela já tem',
-        descricao: `Ela já usa o app em outra clínica: o login continua o e-mail${login}, e a senha continua a dela. Esta clínica aparece no app dela.`,
+        titulo: 'Ficha ligada à conta que já existe',
+        descricao: `Este e-mail já usa o app em outra clínica: o login continua o e-mail${login}, e a senha continua a mesma. Esta clínica passa a aparecer no app.`,
       }
     : {
         titulo: 'Acesso ao app criado',
-        descricao: `O login é o e-mail${login} e a senha inicial é o CPF; a cliente a troca no primeiro acesso.`,
+        descricao: `O login é o e-mail${login} e a senha inicial é o CPF, trocada no primeiro acesso.`,
       }
 }
 

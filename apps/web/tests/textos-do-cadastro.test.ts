@@ -19,11 +19,19 @@ describe('avisoDoAcessoCriado', () => {
     expect(a.descricao).toMatch(/ana@x\.com/)
     expect(a.descricao).toMatch(/senha inicial é o CPF/)
   })
-  it('conta que ela já tinha: a ficha entra na conta, e a senha continua a dela', () => {
+  it('conta que já existia: a ficha entra na conta, e a senha continua a mesma', () => {
     const a = avisoDoAcessoCriado({ contaLigada: true, email: 'ana@x.com' })
-    expect(a.titulo).toBe('Ficha ligada à conta que ela já tem')
-    expect(a.descricao).toMatch(/senha continua a dela/)
+    expect(a.titulo).toBe('Ficha ligada à conta que já existe')
+    expect(a.descricao).toMatch(/senha continua a mesma/)
     expect(a.descricao).not.toMatch(/CPF/)
+  })
+  // A20 da 6ª simulação: o aviso dizia "a cliente" e "Ela" para o Bruno. O que a
+  // CLÍNICA diz é neutro (crm-inbox.md, "O portal fala com a pessoa pelo sexo").
+  it('A20: o texto é neutro — nem "ela", nem "a cliente"', () => {
+    for (const contaLigada of [false, true]) {
+      const a = avisoDoAcessoCriado({ contaLigada, email: 'bruno@x.com' })
+      expect(`${a.titulo} ${a.descricao}`).not.toMatch(/\bela\b|\bdela\b|a cliente/i)
+    }
   })
 })
 

@@ -27,7 +27,9 @@
   pede só nome e telefone; e-mail e CPF são opcionais (preenchidos, válidos).
   O acesso ao app é a caixa "Criar o acesso ao app", que só se marca com os
   dois — sem ela, nenhum login nasce. Criado o acesso, a tela
-  CONFIRMA (toast: login = e-mail, senha inicial = CPF, trocada no primeiro acesso) e a ficha
+  CONFIRMA (toast: login = e-mail, senha inicial = CPF, trocada no primeiro acesso — em texto
+  NEUTRO, sem "ela" nem "a cliente": A20 da 6ª simulação, dizia "Ela" ao Bruno;
+  `avisoDoAcessoCriado`, `tests/textos-do-cadastro.test.ts`) e a ficha
   ganha o selo "Tem acesso ao app" ao lado do nome (A13, 2026-10-27). Depois, a aba Dados da ficha dá o acesso
   (`darAcessoAoApp`, com o e-mail e o CPF SALVOS; o núcleo é
   `darAcessoAoCliente`). Prova: `e2e/ficha-cadastro-de-balcao.spec.ts`.
