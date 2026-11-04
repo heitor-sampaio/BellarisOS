@@ -9359,6 +9359,43 @@ migrations `20261104002101`–`2104`):
   no dashboard da rede, na tela do atendimento e em `concluir_atendimento`:
   vale uma completa.
 
+**F22 feita em 2026-11-04 — atritos de indicadores, atendimento, agenda e
+pré-atendimento** (0ec4ca0a…15d3fd97; migrations `20261104002201`–`2202`):
+- **Pré-atendimento (A49):** "Enviar a ficha" sempre na janela do
+  agendamento, mesmo com o envio automático desligado (o padrão segue
+  desligado); a pendência nasce na hora, sem a janela de 30 dias.
+- **Atendimento:** "Faltam N respostas obrigatórias" lista todas, da
+  anamnese e da ficha do procedimento, e marca os campos (A30); a recepção
+  sem prontuário não recebe o formulário da anamnese (A31); o concluído sem
+  evolução aparece no prontuário (A19); dois procedimentos dão
+  "Botox + Preenchimento" (A36); a dona que atende tem "Marcar chegada e
+  iniciar" no agendamento dela (A25).
+- **Agenda:** a sessão de pacote/plano não oferece horário passado e mostra
+  o procedimento e a sala opcional (A24, princípio 1); a agenda da rede
+  sombreia o fechado de cada unidade e marca o "Encaixe" (A26); o cartão de
+  30 min diz procedimento e sala (A23); a janela lista os termos e se estão
+  assinados (A34); o aviso "Horário marcado" diz a unidade quando há mais de
+  uma (A28).
+- **Pré-pago e plano:** "2 para agendar · 1 agendada" (A27); a ficha de
+  tratamento diz "A começar · 0 de 2 sessões" em vez de "FECHADO" (A22).
+- **LGPD (A21):** a equipe com Clientes em Gerenciar exporta pela ficha
+  (registrado, com quem pediu; prontuário só com Prontuário em Gerenciar;
+  o suporte não exporta), e o pacote traz o plano com itens e valores e a
+  hora das comunicações.
+- **Indicadores e rótulos:** "Minhas comissões" no menu e no destaque do
+  dashboard de quem só vê as suas, e "Meu faturamento do mês" com a dica
+  dos três números (A52, A41); "Funil comercial" (A9); "clientes da
+  clínica" (A42); "(inativo)" nas comissões (A43); o gráfico de "Hoje" diz
+  "03h", não "Dia 3" — não era fuso (A44); o texto de "Acessos ao
+  prontuário" (A35, a regra segue em revisão); o termo concorda com o sexo
+  da ficha, "fui informado/informada" (A50).
+- **Não reproduzidos:** A32 (o rascunho morre com a aba, por decisão; o robô
+  recarregou num contexto novo) e A33 (era a imagem de 10 px do robô). A29 a
+  F21 já resolveu.
+- Nenhuma pergunta ao Heitor. Mexeu em `lib/permissions.ts`, `lib/menu.ts`,
+  `lib/appointments/core.ts` e nas janelas da agenda e do atendimento dos
+  dois portais: vale uma completa.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
