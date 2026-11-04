@@ -226,7 +226,9 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
   test('dashboard e relatórios: a comissão da equipe só para quem vê o financeiro de todos', async ({ browser }) => {
     await comSessao(browser, equipe!, async p => {
       await p.goto('/admin/dashboard')
-      await expect(p.getByText('Ranking — Profissionais por receita dos atendimentos')).toBeVisible()
+      await expect(p.getByRole('heading', { level: 1 }).first(), 'o dashboard abriu').toBeVisible()
+      // Sem o financeiro, nem o ranking por receita (D2 da 6ª simulação, F21): o dinheiro é de quem vê o dinheiro.
+      await expect(p.getByText('Ranking — Profissionais por receita dos atendimentos')).toHaveCount(0)
       await expect(p.getByText('Ranking — Comissão')).toHaveCount(0)
       await p.goto('/admin/reports?tab=profissionais')
       await expect(p.getByText('Atendimentos por Profissional', { exact: true })).toBeVisible()

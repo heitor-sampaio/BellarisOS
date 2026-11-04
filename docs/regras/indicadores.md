@@ -661,6 +661,21 @@ ranking e a ocupação por filial, e o ranking de comissão (de todas). Com o
 (`p_owner`, o recorte do quadro). Prova:
 `e2e/indicadores-dashboard-da-rede-so-os-meus.spec.ts`.
 
+**O financeiro "só os meus" é "Minhas comissões"** (A52 e A41 da 6ª
+simulação, 2026-11-04; princípio 3): com o financeiro em OWN, a tela de
+Financeiro já era só a das comissões dela (o da rede redireciona; o da unidade
+também, desde então). O menu diz "Minhas comissões" (`rotuloDoFinanceiro`,
+`lib/menu.ts`, pelo escopo — também na pré-visualização do cargo), e o
+dashboard da unidade tem como destaque "Minhas comissões · a pagar"
+(`[data-minhas-comissoes]`, o a pagar e o lançado do período de fechamento
+da rede, pelo MESMO `resumoDasComissoes` da tela), que leva a elas. O
+faturamento dela continua, com o nome que diz a conta: **"Meu faturamento do
+mês"**, e a dica `DEFINICOES.meuFaturamento` explica os três números — o
+"Meu faturamento" (a VENDA dela, no dia do pagamento), a receita dos
+atendimentos dos Relatórios (a EXECUÇÃO, no dia em que fez) e as comissões (a
+parte dela). Prova: `e2e/comissoes-minhas-no-menu.spec.ts`,
+`tests/menu.test.ts`.
+
 O mesmo recorte vale no **Copilot** (`copilot.md`) e nas funções dos
 Relatórios, que ganharam `p_professional_id default null` com os MESMOS
 predicados (migration `20261028000803`): `metrics_receitas_pagas` (o dinheiro

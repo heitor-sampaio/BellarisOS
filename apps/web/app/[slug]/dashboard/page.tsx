@@ -20,6 +20,8 @@ import {
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
 } from '@/lib/metrics'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
+import { configDeComissaoDaRede, resumoDasComissoes } from '@/lib/comissoes/leitura'
+import { periodosRecentes } from '@/lib/comissoes/periodo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { ChevronRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
@@ -196,6 +198,21 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       : Promise.resolve(null),
   ])
 
+  // Com o financeiro "só os meus", o financeiro DELA é "Minhas comissões" (A52
+  // da 6ª simulação): o cartão de destaque é a comissão a pagar do período de
+  // fechamento da rede — o MESMO número da tela de comissões (resumoDasComissoes).
+  const minhasComissoes = canFinancial && dinheiroDela
+    ? await (async () => {
+        const config = await configDeComissaoDaRede(ctx.tenantId!)
+        const periodo = periodosRecentes(config.periodo, now, 1)[0]!
+        const linhas = await resumoDasComissoes({
+          tenantId: ctx.tenantId!, branchIds: [branchId], inicio: periodo.inicio, fim: periodo.fim, profissionalId: dinheiroDela,
+        })
+        const soma = (f: (l: (typeof linhas)[number]) => number) => Math.round(linhas.reduce((t, l) => t + f(l), 0) * 100) / 100
+        return { periodo: periodo.rotulo, aPagar: soma(l => l.aPagar), lancado: soma(l => l.liberado) }
+      })()
+    : null
+
   // -- KPIs ------------------------------------------------------
   const monthRevenue       = core.revenueCash
   const monthCompletedCount = core.appointmentsCompleted
@@ -356,14 +373,33 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       {(canFinancial || canAgenda) && (
       <div className="kpi-grid">
 
-        {/* Faturamento — brand card */}
-        {canFinancial && (
-        <div style={{ background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8, display: 'flex', alignItems: 'center', gap: 4 }}>
-            Faturamento do mês
-            <Dica rotulo={DEFINICOES.receita.rotulo}>{DEFINICOES.receita.texto}</Dica>
+        {/* "Só as minhas": as comissões dela são o destaque (A52) */}
+        {minhasComissoes && (
+        <Link href={`/${slug}/financeiro/comissoes`} data-minhas-comissoes style={{ textDecoration: 'none', background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
+            Minhas comissões · a pagar
           </p>
           <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>
+            {formatBRL(minhasComissoes.aPagar)}
+          </p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', marginTop: 10, opacity: 0.85 }}>
+            {formatBRL(minhasComissoes.lancado)} lançados em {minhasComissoes.periodo}
+          </p>
+        </Link>
+        )}
+
+        {/* Faturamento — brand card (o da equipe); "Meu faturamento do mês" com o financeiro "só os meus" (A41) */}
+        {canFinancial && (
+        <div className={dinheiroDela ? 'card' : undefined} style={dinheiroDela ? undefined : { background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
+          <p className={dinheiroDela ? 'overline' : undefined} style={{ ...(dinheiroDela ? {} : { fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }), display: 'flex', alignItems: 'center', gap: 4 }}>
+            {dinheiroDela ? 'Meu faturamento do mês' : 'Faturamento do mês'}
+            {dinheiroDela
+              ? <Dica rotulo={DEFINICOES.meuFaturamento.rotulo}>{DEFINICOES.meuFaturamento.texto}</Dica>
+              : <Dica rotulo={DEFINICOES.receita.rotulo}>{DEFINICOES.receita.texto}</Dica>}
+          </p>
+          <p style={dinheiroDela
+            ? { fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }
+            : { fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>
             {formatBRL(monthRevenue)}
           </p>
           {revDelta && (

@@ -36,8 +36,8 @@ export type MenuEntry = {
   key:     string
   /** Área do menu. Sem grupo = fica solto no topo, antes das categorias. */
   group?:  MenuGroupKey
-  /** Rótulo fixo, ou derivado das permissões quando ele muda com o acesso. */
-  label:   string | ((p: ResolvedPermissions) => string)
+  /** Rótulo fixo, ou derivado das permissões (e do escopo) quando ele muda com o acesso. */
+  label:   string | ((p: ResolvedPermissions, s?: Partial<ResolvedScopes>) => string)
   /** Rota absoluta na rede; sufixo depois de `/[slug]` na filial. */
   href:    string
   /** `s`: o escopo de cada módulo, quando o item depende dele (o Fechamento do dia). */
@@ -55,6 +55,14 @@ type PlanoDoMenu = { funcionalidades: readonly string[] } | null | undefined
 const noPlano = (e: MenuEntry, plano: PlanoDoMenu) => !e.recurso || !plano || plano.funcionalidades.includes(e.recurso)
 
 const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== 'NONE'
+
+/**
+ * Com o financeiro "só os meus", a tela é só a das comissões dela (o
+ * consolidado meio filtrado não existe): o menu diz isso (A52 da 6ª simulação —
+ * a profissional via "Financeiro" e achava uma tela de comissões em R$ 0).
+ */
+const rotuloDoFinanceiro = (_p: ResolvedPermissions, s?: Partial<ResolvedScopes>) =>
+  s?.financial === 'OWN' ? 'Minhas comissões' : 'Financeiro'
 
 /**
  * O rótulo de Configurações: quem só chega pelas abas Tags e Importações
@@ -115,7 +123,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // quem escreve a mensagem é o time comercial — não quem conecta a API.
   { key: 'templates', recurso: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
 
-  { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
+  { key: 'financial',    group: 'dinheiro',     label: rotuloDoFinanceiro, href: '/admin/financeiro',  visible: p => has(p, 'financial') },
   // O fechamento do dia (2026-10-21): quem recebe fecha; o financeiro de TODOS vê (D6).
   { key: 'fechamento',   group: 'dinheiro',     label: 'Fechamento do dia', href: '/admin/fechamento', visible: veFechamento },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
@@ -154,7 +162,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // Só `financial`. O módulo `cashier` governa RECEBER — no atendimento e no
   // checkout do plano —, e desde que o caixa de abrir/fechar saiu não há mais
   // tela própria dele: quem só recebe entrava aqui e via a tela vazia.
-  { key: 'financial',     group: 'dinheiro',    label: 'Financeiro',    href: '/financeiro',    visible: p => has(p, 'financial') },
+  { key: 'financial',     group: 'dinheiro',    label: rotuloDoFinanceiro, href: '/financeiro', visible: p => has(p, 'financial') },
   // A tela de quem RECEBE (cashier): o fechamento do dia (2026-10-21) — e do financeiro de todos (D6).
   { key: 'fechamento',    group: 'dinheiro',    label: 'Fechamento do dia', href: '/fechamento', visible: veFechamento },
   { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
@@ -181,7 +189,7 @@ export function menuEntriesFor(
     .filter(e => e.visible(permissions, scopes) && noPlano(e, plano))
     .map(e => ({
       key:   e.key,
-      label: typeof e.label === 'function' ? e.label(permissions) : e.label,
+      label: typeof e.label === 'function' ? e.label(permissions, scopes) : e.label,
       href:  e.href,
     }))
 }
@@ -208,7 +216,7 @@ export function menuSectionsFor(
   const visiveis = menu.filter(e => e.visible(permissions, scopes) && noPlano(e, plano))
   const resolver = (e: MenuEntry) => ({
     key:   e.key,
-    label: typeof e.label === 'function' ? e.label(permissions) : e.label,
+    label: typeof e.label === 'function' ? e.label(permissions, scopes) : e.label,
     href:  e.href,
   })
 

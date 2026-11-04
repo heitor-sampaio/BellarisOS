@@ -142,3 +142,15 @@ describe('menuLabelsFor', () => {
     expect(menuLabelsFor(BRANCH_MENU, com({ agenda: 'VIEW' }))).toEqual(['Dashboard', 'Agenda'])
   })
 })
+
+// A52 da 6ª simulação: com o financeiro "só os meus", a tela é só a das comissões dela.
+describe('o financeiro "só os meus" se chama "Minhas comissões"', () => {
+  it('nos dois menus e na pré-visualização do cargo; com o de todos, "Financeiro"', () => {
+    const p = com({ financial: 'VIEW' })
+    for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
+      expect(menuEntriesFor(menu, p, undefined, { financial: 'OWN' }).find(e => e.key === 'financial')?.label).toBe('Minhas comissões')
+      expect(menuEntriesFor(menu, p, undefined, { financial: 'ALL' }).find(e => e.key === 'financial')?.label).toBe('Financeiro')
+    }
+    expect(menuLabelsFor(BRANCH_MENU, p, { financial: 'OWN' })).toContain('Minhas comissões')
+  })
+})

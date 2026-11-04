@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -33,6 +33,9 @@ export default async function FinancialPage({
   // `cashier` governa RECEBER — no atendimento e no checkout do plano. Esta
   // tela é o financeiro da unidade, e pede o módulo dela.
   assertPermission(ctx, 'financial', 'VIEW')
+  // Com o financeiro "só os meus", o financeiro é só "Minhas comissões" (A52,
+  // como o da rede): o consolidado meio filtrado não existe.
+  if (ownerFilter(ctx, 'financial')) redirect(`/${slug}/financeiro/comissoes`)
 
   const supabase = await createSupabase()
 
