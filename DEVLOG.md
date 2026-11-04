@@ -9134,6 +9134,31 @@ funil, só por automação).
 e a cliente do teste do Copilot nascia hoje, quando o "Reativar clientes" só
 conta quem foi cadastrada antes da janela. Nenhum defeito do sistema.
 
+**F16 feita em 2026-11-03 — a revisão das decisões da F15**
+(9435c727…01ee9d52; migrations `20261103001601`–`1602`). O Heitor revisou as
+4 decisões da F15 (https://claude.ai/artifact/6rcCqTsMz5WhqRCQPBSLfN, respostas
+em conversa): 3 mudar, 1 manter (o fluxo de caixa volta a 6 meses, sem guardar).
+- **Campo vazio da bandeira = regra geral daquelas vezes**, sem herdar a faixa
+  de baixo da bandeira (Elo só com 3x a 3% e geral 5x a 6% → Elo 5x usa 6%). E
+  **"Preencher pela taxa por parcela"** em "Taxas da maquininha" (na geral e em
+  cada bandeira): o Heitor, "a taxa é por parcela… a taxa total é a taxa vezes a
+  quantidade de parcelas" — 1,15% preenche 1x…12x com 1,15 … 13,80, só no
+  formulário, editável, gravado no "Salvar taxas". A tabela segue sendo a verdade.
+- **"Novo lançamento"** da receita PAGA no cartão pergunta a bandeira.
+- **Sessão de plano no ranking por procedimento:** cada procedimento da sessão
+  conta no seu (Botox R$ 800, Preenchimento R$ 1.200, mesmo no atendimento
+  marcado "Botox"); o ranking por profissional e o total não mudam.
+
+Decisões da F16, para revisar: as execuções seguem o atendimento (o
+Preenchimento aparece "0 execuções · R$ 1.200"); sem taxa exata nem na bandeira
+nem na geral, vale o fallback da geral (a Elo 4x usa o 3x da geral); o campo
+vazio mostra a taxa geral que de fato vale; acima de 8,33% por parcela a tela
+recusa (o 12x passaria de 100%); o lançamento manual no crédito é 1x (a bandeira
+mexe na taxa, não gera parcelas da operadora), e o pendente pergunta a bandeira
+na baixa. Rodado contra o build só do web (o `next dev` local estava quebrado).
+Sobra antiga: o spec `indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu`
+limpa a Paula antes da rede, e a rede `[e2e] pqv…` fica até a varredura.
+
 **F15 feita em 2026-11-03 — a revisão das decisões de F13 e F14**
 (c4a21a09…71275513; migrations `20261103001501`–`1502`). O Heitor revisou 22
 decisões de F13/F14 (https://claude.ai/artifact/3YydsMjt36Bj994dBsLZHU): 13
