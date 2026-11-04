@@ -1,4 +1,5 @@
 import { intervalosDoDia, diaDaSemana, slotsDoDia, type Horario } from '@/lib/agenda/horario'
+import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 
 export interface HorarioDaGrade { hora: string; doProfissional: boolean }
 
@@ -16,9 +17,24 @@ export interface HorarioDaGrade { hora: string; doProfissional: boolean }
  *
  * Puro: roda no navegador, com os horários que a action devolve.
  */
-export function gradeDoCheckout(unidade: Horario | null, profissional: Horario | null, data: string): HorarioDaGrade[] {
+export function gradeDoCheckout(
+  unidade: Horario | null, profissional: Horario | null, data: string, aPartirDe: string | null = null,
+): HorarioDaGrade[] {
   const dia = diaDaSemana(data)
   const daUnidade = slotsDoDia(intervalosDoDia(unidade, null, dia), 30)
   const dela = new Set(slotsDoDia(intervalosDoDia(unidade, profissional, dia), 30))
-  return daUnidade.map(hora => ({ hora, doProfissional: dela.has(hora) }))
+  return daUnidade
+    .filter(hora => !aPartirDe || hora >= aPartirDe)
+    .map(hora => ({ hora, doProfissional: dela.has(hora) }))
+}
+
+/**
+ * Hoje (no fuso do negócio), o horário de AGORA ("14:05"): a grade não oferece
+ * o que já passou (A24 da 6ª simulação: de madrugada, numa unidade 24 h, a
+ * sessão do pacote oferecia 00:00–04:00). Noutro dia, nulo.
+ */
+export function aPartirDeAgora(data: string, agora: Date): string | null {
+  if (dayKeyTZ(agora) !== data) return null
+  const p = partsInTZ(agora)
+  return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
 }

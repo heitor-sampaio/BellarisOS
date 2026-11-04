@@ -13,7 +13,9 @@ import {
   schedulePlanSession,
   getSchedulingBranchProfessionals,
   getSchedulingDaySlots,
+  salasParaAgendar,
 } from '@/actions/appointments'
+import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { cancelTreatmentPlan } from '@/actions/treatment-plans'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -81,12 +83,19 @@ function composicaoDasSessoes(sessoes: Session[]): string {
 export function SessionScheduler({
   branches,
   currentBranchId,
+  procedimento = null,
   onSave,
   onCancel,
 }: {
   branches:        { id: string; name: string }[]
   currentBranchId: string
-  onSave:          (params: { branchId: string; professionalId: string; scheduledAt: string }) => Promise<{ error?: string }>
+  /**
+   * O procedimento da sessão (o pacote e o plano já o decidem): o formulário o
+   * diz, e com ele oferece a sala (A24 da 6ª simulação — não dizia nem um nem
+   * outro). Sem ele (a unidade pré-paga), só o horário.
+   */
+  procedimento?:   { id: string; nome: string; duracaoMin: number } | null
+  onSave:          (params: { branchId: string; professionalId: string; scheduledAt: string; roomId: string | null }) => Promise<{ error?: string }>
   onCancel:        () => void
 }) {
   const [branchId,     setBranchId]     = useState(currentBranchId)
@@ -100,6 +109,9 @@ export function SessionScheduler({
   const [horarios,     setHorarios]     = useState<{ unidade: Horario | null; profissional: Horario | null }>({ unidade: null, profissional: null })
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [time,         setTime]         = useState('')
+  // A sala é opcional (H1): só aparece com salas na unidade que servem ao procedimento.
+  const [salas,        setSalas]        = useState<SalaParaAgendar[]>([])
+  const [roomId,       setRoomId]       = useState('')
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState<string | null>(null)
 
@@ -141,6 +153,22 @@ export function SessionScheduler({
     })
   }, [branchId, profId, date])
 
+  // As salas que servem ao procedimento, com a ocupação no horário escolhido.
+  const procId = procedimento?.id ?? null
+  const procDuracao = procedimento?.duracaoMin ?? 60
+  useEffect(() => {
+    if (!procId || !branchId || !date || !time) return
+    let vivo = true
+    salasParaAgendar(branchId, procId, new Date(`${date}T${time}:00-03:00`).toISOString(), procDuracao)
+      .then(r => {
+        if (!vivo) return
+        setSalas(r.salas)
+        setRoomId(atual => (atual && r.salas.some(x => x.id === atual && x.livre)) ? atual : (r.sugerida ?? ''))
+      })
+      .catch(() => { if (vivo) setSalas([]) })
+    return () => { vivo = false }
+  }, [procId, procDuracao, branchId, date, time])
+
   function isBooked(t: string) {
     const ms = new Date(`${date}T${t}:00-03:00`).getTime()
     return slots.find(s => {
@@ -158,6 +186,7 @@ export function SessionScheduler({
       branchId,
       professionalId: profId,
       scheduledAt: new Date(`${date}T${time}:00-03:00`).toISOString(),
+      roomId: roomId || null,
     })
     setSaving(false)
     if (result.error) setError(result.error)
@@ -166,7 +195,13 @@ export function SessionScheduler({
   const minDate = format(new Date(), 'yyyy-MM-dd')
 
   return (
-    <div style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', padding: '16px', marginTop: 10, border: '1px solid var(--border)' }}>
+    <div data-agendar-sessao style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', padding: '16px', marginTop: 10, border: '1px solid var(--border)' }}>
+
+      {procedimento && (
+        <p data-procedimento-da-sessao style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
+          Procedimento: <strong style={{ color: 'var(--text)' }}>{procedimento.nome}</strong>
+        </p>
+      )}
 
       {branches.length > 1 && (
         <div style={{ marginBottom: 12 }}>
@@ -188,7 +223,7 @@ export function SessionScheduler({
           {loadingProfs ? (
             <Loader2 size={14} style={{ color: 'var(--text-faint)', animation: 'spin 1s linear infinite' }} />
           ) : (
-            <select value={profId} onChange={e => trocarProfissionalOuData(e.target.value, date)}
+            <select aria-label="Profissional" value={profId} onChange={e => trocarProfissionalOuData(e.target.value, date)}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)', outline: 'none' }}>
               <option value="">Selecionar…</option>
               {profs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -197,7 +232,7 @@ export function SessionScheduler({
         </div>
         <div>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>DATA</p>
-          <input type="date" min={minDate} value={date} onChange={e => trocarProfissionalOuData(profId, e.target.value)}
+          <input type="date" aria-label="Data" min={minDate} value={date} onChange={e => trocarProfissionalOuData(profId, e.target.value)}
             disabled={!profId}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' as const }} />
         </div>
@@ -215,6 +250,16 @@ export function SessionScheduler({
             onEscolher={setTime}
             carregando={loadingSlots}
           />
+        </div>
+      )}
+
+      {procedimento && time && salas.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>SALA (OPCIONAL)</p>
+          <select className="filtro-select" aria-label="Sala" value={roomId} onChange={e => setRoomId(e.target.value)}>
+            <option value="">Sem sala</option>
+            {salas.map(x => <option key={x.id} value={x.id} disabled={!x.livre}>{x.name}{x.livre ? '' : ' (ocupada)'}</option>)}
+          </select>
         </div>
       )}
 
@@ -459,6 +504,9 @@ export function TreatmentSessionsModal({
                       <SessionScheduler
                         branches={branches}
                         currentBranchId={currentBranchId}
+                        procedimento={(sess.procedureId ?? procedureId)
+                          ? { id: (sess.procedureId ?? procedureId)!, nome: sess.procedureName ?? procedureName, duracaoMin: durationMin || 60 }
+                          : null}
                         onCancel={() => setSchedulingId(null)}
                         onSave={async (params) => {
                           const sessProcedureId = sess.procedureId ?? procedureId

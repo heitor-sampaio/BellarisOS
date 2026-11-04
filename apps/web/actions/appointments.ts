@@ -1484,6 +1484,8 @@ async function schedulePackageSessionInterno(params: {
   price:            number
   durationMin:      number
   slug:             string
+  /** A sala, opcional (A24 da 6ª simulação): o núcleo confere a unidade, o procedimento e o horário. */
+  roomId?:          string | null
 }): Promise<{ error?: string; appointmentId?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
@@ -1527,6 +1529,7 @@ async function schedulePackageSessionInterno(params: {
     procedureId:    typedSess.procedure_id ?? params.procedureId,
     professionalId: params.professionalId,
     scheduledAt:    params.scheduledAt,
+    roomId:         params.roomId ?? null,
     credito:        { tipo: 'PACOTE', id: params.packageSessionId },
     source:         'INTERNAL',
   })
@@ -1568,10 +1571,13 @@ async function schedulePlanSessionInterno(params: {
   price:          number
   durationMin:    number
   slug:           string
+  /** A sala, opcional (A24 da 6ª simulação): da unidade, que serve ao procedimento, livre no horário. */
+  roomId?:        string | null
 }): Promise<{ error?: string; appointmentId?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   const admin = createAdminClient()
+  const roomId = params.roomId || null
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -1591,8 +1597,15 @@ async function schedulePlanSessionInterno(params: {
   if (params.clientId !== plan.client_id) return { error: 'Cliente não confere com o plano.' }
   const recusa = await conferirPecasDoAgendamento(admin, ctx, {
     branchId: params.branchId, professionalId: params.professionalId, clientId: params.clientId,
+    roomId, procedureId: params.procedureId,
   }) ?? await procedimentoDaRedeOuRecusa(admin, params.procedureId, ctx.tenantId!)
   if (recusa) return { error: recusa }
+  if (roomId && await horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, roomId, branchId: params.branchId,
+    inicio: new Date(params.scheduledAt), duracaoMin: params.durationMin || 60,
+  })) {
+    return { error: 'Esta sala já está ocupada nesse horário.' }
+  }
   // E o horário livre (revisão de 2026-10-08: marcava por cima de outro).
   if (await horarioOcupado(admin, {
     tenantId: ctx.tenantId!, professionalId: params.professionalId,
@@ -1614,6 +1627,7 @@ async function schedulePlanSessionInterno(params: {
       status:            'SCHEDULED',
       source:            'INTERNAL',
       treatment_plan_id: params.planId,
+      room_id:           roomId,
     })
     .select('id')
     .single()

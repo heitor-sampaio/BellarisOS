@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { Check } from 'lucide-react'
 import type { Horario } from '@/lib/agenda/horario'
-import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
+import { gradeDoCheckout, aPartirDeAgora } from '@/lib/checkout/grade-de-horarios'
 
 /**
  * A grade de horários de quem agenda pelo checkout do plano e pelas sessões
@@ -11,6 +12,8 @@ import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
  * PROFISSIONAL em destaque. O resto é encaixe e continua escolhível (§9.1, o
  * seletor é livre); o que nem a unidade oferece vai pelo "Outro horário".
  * Era uma grade fixa, 08:00–20:00, igual para toda unidade e profissional.
+ * Hoje, só o que ainda não passou — também no "Outro horário" (A24 da 6ª
+ * simulação: de madrugada, oferecia 00:00–04:00).
  */
 export function GradeDeHorarios({
   data, horarioDaUnidade, horarioDoProfissional, nomeDoProfissional, ocupado, selecionado, onEscolher, carregando,
@@ -25,7 +28,11 @@ export function GradeDeHorarios({
   onEscolher:            (hora: string) => void
   carregando:            boolean
 }) {
-  const grade = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data)
+  const [agora] = useState(() => new Date())
+  const limite = aPartirDeAgora(data, agora)
+  const [erroDoEncaixe, setErroDoEncaixe] = useState<string | null>(null)
+  const grade = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite)
+  const jaPassou = !!limite && grade.length === 0 && gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data).length > 0
   const temEncaixe = grade.some(h => !h.doProfissional)
   const foraDaGrade = !!selecionado && !grade.some(h => h.hora === selecionado)
   const quem = nomeDoProfissional?.trim() || 'a profissional'
@@ -39,7 +46,9 @@ export function GradeDeHorarios({
 
       {!carregando && grade.length === 0 && (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          A unidade não abre neste dia. Para um encaixe, use “Outro horário”.
+          {jaPassou
+            ? 'Os horários de hoje já passaram. Para um encaixe, use “Outro horário”.'
+            : 'A unidade não abre neste dia. Para um encaixe, use “Outro horário”.'}
         </p>
       )}
 
@@ -86,10 +95,17 @@ export function GradeDeHorarios({
           type="time" className="field" step={300}
           aria-label="Outro horário (encaixe)"
           value={foraDaGrade ? selecionado : ''}
-          onChange={e => { if (e.target.value) onEscolher(e.target.value) }}
+          onChange={e => {
+            const v = e.target.value
+            if (!v) return
+            if (limite && v < limite) { setErroDoEncaixe(`Escolha a partir de ${limite}.`); return }
+            setErroDoEncaixe(null)
+            onEscolher(v)
+          }}
           style={{ width: 'auto' }}
         />
       </label>
+      {erroDoEncaixe && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erroDoEncaixe}</p>}
     </div>
   )
 }

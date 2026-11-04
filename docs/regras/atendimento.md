@@ -63,6 +63,18 @@
     cortava a noite. A action `getSchedulingDaySlots` devolve os dois
     horários. Prova: `e2e/checkout-grade-de-horarios.spec.ts`,
     `tests/checkout-grade-de-horarios.test.ts`.
+    **Hoje, a grade começa em AGORA** (A24 da 6ª simulação, 2026-11-04: de
+    madrugada, numa unidade 24 h, a sessão do pacote oferecia 00:00–04:00):
+    `aPartirDeAgora` (Brasília) corta o que já passou, e o "Outro horário" no
+    passado diz "Escolha a partir de HH:MM." sem escolher. **As sessões de
+    pacote e de plano dizem o procedimento e oferecem a sala**
+    (`SessionScheduler` com `procedimento`, `[data-agendar-sessao]`): a
+    sala é opcional, a lista é a do agendar (`salasParaAgendar`, "(ocupada)"
+    desligada) e o servidor confere (`schedulePackageSession` pelo núcleo;
+    `schedulePlanSession` por `conferirPecasDoAgendamento` com a sala e o
+    procedimento, e `horarioOcupado` da sala). A unidade pré-paga segue só
+    com o horário (o crédito decide o procedimento no servidor). Prova:
+    `e2e/pacote-sessao-agendar.spec.ts`.
 - **Quem atende e é da REDE atende em TODAS as unidades** (D1 da simulação de
   2026-10-28, decisão do Heitor): o membro com `provides_services` e
   `branch_id` nulo aparece na agenda de cada unidade, no agendar (equipe e app
@@ -465,8 +477,8 @@
     ("Sala não encontrada nesta unidade.") e que serve ao procedimento ("Esta
     sala não é usada para este procedimento."); o conflito ("Esta sala já está
     ocupada nesse horário.") é `horarioOcupado`, no núcleo e na remarcação.
-    O checkout do plano, as sessões de pacote/plano e o Copilot não escolhem
-    sala (agendam sem). Prova: `e2e/agenda-salas.spec.ts`,
+    O checkout do plano, a unidade pré-paga e o Copilot não escolhem sala
+    (agendam sem); as sessões de pacote e de plano oferecem (A24, acima). Prova: `e2e/agenda-salas.spec.ts`,
     `tests/agenda-salas.test.ts`.
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
 - Ao marcar `COMPLETED`: consumo de estoque + comissão, numa transação — ver §10. Os pontos de fidelidade NÃO nascem aqui: nascem no pagamento (§9.2.2).

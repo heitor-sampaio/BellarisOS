@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
+import { gradeDoCheckout, aPartirDeAgora } from '@/lib/checkout/grade-de-horarios'
 
 // D8 da simulação de 2026-10-29: a grade do checkout do plano era FIXA, das
 // 08:00 às 20:00, para qualquer unidade e profissional — oferecia 12:00 e 12:30
@@ -44,5 +44,23 @@ describe('a grade de horários do checkout do plano', () => {
     expect(g.find(h => h.hora === '23:00')).toEqual({ hora: '23:00', doProfissional: true })
     // Sem horário próprio, ela segue a unidade: tudo é dela.
     expect(gradeDoCheckout(unidade, null, QUARTA).every(h => h.doProfissional)).toBe(true)
+  })
+})
+
+describe('hoje, a grade não oferece o que já passou (A24 da 6ª simulação)', () => {
+  const vinteEQuatro = todoDia(['00:00', '24:00'])
+  it('o limite é a hora de agora em Brasília, só no dia de hoje', () => {
+    // 04:10 em Brasília = 07:10 UTC.
+    const agora = new Date('2026-11-04T07:10:00Z')
+    expect(aPartirDeAgora('2026-11-04', agora)).toBe('04:10')
+    expect(aPartirDeAgora('2026-11-05', agora), 'outro dia, sem limite').toBeNull()
+    // 22:30 do dia 3 em Brasília é 01:30 UTC do dia 4: o "hoje" é o de Brasília.
+    expect(aPartirDeAgora('2026-11-03', new Date('2026-11-04T01:30:00Z'))).toBe('22:30')
+  })
+  it('a grade começa no primeiro horário depois de agora', () => {
+    const h = gradeDoCheckout(vinteEQuatro, null, '2026-11-04', '04:10').map(x => x.hora)
+    expect(h[0]).toBe('04:30')
+    expect(h).not.toContain('00:00')
+    expect(gradeDoCheckout(vinteEQuatro, null, '2026-11-04', '04:00')[0]?.hora, 'a hora cheia ainda vale').toBe('04:00')
   })
 })
