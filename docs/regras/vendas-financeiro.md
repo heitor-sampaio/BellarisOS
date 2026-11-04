@@ -934,6 +934,14 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   dele. Na simulação, a limpeza de R$ 180 que gerou um plano nunca foi
   cobrada: o checkout ("Novo paciente") cobrava só o plano. Prova:
   `e2e/checkout-de-plano.spec.ts`.
+  - **A tela diz UMA coisa sobre ele** (A38 da 6ª simulação, 2026-11-04): o
+    passo do plano diz só "Ainda não foi recebido"; o do pagamento diz o que
+    acontece com a forma escolhida — "Entra neste checkout: R$ 900,00
+    cobrados junto com o que se recebe agora, no mesmo meio (e nas mesmas
+    3x)" ou "Não entra neste checkout: receba pela tela do atendimento."
+    (`data-hoje-entra`) —, e o total diz "(com o atendimento de hoje)". Eram
+    três frases: "entram juntos", "fica fora deste checkout" e "entra
+    junto". Prova: `e2e/checkout-de-plano.spec.ts` ("A38").
 - **O checkout do plano SUGERE o pacote equivalente** (2026-10-21, decisão
   do Heitor): quando as sessões do plano têm os MESMOS procedimentos, nas
   mesmas quantidades, de um pacote ativo à venda na unidade, e ele sai mais

@@ -533,8 +533,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
             Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}
           </p>
+          {/* A38 da 6ª simulação: aqui só o fato — se ele entra no checkout, quem
+              diz é o passo do pagamento, pela forma escolhida (uma frase só). */}
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            Ainda não foi recebido. O plano acima é das PRÓXIMAS sessões; recebendo agora, os dois entram juntos.
+            Ainda não foi recebido. O plano acima é das PRÓXIMAS sessões.
           </p>
         </div>
       )}
@@ -600,10 +602,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
               Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}
             </p>
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+            {/* A38: UMA frase, a do que o sistema faz com a forma escolhida. */}
+            <p data-hoje-entra={recebeHoje ? 'sim' : 'nao'} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
               {recebeHoje
-                ? 'Ainda não foi recebido: entra junto, à vista, no mesmo meio de pagamento. O plano é das próximas sessões.'
-                : 'Ainda não foi recebido e fica fora deste checkout — receba pela tela do atendimento. O plano é das próximas sessões.'}
+                ? `Entra neste checkout: ${fmtBRL(precoDeHoje)} cobrados junto com o que se recebe agora, no mesmo meio${paymentMethod === 'CREDIT_CARD' && vezesCartao > 1 ? ` e nas mesmas ${vezesCartao}x` : ''}.`
+                : 'Não entra neste checkout: receba pela tela do atendimento.'}
             </p>
           </div>
         )}
@@ -712,6 +715,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
+            {recebeHoje && ' (com o atendimento de hoje)'}
           </span>
           <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
             {fmtBRL((formaPgto === 'AVISTA' ? liquido : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0))}

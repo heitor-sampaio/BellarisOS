@@ -307,6 +307,37 @@ test.describe.serial('checkout de plano', () => {
     expect((doPlano ?? []).map(t => [Number(t.amount), t.is_paid]), 'o plano, separado').toEqual([[TOTAL, true]])
   })
 
+  // A38 da 6ª simulação: o checkout dizia três coisas sobre o Botox de hoje —
+  // "entram juntos", "fica fora deste checkout" e "entra junto". Diz UMA, a
+  // que o sistema faz com a forma escolhida.
+  test('A38: o checkout diz uma coisa só sobre o atendimento de hoje — a que acontece com a forma escolhida', async ({ browser }) => {
+    const { planId, cliente } = await plano('A38')
+    const { data: ap, error: eAp } = await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: procs.P1,
+      scheduled_at: new Date().toISOString(), duration_min: 30, price: 180, status: 'COMPLETED', source: 'INTERNAL',
+    }).select('id').single<{ id: string }>()
+    expect(eAp).toBeNull()
+    await db().from('treatment_plans').update({ evaluation_appointment_id: ap!.id }).eq('id', planId)
+    await como(browser, async page => {
+      await page.goto(`/admin/checkout/${planId}`)
+      const hoje = page.getByTestId('atendimento-de-hoje')
+      await expect(hoje).toContainText('Ainda não foi recebido')
+      await expect(hoje, 'o plano não promete nada antes da forma').not.toContainText(/entram juntos|entra junto|fica fora/)
+      await page.getByRole('button', { name: 'Confirmar plano' }).click()
+      const frase = page.getByTestId('atendimento-de-hoje-no-pagamento').locator('[data-hoje-entra]')
+      // "Receber no atendimento" (o padrão): não entra.
+      await expect(frase).toHaveAttribute('data-hoje-entra', 'nao')
+      await expect(frase).toHaveText('Não entra neste checkout: receba pela tela do atendimento.')
+      // À vista: entra, e o total diz.
+      await page.getByRole('button', { name: 'À vista', exact: true }).click()
+      await expect(frase).toHaveAttribute('data-hoje-entra', 'sim')
+      await expect(frase).toContainText(/Entra neste checkout: R\$\s180,00 cobrados junto/)
+      await expect(page.getByText('(com o atendimento de hoje)')).toBeVisible()
+      await expect(page.getByTestId('atendimento-de-hoje-no-pagamento')).toHaveCount(1)
+      await expect(page.getByText(/fica fora deste checkout|entra junto, à vista/)).toHaveCount(0)
+    })
+  })
+
   test('o caixa sem o módulo de Termos colhe a assinatura do checkout (2026-10-20)', async ({ browser }) => {
     // Na simulação de um dia de clínica, o caixa (Recebimentos, sem Termos)
     // travou em "Colher assinatura" com um "Forbidden" cru. Decisão do Heitor:
