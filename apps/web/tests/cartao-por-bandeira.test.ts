@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { EntradaDoCartaoPorBandeira, bandeiraDoPagamento, lerCartaoPorBandeira, semBandeirasVazias, taxaDoCreditoNaBandeira, creditoPelaTaxaPorParcela } from '@/lib/financeiro/bandeiras'
 import { lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
+import { EntradaDasTaxas } from '@/lib/comissoes/config'
 
 /** r3-f13-01 (o Heitor, 2026-11-03: "Prazo por bandeira. Taxas também configuráveis por bandeira."). */
 describe('o cartão por bandeira', () => {
@@ -29,6 +30,16 @@ describe('o cartão por bandeira', () => {
     expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'CREDIT_CARD:13': 1 } } }).success).toBe(false)
     expect(semBandeirasVazias({ ELO: { taxas: {} }, VISA: { prazo: 28, taxas: {} } })).toEqual({ VISA: { prazo: 28, taxas: {} } })
     expect(lerCartaoPorBandeira({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3, lixo: 1 } }, XPTO: {} })).toEqual({ ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } })
+  })
+
+  // F16-3 (o Heitor: "não é pra recusar nada, juros podem passar facilmente de
+  // 100% no acumulado"): nenhum teto nas taxas — só não negativo.
+  it('as taxas não têm teto (acima de 100% passa), só não são negativas', () => {
+    expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'CREDIT_CARD:12': 150 } } }).success, 'a bandeira com 150%').toBe(true)
+    expect(EntradaDoCartaoPorBandeira.safeParse({ ELO: { taxas: { 'CREDIT_CARD:12': -1 } } }).success, 'negativa, não').toBe(false)
+    expect(EntradaDasTaxas.safeParse([{ metodo: 'CREDIT_CARD', parcelas: 12, taxa_pct: 120 }]).success, 'a regra geral com 120%').toBe(true)
+    expect(EntradaDasTaxas.safeParse([{ metodo: 'PIX', parcelas: 1, taxa_pct: -0.5 }]).success, 'negativa, não').toBe(false)
+    expect(creditoPelaTaxaPorParcela(10).at(-1), 'a taxa por parcela de 10%: o 12x com 120%').toEqual({ parcelas: 12, taxa: 120 })
   })
 
   // r4-f15-01 (o Heitor, revisão das decisões da F15): o campo vazio da bandeira

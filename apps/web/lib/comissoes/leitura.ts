@@ -35,9 +35,13 @@ export async function comissoesDosProdutos(tenantId: string): Promise<ComissaoDo
 
 export async function taxasDaRede(tenantId: string): Promise<TaxaDePagamento[]> {
   const linhas = await ler(createAdminClient().from('payment_fees')
-    .select('metodo, parcelas, taxa_pct').eq('tenant_id', tenantId)
+    .select('metodo, parcelas, taxa_pct, taxa_pct_sem_teto').eq('tenant_id', tenantId)
     .order('metodo').order('parcelas'), 'ler as taxas da maquininha')
-  return (linhas ?? []).map(l => ({ metodo: l.metodo as MetodoComTaxa, parcelas: l.parcelas as number, taxa_pct: Number(l.taxa_pct) }))
+  // F16-3: a taxa como a clínica digitou (sem teto); `taxa_pct` fica com até 100.
+  return (linhas ?? []).map(l => ({
+    metodo: l.metodo as MetodoComTaxa, parcelas: l.parcelas as number,
+    taxa_pct: Number(l.taxa_pct_sem_teto ?? l.taxa_pct),
+  }))
 }
 
 /**

@@ -427,4 +427,59 @@ test.describe.serial('o cartão por bandeira', () => {
         .toEqual({ payment_method: 'CREDIT_CARD', is_paid: true, cartao_bandeira: 'ELO' })
     })
   })
+
+  // F16-3 (o Heitor: "não é pra recusar nada, juros podem passar facilmente de
+  // 100% no acumulado"): nenhum teto nas taxas da maquininha — só não negativo.
+  // 10% por parcela preenche o 12x com 120%; a Elo grava 150% no 12x. A venda
+  // em 12x com 120% não quebra nada: a comissão sobre o líquido não fica
+  // negativa (R$ 0) e o depósito previsto da operadora não fica abaixo de zero.
+  test('F16-3: nenhum teto nas taxas — 120% na geral e 150% na Elo gravam, e a venda em 12x não quebra nada', async ({ browser }) => {
+    await como(browser, dona!, async p => {
+      await p.goto('/admin/settings?tab=comissoes')
+      const card = p.locator('[aria-label="Taxas da maquininha"]')
+      await card.getByRole('button', { name: 'Preencher pela taxa por parcela' }).click()
+      await card.getByLabel('Taxa por parcela (%)').fill('10')
+      await card.getByRole('button', { name: 'Preencher', exact: true }).click()
+      await expect(card.getByRole('alert'), 'a taxa por parcela de 10% não é recusada').toHaveCount(0)
+      await expect(card.getByLabel('Taxa 12x')).toHaveValue('120,00')
+      await card.getByLabel('Bandeira').selectOption({ label: 'Elo' })
+      await card.getByLabel('Taxa 12x').fill('150')
+      // Negativa, sim, é recusada.
+      await card.getByLabel('Taxa 11x').fill('-1')
+      await card.getByRole('button', { name: 'Salvar taxas' }).click()
+      await expect(card.getByRole('alert')).toContainText('negativ')
+      await card.getByLabel('Taxa 11x').fill('')
+      await card.getByRole('button', { name: 'Salvar taxas' }).click()
+      await expect(card.getByRole('status').filter({ hasText: 'Salvo.' })).toBeVisible()
+    })
+    const { data: t } = await db().from('tenants').select('cartao_por_bandeira').eq('id', rede!.tenantId).single()
+    expect((t!.cartao_por_bandeira as { ELO: { taxas: Record<string, number> } }).ELO.taxas['CREDIT_CARD:12'], 'a Elo com 150%').toBe(150)
+
+    const pagar = async (ap: string, bandeira?: string) => {
+      const { data, error } = await db().rpc('confirmar_pagamento_do_atendimento', {
+        p_agendamento: ap, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+        p_dados: { metodo: 'CREDIT_CARD', cartao_vezes: 12, pontos: 0, desconto: 0, valor_final: 1100, ...(bandeira ? { cartao_bandeira: bandeira } : {}) },
+      })
+      expect(error, 'pagar em 12x: nada é recusado').toBeNull()
+      return data as string
+    }
+    const geral = await atendimentoConcluido()
+    const txGeral = await pagar(geral)
+    const parcelas = await parcelasDa(txGeral)
+    expect(parcelas.map(x => x.taxa_pct), 'a regra geral do 12x: 120% (gravada sem teto)').toEqual(Array(12).fill(120))
+    // 10% de (R$ 1.100 − 120%) seria negativa: a comissão sobre o líquido fica em R$ 0.
+    expect(await devido(geral), 'a comissão sobre o líquido não fica negativa').toBe(0)
+    const { data: lista, error } = await db().rpc('recebiveis_do_cartao_lista', { p_tenant: rede!.tenantId, p_branch_ids: null, p_from: null, p_to: null })
+    expect(error).toBeNull()
+    const dela = ((lista ?? []) as Record<string, unknown>[]).filter(r => r.transaction_id === txGeral)
+    expect(dela.every(r => n(r.liquido) === 0 && n(r.taxa) === n(r.valor)), 'a operadora não deposita menos que zero: líquido R$ 0, a taxa é a parcela inteira').toBe(true)
+    const naElo = await atendimentoConcluido()
+    expect((await parcelasDa(await pagar(naElo, 'ELO'))).map(x => x.taxa_pct)[0], 'a Elo do 12x: 150%').toBe(150)
+
+    // O Fechamento do dia abre, com a estimativa das taxas.
+    await como(browser, gestor!, async p => {
+      await p.goto(`/${slug}/fechamento`)
+      await expect(p.locator('[data-taxas-do-dia]')).toContainText('Taxas da maquininha no dia')
+    })
+  })
 })

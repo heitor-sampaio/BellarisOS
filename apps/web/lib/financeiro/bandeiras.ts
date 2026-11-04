@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { PRAZO_MAXIMO_DA_OPERADORA, TETO_DE_VEZES } from './vezes-do-cartao'
+import { PRAZO_MAXIMO_DA_OPERADORA, TAXA_MAXIMA_DO_REGISTRO, TETO_DE_VEZES } from './vezes-do-cartao'
 import { taxaQueVale } from './formas'
 
 /**
@@ -60,7 +60,9 @@ const CHAVE_DA_TAXA = /^(DEBIT_CARD:1|CREDIT_CARD:([1-9]|1[0-2]))$/
 export const EntradaDoCartaoPorBandeira = z.record(z.string(), z.object({
   prazo: z.number().int().min(1, `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`)
     .max(PRAZO_MAXIMO_DA_OPERADORA, `O prazo da operadora vai de 1 a ${PRAZO_MAXIMO_DA_OPERADORA} dias.`).optional(),
-  taxas: z.record(z.string(), z.number().min(0, 'Use percentuais entre 0 e 100.').max(100, 'Use percentuais entre 0 e 100.')),
+  // F16-3: sem teto — só não negativa (e o limite do registro).
+  taxas: z.record(z.string(), z.number().min(0, 'A taxa não pode ser negativa.')
+    .max(TAXA_MAXIMA_DO_REGISTRO, 'A taxa vai até 999,99% (o limite do registro).')),
 })).superRefine((obj, c) => {
   for (const [bandeira, regra] of Object.entries(obj)) {
     if (!ehBandeira(bandeira)) c.addIssue({ code: 'custom', message: `Bandeira desconhecida: ${bandeira}.` })

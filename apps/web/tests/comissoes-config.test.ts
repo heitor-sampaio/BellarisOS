@@ -45,10 +45,13 @@ describe('taxas da maquininha — a entrada', () => {
     { metodo: 'CREDIT_CARD', parcelas: 1, taxa_pct: 3 },
     { metodo: 'CREDIT_CARD', parcelas: 6, taxa_pct: 8 },
   ]
-  it('recusa parcelas fora do crédito, repetida e acima de 100%', () => {
+  // F16-3 (o Heitor: 'não é pra recusar nada'): acima de 100% passa; negativa e acima do limite do registro, não.
+  it('recusa parcelas fora do crédito, repetida, negativa e acima do limite do registro', () => {
     expect(EntradaDasTaxas.safeParse([{ metodo: 'PIX', parcelas: 2, taxa_pct: 1 }]).success).toBe(false)
     expect(EntradaDasTaxas.safeParse([{ metodo: 'PIX', parcelas: 1, taxa_pct: 1 }, { metodo: 'PIX', parcelas: 1, taxa_pct: 2 }]).success).toBe(false)
-    expect(EntradaDasTaxas.safeParse([{ metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 101 }]).success).toBe(false)
+    expect(EntradaDasTaxas.safeParse([{ metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 101 }]).success, 'acima de 100%, passa').toBe(true)
+    expect(EntradaDasTaxas.safeParse([{ metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: -1 }]).success).toBe(false)
+    expect(EntradaDasTaxas.safeParse([{ metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 1000 }]).success).toBe(false)
     expect(EntradaDasTaxas.safeParse(taxas).success).toBe(true)
   })
   it('a tabela cheia cabe (Pix, débito e crédito de 1 a 12)', () => {

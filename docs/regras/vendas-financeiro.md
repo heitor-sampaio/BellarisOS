@@ -634,8 +634,24 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       (1x 1,15%, 2x 2,30% … 12x 13,80%; `creditoPelaTaxaPorParcela`). Só
       preenche os campos — grava no "Salvar taxas" de sempre, cada campo
       segue editável, o débito não muda —, e a tabela continua sendo a verdade
-      do cálculo: não há coluna de "taxa por parcela" no banco. Acima de
-      8,33% por parcela (o 12x passaria de 100%) a tela recusa.
+      do cálculo: não há coluna de "taxa por parcela" no banco.
+    - **Nenhum teto nas taxas** (F16-3, o Heitor: "não é pra recusar nada,
+      juros podem passar facilmente de 100% no acumulado"; migration
+      `20261103001703`): na regra geral e nas bandeiras, e no "Preencher pela
+      taxa por parcela" (10% por parcela → 12x 120%), só não negativa
+      (`recusaDaTaxaDaMaquininha`, `lib/financeiro/vezes-do-cartao.ts`; o
+      zod das duas entradas). O único limite é o do registro, 999,99% (a
+      parcela da operadora guarda a taxa em numeric(6,3) — decisão da F17).
+      A regra geral acima de 100% mora em `payment_fees.taxa_pct_sem_teto`
+      (o gatilho `trg_payment_fees_sem_teto` a preenche antes do CHECK antigo
+      de 0–100, que fica em `taxa_pct` com até 100); a que vale é
+      `coalesce(taxa_pct_sem_teto, taxa_pct)`. Com a taxa acima de 100%:
+      a comissão sobre o líquido fica em R$ 0 (nunca negativa —
+      `comissao_conta`), o depósito previsto da operadora não fica abaixo de
+      zero (na lista das parcelas, o líquido é no mínimo R$ 0 e a taxa, no
+      máximo a parcela inteira) e a estimativa do Fechamento segue só
+      informativa. Prova: `e2e/financeiro-cartao-por-bandeira.spec.ts`
+      ("F16-3"), `tests/cartao-por-bandeira.test.ts`, `tests/comissoes-config.test.ts`.
     - **O pagamento no cartão diz a bandeira, opcional** ("Bandeira (opcional)",
       `CampoDaBandeira`): o recebimento do atendimento e do plano no check-in,
       o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —
@@ -1001,6 +1017,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
 ❌ Ler a taxa ou o prazo do cartão sem a bandeira do pagamento (é private.comissao_taxa_pct com a bandeira e private.prazo_da_operadora; o de 3 argumentos é só a regra geral)
 ❌ Dar à bandeira a taxa de OUTRA quantidade de vezes dela (a Elo do 3x no 5x) — sem a taxa exata na bandeira, vale a regra geral daquelas vezes (r4-f15-01)
+❌ Pôr teto de negócio na taxa da maquininha (F16-3: só não negativa), ou ler a regra geral por payment_fees.taxa_pct sozinho (acima de 100% ela está em taxa_pct_sem_teto)
 ❌ Cair na taxa de OUTRA quantidade de vezes, na bandeira ou na regra geral (o 3x no 4x) — sem a taxa exata, é 0% e a tela avisa (F16-2); a taxa que existe é private.taxa_da_maquininha
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)

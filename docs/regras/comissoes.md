@@ -109,7 +109,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   saiu dela —, o extrato pelo retrato de cada linha (`comissoes_extrato`
   devolve `desconta_taxa`/`desconta_insumos`; migration `20261029001502`), e
   o CSV ganhou a coluna "O que saiu da base". **Taxas da maquininha** em `payment_fees`
-  (Pix, débito, crédito 1–12x), gravadas por `comissao_taxas_definir` — a
+  (Pix, débito, crédito 1–12x; sem teto desde a F16-3 — acima de 100% em
+  `taxa_pct_sem_teto`, e a comissão sobre o líquido nunca fica negativa),
+  gravadas por `comissao_taxas_definir` — a
   REGRA GERAL; cada bandeira pode ter as suas (r3-f13-01,
   `tenants.cartao_por_bandeira`, `vendas-financeiro.md` §9.6), e a
   comissão desconta a taxa da bandeira do pagamento.

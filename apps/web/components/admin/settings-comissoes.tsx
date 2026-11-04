@@ -9,7 +9,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira } from '@/actions/comissoes'
 import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
-import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
+import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
@@ -328,12 +328,14 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     const texto = taxaPorParcela.trim()
     const pct = texto ? parseDecimal(texto, 4) : NaN
     if (Number.isNaN(pct)) { setErroPorParcela(`Taxa por parcela: ${NUMERO_INVALIDO}`); return }
-    const teto = Math.floor((100 / TETO_DE_VEZES) * 100) / 100
-    if (pct < 0 || pct > teto) {
-      setErroPorParcela(`Use uma taxa por parcela entre 0 e ${virgula(teto)}% (em ${TETO_DE_VEZES}x ela não passa de 100%).`)
-      return
-    }
-    const novos = Object.fromEntries(creditoPelaTaxaPorParcela(pct)
+    // F16-3 (o Heitor: "não é pra recusar nada, juros podem passar facilmente
+    // de 100% no acumulado"): sem teto — só não negativa (e o limite do
+    // registro, que o 12x não pode passar).
+    if (pct < 0) { setErroPorParcela('A taxa por parcela não pode ser negativa.'); return }
+    const preenchido = creditoPelaTaxaPorParcela(pct)
+    const recusa = recusaDaTaxaDaMaquininha(preenchido[preenchido.length - 1]!.taxa)
+    if (recusa) { setErroPorParcela(`Em ${TETO_DE_VEZES}x: ${recusa}`); return }
+    const novos = Object.fromEntries(preenchido
       .map(t => [chave('CREDIT_CARD', t.parcelas), t.taxa.toFixed(2).replace('.', ',')]))
     if (bandeira) mudarNaBandeira({ valores: { ...daBandeira.valores, ...novos } })
     else setValores(v => ({ ...v, ...novos }))
@@ -350,7 +352,9 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
       const v = bruto.trim()
       if (!v) continue
       const n = Number(v.replace(',', '.'))
-      if (!Number.isFinite(n) || n < 0 || n > 100) { setErro('Use percentuais entre 0 e 100.'); return }
+      // F16-3: sem teto — só não negativa (e o limite do registro).
+      const recusa = recusaDaTaxaDaMaquininha(n)
+      if (recusa) { setErro(recusa); return }
       const [metodo, parcelas] = k.split('/') as [MetodoComTaxa, string]
       lista.push({ metodo, parcelas: Number(parcelas), taxa_pct: n })
     }
@@ -367,7 +371,8 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         const v = bruto.trim()
         if (!v) continue
         const n = Number(v.replace(',', '.'))
-        if (!Number.isFinite(n) || n < 0 || n > 100) { setErro(`${b.label}: use percentuais entre 0 e 100.`); return }
+        const recusa = recusaDaTaxaDaMaquininha(n)
+        if (recusa) { setErro(`${b.label}: ${recusa}`); return }
         const [metodo, parcelas] = k.split('/') as ['DEBIT_CARD' | 'CREDIT_CARD', string]
         taxas[chaveDaTaxa(metodo, Number(parcelas))] = n
       }

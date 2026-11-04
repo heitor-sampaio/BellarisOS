@@ -350,8 +350,9 @@ export async function taxasDoCartaoDeCredito(): Promise<{ parcelas: number; taxa
   const ctx = await getTenantContext()
   if (!podeReceber(ctx)) return []
   const linhas = await ler(createAdminClient().from('payment_fees')
-    .select('parcelas, taxa_pct').eq('tenant_id', ctx.tenantId!).eq('metodo', 'CREDIT_CARD'),
+    .select('parcelas, taxa_pct, taxa_pct_sem_teto').eq('tenant_id', ctx.tenantId!).eq('metodo', 'CREDIT_CARD'),
   'carregar as taxas do cartão')
-  return ((linhas ?? []) as { parcelas: number; taxa_pct: number | string }[])
-    .map(t => ({ parcelas: Number(t.parcelas), taxa_pct: Number(t.taxa_pct) }))
+  // F16-3: a taxa sem teto, como a clínica digitou.
+  return ((linhas ?? []) as { parcelas: number; taxa_pct: number | string; taxa_pct_sem_teto: number | string | null }[])
+    .map(t => ({ parcelas: Number(t.parcelas), taxa_pct: Number(t.taxa_pct_sem_teto ?? t.taxa_pct) }))
 }

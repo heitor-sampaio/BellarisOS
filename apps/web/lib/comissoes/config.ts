@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TAXA_MAXIMA_DO_REGISTRO } from '@/lib/financeiro/vezes-do-cartao'
 
 /**
  * A configuração de comissões da REDE (Configurações → Comissões) e as taxas
@@ -130,7 +131,9 @@ export interface TaxaDePagamento { metodo: MetodoComTaxa; parcelas: number; taxa
 export const EntradaDasTaxas = z.array(z.object({
   metodo:   z.enum(METODOS_COM_TAXA),
   parcelas: z.number().int().min(1).max(12),
-  taxa_pct: z.number().min(0).max(100),
+  // F16-3 (o Heitor: "não é pra recusar nada"): sem teto — só não negativa (e o limite do registro).
+  taxa_pct: z.number().min(0, 'A taxa não pode ser negativa.')
+    .max(TAXA_MAXIMA_DO_REGISTRO, 'A taxa vai até 999,99% (o limite do registro).'),
 })).max(20).refine(
   lista => lista.every(t => t.metodo === 'CREDIT_CARD' || t.parcelas === 1),
   'Só o crédito tem taxa por número de parcelas.',
@@ -139,8 +142,8 @@ export const EntradaDasTaxas = z.array(z.object({
   'Há taxa repetida para o mesmo meio e parcelas.',
 )
 
-// A taxa de um recebimento (a do meio; no crédito, a da maior quantidade de
-// parcelas cadastrada até a do recebimento) é conta do BANCO,
+// A taxa de um recebimento (a do meio; no crédito, a das vezes EXATAS do
+// recebimento, senão 0 — F16-2) é conta do BANCO,
 // `private.comissao_taxa_pct`: o recebimento do plano entra por gatilho e
 // precisa dela. Uma cópia só.
 

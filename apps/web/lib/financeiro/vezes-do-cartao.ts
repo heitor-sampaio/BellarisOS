@@ -16,6 +16,22 @@
 export const TETO_DE_VEZES = 12
 
 /**
+ * A taxa da maquininha não tem teto de negócio (F16-3, o Heitor: "não é pra
+ * recusar nada, juros podem passar facilmente de 100% no acumulado") — só não
+ * é negativa. O único limite é o do REGISTRO: a parcela da operadora guarda a
+ * taxa com três dígitos inteiros (`recebiveis_do_cartao.taxa_pct`,
+ * numeric(6,3)); acima de 999,99% a venda não gravaria.
+ */
+export const TAXA_MAXIMA_DO_REGISTRO = 999.99
+/** A recusa da taxa digitada (em %), ou `null`. */
+export function recusaDaTaxaDaMaquininha(n: number): string | null {
+  if (!Number.isFinite(n)) return 'Use um número na taxa (ex.: 3,49).'
+  if (n < 0) return 'A taxa não pode ser negativa.'
+  if (n > TAXA_MAXIMA_DO_REGISTRO) return 'A taxa vai até 999,99% (o limite do registro).'
+  return null
+}
+
+/**
  * O prazo da OPERADORA (r2-fin-01; o Heitor, 2026-11-03: "como a operadora
  * paga de verdade e configurável o prazo"): a parcela k do cartão em N vezes
  * vence k × N dias corridos depois da venda. A clínica muda em Configurações →
