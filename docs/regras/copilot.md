@@ -118,7 +118,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     Gerenciar).
   - **A bandeira do cartão** (r3-f13-01): `lancar` (receita paga) e
     `marcar_pago` aceitam a bandeira pelo nome ("Elo", "master"), só no
-    cartão; o cartão diz "Bandeira" e o núcleo é o da tela.
+    cartão; o cartão diz "Bandeira" e o núcleo é o da tela. E as VEZES no
+    crédito (F17-5, o Heitor: "pode"): `vezes` em `lancar` (só a receita
+    paga) e em `marcar_pago` — "no crédito em 3x" → 3x, a operadora deposita
+    em 3 —, com a trava do limite da clínica no PREPARO
+    (`recusaDasVezesDaBaixa`, a mesma da baixa da tela). Prova: o caso F17-5
+    de `e2e/copilot-gestao.spec.ts` (contra o build).
 - **"Só os meus" vale também no Copilot** (decisão do Heitor, 2026-10-28:
   "quem tem 'só os meus' vê 'só os meus', em qualquer lugar"). A ferramenta
   `indicadores` usa o recorte do dashboard (`indicadores.md`), com CADA número

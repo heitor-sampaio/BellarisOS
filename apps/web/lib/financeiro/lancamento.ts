@@ -122,18 +122,41 @@ export async function marcarPagoCore(
   admin: Admin, ctx: TenantContext, transactionId: string, forma?: string | null,
   /** r3-f13-01: a bandeira do cartão, opcional — só vale no cartão. */
   bandeira?: string | null,
+  /**
+   * F17-5 (o Heitor: "pode"): as vezes no crédito da receita recebida agora —
+   * UM pagamento que a operadora deposita em N (`recebiveis_do_cartao`, pelo
+   * gatilho, com o prazo e a taxa daquelas vezes e da bandeira), como no
+   * "Novo lançamento". Só no crédito; até o limite da clínica (D-15).
+   */
+  vezes?: number | null,
 ): Promise<{ ok: true } | { error: string }> {
   const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
   if (!tx) return { error: 'Lançamento não encontrado.' }
   if (bandeira && !ehBandeira(bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
   const daBandeira = bandeiraDoPagamento(forma ?? tx.payment_method, bandeira)
+  const recusa = await recusaDasVezesDaBaixa(ctx, tx.type, forma ?? tx.payment_method, vezes)
+  if (recusa) return { error: recusa }
+  const emVezes = vezes != null && vezes >= 2 ? Math.trunc(vezes) : null
   const agora = new Date().toISOString()
   // Com a guarda: o já pago (ou estornado) não tem o pagamento sobrescrito.
   const feitas = await gravar(admin.from('financial_transactions').update({
     is_paid: true, paid_at: agora, updated_at: agora,
     ...(forma ? { payment_method: forma } : {}),
     ...(daBandeira ? { cartao_bandeira: daBandeira } : {}),
+    ...(emVezes ? { cartao_vezes: emVezes } : {}),
   }).eq('id', transactionId).eq('is_paid', false).or('notes.is.null,notes.neq.Estornada').select('id'), 'dar baixa no lançamento') as { id: string }[] | null
   if (!feitas?.length) return { error: 'Esse lançamento já está pago (ou foi estornado).' }
   return { ok: true }
+}
+
+/**
+ * As vezes de uma baixa (F17-5): só a receita no crédito tem vezes, de 1 ao
+ * limite da clínica. Vazio é 1x. O Copilot confere no cartão (preparar) com a
+ * mesma regra.
+ */
+export async function recusaDasVezesDaBaixa(ctx: TenantContext, tipo: string, forma: string | null, vezes: number | null | undefined): Promise<string | null> {
+  if (vezes == null || vezes === 1) return null
+  if (tipo !== 'INCOME' || forma !== 'CREDIT_CARD') return 'As vezes no cartão são só no crédito (o débito é 1x).'
+  if (!Number.isInteger(vezes) || vezes < 1 || vezes > TETO_DE_VEZES) return `As vezes no cartão vão de 1 a ${TETO_DE_VEZES}.`
+  return recusaDasVezesDaRede(ctx.tenantId!, vezes)
 }

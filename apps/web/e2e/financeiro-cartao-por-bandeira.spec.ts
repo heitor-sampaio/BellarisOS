@@ -601,4 +601,59 @@ test.describe.serial('o cartão por bandeira', () => {
     // 10% de (R$ 1.000 − 0,99%) = R$ 99,01.
     expect(await devido(ap), 'a comissão desconta a taxa do Pix').toBe(99.01)
   })
+
+  // F17-5 (o Heitor, à decisão da F17 de a baixa ser 1x: "pode"). A baixa de
+  // um lançamento pendente no CRÉDITO ("Receber no cartão") pergunta as vezes —
+  // até o "Parcelar no crédito até" — além da bandeira, e a operadora deposita
+  // em N com o prazo e a taxa daquelas vezes. O débito segue 1x. R$ 1.200 no
+  // crédito em 3x → 3 × R$ 400 com a taxa de 3x.
+  test('F17-5: "Receber no cartão" de um pendente no crédito pergunta as vezes, e a operadora deposita em N', async ({ browser }) => {
+    expect((await db().from('tenants').update({ cartao_max_vezes: 3, cartao_por_bandeira: {} }).eq('id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').delete().eq('tenant_id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 4.5 })).error).toBeNull()
+    const pendente = async (descricao: string, metodo: string) => {
+      const { data, error } = await db().from('financial_transactions').insert({
+        branch_id: rede!.branchId, client_id: cliente, type: 'INCOME', category: 'Serviços', amount: 1200,
+        description: descricao, payment_method: metodo, is_paid: false, created_by: 'e2e', due_date: new Date().toISOString(),
+      }).select('id').single<{ id: string }>()
+      expect(error).toBeNull()
+      return data!.id
+    }
+    const noCredito = await pendente(`${PREFIXO} Pendente no crédito ${marca}`, 'CREDIT_CARD')
+    const noDebito = await pendente(`${PREFIXO} Pendente no débito ${marca}`, 'DEBIT_CARD')
+    await como(browser, gestor!, async p => {
+      await p.goto(`/${slug}/financeiro`)
+      // O débito: 1x, sem a pergunta.
+      await p.getByRole('row').filter({ hasText: `Pendente no débito ${marca}` }).getByTitle('Marcar como pago').click()
+      let janela = p.getByRole('dialog', { name: 'Receber no cartão' })
+      await expect(janela.getByLabel('Vezes no cartão'), 'no débito, 1x').toHaveCount(0)
+      await janela.getByRole('button', { name: 'Cancelar' }).click()
+      // O crédito: as vezes até o limite da clínica.
+      await p.getByRole('row').filter({ hasText: `Pendente no crédito ${marca}` }).getByTitle('Marcar como pago').click()
+      janela = p.getByRole('dialog', { name: 'Receber no cartão' })
+      const vezes = janela.getByLabel('Vezes no cartão')
+      await expect(vezes.locator('option'), 'até o limite da clínica (3x)').toHaveText(['À vista', '2x', '3x'])
+      await vezes.selectOption('3')
+      await expect(janela.locator('[data-valor-da-parcela]')).toContainText('3× R$ 400,00')
+      await expect(janela.locator('[data-credito-em-vezes]')).toContainText('a operadora deposita em 3 parcelas')
+      await janela.getByRole('button', { name: 'Confirmar recebimento' }).click()
+      await expect.poll(async () => (await db().from('financial_transactions').select('is_paid, cartao_vezes').eq('id', noCredito).single()).data,
+        { message: 'recebido no crédito em 3x' }).toEqual({ is_paid: true, cartao_vezes: 3 })
+    })
+    const hoje = hojeSP()
+    expect(await parcelasDa(noCredito), 'a operadora deposita 3 × R$ 400, a cada 30 dias, com os 4,5% do 3x').toEqual([
+      { numero: 1, valor: 400, taxa_pct: 4.5, vencimento: maisDias(hoje, 30) },
+      { numero: 2, valor: 400, taxa_pct: 4.5, vencimento: maisDias(hoje, 60) },
+      { numero: 3, valor: 400, taxa_pct: 4.5, vencimento: maisDias(hoje, 90) },
+    ])
+    // O servidor recusa acima do limite, sem dar baixa.
+    await como(browser, gestor!, async p => {
+      const r = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [noDebito, slug, null, 2])
+      expect(r.texto, 'no débito não há vezes').toMatch(/só no crédito/)
+      const outro = await pendente(`${PREFIXO} Pendente 12x ${marca}`, 'CREDIT_CARD')
+      const acima = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [outro, slug, null, 12])
+      expect(acima.texto).toMatch(/3x/)
+      expect((await db().from('financial_transactions').select('is_paid').eq('id', outro).single()).data?.is_paid, 'nada baixado').toBe(false)
+    })
+  })
 })

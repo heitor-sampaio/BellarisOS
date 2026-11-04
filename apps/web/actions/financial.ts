@@ -157,15 +157,15 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
   }
 }
 
-export async function markTransactionPaid(transactionId: string, slug: string, bandeira?: string | null) {
+export async function markTransactionPaid(transactionId: string, slug: string, bandeira?: string | null, vezes?: number | null) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'cashier', 'MANAGE')
 
     // O núcleo (lib/financeiro/lancamento.ts) é o mesmo do Copilot: confere a
     // rede e a unidade ao alcance antes de escrever. A bandeira (r3-f13-01)
-    // só vale no cartão.
-    const r = await marcarPagoCore(createAdminClient(), ctx, transactionId, null, bandeira ?? null)
+    // só vale no cartão; as vezes (F17-5), só no crédito.
+    const r = await marcarPagoCore(createAdminClient(), ctx, transactionId, null, bandeira ?? null, vezes ?? null)
     if ('error' in r) return { error: r.error }
 
     // Os dois portais operam o mesmo caixa: quem abre pela rede precisa ver o

@@ -5,7 +5,7 @@ import { isOwnScope, ownerFilter } from '@/lib/auth'
 import { LEAD_SOURCE_KEYS, maskPhone, unitTag } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
 import { dayKeyTZ } from '@/lib/datetime'
-import { lancarCore, marcarPagoCore, lancamentoAoAlcance, CATEGORIAS_DE_DESPESA, CATEGORIAS_DE_RECEITA, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
+import { lancarCore, marcarPagoCore, lancamentoAoAlcance, recusaDasVezesDaBaixa, CATEGORIAS_DE_DESPESA, CATEGORIAS_DE_RECEITA, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { entradaDeEstoqueCore, ajusteDeEstoqueCore } from '@/lib/estoque/movimentos'
 import { criarOportunidadeCore, moverEtapaCore } from '@/lib/crm/oportunidade'
 import { leadAoAlcance } from '@/lib/crm/alcance'
@@ -52,8 +52,10 @@ function categoria(tipo: 'receita' | 'despesa', pedida: string): string | { erro
 const revalidar = (tela: string) => { revalidatePath(`/admin/${tela}`); revalidatePath(`/[slug]/${tela}`, 'page') }
 const revalidarFinanceiro = () => revalidar('financeiro')
 
-interface ArgsLancar { tipo: 'receita' | 'despesa'; descricao: string; valor: number; categoria: string; vencimento?: string; pago?: boolean; forma?: string; bandeira?: string; unidade?: string }
-interface PayloadLancar { branchId: string; tipo: 'INCOME' | 'EXPENSE'; categoria: string; descricao: string; valor: number; forma: string | null; bandeira?: string | null; vencimento: string | null; pago: boolean }
+interface ArgsLancar { tipo: 'receita' | 'despesa'; descricao: string; valor: number; categoria: string; vencimento?: string; pago?: boolean; forma?: string; bandeira?: string; vezes?: number; unidade?: string }
+interface PayloadLancar { branchId: string; tipo: 'INCOME' | 'EXPENSE'; categoria: string; descricao: string; valor: number; forma: string | null; bandeira?: string | null; vezes?: number | null; vencimento: string | null; pago: boolean }
+/** "· 3x" no resumo do cartão (F17-5): o crédito em N vezes. */
+const emVezes = (vezes: number | null | undefined) => vezes && vezes >= 2 ? ` · ${vezes}x` : ''
 
 export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   nome: 'lancar',
@@ -61,7 +63,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   modulo: 'financial', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'financial'),
   recurso: 'financeiro',
-  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}), vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras).`,
+  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}), vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N.`,
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']),
     descricao: z.string().min(2).max(200),
@@ -71,6 +73,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
     pago: z.boolean().optional(),
     forma: z.string().max(30).optional(),
     bandeira: z.string().max(30).optional(),
+    vezes: z.number().int().min(1).max(12).optional(),
     unidade: z.string().max(80).optional(),
   }),
   async preparar(c, a) {
@@ -84,6 +87,11 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
     if (!pago && !a.vencimento) return { erro: 'Já foi pago (e como), ou qual é o vencimento?' }
     const bandeira = pago && a.tipo === 'receita' ? bandeiraDoPedido(a.bandeira, forma as string | null) : null
     if (bandeira && typeof bandeira !== 'string') return bandeira
+    // F17-5: as vezes só na receita PAGA no crédito, até o limite da clínica — a regra da baixa.
+    if (a.vezes && a.vezes > 1 && !pago) return { erro: 'As vezes no cartão são do pagamento: diga que já foi pago, no crédito.' }
+    const recusaDasVezes = await recusaDasVezesDaBaixa(c.ctx, a.tipo === 'receita' ? 'INCOME' : 'EXPENSE', forma as string | null, a.vezes)
+    if (recusaDasVezes) return { erro: recusaDasVezes }
+    const vezes = a.vezes && a.vezes > 1 ? a.vezes : null
     const valor = Math.round(a.valor * 100) / 100
     return {
       resumo: {
@@ -92,7 +100,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
           { rotulo: 'Descrição', valor: a.descricao.trim() },
           { rotulo: 'Valor', valor: dinheiro(valor) },
           { rotulo: 'Categoria', valor: cat },
-          { rotulo: 'Situação', valor: pago ? `pago${forma ? ` · ${FORMA_LEGIVEL[forma]}` : ''}${bandeira ? ` · ${rotuloDaBandeira(bandeira)}` : ''}` : `vence ${a.vencimento!.split('-').reverse().join('/')}` },
+          { rotulo: 'Situação', valor: pago ? `pago${forma ? ` · ${FORMA_LEGIVEL[forma]}` : ''}${emVezes(vezes)}${bandeira ? ` · ${rotuloDaBandeira(bandeira)}` : ''}` : `vence ${a.vencimento!.split('-').reverse().join('/')}` },
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],
       },
@@ -100,13 +108,14 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
         branchId: u.unidade!.id, tipo: a.tipo === 'receita' ? 'INCOME' : 'EXPENSE', categoria: cat,
         descricao: a.descricao.trim(), valor, forma: forma as string | null, vencimento: a.vencimento ?? null, pago,
         ...(bandeira ? { bandeira } : {}),
+        ...(vezes ? { vezes } : {}),
       },
     }
   },
   async efetivar(c, p) {
     const r = await lancarCore(c.admin, c.ctx, {
       branchId: p.branchId, tipo: p.tipo, categoria: p.categoria, descricao: p.descricao, valor: p.valor,
-      formaDePagamento: p.forma, vencimento: p.vencimento, pago: p.pago, bandeira: p.bandeira ?? null,
+      formaDePagamento: p.forma, vencimento: p.vencimento, pago: p.pago, bandeira: p.bandeira ?? null, vezes: p.vezes ?? null,
     })
     if ('error' in r) return { erro: r.error }
     revalidarFinanceiro()
@@ -114,7 +123,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   },
 }
 
-export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: string; bandeira?: string }, { transactionId: string; forma: string | null; bandeira?: string | null }> = {
+export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: string; bandeira?: string; vezes?: number }, { transactionId: string; forma: string | null; bandeira?: string | null; vezes?: number | null }> = {
   nome: 'marcar_pago',
   tipo: 'escrita',
   // Dar baixa é do CAIXA, como na tela (markTransactionPaid). Com o
@@ -122,8 +131,8 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   // dava baixa em qualquer lançamento da unidade.
   modulo: 'cashier', nivel: 'MANAGE',
   recurso: 'financeiro',
-  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento opcional (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras).',
-  parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional() }),
+  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento opcional (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3).',
+  parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional() }),
   async preparar(c, a) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, a.lancamento)
     if (!tx) return { erro: 'Lançamento não encontrado.' }
@@ -133,6 +142,10 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
     if (forma && typeof forma !== 'string') return forma
     const bandeira = bandeiraDoPedido(a.bandeira, (forma as string | null) ?? tx.payment_method)
     if (bandeira && typeof bandeira !== 'string') return bandeira
+    // F17-5: as vezes só no crédito da receita, até o limite da clínica (a regra da baixa da tela).
+    const recusaDasVezes = await recusaDasVezesDaBaixa(c.ctx, tx.type, (forma as string | null) ?? tx.payment_method, a.vezes)
+    if (recusaDasVezes) return { erro: recusaDasVezes }
+    const vezes = a.vezes && a.vezes > 1 ? a.vezes : null
     return {
       resumo: {
         titulo: 'Dar baixa no lançamento',
@@ -142,15 +155,16 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
           ...(tx.due_date ? [{ rotulo: 'Vencimento', valor: dayKeyTZ(tx.due_date).split('-').reverse().join('/') }] : []),
           ...(forma ? [{ rotulo: 'Forma', valor: FORMA_LEGIVEL[forma as string]! }] : []),
           ...(bandeira ? [{ rotulo: 'Bandeira', valor: rotuloDaBandeira(bandeira)! }] : []),
+          ...(vezes ? [{ rotulo: 'Vezes no cartão', valor: `${vezes}x — a operadora deposita em ${vezes}` }] : []),
         ],
       },
-      payload: { transactionId: tx.id, forma: forma as string | null, ...(bandeira ? { bandeira } : {}) },
+      payload: { transactionId: tx.id, forma: forma as string | null, ...(bandeira ? { bandeira } : {}), ...(vezes ? { vezes } : {}) },
     }
   },
   async efetivar(c, p) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, p.transactionId)
     if (!tx || tx.is_paid) return { erro: 'O lançamento mudou de situação. Confira no financeiro.' }
-    const r = await marcarPagoCore(c.admin, c.ctx, p.transactionId, p.forma, p.bandeira ?? null)
+    const r = await marcarPagoCore(c.admin, c.ctx, p.transactionId, p.forma, p.bandeira ?? null, p.vezes ?? null)
     if ('error' in r) return { erro: r.error }
     revalidarFinanceiro()
     return { mensagem: 'Baixa registrada.' }

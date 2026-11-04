@@ -689,11 +689,24 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       "Vender". A tela diz a diferença: "Um pagamento só: a cliente pagou tudo
       agora, e a operadora deposita em 3 parcelas… Não é um parcelamento da
       cliente com a clínica." (o "Parcelado" do modal é o da despesa). Débito
-      é 1x; o lançamento PENDENTE não pergunta (a baixa é "Receber no
-      cartão", 1x — decisão da F17, para o Heitor revisar). `lancarCore`
-      (`vezes`) recusa acima do limite (`recusaDasVezesDaRede`) — vale também
-      para o Copilot, que ainda não manda as vezes. Prova:
-      `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-5").
+      é 1x; o lançamento PENDENTE não pergunta — as vezes são da baixa.
+      `lancarCore` (`vezes`) recusa acima do limite (`recusaDasVezesDaRede`).
+      Prova: `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-5").
+    - **A baixa no crédito também escolhe as vezes** (F17-5, o Heitor:
+      "pode"): o "Receber no cartão" (`ReceberNoCartao`, nos dois
+      financeiros) de um pendente no CRÉDITO pergunta "Vezes no cartão" (até o
+      limite da clínica, com o valor da parcela e o aviso da taxa), além da
+      bandeira; `markTransactionPaid` → `marcarPagoCore` (`vezes`) grava
+      `cartao_vezes` junto do `is_paid`, e o gatilho faz as parcelas da
+      operadora com o prazo e a taxa daquelas vezes e da bandeira. R$ 1.200 em
+      3x → "A receber da operadora" 3 × R$ 400 com a taxa de 3x. Débito, 1x.
+      A regra é UMA, `recusaDasVezesDaBaixa` (`lib/financeiro/lancamento.ts`:
+      só a receita no crédito, de 1 ao limite) — e o **Copilot** (`lancar` e
+      `marcar_pago`, `vezes`) passa por ela já no preparo: "registra R$ 1.200
+      no crédito em 3x" vira o cartão "pago · cartão de crédito · 3x", e acima
+      do limite nem vira cartão. Prova:
+      `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F17-5"),
+      `e2e/copilot-gestao.spec.ts` ("F17-5", contra o build).
       Gravada em `financial_transactions.cartao_bandeira` (só no crédito e no
       débito — a restrição do banco confere; `private.bandeira_do_cartao`
       recusa a desconhecida). A taxa da bandeira vale onde a taxa já valia —

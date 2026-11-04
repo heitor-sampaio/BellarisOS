@@ -69,6 +69,46 @@ test('lançar despesa e dar baixa: o cartão, nada antes; o Confirmar grava', as
   })
 })
 
+// F17-5 (o Heitor: "pode"): o Copilot aceita as vezes no crédito — "registra
+// R$ 1.200 no crédito em 3x" → 3x —, pelo mesmo núcleo da tela e com a mesma
+// trava do limite. A operadora deposita 3 × R$ 400.
+test('F17-5: lançar e dar baixa no crédito em 3x; acima do limite da clínica, nem vira cartão', async ({ browser }) => {
+  expect((await db().from('tenants').update({ cartao_max_vezes: 3 }).eq('id', rede.outra.tenantId)).error).toBeNull()
+  const parcelas = async (tx: string) => {
+    const { data, error } = await db().rpc('recebiveis_do_cartao_lista', { p_tenant: rede.outra.tenantId, p_branch_ids: null, p_from: null, p_to: null })
+    expect(error).toBeNull()
+    return ((data ?? []) as Record<string, unknown>[]).filter(r => r.transaction_id === tx).map(r => Number(r.valor)).sort()
+  }
+  const descricao = `${PREFIXO} Crédito 3x copges${marca}`
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/financeiro')
+    const cartao = await pedir(p, 'lancar', { tipo: 'receita', descricao, valor: 1200, categoria: 'Outro', pago: true, forma: 'credito', vezes: 3 })
+    await expect(cartao).toContainText('cartão de crédito · 3x')
+    await cartao.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(cartao.getByRole('status')).toContainText('Feito')
+    const { data: lancado } = await db().from('financial_transactions').select('id, is_paid, cartao_vezes').eq('description', descricao).single()
+    expect(lancado).toMatchObject({ is_paid: true, cartao_vezes: 3 })
+    expect(await parcelas(lancado!.id as string), 'a operadora deposita 3 × R$ 400').toEqual([400, 400, 400])
+
+    // Acima do limite (3x): o preparo recusa, nada de cartão.
+    await pedir(p, 'lancar', { tipo: 'receita', descricao: `${descricao} 6x`, valor: 1200, categoria: 'Outro', pago: true, forma: 'credito', vezes: 6 })
+    expect(ultimaSaida()?.erro).toMatch(/3x/)
+
+    // A baixa de um pendente no crédito, em 3x.
+    const { data: pend, error } = await db().from('financial_transactions').insert({
+      branch_id: rede.outra.branchId, type: 'INCOME', category: 'Outro', description: `${PREFIXO} Pendente crédito copges${marca}`,
+      amount: 1200, is_paid: false, payment_method: 'CREDIT_CARD', created_by: 'e2e',
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    const baixa = await pedir(p, 'marcar_pago', { lancamento: pend!.id, vezes: 3 })
+    await expect(baixa).toContainText('3x')
+    await baixa.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(baixa.getByRole('status')).toContainText('Feito')
+    expect((await db().from('financial_transactions').select('is_paid, cartao_vezes').eq('id', pend!.id).single()).data).toEqual({ is_paid: true, cartao_vezes: 3 })
+    expect(await parcelas(pend!.id)).toEqual([400, 400, 400])
+  })
+})
+
 test('categoria que não existe e "nem pago nem vencimento" não viram cartão', async ({ browser }) => {
   await comSessao(browser, rede.dono.estado, async p => {
     await p.goto('/admin/financeiro')
