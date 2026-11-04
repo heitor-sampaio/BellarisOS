@@ -21,7 +21,7 @@ import {
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, lerTodas, contar } from '@/lib/db'
-import { resumoDoFunil } from '@/lib/metrics/resultado'
+import { resumoDoFunil, rankingDasAvaliacoes } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
@@ -462,23 +462,15 @@ export default async function AdminDashboardPage({
   // 3. Margem por procedimento (lib/metrics: insumos, mão de obra e outros custos).
   const procedureMargins = margensDosProcedimentos ?? []
 
-  // 4. Avaliações — exige pelo menos 3 notas para entrar no ranking; com uma
-  // nota só, um único atendimento definia o "melhor" e o "pior" da rede.
-  const MIN_RATINGS = 3
-
-  const ratedProfessionals = professionalStats
-    .filter(p => p.avgRating != null && p.ratingCount >= MIN_RATINGS)
-    .map(p => ({ name: p.name, avgRating: p.avgRating!, count: p.ratingCount }))
-
-  const bestRatedPros  = [...ratedProfessionals].sort((a, b) => b.avgRating - a.avgRating).slice(0, 5)
-  const worstRatedPros = [...ratedProfessionals].sort((a, b) => a.avgRating - b.avgRating).slice(0, 5)
-
-  const ratedProcedures = procedureStats
-    .filter(p => p.avgRating != null && p.ratingCount >= MIN_RATINGS)
-    .map(p => ({ name: p.name, avgRating: p.avgRating!, count: p.ratingCount }))
-
-  const bestRatedProcedures  = [...ratedProcedures].sort((a, b) => b.avgRating - a.avgRating).slice(0, 5)
-  const worstRatedProcedures = [...ratedProcedures].sort((a, b) => a.avgRating - b.avgRating).slice(0, 5)
+  // 4. Avaliações — entram com UMA nota, e a linha diz quantas (D11 da 6ª
+  // simulação: o mínimo de 3, escondido, deixava "Sem avaliações no período"
+  // com as notas gravadas). A conta é de lib/metrics (rankingDasAvaliacoes).
+  const avaliacoesDosProfissionais = rankingDasAvaliacoes(professionalStats)
+  const avaliacoesDosProcedimentos = rankingDasAvaliacoes(procedureStats)
+  const bestRatedPros        = avaliacoesDosProfissionais.melhores
+  const worstRatedPros       = avaliacoesDosProfissionais.piores
+  const bestRatedProcedures  = avaliacoesDosProcedimentos.melhores
+  const worstRatedProcedures = avaliacoesDosProcedimentos.piores
 
   // 5. Clientes — "Atend." agora é a contagem de atendimentos concluídos, não
   // a de transações financeiras (que inclui venda de produto e parcelas).

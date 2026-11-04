@@ -1167,7 +1167,7 @@ export function AdminDashboardView({
             <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>⚠ Procedimentos pior avaliados</span>
           </div>
           {worstRatedProcedures.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>{bestRatedProcedures.length > 0 ? 'Nenhum outro procedimento avaliado no período.' : 'Sem avaliações no período.'}</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -1292,7 +1292,7 @@ export function AdminDashboardView({
             <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>⚠ Pior avaliados</span>
           </div>
           {worstRatedPros.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>{bestRatedPros.length > 0 ? 'Ninguém mais foi avaliado no período.' : 'Sem avaliações no período.'}</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>

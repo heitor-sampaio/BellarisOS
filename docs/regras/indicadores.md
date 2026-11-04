@@ -737,6 +737,17 @@ R$ X" (F17); desde a F18 ele conta no dia da execução (acima). Prova:
 `e2e/indicadores-receita-paga-por-procedimento.spec.ts` ("o avulso pago
 noutro mês").
 
+**As avaliações entram com UMA nota** (D11 da 6ª simulação, 2026-11-04;
+princípio 3, nada de regra escondida): "Melhor/Pior avaliados" e
+"Procedimentos melhor/pior avaliados" do dashboard são
+`rankingDasAvaliacoes` (`lib/metrics/resultado.ts`), sem mínimo — a linha diz
+quantas notas ("1 aval."), e os piores não repetem quem já está entre os
+melhores ("Nenhum outro procedimento avaliado no período."). Era
+`MIN_RATINGS = 3` na página, e o vazio dizia "Sem avaliações no período" com
+as notas gravadas (a nota por procedimento não aparecia em tela nenhuma).
+Prova: `e2e/indicadores-avaliacao-com-uma-nota.spec.ts`,
+`tests/metrics-avaliacoes.test.ts`.
+
 **"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
 2026-11-02): ativo, com `provides_services` e ao alcance das unidades do
 recorte (as dela e as da rede) — `getQuemAtende` (`lib/metrics/relatorio.ts`,

@@ -256,3 +256,28 @@ export function contagemDaAgenda(lista: { status: string }[]): {
 export function consumoComPerdas(n: { consumo: number; perdas: number }): number {
   return Math.round((n.consumo + n.perdas) * 100) / 100
 }
+
+/** Uma linha do ranking de avaliações (profissional ou procedimento). */
+export interface Avaliado { name: string; avgRating: number; count: number }
+
+/**
+ * Os melhores e os piores avaliados do período (D11 da 6ª simulação,
+ * 2026-11-04; princípio 3): entra com UMA nota — sem mínimo escondido —, e a
+ * tela diz quantas ("1 aval."). Era `MIN_RATINGS = 3` na página do dashboard,
+ * e o vazio dizia "Sem avaliações no período" com as notas gravadas. Os cinco
+ * piores não repetem quem já está entre os cinco melhores (com dois avaliados,
+ * os dois são os "melhores", e os "piores" ficam vazios). No empate da nota,
+ * vem na frente quem tem mais notas.
+ */
+export function rankingDasAvaliacoes(lista: { name: string; avgRating: number | null; ratingCount: number }[]): {
+  melhores: Avaliado[]; piores: Avaliado[]; avaliados: number
+} {
+  const avaliados = lista
+    .filter(p => p.avgRating != null && p.ratingCount >= 1)
+    .map(p => ({ name: p.name, avgRating: p.avgRating!, count: p.ratingCount }))
+  const melhores = [...avaliados].sort((a, b) => b.avgRating - a.avgRating || b.count - a.count).slice(0, 5)
+  const nosMelhores = new Set(melhores)
+  const piores = [...avaliados].filter(p => !nosMelhores.has(p))
+    .sort((a, b) => a.avgRating - b.avgRating || b.count - a.count).slice(0, 5)
+  return { melhores, piores, avaliados: avaliados.length }
+}
