@@ -8,7 +8,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   ArrowRight, CalendarClock, CalendarPlus, Filter, Layers, Loader2, MessageCircle, Package,
   Search, ShoppingBag, Sparkles, User, UserPlus, UserRound, X,
-  RotateCcw,
+  RotateCcw, Contact,
 } from 'lucide-react'
 import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 import { buscarTudo } from '@/actions/busca'
@@ -43,6 +43,7 @@ const ICONES: Record<TipoDaBusca, ReactNode> = {
   cliente:      <User size={15} />,
   conversa:     <MessageCircle size={15} />,
   oportunidade: <Filter size={15} />,
+  contato:      <Contact size={15} />,
   agendamento:  <CalendarClock size={15} />,
   membro:       <UserRound size={15} />,
   procedimento: <Sparkles size={15} />,

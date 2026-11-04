@@ -17,7 +17,8 @@ describe('tiposPermitidos — a busca não abre exceção de alcance', () => {
 
   it('cada tipo pede o módulo da tela própria dele', () => {
     expect(tiposPermitidos(com({ clients: 'VIEW' }))).toEqual(['cliente'])
-    expect(tiposPermitidos(com({ crm: 'VIEW' }))).toEqual(['conversa', 'oportunidade'])
+    // A pessoa do CRM sem oportunidade (A15) é do CRM; buscarTudo ainda pede o CRM em Gerenciar.
+    expect(tiposPermitidos(com({ crm: 'VIEW' }))).toEqual(['conversa', 'oportunidade', 'contato'])
     expect(tiposPermitidos(com({ agenda: 'MANAGE' }))).toEqual(['agendamento'])
     expect(tiposPermitidos(com({ team: 'VIEW' }))).toEqual(['membro'])
     expect(tiposPermitidos(com({ procedures: 'VIEW' }))).toEqual(['procedimento', 'pacote'])
@@ -25,7 +26,7 @@ describe('tiposPermitidos — a busca não abre exceção de alcance', () => {
   })
 
   it('com tudo, procura tudo', () => {
-    expect(tiposPermitidos(ALL_PERMISSIONS)).toHaveLength(8)
+    expect(tiposPermitidos(ALL_PERMISSIONS)).toHaveLength(9)
   })
 
   it('a funcionalidade fora do plano sai, mesmo com o módulo (inbox, oportunidades, pacotes)', () => {
@@ -33,8 +34,9 @@ describe('tiposPermitidos — a busca não abre exceção de alcance', () => {
     expect(tiposPermitidos(ALL_PERMISSIONS, plano(['inbox']))).not.toContain('conversa')
     expect(tiposPermitidos(ALL_PERMISSIONS, plano(['inbox']))).toContain('oportunidade')
     expect(tiposPermitidos(ALL_PERMISSIONS, plano(['oportunidades']))).not.toContain('oportunidade')
+    expect(tiposPermitidos(ALL_PERMISSIONS, plano(['oportunidades']))).not.toContain('contato')
     expect(tiposPermitidos(ALL_PERMISSIONS, plano(['pacotes']))).toEqual(
-      ['cliente', 'conversa', 'oportunidade', 'agendamento', 'membro', 'procedimento', 'produto'])
+      ['cliente', 'conversa', 'oportunidade', 'contato', 'agendamento', 'membro', 'procedimento', 'produto'])
   })
 })
 

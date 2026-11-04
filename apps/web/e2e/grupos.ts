@@ -49,6 +49,7 @@ export const ISOLADOS = [
   'automacoes-modelos.spec.ts',
   'campanha-aviso-no-celular.spec.ts',
   'busca-universal.spec.ts',
+  'busca-universal-contato.spec.ts',
   'checkout-de-plano.spec.ts',
   'checkout-grade-de-horarios.spec.ts',
   'clinico-so-com-prontuario.spec.ts',

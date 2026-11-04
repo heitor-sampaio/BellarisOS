@@ -12,7 +12,7 @@ export interface LinhaDaBusca {
 }
 
 const TIPOS_DO_BANCO: ReadonlySet<string> = new Set<TipoDoServidor>([
-  'cliente', 'oportunidade', 'agendamento', 'membro', 'procedimento', 'pacote', 'produto',
+  'cliente', 'oportunidade', 'contato', 'agendamento', 'membro', 'procedimento', 'pacote', 'produto',
 ])
 
 const texto = (v: unknown): string | null =>
@@ -123,6 +123,13 @@ export function resultadoDaLinha(l: LinhaDaBusca): ResultadoDaBusca | null {
       return {
         tipo, id: l.id, titulo,
         subtitulo: juntar([texto(x.sku) ? `SKU ${texto(x.sku)}` : null, texto(l.subtitulo)]),
+      }
+
+    // A pessoa sem oportunidade (A15): diz que ainda não tem card, e como achá-la.
+    case 'contato':
+      return {
+        tipo, id: l.id, titulo,
+        subtitulo: juntar([telefoneLegivel(l.subtitulo), texto(x.email), 'sem oportunidade — abrir cria uma']),
       }
 
     case 'conversa':

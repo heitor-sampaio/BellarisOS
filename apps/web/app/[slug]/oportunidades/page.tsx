@@ -10,6 +10,7 @@ import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
+import { pessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
@@ -29,10 +30,10 @@ export default async function BranchOportunidadesPage({
   params, searchParams,
 }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ funil?: string; lead?: string }>
+  searchParams: Promise<{ funil?: string; lead?: string; contato?: string }>
 }) {
   const { slug }        = await params
-  const { funil: rawFunil, lead: rawLead } = await searchParams
+  const { funil: rawFunil, lead: rawLead, contato: rawContato } = await searchParams
   // `?lead=` abre o card (a busca universal entra por aqui). Só serve se for um
   // id; o alcance é o da lista abaixo — lead que ela não carrega não abre.
   const leadAberto = rawLead && UUID.test(rawLead) ? rawLead : null
@@ -40,6 +41,10 @@ export default async function BranchOportunidadesPage({
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'VIEW')
+  // `?contato=` (a busca universal, A15): o "Novo lead" abre com a pessoa do
+  // CRM sem oportunidade — os dados dela vêm daqui, da rede da sessão.
+  const novoDaPessoa = can(ctx, 'crm', 'MANAGE') && rawContato && UUID.test(rawContato)
+    ? await pessoaParaNovoLead(ctx.tenantId!, rawContato) : null
 
   const supabase = await createSupabase()
 
@@ -204,6 +209,7 @@ export default async function BranchOportunidadesPage({
             funnelId={selecionado?.id ?? ''}
             initialStageId={stages[0]?.id}
             procedures={procedures}
+            novoDaPessoa={novoDaPessoa}
             trigger={
               <button type="button" className="btn-primary">
                 <UserPlus size={15} />

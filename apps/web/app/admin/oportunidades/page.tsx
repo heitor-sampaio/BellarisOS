@@ -11,6 +11,7 @@ import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 import type { ComponentProps } from 'react'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
+import { pessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { ResumoDoQuadro } from '@/components/branch/crm-resumo-do-quadro'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -37,14 +38,14 @@ type LeadLido = Record<string, unknown> & {
 export default async function AdminOportunidadesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ funil?: string; lead?: string }>
+  searchParams: Promise<{ funil?: string; lead?: string; contato?: string }>
 }) {
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'VIEW')
 
-  const { funil: rawFunil, lead: rawLead } = await searchParams
+  const { funil: rawFunil, lead: rawLead, contato: rawContato } = await searchParams
   // `?lead=` abre o card (a busca universal entra por aqui). Só serve se for um
   // id; o alcance é o da lista abaixo — lead que ela não carrega não abre.
   const leadAberto = rawLead && UUID.test(rawLead) ? rawLead : null
@@ -54,6 +55,10 @@ export default async function AdminOportunidadesPage({
   const branches = await filiaisAtivas(ctx.tenantId!)
 
   const canEdit = can(ctx, 'crm', 'MANAGE')
+  // `?contato=` (a busca universal, A15): o "Novo lead" abre com a pessoa do
+  // CRM sem oportunidade — os dados dela vêm daqui, da rede da sessão.
+  const novoDaPessoa = canEdit && rawContato && UUID.test(rawContato)
+    ? await pessoaParaNovoLead(ctx.tenantId!, rawContato) : null
   // Configurar funis (funis, etapas, motivos de perda) é configuração da
   // clínica: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29).
   const podeConfigurar = can(ctx, 'settings', 'MANAGE')
@@ -171,6 +176,7 @@ export default async function AdminOportunidadesPage({
                 funnelId={selecionado?.id ?? ''}
                 initialStageId={stages[0]?.id}
                 procedures={procedures}
+                novoDaPessoa={novoDaPessoa}
                 trigger={
                   <button type="button" className="btn-primary">
                     <UserPlus size={15} />

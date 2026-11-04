@@ -13,6 +13,7 @@ import {
 import { isUnitTag, unitTagName, parseDinheiro } from '@estetica-os/utils'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
+import { pessoaDoNovoLeadValida } from '@/lib/crm/pessoa-para-novo-lead'
 import { propagarDadosDaPessoa, digitosDoTelefone, mesmoTelefone } from '@/lib/contatos/propagar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 
@@ -91,12 +92,20 @@ export async function createLead(
     if (!name)                       return { error: 'Nome é obrigatório.' }
     if (!phone && !email && !social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
 
+    // A pessoa do CRM que a busca universal mandou (A15): a oportunidade nasce
+    // dela — a só com e-mail não seria achada pelo gatilho (criaria outra
+    // pessoa). O id vem do navegador: é da rede e ainda sem oportunidade.
+    const contatoId = str(formData, '_contatoId')
+    if (contatoId && !(await pessoaDoNovoLeadValida(ctx.tenantId!, contatoId))) {
+      return { error: 'Pessoa não encontrada, ou ela já tem oportunidade.' }
+    }
+
     // O núcleo (lib/crm/oportunidade.ts) é o mesmo do Copilot.
     const r = await criarOportunidadeCore(createAdminClient(), ctx, {
       nome: name, telefone: phone, email, social, origem: source, observacoes: notes,
       crmStageId, funnelId, procedureIds, tags: manualTags,
       fbclid, gclid, utmSource, utmMedium, utmCampaign,
-    })
+    }, contatoId ? { contatoId } : undefined)
     if ('error' in r) return { error: r.error }
     const lead = { id: r.leadId, created_at: r.createdAt }
 

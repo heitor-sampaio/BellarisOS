@@ -1,5 +1,5 @@
 import {
-  rotaAtendimento, rotaCliente, rotaInbox, rotaNoPortal, rotaOportunidade,
+  rotaAtendimento, rotaCliente, rotaInbox, rotaNoPortal, rotaOportunidade, rotaOportunidades,
 } from '@/lib/rotas'
 import type { ResultadoDaBusca } from '@/lib/busca/tipos'
 
@@ -22,6 +22,8 @@ export function destinoDoResultado(
     case 'cliente':      return rotaCliente(pathname, slug, r.id)
     case 'conversa':     return rotaInbox(pathname, slug, r.id)
     case 'oportunidade': return rotaOportunidade(pathname, slug, r.id, r.funilId)
+    // A pessoa sem oportunidade (A15): o "Novo lead" do quadro, com os dados dela.
+    case 'contato':      return `${rotaOportunidades(pathname, slug)}?contato=${encodeURIComponent(r.id)}`
     case 'agendamento':  return rotaAtendimento(pathname, slug, r.id)
     case 'membro':       return filtrada('/team')
     case 'procedimento': return filtrada('/procedures')

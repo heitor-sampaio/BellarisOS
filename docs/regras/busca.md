@@ -46,6 +46,19 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   termo de texto: "Nome da pessoa muyl997q" achava todo telefone com "997".
 - Prova: `e2e/busca-universal.spec.ts` (rede `[e2e]` própria; recusas pela
   action direta, com o admin como controle).
+- **A pessoa do CRM sem oportunidade e sem conversa se acha** (A15 da 6ª
+  simulação, 2026-11-04: os contatos importados sem "criar oportunidade" não
+  apareciam em lugar nenhum). Grupo "Contatos do CRM" (tipo `contato`),
+  de `busca_pessoas_sem_oportunidade` (migration `20261104002302`, só
+  `service_role`, a regra de casar da `busca_universal`). Quem tem
+  oportunidade ou conversa já se acha por elas, com o alcance de lá. Só para
+  quem CRIA oportunidade (CRM em Gerenciar, e o recurso `oportunidades`):
+  abrir leva ao quadro com `?contato=<id>`, e o "Novo lead" abre sozinho com
+  o nome, o telefone e o e-mail dela, lidos no SERVIDOR
+  (`pessoaParaNovoLead`, `lib/crm/pessoa-para-novo-lead.ts`); a oportunidade
+  nasce ligada a ESSA pessoa (`_contatoId` em `createLead`, conferido: da rede
+  e ainda sem oportunidade) — também a que só tem e-mail. O parâmetro sai da
+  URL ao abrir. Prova: `e2e/busca-universal-contato.spec.ts`.
 
 ### As ações (fase 2, 2026-10-08)
 

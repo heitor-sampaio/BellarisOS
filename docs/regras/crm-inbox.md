@@ -488,6 +488,9 @@ duas conversas.
   apaga. O que é defeito é a mesma pessoa cadastrada duas vezes, ou seja, dois
   contatos com identificador em comum — nenhum índice proíbe sobreposição de
   array, então a trava é `e2e/contato-espinha.spec.ts`.
+  **Mas ele se acha** (A15 da 6ª simulação): a pessoa sem oportunidade e sem
+  conversa (a importada sem card) aparece na busca universal ("Contatos do
+  CRM"), e abrir cria a oportunidade dela no quadro (`busca.md`).
 
 **E-mail e rede social também são da pessoa** (`contacts.email`,
 `contacts.social_media`, 2026-10-13): o importador os grava nela (só o vazio)

@@ -7,6 +7,7 @@ import {
 import { useRouter, usePathname } from 'next/navigation'
 import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare, CalendarPlus } from 'lucide-react'
 import { ScheduleModal } from '@/components/admin/inbox-lead-panel'
+import type { PessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
 import { createLead, updateLead, responsaveisParaOportunidade } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
 import { rotaInbox } from '@/lib/rotas'
@@ -75,6 +76,12 @@ interface CRMLeadModalProps {
    * Gerenciar ou sem a agenda no plano).
    */
   agendar?:        { unidades: CRMBranch[]; clienteId: string | null }
+  /**
+   * A pessoa do CRM sem oportunidade que a busca universal mandou (A15,
+   * `?contato=`): o "Novo lead" abre sozinho com os dados dela, e a
+   * oportunidade nasce ligada a ELA (`_contatoId`). Os dados vêm do servidor.
+   */
+  novoDaPessoa?:   PessoaParaNovoLead | null
 }
 
 /**
@@ -99,11 +106,13 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
   function CRMLeadModal(
     {
       slug, branchName, branches, unidades, stages, funnels, funnelId, procedures,
-      initialStageId, existing, trigger, onLeadCreated, agendar,
+      initialStageId, existing, trigger, onLeadCreated, agendar, novoDaPessoa,
     },
     ref,
   ) {
     const [agendando, setAgendando] = useState(false)
+    // A pessoa da busca vale para UMA abertura: fechada a janela, o "Novo lead" volta vazio.
+    const [pessoa, setPessoa] = useState(existing ? null : (novoDaPessoa ?? null))
     const isEdit    = !!existing
     const action    = isEdit ? updateLead : createLead
     const dialogRef = useRef<HTMLDialogElement>(null)
@@ -202,7 +211,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [erroConversa,    setErroConversa]    = useState<string | null>(null)
 
     const open = useCallback(() => {
-      setPhone(telefoneDoCampo(existing?.phone))
+      setPhone(telefoneDoCampo(existing?.phone ?? pessoa?.telefone))
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
       setMotivoId(''); setMotivoObs('')
@@ -223,7 +232,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           if (!existing) setOwnerId(r.eu ?? '')
         })
         .catch(() => setResponsaveis(null))
-    }, [existing, initialStageId, stages, branchName])
+    }, [existing, initialStageId, stages, branchName, pessoa])
 
     const close = useCallback(() => dialogRef.current?.close(), [])
 
@@ -242,6 +251,29 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     }
 
     useImperativeHandle(ref, () => ({ open }), [open])
+
+    // A15: a busca pediu outra pessoa com o quadro já aberto (a página não
+    // remonta) — ajustado durante o render, como o `?lead=` do quadro.
+    const [pessoaPedida, setPessoaPedida] = useState(novoDaPessoa?.id ?? null)
+    if (!existing && (novoDaPessoa?.id ?? null) !== pessoaPedida) {
+      setPessoaPedida(novoDaPessoa?.id ?? null)
+      if (novoDaPessoa) setPessoa(novoDaPessoa)
+    }
+    // Veio com a pessoa: abre sozinho e tira o `?contato=` da URL (recarregar não reabre).
+    const abrirComAPessoa = useEffectEvent(() => {
+      open()
+      const params = new URLSearchParams(window.location.search)
+      if (!params.has('contato')) return
+      params.delete('contato')
+      const resto = params.toString()
+      window.history.replaceState(null, '', `${window.location.pathname}${resto ? `?${resto}` : ''}`)
+    })
+    // Depois da montagem (o <dialog> já no DOM), fora do corpo do efeito.
+    useEffect(() => {
+      if (!pessoa) return
+      const t = setTimeout(abrirComAPessoa, 0)
+      return () => clearTimeout(t)
+    }, [pessoa])
 
     const aoSalvar = useEffectEvent(() => {
       if (!state?.success) return
@@ -305,7 +337,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           ref={dialogRef}
           className="modal"
           // Um lugar só para Esc, clique no fundo e botão de fechar.
-          onClose={() => setAberto(false)}
+          onClose={() => { setAberto(false); setPessoa(null) }}
           onClick={e => { if (e.target === dialogRef.current) close() }}
         >
           {/* Header */}
@@ -379,7 +411,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
           {/* Body */}
           <div style={{ padding: '24px 24px 28px' }}>
-            <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form key={pessoa?.id ?? 'novo'} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {pessoa && <input type="hidden" name="_contatoId" value={pessoa.id} />}
               <input type="hidden" name="_funnelId"     value={funnelId ?? ''} />
               <input type="hidden" name="_slug"         value={activeBranchSlug} />
               <input type="hidden" name="procedure_ids" value={JSON.stringify(selectedProcs)} />
@@ -391,7 +424,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <Label htmlFor={idNome}>Nome *</Label>
                 <input id={idNome} name="name" type="text" required className="field"
-                  defaultValue={existing?.name} placeholder="Nome do contato" />
+                  defaultValue={existing?.name ?? pessoa?.nome} placeholder="Nome do contato" />
               </div>
 
               {/* Contato */}
@@ -413,7 +446,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>E-mail</span>
                     <input name="email" type="email" className="field" style={{ flex: 1 }} aria-label="E-mail"
-                      defaultValue={existing?.email ?? ''} placeholder="contato@email.com" />
+                      defaultValue={existing?.email ?? pessoa?.email ?? ''} placeholder="contato@email.com" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>Rede social</span>

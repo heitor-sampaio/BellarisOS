@@ -9,7 +9,7 @@ import type { AcaoDaBusca } from '@/lib/busca/acoes'
  * `busca_universal` (migration 20261003000001).
  */
 export type TipoDaBusca =
-  | 'acao' | 'pagina' | 'cliente' | 'conversa' | 'oportunidade' | 'agendamento'
+  | 'acao' | 'pagina' | 'cliente' | 'conversa' | 'oportunidade' | 'contato' | 'agendamento'
   | 'membro' | 'procedimento' | 'pacote' | 'produto'
 
 /** Os tipos que o SERVIDOR procura (página e ação não passam por ele). */
@@ -48,6 +48,8 @@ export const GRUPOS: readonly { tipo: TipoDaBusca; rotulo: string }[] = [
   { tipo: 'cliente',      rotulo: 'Clientes' },
   { tipo: 'conversa',     rotulo: 'Conversas' },
   { tipo: 'oportunidade', rotulo: 'Oportunidades' },
+  // A pessoa do CRM sem oportunidade nem conversa (A15: a importada sem card).
+  { tipo: 'contato',      rotulo: 'Contatos do CRM' },
   { tipo: 'agendamento',  rotulo: 'Próximos agendamentos' },
   { tipo: 'membro',       rotulo: 'Equipe' },
   { tipo: 'procedimento', rotulo: 'Procedimentos' },
@@ -64,6 +66,7 @@ export const MODULO_DO_TIPO: Record<TipoDoServidor, AppModule> = {
   cliente:      'clients',
   conversa:     'crm',
   oportunidade: 'crm',
+  contato:      'crm',
   agendamento:  'agenda',
   membro:       'team',
   procedimento: 'procedures',
@@ -79,6 +82,7 @@ export const MODULO_DO_TIPO: Record<TipoDoServidor, AppModule> = {
 export const RECURSO_DO_TIPO: Partial<Record<TipoDoServidor, string>> = {
   conversa:     'inbox',
   oportunidade: 'oportunidades',
+  contato:      'oportunidades',
   pacote:       'pacotes',
 }
 
