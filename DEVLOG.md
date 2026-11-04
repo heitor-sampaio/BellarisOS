@@ -9330,6 +9330,35 @@ migrations `20261104002001`–`2006` e `2050`):
 - Nenhuma pergunta ao Heitor. Mexeu no `globals.css` (`.field-label`), no
   gatilho dos recebíveis e em todas as cobranças: vale uma completa.
 
+**F21 feita em 2026-11-04 — os defeitos que sobram** (20011e74…03fcf63e;
+migrations `20261104002101`–`2104`):
+- **Lucro (a resposta do Heitor):** desconta as taxas da maquininha (as do
+  Fechamento, no dia do pagamento) e as comissões (pelo `released_at`, a
+  regra de Comissões); a despesa "Comissões" do "Fechar e pagar" fica só no
+  caixa, para não contar duas vezes. O DRE ganha "− Taxas da maquininha" e
+  "− Comissões"; o mesmo número no Lucro da unidade, no Resultado líquido da
+  rede, no "Custo do lucro" e no Copilot. Ex.: R$ 1.800 → R$ 1.762.
+- **D2:** o dashboard da rede só mostra dinheiro (evolução, rankings de
+  receita e margem, valor gasto, LTV por CEP) a quem tem a aba Financeiro;
+  as props vão vazias, nada chega ao navegador.
+- **D10:** negativo e produto sem linha de saldo contam como "sem estoque".
+- **D11:** a avaliação entra com uma nota, e a linha diz quantas.
+- **D12:** "1× Protetor + 1× Sérum", sem o "2×" de fora.
+- **D8 + A29:** gerar o plano não apaga a evolução nem os insumos da tela; a
+  conclusão em branco não apaga a evolução gravada. **D9:** o concluído
+  mostra os insumos da baixa feita.
+- **D7:** "Usar o CNPJ da clínica" não perde telefone, e-mail e IE.
+- **D15:** o Gerente modelo nasce com Configurações em Gerenciar (só redes
+  novas e `[e2e]` — princípio 6). **D14:** lead sem origem fica sem origem
+  (a conversa sem anúncio segue "Orgânico"). **D16:** o pacote LGPD conta a
+  foto anexada no atendimento.
+- **D17:** não era o banco. O "Entrar" clicado antes da hidratação reenviava
+  o POST por cada 307 até `/update-password` ("Failed to find Server
+  Action"). O botão só liga hidratado, e o proxy redireciona não-GET com 303.
+- Nenhuma pergunta ao Heitor. Mexeu no proxy, no login, em `lib/metrics`,
+  no dashboard da rede, na tela do atendimento e em `concluir_atendimento`:
+  vale uma completa.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
