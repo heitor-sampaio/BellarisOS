@@ -6,6 +6,8 @@ import { gravar, ler } from '@/lib/db'
 import { vencimentoDoDia } from '@/lib/financeiro/vencimentos'
 import { dayKeyTZ } from '@/lib/datetime'
 import { bandeiraDoPagamento, ehBandeira } from '@/lib/financeiro/bandeiras'
+import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
 
 /**
  * LANÇAR (receita ou despesa, à vista ou com vencimento) e DAR BAIXA — os
@@ -40,6 +42,14 @@ export interface NovoLancamento {
   observacoes?: string | null
   /** r3-f13-01: a bandeira do cartão do pago agora, opcional. */
   bandeira?: string | null
+  /**
+   * F16-5 (o Heitor: "ajuste isso para permitir escolher parcelas"): as vezes
+   * no crédito da receita PAGA (1 a 12, até o limite da clínica). É UM
+   * lançamento pago, com `cartao_vezes`: a operadora deposita em N
+   * (`recebiveis_do_cartao`, pelo gatilho, com o prazo e a taxa da bandeira) —
+   * não é o parcelado da cliente. Fora do crédito pago, ignorado.
+   */
+  vezes?: number | null
 }
 
 /** O `paid_at` do lançamento pago no dia escolhido. */
@@ -68,6 +78,12 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
   if (pagoEm && typeof pagoEm !== 'string') return pagoEm
   if (l.bandeira && !ehBandeira(l.bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
   const bandeira = l.pago && l.tipo === 'INCOME' ? bandeiraDoPagamento(l.formaDePagamento, l.bandeira) : null
+  // F16-5: o crédito em N vezes da receita paga — até o limite da clínica (D-15).
+  const noCreditoPago = l.pago && l.tipo === 'INCOME' && l.formaDePagamento === 'CREDIT_CARD'
+  const vezes = noCreditoPago && l.vezes != null ? Math.trunc(l.vezes) : 1
+  if (noCreditoPago && (!Number.isFinite(vezes) || vezes < 1 || vezes > TETO_DE_VEZES)) return { error: `As vezes no cartão vão de 1 a ${TETO_DE_VEZES}.` }
+  const recusaDasVezes = noCreditoPago ? await recusaDasVezesDaRede(ctx.tenantId!, vezes) : null
+  if (recusaDasVezes) return { error: recusaDasVezes }
 
   const linha = await gravar(admin.from('financial_transactions').insert({
     branch_id:      l.branchId,
@@ -82,6 +98,7 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
     notes:          l.observacoes ?? null,
     created_by:     ctx.internalUserId,
     ...(bandeira ? { cartao_bandeira: bandeira } : {}),
+    ...(noCreditoPago && vezes >= 2 ? { cartao_vezes: vezes } : {}),
   }).select('id').single(), 'registrar o lançamento') as { id: string }
   return { id: linha.id }
 }

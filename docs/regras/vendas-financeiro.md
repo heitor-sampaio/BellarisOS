@@ -663,6 +663,21 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       `createTransactionAdvanced` → `lancarCore`; a receita lançada em aberto
       tem a bandeira perguntada na baixa, e a despesa não tem bandeira) — e o
       Copilot (`lancar`, `marcar_pago`).
+    - **O "Novo lançamento" escolhe as vezes no crédito** (F16-5, o Heitor,
+      revisão das decisões da F16: "ajuste isso para permitir escolher
+      parcelas"): a RECEITA PAGA no crédito tem "Vezes no cartão" (até o
+      limite da clínica, `useOpcoesDeVezes`, com o valor da parcela e o aviso
+      da taxa), gravado em `cartao_vezes` — UM lançamento pago, que a
+      operadora deposita em N (`recebiveis_do_cartao`, pelo gatilho, com o
+      prazo e a taxa da bandeira), exatamente como o crédito em N vezes do
+      "Vender". A tela diz a diferença: "Um pagamento só: a cliente pagou tudo
+      agora, e a operadora deposita em 3 parcelas… Não é um parcelamento da
+      cliente com a clínica." (o "Parcelado" do modal é o da despesa). Débito
+      é 1x; o lançamento PENDENTE não pergunta (a baixa é "Receber no
+      cartão", 1x — decisão da F17, para o Heitor revisar). `lancarCore`
+      (`vezes`) recusa acima do limite (`recusaDasVezesDaRede`) — vale também
+      para o Copilot, que ainda não manda as vezes. Prova:
+      `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-5").
       Gravada em `financial_transactions.cartao_bandeira` (só no crédito e no
       débito — a restrição do banco confere; `private.bandeira_do_cartao`
       recusa a desconhecida). A taxa da bandeira vale onde a taxa já valia —
@@ -726,8 +741,9 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     produto e o pagamento do contrato), e o servidor RECUSA acima do limite
     (`recusaDasVezesDaRede`, `lib/financeiro/vezes-da-rede.ts`) em
     `confirmPayment`, no checkout e no recebimento do plano, em `venderPacote`,
-    `venderProcedimento`, `venderProduto`, `definirPagamentoDoContrato` e
-    `prepararDocumentosDoCheckout`. Vale só para o cartão em N vezes; as
+    `venderProcedimento`, `venderProduto`, `definirPagamentoDoContrato`,
+    `prepararDocumentosDoCheckout` e o "Novo lançamento" (`lancarCore`,
+    F16-5). Vale só para o cartão em N vezes; as
     parcelas do crediário ("entrada + parcelas") não mudaram. Prova:
     `e2e/financeiro-parcelas-no-credito.spec.ts`, `tests/financeiro-vezes-do-cartao.test.ts`.
   - **A tela diz o limite e o valor da parcela** (A47 da 5ª simulação):

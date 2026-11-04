@@ -69,6 +69,8 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
     const scheduleMode  = str(formData, 'schedule_mode') ?? 'single'
     // r4-f15-02: a bandeira do cartão da receita paga, opcional (lancarCore confere).
     const bandeira      = str(formData, 'cartao_bandeira')
+    // F16-5: as vezes no crédito da receita paga (lancarCore confere o limite da clínica).
+    const vezesNoCartao = str(formData, 'cartao_vezes')
 
     if (!type)                return { error: 'Tipo é obrigatório.' }
     if (!category)            return { error: 'Categoria é obrigatória.' }
@@ -142,7 +144,7 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
       const r = await lancarCore(admin, ctx, {
         branchId, tipo: type, categoria: category, descricao: description, valor: amount,
         formaDePagamento: paymentMethod, vencimento: dueDate, pago: isPaid, pagoEm: paidOn, observacoes: notes,
-        bandeira,
+        bandeira, vezes: vezesNoCartao ? Number(vezesNoCartao) : null,
       })
       if ('error' in r) return { error: r.error }
     }

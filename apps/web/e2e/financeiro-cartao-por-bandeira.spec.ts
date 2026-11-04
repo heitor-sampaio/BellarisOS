@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
-import { chamarAcao } from './apoio/acao-direta'
+import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 import { euVendi } from './apoio/vender'
 
 /**
@@ -425,6 +425,65 @@ test.describe.serial('o cartão por bandeira', () => {
       await expect.poll(async () => (await db().from('financial_transactions').select('payment_method, is_paid, cartao_bandeira')
         .eq('branch_id', rede!.branchId).eq('description', descricao).maybeSingle()).data, { message: 'lançado na Elo' })
         .toEqual({ payment_method: 'CREDIT_CARD', is_paid: true, cartao_bandeira: 'ELO' })
+    })
+  })
+
+  // F16-5 (o Heitor, revisão das decisões da F16: "ajuste isso para permitir
+  // escolher parcelas"): a receita PAGA no crédito, no "Novo lançamento",
+  // escolhe as vezes (até o limite da clínica) e, como o crédito em N vezes das
+  // outras telas, é UM pagamento que a OPERADORA deposita em N — com o prazo e
+  // a taxa da bandeira. Não é o "Parcelado" da despesa: a tela diz a diferença.
+  test('F16-5: o "Novo lançamento" da receita paga no crédito escolhe as vezes, e a operadora deposita em N (com o prazo e a taxa da Elo)', async ({ browser }) => {
+    expect((await db().from('tenants').update({ cartao_por_bandeira: { ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } } }).eq('id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').delete().eq('tenant_id', rede!.tenantId)).error).toBeNull()
+    expect((await db().from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 4.5 })).error).toBeNull()
+    const descricao = `${PREFIXO} Receita no crédito 3x ${marca}`
+    await como(browser, gestor!, async p => {
+      await p.goto(`/${slug}/financeiro`)
+      await p.getByRole('button', { name: 'Novo lançamento' }).click()
+      const dialogo = p.locator('dialog[open]').filter({ hasText: 'Novo lançamento' })
+      await dialogo.getByLabel('Descrição *').fill(descricao)
+      await dialogo.getByLabel('Categoria *').selectOption('Atendimento')
+      await dialogo.getByLabel('Valor bruto (R$) *').fill('1200')
+      const forma = dialogo.getByLabel('Forma de pagamento')
+      await forma.selectOption('DEBIT_CARD')
+      await expect(dialogo.getByLabel('Vezes no cartão'), 'no débito, 1x').toHaveCount(0)
+      await forma.selectOption('CREDIT_CARD')
+      await dialogo.getByRole('button', { name: 'Pendente' }).click()
+      await expect(dialogo.getByLabel('Vezes no cartão'), 'pendente: as vezes são da baixa').toHaveCount(0)
+      await dialogo.getByRole('button', { name: 'Pago' }).click()
+      const vezes = dialogo.getByLabel('Vezes no cartão')
+      await expect(vezes.locator('option'), 'até o limite da clínica (3x, a maior com taxa)').toHaveText(['À vista', '2x', '3x'])
+      await vezes.selectOption('3')
+      await expect(dialogo.locator('[data-valor-da-parcela]')).toContainText('3× R$ 400,00')
+      // A diferença para o "Parcelado" (a despesa em parcelas mensais): é um pagamento só.
+      await expect(dialogo.locator('[data-credito-em-vezes]')).toContainText('Um pagamento só')
+      await expect(dialogo.locator('[data-credito-em-vezes]')).toContainText('a operadora deposita em 3 parcelas')
+      await dialogo.getByLabel('Bandeira').selectOption({ label: 'Elo' })
+      await dialogo.getByRole('button', { name: 'Lançar' }).click()
+      await expect.poll(async () => (await db().from('financial_transactions').select('amount, is_paid, cartao_vezes, cartao_bandeira')
+        .eq('branch_id', rede!.branchId).eq('description', descricao).maybeSingle()).data, { message: 'lançado em 3x na Elo' })
+        .toEqual({ amount: 1200, is_paid: true, cartao_vezes: 3, cartao_bandeira: 'ELO' })
+    })
+    const { data: tx } = await db().from('financial_transactions').select('id').eq('branch_id', rede!.branchId).eq('description', descricao).single()
+    const hoje = hojeSP()
+    expect(await parcelasDa(tx!.id as string), 'a operadora deposita em 3, a cada 32 dias, com os 3% da Elo').toEqual([
+      { numero: 1, valor: 400, taxa_pct: 3, vencimento: maisDias(hoje, 32) },
+      { numero: 2, valor: 400, taxa_pct: 3, vencimento: maisDias(hoje, 64) },
+      { numero: 3, valor: 400, taxa_pct: 3, vencimento: maisDias(hoje, 96) },
+    ])
+    expect((await db().from('financial_transactions').select('id').eq('branch_id', rede!.branchId).like('description', `${descricao}%`)).data?.length,
+      'um lançamento só (não parcelas da cliente)').toBe(1)
+
+    // O servidor recusa acima do limite da clínica, sem gravar.
+    await como(browser, gestor!, async p => {
+      const acima = `${PREFIXO} Receita 12x ${marca}`
+      const r = await chamarAcaoComFormulario(p, 'actions/financial.ts', 'createTransactionAdvanced', `/${slug}/financeiro`, [undefined], {
+        _branchId: rede!.branchId, _slug: slug, type: 'INCOME', category: 'Atendimento', description: acima, amount: '1200',
+        payment_method: 'CREDIT_CARD', is_paid: 'true', paid_on: hoje, cartao_vezes: '12', schedule_mode: 'single',
+      })
+      expect(r.texto).toMatch(/até 3x|3x/)
+      expect((await db().from('financial_transactions').select('id').eq('description', acima)).data ?? [], 'nada gravado').toEqual([])
     })
   })
 

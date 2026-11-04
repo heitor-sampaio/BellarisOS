@@ -7,6 +7,9 @@ import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { dayKeyTZ } from '@/lib/datetime'
 import { CATEGORIAS_DE_RECEITA, CATEGORIAS_DE_DESPESA } from '@/lib/financeiro/categorias'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
+import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
+import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 
 interface Props {
   branchId?:  string
@@ -71,6 +74,10 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   // r4-f15-02: a forma (para saber se é cartão) e a bandeira, opcional.
   const [formaDePagamento, setFormaDePagamento] = useState('')
   const [bandeira,         setBandeira]         = useState('')
+  // F16-5: as vezes no crédito da receita paga (até o limite da clínica, D-15).
+  const [vezesNoCartao,    setVezesNoCartao]    = useState(1)
+  const opcoesDeVezes = useOpcoesDeVezes()
+  const creditoPago = type === 'INCOME' && isPaid && formaDePagamento === 'CREDIT_CARD'
 
   const [state, formAction, pending] = useActionState(createTransactionAdvanced, undefined)
   // A chave do envio (D10): o duplo clique lança uma vez só.
@@ -109,6 +116,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
     setFirstDueDate('')
     setFormaDePagamento('')
     setBandeira('')
+    setVezesNoCartao(1)
     if (!isAdminMode) {
       setSelectedBranchId(branchId ?? '')
       setSelectedBranchSlug(slug ?? '')
@@ -344,6 +352,30 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
             {type === 'INCOME' && isPaid && (
               <CampoDaBandeira metodo={formaDePagamento} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" gap={5}
                 rotuloComoLabel="" estiloDoRotulo={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }} />
+            )}
+
+            {/* F16-5 (o Heitor: "ajuste isso para permitir escolher parcelas"): a
+                receita PAGA no crédito escolhe as vezes, até o limite da clínica.
+                É UM pagamento — a cliente pagou tudo agora — que a OPERADORA
+                deposita em N parcelas, com o prazo e a taxa da bandeira; não é o
+                "Parcelado" da despesa nem o crediário da clínica. Débito, 1x; o
+                pendente diz as vezes na baixa. */}
+            {creditoPago && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <Label htmlFor="lanc-vezes">Vezes no cartão</Label>
+                <select id="lanc-vezes" name="cartao_vezes" className="field"
+                  value={String(vezesNoCartao)} onChange={e => setVezesNoCartao(Number(e.target.value))}>
+                  {opcoesDeVezes.map(n => <option key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
+                </select>
+                <DicaDasVezes total={finalAmount} vezes={vezesNoCartao} opcoes={opcoesDeVezes} />
+                {vezesNoCartao > 1 && (
+                  <span data-credito-em-vezes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                    Um pagamento só: a cliente pagou tudo agora, e a operadora deposita em {vezesNoCartao} parcelas
+                    (no “A receber da operadora”). Não é um parcelamento da cliente com a clínica.
+                  </span>
+                )}
+                <AvisoDaTaxa vezes={vezesNoCartao} bandeira={bandeira} />
+              </div>
             )}
 
             {/* Pago? + Vencimento */}
