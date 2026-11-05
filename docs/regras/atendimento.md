@@ -500,7 +500,12 @@
   até três e depois "+ N mais"): o título do atendimento, o cartão do plano na
   ficha, a Agenda e a home do app (`nomesDasSessoesDoPlano`). Prova:
   `e2e/plano-sessao-com-dois-procedimentos.spec.ts`,
-  `tests/nome-dos-procedimentos.test.ts`.
+  `tests/nome-dos-procedimentos.test.ts`. **E a duração prevista é a do
+  AGENDAMENTO** (D5 da 7ª simulação, 2026-11-05; princípio 3): a sessão
+  Criolipólise + Drenagem gravava 110 min e a tela do atendimento dizia "60
+  min", a do procedimento principal. `sessao-de-atendimento.tsx` lê
+  `appointments.duration_min`; o procedimento só vale sem ela. Prova: o mesmo
+  spec ("D5").
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).

@@ -50,7 +50,7 @@ test.beforeAll(async () => {
   plano = pl!.id
   const { data: ap, error: eAp } = await db().from('appointments').insert({
     branch_id: rede.branchId, client_id: cliente.clientId, professional_id: rede.professionalId, procedure_id: rede.procedureId,
-    scheduled_at: new Date(Date.now() + 3 * 86_400_000).toISOString(), duration_min: 60, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+    scheduled_at: new Date(Date.now() + 3 * 86_400_000).toISOString(), duration_min: 110, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
     treatment_plan_id: plano,
   }).select('id').single<{ id: string }>()
   expect(eAp).toBeNull()
@@ -71,6 +71,19 @@ test.afterAll(async () => {
   }
   if (preenchimentoId) await db().from('procedures').delete().eq('id', preenchimentoId)
   await cliente?.limpar(); await equipe?.limpar(); await rede?.limpar()
+})
+
+// D5 da 7ª simulação: a sessão Criolipólise + Drenagem grava 110 min, e a
+// tela do atendimento dizia "Duração prevista 60 min" (a do procedimento
+// principal). A duração é a do AGENDAMENTO.
+test('a duração prevista da sessão é a do agendamento, não a do procedimento principal (D5)', async ({ browser }) => {
+  const { data: proc } = await db().from('procedures').select('duration_min').eq('id', rede!.procedureId).single<{ duration_min: number }>()
+  expect(proc!.duration_min, 'o procedimento principal tem outra duração').not.toBe(110)
+  await como(browser, equipe!.estado, async p => {
+    await p.goto(`/admin/agenda/${agendamento}`)
+    const duracao = p.getByText('Duração prevista').locator('..')
+    await expect(duracao).toContainText('110 min')
+  })
 })
 
 test('a sessão diz os dois procedimentos — no atendimento, na ficha e no app', async ({ browser }) => {

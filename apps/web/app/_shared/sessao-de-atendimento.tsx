@@ -406,7 +406,9 @@ export async function SessaoDeAtendimento({
     cancelledAt:         apptRaw.cancelled_at ?? null,
     cancellationReason:  apptRaw.cancellation_reason ?? null,
     price:               parseFloat(String(apptRaw.price ?? 0)),
-    durationMin:         Number(proc?.duration_min ?? apptRaw.duration_min ?? 0),
+    // D5 da 7ª: a duração é a do AGENDAMENTO (a sessão de dois procedimentos tem
+    // 110 min); a do procedimento só quando o agendamento não tem.
+    durationMin:         Number(Number(apptRaw.duration_min) > 0 ? apptRaw.duration_min : (proc?.duration_min ?? 0)),
     clientNotes:         apptRaw.client_notes ?? null,
     // A sessão do plano com mais de um procedimento diz todos (A36): era só o do agendamento.
     procedureName:       (planSessionRaw && nomeDaSessao((planSessionRaw as unknown as { treatment_plan_session_procedures: { sort_order: number | null; procedures: { name: string | null } | null }[] | null }).treatment_plan_session_procedures)) || (proc?.name ?? '—'),
