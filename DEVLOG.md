@@ -9442,6 +9442,18 @@ do artefato cruzado com o `query_logs` do Supabase:
   `suporte-impersonar` só roda contra o build (`metrics_top_clients`
   estourou o tempo limite às 22:58): olhar de novo se voltar.
 
+**A 2ª completa (2026-11-05, run 41944753193, 88b41df6):** isolados 986 ✓
+e 0 ✘; compartilhados 571 ✓ e 2 ✘ (`fase2-agenda:44` e
+`procedimento-preco-em-reais:52`). As duas são a action parada em
+"Agendando…"/"Salvando…" enquanto o banco inteiro parava de 6 a 25 s
+(01:15:07–01:15:30 e 01:31:49–01:32:24 UTC: até `GET branches`, `users` e
+`tenants` levaram 6 s), durante a limpeza de outra rede de teste (deletes
+em série em `loyalty_*`, `tenant_roles`, `procedure_sales`…). Nenhuma
+regressão; os dois specs passam local (5 de 5). ⚠️ Nas duas completas o
+Supabase de produção (instância pequena, checkpoints de ~150 s) travou sob
+a carga da própria suíte — é a causa de quase todas as falhas "action sem
+resposta".
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
