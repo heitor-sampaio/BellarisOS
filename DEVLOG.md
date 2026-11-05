@@ -9642,6 +9642,24 @@ pergunta do horário; D11 `/clients` sem o módulo dá a tela "sem acesso" com
 04/11 já tratava; ficou o teste). Tocou `lib/appointments/core.ts` e os
 layouts de Clientes: entra na completa do fim.
 
+**F29 feita em 2026-11-05 — sem CPF no app, menor de idade, cadastro e portal**
+(21eec0c3…e5a16c04; migrations `20261105002901–2902`). Decisão 1: sem CPF, a
+senha inicial provisória é o número do passaporte ou RNE da ficha (em
+maiúsculas, o aviso diz), e a mesma pessoa em outra clínica só se liga com o
+mesmo tipo e número de documento (`login_de_cliente_para_ligar_doc`). Decisão
+2: abaixo de 18 o cadastro pede "Responsável legal" (nome, CPF, parentesco,
+telefone; `clients.responsavel_*`), a ficha, a agenda e o atendimento dizem
+"Menor", o termo ganhou `responsavel.*` e é assinado pelo responsável (sem
+ele, o termo fica "Faltam dados"; o resto só avisa — princípio 2). A22 o
+"Cadastrar" diz o que falta responder; A23 o Unificar no Histórico; A24/A25
+termo travado e faltas na Visão geral, "Não compareceu" confirma; A26 "Pedir
+no portal" só com o app; A51 o de hoje fica em "Próximo" até a conclusão;
+A52 a ficha preenchida pela equipe se confere e completa pelo link; A53 fora
+do prazo, "Falar com a clínica" com a mensagem pronta e "Ligar". TDD não
+estrito em parte da decisão 2 e do A24/A25/A51 (o Vitest veio antes; o e2e
+depois). Sobras para F30/F32: "Menor" na Minha agenda, o Copilot cadastrar
+com passaporte, o responsável no pacote da LGPD.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
