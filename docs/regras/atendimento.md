@@ -476,7 +476,15 @@
   de 2", "Pacote X · sessão 1 de 2" ou "Sessão do plano de tratamento" no
   lugar do valor (`pagosAntes`, `lib/appointments/pago-antes.ts`; na janela,
   "Já pago"). Era "VALOR R$ 140,00", lido como cobrança pendente. Prova:
-  `e2e/agenda-pago-antes.spec.ts`.
+  `e2e/agenda-pago-antes.spec.ts`. **E o atendimento pago com desconto
+  mostra o valor COBRADO** no cartão da Agenda do app (D8 da 7ª simulação,
+  2026-11-05; princípio 3): a Toxina da Ana aparecia a R$ 1.200 (o preço do
+  agendamento) e Pagamentos dizia R$ 1.100 — o desconto mora no lançamento.
+  O cartão diz "R$ 1.100,00 · desconto de R$ 100,00" (`valoresCobrados`,
+  `lib/appointments/valor-cobrado.ts`: o lançamento vivo do atendimento,
+  `amount + loyalty_discount` — os pontos são forma de pagamento, não
+  desconto —, e o `sale_discount`). Prova:
+  `e2e/portal-cliente-pagamentos.spec.ts` ("D8").
 - **A agendada não está "para agendar"** (A27 da 6ª simulação, 2026-11-04;
   princípio 3): o pré-pago diz "2 para agendar · 1 agendada" na ficha e no
   app, e o cartão do pacote/plano "2 sessões restantes · 1 agendada"
