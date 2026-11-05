@@ -272,7 +272,11 @@
   `lib/agenda/hora-real.ts`, Brasília). Prova:
   `e2e/agenda-concluido-hora-real.spec.ts`, `tests/agenda-hora-real.test.ts`.
 - **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
-  action recusa). `updateAppointmentStatus` devolve `{ error }` (só a trava de
+  action recusa). **E pergunta antes de gravar** (A25 da 7ª simulação,
+  2026-11-05: gravava no clique): "Marcar que X não compareceu às 10:00? Os
+  termos em aberto deste horário são cancelados, e o que estava pago (pacote,
+  plano, pré-pago) volta para ela." com "Confirmar a falta" / "Voltar"
+  (`[data-confirmar-falta]`). Prova: `e2e/ficha-cadastro-atritos-da-7.spec.ts` ("A25"). `updateAppointmentStatus` devolve `{ error }` (só a trava de
   permissão lança): a folha mostra o erro e, no sucesso, a agenda dá o aviso
   (o `toast` do sonner, o de todo o app). A agenda da unidade leva o dia na URL (`?date=`), e a
   grade de hoje abre na hora de agora. Prova: `e2e/agenda-avisos.spec.ts`.

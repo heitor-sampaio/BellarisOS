@@ -63,7 +63,7 @@ function Situacao({ item }: { item: ItemDeTermo }) {
   }
 }
 
-export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pelaConversa = false }: {
+export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pelaConversa = false, temAcessoAoApp = true }: {
   itens:      ItemDeTermo[]
   /** Unidade do cliente (a rota vem de `lib/rotas`, pelo portal atual). */
   slug:       string
@@ -71,6 +71,12 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
   compacto?:  boolean
   /** A rede liga o envio do link pela conversa do inbox (Configurações → Documentos). */
   pelaConversa?: boolean
+  /**
+   * A cliente tem login no app (A26 da 7ª simulação): sem ele, "Pedir no
+   * portal" não aparece — só no clique dizia que ela não tem —, e a tela diz
+   * antes os caminhos que servem.
+   */
+  temAcessoAoApp?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -176,6 +182,11 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
           A assinatura é colhida pela recepção (quem tem os Termos em Gerenciar): na clínica, por link ou pelo app da cliente.
         </p>
       )}
+      {podeColher && !temAcessoAoApp && itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR') && (
+        <p data-sem-portal style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
+          Sem acesso ao app: colha na clínica, por link ou no papel.
+        </p>
+      )}
       {erro && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {aviso && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>{aviso}</p>}
       {itens.map(item => {
@@ -217,7 +228,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
                   // O PDF final: documento + página de evidências (rota que confere a sessão).
                   <a href={`/api/documentos/${item.id}/pdf`} target="_blank" rel="noopener" className="btn-ghost" style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>PDF</a>
                 )}
-                {aberto && podeColher && item.status !== 'INCOMPLETO' && (
+                {aberto && podeColher && item.status !== 'INCOMPLETO' && temAcessoAoApp && (
                   <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => pedirNoPortal(item.id)}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
                     Pedir no portal

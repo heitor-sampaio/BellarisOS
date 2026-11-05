@@ -124,7 +124,14 @@
     (`cadastrar_cliente` e `agendar` com cliente novo: o cartão troca o
     "Confirmar" pelas duas escolhas — `ResumoDaAcao.escolhas`, `copilot.md`).
     Na importação, a prévia mostra "Completar a ficha de X" marcada e deixa
-    desmarcar (cli-07, abaixo). Prova: `e2e/ficha-cadastro-ja-existe.spec.ts`,
+    desmarcar (cli-07, abaixo). **O "Unificar" fica no Histórico da ficha**
+    (A23 da 7ª simulação, 2026-11-05): "Ficha unificada pelo cadastro ·
+    Alterou: e-mail · por Lia" (`CLIENT_UNIFIED`, `unificacoesDaFicha`,
+    `lib/clients/unificacoes.ts`). O fato mora na corrente de eventos — o
+    `cliente.dados_alterados` do núcleo, com a marca `unificado`; sem mudança
+    nenhuma, gravado SEM despachar (nenhuma automação de "dados alterados"
+    dispara à toa). Vale em todo caminho do "Unificar" (o formulário, o
+    agendar rápido, o Copilot — `atualizarFichaComOPreenchido`). Prova: `e2e/ficha-cadastro-ja-existe.spec.ts`,
     `tests/ja-existe.test.ts`, o caso r2-cli-01 de `e2e/copilot-gravacoes.spec.ts`;
   - o telefone de uma PESSOA do CRM (`contacts`, pelas formas do WhatsApp,
     `variantesDoTelefone`) que ainda não é cliente — o lead, até o PERDIDO
@@ -158,7 +165,14 @@
     nascimento, que só o envio tem). Respondida antes do clique, a resposta
     só fica guardada; a que veio do clique reenvia. Antes aparecia no pé da
     página só depois do primeiro "Cadastrar", e o clique parecia não fazer
-    nada. Prova: `e2e/ficha-cadastro-telefone-ja-cadastrado.spec.ts`;
+    nada. Prova: `e2e/ficha-cadastro-telefone-ja-cadastrado.spec.ts`.
+    **"Cadastrar" com a pergunta sem resposta diz o que falta** (A22 da 7ª
+    simulação, 2026-11-05: o clique não fazia nada nem dizia por quê): o
+    formulário não envia, rola até a pergunta e diz junto do botão
+    "Responda antes de cadastrar: é a mesma pessoa do lead X? (Sim ou Não,
+    logo abaixo do telefone)" (`oQueFaltaResponder`, `[data-falta-responder]`);
+    a resposta dada depois disso envia, como a que veio do clique. Prova:
+    `e2e/ficha-cadastro-atritos-da-7.spec.ts` ("A22");
   - **o cadastro grava uma vez** (D10): o mesmo envio (a chave da tela) é um
     cadastro só — o mecanismo de `convencoes.md` ("O envio que chega duas
     vezes"). Sem a chave, a trava calada dos 60 s SAIU (r2-cli-01): as
@@ -282,6 +296,14 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `semAcesso()`, como toda tela. O "Minified React error #441" do console é
   esse lançamento no Server Component: o previsto (`e2e.md`, "Lendo o log da
   completa"). Prova: `e2e/permissoes-clientes-sem-acesso.spec.ts`.
+- **A Visão geral da ficha diz o que trava e o que faltou** (A24 e A25 da 7ª
+  simulação, 2026-11-05): o documento aberto que o CADASTRO trava — "“Termo
+  X” não pode ser assinado: falta no cadastro CPF." com "Completar o
+  cadastro" (`faltaNoCadastro`, `[data-falta-no-cadastro]`; era só na janela
+  do agendamento e na aba Documentos) — e as faltas — "Não compareceu 1 vez: a
+  última em 02/11/2026 (Toxina)." com "Ver no Histórico"
+  (`[data-faltas-da-cliente]`; o "Histórico de procedimentos" segue só o que
+  ela fez, J-26). Prova: `e2e/ficha-cadastro-atritos-da-7.spec.ts`.
 - **Quem só vê os clientes não cadastra nem edita** (D4/D5 da 5ª simulação,
   2026-11-01; o Heitor: "quem só pode ver só pode ver"). Com Clientes em Ver,
   o inbox não oferece "Cadastrar cliente" nem o "Vender" de quem não tem ficha

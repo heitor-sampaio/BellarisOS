@@ -109,6 +109,7 @@ export const ISOLADOS = [
   'fechamento-do-dia-avisos.spec.ts',
   'fechamento-escopo-proprio.spec.ts',
   'ficha-acesso-sem-cpf.spec.ts',
+  'ficha-cadastro-atritos-da-7.spec.ts',
   'ficha-cadastro-documento.spec.ts',
   'ficha-cadastro-ja-existe.spec.ts',
   'ficha-cadastro-mesma-pessoa-do-lead.spec.ts',

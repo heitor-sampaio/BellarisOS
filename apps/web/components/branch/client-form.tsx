@@ -10,7 +10,7 @@ import { TagBadge } from '@/components/shared/tag-badge'
 import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO, documentoEstrangeiro } from '@estetica-os/utils'
 import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
-import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro } from '@/lib/clients/textos-do-cadastro'
+import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 
@@ -108,6 +108,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // leva a ficha ou o número a que responde — trocou o telefone, o servidor a
   // ignora e pergunta de novo.
   const [respostas, setRespostas] = useState<Record<string, string>>({})
+  // A22: o "Cadastrar" com a pergunta sem resposta diz o que falta.
+  const [faltaResponder, setFaltaResponder] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const perguntaRef = useRef<HTMLDivElement>(null)
   // A chave do envio (D10): o reenvio do mesmo cadastro — o duplo clique — grava uma vez só.
@@ -162,7 +164,9 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
    * resto do formulário ainda está sendo preenchido.
    */
   function responder(campo: string, valor: string) {
-    if (doEnvio && formRef.current) mandar(new FormData(formRef.current), { [campo]: valor })
+    // Depois do clique em "Cadastrar" (a pergunta veio do envio, ou o A22 a
+    // segurou na tela), responder envia — como sempre foi.
+    if ((doEnvio || faltaResponder) && formRef.current) { setFaltaResponder(false); mandar(new FormData(formRef.current), { [campo]: valor }) }
     else setRespostas(r => ({ ...r, [campo]: valor }))
   }
   /** "Reativar a ficha de X" (A20): envia já, e a resposta não fica para os próximos envios. */
@@ -183,6 +187,13 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // confirmar pedia para digitar tudo de novo.
   function enviar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    // A22 (7ª simulação): com a pergunta do telefone sem resposta, o clique não
+    // fazia nada visível. Não envia: diz o que responder e leva até a pergunta.
+    if (pergunta) {
+      setFaltaResponder(true)
+      perguntaRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      return
+    }
     mandar(new FormData(e.currentTarget))
   }
 
@@ -407,6 +418,16 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           )}
         </span>
       </label>
+
+      {pergunta && (faltaResponder || doEnvio) && (
+        <p data-falta-responder role="status" style={{
+          color: 'var(--warning)', background: 'var(--warning-soft)',
+          borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+        }}>
+          {oQueFaltaResponder({ tipo: pergunta.tipo, nome: pergunta.nome, ehLead: pergunta.tipo === 'lead' ? pergunta.ehLead : undefined })}
+        </p>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
         {showCancelButton && (

@@ -37,6 +37,17 @@ export function avisoDoAcessoCriado({ contaLigada, email, documento }: {
 }
 
 /**
+ * "Cadastrar" com uma pergunta do telefone sem resposta (A22 da 7ª simulação,
+ * 2026-11-05): o clique não fazia nada nem dizia por quê. A frase vai junto do
+ * botão e diz qual pergunta responder e onde ela está.
+ */
+export function oQueFaltaResponder(p: { tipo: 'lead' | 'jaExiste' | 'arquivada'; nome: string; ehLead?: boolean }): string {
+  if (p.tipo === 'lead') return `Responda antes de cadastrar: é a mesma pessoa do ${p.ehLead === false ? 'contato' : 'lead'} ${p.nome}? (Sim ou Não, logo abaixo do telefone)`
+  if (p.tipo === 'jaExiste') return `Responda antes de cadastrar: já existe a ficha de ${p.nome} — “Cadastrar mesmo assim” ou “Unificar com a ficha”, logo abaixo do telefone.`
+  return `Responda antes de cadastrar: o telefone é da ficha arquivada de ${p.nome} — “Reativar” ou “É outra pessoa”, logo abaixo do telefone.`
+}
+
+/**
  * A explicação ao lado da unidade de cadastro (J-24). "O cliente pode ser
  * atendido em qualquer unidade" enganava: a lista de Clientes de cada unidade
  * mostra só as cadastradas nela — as outras unidades a acham pela busca do

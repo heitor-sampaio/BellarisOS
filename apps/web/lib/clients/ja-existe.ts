@@ -3,6 +3,9 @@ import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
+import { gravarEvento } from '@estetica-os/nucleo/lib/events/gravar'
+import { atorDoContexto } from '@/lib/events/emitir'
+import { EVENTOS } from '@estetica-os/types'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -119,7 +122,7 @@ export interface PreenchidoAgora {
  */
 export async function atualizarFichaComOPreenchido(
   admin: Admin, ctx: TenantContext, clientId: string, agora: PreenchidoAgora,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; alterou?: string[] }> {
   const antes = await ler(admin.from('clients').select('name, document, notes, tags, is_active')
     .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a ficha que já existe') as {
       name: string; document: string | null; notes: string | null; tags: string[] | null; is_active: boolean
@@ -145,6 +148,17 @@ export async function atualizarFichaComOPreenchido(
   const novas = (agora.tags ?? []).filter(t => !(antes.tags ?? []).some(x => x.toLowerCase() === t.toLowerCase()))
   if (novas.length) colunas.tags = [...(antes.tags ?? []), ...novas]
 
-  if (!Object.keys(colunas).length) return {}
-  return atualizarClienteCore(admin, ctx, clientId, colunas)
+  // A marca do "Unificar" (A23 da 7ª simulação): o Histórico da ficha mostra o
+  // que mudou. Sem mudança nenhuma (a ficha já tinha tudo), o fato fica na
+  // corrente SEM despachar: "dados alterados" não dispara automação à toa.
+  const r = Object.keys(colunas).length
+    ? await atualizarClienteCore(admin, ctx, clientId, colunas, null, { unificado: true })
+    : { alterou: [] as string[] }
+  if (!r.error && !r.alterou?.length) {
+    await gravarEvento(EVENTOS.CLIENTE_DADOS_ALTERADOS, {
+      tenantId: ctx.tenantId!, entidadeId: clientId, ator: atorDoContexto(ctx),
+      dados: { nome: antes.name, alterou: [], unificado: true },
+    })
+  }
+  return r
 }

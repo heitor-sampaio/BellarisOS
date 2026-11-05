@@ -221,6 +221,8 @@ test('agenda-06: "só os meus" cancela e marca a falta do agendamento DELA pela 
       await p.locator(`[data-agendamento="${passado!.id}"]`).first().click()
       janela = p.getByRole('dialog', { name: 'Agendamento' })
       await janela.getByRole('button', { name: 'Não compareceu' }).click()
+      // A falta pede a confirmação (A25 da 7ª simulação).
+      await janela.getByRole('button', { name: 'Confirmar a falta' }).click()
       await expect.poll(async () => (await situacao(passado!.id)).status).toBe('NO_SHOW')
 
       // No de outra, pelo id: recusa.

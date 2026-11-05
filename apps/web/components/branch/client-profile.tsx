@@ -171,6 +171,8 @@ export interface ClientHistoryEvent {
     | 'PACKAGE_CANCELLED'
     | 'CONSENT_SIGNED'
     | 'APPOINTMENT_RATED'
+    /** O "Unificar com a ficha de X" do cadastro (A23 da 7ª simulação). */
+    | 'CLIENT_UNIFIED'
   title:    string
   subtitle: string | null
   amount:   number | null
@@ -492,6 +494,7 @@ const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
   PACKAGE_CANCELLED:     { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
   CONSENT_SIGNED:        { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: FileCheck },
   APPOINTMENT_RATED:     { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: Star },
+  CLIENT_UNIFIED:        { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: UserPlus },
 }
 
 function fmtHistoryDate(dateStr: string): string {
@@ -557,7 +560,7 @@ function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boole
   if (ev.link) {
     return (
       <a
-        href={ev.link} style={rowStyle}
+        href={ev.link} style={rowStyle} data-evento={ev.type}
         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
         onMouseLeave={e => (e.currentTarget.style.background = '')}
       >
@@ -565,7 +568,7 @@ function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boole
       </a>
     )
   }
-  return <div style={rowStyle}>{content}</div>
+  return <div style={rowStyle} data-evento={ev.type}>{content}</div>
 }
 
 // -- Dados sub-component -------------------------------------------------------
@@ -2072,7 +2075,7 @@ export function ClientProfile({
       {tab === 'documentos' && termos && (
         <section aria-label="Termos e contratos" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Termos e contratos</h3>
-          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} />
+          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso} />
         </section>
       )}
       {tab === 'documentos' && (

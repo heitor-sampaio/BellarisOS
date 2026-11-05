@@ -19,6 +19,11 @@ export async function emitirEventoDeCliente(
   ctx: { tenantId?: string | null; internalUserId?: string | null; userName?: string | null },
   extras?: {
     alterou?: string[]
+    /**
+     * A mudança veio do "Unificar com a ficha de X" do cadastro (A23 da 7ª
+     * simulação): o Histórico da ficha lê o fato por esta marca.
+     */
+    unificado?: boolean
     ator?: AtorDoEvento
     origem?: OrigemDeEvento
     /** Quantas automações houve antes deste fato — o anti-loop do motor. */
@@ -45,6 +50,7 @@ export async function emitirEventoDeCliente(
       ativo:    (data?.is_active as boolean) ?? undefined,
     }
     if (extras?.alterou?.length) dados.alterou = extras.alterou
+    if (extras?.unificado) dados.unificado = true
 
     await emitirEvento(nome, {
       tenantId:   ctx.tenantId,

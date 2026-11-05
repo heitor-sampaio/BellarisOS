@@ -3,6 +3,7 @@ import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
 import { responsavelDaFicha } from '@/lib/clients/menor'
+import { unificacoesDaFicha } from '@/lib/clients/unificacoes'
 import { historicoDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
@@ -416,6 +417,11 @@ export default async function ClientProfilePage({
       subtitle: doc.canal ? SUBTITULO_DO_CANAL[doc.canal] ?? null : null,
       amount: null, link: null,
     })
+  }
+
+  // 8. O "Unificar com a ficha" do cadastro (A23 da 7ª simulação), da corrente de eventos.
+  for (const u of await unificacoesDaFicha(admin, ctx.tenantId!, id)) {
+    history.push({ id: uid('un'), date: u.date, type: 'CLIENT_UNIFIED', title: 'Ficha unificada pelo cadastro', subtitle: u.subtitle, amount: null, link: null, autor: u.autor })
   }
 
   // Quem fez cada ação (J-27): o nome que appointment_history guardou.

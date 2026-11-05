@@ -261,7 +261,12 @@ DEVLOG ("Termos e contratos").
   (`assinarNoPortal`, `actions/documentos-portal.ts` — só documento DELE). A
   equipe manda por "Pedir no portal" (`pedirAssinaturaNoPortal`): push com
   texto GENÉRICO — o título pode dizer o procedimento, e o push aparece na tela
-  de bloqueio. Cliente sem conta no portal: recusado, e a tela diz o caminho.
+  de bloqueio. Cliente sem conta no portal: recusado — e **a tela nem oferece**
+  (A26 da 7ª simulação, 2026-11-05: o botão aparecia e só no clique dizia que
+  ela não tem o app): sem login, "Pedir no portal" some dos Termos (a ficha e
+  o atendimento, `temAcessoAoApp`) e a tela diz antes "Sem acesso ao app:
+  colha na clínica, por link ou no papel." (`[data-sem-portal]`). Prova:
+  `e2e/ficha-cadastro-atritos-da-7.spec.ts` ("A26").
   Quem agenda pelo portal e tem documento a assinar vai direto para ele.
   O detalhe do agendamento no portal tem "Documentos deste atendimento"
   (J-63, `documentosDoAgendamento`): o título e a situação — "Falta a sua

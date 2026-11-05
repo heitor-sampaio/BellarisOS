@@ -195,7 +195,7 @@ interface Props {
    */
   planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null } | null
   /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
-  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean } | null
+  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean; temAcessoAoApp?: boolean } | null
   /**
    * Abre a janela do pagamento ao chegar (`?receber=1`): é para onde levam o
    * "Receber pagamento" da agenda, o Fechamento do dia e a ficha (D5, 2026-10-27).
@@ -1945,7 +1945,7 @@ export function AppointmentSession({
                 </span>
               )}
             </div>
-            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} pelaConversa={documentos.pelaConversa} compacto />
+            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} pelaConversa={documentos.pelaConversa} temAcessoAoApp={documentos.temAcessoAoApp} compacto />
           </section>
         )}
 

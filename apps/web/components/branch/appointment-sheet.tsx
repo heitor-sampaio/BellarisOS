@@ -100,6 +100,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // a pessoa para dentro do portal da unidade.
   const pathname = usePathname()
   const [showCancelReason, setShowCancelReason] = useState(false)
+  // A25 da 7ª simulação: "Não compareceu" gravava no clique, sem confirmar.
+  const [confirmandoFalta, setConfirmandoFalta] = useState(false)
   const [cancelReason, setCancelReason]         = useState('')
   const [loading, setLoading]                   = useState(false)
   const [remarcando, setRemarcando]             = useState(false)
@@ -408,14 +410,26 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             {podeCancelar && (
             <div style={{ display: 'flex', gap: 8 }}>
               {jaComecou && (
-                <button disabled={loading} onClick={() => changeStatus('NO_SHOW')} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
+                <button disabled={loading} onClick={() => { setConfirmandoFalta(true); setShowCancelReason(false) }} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
                   <AlertCircle size={14} /> Não compareceu
                 </button>
               )}
-              <button disabled={loading} onClick={() => setShowCancelReason(true)} className="btn-ghost" style={{ flex: 1, justifyContent: 'center', color: 'var(--warning)' }}>
+              <button disabled={loading} onClick={() => { setShowCancelReason(true); setConfirmandoFalta(false) }} className="btn-ghost" style={{ flex: 1, justifyContent: 'center', color: 'var(--warning)' }}>
                 <Ban size={14} /> Cancelar
               </button>
             </div>
+            )}
+
+            {confirmandoFalta && podeCancelar && jaComecou && (
+              <div data-confirmar-falta role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning-border)' }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
+                  Marcar que {appointment.clientName} não compareceu às {timeStr}? Os termos em aberto deste horário são cancelados, e o que estava pago (pacote, plano, pré-pago) volta para ela.
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn-secondary" disabled={loading} onClick={() => setConfirmandoFalta(false)}>Voltar</button>
+                  <button type="button" className="btn-primary" disabled={loading} onClick={() => changeStatus('NO_SHOW')}>Confirmar a falta</button>
+                </div>
+              </div>
             )}
 
             {showCancelReason && podeCancelar && (
