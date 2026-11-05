@@ -14,6 +14,7 @@ import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 import { DocumentosDaJanela } from './documentos-da-janela'
+import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 
 interface AppointmentEvent {
   id:               string
@@ -36,6 +37,8 @@ interface AppointmentEvent {
   completedAt?:     string | null
   /** A profissional do agendamento: quem é ela marca a chegada e inicia num gesto (A25). */
   professionalId?:  string | null
+  /** A menor de idade (decisão 2 do Heitor, 2026-11-05): a marca e o responsável. */
+  menor?:           MenorDoAgendamento | null
 }
 
 interface AppointmentSheetProps {
@@ -235,6 +238,15 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
           <h2 style={{ fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', letterSpacing: 'var(--tracking-tight)' }}>
             {appointment.clientName}
           </h2>
+          {/* A menor de idade: a marca e quem a acompanha — ou a falta dele (decisão 2). */}
+          {appointment.menor && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              <span data-menor className="chip chip-brand">Menor de idade</span>
+              {appointment.menor.responsavel
+                ? <span data-responsavel-do-agendamento style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{appointment.menor.responsavel}</span>
+                : <span data-aviso-do-menor style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>Sem responsável legal no cadastro: é ele quem assina o termo.</span>}
+            </div>
+          )}
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {appointment.procedureName}
           </p>

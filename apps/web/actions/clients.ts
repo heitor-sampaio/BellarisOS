@@ -18,8 +18,9 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { pessoaDoCrmDoTelefone, ligarPessoaDoCrmAoCliente, type PessoaDoCrm } from '@/lib/clients/pessoa-do-crm'
-import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
+import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente, documentoDoAcesso, type DocumentoDoAcesso } from '@/lib/clients/acesso'
 import { CPF_INVALIDO, documentoDaFicha, documentoEstrangeiroRepetido } from '@/lib/clients/documento'
+import { colunasDoResponsavel } from '@/lib/clients/menor'
 import { umaVez, chaveDoEnvio, chaveDoConteudo } from '@/lib/envio-unico'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste, type PreenchidoAgora } from '@/lib/clients/ja-existe'
 import type { TenantContext } from '@estetica-os/types'
@@ -163,8 +164,17 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   if (!fone) return { error: TELEFONE_INCOMPLETO }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'E-mail inválido.' }
   // D12: pelos dígitos verificadores (em `documentoDaFicha`) — o 11111111111 passava e virava a senha inicial do login.
-  // Sem CPF (passaporte, RNE), sem acesso ao app por enquanto: a senha inicial é o CPF.
-  if (comAcesso && (!email || !document))  return { error: 'O acesso ao app precisa do e-mail e do CPF.' }
+  // Sem CPF, a senha inicial é o passaporte ou o RNE da ficha (decisão 1 do
+  // Heitor, 2026-11-05). Sem documento nenhum, sem acesso.
+  const docDoAcesso = documentoDoAcesso(doc.colunas)
+  // A menor de idade: o responsável legal (decisão 2 do Heitor, 2026-11-05).
+  // Não é obrigatório (princípio 2); preenchido, é conferido.
+  const resp = colunasDoResponsavel({
+    nome: formData.get('responsavel_nome'), cpf: formData.get('responsavel_cpf'),
+    parentesco: formData.get('responsavel_parentesco'), telefone: formData.get('responsavel_telefone'),
+  }, birthDate)
+  if ('error' in resp) return { error: resp.error }
+  if (comAcesso && (!email || !docDoAcesso)) return { error: 'O acesso ao app precisa do e-mail e de um documento (CPF, passaporte ou RNE).' }
 
   const admin = createAdminClient()
 
@@ -190,7 +200,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   if ('atualizar' in doTelefone) {
     return atualizarPeloCadastro(ctx, doTelefone.atualizar, {
       phone: fone.gravar, email, documento: doc.colunas, birth_date: birthDate, gender, notes, tags,
-    }, { leadId, conversationId, slug, comAcesso, email, document })
+    }, { leadId, conversationId, slug, comAcesso, email, documento: docDoAcesso })
   }
   const { pessoaDoCrm } = doTelefone
   // A oportunidade que se converte: a do card, ou a do lead que a recepção disse ser a mesma pessoa.
@@ -203,7 +213,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   // Sem a caixa marcada, nenhum login: a ficha ganha o acesso depois, na aba Dados.
   let login: Awaited<ReturnType<typeof criarLoginDoCliente>> | null = null
   if (comAcesso) {
-    login = await criarLoginDoCliente(admin, ctx.tenantId!, email!, document!)
+    login = await criarLoginDoCliente(admin, ctx.tenantId!, email!, docDoAcesso!)
     if ('error' in login) return { error: login.error }
   }
   const authId = login && !('error' in login) ? login.authId : null
@@ -211,7 +221,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   // 2) Cliente: a ficha nova. A que já existia só muda pelo "Unificar com a ficha" (acima).
   const dadosDoCliente = {
     tenant_id: ctx.tenantId!, branch_id: branchId,
-    name, phone: fone.gravar, email, ...doc.colunas,
+    name, phone: fone.gravar, email, ...doc.colunas, ...resp.colunas,
     birth_date: birthDate, gender, notes, tags,
     is_active: true, auth_id: authId,
   }
@@ -384,18 +394,18 @@ export async function conferirTelefoneDoCadastro(entrada: {
  */
 async function atualizarPeloCadastro(
   ctx: TenantContext, clientId: string, agora: PreenchidoAgora,
-  de: { leadId: string | null; conversationId: string | null; slug: string; comAcesso: boolean; email: string | null; document: string | null },
+  de: { leadId: string | null; conversationId: string | null; slug: string; comAcesso: boolean; email: string | null; documento: DocumentoDoAcesso | null },
 ): Promise<ResultadoDoCadastro> {
   const admin = createAdminClient()
   const r = await atualizarFichaComOPreenchido(admin, ctx, clientId, agora)
   if (r.error) return { error: r.error }
   let acessoCriado = false
   let contaLigada = false
-  if (de.comAcesso && de.email && de.document) {
+  if (de.comAcesso && de.email && de.documento) {
     const ficha = await ler(admin.from('clients').select('auth_id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
       'buscar o acesso da ficha') as { auth_id: string | null } | null
     if (ficha && !ficha.auth_id) {
-      const acesso = await darAcessoAoCliente(admin, ctx, clientId, de.email, de.document)
+      const acesso = await darAcessoAoCliente(admin, ctx, clientId, de.email, de.documento)
       if ('error' in acesso) return { error: `A ficha foi atualizada, mas o acesso ao app não saiu: ${acesso.error}` }
       acessoCriado = true
       contaLigada = acesso.contaLigada
@@ -450,13 +460,16 @@ export async function darAcessoAoApp(clientId: string): Promise<{ ok: true; cont
     const travado = bloqueioDoSuporte(ctx, 'dar acesso ao app')
     if (travado) return { error: travado }
     const admin = createAdminClient()
-    const ficha = await ler(admin.from('clients').select('id, email, document')
-      .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente') as { id: string; email: string | null; document: string | null } | null
+    const ficha = await ler(admin.from('clients').select('id, email, document, documento_tipo, documento_numero')
+      .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente') as {
+        id: string; email: string | null; document: string | null; documento_tipo: string | null; documento_numero: string | null
+      } | null
     if (!ficha) return { error: 'Cliente não encontrado.' }
-    const cpf = (ficha.document ?? '').replace(/\D/g, '')
-    if (!ficha.email || cpf.length !== 11) return { error: 'Para o acesso ao app, salve antes o e-mail e o CPF da cliente.' }
-    if (!cpfValido(cpf)) return { error: CPF_INVALIDO }
-    const r = await darAcessoAoCliente(admin, ctx, ficha.id, ficha.email.toLowerCase(), cpf)
+    // O CPF, ou sem ele o passaporte/RNE (decisão 1 do Heitor, 2026-11-05).
+    const doc = documentoDoAcesso(ficha)
+    if (!ficha.email || !doc) return { error: 'Para o acesso ao app, salve antes o e-mail e um documento da cliente (CPF, passaporte ou RNE).' }
+    if (doc.tipo === 'CPF' && !cpfValido(doc.numero)) return { error: CPF_INVALIDO }
+    const r = await darAcessoAoCliente(admin, ctx, ficha.id, ficha.email.toLowerCase(), doc)
     if ('error' in r) return r
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
@@ -556,6 +569,8 @@ export async function updateClientContactData(
     tags?:              string[]
     /** Anotações sobre a pessoa. Opcional: caller que não edita não apaga. */
     notes?:             string | null
+    /** O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). Só vale na menor. */
+    responsavel?:       { nome?: string; cpf?: string; parentesco?: string; telefone?: string }
   },
   slug: string,
 ): Promise<{ error?: string }> {
@@ -573,10 +588,14 @@ export async function updateClientContactData(
   if (data.phone?.trim() && !telefoneDoCadastro(data.phone)) return { error: TELEFONE_INCOMPLETO }
   const doc = documentoDaFicha(data.documentType ?? 'CPF', data.document)
   if ('error' in doc) return doc
+  // O responsável só vem quando a tela o mostra (a menor); sem o campo, o que está fica.
+  const resp = data.responsavel ? colunasDoResponsavel(data.responsavel, data.birthDate) : { colunas: {} }
+  if ('error' in resp) return resp
 
   // O núcleo que a ficha e o Copilot dividem (lib/clients/atualizar.ts).
   return atualizarClienteCore(admin, ctx, clientId, {
     ...doc.colunas,
+    ...resp.colunas,
     // O de outro país guarda o "+", como foi escrito: é por ele que se sabe que não é nacional.
     phone:               telefoneInternacional(data.phone) ?? (data.phone?.replace(/\D/g, '') || null),
     email:               data.email?.trim() || null,

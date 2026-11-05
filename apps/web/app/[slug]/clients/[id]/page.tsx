@@ -2,6 +2,7 @@
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
+import { responsavelDaFicha } from '@/lib/clients/menor'
 import { historicoDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
@@ -91,6 +92,8 @@ export default async function ClientProfilePage({
     city:              raw.city ?? null,
     state:             raw.state ?? null,
     temAcesso:         !!raw.auth_id,
+    // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05).
+    responsavel:       responsavelDaFicha(raw),
   }
 
   // Parallel data fetches (cacheadas — TTL 60s, tags clients/appointments do tenant)

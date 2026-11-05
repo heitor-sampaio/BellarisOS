@@ -25,6 +25,17 @@ describe('avisoDoAcessoCriado', () => {
     expect(a.descricao).toMatch(/senha continua a mesma/)
     expect(a.descricao).not.toMatch(/CPF/)
   })
+  // Decisão 1 do Heitor (7ª simulação, 2026-11-05): sem CPF, a senha inicial é
+  // o número do documento da ficha (passaporte, RNE), e o aviso diz qual é.
+  it('decisão 1: sem CPF, a senha inicial é o número do passaporte (ou do RNE), dito no aviso', () => {
+    const a = avisoDoAcessoCriado({ contaLigada: false, email: 'sophie@x.com', documento: { tipo: 'PASSAPORTE', numero: '19FR54321' } })
+    expect(a.titulo).toBe('Acesso ao app criado')
+    expect(a.descricao).toBe('O login é o e-mail (sophie@x.com) e a senha inicial é o número do passaporte, 19FR54321 (em maiúsculas), trocada no primeiro acesso.')
+    const r = avisoDoAcessoCriado({ contaLigada: false, email: 'x@x.com', documento: { tipo: 'RNE', numero: 'V123456-7' } })
+    expect(r.descricao).toMatch(/senha inicial é o número do RNE, V123456-7/)
+    expect(avisoDoAcessoCriado({ contaLigada: false, email: 'x@x.com', documento: { tipo: 'CPF', numero: '52998224725' } }).descricao)
+      .toMatch(/senha inicial é o CPF, trocada/)
+  })
   // A20 da 6ª simulação: o aviso dizia "a cliente" e "Ela" para o Bruno. O que a
   // CLÍNICA diz é neutro (crm-inbox.md, "O portal fala com a pessoa pelo sexo").
   it('A20: o texto é neutro — nem "ela", nem "a cliente"', () => {

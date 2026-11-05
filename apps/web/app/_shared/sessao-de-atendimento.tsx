@@ -18,6 +18,7 @@ import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
 import { unidadeDoInsumo } from '@/lib/estoque/unidade-de-consumo'
 import { paraAnamneseGeral, anamneseRespondida } from '@/lib/anamnese-geral'
 import { fichaDeSaudeVencida } from '@/lib/pre-atendimento/validade'
+import { responsavelDaFicha } from '@/lib/clients/menor'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
@@ -70,7 +71,7 @@ export async function SessaoDeAtendimento({
         procedures(id, name, category, duration_min, form_id),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
-        client:clients(id, name, phone, birth_date, created_at, tags, notes, document, auth_id)
+        client:clients(id, name, phone, birth_date, created_at, tags, notes, document, auth_id, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone)
       `)
       .eq('id', id)
       .eq('branch_id', branchId)
@@ -440,6 +441,8 @@ export async function SessaoDeAtendimento({
     tags:      (cli.tags as string[]) ?? [],
     notes:     cli.notes ?? null,
     document:  cli.document ?? null,
+    // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05).
+    responsavel: responsavelDaFicha(cli as Parameters<typeof responsavelDaFicha>[0]),
   }
 
   // Saldo do plano ligado a este atendimento.

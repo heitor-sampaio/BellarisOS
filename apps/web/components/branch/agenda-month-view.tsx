@@ -1,4 +1,5 @@
 'use client'
+import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 
 import {
   addDays, startOfWeek, startOfMonth, endOfMonth,
@@ -27,6 +28,8 @@ export interface CalendarEvent {
   unidade?:        string | null
   /** A ficha de saúde da cliente para este horário (selo no bloco). */
   fichaDeSaude?:   SeloDaFichaEstado | null
+  /** A menor de idade (decisão 2 do Heitor, 2026-11-05): a marca e o responsável. */
+  menor?:          MenorDoAgendamento | null
   /** O check-in (2026-10-21): quando chegou. */
   arrivedAt?:      string | null
   /** A hora REAL da conclusão (J-34): aparece ao lado da agendada. */

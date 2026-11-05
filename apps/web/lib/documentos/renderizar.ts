@@ -6,7 +6,8 @@ import { gravar, ler } from '@/lib/db'
 import { interpolar, formaCanonica, textoDoDocumento, type DocumentoDoModelo } from './arvore'
 import { converterDocumentoDoEditor } from './editor/converter'
 import { marcacaoParaEditor } from './editor/da-marcacao'
-import { ehOpcional } from './variaveis'
+import { variavelObrigatoria } from './variaveis'
+import { ehMenorDeIdade } from '@/lib/clients/menor'
 import { valoresDoDocumento, type DadosDoDocumento } from './valores'
 import { gerarCodigoDeVerificacao } from './codigo'
 import {
@@ -100,7 +101,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
   const admin = createAdminClient()
   const [cliente, rede, unidade, procedimento, agendamento] = await Promise.all([
     ler(admin.from('clients')
-      .select('name, document, documento_tipo, documento_numero, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state, gender')
+      .select('name, document, documento_tipo, documento_numero, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state, gender, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone')
       .eq('id', doc.client_id).eq('tenant_id', doc.tenant_id).single(), 'buscar o cliente do documento'),
     ler(admin.from('tenants').select('name, document, phone, email').eq('id', doc.tenant_id).single(), 'buscar a rede do documento'),
     doc.branch_id
@@ -197,7 +198,10 @@ export async function garantirRenderizado(
     const dados = await dadosDoDocumento(doc, pagamento, definido, desconto)
     const valores = valoresDoDocumento(dados)
     // "fui informada(o)" na forma do sexo da ficha (A50); sem o dado, como está.
-    const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, ehOpcional,
+    // Na menor de idade, o nome e o CPF do responsável são obrigatórios: é ele
+    // quem assina (decisão 2 do Heitor, 2026-11-05).
+    const menor = ehMenorDeIdade(dados.cliente.birth_date)
+    const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, v => !variavelObrigatoria(v, { menor }),
       t => concordarComOGenero(t, dados.cliente.gender as SexoDaFicha))
     conteudo = formaCanonica(r.documento)
     texto = textoDoDocumento(r.documento)

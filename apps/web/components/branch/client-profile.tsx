@@ -44,6 +44,9 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { textoDasRestantes } from '@/lib/pre-pago/contagem'
+import { ResponsavelLegal, RESPONSAVEL_VAZIO } from '@/components/shared/responsavel-legal'
+import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal as ResponsavelDaFicha } from '@/lib/clients/menor'
+import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
 
 // -- Types --------------------------------------------------------------------
 
@@ -71,6 +74,8 @@ export interface ProfileClient {
   state:              string | null
   /** A ficha tem login no app (o acesso pode ser dado depois do cadastro). */
   temAcesso?:         boolean
+  /** O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). */
+  responsavel?:       ResponsavelDaFicha | null
 }
 
 export interface ProfileStats {
@@ -201,7 +206,7 @@ interface Props {
   stats:                 ProfileStats
   upcomingAppointments:  ProfileAppointment[]
   recentAppointments:    ProfileAppointment[]
-  allAppointments:       ProfileAppointment[]
+  allAppointments?:      ProfileAppointment[]
   /** Nulo = programa de fidelidade desligado ou cargo sem o módulo: nada de pontos na ficha. */
   fidelidade:            FidelidadeDoPerfil | null
   activePackage:         ProfilePackage | null
@@ -302,6 +307,69 @@ export interface ClientOpportunity {
  * Salva ao sair do campo, e não a cada tecla: é texto corrido, e um salvamento
  * por palavra digitada não serve a ninguém.
  */
+/**
+ * Os documentos abertos que o CADASTRO trava (A24 da 7ª simulação,
+ * 2026-11-05): "Faltam dados: CPF" só aparecia na janela do agendamento e na
+ * aba Documentos — a recepção descobria na hora de assinar. O que falta no
+ * pagamento do contrato é outra coisa (a recepção o define nos Termos).
+ */
+export function faltaNoCadastro(itens: ItemDeTermo[]): { titulo: string; faltando: string[] }[] {
+  return itens
+    .filter(i => i.status === 'INCOMPLETO')
+    .map(i => ({ titulo: i.titulo, faltando: i.faltando.filter(f => !f.startsWith('Pagamento ·')).map(f => f.replace(/^Cliente · /, '')) }))
+    .filter(i => i.faltando.length > 0)
+}
+
+const formatarDiaDaFalta = (iso: string) =>
+  new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
+
+/**
+ * O que a recepção precisa ver ao abrir a ficha, antes do resto: a menor sem
+ * responsável (decisão 2), o documento que o cadastro trava (A24) e as faltas
+ * (A25 da 7ª: a falta só aparecia no Histórico). Nada aparece sem o que dizer.
+ */
+function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHistorico }: {
+  menor: string | null
+  faltando: { titulo: string; faltando: string[] }[]
+  faltas: ProfileAppointment[]
+  linkDosDados: string
+  linkDoHistorico: string
+}) {
+  if (!menor && !faltando.length && !faltas.length) return null
+  const ultima = [...faltas].sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt))[0]
+  const linha: React.CSSProperties = {
+    display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', padding: '10px 14px',
+    borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-sm-sz)', lineHeight: 'var(--leading-snug)',
+  }
+  const link: React.CSSProperties = { color: 'var(--brand)', fontWeight: 'var(--weight-bold)', textDecoration: 'none' }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {menor && (
+        <p data-aviso-do-menor role="note" style={{ ...linha, background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)', fontWeight: 'var(--weight-semibold)' }}>
+          <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 2 }} /> <span style={{ flex: 1, minWidth: 200 }}>{menor}</span>
+          <Link href={linkDosDados} scroll={false} style={link}>Abrir Dados</Link>
+        </p>
+      )}
+      {faltando.map(f => (
+        <p key={f.titulo} data-falta-no-cadastro role="note" style={{ ...linha, background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)', fontWeight: 'var(--weight-semibold)' }}>
+          <FileText size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+          <span style={{ flex: 1, minWidth: 200 }}>“{f.titulo}” não pode ser assinado: falta no cadastro {f.faltando.join(', ')}.</span>
+          <Link href={linkDosDados} scroll={false} style={link}>Completar o cadastro</Link>
+        </p>
+      ))}
+      {ultima && (
+        <p data-faltas-da-cliente style={{ ...linha, background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+          <XCircle size={15} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <span style={{ flex: 1, minWidth: 200 }}>
+            {faltas.length === 1 ? 'Não compareceu 1 vez' : `Não compareceu ${faltas.length} vezes`}: a última em {formatarDiaDaFalta(ultima.scheduledAt)} ({ultima.procedureName}).
+          </span>
+          <Link href={linkDoHistorico} scroll={false} style={link}>Ver no Histórico</Link>
+        </p>
+      )}
+    </div>
+  )
+}
+
 function NotasDoCliente({
   client, slug, podeEditar,
 }: { client: ProfileClient; slug: string; /** Clientes em Gerenciar: quem só vê lê as anotações (D5). */ podeEditar: boolean }) {
@@ -540,6 +608,12 @@ function DadosTab({ client, slug, branches, podeEditar }: {
   const [neighborhood, setNeighborhood] = useState(client.neighborhood ?? '')
   const [city,       setCity]       = useState(client.city ?? '')
   const [state,      setState]      = useState(client.state ?? '')
+  // A menor de idade: o responsável legal (decisão 2 do Heitor, 2026-11-05).
+  const [responsavel, setResponsavel] = useState(client.responsavel ? {
+    nome: client.responsavel.nome, cpf: client.responsavel.cpf ? applyDocMask(client.responsavel.cpf) : '',
+    parentesco: client.responsavel.parentesco ?? '', telefone: client.responsavel.telefone ?? '',
+  } : RESPONSAVEL_VAZIO)
+  const menor = ehMenorDeIdade(birthDate)
 
   const [selectedTags, setSelectedTags] = useState<string[]>(client.tags ?? [])
   // As tags da rede (Configurações → Tags) — e as que o cliente já tem fora
@@ -604,7 +678,8 @@ function DadosTab({ client, slug, branches, podeEditar }: {
     setSaveError(null)
     const result = await updateClientContactData(
       client.id,
-      { name: nome, gender, document: cpf, documentType: tipoDoc, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags },
+      { name: nome, gender, document: cpf, documentType: tipoDoc, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags,
+        ...(menor ? { responsavel } : {}) },
       slug,
     )
     setSaving(false)
@@ -713,6 +788,9 @@ function DadosTab({ client, slug, branches, podeEditar }: {
           />
         </div>
       </div>
+
+      {/* A menor de idade: o responsável legal (decisão 2 do Heitor). Some quando a data diz 18 ou mais. */}
+      <ResponsavelLegal nascimento={birthDate} valor={responsavel} aoMudar={v => { setResponsavel(v); setSaved(false) }} />
 
       {/* E-mail */}
       <div>
@@ -858,8 +936,7 @@ function DadosTab({ client, slug, branches, podeEditar }: {
         temAcesso={!!client.temAcesso}
         email={client.email ?? ''}
         clientId={client.id}
-        pronto={!!client.email && (client.document ?? '').replace(/\D/g, '').length === 11}
-        semCpf={client.documentoTipo ? (client.documentoTipo === 'RNE' ? 'RNE' : 'passaporte') : null}
+        documento={documentoDoAcesso({ document: client.document, documento_tipo: client.documentoTipo, documento_numero: client.documentoNumero })}
       />}
 
       {saveError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{saveError}</p>}
@@ -888,14 +965,20 @@ function DadosTab({ client, slug, branches, podeEditar }: {
  * Fica montado depois de dar o acesso: o refresh traz a ficha COM acesso, e
  * desmontar levava junto o aviso de login e senha antes de alguém o ler.
  */
-function AcessoAoApp({ temAcesso, email, clientId, pronto, semCpf }: {
+function AcessoAoApp({ temAcesso, email, clientId, documento }: {
   /** A ficha já tem login: nada a oferecer — só o aviso do que acabou de ser criado. */
   temAcesso: boolean
   email: string
-  clientId: string; pronto: boolean
-  /** O documento é passaporte ou RNE (D-11): sem CPF, sem acesso ao app por enquanto — nada a oferecer. */
-  semCpf?: string | null
+  clientId: string
+  /**
+   * O documento SALVO que vira a senha inicial: o CPF, ou sem ele o
+   * passaporte/RNE (decisão 1 do Heitor, 2026-11-05 — era "sem CPF, sem acesso
+   * por enquanto"). Nulo: sem documento, sem acesso.
+   */
+  documento: { tipo: 'CPF' | 'PASSAPORTE' | 'RNE'; numero: string } | null
 }) {
+  const pronto = !!email && !!documento
+  const senha = documento?.tipo === 'RNE' ? 'o número do RNE' : documento?.tipo === 'PASSAPORTE' ? 'o número do passaporte' : 'o CPF'
   const router = useRouter()
   const [dando, setDando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -907,23 +990,12 @@ function AcessoAoApp({ temAcesso, email, clientId, pronto, semCpf }: {
     const r = await darAcessoAoApp(clientId)
     setDando(false)
     if ('error' in r) { setErro(r.error); return }
-    // Na conta que ela já tinha (outra clínica), a senha é a dela, não o CPF (J-22).
-    setFeito(avisoDoAcessoCriado({ contaLigada: r.contaLigada, email }))
+    // Na conta que ela já tinha (outra clínica), a senha é a dela, não o documento (J-22).
+    setFeito(avisoDoAcessoCriado({ contaLigada: r.contaLigada, email, documento }))
     router.refresh()
   }
 
   if (temAcesso && !feito) return null
-
-  if (semCpf) {
-    return (
-      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--hairline)', borderRadius: 10, padding: '10px 12px' }}>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          O documento desta cliente é o {semCpf}, sem CPF — ela não tem acesso ao app por enquanto (a senha inicial
-          do app é o CPF).
-        </p>
-      </div>
-    )
-  }
 
   return (
     <div style={{
@@ -934,8 +1006,8 @@ function AcessoAoApp({ temAcesso, email, clientId, pronto, semCpf }: {
         {feito
           ? <><strong style={{ color: 'var(--text)' }}>{feito.titulo}.</strong> {feito.descricao}</>
           : pronto
-            ? 'Esta cliente ainda não tem acesso ao app. O login é o e-mail, e a senha inicial, o CPF.'
-            : 'Esta cliente ainda não tem acesso ao app. Para dar, salve o e-mail e o CPF dela.'}
+            ? `Esta cliente ainda não tem acesso ao app. O login é o e-mail, e a senha inicial, ${senha}.`
+            : 'Esta cliente ainda não tem acesso ao app. Para dar, salve o e-mail e um documento dela (CPF, passaporte ou RNE).'}
       </p>
       {!feito && (
         <button type="button" className="btn-secondary" disabled={!pronto || dando} onClick={dar}>
@@ -1265,7 +1337,7 @@ function FinanceiroTab({
 // -- Main component ------------------------------------------------------------
 
 export function ClientProfile({
-  client, branchId, stats, upcomingAppointments, recentAppointments,
+  client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
@@ -1441,6 +1513,8 @@ export function ClientProfile({
                 {client.temAcesso && (
                   <TagBadge label="Tem acesso ao app" size="xs" style={{ bg: 'var(--success-soft)', color: 'var(--success)' }} />
                 )}
+                {/* A menor de idade (decisão 2 do Heitor, 2026-11-05). */}
+                {ehMenorDeIdade(client.birthDate) && <span data-menor className="chip chip-brand">Menor de idade</span>}
                 {client.tags.map(tag => {
                   if (isUnitTag(tag)) {
                     return <TagBadge key={tag} label={unitTagName(tag)} size="xs" style={{ bg: 'var(--info-soft)', color: 'var(--info)' }} />
@@ -1468,6 +1542,11 @@ export function ClientProfile({
                   <Calendar size={11} style={{ color: 'var(--text-faint)' }} />
                   Cliente desde {since}
                 </span>
+                {ehMenorDeIdade(client.birthDate) && client.responsavel && (
+                  <span data-responsavel-da-ficha style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                    {linhaDoResponsavel(client.responsavel)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -1641,6 +1720,13 @@ export function ClientProfile({
       {/* -- Tab: Visão geral ------------------------------------------ */}
       {tab === 'visao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <AvisosDaVisaoGeral
+          menor={avisoDoMenor({ nascimento: client.birthDate, responsavel: client.responsavel ?? null })}
+          faltando={faltaNoCadastro(termos?.itens ?? [])}
+          faltas={allAppointments.filter(a => a.status === 'NO_SHOW')}
+          linkDosDados={linkDaAba('dados')}
+          linkDoHistorico={linkDaAba('historico')}
+        />
         <NotasDoCliente client={client} slug={slug} podeEditar={podeEditarCadastro} />
         <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar && !arquivada}
           branches={branches} currentBranchId={currentBranchId ?? ''} />

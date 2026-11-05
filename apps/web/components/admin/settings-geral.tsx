@@ -127,7 +127,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
             </p>
           ))}
           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, maxWidth: 320 }}>
-            É o endereço que se dá à cliente: ela entra com o e-mail (a senha inicial é o CPF), e o acesso se cria na ficha dela.
+            É o endereço que se dá à cliente: ela entra com o e-mail (a senha inicial é o CPF ou, sem ele, o passaporte ou o RNE), e o acesso se cria na ficha dela.
             {appDaCliente.length > 1 ? ' Qualquer unidade abre a mesma ficha.' : ''}
           </p>
         </div>

@@ -67,6 +67,14 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'cliente.uf':            { grupo: 'Cliente',     rotulo: 'UF',                tipos: TODOS, exemplo: 'SC' },
   'cliente.cep':           { grupo: 'Cliente',     rotulo: 'CEP',               tipos: TODOS, exemplo: '89201-000' },
 
+  // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). Opcionais
+  // no catálogo — na adulta saem vazias —, mas na MENOR o nome e o CPF são
+  // obrigatórios (`variavelObrigatoria`): sem eles o termo fica INCOMPLETO.
+  'responsavel.nome':       { grupo: 'Responsável legal', rotulo: 'Nome do responsável (menor de idade)', tipos: TODOS, exemplo: 'Marta Lima', opcional: true },
+  'responsavel.cpf':        { grupo: 'Responsável legal', rotulo: 'CPF do responsável', tipos: TODOS, exemplo: '529.982.247-25', opcional: true },
+  'responsavel.parentesco': { grupo: 'Responsável legal', rotulo: 'Parentesco', tipos: TODOS, exemplo: 'Mãe', opcional: true },
+  'responsavel.telefone':   { grupo: 'Responsável legal', rotulo: 'Telefone do responsável', tipos: TODOS, exemplo: '(71) 98888-7777', opcional: true },
+
   'rede.nome':             { grupo: 'Rede',        rotulo: 'Nome da rede',      tipos: TODOS, exemplo: 'Clínica Bellaris' },
   'rede.documento':        { grupo: 'Rede',        rotulo: 'CNPJ ou CPF da rede', tipos: TODOS, exemplo: '12.345.678/0001-90' },
   'rede.telefone':         { grupo: 'Rede',        rotulo: 'Telefone da rede',  tipos: TODOS, exemplo: '(47) 3030-1000', opcional: true },
@@ -115,6 +123,15 @@ export function ehVariavelConhecida(nome: string): nome is NomeDeVariavel {
 
 export function ehOpcional(nome: string): boolean {
   return !!CATALOGO[nome]?.opcional
+}
+
+/** Na MENOR de idade, o responsável assina: o nome e o CPF dele deixam de ser opcionais. */
+const OBRIGATORIAS_DA_MENOR = new Set(['responsavel.nome', 'responsavel.cpf'])
+
+/** A variável que, faltando, deixa o documento INCOMPLETO — o catálogo, mais o responsável da menor. */
+export function variavelObrigatoria(nome: string, cliente: { menor: boolean }): boolean {
+  if (cliente.menor && OBRIGATORIAS_DA_MENOR.has(nome)) return true
+  return !ehOpcional(nome)
 }
 
 /** As variáveis que um tipo de modelo pode usar, na ordem do catálogo. */

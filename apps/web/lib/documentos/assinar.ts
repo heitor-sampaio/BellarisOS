@@ -8,6 +8,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { gerarPdfAssinado } from './pdf'
 import { documentoSemCpf } from './valores'
+import { quemAssina, responsavelDaFicha } from '@/lib/clients/menor'
 
 /**
  * O que os canais de assinatura têm em comum (clínica, papel, portal, link).
@@ -45,8 +46,14 @@ export async function ipEAparelho(): Promise<{ ip: string | null; ua: string | n
 
 export async function dadosDoAssinante(clientId: string): Promise<{ nome: string; documento: string | null }> {
   const admin = createAdminClient()
-  const c = await ler(admin.from('clients').select('name, document, documento_tipo, documento_numero').eq('id', clientId).single(), 'buscar o cliente')
+  const c = await ler(admin.from('clients')
+    .select('name, document, documento_tipo, documento_numero, birth_date, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone')
+    .eq('id', clientId).single(), 'buscar o cliente')
   if (!c) throw new Error('Cliente do documento não encontrado.')
+  // A menor com responsável é assinada por ELE (decisão 2 do Heitor,
+  // 2026-11-05): a evidência guarda o nome e o CPF do responsável.
+  const assina = quemAssina({ nome: c.name as string, nascimento: c.birth_date as string | null, responsavel: responsavelDaFicha(c) })
+  if (assina.ehResponsavel) return { nome: assina.nome, documento: assina.documento }
   const cpf = ((c.document as string | null) ?? '').replace(/\D/g, '')
   // Sem CPF, o passaporte ou o RNE, com o tipo (cli-09): a evidência da
   // assinatura não fica sem documento da cliente estrangeira.

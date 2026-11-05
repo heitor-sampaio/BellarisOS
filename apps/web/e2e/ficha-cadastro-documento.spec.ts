@@ -9,9 +9,10 @@ import { apagarClientes } from './apoio/limpeza'
  * vira "Documento" com tipo — CPF, Passaporte ou RNE. A estrangeira sem CPF
  * não tinha como entrar com documento nenhum. O CPF continua com a máscara, a
  * conta dos verificadores e a unicidade de sempre; passaporte e RNE aceitam
- * texto livre razoável. Sem CPF, a cliente fica SEM acesso ao app por
- * enquanto (a senha inicial do app é o CPF): a tela diz isso e não oferece
- * criar o acesso. Numa rede [e2e] própria.
+ * texto livre razoável. Sem CPF, o acesso ao app tem a senha inicial no
+ * número do documento (decisão 1 do Heitor, 2026-11-05 — era "sem acesso por
+ * enquanto"; a prova da senha está em ficha-acesso-sem-cpf.spec.ts). Numa rede
+ * [e2e] própria.
  */
 
 const marca = Date.now().toString(36)
@@ -58,24 +59,22 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('passaporte no cadastro: grava o tipo e o número, sem CPF — e o acesso ao app não é oferecido', async ({ browser }) => {
+test('passaporte no cadastro: grava o tipo e o número, sem CPF — e o acesso ao app é oferecido (decisão 1)', async ({ browser }) => {
   await como(browser, async p => {
     await preencher(p, { nome: nome('passaporte'), telefone: telefone('0101'), tipo: 'Passaporte', numero: 'ab123456', email: `e2e-dc1${marca}@bellaris.invalid` })
-    await expect(p.getByText('Sem CPF, a cliente fica sem acesso ao app por enquanto')).toBeVisible()
-    await expect(p.getByRole('checkbox', { name: 'Criar o acesso ao app' })).toHaveCount(0)
+    await expect(p.getByRole('checkbox', { name: 'Criar o acesso ao app' })).toBeEnabled()
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
     await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
   })
   const ficha = await fichaDe(nome('passaporte'))
   expect(ficha).toMatchObject({ document: null, documento_tipo: 'PASSAPORTE', documento_numero: 'AB123456' })
 
-  // A aba Dados mostra o tipo e o número, diz por que não há acesso, e troca para RNE.
+  // A aba Dados mostra o tipo e o número, oferece o acesso, e troca para RNE.
   await como(browser, async p => {
     await p.goto(`/admin/clients/${ficha!.id}?aba=dados`)
     await expect(p.getByLabel('Tipo do documento')).toHaveValue('PASSAPORTE')
     await expect(p.getByLabel('Número do documento')).toHaveValue('AB123456')
-    await expect(p.getByText(/sem CPF.*não tem acesso ao app por enquanto/i)).toBeVisible()
-    await expect(p.getByRole('button', { name: 'Dar acesso ao app' })).toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Dar acesso ao app' })).toBeEnabled()
     await p.getByLabel('Tipo do documento').selectOption('RNE')
     await p.getByLabel('Número do documento').fill('V123456-7')
     await p.getByRole('button', { name: /Salvar dados/ }).click()

@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isSameDay, format } from 'date-fns'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
+import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
@@ -251,6 +252,7 @@ function ProfColumn({
               {/* O bloco curto (30 min) não tem altura para a linha do nome: ele vem aqui. */}
               {height <= 42 && <span style={{ color: isCompleted ? 'var(--text-muted)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.clientName}</span>}
               <SeloDaFicha estado={ev.fichaDeSaude} />
+              <SeloDoMenor menor={ev.menor} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
               {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt) ?? 'concluído'}</span>}

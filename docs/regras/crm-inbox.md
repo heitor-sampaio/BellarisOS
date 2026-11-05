@@ -14,10 +14,45 @@
   RNE moram em `documento_tipo` + `documento_numero` (texto livre razoável,
   `documentoEstrangeiro`: 5 a 20 letras e números, maiúsculas, um por rede).
   A ficha tem um OU outro (`documentoDaFicha`, `lib/clients/documento.ts`, no
-  cadastro e na aba Dados). **Sem CPF, a cliente fica SEM acesso ao app por
-  enquanto** (a senha inicial é o CPF): o cadastro não oferece a caixa e diz
-  por quê, e a aba Dados não oferece "Dar acesso ao app". Prova:
-  `e2e/ficha-cadastro-documento.spec.ts`.
+  cadastro e na aba Dados). Prova: `e2e/ficha-cadastro-documento.spec.ts`.
+- **Sem CPF, a senha inicial do app é o número do documento da ficha**
+  (decisão 1 do Heitor, 7ª simulação, 2026-11-05: "concordo" — a Sophie,
+  passaporte 19FR54321, fechou um plano de R$ 7.200 e não via sessões,
+  parcelas nem agenda). Até ali a regra de 29/10 era "sem CPF, sem acesso ao
+  app por enquanto". Agora o passaporte ou o RNE, como está na ficha (em
+  maiúsculas), é a senha inicial, PROVISÓRIA como a do CPF
+  (`senha_provisoria`), e o aviso diz qual é ("a senha inicial é o número do
+  passaporte, 19FR54321 (em maiúsculas)…" — `avisoDoAcessoCriado` com o
+  `documento`). O documento do acesso é UM, `documentoDoAcesso`
+  (`lib/clients/documento-do-acesso.ts`): o CPF de 11 dígitos, senão o
+  passaporte/RNE — no cadastro, na aba Dados ("Dar acesso ao app") e no
+  Copilot (`criar_acesso_ao_app`). **Sem documento nenhum, segue sem acesso**,
+  e a tela diz por quê ("precisa do e-mail e de um documento (CPF, passaporte
+  ou RNE)"). **A mesma pessoa em outra clínica, sem CPF, só se liga com o MESMO
+  documento** (tipo e número; decidido pelo §5 do CLAUDE.md — "a mesma pessoa"
+  é provada pelo documento): `login_de_cliente_para_ligar_doc` (migration
+  `20261105002901`; a de antes, só CPF, ficou sem chamador); outro documento
+  com o mesmo e-mail é recusado ("Este e-mail já tem uma conta no BellarisOS
+  com outro documento."). A tela de login diz "a senha é o seu CPF (só os
+  números) ou, sem CPF, o número do seu passaporte ou RNE". Prova:
+  `e2e/ficha-acesso-sem-cpf.spec.ts`, `tests/textos-do-cadastro.test.ts`.
+- **A menor de idade e o responsável legal** (decisão 2 do Heitor, 7ª
+  simulação, 2026-11-05: "concordo" — a Beatriz tinha 16 anos, e a Lia
+  escreveu o nome da mãe nas Anotações). Com `idadeEm` < 18
+  (`ehMenorDeIdade`, `lib/clients/menor.ts`, o dia de Brasília), o cadastro e
+  a aba Dados abrem "Responsável legal" (`ResponsavelLegal`,
+  `components/shared/responsavel-legal.tsx`): nome, CPF (pelos verificadores),
+  parentesco e telefone, em `clients.responsavel_*` (migration
+  `20261105002901`; `colunasDoResponsavel` confere e só grava na menor).
+  **Avisar, não barrar** (princípio 2): nada é obrigatório; sem o nome, a
+  ficha (Visão geral, `[data-aviso-do-menor]`) e o atendimento avisam "Menor
+  de idade (16 anos), sem responsável legal no cadastro…". A ficha leva "Menor
+  de idade" (`[data-menor]`) e a linha "Responsável: Marta Lima (Mãe) · …"; a
+  agenda (o bloco da grade, a janela, nos dois portais — `menoresDaAgenda`) e
+  a tela do atendimento mostram "Menor" e o responsável, ou a falta dele. O
+  termo cita o responsável e é assinado por ele (`documentos.md`). O que a
+  recepção escreveu nas Anotações antes disso não foi migrado. Prova:
+  `e2e/ficha-menor-de-idade.spec.ts`, `tests/menor-de-idade.test.ts`.
 - `authId` em `Client` é opcional — preenchido quando a CLÍNICA dá o acesso ao
   app. **O mesmo login pode estar em várias fichas, uma por rede** (a mesma
   pessoa cliente de várias clínicas, 2026-10-19 — regras no §5 do
@@ -802,5 +837,8 @@ o contato junto.
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
 ❌ Gravar a ficha da cliente (dados, anotações, arquivar) pela SESSÃO — a RLS recorta pela unidade de cadastro e a cliente é da clínica: é pelo servidor, com a rede na consulta
 ❌ Lançar a trava de módulo (assertPermission) num layout.tsx de seção: sai antes do streaming e a resposta é 500 — o layout sem o módulo só deixa passar a página, e a trava é dela (D11 da 7ª)
+❌ Recusar o acesso ao app de quem tem passaporte ou RNE, ou escolher a senha inicial fora de documentoDoAcesso (o CPF, senão o documento da ficha — decisão 1 da 7ª)
+❌ Ligar a ficha à conta de outra clínica sem o MESMO documento (login_de_cliente_para_ligar_doc: o CPF, ou o tipo e o número do passaporte/RNE)
+❌ Barrar o cadastro ou o atendimento da menor sem responsável (é aviso — princípio 2), ou decidir "menor" fora de ehMenorDeIdade
 ❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })
 ```

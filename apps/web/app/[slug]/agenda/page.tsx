@@ -9,6 +9,7 @@ import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 import { selosDaFicha } from '@/lib/pre-atendimento/selos'
+import { menoresDaAgenda } from '@/lib/clients/menores-da-agenda'
 import { abertosDeAntes } from '@/lib/metrics/abertos-de-antes'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
@@ -138,13 +139,15 @@ export default async function AgendaPage({ params, searchParams }: {
   // da rede viravam "—". Os agendamentos acima já são os desta unidade, ao
   // alcance da sessão; daqui saem só os nomes de quem está neles.
   // O que já foi pago antes (D12): pré-pago, pacote, plano — a janela não o mostra como valor a cobrar.
-  const [selos, nomes, jaPagos] = await Promise.all([
+  // A menor de idade (decisão 2 do Heitor, 2026-11-05): a marca e o responsável.
+  const [selos, nomes, jaPagos, menores] = await Promise.all([
     selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[]),
     nomesDosRegistros(ctx.tenantId!, {
       clientes: (rawAppointments ?? []).map(a => a.client_id as string | null),
       membros:  (rawAppointments ?? []).map(a => a.professional_id as string | null),
     }),
     pagosAntes(createAdminClient(), (rawAppointments ?? []).map(a => a.id as string)),
+    menoresDaAgenda(ctx.tenantId!, (rawAppointments ?? []).map(a => a.client_id as string | null)),
   ])
 
   // Mapeia appointments para eventos do FullCalendar
@@ -168,6 +171,7 @@ export default async function AgendaPage({ params, searchParams }: {
       clientId:         (a.client_id as string | null) ?? null,
       roomName:         ((rooms ?? []) as { id: string; name: string }[]).find(r => r.id === (a as { room_id?: string | null }).room_id)?.name ?? null,
       fichaDeSaude:     selos[a.id] ?? null,
+      menor:            (a.client_id && menores[a.client_id as string]) || null,
       arrivedAt:        (a as { arrived_at?: string | null }).arrived_at ?? null,
       completedAt:      (a as { completed_at?: string | null }).completed_at ?? null,
       motivoDoCancelamento: (a as { cancellation_reason?: string | null }).cancellation_reason ?? null,

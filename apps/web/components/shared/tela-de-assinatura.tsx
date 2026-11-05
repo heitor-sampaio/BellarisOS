@@ -33,7 +33,8 @@ export interface DocumentoNaTela {
   status:      string
   faltando:    string[]
   codigo:      string | null
-  cliente:     { nome: string }
+  /** `assinante`: quem assina (a menor com responsável: ele — decisão 2 do Heitor). Sem ele, a própria cliente. */
+  cliente:     { nome: string; assinante?: string }
   conteudo:    string | null
   pdfUrl:      string | null
   /** URLs temporárias das imagens do documento, por caminho (fora do hash). */
@@ -109,7 +110,8 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   }, [doc.conteudo, doc.pdfUrl])
 
   const aberto = doc.status === 'PENDENTE'
-  const textoDoAceite = `Eu, ${doc.cliente.nome}, li e concordo com este documento.`
+  const assinante = doc.cliente.assinante ?? doc.cliente.nome
+  const textoDoAceite = `Eu, ${assinante}, li e concordo com este documento.`
   const faltaParaAssinar = [
     ...(aceite ? [] : ['marcar que leu e concorda']),
     ...(assinatura ? [] : ['assinar no quadro']),
@@ -166,7 +168,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
           documento={arvore}
           imagens={doc.imagens}
           assinatura={doc.assinatura?.png ?? (modo === 'cliente' ? assinatura : null)}
-          nomeDoAssinante={doc.cliente.nome}
+          nomeDoAssinante={assinante}
         />
       )}
       {!arvore && pdf && <VisualizadorDePdf bytes={pdf} />}
@@ -184,7 +186,9 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
     const daCliente = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 760, margin: '0 auto' }}>
         <div className="card-brand" style={{ padding: '14px 18px', borderRadius: 'var(--radius-card-token)' }}>
-          <p style={{ fontWeight: 'var(--weight-extrabold)' }}>{noPortal ? `${nomeParaSaudar(doc.cliente.nome) || doc.cliente.nome}, leia` : `${doc.cliente.nome}, leia`} o documento e assine no fim.</p>
+          <p style={{ fontWeight: 'var(--weight-extrabold)' }}>{assinante !== doc.cliente.nome
+            ? `${assinante}: leia`
+            : noPortal ? `${nomeParaSaudar(doc.cliente.nome) || doc.cliente.nome}, leia` : `${doc.cliente.nome}, leia`} o documento e assine no fim.</p>
         </div>
         {documento}
         <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -305,7 +309,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
                 <input type="checkbox" checked={conferido} onChange={e => setConferido(e.target.checked)}
                   style={{ accentColor: 'var(--brand)', width: 16, height: 16, marginTop: 2 }} />
                 <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                  Conferi o documento de identidade de <strong>{doc.cliente.nome}</strong>.
+                  Conferi o documento de identidade de <strong>{assinante}</strong>.
                 </span>
               </label>
               <button type="button" className="btn-primary" disabled={!conferido || !hash}

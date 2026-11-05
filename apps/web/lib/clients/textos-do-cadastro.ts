@@ -9,8 +9,20 @@
  * CPF — `login_de_cliente_para_ligar`) ganha a ficha desta clínica, e a senha
  * continua a que ela já usa (CLAUDE.md §5). O aviso dizia sempre o primeiro.
  */
-export function avisoDoAcessoCriado({ contaLigada, email }: { contaLigada: boolean; email: string }): { titulo: string; descricao: string } {
+export function avisoDoAcessoCriado({ contaLigada, email, documento }: {
+  contaLigada: boolean; email: string
+  /**
+   * O documento que virou a senha inicial (decisão 1 do Heitor, 2026-11-05):
+   * sem CPF, o número do passaporte ou do RNE da ficha. Sem ele, o CPF.
+   */
+  documento?: { tipo: 'CPF' | 'PASSAPORTE' | 'RNE'; numero: string } | null
+}): { titulo: string; descricao: string } {
   const login = email.trim() ? ` (${email.trim().toLowerCase()})` : ''
+  // O passaporte e o RNE se digitam como estão na ficha, em maiúsculas: a
+  // senha diferencia, e a recepção dita o número.
+  const senha = documento && documento.tipo !== 'CPF'
+    ? `o número do ${documento.tipo === 'RNE' ? 'RNE' : 'passaporte'}, ${documento.numero} (em maiúsculas)`
+    : 'o CPF'
   // Neutro (A20 da 6ª simulação: dizia "a cliente" e "Ela" para o Bruno): o
   // que a CLÍNICA diz não decide pelo sexo da ficha.
   return contaLigada
@@ -20,7 +32,7 @@ export function avisoDoAcessoCriado({ contaLigada, email }: { contaLigada: boole
       }
     : {
         titulo: 'Acesso ao app criado',
-        descricao: `O login é o e-mail${login} e a senha inicial é o CPF, trocada no primeiro acesso.`,
+        descricao: `O login é o e-mail${login} e a senha inicial é ${senha}, trocada no primeiro acesso.`,
       }
 }
 

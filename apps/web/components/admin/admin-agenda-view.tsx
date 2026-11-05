@@ -8,6 +8,7 @@ import { AppointmentModal } from '@/components/branch/appointment-modal'
 import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
+import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { estenderJanela } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, type Horario } from '@/lib/agenda/horario'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
@@ -40,6 +41,8 @@ interface Appointment {
   ficha?:          EstadoDaFicha | null
   /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
   pagoAntes?:      string | null
+  /** A menor de idade (decisão 2 do Heitor, 2026-11-05). */
+  menor?:          MenorDoAgendamento | null
   /** A29: a duração, a sala e a cliente, na janela. */
   duration_min?:   number | null
   client_id?:      string | null
@@ -354,7 +357,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                         <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: st.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                           {a.procedures?.name ?? '—'}
                         </span>
-                        <SeloDaFicha estado={a.ficha} />
+                        <SeloDaFicha estado={a.ficha} /><SeloDoMenor menor={a.menor} />
                         {encaixe && <span className="chip chip-warning" style={{ fontSize: 'var(--text-overline)', padding: '0 5px', flexShrink: 0 }}>Encaixe</span>}
                       </div>
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1, textDecoration: desmarcado(a) ? 'line-through' : undefined }}>
@@ -471,7 +474,7 @@ function WeekGrid({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                       <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.text }}>{t}</span>
-                      <SeloDaFicha estado={a.ficha} />
+                      <SeloDaFicha estado={a.ficha} /><SeloDoMenor menor={a.menor} />
                       <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {branches.find(b => b.id === a.branch_id)?.name ?? ''}
                       </span>
@@ -715,6 +718,7 @@ export function AdminAgendaView({
             start:            selecionado.scheduled_at,
             motivoDoCancelamento: selecionado.cancellation_reason ?? null,
             professionalId:   selecionado.professional_id ?? null,
+            menor:            selecionado.menor ?? null,
           }}
           slug={todasUnidades.find(b => b.id === selecionado.branch_id)?.slug ?? ''}
           userRole=""

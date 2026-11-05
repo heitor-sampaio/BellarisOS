@@ -3,6 +3,7 @@
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { addDays, startOfWeek, isSameDay, format } from 'date-fns'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
+import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 
 interface Professional { id: string; name: string }
@@ -90,6 +91,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
         {time}
         {ev.status === 'ARRIVED' && <span>· Chegou</span>}
         <SeloDaFicha estado={ev.fichaDeSaude} />
+              <SeloDoMenor menor={ev.menor} />
       </div>
       <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {shortName(ev.clientName)}

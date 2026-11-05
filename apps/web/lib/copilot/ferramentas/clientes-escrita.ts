@@ -4,7 +4,7 @@ import { cpfValido, telefoneDoCadastro } from '@estetica-os/utils'
 import { revalidateTag } from 'next/cache'
 import { ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
-import { darAcessoAoCliente } from '@/lib/clients/acesso'
+import { darAcessoAoCliente, documentoDoAcesso, type DocumentoDoAcesso } from '@/lib/clients/acesso'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, rotuloDoAtualizar, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { isUnitTag } from '@estetica-os/utils'
@@ -89,7 +89,10 @@ export function escolhasDaFichaQueJaExiste(f: FichaQueJaExiste) {
 }
 
 // Quem já usa o app em outra clínica (mesmo e-mail e CPF) entra na conta que tem (lib/clients/acesso.ts).
-const linhaDoAcesso = (email: string) => ({ rotulo: 'Acesso ao app', valor: `login ${email}, senha inicial = o CPF (se ela já usa o app em outra clínica, a senha continua a dela)` })
+const linhaDoAcesso = (email: string, tipo: 'CPF' | 'PASSAPORTE' | 'RNE' = 'CPF') => ({
+  rotulo: 'Acesso ao app',
+  valor: `login ${email}, senha inicial = ${tipo === 'CPF' ? 'o CPF' : tipo === 'RNE' ? 'o número do RNE' : 'o número do passaporte'} (se ela já usa o app em outra clínica, a senha continua a dela)`,
+})
 
 export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro> = {
   nome: 'cadastrar_cliente',
@@ -162,7 +165,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     // O acesso ao app, depois da ficha: falhar aqui não desfaz o cadastro (o
     // acesso sai depois, pela ficha ou de novo pelo Copilot).
     if (p.criarAcesso && p.email && p.cpf) {
-      const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, p.cpf)
+      const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, { tipo: 'CPF', numero: p.cpf })
       if ('error' in acesso) return { mensagem: `${p.nome} cadastrado, mas o acesso ao app não saiu: ${acesso.error}`, ...ficha }
       return { mensagem: acesso.contaLigada
         ? `${p.nome} cadastrado, e a ficha entrou na conta que ela já tem no app (a senha continua a dela).`
@@ -301,13 +304,13 @@ async function tagsDoCliente(c: ContextoDaFerramenta, clientId: string): Promise
 }
 
 interface ArgsAcesso { cliente: string; email?: string; cpf?: string }
-interface PayloadAcesso { clientId: string; email: string; cpf: string }
+interface PayloadAcesso { clientId: string; email: string; documento: DocumentoDoAcesso }
 
 export const criarAcessoAoApp: FerramentaDeEscrita<ArgsAcesso, PayloadAcesso> = {
   nome: 'criar_acesso_ao_app',
   tipo: 'escrita',
   modulo: 'clients', nivel: 'MANAGE',
-  descricao: 'Cria o acesso ao app de quem JÁ é cliente (id, nome ou telefone) e ainda não tem: login = e-mail, senha inicial = o CPF. Usa o e-mail e o CPF da ficha, ou os informados (que passam para a ficha).',
+  descricao: 'Cria o acesso ao app de quem JÁ é cliente (id, nome ou telefone) e ainda não tem: login = e-mail, senha inicial = o CPF — ou, sem CPF, o número do passaporte ou do RNE da ficha. Usa o e-mail e o documento da ficha, ou o e-mail e o CPF informados (que passam para a ficha).',
   parametros: z.object({
     cliente: z.string().min(2).max(120),
     email: EMAIL.optional(),
@@ -316,30 +319,35 @@ export const criarAcessoAoApp: FerramentaDeEscrita<ArgsAcesso, PayloadAcesso> = 
   async preparar(c, a) {
     const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
     if ('erro' in cl) return { erro: cl.erro }
-    const ficha = await ler(c.admin.from('clients').select('email, document, auth_id')
-      .eq('id', cl.id).eq('tenant_id', c.ctx.tenantId!).single(), 'ler o cliente') as { email: string | null; document: string | null; auth_id: string | null }
+    const ficha = await ler(c.admin.from('clients').select('email, document, documento_tipo, documento_numero, auth_id')
+      .eq('id', cl.id).eq('tenant_id', c.ctx.tenantId!).single(), 'ler o cliente') as {
+        email: string | null; document: string | null; documento_tipo: string | null; documento_numero: string | null; auth_id: string | null
+      }
     if (ficha.auth_id) return { erro: `${cl.name} já tem acesso ao app.` }
     const email = emailNormalizado(a.email) ?? ficha.email
+    // Sem CPF, o passaporte ou o RNE da ficha (decisão 1 do Heitor, 2026-11-05).
     const cpf = a.cpf?.replace(/\D/g, '') || ficha.document
-    if (!email || !cpf) return { erro: 'Para criar o acesso, preciso do e-mail e do CPF do cliente.' }
-    if (!cpfValido(cpf)) return { erro: 'CPF inválido.' }
-    const recusa = await conferirComplemento(c, { email: a.email ? email : undefined, cpf: a.cpf ? cpf : undefined }, cl.id)
+    const documento: DocumentoDoAcesso | null = cpf ? { tipo: 'CPF', numero: cpf } : documentoDoAcesso(ficha)
+    if (!email || !documento) return { erro: 'Para criar o acesso, preciso do e-mail e de um documento do cliente (CPF, passaporte ou RNE).' }
+    if (documento.tipo === 'CPF' && !cpfValido(documento.numero)) return { erro: 'CPF inválido.' }
+    const recusa = await conferirComplemento(c, { email: a.email ? email : undefined, cpf: a.cpf ? cpf ?? undefined : undefined }, cl.id)
     if (recusa) return { erro: recusa }
     return {
       resumo: {
         titulo: 'Acesso ao app do cliente',
         linhas: [
           { rotulo: 'Cliente', valor: cl.name },
-          ...linhasDoComplemento({ email, cpf }),
-          linhaDoAcesso(email),
+          ...linhasDoComplemento({ email, ...(documento.tipo === 'CPF' ? { cpf: documento.numero } : {}) }),
+          ...(documento.tipo === 'CPF' ? [] : [{ rotulo: documento.tipo === 'RNE' ? 'RNE' : 'Passaporte', valor: documento.numero }]),
+          linhaDoAcesso(email, documento.tipo),
         ],
       },
-      payload: { clientId: cl.id, email, cpf },
+      payload: { clientId: cl.id, email, documento },
     }
   },
   async efetivar(c, p) {
     // O mesmo núcleo da tela de cadastro (lib/clients/acesso.ts).
-    const r = await darAcessoAoCliente(c.admin, c.ctx, p.clientId, p.email, p.cpf)
+    const r = await darAcessoAoCliente(c.admin, c.ctx, p.clientId, p.email, p.documento)
     if ('error' in r) return { erro: r.error }
     revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     return { mensagem: r.contaLigada ? 'A ficha entrou na conta que ela já tem no app (a senha continua a dela).' : 'Acesso ao app criado.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }

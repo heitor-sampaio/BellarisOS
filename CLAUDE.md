@@ -219,8 +219,11 @@ action e das consultas com filtro está em `docs/regras/convencoes.md`.
 ### O acesso da cliente — e a mesma pessoa em várias clínicas (2026-10-19)
 
 Só a CLÍNICA cria o acesso (cadastro com acesso, ou o Copilot): não existe
-cadastro da cliente pelo app. Login = e-mail, senha inicial = CPF
-(`lib/clients/acesso.ts`).
+cadastro da cliente pelo app. Login = e-mail, senha inicial = CPF — ou, sem
+CPF, o número do passaporte ou do RNE da ficha (decisão 1 do Heitor,
+2026-11-05: "concordo"; era "sem CPF, sem acesso por enquanto") —
+(`lib/clients/acesso.ts`). Sem documento nenhum, sem acesso. Prova:
+`e2e/ficha-acesso-sem-cpf.spec.ts`.
 
 **Senha dada por outra pessoa é provisória** (2026-10-21, decisão do Heitor):
 o membro criado pela Equipe e a cliente com o acesso criado pela clínica
@@ -241,9 +244,10 @@ conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
   clínica. A claim `client_id` é só a marca "é cliente" — nunca escolha dado
   por ela. Rota sem clínica no endereço (`/api/*`) confere as fichas do login
   (`getCachedFichasDoLogin`), não `ctx.clientId`.
-- **Dar acesso a quem já tem conta** (`login_de_cliente_para_ligar`): e-mail
-  de CLIENTE com uma ficha de mesmo CPF → a ficha nova entra nessa conta, sem
-  mexer na senha nem no token. CPF diferente, e-mail de equipe ou da
+- **Dar acesso a quem já tem conta** (`login_de_cliente_para_ligar_doc`):
+  e-mail de CLIENTE com uma ficha de mesmo CPF — ou, sem CPF, do mesmo
+  passaporte/RNE (tipo e número) — → a ficha nova entra nessa conta, sem
+  mexer na senha nem no token. Documento diferente, e-mail de equipe ou da
   plataforma → recusado. Rollback só apaga login NOVO.
 - **A entrada**: uma clínica → direto; várias → o seletor `/auth/clinicas`
   no primeiro login (e uma vez de novo quando entra uma clínica nova), depois

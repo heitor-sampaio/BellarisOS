@@ -46,7 +46,7 @@ export function FormularioDeLogin() {
         Equipe da clínica ou cliente: entre com o seu e-mail e a sua senha.
       </p>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: -20, marginBottom: 24 }}>
-        Cliente: no primeiro acesso, a senha é o seu CPF (só os números).
+        Cliente: no primeiro acesso, a senha é o seu CPF (só os números) ou, sem CPF, o número do seu passaporte ou RNE.
       </p>
 
       <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

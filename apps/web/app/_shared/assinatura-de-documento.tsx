@@ -49,7 +49,7 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
         faltando:   doc.resumo.faltando,
         codigo:     doc.resumo.codigo,
         motivo:     doc.resumo.motivo,
-        cliente:    { nome: doc.cliente.nome },
+        cliente:    { nome: doc.cliente.nome, assinante: doc.cliente.assinante },
         conteudo:   doc.conteudo,
         pdfUrl:     doc.pdfUrl,
         imagens:    doc.imagens,

@@ -6,6 +6,7 @@ import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { janelaDaGrade, normalizarHorario } from '@/lib/agenda/horario'
 import { selosDaFicha } from '@/lib/pre-atendimento/selos'
+import { menoresDaAgenda } from '@/lib/clients/menores-da-agenda'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { dayKeyTZ, weekdayTZ, addDaysTZ, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 
@@ -121,12 +122,14 @@ export default async function AdminAgendaPage({
 
   // O selo da ficha de saúde no bloco (2026-10-21): só o estado, do banco.
   const brutos = (apptsRaw ?? []) as unknown as { id: string; client_id: string | null; status: string }[]
-  const [selos, jaPagos] = await Promise.all([
+  const [selos, jaPagos, menores] = await Promise.all([
     selosDaFicha(ctx.tenantId!, brutos),
     // O que já foi pago antes (D12): a janela não o mostra como valor a cobrar.
     pagosAntes(admin, brutos.map(a => a.id)),
+    // A menor de idade (decisão 2 do Heitor, 2026-11-05).
+    menoresDaAgenda(ctx.tenantId!, brutos.map(a => a.client_id)),
   ])
-  const appointments = brutos.map(a => ({ ...a, ficha: selos[a.id] ?? null, pagoAntes: jaPagos.get(a.id) ?? null })) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
+  const appointments = brutos.map(a => ({ ...a, ficha: selos[a.id] ?? null, pagoAntes: jaPagos.get(a.id) ?? null, menor: (a.client_id && menores[a.client_id]) || null })) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
 
   return (
     <>

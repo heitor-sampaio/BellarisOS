@@ -4,6 +4,7 @@ import { ler } from '@/lib/db'
 import { getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
 import { VARIAVEIS_DE_DOCUMENTO } from './variaveis'
 import { urlsDasImagens } from './imagens'
+import { quemAssina, responsavelDaFicha } from '@/lib/clients/menor'
 import { pagamentoDoRetrato, frasesDoPagamento, descontoDoRetrato, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import {
   garantirRenderizado, renderizarPendentes, COLUNAS_DO_DOCUMENTO,
@@ -139,7 +140,8 @@ export async function documentosDoAgendamento(tenantId: string, appointmentId: s
 export interface DocumentoParaExibir {
   resumo:     ResumoDeDocumento
   clienteId:  string
-  cliente:    { nome: string; cpf: string | null }
+  /** `assinante`: quem assina — a menor com responsável é assinada por ele (decisão 2 do Heitor). */
+  cliente:    { nome: string; cpf: string | null; assinante: string }
   branchId:   string | null
   /** A forma canônica (EDITOR): o navegador desenha e calcula o hash DESTES bytes. */
   conteudo:   string | null
@@ -160,7 +162,8 @@ export async function documentoParaExibir(
   const admin = createAdminClient()
   const [[resumo], cliente, assinatura, versao] = await Promise.all([
     resumirDocumentos(tenantId, [doc]),
-    ler(admin.from('clients').select('name, document').eq('id', doc.client_id).single(), 'buscar o cliente'),
+    ler(admin.from('clients').select('name, document, birth_date, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone')
+      .eq('id', doc.client_id).single(), 'buscar o cliente'),
     doc.status === 'ASSINADO'
       ? ler(admin.from('document_signatures').select('signature_png, signer_name, signed_at, channel, conducted_by')
           .eq('issued_document_id', doc.id).maybeSingle(), 'buscar a assinatura')
@@ -178,7 +181,10 @@ export async function documentoParaExibir(
   return {
     resumo:    resumo!,
     clienteId: doc.client_id,
-    cliente:   { nome: cliente.name as string, cpf: (cliente.document as string | null) ?? null },
+    cliente:   {
+      nome: cliente.name as string, cpf: (cliente.document as string | null) ?? null,
+      assinante: quemAssina({ nome: cliente.name as string, nascimento: cliente.birth_date as string | null, responsavel: responsavelDaFicha(cliente) }).nome,
+    },
     branchId:  doc.branch_id,
     conteudo:  doc.content,
     pdfUrl:    versao?.file_path ? await getSignedUrl(MODELOS_DE_DOCUMENTO_BUCKET, versao.file_path as string, 30 * 60) : null,

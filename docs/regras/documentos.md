@@ -42,6 +42,20 @@ DEVLOG ("Termos e contratos").
   assinatura guarda e mostra o mesmo (`dadosDoAssinante`; no PDF,
   "Passaporte CB***67"). Sem nenhum dos dois, continua INCOMPLETO. Prova:
   `e2e/documentos-passaporte.spec.ts`, `tests/documentos-valores.test.ts`.
+- **O responsável legal da menor assina o termo** (decisão 2 do Heitor, 7ª
+  simulação, 2026-11-05: "concordo"). As variáveis `responsavel.nome`,
+  `responsavel.cpf`, `responsavel.parentesco` e `responsavel.telefone` valem
+  em todo tipo e são OPCIONAIS no catálogo (na adulta saem vazias), mas na
+  MENOR de idade o nome e o CPF do responsável são obrigatórios
+  (`variavelObrigatoria`, `renderizar.ts`): sem eles o termo fica INCOMPLETO
+  ("Responsável legal · Nome do responsável…"), e o termo que BLOQUEIA já
+  segura o início — e a Visão geral da ficha diz o que falta (A24). Quem
+  assina é ELE: `quemAssina` (`lib/clients/menor.ts`) — o aceite, o "Conferi o
+  documento de identidade de", a evidência (`document_signatures.signer_name`
+  "Marta Lima, responsável legal de Beatriz Lima", `signer_document` o CPF
+  dele; `dadosDoAssinante`) e a tela de assinar (`cliente.assinante`). A
+  adulta, ou a menor ainda sem responsável, assina por si. Prova:
+  `e2e/ficha-menor-de-idade.spec.ts`.
 - **Três tipos, cada um com as suas variáveis** (`lib/documentos/variaveis.ts`,
   catálogo FECHADO): o termo também serve ao plano, então não usa
   `agendamento.*`; o contrato do procedimento é o do avulso; só o contrato de
@@ -357,6 +371,7 @@ DEVLOG ("Termos e contratos").
 ❌ Levar o JSON do editor (Tiptap) à tela ou ao PDF sem passar por converterDocumentoDoEditor (é a porta única do que se assina)
 ❌ Pôr fonte em documento que não esteja no catálogo e em public/fontes-documento (a tela e o PDF têm de desenhar a mesma)
 ❌ Alterar uma versão de modelo de documento ou apagar um modelo (edita → versão nova; o que não serve, desativa)
+❌ Gravar ou mostrar quem assina fora de quemAssina/dadosDoAssinante (a menor com responsável é assinada por ELE — decisão 2 da 7ª)
 ❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir

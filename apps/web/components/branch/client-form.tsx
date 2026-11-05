@@ -7,7 +7,8 @@ import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
-import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
+import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO, documentoEstrangeiro } from '@estetica-os/utils'
+import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
@@ -82,11 +83,18 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const [phone, setPhone] = useState(prefill?.phone ? telefoneParaExibir(prefill.phone) : '')
   const [document, setDocument] = useState('')
   const [email, setEmail] = useState(prefill?.email ?? '')
-  // O acesso ao app é escolha (2026-10-21): só com e-mail e CPF.
+  // O acesso ao app é escolha (2026-10-21): só com o e-mail e um documento.
   const [comAcesso, setComAcesso] = useState(false)
-  // O tipo do documento (D-11): sem CPF não há acesso ao app por enquanto — a senha inicial é o CPF.
+  // O tipo do documento (D-11). Sem CPF, a senha inicial é o número do
+  // passaporte ou do RNE (decisão 1 do Heitor, 2026-11-05).
   const [tipoDoc, setTipoDoc] = useState<string>('CPF')
-  const podeAcesso = tipoDoc === 'CPF' && email.trim().length > 0 && document.replace(/\D/g, '').length === 11
+  // O CPF completo (os verificadores, o servidor confere e diz em português — D12).
+  const docValido = tipoDoc === 'CPF' ? document.replace(/\D/g, '').length === 11 : !!documentoEstrangeiro(document)
+  const podeAcesso = email.trim().length > 0 && docValido
+  const nomeDoDoc = tipoDoc === 'RNE' ? 'o número do RNE' : tipoDoc === 'PASSAPORTE' ? 'o número do passaporte' : 'CPF'
+  // Decisão 2 do Heitor (2026-11-05): a menor de idade pede o responsável legal.
+  const [nascimento, setNascimento] = useState('')
+  const [responsavel, setResponsavel] = useState<CamposDoResponsavel>(RESPONSAVEL_VAZIO)
   const [unitId, setUnitId] = useState(branchId || branches?.[0]?.id || '')
 
   const router   = useRouter()
@@ -185,7 +193,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
     const r = state as unknown as { acessoCriado?: boolean; contaLigada?: boolean }
     if (r.acessoCriado) {
       // Quem já tinha conta em outra clínica NÃO tem a senha = CPF (J-22).
-      const aviso = avisoDoAcessoCriado({ contaLigada: !!r.contaLigada, email })
+      const aviso = avisoDoAcessoCriado({ contaLigada: !!r.contaLigada, email,
+        documento: { tipo: tipoDoc as 'CPF' | 'PASSAPORTE' | 'RNE', numero: tipoDoc === 'CPF' ? document : (documentoEstrangeiro(document) ?? document) } })
       toast.success(aviso.titulo, { description: aviso.descricao, duration: 9000 })
     }
     if (onSuccess) {
@@ -300,7 +309,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         <Field label="Data de nascimento">
           <input
             name="birth_date" type="date" className="field"
-            defaultValue=''
+            value={nascimento} onChange={e => setNascimento(e.target.value)}
           />
         </Field>
 
@@ -311,6 +320,9 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           </select>
         </Field>
       </div>
+
+      {/* A menor de idade: o responsável legal (decisão 2 do Heitor, 2026-11-05). */}
+      <ResponsavelLegal nascimento={nascimento} valor={responsavel} aoMudar={setResponsavel} comNomes />
 
       {/* Tags */}
       <Field label="Tags" grupo>
@@ -370,16 +382,6 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         </div>
       )}
 
-      {tipoDoc !== 'CPF' ? (
-        <p style={{
-          fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
-          background: 'var(--bg-app)', border: '1px solid var(--hairline)',
-          borderRadius: 10, padding: '10px 12px',
-        }}>
-          <b style={{ color: 'var(--text)' }}>Sem CPF, a cliente fica sem acesso ao app por enquanto</b> — a senha
-          inicial do app é o CPF. Ela é cadastrada normalmente, sem o login.
-        </p>
-      ) : (
       <label style={{
         display: 'flex', gap: 10, alignItems: 'flex-start',
         fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
@@ -396,15 +398,15 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         <span>
           <b style={{ color: 'var(--text)' }}>Criar o acesso ao app</b>
           {podeAcesso ? (
-            <> — login = e-mail e senha inicial = CPF. Se ela já usa o app em outra clínica, com o mesmo e-mail e
-              CPF, esta ficha entra na conta dela, e a senha continua a que ela já usa.</>
+            <> — login = e-mail e senha inicial = {nomeDoDoc}{tipoDoc !== 'CPF' ? ' (em maiúsculas, como está aqui)' : ''}. Se ela já
+              usa o app em outra clínica, com o mesmo e-mail e documento, esta ficha entra na conta dela, e a senha
+              continua a que ela já usa.</>
           ) : (
-            <> — precisa do e-mail e do CPF. Sem eles, a cliente é cadastrada sem o app, e o acesso pode ser dado
-              depois, na aba Dados da ficha.</>
+            <> — precisa do e-mail e de um documento (CPF, passaporte ou RNE). Sem eles, a cliente é cadastrada sem o
+              app, e o acesso pode ser dado depois, na aba Dados da ficha.</>
           )}
         </span>
       </label>
-      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
         {showCancelButton && (

@@ -25,6 +25,9 @@ export interface DadosDoDocumento {
     documento_tipo?: string | null; documento_numero?: string | null
     /** O sexo da ficha (F, M, O ou vazio): a concordância do texto do modelo (A50). */
     gender?: string | null
+    /** O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). */
+    responsavel_nome?: string | null; responsavel_cpf?: string | null
+    responsavel_parentesco?: string | null; responsavel_telefone?: string | null
   }
   rede:     { name: string | null; document: string | null; phone: string | null; email: string | null }
   unidade:  { name: string | null; document: string | null; address: string | null; city: string | null; state: string | null; phone: string | null } | null
@@ -112,6 +115,11 @@ export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string |
     'cliente.cidade':      vazio(c.city),
     'cliente.uf':          vazio(c.state)?.toUpperCase() ?? null,
     'cliente.cep':         formatarCep(c.zip_code),
+
+    'responsavel.nome':       vazio(c.responsavel_nome),
+    'responsavel.cpf':        formatarDocumento(c.responsavel_cpf),
+    'responsavel.parentesco': vazio(c.responsavel_parentesco),
+    'responsavel.telefone':   formatarTelefone(c.responsavel_telefone),
 
     'rede.nome':           vazio(d.rede.name),
     'rede.documento':      formatarDocumento(d.rede.document),

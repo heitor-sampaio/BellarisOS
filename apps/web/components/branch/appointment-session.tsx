@@ -7,6 +7,7 @@ import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
   XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList, FileText,
+  AlertCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -57,6 +58,7 @@ import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
+import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -100,6 +102,8 @@ export interface SessionClient {
   tags:      string[]
   notes:     string | null
   document:  string | null
+  /** O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). */
+  responsavel?: ResponsavelLegal | null
 }
 
 export interface SessionProduct {
@@ -1885,6 +1889,20 @@ export function AppointmentSession({
         {/* A alergia em destaque, acima de tudo (só com o prontuário à vista). */}
         <AlertaDeAlergia alergias={alergiasDaAnamnese(anamneseNaTela)} />
 
+        {/* A menor de idade: quem a acompanha, ou o aviso de que falta (decisão 2 do Heitor — avisar, não barrar). */}
+        {ehMenorDeIdade(client.birthDate) && (client.responsavel
+          ? <p data-responsavel-do-agendamento style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Menor de idade. {linhaDoResponsavel(client.responsavel)}</p>
+          : (
+            <div data-aviso-do-menor role="note" style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+              background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)',
+              fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+            }}>
+              <AlertCircle size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+              <span>{avisoDoMenor({ nascimento: client.birthDate, responsavel: null })}</span>
+            </div>
+          ))}
+
         {/* A ficha de saúde vencida continua valendo — o aviso é para pedir a atualização (atend-05). */}
         {fichaDeSaudeVencidaEm && (
           <div data-ficha-vencida role="note" style={{
@@ -1943,6 +1961,8 @@ export function AppointmentSession({
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
                 <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{client.name}</span>
+                {/* A menor de idade (decisão 2 do Heitor, 2026-11-05). */}
+                {ehMenorDeIdade(client.birthDate) && <span data-menor className="chip chip-brand">Menor de idade</span>}
                 {client.tags.map(tag => (
                   <span key={tag} style={{
                     fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 8px', borderRadius: 10,
