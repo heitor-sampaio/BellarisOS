@@ -1176,6 +1176,18 @@ const procedures = await ler(
     próprio: o custo dele é o do movimento de entrada ligado (o lote que veio
     por transferência fica sem custo, "—").
   - Prova: `e2e/estoque-tela-consumo-e-lotes.spec.ts`, `tests/estoque-situacao.test.ts`.
+  - **A validade do lote é um DIA, e se lê pelo dia** (D1 da 7ª simulação,
+    2026-11-05; princípio 3 e CLAUDE.md §14): o campo de data da entrada grava
+    "AAAA-MM-DD" à meia-noite UTC, e a tela do Estoque, com `new Date(...)`,
+    dizia "vence 14/11/2026" para o lote de 15/11 que Relatórios → Estoque
+    dizia 15/11. A regra é UMA, `lib/estoque/validade.ts`: a tela mostra o dia
+    gravado (`validadeNaTela` — a linha do lote, o seletor de lote da perda, o
+    histórico), no dia da validade o lote ainda vale e vencido é do dia
+    seguinte (`loteVencido`, o HOJE de Brasília; também o "jaVenceu" do
+    Copilot), e o "vence em 30 dias" compara os dias (`venceAte` em
+    `lotesVencendo`; o Copilot até o fim do dia). Prova:
+    `e2e/estoque-tela-consumo-e-lotes.spec.ts` ("D1"),
+    `tests/estoque-validade-do-lote.test.ts`.
   - **Sem produto nenhum, a tela diz isso** (A2 da 6ª simulação,
     2026-11-04): "Nenhum produto cadastrado", que os insumos vêm antes dos
     procedimentos que os usam, e o "Novo produto" ali mesmo
@@ -1528,6 +1540,7 @@ O resto do fluxo:
 ❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
+❌ Ler a validade do lote (product_batches.expires_at) com new Date(...)/toLocaleDateString — é um DIA gravado à meia-noite UTC e vira a véspera: é lib/estoque/validade.ts (D1 da 7ª)
 ❌ Deletar anexo clínico de client_documents pela tela (é apagado_em), ou ler client_documents numa tela sem .is('apagado_em', null)
 ❌ Mostrar no portal da cliente um client_documents sem enviado_em (a clínica decide o que vai ao app)
 ❌ Recriar um "Retorno em N dias" (regra, lista ou cron) — é um agendamento novo (aut-04)

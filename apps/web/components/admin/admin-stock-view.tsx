@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { AdminStockManageModal } from './admin-stock-manage-modal'
 import { BarcodeEntryModal } from './barcode-entry-modal'
 import { contemSemAcento } from '@/lib/texto'
+import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -66,7 +67,6 @@ const medidas = (p: ProductStock): MedidasDoProduto =>
   ({ unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage })
 const saldoDe = (b: BranchStock) => ({ embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock })
 const situacaoDe = (p: ProductStock, b: BranchStock) => situacaoDoEstoque(saldoDe(b), medidas(p))
-const fmtData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 const fmtBRLv = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 /** O uso na linha do produto (D-6): "Insumo", "Revenda" ou "Insumo e revenda". */
 const rotuloDoUso = (uso: string | null | undefined) =>
@@ -551,12 +551,13 @@ export function AdminStockView({ products, branches, categories, productCategori
                                   {lotes.length > 0 && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
                                       {lotes.map(l => {
-                                        const vencido = l.validade ? new Date(l.validade).getTime() < agora : false
+                                        // A validade é um DIA (D1 da 7ª): no dia ainda vale.
+                                        const vencido = loteVencido(l.validade, new Date(agora))
                                         return (
                                           <p key={l.id} data-lotes-do-produto style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                             <strong style={{ color: 'var(--text)' }}>{l.numero ? `Lote ${l.numero}` : 'Lote sem número'}</strong>
                                             <span style={{ color: vencido ? 'var(--danger)' : undefined }}>
-                                              {l.validade ? `${vencido ? 'venceu' : 'vence'} ${fmtData(l.validade)}` : 'sem validade'}
+                                              {l.validade ? `${vencido ? 'venceu' : 'vence'} ${validadeNaTela(l.validade)}` : 'sem validade'}
                                             </span>
                                             <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
                                             <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}` : 'custo —'}</span>

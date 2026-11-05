@@ -30,8 +30,17 @@ const serum  = `${PREFIXO} Sérum ${marca}`
 const lote   = `L-${marca}`
 let idToxina = ''
 let idSerum = ''
+let idAcido = ''
+const acido  = `${PREFIXO} Ácido ${marca}`
+const loteD1 = `D1-${marca}`
 const emDias = (n: number) => new Date(Date.now() + n * 86_400_000)
 const diaBR = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+// D1 da 7ª simulação: a validade digitada no campo de DATA da entrada chega
+// como "AAAA-MM-DD" e é gravada à meia-noite UTC — o dia, sem hora. O dia de
+// Brasília daqui a 40 dias, escrito como o campo o manda.
+const diaISO = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d)
+const validadeD1 = diaISO(emDias(40))
+const validadeD1NaTela = validadeD1.split('-').reverse().join('/')
 
 async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: estoquista!.estado })
@@ -54,15 +63,25 @@ test.beforeAll(async () => {
   // 3 frascos de 100 UI, lote com número e validade em 20 dias, a R$ 650 o frasco.
   const entrada = await db().rpc('estoque_entrada', {
     p_produto: idToxina, p_unidade: rede.branchId, p_quantidade: 3, p_custo: 650, p_observacao: 'NF 1',
-    p_lote: lote, p_validade: emDias(20).toISOString(), p_autor: 'e2e',
+    p_lote: lote, p_validade: diaISO(emDias(20)), p_autor: 'e2e',
   })
   expect(entrada.error).toBeNull()
   // 2 séruns com validade e SEM número de lote: a validade tem de ficar.
   const entrada2 = await db().rpc('estoque_entrada', {
     p_produto: idSerum, p_unidade: rede.branchId, p_quantidade: 2, p_custo: 60, p_observacao: null,
-    p_lote: null, p_validade: emDias(25).toISOString(), p_autor: 'e2e',
+    p_lote: null, p_validade: diaISO(emDias(25)), p_autor: 'e2e',
   })
   expect(entrada2.error).toBeNull()
+  // D1: 2 seringas de um lote com a validade só no DIA, como o campo de data a manda.
+  const { data: p3, error: e3 } = await db().from('products')
+    .insert({ tenant_id: rede.tenantId, name: acido, unit: 'seringa' }).select('id').single<{ id: string }>()
+  expect(e3).toBeNull()
+  idAcido = p3!.id
+  const entrada3 = await db().rpc('estoque_entrada', {
+    p_produto: idAcido, p_unidade: rede.branchId, p_quantidade: 2, p_custo: 380, p_observacao: null,
+    p_lote: loteD1, p_validade: validadeD1, p_autor: 'e2e',
+  })
+  expect(entrada3.error).toBeNull()
   // Um consumo de 32 UI (a baixa do lote é o gatilho), e os mínimos: toxina 3 frascos, sérum 2.
   const consumo = await db().from('stock_movements').insert({
     branch_id: rede.branchId, product_id: idToxina, type: 'PROCEDURE_USAGE', quantity: -32, balance_after: 268,
@@ -81,7 +100,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   const falhas: string[] = []
-  const ids = [idToxina, idSerum].filter(Boolean)
+  const ids = [idToxina, idSerum, idAcido].filter(Boolean)
   if (ids.length) {
     for (const tabela of ['product_batches', 'stock_movements', 'branch_product_stock']) {
       const r = await db().from(tabela).delete().in('product_id', ids)
@@ -130,6 +149,25 @@ test.describe.serial('a tela de estoque', () => {
       await p.getByRole('row').filter({ hasText: serum }).first().click()
       const semNumero = p.locator('[data-lotes-do-produto]').filter({ hasText: diaBR(emDias(25)) })
       await expect(semNumero, 'a validade da entrada sem número de lote ficou').toBeVisible()
+    })
+  })
+
+  test('a validade só no dia aparece no dia gravado: a linha, a perda e o histórico (D1)', async ({ browser }) => {
+    await como(browser, async p => {
+      await p.goto(`/${slug}/estoque`)
+      await p.getByRole('row').filter({ hasText: acido }).first().click()
+      const linha = p.locator('[data-lotes-do-produto]').filter({ hasText: loteD1 })
+      await expect(linha, 'a linha do lote diz o dia digitado, não a véspera').toContainText(`vence ${validadeD1NaTela}`)
+
+      await p.getByRole('row').filter({ hasText: acido }).first().getByTitle('Gerenciar estoque').click()
+      const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
+      await modal.getByRole('button', { name: 'Perda', exact: true }).click()
+      await expect(modal.getByLabel('Lote').locator('option', { hasText: loteD1 }),
+        'o seletor de lote da perda diz o dia digitado').toContainText(`vence ${validadeD1NaTela}`)
+
+      await modal.getByRole('button', { name: 'Histórico' }).click()
+      await expect(modal.locator('[data-movimento]').filter({ hasText: 'Entrada' }),
+        'o histórico diz o dia digitado').toContainText(`val. ${validadeD1NaTela}`)
     })
   })
 

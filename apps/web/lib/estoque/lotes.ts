@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
+import { venceAte } from './validade'
 
 /**
  * Os lotes com saldo nas unidades da tela de Estoque (J-45, simulação de
@@ -54,7 +55,7 @@ export async function lotesComSaldo(
     })
 }
 
-/** Os lotes que vencem até a data (os já vencidos entram — é o alerta). */
+/** Os lotes que vencem até a data, pelo DIA (os já vencidos entram — é o alerta; D1 da 7ª, `validade.ts`). */
 export function lotesVencendo(lotes: LoteDoProduto[], ate: Date): LoteDoProduto[] {
-  return lotes.filter(l => l.validade && new Date(l.validade).getTime() <= ate.getTime())
+  return lotes.filter(l => venceAte(l.validade, ate))
 }

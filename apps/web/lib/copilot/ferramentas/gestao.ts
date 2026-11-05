@@ -4,6 +4,7 @@ import { isOwnScope, ownerFilter } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { rotaOportunidade } from '@/lib/rotas'
+import { loteVencido } from '@/lib/estoque/validade'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, UUID, dinheiro, hojeEmBrasilia, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
@@ -113,7 +114,9 @@ export const estoque: FerramentaDeLeitura<{
     const filiais = await nomesPorId(c, 'branches', unidades)
 
     if (filtro === 'vencendo') {
-      const ate = addDaysTZ(new Date(), args.dias ?? 30).toISOString()
+      // A validade é um DIA, gravado à meia-noite UTC (D1 da 7ª): até o fim daquele dia.
+      const ateODia = dayKeyTZ(addDaysTZ(new Date(), args.dias ?? 30))
+      const ate = `${ateODia}T23:59:59.999Z`
       const lotes = (await ler(c.admin.from('product_batches')
         .select('batch_number, expires_at, quantity, branch_id, products!inner(name, unit, tenant_id)')
         .in('branch_id', unidades).eq('products.tenant_id', c.ctx.tenantId!)
@@ -122,10 +125,10 @@ export const estoque: FerramentaDeLeitura<{
         }[] | null) ?? []
       return {
         dados: {
-          filtro, ateODia: ate.slice(0, 10),
+          filtro, ateODia,
           lotes: lotes.map(l => ({
             produto: l.products.name, lote: l.batch_number, vence: l.expires_at.slice(0, 10),
-            jaVenceu: new Date(l.expires_at).getTime() < Date.now(),
+            jaVenceu: loteVencido(l.expires_at),
             quantidade: `${Number(l.quantity)} ${l.products.unit ?? ''}`.trim(), unidade: filiais.get(l.branch_id) ?? null,
           })),
         },

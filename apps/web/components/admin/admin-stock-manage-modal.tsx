@@ -10,6 +10,7 @@ import {
   getProductMovements, type MovimentoDeEstoque,
 } from '@/actions/stock'
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
+import { validadeNaTela } from '@/lib/estoque/validade'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -474,7 +475,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
           {lotes.map(l => (
             <option key={l.id} value={l.id}>
               {l.numero ? `Lote ${l.numero}` : 'Lote sem número'}
-              {l.validade ? ` · vence ${new Date(l.validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
+              {l.validade ? ` · vence ${validadeNaTela(l.validade)}` : ''}
               {` · ${fmt(l.quantidade)} ${product.unit}`}
             </option>
           ))}
@@ -811,7 +812,7 @@ function HistoricoTab({ product, defaultBranchId }: {
         // entrada criou) e quanto custou a unidade de consumo e a embalagem.
         const lotes = m.lotes.map(l => [
           l.numero ? `Lote ${l.numero}` : 'Lote sem número',
-          l.validade ? `val. ${new Date(l.validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : null,
+          l.validade ? `val. ${validadeNaTela(l.validade)}` : null,
         ].filter(Boolean).join(' ')).join(' · ')
         const custo = m.custoUnitario != null && m.custoUnitario > 0
           ? (m.porEmbalagem
