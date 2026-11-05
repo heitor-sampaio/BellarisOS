@@ -110,6 +110,12 @@ interface Props {
    * quem aplica a economia é o checkout.
    */
   branchId?:            string
+  /**
+   * O plano é OPCIONAL neste atendimento (A37 da 7ª simulação): o formulário da
+   * avaliação abre em todo atendimento avulso (a regra das fichas), e a drenagem
+   * avulsa via "Tratamento / Nova sessão" sem saber que podia só finalizar.
+   */
+  opcional?:            boolean
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -412,7 +418,7 @@ function SessionCard({
 // -- Componente principal ------------------------------------------------------
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
-  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId,
+  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId, opcional = false,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
   // Os pacotes à venda na unidade — só para a dica; sem eles, nada aparece.
@@ -658,6 +664,11 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
             As PRÓXIMAS sessões, para a cliente fechar. O que foi feito hoje vai na conclusão do atendimento.
           </p>
+          {opcional && (
+            <p data-plano-opcional style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+              Opcional: monte só se for propor um plano à cliente. Sem plano, basta o “Finalizar atendimento”.
+            </p>
+          )}
         </div>
         {grandTotal > 0 && (
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
@@ -714,6 +725,12 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             </button>
           </>
         )}
+
+        {/* A34 da 7ª simulação: a profissional não tinha onde pôr os 10% pedidos,
+            e a tela não dizia que o desconto é do checkout (a regra fica). */}
+        <p data-desconto-no-checkout style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          O desconto é dado no checkout do plano (na recepção, ou no “Fechar agora”): aqui vão os preços de tabela.
+        </p>
 
         {/* As sessões batem com um pacote da rede: o plano segue por
             procedimento, e a dica diz onde a economia entra (A28). */}

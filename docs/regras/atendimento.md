@@ -1466,6 +1466,17 @@ O resto do fluxo:
   (`products:<rede>`): criar, editar e ativar produto o expiram com
   `revalidateTag(tag, { expire: 0 })` — com `'max'` o produto novo não
   aparecia na próxima tela. Prova: `e2e/atendimento-fechamento.spec.ts`.
+  **A busca que não acha diz por quê** (A38 da 7ª simulação, 2026-11-05: numa
+  rede sem produtos a busca do "Adicionar insumo" voltava vazia, calada): sem
+  insumo cadastrado, "Nenhum produto cadastrado como insumo nesta clínica…",
+  com o link do Estoque (Novo produto, uso "Insumo"); sem resultado para o
+  texto, "Nenhum insumo com “x”" (`[data-busca-de-insumo-vazia]`). Prova:
+  `e2e/atendimento-atritos-da-7.spec.ts` ("A38").
+- **O rascunho da anamnese sobrevive ao recarregar NA MESMA ABA** (A36 da 7ª,
+  conferido em 2026-11-05: não reproduzido — o robô recarregou num contexto
+  novo, e o rascunho morre com a aba por decisão). Prova:
+  `e2e/atendimento-finalizar-grava-tudo.spec.ts` ("recarregar"),
+  `e2e/atendimento-alergia-sim-nao.spec.ts`.
 - **CONCLUÍDO, a tela mostra os insumos da BAIXA** (D9 da 6ª simulação,
   2026-11-04; princípio 3): o `PROCEDURE_USAGE` do atendimento, somado por
   produto, na unidade do movimento (`app/_shared/sessao-de-atendimento.tsx`).
@@ -1610,6 +1621,21 @@ O resto do fluxo:
   sessão do plano, de pacote, pré-pago, sem cobrança — ou "O pagamento será
   confirmado pela recepção" no avulso com preço (dizia isso na sessão do plano
   já pago). Prova: `e2e/atendimento-textos-do-fechamento.spec.ts`.
+- **Gerado o plano, a avaliação diz que falta finalizar** (A33 da 7ª simulação,
+  2026-11-05; a regra fica: gerar o plano não conclui a avaliação, quem conclui
+  é o "Finalizar"): a avaliação da Sophie ficou "Em atendimento" e nada dizia
+  à Tânia o que faltava. Com o plano gerado e o atendimento ainda aberto, a
+  tela diz "Falta finalizar a avaliação" e o caminho (`[data-falta-finalizar]`;
+  a quem não conclui, quem conclui). **O plano é OPCIONAL na tela e o desconto
+  é do checkout** (A37 e A34): o formulário da avaliação abre em todo
+  atendimento avulso da rede que monta plano (a regra das fichas, §9.4), e a
+  drenagem avulsa via "Dores do cliente" e "Tratamento / Nova sessão" sem saber
+  que podia só finalizar — o cartão do plano diz "Opcional: monte só se for
+  propor um plano…" (`[data-plano-opcional]`, `TreatmentPlanEditor opcional`)
+  e as dores "pedidas só para gerar um plano"; o editor do plano diz "O
+  desconto é dado no checkout do plano…" (`[data-desconto-no-checkout]`: a
+  Tânia não tinha onde pôr os 10% da Sophie). Prova:
+  `e2e/atendimento-atritos-da-7.spec.ts` ("A33", "A34 e A37").
 - **Concluído, o formulário da avaliação fica bloqueado de verdade** (A30 da
   simulação de 2026-10-29): a evolução só se lê e a anamnese aparece como
   leitura — não em branco com as obrigatórias marcadas. Quem desbloqueia

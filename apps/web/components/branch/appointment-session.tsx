@@ -38,7 +38,7 @@ import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/
 import { lerRascunho, gravarRascunho, limparRascunho, type RespostaDaFicha } from '@/lib/atendimento/rascunho'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
-import { rotaAgenda } from '@/lib/rotas'
+import { rotaAgenda, rotaNoPortal } from '@/lib/rotas'
 import { abaterDoPacote } from '@/actions/a-receber'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
@@ -769,7 +769,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
   return (
     <>
-      <div style={{
+      <div data-plano-em-aberto style={{
         padding: '12px 20px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)',
         border: '1.5px solid var(--brand-soft-border)',
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
@@ -897,7 +897,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
 // -- Insumos -------------------------------------------------------------------
 
-function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd, onRemove, readonly, embedded }: {
+function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd, onRemove, readonly, embedded, slug }: {
   items:       SessionProduct[]
   available:   AvailableProduct[]
   checkedIds:  Set<string>
@@ -907,7 +907,10 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
   onRemove:    (id: string) => void
   readonly:    boolean
   embedded?:   boolean
+  /** A unidade do atendimento: o caminho do Estoque, quando não há insumo a escolher (A38). */
+  slug?:       string
 }) {
+  const pathname = usePathname()
   const [adding,  setAdding]  = useState(false)
   const [search,  setSearch]  = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
@@ -940,6 +943,19 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
               <X size={13} />
             </button>
           </div>
+          {/* A38 da 7ª simulação: numa rede sem produtos a busca voltava vazia, calada. */}
+          {filtered.length === 0 && (
+            <p data-busca-de-insumo-vazia role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+              {available.length === 0
+                ? <>Nenhum produto cadastrado como insumo nesta clínica. Os insumos se cadastram em{' '}
+                    <Link href={rotaNoPortal(pathname, slug, '/estoque')} style={{ color: 'var(--brand)', fontWeight: 700 }}>Estoque</Link>
+                    {' '}(Novo produto, uso “Insumo”).</>
+                : search.trim()
+                  ? <>Nenhum insumo com “{search.trim()}”. O que falta se cadastra em{' '}
+                      <Link href={rotaNoPortal(pathname, slug, '/estoque')} style={{ color: 'var(--brand)', fontWeight: 700 }}>Estoque</Link>.</>
+                  : 'Todos os insumos já estão na lista.'}
+            </p>
+          )}
           {filtered.length > 0 && (
             <div style={{ position: 'absolute', top: 'calc(100% - 2px)', left: 16, right: 16, zIndex: 30, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--shadow-popover)', maxHeight: 200, overflowY: 'auto' }}>
               {filtered.map((p, i) => (
@@ -1081,7 +1097,7 @@ function DorasCard({ value, onChange, readonly, erro }: {
       style={{ padding: 0, overflow: 'hidden', ...(erro ? { borderLeft: '3px solid var(--danger)' } : {}) }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
         <h3 id="titulo-dores" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas pelo cliente</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas pelo cliente — pedidas só para gerar um plano; sem plano, são opcionais.</p>
       </div>
       <div style={{ padding: '18px 20px' }}>
         {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600, marginBottom: 6 }}>{erro}</p>}
@@ -1621,6 +1637,7 @@ export function AppointmentSession({
 
   // Mexer nos insumos os põe no rascunho (D3): a dose ajustada sobrevive ao recarregar.
   const insumoProps = {
+    slug,
     items:       insumos,
     available:   availableProducts,
     checkedIds,
@@ -2187,6 +2204,22 @@ export function AppointmentSession({
               const planGenerated = ['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
               if (planGenerated) return (
                 <>
+                  {/* A33 da 7ª simulação: gerar o plano não conclui a avaliação (a
+                      regra fica — quem conclui é o "Finalizar"), e a avaliação da
+                      Sophie ficou "Em atendimento" sem nada dizer que faltava. */}
+                  {!isDone && (
+                    <div data-falta-finalizar role="note" className="card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--warning-soft)', borderColor: 'var(--warning-border)' }}>
+                      <AlertCircle size={18} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Falta finalizar a avaliação</p>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {canManage && canEditRecords
+                            ? 'O plano foi enviado, mas o atendimento segue em aberto: use “Finalizar atendimento”, no alto da tela, para registrar a avaliação no prontuário.'
+                            : 'O plano foi enviado, mas o atendimento segue em aberto: quem atende conclui pelo “Finalizar atendimento”.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {/* Plano já fechado: o que a tela precisa dizer é que a venda
                       saiu, não convidar a fechar de novo. */}
                   {existingPlan?.status === 'ACCEPTED' && (
@@ -2289,6 +2322,7 @@ export function AppointmentSession({
                     existingPlan={existingPlan} procedureProductsMap={procedureProductsMap}
                     availableProducts={availableProducts}
                     hideActions={true}
+                    opcional={!isDone}
                     onPlanChange={(_items, notes) => setEvalPlanNotes(notes)}
                   />
 

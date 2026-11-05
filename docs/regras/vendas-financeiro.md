@@ -1029,6 +1029,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   como "a vencer", sem botão, e se recebe no financeiro. Antes o banner
   oferecia "Receber R$ 600" de um plano parcelado: cobrança em dobro (a
   simulação de 2026-10-20 achou). Prova: `e2e/plano-recebimento.spec.ts`.
+  **O saldo do plano aparece a quem RECEBE** (A39 da 7ª simulação,
+  2026-11-05; decidido pelo princípio 3): a profissional sem o Financeiro e sem
+  receber via "Plano · R$ 2.672 a vencer" na tela do atendimento — dinheiro que
+  não é dela tratar. O banner do plano (`[data-plano-em-aberto]`, o em aberto e
+  o a vencer) só é lido e mostrado com `podeReceber`; a recepção o vê como
+  antes. Prova: `e2e/atendimento-atritos-da-7.spec.ts` ("A39").
   - **Uma transação, com o plano travado** (F11, sobra da F9): o app calcula o
     que cobrar e os lançamentos novos, e `plano_receber` grava tudo de uma
     vez — trava o plano, confere que o em aberto que o app leu continua em

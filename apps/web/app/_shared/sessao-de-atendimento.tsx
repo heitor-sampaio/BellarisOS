@@ -450,10 +450,13 @@ export async function SessaoDeAtendimento({
   // Vale tanto para a sessão do plano (`treatment_plan_id` no agendamento)
   // quanto para a própria avaliação que gerou um plano já aceito: nos dois
   // casos, quem está com a pessoa na frente precisa ver o que falta receber.
+  // Mas o saldo é DINHEIRO: aparece a quem recebe (`podeReceber`), não à
+  // profissional sem o Financeiro (A39 da 7ª simulação, 2026-11-05 — ela via
+  // "Plano · R$ 2.672 a vencer"; decidido pelo princípio 3).
   const planoDaCobranca = treatmentPlanId
     ?? (planRaw?.status === 'ACCEPTED' ? (planRaw.id as string) : null)
 
-  const saldoDoPlano = planoDaCobranca ? await emAbertoDoPlano(planoDaCobranca) : null
+  const saldoDoPlano = planoDaCobranca && podeReceber(ctx) ? await emAbertoDoPlano(planoDaCobranca) : null
   // O que vai vencer aparece, mas só como informação: já está combinado.
   const planoEmAberto = saldoDoPlano && (saldoDoPlano.emAberto > 0 || saldoDoPlano.aVencer > 0)
     ? {
