@@ -9469,6 +9469,23 @@ chamada. Estimativa: 9–10 mil dos ~15 mil DELETEs saem do meio da rodada.
 Saíram junto 30 redes `[e2e]` que a limpeza antiga não conseguia apagar.
 Regra em `docs/regras/e2e.md`.
 
+**A 3ª completa (2026-11-05, run 41958904615, 2c6bd6f0):** 966 + 572 ✓, 9
+✘. A limpeza adiada valeu: 369 redes apagadas no passo do fim (333 s) e o
+banco saudável quase a rodada toda. A **F26** (87df6fdf, 146778ad,
+204ce823; migration `20261105000201`) separou:
+- **5 do relógio:** a completa cruzou a meia-noite de Brasília, e o
+  "8 min atrás" dos testes caía ontem (a agenda dizia, certo, "A chegada só
+  se marca no dia do agendamento"). Novo `haMinutosHoje` no apoio.
+- **1 defeito de produção achado pelo inbox-realtime:** as políticas de
+  leitura das tabelas do Realtime valiam para `public`; uma aba sem sessão
+  inscrita estourava "permission denied for function clientes_do_login" e
+  o Realtime DESCARTA o lote inteiro — a agenda e o inbox de todos paravam
+  de atualizar. Agora valem só para `authenticated` (33 políticas,
+  conferido); regra no CLAUDE.md §4 e §14.
+- **3 do banco travado** (03:21–03:24 e 03:32 UTC); a importação agora tenta
+  de novo a gravação do andamento (2 s, 5 s) em vez de virar "Falhou".
+Mexeu na RLS de 33 políticas: a 4ª completa vem em seguida.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
