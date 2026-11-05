@@ -39,9 +39,15 @@ export default async function globalSetup() {
   // Sobras `[e2e]` de rodadas anteriores — de teste que estourou o tempo ou de
   // limpeza que falhou calada. Ver `apoio/limpeza.ts`. Não para a suíte, mas
   // não se cala: o que não saiu aparece aqui, na saída do Playwright.
-  const { apagou, falhas } = await varrerSobras()
-  if (Object.keys(apagou).length) console.log('[e2e] varredura de sobras apagou:', apagou)
-  for (const f of falhas) console.warn(`[e2e] varredura NÃO apagou ${f.o_que}: ${f.erro}`)
+  // Na completa ela roda UMA vez, antes das duas metades (o passo "Varredura"
+  // do workflow e o `e2e-completa.mjs`, pelo `playwright.limpeza.config.ts`):
+  // as duas metades varrendo juntas era o dobro das escritas no começo da
+  // rodada, ao lado dos primeiros testes da outra (F25).
+  if (process.env.E2E_VARREDURA_FEITA !== '1') {
+    const { apagou, falhas } = await varrerSobras()
+    if (Object.keys(apagou).length) console.log('[e2e] varredura de sobras apagou:', apagou)
+    for (const f of falhas) console.warn(`[e2e] varredura NÃO apagou ${f.o_que}: ${f.erro}`)
+  }
 
   const admin = createClient(url!, serviceKey!, { auth: { persistSession: false } })
   const anon = createClient(url!, anonKey!, { auth: { persistSession: false } })

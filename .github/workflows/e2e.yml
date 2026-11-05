@@ -33,7 +33,8 @@ jobs:
     # conferir que o Playwright do projeto suporta a nova.
     runs-on: ubuntu-24.04
     environment: e2e
-    timeout-minutes: 60
+    # 75 (era 60): a limpeza do fim (F25) leva alguns minutos depois da suíte.
+    timeout-minutes: 75
     defaults:
       run:
         working-directory: apps/web
@@ -160,6 +161,13 @@ jobs:
             && exit 0
           tail -n 50 servidor.log servidor-sistema.log servidor-suporte.log; exit 1
 
+      # A varredura das sobras de rodadas anteriores, UMA vez, antes das duas
+      # metades (F25, 2026-11-05): cada metade varria a sua no global-setup, e
+      # as duas juntas eram o dobro das escritas no começo da rodada. Não falha
+      # o job — é higiene —, mas o que não saiu vira aviso.
+      - name: Varredura das sobras
+        run: pnpm exec playwright test -c playwright.limpeza.config.ts -g varredura
+
       # As duas metades (apps/web/e2e/grupos.ts) JUNTAS, desde 2026-09-30: a
       # varredura de sobras só leva o [e2e] com mais de uma hora
       # (e2e/apoio/limpeza.ts), então uma não apaga o que a outra está usando.
@@ -170,6 +178,12 @@ jobs:
         env:
           E2E_SERVIDOR_PRONTO: '1'
           E2E_WORKERS: '3'
+          # A limpeza ADIADA (F25, 2026-11-05): a rede de teste é só anotada
+          # (apps/web/e2e/.limpeza/) e sai no passo "Limpeza do fim". Apagar
+          # ~400 redes no afterAll de cada spec, ao lado dos outros testes, era
+          # o que travava o Supabase no meio da rodada.
+          E2E_LIMPEZA_ADIADA: '1'
+          E2E_VARREDURA_FEITA: '1'
         run: |
           set -o pipefail
           ( E2E_GRUPO=isolados pnpm exec playwright test -c playwright.build.config.ts --reporter=list 2>&1 | sed -u 's/^/[isolados] /' ) &
@@ -202,3 +216,12 @@ jobs:
             apps/web/servidor-sistema.log
             apps/web/servidor-suporte.log
           retention-days: 7
+
+      # As redes de teste que a rodada anotou, uma de cada vez, numa passada no
+      # servidor cada (e2e_apagar_rede). SEMPRE — com falha, com cancelamento:
+      # se este passo não rodar (o job estourou o tempo), a varredura da
+      # próxima rodada leva as que passarem de uma hora.
+      - name: Limpeza do fim
+        if: always()
+        timeout-minutes: 30
+        run: pnpm exec playwright test -c playwright.limpeza.config.ts -g adiadas
