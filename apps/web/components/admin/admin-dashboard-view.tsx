@@ -480,7 +480,7 @@ export function AdminDashboardView({
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
             {/* Recortada a uma unidade, o total segue o da CLÍNICA (H5: a cliente é da clínica) — e diz (A42). */}
-            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`} · {totalClientsEver.toLocaleString('pt-BR')} clientes{unidadeRecortada ? ' da clínica' : ''}
+            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`} · {totalClientsEver.toLocaleString('pt-BR')} {totalClientsEver === 1 ? 'cliente' : 'clientes'}{unidadeRecortada ? ' da clínica' : ''}
             {unidadeRecortada && (
               <> · <Link href={hrefDaRede} style={{ color: 'var(--brand)', fontWeight: 700 }}>Ver a rede inteira</Link></>
             )}

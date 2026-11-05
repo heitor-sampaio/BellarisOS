@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira } from '@/actions/comissoes'
-import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
+import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
@@ -388,6 +388,26 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     setTaxaPorParcela('')
   }
 
+  // A3 da 7ª simulação (princípio 3): a tabela real da operadora não é a taxa
+  // × as vezes (2,99% à vista, 6,50% em 6x). Colar a tabela preenche cada vez
+  // com a taxa DELA — e a tela mostra antes o que vai preencher.
+  const [colarAberto, setColarAberto] = useState(false)
+  const [tabelaColada, setTabelaColada] = useState('')
+  const lida = tabelaColada.trim() ? taxasDaTabelaColada(tabelaColada) : null
+  const lidaNaTela = lida ? lida.taxas.filter(t => t.parcelas <= ateQuantasVezes) : []
+  const lidaForaDoLimite = lida ? lida.taxas.filter(t => t.parcelas > ateQuantasVezes) : []
+  const taxaNaTela = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false })
+  function preencherComATabela() {
+    if (!lida || lida.erros.length || !lidaNaTela.length) return
+    const novos = Object.fromEntries(lidaNaTela.map(t => [chave('CREDIT_CARD', t.parcelas), taxaNaTela(t.taxa)]))
+    if (bandeira) mudarNaBandeira({ valores: { ...daBandeira.valores, ...novos } })
+    else setValores(v => ({ ...v, ...novos }))
+    setAvisoDo1x(null)
+    setSalvo(false)
+    setColarAberto(false)
+    setTabelaColada('')
+  }
+
   function salvar() {
     setErro(null)
     const lista: TaxaDePagamento[] = []
@@ -538,12 +558,57 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
       ) : (<>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <p className="overline">Crédito parcelado</p>
-        {podeEditar && !porParcelaAberto && (
-          <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(true); setErroPorParcela(null) }}>
-            Preencher pela taxa por parcela
-          </button>
+        {podeEditar && !porParcelaAberto && !colarAberto && (
+          <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn-secondary" onClick={() => { setColarAberto(true); setPorParcelaAberto(false) }}>
+              Colar a tabela da operadora
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(true); setColarAberto(false); setErroPorParcela(null) }}>
+              Preencher pela taxa por parcela
+            </button>
+          </span>
         )}
       </div>
+      {podeEditar && colarAberto && (
+        <div data-colar-tabela style={{
+          display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
+          borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
+        }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Tabela da operadora</span>
+            <textarea className="field" rows={6} autoFocus aria-label="Tabela da operadora" value={tabelaColada}
+              placeholder={'1x 2,99%\n2x 4,09%\n3x 4,79%\n…'}
+              onChange={e => setTabelaColada(e.target.value)} style={{ fontFamily: 'inherit', resize: 'vertical' }} />
+          </label>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            Cole a tabela como a operadora manda (ou de uma planilha): uma linha por vez, “6x 6,50%”. Só os números também servem — aí vão em ordem, de 1x em diante.
+            {' '}Cada vez fica com a taxa da tabela{bandeira ? ' nesta bandeira' : ''}; a que a tabela não traz fica como está. O débito e o Pix têm campo próprio. Confira e use “Salvar taxas” para gravar.
+          </p>
+          {lida && (
+            <div data-tabela-colada role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {lidaNaTela.length > 0 && (
+                <span><strong>Vai preencher:</strong> {lidaNaTela.map(t => `${t.parcelas}x ${taxaNaTela(t.taxa)}%`).join(' · ')}</span>
+              )}
+              {lidaForaDoLimite.length > 0 && (
+                <span style={{ color: 'var(--text-muted)' }}>
+                  Fora do “Parcelar no crédito até” ({ateQuantasVezes === 1 ? 'só à vista' : `${ateQuantasVezes}x`}), não entram: {lidaForaDoLimite.map(t => `${t.parcelas}x`).join(', ')}.
+                </span>
+              )}
+              {lida.ignoradas.length > 0 && (
+                <span style={{ color: 'var(--text-muted)' }}>Ficam de fora (têm campo próprio): {lida.ignoradas.join(' · ')}.</span>
+              )}
+              {lida.erros.map(e => <span key={e} role="alert" style={{ color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{e}</span>)}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn-primary" onClick={preencherComATabela}
+              disabled={!lida || lida.erros.length > 0 || lidaNaTela.length === 0}>
+              Preencher com a tabela
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => { setColarAberto(false); setTabelaColada('') }}>Cancelar</button>
+          </div>
+        </div>
+      )}
       {podeEditar && porParcelaAberto && (
         <div data-por-parcela style={{
           display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
@@ -562,6 +627,7 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
             {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x (à vista, inclusive) a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 1x 1,15%, 2x 2,30%, 3x 3,45%…).
             {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
+            {' '}Serve quando a operadora cobra a mesma taxa por parcela; se a tabela dela é outra, use “Colar a tabela da operadora”.
           </p>
           {erroPorParcela && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroPorParcela}</p>}
         </div>

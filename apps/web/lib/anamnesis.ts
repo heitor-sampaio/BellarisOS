@@ -177,6 +177,33 @@ export const OPTION_TYPES: AnamnesisFieldType[] =
   FIELD_TYPES.filter(t => t.hasOptions).map(t => t.value)
 const VALID_TYPES = new Set<AnamnesisFieldType>(FIELD_TYPES.map(t => t.value))
 
+/**
+ * O texto do editor de opções de um campo (A4 da 7ª simulação, 2026-11-05): no
+ * planejador de injetáveis as "opções" são os PRODUTOS do mapa ("Botox 100
+ * UI", "Dysport") — o construtor dizia só "Opções", e a recusa "precisa de
+ * ao menos uma opção" não dizia o quê.
+ */
+export function textoDasOpcoes(tipo: AnamnesisFieldType): {
+  titulo: string; ajuda: string | null; adicionar: string; exemplo: (n: number) => string
+} {
+  if (tipo === 'injectable_map') {
+    return {
+      titulo: 'Produtos do mapa',
+      ajuda: 'São os produtos que o planejador oferece ao marcar cada ponto (ex.: Botox 100 UI, Dysport). Ao menos um.',
+      adicionar: 'Adicionar produto',
+      exemplo: n => (n === 1 ? 'Ex.: Botox 100 UI' : `Produto ${n}`),
+    }
+  }
+  return { titulo: 'Opções', ajuda: null, adicionar: 'Adicionar opção', exemplo: n => `Opção ${n}` }
+}
+
+/** A recusa do campo de opções sem nenhuma — a mesma na tela e no servidor. */
+export function faltaDeOpcoes(f: { type: AnamnesisFieldType; label: string }): string {
+  return f.type === 'injectable_map'
+    ? `O planejador "${f.label}" precisa de ao menos um produto do mapa (ex.: Botox 100 UI).`
+    : `O campo "${f.label}" precisa de ao menos uma opção.`
+}
+
 export function newId(): string {
   try { return crypto.randomUUID() } catch { return `f_${Math.random().toString(36).slice(2)}` }
 }
@@ -312,7 +339,7 @@ export function validateFormSchema(schema: AnamnesisFormSchema): string | null {
   for (const f of fields) {
     if (!f.label.trim()) return 'Todos os campos precisam de um rótulo.'
     if (OPTION_TYPES.includes(f.type) && (!f.options || f.options.length < 1)) {
-      return `O campo "${f.label}" precisa de ao menos uma opção.`
+      return faltaDeOpcoes(f)
     }
   }
   return null

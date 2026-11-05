@@ -88,3 +88,22 @@ export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
  */
 export const ABAS_DA_CLINICA_TODA: readonly ChaveDeAba[] =
   ABAS_DE_CONFIGURACAO.map(t => t.key).filter(k => k !== 'unidade' && k !== 'importacoes')
+
+/**
+ * O que "Configurações" quer dizer no resumo do cargo (A7 da 7ª simulação,
+ * 2026-11-05; princípio 3): quem não tem Configurações em Gerenciar chega à
+ * tela só pelas abas dos outros módulos — o Financeiro, só a de Comissões (com
+ * as taxas da maquininha). O resumo dizia "Configurações", como se fosse tudo.
+ * Nulo = a tela inteira (Configurações em Gerenciar) ou nenhuma aba.
+ */
+export function rotuloDasAbasAlcancadas(
+  abas: readonly ChaveDeAba[], gerencia: (m: AppModule) => boolean,
+): string | null {
+  if (gerencia('settings')) return null
+  const nomes = ABAS_DE_CONFIGURACAO
+    .filter(a => abas.includes(a.key) && abaLiberada(a, gerencia))
+    .map(a => (a.key === 'comissoes' ? 'Comissões e taxas' : a.label))
+  if (!nomes.length) return null
+  const lista = nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
+  return `Configurações (só ${lista})`
+}

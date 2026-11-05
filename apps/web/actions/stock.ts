@@ -7,6 +7,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
+import { prefixoDoSku } from '@/lib/estoque/sku'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
 import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
 
@@ -14,18 +15,10 @@ function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
 }
 
-function skuPrefix(category: string | null): string {
-  return (category ?? 'OUT')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')   // remove acentos
-    .replace(/[^A-Za-z0-9]/g, '')      // só alfanumérico
-    .toUpperCase()
-    .slice(0, 3) || 'OUT'
-}
-
-async function nextSku(tenantId: string, category: string | null): Promise<string> {
+async function nextSku(tenantId: string, category: string | null, uso: UsoDoProduto | null = null): Promise<string> {
   const admin  = createAdminClient()
-  const prefix = skuPrefix(category)
+  // A6 da 7ª simulação: sem categoria, o que se vende não segue a sequência dos insumos.
+  const prefix = prefixoDoSku(category, uso)
 
   const data = await ler(admin
     .from('products')
@@ -124,7 +117,7 @@ async function createProductInterno(
       if (!daRede || !alcancaUnidade(ctx, filialPedida)) return { error: 'Unidade não encontrada.' }
     }
 
-    const sku = await nextSku(ctx.tenantId!, categoryName)
+    const sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
 
     const minStock = num(formData, 'min_stock') ?? 0
 

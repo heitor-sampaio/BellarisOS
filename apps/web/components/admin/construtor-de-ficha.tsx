@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import {
-  FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, newId, emptyInjectableMap,
+  FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, textoDasOpcoes, faltaDeOpcoes, newId, emptyInjectableMap,
   type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { criarFicha, atualizarFicha } from '@/actions/fichas'
@@ -199,7 +199,7 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
     const flat = cleanRows.flatMap(r => r.fields)
     if (flat.some(f => !f.label)) { setError('Todos os campos precisam de um rótulo.'); return }
     const badOpts = flat.find(f => OPTION_TYPES.includes(f.type) && (!f.options || f.options.length < 1))
-    if (badOpts) { setError(`O campo "${badOpts.label}" precisa de ao menos uma opção.`); return }
+    if (badOpts) { setError(faltaDeOpcoes(badOpts)); return }
 
     setSaving(true)
     const payload = { name: name.trim(), schema: { rows: cleanRows } }
@@ -516,18 +516,24 @@ function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, on
           </ModalField>
 
           {OPTION_TYPES.includes(f.type) && (
-            <ModalField label="Opções">
+            <ModalField label={textoDasOpcoes(f.type).titulo}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {/* A4 da 7ª simulação: no planejador, as opções são os produtos do mapa. */}
+                {textoDasOpcoes(f.type).ajuda && (
+                  <p data-ajuda-das-opcoes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
+                    {textoDasOpcoes(f.type).ajuda}
+                  </p>
+                )}
                 {(f.options ?? []).map((opt, oi) => (
                   <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input className="field" style={{ flex: 1 }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={`Opção ${oi + 1}`} />
+                    <input className="field" style={{ flex: 1 }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={textoDasOpcoes(f.type).exemplo(oi + 1)} />
                     <button type="button" onClick={() => onRemoveOption(oi)} title="Remover opção" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                       <X size={14} />
                     </button>
                   </div>
                 ))}
                 <button type="button" onClick={onAddOption} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  <Plus size={14} /> Adicionar opção
+                  <Plus size={14} /> {textoDasOpcoes(f.type).adicionar}
                 </button>
               </div>
             </ModalField>

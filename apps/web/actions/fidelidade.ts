@@ -160,7 +160,7 @@ export async function extratoDoCliente(clientId: string, antes?: string | null):
 
 export async function catalogoDeRecompensas(): Promise<{
   recompensas:   Recompensa[]
-  procedimentos: { id: string; name: string }[]
+  procedimentos: { id: string; name: string; price: number }[]
   produtos:      { id: string; name: string }[]
 }> {
   const ctx = await getTenantContext()
@@ -168,14 +168,15 @@ export async function catalogoDeRecompensas(): Promise<{
   const admin = createAdminClient()
   const [recompensas, procs, prods] = await Promise.all([
     recompensasDaRede(ctx.tenantId!, false, admin),
-    ler(admin.from('procedures').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
+    ler(admin.from('procedures').select('id, name, price').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
       'listar os procedimentos'),
     ler(admin.from('products').select('id, name').eq('tenant_id', ctx.tenantId!).order('name'),
       'listar os produtos'),
   ])
   return {
     recompensas,
-    procedimentos: (procs ?? []) as { id: string; name: string }[],
+    // O preço de tabela (A5 da 7ª): o formulário compara com o valor dos pontos.
+    procedimentos: ((procs ?? []) as { id: string; name: string; price: number | string | null }[]).map(p => ({ id: p.id, name: p.name, price: Number(p.price ?? 0) })),
     produtos:      (prods ?? []) as { id: string; name: string }[],
   }
 }

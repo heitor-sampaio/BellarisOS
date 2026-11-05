@@ -15,6 +15,7 @@ import {
   NETWORK_ONLY, NETWORK_ONLY_NOTE, SO_NA_REDE_NOTE,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
+import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
 import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
@@ -267,9 +268,13 @@ function RoleListPanel({
 function summarize(perms: Partial<Record<AppModule, RoleModulePermission>>): string {
   const open = ALL_MODULES.filter(m => (perms[m]?.level ?? 'NONE') !== 'NONE')
   if (open.length === 0) return 'Nenhum acesso ainda'
-  const own = open.filter(m => isScoped(m) && perms[m]?.scope === 'OWN').length
+  // A8 da 7ª simulação: em Relatórios o escopo é "só a unidade", não "os
+  // próprios registros" (CLAUDE.md §11) — o resumo dizia "2 só os próprios".
+  const own = open.filter(m => m !== 'reports' && isScoped(m) && perms[m]?.scope === 'OWN').length
+  const relatoriosDaUnidade = open.includes('reports') && perms.reports?.scope === 'OWN'
   const areas = `${open.length} ${open.length === 1 ? 'área' : 'áreas'}`
-  return own > 0 ? `${areas} · ${own} só os próprios` : areas
+  return [areas, own > 0 ? `${own} só os próprios` : null, relatoriosDaUnidade ? 'Relatórios só da unidade' : null]
+    .filter(Boolean).join(' · ')
 }
 
 function RoleCard({
@@ -804,8 +809,13 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
     ...levels,
     reports: reportTabs.length === 0 ? 'NONE' : levels.reports,
   } as ResolvedPermissions
-  const network = menuLabelsFor(ADMIN_MENU, permissions, scopes)
-  const branch  = menuLabelsFor(BRANCH_MENU, permissions, scopes)
+  // A7 da 7ª simulação: "Configurações" sem Configurações em Gerenciar é só a
+  // aba dos outros módulos (o Financeiro, só Comissões e taxas) — o resumo diz.
+  const gerencia = (m: AppModule) => permissions[m] === 'MANAGE'
+  const comAbas = (abas: Parameters<typeof rotuloDasAbasAlcancadas>[0]) => (rotulo: string) =>
+    rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia) ?? rotulo) : rotulo
+  const network = menuLabelsFor(ADMIN_MENU, permissions, scopes).map(comAbas(ABAS_DA_REDE))
+  const branch  = menuLabelsFor(BRANCH_MENU, permissions, scopes).map(comAbas(ABAS_DA_UNIDADE))
 
   return (
     <div style={{
@@ -815,8 +825,8 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
     }}>
       <span className="overline">O que essa pessoa vai ver</span>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-        <PreviewLine title="Na unidade" items={branch} />
-        <PreviewLine title={<Fala>Na rede</Fala>} items={network} />
+        <PreviewLine title="Na unidade" items={branch} marca="data-resumo-na-unidade" />
+        <PreviewLine title={<Fala>Na rede</Fala>} items={network} marca="data-resumo-na-rede" />
       </div>
       {/* Relatórios em Ver sem aba nenhuma some do resumo: o resumo diz por
           quê, em vez de só o aviso pequeno ao lado da matriz (A5, 2026-11-01). */}
@@ -838,9 +848,9 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
   )
 }
 
-function PreviewLine({ title, items }: { title: React.ReactNode; items: string[] }) {
+function PreviewLine({ title, items, marca }: { title: React.ReactNode; items: string[]; marca?: string }) {
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+    <div {...(marca ? { [marca]: '' } : {})} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
       <span style={{
         fontSize: 'var(--text-2xs)', color: 'var(--text-muted)',
         fontWeight: 'var(--weight-bold)', minWidth: 68,

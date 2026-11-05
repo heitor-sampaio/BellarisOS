@@ -540,7 +540,7 @@ export async function Configuracoes({
             temLancamentos={temLancamentos} />
           {catalogo && (
             <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
-              trocaPeloPortal={configFidelidade.client_redeem} />
+              trocaPeloPortal={configFidelidade.client_redeem} valorDoPonto={configFidelidade.redeem_points_value} />
           )}
         </div>
       )}

@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
 import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
 import { USOS_DO_PRODUTO, lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
+import { prefixoDoSku } from '@/lib/estoque/sku'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
 import { ComissaoDoProduto } from '@/components/branch/comissao-do-produto'
@@ -121,14 +122,6 @@ function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; de
 
 const UNITS = MEDIDAS_DO_PRODUTO
 
-function skuPrefix(cat: string): string {
-  return cat
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^A-Za-z0-9]/g, '')
-    .toUpperCase()
-    .slice(0, 3) || 'OUT'
-}
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -171,8 +164,9 @@ function ProductFields({
 
   const selectedCat = useMemo(() => categories.find(c => c.id === categoryId), [categories, categoryId])
   const skuPreview  = useMemo(
-    () => selectedCat ? `${skuPrefix(selectedCat.name)}-NNN` : null,
-    [selectedCat],
+    // O cadastro novo sem categoria também gera (A6 da 7ª: o que se vende ganha REV).
+    () => isCreate || selectedCat ? `${prefixoDoSku(selectedCat?.name, uso)}-NNN` : null,
+    [selectedCat, isCreate, uso],
   )
 
   const costPerUnit = useMemo(() => {

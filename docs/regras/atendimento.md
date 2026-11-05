@@ -1049,6 +1049,13 @@ const procedures = await ler(
   o MESMO `PlanejamentoInjetaveis` de Planejamento → Injetáveis: lista os
   planejamentos dela para abrir, cria um novo (nasce ligado a ela) e abre o
   planejador com o "Registrar aplicação". Não há segundo planejador.
+  - **As "opções" do campo são os PRODUTOS do mapa** (A4 da 7ª simulação,
+    2026-11-05: a Rita e a Tânia liam "Opções" e "precisa de ao menos uma
+    opção" sem saber o quê): o construtor de fichas diz "Produtos do mapa",
+    para que servem e "Adicionar produto", e a recusa é "O planejador X
+    precisa de ao menos um produto do mapa" (`textoDasOpcoes`,
+    `faltaDeOpcoes`, `lib/anamnesis.ts`, na tela e no servidor). Prova:
+    `tests/planejador-opcoes-sao-produtos.test.ts`.
   - **A resposta guarda o id e um RETRATO**: `{ view, points, planejamento:
     { id, nome }, retratoEm }` — os pontos do planejamento GRAVADO no momento
     do "Salvar ficha" (`salvarFichaDoProcedimento`) ou do "Finalizar"
@@ -1297,6 +1304,12 @@ const procedures = await ler(
   `e2e/estoque-uso-do-produto.spec.ts`. O produto de revenda tem também a
   "Comissão na venda deste produto" no cadastro, para quem muda comissão (o
   Heitor, 2026-11-03 — a regra em `comissoes.md`).
+  **O SKU sem categoria segue o uso** (A6 da 7ª simulação, 2026-11-05: o
+  produto de revenda da Dália nasceu "OUT-004", na sequência dos insumos): as
+  três letras da categoria; sem ela, o insumo segue "OUT" e o que se vende
+  (revenda e "os dois") ganha "REV" (`prefixoDoSku`, `lib/estoque/sku.ts`, no
+  servidor e na prévia do cadastro). O SKU que já existe não muda. Prova:
+  `e2e/configuracoes-atritos-da-7.spec.ts` ("A6"), `tests/sku-do-produto.test.ts`.
 - **A saída por PERDA** (D-7, decisão do Heitor, 2026-10-29; migrations
   `20261029001303`/`304`): Gerenciar estoque → Movimentações → "Perda", com o
   LOTE (ou "sem lote — sai o que vence primeiro"), a quantidade em

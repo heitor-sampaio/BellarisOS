@@ -130,3 +130,59 @@ export function creditoPelaTaxaPorParcela(taxaPorParcela: number): { parcelas: n
     return { parcelas, taxa: Math.round(Number((taxaPorParcela * parcelas).toPrecision(12)) * 100) / 100 }
   })
 }
+
+/**
+ * "Colar a tabela da operadora" (A3 da 7ª simulação, 2026-11-05; decidido pelo
+ * princípio 3): o "Preencher pela taxa por parcela" multiplica (a regra do
+ * Heitor) e a tabela real não é assim — 2,99% à vista e 6,50% em 6x. A tela
+ * lê a tabela copiada da operadora (ou de uma planilha) e preenche cada vez
+ * com a taxa DELA, mostrando antes o que vai preencher. Só a leitura; a tabela
+ * da tela continua sendo a verdade e grava no "Salvar taxas".
+ *
+ * - "6x 6,50%", "6x\t6,50", "Crédito 6x: 6,50", "6 vezes 6.5": a vez e a taxa;
+ * - só números ("2,99", "2,99; 4,09"): as vezes em ordem, a partir do 1x;
+ * - linha do débito ou do Pix fica de fora (têm campo próprio), e a leitura diz;
+ * - linha sem número (o cabeçalho) é pulada; o que não se entende é ERRO, sem
+ *   chutar (princípio 4).
+ */
+export function taxasDaTabelaColada(texto: string): {
+  taxas: { parcelas: number; taxa: number }[]; ignoradas: string[]; erros: string[]
+} {
+  const lidas = new Map<number, number>()
+  const ignoradas: string[] = []
+  const erros: string[] = []
+  const numero = (t: string): number => {
+    const limpo = t.replace(/%/g, '').trim()
+    if (!/^-?\d/.test(limpo)) return NaN
+    const n = Number(limpo.replace(/\./g, limpo.includes(',') ? '' : '.').replace(',', '.'))
+    return Number.isFinite(n) ? Math.round(n * 10000) / 10000 : NaN
+  }
+  let proxima = 1
+  const guardar = (vezes: number, taxa: number, linha: string) => {
+    if (!Number.isFinite(taxa)) { erros.push(`Não entendi a taxa em "${linha}".`); return }
+    if (taxa < 0) { erros.push(`Em ${vezes}x a taxa está negativa ("${linha}").`); return }
+    if (vezes < 1 || vezes > TETO_DE_VEZES) { erros.push(`${vezes}x: o crédito vai de 1x a ${TETO_DE_VEZES}x ("${linha}").`); return }
+    if (lidas.has(vezes)) { erros.push(`${vezes}x aparece duas vezes na tabela.`); return }
+    lidas.set(vezes, taxa)
+  }
+  for (const bruta of texto.split(/\r?\n/)) {
+    const linha = bruta.trim()
+    if (!linha || !/\d/.test(linha)) continue
+    if (/d[ée]bito|\bpix\b/i.test(linha)) { ignoradas.push(linha); continue }
+    const comVezes = linha.match(/(\d{1,2})\s*(?:x|vezes|vez|parcelas?)(?![a-z])(.*)$/i)
+    if (comVezes) {
+      const vezes = Number(comVezes[1])
+      const taxa = comVezes[2]!.match(/-?\d[\d.,]*/)
+      if (!taxa) { erros.push(`Não entendi a linha "${linha}": falta a taxa.`); continue }
+      guardar(vezes, numero(taxa[0]), linha)
+      proxima = vezes + 1
+      continue
+    }
+    for (const parte of linha.split(/[\s;|]+/).filter(Boolean)) {
+      guardar(proxima, numero(parte), linha)
+      proxima++
+    }
+  }
+  const taxas = [...lidas.entries()].sort((a, b) => a[0] - b[0]).map(([parcelas, taxa]) => ({ parcelas, taxa }))
+  return { taxas, ignoradas, erros }
+}

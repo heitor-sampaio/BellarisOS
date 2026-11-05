@@ -101,7 +101,8 @@ export default async function AdminTeamPage({
   // e horário com o cargo travado (D2). As actions conferem de novo.
   const cargoDeAdmin = allRoles.find(r => r.key === 'NETWORK_ADMIN' && r.is_system)
   const souAdmin = !!cargoDeAdmin && ctx.roleId === cargoDeAdmin.id
-  const rolesParaDar = souAdmin && cargoDeAdmin ? [...assignableRoles, cargoDeAdmin] : assignableRoles
+  // A9 da 7ª simulação: a Admin vem PRIMEIRO, como na tela de Cargos (era a última da lista).
+  const rolesParaDar = souAdmin && cargoDeAdmin ? [cargoDeAdmin, ...assignableRoles] : assignableRoles
   /** Quem age pode mexer neste membro? A Admin da rede, só outra Admin (ou ela mesma). */
   const podeMexerEm = (m: { id: string; role_id: string | null }) =>
     !cargoDeAdmin || m.role_id !== cargoDeAdmin.id || souAdmin || m.id === ctx.internalUserId

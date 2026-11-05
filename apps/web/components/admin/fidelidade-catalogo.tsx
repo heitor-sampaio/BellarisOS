@@ -1,7 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Gift, Loader2, Pencil, Plus } from 'lucide-react'
+import { formatBRL } from '@estetica-os/utils'
+import { rotaNoPortal } from '@/lib/rotas'
 import { catalogoDeRecompensas, salvarRecompensa } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { explicacaoDoCatalogo, formatarPontos } from '@/lib/fidelidade/formato'
@@ -19,10 +23,12 @@ type Catalogo = Awaited<ReturnType<typeof catalogoDeRecompensas>>
  * recompensa não muda os vouchers já emitidos — eles guardam o retrato de
  * quando foram trocados.
  */
-export function FidelidadeCatalogo({ inicial, podeEditar, trocaPeloPortal = false }: {
+export function FidelidadeCatalogo({ inicial, podeEditar, trocaPeloPortal = false, valorDoPonto = null }: {
   inicial: Catalogo; podeEditar: boolean
   /** A cliente troca pelo app (`client_redeem`): o texto diz isso (J-12). */
   trocaPeloPortal?: boolean
+  /** O valor de 1 ponto da configuração (A5 da 7ª): o custo da recompensa diz quanto vale em reais. */
+  valorDoPonto?: number | null
 }) {
   const [catalogo, setCatalogo] = useState(inicial)
   const [editando, setEditando] = useState<Recompensa | 'nova' | null>(null)
@@ -55,6 +61,7 @@ export function FidelidadeCatalogo({ inicial, podeEditar, trocaPeloPortal = fals
           recompensa={editando === 'nova' ? null : editando}
           procedimentos={catalogo.procedimentos}
           produtos={catalogo.produtos}
+          valorDoPonto={valorDoPonto}
           onCancelar={() => setEditando(null)}
           onSalvo={async () => { setEditando(null); await recarregar() }}
         />
@@ -96,10 +103,11 @@ export function FidelidadeCatalogo({ inicial, podeEditar, trocaPeloPortal = fals
   )
 }
 
-function FormularioDeRecompensa({ recompensa, procedimentos, produtos, onCancelar, onSalvo }: {
+function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPonto, onCancelar, onSalvo }: {
   recompensa:    Recompensa | null
-  procedimentos: { id: string; name: string }[]
+  procedimentos: { id: string; name: string; price: number }[]
   produtos:      { id: string; name: string }[]
+  valorDoPonto:  number | null
   onCancelar:    () => void
   onSalvo:       () => Promise<void>
 }) {
@@ -114,6 +122,12 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, onCancela
   const [ativa,     setAtiva]     = useState(recompensa?.is_active ?? true)
   const [erro,      setErro]      = useState<string | null>(null)
   const [salvando,  iniciar]      = useTransition()
+  const pathname = usePathname()
+  // O valor dos pontos em reais (A5): o custo × o valor do ponto, em centavos inteiros.
+  const pontosDoCusto = Math.trunc(Number(custo) || 0)
+  const valorEmReais = valorDoPonto != null && valorDoPonto > 0 && pontosDoCusto > 0
+    ? Math.round(pontosDoCusto * valorDoPonto * 100) / 100 : null
+  const procEscolhido = tipo === 'PROCEDIMENTO' ? procedimentos.find(p => p.id === proc) ?? null : null
 
   function salvar() {
     setErro(null)
@@ -160,6 +174,11 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, onCancela
               <option value="">Escolha…</option>
               {procedimentos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
+            {/* A5 da 7ª simulação: a recompensa usa um procedimento do catálogo. */}
+            <span data-procedimento-da-recompensa style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              {procedimentos.length === 0 ? 'Nenhum procedimento ativo ainda. ' : ''}
+              O procedimento precisa estar cadastrado em <Link href={rotaNoPortal(pathname, pathname.split('/')[1], '/procedures')} style={{ color: 'var(--brand)', fontWeight: 700 }}>Procedimentos</Link>; não achou? Cadastre-o lá e volte.
+            </span>
           </label>
         )}
         {tipo === 'PRODUTO' && (
@@ -180,6 +199,13 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, onCancela
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {rotulo('Custo (pontos)')}
           <input name="custo" className="field" type="number" min={1} step={1} inputMode="numeric" value={custo} onChange={e => setCusto(e.target.value)} />
+          {/* A5 da 7ª simulação (princípio 3): quanto os pontos valem, pelo valor do ponto da clínica. */}
+          {valorEmReais !== null && (
+            <span data-valor-dos-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              {formatarPontos(pontosDoCusto)} valem {formatBRL(valorEmReais)} pelo valor do ponto ({formatBRL(valorDoPonto!)}, na configuração acima)
+              {procEscolhido ? ` — o procedimento custa ${formatBRL(procEscolhido.price)} na tabela.` : '.'}
+            </span>
+          )}
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {rotulo('Validade do voucher (dias)')}

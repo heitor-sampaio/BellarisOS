@@ -85,6 +85,14 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     saindo do estoque da unidade (MANUAL_ADJUSTMENT, lote pelo gatilho).
   - Cancelar voucher não usado devolve os pontos; vencido (derivado de
     `expires_at`) não vale e não devolve; estorno do pagamento o reativa.
+  - **O formulário diz quanto os pontos valem e de onde vem o procedimento**
+    (A5 da 7ª simulação, 2026-11-05; princípio 3): "Procedimento grátis" diz
+    que o procedimento precisa estar cadastrado em Procedimentos (com o link;
+    `data-procedimento-da-recompensa`), e o custo diz "2.000 pontos valem
+    R$ 20,00 pelo valor do ponto (R$ 0,01…) — o procedimento custa R$ 150,00
+    na tabela" (`data-valor-dos-pontos`, o `redeem_points_value` da
+    configuração). Nada é recusado: a clínica decide o custo (princípio 2).
+    Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A5").
 - A conta do saldo depois de uma saída de estoque é UMA: `lib/estoque/baixa.ts`
   (conclusão do atendimento e entrega de produto).
 - **Validade** (fase 4): a rede escolhe "não vencem" ou N meses

@@ -694,6 +694,20 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       vista (1x) também mudou: era 1,19%, agora 1,15%. Confira antes de
       salvar." (`data-aviso-do-1x`). Prova:
       `e2e/financeiro-cartao-por-bandeira.spec.ts` ("A5").
+    - **"Colar a tabela da operadora"** (A3 da 7ª simulação, 2026-11-05;
+      decidido pelo princípio 3): a taxa × as vezes não serve à tabela real
+      (2,99% à vista, 6,50% em 6x), e os dois times digitaram linha por linha.
+      A regra do Heitor fica; ao lado do botão dela, "Colar a tabela da
+      operadora" lê a tabela copiada da operadora ou de uma planilha ("6x
+      6,50%", ou só os números, em ordem a partir do 1x —
+      `taxasDaTabelaColada`, `lib/financeiro/bandeiras.ts`) e mostra ANTES
+      "Vai preencher: 1x 2,99% · … · 6x 6,50%" (`data-tabela-colada`), o que
+      fica de fora do "Parcelar no crédito até" e as linhas do débito e do Pix
+      (têm campo próprio). O que não se entende é erro, sem chutar (princípio
+      4). Só preenche os campos, como o outro: grava no "Salvar taxas". O
+      texto do "taxa por parcela" diz que ele serve à operadora que cobra a
+      mesma taxa por parcela. Prova: `e2e/configuracoes-atritos-da-7.spec.ts`
+      ("A3"), `tests/tabela-da-operadora.test.ts`.
     - **As linhas do crédito só até o "Parcelar no crédito até"** (F17-4, o
       Heitor: "as linhas só devem aparecer se estiverem dentro do range de
       parcelas que são oferecidas"): com o limite escolhido (até 5x), a tabela
