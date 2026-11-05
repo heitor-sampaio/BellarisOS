@@ -50,6 +50,7 @@ import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
 import { avisosDoHorarioCore, type AvisosDoHorario } from '@/lib/appointments/encaixe'
+import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 
 import {
   getUserName, logHistory, fmtDateTime, loadApptCtx, notifyNewAppointment, notifyCancelledAppointment, notifyRescheduledAppointment, notifyCheckin, notifyCompleted, notifyPayment,
@@ -487,6 +488,10 @@ export async function chegarEIniciar(
     if (isOwnScope(ctx, 'agenda') && ag.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode marcar a chegada e iniciar este atendimento.' }
     }
+    // A trava do DIA vem antes da pergunta do horário (D10 da 7ª simulação):
+    // numa sessão de amanhã, perguntar "Iniciar mesmo assim?" e recusar no
+    // clique não servia de nada. É a mesma regra do checkinCore.
+    if (!ehODiaDoAgendamento(ag.scheduled_at)) return { error: 'A chegada só se marca no dia do agendamento.' }
     // O início adiantado pergunta ANTES da chegada (A32): sem a resposta, nem
     // a chegada se marca — senão ficaria "chegou" sem ter começado.
     if (opcoes?.inicioAdiantadoConfirmado !== true) {

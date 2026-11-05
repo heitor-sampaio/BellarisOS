@@ -224,7 +224,13 @@
 - **A chegada é do DIA do agendamento** (A18, 2026-10-27): `checkinCore`
   recusa fora do dia (Brasília, `ehODiaDoAgendamento`) — vale para a agenda, o
   Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". O
-  cancelado traz o motivo inteiro na janela e no tooltip do bloco.
+  cancelado traz o motivo inteiro na janela e no tooltip do bloco. **No
+  "Marcar chegada e iniciar", a trava do dia vem ANTES da pergunta do
+  horário** (D10 da 7ª simulação, 2026-11-05): numa sessão de amanhã a tela
+  perguntava "Iniciar mesmo assim?" e só no clique dizia "A chegada só se
+  marca no dia do agendamento". `chegarEIniciar` confere o dia
+  (`ehODiaDoAgendamento`) antes de `perguntaDoInicio`. Prova:
+  `e2e/agenda-inicio-adiantado.spec.ts` ("D10").
 - **"Só os meus" cancela e marca a falta do DELA** (agenda-06, revisão do
   Heitor de 2026-11-02; em 28/10 ele confirmou que a profissional cancela o
   que é dela): com a agenda em Gerenciar e escopo "só os meus", a janela da

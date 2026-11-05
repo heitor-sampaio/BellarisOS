@@ -128,3 +128,25 @@ test('controle: na hora marcada (já passou) inicia sem perguntar', async ({ bro
     await expect.poll(() => status(id)).toBe('IN_PROGRESS')
   })
 })
+
+// D10 da 7ª simulação: em 05/11, numa sessão de 06/11, "Marcar chegada e
+// iniciar" perguntava "Iniciar mesmo assim?" e só no clique dizia "A chegada
+// só se marca no dia do agendamento". A trava do dia vem ANTES da pergunta.
+test('D10: "Marcar chegada e iniciar" de outro dia diz logo que a chegada é do dia — sem perguntar do horário', async ({ browser }) => {
+  const amanha = await agendamento('CONFIRMED', 26 * 60)
+  await como(browser, async p => {
+    const rota = `/${slug}/agenda/${amanha}`
+    await p.goto(rota)
+    const r = await chamarAcao(p, 'actions/appointments.ts', 'chegarEIniciar', rota, [amanha, slug])
+    expect(r.texto, 'a trava do dia primeiro').toContain('A chegada só se marca no dia do agendamento.')
+    expect(r.texto).not.toContain('Iniciar mesmo assim?')
+    await p.goto(rota)
+    const botao = p.getByRole('button', { name: 'Marcar chegada e iniciar' })
+    if (await botao.count()) {
+      await botao.click()
+      await expect(p.getByText('A chegada só se marca no dia do agendamento.')).toBeVisible()
+      await expect(p.locator('[data-inicio-adiantado]')).toHaveCount(0)
+    }
+  })
+  expect(await status(amanha)).toBe('CONFIRMED')
+})
