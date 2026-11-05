@@ -164,6 +164,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   novo: "Cadastrar mesmo assim" e "Unificar com a ficha de X" (o mesmo
   `garantirClienteRapido` com `jaExiste`, `crm-inbox.md`). Prova: o caso
   r2-cli-01 de `e2e/copilot-gravacoes.spec.ts` (contra o build).
+- **O cadastro sem CPF** (sobra da F29, decisão 1 do Heitor na 7ª simulação):
+  `cadastrar_cliente` aceita `passaporte` ou `rne` no lugar do CPF — um
+  documento só, pela regra do cadastro da tela (`documentoDaFicha`, via
+  `documentoDoCadastroDoCopilot`), com a unicidade na rede
+  (`documentoEstrangeiroRepetido`) — e, com `criar_acesso`, a senha inicial é
+  o número dele (provisória, como a do CPF; o mesmo `darAcessoAoCliente`). O
+  `criar_acesso_ao_app` já lia o documento da ficha. Prova:
+  `tests/copilot-documento-do-cadastro.test.ts` e o caso "PASSAPORTE" de
+  `e2e/copilot-extras.spec.ts` (contra o build).
 - **O bloqueio pontual da agenda** (decisão 3 da 7ª simulação, 2026-11-05):
   os livres (`horarios_livres`, por `computeAvailableSlots`) já não trazem o
   horário bloqueado, e `agendar`/`remarcar` recusam no preparo o horário que

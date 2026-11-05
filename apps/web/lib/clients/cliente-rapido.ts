@@ -56,7 +56,11 @@ export interface ClienteRapidoInput {
    * com um update depois, uma falha no meio deixava o cliente criado sem eles,
    * e o evento "cliente criado" saía antes deles existirem. Não cria login.
    */
-  complemento?: { email?: string | null; document?: string | null; birthDate?: string | null }
+  complemento?: {
+    email?: string | null; document?: string | null; birthDate?: string | null
+    /** Sem CPF, o passaporte ou o RNE (decisão 1 da 7ª; o Copilot, como o cadastro da tela). */
+    estrangeiro?: { tipo: 'PASSAPORTE' | 'RNE'; numero: string } | null
+  }
   /**
    * A resposta à pergunta "Já existe a ficha de X" (r2-cli-01): "cadastrar:<id>"
    * (uma por ficha, separadas por espaço) ou "atualizar:<id>"
@@ -136,7 +140,9 @@ export async function garantirClienteRapido(
     }
     const r = await atualizarFichaComOPreenchido(admin, ctx, escolhida.id, {
       phone: telefone, email: input.complemento?.email ?? null,
-      documento: input.complemento?.document ? { document: input.complemento.document, documento_tipo: null, documento_numero: null } : null,
+      documento: input.complemento?.document ? { document: input.complemento.document, documento_tipo: null, documento_numero: null }
+        : input.complemento?.estrangeiro ? { document: null, documento_tipo: input.complemento.estrangeiro.tipo, documento_numero: input.complemento.estrangeiro.numero }
+        : null,
       birth_date: input.complemento?.birthDate ?? null,
     })
     if (r.error) return { error: r.error }
@@ -159,6 +165,8 @@ export async function garantirClienteRapido(
       is_active: true,
       ...(input.complemento?.email ? { email: input.complemento.email } : {}),
       ...(input.complemento?.document ? { document: input.complemento.document } : {}),
+      ...(!input.complemento?.document && input.complemento?.estrangeiro
+        ? { documento_tipo: input.complemento.estrangeiro.tipo, documento_numero: input.complemento.estrangeiro.numero } : {}),
       ...(input.complemento?.birthDate ? { birth_date: input.complemento.birthDate } : {}),
     })
     .select('id')

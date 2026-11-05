@@ -94,6 +94,29 @@ test('cadastrar COM acesso ao app: o cartão diz o login, e o Confirmar cria a c
   expect((u.user?.app_metadata as { client_id?: string })?.client_id, 'o acesso é do cliente').toBe(c!.id)
 })
 
+// Sobra da F29 (decisão 1 do Heitor, 7ª simulação): o cadastro da tela aceita
+// passaporte/RNE no lugar do CPF, e o Copilot também — com o acesso ao app, a
+// senha inicial é o número do passaporte (provisória, como a do CPF).
+test('cadastrar a estrangeira com PASSAPORTE e o acesso ao app (sem CPF)', async ({ browser }) => {
+  const passaporte = `FR${numeroDe(marca)}`
+  const email = `e2e-passaporte-${marca}@bellaris.invalid`
+  const telefone = `+351 91${numeroDe(marca).slice(0, 7)}`
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/dashboard')
+    const cartao = await pedir(p, 'cadastrar_cliente', { nome: `${PREFIXO} Sophie ${marca}`, telefone, email, passaporte, criar_acesso: true })
+    await expect(cartao.getByText('Passaporte', { exact: true })).toBeVisible()
+    await expect(cartao.getByText(/senha inicial = o número do passaporte/)).toBeVisible()
+    await cartao.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(cartao.getByRole('status')).toContainText('Feito')
+  })
+  const { data: c } = await db().from('clients').select('id, auth_id, document, documento_tipo, documento_numero')
+    .eq('tenant_id', rede.outra.tenantId).eq('documento_numero', passaporte).single()
+  expect([c!.document, c!.documento_tipo, c!.documento_numero]).toEqual([null, 'PASSAPORTE', passaporte])
+  expect(c!.auth_id, 'o login nasceu, com o passaporte de senha inicial').toBeTruthy()
+  const { data: u } = await db().auth.admin.getUserById(c!.auth_id as string)
+  expect((u.user?.app_metadata as { senha_provisoria?: boolean })?.senha_provisoria).toBe(true)
+})
+
 test('dar acesso a quem JÁ é cliente: pelo cartão, com o e-mail e o CPF', async ({ browser }) => {
   const cpf = cpfDe(numeroDe(`${marca}x`))
   const email = `e2e-acesso2-${marca}@bellaris.invalid`

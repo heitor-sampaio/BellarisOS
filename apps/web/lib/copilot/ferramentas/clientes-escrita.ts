@@ -12,6 +12,8 @@ import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { documentoDoCadastroDoCopilot } from '@/lib/copilot/ferramentas/documento-do-cadastro'
+import { documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 
 /**
  * As GRAVAÇÕES de clientes.
@@ -72,8 +74,13 @@ export function telefoneDoCopilot(texto: string): { digitos: string; gravar: str
   return telefoneDoCadastro(texto) ?? { erro: 'Informe o telefone com DDD (ou, de outro país, com + e o código do país).' }
 }
 
-interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; nascimento?: string; unidade?: string; criar_acesso?: boolean }
-interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean; jaExisteId?: string; jaExisteNome?: string }
+interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; passaporte?: string; rne?: string; nascimento?: string; unidade?: string; criar_acesso?: boolean }
+interface PayloadCadastro {
+  nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null
+  /** Sem CPF, o passaporte ou o RNE (sobra da F29). */
+  estrangeiro?: { tipo: 'PASSAPORTE' | 'RNE'; numero: string } | null
+  criarAcesso?: boolean; jaExisteId?: string; jaExisteNome?: string
+}
 
 /**
  * As escolhas do cartão quando a ficha JÁ EXISTE (r2-cli-01, o Heitor em
@@ -98,18 +105,29 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
   nome: 'cadastrar_cliente',
   tipo: 'escrita',
   modulo: 'clients', nivel: 'MANAGE',
-  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e CPF; a senha inicial é o CPF). Se já existir a ficha (mesmo CPF, mesmo telefone, ou mesmo nome e nascimento), o cartão pergunta à pessoa: cadastrar mesmo assim ou unificar com a ficha que existe.',
+  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, data de nascimento (AAAA-MM-DD) e UM documento (CPF; ou, de quem não tem CPF, passaporte ou rne) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e do documento; a senha inicial é o número dele). Se já existir a ficha (mesmo CPF, mesmo telefone, ou mesmo nome e nascimento), o cartão pergunta à pessoa: cadastrar mesmo assim ou unificar com a ficha que existe.',
   parametros: z.object({
     nome: z.string().min(2).max(120),
     telefone: z.string().min(8).max(24),
     email: EMAIL.optional(),
     cpf: z.string().max(20).optional(),
+    passaporte: z.string().max(30).optional().describe('Número do passaporte, de quem não tem CPF.'),
+    rne: z.string().max(30).optional().describe('Número do RNE, de quem não tem CPF.'),
     nascimento: DATA.optional(),
     unidade: z.string().max(80).optional(),
     criar_acesso: z.boolean().optional(),
   }),
   async preparar(c, a) {
-    if (a.criar_acesso && (!a.email || !a.cpf)) return { erro: 'Para criar o acesso ao app, preciso do e-mail e do CPF do cliente.' }
+    // O documento pela regra do cadastro da tela: CPF, OU passaporte, OU RNE (sobra da F29).
+    const doc = documentoDoCadastroDoCopilot(a)
+    if ('erro' in doc) return { erro: doc.erro }
+    if (a.criar_acesso && (!a.email || !doc.acesso)) return { erro: 'Para criar o acesso ao app, preciso do e-mail e de um documento do cliente (CPF, passaporte ou RNE).' }
+    const estrangeiro = doc.colunas?.documento_tipo && doc.colunas.documento_numero
+      ? { tipo: doc.colunas.documento_tipo, numero: doc.colunas.documento_numero } : null
+    if (estrangeiro) {
+      const repetido = await documentoEstrangeiroRepetido(c.admin, c.ctx.tenantId!, doc.colunas!)
+      if (repetido) return { erro: repetido }
+    }
     const fone = telefoneDoCopilot(a.telefone)
     if ('erro' in fone) return { erro: fone.erro }
     const telefone = fone.gravar
@@ -133,13 +151,15 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
           { rotulo: 'Nome', valor: a.nome.trim() },
           { rotulo: 'Telefone', valor: telefone },
           ...linhasDoComplemento(a),
+          ...(estrangeiro ? [{ rotulo: estrangeiro.tipo === 'RNE' ? 'RNE' : 'Passaporte', valor: estrangeiro.numero }] : []),
           { rotulo: 'Unidade', valor: u.unidade!.name },
-          ...(a.criar_acesso ? [linhaDoAcesso(emailNormalizado(a.email)!)] : []),
+          ...(a.criar_acesso ? [linhaDoAcesso(emailNormalizado(a.email)!, doc.acesso!.tipo)] : []),
         ],
       },
       payload: {
         nome: a.nome.trim(), telefone, branchId: u.unidade!.id,
         email: emailNormalizado(a.email), cpf: a.cpf?.replace(/\D/g, '') || null, nascimento: a.nascimento ?? null,
+        ...(estrangeiro ? { estrangeiro } : {}),
         ...(a.criar_acesso ? { criarAcesso: true } : {}),
         ...(jaExiste ? { jaExisteId: jaExiste.id, jaExisteNome: jaExiste.nome } : {}),
       },
@@ -151,7 +171,7 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     // Num insert só: e-mail, CPF e nascimento entram junto (sem update depois).
     const r = await garantirClienteRapido(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, branchId: p.branchId,
-      complemento: { email: p.email, document: p.cpf, birthDate: p.nascimento },
+      complemento: { email: p.email, document: p.cpf, birthDate: p.nascimento, estrangeiro: p.estrangeiro ?? null },
       jaExiste: p.jaExisteId ? `${escolha}:${p.jaExisteId}` : null,
     })
     if (r.jaExiste) return { erro: `${textoDaFichaQueJaExiste(r.jaExiste)} Nada foi gravado: peça de novo ao Copilot para escolher.` }
@@ -164,8 +184,9 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     const ficha = { href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
     // O acesso ao app, depois da ficha: falhar aqui não desfaz o cadastro (o
     // acesso sai depois, pela ficha ou de novo pelo Copilot).
-    if (p.criarAcesso && p.email && p.cpf) {
-      const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, { tipo: 'CPF', numero: p.cpf })
+    const docDoAcesso: DocumentoDoAcesso | null = p.cpf ? { tipo: 'CPF', numero: p.cpf } : p.estrangeiro ? { tipo: p.estrangeiro.tipo, numero: p.estrangeiro.numero } : null
+    if (p.criarAcesso && p.email && docDoAcesso) {
+      const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, docDoAcesso)
       if ('error' in acesso) return { mensagem: `${p.nome} cadastrado, mas o acesso ao app não saiu: ${acesso.error}`, ...ficha }
       return { mensagem: acesso.contaLigada
         ? `${p.nome} cadastrado, e a ficha entrou na conta que ela já tem no app (a senha continua a dela).`
