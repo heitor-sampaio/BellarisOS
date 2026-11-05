@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
-import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar } from '@/lib/clientes/agenda-do-portal'
+import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDosProximos } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { valoresCobrados, type ValorCobrado } from '@/lib/appointments/valor-cobrado'
@@ -266,6 +266,13 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
       {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && aindaDaParaAlterar(appt.scheduled_at, prazoHoras) && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Alterar até {limiteParaAlterar(appt.scheduled_at, prazoHoras)}
+        </p>
+      )}
+      {/* A53 da 7ª simulação: passado o prazo, o cartão já diz o caminho (a regra do prazo fica). */}
+      {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && !aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
+        && new Date(appt.scheduled_at).getTime() > new Date(inicioDosProximos()).getTime() && (
+        <p data-prazo-encerrado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          Prazo do app encerrado: fale com a clínica para alterar
         </p>
       )}
     </Link>

@@ -29,6 +29,30 @@ describe('a agenda do portal da cliente', () => {
   })
 })
 
+// A51 da 7ª simulação (2026-11-05): o agendamento de HOJE que passou da hora
+// sem ser concluído (a clínica ainda vai fechar) sumia da home — "Nenhum
+// agendamento próximo" — e só voltava com a conclusão. Em aberto e de hoje
+// (Brasília) continua em "Próximos" até a clínica concluir; o de ONTEM em
+// aberto segue no histórico (D14).
+describe('A51: o de hoje que passou da hora, em aberto, não some', () => {
+  const agora = new Date('2026-11-05T15:00:00-03:00')
+  const a = (id: string, status: string, quando: string) => ({ id, status, scheduled_at: quando })
+  it('hoje às 10:00 ainda agendado (são 15:00) segue nos Próximos, na frente dos de depois', async () => {
+    const { separarAgendaDoPortal, ehProximo, inicioDosProximos } = await import('@/lib/clientes/agenda-do-portal')
+    const lista = [
+      a('depois', 'SCHEDULED', '2026-11-06T10:00:00-03:00'),
+      a('hoje-passou', 'SCHEDULED', '2026-11-05T10:00:00-03:00'),
+      a('hoje-em-atendimento', 'IN_PROGRESS', '2026-11-05T14:30:00-03:00'),
+      a('ontem-aberto', 'ARRIVED', '2026-11-04T23:50:00-03:00'),
+      a('hoje-concluido', 'COMPLETED', '2026-11-05T09:00:00-03:00'),
+    ]
+    expect(separarAgendaDoPortal(lista, agora).proximos.map(x => x.id)).toEqual(['hoje-passou', 'hoje-em-atendimento', 'depois'])
+    expect(ehProximo(a('x', 'NO_SHOW', '2026-11-05T16:00:00-03:00'), agora), 'falta não é próximo').toBe(false)
+    // A consulta da home começa no início de HOJE em Brasília (03:00 UTC).
+    expect(inicioDosProximos(agora)).toBe('2026-11-05T03:00:00.000Z')
+  })
+})
+
 // J-61 das simulações: o prazo aparecia genérico ("até 24 horas antes"), sem
 // o dia e a hora em que ele acaba. A data é a de Brasília.
 describe('o prazo para alterar pelo app, em dia e hora', () => {

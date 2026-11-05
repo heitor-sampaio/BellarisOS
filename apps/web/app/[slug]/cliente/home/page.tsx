@@ -9,7 +9,7 @@ import { aClinicaDoEndereco, comMensagem } from '@/lib/clientes/a-clinica'
 import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
-import { STATUS_DO_PROXIMO } from '@/lib/clientes/agenda-do-portal'
+import { STATUS_DO_PROXIMO, inicioDosProximos, jaPassouDaHora } from '@/lib/clientes/agenda-do-portal'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
@@ -80,7 +80,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .eq('client_id', ctx.clientId!)
       // A mesma regra dos "Próximos" da Agenda (D14).
       .in('status', [...STATUS_DO_PROXIMO])
-      .gte('scheduled_at', new Date().toISOString())
+      // Desde o início de hoje (A51): o de hoje que passou da hora fica até a conclusão.
+      .gte('scheduled_at', inicioDosProximos())
       .order('scheduled_at')
       .limit(1)
       .maybeSingle(), 'buscar o próximo agendamento'),
@@ -308,6 +309,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     })()}
                   </span>
                 </div>
+                {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir. */}
+                {jaPassouDaHora(nextAppt.scheduled_at) && (
+                  <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
+                    Hoje, já no horário: a clínica registra quando o atendimento terminar.
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarClock, XCircle, MessageCircle } from 'lucide-react'
+import { CalendarClock, XCircle, MessageCircle, Phone } from 'lucide-react'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar } from '@/actions/portal-agendamentos'
@@ -16,11 +16,15 @@ const diaDeAmanha = () => diaNoFuso(Date.now() + 86_400_000)
  * do prazo, só o caminho para falar com a clínica. As ações de verdade
  * conferem o prazo de novo no servidor.
  */
-export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false }: {
+export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, whatsappParaAlterar = null, ligar = null, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false }: {
   appointmentId: string
   scheduledAt:   string
   prazoHoras:    number
   whatsapp:      string | null
+  /** Fora do prazo (A53): o WhatsApp com "preciso cancelar ou remarcar" já escrito. */
+  whatsappParaAlterar?: string | null
+  /** Fora do prazo (A53): o "Ligar" (tel:) da clínica. */
+  ligar?:        string | null
   /** O nome da profissional do agendamento. */
   profissional?: string | null
   /** O agendamento foi feito em "Sem preferência" (A59): o remarcar começa por aí. */
@@ -48,21 +52,32 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const [semPreferencia, setSemPreferencia] = useState(ofereceSemPreferencia && semPreferenciaInicial)
 
   if (!podeAlterar) {
+    // A53 da 7ª simulação: a regra do prazo fica; a saída diz o prazo, liga e
+    // manda a mensagem certa ("preciso cancelar ou remarcar").
+    const zap = whatsappParaAlterar ?? whatsapp
     return (
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div data-fora-do-prazo className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário). Para cancelar ou remarcar, fale com a clínica.
+          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário). A clínica ainda
+          cancela ou remarca: para isso, fale com a clínica.
         </p>
         {telefone && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
             Telefone da clínica: {telefone}
           </p>
         )}
-        {whatsapp && (
-          <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center' }}>
-            <MessageCircle size={14} aria-hidden="true" /> Falar com a clínica
-          </a>
-        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {zap && (
+            <a href={zap} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center', flex: '1 1 180px' }}>
+              <MessageCircle size={14} aria-hidden="true" /> Falar com a clínica
+            </a>
+          )}
+          {ligar && (
+            <a href={ligar} className="btn-secondary" style={{ justifyContent: 'center', flex: '1 1 180px' }}>
+              <Phone size={14} aria-hidden="true" /> Ligar para a clínica
+            </a>
+          )}
+        </div>
       </div>
     )
   }

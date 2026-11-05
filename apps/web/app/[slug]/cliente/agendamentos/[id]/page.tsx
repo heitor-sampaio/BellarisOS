@@ -89,6 +89,10 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
   // O WhatsApp é o conectado da unidade (por-03), com a mensagem pronta sobre
   // ESTE agendamento (A66).
   const aClinica = await aClinicaDoEndereco(slug)
+  // Fora do prazo do app (A53 da 7ª), a mensagem já diz o que ela quer.
+  const quandoTexto = quando.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const whatsappParaAlterar = comMensagem(aClinica?.whatsapp ?? linkDoWhatsapp(telefone),
+    `Olá! Preciso cancelar ou remarcar o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quandoTexto} (o prazo do app já passou).`)
   const whatsapp = comMensagem(aClinica?.whatsapp ?? linkDoWhatsapp(telefone),
     `Olá! Quero falar sobre o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quando.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`)
 
@@ -136,6 +140,8 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           semPreferenciaInicial={a.sem_preferencia}
           ofereceSemPreferencia={ofereceSemPreferencia}
           whatsapp={whatsapp}
+          whatsappParaAlterar={whatsappParaAlterar}
+          ligar={telefone ? `tel:+${telefone.startsWith('55') && telefone.length > 11 ? telefone : `55${telefone}`}` : null}
         />
       )}
     </div>

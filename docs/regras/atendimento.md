@@ -373,7 +373,12 @@
   `lib/clientes/agenda-do-portal.ts`, Brasília): "Pelo app, você cancela ou
   remarca até ter, 03/11 às 10:00 (24 horas antes do horário)", "O prazo …
   terminou em …", e no cartão da agenda "Alterar até …", com a seta de que o
-  cartão abre. O motivo do cancelamento é "Motivo (opcional)" (J-64). Prova:
+  cartão abre. **Fora do prazo, a saída é inteira** (A53 da 7ª simulação,
+  2026-11-05; a regra do prazo fica): o cartão da lista diz "Prazo do app
+  encerrado: fale com a clínica para alterar" (`[data-prazo-encerrado]`), e o
+  detalhe (`[data-fora-do-prazo]`) diz até quando era, "Falar com a clínica"
+  com a mensagem "Preciso cancelar ou remarcar o meu agendamento de X em
+  DD/MM HH:MM (o prazo do app já passou)" e "Ligar para a clínica" (`tel:`). O motivo do cancelamento é "Motivo (opcional)" (J-64). Prova:
   `e2e/portal-cliente-prazo-na-tela.spec.ts`, `tests/agenda-do-portal.test.ts`.
   **Remarcar oferece "Sem preferência"** (A59 da 5ª simulação, "Reforça",
   item 11): com mais de uma profissional que atende na unidade e realiza o
@@ -462,7 +467,14 @@
   confirmado ou na clínica) E com o horário ainda por vir — os "Próximos" da
   Agenda e o "Próximo agendamento" da home. O que passou sem ser fechado vai
   ao histórico. A Agenda filtrava só o status, e o "Na clínica" de ontem
-  aparecia em "Próximos". Prova: `tests/agenda-do-portal.test.ts`.
+  aparecia em "Próximos". Prova: `tests/agenda-do-portal.test.ts`. **O de
+  HOJE fica até a conclusão** (A51 da 7ª simulação, 2026-11-05: às 15:00 o
+  das 10:00 ainda "Agendado" sumia, e a home dizia "Nenhum agendamento
+  próximo"): "Próximo" é em aberto (agora também em atendimento) e de HOJE
+  em diante (`inicioDosProximos`, o início do dia de Brasília); o que passou
+  da hora diz "Hoje, já no horário: a clínica registra quando o atendimento
+  terminar." (`[data-passou-da-hora]`). O de ontem em aberto segue no
+  histórico. Prova: o mesmo teste e `e2e/portal-cliente-alterar-agendamento.spec.ts` ("A51").
 - **A janela do agendamento diz duração, sala e unidade** (A29 da 5ª
   simulação; `[data-detalhes-do-agendamento]`), o cartão da grade diz a sala,
   e o cancelado (e a falta) ganha "Reagendar" — o novo agendamento já com a
