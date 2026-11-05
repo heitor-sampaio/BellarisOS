@@ -9454,6 +9454,21 @@ Supabase de produção (instância pequena, checkpoints de ~150 s) travou sob
 a carga da própria suíte — é a causa de quase todas as falhas "action sem
 resposta".
 
+**F25 feita em 2026-11-05 — a suíte não trava o próprio banco** (b68a801e,
+3c715256, 2c6bd6f0; migrations `20261105000101`–`103`). O Heitor escolheu
+deixar a limpeza mais leve em vez de subir a instância ("pode fazer o
+caminho 1"). Na completa, a rede de teste só é ANOTADA ao nascer
+(`E2E_LIMPEZA_ADIADA=1`) e sai no passo "Limpeza do fim" (`if: always()`),
+uma por vez, por `e2e_apagar_rede` — uma transação no servidor que acha as
+linhas pelas chaves estrangeiras (tabela nova entra sozinha). A trava
+`e2e_eh_rede_de_teste` aceita só `[e2e]…` ou endereço `e2e-…` com e-mail
+`e2e-…@bellaris.invalid`, e nunca `[sim]`; só o service_role executa
+(conferido: das 8 redes que não são de teste, nenhuma passa). Uma varredura
+só, antes das duas metades. Spec avulso segue limpando na hora, numa
+chamada. Estimativa: 9–10 mil dos ~15 mil DELETEs saem do meio da rodada.
+Saíram junto 30 redes `[e2e]` que a limpeza antiga não conseguia apagar.
+Regra em `docs/regras/e2e.md`.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
