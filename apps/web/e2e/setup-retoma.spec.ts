@@ -78,16 +78,41 @@ test('com unidade: o setup vai ao fim, sem oferecer outra unidade', async ({ bro
  * atende…", "o insumo precisa existir antes"). O fim sugere os próximos
  * passos, NA ORDEM, e cada um leva à tela dele (concluindo o setup).
  */
-test('A3: o fim do setup sugere os próximos passos na ordem — equipe, estoque, procedimentos, taxas', async ({ browser }) => {
+/**
+ * A1 da 7ª simulação (2026-11-05): os passos não eram LINKS e não citavam
+ * Fichas, Documentos, Fidelidade nem o Funil — e o procedimento pede a ficha e
+ * o termo já existentes. A lista cresceu, na ordem em que um depende do outro.
+ */
+test('A3/A1: o fim do setup sugere os próximos passos na ordem, como links — com fichas, termos, fidelidade e o funil', async ({ browser }) => {
   await como(browser, donaComUnidade!, async p => {
     await p.goto('/setup')
     const passos = p.locator('[data-proximos-passos] li')
-    await expect(passos).toHaveCount(4)
-    await expect(passos.nth(0)).toContainText('Equipe')
-    await expect(passos.nth(1)).toContainText('Estoque')
-    await expect(passos.nth(2)).toContainText('Procedimentos')
-    await expect(passos.nth(3)).toContainText('Taxas da maquininha')
-    await passos.nth(0).getByRole('button').click()
+    const esperados: [RegExp, RegExp][] = [
+      [/Equipe/, /\/admin\/team$/],
+      [/Estoque/, /\/admin\/estoque$/],
+      [/Fichas/, /\/admin\/settings\?tab=fichas$/],
+      [/Termos e contratos/, /\/admin\/settings\?tab=documentos$/],
+      [/Procedimentos/, /\/admin\/procedures$/],
+      [/Taxas da maquininha/, /\/admin\/settings\?tab=comissoes$/],
+      [/Fidelidade/, /\/admin\/settings\?tab=fidelidade$/],
+      [/Funil/, /\/admin\/oportunidades$/],
+    ]
+    await expect(passos).toHaveCount(esperados.length)
+    for (const [i, [nome, href]] of esperados.entries()) {
+      await expect(passos.nth(i)).toContainText(nome)
+      await expect(passos.nth(i).getByRole('link'), `o passo ${i + 1} é um link`).toHaveAttribute('href', href)
+    }
+    await passos.nth(0).getByRole('link').click()
     await expect(p).toHaveURL(/\/admin\/team/, { timeout: 20_000 })
+  })
+})
+
+/** A2 da 7ª simulação: o domingo vem fechado, e o texto só dizia "segunda a sábado" — a clínica 24h não achava. */
+test('A2: o passo da unidade diz, à vista, que o domingo vem fechado', async ({ browser }) => {
+  await como(browser, semUnidade!, async p => {
+    await p.goto('/setup?passo=unidade')
+    const aviso = p.locator('[data-domingo-fechado]')
+    await expect(aviso).toContainText('O domingo vem fechado')
+    await expect(aviso).toContainText('marque o domingo')
   })
 })

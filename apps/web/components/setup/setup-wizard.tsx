@@ -538,6 +538,15 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           O padrão é segunda a sábado, das 8h às 20h. Ajuste o que for diferente — dá para mudar depois em Configurações.
         </span>
+        {/* A2 da 7ª simulação: a clínica 24h não achava o domingo fechado no meio da lista. */}
+        <p data-domingo-fechado role="note" style={{
+          display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
+          background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          fontSize: 'var(--text-xs-sz)', color: 'var(--text)', lineHeight: 1.45,
+        }}>
+          <AlertTriangle size={13} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} aria-hidden />
+          <span>O domingo vem fechado. Se a clínica abre aos domingos (ou 24 horas), marque o domingo na lista abaixo e ajuste o horário de cada dia.</span>
+        </p>
         <div onChange={lerHorarioDepois} onClick={lerHorarioDepois}>
           <EditorDeHorario key={horarioSalvo.chave} nome="horario" valor={horarioSalvo.valor} />
         </div>
@@ -565,7 +574,9 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
 
 // -- Step 3 — Concluído --------------------------------------------------------
 
-function StepDone({ tenantName }: { tenantName: string }) {
+function StepDone({ tenantName, foraDoPlano = [] }: { tenantName: string; foraDoPlano?: readonly string[] }) {
+  // O passo de uma funcionalidade fora do plano da rede não aparece.
+  const passosDoPlano = PROXIMOS_PASSOS.filter(p => !('recurso' in p) || !foraDoPlano.includes(p.recurso))
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
@@ -617,16 +628,23 @@ function StepDone({ tenantName }: { tenantName: string }) {
       <div data-proximos-passos style={{ textAlign: 'left', maxWidth: 380, margin: '0 auto 28px' }}>
         <p className="overline" style={{ marginBottom: 10 }}>Próximos passos, nesta ordem</p>
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {PROXIMOS_PASSOS.map((passo, i) => (
+          {passosDoPlano.map((passo, i) => (
             <li key={passo.titulo}>
-              <button type="button" onClick={() => handleFinish(passo.href)} disabled={pending} className="card card-hover"
-                style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
+              {/* A1 da 7ª simulação: um LINK de verdade (o endereço aparece, abre
+                  em outra aba); o clique comum conclui o setup antes de ir. */}
+              <a href={passo.href} aria-disabled={pending || undefined} className="card card-hover"
+                onClick={e => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+                  e.preventDefault()
+                  if (!pending) handleFinish(passo.href)
+                }}
+                style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', textAlign: 'left', cursor: 'pointer', textDecoration: 'none' }}>
                 <span style={{ fontWeight: 'var(--weight-extrabold)', color: 'var(--brand)', minWidth: 16 }}>{i + 1}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{passo.titulo}</span>
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{passo.porque}</span>
                 </span>
-              </button>
+              </a>
             </li>
           ))}
         </ol>
@@ -659,8 +677,13 @@ function StepDone({ tenantName }: { tenantName: string }) {
 const PROXIMOS_PASSOS = [
   { titulo: 'Equipe', porque: 'Quem atende: sem profissional, o procedimento não tem quem o realize.', href: '/admin/team' },
   { titulo: 'Estoque', porque: 'Os insumos: o procedimento só baixa o que já está cadastrado.', href: '/admin/estoque' },
-  { titulo: 'Procedimentos', porque: 'O catálogo, com quem realiza, os insumos e o preço.', href: '/admin/procedures' },
+  // A1 da 7ª simulação: o procedimento pede a ficha e o termo JÁ existentes.
+  { titulo: 'Fichas', porque: 'A anamnese de cada procedimento: ele escolhe uma ficha que já existe.', href: '/admin/settings?tab=fichas', recurso: 'fichas' },
+  { titulo: 'Termos e contratos', porque: 'O termo que o procedimento pede antes de começar — também escolhido de um que já existe.', href: '/admin/settings?tab=documentos', recurso: 'documentos' },
+  { titulo: 'Procedimentos', porque: 'O catálogo, com quem realiza, os insumos, a ficha, o termo e o preço.', href: '/admin/procedures' },
   { titulo: 'Taxas da maquininha', porque: 'O que a operadora desconta em cada forma e bandeira.', href: '/admin/settings?tab=comissoes' },
+  { titulo: 'Fidelidade', porque: 'Os pontos e as recompensas: o programa nasce desligado, e a clínica liga se quiser.', href: '/admin/settings?tab=fidelidade', recurso: 'fidelidade' },
+  { titulo: 'Funil de oportunidades', porque: 'As etapas, as origens dos leads e os motivos de perda do comercial.', href: '/admin/oportunidades', recurso: 'oportunidades' },
 ] as const
 
 // -- Wizard root ---------------------------------------------------------------
@@ -675,8 +698,10 @@ function passoNaUrl(passo: 'unidade' | null) {
   window.history.replaceState(null, '', passo ? `/setup?passo=${passo}` : '/setup')
 }
 
-export function SetupWizard({ rede: inicial, temUnidade, noPassoDaUnidade = false }: {
+export function SetupWizard({ rede: inicial, temUnidade, noPassoDaUnidade = false, foraDoPlano = [] }: {
   rede: DadosDaRede; temUnidade: boolean
+  /** As funcionalidades que o plano da rede não tem: o passo delas não aparece. */
+  foraDoPlano?: readonly string[]
   /** A rede já foi salva neste setup (`?passo=unidade`): recarregar fica na unidade (J-3). */
   noPassoDaUnidade?: boolean
 }) {
@@ -703,7 +728,7 @@ export function SetupWizard({ rede: inicial, temUnidade, noPassoDaUnidade = fals
           onNext={() => { setStep(2); passoNaUrl(null) }} onBack={() => { setStep(0); passoNaUrl(null) }} />
       )}
       {step === 2 && (
-        <StepDone tenantName={rede.nome} />
+        <StepDone tenantName={rede.nome} foraDoPlano={foraDoPlano} />
       )}
     </div>
   )

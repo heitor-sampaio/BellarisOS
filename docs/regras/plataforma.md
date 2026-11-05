@@ -191,6 +191,16 @@ um muro que não depende de cada trava do código.
   Procedimentos → Taxas da maquininha, cada um com o porquê
   (`PROXIMOS_PASSOS`, `[data-proximos-passos]`), e o clique conclui o setup e
   leva à tela dele. Prova: `e2e/setup-retoma.spec.ts` ("A3").
+  **São LINKS e citam o resto do que o procedimento pede** (A1 da 7ª
+  simulação, 2026-11-05: o procedimento escolhe a ficha e o termo que JÁ
+  existem): Equipe → Estoque → Fichas → Termos e contratos → Procedimentos →
+  Taxas da maquininha → Fidelidade → Funil de oportunidades, cada um um `<a>`
+  com o endereço (o clique comum conclui o setup antes de ir; o do meio abre
+  em outra aba). O passo de uma funcionalidade fora do plano da rede não
+  aparece (`foraDoPlano`). **O domingo fechado está à vista** (A2): o passo
+  da unidade diz "O domingo vem fechado. Se a clínica abre aos domingos (ou
+  24 horas), marque o domingo…" (`data-domingo-fechado`). Prova: o mesmo spec
+  ("A3/A1", "A2").
 - **A unidade nova NÃO herda o CNPJ da rede calada** (cfg-01, revisão do
   Heitor de 2026-11-02: "se em branco, avisa e confirma decisão. Talvez uma
   clínica possa ter 2 unidades físicas operando no mesmo CNPJ. Uma unidade
@@ -606,6 +616,18 @@ um muro que não depende de cada trava do código.
   (são dados para a unidade dela, não configuração).
 - Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
   é DELA.
+- **O resumo do cargo diz QUAIS abas de Configurações** (A7 da 7ª simulação,
+  2026-11-05; princípio 3): sem Configurações em Gerenciar, a pessoa chega à
+  tela só pelas abas dos outros módulos, e "O que essa pessoa vai ver" diz
+  "Configurações (só Comissões e taxas)" para o Financeiro
+  (`rotuloDasAbasAlcancadas`, `lib/configuracoes/abas.ts`, pela mesma
+  `abaLiberada`). O menu lateral segue "Configurações" (o rótulo longo
+  cortava, J-16). **E o cartão do cargo não conta Relatórios "só a unidade"
+  como "só os próprios"** (A8): "3 áreas · 1 só os próprios · Relatórios só
+  da unidade" — em Relatórios o escopo é a unidade (CLAUDE.md §11). **A Admin
+  vem primeiro no seletor de cargo** da Equipe (A9), como na tela de Cargos.
+  Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A7/A8", "A9"),
+  `tests/resumo-do-cargo.test.ts`.
 - **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
   simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
   descreve): sem o módulo, a gerente fixa não chegava à aba Unidade até a dona

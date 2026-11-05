@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SetupWizard } from '@/components/setup/setup-wizard'
 import { ler } from '@/lib/db'
@@ -38,6 +38,8 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
       }}
       temUnidade={(unidades ?? []).length > 0}
       noPassoDaUnidade={passo === 'unidade'}
+      // Os próximos passos do fim (A1 da 7ª): o de uma funcionalidade fora do plano não aparece.
+      foraDoPlano={(['fichas', 'documentos', 'fidelidade', 'oportunidades'] as const).filter(r => !temRecurso(ctx, r))}
     />
   )
 }
