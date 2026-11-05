@@ -240,3 +240,51 @@ test('A16: a oportunidade tem "Agendar" — o SDR agenda pelo card aberto no qua
   await expect.poll(async () => (await db().from('lead_events').select('type').eq('lead_id', lead!.id).eq('type', 'APPOINTMENT_CREATED')).data?.length)
     .toBe(1)
 })
+
+// D12 da 7ª simulação: no "Agendar" do card, a sala Corporal apareceu
+// escolhida e os agendamentos gravaram room_id nulo. A sala sugerida chega do
+// servidor (`salasParaAgendarNoCrm`) DEPOIS de escolher o horário: quem
+// clicava "Agendar" antes dela gravava sem sala — e a tela, logo depois,
+// mostrava a Corporal escolhida. O que a tela mostra é o que grava: o
+// "Agendar" espera a lista das salas.
+test('D12: a sala sugerida que aparece na janela é a que grava, mesmo com a lista das salas demorando', async ({ browser }) => {
+  test.setTimeout(180_000)
+  const { data: sala, error: eS } = await db().from('rooms').insert({ branch_id: rede!.branchId, name: `Corporal ${marca}` })
+    .select('id').single<{ id: string }>()
+  expect(eS).toBeNull()
+  expect((await db().from('procedure_rooms').insert({ procedure_id: rede!.procedureId, room_id: sala!.id, tenant_id: rede!.tenantId })).error).toBeNull()
+  const nome = `${PREFIXO} Lead sala ${marca}`
+  const { data: lead } = await db().from('leads').insert({
+    tenant_id: rede!.tenantId, name: nome, phone: `(48) 9${String(Date.now()).slice(-4)}-0012`, crm_stage_id: etapas!.novo,
+  }).select('id').single<{ id: string }>()
+  const { diaEmQueAUnidadeAbre } = await import('./apoio/datas')
+  const dia = diaEmQueAUnidadeAbre(4)
+  try {
+    await como(browser, sdr!, async p => {
+      // A lista das salas do horário demora (a action recebe a unidade, o procedimento e o horário).
+      await p.route('**/*', async rota => {
+        const req = rota.request()
+        const corpo = req.method() === 'POST' && req.headers()['next-action'] ? (req.postData() ?? '') : ''
+        if (corpo.includes(rede!.procedureId) && corpo.includes(`${dia}T`) && !corpo.includes('leadId')) {
+          await new Promise(r => setTimeout(r, 4000))
+        }
+        await rota.continue()
+      })
+      await p.goto(`/${slug}/oportunidades?lead=${lead!.id}`)
+      const card = p.getByRole('dialog').filter({ hasText: 'Editar lead' })
+      await card.getByRole('button', { name: 'Agendar', exact: true }).click()
+      const janela = p.getByRole('dialog').filter({ hasText: 'Novo agendamento' })
+      await janela.getByLabel('Procedimento').selectOption(rede!.procedureId)
+      await janela.getByLabel('Profissional').selectOption(rede!.professionalId)
+      await janela.getByLabel('Dia').fill(dia)
+      await janela.getByRole('button', { name: '11:00', exact: true }).click()
+      await janela.getByRole('button', { name: 'Agendar', exact: true }).click()
+      await expect(janela).toBeHidden({ timeout: 20_000 })
+    })
+    const { data: ligado } = await db().from('leads').select('client_id').eq('id', lead!.id).single<{ client_id: string }>()
+    const { data: ags } = await db().from('appointments').select('room_id').eq('client_id', ligado!.client_id)
+    expect((ags ?? []).map(a => a.room_id), 'gravou a sala que a janela sugeriu').toEqual([sala!.id])
+  } finally {
+    await db().from('procedure_rooms').delete().eq('room_id', sala!.id)
+  }
+})

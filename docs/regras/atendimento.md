@@ -572,7 +572,15 @@
     vinha a "Sala Rosa — facial" para a avaliação). Com todas as salas do
     procedimento ocupadas, a janela AVISA "…ocupada(s) nesse horário: o
     agendamento vai sem sala" (A28, `[data-aviso-da-sala]`; a sala é opcional,
-    H1). Prova: `e2e/agenda-salas.spec.ts` ("A27/A28"). **Unidade sem sala: o
+    H1). Prova: `e2e/agenda-salas.spec.ts` ("A27/A28"). **O que a janela
+    mostra é o que grava** (D12 da 7ª simulação, 2026-11-05; princípio 3):
+    a sala sugerida chega do servidor DEPOIS de escolher o horário, e quem
+    clicava "Agendar" (o card do CRM) ou "Confirmar agendamento" (a agenda)
+    antes dela gravava sem sala — e a janela, logo depois, mostrava a
+    Corporal escolhida. Enquanto a lista das salas do horário não chega, o
+    botão espera ("Conferindo as salas…" no CRM); a falha da lista vira a
+    lista da unidade, sem sugestão. Prova:
+    `e2e/crm-agendar-liga-oportunidade.spec.ts` ("D12"). **Unidade sem sala: o
     campo nem aparece.** **A sala é opcional** em todo agendamento e
     atendimento (decisão do Heitor, 2026-11-01: "não deve ser obrigatório
     selecionar sala"): o app da cliente, o checkout, as sessões e o Copilot

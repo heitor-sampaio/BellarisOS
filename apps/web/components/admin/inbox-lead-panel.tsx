@@ -1164,12 +1164,18 @@ export function ScheduleModal({
     let vivo = true
     salasParaAgendarNoCrm(branchId, procedureId || null, horarioDaSala)
       .then(r => { if (vivo) setSalasDoServidor({ chave: chaveDasSalas, ...r }) })
-      .catch(() => { /* fica a lista da unidade */ })
+      // Falhou: fica a lista da unidade, sem sugestão (e o "Agendar" não espera para sempre).
+      .catch(() => { if (vivo) setSalasDoServidor({ chave: chaveDasSalas, salas: (data?.rooms ?? []).map(r => ({ id: r.id, name: r.name, livre: true })), sugerida: null }) })
     return () => { vivo = false }
-  }, [temSalas, branchId, procedureId, horarioDaSala, chaveDasSalas])
+  }, [temSalas, branchId, procedureId, horarioDaSala, chaveDasSalas, data?.rooms])
   const salasOferecidas: SalaParaAgendar[] = salasDoServidor?.chave === chaveDasSalas
     ? salasDoServidor.salas
     : (data?.rooms ?? []).map(r => ({ id: r.id, name: r.name, livre: true }))
+  // D12 da 7ª simulação: a sala sugerida chega do servidor DEPOIS do horário;
+  // quem clicava "Agendar" antes dela gravava sem sala, e a janela, logo
+  // depois, mostrava a sugerida escolhida. Enquanto a lista do horário não
+  // chega, o "Agendar" espera — o que a janela mostra é o que grava.
+  const carregandoSalas = temSalas && !!branchId && salasDoServidor?.chave !== chaveDasSalas
   const salaFinal = roomId !== ''
     ? (roomId === '-' ? '' : salasOferecidas.some(s => s.id === roomId) ? roomId : '')
     : (salasDoServidor?.chave === chaveDasSalas ? (salasDoServidor.sugerida ?? '') : '')
@@ -1180,6 +1186,7 @@ export function ScheduleModal({
   const [respostaJaExiste, setRespostaJaExiste] = useState('')
 
   function handleSubmit(resposta: string = respostaJaExiste) {
+    if (carregandoSalas) return
     setError(null)
     setJaExiste(null)
     if (!branchId)                        { setError('Selecione a unidade.'); return }
@@ -1373,8 +1380,8 @@ export function ScheduleModal({
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
-            <button type="button" className="btn-primary" onClick={() => handleSubmit()} disabled={saving || !slot}>
-              <Check size={14} /> {saving ? 'Agendando…' : 'Agendar'}
+            <button type="button" className="btn-primary" onClick={() => handleSubmit()} disabled={saving || !slot || carregandoSalas}>
+              <Check size={14} /> {saving ? 'Agendando…' : carregandoSalas && slot ? 'Conferindo as salas…' : 'Agendar'}
             </button>
           </div>
         </div>

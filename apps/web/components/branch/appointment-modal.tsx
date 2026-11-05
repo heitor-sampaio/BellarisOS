@@ -251,9 +251,14 @@ export function AppointmentModal({
     let vivo = true
     salasParaAgendar(unidadeId, procedimentoDoAgendamento || null, scheduledAtUTC || null, duracaoMin)
       .then(r => { if (vivo) setSalasDoServidor({ chave: chaveDasSalas, ...r }) })
-      .catch(() => { /* fica a lista da unidade */ })
+      // Falhou: fica a lista da unidade, sem sugestão (e o Confirmar não espera para sempre).
+      .catch(() => { if (vivo) setSalasDoServidor({ chave: chaveDasSalas, salas: dados.rooms.map(r => ({ id: r.id, name: r.name, livre: true })), sugerida: null }) })
     return () => { vivo = false }
-  }, [temSalas, unidadeId, procedimentoDoAgendamento, scheduledAtUTC, duracaoMin, chaveDasSalas])
+  }, [temSalas, unidadeId, procedimentoDoAgendamento, scheduledAtUTC, duracaoMin, chaveDasSalas, dados.rooms])
+  // D12 da 7ª simulação: a sala sugerida chega DEPOIS do horário; confirmar
+  // antes dela gravava sem sala, e a janela logo mostrava a sugerida. O
+  // Confirmar espera a lista do horário — o que a janela mostra é o que grava.
+  const carregandoSalas = temSalas && !!unidadeId && !!scheduledAtUTC && salasDoServidor?.chave !== chaveDasSalas
   const salasOferecidas: SalaParaAgendar[] = salasDoServidor?.chave === chaveDasSalas
     ? salasDoServidor.salas
     : dados.rooms.map(r => ({ id: r.id, name: r.name, livre: true }))
@@ -625,7 +630,7 @@ export function AppointmentModal({
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button
               type="submit"
-              disabled={pending || !podeAgendar}
+              disabled={pending || !podeAgendar || carregandoSalas}
               className="btn-primary"
               style={{ opacity: podeAgendar ? 1 : 0.5 }}
             >
