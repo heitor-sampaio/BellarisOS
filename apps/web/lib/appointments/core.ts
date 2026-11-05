@@ -26,6 +26,7 @@ import { recusaDaSala } from '@/lib/appointments/salas'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { textoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
 import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
+import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -384,19 +385,25 @@ export async function computeAvailableSlots(
   // O profissional em QUALQUER unidade (o da rede atende em várias; o id do
   // profissional já é de uma rede só), e o que começou antes e ainda ocupa o
   // começo do dia (2026-10-08).
-  const booked = await ler(admin
-    .from('appointments')
-    .select('id, scheduled_at, duration_min, status, completed_at')
-    .eq('professional_id', professionalId)
-    .gte('scheduled_at', new Date(new Date(dayStart).getTime() - DURACAO_MAXIMA_MS).toISOString())
-    .lt('scheduled_at', dayEnd)
-    .not('status', 'in', IGNORED_STATUS), 'carregar os agendamentos')
+  // E os BLOQUEIOS da profissional (decisão 3 da 7ª simulação): o livre não
+  // oferece o horário bloqueado — é a conta do app da cliente, do Copilot e do
+  // CRM. A equipe, pela agenda, encaixa com o aviso.
+  const [booked, bloqueios] = await Promise.all([
+    ler(admin
+      .from('appointments')
+      .select('id, scheduled_at, duration_min, status, completed_at')
+      .eq('professional_id', professionalId)
+      .gte('scheduled_at', new Date(new Date(dayStart).getTime() - DURACAO_MAXIMA_MS).toISOString())
+      .lt('scheduled_at', dayEnd)
+      .not('status', 'in', IGNORED_STATUS), 'carregar os agendamentos'),
+    bloqueiosQueBatem(admin, { professionalId, inicio: new Date(dayStart), fim: new Date(dayEnd) }),
+  ])
 
   const occupied = (booked ?? []).filter((b) => b.id !== ignorarAgendamentoId).map((b) => ({
     start: new Date(b.scheduled_at as string).getTime(),
     // O concluído adiantado ocupa só até a conclusão (A31).
     end:   fimDaOcupacao(b as { scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null }),
-  }))
+  })).concat(bloqueios.map(b => ({ start: new Date(b.inicio).getTime(), end: new Date(b.fim).getTime() })))
   const agora = Date.now()
 
   return slotsDoDia(intervalos, durationMin).filter((slot) => {

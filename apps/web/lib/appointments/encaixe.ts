@@ -11,8 +11,14 @@ import { alcancaUnidade } from '@/lib/auth'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { normalizarHorario, intervalosDoDia, diaDaSemana, cabeNoHorario, textoDosIntervalos } from '@/lib/agenda/horario'
 import { conferirPecasDoAgendamento, conflitosDoHorario } from '@/lib/appointments/core'
+import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
+import { avisoDoBloqueioDaProfissional, avisoDoBloqueioDaSala } from '@/lib/agenda/bloqueio'
 
-export interface AvisosDoHorario { foraDoHorario: string | null; conflito: string | null }
+export interface AvisosDoHorario {
+  foraDoHorario: string | null; conflito: string | null
+  /** O horário cai num BLOQUEIO da profissional ou da sala (decisão 3 da 7ª): avisa, e o encaixe é permitido. */
+  bloqueio?: string | null
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** "a, b e c". */
@@ -23,8 +29,10 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   branchId: string; professionalId: string; scheduledAt: string; procedureId: string | null; durationMin: number
   /** Ao REMARCAR (A25), o próprio agendamento não conta como choque. */
   excluir?: string | null
+  /** A sala escolhida: o bloqueio dela também avisa. */
+  roomId?: string | null
 }): Promise<AvisosDoHorario> {
-  const nada: AvisosDoHorario = { foraDoHorario: null, conflito: null }
+  const nada: AvisosDoHorario = { foraDoHorario: null, conflito: null, bloqueio: null }
   if (![a.branchId, a.professionalId].every(x => typeof x === 'string' && UUID.test(x))) return nada
   if (a.procedureId != null && (typeof a.procedureId !== 'string' || !UUID.test(a.procedureId))) return nada
   const inicio = new Date(a.scheduledAt)
@@ -65,5 +73,20 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
   // A30: o outro atendimento de OUTRA unidade diz qual (a recepção desta não vê aquela agenda).
   const trechos = choques.map(ch => `das ${hora(ch.inicio)} às ${hora(ch.fim)}${ch.unidadeId !== a.branchId && ch.unidade ? `, na unidade ${ch.unidade}` : ''}`)
   const conflito = trechos.length ? `${nome} já tem atendimento ${emLista(trechos)}.` : null
-  return { foraDoHorario, conflito }
+
+  // O bloqueio pontual (decisão 3 da 7ª): da profissional e, com a sala, da
+  // sala DESTA unidade. Só aviso — o encaixe é da clínica (princípio 2).
+  const fimDoHorario = new Date(inicio.getTime() + duracao * 60_000)
+  const sala = a.roomId && UUID.test(a.roomId)
+    ? await ler(admin.from('rooms').select('id, name').eq('id', a.roomId).eq('branch_id', a.branchId).maybeSingle(), 'buscar a sala') as { id: string; name: string } | null
+    : null
+  const [daProfissional, daSala] = await Promise.all([
+    bloqueiosQueBatem(admin, { professionalId: a.professionalId, inicio, fim: fimDoHorario }),
+    sala ? bloqueiosQueBatem(admin, { roomId: sala.id, inicio, fim: fimDoHorario }) : Promise.resolve([]),
+  ])
+  const bloqueio = [
+    ...daProfissional.map(b => avisoDoBloqueioDaProfissional(nome, b)),
+    ...daSala.map(b => avisoDoBloqueioDaSala(sala!.name, b)),
+  ].join(' ') || null
+  return { foraDoHorario, conflito, bloqueio }
 }

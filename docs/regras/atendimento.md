@@ -92,6 +92,48 @@
     procedimento, e `horarioOcupado` da sala). A unidade pré-paga segue só
     com o horário (o crédito decide o procedimento no servidor). Prova:
     `e2e/pacote-sessao-agendar.spec.ts`.
+- **O BLOQUEIO pontual da agenda** (decisão 3 do Heitor, 7ª simulação,
+  2026-11-05: "concordo" — a Lia e a Rita procuraram em Agenda, Equipe e
+  Configurações onde bloquear o almoço, a folga e as férias). "Bloquear
+  horário" no cabeçalho da agenda da unidade, da "Minha agenda" e da agenda
+  da rede com UMA unidade na tela (a clínica de uma unidade vive no `/admin`,
+  H3): por PROFISSIONAL ou por SALA, com início e fim (data e hora — o almoço
+  de hoje ou as férias de vários dias, até um ano) e o motivo (obrigatório,
+  até 200 caracteres). `agenda_bloqueios` (migration `20261105003002`; só o
+  servidor lê e grava, com as restritivas do suporte), gravado por
+  `bloquearHorario` e desfeito por `desfazerBloqueio` (`actions/agenda-bloqueios.ts`);
+  a conta pura e o texto em `lib/agenda/bloqueio.ts`, a leitura em
+  `lib/agenda/bloqueios.ts`.
+  - **Na grade**: o da profissional na coluna dela (a pessoa: a da rede vale em
+    todas as unidades); o da sala, numa linha acima da grade da unidade
+    ("Sala bloqueada: …", `[data-bloqueios-de-sala]`); na agenda da rede, na
+    coluna da unidade de onde foi feito. A faixa (`[data-bloqueio]`) NÃO
+    segura o clique — clicar no bloqueado abre o novo agendamento —, e o
+    rótulo (`[data-rotulo-do-bloqueio]`, por cima dos cartões) abre a janela
+    "Horário bloqueado": o período, o motivo, quem bloqueou e "Desfazer
+    bloqueio".
+  - **Agendar no bloqueado pela EQUIPE avisa e deixa** (princípio 2), como o
+    encaixe fora do horário: o modal (e o remarcar da janela) diz "Horário
+    bloqueado para Bruna das 12:00 às 13:00 (Almoço). O encaixe é permitido."
+    e, com a sala escolhida, "Sala X está bloqueada das …" (`avisosDoHorarioCore`,
+    o `bloqueio` dos avisos). Ao bloquear um período com atendimento já
+    marcado, ele continua, e o aviso diz quantos ("…continuam na agenda.
+    Remarque se precisar.").
+  - **Os livres não oferecem o bloqueado**: `computeAvailableSlots` tira o
+    bloqueio da profissional — logo o app da cliente (agendar, "Sem
+    preferência", remarcar), o Copilot (os livres), o CRM e a sugestão do
+    próximo livre (A20). O Copilot também RECUSA agendar e remarcar no
+    bloqueado ("…está com o horário bloqueado das 12:00 às 13:00 (Almoço).
+    Escolha outro horário — o encaixe num horário bloqueado é pela agenda.").
+    O bloqueio da SALA não muda os livres (o app e o Copilot agendam sem sala).
+  - **Quem bloqueia**: quem tem a Agenda em Gerenciar, na unidade ao alcance;
+    com "só os meus", só o PRÓPRIO horário, sem sala ("Com a agenda “só os
+    meus”, você bloqueia só o seu horário.") — decidido pela regra do Heitor
+    de 28/10 ("quem tem 'só os meus' vê 'só os meus', em qualquer lugar").
+    Quem só vê a agenda vê o bloqueio e não bloqueia. Desfazer segue a mesma
+    regra.
+  - Fica de fora: a vista da SEMANA não desenha o bloqueio (a do dia, sim).
+  - Prova: `e2e/agenda-bloqueio.spec.ts`, `tests/agenda-bloqueio.test.ts`.
 - **Quem atende e é da REDE atende em TODAS as unidades** (D1 da simulação de
   2026-10-28, decisão do Heitor): o membro com `provides_services` e
   `branch_id` nulo aparece na agenda de cada unidade, no agendar (equipe e app
@@ -1668,6 +1710,8 @@ O resto do fluxo:
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
+❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio; nem RECUSAR o encaixe da equipe no bloqueado (é aviso — princípio 2)
+❌ Ler ou gravar agenda_bloqueios pela sessão (só o servidor: actions/agenda-bloqueios.ts e lib/agenda/bloqueios.ts), ou deixar quem tem "só os meus" bloquear outra pessoa ou uma sala
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem. A exceção é pacote_cancelar (F2b): cancela as sessões agendadas na MESMA transação do dinheiro, com o status, o motivo e o histórico do cancelarCore, e a action emite o evento e o aviso depois
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro

@@ -2068,10 +2068,12 @@ export async function salasParaAgendar(
  */
 export async function avisosDoHorario(
   branchId: string, professionalId: string, scheduledAt: string, procedureId: string | null, durationMin: number,
+  /** A sala escolhida (decisão 3 da 7ª): o bloqueio dela também avisa. */
+  roomId?: string | null,
 ): Promise<AvisosDoHorario> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
-  return avisosDoHorarioCore(ctx, { branchId, professionalId, scheduledAt, procedureId, durationMin })
+  return avisosDoHorarioCore(ctx, { branchId, professionalId, scheduledAt, procedureId, durationMin, roomId: typeof roomId === 'string' ? roomId : null })
 }
 
 /**

@@ -164,6 +164,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   novo: "Cadastrar mesmo assim" e "Unificar com a ficha de X" (o mesmo
   `garantirClienteRapido` com `jaExiste`, `crm-inbox.md`). Prova: o caso
   r2-cli-01 de `e2e/copilot-gravacoes.spec.ts` (contra o build).
+- **O bloqueio pontual da agenda** (decisão 3 da 7ª simulação, 2026-11-05):
+  os livres (`horarios_livres`, por `computeAvailableSlots`) já não trazem o
+  horário bloqueado, e `agendar`/`remarcar` recusam no preparo o horário que
+  cai num bloqueio da profissional, dizendo o bloqueio e que o encaixe nele é
+  pela agenda (`recusaDoBloqueado`, `lib/copilot/ferramentas/agenda-escrita.ts`).
+  Bloquear e desfazer é da tela (Agenda → "Bloquear horário").
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,

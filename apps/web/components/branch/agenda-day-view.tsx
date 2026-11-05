@@ -9,6 +9,8 @@ import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
+import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 
 interface Professional { id: string; name: string }
 
@@ -30,6 +32,9 @@ interface Props {
    */
   horarioDaUnidade?:         Horario | null
   horariosDosProfissionais?: Record<string, Horario | null>
+  /** Os bloqueios pontuais (decisão 3 da 7ª): o da profissional na coluna dela, o da sala acima da grade. */
+  bloqueios?: BloqueioDaAgenda[]
+  salas?: { id: string; name: string }[]
 }
 
 // A janela da grade vem do horário de funcionamento (prop `janela`); o
@@ -74,6 +79,8 @@ function yToTime(y: number, baseDate: Date, g: Grade): Date {
 
 interface ColProps {
   pro:          Professional
+  /** Os bloqueios DELA que tocam o dia. */
+  bloqueios:    BloqueioDaAgenda[]
   /** Os períodos em que ela atende neste dia (unidade ∩ ela); nulo = não sombreia. */
   horarioDoDia: { de: string; ate: string }[] | null
   profColor:    { bg: string; text: string }
@@ -92,7 +99,7 @@ interface ColProps {
 }
 
 function ProfColumn({
-  pro, horarioDoDia, events, currentDate, isFirst, canWrite,
+  pro, bloqueios, horarioDoDia, events, currentDate, isFirst, canWrite,
   draggingId, dropPreviewY,
   onEventClick, onSlotClick, onDragStart, onDragEnd, onDragOver, onDrop,
 }: ColProps) {
@@ -127,6 +134,17 @@ function ProfColumn({
           left: 0, right: 0, background: 'var(--bg-app)', pointerEvents: 'none',
         }} />
       ))}
+
+      {/* O bloqueio pontual dela (decisão 3 da 7ª): a faixa não segura o
+          clique — agendar ali abre o modal, que avisa (o encaixe é permitido). */}
+      {bloqueios.map(b => {
+        const noDia = bloqueioNoDia(b, currentDate)
+        if (!noDia) return null
+        const top = Math.max(0, (noDia.de / 60 - g.START_HOUR) * HOUR_PX)
+        const fim = Math.min(g.TOTAL_PX, (noDia.ate / 60 - g.START_HOUR) * HOUR_PX)
+        if (fim <= top) return null
+        return <BlocoDoBloqueio key={b.id} bloqueio={b} top={top} height={fim - top} rotulo={`Bloqueado · ${b.motivo}`} podeDesfazer={canWrite} />
+      })}
 
       {/* Hour grid lines */}
       {g.HOURS.map(h => (
@@ -283,8 +301,13 @@ function ProfColumn({
   )
 }
 
-export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela, aberturaDoDia, horarioDaUnidade, horariosDosProfissionais }: Props) {
+export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela, aberturaDoDia, horarioDaUnidade, horariosDosProfissionais, bloqueios = [], salas = [] }: Props) {
   const [draggingId,   setDraggingId]   = useState<string | null>(null)
+  const [salaAberta,   setSalaAberta]   = useState<BloqueioDaAgenda | null>(null)
+  // As salas bloqueadas que tocam o dia: uma linha acima da grade (a grade é
+  // por profissional, não por sala).
+  const nomeDaSala = (id: string | null) => salas.find(s => s.id === id)?.name ?? 'Sala'
+  const salasDoDia = bloqueios.filter(b => b.roomId && bloqueioNoDia(b, currentDate))
   const [dropTarget,   setDropTarget]   = useState<{ profId: string; y: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -342,6 +365,26 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
 
   return (
     <GradeCtx.Provider value={g}>
+    {salasDoDia.length > 0 && (
+      <div data-bloqueios-de-sala role="group" aria-label="Salas bloqueadas neste dia" style={{
+        display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 10,
+        padding: '8px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+      }}>
+        <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)' }}>Sala bloqueada:</span>
+        {salasDoDia.map(b => (
+          <button key={b.id} type="button" onClick={() => setSalaAberta(b)} style={{
+            padding: '2px 10px', borderRadius: 'var(--radius-chip-token)', border: '1px solid var(--warning-border)',
+            background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', cursor: 'pointer',
+          }}>
+            {nomeDaSala(b.roomId)} · {trechoDoBloqueio(b)} · {b.motivo}
+          </button>
+        ))}
+      </div>
+    )}
+    {salaAberta && (
+      <JanelaDoBloqueio bloqueio={salaAberta} titulo={`${nomeDaSala(salaAberta.roomId)} bloqueada · ${salaAberta.motivo}`}
+        podeDesfazer={canWrite} onFechar={() => setSalaAberta(null)} />
+    )}
     <div className="table-wrap">
     <div ref={scrollRef} data-grade-do-dia style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minWidth: 500 }}>
       {/* Sticky professional headers — dentro do scroll para largura idêntica à do grid */}
@@ -406,6 +449,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
             <ProfColumn
               key={pro.id}
               pro={pro}
+              bloqueios={bloqueios.filter(b => b.professionalId === pro.id)}
               horarioDoDia={horariosDosProfissionais
                 ? intervalosDoDia(horarioDaUnidade ?? null, horariosDosProfissionais[pro.id] ?? null, diaDaSemana(diaChave))
                 : null}

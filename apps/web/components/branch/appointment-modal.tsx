@@ -295,26 +295,28 @@ export function AppointmentModal({
   // Antes de confirmar: o encaixe fora do horário da profissional e o choque
   // com outro atendimento dela. É aviso — o encaixe é permitido (§9.1), e o
   // choque o servidor recusa ao gravar.
+  // O bloqueio pontual (decisão 3 da 7ª) entra aqui: o da profissional e o da
+  // sala escolhida — avisa, e o encaixe é permitido (princípio 2).
   const chaveDosAvisos = profId && unidadeId && scheduledAtUTC
-    ? `${unidadeId}|${profId}|${scheduledAtUTC}|${procedimentoDoAgendamento}|${duracaoMin}` : ''
-  const [avisos, setAvisos] = useState<{ chave: string; foraDoHorario: string | null; conflito: string | null } | null>(null)
+    ? `${unidadeId}|${profId}|${scheduledAtUTC}|${procedimentoDoAgendamento}|${duracaoMin}|${salaId}` : ''
+  const [avisos, setAvisos] = useState<{ chave: string; foraDoHorario: string | null; conflito: string | null; bloqueio?: string | null } | null>(null)
   useEffect(() => {
     if (!chaveDosAvisos) return
     let vivo = true
     const t = setTimeout(() => {
-      avisosDoHorario(unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento || null, duracaoMin)
+      avisosDoHorario(unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento || null, duracaoMin, salaId || null)
         .then(r => { if (vivo) setAvisos({ chave: chaveDosAvisos, ...r }) })
         .catch(() => { /* sem aviso: o servidor confere ao gravar */ })
     }, 200)
     return () => { vivo = false; clearTimeout(t) }
-  }, [chaveDosAvisos, unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento, duracaoMin])
+  }, [chaveDosAvisos, unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento, duracaoMin, salaId])
   // A26 (5ª simulação): a recusa do servidor por choque e o aviso diziam o
   // mesmo, duas vezes. Recusado por choque com o aviso na tela, fica UMA
   // mensagem: a recusa, com o detalhe do aviso (horário e unidade).
   const conflitoDoAviso = avisos && avisos.chave === chaveDosAvisos ? avisos.conflito : null
   const recusadoPorChoque = !!state?.error?.startsWith('Este profissional já tem agendamento') && !!conflitoDoAviso
   const avisosDoMomento = avisos && avisos.chave === chaveDosAvisos
-    ? [recusadoPorChoque ? null : avisos.conflito, avisos.foraDoHorario].filter((x): x is string => !!x) : []
+    ? [recusadoPorChoque ? null : avisos.conflito, avisos.bloqueio ?? null, avisos.foraDoHorario].filter((x): x is string => !!x) : []
 
   const minDT = useMemo(() => {
     const now = new Date(agora)

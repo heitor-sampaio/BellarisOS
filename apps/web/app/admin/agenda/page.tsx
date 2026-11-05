@@ -9,6 +9,10 @@ import { selosDaFicha } from '@/lib/pre-atendimento/selos'
 import { menoresDaAgenda } from '@/lib/clients/menores-da-agenda'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { dayKeyTZ, weekdayTZ, addDaysTZ, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
+import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
+import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
+import { getCachedBranchProfessionals, getCachedRoomsByBranch } from '@/lib/cached-queries'
+import { ler } from '@/lib/db'
 
 type AgendaView = 'day' | 'week'
 
@@ -131,6 +135,35 @@ export default async function AdminAgendaPage({
   ])
   const appointments = brutos.map(a => ({ ...a, ficha: selos[a.id] ?? null, pagoAntes: jaPagos.get(a.id) ?? null, menor: (a.client_id && menores[a.client_id]) || null })) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
 
+  // O bloqueio pontual (decisão 3 da 7ª): cada um na coluna da unidade de onde
+  // foi feito (a da sala), com de quem é. Com "só os meus", só os dela.
+  const todosOsBloqueios = await bloqueiosDoPeriodo(ctx.tenantId!, { de: startDate.toISOString(), ate: endDate.toISOString(), unidades: branchIds })
+  const bloqueiosVistos = agendaOwner ? todosOsBloqueios.filter(b => b.professionalId === agendaOwner) : todosOsBloqueios
+  const salasDosBloqueios = [...new Set(bloqueiosVistos.map(b => b.roomId).filter((x): x is string => !!x))]
+  const [nomesDosBloqueios, salasLidas] = await Promise.all([
+    nomesDosRegistros(ctx.tenantId!, { membros: bloqueiosVistos.map(b => b.professionalId) }),
+    salasDosBloqueios.length
+      ? ler(admin.from('rooms').select('id, name').in('id', salasDosBloqueios).in('branch_id', branchIds), 'buscar as salas bloqueadas') as Promise<{ id: string; name: string }[] | null>
+      : Promise.resolve([] as { id: string; name: string }[]),
+  ])
+  const bloqueios = bloqueiosVistos.map(b => ({
+    ...b,
+    rotulo: b.roomId
+      ? `${(salasLidas ?? []).find(s => s.id === b.roomId)?.name ?? 'Sala'} bloqueada · ${b.motivo}`
+      : `Bloqueado · ${(b.professionalId && nomesDosBloqueios.membros[b.professionalId]) || 'Profissional'} · ${b.motivo}`,
+  }))
+  // "Bloquear horário" daqui com UMA unidade na tela (a clínica de uma unidade
+  // vive no /admin — H3): a lista de quem atende e das salas dela.
+  const umaSo = branches.length === 1 ? branches[0]! : null
+  const paraBloquear = umaSo && ctx.permissions.agenda === 'MANAGE'
+    ? {
+        branchId: umaSo.id,
+        profissionais: ((await getCachedBranchProfessionals(umaSo.id, ctx.tenantId!)) ?? []).map(p => ({ id: p.id as string, name: p.name as string })),
+        salas: ((await getCachedRoomsByBranch(umaSo.id, ctx.tenantId!)) ?? []).map(r => ({ id: r.id as string, name: r.name as string })),
+        soEu: agendaOwner ? { id: agendaOwner, name: ctx.userName || 'Você' } : null,
+      }
+    : null
+
   return (
     <>
       <RealtimeRefresher tables={['appointments']} />
@@ -146,6 +179,8 @@ export default async function AdminAgendaPage({
         podeAgendar={ctx.permissions.agenda === 'MANAGE'}
         escopoProprio={agendaOwner !== null}
         meuId={ctx.internalUserId ?? null}
+        bloqueios={bloqueios}
+        paraBloquear={paraBloquear}
       />
     </>
   )

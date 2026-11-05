@@ -20,6 +20,8 @@ import { rescheduleAppointment } from '@/actions/appointments'
 import type { CalendarEvent } from './agenda-month-view'
 import { ocupacaoEmPct, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { atendimentosPorExtenso } from '@/lib/agenda/grade'
+import { BotaoBloquearHorario } from '@/components/shared/bloqueio-da-agenda'
+import type { BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -55,6 +57,8 @@ interface AgendaCalendarProps {
   dataInicial?:  string | null
   /** `?cancelados=1`: a grade traz os cancelados e as faltas, apagados. */
   comCancelados?: boolean
+  /** Os bloqueios pontuais da janela (decisão 3 da 7ª): das profissionais e das salas. */
+  bloqueios?: BloqueioDaAgenda[]
 }
 
 // -- KPI helpers -------------------------------------------------------------
@@ -151,6 +155,7 @@ function todayDate(): Date {
 export function AgendaCalendar({
   branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
+  bloqueios = [],
 }: AgendaCalendarProps) {
   const router = useRouter()
 
@@ -273,6 +278,7 @@ export function AgendaCalendar({
             ariaLabel="Modo de visualização"
           />
 
+          {canWrite && <BotaoBloquearHorario branchId={branchId} profissionais={professionals} salas={rooms} dia={currentDate} />}
           {canWrite && (
             <button
               type="button"
@@ -367,6 +373,8 @@ export function AgendaCalendar({
             onEventClick={setSelectedEvent}
             onSlotClick={handleSlotClick}
             onDrop={handleDrop}
+            bloqueios={bloqueios}
+            salas={rooms}
           />
         )}
         {view === 'semana' && (

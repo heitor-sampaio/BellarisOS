@@ -7,6 +7,8 @@ import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } fro
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
+import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-escrita'
 import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
@@ -22,6 +24,16 @@ import {
  * núcleos da tela (`createAppointmentCore`, `remarcarCore`, `cancelarCore`) e
  * com os mesmos avisos ao paciente e à equipe.
  */
+
+/**
+ * O horário cai num BLOQUEIO da profissional (decisão 3 da 7ª simulação)? O
+ * Copilot não oferece nem marca o horário bloqueado: a recusa diz o bloqueio
+ * e que o encaixe nele é pela agenda (onde a equipe é avisada e encaixa).
+ */
+async function recusaDoBloqueado(c: ContextoDaFerramenta, a: { professionalId: string; nome: string; inicio: Date; duracaoMin: number }): Promise<string | null> {
+  const [b] = await bloqueiosQueBatem(c.admin, { professionalId: a.professionalId, inicio: a.inicio, fim: new Date(a.inicio.getTime() + a.duracaoMin * 60_000) })
+  return b ? `${a.nome} está com o horário bloqueado ${trechoDoBloqueio(b)} (${b.motivo}). Escolha outro horário — o encaixe num horário bloqueado é pela agenda.` : null
+}
 
 /** O profissional está livre? A mesma conferência da tela (horarioOcupado, no núcleo). */
 async function livre(c: ContextoDaFerramenta, a: { professionalId: string; inicio: Date; duracaoMin: number; excluir?: string }): Promise<boolean> {
@@ -99,6 +111,8 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     if (!(await livre(c, { professionalId: prof.id, inicio, duracaoMin: proc.duration_min || 60 }))) {
       return { erro: `${prof.name} já tem agendamento nesse horário. Veja os horários livres.` }
     }
+    const bloqueado = await recusaDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: proc.duration_min || 60 })
+    if (bloqueado) return { erro: bloqueado }
 
     return {
       resumo: {
@@ -191,6 +205,8 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     if (quem && !(await livre(c, { professionalId: quem, inicio, duracaoMin: ag.duration_min || 60, excluir: ag.id }))) {
       return { erro: `${nomeDoProfissional} já tem agendamento nesse horário.` }
     }
+    const bloqueado = quem ? await recusaDoBloqueado(c, { professionalId: quem, nome: nomeDoProfissional, inicio, duracaoMin: ag.duration_min || 60 }) : null
+    if (bloqueado) return { erro: bloqueado }
     return {
       resumo: {
         titulo: 'Remarcar atendimento',

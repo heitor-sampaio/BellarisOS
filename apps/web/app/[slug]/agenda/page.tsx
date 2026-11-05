@@ -14,6 +14,7 @@ import { abertosDeAntes } from '@/lib/metrics/abertos-de-antes'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
+import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
   getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
@@ -140,7 +141,12 @@ export default async function AgendaPage({ params, searchParams }: {
   // alcance da sessão; daqui saem só os nomes de quem está neles.
   // O que já foi pago antes (D12): pré-pago, pacote, plano — a janela não o mostra como valor a cobrar.
   // A menor de idade (decisão 2 do Heitor, 2026-11-05): a marca e o responsável.
-  const [selos, nomes, jaPagos, menores] = await Promise.all([
+  // O bloqueio pontual (decisão 3 da 7ª): o das profissionais da grade (a
+  // pessoa — a da rede vale em todas as unidades) e o das salas desta unidade.
+  const idsDaGrade = professionalOnly
+    ? (ctx.internalUserId ? [ctx.internalUserId] : [])
+    : ((professionals ?? []) as { id: string }[]).map(p => p.id)
+  const [selos, nomes, jaPagos, menores, bloqueios] = await Promise.all([
     selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[]),
     nomesDosRegistros(ctx.tenantId!, {
       clientes: (rawAppointments ?? []).map(a => a.client_id as string | null),
@@ -148,6 +154,10 @@ export default async function AgendaPage({ params, searchParams }: {
     }),
     pagosAntes(createAdminClient(), (rawAppointments ?? []).map(a => a.id as string)),
     menoresDaAgenda(ctx.tenantId!, (rawAppointments ?? []).map(a => a.client_id as string | null)),
+    bloqueiosDoPeriodo(ctx.tenantId!, {
+      de: from, ate: to, profissionais: idsDaGrade,
+      salas: professionalOnly ? [] : ((rooms ?? []) as { id: string }[]).map(r => r.id),
+    }),
   ])
 
   // Mapeia appointments para eventos do FullCalendar
@@ -196,6 +206,8 @@ export default async function AgendaPage({ params, searchParams }: {
           horarioDaProfissional={horariosDosProfissionais[ctx.internalUserId ?? ''] ?? null}
           ocupadoFora={ocupadoFora[ctx.internalUserId ?? ''] ?? []}
           dataInicial={dataInicial}
+          bloqueios={bloqueios}
+          podeBloquear={canManageAgenda}
         />
       </div>
     )
@@ -223,6 +235,7 @@ export default async function AgendaPage({ params, searchParams }: {
         meuId={ctx.internalUserId ?? null}
         dataInicial={dataInicial}
         comCancelados={comCancelados}
+        bloqueios={bloqueios}
       />
     </div>
   )

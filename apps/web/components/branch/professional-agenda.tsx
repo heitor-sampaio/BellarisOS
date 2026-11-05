@@ -20,6 +20,8 @@ import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
+import { BotaoBloquearHorario, BlocoDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
+import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -64,11 +66,15 @@ interface Props {
   ocupadoFora:           BlocoOcupado[]
   /** O dia do `?date=` (AAAA-MM-DD), conferido pela página (J-33). */
   dataInicial?:          string | null
+  /** Os bloqueios pontuais DELA (decisão 3 da 7ª). */
+  bloqueios?:            BloqueioDaAgenda[]
+  /** A agenda em Gerenciar: ela bloqueia o próprio horário (e desfaz). */
+  podeBloquear?:         boolean
 }
 
 export function ProfessionalAgendaView({
-  events, slug, professionalName, branchName, professionalId, janela,
-  horarioDaUnidade, horarioDaProfissional, ocupadoFora, dataInicial = null,
+  events, slug, professionalName, branchName, professionalId, branchId, janela,
+  horarioDaUnidade, horarioDaProfissional, ocupadoFora, dataInicial = null, bloqueios = [], podeBloquear = false,
 }: Props) {
   const router = useRouter()
   const today  = useMemo(() => new Date(), [])
@@ -239,6 +245,11 @@ export function ProfessionalAgendaView({
           </p>
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {/* O bloqueio do próprio horário (decisão 3 da 7ª): o almoço, a folga. */}
+        {podeBloquear && professionalId && (
+          <BotaoBloquearHorario branchId={branchId} profissionais={[]} soEu={{ id: professionalId, name: professionalName || 'Você' }} dia={selectedDate} />
+        )}
         {/* Switcher Dia / Semana / Mês */}
         <SegSelect
           options={[{ key: 'dia', label: 'Dia' }, { key: 'semana', label: 'Semana' }, { key: 'mes', label: 'Mês' }]}
@@ -246,6 +257,7 @@ export function ProfessionalAgendaView({
           onSelect={(k) => setView(k as ViewMode)}
           ariaLabel="Modo de visualização"
         />
+        </div>
       </div>
 
       {/* -- KPI strip ------------------------------------------------ */}
@@ -400,6 +412,16 @@ export function ProfessionalAgendaView({
                   left: 58, right: 0, background: 'var(--bg-app)', pointerEvents: 'none',
                 }} />
               ))}
+
+              {/* Os bloqueios dela no dia (decisão 3 da 7ª). */}
+              {bloqueios.map(b => {
+                const noDia = bloqueioNoDia(b, selectedDate)
+                if (!noDia) return null
+                const top = Math.max(0, (noDia.de / 60 - DAY_START) * PX_PER_HOUR)
+                const fim = Math.min(gridHeight, (noDia.ate / 60 - DAY_START) * PX_PER_HOUR)
+                if (fim <= top) return null
+                return <BlocoDoBloqueio key={b.id} bloqueio={b} top={top} height={fim - top} esquerda={58} rotulo={`Bloqueado · ${b.motivo}`} podeDesfazer={podeBloquear} />
+              })}
 
               {/* Slots livres */}
               {freeSlots.map((slot, i) => (

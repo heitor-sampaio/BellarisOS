@@ -11,6 +11,8 @@ import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { estenderJanela } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, type Horario } from '@/lib/agenda/horario'
+import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { BlocoDoBloqueio, BotaoBloquearHorario } from '@/components/shared/bloqueio-da-agenda'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 import { contagemDaAgenda } from '@/lib/metrics/resultado'
@@ -69,6 +71,10 @@ interface Props {
   escopoProprio: boolean
   /** O membro logado: no agendamento dele, "Marcar chegada e iniciar" (A25). */
   meuId?: string | null
+  /** Os bloqueios pontuais (decisão 3 da 7ª), cada um com o rótulo que a grade mostra. */
+  bloqueios?: (BloqueioDaAgenda & { rotulo: string })[]
+  /** "Bloquear horário" (com uma unidade na tela): quem atende e as salas dela. */
+  paraBloquear?: { branchId: string; profissionais: { id: string; name: string }[]; salas: { id: string; name: string }[]; soEu: { id: string; name: string } | null } | null
 }
 
 // -- Constantes visuais --------------------------------------------------------
@@ -164,8 +170,11 @@ function apptHeight(a: Appointment): number {
  * é grosseiro demais para uma agenda de estética, e o minuto exato do pixel
  * não significa nada.
  */
-function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioVazio }: {
+function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioVazio, bloqueios = [], podeDesfazer = false }: {
   branches: Branch[]
+  /** Os bloqueios pontuais (decisão 3 da 7ª), na coluna da unidade de cada um. */
+  bloqueios?: (BloqueioDaAgenda & { rotulo: string })[]
+  podeDesfazer?: boolean
   /** O horário de funcionamento das unidades mostradas (horas cheias). */
   janela: { inicio: number; fim: number }
   appointments: Appointment[]
@@ -293,6 +302,17 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                     background: 'var(--bg-app)', pointerEvents: 'none',
                   }} />
                 ))}
+
+                {/* O bloqueio pontual (decisão 3 da 7ª): a faixa não segura o
+                    clique — agendar ali abre o modal, que avisa. */}
+                {bloqueios.filter(bl => bl.branchId === b.id).map(bl => {
+                  const noDia = bloqueioNoDia(bl, new Date(`${dia}T12:00:00`))
+                  if (!noDia) return null
+                  const topo = Math.max(0, (noDia.de / 60 - inicio) * HOUR_H)
+                  const fundo = Math.min(GRID_H, (noDia.ate / 60 - inicio) * HOUR_H)
+                  if (fundo <= topo) return null
+                  return <BlocoDoBloqueio key={bl.id} bloqueio={bl} top={topo} height={fundo - topo} rotulo={bl.rotulo} podeDesfazer={podeDesfazer} />
+                })}
 
                 {/* Linhas de hora */}
                 {HOURS.map((_, i) => (
@@ -517,7 +537,7 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, janela, podeAgendar, escopoProprio, meuId = null, bloqueios = [], paraBloquear = null,
 }: Props) {
   const router = useRouter()
   const fala = useFala()
@@ -642,6 +662,10 @@ export function AdminAgendaView({
 
           {/* Agendar daqui. A rede via a agenda das unidades mas não conseguia
               marcar nada: para isso era preciso entrar no portal de uma delas. */}
+          {paraBloquear && (
+            <BotaoBloquearHorario branchId={paraBloquear.branchId} profissionais={paraBloquear.profissionais}
+              salas={paraBloquear.salas} soEu={paraBloquear.soEu} dia={new Date(`${selectedDate}T12:00:00`)} />
+          )}
           {podeAgendar && (
             <button type="button" onClick={() => setAgendando(true)} className="btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)' }}>
@@ -684,6 +708,8 @@ export function AdminAgendaView({
           dia={selectedDate}
           onSelecionar={setSelecionado}
           onHorarioVazio={podeAgendar ? (branchId, quando) => setAgendando({ branchId, quando }) : null}
+          bloqueios={bloqueios}
+          podeDesfazer={podeAgendar}
         />
       ) : (
         <WeekGrid
