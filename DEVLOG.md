@@ -9486,6 +9486,15 @@ banco saudável quase a rodada toda. A **F26** (87df6fdf, 146778ad,
   de novo a gravação do andamento (2 s, 5 s) em vez de virar "Falhou".
 Mexeu na RLS de 33 políticas: a 4ª completa vem em seguida.
 
+**A 4ª completa (2026-11-05, run 41966854621, 560b9aa2):** compartilhados
+574/574; isolados 984 ✓ e 4 ✘ — nenhum defeito do sistema (F27, 6b642d29,
+só teste). As duas da foto clínica: o relógio de 1 s da tela do atendimento
+redesenha a sessão e desfazia o `appointment_id` adulterado pelo teste antes
+do clique; a action recebia o id certo e gravava certo (a recusa "Este
+atendimento não é desta cliente." segue em `actions/client-documents.ts`).
+O teste agora troca o id no evento `formdata`. As duas da LGPD foram o banco
+travado às 04:38 UTC (15/15 local). **Fecha o ciclo da 6ª simulação.**
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
