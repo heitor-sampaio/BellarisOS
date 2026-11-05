@@ -6,6 +6,7 @@ import { ler, contar } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
+import { valoresCobrados, type ValorCobrado } from '@/lib/appointments/valor-cobrado'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -40,6 +41,8 @@ type Appt = {
   branches:      { name: string } | null
   /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
   pagoAntes?:    string | null
+  /** D8 da 7ª: o pago com desconto mostra o valor cobrado, não o de tabela. */
+  cobrado?:      ValorCobrado | null
 }
 
 export default async function ClientAgendaPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -69,13 +72,14 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
     : false
 
   // O que já foi pago antes (D12): pré-pago, pacote, plano — sem o "R$" a pagar.
-  const [jaPagos, nomesDasSessoes] = await Promise.all([
+  const [jaPagos, cobrados, nomesDasSessoes] = await Promise.all([
     pagosAntes(admin, (data ?? []).map(a => a.id as string)),
+    valoresCobrados(admin, (data ?? []).filter(a => a.status === 'COMPLETED').map(a => a.id as string)),
     // A sessão de plano com mais de um procedimento diz todos (A36).
     nomesDasSessoesDoPlano(admin, (data ?? []).map(a => a.id as string)),
   ])
   const appointments = ((data ?? []) as unknown as Appt[]).map(a => ({
-    ...a, pagoAntes: jaPagos.get(a.id) ?? null,
+    ...a, pagoAntes: jaPagos.get(a.id) ?? null, cobrado: cobrados.get(a.id) ?? null,
     procedures: nomesDasSessoes.has(a.id) ? { ...a.procedures, name: nomesDasSessoes.get(a.id)! } : a.procedures,
   }))
   // A mesma regra da home (D14): o que ainda vai acontecer, em aberto.
@@ -177,8 +181,10 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade = false }: { appt: Appt; slug: string; highlight?: boolean; prazoHoras?: number; comUnidade?: boolean }) {
   const dt    = new Date(appt.scheduled_at)
   const color = STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
-  const price = appt.price
-    ? `R$ ${Number(appt.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+  // D8 da 7ª: pago, vale o cobrado (o preço menos o desconto da recepção).
+  const valor = appt.cobrado ? appt.cobrado.cobrado : Number(appt.price)
+  const price = valor
+    ? `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
     : '—'
 
   return (
@@ -247,8 +253,13 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
             {appt.pagoAntes}
           </span>
         ) : appt.price > 0 && (
-          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto' }}>
+          <span data-valor-do-atendimento style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto', textAlign: 'right' }}>
             {price}
+            {appt.cobrado && appt.cobrado.desconto > 0 && (
+              <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
+                {`desconto de R$ ${appt.cobrado.desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              </span>
+            )}
           </span>
         )}
       </div>
