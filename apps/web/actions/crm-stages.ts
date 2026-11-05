@@ -87,7 +87,9 @@ export async function createStage(
 }
 
 // --- Renomear ----------------------------------------------------
-export async function renameStage(stageId: string, name: string, slug: string) {
+// A11 da 7ª simulação: a tela diz se gravou ("Salvo") ou por quê não — o
+// resultado era descartado, e o Enter não fazia nada visível.
+export async function renameStage(stageId: string, name: string, slug: string): Promise<{ ok: true } | { error: string }> {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
@@ -96,19 +98,24 @@ export async function renameStage(stageId: string, name: string, slug: string) {
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    if (recusaDaConfigDaClinica(ctx)) return
-    if (!name.trim()) return
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
+    if (!name.trim()) return { error: 'Dê um nome à etapa.' }
 
-    const { error } = await createAdminClient()
+    const { data, error } = await createAdminClient()
       .from('crm_stages')
       .update({ name: name.trim() })
       .eq('id', stageId)
       .eq('tenant_id', ctx.tenantId!)
+      .select('id')
 
-    if (error) { console.error('[renameStage]', error.message); return }
+    if (error) { console.error('[renameStage]', error.message); return { error: 'Não consegui renomear a etapa.' } }
+    if (!data?.length) return { error: 'Etapa não encontrada.' }
     revalidarCRM(slug)
+    return { ok: true }
   } catch (e) {
     console.error('[renameStage]', e)
+    return { error: mensagemDoErro(e) }
   }
 }
 

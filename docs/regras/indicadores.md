@@ -297,6 +297,15 @@
       `20261101000705`): as oportunidades, os ganhos e o "tem ganho" ignoram
       o funil arquivado — o ganho de um funil arquivado fazia a tela dizer
       "0%" em vez de "—". Prova: `e2e/relatorios-conversao-funis-ativos.spec.ts`.
+    - **A conversão por ORIGEM** (A20 da 7ª simulação, 2026-11-05: "para quem
+      decide onde investir em anúncio, é o número que falta"): Relatórios →
+      Funil comercial → "Conversão por origem", uma linha por `leads.source`
+      ("Sem origem" sem ela) com leads, ganhas e a conversão — as MESMAS
+      oportunidades do painel (criadas no período, funis ativos, o "só os
+      meus"), contadas no banco (`metrics_conversao_por_origem`, migration
+      `20261105003103`) e divididas por `conversaoDasOportunidades`
+      (`getConversaoPorOrigem`); sem etapa de ganho, "—". Prova:
+      `e2e/crm-atritos-da-7.spec.ts` ("A20").
     - "Já é cliente" (`converted`, `leads.client_id`) não é conversão: é só o
       filtro do quadro ("Já é cliente / Ainda não é cliente") e um dado
       informativo para o Copilot. De 2026-10-28 a 10-29 a conversão foi

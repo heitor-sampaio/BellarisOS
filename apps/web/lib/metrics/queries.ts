@@ -665,6 +665,24 @@ export async function getMotivosDePerda(args: { tenantId: string; from: Date; to
 }
 
 /**
+ * A conversão por ORIGEM do lead (A20 da 7ª simulação, 2026-11-05): as mesmas
+ * oportunidades do painel comercial (criadas no período, funis ativos, o "só
+ * os meus" com os sem dono), por `leads.source`. A conversão é a de sempre,
+ * `conversaoDasOportunidades` — sem etapa de ganho na rede, "—".
+ */
+export async function getConversaoPorOrigem(args: { tenantId: string; from: Date; to: Date; ownerId?: string | null; temGanho: boolean }): Promise<{ origem: string; leads: number; ganhos: number; conversaoPct: number | null }[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_conversao_por_origem', {
+    p_tenant: args.tenantId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+    p_owner: args.ownerId ?? null,
+  })
+  logRpcError('metrics_conversao_por_origem', error)
+  return ((data as Record<string, unknown>[] | null) ?? []).map(r => {
+    const leads = n(r.leads), ganhos = n(r.ganhos)
+    return { origem: String(r.origem), leads, ganhos, conversaoPct: conversaoDasOportunidades({ total: leads, ganhos, temGanho: args.temGanho }) }
+  })
+}
+
+/**
  * Etapas de UM funil.
  *
  * Sem `funnelId` a função do banco usa o funil padrão da rede. Desde que existe

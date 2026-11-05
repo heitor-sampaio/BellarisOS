@@ -86,7 +86,8 @@ export async function createFunnel(
 
 // --- Editar ------------------------------------------------------
 
-export async function renameFunnel(funnelId: string, name: string, slug: string) {
+// A11 da 7ª simulação: como a etapa, a tela diz se gravou ou por quê não.
+export async function renameFunnel(funnelId: string, name: string, slug: string): Promise<{ ok: true } | { error: string }> {
   try {
     const ctx = await getTenantContext()
     assertRecurso(ctx, 'oportunidades')
@@ -95,19 +96,24 @@ export async function renameFunnel(funnelId: string, name: string, slug: string)
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    if (recusaDaConfigDaClinica(ctx)) return
-    if (!name.trim()) return
+    const daClinica = recusaDaConfigDaClinica(ctx)
+    if (daClinica) return { error: daClinica }
+    if (!name.trim()) return { error: 'Dê um nome ao funil.' }
 
-    const { error } = await createAdminClient()
+    const { data, error } = await createAdminClient()
       .from('crm_funnels')
       .update({ name: name.trim() })
       .eq('id', funnelId)
       .eq('tenant_id', ctx.tenantId!)
+      .select('id')
 
-    if (error) { console.error('[renameFunnel]', error.message); return }
+    if (error) { console.error('[renameFunnel]', error.message); return { error: 'Não consegui renomear o funil.' } }
+    if (!data?.length) return { error: 'Funil não encontrado.' }
     revalidarCRM(slug)
+    return { ok: true }
   } catch (e) {
     console.error('[renameFunnel]', e)
+    return { error: mensagemDoErro(e) }
   }
 }
 

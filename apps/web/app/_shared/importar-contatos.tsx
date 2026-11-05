@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
+import { origensDaRede } from '@/lib/crm/origens'
 import { ImportadorDeContatos } from '@/components/branch/importador-de-contatos'
 
 /**
@@ -68,6 +69,8 @@ export async function ImportarContatos({ unidadeFixa }: {
       etapaPadrao={etapaPadrao}
       responsaveis={(pessoas as { id: string; name: string; email: string | null }[] | null) ?? null}
       procedimentos={(procedimentos as { id: string; name: string }[] | null) ?? []}
+      // A14/A16 da 7ª: a origem da planilha casa primeiro com as origens da clínica.
+      origens={podeContatos ? (await origensDaRede(admin, ctx.tenantId!)).map(o => o.nome) : []}
       eu={ctx.internalUserId ?? null}
     />
   )

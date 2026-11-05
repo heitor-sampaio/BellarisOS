@@ -49,8 +49,11 @@ describe('sugerirMapeamento', () => {
   it('cada campo vai para uma coluna só (a primeira)', () => {
     expect(sugerirMapeamento(['Telefone', 'Celular'], 'clientes')).toEqual(['phone', null])
   })
-  it('no contato do CRM: nome, telefone, e-mail, rede social e tags — a ficha (CPF…) não', () => {
-    expect(camposDoDestino('contatos').map(c => c.chave)).toEqual(['name', 'phone', 'email', 'social_media', 'tags'])
+  // A16 da 7ª simulação: a ORIGEM também — ela entra como tag da pessoa (D-10), e a coluna não se mapeava.
+  it('no contato do CRM: nome, telefone, e-mail, rede social, tags e a origem — a ficha (CPF…) não', () => {
+    expect(camposDoDestino('contatos').map(c => c.chave)).toEqual(['name', 'phone', 'email', 'social_media', 'tags', 'op_origem'])
+    expect(camposDoDestino('contatos').find(c => c.chave === 'op_origem')?.grupo, 'é da pessoa, sem oportunidade').toBe('pessoa')
+    expect(sugerirMapeamento(['Nome', 'Origem'], 'contatos')).toEqual(['name', 'op_origem'])
     expect(sugerirMapeamento(['Nome', 'WhatsApp', 'CPF', 'E-mail', 'Instagram'], 'contatos')).toEqual(['name', 'phone', null, 'email', 'social_media'])
   })
   it('com oportunidade, os campos dela entram (e só então)', () => {
@@ -118,6 +121,11 @@ describe('os campos novos', () => {
     expect(normalizarOrigem('GOOGLE')).toBe('Google Ads')
     expect(normalizarOrigem('organico')).toBe('Orgânico')
     expect(normalizarOrigem('Feira de noivas')).toBe('Outro')
+  })
+  it('A14 da 7ª: a origem que a clínica cadastrou vale como está (sem acento nem caixa)', () => {
+    expect(normalizarOrigem('feira de NOIVAS', ['Feira de noivas', 'Instagram'])).toBe('Feira de noivas')
+    expect(normalizarOrigem('facebook', ['Feira de noivas'])).toBe('Meta Ads')
+    expect(normalizarOrigem('Rádio', ['Feira de noivas'])).toBe('Outro')
   })
   it('valor em reais, do jeito que a planilha traz', () => {
     expect(normalizarValor('R$ 1.500,00')).toBe(1500)

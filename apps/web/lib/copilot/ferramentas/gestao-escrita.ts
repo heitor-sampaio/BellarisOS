@@ -2,7 +2,8 @@ import 'server-only'
 import { z } from 'zod/v4'
 import { revalidatePath } from 'next/cache'
 import { isOwnScope, ownerFilter } from '@/lib/auth'
-import { LEAD_SOURCE_KEYS, maskPhone, unitTag } from '@estetica-os/utils'
+import { maskPhone, unitTag } from '@estetica-os/utils'
+import { origensDaRede } from '@/lib/crm/origens'
 import { ler } from '@/lib/db'
 import { dayKeyTZ } from '@/lib/datetime'
 import { lancarCore, marcarPagoCore, lancamentoAoAlcance, recusaDasVezesDaBaixa, CATEGORIAS_DE_DESPESA, CATEGORIAS_DE_RECEITA, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
@@ -329,11 +330,13 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
       if ('erro' in r) return { erro: r.erro }
       responsavel = r
     }
-    // A origem é a da lista da tela: fora dela, o indicador por origem quebra.
+    // A origem é a da lista da tela — as origens da CLÍNICA (A14 da 7ª,
+    // Configurar funis): fora dela, o indicador por origem quebra.
     let origem: string | null = null
     if (a.origem) {
-      origem = LEAD_SOURCE_KEYS.find(k => semAcento(k) === semAcento(a.origem!)) ?? null
-      if (!origem) return { erro: `Origem "${a.origem}" não existe. Origens: ${LEAD_SOURCE_KEYS.join(', ')}.` }
+      const daClinica = (await origensDaRede(c.admin, c.ctx.tenantId!)).map(o => o.nome)
+      origem = daClinica.find(k => semAcento(k) === semAcento(a.origem!)) ?? null
+      if (!origem) return { erro: `Origem "${a.origem}" não existe. Origens: ${daClinica.join(', ')}.` }
     }
     // Criada no portal de uma unidade (ou por quem é de uma): nasce com a tag dela, como na tela.
     const u = c.ctx.branchId || c.slugDoPortal ? await resolverUnidade(c, null) : { unidade: null }

@@ -5,7 +5,7 @@ import { useState, useTransition, useRef, useEffect, useMemo, useCallback, useSy
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, Phone, Mail, X,
-  MoreHorizontal,
+  MoreHorizontal, Trophy, XCircle, CalendarClock,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage } from '@/actions/leads'
@@ -407,6 +407,10 @@ export interface Lead {
   /** Perdido: o motivo (2026-10-21). */
   motivo_perda_id?:   string | null
   crm_motivos_perda?: { nome: string } | null
+  /** A18 da 7ª: o próximo agendamento da cliente ligada (ISO), para "Agendado 06/11 10:30". */
+  proximo_agendamento?: string | null
+  /** A18: a compra da cliente depois de a oportunidade nascer ("Pacote X"): o card SUGERE o Ganho. */
+  compra?: string | null
 }
 
 interface CRMBoardProps {
@@ -438,6 +442,8 @@ interface CRMBoardProps {
   podeCadastrarCliente?: boolean
   /** "Agendar" no card (A16 da 6ª simulação): o CRM em Gerenciar e a agenda no plano. */
   podeAgendar?: boolean
+  /** Mover o card pelos botões (A18/A19 da 7ª): o CRM em Gerenciar. */
+  podeMover?: boolean
 }
 
 // --- Cores suaves a partir de hex --------------------------------
@@ -483,6 +489,7 @@ function MenuItem({
 function LeadCard({
   lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs, podeCadastrarCliente = false,
   unidadesParaAgendar, isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
+  desfechos, onMoverPara,
 }: {
   lead:           Lead
   slug:           string
@@ -506,6 +513,9 @@ function LeadCard({
   /** Este é o lead pedido na URL: abre o modal e rola até o card. */
   abrirAoMontar?:    boolean
   onAbertoAoMontar?: () => void
+  /** As etapas de ganho e de perda do funil aberto (A18/A19); nulo, sem os botões. */
+  desfechos?: { ganho: CRMStage | null; perdido: CRMStage | null } | null
+  onMoverPara?: (leadId: string, etapaId: string) => void
 }) {
   const [convertOpen, setConvertOpen] = useState(false)
   const [moving,     startMoving]  = useTransition()
@@ -745,7 +755,7 @@ function LeadCard({
             ocupando o topo do card. Excluir lead deixou de existir (2026-09-28):
             sem outro funil, não há menu.
           */}
-          {outrosFunis.length > 0 && (
+          {(outrosFunis.length > 0 || (desfechos && onMoverPara)) && (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
@@ -780,12 +790,25 @@ function LeadCard({
                   display: 'flex', flexDirection: 'column', gap: 2,
                 }}
               >
+                {/* A19 da 7ª simulação: ganhar ou perder sem rolar até a coluna. */}
+                {desfechos?.ganho && onMoverPara && lead.crm_stage_id !== desfechos.ganho.id && (
+                  <MenuItem icon={<Trophy size={13} />} onClick={() => { setMenuAberto(false); onMoverPara(lead.id, desfechos.ganho!.id) }}>
+                    Marcar como ganho ({desfechos.ganho.name})
+                  </MenuItem>
+                )}
+                {desfechos?.perdido && onMoverPara && lead.crm_stage_id !== desfechos.perdido.id && (
+                  <MenuItem icon={<XCircle size={13} />} onClick={() => { setMenuAberto(false); onMoverPara(lead.id, desfechos.perdido!.id) }}>
+                    Marcar como perdido ({desfechos.perdido.name})
+                  </MenuItem>
+                )}
+                {outrosFunis.length > 0 && (
                 <MenuItem
                   icon={<ArrowRightLeft size={13} />}
                   onClick={() => { setMenuAberto(false); moveRef.current?.showModal() }}
                 >
                   Mover para outro funil
                 </MenuItem>
+                )}
               </div>
             )}
           </div>
@@ -902,6 +925,31 @@ function LeadCard({
           </div>
         )}
 
+        {/* A18 da 7ª simulação: o card diz quando a cliente vem, e — depois
+            de ela comprar — SUGERE levar a oportunidade a Ganho. Não move
+            sozinho (crm-05, princípio 6): quem move é a pessoa, no botão. */}
+        {lead.proximo_agendamento && (
+          <p data-agendado-em style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--info)' }}>
+            <CalendarClock size={11} /> Agendado {quandoNoCard(lead.proximo_agendamento)}
+          </p>
+        )}
+        {lead.compra && (
+          <div data-sugere-ganho onClick={e => e.stopPropagation()} style={{
+            marginTop: 8, padding: '7px 9px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--success-soft)', border: '1px solid var(--success-border)',
+            display: 'flex', flexDirection: 'column', gap: 6, fontSize: 'var(--text-2xs)', color: 'var(--text)',
+          }}>
+            <span>Comprou {lead.compra}. A oportunidade segue aberta{desfechos?.ganho ? '' : ' (este funil não tem etapa de ganho)'}.</span>
+            {desfechos?.ganho && onMoverPara && (
+              <button type="button" className="btn-secondary" draggable={false}
+                onClick={e => { e.stopPropagation(); onMoverPara(lead.id, desfechos.ganho!.id) }}
+                style={{ alignSelf: 'flex-start', fontSize: 'var(--text-2xs)', padding: '3px 8px', gap: 4 }}>
+                <Trophy size={11} /> Mover para {desfechos.ganho.name}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Footer */}
         <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -970,6 +1018,14 @@ function LeadCard({
   )
 }
 
+/** "06/11 10:30" no fuso da clínica — o mesmo no servidor e no navegador. */
+function quandoNoCard(iso: string): string {
+  const d = new Date(iso)
+  const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+  return `${dia} ${hora}`
+}
+
 // --- Relógio do quadro -------------------------------------------
 // Um "agora" que anda de minuto em minuto, lido por `useSyncExternalStore`.
 // Fora do componente porque é uma fonte externa: o render só LÊ o valor.
@@ -988,8 +1044,13 @@ const semRelogio = () => null
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId, unidades,
   procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [], podeCadastrarCliente = false,
-  podeAgendar = false,
+  podeAgendar = false, podeMover = false,
 }: CRMBoardProps) {
+  // A18/A19 da 7ª simulação: as etapas de desfecho do funil aberto — o botão
+  // "Mover para Fechado" da compra, o menu do card e o lugar de soltar no arraste.
+  const desfechos = podeMover
+    ? { ganho: stages.find(s => s.outcome === 'WON') ?? null, perdido: stages.find(s => s.outcome === 'LOST') ?? null }
+    : null
   // O "Agendar" do card (A16): na rede, as unidades dela; na unidade, ela.
   const unidadesParaAgendar = !podeAgendar ? null
     : networkMode ? (branches ?? [])
@@ -1137,14 +1198,16 @@ export function CRMBoard({
 
   function handleDrop(e: React.DragEvent, targetStageId: string) {
     e.preventDefault()
-    const id   = e.dataTransfer.getData('text/plain')
-    const lead = leads.find(l => l.id === id)
-    if (!lead || lead.crm_stage_id === targetStageId) {
-      setDraggingId(null); setOverStage(null); enterCounts.current = {}
-      return
-    }
-
+    // O id vem do arraste; sem ele (o navegador não repassou), o card que estava sendo arrastado.
+    const id   = e.dataTransfer.getData('text/plain') || draggingId || ''
     setDraggingId(null); setOverStage(null); enterCounts.current = {}
+    moverPara(id, targetStageId)
+  }
+
+  /** Leva o card a uma etapa — o arraste, o menu do card e a sugestão da compra (A18/A19). */
+  function moverPara(id: string, targetStageId: string) {
+    const lead = leads.find(l => l.id === id)
+    if (!lead || lead.crm_stage_id === targetStageId) return
     if (allStages.find(s => s.id === targetStageId)?.outcome === 'LOST') {
       setErroDaPerda(null)
       setPerdaPendente({ id, etapa: targetStageId })
@@ -1153,6 +1216,8 @@ export function CRMBoard({
     setLeads(prev => prev.map(l => l.id === id ? { ...l, crm_stage_id: targetStageId, motivo_perda_id: null, crm_motivos_perda: null } : l))
     startTransition(async () => { await updateLeadStage(id, targetStageId, slug) })
   }
+
+  const desfechosParaSoltar = [desfechos?.ganho, desfechos?.perdido].filter((s): s is CRMStage => !!s)
 
   async function confirmarPerda(perda: { motivoId: string; obs: string | null }) {
     if (!perdaPendente) return
@@ -1293,6 +1358,8 @@ export function CRMBoard({
                   onLeadDeleted={handleLeadDeleted}
                   abrirAoMontar={leadPendente === lead.id}
                   onAbertoAoMontar={aoAbrirLeadDaUrl}
+                  desfechos={desfechos}
+                  onMoverPara={moverPara}
                 />
               ))}
 
@@ -1313,6 +1380,39 @@ export function CRMBoard({
         )
       })}
     </div>
+
+    {/* A19 da 7ª simulação: a 1440 px as colunas de desfecho ficam fora da
+        tela, e perder exigia rolar com o card na mão. Arrastando, o ganho e o
+        perdido aparecem embaixo, à vista; soltar ali é soltar na coluna (o
+        perdido pergunta o motivo, como sempre). */}
+    {draggingId && desfechosParaSoltar.length > 0 && (
+      <div data-soltar-desfechos style={{
+        position: 'fixed', left: '50%', transform: 'translateX(-50%)',
+        bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))', zIndex: 30,
+        display: 'flex', gap: 10, padding: 8, borderRadius: 'var(--radius-card-token)',
+        background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-popover)',
+      }}>
+        {desfechosParaSoltar.map(st => {
+          const em = overStage === st.id
+          return (
+            <div key={st.id} data-soltar-desfecho={st.outcome}
+              onDragEnter={e => handleDragEnter(e, st.id)}
+              onDragLeave={e => handleDragLeave(e, st.id)}
+              onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+              onDrop={e => handleDrop(e, st.id)}
+              style={{
+                minWidth: 160, padding: '14px 18px', borderRadius: 'var(--radius-field-token)', textAlign: 'center',
+                border: '2px dashed ' + (em ? st.color : 'var(--border)'), background: em ? softBg(st.color) : 'var(--bg-app)',
+                fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: st.outcome === 'WON' ? 'var(--success)' : 'var(--text-muted)',
+                transition: 'background 120ms, border-color 120ms',
+              }}>
+              {st.outcome === 'WON' ? <Trophy size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> : <XCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />}
+              Soltar em {st.name}
+            </div>
+          )
+        })}
+      </div>
+    )}
     </div>
   )
 }

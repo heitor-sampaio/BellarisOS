@@ -67,6 +67,8 @@ export interface DadosComerciais {
   ranking: { id: string; name: string; leads: number; ganhos: number; conversaoPct: number | null; agendamentos: number }[]
   /** Por que as oportunidades do período foram perdidas (2026-10-21). */
   motivosDePerda: { motivo: string; total: number }[]
+  /** A conversão de cada origem do lead (A20 da 7ª), contada e dividida em lib/metrics. */
+  conversaoPorOrigem: { origem: string; leads: number; ganhos: number; conversaoPct: number | null }[]
 }
 
 export interface ReportsBiProps {
@@ -1301,6 +1303,25 @@ function TabComercial(p: ReportsBiProps) {
           />
         </SCard>
       </div>
+
+      {/* A20 da 7ª simulação: onde investir em anúncio — a conversão de cada origem. */}
+      <SCard title="Conversão por origem">
+        <div data-conversao-por-origem>
+          <SimpleTable
+            columns={[
+              { key: 'origem',  label: 'Origem' },
+              { key: 'leads',   label: 'Leads',  align: 'right', width: 80, render: v => fmtInt(Number(v)) },
+              { key: 'ganhos',  label: 'Ganhas', align: 'right', width: 80, render: v => fmtInt(Number(v)) },
+              { key: 'conversao', label: 'Conv.', align: 'right', width: 80,
+                render: (_v, row) => row.conversaoPct !== '' && row.conversaoPct != null
+                  ? <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{fmtPct(Number(row.conversaoPct))}</span>
+                  : '—' },
+            ]}
+            rows={c.conversaoPorOrigem.map(o => ({ id: o.origem, ...o, conversaoPct: o.conversaoPct ?? '' }))}
+            emptyMsg="Nenhuma oportunidade no período."
+          />
+        </div>
+      </SCard>
 
       <SCard title="Motivos de perda">
         {c.motivosDePerda.length === 0 ? (

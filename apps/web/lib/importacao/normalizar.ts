@@ -128,8 +128,12 @@ const ORIGENS: Record<string, string> = {
   evento: 'Evento', eventos: 'Evento', feira: 'Evento',
   outro: 'Outro', outros: 'Outro',
 }
-export function normalizarOrigem(bruto: string): string {
-  return ORIGENS[semAcento(bruto)] ?? 'Outro'
+export function normalizarOrigem(bruto: string, daClinica: string[] = []): string {
+  // A origem que a clínica cadastrou (A14 da 7ª: "Feira de noivas") vale como está.
+  const k = semAcento(bruto)
+  const cadastrada = daClinica.find(o => semAcento(o) === k)
+  if (cadastrada) return cadastrada
+  return ORIGENS[k] ?? 'Outro'
 }
 
 /**
@@ -171,6 +175,8 @@ export interface Referencias {
   /** A equipe ATIVA: pelo nome ou pelo e-mail. */
   membros?:       { id: string; nome: string; email: string | null }[]
   procedimentos?: { id: string; nome: string }[]
+  /** As origens do lead da CLÍNICA (A14 da 7ª): a da planilha casa com elas primeiro. */
+  origens?:       string[]
 }
 
 /** O id pelo nome (sem acento nem caixa); `ambiguo` se dois têm o mesmo. */
@@ -289,7 +295,7 @@ export function validarLinha(
         break
       }
       case 'op_origem':
-        dados.op_origem = normalizarOrigem(v)
+        dados.op_origem = normalizarOrigem(v, refs?.origens)
         break
       case 'op_valor': {
         const n = normalizarValor(v)

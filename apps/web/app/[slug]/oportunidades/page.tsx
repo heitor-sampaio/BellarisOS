@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
+import { origensDaRede } from '@/lib/crm/origens'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
 import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -16,6 +17,7 @@ import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
 import { ler, lerTodas } from '@/lib/db'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
+import { sinaisDasClientes, sugereGanho } from '@/lib/crm/sinais-do-card'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -153,6 +155,10 @@ export default async function BranchOportunidadesPage({
   const atividade = await atividadeDasPessoas(
     ctx.tenantId!, leads.map(l => l.contato_id),
   )
+  // A18 da 7ª simulação: o próximo agendamento e a compra da cliente ligada —
+  // o card diz "Agendado…" e SUGERE o Ganho (nenhum card anda sozinho).
+  const sinais = await sinaisDasClientes(ctx.tenantId!, leads.map(l => l.client_id as string | null).filter((x): x is string => !!x))
+  const abertaNaEtapa = (etapa: unknown) => allStages.find(st => st.id === etapa)?.outcome === 'OPEN'
   const leadsData = leads.map(l => {
     const { users: dono, contato_id: pessoa, ...rest } = l
     const ativ = atividade.get(pessoa)
@@ -163,6 +169,10 @@ export default async function BranchOportunidadesPage({
       owner_ativo:         dono ? dono.is_active : null,
       last_interaction_at: ativ?.last_interaction_at ?? null,
       awaiting_since:      ativ?.awaiting_since ?? null,
+      // A18: o que o card diz da cliente ligada (lib/crm/sinais-do-card).
+      proximo_agendamento: l.client_id ? sinais.get(l.client_id as string)?.proximoAgendamento ?? null : null,
+      compra: l.client_id && sugereGanho(l as unknown as { created_at: string }, sinais.get(l.client_id as string), abertaNaEtapa(l.crm_stage_id))
+        ? sinais.get(l.client_id as string)!.compra : null,
     }
   })
 
@@ -193,6 +203,7 @@ export default async function BranchOportunidadesPage({
           {podeConfigurar && (
             <CRMStageSettings
               motivos={motivosTodos}
+              origens={podeConfigurar ? await origensDaRede(createAdminClient(), ctx.tenantId!, true) : []}
               slug={slug}
               funnels={funnels}
               stages={allStages}
@@ -237,6 +248,7 @@ export default async function BranchOportunidadesPage({
         leadAberto={leadAberto}
         podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
         podeAgendar={can(ctx, 'crm', 'MANAGE') && temRecurso(ctx, 'agenda')}
+        podeMover={can(ctx, 'crm', 'MANAGE')}
       />
     </div>
   )

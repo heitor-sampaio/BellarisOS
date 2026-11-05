@@ -7,6 +7,7 @@ import { gravar, ler } from '@/lib/db'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { camposAlterados } from '@/lib/events/emitir'
 import { documentoEstrangeiroRepetido, type ColunasDoDocumento } from '@/lib/clients/documento'
+import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -55,9 +56,33 @@ export async function atualizarClienteCore(
   if (alterou.length > 0) {
     await emitirEventoDeCliente(EVENTOS.CLIENTE_DADOS_ALTERADOS, clientId, ctx, { alterou, unificado: opcoes.unificado })
   }
+  // A21 da 7ª simulação: a ficha renomeada (o "Lead 3 Cardoso" virou Patrícia)
+  // e o card seguia o nome antigo. O nome é da PESSOA, e as cópias acompanham
+  // (crm-inbox.md §9.2.1): a pessoa do CRM ligada à ficha — pelas
+  // oportunidades e pelas conversas dela — ganha o nome novo, pela porta de
+  // sempre (`propagarDadosDaPessoa`: a pessoa, as conversas, as oportunidades e
+  // a linha do tempo de cada uma).
+  if (alterou.includes('name') && typeof depois?.name === 'string' && depois.name.trim()) {
+    await propagarNomeDaFicha(admin, ctx, clientId, depois.name)
+  }
 
   if (slug) revalidatePath(`/${slug}/clients/${clientId}`)
   revalidatePath(`/admin/clients/${clientId}`)
   revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
   return { alterou }
+}
+
+/** As pessoas do CRM ligadas à ficha (pelas oportunidades e pelas conversas) recebem o nome novo (A21). */
+async function propagarNomeDaFicha(admin: Admin, ctx: TenantContext, clientId: string, nome: string): Promise<void> {
+  const [doLead, daConversa] = await Promise.all([
+    ler(admin.from('leads').select('contato_id').eq('tenant_id', ctx.tenantId!).eq('client_id', clientId), 'buscar as oportunidades da ficha'),
+    ler(admin.from('conversations').select('contato_id').eq('tenant_id', ctx.tenantId!).eq('client_id', clientId), 'buscar as conversas da ficha'),
+  ])
+  const pessoas = new Set(
+    [...((doLead ?? []) as { contato_id: string | null }[]), ...((daConversa ?? []) as { contato_id: string | null }[])]
+      .map(l => l.contato_id).filter((x): x is string => !!x),
+  )
+  for (const pessoa of pessoas) {
+    await propagarDadosDaPessoa(admin, ctx as Parameters<typeof propagarDadosDaPessoa>[1], pessoa, { nome })
+  }
 }

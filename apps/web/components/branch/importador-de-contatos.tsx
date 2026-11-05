@@ -46,6 +46,8 @@ interface Props {
   responsaveis: { id: string; name: string; email: string | null }[] | null
   /** Os procedimentos ativos (a coluna "procedimento de interesse" cita pelo nome). */
   procedimentos: { id: string; name: string }[]
+  /** As origens do lead da clínica (A14 da 7ª): a da planilha casa com elas primeiro. */
+  origens?: string[]
   eu: string | null
 }
 
@@ -105,7 +107,8 @@ export function ImportadorDeContatos(p: Props) {
     etapas: p.etapas.filter(e => e.funnel_id === funilDaEtapa).map(e => ({ id: e.id, nome: e.name })),
     membros: (p.responsaveis ?? []).map(r => ({ id: r.id, nome: r.name, email: r.email })),
     procedimentos: p.procedimentos.map(x => ({ id: x.id, nome: x.name })),
-  }), [p.unidades, p.etapas, p.responsaveis, p.procedimentos, funilDaEtapa])
+    origens: p.origens ?? [],
+  }), [p.unidades, p.etapas, p.responsaveis, p.procedimentos, p.origens, funilDaEtapa])
 
   function irParaColunas() {
     if (!arquivo) return
@@ -352,11 +355,14 @@ export function ImportadorDeContatos(p: Props) {
                 ))}
               </ul>
             )}
+            {/* A16 da 7ª simulação: como a origem da planilha entra, antes de importar. */}
+            <OrigensDaPlanilha destino={destino} comOportunidade={comOportunidade} validadas={validadas}
+              brutas={mapa.indexOf('op_origem') >= 0 ? arquivo.linhas.map(l => (l[mapa.indexOf('op_origem')] ?? '').trim()) : null} />
             <OQueJunta destino={destino} validadas={validadas} cruzados={cruzados} naoCompletar={naoCompletar}
               alternar={n => setNaoCompletar(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })} />
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
               Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone ou, sem ele, pelo e-mail'}) só tem o que está em
-              branco completado — nada do que a clínica já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags e a origem se juntam.'} A importação não dispara as
+              branco completado — nada do que a clínica já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags se juntam (a origem entra como tag), e o nome e o e-mail que ficam são os da primeira linha.'} A importação não dispara as
               automações de cadastro (boas-vindas, novo lead); as de rotina — aniversário, quem não volta há
               tempo — passam a contar com quem entrou.
             </p>
@@ -561,6 +567,22 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
   const semTelefone = prontas.filter(l => !l.dados.phone)
   if (!itens.length && !naPlanilha.length && !semTelefone.length) return null
   const juntam = itens.length + naPlanilha.length
+  // A17 da 7ª simulação: a prévia dizia qual NOME fica, e não que o e-mail da
+  // outra linha se perde (a regra D-10/A14: só se completa o vazio). O e-mail
+  // que fica é o primeiro preenchido entre as linhas do telefone, na ordem.
+  const emailDa = (n: number) => (prontas.find(l => l.numero === n)?.dados.email as string | undefined) || null
+  const emailQueFica = (numero: number) => {
+    const fone = prontas.find(l => l.numero === numero)?.dados.phone
+    const antes = prontas.filter(l => l.numero < numero && l.dados.phone === fone)
+    const com = antes.find(l => l.dados.email)
+    return com ? { email: com.dados.email as string, linha: com.numero } : null
+  }
+  const emailQueSePerde = (numero: number) => {
+    const meu = emailDa(numero)
+    const fica = emailQueFica(numero)
+    if (!meu || !fica || meu.toLowerCase() === fica.email.toLowerCase()) return null
+    return <> — o e-mail desta linha ({meu}) não entra: fica o da linha {fica.linha} ({fica.email})</>
+  }
   // A14: com OUTRO nome, a prévia diz qual fica — no CRM o telefone é uma
   // pessoa só (a conversa do WhatsApp é uma), e o nome dela não é trocado.
   const nomeQueFica = (nome: string) => <> — o nome que fica é <b style={forte}>{nome}</b></>
@@ -578,6 +600,7 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
               <li key={i.numero}>
                 Linha {i.numero} · {nomeDaLinha(i.numero)} junta com <b style={forte}>{i.nome}</b> ({i.como === 'email' ? 'o mesmo e-mail' : 'o mesmo telefone'})
                 {nomeDiferente(nomeDaLinha(i.numero), i.nome) && nomeQueFica(i.nome)}
+                {i.como !== 'email' && emailDa(i.numero) && <> — o e-mail desta linha só entra se {i.nome} ainda não tiver um</>}
               </li>
             ))}
             {naPlanilha.map(r => {
@@ -586,6 +609,7 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
                 <li key={r.numero}>
                   Linha {r.numero} · {nomeDaLinha(r.numero)} junta com a linha {r.com}{outro && <> · {nomeDaLinha(r.com)}</>} (o mesmo telefone)
                   {outro && nomeQueFica(nomeDaLinha(r.com))}
+                  {emailQueSePerde(r.numero)}
                 </li>
               )
             })}
@@ -603,6 +627,42 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
           (linha {semTelefone.slice(0, 10).map(l => l.numero).join(', ')}{semTelefone.length > 10 ? '…' : ''}).
         </span>
       )}
+    </div>
+  )
+}
+
+/**
+ * Como a ORIGEM da planilha entra (A16 da 7ª simulação, 2026-11-05; princípio
+ * 3): a prévia dizia que "a origem se junta" e não dizia em quê. Mostra cada
+ * valor da coluna e a origem que ele vira — a da clínica com o mesmo nome, o
+ * apelido conhecido ("facebook" → Meta Ads) ou "Outro" — e onde ela entra:
+ * no contato, como TAG da pessoa (D-10); com a oportunidade, também no card.
+ */
+function OrigensDaPlanilha({ destino, comOportunidade, validadas, brutas }: {
+  destino: Destino; comOportunidade: boolean; validadas: LinhaValidada[]; brutas: string[] | null
+}) {
+  if (!brutas) return null
+  const pares = new Map<string, string>()
+  validadas.forEach((l, i) => {
+    const bruta = brutas[i]
+    const vira = l.dados.op_origem as string | undefined
+    if (bruta && vira && !l.erros.length && !pares.has(bruta)) pares.set(bruta, vira)
+  })
+  if (!pares.size) return null
+  const onde = destino === 'contatos'
+    ? `entra como tag da pessoa${comOportunidade ? ' e é a origem da oportunidade' : ''}`
+    : 'é a origem da oportunidade'
+  const lista = [...pares.entries()]
+  return (
+    <div data-origens-da-planilha style={caixaDaPrevia}>
+      <span style={forte}>A origem de cada linha {onde}:</span>
+      <span>
+        {lista.slice(0, 12).map(([de, para]) => (de === para ? para : `${de} → ${para}`)).join(' · ')}
+        {lista.length > 12 ? ' …' : ''}
+      </span>
+      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+        A que não é uma das origens da clínica (Oportunidades → Configurar funis) nem um apelido conhecido vira “Outro”.
+      </span>
     </div>
   )
 }

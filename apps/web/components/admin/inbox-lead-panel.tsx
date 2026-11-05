@@ -19,6 +19,7 @@ import {
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
+import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
 import { StageOptions } from '@/components/branch/stage-options'
 import { LeadTimeline } from '@/components/branch/lead-timeline'
 import {
@@ -765,6 +766,9 @@ function OportunidadeItem({
   const [stageId, setStageId] = useState(o.crm_stage_id ?? '')
   const [notes,   setNotes]   = useState(o.notes ?? '')
   const [source,  setSource]  = useState(o.source ?? '')
+  // A14 da 7ª simulação: as origens são da clínica (Configurar funis).
+  const origensDaClinica = useOrigensDaRede(aberta)
+  const origens = origensDaClinica?.length ? origensDaClinica : LEAD_SOURCES.map(x => x.key)
   const [valor,   setValor]   = useState(o.value === null ? '' : String(o.value).replace('.', ','))
   const [procs,   setProcs]   = useState<string[]>(o.procedure_ids)
   const [salvando, startSave] = useTransition()
@@ -867,7 +871,7 @@ function OportunidadeItem({
           <PickerCompacto
             icone={<Compass size={12} />}
             rotuloBotao={source ? 'Alterar origem' : 'Definir origem'}
-            opcoes={LEAD_SOURCES.map(s => ({ valor: s.key, rotulo: s.label }))}
+            opcoes={[...new Set([...origens, ...(source ? [source] : [])])].map(x => ({ valor: x, rotulo: x }))}
             selecionadas={source ? [source] : []}
             disabled={disabled}
             textoListaVazia="Nenhuma origem cadastrada."

@@ -12,7 +12,7 @@ import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
 import { getQuemAtende } from '@/lib/metrics/relatorio'
 import {
-  resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getPainelComercial, percent,
+  resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getConversaoPorOrigem, getPainelComercial, percent,
   getSeries, getTicketMedio, getResultadoDoEstoque, getSeriesDoResultado,
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
@@ -389,6 +389,9 @@ async function painelComercial({
     getMotivosDePerda({ tenantId, from, to, ownerId }),
   ])
 
+  // A20 da 7ª simulação: a conversão por origem, a mesma conta, sobre as mesmas oportunidades.
+  const conversaoPorOrigem = await getConversaoPorOrigem({ tenantId, from, to, ownerId, temGanho: painel.temGanho })
+
   const nomeDe = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))
 
   // Comparecimento exclui as canceladas do denominador: com elas dentro a
@@ -427,5 +430,6 @@ async function painelComercial({
     comparecimento: percent(comerciaisRealizados, comerciaisConsiderados) ?? 0,
     ranking: ranking.sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos)),
     motivosDePerda,
+    conversaoPorOrigem,
   }
 }

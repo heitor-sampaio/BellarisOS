@@ -20,6 +20,7 @@ import type { Lead } from './crm-board'
 import { LEAD_SOURCES, unitTag, maskPhone as telefoneParaExibir, maskTelefoneDigitando } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
 
 export interface Procedure { id: string; name: string }
 
@@ -167,11 +168,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const idEtapa       = useId()
     const idObservacoes = useId()
 
-    /** Origem gravada que não existe na lista canônica (base legada). */
-    const origemForaDaLista =
-      existing?.source && !LEAD_SOURCES.some(s => s.key === existing.source)
-        ? existing.source
-        : null
 
     /**
      * O `<dialog>` fica no DOM mesmo fechado, e o quadro monta um por card.
@@ -195,6 +191,15 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
      * distribuição automática fica para as automações.
      */
     const vocabulario = useTagsDaRede(aberto)
+    // A14 da 7ª simulação: as origens são da clínica (Configurar funis); sem
+    // a lista (carregando, falhou), as de sempre.
+    const origensDaClinica = useOrigensDaRede(aberto)
+    const origens = origensDaClinica?.length ? origensDaClinica : LEAD_SOURCES.map(x => x.key)
+    // Controlada: a lista chega depois de abrir, e o select sem dono perdia a
+    // escolha quando as opções mudavam.
+    const [origem, setOrigem] = useState(existing?.source ?? '')
+    /** Origem gravada que não está na lista da clínica (desativada, base legada). */
+    const origemForaDaLista = origem && !origens.includes(origem) ? origem : null
     const suggestedTags = useMemo(() => [...new Set([
       ...(vocabulario ?? []),
       ...(unidades ?? []).map(u => unitTag(u.name)),
@@ -214,6 +219,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setPhone(telefoneDoCampo(existing?.phone ?? pessoa?.telefone))
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
+      setOrigem(existing?.source ?? '')
       setMotivoId(''); setMotivoObs('')
       // Lead novo no portal da unidade já nasce marcado com ela — quem cria
       // ali está trabalhando aquela unidade.
@@ -497,7 +503,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Label htmlFor={idOrigem}>Origem</Label>
-                  <select id={idOrigem} name="source" className="field" defaultValue={existing?.source ?? ''}>
+                  <select id={idOrigem} name="source" className="field" value={origem} onChange={e => setOrigem(e.target.value)}>
                     <option value="">Não informado</option>
                     {/*
                       Origem fora da lista canônica vira opção própria. As chaves
@@ -509,7 +515,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                     {origemForaDaLista && (
                       <option value={origemForaDaLista}>{origemForaDaLista}</option>
                     )}
-                    {LEAD_SOURCES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    {origens.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

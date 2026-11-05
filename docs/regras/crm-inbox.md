@@ -415,8 +415,9 @@ dela — e vê Configurações só com essa aba.
 - **Os campos que se oferecem dependem da importação** (`camposDoDestino`,
   2026-10-13 — "quanto mais completa, melhor"): a oportunidade se decide no
   PASSO 1, antes das colunas, porque com ela entram os campos do CARD —
-  origem (no vocabulário de `LEAD_SOURCES`, com apelidos: "facebook" é Meta
-  Ads; o desconhecido vira "Outro", não erro), valor estimado ("R$ 1.500,00"),
+  origem (as origens DA CLÍNICA primeiro — `crm_origens`, A14 da 7ª —, depois
+  os apelidos: "facebook" é Meta Ads; o desconhecido vira "Outro", não erro;
+  `normalizarOrigem` com `refs.origens`), valor estimado ("R$ 1.500,00"),
   observações, procedimento de interesse, etapa (do funil escolhido), responsável
   (nome ou e-mail da equipe ativa), UTM source/medium/campaign e tags da
   oportunidade. Etapa e responsável da linha vencem os da tela; vazio, valem os
@@ -476,6 +477,18 @@ dela — e vê Configurações só com essa aba.
   pessoa (como a do anúncio, `deriveLeadSource`), também na pessoa nova. Na
   ficha (clientes) a repetida continua recusada (mesmo CPF, ou sem CPF o
   mesmo telefone COM O MESMO NOME). Prova: `e2e/importacao-contatos.spec.ts` ("só com e-mail").
+  **A coluna da origem se mapeia também SEM oportunidade** (A16 da 7ª
+  simulação, 2026-11-05; princípio 3: a coluna "origem" não se oferecia no
+  contato, e a prévia dizia que "a origem se junta"): "Origem (vira tag da
+  pessoa)" no grupo da pessoa (`camposDoDestino`). A prévia diz como cada
+  valor entra — "A origem de cada linha entra como tag da pessoa: facebook →
+  Meta Ads · Feira de noivas" (`OrigensDaPlanilha`, `data-origens-da-planilha`)
+  —, e o texto do telefone repetido diz a regra inteira: "as tags se juntam (a
+  origem entra como tag), e o nome e o e-mail que ficam são os da primeira
+  linha". **E o e-mail que se perde** (A17): "— o e-mail desta linha (joana@…)
+  não entra: fica o da linha 2 (marta@…)"; com quem já existe, "o e-mail
+  desta linha só entra se X ainda não tiver um". A regra D-10/A14 não mudou.
+  Prova: `e2e/crm-atritos-da-7.spec.ts` ("A16/A17"), `tests/importacao.test.ts`.
 - **O mesmo telefone com OUTRO nome na planilha** (A14 da 6ª simulação,
   2026-11-04; princípios 1 e 3: a Karina sumia na Bianca, calada): não é a
   repetida. **Na ficha**, a prévia mostra "Linha 3 · Karina tem o mesmo
@@ -809,6 +822,43 @@ escolher a etapa) e no modal do lead.
   horário que sirva, Desistiu, Outro (gatilho `trg_motivos_perda_na_rede_nova`).
 Prova: `e2e/crm-motivo-da-perda.spec.ts`.
 
+**As origens do lead são da CLÍNICA** (A14 da 7ª simulação, 2026-11-05;
+princípio 1, "a clínica decide"): eram uma lista fixa (`LEAD_SOURCES`), e a
+Gardênia não tinha onde pôr "Feira de noivas". `crm_origens` (migration
+`20261105003101`; RLS sem política permissiva, com as restritivas do suporte),
+editada em Configurar funis → "Origens dos leads" como os motivos de perda
+(`OrigensDoLeadConfig`, `actions/crm-origens.ts`: Configurações em Gerenciar,
+da rede — H7). A rede nasce com as de sempre (Meta Ads, Google Ads, Orgânico,
+Instagram, Indicação, WhatsApp, Telefone, Site, Evento, Outro — gatilho
+`trg_origens_na_rede_nova`; as redes que já existiam ganharam as mesmas).
+Desativar tira da escolha sem apagar. `leads.source` segue o NOME (texto): nada
+se reescreve, e a origem do anúncio continua vindo da atribuição. Oferecem as
+da clínica: o modal do lead (o select passou a controlado — a lista chega
+depois de abrir), o painel do inbox (`useOrigensDaRede`), o Copilot
+(`criar_oportunidade`) e a importação (acima). Prova:
+`e2e/crm-atritos-da-7.spec.ts` ("A14"), `e2e/crm-funis-pede-configuracoes.spec.ts`.
+
+**Enter grava o nome da etapa e do funil** (A11 da 7ª simulação): só gravava
+ao sair do campo, e o Enter não fazia nada visível. Enter grava, Esc desfaz, a
+linha diz "Salvo" (`data-etapa-salva`), e `renameStage`/`renameFunnel`
+devolvem `{ error }` — a recusa aparece (o resultado era descartado). Prova:
+o mesmo spec ("A11").
+
+**O card diz o que a cliente ligada fez** (A18 da 7ª simulação, 2026-11-05):
+"Agendado 06/11 10:30" (o próximo agendamento marcado dela,
+`data-agendado-em`) e, quando ela COMPROU depois de a oportunidade nascer
+(pacote, pré-pago ou plano aceito) e o card segue aberto, "Comprou Pacote X. A
+oportunidade segue aberta." com "Mover para Fechado" (`data-sugere-ganho`). É
+SUGESTÃO: nada se move sozinho (crm-05, princípio 6) — quem move é a pessoa,
+no botão, pelo `updateLeadStage` de sempre. Uma ida ao banco para o quadro
+inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
+`service_role`; `lib/crm/sinais-do-card.ts`). **Ganhar ou perder sem rolar**
+(A19): a 1440 px as colunas de desfecho ficam fora da tela; o menu do card tem
+"Marcar como ganho (Fechado)" e "Marcar como perdido (Perdido)", e arrastando
+um card aparece embaixo "Soltar em Fechado / Soltar em Perdido"
+(`data-soltar-desfecho`) — soltar ali é soltar na coluna (o perdido pergunta o
+motivo). Prova: o mesmo spec ("A18", "A19").
+
 **Nome e telefone são da pessoa, e as cópias acompanham** (2026-09-28). A conversa
 e a oportunidade guardam cópia, e a edição em qualquer
 um dos dois lugares — painel do inbox (`atualizarContato`) ou card da
@@ -822,6 +872,12 @@ oportunidade (`updateLead`) — passa por `propagarDadosDaPessoa`
 - cada oportunidade que mudou registra o de → para na linha do tempo.
 Prova: `e2e/contato-propaga.spec.ts`. Editar cópia sem passar por aí é o
 defeito de volta.
+**A ficha renomeada também propaga** (A21 da 7ª simulação, 2026-11-05: o card
+seguia "Lead 3 Cardoso" com a ficha já "Patrícia"): `atualizarClienteCore`
+(a aba Dados e o Copilot), quando o nome muda, leva-o às pessoas ligadas à
+ficha — pelas oportunidades (`leads.client_id`) e pelas conversas
+(`conversations.client_id`) — pelo mesmo `propagarDadosDaPessoa`. Prova:
+`e2e/crm-atritos-da-7.spec.ts` ("A21").
 
 **A tela lê o NOME da pessoa, não a cópia** — lista, busca (`inbox_pagina`),
 card do contato, "virar cliente", template, agendamento pelo CRM e o evento da
@@ -858,6 +914,9 @@ o contato junto.
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
+❌ Oferecer a origem do lead da lista fixa (LEAD_SOURCES) onde a clínica escolhe — são as origens dela (crm_origens: origensDaRede, useOrigensDaRede); LEAD_SOURCES fica para a atribuição do anúncio e o fallback (A14 da 7ª)
+❌ Mover o card porque a cliente comprou — o card SUGERE ("Mover para Fechado"), quem move é a pessoa (A18 da 7ª, crm-05)
+❌ Renomear a ficha sem levar o nome às pessoas ligadas a ela (atualizarClienteCore → propagarDadosDaPessoa — A21 da 7ª)
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
 ❌ Gravar a ficha da cliente (dados, anotações, arquivar) pela SESSÃO — a RLS recorta pela unidade de cadastro e a cliente é da clínica: é pelo servidor, com a rede na consulta
 ❌ Lançar a trava de módulo (assertPermission) num layout.tsx de seção: sai antes do streaming e a resposta é 500 — o layout sem o módulo só deixa passar a página, e a trava é dela (D11 da 7ª)

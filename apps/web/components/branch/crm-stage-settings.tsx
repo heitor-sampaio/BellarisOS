@@ -18,6 +18,7 @@ import {
   createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels,
 } from '@/actions/crm-funnels'
 import { MotivosDePerdaConfig, type MotivoConfiguravel } from './motivos-de-perda-config'
+import { OrigensDoLeadConfig, type OrigemConfiguravel } from './origens-do-lead-config'
 
 // Converte hex em versão suave para a borda (hex 8 dígitos com alpha)
 function softBorder(hex: string) { return hex + '50' }
@@ -32,6 +33,8 @@ interface CRMStageSettingsProps {
   activeFunnelId: string
   /** Os motivos de perda da rede, inclusive os desativados. */
   motivos?: MotivoConfiguravel[]
+  /** As origens do lead da rede, inclusive as desativadas (A14 da 7ª). */
+  origens?: OrigemConfiguravel[]
 }
 
 // --- Linha de etapa ----------------------------------------------
@@ -62,10 +65,23 @@ function StageRow({
     setName(stage.name); setColor(stage.color); setOutcome(stage.outcome)
   }
 
+  // A11 da 7ª simulação: Enter grava (era só ao sair do campo), Esc desfaz, e
+  // a linha diz "Salvo" ou o motivo da recusa.
+  const [salvo, setSalvo] = useState(false)
   function handleNameBlur() {
     if (name.trim() && name.trim() !== stage.name) {
-      start(() => renameStage(stage.id, name, slug))
+      setSalvo(false); setDeleteErr(null)
+      start(async () => {
+        const r = await renameStage(stage.id, name, slug)
+        if ('error' in r) { setDeleteErr(r.error); setName(stage.name); return }
+        setSalvo(true)
+        router.refresh()
+      })
     }
+  }
+  function teclaNoNome(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+    if (e.key === 'Escape') { e.preventDefault(); setName(stage.name) }
   }
 
   function handleColorChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -132,8 +148,10 @@ function StageRow({
         {/* Nome */}
         <input
           value={name}
-          onChange={e => setName(e.target.value)}
+          aria-label={`Nome da etapa ${stage.name}`}
+          onChange={e => { setName(e.target.value); setSalvo(false) }}
           onBlur={handleNameBlur}
+          onKeyDown={teclaNoNome}
           style={{
             flex: 1, minWidth: 60, border: 'none', outline: 'none', background: 'transparent',
             fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)',
@@ -142,6 +160,12 @@ function StageRow({
           onFocus={e => { e.currentTarget.style.background = 'var(--bg-app)'; e.currentTarget.style.outline = `2px solid ${color}` }}
           onBlurCapture={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.outline = 'none' }}
         />
+
+        {salvo && (
+          <span data-etapa-salva role="status" style={{ flexShrink: 0, fontSize: 'var(--text-2xs)', color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <CheckCircle2 size={12} /> Salvo
+          </span>
+        )}
 
         {/* Resultado: é o que dá conversão própria ao funil */}
         <select
@@ -214,10 +238,20 @@ function FunnelRow({
     setName(funnel.name)
   }
 
+  // A11 da 7ª simulação: Enter grava, Esc desfaz, e a recusa aparece.
   function handleNameBlur() {
     if (name.trim() && name.trim() !== funnel.name) {
-      start(() => renameFunnel(funnel.id, name, slug))
+      onError(null)
+      start(async () => {
+        const r = await renameFunnel(funnel.id, name, slug)
+        if ('error' in r) { onError(r.error); setName(funnel.name); return }
+        router.refresh()
+      })
     }
+  }
+  function teclaNoNome(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+    if (e.key === 'Escape') { e.preventDefault(); setName(funnel.name) }
   }
 
   async function rodar(fn: () => Promise<{ error?: string } | void>) {
@@ -253,8 +287,10 @@ function FunnelRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <input
           value={name}
+          aria-label={`Nome do funil ${funnel.name}`}
           onChange={e => setName(e.target.value)}
           onBlur={handleNameBlur}
+          onKeyDown={teclaNoNome}
           onClick={e => e.stopPropagation()}
           style={{
             width: '100%', border: 'none', outline: 'none', background: 'transparent',
@@ -329,7 +365,7 @@ function IconBtn({
 
 // --- Modal de configuração ----------------------------------------
 export function CRMStageSettings({
-  slug, funnels: initialFunnels, stages: initialStages, activeFunnelId, motivos = [],
+  slug, funnels: initialFunnels, stages: initialStages, activeFunnelId, motivos = [], origens = [],
 }: CRMStageSettingsProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
@@ -675,6 +711,7 @@ export function CRMStageSettings({
         </div>
 
         <MotivosDePerdaConfig motivos={motivos} />
+        <OrigensDoLeadConfig origens={origens} />
       </dialog>
     </>
   )

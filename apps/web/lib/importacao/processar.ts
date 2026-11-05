@@ -133,6 +133,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
       etapaId:       usa('op_etapa') ? p.oportunidade?.etapaId : null,
       membros:       usa('op_responsavel'),
       procedimentos: usa('op_procedimentos'),
+      origens:       usa('op_origem'),
     })
     // A tag de cada unidade (é por ela que a lista de clientes filtra).
     const nomesDasUnidades = new Map((refs.unidades ?? []).map(u => [u.id, u.nome]))

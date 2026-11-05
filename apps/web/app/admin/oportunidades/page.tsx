@@ -1,5 +1,6 @@
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
+import { origensDaRede } from '@/lib/crm/origens'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -8,6 +9,7 @@ import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
+import { sinaisDasClientes, sugereGanho } from '@/lib/crm/sinais-do-card'
 import type { ComponentProps } from 'react'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
@@ -114,6 +116,10 @@ export default async function AdminOportunidadesPage({
   const atividade = await atividadeDasPessoas(
     ctx.tenantId!, leadsRaw.map(l => l.contato_id),
   )
+  // A18 da 7ª simulação: o próximo agendamento e a compra da cliente ligada —
+  // o card diz "Agendado…" e SUGERE o Ganho (nenhum card anda sozinho).
+  const sinais = await sinaisDasClientes(ctx.tenantId!, leadsRaw.map(l => l.client_id as string | null).filter((x): x is string => !!x))
+  const abertaNaEtapa = (etapa: unknown) => allStages.find(st => st.id === etapa)?.outcome === 'OPEN'
   const leads = leadsRaw.map(l => {
     const { users: dono, contato_id: pessoa, ...rest } = l
     const ativ = atividade.get(pessoa)
@@ -124,6 +130,10 @@ export default async function AdminOportunidadesPage({
       owner_ativo:         dono ? dono.is_active : null,
       last_interaction_at: ativ?.last_interaction_at ?? null,
       awaiting_since:      ativ?.awaiting_since ?? null,
+      // A18: o que o card diz da cliente ligada (lib/crm/sinais-do-card).
+      proximo_agendamento: l.client_id ? sinais.get(l.client_id as string)?.proximoAgendamento ?? null : null,
+      compra: l.client_id && sugereGanho(l as unknown as { created_at: string }, sinais.get(l.client_id as string), abertaNaEtapa(l.crm_stage_id))
+        ? sinais.get(l.client_id as string)!.compra : null,
       // O badge da unidade sai da TAG, não de branch_id: o lead é da rede e a
       // coluna é sempre nula, então o badge nunca aparecia.
       branch_name:         unidadeDoLead(l.tags),
@@ -160,6 +170,7 @@ export default async function AdminOportunidadesPage({
           {podeConfigurar && branches.length > 0 && (
             <CRMStageSettings
               motivos={motivosTodos}
+              origens={podeConfigurar ? await origensDaRede(createAdminClient(), ctx.tenantId!, true) : []}
               slug=""
               funnels={funnels}
               stages={allStages}
@@ -212,6 +223,7 @@ export default async function AdminOportunidadesPage({
             branches={branches}
             leadAberto={leadAberto}
             podeAgendar={can(ctx, 'crm', 'MANAGE') && temRecurso(ctx, 'agenda')}
+            podeMover={can(ctx, 'crm', 'MANAGE')}
           />
         </>
       )}

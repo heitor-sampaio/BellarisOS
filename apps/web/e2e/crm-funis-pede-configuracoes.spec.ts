@@ -65,6 +65,8 @@ test('"Configurar funis" só aparece para quem tem Configurações em Gerenciar'
 test('sem Configurações, as actions de funil, etapa e motivo de perda recusam', async ({ browser }) => {
   const funil = `${PREFIXO} Funil ${marca}`
   const motivo = `${PREFIXO} Motivo ${marca}`
+  // A14 da 7ª: as origens do lead também são configuração do funil.
+  const origem = `${PREFIXO} Origem ${marca}`
   // O funil padrão nasce no primeiro acesso ao quadro.
   await como(browser, operadora, async p => { await p.goto(tela()); await expect(p.getByRole('heading', { name: 'Oportunidades' })).toBeVisible() })
   const { data: etapa } = await db().from('crm_stages').select('id, name').eq('tenant_id', rede.tenantId).limit(1).single<{ id: string; name: string }>()
@@ -78,7 +80,9 @@ test('sem Configurações, as actions de funil, etapa e motivo de perda recusam'
     await chamarAcao(p, 'actions/crm-stages.ts', 'renameStage', tela(), [etapa!.id, 'invasão', slug])
     await chamarAcao(p, 'actions/crm-motivos.ts', 'criarMotivoDePerda', tela(), [motivo])
     await chamarAcao(p, 'actions/crm-motivos.ts', 'alternarMotivoDePerda', tela(), [umMotivo!.id, false])
+    await chamarAcao(p, 'actions/crm-origens.ts', 'criarOrigemDoLead', tela(), [origem])
   })
+  expect((await db().from('crm_origens').select('id').eq('tenant_id', rede.tenantId).eq('nome', origem)).data, 'a origem não nasceu').toEqual([])
   expect((await db().from('crm_funnels').select('id').eq('tenant_id', rede.tenantId).eq('name', funil)).data, 'o funil não nasceu').toEqual([])
   expect((await db().from('crm_stages').select('name').eq('id', etapa!.id).single<{ name: string }>()).data!.name, 'a etapa não mudou').toBe(etapa!.name)
   expect((await db().from('crm_motivos_perda').select('id').eq('tenant_id', rede.tenantId).eq('nome', motivo)).data, 'o motivo não nasceu').toEqual([])
@@ -89,7 +93,9 @@ test('sem Configurações, as actions de funil, etapa e motivo de perda recusam'
     await p.goto(tela())
     await chamarAcaoComFormulario(p, 'actions/crm-funnels.ts', 'createFunnel', tela(), [undefined], { name: funil, _slug: slug })
     await chamarAcao(p, 'actions/crm-motivos.ts', 'criarMotivoDePerda', tela(), [motivo])
+    await chamarAcao(p, 'actions/crm-origens.ts', 'criarOrigemDoLead', tela(), [origem])
   })
+  expect((await db().from('crm_origens').select('id').eq('tenant_id', rede.tenantId).eq('nome', origem)).data, 'controle: a origem nasceu').toHaveLength(1)
   expect((await db().from('crm_funnels').select('id').eq('tenant_id', rede.tenantId).eq('name', funil)).data, 'controle: o funil nasceu').toHaveLength(1)
   expect((await db().from('crm_motivos_perda').select('id').eq('tenant_id', rede.tenantId).eq('nome', motivo)).data, 'controle: o motivo nasceu').toHaveLength(1)
 })
