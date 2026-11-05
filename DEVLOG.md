@@ -9427,6 +9427,21 @@ a 6ª simulação está toda tratada (D1–D17 e A1–A52):
   `globals.css` do núcleo, na busca e no gatilho do lead. O Heitor pediu a
   completa ao fim das quatro frentes.
 
+**A completa depois da F20–F23 (2026-11-04, run 41923392467, 77ead920):**
+1534 ✓, 15 ✘. A F24 (6063ba0a…88b41df6) separou uma por uma, pelo trace
+do artefato cruzado com o `query_logs` do Supabase:
+- **1 defeito:** o estoque vazio ficava com dois "Novo produto" (o do A2 e o
+  do cabeçalho); agora o do cabeçalho só aparece com produto.
+- **6 testes velhos** (mudança de propósito): "Meu faturamento do mês"
+  (A52/A41), "App da cliente" (A4), a entrada no crédito 1x também em "A
+  receber da operadora" (D4), os produtos sem saldo como zerados (D10).
+- **8 do banco travado:** entre ~22:33 e 23:04 UTC o Supabase chegou a 22–35
+  s por consulta e devolveu 504 no `createUser`; as actions ficaram sem
+  resposta. Passaram 3 vezes local. O bloco do pré-atendimento no app passou
+  a rodar em série (a 2ª falha era consequência da 1ª). O
+  `suporte-impersonar` só roda contra o build (`metrics_top_clients`
+  estourou o tempo limite às 22:58): olhar de novo se voltar.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
