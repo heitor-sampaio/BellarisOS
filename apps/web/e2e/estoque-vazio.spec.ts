@@ -36,6 +36,9 @@ test('A2: sem produto, o estoque diz "Nenhum produto cadastrado" e oferece o "No
     const vazio = p.locator('[data-estoque-vazio]')
     await expect(vazio).toContainText('Nenhum produto cadastrado')
     await expect(vazio).not.toContainText('Ajuste os filtros')
+    // Um "Novo produto" só: o do vazio. Com o do cabeçalho eram dois botões
+    // primários iguais na mesma tela (a completa de 2026-11-04).
+    await expect(p.getByRole('button', { name: /Novo produto/ }), 'um botão só').toHaveCount(1)
     await vazio.getByRole('button', { name: /Novo produto/ }).click()
     await expect(p.locator('dialog[open]')).toBeVisible()
   })

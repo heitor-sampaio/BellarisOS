@@ -193,16 +193,19 @@ export default async function BranchStockPage({
         {!readOnly && (
           <div style={{ display: 'flex', gap: 8 }}>
             <ProductCategoryModal categories={categories} />
-            <StockProductModal
-              suppliers={suppliers}
-              categories={categories}
-              trigger={
-                <button type="button" className="btn-primary">
-                  <Package size={15} />
-                  Novo produto
-                </button>
-              }
-            />
+            {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
+            {products.length > 0 && (
+              <StockProductModal
+                suppliers={suppliers}
+                categories={categories}
+                trigger={
+                  <button type="button" className="btn-primary">
+                    <Package size={15} />
+                    Novo produto
+                  </button>
+                }
+              />
+            )}
           </div>
         )}
       </div>

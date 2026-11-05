@@ -1180,7 +1180,9 @@ const procedures = await ler(
     2026-11-04): "Nenhum produto cadastrado", que os insumos vêm antes dos
     procedimentos que os usam, e o "Novo produto" ali mesmo
     (`[data-estoque-vazio]`); "Ajuste os filtros" fica para a busca que não
-    achou. Prova: `e2e/estoque-vazio.spec.ts`.
+    achou. O do cabeçalho só aparece com produto cadastrado: um "Novo
+    produto" na tela, não dois primários iguais (a completa de 2026-11-04).
+    Prova: `e2e/estoque-vazio.spec.ts`.
   - **Sem estoque é não ter saldo POSITIVO no recorte** (D10 da 6ª
     simulação, 2026-11-04; princípio 3): o saldo NEGATIVO (a baixa que
     faltou, §10) e o produto ativo sem NENHUMA linha de saldo na unidade

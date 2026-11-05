@@ -207,7 +207,8 @@ export default async function AdminEstoquePage({
 
         <div style={{ display: 'flex', gap: 8 }}>
           {canEdit && <ProductCategoryModal categories={categories} />}
-          {canEdit && (
+          {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
+          {canEdit && products.length > 0 && (
             <StockProductModal
               suppliers={suppliers}
               categories={categories}
