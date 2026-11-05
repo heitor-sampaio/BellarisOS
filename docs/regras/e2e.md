@@ -88,6 +88,49 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   mil ids o PostgREST responde "Bad Request" a cada passo — de 2026-10-23 a
   10-27 a varredura falhou em toda rodada com 2.883 clientes de três redes
   do `listas-sem-corte`. Prova: `e2e/listas-sem-corte-limpeza.spec.ts`.
+- **A limpeza da rede de teste** (`limpeza-adiada.ts`, F25, 2026-11-05 — o
+  Heitor: "pode fazer o caminho 1", deixar a limpeza mais leve em vez de
+  subir a instância). As completas de 2026-11-04/05 travaram o Supabase da
+  produção com a própria limpeza: cada `afterAll` apagava a rede dele em ~45
+  DELETEs pelo PostgREST (~17 mil na rodada, 400 a 700 por minuto, cada um uma
+  transação), ENQUANTO os outros testes rodavam — consultas de 6 a 35 s,
+  `auth.admin.createUser` em 504, actions "sem resposta". E a lista à mão
+  deixava rede para trás (30 presas por um pacote ou uma segunda unidade).
+  - **Uma passada no servidor**: `apagarRedeDeTeste(id)` chama
+    `e2e_apagar_rede` (migrations `20261105000101`…`103`): a rede inteira numa
+    transação, achada pelas chaves estrangeiras do catálogo (tabela nova entra
+    sozinha), e os logins que ficaram sem dono e os arquivos do Storage depois,
+    pela API. Leva ~50–200 ms por rede. Para em ~5 s e diz `incompleto` (o
+    PostgREST corta em 8 s), e o apoio chama de novo.
+  - **A trava**: a função só apaga rede de TESTE (`e2e_eh_rede_de_teste`):
+    `[e2e]` no começo do nome, ou o endereço `e2e-…` E o e-mail
+    `e2e-…@bellaris.invalid` que o `criarOutraRede` dá. `[sim]` nunca, as reais
+    nunca — recusa com "não é uma rede de teste". Só o `service_role` executa.
+  - **Na completa, adiada**: com `E2E_LIMPEZA_ADIADA=1` (o workflow e o
+    `e2e-completa.mjs` ligam), o `criarOutraRede` ANOTA a rede ao nascer
+    (`e2e/.limpeza/redes-<pid>.txt`, fora do git), e o `limpar()` dela — e o
+    do `criarMembro` e do `clienteComSessao` DENTRO dela — não escreve nada. O
+    fim da rodada apaga as anotadas, uma de cada vez e com pausa: o passo
+    "Limpeza do fim" do workflow (`if: always()`) e o fim do
+    `e2e-completa.mjs`, pelo `playwright.limpeza.config.ts -g adiadas`. O
+    teste segue isolado: a rede é dele, ninguém mais a lê.
+  - **Antes da completa, a varredura UMA vez** (`-g varredura`, com
+    `E2E_VARREDURA_FEITA=1` as duas metades pulam a do global-setup). Ela leva
+    também a rede anotada de uma rodada que morreu (o registro fica; e a rede
+    `[e2e]` com mais de uma hora sai pela varredura).
+  - **No spec avulso** (`pnpm test:e2e`, sem a variável) nada muda de lugar: o
+    `limpar()` apaga na hora — numa chamada, não em quarenta e cinco.
+  - O que NÃO é adiado: o que o spec apaga por conta própria no `afterAll` (e
+    `apagarClientes`, `apagarAgendamentos`), os membros e clientes da rede
+    REAL, e a limpeza das redes criadas pelo /sistema (`apagarRedeCriada`).
+    Por isso o `afterAll` não apaga a unidade nem a rede depois do `limpar()`
+    (na completa ela ainda está lá, e o delete falharia): ela sai com ele.
+  - Na completa, as redes de teste da rodada (~400, com ~800 logins) ficam no
+    banco até o fim. Conta que lista "todos os logins" ou "todas as redes" não
+    pode parar na primeira página (`ficha-cadastro-validacao` pagina o
+    `listUsers`).
+  - Prova: `e2e/limpeza-rede-de-teste.spec.ts` (a trava, a recusa, a rede
+    inteira, o adiado) e `tests/e2e-limpeza-adiada.test.ts`.
 - `acao.ts` — `capturarAcao` / `reenviarAcao`: pega uma server action feita
   pela tela e a reenvia trocando o id. É o teste de "o endpoint recusa", que a
   tela sozinha não prova.
@@ -95,6 +138,9 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   profissional, procedimento, e sob pedido cliente e produto), alvo dos
   testes de "uma rede não grava na outra". Com ela no banco, `tenantId()` e
   `filiaisAtivas()` filtram a rede de verdade — antes pegavam "a primeira".
+  O `limpar()` dela apaga a rede INTEIRA (ver "A limpeza da rede de teste",
+  abaixo): a segunda unidade, a sala, o pacote que o teste criou nela vão
+  junto — o spec não apaga mais a unidade e a rede "de novo" depois dele.
 - `uazapi-falsa.ts` — `subirUazapiFalsa`: uma uazapi em `127.0.0.1` que
   registra cada chamada e responde como a de verdade (ou 500, com
   `modo = 'erro'`). Caixa `[e2e]` com `config.baseUrl` apontando para ela faz o
@@ -176,3 +222,15 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     e some: o teste confere o estado que FICA na tela, não ela.
   - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
     `<script>` sem nonce. Ele não existe no build.
+
+---
+
+## O que nunca fazer aqui
+
+```
+❌ Apagar a rede de teste inteira no afterAll durante a completa (ou à mão, tabela por tabela, pelo PostgREST): é o limpar() do criarOutraRede — na completa ele só anota a rede, e ela sai no fim da rodada (F25)
+❌ Apagar a unidade ou a rede DEPOIS do limpar() da rede de teste: ela já leva tudo, e na completa ela ainda está lá (o delete falha)
+❌ Abrir e2e_apagar_rede a quem não é service_role, ou afrouxar a trava (e2e_eh_rede_de_teste) — [sim] e as redes reais nunca
+❌ Contar ou procurar em "todos os logins" ou "todas as redes" só na primeira página: na completa as da rodada ficam até o fim
+❌ Comando com espaço no -g de um spawnSync com shell no Windows (o argumento se parte): use uma palavra só
+```
