@@ -360,8 +360,13 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
  * Etapa 3, a cliente: o pré-atendimento aparece no app dela ao ser agendada;
  * ela responde a ficha (ou, dentro da validade, só confirma que nada mudou),
  * e a resposta vira a anamnese — com o selo "pela cliente, no app".
+ *
+ * Em série: o "dentro da validade" parte da anamnese que o primeiro teste
+ * grava. Solto, a falha do primeiro reabria o beforeAll num worker novo (outra
+ * rede, cliente sem anamnese), e o segundo falhava com "COMPLETO" no lugar de
+ * "CONFIRMAR" sem defeito nenhum (a completa de 2026-11-04).
  */
-test.describe('o pré-atendimento: a cliente responde no app', () => {
+test.describe.serial('o pré-atendimento: a cliente responde no app', () => {
   let C: OutraRede
   let cliente: ClienteDeTeste
   const portal = () => `/e2e-un-pc${marca}/cliente`
