@@ -1782,7 +1782,7 @@ export function ClientProfile({
 
           {/* 2. Próximos agendamentos */}
           {upcomingAppointments.length > 0 ? (
-            <div className="card" style={{ padding: '18px 20px' }}>
+            <div className="card" data-proximos-agendamentos style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Clock size={14} style={{ color: 'var(--brand)' }} />
                 <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Próximos agendamentos</h3>

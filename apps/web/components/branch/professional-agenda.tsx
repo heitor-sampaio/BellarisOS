@@ -19,6 +19,7 @@ import { estenderJanela } from '@/lib/agenda/grade'
 import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
+import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -251,7 +252,7 @@ export function ProfessionalAgendaView({
       <div className="kpi-grid" style={{ gap: 12 }}>
 
         {/* Card hero */}
-        <div style={{
+        <div data-destaque-de-hoje style={{
           borderRadius: 'var(--radius-card-token)', padding: '18px 20px',
           display: 'flex', alignItems: 'center', gap: 14,
           background: heroEvent ? 'var(--brand)' : 'var(--surface)',
@@ -282,7 +283,11 @@ export function ProfessionalAgendaView({
                 </p>
               </>
             ) : (
-              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Sem atendimentos</p>
+              // A30 da 7ª: com o de hoje já passado (ou concluído), "Sem
+              // atendimentos" contradizia o "Hoje 1 atendimento" ao lado.
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+                {todayEvents.some(e => !['CANCELLED', 'NO_SHOW'].includes(e.status)) ? 'Nenhum outro atendimento hoje' : 'Sem atendimentos'}
+              </p>
             )}
           </div>
         </div>
@@ -445,6 +450,8 @@ export function ProfessionalAgendaView({
                         }}>
                           {st.label}
                         </span>
+                        {/* A menor de idade (decisão 2 da 7ª; sobra da F29): a marca e o responsável na dica. */}
+                        <SeloDoMenor menor={ev.menor} />
                       </div>
                       {/* Linha inferior: avatar + nome + procedimento */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -463,6 +470,12 @@ export function ProfessionalAgendaView({
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                             {ev.procedureName}
                           </p>
+                          {/* A linha do responsável, quando o bloco tem altura para ela. */}
+                          {ev.menor && height >= 96 && (
+                            <p data-responsavel-do-agendamento style={{ fontSize: 'var(--text-2xs)', color: ev.menor.responsavel ? 'var(--text-muted)' : 'var(--warning)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                              {ev.menor.responsavel ?? 'Menor de idade, sem responsável legal no cadastro'}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

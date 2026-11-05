@@ -48,7 +48,9 @@
   ficha (Visão geral, `[data-aviso-do-menor]`) e o atendimento avisam "Menor
   de idade (16 anos), sem responsável legal no cadastro…". A ficha leva "Menor
   de idade" (`[data-menor]`) e a linha "Responsável: Marta Lima (Mãe) · …"; a
-  agenda (o bloco da grade, a janela, nos dois portais — `menoresDaAgenda`) e
+  agenda (o bloco da grade, a janela, nos dois portais — `menoresDaAgenda` — e
+  o bloco da "Minha agenda" da profissional, com o responsável na dica e, no
+  bloco alto, a linha dele — sobra da F29 feita na F30) e
   a tela do atendimento mostram "Menor" e o responsável, ou a falta dele. O
   termo cita o responsável e é assinado por ele (`documentos.md`). O que a
   recepção escreveu nas Anotações antes disso não foi migrado. Prova:

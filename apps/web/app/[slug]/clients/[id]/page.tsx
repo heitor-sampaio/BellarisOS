@@ -1,4 +1,5 @@
 ﻿import { notFound } from 'next/navigation'
+import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
@@ -125,12 +126,16 @@ export default async function ClientProfilePage({
   }
 
   // Map appointments — separar futuros de passados
+
+  // A32 da 7ª (sobra da A36 da 6ª): a sessão de plano com dois procedimentos
+  // diz os dois ("Criolipólise + Drenagem"), e não só o do agendamento.
+  const nomesDasSessoes = await nomesDasSessoesDoPlano(createAdminClient(), (appts ?? []).map(a => a.id as string))
   const allAppointments: ProfileAppointment[] = (appts ?? []).map(a => ({
     id:               a.id,
     scheduledAt:      a.scheduled_at,
     price:            parseFloat(String(a.price ?? 0)),
     status:           a.status,
-    procedureName:    (a.procedures as { name?: string } | null)?.name ?? '—',
+    procedureName:    nomesDasSessoes.get(a.id as string) ?? (a.procedures as { name?: string } | null)?.name ?? '—',
     professionalName: (a.professional as { name?: string } | null)?.name ?? '—',
   }))
 

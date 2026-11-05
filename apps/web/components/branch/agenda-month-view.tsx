@@ -22,6 +22,8 @@ export interface CalendarEvent {
   pagoAntes?:      string | null
   /** A cliente (A29: "Reagendar" o cancelado abre o novo agendamento com ela). */
   clientId?:       string | null
+  /** O procedimento (A27 da 7ª): o "Reagendar" da falta abre com ele. */
+  procedureId?:    string | null
   /** A sala (A29), no cartão e na janela. */
   roomName?:       string | null
   /** A unidade (A29), na janela da agenda da rede. */

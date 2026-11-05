@@ -79,7 +79,10 @@ test.describe('A49: a ficha de pré-atendimento se manda à mão, com o envio au
       await expect(ficha.getByText('A ficha de saúde não foi enviada para este agendamento.')).toBeVisible()
       await ficha.getByRole('button', { name: 'Enviar a ficha' }).click()
       await expect(ficha.getByLabel('Link da ficha')).toHaveValue(/\/pre-atendimento\/[A-Za-z0-9_-]{43}$/)
-      await expect(ficha.getByRole('link', { name: 'Abrir no WhatsApp' })).toHaveAttribute('href', /^https:\/\/wa\.me\/55/)
+      // A31 da 7ª: numa rede sem WhatsApp ligado, o botão parecia o da clínica —
+      // é o wa.me, o WhatsApp do aparelho, e a tela diz isso.
+      await expect(ficha.getByRole('link', { name: 'Abrir no WhatsApp do aparelho' })).toHaveAttribute('href', /^https:\/\/wa\.me\/55/)
+      await expect(ficha.locator('[data-whatsapp-do-aparelho]')).toContainText('não é um WhatsApp ligado à clínica')
     } finally {
       await ctx.close()
     }

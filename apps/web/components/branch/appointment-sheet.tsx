@@ -37,6 +37,8 @@ interface AppointmentEvent {
   completedAt?:     string | null
   /** A profissional do agendamento: quem é ela marca a chegada e inicia num gesto (A25). */
   professionalId?:  string | null
+  /** O procedimento (A27 da 7ª): o "Reagendar" da falta abre com ele. */
+  procedureId?:     string | null
   /** A menor de idade (decisão 2 do Heitor, 2026-11-05): a marca e o responsável. */
   menor?:           MenorDoAgendamento | null
 }
@@ -492,6 +494,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             onClick={() => {
               const q = new URLSearchParams(window.location.search)
               q.set('novo', '1'); q.set('cliente', appointment.clientId!)
+              // A27 da 7ª: o novo agendamento já vem com o procedimento e a
+              // profissional da falta; o horário é o próximo livre dela.
+              if (appointment.procedureId) q.set('procedimento', appointment.procedureId)
+              if (appointment.professionalId) q.set('profissional', appointment.professionalId)
               onClose()
               router.push(`${pathname}?${q.toString()}`)
             }}>

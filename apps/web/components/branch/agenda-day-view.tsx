@@ -265,12 +265,14 @@ function ProfColumn({
               </div>
             )}
             {height > 42 && (
-              <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: isCompleted ? 'var(--text-muted)' : 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, lineHeight: 1.25, color: isCompleted ? 'var(--text-muted)' : 'var(--text)', marginTop: height > 64 ? 2 : 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.clientName}
               </div>
             )}
-            {height > 64 && (
-              <div style={{ fontSize: 'var(--text-overline)', color: isProgress ? 'var(--brand)' : isConfirmed ? 'var(--success)' : 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {/* A29 da 7ª: o cartão de 45 min (56 px) também diz o procedimento —
+                a A23 da 6ª tinha feito o de 30. */}
+            {height > 42 && (
+              <div style={{ fontSize: 'var(--text-overline)', lineHeight: 1.2, color: isProgress ? 'var(--brand)' : isConfirmed ? 'var(--success)' : 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.procedureName}
               </div>
             )}
@@ -384,7 +386,9 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
           {g.HOURS.map(h => (
             <div key={h} style={{
               position: 'absolute',
-              top: (h - g.START_HOUR) * HOUR_PX - 7,
+              // A29 da 7ª: o rótulo da PRIMEIRA hora (o 00:00 da unidade 24 h)
+              // subia 7 px para baixo do cabeçalho fixo e saía cortado.
+              top: Math.max(0, (h - g.START_HOUR) * HOUR_PX - 7),
               right: 8,
               fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', userSelect: 'none',
             }}>

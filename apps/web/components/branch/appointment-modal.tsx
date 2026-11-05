@@ -35,6 +35,9 @@ interface AppointmentModalProps {
   defaultDate?:  string   // ISO datetime hint (from calendar click)
   /** O cliente já escolhido (`?cliente=` da busca universal e da ficha): o nome vem do servidor. */
   clienteInicialId?: string | null
+  /** O procedimento e a profissional que já vêm escolhidos (o "Reagendar" da falta — A27 da 7ª; o clique na coluna — A29). */
+  procedimentoInicialId?: string | null
+  profissionalInicialId?: string | null
   onClose:       () => void
   onSuccess:     () => void
 }
@@ -53,7 +56,7 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; 
 
 export function AppointmentModal({
   branchId, slug, procedures, professionals, rooms,
-  unidades, defaultDate, clienteInicialId = null, onClose, onSuccess,
+  unidades, defaultDate, clienteInicialId = null, procedimentoInicialId = null, profissionalInicialId = null, onClose, onSuccess,
 }: AppointmentModalProps) {
   const [state, formAction, pending] = useActionState(addAppointment, undefined)
   // A resposta a "Já existe a ficha de X" do agendar com nome e telefone
@@ -97,8 +100,8 @@ export function AppointmentModal({
   // handler do seletor, e o efeito só desliga quando os dados chegam.
   const [carregandoUnidade, setCarregandoUnidade] = useState(escolheUnidade && !!unidadeId)
 
-  const [profId, setProfId] = useState('')
-  const [procId, setProcId] = useState('')
+  const [profId, setProfId] = useState(profissionalInicialId ?? '')
+  const [procId, setProcId] = useState(procedimentoInicialId ?? '')
 
   function trocarUnidade(id: string) {
     setUnidadeId(id)

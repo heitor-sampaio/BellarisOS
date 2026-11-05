@@ -142,9 +142,17 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
               <Copy size={13} aria-hidden="true" /> {copiado ? 'Copiado' : 'Copiar link'}
             </button>
             <a href={link.whatsapp} target="_blank" rel="noopener noreferrer" className="btn-primary pre-atendimento-agendamento-botao">
-              <MessageCircle size={13} aria-hidden="true" /> Abrir no WhatsApp
+              <MessageCircle size={13} aria-hidden="true" /> Abrir no WhatsApp do aparelho
             </a>
           </div>
+          {/* A31 da 7ª: numa rede sem WhatsApp ligado, o botão parecia o da
+              clínica. É o wa.me (§9.4): abre o WhatsApp de quem está neste
+              computador ou celular, com a mensagem pronta. */}
+          <p data-whatsapp-do-aparelho className="pre-atendimento-agendamento-texto">
+            {situacao.pelaConversa
+              ? 'Abre o WhatsApp deste computador ou celular, com a mensagem pronta. Para mandar pelo WhatsApp da clínica, use “Mandar pela conversa”.'
+              : 'Abre o WhatsApp deste computador ou celular, com a mensagem pronta — não é um WhatsApp ligado à clínica.'}
+          </p>
         </div>
       )}
     </div>

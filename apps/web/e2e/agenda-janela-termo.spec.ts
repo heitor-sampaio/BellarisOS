@@ -79,5 +79,9 @@ test('a janela do agendamento diz o termo que bloqueia e se está assinado', asy
     const lista = janela.locator('[data-documentos-do-agendamento]')
     await expect(lista.locator('li', { hasText: titulo('Termo de toxina') })).toContainText('Falta assinar · bloqueia o início')
     await expect(lista.locator('li', { hasText: titulo('Contrato de serviço') })).toContainText('Assinado')
+    // A29 da 7ª: o nome do termo não sai cortado sem dizer o nome inteiro.
+    const nome = lista.locator('[data-titulo-do-documento]', { hasText: titulo('Termo de toxina') })
+    await expect(nome).toHaveAttribute('title', titulo('Termo de toxina'))
+    expect(await nome.evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'o nome inteiro cabe (quebra a linha)').toBe(true)
   })
 })

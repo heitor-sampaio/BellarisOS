@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { AppointmentModal } from '@/components/branch/appointment-modal'
-import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
+import { useNovoAgendamentoDaUrl, type PedidoDeAgendamento } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
@@ -46,6 +46,7 @@ interface Appointment {
   /** A29: a duração, a sala e a cliente, na janela. */
   duration_min?:   number | null
   client_id?:      string | null
+  procedure_id?:   string | null
   rooms?:          { name: string } | null
 }
 
@@ -525,8 +526,9 @@ export function AdminAgendaView({
   const [agendando, setAgendando] = useState<true | { branchId: string; quando: string } | null>(null)
   const [selecionado, setSelecionado] = useState<Appointment | null>(null)
   const [clienteInicial, setClienteInicial] = useState<string | null>(null)
-  // `?novo=1&cliente=`: a busca universal e a ficha abrem o modal por aqui.
-  useNovoAgendamentoDaUrl(podeAgendar, cliente => { setClienteInicial(cliente); setAgendando(true) })
+  const [pedidoInicial, setPedidoInicial] = useState<PedidoDeAgendamento>({ procedimento: null, profissional: null })
+  // `?novo=1&cliente=`: a busca universal e a ficha abrem o modal por aqui (e o "Reagendar", com o procedimento e a profissional — A27).
+  useNovoAgendamentoDaUrl(podeAgendar, (cliente, pedido) => { setClienteInicial(cliente); setPedidoInicial(pedido); setAgendando(true) })
 
   const mondayStr = getMondayOf(selectedDate)
 
@@ -715,6 +717,7 @@ export function AdminAgendaView({
             // A agenda da rede mostra várias unidades: a janela diz de qual (A29).
             unidade:          todasUnidades.find(b => b.id === selecionado.branch_id)?.name ?? null,
             clientId:         selecionado.client_id ?? null,
+            procedureId:      selecionado.procedure_id ?? null,
             start:            selecionado.scheduled_at,
             motivoDoCancelamento: selecionado.cancellation_reason ?? null,
             professionalId:   selecionado.professional_id ?? null,
@@ -742,8 +745,10 @@ export function AdminAgendaView({
           rooms={[]}
           unidades={todasUnidades}
           clienteInicialId={clienteInicial}
-          onClose={() => { setAgendando(null); setClienteInicial(null) }}
-          onSuccess={() => { setAgendando(null); setClienteInicial(null); router.refresh() }}
+          procedimentoInicialId={pedidoInicial.procedimento}
+          profissionalInicialId={pedidoInicial.profissional}
+          onClose={() => { setAgendando(null); setClienteInicial(null); setPedidoInicial({ procedimento: null, profissional: null }) }}
+          onSuccess={() => { setAgendando(null); setClienteInicial(null); setPedidoInicial({ procedimento: null, profissional: null }); router.refresh() }}
         />
       )}
 

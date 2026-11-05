@@ -100,12 +100,23 @@ export function fimDaOcupacao(a: { scheduled_at: string; duration_min: number | 
   return fim
 }
 
-export async function primeiroConflito(admin: Admin, a: ConsultaDeHorario): Promise<{
+export interface ConflitoDeHorario {
   inicio: Date; fim: Date
   /** A unidade do outro atendimento (A30): o da rede atende em várias, e a recepção de uma não vê a agenda da outra. */
   unidadeId: string; unidade: string
-} | null> {
-  if (!a.professionalId && !a.roomId) return null
+}
+
+export async function primeiroConflito(admin: Admin, a: ConsultaDeHorario): Promise<ConflitoDeHorario | null> {
+  return (await conflitosDoHorario(admin, a))[0] ?? null
+}
+
+/**
+ * TODOS os agendamentos que batem com o horário, do mais cedo ao mais tarde
+ * (A28 da 7ª simulação: o aviso citava só um dos dois que bloqueavam). A
+ * mesma conta de `primeiroConflito`.
+ */
+export async function conflitosDoHorario(admin: Admin, a: ConsultaDeHorario): Promise<ConflitoDeHorario[]> {
+  if (!a.professionalId && !a.roomId) return []
   const ini = a.inicio.getTime()
   const fim = ini + Math.max(1, a.duracaoMin) * 60000
   let q = admin.from('appointments')
@@ -121,12 +132,13 @@ export async function primeiroConflito(admin: Admin, a: ConsultaDeHorario): Prom
     scheduled_at: string; duration_min: number | null; status: string; completed_at: string | null
     branch_id: string; branches: { name: string } | null
   }[] | null) ?? []
+  const batem: ConflitoDeHorario[] = []
   for (const c of candidatos) {
     const oIni = new Date(c.scheduled_at).getTime()
     const oFim = fimDaOcupacao(c)
-    if (ini < oFim && fim > oIni) return { inicio: new Date(oIni), fim: new Date(oFim), unidadeId: c.branch_id, unidade: c.branches?.name ?? '' }
+    if (ini < oFim && fim > oIni) batem.push({ inicio: new Date(oIni), fim: new Date(oFim), unidadeId: c.branch_id, unidade: c.branches?.name ?? '' })
   }
-  return null
+  return batem.sort((x, y) => x.inicio.getTime() - y.inicio.getTime())
 }
 
 /**

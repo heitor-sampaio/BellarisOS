@@ -11,7 +11,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 import { AppointmentModal } from './appointment-modal'
-import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
+import { useNovoAgendamentoDaUrl, type PedidoDeAgendamento } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from './appointment-sheet'
 import { AgendaDayView } from './agenda-day-view'
 import { AgendaWeekView } from './agenda-week-view'
@@ -183,8 +183,11 @@ export function AgendaCalendar({
   const [showCreate,    setShowCreate]    = useState(false)
   const [defaultDate,   setDefaultDate]   = useState('')
   const [clienteInicial, setClienteInicial] = useState<string | null>(null)
+  // O procedimento e a profissional que o modal já traz: o "Reagendar" da falta
+  // (A27 da 7ª) e o clique num vazio da coluna (A29: a profissional dela).
+  const [pedidoInicial, setPedidoInicial] = useState<PedidoDeAgendamento>({ procedimento: null, profissional: null })
   // `?novo=1&cliente=`: a busca universal e a ficha abrem o modal por aqui.
-  useNovoAgendamentoDaUrl(canWrite, cliente => { setDefaultDate(''); setClienteInicial(cliente); setShowCreate(true) })
+  useNovoAgendamentoDaUrl(canWrite, (cliente, pedido) => { setDefaultDate(''); setClienteInicial(cliente); setPedidoInicial(pedido); setShowCreate(true) })
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [dropError,     setDropError]     = useState<string | null>(null)
 
@@ -208,9 +211,10 @@ export function AgendaCalendar({
   }, [slug, router])
 
   // -- Slot click (open create modal) ----------------------------------------
-  function handleSlotClick(date: Date) {
+  function handleSlotClick(date: Date, profId?: string) {
     if (!canWrite) return
     setDefaultDate(toLocalDT(date))
+    setPedidoInicial({ procedimento: null, profissional: profId ?? null })
     setShowCreate(true)
   }
 
@@ -272,7 +276,7 @@ export function AgendaCalendar({
           {canWrite && (
             <button
               type="button"
-              onClick={() => { setDefaultDate(''); setShowCreate(true) }}
+              onClick={() => { setDefaultDate(''); setPedidoInicial({ procedimento: null, profissional: null }); setShowCreate(true) }}
               className="btn-primary"
             >
               <Plus size={15} />
@@ -393,6 +397,8 @@ export function AgendaCalendar({
           rooms={rooms}
           defaultDate={defaultDate}
           clienteInicialId={clienteInicial}
+          procedimentoInicialId={pedidoInicial.procedimento}
+          profissionalInicialId={pedidoInicial.profissional}
           onClose={() => { setShowCreate(false); setClienteInicial(null) }}
           onSuccess={() => { setShowCreate(false); setClienteInicial(null); router.refresh() }}
         />

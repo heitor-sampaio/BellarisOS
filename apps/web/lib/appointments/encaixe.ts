@@ -10,11 +10,13 @@ import { ler } from '@/lib/db'
 import { alcancaUnidade } from '@/lib/auth'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { normalizarHorario, intervalosDoDia, diaDaSemana, cabeNoHorario, textoDosIntervalos } from '@/lib/agenda/horario'
-import { conferirPecasDoAgendamento, primeiroConflito } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, conflitosDoHorario } from '@/lib/appointments/core'
 
 export interface AvisosDoHorario { foraDoHorario: string | null; conflito: string | null }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** "a, b e c". */
+const emLista = (itens: string[]) => itens.length <= 1 ? (itens[0] ?? '') : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`
 const hora = (d: Date) => { const p = partsInTZ(d); return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` }
 
 export async function avisosDoHorarioCore(ctx: TenantContext, a: {
@@ -55,11 +57,13 @@ export async function avisosDoHorarioCore(ctx: TenantContext, a: {
       ? `Fora do horário de atendimento de ${nome} (${textoDosIntervalos(intervalos)}). O encaixe é permitido.`
       : `${nome} não atende neste dia. O encaixe é permitido.`
 
-  const choque = await primeiroConflito(admin, {
+  // A28 da 7ª: TODOS os que batem ("das 10:00 às 10:30 e das 10:30 às 11:00"),
+  // e não só o primeiro.
+  const choques = await conflitosDoHorario(admin, {
     tenantId: ctx.tenantId!, professionalId: a.professionalId, inicio, duracaoMin: duracao, excluir: a.excluir ?? null,
   })
   // A30: o outro atendimento de OUTRA unidade diz qual (a recepção desta não vê aquela agenda).
-  const onde = choque && choque.unidadeId !== a.branchId && choque.unidade ? `, na unidade ${choque.unidade}` : ''
-  const conflito = choque ? `${nome} já tem atendimento das ${hora(choque.inicio)} às ${hora(choque.fim)}${onde}.` : null
+  const trechos = choques.map(ch => `das ${hora(ch.inicio)} às ${hora(ch.fim)}${ch.unidadeId !== a.branchId && ch.unidade ? `, na unidade ${ch.unidade}` : ''}`)
+  const conflito = trechos.length ? `${nome} já tem atendimento ${emLista(trechos)}.` : null
   return { foraDoHorario, conflito }
 }

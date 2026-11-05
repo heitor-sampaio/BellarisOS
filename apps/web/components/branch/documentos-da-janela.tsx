@@ -23,11 +23,12 @@ export function DocumentosDaJanela({ appointmentId }: { appointmentId: string })
       <p className="overline">Termos e contratos</p>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {docs.map(d => (
-          <li key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+          <li key={d.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
             {d.assinado
               ? <FileCheck size={14} style={{ color: 'var(--success)', flexShrink: 0 }} aria-hidden="true" />
               : <FileText size={14} style={{ color: d.bloqueia ? 'var(--warning)' : 'var(--text-faint)', flexShrink: 0 }} aria-hidden="true" />}
-            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.titulo}</span>
+            {/* A29 da 7ª: o nome inteiro (quebra a linha), e não cortado sem dica. */}
+            <span data-titulo-do-documento title={d.titulo} style={{ flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' }}>{d.titulo}</span>
             <span style={{ flexShrink: 0, fontWeight: 700, color: d.assinado ? 'var(--success)' : d.bloqueia ? 'var(--warning)' : 'var(--text-muted)' }}>
               {d.situacao}{!d.assinado && d.bloqueia ? ' · bloqueia o início' : ''}
             </span>

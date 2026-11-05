@@ -23,7 +23,11 @@
     a grade do dia é unidade ∩ ela (`janelaDoDia`), estendida pelos
     atendimentos de fora, com o resto sombreado; no dia em que ela não atende,
     a janela da unidade e "Você não atende neste dia". A Renata, de 07–12, via
-    07:00–21:00 livre. Prova: `e2e/agenda-minha-agenda-horario.spec.ts`;
+    07:00–21:00 livre. Prova: `e2e/agenda-minha-agenda-horario.spec.ts`. O
+    destaque do topo (`[data-destaque-de-hoje]`), sem nada por vir hoje e com
+    um atendimento de hoje já passado ou concluído, diz "Nenhum outro
+    atendimento hoje" — "Sem atendimentos" contradizia o "Hoje 1 atendimento"
+    ao lado (A30 da 7ª simulação; prova: `e2e/agenda-atritos-da-7.spec.ts`);
   - a capacidade da ocupação (`capacidadeEmMinutos`, §13.1).
   A equipe ainda marca fora do horário (encaixe): os seletores do checkout e
   das sessões do plano continuam livres.
@@ -482,7 +486,20 @@
   min) diz o procedimento e a sala** numa segunda linha, e todo cartão tem a
   dica com hora, cliente, procedimento, sala e duração (A23 da 6ª simulação:
   mostrava só "03:50 Paula Reis"). Prova:
-  `e2e/agenda-janela-detalhes.spec.ts`.
+  `e2e/agenda-janela-detalhes.spec.ts`. **O de 45 min também diz o
+  procedimento** (A29 da 7ª simulação, 2026-11-05: o cartão de 56 px tinha a
+  hora e a cliente, sem o procedimento); o rótulo da primeira hora (o 00:00
+  da unidade 24 h) não fica por baixo do cabeçalho fixo da grade; o clique
+  num vazio da coluna abre o novo agendamento JÁ com a profissional dela; e
+  o nome do termo na janela quebra a linha, inteiro (`[data-titulo-do-documento]`,
+  com a dica), em vez de sair cortado. Prova: `e2e/agenda-atritos-da-7.spec.ts`
+  ("A29"), `e2e/agenda-janela-termo.spec.ts`.
+  **"Reagendar" a falta (e o cancelado) vem com o procedimento e a
+  profissional** (A27 da 7ª simulação; abria só com a cliente e sugeria um
+  horário já passado): `?novo=1&cliente=&procedimento=&profissional=`
+  (`useNovoAgendamentoDaUrl`), e o horário é o próximo livre DELA a partir de
+  agora (`proximoHorarioLivre`, A20). A duração é a do procedimento, como em
+  todo agendamento. Prova: `e2e/agenda-atritos-da-7.spec.ts` ("A27").
 - **O concluído adiantado libera o resto do horário e a sala** (A31 da 5ª
   simulação): o CONCLUÍDO ocupa só até a conclusão (`fimDaOcupacao`,
   `lib/appointments/core.ts`), em `primeiroConflito`/`horarioOcupado` (logo
@@ -494,6 +511,11 @@
   aviso do modal ("…das 15:00 às 16:00, na unidade Moinhos.") e a recusa
   (`recusaDoConflito`: "…nesse horário, na unidade Moinhos.") dizem onde,
   quando é OUTRA unidade. Prova: `e2e/agenda-conflito-atritos.spec.ts`.
+  **E cita TODOS os que bloqueiam** (A28 da 7ª simulação, 2026-11-05;
+  princípio 3: citava só um dos dois): "X já tem atendimento das 10:00 às
+  10:30 e das 10:30 às 11:00." — `conflitosDoHorario` (`lib/appointments/core.ts`,
+  a conta de `primeiroConflito`, do mais cedo ao mais tarde). Prova:
+  `e2e/agenda-atritos-da-7.spec.ts` ("A28").
 - **"Mostrar cancelados"** (2026-10-21, decisão do Heitor): a agenda da
   unidade deixa o cancelado e a falta fora da grade; o botão do cabeçalho
   (`?cancelados=1`, a consulta do servidor) os traz de volta, apagados, riscados
@@ -539,7 +561,11 @@
   até três e depois "+ N mais"): o título do atendimento, o cartão do plano na
   ficha, a Agenda e a home do app (`nomesDasSessoesDoPlano`). Prova:
   `e2e/plano-sessao-com-dois-procedimentos.spec.ts`,
-  `tests/nome-dos-procedimentos.test.ts`. **E a duração prevista é a do
+  `tests/nome-dos-procedimentos.test.ts`. **E os próximos agendamentos da
+  ficha também** (A32 da 7ª simulação, 2026-11-05, sobra da A36: a sessão
+  Criolipólise + Drenagem aparecia só "Criolipólise"): as duas páginas da
+  ficha leem `nomesDasSessoesDoPlano` (`[data-proximos-agendamentos]`). Prova:
+  `e2e/agenda-atritos-da-7.spec.ts` ("A32"). **E a duração prevista é a do
   AGENDAMENTO** (D5 da 7ª simulação, 2026-11-05; princípio 3): a sessão
   Criolipólise + Drenagem gravava 110 min e a tela do atendimento dizia "60
   min", a do procedimento principal. `sessao-de-atendimento.tsx` lê
@@ -740,7 +766,11 @@ const procedures = await ler(
     `pre_atendimento_link_abrir` conta as tentativas (5 derrubam o link, 20 na
     hora param o IP), responder confere de novo, e o link morre com o pendente.
     A equipe manda o link pela janela do agendamento ("Enviar a ficha":
-    copiar ou `wa.me`, com `agenda: MANAGE`), que mostra só o ESTADO
+    copiar ou `wa.me` — "Abrir no WhatsApp do aparelho", que diz abrir o
+    WhatsApp de quem está no computador ou celular, e não um ligado à clínica
+    (`[data-whatsapp-do-aparelho]`; A31 da 7ª simulação: numa rede sem
+    WhatsApp ligado, o botão parecia o da clínica — a regra do wa.me ficou) —,
+    com `agenda: MANAGE`), que mostra só o ESTADO
     (pendente/respondida) — as respostas são do prontuário. Cliente sem CPF
     nem nascimento: a janela diz "Complete o CPF ou a data de nascimento para
     enviar o link" e leva ao cadastro (`?aba=dados`, via `lib/rotas`). "Ficha já
