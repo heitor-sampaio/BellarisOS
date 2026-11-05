@@ -351,6 +351,16 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   anotação da profissional), e o PDF ganhou a seção "Planos de tratamento"; as
   comunicações no PDF dizem dia e hora (`lib/lgpd/plano.ts`). Prova: o mesmo
   spec e `tests/lgpd-plano-no-pacote.test.ts`.
+- **O cadastro do pacote leva o responsável legal e o documento estrangeiro**
+  (sobra da F29, decisões 1 e 2 da 7ª simulação, 2026-11-05): a menor tem o
+  "Responsável legal" na ficha (`clients.responsavel_*`), e o pacote não o
+  levava. O JSON tem `cadastro.responsavelLegal` (`{ nome, cpf, parentesco,
+  telefone }`, o CPF formatado; nulo na adulta) e `cadastro.documento`
+  ("Passaporte 19FR54321", "RNE …"; nulo com CPF); o PDF, as linhas
+  "Responsável legal" ("Marta Lima (Mãe) · CPF … · telefone") e "Documento"
+  nos dados cadastrais (`responsavelNoPacote`, `documentoNoPacote`,
+  `lib/lgpd/responsavel.ts`). É dado do cadastro: parte geral. Prova:
+  `e2e/lgpd-responsavel-legal.spec.ts`, `tests/lgpd-responsavel-no-pacote.test.ts`.
 - **O pedido diz o PRAZO** (A60 da 5ª simulação; `data-request-card.tsx`): em
   preparo, "costuma ficar pronto em poucos minutos"; com o prontuário à espera
   da clínica, "responde até DD/MM (15 dias do pedido)" — o prazo da LGPD

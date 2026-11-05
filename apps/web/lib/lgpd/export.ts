@@ -10,6 +10,7 @@ import { flattenFields, type AnamnesisRow } from '@/lib/anamnesis'
 import { lerTodas } from '@/lib/db'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { planoParaOTitular, linhaDoPlano, linhaDaComunicacao, type PlanoLido } from '@/lib/lgpd/plano'
+import { responsavelNoPacote, documentoNoPacote } from '@/lib/lgpd/responsavel'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -275,7 +276,11 @@ export async function buildClientExport(
     aviso: 'Documento gerado a pedido do titular, nos termos da Lei 13.709/2018 (LGPD).',
     solicitacao: { incluiProntuario: includeMedical },
     cadastro: {
-      nome: client.name, cpf: client.document, email: client.email, telefone: client.phone,
+      nome: client.name, cpf: client.document,
+      // Sem CPF, o passaporte ou o RNE (decisão 1 do Heitor); e o responsável legal
+      // da menor, que é dado do cadastro dela (sobra da F29, decisão 2).
+      documento: documentoNoPacote(client), responsavelLegal: responsavelNoPacote(client).json,
+      email: client.email, telefone: client.phone,
       dataNascimento: client.birth_date, genero: client.gender,
       endereco: {
         logradouro: client.address, numero: client.address_number,
@@ -386,6 +391,8 @@ export async function buildClientExport(
       fields: [
         ['Nome', String(client.name ?? '—')],
         ['CPF', client.document ? maskCPF(String(client.document)) : '—'],
+        ...(documentoNoPacote(client) ? [['Documento', documentoNoPacote(client)!] as [string, string]] : []),
+        ...(responsavelNoPacote(client).linha ? [['Responsável legal', responsavelNoPacote(client).linha!] as [string, string]] : []),
         ['E-mail', String(client.email ?? '—')],
         ['Telefone', client.phone ? maskPhone(String(client.phone)) : '—'],
         ['Data de nascimento', formatDia(client.birth_date) ?? '—'],
