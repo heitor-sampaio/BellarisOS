@@ -1714,6 +1714,36 @@ Heitor:** uma só — se o "Lucro líquido" desconta taxas e comissões.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-04 (6ª)".
 
+### 2026-11-05 — Sétima simulação: a harmonização a fundo e o comercial do lead ao plano vendido
+
+Pedido do Heitor: dois times novos, cenário novo, só anotando. Rodaram em
+produção na quinta 05/11, das 02h26 às ~06h45, com 16 agentes (run
+`wf_afa0d970-393`; a rede da máquina caiu no "fim do mês" do Time A e no
+consolidador, retomados às 10h12 com o resto do cache):
+
+- **Time A, "[sim] Clínica Dália"** (Salvador, uma unidade, harmonização):
+  toxina com mapa, lote e FEFO, termo que bloqueia, menor de idade,
+  estrangeira com passaporte, perda e inventário, e o fim do mês com o lucro
+  novo da F21.
+- **Time B, "[sim] Clínica Gardênia"** (Goiânia, uma unidade, estética
+  corporal): importação, SDR "só as minhas", Agendar no card, "É a mesma
+  pessoa do lead", Unificar, pacote, pré-pago e plano com entrada em 3x e
+  crediário.
+
+**Dinheiro:** fechou ao centavo nos dois (A: receita 4.399, lucro
+−3.334,48 com taxas e comissão sem contar duas vezes; B: 2.840 e 2.719,48).
+O que falha é "o que a tela mostra" (princípio 3): a validade do lote um dia
+antes no Estoque (D1), o crediário "3x de 890,67" gravado 890,66/890,66/890,68
+(D2), o inventário sobre o "8 un" arredondado (D3, −20 U de toxina).
+
+**Defeitos:** 12 (8 confirmados, 4 prováveis), nenhuma regressão estrita, 4
+sobras de F20–F22. **Atritos:** 55. **Regra ou engano:** 17 (o mais
+repetido, "Retorno em N dias", é a aut-04). **Para o Heitor:** 4 — acesso ao
+app sem CPF, menor de idade com responsável, bloqueio pontual de agenda,
+comissão de venda do plano.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-05 (7ª)".
+
 ### 2026-10-30 — A completa depois das frentes: 6 falhas em 1.241, corrigidas
 
 A completa no GitHub Actions (run 41151753519, contra o build de 53b4a803)
@@ -9494,6 +9524,99 @@ do clique; a action recebia o id certo e gravava certo (a recusa "Este
 atendimento não é desta cliente." segue em `actions/client-documents.ts`).
 O teste agora troca o id no evento `formdata`. As duas da LGPD foram o banco
 travado às 04:38 UTC (15/15 local). **Fecha o ciclo da 6ª simulação.**
+
+### Da simulação de 2026-11-05 (7ª: 12 defeitos e 55 atritos em aberto)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`, com as
+capturas, os 17 achados que eram regra ou engano, o dinheiro esperado ×
+sistema e o que ficou sem testar. A 6ª rodada está em
+`.sim/arquivo-2026-11-04/`. Os ids D1…D12 e A1…A55 são desta rodada.
+Caminhos relativos a `apps/web/`. Nada foi corrigido ainda.
+
+**Alta**
+- **D1.** A validade do lote aparece um dia antes no Estoque (15/11 → "vence
+  14/11"); Relatórios → Estoque diz 15/11. `new Date(iso).toLocaleDateString`
+  numa data sem hora (§14). `components/admin/admin-stock-view.tsx:69, 559`,
+  `admin-stock-manage-modal.tsx:477`, `lib/estoque/lotes.ts:59`. Repetição do
+  D10 da 4ª pelo J-45. Princípio 3: `formatDia`, como `validadeDoLote`.
+- **D2.** O crediário diz "3x de R$ 890,67" no checkout e no contrato e grava
+  890,66 + 890,66 + 890,68 (`dividirEmParcelas`); a tela e o contrato
+  arredondam a média. `components/branch/checkout-wizard.tsx:174, 644`,
+  `lib/checkout/pagamento.ts:140-142`, `lib/checkout/parcelas.ts:34-43`.
+  Sobra da F20 (D6). Princípio 3: uma conta só ("2x de 890,66 + 1x de
+  890,68", com as datas no contrato — A42).
+- **D3.** O Ajuste de estoque mostra "Estoque atual 8 un" para 780 U (7,8
+  frascos); a contagem 7,7 deixou 750 U, não 770 (`estoque_ajuste` desconta o
+  "já consumido do frasco aberto"). `admin-stock-manage-modal.tsx:295-345`,
+  migration `20261027000011`. Princípio 3: mostrar "780 U · 7,8 frascos" e
+  aceitar a contagem na unidade de consumo, ou explicar a conta.
+
+**Média**
+- **D4.** `/cliente/financeiro` mostra as parcelas do crediário com a data de
+  criação (todas 05/11, em ordem 3/3 → 1/3), sem o vencimento.
+  `app/[slug]/cliente/financeiro/page.tsx:49, 58, 138-140`.
+- **D5.** A sessão do plano com dois procedimentos (110 min) diz "Duração
+  prevista 60 min": vale a do procedimento principal.
+  `app/_shared/sessao-de-atendimento.tsx:409`. Sobra da F22 (A36).
+- **D6.** O "Mapa de aplicação" da ficha fica vazio com a aplicação
+  registrada por Planejamento → Injetáveis (a Ana: 4 planejamentos vazios e 1
+  com os 3 pontos). O Finalizar não liga o planejamento com aplicação deste
+  atendimento ao campo vazio nem avisa. `anamnesis-form-renderer.tsx`
+  (`CampoDoPlanejador`), `lib/atendimento/retrato-dos-injetaveis.ts`,
+  `planejamento-injetaveis.tsx:80-91`.
+- **D7.** (provável) A evolução gravada some da tela: o rascunho do
+  sessionStorage com `notes: ''` vence a evolução salva.
+  `components/branch/appointment-session.tsx:1330-1338`. Possível sobra da
+  F21 (D8). A reproduzir.
+- **D8.** O app mostra o preço de tabela (R$ 1.200) no atendimento pago com
+  desconto (R$ 1.100). `app/[slug]/cliente/agendamentos/page.tsx:181` e o
+  Histórico do app.
+- **D9.** (provável) A ficha diz "Nenhum agendamento futuro" logo depois de
+  remarcar, até recarregar duas vezes: a action não revalida a ficha.
+
+**Baixa**
+- **D10.** (provável) "Marcar chegada e iniciar" no dia anterior pergunta
+  "Iniciar mesmo assim?" e só depois recusa: a trava do dia vem depois da
+  pergunta do horário (`appointment-session.tsx:1418, 1913`).
+- **D11.** `/clients` sem acesso dá HTTP 500 (a trava no layout, fora do
+  Suspense do `loading.tsx`); `/agenda` e `/financeiro` dão 200. Nada vazou.
+  "Minified React error #441" no console das telas sem acesso, não visto.
+- **D12.** (provável) No "Agendar" do card, a sala aparece selecionada e grava
+  `room_id` nulo.
+
+**Atritos (A1–A55), os que mais pesam:** os "Próximos passos" do setup sem
+link (A1); "Preencher pela taxa por parcela" multiplica (A3); "base cheia"
+não fala de pontos (A10); Enter no nome da etapa não grava (A11); o editor de
+automação perde o que não foi salvo (A12); origem do lead fixa e sem
+conversão por origem (A14, A16, A20); a venda não sugere mover o card a
+Ganho (A18); "Cadastrar" mudo sem responder "É a mesma pessoa?" (A22);
+"Reagendar" depois da falta em branco (A27); a avaliação "Em atendimento"
+sem dizer que falta finalizar (A33); o desconto do plano só no checkout, sem
+aviso (A34); "Novo planejamento" vazio a cada clique (A35); sem "quem recebeu
+o lote X" (A40); o contrato sem a lista de parcelas (A42); o recibo genérico
+do atendimento (A43); o consultor sem "Minhas comissões" (A48); a perda fora
+do lucro sem legenda (A50); 10–15 s por tela na madrugada (A54). Os demais
+no relatório.
+
+**Para o Heitor decidir (4):**
+1. Acesso ao app sem CPF (estrangeira com passaporte). Recomendação: a senha
+   inicial provisória é o número do documento da ficha.
+2. Menor de idade: "Responsável legal" na ficha abaixo de 18, marca "Menor"
+   na agenda e no atendimento, termo assinado pelo responsável (avisar, não
+   barrar).
+3. Bloqueio pontual de agenda (almoço, folga, férias), por profissional ou
+   sala, com motivo; agendar dentro avisa e deixa encaixar.
+4. Comissão de venda do plano: "Quem vendeu" no checkout do plano e um
+   percentual "venda de plano" vazio por padrão, liberado com o plano pago.
+
+**Decidido pelos princípios (sem perguntar), quando corrigir:** D2 mostra
+cada parcela gravada; D3 mostra o rendimento; A39 — o saldo do plano só para
+quem recebe; uma linha no procedimento "Retorno? Agende um novo atendimento
+no fim desta sessão" (cinco papéis procuraram o campo; a regra é a aut-04).
+
+**Recado:** o preparador redefiniu sem querer as senhas de `sim6a-sofia` e
+`sim6b-marta` (Begônia e Camélia). Mexer em D2 toca checkout do plano,
+contrato e crediário; D3 toca `estoque_ajuste` — vizinhos, e vale uma completa.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
