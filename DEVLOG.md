@@ -9660,6 +9660,27 @@ estrito em parte da decisão 2 e do A24/A25/A51 (o Vitest veio antes; o e2e
 depois). Sobras para F30/F32: "Menor" na Minha agenda, o Copilot cadastrar
 com passaporte, o responsável no pacote da LGPD.
 
+**F30 feita em 2026-11-05 — bloqueio de agenda, comissão de venda do plano,
+agenda e comissões** (5b622d02…4f05b559; migrations `20261105003001–3002`).
+Decisão 3: "Bloquear horário" por profissional ou sala, com início, fim e
+motivo (`agenda_bloqueios`); a grade mostra a faixa, a equipe é avisada e
+encaixa (princípio 2), o app da cliente e o Copilot não oferecem o horário
+(o Copilot recusa e manda encaixar pela agenda); quem tem "só os meus"
+bloqueia só o próprio horário; o da profissional vale em todas as unidades, o
+da sala só na dela. A vista da semana ainda não desenha (fica para a F32).
+Decisão 4: "Comissão na venda de plano (%)" vazia por padrão e "Quem vendeu"
+vazio no checkout do plano (`plano_pct`, `vendido_por`), pelo mesmo caminho
+do pacote (`comissao_conta`); libera com o plano pago inteiro e volta se o
+plano for cancelado; o texto do Heitor sobre plano × pacote em
+`vendas-financeiro.md`. A10 a base diz que pontos e voucher não saem dela;
+A48 o resumo do cargo diz como ver "Minhas comissões" (a regra não mudou);
+A27 Reagendar já preenchido no próximo livre; A28 o conflito cita todos; A29
+00:00 inteiro, o cartão de 45 min com o procedimento, o vazio da coluna traz
+a profissional; A30; A31 o wa.me fica, renomeado "Abrir no WhatsApp do
+aparelho" (a regra é copiar ou wa.me); A32. Sobras da F29: "Menor" na Minha
+agenda; o Copilot cadastra com passaporte. Os `copilot-*` novos só rodam na
+completa.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
