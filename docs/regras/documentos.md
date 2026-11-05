@@ -206,6 +206,18 @@ DEVLOG ("Termos e contratos").
     entrada (sem entrada, vazio). O retrato guarda as vezes da entrada quando
     passam de 1. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`,
     `e2e/documentos-contrato-pagamento.spec.ts`.
+  - **As parcelas do contrato são as GRAVADAS, cada uma com a data** (D2 e
+    A42 da 7ª simulação, 2026-11-05; princípio 3): o contrato da Larissa
+    dizia "3 parcelas de R$ 890,67" — a média, que soma R$ 2.672,01 — e o
+    banco gravou 890,66 + 890,66 + 890,68. `valoresDoPagamento` divide pela
+    MESMA conta dos lançamentos (`dividirEmParcelas`): `pagamento.forma` diz
+    "3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) com a clínica, a primeira
+    em 05/12/2026: R$ 890,66 em 05/12/2026, R$ 890,66 em 05/01/2027 e
+    R$ 890,68 em 05/02/2027" (iguais: "2 parcelas de R$ 1.700,00 …: R$ 1.700,00
+    em … e R$ 1.700,00 em …"; uma só, sem a lista), e
+    `pagamento.valor_parcela` "R$ 890,66 (a última, R$ 890,68)" — também no
+    cartão em N vezes. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`
+    ("D2, A42"), `tests/checkout-parcelas-gravadas.test.ts`.
 - **A trava do checkout vem ANTES do dinheiro** (`recusaDosDocumentosDoPlano`
   em `checkoutTreatmentPlanInterno`): documento que BLOQUEIA aberto, ou contrato
   assinado para OUTRO pagamento, recusam. Ela EMITE antes de conferir — quem

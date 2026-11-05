@@ -102,6 +102,39 @@ async function plano() {
 }
 
 test.describe('a entrada no cartão e o crediário da clínica', () => {
+  // D2 e A42 da 7ª simulação: a tela e o contrato diziam "3x de R$ 890,67"
+  // (a média, que soma 2.672,01) e o banco gravou 890,66 + 890,66 + 890,68; o
+  // contrato não dizia cada parcela com a data. Uma conta só, a gravada.
+  test('o crediário de R$ 2.672 em 3: a tela, o contrato e o banco dizem as mesmas parcelas (D2, A42)', async ({ browser }) => {
+    test.setTimeout(150_000)
+    const { planId } = await plano()
+    await como(browser, async page => {
+      await page.goto(`/admin/checkout/${planId}`)
+      await page.getByRole('button', { name: 'Confirmar plano' }).click()
+      await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await page.getByRole('button', { name: 'Pix', exact: true }).click()
+      await page.getByLabel('Entrada', { exact: true }).fill('1728')
+      await page.getByLabel('Parcelas do saldo').selectOption('3')
+      await expect(page.locator('[data-parcelas-do-saldo]'), 'a tela diz as parcelas que vão ser gravadas')
+        .toHaveText(/^2x de R\$\s890,66 \+ 1x de R\$\s890,68$/)
+      await page.getByRole('button', { name: 'Ir para a documentação' }).click()
+
+      await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
+      await expect(page.getByText(/3 parcelas \(2x de R\$\s890,66 \+ 1x de R\$\s890,68\) com a clínica, a primeira em \d\d\/\d\d\/\d{4}: R\$\s890,66 em \d\d\/\d\d\/\d{4}, R\$\s890,66 em \d\d\/\d\d\/\d{4} e R\$\s890,68 em \d\d\/\d\d\/\d{4}/),
+        'o contrato lista cada parcela com o valor e a data').toBeVisible()
+      await page.getByRole('button', { name: 'Assinar no papel' }).click()
+      await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
+      await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
+      await page.getByRole('button', { name: 'Continuar' }).click()
+      await page.getByRole('button', { name: 'Ir para o agendamento' }).click()
+      await page.getByRole('button', { name: 'Concluir sem agendar' }).click()
+    })
+    await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
+    const { data: fts } = await db().from('financial_transactions').select('amount, parcela_numero')
+      .eq('treatment_plan_id', planId).not('parcela_numero', 'is', null).order('parcela_numero')
+    expect((fts ?? []).map(f => n(f.amount)), 'o banco gravou o que a tela e o contrato disseram').toEqual([890.66, 890.66, 890.68])
+  })
+
   test('checkout do plano: a entrada no Elo em 3x (com a taxa e o recebível), as parcelas com a clínica, e o contrato diz isso', async ({ browser }) => {
     test.setTimeout(150_000)
     const { planId } = await plano()

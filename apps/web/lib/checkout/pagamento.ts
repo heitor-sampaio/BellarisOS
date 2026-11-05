@@ -1,5 +1,7 @@
 import { formatBRL, formatDate } from '@estetica-os/utils'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { dividirEmParcelas } from '@/lib/checkout/parcelas'
+import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 
 /**
  * Como o plano foi pago — e as três leituras dele que o sistema faz.
@@ -54,6 +56,23 @@ const METODO: Record<string, string> = {
 const metodo = (m: string | null | undefined) => (m ? METODO[m] ?? `em ${m}` : null)
 
 const centavos = (v: number) => Math.round(v * 100) / 100
+
+/**
+ * O valor da parcela como será GRAVADO (D2 da 7ª simulação): a divisão de
+ * `dividirEmParcelas` (centavos, a sobra na última) — "R$ 1.700,00", ou
+ * "R$ 890,66 (a última, R$ 890,68)". Era a média arredondada (890,67).
+ */
+function valorDaParcela(valores: number[]): string {
+  const primeira = valores[0] ?? 0
+  const ultima = valores[valores.length - 1] ?? 0
+  return Math.abs(ultima - primeira) < 0.005 ? formatBRL(primeira) : `${formatBRL(primeira)} (a última, ${formatBRL(ultima)})`
+}
+
+/** "R$ 890,66 em 05/12/2026, R$ 890,66 em 05/01/2027 e R$ 890,68 em 05/02/2027" (A42). */
+function listaDasParcelas(parcelas: { amount: number; due_date: string }[]): string {
+  const itens = parcelas.map(x => `${formatBRL(x.amount)} em ${formatDate(x.due_date)}`)
+  return itens.length > 1 ? `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}` : (itens[0] ?? '')
+}
 
 /**
  * As vezes na maquininha do que é pago AGORA no cartão de crédito: o à vista,
@@ -121,7 +140,7 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     if (vezes > 1) {
       return {
         ...vazio, 'pagamento.metodo': metodo(p.metodo), 'pagamento.parcelas': String(vezes),
-        'pagamento.valor_parcela': formatBRL(centavos(total / vezes)),
+        'pagamento.valor_parcela': valorDaParcela(dividirEmParcelas(total, vezes, '2026-01-01').map(x => x.amount)),
         'pagamento.forma': `${formatBRL(total)} ${metodo(p.metodo)} em ${vezes}x`,
       }
     }
@@ -137,15 +156,22 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     }
   }
   const saldo = centavos(total - p.entrada)
-  const parcela = p.parcelas > 0 ? centavos(saldo / p.parcelas) : saldo
+  // D2/A42 da 7ª simulação: as parcelas GRAVADAS (`dividirEmParcelas`, a mesma
+  // conta dos lançamentos), cada uma com o valor e a data. Era a média
+  // arredondada ("3 parcelas de R$ 890,67"), que não somava o saldo.
+  const gravadas = dividirEmParcelas(saldo, Math.max(1, p.parcelas), p.primeiroVencimento)
+  const valores = gravadas.map(x => x.amount)
+  const iguais = valorDaParcela(valores) === formatBRL(valores[0] ?? 0)
+  const quanto = iguais ? `de ${formatBRL(valores[0] ?? 0)}` : `(${parcelasEmTexto(saldo, gravadas.length)})`
   // D6: o saldo é o crediário da CLÍNICA — não vai "no cartão de crédito".
-  const parcelas = `${p.parcelas} parcela${p.parcelas > 1 ? 's' : ''} de ${formatBRL(parcela)} com a clínica, a primeira em ${formatDate(p.primeiroVencimento)}`
+  const parcelas = `${gravadas.length} parcela${gravadas.length > 1 ? 's' : ''} ${quanto} com a clínica, a primeira em ${formatDate(p.primeiroVencimento)}`
+    + (gravadas.length > 1 ? `: ${listaDasParcelas(gravadas)}` : '')
   return {
     // O meio é o da entrada (sem entrada, nenhum).
     'pagamento.metodo':              p.entrada > 0 ? meioDaEntrada(p) : null,
     'pagamento.entrada':             p.entrada > 0 ? formatBRL(p.entrada) : null,
     'pagamento.parcelas':            String(p.parcelas),
-    'pagamento.valor_parcela':       formatBRL(parcela),
+    'pagamento.valor_parcela':       valorDaParcela(valores),
     'pagamento.primeiro_vencimento': formatDate(p.primeiroVencimento),
     'pagamento.forma':               p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} ${meioDaEntrada(p)} + ${parcelas}` : parcelas,
   }

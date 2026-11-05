@@ -11,14 +11,25 @@ import { dividirEmParcelas } from '@/lib/checkout/parcelas'
  * "2× R$ 333,33 + 1× R$ 333,34".
  */
 
-function juntar(valores: number[]): string {
+function juntar(valores: number[], de = false): string {
   const grupos: { valor: number; n: number }[] = []
   for (const v of valores) {
     const ult = grupos[grupos.length - 1]
     if (ult && Math.abs(ult.valor - v) < 0.005) ult.n++
     else grupos.push({ valor: v, n: 1 })
   }
-  return grupos.map(g => `${g.n}× ${formatBRL(g.valor)}`).join(' + ')
+  return grupos.map(g => de ? `${g.n}x de ${formatBRL(g.valor)}` : `${g.n}× ${formatBRL(g.valor)}`).join(' + ')
+}
+
+/**
+ * As parcelas do saldo como serão GRAVADAS (D2 da 7ª simulação): "2x de
+ * R$ 890,66 + 1x de R$ 890,68". A tela do checkout e o recebimento do plano
+ * dividiam pela média ("3x de R$ 890,67", que somam R$ 2.672,01) e o banco
+ * gravava outra conta. Nulo sem o que dividir.
+ */
+export function parcelasEmTexto(saldo: number, parcelas: number): string | null {
+  if (!(saldo > 0) || !(parcelas >= 1)) return null
+  return juntar(dividirEmParcelas(saldo, parcelas, '2026-01-01').map(p => p.amount), true)
 }
 
 /** "Entrada R$ 300,00 + 3× R$ 1.000,00" — ou, sem entrada, "3× R$ 1.100,00". Nulo sem o que dividir. */

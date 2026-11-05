@@ -898,6 +898,17 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     (`ResumoDasParcelas`, `lib/checkout/resumo-do-pagamento.ts`; as
     parcelas iguais se juntam). Prova: `e2e/vendas-resumo-do-pagamento.spec.ts`,
     `tests/resumo-do-pagamento.test.ts`.
+  - **Uma conta só para a parcela do crediário** (D2 da 7ª simulação,
+    2026-11-05; princípio 3): o checkout do plano dizia "3× de R$ 890,67" (o
+    saldo ÷ 3) e o recebimento do plano no check-in "3x de R$ 890,67", e o
+    banco gravou 890,66 + 890,66 + 890,68. As duas telas dizem as parcelas
+    como serão gravadas — "2x de R$ 890,66 + 1x de R$ 890,68"
+    (`parcelasEmTexto`, `lib/checkout/resumo-do-pagamento.ts`, sobre
+    `dividirEmParcelas`; `[data-parcelas-do-saldo]` no checkout) —, e o
+    contrato lista cada parcela com a data (`documentos.md`). O recibo e o app
+    já mostravam o lançamento gravado. Prova:
+    `e2e/checkout-entrada-no-cartao.spec.ts` ("D2, A42"),
+    `tests/checkout-parcelas-gravadas.test.ts`.
   - **O "3x" aparece** (A33, 2026-10-27): o nome da forma é UM
     (`rotuloDaForma`, `lib/financeiro/formas.ts` — "Crédito 3x" nas listas do
     financeiro, na ficha, no "Pagamento confirmado" do atendimento e no
@@ -1173,6 +1184,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
 ❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
 ❌ Gravar um parcelado como um lançamento só (cada parcela é um lançamento; divida com dividirEmParcelas) ou escrever em installments
+❌ Mostrar o valor da parcela como saldo ÷ parcelas (a média arredondada não soma o saldo): é a divisão gravada, dividirEmParcelas / parcelasEmTexto (D2 da 7ª)
 ❌ Recortar a lista do financeiro por created_at (é data_de_referencia: pago no pagamento, em aberto no vencimento)
 ❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
 ❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)

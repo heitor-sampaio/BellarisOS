@@ -16,6 +16,7 @@ import { rotaCliente, rotaAtendimento } from '@/lib/rotas'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
+import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -171,7 +172,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     : null
   const entradaNum = Math.max(0, Math.min('valor' in entradaLida ? entradaLida.valor : 0, liquido))
   const saldo      = Math.round((liquido - entradaNum) * 100) / 100
-  const valorParcela = parcelas > 0 ? saldo / parcelas : 0
+  // D2 da 7ª: as parcelas como serão GRAVADAS ("2x de R$ 890,66 + 1x de R$ 890,68"), não a média.
+  const textoDasParcelas = parcelasEmTexto(saldo, parcelas)
 
   // Agendamento — compartilhado por todas as sessões
   const [schedBranchId, setSchedBranchId] = useState(plan.currentBranchId)
@@ -641,7 +643,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             </div>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
               {entradaNum > 0 && <>Entrada de {fmtBRL(entradaNum)} agora · </>}
-              {parcelas}× de {fmtBRL(valorParcela)} a partir de {primeiroVenc.split('-').reverse().join('/')}
+              <span data-parcelas-do-saldo>{textoDasParcelas ?? `${parcelas}x de ${fmtBRL(0)}`}</span> a partir de {primeiroVenc.split('-').reverse().join('/')}
             </p>
           </div>
         )}

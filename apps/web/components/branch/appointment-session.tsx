@@ -56,6 +56,7 @@ import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
+import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -866,7 +867,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                   )}
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {restante > 0
-                      ? `${fmtBRL(restante)} em ${parcelas}x de ${fmtBRL(Math.round((restante / parcelas) * 100) / 100)}.`
+                      ? `${fmtBRL(restante)} em ${parcelasEmTexto(restante, parcelas)}.`
                       : 'Sem saldo a parcelar — a entrada cobre o total.'}
                   </p>
                 </>
