@@ -176,6 +176,13 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   Realtime DESCARTA o lote inteiro de mudanças em que uma política estoura —
   para todos os inscritos. Política ou função nova que leia claim sem passar
   por `jwt_claim` (ou que faça `::uuid` de uma) traz isso de volta.
+- ⚠️ **Política de leitura de tabela do Realtime é `to authenticated`**
+  (F26, migration `20261105000201`). A aba que perdeu a sessão segue inscrita
+  como `anon`, e para o anônimo as políticas que chamam `private.*`
+  (`clientes_do_login`, `prontuario_da_minha_rede`, `suporte_encerrada`)
+  ESTOURAVAM ("permission denied") — e o lote ia embora para todos. Política
+  nova `for select`/`for all` numa tabela da publicação `supabase_realtime`
+  nasce `to authenticated`. Prova: `e2e/rls-realtime-sem-sessao.spec.ts`.
 
 ### Claims do JWT
 
@@ -687,6 +694,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
+❌ Policy de leitura numa tabela do Realtime sem `to authenticated` (o inscrito anônimo a estoura e o lote some para todos)
 ❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por clínica: é ctx.clientId no app, clientes_do_login() no banco)
 ❌ Gravar o slug de uma unidade sem escolherEndereco (lib/unidades/endereco.ts) — é único no sistema inteiro, e nunca o nome de uma rota
 ❌ Criar política de RLS em tabela de credencial (integration_configs, whatsapp_numbers) — só o servidor lê

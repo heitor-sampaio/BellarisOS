@@ -173,6 +173,7 @@ export const ISOLADOS = [
   'vendas-forma-nasce-vazia.spec.ts',
   'portal-cliente-pacote-cancelado.spec.ts',
   'quadro-tempo-real.spec.ts',
+  'rls-realtime-sem-sessao.spec.ts',
   'sessao-httponly.spec.ts',
   'suporte-entrada.spec.ts',
   'suporte-impersonar.spec.ts',
