@@ -1,6 +1,10 @@
 import { Users } from 'lucide-react'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 
-export default function AdminClientsIndexPage() {
+export default async function AdminClientsIndexPage() {
+  // Toda page.tsx confere por si (CLAUDE.md §6) — e é esta a trava que diz
+  // "sem acesso" a quem não tem Clientes (D11 da 7ª: o layout só deixa passar).
+  assertPermission(await getTenantContext(), 'clients', 'VIEW')
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',

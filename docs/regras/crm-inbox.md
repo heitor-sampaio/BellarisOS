@@ -238,6 +238,15 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   2026-10-21, nem o `updateTag` derrubou este `unstable_cache` (daí a regra do
   CLAUDE.md §14 valer para todos os caches). Prova:
   `e2e/ficha-lista-de-clientes.spec.ts`.
+- **Sem Clientes, a lista responde como as outras telas sem acesso** (D11 da
+  7ª simulação, 2026-11-05): `/clients` dava HTTP 500 e `/agenda` 200, com a
+  mesma tela "Você não tem acesso a esta área". A trava LANÇADA no layout de
+  Clientes (os dois portais) sai antes do streaming, fora do Suspense do
+  `loading.tsx`. Agora o layout, sem o módulo, não lê nada e só deixa passar a
+  página — e a página (`page.tsx` da lista, que não conferia nada) lança o
+  `semAcesso()`, como toda tela. O "Minified React error #441" do console é
+  esse lançamento no Server Component: o previsto (`e2e.md`, "Lendo o log da
+  completa"). Prova: `e2e/permissoes-clientes-sem-acesso.spec.ts`.
 - **Quem só vê os clientes não cadastra nem edita** (D4/D5 da 5ª simulação,
   2026-11-01; o Heitor: "quem só pode ver só pode ver"). Com Clientes em Ver,
   o inbox não oferece "Cadastrar cliente" nem o "Vender" de quem não tem ficha
@@ -792,5 +801,6 @@ o contato junto.
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
 ❌ Gravar a ficha da cliente (dados, anotações, arquivar) pela SESSÃO — a RLS recorta pela unidade de cadastro e a cliente é da clínica: é pelo servidor, com a rede na consulta
+❌ Lançar a trava de módulo (assertPermission) num layout.tsx de seção: sai antes do streaming e a resposta é 500 — o layout sem o módulo só deixa passar a página, e a trava é dela (D11 da 7ª)
 ❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })
 ```

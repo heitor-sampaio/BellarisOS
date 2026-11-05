@@ -1,5 +1,5 @@
 import { subDays } from 'date-fns'
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, can } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedUltimasVisitas, getCachedNetworkBranches } from '@/lib/cached-queries'
@@ -11,7 +11,12 @@ export default async function AdminClientsLayout({
   children: React.ReactNode
 }) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'clients', 'VIEW')
+  // D11 da 7ª simulação: a trava LANÇADA aqui, no layout, sai antes do
+  // streaming — fora do Suspense do loading.tsx — e a resposta era HTTP 500,
+  // enquanto as outras telas sem o módulo respondem 200 com a tela "sem
+  // acesso". Sem o módulo, o layout não lê nada e só deixa passar a página:
+  // é a trava dela (assertPermission, como toda page.tsx) que diz "sem acesso".
+  if (!can(ctx, 'clients', 'VIEW')) return <>{children}</>
 
   const [rawClients, ultimasVisitas, branchesRaw] = await Promise.all([
     getCachedNetworkClients(ctx.tenantId!),
