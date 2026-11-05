@@ -142,16 +142,25 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
   })
 
   test('a ligação com o atendimento é conferida: o de outra cliente é recusado', async ({ browser }) => {
+    const antesDaRecusa = (await fotosDo(atendimento)).length
     await como(profissional!, browser, async p => {
       await p.goto(`/${slug}/agenda/${atendimento}`)
       const fotos = p.locator('[data-fotos-do-atendimento]')
       await fotos.getByRole('button', { name: 'Anexar foto' }).click()
       await fotos.locator('input[name="file"]').setInputFiles({ name: 'x.png', mimeType: 'image/png', buffer: PNG })
-      await fotos.locator('input[name="appointment_id"]').evaluate((el, outro) => { (el as HTMLInputElement).value = outro }, atendimentoDaOutra)
+      // O id trocado vai no envio (o evento `formdata`), não no `value` do
+      // campo escondido: o relógio do atendimento em andamento renderiza a
+      // tela a cada segundo, e o React reescreve o `value` do campo — o tique
+      // que caía entre a troca e o clique desfazia a troca, e a foto ia para o
+      // PRÓPRIO atendimento (F27: a completa de 2026-11-05 viu as 3 fotos).
+      await fotos.locator('form').evaluate((form, outro) => {
+        form.addEventListener('formdata', e => (e as FormDataEvent).formData.set('appointment_id', outro))
+      }, atendimentoDaOutra)
       await fotos.getByRole('button', { name: 'Anexar foto' }).last().click()
       await expect(fotos.getByText(/não é desta cliente|não encontrado/i)).toBeVisible()
     })
     expect(await fotosDo(atendimentoDaOutra)).toHaveLength(0)
+    expect(await fotosDo(atendimento), 'nem no atendimento da tela').toHaveLength(antesDaRecusa)
   })
 
   test('sem o prontuário, a tela do atendimento não mostra nem anexa foto', async ({ browser }) => {
@@ -165,10 +174,28 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
 
 test.describe.serial('a foto do atendimento: ver, enviar à cliente e apagar com rastro', () => {
   let foto = ''
-  test.beforeAll(async () => {
-    const { data } = await db().from('client_documents').select('id').eq('appointment_id', atendimento).is('apagado_em', null)
-      .order('created_at').limit(1).single<{ id: string }>()
-    foto = data!.id
+  const primeiraFoto = async () => {
+    const { data, error } = await db().from('client_documents').select('id').eq('appointment_id', atendimento).is('apagado_em', null)
+      .order('created_at').limit(1).maybeSingle<{ id: string }>()
+    expect(error).toBeNull()
+    return data?.id ?? null
+  }
+  test.beforeAll(async ({ browser }) => {
+    // Um teste de cima que falha leva o worker junto, e o novo refaz o
+    // beforeAll do arquivo: rede e atendimento NOVOS, sem foto (F27 — era o
+    // `null.id` que vinha atrás de toda falha de cima). Aí a foto se anexa
+    // aqui, pela mesma tela.
+    if (!(await primeiraFoto())) {
+      await como(profissional!, browser, async p => {
+        await p.goto(`/${slug}/agenda/${atendimento}`)
+        const fotos = p.locator('[data-fotos-do-atendimento]')
+        await fotos.getByRole('button', { name: 'Anexar foto' }).click()
+        await fotos.locator('input[name="file"]').setInputFiles({ name: 'antes.png', mimeType: 'image/png', buffer: PNG })
+        await fotos.getByRole('button', { name: 'Anexar foto' }).last().click()
+        await expect.poll(primeiraFoto).not.toBeNull()
+      })
+    }
+    foto = (await primeiraFoto())!
   })
 
   // A37 da 5ª simulação: a foto do atendimento não tinha "Enviar à cliente", e

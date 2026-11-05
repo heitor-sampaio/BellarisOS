@@ -170,6 +170,17 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 - Upload com arquivo não se reenvia (o Playwright não expõe o corpo
   multipart): o ataque se faz NA PÁGINA — `FormData.append` ou o input
   escondido adulterados antes de enviar (`e2e/prontuario.spec.ts`).
+  ⚠️ Em tela que se renderiza sozinha (o relógio do atendimento em andamento,
+  a cada segundo), trocar o `value` do input escondido NÃO vale: o React
+  reescreve o `value` a cada render, e o tique entre a troca e o clique a
+  desfaz — o envio sai com o id original e a recusa "não aparece" (F27, a
+  completa de 2026-11-05). Troque no ENVIO, pelo evento `formdata` do
+  formulário (`e.formData.set(…)`), como `e2e/atendimento-foto-clinica.spec.ts`.
+- `describe` que depende do que outro `describe` do arquivo gravou não se
+  sustenta sozinho: o teste que falha leva o worker, e o novo refaz o
+  `beforeAll` do arquivo (rede e registros NOVOS). O `beforeAll` dele confere
+  e, faltando, cria o que usa — senão toda falha de cima vem com um `null.id`
+  de brinde.
 - **O site e a câmera ficam FORA da suíte** (2026-10-17, `docs/regras/site.md`):
   - `playwright.site.config.ts` + `e2e-site/`: o site (apps/site) contra o
     build DELE (`pnpm --filter=site build`), em 127.0.0.4:3103, sem sessão nem
@@ -239,5 +250,6 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 ❌ Abrir e2e_apagar_rede a quem não é service_role, ou afrouxar a trava (e2e_eh_rede_de_teste) — [sim] e as redes reais nunca
 ❌ Contar ou procurar em "todos os logins" ou "todas as redes" só na primeira página: na completa as da rodada ficam até o fim
 ❌ Gravar "Date.now() - N minutos" num teste que lê o que é de HOJE (agenda do dia, chegada, period=today): à meia-noite vira ontem — é haMinutosHoje(n)
+❌ Adulterar o value de um input escondido numa tela que se renderiza sozinha (o relógio do atendimento): o React o desfaz antes do envio — troque no evento formdata (F27)
 ❌ Comando com espaço no -g de um spawnSync com shell no Windows (o argumento se parte): use uma palavra só
 ```
