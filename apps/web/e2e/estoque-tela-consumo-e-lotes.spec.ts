@@ -31,6 +31,8 @@ const lote   = `L-${marca}`
 let idToxina = ''
 let idSerum = ''
 let idAcido = ''
+let idToxinaD3 = ''
+const toxinaD3 = `${PREFIXO} Toxina D3 ${marca}`
 const acido  = `${PREFIXO} Ácido ${marca}`
 const loteD1 = `D1-${marca}`
 const emDias = (n: number) => new Date(Date.now() + n * 86_400_000)
@@ -82,6 +84,22 @@ test.beforeAll(async () => {
     p_lote: loteD1, p_validade: validadeD1, p_autor: 'e2e',
   })
   expect(entrada3.error).toBeNull()
+  // D3: 8 frascos de 100 UI e 20 UI aplicadas — 780 UI, o "8 frasco" arredondado.
+  const { data: p4, error: e4 } = await db().from('products')
+    .insert({ tenant_id: rede.tenantId, name: toxinaD3, unit: 'frasco', consumption_unit: 'UI', units_per_package: 100 })
+    .select('id').single<{ id: string }>()
+  expect(e4).toBeNull()
+  idToxinaD3 = p4!.id
+  expect((await db().rpc('estoque_entrada', {
+    p_produto: idToxinaD3, p_unidade: rede.branchId, p_quantidade: 8, p_custo: 900, p_observacao: null,
+    p_lote: null, p_validade: null, p_autor: 'e2e',
+  })).error).toBeNull()
+  expect((await db().from('stock_movements').insert({
+    branch_id: rede.branchId, product_id: idToxinaD3, type: 'PROCEDURE_USAGE', quantity: -20, balance_after: 780,
+    unit_cost: 9, created_by: 'e2e', notes: 'Atendimento',
+  })).error).toBeNull()
+  expect((await db().from('branch_product_stock').update({ current_stock: 8, current_rendimento: 780 })
+    .eq('product_id', idToxinaD3).eq('branch_id', rede.branchId)).error).toBeNull()
   // Um consumo de 32 UI (a baixa do lote é o gatilho), e os mínimos: toxina 3 frascos, sérum 2.
   const consumo = await db().from('stock_movements').insert({
     branch_id: rede.branchId, product_id: idToxina, type: 'PROCEDURE_USAGE', quantity: -32, balance_after: 268,
@@ -100,7 +118,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   const falhas: string[] = []
-  const ids = [idToxina, idSerum, idAcido].filter(Boolean)
+  const ids = [idToxina, idSerum, idAcido, idToxinaD3].filter(Boolean)
   if (ids.length) {
     for (const tabela of ['product_batches', 'stock_movements', 'branch_product_stock']) {
       const r = await db().from(tabela).delete().in('product_id', ids)
@@ -169,6 +187,49 @@ test.describe.serial('a tela de estoque', () => {
       await expect(modal.locator('[data-movimento]').filter({ hasText: 'Entrada' }),
         'o histórico diz o dia digitado').toContainText(`val. ${validadeD1NaTela}`)
     })
+  })
+
+  // D3 da 7ª simulação: a toxina tinha 780 U (7,8 frascos), o Ajuste mostrava
+  // "Estoque atual 8 un", a Tânia contou 7,7 e ficou 750 U — o banco tirava
+  // os 20 U do frasco aberto da contagem. Sumiram 20 U (R$ 180).
+  test('o ajuste mostra o saldo em UI e em frascos e conta em UI ou em frascos, dizendo a conta antes (D3)', async ({ browser }) => {
+    const saldo = async () => (await db().from('branch_product_stock').select('current_stock, current_rendimento')
+      .eq('product_id', idToxinaD3).eq('branch_id', rede!.branchId).single<{ current_stock: number; current_rendimento: number }>()).data!
+    await como(browser, async p => {
+      await p.goto(`/${slug}/estoque`)
+      await p.getByRole('row').filter({ hasText: toxinaD3 }).first().getByTitle('Gerenciar estoque').click()
+      const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
+      await modal.getByRole('button', { name: 'Ajuste', exact: true }).click()
+      await expect(modal.locator('[data-saldo-do-ajuste]'), 'o saldo em consumo e em embalagens').toContainText('780 UI')
+      await expect(modal.locator('[data-saldo-do-ajuste]')).toContainText('7,8 frasco')
+
+      // Em frascos: 7,7 frascos são 770 UI — a tela diz ANTES de aplicar.
+      await modal.getByRole('group', { name: 'Contar em' }).getByRole('button', { name: 'frasco', exact: true }).click()
+      await modal.getByLabel('Contagem').fill('7,7')
+      await expect(modal.locator('[data-ajuste-equivale]')).toContainText('7,7 frasco = 770 UI')
+      await expect(modal.locator('[data-ajuste-equivale]')).toContainText('frasco aberto')
+      await modal.getByLabel('Motivo').fill('Inventário')
+      await modal.getByRole('checkbox').check()
+      await modal.getByRole('button', { name: 'Aplicar ajuste' }).click()
+      await expect.poll(saldo, 'contou 7,7 frascos: 770 UI, não 750').toEqual({ current_stock: 8, current_rendimento: 770 })
+    })
+    await como(browser, async p => {
+      // Em UI: a contagem exata.
+      await p.goto(`/${slug}/estoque`)
+      await p.getByRole('row').filter({ hasText: toxinaD3 }).first().getByTitle('Gerenciar estoque').click()
+      const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
+      await modal.getByRole('button', { name: 'Ajuste', exact: true }).click()
+      await expect(modal.locator('[data-saldo-do-ajuste]')).toContainText('770 UI')
+      await modal.getByLabel('Contagem').fill('765')
+      await expect(modal.locator('[data-ajuste-equivale]')).toContainText('765 UI = 7,65 frasco')
+      await modal.getByLabel('Motivo').fill('Inventário')
+      await modal.getByRole('checkbox').check()
+      await modal.getByRole('button', { name: 'Aplicar ajuste' }).click()
+      await expect.poll(saldo).toEqual({ current_stock: 8, current_rendimento: 765 })
+    })
+    const { data: movs } = await db().from('stock_movements').select('quantity, balance_after')
+      .eq('product_id', idToxinaD3).eq('type', 'MANUAL_ADJUSTMENT').order('created_at')
+    expect((movs ?? []).map(m => [Number(m.quantity), Number(m.balance_after)]), 'o movimento em UI').toEqual([[-10, 770], [-5, 765]])
   })
 
   test('o histórico diz a unidade e a embalagem de cada movimento, o lote e o custo (J-44, J-45)', async ({ browser }) => {

@@ -64,7 +64,8 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   (`lib/appointments/alteracoes.ts`), `garantirClienteRapido`, `atualizarClienteCore`
   (`lib/clients/atualizar.ts`), `lancarCore`/
   `marcarPagoCore` (`lib/financeiro/lancamento.ts`), `estoque_entrada`/
-  `estoque_ajuste` (`lib/estoque/movimentos.ts`), `criarOportunidadeCore`/
+  `estoque_ajuste_em` (`lib/estoque/movimentos.ts`; o cartão do ajuste diz o
+  saldo também na unidade de consumo, D3 da 7ª), `criarOportunidadeCore`/
   `moverEtapaCore` (`lib/crm/oportunidade.ts`), `checkinCore`, o acesso ao app
   (`lib/clients/acesso.ts`), `lib/metrics`.
 - **Anexos** (`lib/copilot/anexos.ts`) são lidos no pedido e DESCARTADOS (a

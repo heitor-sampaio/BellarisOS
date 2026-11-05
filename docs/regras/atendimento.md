@@ -1076,10 +1076,28 @@ const procedures = await ler(
   consumo: R$ 90 o frasco = R$ 0,90 o ml. Antes, a compra gravava 5
   (frascos), o consumo −5 com saldo 495 (ml), e a conclusão gravava o preço
   do FRASCO por ml (5 ml custavam R$ 450).
-  - Continua em EMBALAGENS: o que a pessoa digita (entrada, ajuste,
-    transferência), `products.cost_price` (o preço da embalagem),
+  - Continua em EMBALAGENS: o que a pessoa digita (entrada, transferência),
+    `products.cost_price` (o preço da embalagem),
     `branch_product_stock.current_stock`, o mínimo e os lotes — o gatilho do
-    lote converte toda saída pelo fator.
+    lote converte toda saída pelo fator. O AJUSTE e a perda aceitam também a
+    unidade de consumo (abaixo).
+  - **O ajuste (inventário) mostra o saldo nas duas unidades e conta EXATO**
+    (D3 da 7ª simulação, 2026-11-05; decidido pelo princípio 3): a toxina tinha
+    780 UI (7,8 frascos), o Ajuste mostrava "Estoque atual 8" (a embalagem
+    aberta arredondada), a Tânia contou 7,7 e o estoque ficou em 750 UI —
+    `estoque_ajuste` contava o frasco aberto inteiro e tirava da contagem o
+    "já consumido" dele (20 UI), sem a tela dizer. Agora o Ajuste mostra
+    "780 UI · 7,8 frasco" (`[data-saldo-do-ajuste]`), pergunta "Contar em: UI
+    | frasco" (UI por padrão) e diz a conta ANTES de aplicar
+    (`[data-ajuste-equivale]`): "765 UI = 7,65 frasco", ou "7,7 frasco =
+    770 UI: o frasco aberto conta pela fração que sobra nele". A contagem vale
+    exata na unidade digitada: `estoque_ajuste_em` (migration
+    `20261105002801`; em embalagens, a fração é o aberto), o saldo em
+    embalagens é o rendimento arredondado para cima e o movimento é o que o
+    rendimento andou. O Copilot passa pela mesma função (`ajusteDeEstoqueCore`)
+    e o cartão diz "7,8 → 8 frasco (780 → 800 UI)". `estoque_ajuste` (o de
+    antes) ficou sem chamador. Prova: `e2e/estoque-tela-consumo-e-lotes.spec.ts`
+    ("D3"), `e2e/estoque-custo-de-consumo.spec.ts`.
   - **A regra é UMA, no banco**: `tem_unidade_de_consumo`, `fator_de_consumo`,
     `custo_de_consumo` (o preço da embalagem ÷ o que ela rende; sem unidade de
     consumo, ÷ 1), `saldo_de_consumo`, `valor_do_saldo` e
@@ -1534,12 +1552,13 @@ O resto do fluxo:
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem. A exceção é pacote_cancelar (F2b): cancela as sessões agendadas na MESMA transação do dinheiro, com o status, o motivo e o histórico do cancelarCore, e a action emite o evento e o aviso depois
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
-❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_inicial/estoque_ajuste (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
+❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_inicial/estoque_ajuste_em (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
 ❌ Lançar despesa (ou qualquer financial_transactions) a partir de uma movimentação de estoque — entrada, cadastro, ajuste, perda, transferência ou consumo (D13 revisto, 2026-10-28)
 ❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)
 ❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
+❌ Mostrar no ajuste o saldo em embalagens arredondadas, ou ler a contagem do inventário tirando dela o "já consumido do frasco aberto" (estoque_ajuste, o de antes): a contagem vale EXATA na unidade digitada — estoque_ajuste_em (D3 da 7ª)
 ❌ Ler a validade do lote (product_batches.expires_at) com new Date(...)/toLocaleDateString — é um DIA gravado à meia-noite UTC e vira a véspera: é lib/estoque/validade.ts (D1 da 7ª)
 ❌ Deletar anexo clínico de client_documents pela tela (é apagado_em), ou ler client_documents numa tela sem .is('apagado_em', null)
 ❌ Mostrar no portal da cliente um client_documents sem enviado_em (a clínica decide o que vai ao app)

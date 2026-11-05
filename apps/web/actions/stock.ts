@@ -606,9 +606,11 @@ async function adminAdjustStockInterno(
     if (!qtyRaw) return { error: 'Novo estoque é obrigatório.' }
     const newQty = parseFloat(qtyRaw.replace(',', '.'))
     if (isNaN(newQty) || newQty < 0) return { error: 'Novo estoque não pode ser negativo.' }
+    // D3 da 7ª: a contagem na unidade de consumo (UI) ou em embalagens (a fração é o frasco aberto).
+    const emConsumo = str(formData, 'unidade') === 'CONSUMO'
 
     // O núcleo (lib/estoque/movimentos.ts) é o mesmo do Copilot.
-    const r = await ajusteDeEstoqueCore(createAdminClient(), ctx, { productId, branchId, novoSaldo: newQty, motivo: reason })
+    const r = await ajusteDeEstoqueCore(createAdminClient(), ctx, { productId, branchId, novoSaldo: newQty, motivo: reason, emConsumo })
     if ('error' in r) return { error: r.error }
 
     revalidatePath('/admin/estoque')

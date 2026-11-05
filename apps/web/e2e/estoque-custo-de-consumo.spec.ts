@@ -214,9 +214,9 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
   })
 
   test('ajuste e transferência também gravam em ml', async () => {
-    // Ajuste para 4 frascos: o aberto continua aberto — 395 ml (4 × 100 − os 5 usados).
-    const { error: eA } = await db().rpc('estoque_ajuste', {
-      p_produto: produto, p_unidade: rede!.branchId, p_novo_saldo: 4, p_motivo: 'contagem', p_autor: 'e2e',
+    // Ajuste para a contagem de 3,95 frascos — 395 ml (D3 da 7ª: a fração é o frasco aberto).
+    const { error: eA } = await db().rpc('estoque_ajuste_em', {
+      p_produto: produto, p_unidade: rede!.branchId, p_contagem: 3.95, p_em_consumo: false, p_motivo: 'contagem', p_autor: 'e2e',
     })
     expect(eA).toBeNull()
     // Um frasco para a segunda unidade: 100 ml saem, 100 ml entram.

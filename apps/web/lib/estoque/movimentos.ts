@@ -70,8 +70,15 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
   return { ok: true, saldo: Number(saldo) }
 }
 
+/**
+ * O ajuste (inventário) para a CONTAGEM, exata na unidade digitada (D3 da 7ª
+ * simulação; `estoque_ajuste_em`): `emConsumo` — a contagem é o rendimento
+ * (765 UI); senão, em embalagens, a fração é a do frasco aberto (7,7 frascos =
+ * 770 UI). Era `estoque_ajuste`, que contava o frasco aberto inteiro e tirava
+ * dele o já consumido: 7,7 frascos de uma toxina com 780 UI viravam 750 UI.
+ */
 export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
-  productId: string; branchId: string; novoSaldo: number; motivo: string
+  productId: string; branchId: string; novoSaldo: number; motivo: string; emConsumo?: boolean
 }): Promise<{ ok: true; de: number } | { error: string }> {
   if (ctx.branchId !== null && a.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!a.motivo.trim()) return { error: 'Motivo do ajuste é obrigatório.' }
@@ -80,9 +87,10 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
     return { error: 'Produto ou unidade não encontrado.' }
   }
 
-  // Numa transação só, com a linha do saldo travada (estoque_ajuste).
-  const anterior = await gravar(admin.rpc('estoque_ajuste', {
-    p_produto: a.productId, p_unidade: a.branchId, p_novo_saldo: a.novoSaldo, p_motivo: a.motivo.trim(), p_autor: ctx.internalUserId,
+  // Numa transação só, com a linha do saldo travada (estoque_ajuste_em).
+  const anterior = await gravar(admin.rpc('estoque_ajuste_em', {
+    p_produto: a.productId, p_unidade: a.branchId, p_contagem: a.novoSaldo, p_em_consumo: !!a.emConsumo,
+    p_motivo: a.motivo.trim(), p_autor: ctx.internalUserId,
   }), 'registrar o ajuste de estoque') as number
   return { ok: true, de: Number(anterior) }
 }

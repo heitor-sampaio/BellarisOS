@@ -184,9 +184,21 @@ async function resolverProduto(c: ContextoDaFerramenta, pedido: string): Promise
   return { erro: `Mais de um produto com "${pedido}": ${achados.map(p => p.name).join(', ')}. Qual?` }
 }
 
-async function saldoNaUnidade(c: ContextoDaFerramenta, productId: string, branchId: string): Promise<number> {
-  const linha = await ler(c.admin.from('branch_product_stock').select('current_stock').eq('product_id', productId).eq('branch_id', branchId).maybeSingle(), 'ler o saldo') as { current_stock: number } | null
-  return Number(linha?.current_stock ?? 0)
+/**
+ * O saldo do ajuste em embalagens EXATAS e, com unidade de consumo, também nela
+ * (D3 da 7ª: 780 UI são 7,8 frascos, não o "8" arredondado do current_stock).
+ * O ajuste conta a fração como o frasco aberto (`estoque_ajuste_em`).
+ */
+async function saldoDoAjuste(c: ContextoDaFerramenta, productId: string, branchId: string): Promise<{ embalagens: number; consumo: string | null; rende: number | null }> {
+  const [linha, prod] = await Promise.all([
+    ler(c.admin.from('branch_product_stock').select('current_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).maybeSingle(), 'ler o saldo') as Promise<{ current_stock: number; current_rendimento: number | null } | null>,
+    ler(c.admin.from('products').select('consumption_unit, units_per_package').eq('id', productId).maybeSingle(), 'ler o produto') as Promise<{ consumption_unit: string | null; units_per_package: number | null } | null>,
+  ])
+  const rende = prod?.consumption_unit && Number(prod.units_per_package) > 0 ? Number(prod.units_per_package) : null
+  const embalagens = Number(linha?.current_stock ?? 0)
+  if (!rende) return { embalagens, consumo: null, rende: null }
+  const rend = linha?.current_rendimento != null ? Number(linha.current_rendimento) : embalagens * rende
+  return { embalagens: Math.round(rend / rende * 10_000) / 10_000, consumo: prod!.consumption_unit!, rende }
 }
 
 interface ArgsEntrada { produto: string; quantidade: number; custoUnitario?: number; lote?: string; validade?: string; unidade?: string; observacao?: string }
@@ -257,14 +269,18 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
     if ('erro' in u) return { erro: u.erro }
     const p = await resolverProduto(c, a.produto)
     if ('erro' in p) return { erro: p.erro }
-    const saldo = await saldoNaUnidade(c, p.id, u.unidade!.id)
+    const s = await saldoDoAjuste(c, p.id, u.unidade!.id)
+    const saldo = s.embalagens
     if (saldo === a.novoSaldo) return { erro: `O saldo de ${p.name} já é ${saldo}.` }
+    const num = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 4 })
     return {
       resumo: {
         titulo: 'Ajustar estoque',
         linhas: [
           { rotulo: 'Produto', valor: p.name },
-          { rotulo: 'Saldo', valor: `${saldo} → ${a.novoSaldo} ${p.unit ?? ''}`.trim() },
+          { rotulo: 'Saldo', valor: s.rende
+            ? `${num(saldo)} → ${num(a.novoSaldo)} ${p.unit ?? ''} (${num(saldo * s.rende)} → ${num(a.novoSaldo * s.rende)} ${s.consumo})`
+            : `${saldo} → ${a.novoSaldo} ${p.unit ?? ''}`.trim() },
           { rotulo: 'Motivo', valor: a.motivo.trim() },
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],

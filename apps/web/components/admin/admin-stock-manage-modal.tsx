@@ -21,6 +21,8 @@ type BranchStock = {
   branchName:   string
   currentStock: number
   minStock:     number
+  /** O saldo em consumo (UI, ml), com unidade de consumo — o ajuste o mostra (D3 da 7ª). */
+  currentRendimento?: number | null
 }
 
 type ProductInfo = {
@@ -293,10 +295,29 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   const [newQty,    setNewQty]    = useState('')
   const [confirmed, setConfirmed] = useState(false)
 
-  const stockMap     = Object.fromEntries(product.branches.map(b => [b.branchId, b.currentStock]))
-  const currentStock = branchId ? (stockMap[branchId] ?? 0) : null
-  const parsedNew    = newQty !== '' ? parseFloat(newQty.replace(',', '.')) : null
-  const delta        = currentStock !== null && parsedNew !== null ? parsedNew - currentStock : null
+  // D3 da 7ª simulação: a toxina tinha 780 UI e o ajuste mostrava "8 frasco"
+  // (a embalagem aberta arredondada); a contagem de 7,7 virava 750 UI. O saldo
+  // aparece em consumo E em embalagens, e a contagem vale EXATA na unidade
+  // escolhida — em embalagens, a fração é o frasco aberto (7,7 = 770 UI).
+  const rende        = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
+  const [emConsumo, setEmConsumo] = useState(true)
+  const contaEmConsumo = !!rende && emConsumo
+  const linha        = branchId ? product.branches.find(b => b.branchId === branchId) : undefined
+  const embalagens   = branchId ? (linha?.currentStock ?? 0) : null
+  const rendimento   = rende && branchId ? (linha?.currentRendimento ?? (embalagens ?? 0) * rende) : null
+  // O saldo de agora na unidade da contagem: em consumo, o rendimento; em embalagens, o equivalente exato.
+  const currentStock = embalagens === null ? null
+    : rende ? (contaEmConsumo ? rendimento! : Math.round(rendimento! / rende * 10_000) / 10_000) : embalagens
+  const unidadeDaContagem = contaEmConsumo ? product.consumptionUnit! : product.unit
+  const lidaNova     = newQty !== '' ? parseDecimal(newQty, 4) : NaN
+  const parsedNew    = Number.isFinite(lidaNova) ? lidaNova : null
+  const delta        = currentStock !== null && parsedNew !== null ? Math.round((parsedNew - currentStock) * 10_000) / 10_000 : null
+  const fmtQ = (n: number, casas = 2) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
+  const equivale = rende && parsedNew !== null && parsedNew >= 0
+    ? (contaEmConsumo
+      ? `${fmtQ(parsedNew)} ${product.consumptionUnit} = ${fmtQ(parsedNew / rende, 4)} ${product.unit}`
+      : `${fmtQ(parsedNew, 4)} ${product.unit} = ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}: o ${product.unit} aberto conta pela fração que sobra nele (0,7 ${product.unit} = ${fmtQ(0.7 * rende)} ${product.consumptionUnit}).`)
+    : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -305,6 +326,8 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
     try {
       const fd = new FormData(e.currentTarget)
       fd.set('productId', product.id)
+      fd.set('unidade', contaEmConsumo ? 'CONSUMO' : 'EMBALAGEM')
+      if (parsedNew !== null) fd.set('new_quantity', String(parsedNew))
       const res = await adminAdjustStock(undefined, fd)
       if (res?.success) onSuccess()
       else setError(res?.error ?? 'Erro inesperado.')
@@ -342,9 +365,14 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 2 }}>
               ESTOQUE ATUAL
             </p>
-            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-              {currentStock.toLocaleString('pt-BR')}
-              <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>{product.unit}</span>
+            <p data-saldo-do-ajuste style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              {rende ? fmtQ(rendimento ?? 0) : fmtQ(embalagens ?? 0, 3)}{' '}
+              <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)' }}>{rende ? product.consumptionUnit : product.unit}</span>
+              {rende && (
+                <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0 }}>
+                  {`${fmtQ((rendimento ?? 0) / rende, 4)} ${product.unit}`}
+                </span>
+              )}
             </p>
           </div>
           {delta !== null && !isNaN(delta) && (
@@ -356,28 +384,40 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
                 fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em',
                 color: delta > 0 ? 'var(--success)' : delta < 0 ? 'var(--danger)' : 'var(--text-faint)',
               }}>
-                {delta > 0 ? '+' : ''}{delta.toLocaleString('pt-BR')}
-                <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>{product.unit}</span>
+                {delta > 0 ? '+' : ''}{fmtQ(delta, 4)}
+                <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>{unidadeDaContagem}</span>
               </p>
             </div>
           )}
         </div>
       )}
 
+      {rende && (
+        <div role="group" aria-label="Contar em" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Contar em</span>
+          <SegSelect ariaLabel="Contar em" value={contaEmConsumo ? 'CONSUMO' : 'EMBALAGEM'}
+            options={[{ key: 'CONSUMO', label: product.consumptionUnit! }, { key: 'EMBALAGEM', label: product.unit }]}
+            onSelect={k => { setEmConsumo(k === 'CONSUMO'); setNewQty(''); setConfirmed(false) }} />
+        </div>
+      )}
+
       <FieldWrap>
-        <Label>Novo estoque *</Label>
+        <label htmlFor="ajuste-contagem" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+          {rende ? 'Contagem' : 'Novo estoque'} *
+        </label>
         <div style={{ position: 'relative' }}>
-          <input name="new_quantity" type="number" step="0.001" min="0" required className="field"
+          <input id="ajuste-contagem" name="new_quantity" type="text" inputMode="decimal" required className="field"
             placeholder="0" value={newQty}
             onChange={e => { setNewQty(e.target.value); setConfirmed(false) }}
-            style={{ paddingRight: 36 }} />
-          <UnitSuffix unit={product.unit} />
+            style={{ paddingRight: 48 }} />
+          <UnitSuffix unit={unidadeDaContagem} />
         </div>
+        {equivale && <span data-ajuste-equivale style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>{equivale}</span>}
       </FieldWrap>
 
       <FieldWrap>
-        <Label>Motivo *</Label>
-        <textarea name="reason" required className="field" rows={2}
+        <label htmlFor="ajuste-motivo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Motivo *</label>
+        <textarea id="ajuste-motivo" name="reason" required className="field" rows={2}
           placeholder="Ex: Inventário físico realizado, divergência identificada…"
           style={{ resize: 'vertical' }} />
       </FieldWrap>

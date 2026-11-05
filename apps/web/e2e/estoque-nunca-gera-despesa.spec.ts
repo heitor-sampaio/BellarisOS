@@ -162,8 +162,8 @@ test.describe('movimentação de estoque nunca gera despesa', () => {
       p_lote: null, p_validade: null, p_autor: 'e2e',
     })
     expect(entrada.error).toBeNull()
-    const ajuste = await db().rpc('estoque_ajuste', {
-      p_produto: produto, p_unidade: rede!.branchId, p_novo_saldo: 4, p_motivo: 'Perda: frasco quebrado', p_autor: 'e2e',
+    const ajuste = await db().rpc('estoque_ajuste_em', {
+      p_produto: produto, p_unidade: rede!.branchId, p_contagem: 4, p_em_consumo: false, p_motivo: 'Perda: frasco quebrado', p_autor: 'e2e',
     })
     expect(ajuste.error, 'perda pelo ajuste').toBeNull()
     const transf = await db().rpc('estoque_transferir', {
