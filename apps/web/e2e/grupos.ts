@@ -66,6 +66,7 @@ export const ISOLADOS = [
   'configuracoes-unidade-cnpj.spec.ts',
   'configuracoes-endereco-do-app.spec.ts',
   'clientes-arquivar.spec.ts',
+  'clientes-ficha-proximos-depois-de-agendar.spec.ts',
   'clientes-ficha-aba-oportunidades.spec.ts',
   'clientes-telefone-de-outro-pais.spec.ts',
   'ficha-de-outra-unidade.spec.ts',

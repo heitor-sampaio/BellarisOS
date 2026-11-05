@@ -4,6 +4,7 @@
 // insert, histórico) desacoplada de FormData/cookies. Sem 'use server'.
 
 import { after } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { intervalosDoDia, normalizarHorario, slotsDoDia, diaDaSemana } from '@/lib/agenda/horario'
 import { format } from 'date-fns'
@@ -191,7 +192,12 @@ export async function conferirPecasDoAgendamento(
 /**
  * Cria um agendamento aplicando toda a regra de negócio. Recebe o contexto já
  * resolvido (de cookies OU de token) — não depende de FormData nem de cookies.
- * Não dispara notificação nem revalidate: isso fica a cargo de quem chama.
+ * Não dispara notificação nem revalida as TELAS (o caminho): isso fica a cargo
+ * de quem chama. O cache dos agendamentos da rede, sim (D9 da 7ª simulação):
+ * a ficha da cliente (`getCachedClientProfileData`, tag `appointments:<rede>`)
+ * dizia "Nenhum agendamento futuro" por até 60 s depois do agendar da agenda
+ * e do "Reagendar" — são cinco caminhos, e expirar em cada um é esquecer o
+ * sexto.
  */
 export async function createAppointmentCore(
   admin: Admin,
@@ -329,6 +335,7 @@ export async function createAppointmentCore(
     })
   })
 
+  revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
   return { id: data.id as string }
 }
 

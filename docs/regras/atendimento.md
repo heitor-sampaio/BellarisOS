@@ -327,6 +327,15 @@
   recusas e a ordem delas são as de antes. Teste que confere o card ou o
   evento logo depois de agendar ESPERA (`expect.poll`). Prova: os specs da
   agenda e `e2e/crm-agendar-liga-oportunidade.spec.ts`.
+- **O agendamento novo aparece na ficha na hora** (D9 da 7ª simulação,
+  2026-11-05; princípio 3): a Lia remarcou o Cláudio e a ficha dizia "Nenhum
+  agendamento futuro" até recarregar duas vezes. A ficha lê um cache de 60 s
+  (`getCachedClientProfileData`, tag `appointments:<rede>`), e o agendar da
+  agenda (`addAppointment`, também o "Reagendar" da falta) não o expirava.
+  `createAppointmentCore` expira a tag (`revalidateTag(…, { expire: 0 })`) —
+  são cinco caminhos que agendam; remarcar, cancelar e confirmar já expiravam
+  (`revalidarAgendamento`). Prova:
+  `e2e/clientes-ficha-proximos-depois-de-agendar.spec.ts`.
 - **A origem COMMERCIAL é da cliente com oportunidade ABERTA, não de quem agenda** (D11/A12 da
   simulação de 2026-10-27): `createAppointmentCore` procura a oportunidade aberta da cliente
   (`oportunidadeDoAgendamento`, `lib/crm/liga-agendamento.ts`; o card passa o `leadId` já
