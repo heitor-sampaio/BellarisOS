@@ -387,6 +387,8 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await pagoNoPix(dlg)
       await euVendi(dlg)
       await dlg.getByRole('button', { name: /Vender por/ }).click()
+      // Quem agenda vê o "Agendar a 1ª sessão agora" (A47 da 7ª); aqui fica para depois.
+      await dlg.locator('[data-agendar-a-primeira-sessao]').getByRole('button', { name: 'Cancelar' }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })
     })
     const { data: cps } = await db().from('client_packages').select('id').eq('client_id', cliente)

@@ -44,7 +44,7 @@ import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
-import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
+import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { dosesDoMapaDoAtendimento } from '@/actions/injectable-map'
@@ -557,6 +557,8 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
   const [voucherId, setVoucherId] = useState('')
   // Desconto comercial (2026-09-30): o combinado no contrato já vem preenchido.
   const [descontoEstado, setDescontoEstado] = useState(() => estadoDoDesconto(pagamentoCombinado?.desconto))
+  // O motivo do desconto, controlado: sem ele, a janela lembra que existe (A49 da 7ª).
+  const [motivoDoDesconto, setMotivoDoDesconto] = useState('')
   useEffect(() => {
     let vivo = true
     previaDoPagamento(appointmentId).then(r => { if (vivo) setPrevia(r) }).catch(() => { /* sem pontos a oferecer */ })
@@ -599,7 +601,9 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
           {pedidoDeDesconto && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
               Motivo do desconto (opcional)
-              <input name="desconto_motivo" className="field" maxLength={300} placeholder="Ex.: cliente fiel, retorno, cortesia da casa" />
+              <input name="desconto_motivo" className="field" maxLength={300} placeholder="Ex.: cliente fiel, retorno, cortesia da casa"
+                value={motivoDoDesconto} onChange={e => setMotivoDoDesconto(e.target.value)} />
+              {!motivoDoDesconto.trim() && <LembreteDoMotivo />}
             </label>
           )}
           {previa && previa.vouchers.length > 0 && (

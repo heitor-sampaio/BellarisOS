@@ -183,6 +183,12 @@ DEVLOG ("Termos e contratos").
   (`TelaCheiaDaCliente`, um `<dialog>` com `showModal()` na tela inteira):
   o resto fica coberto e inerte, e o Esc não a fecha. No portal e no link
   ela já está na tela dela. Prova: `e2e/documentos-atendimento.spec.ts`.
+  **Assinado no PAPEL, a tela fica com a equipe** (A46 da 7ª simulação,
+  2026-11-05: depois de "Confirmar: o cliente assinou o papel" vinha "Devolva o
+  aparelho à equipe"): o "Documento assinado" diz "Assinatura no papel
+  registrada." (`[data-assinado-no-papel]`), sem a tela cheia da cliente; o
+  "Devolva o aparelho" é só de quem assinou no aparelho entregue. Prova:
+  `e2e/financeiro-atritos-da-7.spec.ts` ("A46").
 - ⚠️ **Releitura na mesma renderização: `abortSignal`.** O React memoriza
   `fetch` GET idênticos numa renderização — a releitura do documento depois de
   montá-lo devolvia a resposta velha. `lerDocumento` passa um sinal novo.

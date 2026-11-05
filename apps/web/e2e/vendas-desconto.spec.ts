@@ -96,6 +96,8 @@ test.describe.serial('desconto nas vendas', () => {
       await pagoNoPix(dlg)
       await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por R\$\s720,00$/ }).click()
+      // Quem agenda vê o "Agendar a 1ª sessão agora" (A47 da 7ª); aqui fica para depois.
+      await dlg.locator('[data-agendar-a-primeira-sessao]').getByRole('button', { name: 'Cancelar' }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })
     })
     const { data: cp } = await db().from('client_packages').select('id, price, preco_tabela, desconto, sold_by').eq('client_id', cliente).single()

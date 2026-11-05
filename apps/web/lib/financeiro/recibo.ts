@@ -5,6 +5,7 @@ import { ler } from '@/lib/db'
 import type { PdfDoc } from '@/lib/pdf'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
+import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 
 /**
  * O RECIBO de um pagamento (ven-06 da revisão, 2026-11-02; o Heitor: "Um
@@ -46,7 +47,7 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
   const admin = createAdminClient()
   const [tx, unidade, rede, cliente] = await Promise.all([
     ler(admin.from('financial_transactions')
-      .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, paid_at, sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id')
+      .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, paid_at, sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id')
       .eq('id', l.id).single(), 'ler o lançamento do recibo'),
     ler(admin.from('branches').select('name, document, address, city, state, phone').eq('id', l.branchId).single(), 'ler a unidade do recibo'),
     ler(admin.from('tenants').select('name, document').eq('id', l.tenantId).single(), 'ler a clínica do recibo'),
@@ -56,6 +57,21 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
   ])
   if (!tx || !unidade || !rede) throw new Error('Não consegui montar o recibo.')
 
+  // A43 da 7ª simulação: o recibo do atendimento dizia só "Atendimento concluído"
+  // (a descrição do lançamento). O que foi pago é o procedimento daquele
+  // atendimento, em que dia e com quem.
+  const atendimento = tx.appointment_id
+    ? await ler(admin.from('appointments')
+        .select('scheduled_at, procedures(name), users!appointments_professional_id_fkey(name)')
+        .eq('id', String(tx.appointment_id)).maybeSingle(), 'ler o atendimento do recibo')
+    : null
+  const procedimento = (atendimento?.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'
+  const profissional = (atendimento?.users as unknown as { name?: string } | null)?.name ?? null
+  const referente = atendimento
+    ? `${procedimento} — atendimento de ${dataHora(String(atendimento.scheduled_at)).replace(', ', ' às ')}${profissional ? `, com ${profissional}` : ''}`
+    : String(tx.description ?? '—')
+  const vezes = (tx.cartao_vezes as number | null) ?? null
+  const parcelasDoCartao = tx.payment_method === 'CREDIT_CARD' && vezes && vezes > 1 ? parcelasEmTexto(Number(tx.amount), vezes) : null
   const descontos = await descontosDosLancamentos([tx as typeof tx & { id: string }])
   const doc = cliente?.document ? `CPF ${maskCPF(String(cliente.document))}`
     : cliente?.documento_numero ? `${cliente.documento_tipo === 'RNE' ? 'RNE' : 'Passaporte'} ${String(cliente.documento_numero)}` : null
@@ -66,9 +82,11 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
     ['Recebemos de', String(cliente?.name ?? 'Cliente não identificada')],
     ...(doc ? [['Documento', doc] as [string, string]] : []),
     ['A quantia de', formatBRL(Number(tx.amount))],
-    ['Referente a', String(tx.description ?? '—')],
+    ['Referente a', referente],
     // A39: com a bandeira ("Crédito Visa 5x").
     ['Forma de pagamento', tx.payment_method ? rotuloDaForma(String(tx.payment_method), (tx.cartao_vezes as number | null) ?? null, { bandeira: (tx.cartao_bandeira as string | null) ?? null }) : 'Sem forma (pontos)'],
+    // As vezes na maquininha: o que a cliente vê na fatura do cartão (A43).
+    ...(parcelasDoCartao ? [['Parcelas no cartão', parcelasDoCartao] as [string, string]] : []),
     ['Pago em', tx.paid_at ? dataHora(String(tx.paid_at)) : '—'],
     ...(descontos[String(tx.id)] ? [['Desconto', descontos[String(tx.id)]!.replace(/^Desconto ?·? ?/, '')] as [string, string]] : []),
   ]

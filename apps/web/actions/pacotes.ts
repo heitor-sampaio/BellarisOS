@@ -97,7 +97,11 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
  */
 /** A equipe da venda (com-04/com-06): quem é a profissional responsável do pacote, e a resposta à pergunta de sem ninguém. */
 export interface EquipeDaVendaDoPacote extends QuemVendeuDaTela { responsavelId?: string | null; semResponsavel?: boolean }
-type ResultadoDaVendaDoPacote = { error?: string; clientPackageId?: string; confirmarSemResponsavel?: string; confirmarSemVendedor?: string }
+type ResultadoDaVendaDoPacote = {
+  error?: string; clientPackageId?: string; confirmarSemResponsavel?: string; confirmarSemVendedor?: string
+  /** A 1ª sessão do pacote vendido, para o "Agendar a 1ª sessão agora" (A47 da 7ª simulação). */
+  primeiraSessao?: { id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null
+}
 
 /** A pergunta quando o pacote paga quem atende sobre o valor dele e ninguém foi marcado (com-04). */
 const PERGUNTA_SEM_RESPONSAVEL = 'Ninguém foi marcado como responsável: a comissão de quem atende deste pacote (sobre o valor dele) não vai para ninguém. Vender assim?'
@@ -187,11 +191,21 @@ async function venderPacoteUmaVez(
       p_lancamentos: lancamentos, p_sessoes: sessoes, p_desconto: reais,
     }), 'vender o pacote') as string
 
+    // A 1ª sessão (a de número 1, com o procedimento dela): a janela oferece
+    // agendá-la agora, como o pré-pago (A47). Agendar passa pelo schedulePackageSession.
+    const primeira = await ler(admin.from('package_sessions')
+      .select('id, procedure_id, procedures(name, duration_min)')
+      .eq('client_package_id', clientPackageId).order('session_number').limit(1).maybeSingle(), 'ler a 1ª sessão do pacote')
+    const procDaPrimeira = primeira?.procedures as unknown as { name: string; duration_min: number | null } | null
+    const primeiraSessao = primeira && primeira.procedure_id
+      ? { id: primeira.id as string, procedimento: { id: primeira.procedure_id as string, nome: procDaPrimeira?.name ?? 'Sessão', duracaoMin: Number(procDaPrimeira?.duration_min ?? 0) } }
+      : null
+
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidatePath('/admin/financeiro')
     revalidatePath('/[slug]/financeiro', 'page')
-    return { clientPackageId }
+    return { clientPackageId, primeiraSessao }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

@@ -83,8 +83,22 @@ export function CampoDoDesconto({ estado, aoMudar, total, comMotivo = false }: {
           <input className="field" aria-label="Motivo do desconto" maxLength={300}
             placeholder="Ex.: cliente fiel, kit, cortesia da casa"
             value={estado.motivo ?? ''} onChange={e => aoMudar({ ...estado, motivo: e.target.value })} />
+          {!estado.motivo?.trim() && <LembreteDoMotivo />}
         </label>
       )}
     </div>
+  )
+}
+
+/**
+ * O desconto sem motivo grava (o motivo segue OPCIONAL — fin-01), mas a janela
+ * lembra que ele existe (A49 da 7ª simulação: o desconto de R$ 100 da Ana saiu
+ * sem o porquê, e a lista do Financeiro diz só o valor).
+ */
+export function LembreteDoMotivo() {
+  return (
+    <span data-lembrete-do-motivo style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>
+      Sem motivo, a lista do Financeiro mostra só o valor do desconto. Se quiser, diga o porquê (é opcional).
+    </span>
   )
 }

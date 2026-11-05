@@ -54,7 +54,7 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
    * já abre para o cliente que acabou de nascer.
    */
   abrirSinal?:   number
-  /** Depois de vender um procedimento, oferece "Agendar agora" (agenda: MANAGE). */
+  /** Depois de vender um procedimento ou um pacote, oferece agendar agora (agenda: MANAGE — A47 da 7ª). */
   podeAgendar?:  boolean
   /**
    * Os atendimentos concluídos e não pagos da cliente (D5, 2026-10-27): vender
@@ -116,7 +116,7 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos =
               ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={fechar} equipe={equipe} />
               : aba === 'PROCEDIMENTO' && procedimentos.length > 0
               ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} equipe={equipe} />
-              : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} equipe={equipe} />}
+              : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} equipe={equipe} podeAgendar={podeAgendar} />}
           </div>
         </div>
       </dialog>

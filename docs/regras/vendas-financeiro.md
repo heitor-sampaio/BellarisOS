@@ -191,6 +191,15 @@ plano").
   de execução dele. As duas só ficam a pagar com o pacote pago INTEIRO (H4,
   2026-11-01): no crediário, quando a última parcela entra; no cartão em N
   vezes, na hora.
+- **Vendido o pacote, a janela oferece "Agendar a 1ª sessão agora"** (A47 da 7ª
+  simulação, 2026-11-05: o pré-pago oferecia, o pacote não). A quem tem a Agenda
+  em Gerenciar, a janela do "Vender" diz "Venda registrada. Agendar a 1ª sessão
+  agora?" com o procedimento da sessão nº 1 (`venderPacote` devolve
+  `primeiraSessao`), e o agendar é o de sempre das sessões
+  (`schedulePackageSession`, pelo núcleo; `[data-agendar-a-primeira-sessao]`).
+  "Cancelar" deixa para depois. Prova: `e2e/financeiro-atritos-da-7.spec.ts` ("A47").
+- **A tela de Pacotes manda ao "Vender" da ficha** (A46): dizia "Vender pacote",
+  e o botão se chama "Vender" (escolha Pacote).
 - Prova: `e2e/pacotes-venda.spec.ts`.
 
 ### 9.3.2 Procedimento pré-pago (2026-09-30)
@@ -434,6 +443,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     como antes. A taxa da maquininha estimada continua a linha informativa
     de sempre: não sai do saldo nem do fundo. Migration `20261101001108`.
     Prova: `e2e/fechamento-do-dia-fundo-de-troco.spec.ts`.
+  - **E aponta o que a operadora do cartão ainda vai depositar** (A44 da 7ª
+    simulação, 2026-11-05; o a receber da operadora mora no Financeiro, F20 D3):
+    "A operadora do cartão ainda vai depositar R$ 1.100,00 (o próximo, R$ 550,00
+    em 05/12/2026)…" — o em aberto de `getAReceberDaOperadora` da unidade (aviso
+    `a-receber-da-operadora`), com "Ver no Financeiro" (a lista das parcelas,
+    `#recebiveis-da-operadora`) a quem abre o Financeiro da unidade inteira. Só
+    informação: não mexe no saldo. Prova: `e2e/financeiro-atritos-da-7.spec.ts` ("A44").
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
   de 2026-10-27, decisões do Heitor). A conta é UMA, no banco
@@ -987,6 +1003,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     (`data-hoje-entra`) —, e o total diz "(com o atendimento de hoje)". Eram
     três frases: "entram juntos", "fica fora deste checkout" e "entra
     junto". Prova: `e2e/checkout-de-plano.spec.ts` ("A38").
+  - **Recarregar não volta ao passo "Plano"** (A45 da 7ª simulação, 2026-11-05):
+    o passo e o pagamento escolhidos ficam no sessionStorage, por plano (morrem
+    com a aba; `lib/checkout/passo-do-checkout.ts`), e ao recarregar a tela volta
+    a eles — da documentação em diante, monta os documentos de novo com o MESMO
+    pagamento (o contrato assinado para ele fica; `prepararDocumentosDoCheckout`
+    confere). Fechar ou cancelar o checkout o apaga. Prova:
+    `e2e/financeiro-atritos-da-7.spec.ts` ("A45").
 - **O checkout do plano tem "Quem vendeu"** (decisão 4 da 7ª simulação,
   2026-11-05: "concordo"): no passo do pagamento, nascendo VAZIO como em toda
   venda (`CampoQuemVendeu`, `[data-quem-vendeu-do-plano]`); vazio, "Ir para a
@@ -1090,6 +1113,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     por parcela). Venda com desconto e SEM motivo não ganha a linha (o
     desconto dela aparece em Relatórios → Vendas). Prova:
     `e2e/financeiro-motivo-do-desconto.spec.ts`.
+  - **O motivo segue opcional, e a janela lembra que ele existe** (A49 da 7ª
+    simulação, 2026-11-05: o desconto de R$ 100 da Ana gravou sem o porquê): com
+    desconto e o motivo em branco, a janela do pagamento e as do "Vender" dizem
+    "Sem motivo, a lista do Financeiro mostra só o valor do desconto…"
+    (`LembreteDoMotivo`, `[data-lembrete-do-motivo]`). Prova:
+    `e2e/financeiro-atritos-da-7.spec.ts` ("A49").
   - **Contrato**: o desconto é parte do COMBINADO — vai no retrato do
     pagamento (`pagamentoNormalizado(p, desconto)`, só quando existe), e
     trocá-lo depois de assinar substitui o contrato como trocar a forma.
@@ -1170,6 +1199,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   forma ("Crédito 3x"), quando, o desconto e o motivo quando há, e quem
   recebeu (clínica, unidade, CNPJ, endereço, telefone) — e "Este recibo não
   substitui a nota fiscal." Prova: `e2e/financeiro-recibo.spec.ts`.
+  **O recibo do ATENDIMENTO diz o que foi pago** (A43 da 7ª simulação,
+  2026-11-05: dizia "Atendimento concluído", a descrição do lançamento): o
+  "Referente a" é o procedimento, o dia e a hora do atendimento e a profissional
+  ("Toxina — atendimento de 05/11/2026 às 10:00, com Rita"), e o crédito em N
+  vezes ganha "Parcelas no cartão: 2x de R$ 550,00" (`parcelasEmTexto`). Prova:
+  `e2e/financeiro-atritos-da-7.spec.ts` ("A43").
 - **Estornar pede confirmação** (`ConfirmarEstorno`, nos financeiros da rede e
   da unidade; 2026-10-20): mostra o lançamento e o valor e avisa que não se
   desfaz. Era um clique só.

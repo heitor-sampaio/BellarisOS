@@ -30,7 +30,7 @@ export async function PacotesDaRede({ ctx, unidadeId, busca }: { ctx: TenantCont
           Pacotes
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          Um conjunto de procedimentos, iguais ou não, vendido por um preço só. A venda é na ficha do cliente, em “Vender pacote”.
+          Um conjunto de procedimentos, iguais ou não, vendido por um preço só. A venda é na ficha do cliente, em “Vender” (escolha Pacote).
         </p>
       </div>
       <PacotesCatalogo

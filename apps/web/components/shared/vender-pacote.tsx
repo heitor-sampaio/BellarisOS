@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote } from '@/actions/pacotes'
+import { schedulePackageSession } from '@/actions/appointments'
+import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -26,12 +28,17 @@ export interface PacoteAVenda {
 }
 
 /** O formulário da venda do pacote — dentro do "Vender" (`components/shared/vender.tsx`). */
-export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [] }: {
+export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [], podeAgendar = false }: {
   clienteId: string; branchId: string; pacotes: PacoteAVenda[]; onFim: () => void
+  /** Depois de vender, oferece "Agendar a 1ª sessão agora" (A47 da 7ª; agenda: MANAGE), como o pré-pago. */
+  podeAgendar?: boolean
   /** A equipe da unidade: a responsável sai de quem atende (com-04). */
   equipe?: MembroDaVenda[]
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  // Depois da venda: a 1ª sessão, para o "Agendar a 1ª sessão agora" (A47).
+  const [vendida, setVendida] = useState<{ id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null>(null)
   const [pacoteId, setPacoteId] = useState(pacotes[0]!.id)
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
   const [erro, setErro] = useState<string | null>(null)
@@ -62,10 +69,36 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       if (r.confirmarSemResponsavel) { setPergunta({ texto: r.confirmarSemResponsavel, sem: 'RESPONSAVEL' }); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
-      onFim()
       router.refresh()
+      if (podeAgendar && r.primeiraSessao) { setVendida(r.primeiraSessao); return }
+      onFim()
     })
   }
+
+  if (vendida) return (
+    <div data-agendar-a-primeira-sessao style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+        Venda registrada. <strong>Agendar a 1ª sessão agora?</strong> As outras ficam na ficha, para agendar depois.
+      </p>
+      <SessionScheduler
+        branches={[{ id: branchId, name: '' }]}
+        currentBranchId={branchId}
+        procedimento={vendida.procedimento}
+        onCancel={onFim}
+        onSave={async ({ branchId: unidade, professionalId, scheduledAt, roomId }) => {
+          const r = await schedulePackageSession({
+            packageSessionId: vendida.id, branchId: unidade, professionalId, scheduledAt, roomId,
+            clientId: clienteId, procedureId: vendida.procedimento.id, price: 0, durationMin: 0,
+            slug: pathname.split('/')[1] ?? '',
+          })
+          if (r.error) return { error: r.error }
+          router.refresh()
+          onFim()
+          return {}
+        }}
+      />
+    </div>
+  )
 
   const texto = { fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' } as const
   return (

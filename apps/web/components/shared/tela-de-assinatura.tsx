@@ -86,6 +86,8 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   const [hash, setHash] = useState<string | null>(null)
   const [pdf, setPdf] = useState<ArrayBuffer | null>(null)
   const [codigo, setCodigo] = useState<string | null>(null)
+  // A46 da 7ª simulação: assinado no PAPEL, o aparelho nunca saiu da mão da equipe.
+  const [noPapel, setNoPapel] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, iniciar] = useTransition()
 
@@ -143,6 +145,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
       const r = await marcarAssinadoEmPapel(fd)
       if (r.error) { setErro(r.error); return }
       setCodigo(r.codigo ?? null)
+      setNoPapel(true)
       setModo('feito')
     })
   }
@@ -226,8 +229,13 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documento assinado</h2>
         {codigo && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Código de verificação <strong style={{ color: 'var(--text)' }}>{codigo}</strong></p>}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          {noPortal ? 'Tudo certo! A clínica já recebeu o documento assinado.' : 'Devolva o aparelho à equipe.'}
+          {noPortal ? 'Tudo certo! A clínica já recebeu o documento assinado.' : noPapel ? null : 'Devolva o aparelho à equipe.'}
         </p>
+        {noPapel && (
+          <p data-assinado-no-papel style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            Assinatura no papel registrada.
+          </p>
+        )}
         {canal === 'LINK'
           ? codigo && <Link href={`/verificar/${codigo}`} className="btn-secondary" style={{ marginTop: 8 }}>Conferir a assinatura</Link>
           : aoTerminar
@@ -236,7 +244,8 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
       </div>
     )
     // Assinado no aparelho entregue: o "Devolva o aparelho à equipe" ainda é da cliente (A40).
-    return noPortal ? feito : <TelaCheiaDaCliente>{feito}</TelaCheiaDaCliente>
+    // No papel, a tela nunca foi da cliente: fica na tela da equipe (A46 da 7ª).
+    return noPortal || noPapel ? feito : <TelaCheiaDaCliente>{feito}</TelaCheiaDaCliente>
   }
 
   // ── Equipe (e papel) ───────────────────────────────────────────────────────

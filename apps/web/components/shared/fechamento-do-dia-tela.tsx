@@ -34,7 +34,14 @@ function Diferenca({ valor }: { valor: number }) {
  * A tela do fechamento do dia (2026-10-21). Todo número vem do servidor
  * (metrics_fechamento_do_dia); aqui só se desenha e se manda o contado.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null }: {
+/** O a receber da operadora no fechamento (A44). */
+export interface OperadoraNoFechamento {
+  emAberto: number
+  proximo:  { dia: string; valor: number } | null
+  link:     string | null
+}
+
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -46,6 +53,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   aReceber?: ListaAReceber
   /** "Reforça", item 4: as parcelas e lançamentos a receber da unidade, de qualquer vencimento. */
   emAberto?: number
+  /**
+   * A44 da 7ª simulação: o que a operadora do cartão ainda vai depositar (do
+   * banco, o "A receber da operadora" do Financeiro) e o caminho até a lista,
+   * para quem abre o Financeiro.
+   */
+  operadora?: OperadoraNoFechamento | null
   podeReceberAtendimento?: boolean
   /** Os números dos avisos (J-49), do banco. */
   avisos?: AvisosDoFechamento
@@ -108,7 +121,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
         </div>
       </div>
 
-      <AvisosDoDia resumo={resumo} aReceber={aReceber} emAberto={emAberto} avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
+      <AvisosDoDia resumo={resumo} aReceber={aReceber} emAberto={emAberto} operadora={operadora} avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
 
       {/* O dia por forma de pagamento */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -282,16 +295,25 @@ function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
  * - saiu em espécie mais do que entrou (o esperado na gaveta é negativo);
  * - e, só informativo, as taxas da maquininha estimadas do dia.
  */
-function AvisosDoDia({ resumo, aReceber, emAberto = 0, avisos, fechadoAs }: {
-  resumo: FechamentoDoDia; aReceber?: ListaAReceber; emAberto?: number; avisos?: AvisosDoFechamento; fechadoAs: string | null
+function AvisosDoDia({ resumo, aReceber, emAberto = 0, operadora = null, avisos, fechadoAs }: {
+  resumo: FechamentoDoDia; aReceber?: ListaAReceber; emAberto?: number; operadora?: OperadoraNoFechamento | null
+  avisos?: AvisosDoFechamento; fechadoAs: string | null
 }) {
-  const lista: { chave: string; texto: string }[] = []
+  const lista: { chave: string; texto: string; link?: { href: string; rotulo: string } }[] = []
   if (aReceber && aReceber.total.n > 0) {
     const n = aReceber.total.n
     lista.push({ chave: 'a-receber', texto: `Há ${brl(aReceber.total.valor)} a receber de ${n} atendimento${n > 1 ? 's' : ''} concluído${n > 1 ? 's' : ''} sem pagamento (lista abaixo).` })
   }
   if (emAberto > 0) {
     lista.push({ chave: 'parcelas-em-aberto', texto: `Há ${brl(emAberto)} em parcelas e lançamentos a receber, de qualquer vencimento (no Financeiro).` })
+  }
+  if (operadora && operadora.emAberto > 0) {
+    const proximo = operadora.proximo ? ' (o próximo, ' + brl(operadora.proximo.valor) + ' em ' + operadora.proximo.dia.split('-').reverse().join('/') + ')' : ''
+    lista.push({
+      chave: 'a-receber-da-operadora',
+      texto: 'A operadora do cartão ainda vai depositar ' + brl(operadora.emAberto) + proximo + ': são as vendas no crédito, a receber dela — não da cliente.',
+      ...(operadora.link ? { link: { href: operadora.link, rotulo: 'Ver no Financeiro' } } : {}),
+    })
   }
   if (avisos && avisos.movimentosDepois > 0 && fechadoAs) {
     const n = avisos.movimentosDepois
@@ -324,7 +346,7 @@ function AvisosDoDia({ resumo, aReceber, emAberto = 0, avisos, fechadoAs }: {
           fontSize: 'var(--text-sm-sz)', color: 'var(--text)',
         }}>
           <AlertTriangle size={15} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
-          <span>{a.texto}</span>
+          <span>{a.texto}{a.link && <> <a href={a.link.href} style={{ color: 'var(--brand)', fontWeight: 700 }}>{a.link.rotulo}</a></>}</span>
         </p>
       ))}
       {taxas > 0 && (

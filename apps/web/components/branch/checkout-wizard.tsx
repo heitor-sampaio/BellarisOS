@@ -26,6 +26,7 @@ import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
+import { lerPassoDoCheckout, gravarPassoDoCheckout, limparPassoDoCheckout, type PassoDoCheckout } from '@/lib/checkout/passo-do-checkout'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -283,7 +284,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // -- Documentação: monta os documentos com o pagamento escolhido -----------
   // Voltar ao pagamento e trocá-lo monta de novo — e o contrato já assinado
   // com o pagamento antigo é substituído (o servidor decide, não a tela).
-  function irParaDocumentos(substituirContrato = false, confirmouSemVendedor = semVendedor) {
+  function irParaDocumentos(substituirContrato = false, confirmouSemVendedor = semVendedor, depois?: (itens: ResumoDeDocumento[]) => void) {
     setError(recusaDaEntrada)
     if (recusaDaEntrada) return
     // A pergunta do "Quem vendeu" vazio, ANTES dos documentos (o servidor faz a mesma).
@@ -296,8 +297,43 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       if (r.substituiContrato) { setSubstitui(r.substituiContrato); return }
       setDocs(r.itens ?? [])
       setStep(2)
+      depois?.(r.itens ?? [])
     })
   }
+
+  // -- O passo em que estava, ao recarregar (A45 da 7ª simulação) -------------
+  // O sessionStorage (morre com a aba) guarda o passo e o pagamento; ao voltar,
+  // a tela os relê e, da documentação em diante, monta os documentos de novo
+  // com o MESMO pagamento (o contrato já assinado para ele fica).
+  const [retomada, setRetomada] = useState<PassoDoCheckout | null>(null)
+  const [passoLido, setPassoLido] = useState(false)
+  useEffect(() => {
+    const r = lerPassoDoCheckout(plan.id)
+    /* eslint-disable react-hooks/set-state-in-effect -- o sessionStorage só existe no navegador: ler na renderização desencontraria a hidratação */
+    if (r) {
+      setFormaPgto(r.formaPgto); setPaymentMethod(r.paymentMethod); setEntrada(r.entrada); setParcelas(r.parcelas)
+      setVezesCartao(r.vezesCartao); setBandeira(r.bandeira); if (r.primeiroVenc) setPrimeiroVenc(r.primeiroVenc)
+      setDesconto(r.desconto); setVendedorId(r.vendedorId); setSemVendedor(r.semVendedor)
+      setStep(Math.min(r.step, 1))
+      if (r.step >= 2) setRetomada(r)
+    }
+    setPassoLido(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [plan.id])
+  useEffect(() => {
+    if (!retomada) return
+    const alvo = retomada.step
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- a retomada roda uma vez, depois de o pagamento guardado voltar ao estado */
+    setRetomada(null)
+    irParaDocumentos(false, retomada.semVendedor, itens => {
+      if (alvo === 3 && podeAgendar && !itens.some(d => aberto(d) && d.exigencia === 'BLOQUEIA')) setStep(3)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só quando a retomada chega
+  }, [retomada])
+  useEffect(() => {
+    if (!passoLido) return
+    gravarPassoDoCheckout(plan.id, { step, formaPgto, paymentMethod, entrada, parcelas, vezesCartao, bandeira, primeiroVenc, desconto, vendedorId, semVendedor })
+  }, [passoLido, plan.id, step, formaPgto, paymentMethod, entrada, parcelas, vezesCartao, bandeira, primeiroVenc, desconto, vendedorId, semVendedor])
 
   function abrirParaAssinar(id: string) {
     setError(null)
@@ -364,6 +400,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       // O servidor pergunta o mesmo que a tela (a pergunta já foi respondida no pagamento).
       if ('confirmarSemVendedor' in result && result.confirmarSemVendedor) { setError(result.confirmarSemVendedor); return }
       // O plano fechou; só o atendimento de hoje não foi recebido — a pessoa precisa saber.
+      // O plano fechou (com ou sem o aviso do atendimento de hoje): o passo guardado não serve mais.
+      limparPassoDoCheckout(plan.id)
       if ('aviso' in result && result.aviso) { setError(result.aviso); return }
       if (onDone) { onDone(plan.clientId); return }
       router.push(rotaCliente(pathname, slug, plan.clientId))
@@ -374,6 +412,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     startCancel(async () => {
       const result = await cancelCheckout(plan.id, cancelReason, slug)
       if (result.error) { setError(result.error); setShowCancel(false); return }
+      limparPassoDoCheckout(plan.id)
       router.push(rotaCliente(pathname, slug, plan.clientId))
     })
   }
@@ -430,7 +469,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const passos = podeAgendar ? STEPS : STEPS.slice(0, 3)
 
   const progressBar = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32 }}>
+    <div data-passo-atual={passos[step]?.label} style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32 }}>
       {passos.map((s, i) => {
         const done    = i < step
         const current = i === step
