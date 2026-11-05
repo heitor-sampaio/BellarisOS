@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
+import { haMinutosHoje } from './apoio/datas'
 
 /**
  * D4 da simulação de 2026-10-28: a profissional com a agenda "só os meus"
@@ -202,7 +203,7 @@ test('agenda-06: "só os meus" cancela e marca a falta do agendamento DELA pela 
     const { data: passado, error } = await db().from('appointments').insert({
       branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: daRede.userId,
       status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0,
-      scheduled_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+      scheduled_at: haMinutosHoje(60),
     }).select('id').single<{ id: string }>()
     expect(error).toBeNull()
     const daOutra = await agendado('Outra', rede!.professionalId)

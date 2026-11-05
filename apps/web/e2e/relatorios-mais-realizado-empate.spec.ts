@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { haMinutosHoje } from './apoio/datas'
 import { apagarAgendamentos } from './apoio/limpeza'
 
 /**
@@ -35,7 +36,8 @@ test.beforeAll(async () => {
   outroProcedimento = pr!.id
   const cliente = await rede.criarCliente('Empate')
   const base = { branch_id: rede.branchId, client_id: cliente, professional_id: rede.professionalId, source: 'INTERNAL', duration_min: 10, price: 150, status: 'COMPLETED' }
-  const quando = (m: number) => ({ scheduled_at: new Date(Date.now() - m * 60_000).toISOString(), completed_at: new Date(Date.now() - (m - 5) * 60_000).toISOString() })
+  // De HOJE mesmo à meia-noite (F26): o relatório é "de hoje".
+  const quando = (m: number) => ({ scheduled_at: haMinutosHoje(m), completed_at: haMinutosHoje(m - 5) })
   expect((await db().from('appointments').insert([
     { ...base, procedure_id: rede.procedureId, ...quando(40) },
     { ...base, procedure_id: outroProcedimento, ...quando(20) },

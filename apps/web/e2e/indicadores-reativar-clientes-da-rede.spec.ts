@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { unitTag } from '@estetica-os/utils'
+import { haMinutosHoje } from './apoio/datas'
 
 /**
  * F7b (H3, "a dona vê tudo, sempre"): o "Reativar clientes" e o "Clientes no
@@ -69,7 +70,7 @@ test.beforeAll(async () => {
   // Nunca veio: cadastrada há 200 dias na primeira unidade, sem atendimento.
   await cliente('Nunca veio', 200)
   // Nova: cadastrada hoje, atendida agora — entra no "Clientes no período" de hoje.
-  await atendimento(await cliente('Nova', 0), rede.branchId, new Date(Date.now() - 5 * 60_000).toISOString())
+  await atendimento(await cliente('Nova', 0), rede.branchId, haMinutosHoje(5))
 })
 
 test.afterAll(async () => {

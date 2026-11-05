@@ -1,4 +1,4 @@
-import { dayKeyTZ, addDaysTZ } from '../../lib/datetime'
+import { dayKeyTZ, addDaysTZ, startOfDayTZ } from '../../lib/datetime'
 
 /**
  * O dia (AAAA-MM-DD, Brasília) daqui a `dias`, ou o seguinte em que a unidade
@@ -14,4 +14,19 @@ export function diaEmQueAUnidadeAbre(dias: number, agora = new Date()): string {
   // Meio-dia de Brasília do dia, para o dia da semana não escorregar pelo fuso.
   while (new Date(`${dayKeyTZ(d)}T12:00:00-03:00`).getUTCDay() === 0) d = addDaysTZ(d, 1)
   return dayKeyTZ(d)
+}
+
+/**
+ * "N minutos atrás" (ISO), mas sem sair de HOJE em Brasília: logo depois da
+ * meia-noite, para no começo do dia (F26, 2026-11-05).
+ *
+ * A 3ª completa rodou às 00:04 de Brasília, e os specs que gravavam o
+ * agendamento "agora menos 8 minutos" o puseram às 23:56 de ONTEM: a agenda
+ * de hoje não o mostrava, a chegada recusava ("só no dia do agendamento") e o
+ * relatório "de hoje" contava metade. Teste que precisa de um horário que JÁ
+ * passou e que seja de HOJE usa este.
+ */
+export function haMinutosHoje(minutos: number, agora = new Date()): string {
+  const antes = agora.getTime() - minutos * 60_000
+  return new Date(Math.max(antes, startOfDayTZ(agora).getTime())).toISOString()
 }

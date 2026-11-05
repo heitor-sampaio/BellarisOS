@@ -192,6 +192,12 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   - Teste que agenda por horário LIVRE escolhe o dia com
     `diaEmQueAUnidadeAbre` (`apoio/datas.ts`). "Hoje + N" cai num domingo
     conforme o dia em que roda, e domingo não tem horário livre.
+  - **A completa pode cruzar a meia-noite de Brasília** (a de 2026-11-05
+    rodou das 23:50 à 01:00). Teste que grava "agora menos N minutos" e lê o que é
+    de HOJE (a agenda do dia, a chegada, `period=today`) usa
+    `haMinutosHoje(n)` (`apoio/datas.ts`): às 00:04, "8 minutos atrás" era
+    ontem, e cinco specs falharam (a janela nunca abria, "A chegada só se
+    marca no dia do agendamento", o relatório de hoje contava metade).
   - `page.goto` com `net::ERR_ABORTED` numa tela que a sessão acabou de
     perder: a própria tela (o refresh dela) navegou primeiro para o mesmo
     destino. É `irComASessaoCaindo` (`apoio/suporte.ts`): tolera só o
@@ -232,5 +238,6 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 ❌ Apagar a unidade ou a rede DEPOIS do limpar() da rede de teste: ela já leva tudo, e na completa ela ainda está lá (o delete falha)
 ❌ Abrir e2e_apagar_rede a quem não é service_role, ou afrouxar a trava (e2e_eh_rede_de_teste) — [sim] e as redes reais nunca
 ❌ Contar ou procurar em "todos os logins" ou "todas as redes" só na primeira página: na completa as da rodada ficam até o fim
+❌ Gravar "Date.now() - N minutos" num teste que lê o que é de HOJE (agenda do dia, chegada, period=today): à meia-noite vira ontem — é haMinutosHoje(n)
 ❌ Comando com espaço no -g de um spawnSync com shell no Windows (o argumento se parte): use uma palavra só
 ```

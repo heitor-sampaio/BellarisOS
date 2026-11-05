@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { haMinutosHoje } from './apoio/datas'
 
 /**
  * A25 da 6ª simulação (2026-11-04): a dona que atende (agenda de todas)
@@ -23,7 +24,7 @@ async function agendar(profissional: string): Promise<string> {
   const { data, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: profissional,
     // Já na hora: o início adiantado pergunta (r2-age-06), e não é disso que se trata.
-    scheduled_at: new Date(Date.now() - 5 * 60_000).toISOString(), duration_min: 30, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+    scheduled_at: haMinutosHoje(5), duration_min: 30, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   return data!.id

@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { haMinutosHoje } from './apoio/datas'
 
 /**
  * A21 da simulação de 2026-10-27: a profissional (agenda "só os meus") não via
@@ -29,7 +30,7 @@ async function agendado(rotulo: string, professionalId: string) {
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: professionalId,
     status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0,
     // Agora, minutos atrás: iniciar mais de 30 min antes do horário pergunta (A32), e o teste é do gesto.
-    scheduled_at: new Date(Date.now() - (hora++) * 60_000).toISOString(),
+    scheduled_at: haMinutosHoje(hora++),
   }).select('id').single<{ id: string }>()
   expect(error, 'agendar').toBeNull()
   return data!.id
