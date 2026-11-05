@@ -12,6 +12,7 @@ import { AudiencePreview } from '@/components/admin/audience-preview'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { filtrosDoPublico } from '@/lib/notifications/resumo-do-publico'
 import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
 
 // -- Types --------------------------------------------------------------
@@ -529,6 +530,13 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
           <ReviewRow label="Título"     value={previewTitle} />
           <ReviewRow label="Mensagem"   value={body} />
           <ReviewRow label="Canal"      value="Aviso no celular (push) · fica no sino do portal · não vai pelo WhatsApp" />
+          {/* A15 da 7ª simulação: o público estimado vinha sem o filtro que o explica. */}
+          <div data-filtros-do-publico>
+            <ReviewRow label="Filtros do público" value={(() => {
+              const f = filtrosDoPublico(audienceRules, { unidades: branches, procedimentos: procedures })
+              return f.length ? f.join(' · ') : 'Nenhum filtro: todas as clientes ativas'
+            })()} />
+          </div>
 
           <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>

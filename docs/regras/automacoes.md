@@ -179,6 +179,22 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   enquadra o passo novo com o anterior (nunca atrás do painel) e só se
   reenquadra quando a LARGURA muda — a faixa de problemas encolhendo depois
   da primeira ligação deslocava tudo. Prova: `e2e/automacoes-quadro-encaixe.spec.ts`.
+- **Sair do editor com alteração solta pergunta antes** (A12 da 7ª simulação,
+  2026-11-05: a Camila montou o fluxo, clicou em "Automações" e o perdeu sem
+  aviso). Salvar continua EXPLÍCITO (acima); o "Salvar" fica sempre na barra
+  (desligado sem nada a salvar, com "Salvo"/"Não salvo" ao lado — só aparecia
+  depois de mexer), e um link do app com a tela suja abre "Sair sem salvar?"
+  com "Sair sem salvar", "Continuar editando" e "Salvar e sair"
+  (`useAvisoAoSair`, `lib/use-aviso-ao-sair.ts`; fechar a aba ou recarregar
+  usa o aviso do navegador). **A lista diz a situação em palavra** (A13):
+  "Rascunho", "Desligada" ou "Ligada" ao lado do nome
+  (`data-situacao-da-automacao`; o círculo apagado não dizia nada). Prova:
+  `e2e/crm-atritos-da-7.spec.ts` ("A12/A13").
+- **O "Revisar" da campanha diz o filtro do público** (A15 da 7ª simulação: só
+  "0 clientes", sem dizer que era a tag VIP): "Filtros do público: Tags: VIP ·
+  Só quem tem o app" (`filtrosDoPublico`, `lib/notifications/resumo-do-publico.ts`,
+  `data-filtros-do-publico`); sem filtro, "todas as clientes ativas". Prova: o
+  mesmo spec ("A15"), `tests/campanha-filtros-do-publico.test.ts`.
 - **Automações e Campanhas são da clínica, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
   alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa

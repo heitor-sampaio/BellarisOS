@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2, ShieldCheck, History,
-  X, Trash2,
+  X, Trash2, AlertTriangle,
   GitBranch,
 } from 'lucide-react'
 import {
@@ -14,6 +14,8 @@ import {
   type GrafoDeAutomacao, type TipoDeNo, type StatusDaAutomacao, type LimitesDaAutomacao,
 } from '@estetica-os/types'
 import { Quadro } from './quadro'
+import { JanelaModal } from '@/components/shared/janela-modal'
+import { useAvisoAoSair } from '@/lib/use-aviso-ao-sair'
 import { ICONE_DO_NO } from './no-do-quadro'
 import { PainelDoNo } from './painel-do-no'
 import { PainelDeLimites } from './painel-de-limites'
@@ -231,6 +233,17 @@ export function EditorDeAutomacao({
   }
 
   const naoExecutaveis = grafo.nos.filter(n => !EXECUTAVEIS.includes(n.tipo as TipoDeNo))
+  // A12 da 7ª simulação: sair com alteração solta pergunta antes (o fluxo
+  // montado se perdia sem aviso). Salvar continua explícito.
+  const aviso = useAvisoAoSair(sujo && podeEditar)
+  function salvarESair() {
+    salvar(async () => {
+      const r = await salvarAutomacao({ id: automacao.id, nome, grafo, limites })
+      if (r.error) { toast.error(r.error, { description: r.problemas?.join(' · ') }); aviso.ficar(); return }
+      setSujo(false)
+      aviso.sair()
+    })
+  }
 
   return (
     <div
@@ -248,6 +261,7 @@ export function EditorDeAutomacao({
 
         <input
           value={nome}
+          aria-label="Nome da automação"
           onChange={e => { setNome(e.target.value); setSujo(true) }}
           disabled={!podeEditar}
           style={{
@@ -304,25 +318,27 @@ export function EditorDeAutomacao({
               </button>
             </div>
 
-            {/* Salvo sem alteração nenhuma não é botão, é estado: como botão
-                desabilitado, ele ocupava o peso de uma ação que não existe. */}
-            {sujo ? (
-              <button
-                type="button" className="btn-secondary" onClick={aoSalvar}
-                disabled={salvando}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <Save size={14} /> Salvar
-              </button>
-            ) : (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)',
-                padding: '0 4px', whiteSpace: 'nowrap',
-              }}>
-                <CheckCircle2 size={13} /> <span className="auto-rotulo">Salvo</span>
-              </span>
-            )}
+            {/* A12 da 7ª simulação: o "Salvar" fica SEMPRE no lugar (só
+                aparecia depois de mexer, e quem procurava não achava), e o
+                estado ao lado diz se há o que salvar. */}
+            <span data-estado-do-salvo style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 'var(--text-xs-sz)', color: sujo ? 'var(--warning)' : 'var(--text-faint)',
+              fontWeight: sujo ? 'var(--weight-bold)' : undefined,
+              padding: '0 4px', whiteSpace: 'nowrap',
+            }}>
+              {sujo
+                ? <><AlertTriangle size={13} /> <span className="auto-rotulo">Não salvo</span></>
+                : <><CheckCircle2 size={13} /> <span className="auto-rotulo">Salvo</span></>}
+            </span>
+            <button
+              type="button" className="btn-secondary" onClick={aoSalvar}
+              disabled={salvando || !sujo}
+              title={sujo ? undefined : 'Nada a salvar: tudo o que está na tela já está salvo.'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Save size={14} /> Salvar
+            </button>
             {status !== 'ATIVA' && (
               <button
                 type="button" className="btn-ghost" onClick={() => confirmarExclusao.current?.showModal()}
@@ -344,6 +360,26 @@ export function EditorDeAutomacao({
           </>
         )}
       </div>
+
+      {aviso.destino && (
+        <JanelaModal rotulo="Sair sem salvar?" largura={420} papel="alertdialog" travado={salvando} onFechar={aviso.ficar}>
+          <div data-sair-sem-salvar style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+              Sair sem salvar?
+            </p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              A automação tem alterações não salvas. Saindo agora, elas se perdem — a versão salva continua como estava.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-ghost" onClick={aviso.sair} disabled={salvando}>Sair sem salvar</button>
+              <button type="button" className="btn-secondary" onClick={aviso.ficar} disabled={salvando}>Continuar editando</button>
+              <button type="button" className="btn-primary" onClick={salvarESair} disabled={salvando}>
+                {salvando ? 'Salvando…' : 'Salvar e sair'}
+              </button>
+            </div>
+          </div>
+        </JanelaModal>
+      )}
 
       <dialog
         ref={confirmarExclusao}

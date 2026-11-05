@@ -201,6 +201,13 @@ export function ListaDeAutomacoes({
                   }}>
                     {a.nome}
                   </span>
+                  {/* A13 da 7ª simulação: o círculo apagado não dizia se era
+                      rascunho ou desligada — a palavra vai ao lado do nome. */}
+                  <span data-situacao-da-automacao
+                    className={a.status === 'ATIVA' ? 'chip chip-success' : 'chip chip-muted'}
+                    style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+                    {a.status === 'ATIVA' ? 'Ligada' : a.status === 'PAUSADA' ? 'Desligada' : 'Rascunho'}
+                  </span>
 
                   {/* O FLUXO, em uma linha. Antes era o nome técnico do evento
                       (`conversa.mensagem_recebida`) e mais nada — o card dizia
