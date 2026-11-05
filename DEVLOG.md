@@ -9681,6 +9681,31 @@ aparelho" (a regra é copiar ou wa.me); A32. Sobras da F29: "Menor" na Minha
 agenda; o Copilot cadastra com passaporte. Os `copilot-*` novos só rodam na
 completa.
 
+**F31 feita em 2026-11-05 — setup, Configurações, cargos e CRM**
+(70714de1…3f94acbc; migrations `20261105003101` `crm_origens`, `003102`
+`crm_sinais_dos_clientes`, `003103` `metrics_conversao_por_origem`). A1 os
+"Próximos passos" do setup são links (fichas, termos, fidelidade, funil; o
+que está fora do plano não aparece); A2 "O domingo vem fechado" à vista; A3
+"Colar a tabela da operadora" ao lado do "taxa × vezes" (linha que não se
+entende é erro, não chute); A4 "Produtos do mapa" no planejador; A5 a
+recompensa diz o procedimento e o valor dos pontos × o preço de tabela; A6 o
+que se vende sem categoria nasce `REV-00N` (o insumo segue `OUT`, o SKU que
+existe não muda); A7/A8 o resumo do cargo diz as abas de Configurações e
+conta "Relatórios só da unidade" à parte; A9 "· 1 cliente" e a Admin primeiro
+no seletor. CRM: A11 Enter grava o nome da etapa e do funil (Esc desfaz); A12
+o editor de automação avisa ao sair com alteração solta e o "Salvar" fica à
+vista; A13 a situação em palavra; A15 o "Revisar" da campanha diz os filtros
+do público; A14 origens da clínica em Configurar funis (as 10 de sempre em
+toda rede, criar e desativar, sem renomear, como os motivos de perda;
+`leads.source` segue texto); A16/A17 a prévia da importação diz a origem como
+tag e o e-mail que não entra (a regra D-10/A14 não mudou); A18 o card diz
+"Agendado dd/mm hh:mm" e, com compra posterior à oportunidade, SUGERE "Mover
+para Fechado" (princípio 6: não move sozinho); A19 "Marcar como ganho /
+perdido" no menu do card e "Soltar em Fechado / Perdido" ao arrastar; A20
+Relatórios → Funil comercial com "Conversão por origem"; A21 o nome da ficha
+propaga às oportunidades e conversas ligadas. Tocou `atualizarClienteCore`
+(ficha e Copilot) e o importador: entra na completa do fim.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
