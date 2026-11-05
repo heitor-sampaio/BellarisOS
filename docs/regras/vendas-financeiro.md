@@ -1105,6 +1105,12 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   `formatDia`), e o atendimento avulso concluído e não pago aparece "A pagar
   na clínica" — a conta de `atendimentos_a_receber` (`getAtendimentosAReceber`),
   a mesma do Fechamento e da ficha. Prova: `e2e/portal-cliente-pagamentos.spec.ts`.
+  **E o Financeiro do app também** (D4 da 7ª simulação, 2026-11-05; princípio
+  3): as três parcelas da Larissa apareciam com a data de CRIAÇÃO (05/11), na
+  ordem 3/3, 2/3, 1/3. O pendente diz "Vence 05/12/2026" (`due_date`, senão
+  `data_de_referencia`, por `formatDia`) e vem primeiro, pela próxima a
+  vencer; o resto, pelo dia do pagamento, do mais recente. Prova: o mesmo
+  spec ("D4").
 - **O RECIBO do pagamento, em PDF** (ven-06 da revisão, 2026-11-02; o
   Heitor: "um recibo simples em PDF, pelo app ou impresso"). Todo lançamento
   de receita PAGO e vivo (sem estorno) tem "Recibo" na lista dos dois

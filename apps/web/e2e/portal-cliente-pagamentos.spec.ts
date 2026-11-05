@@ -60,6 +60,18 @@ test.afterAll(async () => {
   await cliente?.limpar(); await rede?.limpar()
 })
 
+// D4 da 7ª simulação: o Financeiro do app mostrava as parcelas com a data de
+// CRIAÇÃO (todas 05/11), na ordem 3/3, 2/3, 1/3 — não lia o vencimento.
+test('o Financeiro do app diz "Vence dd/mm" no pendente e ordena pelo vencimento (D4)', async ({ browser }) => {
+  await como(browser, async p => {
+    await p.goto(`/${slug}/cliente/financeiro`)
+    await expect(p.getByText(/Vence 01\/12\/2030/), 'o vencimento, não a criação').toBeVisible()
+    const vencimentos = (await p.getByText(/Vence \d\d\/\d\d\/\d{4}/).allTextContents())
+      .map(t => /Vence (\d\d\/\d\d\/\d{4})/.exec(t)?.[1])
+    expect(vencimentos, 'a próxima a vencer primeiro').toEqual(['01/12/2030', '01/01/2031'])
+  })
+})
+
 test('as parcelas dizem o vencimento, e o atendimento concluído não pago aparece a pagar', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/${slug}/cliente/historico`)

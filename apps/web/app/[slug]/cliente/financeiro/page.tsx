@@ -2,7 +2,7 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, formatDia } from '@estetica-os/utils'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 
@@ -15,6 +15,10 @@ type TxRow = {
   is_paid:        boolean
   paid_at:        string | null
   created_at:     string
+  /** D4 da 7ª: o vencimento do pendente (AAAA-MM-DD…), o `due_date` ou a data de referência. */
+  vencimento:     string | null
+  /** A data de referência (pago: o pagamento; em aberto: o vencimento) — a ordem da lista. */
+  referencia:     string
   procedure_name: string | null
   /** Estornado (`notes = 'Estornada'`): o dinheiro voltou à cliente (D6, 2026-10-28). */
   estornado:      boolean
@@ -32,6 +36,7 @@ type TxRow = {
 type LancamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null
   is_paid: boolean; paid_at: string | null; created_at: string; notes: string | null; parcela_numero: number | null
+  due_date: string | null; data_de_referencia: string | null
   cartao_bandeira: string | null; product_sale_id: string | null
   type: string; category: string | null; client_packages: { cancelado_em: string | null } | null
   appointments: { procedures: { name: string } | null } | null
@@ -47,6 +52,7 @@ export default async function ClientFinancialPage() {
     .from('financial_transactions')
     .select(`
       id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, product_sale_id,
+      due_date, data_de_referencia,
       type, category, client_packages(cancelado_em),
       appointments(procedures(name))
     `)
@@ -69,6 +75,8 @@ export default async function ClientFinancialPage() {
     is_paid:        Boolean(r.is_paid),
     paid_at:        r.paid_at,
     created_at:     r.created_at,
+    vencimento:     r.is_paid || r.notes === 'Estornada' ? null : (r.due_date ?? r.data_de_referencia ?? null),
+    referencia:     r.data_de_referencia ?? r.paid_at ?? r.created_at,
     procedure_name: r.appointments?.procedures?.name ?? null,
     estornado:      r.notes === 'Estornada',
     forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
@@ -76,6 +84,15 @@ export default async function ClientFinancialPage() {
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
   }))
+    // D4 da 7ª simulação: as parcelas apareciam com a data de CRIAÇÃO (todas
+    // 05/11) e na ordem 3/3, 2/3, 1/3. O que falta pagar vem primeiro, pela
+    // próxima a vencer; o resto, do mais recente para o mais antigo (o dia do
+    // pagamento — a data de referência).
+    .sort((a, b) => {
+      if (!!a.vencimento !== !!b.vencimento) return a.vencimento ? -1 : 1
+      if (a.vencimento && b.vencimento) return a.vencimento.localeCompare(b.vencimento)
+      return b.referencia.localeCompare(a.referencia)
+    })
 
   // O total é o LTV do cliente, do banco (pago, sem estorno) — a mesma conta
   // da ficha dele na clínica. Somar a lista aqui contava o estornado.
@@ -135,9 +152,9 @@ export default async function ClientFinancialPage() {
                 {r.procedure_name ?? r.description}
               </p>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                {r.paid_at
-                  ? new Date(r.paid_at).toLocaleDateString('pt-BR')
-                  : new Date(r.created_at).toLocaleDateString('pt-BR')}
+                {r.vencimento
+                  ? `Vence ${formatDia(r.vencimento)}`
+                  : new Date(r.paid_at ?? r.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                 {r.forma && ` · ${r.forma}`}
               </p>
               {r.pacoteCancelado && (
