@@ -81,7 +81,10 @@ test('parcelado: a entrada no dia, cada parcela no mês dela, e o "Pagar" quita 
     ])
     expect(r.texto).toContain('clientPackageId')
 
-    const linhas = p.locator('tbody tr').filter({ hasText: `${PREFIXO} Pacote ${marca}` })
+    // Os lançamentos da lista. A entrada no crédito 1x vira também a parcela
+    // da OPERADORA (D4 da 6ª simulação), que aparece no "A receber da
+    // operadora" da mesma tela — é outra tabela, conferida nos testes dela.
+    const linhas = p.locator('tbody tr[data-lancamento]').filter({ hasText: `${PREFIXO} Pacote ${marca}` })
 
     // Este mês: só a entrada (a venda não joga o parcelado inteiro aqui).
     await p.goto('/admin/financeiro?period=month')

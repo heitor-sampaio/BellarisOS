@@ -97,7 +97,7 @@ test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
     await como(browser, fernanda!, async p => {
       await p.goto(`/${slug}/dashboard`)
       const main = p.locator('main')
-      await expect(main).toContainText(/Faturamento do mês\s*R\$\s*120(?!\d)/)
+      await expect(main).toContainText(/Meu faturamento do mês\s*R\$\s*120(?!\d)/)
       await expect.soft(p.getByText('Agendamentos hoje', { exact: true }), 'a agenda é a da clínica').toBeVisible()
       await expect.soft(card(p, 'Agendamentos hoje')).toContainText(/hoje\s*3\s*\d+ aguardando/i)
       await expect.soft(p.getByText('Taxa de ocupação', { exact: true }), 'a ocupação da unidade aparece').toBeVisible()

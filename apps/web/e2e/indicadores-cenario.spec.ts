@@ -321,12 +321,21 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     const profs = await aba('profissionais')
     expect(nums(profs.comissoes_por_profissional, ['aberta', 'paga']).map(x => [x.aberta, x.paga])).toEqual([[25, 10]])
 
-    // Estoque: 10×5 + 1×10 + 0×2 = 60; um crítico, um zerado.
+    // Estoque: 10×5 + 1×10 + 0×2 = 60; um crítico, um zerado. E desde o D10
+    // da 6ª simulação o produto ATIVO da rede sem linha de saldo na unidade
+    // também é "sem estoque": a unidade do cenário é nova, na rede real, então
+    // cada outro produto ativo da rede conta como zerado nela (valendo R$ 0).
+    const { count: outrosAtivos, error: eOutros } = await db.from('products').select('id', { count: 'exact', head: true })
+      .eq('tenant_id', c!.tenant).eq('is_active', true).not('id', 'in', `(${c!.produtos.join(',')})`)
+    expect(eOutros).toBeNull()
+    const outros = outrosAtivos ?? 0
     const estoque = await aba('estoque')
-    expect([num(estoque.valor_em_estoque), num(estoque.criticos), num(estoque.zerados)]).toEqual([60, 1, 1])
-    expect(nums(estoque.valor_por_categoria, ['valor'])).toEqual([{ categoria: `e2e-cat-${marca}`, valor: 60 }])
+    expect([num(estoque.valor_em_estoque), num(estoque.criticos), num(estoque.zerados)]).toEqual([60, 1, 1 + outros])
+    // As categorias desses outros produtos vêm com R$ 0 (o donut desenha só o que vale mais que zero).
+    const porCategoriaNoEstoque = nums(estoque.valor_por_categoria, ['valor']) as { categoria: string; valor: number }[]
+    expect(porCategoriaNoEstoque.filter(x => x.valor !== 0)).toEqual([{ categoria: `e2e-cat-${marca}`, valor: 60 }])
     expect(nums(estoque.estoque_por_unidade, ['itens', 'zerados', 'criticos', 'valor']))
-      .toEqual([{ branch_id: c!.unidade, itens: 3, zerados: 1, criticos: 1, valor: 60 }])
+      .toEqual([{ branch_id: c!.unidade, itens: 3 + outros, zerados: 1 + outros, criticos: 1, valor: 60 }])
     expect(nums(estoque.mais_consumidos, ['valor'])).toEqual([{ nome: `${PREFIXO} Insumo ok ${marca}`, valor: 12 }])
   })
 

@@ -27,8 +27,9 @@ test('a aba Geral mostra os dados da rede e salva a edição', async ({ page }) 
     // O nome da rede chegou do banco, em vez do "em breve".
     await expect(page.locator('input[name="name"]')).toHaveValue(antes.name as string)
 
-    // O que não se edita está na tela, não escondido.
-    await expect(page.getByText('Endereço do portal')).toBeVisible()
+    // O que não se edita está na tela, não escondido. Desde o A4 da 6ª
+    // simulação é o endereço do app da cliente, não o identificador da rede.
+    await expect(page.locator('[data-app-da-cliente]').getByText('App da cliente', { exact: true })).toBeVisible()
 
     const telefone = page.locator('input[name="phone"]')
     await telefone.fill(novo)

@@ -230,7 +230,7 @@ test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 mese
     const main = p.locator('main')
     await expect.soft(p.getByText('Últimos 6 meses'), 'o gráfico do faturamento DELA').toBeVisible()
     await expect.soft(main, 'a receita dela no semestre').toContainText(/▲\s*R\$\s*120 no semestre/)
-    await expect.soft(main, 'a receita dela').toContainText(/Faturamento do mês\s*R\$\s*120(?!\d)/)
+    await expect.soft(main, 'a receita dela').toContainText(/Meu faturamento do mês\s*R\$\s*120(?!\d)/)
     await expect.soft(main, 'nem a da unidade no semestre').not.toContainText('R$ 420')
     await expect.soft(card(p, 'Procedimentos mais procurados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
     await expect.soft(card(p, 'Procedimentos mais procurados')).not.toContainText(outroProc)
