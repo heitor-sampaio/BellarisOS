@@ -438,7 +438,11 @@ dela — e vê Configurações só com essa aba.
   vida e a gravação final filtram por ela — a passagem que perdeu a vez para de
   gravar. Sinal a cada 100 linhas, ANTES de tirar o pedaço de
   `importacao_linhas` (cair no meio regrava o pedaço, o que é seguro; o
-  contrário perderia as contagens). Interrompida, "Tentar de novo" continua de
+  contrário perderia as contagens). O sinal que o banco recusa (o tempo limite
+  de um engasgo) é tentado mais duas vezes, com 2 s e 5 s de pausa, antes de a
+  importação virar "Falhou" (F26, 2026-11-05: na 3ª completa UMA gravação do
+  andamento derrubou a importação inteira, com as linhas já gravadas). Prova:
+  `tests/importacao-andamento.test.ts`. Interrompida, "Tentar de novo" continua de
   onde parou; upload que falha no meio apaga a importação inteira (retomar uma
   truncada importaria meio arquivo em silêncio).
 - **Ler, retomar e baixar os erros** conferem o módulo do DESTINO e, nos

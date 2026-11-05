@@ -38,6 +38,9 @@ export const INTERROMPIDA_IMPORTACAO = 'Interrompida'
 type Admin = ReturnType<typeof createAdminClient>
 const agora = () => new Date().toISOString()
 const expiraEm = () => new Date(Date.now() + RETENCAO_MS).toISOString()
+/** As pausas antes de tentar de novo a gravação do andamento (F26). */
+const ESPERAS_DO_ANDAMENTO_MS = [2_000, 5_000]
+const esperar = (ms: number) => new Promise<void>(ok => setTimeout(ok, ms))
 
 /** A passagem perdeu a vez: outra reivindicou a importação. Para sem gravar. */
 class PerdeuAVez extends Error {}
@@ -101,13 +104,25 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
   }
   const erros = [...(p.erros ?? [])]
   const vistas = new Map<string, { numero: number; nome: string | undefined }>()
-  /** Grava o andamento — só se esta passagem ainda é a dona da importação. */
+  /**
+   * Grava o andamento — só se esta passagem ainda é a dona da importação.
+   *
+   * Um engasgo do banco (o tempo limite de UMA gravação) não derruba a
+   * importação inteira (F26, 2026-11-05): o andamento é o placar inteiro, da
+   * própria passagem — gravar de novo é seguro —, e tenta mais duas vezes.
+   */
   const sinal = async (extra: Record<string, unknown> = {}) => {
-    const { data, error } = await admin.from('importacoes')
-      .update({ ...placar, erros, ...extra, atualizada_em: agora() })
-      .eq('id', importacaoId).eq('execucao', execucao).select('id')
-    if (error) throw new Error(`Gravar o andamento da importação: ${error.message}`)
-    if (!data?.length) throw new PerdeuAVez()
+    for (let vez = 0; ; vez++) {
+      const { data, error } = await admin.from('importacoes')
+        .update({ ...placar, erros, ...extra, atualizada_em: agora() })
+        .eq('id', importacaoId).eq('execucao', execucao).select('id')
+      if (error) {
+        if (vez < ESPERAS_DO_ANDAMENTO_MS.length) { await esperar(ESPERAS_DO_ANDAMENTO_MS[vez]!); continue }
+        throw new Error(`Gravar o andamento da importação: ${error.message}`)
+      }
+      if (!data?.length) throw new PerdeuAVez()
+      return
+    }
   }
 
   try {
