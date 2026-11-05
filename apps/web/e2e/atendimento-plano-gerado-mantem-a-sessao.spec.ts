@@ -133,3 +133,34 @@ test('o Finalizar com a evolução em branco não apaga a evolução gravada', a
   const { data: entrada } = await db().from('medical_record_entries').select('notes').eq('appointment_id', id).single()
   expect(entrada?.notes, 'a evolução gravada pelo plano ficou').toBe(EVOLUCAO)
 })
+
+// D7 da 7ª simulação: o banco tinha a evolução da avaliação da Sophie e a
+// tela, depois do plano enviado, mostrava o campo vazio. Reproduzir: gerar o
+// plano com a evolução e reabrir NA MESMA ABA (o rascunho do sessionStorage
+// está lá).
+test('D7: gerar o plano com a evolução e recarregar na mesma aba mostra a evolução gravada', async ({ browser }) => {
+  const id = await avaliacaoEmCurso('Sophie')
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    await p.getByPlaceholder('Anote o que o cliente relatou: queixas estéticas, objetivos, histórico de tratamentos anteriores…').fill(DORES)
+    await p.locator('#avaliacao-evolucao').fill(EVOLUCAO)
+    await p.getByRole('button', { name: 'Nova sessão' }).click()
+    await p.getByRole('button', { name: 'Adicionar procedimento' }).click()
+    await p.locator('select').filter({ hasText: 'Selecionar procedimento…' }).selectOption({ label: `${PREFIXO} Toxina ${marca}` })
+    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await expect.poll(async () => (await db().from('medical_record_entries').select('notes').eq('appointment_id', id).maybeSingle()).data?.notes,
+      { timeout: 30_000 }).toBe(EVOLUCAO)
+    await expect(p.locator('#atendimento-evolucao')).toHaveValue(EVOLUCAO, { timeout: 15_000 })
+    await p.reload()
+    await expect(p.locator('#atendimento-evolucao'), 'recarregar na mesma aba').toHaveValue(EVOLUCAO, { timeout: 15_000 })
+    // A recepção fechou o checkout do plano (a Sophie fechou às 09:08): a tela segue com a evolução.
+    expect((await db().from('treatment_plans').update({ status: 'ACCEPTED' }).eq('evaluation_appointment_id', id)).error).toBeNull()
+    await p.goto(`/${slug}/agenda/${id}`)
+    await expect(p.locator('#atendimento-evolucao'), 'com o plano fechado').toHaveValue(EVOLUCAO, { timeout: 15_000 })
+  })
+  // Numa sessão nova do navegador (sem rascunho nenhum), também.
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    await expect(p.locator('#atendimento-evolucao'), 'sem rascunho').toHaveValue(EVOLUCAO, { timeout: 15_000 })
+  })
+})
