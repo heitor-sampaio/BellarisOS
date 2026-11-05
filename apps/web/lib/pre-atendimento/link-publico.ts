@@ -7,7 +7,7 @@ import {
   paraAnamneseGeral, respostasDaFicha, oQueFaltaNaFicha, anamneseRespondida,
   type FichaDePreAtendimento, type RespostaDaAnamnese,
 } from '@/lib/anamnese-geral'
-import { gravarAnamneseGeral, preAtendimentoPendente } from './ficha'
+import { gravarAnamneseGeral, preAtendimentoPendente, preAtendimentoDoLink } from './ficha'
 
 /**
  * O link do pré-atendimento, do lado de quem o ABRE — sem sessão (2026-10-20).
@@ -19,9 +19,14 @@ import { gravarAnamneseGeral, preAtendimentoPendente } from './ficha'
  * quanto a de abrir, e não pode confiar que quem chega nela passou pela outra.
  */
 
-export type EstadoDoLinkDaFicha = 'valido' | 'invalido' | 'usado' | 'revogado' | 'vencido' | 'indisponivel'
+/**
+ * `conferir` (A52 da 7ª simulação, 2026-11-05): a equipe preencheu a ficha na
+ * clínica, o link ainda vale, e a cliente a CONFERE (e completa o que faltou)
+ * em vez de ler "Ficha já respondida". A que ela mesma respondeu segue `usado`.
+ */
+export type EstadoDoLinkDaFicha = 'valido' | 'conferir' | 'invalido' | 'usado' | 'revogado' | 'vencido' | 'indisponivel'
 
-export const MENSAGEM_DO_LINK_DA_FICHA: Record<Exclude<EstadoDoLinkDaFicha, 'valido'>, string> = {
+export const MENSAGEM_DO_LINK_DA_FICHA: Record<Exclude<EstadoDoLinkDaFicha, 'valido' | 'conferir'>, string> = {
   invalido:     'Este link não existe. Confira se ele foi copiado inteiro, ou peça um novo à clínica.',
   usado:        'Tudo certo: a sua ficha já chegou à clínica.',
   revogado:     'Este link não vale mais. Peça um novo à clínica.',
@@ -42,14 +47,15 @@ export async function espiarLinkDaFicha(token: string): Promise<EspiadaDaFicha> 
   if (!tokenValido(token)) return { estado: 'invalido', clinica: null, telefone: null, pede: 'CPF' }
   const admin = createAdminClient()
   const r = await ler(admin.rpc('pre_atendimento_link_espiar', { p_token_hash: hashDoToken(token) }), 'abrir o link da ficha') as
-    { estado: EstadoDoLinkDaFicha; clinica?: string | null; telefone?: string | null; pede?: 'CPF' | 'NASCIMENTO' }
-  return { estado: r.estado, clinica: r.clinica ?? null, telefone: r.telefone ?? null, pede: r.pede ?? 'CPF' }
+    { estado: EstadoDoLinkDaFicha; conferir?: boolean; clinica?: string | null; telefone?: string | null; pede?: 'CPF' | 'NASCIMENTO' }
+  // O banco diz 'usado' com `conferir` (a função serve também ao código de antes do A52).
+  return { estado: r.conferir ? 'conferir' : r.estado, clinica: r.clinica ?? null, telefone: r.telefone ?? null, pede: r.pede ?? 'CPF' }
 }
 
 export interface IdentidadeDaFicha { token: unknown; cpf?: unknown; nascimento?: unknown }
 
 type Conferida =
-  | { ok: true; pre: string; tenant: string; cliente: string; link: string }
+  | { ok: true; pre: string; tenant: string; cliente: string; link: string; conferir: boolean }
   | { ok: false; erro: string; status: number }
 
 const ERRO: Record<string, string> = {
@@ -68,8 +74,8 @@ async function conferir(input: IdentidadeDaFicha): Promise<Conferida> {
   const admin = createAdminClient()
   const r = await gravar(admin.rpc('pre_atendimento_link_abrir', {
     p_token_hash: hashDoToken(input.token), p_cpf: cpf, p_nascimento: nascimento, p_ip: ip,
-  }), 'conferir a identidade') as { ok?: true; erro?: string; restantes?: number; pre?: string; tenant?: string; cliente?: string; link?: string }
-  if (r.ok) return { ok: true, pre: r.pre!, tenant: r.tenant!, cliente: r.cliente!, link: r.link! }
+  }), 'conferir a identidade') as { ok?: true; erro?: string; restantes?: number; pre?: string; tenant?: string; cliente?: string; link?: string; conferir?: boolean }
+  if (r.ok) return { ok: true, pre: r.pre!, tenant: r.tenant!, cliente: r.cliente!, link: r.link!, conferir: !!r.conferir }
   if (r.erro === 'identidade') {
     const n = r.restantes ?? 0
     return { ok: false, erro: `Os dados não conferem com o cadastro. ${n === 1 ? 'Resta 1 tentativa' : `Restam ${n} tentativas`} antes de o link ser bloqueado.`, status: 403 }
@@ -78,15 +84,20 @@ async function conferir(input: IdentidadeDaFicha): Promise<Conferida> {
 }
 
 export interface FichaPeloLink {
-  modo: 'COMPLETO' | 'CONFIRMAR'
+  /** CONFERIR: a ficha que a EQUIPE preencheu (A52) — as respostas dela, para confirmar ou corrigir. */
+  modo: 'COMPLETO' | 'CONFIRMAR' | 'CONFERIR'
   ficha: FichaDePreAtendimento
   respostasAnteriores: Record<string, RespostaDaAnamnese>
 }
 
-/** O pendente conferido — e a anamnese de agora, para o "nada mudou". */
+/**
+ * O pendente conferido — e a anamnese de agora, para o "nada mudou". Na ficha
+ * que a equipe já respondeu (A52), o pré-atendimento DO LINK, com o retrato
+ * das perguntas de quando foi mandado.
+ */
 async function pendenteConferido(c: Extract<Conferida, { ok: true }>) {
   const admin = createAdminClient()
-  const pendente = await preAtendimentoPendente(admin, c.cliente)
+  const pendente = c.conferir ? await preAtendimentoDoLink(admin, c.pre, c.cliente) : await preAtendimentoPendente(admin, c.cliente)
   if (!pendente || pendente.id !== c.pre) return null
   const registro = await ler(admin.from('medical_records').select('general_anamnesis')
     .eq('client_id', c.cliente).maybeSingle(), 'buscar a anamnese')
@@ -102,7 +113,8 @@ export async function abrirFichaPorLink(input: IdentidadeDaFicha): Promise<{ err
   return {
     ficha: {
       // Sem resposta anterior (ou com a ficha gravada vazia), "nada mudou" não tem o que confirmar.
-      modo: p.pendente.modo === 'CONFIRMAR' && anamneseRespondida(p.atual) ? 'CONFIRMAR' : 'COMPLETO',
+      modo: c.conferir && anamneseRespondida(p.atual) ? 'CONFERIR'
+        : p.pendente.modo === 'CONFIRMAR' && anamneseRespondida(p.atual) ? 'CONFIRMAR' : 'COMPLETO',
       ficha: p.pendente.ficha,
       respostasAnteriores: p.atual?.respostas ?? {},
     },
@@ -132,6 +144,15 @@ export async function responderPorLink(input: IdentidadeDaFicha & { respostas?: 
     ficha: p.pendente.ficha,
     respostas,
   })
+  // A ficha que a equipe preencheu (A52): o pré-atendimento do link passa a ser
+  // o da cliente (ela conferiu ou corrigiu) — o pendente já estava fechado.
+  if (c.conferir) {
+    const agora = new Date().toISOString()
+    await gravar(admin.from('pre_atendimentos').update({
+      respostas: respostasDaFicha(p.pendente.ficha.rows, respostas), respondido_em: agora,
+      origem: 'CLIENTE_LINK', respondido_por: null, updated_at: agora,
+    }).eq('id', c.pre).eq('client_id', c.cliente).eq('status', 'RESPONDIDO'), 'registrar a conferência da ficha')
+  }
   await gravar(admin.from('pre_atendimento_links').update({ used_at: new Date().toISOString() }).eq('id', c.link), 'fechar o link da ficha')
   return {}
 }

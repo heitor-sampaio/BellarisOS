@@ -745,6 +745,20 @@ const procedures = await ler(
     nem nascimento: a janela diz "Complete o CPF ou a data de nascimento para
     enviar o link" e leva ao cadastro (`?aba=dados`, via `lib/rotas`). "Ficha já
     respondida" mostra o telefone/WhatsApp da UNIDADE para corrigir algo.
+    **A ficha que a EQUIPE preencheu se CONFERE pelo link** (A52 da 7ª
+    simulação, 2026-11-05: a equipe respondeu na clínica, e o link mandado
+    dizia "Ficha já respondida" — a cliente não conferia nem completava): com
+    o pré-atendimento RESPONDIDO pela equipe (`origem = EQUIPE`) e o link ainda
+    valendo (não usado, revogado nem vencido), a página diz "X já preencheu a
+    sua ficha de pré-atendimento. Confira as respostas.", pede a identidade de
+    sempre e mostra as respostas (o modo CONFERIR: "Está tudo certo" ou
+    "Corrigir respostas"); a obrigatória que a equipe deixou em branco a
+    cliente completa (`oQueFaltaNaFicha` vale). Gravado pelo núcleo
+    (`gravarAnamneseGeral`, origem CLIENTE_LINK); o pré-atendimento do link
+    passa a ser da cliente, e o link morre. A que a própria cliente respondeu
+    segue "já respondida". A espiada diz `conferir: true` com o estado `usado`
+    (migration `20261105002902`: a função serviu ao código de antes até o
+    push). Prova: `e2e/ficha-pre-atendimento.spec.ts` ("A52").
     **"Enviar a ficha" está SEMPRE na janela** (A49 da 6ª simulação,
     2026-11-04; princípio 1): sem pendente — o envio automático da rede
     desligado, que é o padrão (princípio 6), ou a ficha respondida há pouco —,
@@ -834,8 +848,9 @@ const procedures = await ler(
   termos fixos do checkout; os termos e contratos novos são o §9.4.1
 - Cliente NÃO acessa o prontuário pelo app — apenas histórico de procedimentos.
   A exceção é a ficha de pré-atendimento PENDENTE dela: ali ela vê as
-  perguntas e, dentro da validade, as próprias respostas de antes — nada de
-  evolução, foto ou anotação da equipe.
+  perguntas e, dentro da validade, as próprias respostas de antes — e, pelo
+  link, as que a equipe preencheu para ela (A52) —, nada de evolução, foto ou
+  anotação da equipe.
 - **Dado clínico só com o módulo de prontuário, venha da tela que vier**
   (`podeVerClinico(ctx)`, `lib/auth.ts`; 2026-10-03). Vazavam por telas de
   outros módulos e foram fechados: a evolução na sessão de atendimento (só

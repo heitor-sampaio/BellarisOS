@@ -695,6 +695,52 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     }
   })
 
+  // A52 da 7ª simulação (2026-11-05): a equipe preencheu a ficha na clínica, e o
+  // link dizia "Ficha já respondida" — a cliente não podia conferir nem
+  // completar. Agora a ficha da EQUIPE se confere pelo link (a identidade de
+  // sempre), com "Está tudo certo" ou "Corrigir respostas"; a obrigatória que a
+  // equipe deixou em branco a cliente completa. A da cliente segue "já respondida".
+  test('A52: a ficha preenchida pela equipe, a cliente confere e completa pelo link', async ({ browser }) => {
+    const { cliente, agendamento, cpf } = await agendada('Conferir')
+    const { token } = await gerarLink(browser, agendamento)
+    const pre = await db().from('pre_atendimentos').select('id, ficha').eq('client_id', cliente).eq('status', 'PENDENTE').single<{ id: string; ficha: unknown }>()
+    // A equipe respondeu na clínica, sem os medicamentos (obrigatória).
+    const respostas = { allergies: 'Não', isPregnantOrBreastfeeding: 'Não', healthConditions: 'Nenhuma' }
+    const agora = new Date().toISOString()
+    expect((await db().from('medical_records').upsert({ client_id: cliente, general_anamnesis: {
+      versao: 2, ficha: pre.data!.ficha, respostas, respondidoEm: agora, origem: 'EQUIPE', respondidoPor: null,
+    } }, { onConflict: 'client_id' })).error).toBeNull()
+    expect((await db().from('pre_atendimentos').update({ status: 'RESPONDIDO', respostas, respondido_em: agora, origem: 'EQUIPE' })
+      .eq('id', pre.data!.id)).error).toBeNull()
+
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/pre-atendimento/${token}`)
+      await expect(page.getByText('Ficha já respondida')).toHaveCount(0)
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('já preencheu a sua ficha')
+      await page.getByLabel('CPF').fill(cpf)
+      await page.getByRole('button', { name: 'Continuar' }).click()
+      await expect(page.getByText('Confira as respostas que a equipe preencheu')).toBeVisible()
+      // Faltou a obrigatória: "Está tudo certo" diz o que falta, e ela completa.
+      await page.getByRole('button', { name: 'Está tudo certo' }).click()
+      await expect(page.getByText(/Preencha "Medicamentos em uso"/)).toBeVisible()
+      await page.getByRole('button', { name: 'Corrigir respostas' }).click()
+      await page.locator('[data-campo="medications"] textarea').fill(`Losartana ${marca}`)
+      await page.getByRole('button', { name: 'Enviar respostas' }).click()
+      await expect(page.getByText('Respostas enviadas')).toBeVisible()
+      const { data: mr } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
+      expect(mr?.general_anamnesis).toMatchObject({ origem: 'CLIENTE_LINK', respostas: { medications: `Losartana ${marca}`, allergies: 'Não' } })
+      expect(await pendenteDe(cliente)).toMatchObject({ status: 'RESPONDIDO', origem: 'CLIENTE_LINK' })
+
+      // O link usado não abre de novo.
+      await page.goto(`/pre-atendimento/${token}`)
+      await expect(page.getByText('Ficha já respondida')).toBeVisible()
+    } finally {
+      await ctx.close()
+    }
+  })
+
   test('A47: erro de validação no link leva o foco ao primeiro campo inválido, destacado e com a mensagem junto', async ({ browser }) => {
     const { data: ficha } = await db().from('forms').select('id, schema').eq('tenant_id', D.tenantId).eq('tipo', 'PRE_ATENDIMENTO')
       .single<{ id: string; schema: { rows: { fields: { id: string; required?: boolean }[] }[] } }>()

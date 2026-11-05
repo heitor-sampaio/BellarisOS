@@ -13,7 +13,7 @@ import type { FichaDePreAtendimento, RespostaDaAnamnese } from '@/lib/anamnese-g
  * a rota de responder confere tudo outra vez, sem sessão para lembrar.
  */
 
-interface Ficha { modo: 'COMPLETO' | 'CONFIRMAR'; ficha: FichaDePreAtendimento; respostasAnteriores: Record<string, RespostaDaAnamnese> }
+interface Ficha { modo: 'COMPLETO' | 'CONFIRMAR' | 'CONFERIR'; ficha: FichaDePreAtendimento; respostasAnteriores: Record<string, RespostaDaAnamnese> }
 
 function mascaraCpf(v: string): string {
   const d = v.replace(/\D/g, '').slice(0, 11)
@@ -29,7 +29,11 @@ async function postar<T>(rota: string, corpo: unknown): Promise<T & { erro?: str
   }
 }
 
-export function FichaPorLink({ token, clinica, pede }: { token: string; clinica: string; pede: 'CPF' | 'NASCIMENTO' }) {
+export function FichaPorLink({ token, clinica, pede, conferir = false }: {
+  token: string; clinica: string; pede: 'CPF' | 'NASCIMENTO'
+  /** A52: a equipe já preencheu a ficha — a cliente confere (e completa) as respostas. */
+  conferir?: boolean
+}) {
   const [valor, setValor] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [bloqueado, setBloqueado] = useState(false)
@@ -74,7 +78,7 @@ export function FichaPorLink({ token, clinica, pede }: { token: string; clinica:
       <div>
         <p className="overline">Antes do seu atendimento</p>
         <h1 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4 }}>
-          {clinica} mandou a sua ficha de pré-atendimento.
+          {conferir ? `${clinica} já preencheu a sua ficha de pré-atendimento. Confira as respostas.` : `${clinica} mandou a sua ficha de pré-atendimento.`}
         </h1>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8 }}>

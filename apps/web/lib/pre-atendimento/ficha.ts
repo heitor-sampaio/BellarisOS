@@ -170,6 +170,22 @@ export async function preAtendimentoPendente(admin: Admin, clientId: string): Pr
 }
 
 /**
+ * O pré-atendimento de um LINK que a equipe já respondeu (A52 da 7ª simulação):
+ * a cliente confere pelo link. Só o RESPONDIDO pela equipe, desta cliente.
+ */
+export async function preAtendimentoDoLink(admin: Admin, preId: string, clientId: string): Promise<PreAtendimentoPendente | null> {
+  const p = await ler(admin.from('pre_atendimentos').select('id, tenant_id, modo, ficha')
+    .eq('id', preId).eq('client_id', clientId).eq('status', 'RESPONDIDO').eq('origem', 'EQUIPE').maybeSingle(),
+    'buscar o pré-atendimento do link') as
+    { id: string; tenant_id: string; modo: 'COMPLETO' | 'CONFIRMAR'; ficha: { formId?: string; nome?: string; rows?: unknown } } | null
+  if (!p) return null
+  return {
+    id: p.id, tenantId: p.tenant_id, modo: p.modo,
+    ficha: { formId: p.ficha?.formId ?? null, nome: p.ficha?.nome ?? 'Pré-atendimento', rows: normalizeFormSchema({ rows: p.ficha?.rows }).rows },
+  }
+}
+
+/**
  * Avisa a cliente do pré-atendimento que ESTE agendamento deixou pendente
  * (o gatilho cria um só por cliente: se já havia outro pendente, este
  * agendamento não criou nada e não há o que avisar de novo). Para chamar

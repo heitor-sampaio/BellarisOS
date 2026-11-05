@@ -19,7 +19,8 @@ import type { FichaDePreAtendimento, RespostaDaAnamnese } from '@/lib/anamnese-g
 type Envio = Promise<{ ok: true } | { error: string }>
 
 export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, voltar, enviar, confirmar }: {
-  modo: 'COMPLETO' | 'CONFIRMAR'
+  /** CONFERIR (A52, pelo link): as respostas que a EQUIPE preencheu, para confirmar ou corrigir. */
+  modo: 'COMPLETO' | 'CONFIRMAR' | 'CONFERIR'
   ficha: FichaDePreAtendimento
   respostasAnteriores: Record<string, RespostaDaAnamnese>
   voltar: string | null
@@ -47,9 +48,11 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
   if (!atualizando) {
     return (
       <div className="card pre-atendimento-cliente">
-        <p className="pre-atendimento-cliente-titulo">Algo mudou na sua saúde?</p>
+        <p className="pre-atendimento-cliente-titulo">{modo === 'CONFERIR' ? 'Confira as respostas que a equipe preencheu' : 'Algo mudou na sua saúde?'}</p>
         <p className="pre-atendimento-cliente-texto">
-          Estas são as suas respostas da última vez. Se nada mudou, é só confirmar.
+          {modo === 'CONFERIR'
+            ? 'A clínica preencheu a sua ficha com você. Se está tudo certo, é só confirmar; se faltou ou mudou algo, corrija.'
+            : 'Estas são as suas respostas da última vez. Se nada mudou, é só confirmar.'}
         </p>
         <RespostasDaAnamnese rows={ficha.rows} respostas={respostasAnteriores} />
         {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{erro}</p>}
@@ -61,10 +64,10 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
               if ('error' in r) setErro(r.error)
               else setEnviado(true)
             })}>
-            {confirmando ? 'Enviando…' : 'Nada mudou'}
+            {confirmando ? 'Enviando…' : modo === 'CONFERIR' ? 'Está tudo certo' : 'Nada mudou'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => setAtualizando(true)}>
-            <Pencil size={14} aria-hidden="true" /> Atualizar respostas
+            <Pencil size={14} aria-hidden="true" /> {modo === 'CONFERIR' ? 'Corrigir respostas' : 'Atualizar respostas'}
           </button>
         </div>
       </div>
