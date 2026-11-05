@@ -1198,7 +1198,7 @@ async function generateEvaluationPlanInterno(
         : null
       ficha = fichaParaConcluir(form as { id: string; name: string; schema: unknown } | null, fichaDaTela)
       if (ficha) {
-        const retratadas = await retratarInjetaveis(admin, ctx, { rows: ficha.rows, answers: ficha.answers, clientId: appt.client_id })
+        const retratadas = await retratarInjetaveis(admin, ctx, { rows: ficha.rows, answers: ficha.answers, clientId: appt.client_id, appointmentId })
         if ('error' in retratadas) return { error: retratadas.error }
         ficha = { ...ficha, answers: retratadas.answers }
       }

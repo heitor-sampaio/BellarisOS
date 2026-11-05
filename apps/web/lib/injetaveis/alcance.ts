@@ -6,7 +6,7 @@ import { ler } from '@/lib/db'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import {
-  planejamentosDaFicha, comRetratos, type PlanejamentoParaRetrato,
+  planejamentosDaFicha, comRetratos, comOPlanejamentoAplicado, temPlanejadorSemPlanejamento, type PlanejamentoParaRetrato,
 } from '@/lib/atendimento/retrato-dos-injetaveis'
 
 /**
@@ -102,11 +102,30 @@ export async function planejamentosQueAbrem(
 export async function retratarInjetaveis(
   admin: Admin,
   ctx: TenantContext,
-  { rows, answers, clientId }: { rows: AnamnesisRow[]; answers: Record<string, unknown>; clientId: string | null },
+  { rows, answers, clientId, appointmentId = null }: {
+    rows: AnamnesisRow[]; answers: Record<string, unknown>; clientId: string | null; appointmentId?: string | null
+  },
 ): Promise<{ answers: Record<string, unknown> } | { error: string }> {
-  const ids = planejamentosDaFicha(rows, answers)
+  // D6 da 7ª: o campo sem planejamento ganha o que tem a aplicação DESTE
+  // atendimento (registrada por Planejamento → Injetáveis), se ao alcance.
+  const aplicado = appointmentId && clientId && temPlanejadorSemPlanejamento(rows, answers)
+    ? await planejamentoAplicadoNoAtendimento(admin, appointmentId, clientId)
+    : null
+  const ids = [...new Set([...planejamentosDaFicha(rows, answers), ...(aplicado ? [aplicado] : [])])]
   const mapas = ids.length > 0 && clientId ? await planejamentosQueAbrem(admin, ctx, clientId, ids) : []
-  return comRetratos(rows, answers, new Map(mapas.map(m => [m.id, m])), new Date().toISOString())
+  const respostas = aplicado && mapas.some(m => m.id === aplicado) ? comOPlanejamentoAplicado(rows, answers, aplicado) : answers
+  return comRetratos(rows, respostas, new Map(mapas.map(m => [m.id, m])), new Date().toISOString())
+}
+
+/**
+ * O planejamento com a aplicação registrada NESTE atendimento (a mais
+ * recente), da cliente dele — ou nulo (D6 da 7ª simulação).
+ */
+export async function planejamentoAplicadoNoAtendimento(admin: Admin, appointmentId: string, clientId: string): Promise<string | null> {
+  const linha = await ler(admin.from('injectable_applications').select('map_id')
+    .eq('appointment_id', appointmentId).eq('client_id', clientId).not('map_id', 'is', null)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle(), 'buscar a aplicação do atendimento') as { map_id: string } | null
+  return linha?.map_id ?? null
 }
 
 /**

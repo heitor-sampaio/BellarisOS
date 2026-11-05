@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planejamentosDaFicha, comRetratos } from '@/lib/atendimento/retrato-dos-injetaveis'
+import { planejamentosDaFicha, comRetratos, comOPlanejamentoAplicado, temPlanejadorSemPlanejamento } from '@/lib/atendimento/retrato-dos-injetaveis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 
 /**
@@ -78,5 +78,20 @@ describe('comRetratos', () => {
     expect(r).toEqual({ answers: { mapa: {
       view: 'rosto_f', points: [], confirmedAt: null, planejamento: { id: ID, nome: 'Planejamento sem nome' }, retratoEm: AGORA,
     } } })
+  })
+})
+
+// D6 da 7ª simulação: o campo sem planejamento ganha o aplicado neste atendimento.
+describe('D6: o planejamento aplicado no atendimento vai ao campo vazio', () => {
+  it('o campo vazio ou o mapa solto vazio ganha o planejamento; o escolhido e o solto com pontos ficam', () => {
+    expect(temPlanejadorSemPlanejamento(rows, {})).toBe(true)
+    expect(temPlanejadorSemPlanejamento(rows, { mapa: { view: 'rosto_f', points: [] } })).toBe(true)
+    expect(comOPlanejamentoAplicado(rows, { regiao: 'x', mapa: { view: 'rosto_f', points: [] } }, ID).mapa).toEqual({ view: 'rosto_f', points: [], planejamento: { id: ID, nome: '' } })
+    const escolhido = { mapa: { view: 'rosto_f', points: [], planejamento: { id: OUTRO, nome: 'B' } } }
+    expect(temPlanejadorSemPlanejamento(rows, escolhido)).toBe(false)
+    expect(comOPlanejamentoAplicado(rows, escolhido, ID)).toEqual(escolhido)
+    const solto = { mapa: { view: 'rosto_f', points: [{ id: 'p1' }] } }
+    expect(comOPlanejamentoAplicado(rows, solto, ID)).toEqual(solto)
+    expect(comOPlanejamentoAplicado(rows, {}, null)).toEqual({})
   })
 })

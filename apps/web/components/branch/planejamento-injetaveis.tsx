@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Syringe, Plus, Loader2 } from 'lucide-react'
 import { MapaInjetavel } from '@/components/branch/mapa-injetavel'
 import {
@@ -15,8 +15,8 @@ const FALHA_AO_CARREGAR = 'Não foi possível carregar os planejamentos de injet
  * deixava a tela em "Carregando…" para sempre (D7, 2026-10-29). A falha vira
  * o aviso da própria tela — a mensagem do servidor chega trocada em produção.
  */
-function buscarPlanejamentos(clientId: string): ReturnType<typeof listarPlanejamentosDoCliente> {
-  return listarPlanejamentosDoCliente(clientId).catch(() => ({ mapas: [], error: FALHA_AO_CARREGAR }))
+function buscarPlanejamentos(clientId: string, appointmentId: string | null): ReturnType<typeof listarPlanejamentosDoCliente> {
+  return listarPlanejamentosDoCliente(clientId, appointmentId).catch(() => ({ mapas: [], error: FALHA_AO_CARREGAR }))
 }
 
 /**
@@ -30,7 +30,7 @@ function buscarPlanejamentos(clientId: string): ReturnType<typeof listarPlanejam
  */
 export function PlanejamentoInjetaveis({
   clientId, branchId, slug, appointmentId = null, produtos, podeEditar,
-  abertoId, onAbrir,
+  abertoId, onAbrir, abrirOAplicado = false,
 }: {
   clientId:       string
   branchId:       string
@@ -45,6 +45,12 @@ export function PlanejamentoInjetaveis({
    */
   abertoId?:      string | null
   onAbrir?:       (mapId: string | null) => void
+  /**
+   * D6 da 7ª simulação: o campo do planejador da ficha, vazio, abre sozinho
+   * (uma vez) o planejamento que tem a aplicação DESTE atendimento — a Rita a
+   * registrou por Planejamento → Injetáveis e a ficha ficou sem os pontos.
+   */
+  abrirOAplicado?: boolean
 }) {
   const [mapas,  setMapas]  = useState<MapaNaLista[] | null>(null)
   const [abertoLocal, setAbertoLocal] = useState<string | null>(null)
@@ -58,19 +64,31 @@ export function PlanejamentoInjetaveis({
   }, [])
 
   const carregar = useCallback(async () => {
-    aplicar(await buscarPlanejamentos(clientId))
-  }, [clientId, aplicar])
+    aplicar(await buscarPlanejamentos(clientId, appointmentId))
+  }, [clientId, appointmentId, aplicar])
+
+  const controlado = typeof onAbrir === 'function'
+  const aberto     = controlado ? (abertoId ?? null) : abertoLocal
+  const jaLigouOAplicado = useRef(false)
 
   // A busca inicial aplica no `.then`: o efeito só dispara, quem grava estado é
   // a resposta.
   useEffect(() => {
     let vivo = true
-    buscarPlanejamentos(clientId).then(res => { if (vivo) aplicar(res) })
+    buscarPlanejamentos(clientId, appointmentId).then(res => {
+      if (!vivo) return
+      aplicar(res)
+      // D6: o campo vazio liga o planejamento aplicado neste atendimento — uma vez.
+      const aplicado = res.mapas.find(m => m.aplicadoNesteAtendimento)
+      if (abrirOAplicado && controlado && !abertoId && aplicado && !jaLigouOAplicado.current) {
+        jaLigouOAplicado.current = true
+        onAbrir!(aplicado.id)
+      }
+    })
     return () => { vivo = false }
-  }, [clientId, aplicar])
-
-  const controlado = typeof onAbrir === 'function'
-  const aberto     = controlado ? (abertoId ?? null) : abertoLocal
+    // Só na chegada: abrir e fechar depois é de quem usa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, appointmentId, aplicar])
 
   /** Abrir/fechar passando por quem decide. */
   function pedirAbrir(mapId: string | null) {
@@ -83,8 +101,9 @@ export function PlanejamentoInjetaveis({
     // O nome nasce com a data: nomear no ato atrasa quem está com a pessoa na
     // frente, e renomear leva um clique no cabeçalho depois.
     const nome = `Injetáveis — ${new Date().toLocaleDateString('pt-BR')}`
+    // A35: a cliente com um planejamento vazio recebe ele, não um vazio a mais.
     const res = await criarPlanejamentoInjetavel({ nome, clientId, branchId: branchId || null })
-      .catch(() => ({ id: undefined, error: 'Não foi possível criar o planejamento.' }))
+      .catch(() => ({ id: undefined, error: 'Não foi possível criar o planejamento.', reaproveitado: false }))
     setCriando(false)
     if (res.error || !res.id) { setErro(res.error ?? 'Não foi possível criar.'); return }
     await carregar()
@@ -137,6 +156,11 @@ export function PlanejamentoInjetaveis({
                   {m.pontos} {m.pontos === 1 ? 'ponto' : 'pontos'}
                   {m.produtos.length > 0 && ` · ${m.produtos.slice(0, 2).join(', ')}`}
                 </span>
+                {m.aplicadoNesteAtendimento && (
+                  <span data-aplicado-neste-atendimento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)' }}>
+                    Aplicação registrada neste atendimento
+                  </span>
+                )}
               </span>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', flexShrink: 0 }}>
                 {m.atualizadoEm ? new Date(m.atualizadoEm).toLocaleDateString('pt-BR') : ''}

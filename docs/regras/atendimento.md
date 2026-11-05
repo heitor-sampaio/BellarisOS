@@ -949,6 +949,28 @@ const procedures = await ler(
     calculado na página), o link "Abrir planejamento" para Planejamento →
     Injetáveis da ficha. Nada de confirmar ou registrar aplicação fora do
     atendimento. O pacote LGPD leva o retrato no JSON, como levava o mapa.
+  - **A aplicação registrada por Planejamento → Injetáveis chega à ficha**
+    (D6 da 7ª simulação, 2026-11-05; princípio 3): a Rita marcou 3 pontos e
+    usou "Registrar aplicação" pela sub-aba do atendimento; o campo da ficha
+    ficou vazio (`{"view":"rosto_f","points":[]}`, sem planejamento) e o
+    prontuário dizia "Nenhum ponto marcado". Agora o campo do planejador SEM
+    planejamento e sem ponto: na tela, abre sozinho (uma vez) o planejamento
+    que tem a aplicação DESTE atendimento, e a lista o marca "Aplicação
+    registrada neste atendimento" (`[data-aplicado-neste-atendimento]`,
+    `listarPlanejamentosDoCliente` com o atendimento); no servidor, o "Salvar
+    ficha", o "Finalizar" (também a ficha salva antes com o campo vazio) e o
+    gerar plano ligam esse planejamento antes do retrato
+    (`retratarInjetaveis` com `appointmentId` →
+    `planejamentoAplicadoNoAtendimento`, `comOPlanejamentoAplicado`; só ao
+    alcance de quem age). O campo com planejamento escolhido, ou o mapa solto
+    com pontos, fica como está. Prova:
+    `e2e/atendimento-ficha-planejador-injetaveis.spec.ts` ("D6").
+  - **"Novo planejamento" reaproveita o vazio** (A35 da 7ª, 2026-11-05): cada
+    clique criava um planejamento vazio (4 na ficha da Ana). Para a cliente
+    que já tem um planejamento sem ponto e sem aplicação,
+    `criarPlanejamentoInjetavel` devolve esse (`reaproveitado`) e a tela o
+    abre. Os 4 vazios da Ana (dado de [sim]) ficaram. Prova: o mesmo spec
+    ("A35").
   - **A ficha antiga, de mapa solto** (sem `planejamento`), continua como
     está, só para ler — também no atendimento.
   - As regras do mapa (`mapaAoAlcance`, `mapaDaProfissional`,

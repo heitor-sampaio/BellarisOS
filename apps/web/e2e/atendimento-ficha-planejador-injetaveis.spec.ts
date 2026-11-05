@@ -308,3 +308,74 @@ test('atend-12: gerar o plano com o planejamento sem ponto também pergunta, e s
       .toEqual([{ status: 'PROPOSED' }])
   })
 })
+
+// D6 da 7ª simulação: a Rita marcou 3 pontos e usou "Registrar aplicação" por
+// Planejamento → Injetáveis; o campo do planejador da ficha ficou vazio, e o
+// prontuário dizia "Nenhum ponto marcado" com a aplicação gravada. O campo
+// liga o planejamento que tem a aplicação DESTE atendimento.
+test('D6: a aplicação registrada por Planejamento → Injetáveis chega ao campo da ficha e ao prontuário', async ({ browser }) => {
+  const ana = await cliente('Ana D6')
+  const NOME = `Aplicado pelo planejamento ${marca}`
+  const mapaId = await mapaDa(ana, NOME)
+  const outro = await mapaDa(ana, `Outro planejamento ${marca}`)
+  const id = await atendimentoEmCurso(ana)
+  // A aplicação feita pela sub-aba Planejamento → Injetáveis do atendimento.
+  expect((await db().from('injectable_applications').insert({
+    client_id: ana, map_id: mapaId, appointment_id: id, professional_id: profissional!.userId,
+    view: 'rosto_f', points: PONTOS, totals: { 'Toxina botulínica': { planned: 8, applied: 0, unit: 'UI' } },
+  })).error).toBeNull()
+
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    const campo = p.locator('[data-campo="mapa"]')
+    // O campo já abre o planejamento com a aplicação deste atendimento.
+    await expect(campo.getByRole('heading', { name: `[e2e] ${NOME}` }), 'o campo liga o planejamento aplicado').toBeVisible()
+    await campo.getByRole('button', { name: 'Voltar' }).click()
+    await expect(campo.getByRole('button', { name: new RegExp(NOME) }).locator('[data-aplicado-neste-atendimento]'),
+      'a lista diz qual foi aplicado aqui').toBeVisible()
+    await expect(campo.locator('[data-aplicado-neste-atendimento]')).toHaveCount(1)
+    await expect(campo.getByText(`[e2e] Outro planejamento ${marca}`)).toBeVisible()
+    await campo.getByText(`[e2e] ${NOME}`).click()
+    await finalizar(p, id)
+  })
+  const mapa = await mapaNaFicha(id)
+  expect(mapa?.planejamento?.id, 'o prontuário tem o planejamento aplicado').toBe(mapaId)
+  expect(mapa?.points).toEqual(PONTOS)
+  expect(outro).toBeTruthy()
+})
+
+test('D6: salvar a ficha com o campo vazio (o mapa solto vazio) liga o planejamento aplicado — no servidor', async ({ browser }) => {
+  const ana = await cliente('Ana D6 salva')
+  const mapaId = await mapaDa(ana, `Aplicado salvo ${marca}`)
+  const id = await atendimentoEmCurso(ana)
+  expect((await db().from('injectable_applications').insert({
+    client_id: ana, map_id: mapaId, appointment_id: id, professional_id: profissional!.userId,
+    view: 'rosto_f', points: PONTOS, totals: {},
+  })).error).toBeNull()
+  const rota = `/${slug}/agenda/${id}`
+  await como(browser, async p => {
+    // A ficha salva com o mapa solto vazio — o que estava no banco da Ana.
+    await chamarAcao(p, 'actions/anamnesis.ts', 'salvarFichaDoProcedimento', rota,
+      [{ appointmentId: id, slug, answers: { regiao: 'Glabela', mapa: { view: 'rosto_f', points: [] } } }])
+  })
+  const mapa = await mapaNaFicha(id)
+  expect(mapa?.planejamento?.id, 'salvar a ficha vazia liga o planejamento aplicado neste atendimento').toBe(mapaId)
+  expect(mapa?.points).toEqual(PONTOS)
+})
+
+// A35: cada clique em "Novo planejamento" criava um vazio (4 na ficha da Ana).
+test('A35: "Novo planejamento" reaproveita o vazio da cliente em vez de criar outro', async ({ browser }) => {
+  const nova = await cliente('Sem mapa A35')
+  const id = await atendimentoEmCurso(nova)
+  await como(browser, async p => {
+    await p.goto(`/${slug}/agenda/${id}`)
+    const campo = p.locator('[data-campo="mapa"]')
+    await campo.getByRole('button', { name: 'Novo planejamento' }).click()
+    await expect(campo.locator('svg:has(image)')).toBeVisible()
+    await campo.getByRole('button', { name: 'Voltar' }).click()
+    await campo.getByRole('button', { name: 'Novo planejamento' }).click()
+    await expect(campo.locator('svg:has(image)')).toBeVisible()
+  })
+  const { data: criados } = await db().from('injectable_maps').select('id').eq('client_id', nova)
+  expect(criados, 'um planejamento vazio só').toHaveLength(1)
+})

@@ -62,6 +62,8 @@ export interface MapaNaLista {
   /** Última aplicação registrada — o que separa "planejado" de "aplicado". */
   ultimaAplicacao: string | null
   aplicacoes:      number
+  /** D6 da 7ª: tem a aplicação do atendimento aberto (só na lista do atendimento). */
+  aplicadoNesteAtendimento?: boolean
 }
 
 const SEM_NOME = 'Planejamento sem nome'
@@ -90,7 +92,7 @@ export async function criarPlanejamentoInjetavel({
   nome:      string
   clientId?: string | null
   branchId?: string | null
-}): Promise<{ id?: string; error?: string }> {
+}): Promise<{ id?: string; error?: string; reaproveitado?: boolean }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
   assertRecurso(ctx, 'injetaveis')
@@ -114,6 +116,12 @@ export async function criarPlanejamentoInjetavel({
     // A unidade do planejamento é a de onde ele está sendo feito; sem ela, a de
     // cadastro do cliente. Cliente é da rede, então isso pode ser nulo.
     filial = filial || (cliente.branch_id as string | null)
+
+    // A35 da 7ª simulação: cada clique em "Novo planejamento" criava um vazio
+    // (4 na ficha da Ana, com 15 s de intervalo). A cliente que já tem um
+    // planejamento VAZIO (sem ponto e sem aplicação) recebe ele de volta.
+    const vazio = await planejamentoVazioDaCliente(admin, ctx.tenantId!, clientId)
+    if (vazio) return { id: vazio, reaproveitado: true }
   }
 
   const { data, error } = await admin
@@ -134,6 +142,18 @@ export async function criarPlanejamentoInjetavel({
 
   revalidatePath('/admin/injetaveis')
   return { id: data.id as string }
+}
+
+/** O planejamento da cliente sem nenhum ponto e sem aplicação (o mais recente), ou nulo (A35). */
+async function planejamentoVazioDaCliente(admin: ReturnType<typeof createAdminClient>, tenantId: string, clientId: string): Promise<string | null> {
+  const mapas = (await ler(admin.from('injectable_maps').select('id, points')
+    .eq('tenant_id', tenantId).eq('client_id', clientId)
+    .order('updated_at', { ascending: false }).limit(50), 'buscar os planejamentos da cliente') as { id: string; points: unknown }[] | null) ?? []
+  const vazios = mapas.filter(m => !Array.isArray(m.points) || m.points.length === 0).map(m => m.id)
+  if (!vazios.length) return null
+  const aplicados = new Set(((await ler(admin.from('injectable_applications').select('map_id')
+    .in('map_id', vazios), 'buscar as aplicações dos planejamentos') as { map_id: string }[] | null) ?? []).map(a => a.map_id))
+  return vazios.find(id => !aplicados.has(id)) ?? null
 }
 
 /** Um planejamento com o mapa e as aplicações do cliente dele. */
@@ -383,7 +403,7 @@ function revalidarPlanejamento(slug: string, clientId: string | null) {
 }
 
 /** Os planejamentos de um cliente — a aba na ficha e o atendimento. */
-export async function listarPlanejamentosDoCliente(clientId: string): Promise<{
+export async function listarPlanejamentosDoCliente(clientId: string, appointmentId: string | null = null): Promise<{
   mapas: MapaNaLista[]
   error?: string
 }> {
@@ -406,7 +426,14 @@ export async function listarPlanejamentosDoCliente(clientId: string): Promise<{
   if (error) return { mapas: [], error: `Não foi possível carregar: ${error.message}` }
 
   const aplicacoes = await contarAplicacoes(admin, ctx.tenantId!, [clientId])
-  return { mapas: ((data ?? []) as unknown as MapaLido[]).map(l => linhaDaLista(l, aplicacoes)) }
+  // D6 da 7ª: no atendimento, qual planejamento tem a aplicação DELE — o campo
+  // da ficha o liga, e a lista o diz.
+  const aplicadosAqui = appointmentId && /^[0-9a-f-]{36}$/i.test(appointmentId)
+    ? new Set(((await ler(admin.from('injectable_applications').select('map_id')
+        .eq('appointment_id', appointmentId).eq('client_id', clientId), 'buscar as aplicações do atendimento') as { map_id: string | null }[] | null) ?? [])
+        .map(a => a.map_id).filter(Boolean) as string[])
+    : new Set<string>()
+  return { mapas: ((data ?? []) as unknown as MapaLido[]).map(l => ({ ...linhaDaLista(l, aplicacoes), aplicadoNesteAtendimento: aplicadosAqui.has(l.id) })) }
 }
 
 /**

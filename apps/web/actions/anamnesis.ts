@@ -150,7 +150,7 @@ export async function salvarFichaDoProcedimento(params: {
     // pontos que o navegador mandou. Planejamento de outra cliente, de outra
     // rede ou fora do alcance: recusa.
     const retratadas = await retratarInjetaveis(admin, ctx, {
-      rows, answers: params.answers ?? {}, clientId: (appt.client_id as string | null) ?? null,
+      rows, answers: params.answers ?? {}, clientId: (appt.client_id as string | null) ?? null, appointmentId: params.appointmentId,
     })
     if ('error' in retratadas) return { error: retratadas.error }
 

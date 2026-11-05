@@ -410,6 +410,7 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
         podeEditar
         abertoId={plan?.id ?? null}
         onAbrir={id => onChange(id ? { ...emptyInjectableMap(), planejamento: { id, nome: '' } } : emptyInjectableMap())}
+        abrirOAplicado={!plan && !(isInjectableMap(value) && value.points.length > 0)}
       />
     </div>
   )

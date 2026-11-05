@@ -38,9 +38,9 @@ import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/vou
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
-import { planejamentosDaFicha, perguntaDoPlanejamentoVazio } from '@/lib/atendimento/retrato-dos-injetaveis'
+import { planejamentosDaFicha, perguntaDoPlanejamentoVazio, temPlanejadorSemPlanejamento } from '@/lib/atendimento/retrato-dos-injetaveis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
-import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
+import { retratarInjetaveis, planejamentoAplicadoNoAtendimento } from '@/lib/injetaveis/alcance'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { perguntaDoInicioAdiantado } from '@/lib/appointments/inicio-adiantado'
 import { planosComOProcedimento, textoDoPlano } from '@/lib/checkout/plano-e-avulso'
@@ -928,14 +928,18 @@ async function finishSessionInterno(
       const salva = (await ler(admin.from('medical_record_entries').select('form_data')
         .eq('appointment_id', appointmentId).maybeSingle(), 'buscar a ficha salva'))?.form_data as { ficha?: unknown } | null
       const f = salva?.ficha as { formId?: unknown; name?: unknown; rows?: unknown; answers?: unknown } | undefined
+      // D6 da 7ª: também a salva com o campo do planejador vazio, quando este
+      // atendimento tem aplicação registrada (o retrato a liga a ela).
       if (f && typeof f.formId === 'string' && Array.isArray(f.rows) && f.answers && typeof f.answers === 'object'
-        && planejamentosDaFicha(f.rows as AnamnesisRow[], f.answers as Record<string, unknown>).length > 0) {
+        && (planejamentosDaFicha(f.rows as AnamnesisRow[], f.answers as Record<string, unknown>).length > 0
+          || (temPlanejadorSemPlanejamento(f.rows as AnamnesisRow[], f.answers as Record<string, unknown>)
+            && !!(await planejamentoAplicadoNoAtendimento(admin, appointmentId, appt.client_id as string))))) {
         ficha = { formId: f.formId, name: String(f.name ?? ''), rows: f.rows as AnamnesisRow[], answers: f.answers as Record<string, unknown> }
       }
     }
     if (ficha) {
       const retratadas = await retratarInjetaveis(admin, ctx, {
-        rows: ficha.rows, answers: ficha.answers, clientId: (appt.client_id as string | null) ?? null,
+        rows: ficha.rows, answers: ficha.answers, clientId: (appt.client_id as string | null) ?? null, appointmentId,
       })
       // A da tela com planejamento que não é desta cliente: recusa. A salva
       // antes, cujo planejamento saiu do alcance: fica como foi salva.

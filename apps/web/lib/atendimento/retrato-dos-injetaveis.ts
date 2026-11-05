@@ -97,3 +97,39 @@ export function perguntaDoPlanejamentoVazio(rows: AnamnesisRow[], answers: Recor
   }
   return null
 }
+
+/**
+ * O campo do planejador SEM planejamento e sem ponto — vazio, ou o mapa solto
+ * vazio que a tela grava quando ninguém abriu um planejamento.
+ */
+function campoSemPlanejamento(valor: unknown): boolean {
+  if (valor === undefined || valor === null || valor === '') return true
+  if (typeof valor !== 'object' || Array.isArray(valor)) return false
+  if (pedido(valor) !== undefined) return false
+  const pontos = (valor as { points?: unknown }).points
+  return !Array.isArray(pontos) || pontos.length === 0
+}
+
+/** A ficha tem um campo do planejador ainda sem planejamento (e sem ponto)? */
+export function temPlanejadorSemPlanejamento(rows: AnamnesisRow[], answers: Record<string, unknown>): boolean {
+  return camposDoPlanejador(rows).some(campo => campoSemPlanejamento(answers?.[campo]))
+}
+
+/**
+ * D6 da 7ª simulação (2026-11-05): a Rita registrou a aplicação por
+ * Planejamento → Injetáveis, e o campo do planejador da ficha ficou vazio — o
+ * prontuário dizia "Nenhum ponto marcado" com a aplicação gravada. O campo
+ * sem planejamento (e sem ponto) ganha o planejamento que tem a aplicação
+ * DESTE atendimento: é o registro clínico do que foi feito aqui. O campo com
+ * planejamento escolhido, ou com o mapa solto de antes com pontos, fica.
+ */
+export function comOPlanejamentoAplicado(
+  rows: AnamnesisRow[], answers: Record<string, unknown>, mapId: string | null,
+): Record<string, unknown> {
+  if (!mapId || !UUID.test(mapId)) return answers
+  const saida: Record<string, unknown> = { ...answers }
+  for (const campo of camposDoPlanejador(rows)) {
+    if (campoSemPlanejamento(answers?.[campo])) saida[campo] = { view: 'rosto_f', points: [], planejamento: { id: mapId, nome: '' } }
+  }
+  return saida
+}
