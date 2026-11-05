@@ -9618,6 +9618,30 @@ no fim desta sessão" (cinco papéis procuraram o campo; a regra é a aut-04).
 `sim6b-marta` (Begônia e Camélia). Mexer em D2 toca checkout do plano,
 contrato e crediário; D3 toca `estoque_ajuste` — vizinhos, e vale uma completa.
 
+**Plano do Heitor (2026-11-05):** concordou com os quatro pontos (sobre o
+plano: "a diferença entre pacote e plano é que um plano é algo personalizado
+de acordo com a necessidade de cliente e um pacote é um conjunto de
+procedimentos já estabelecidos previamente") e "sobre os problemas de uso,
+corrija todos de acordo com as regras de negócio já estabelecidas". Cinco
+frentes, uma por vez: F28 defeitos → F29 decisões 1–2 e cadastro/portal → F30
+decisões 3–4 e agenda/comissão → F31 setup/CRM → F32 atendimento/caixa/geral;
+depois, uma completa.
+
+**F28 feita em 2026-11-05 — os defeitos** (710a49cb…031f2484; migration
+`20261105002801`, `estoque_ajuste_em`). D1 a validade do lote pelo dia em todo
+o estoque (e no Copilot); D2+A42 as parcelas saem de uma conta só e o contrato
+lista cada uma ("2x de R$ 890,66 + 1x de R$ 890,68", com as datas); D3 o
+ajuste mostra "780 UI · 7,8 frasco" e conta exato na unidade digitada (7,7
+frascos = 770 UI); D4 o app diz "Vence dd/mm" e ordena pelo vencimento; D5 a
+duração prevista é a do agendamento; D6+A35 a aplicação registrada no
+atendimento liga o planejamento à ficha, e "Novo planejamento" reaproveita o
+vazio; D8 o app mostra o valor cobrado com o desconto; D9 o agendar expira o
+cache dos agendamentos (a ficha mostra na hora); D10 a trava do dia antes da
+pergunta do horário; D11 `/clients` sem o módulo dá a tela "sem acesso" com
+200; D12 o agendar espera a lista das salas. D7 não reproduzido (o código de
+04/11 já tratava; ficou o teste). Tocou `lib/appointments/core.ts` e os
+layouts de Clientes: entra na completa do fim.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
