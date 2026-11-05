@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { banco, tenantId, PREFIXO } from './banco'
 import { apagarClientes } from './limpeza'
+import { redeAdiada } from './limpeza-adiada'
 
 /**
  * Logins de teste que NÃO são o admin da rede, e a sessão de cada um.
@@ -171,6 +172,9 @@ export async function criarMembro(
   let userId: string | null = null
 
   const limpar = async () => {
+    // Membro de uma rede de teste que a completa adiou: sai com ela, no fim da
+    // rodada (o login também — `apoio/limpeza-adiada.ts`, F25).
+    if (redeAdiada(opcoes.tenant)) { fs.rmSync(estado, { force: true }); return }
     // Agendar pelo núcleo grava quem agendou (`created_by_id`, sem cascade): o
     // agendamento prendia o membro, e a rede [e2e] dele ficava no banco.
     if (userId) await db.from('appointments').update({ created_by_id: null }).eq('created_by_id', userId)
@@ -273,6 +277,8 @@ export async function clienteComSessao(
   let clientId: string | null = null
 
   const limpar = async () => {
+    // Cliente de uma rede de teste que a completa adiou: sai com ela, no fim.
+    if (redeAdiada(opcoes.tenant)) { fs.rmSync(estado, { force: true }); return }
     if (clientId) {
       const falhas = await apagarClientes([clientId])
       for (const f of falhas) console.warn(`[e2e] cliente de teste: não apagou ${f.o_que}: ${f.erro}`)

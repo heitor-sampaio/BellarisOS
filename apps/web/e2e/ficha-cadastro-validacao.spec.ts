@@ -80,8 +80,16 @@ test('D12: o CPF pelos dígitos verificadores — 111.111.111-11 é recusado, em
     await expect(p.getByText(/CPF inválido/)).toBeVisible()
   })
   expect(await fichasDe(nome('cpf repetido'))).toEqual([])
-  const { data: logins } = await db().auth.admin.listUsers({ perPage: 1000 })
-  expect(logins.users.some(u => u.email === email), 'nenhum login nasceu').toBe(false)
+  // Todas as páginas: com a limpeza adiada da completa (F25) os logins de teste
+  // da rodada ficam até o fim, e uma página só (mil) podia não chegar ao novo.
+  let nasceu = false
+  for (let pagina = 1; pagina < 50 && !nasceu; pagina++) {
+    const { data: logins, error } = await db().auth.admin.listUsers({ page: pagina, perPage: 1000 })
+    expect(error, 'listar os logins').toBeNull()
+    nasceu = logins.users.some(u => u.email === email)
+    if (logins.users.length < 1000) break
+  }
+  expect(nasceu, 'nenhum login nasceu').toBe(false)
 })
 
 test('D13: o telefone incompleto é recusado', async ({ browser }) => {

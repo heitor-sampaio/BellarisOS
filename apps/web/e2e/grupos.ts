@@ -157,6 +157,7 @@ export const ISOLADOS = [
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',
   'lotes-baixa.spec.ts',
+  'limpeza-rede-de-teste.spec.ts',
   'pacote-abater-avulso.spec.ts',
   'pacote-agendar.spec.ts',
   'pacote-cancelar.spec.ts',

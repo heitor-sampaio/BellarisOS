@@ -60,6 +60,8 @@ pnpm-debug.log*
 # Testes automatizados
 # A sessão do E2E é uma credencial viva (cookies do Supabase) — nunca no repo.
 apps/web/e2e/.auth/
+# O registro das redes de teste que a completa apaga no fim (F25).
+apps/web/e2e/.limpeza/
 apps/web/test-results/
 apps/web/playwright-report/
 

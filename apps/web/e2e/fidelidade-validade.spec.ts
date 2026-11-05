@@ -33,13 +33,8 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (gestor) await gestor.limpar()
   if (!rede) return
-  await rede.limpar()   // a rede fica: a unidade B ainda está lá
-  const b = db()
-  const falhas: string[] = []
-  const olhar = (o: string, r: { error: { message: string } | null }) => { if (r.error) falhas.push(`${o}: ${r.error.message}`) }
-  olhar('unidade B', await b.from('branches').delete().eq('id', unidadeB))
-  olhar('rede', await b.from('tenants').delete().eq('id', rede.tenantId))
-  expect(falhas).toEqual([])
+  // A rede inteira, com a unidade B (e2e_apagar_rede); na completa, no fim da rodada (F25).
+  await rede.limpar()
 })
 
 const conta = async (c: string) => (await db().rpc('fidelidade_conta', { p_cliente: c })).data as string

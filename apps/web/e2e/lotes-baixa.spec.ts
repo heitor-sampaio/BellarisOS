@@ -61,9 +61,8 @@ test.afterAll(async () => {
     olhar('despesas', await b.from('financial_transactions').delete().in('branch_id', [criado.outra.branchId, criado.unidadeA!]))
     olhar('produtos', await b.from('products').delete().in('id', ids))
   }
+  // A rede inteira, com a unidade A (e2e_apagar_rede); na completa, no fim da rodada (F25).
   await criado.outra.limpar()
-  if (criado.unidadeA) olhar('unidade A', await b.from('branches').delete().eq('id', criado.unidadeA))
-  olhar('rede', await b.from('tenants').delete().eq('id', criado.outra.tenantId))
   expect(falhas).toEqual([])
 })
 

@@ -103,12 +103,8 @@ test.afterAll(async () => {
     await db().from('product_batches').delete().eq('branch_id', segunda)
     await db().from('branch_product_stock').delete().eq('branch_id', segunda)
   }
+  // A rede inteira, com a segunda unidade (e2e_apagar_rede); na completa, no fim da rodada (F25).
   await rede.limpar()
-  if (segunda) {
-    const { error } = await db().from('branches').delete().eq('id', segunda)
-    expect(error).toBeNull()
-    await db().from('tenants').delete().eq('id', rede.tenantId)
-  }
 })
 
 async function movimentos() {

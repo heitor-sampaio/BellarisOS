@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import { banco, PREFIXO } from './banco'
-import { apagarClientes } from './limpeza'
+import { adiarRede, apagarRedeDeTeste, limpezaAdiada, redeAdiada } from './limpeza-adiada'
 
 /**
  * Uma SEGUNDA rede `[e2e]`, inteira, só para ser alvo.
@@ -13,6 +13,11 @@ import { apagarClientes } from './limpeza'
  * estoque e no crédito interno.
  *
  * Tudo nasce com `[e2e]`: se `limpar()` não rodar, `varrerSobras` recolhe.
+ *
+ * O `limpar()` apaga a rede INTEIRA numa passada no servidor (`e2e_apagar_rede`)
+ * — a segunda unidade, a sala, o pacote que o teste criou nela vão junto. Na
+ * completa (`E2E_LIMPEZA_ADIADA=1`) a rede é anotada ao nascer e só sai no fim
+ * da rodada: o `limpar()` não escreve nada (`apoio/limpeza-adiada.ts`, F25).
  */
 export interface OutraRede {
   tenantId: string
@@ -31,13 +36,12 @@ export interface OutraRede {
 
 export async function criarOutraRede(marca: string): Promise<OutraRede> {
   const db = banco()
-  const clientes: string[] = []
-  const produtos: string[] = []
 
   const { data: t, error: eT } = await db.from('tenants')
     .insert({ name: `${PREFIXO} Outra rede ${marca}`, slug: `e2e-outra-${marca}`, email: `e2e-outra-${marca}@bellaris.invalid` })
     .select('id').single<{ id: string }>()
   expect(eT, 'criar a outra rede').toBeNull()
+  if (limpezaAdiada()) adiarRede(t!.id)
   const { data: b, error: eB } = await db.from('branches')
     .insert({ tenant_id: t!.id, name: `${PREFIXO} Unidade ${marca}`, slug: `e2e-un-${marca}` })
     .select('id').single<{ id: string }>()
@@ -73,7 +77,6 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
         .select('id').single<{ id: string }>()
       expect(error, `criar o cliente ${rotulo} na outra rede`).toBeNull()
       await db.from('loyalty_accounts').upsert({ client_id: data!.id }, { onConflict: 'client_id' })
-      clientes.push(data!.id)
       return data!.id
     },
 
@@ -83,7 +86,6 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
         .select('id').single<{ id: string }>()
       expect(error, `criar o produto ${rotulo} na outra rede`).toBeNull()
       await db.from('branch_product_stock').insert({ product_id: data!.id, branch_id: b!.id, current_stock: saldo, min_stock: 0 })
-      produtos.push(data!.id)
       return data!.id
     },
 
@@ -111,45 +113,12 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
     },
 
     async limpar() {
-      if (clientes.length) {
-        const falhas = await apagarClientes(clientes)
-        for (const f of falhas) console.warn(`[e2e] outra rede: não apagou ${f.o_que}: ${f.erro}`)
-      }
-      // Recompensas apontam procedimento e produto da rede: saem antes deles (e
-      // depois dos clientes, cujos vouchers apontam a recompensa).
-      await db.from('loyalty_rewards').delete().eq('tenant_id', t!.id)
-      if (produtos.length) {
-        await db.from('product_batches').delete().in('product_id', produtos)
-        await db.from('stock_movements').delete().in('product_id', produtos)
-        await db.from('branch_product_stock').delete().in('product_id', produtos)
-        await db.from('domain_events').delete().in('entidade_id', produtos)
-        await db.from('products').delete().in('id', produtos)
-      }
-      await db.from('users').delete().eq('id', prof!.id)
-      await db.auth.admin.deleteUser(auth.user!.id)
-      // Todos os procedimentos da rede — o teste pode ter criado outros além do padrão.
-      await db.from('procedures').delete().eq('tenant_id', t!.id)
-      // Os modelos de documento: o procedimento aponta para eles, e a versão para o modelo.
-      await db.from('document_template_versions').delete().eq('tenant_id', t!.id)
-      await db.from('document_templates').delete().eq('tenant_id', t!.id)
-      // As salas (D5, 2026-10-30) prendem a unidade.
-      await db.from('appointments').update({ room_id: null }).eq('branch_id', b!.id)
-      await db.from('rooms').delete().eq('branch_id', b!.id)
-      await db.from('branches').delete().eq('id', b!.id)
-      await db.from('role_permissions').delete().eq('tenant_id', t!.id)
-      await db.from('tenant_roles').delete().eq('tenant_id', t!.id)
-      await db.from('domain_events').delete().eq('tenant_id', t!.id)
-      await db.from('loyalty_configs').delete().eq('tenant_id', t!.id)
-      // Abrir o inbox ou o quadro cria o funil padrão. As etapas e o funil
-      // marcam o sinal do quadro ao sair, por gatilho; por isso o sinal sai por
-      // último. Na cascata da rede, esse gatilho recusava o delete.
-      await db.from('crm_stages').delete().eq('tenant_id', t!.id)
-      await db.from('crm_funnels').delete().eq('tenant_id', t!.id)
-      await db.from('crm_quadro_sinais').delete().eq('tenant_id', t!.id)
-      // Rede que não sai é, quase sempre, unidade que o teste criou nela e ainda
-      // não apagou: quem criou apaga, e apaga a rede de novo depois.
-      const { error: eRede } = await db.from('tenants').delete().eq('id', t!.id)
-      if (eRede) console.warn(`[e2e] outra rede: a rede ficou (${eRede.message}) — ainda há algo dela no banco`)
+      // Na completa a rede só foi anotada (ao nascer): sai inteira no fim da
+      // rodada, sem escrever nada agora (`apoio/limpeza-adiada.ts`, F25).
+      if (redeAdiada(t!.id)) return
+      // No spec avulso, na hora — numa passada só no servidor, que leva também
+      // o que o teste criou nela além do padrão (outra unidade, pacote, sala).
+      for (const f of await apagarRedeDeTeste(t!.id)) console.warn(`[e2e] outra rede: não apagou ${f.o_que}: ${f.erro}`)
     },
   }
   return rede

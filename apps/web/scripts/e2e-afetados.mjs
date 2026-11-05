@@ -33,6 +33,10 @@ const RAIZ = path.resolve(WEB, '..', '..')
 // palavra do arquivo que testa) — senão só a completa o roda. O script avisa
 // no fim quais specs nenhuma área cobre.
 const AREAS = [
+  // A limpeza do E2E (F25): a passada no servidor, a limpeza adiada da completa.
+  { nome: 'limpeza do E2E',
+    chaves: ['e2e/apoio/limpeza', 'e2e/apoio/outra-rede', 'e2e/apoio/sessao', 'e2e-limpeza/', 'playwright.limpeza', 'e2e_apagar_rede'],
+    specs: /^(limpeza-rede-de-teste|listas-sem-corte-limpeza)/ },
   // O CSP da clínica e o que vem de fora (o SDK da Meta, só na tela que o usa).
   { nome: 'CSP e scripts de fora',
     chaves: ['seguranca/csp', 'csp-relatorio', 'app/layout.tsx', 'conectar-whatsapp-meta', 'sdk-da-meta'],

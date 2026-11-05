@@ -117,10 +117,8 @@ test.afterAll(async () => {
   if (daA?.length) olhar('histórico', await b.from('appointment_history').delete().in('appointment_id', daA.map(a => a.id)))
   if (ids.length) olhar('lançamentos', await b.from('financial_transactions').delete().in('id', ids))
   for (const x of await apagarClientes(criado.clientes)) falhas.push(`cliente da A: ${x.o_que}: ${x.erro}`)
-  await criado.outra.limpar()   // clientes → agendamentos, lançamentos do cliente, planos
-  if (criado.unidadeA) olhar('unidade A', await b.from('branches').delete().eq('id', criado.unidadeA))
-  // A rede só sai depois da unidade A — o limpar() dela tentou antes, com a A no caminho.
-  olhar('rede', await b.from('tenants').delete().eq('id', criado.outra.tenantId))
+  // A rede inteira, com a unidade A (e2e_apagar_rede); na completa, no fim da rodada (F25).
+  await criado.outra.limpar()
   expect(falhas).toEqual([])
 })
 

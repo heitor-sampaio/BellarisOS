@@ -1,5 +1,6 @@
 import { banco, PREFIXO } from './banco'
 import { apagarConversas } from './banco'
+import { apagarRedeDeTeste, redesDaVarredura } from './limpeza-adiada'
 
 /**
  * Limpeza do que a suíte cria, e a VARREDURA de sobras antes de cada rodada.
@@ -347,50 +348,19 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     apagou.cargos = cargos.length
   }
 
-  // 7. Redes inteiras de teste (a "outra rede" do teste de RLS).
-  const redes = await ids(db.from('tenants').select('id').like('name', like).lt('created_at', antes))
-  for (const rede of redes) {
-    // O que prende a unidade e não sai com os clientes: mapas de injetáveis e
-    // lançamentos sem cliente (a contra-transação do estorno nasce sem ele).
-    await passo(falhas, 'mapas da rede de teste', db.from('injectable_maps').delete().eq('tenant_id', rede))
-    const produtos = await ids(db.from('products').select('id').eq('tenant_id', rede))
-    if (produtos.length) {
-      await passo(falhas, 'lotes da rede de teste', db.from('product_batches').delete().in('product_id', produtos))
-      await passo(falhas, 'movimentos da rede de teste', db.from('stock_movements').delete().in('product_id', produtos))
-      await passo(falhas, 'saldos da rede de teste', db.from('branch_product_stock').delete().in('product_id', produtos))
-      await passo(falhas, 'produtos da rede de teste', db.from('products').delete().in('id', produtos))
-    }
-    const unidades = await ids(db.from('branches').select('id').eq('tenant_id', rede))
-    if (unidades.length) {
-      await passo(falhas, 'lançamentos da rede de teste', db.from('financial_transactions').delete().in('branch_id', unidades))
-      // As salas (D5, 2026-10-30) prendem a unidade: saem antes dela.
-      await passo(falhas, 'agendamentos com sala da rede de teste', db.from('appointments').update({ room_id: null }).in('branch_id', unidades))
-      await passo(falhas, 'salas da rede de teste', db.from('rooms').delete().in('branch_id', unidades))
-    }
-    // Recompensas apontam procedimento e produto: saem antes deles.
-    await passo(falhas, 'vouchers da rede de teste', db.from('loyalty_vouchers').delete().eq('tenant_id', rede))
-    await passo(falhas, 'recompensas da rede de teste', db.from('loyalty_rewards').delete().eq('tenant_id', rede))
-    await passo(falhas, 'procedimentos da rede de teste', db.from('procedures').delete().eq('tenant_id', rede))
-    await apagarDocumentosEmitidos(await ids(db.from('issued_documents').select('id').eq('tenant_id', rede)), falhas)
-    // Modelos de documento: o procedimento aponta para eles, então saem depois.
-    await passo(falhas, 'versões de modelo da rede de teste', db.from('document_template_versions').delete().eq('tenant_id', rede))
-    await passo(falhas, 'modelos de documento da rede de teste', db.from('document_templates').delete().eq('tenant_id', rede))
-    await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
-    // Membro que o limpar() do teste não levou (rodada interrompida): ele prende a rede.
-    await passo(falhas, 'membros da rede de teste', db.from('users').delete().eq('tenant_id', rede))
-    await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))
-    await passo(falhas, 'eventos da rede de teste', db.from('domain_events').delete().eq('tenant_id', rede))
-    await passo(falhas, 'fidelidade da rede de teste', db.from('loyalty_configs').delete().eq('tenant_id', rede))
-    // Oportunidades em lotes até esvaziar (um select só para em 1000), e depois
-    // as pessoas, que elas prendem (`on delete restrict`).
-    for (let volta = 0; volta < 20; volta++) {
-      const lote = await ids(db.from('leads').select('id').eq('tenant_id', rede).limit(300))
-      if (lote.length === 0) break
-      await passo(falhas, 'histórico da rede de teste', db.from('lead_events').delete().in('lead_id', lote))
-      await passo(falhas, 'oportunidades da rede de teste', db.from('leads').delete().in('id', lote))
-    }
-    await passo(falhas, 'pessoas da rede de teste', db.from('contacts').delete().eq('tenant_id', rede))
-    await passo(falhas, 'rede de teste', db.from('tenants').delete().eq('id', rede))
+  // 7. Redes inteiras de teste: cada uma numa passada no servidor
+  //    (`e2e_apagar_rede`, F25), uma de cada vez e com uma pausa — antes eram
+  //    ~25 DELETEs por rede pelo PostgREST, e a lista à mão deixava para trás a
+  //    rede com um pacote ou uma segunda unidade (eram 30 presas em 2026-11-05).
+  //    A trava do lado de cá (`redesDaVarredura`) e a do banco: [sim] e as
+  //    reais, nunca.
+  const { data: candidatas, error: eRedes } = await db.from('tenants').select('id, name, slug, email, created_at')
+    .like('name', like).lt('created_at', antes)
+  if (eRedes) falhas.push({ o_que: 'listar as redes de teste', erro: eRedes.message })
+  const redes = redesDaVarredura((candidatas ?? []) as { id: string; name: string; slug: string; email: string | null; created_at: string }[], new Date(), IDADE_DA_SOBRA_MIN)
+  for (const [i, rede] of redes.entries()) {
+    if (i) await new Promise(ok => setTimeout(ok, 250))
+    falhas.push(...await apagarRedeDeTeste(rede))
   }
   if (redes.length) apagou.redes = redes.length
 
