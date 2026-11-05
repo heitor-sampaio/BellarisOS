@@ -18,8 +18,8 @@ describe('configDaLinha', () => {
     expect(configDaLinha({ modo: 'OUTRO', periodo: 'ANUAL', base_com_pontos: 'X' })).toEqual(CONFIG_PADRAO)
   })
   it('lê o que foi salvo', () => {
-    expect(configDaLinha({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: '7.50', produto_modo: 'POR_PRODUTO' }))
-      .toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: 7.5, produto_modo: 'POR_PRODUTO' })
+    expect(configDaLinha({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: '7.50', produto_modo: 'POR_PRODUTO', plano_pct: '5' }))
+      .toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'VALOR_PAGO', periodo: 'SEMANAL', produto_pct: 7.5, produto_modo: 'POR_PRODUTO', plano_pct: 5 })
   })
   it('o modo é um só: o pagamento integral (H4, 2026-11-01)', () => {
     expect(CONFIG_PADRAO.modo).toBe('INTEGRAL')
@@ -170,5 +170,25 @@ describe('rotuloDaBase', () => {
     expect(rotuloDaBase({ desconta_taxa: true, desconta_insumos: false })).toBe('base sem a taxa da maquininha')
     expect(rotuloDaBase({ desconta_taxa: false, desconta_insumos: true })).toBe('base sem o custo dos insumos')
     expect(rotuloDaBase({ desconta_taxa: true, desconta_insumos: true })).toBe('base sem a taxa da maquininha e sem os insumos')
+  })
+})
+
+// A10 da 7ª simulação: "Base cheia (sem taxa nem insumo descontados)" não dizia
+// se os pontos saem da base, e a Tânia lia R$ 480 (40% de 1.200) sobre R$ 1.180
+// pagos. Com a regra dos pontos (`base_com_pontos`), a frase diz o que vale.
+describe('rotuloDaBase com os pontos (A10)', () => {
+  it('sobre o preço: a base é cheia, e os pontos não saem dela', () => {
+    expect(rotuloDaBase({ desconta_taxa: false, desconta_insumos: false, base_com_pontos: 'PRECO' }))
+      .toBe('base cheia (sem taxa nem insumo descontados; os pontos e o voucher usados não saem dela)')
+  })
+  it('sobre o valor pago: os pontos saem da base', () => {
+    expect(rotuloDaBase({ desconta_taxa: false, desconta_insumos: false, base_com_pontos: 'VALOR_PAGO' }))
+      .toBe('base sem os pontos e o voucher usados (sem taxa nem insumo descontados)')
+    expect(rotuloDaBase({ desconta_taxa: true, desconta_insumos: false, base_com_pontos: 'VALOR_PAGO' }))
+      .toBe('base sem a taxa da maquininha e sem os pontos e o voucher usados')
+  })
+  it('com a taxa descontada e sobre o preço, diz que os pontos ficam', () => {
+    expect(rotuloDaBase({ desconta_taxa: true, desconta_insumos: true, base_com_pontos: 'PRECO' }))
+      .toBe('base sem a taxa da maquininha e sem os insumos (os pontos e o voucher usados não saem dela)')
   })
 })

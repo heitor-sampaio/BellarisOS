@@ -120,14 +120,19 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
   // A comissão da venda de produto (D4): texto do campo, lido como os outros
   // números com casas ("10" ou "7,5"); vazio = sem comissão.
   const [pctProduto, setPctProduto] = useState(inicial.produto_pct != null ? String(inicial.produto_pct).replace('.', ',') : '')
+  // A comissão da venda do PLANO (decisão 4 da 7ª): vazio = sem comissão (princípio 6).
+  const [pctPlano, setPctPlano] = useState(inicial.plano_pct != null ? String(inicial.plano_pct).replace('.', ',') : '')
 
   function salvar() {
     setErro(null)
     const texto = pctProduto.trim()
     const produto = texto ? parseDecimal(texto, 2) : null
     if (produto != null && Number.isNaN(produto)) { setErro(`Comissão na venda de produto: ${NUMERO_INVALIDO}`); return }
+    const textoDoPlano = pctPlano.trim()
+    const plano = textoDoPlano ? parseDecimal(textoDoPlano, 2) : null
+    if (plano != null && Number.isNaN(plano)) { setErro(`Comissão na venda de plano: ${NUMERO_INVALIDO}`); return }
     iniciar(async () => {
-      const r = await salvarConfigDeComissao({ ...c, produto_pct: produto })
+      const r = await salvarConfigDeComissao({ ...c, produto_pct: produto, plano_pct: plano })
       if (r.error) { setErro(r.error); return }
       setSalvo(true)
       router.refresh()
@@ -161,7 +166,7 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
           </label>
         ))}
         <p style={texto}>
-          {c.desconta_insumos || c.desconta_taxa
+          {c.desconta_insumos || c.desconta_taxa || c.base_com_pontos === 'VALOR_PAGO'
             ? `A comissão é calculada sobre a ${rotuloDaBase(c)}.`
             : `Nada é descontado: a comissão é sobre a ${rotuloDaBase(c)}.`}
           {' '}Vale para a comissão em percentual; a de valor fixo não muda com taxa nem insumos.
@@ -236,6 +241,26 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
               })}
             </div>
           )}
+        </div>
+      </Bloco>
+
+      <Bloco titulo="Venda de plano">
+        {/* Decisão 4 do Heitor (7ª simulação): o plano é personalizado para a
+            cliente; quem o vende (o "Quem vendeu" do checkout) ganha este
+            percentual. Vazio por padrão (princípio 6). */}
+        <div data-comissao-do-plano style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 260 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Comissão na venda de plano (%)</span>
+            <input className="field" inputMode="decimal" value={pctPlano} disabled={!podeEditar} placeholder="Sem comissão"
+              aria-label="Comissão na venda de plano (%)"
+              onChange={e => { setPctPlano(e.target.value); setSalvo(false) }} />
+          </label>
+          <p style={texto}>
+            {pctPlano.trim()
+              ? 'Quem vendeu o plano (o “Quem vendeu” do checkout) ganha esse percentual do valor do plano, com o desconto.'
+              : 'Vazio: a venda do plano não gera comissão.'}
+            {' '}A comissão fica a pagar com o plano pago inteiro: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. Se o plano for cancelado, ela volta. A comissão de quem atende cada sessão segue a regra do profissional.
+          </p>
         </div>
       </Bloco>
 

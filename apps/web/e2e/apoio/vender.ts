@@ -1,4 +1,4 @@
-import { expect, type Locator } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 /**
  * "Quem vendeu" nasce VAZIO em toda venda (r2-ven-12; o Heitor: "nasce sempre
@@ -22,4 +22,13 @@ export async function pagoNoPix(janela: Locator) {
   const campo = janela.getByLabel('Meio de pagamento')
   if (await campo.count() === 0) return
   if (await campo.inputValue() === '') await campo.selectOption('PIX')
+}
+
+/**
+ * O checkout do PLANO também tem "Quem vendeu" (decisão 4 da 7ª simulação),
+ * nascendo vazio: vazio, "Ir para a documentação" pergunta antes. Nos specs
+ * que fecham o plano pela tela e não testam o campo, quem fecha é quem vendeu.
+ */
+export async function euVendiOPlano(page: Page) {
+  await euVendi(page.locator('[data-quem-vendeu-do-plano]'))
 }

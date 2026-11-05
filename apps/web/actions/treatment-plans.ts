@@ -1051,6 +1051,11 @@ async function cancelTreatmentPlanInterno(
     .eq('id', planId)
   if (error) return { error: error.message }
 
+  // O plano cancelado não é venda (Relatórios → Vendas o tira): a comissão de
+  // VENDA dele volta (decisão 4 da 7ª). A das sessões feitas fica.
+  await gravar(admin.rpc('plano_cancelar_comissao_de_venda', { p_tenant: ctx.tenantId, p_plano: planId }),
+    'cancelar a comissão de venda do plano')
+
   // Cancela agendamentos futuros vinculados ao plano
   const cancelledAt  = new Date().toISOString()
   const cancelReason = reason.trim() ? `Tratamento cancelado: ${reason.trim()}` : 'Tratamento cancelado'
@@ -1298,7 +1303,7 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
   }
 
   const { plan: checkout, error } = await montarCheckoutPlan(
-    planId, plan.branch_id as string, branch.name, ctx.tenantId!, prof => podeVerClinico(ctx, prof),
+    planId, plan.branch_id as string, branch.name, ctx.tenantId!, prof => podeVerClinico(ctx, prof), ctx.internalUserId ?? null,
   )
   // A anotação clínica foi à tela: fica no registro (lib/prontuario/acessos.ts).
   if (checkout?.professionalNotes) await registrarAcessoAoProntuario(ctx, checkout.clientId, 'plano', planId)
@@ -1322,6 +1327,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
+import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { paraAnamneseGeral, respostasDaFicha, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
@@ -1369,6 +1375,13 @@ async function checkoutTreatmentPlanInterno(
    * Por último na lista para as chamadas de antes (e os testes) seguirem valendo.
    */
   desconto?:        unknown,
+  /**
+   * "Quem vendeu" (decisão 4 da 7ª simulação): a comissão de VENDA do plano
+   * vai para essa pessoa. Nasce vazio, como nas outras vendas; vazio, a venda
+   * pergunta (`confirmarSemVendedor`) e só segue com `semVendedor`. Sem o
+   * argumento (um chamador de antes), o plano sai sem comissão de venda.
+   */
+  equipe?:          QuemVendeuDaTela | null,
 ) {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
@@ -1394,6 +1407,16 @@ async function checkoutTreatmentPlanInterno(
 
   if (!plan)                      return { error: 'Plano não encontrado.' }
   if (plan.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
+
+  // Quem vendeu, conferido ANTES do dinheiro (com-06): da equipe, ativa e ao
+  // alcance da unidade; vazio só com a confirmação.
+  let vendedor: string | null = null
+  if (equipe != null) {
+    const vendeu = await quemVendeu(ctx.tenantId!, ctx.internalUserId ?? null, equipe, plan.branch_id as string)
+    if ('error' in vendeu) return { error: vendeu.error }
+    if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
+    vendedor = vendeu.vendedor
+  }
 
   // Os documentos do plano (§9.4.1), ANTES do primeiro lançamento: nada de
   // dinheiro com termo ou contrato que bloqueia sem assinatura, nem com um
@@ -1616,6 +1639,15 @@ async function checkoutTreatmentPlanInterno(
     .from('treatment_plans')
     .update({ status: 'ACCEPTED', updated_at: new Date().toISOString() })
     .eq('id', planId), 'marcar o plano como aceito')
+
+  // A comissão de VENDA (decisão 4 da 7ª): a linha nasce agora, com o plano
+  // aceito, e o banco a acerta pelo que já entrou — à vista libera na hora, o
+  // crediário espera a última parcela (H4). É o caminho do pacote
+  // (`comissao_conta`), sem conta nova.
+  if (equipe != null) {
+    await gravar(admin.rpc('plano_comissao_de_venda', { p_tenant: ctx.tenantId, p_plano: planId, p_vendedor: vendedor }),
+      'registrar a comissão de venda do plano')
+  }
 
   // Plano aceito é o fato comercial mais forte do sistema: virou venda.
   await planoAceito(planId, ctx)

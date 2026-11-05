@@ -273,7 +273,8 @@ test.describe.serial('comissão do pacote — venda e execução', () => {
       await doProfissional.getByRole('button', { name: 'Extrato' }).click()
       await expect(doProfissional).toContainText(`Sessão do pacote ${NOME}`)
       // J-46: a rede não desconta nada — o extrato diz que a base é cheia.
-      await expect(doProfissional).toContainText('base cheia (sem taxa nem insumo descontados): R$ 200,00')
+      // A10 da 7ª: e que os pontos não saem dela (no pacote, os pontos são forma de pagamento).
+      await expect(doProfissional).toContainText('base cheia (sem taxa nem insumo descontados; os pontos e o voucher usados não saem dela): R$ 200,00')
     })
   })
 })

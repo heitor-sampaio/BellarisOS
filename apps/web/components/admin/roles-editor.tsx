@@ -825,6 +825,15 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
           Relatórios não aparece: nenhum relatório está marcado. Marque ao menos um em &quot;Relatórios liberados&quot;.
         </p>
       )}
+      {/* A48 da 7ª simulação: o Consultor vende e não via as próprias
+          comissões — "Minhas comissões" é o Financeiro em Ver, só os próprios
+          (comissoes.md). O resumo diz a regra (princípio 3); a clínica decide
+          no cargo (princípio 1). */}
+      {levels.financial === 'NONE' && (
+        <p data-sem-minhas-comissoes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          Não vê as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira “Minhas comissões”.
+        </p>
+      )}
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { euVendi, euVendiOPlano, pagoNoPix } from './apoio/vender'
 
 /**
  * D5 e D6 da 6ª simulação (F20), e o A47.
@@ -117,6 +117,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await page.getByLabel('Parcelas do saldo').selectOption('3')
       await expect(page.locator('[data-parcelas-do-saldo]'), 'a tela diz as parcelas que vão ser gravadas')
         .toHaveText(/^2x de R\$\s890,66 \+ 1x de R\$\s890,68$/)
+      await euVendiOPlano(page)
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
@@ -148,6 +149,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       const vezes = page.getByLabel('Vezes no cartão', { exact: true })
       await vezes.selectOption('3')
       await page.getByLabel('Bandeira').selectOption('ELO')
+      await euVendiOPlano(page)
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()

@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import type { MembroDaVenda } from '@/components/shared/vender'
+import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
 
 /**
  * Quem pode aparecer numa venda da unidade: a profissional RESPONSÁVEL do
@@ -40,8 +41,8 @@ export async function recusaDoMembroDaVenda(
 /** "Quem vendeu" da venda (com-06): o que a tela mandou. Sem `vendedorId` (um chamador de antes), é quem registra. */
 export interface QuemVendeuDaTela { vendedorId?: string | null; semVendedor?: boolean }
 
-/** A pergunta quando "Quem vendeu" fica vazio (com-06: "aviso e confirmação"). */
-export const PERGUNTA_SEM_VENDEDOR = 'Ninguém foi marcado em “Quem vendeu”: a venda fica sem vendedora e não gera comissão de venda para ninguém. Vender assim?'
+/** A pergunta quando "Quem vendeu" fica vazio (com-06): o texto mora num módulo puro, que a tela também lê. */
+export { PERGUNTA_SEM_VENDEDOR }
 
 /**
  * Quem vendeu, conferido (com-06, decisão do Heitor: "campo vazio não gera

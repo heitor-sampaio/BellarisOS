@@ -23,6 +23,9 @@ import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
+import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
+import type { MembroDaVenda } from '@/components/shared/vender'
+import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -51,6 +54,11 @@ export interface CheckoutPlan {
    * "Fechar como pacote" põe a economia como desconto do plano.
    */
   pacoteEquivalente?: { id: string; nome: string; preco: number; economia: number } | null
+  /**
+   * A equipe do "Quem vendeu" (decisão 4 da 7ª simulação): a comissão de VENDA
+   * do plano vai para quem vendeu. Sem a lista, o campo não aparece.
+   */
+  equipe?: MembroDaVenda[]
 }
 
 interface DaySlot {
@@ -158,6 +166,13 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // Desconto do fechamento (2026-09-30): R$ ou %, sobre a soma dos
   // procedimentos. Daqui para baixo toda conta é sobre o que o cliente paga.
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
+
+  // "Quem vendeu" (decisão 4 da 7ª): nasce VAZIO, como em toda venda
+  // (r2-ven-12); vazio, a venda pergunta antes de seguir (com-06).
+  const temQuemVendeu = !!plan.equipe
+  const [vendedorId,  setVendedorId]  = useState('')
+  const [semVendedor, setSemVendedor] = useState(false)
+  const [perguntaDoVendedor, setPerguntaDoVendedor] = useState<string | null>(null)
   const contaDesc = contaDoDesconto(total, desconto)
   const liquido   = contaDesc.liquido
 
@@ -268,9 +283,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // -- Documentação: monta os documentos com o pagamento escolhido -----------
   // Voltar ao pagamento e trocá-lo monta de novo — e o contrato já assinado
   // com o pagamento antigo é substituído (o servidor decide, não a tela).
-  function irParaDocumentos(substituirContrato = false) {
+  function irParaDocumentos(substituirContrato = false, confirmouSemVendedor = semVendedor) {
     setError(recusaDaEntrada)
     if (recusaDaEntrada) return
+    // A pergunta do "Quem vendeu" vazio, ANTES dos documentos (o servidor faz a mesma).
+    if (temQuemVendeu && !vendedorId && !confirmouSemVendedor) { setPerguntaDoVendedor(PERGUNTA_SEM_VENDEDOR); return }
+    setPerguntaDoVendedor(null)
     setSubstitui(null)
     startPreparar(async () => {
       const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento(), descontoDoEstado(desconto), { substituirContrato })
@@ -340,8 +358,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       })
 
     startSubmit(async () => {
-      const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug, descontoDoEstado(desconto))
+      const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug, descontoDoEstado(desconto),
+        temQuemVendeu ? { vendedorId: vendedorId || null, semVendedor } : undefined)
       if (result.error) { setError(result.error); return }
+      // O servidor pergunta o mesmo que a tela (a pergunta já foi respondida no pagamento).
+      if ('confirmarSemVendedor' in result && result.confirmarSemVendedor) { setError(result.confirmarSemVendedor); return }
       // O plano fechou; só o atendimento de hoje não foi recebido — a pessoa precisa saber.
       if ('aviso' in result && result.aviso) { setError(result.aviso); return }
       if (onDone) { onDone(plan.clientId); return }
@@ -564,6 +585,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
           Como vai ser pago
         </p>
+        {temQuemVendeu && (
+          <div data-quem-vendeu-do-plano style={{ marginBottom: 16, maxWidth: 420 }}>
+            <CampoQuemVendeu equipe={plan.equipe ?? []} valor={vendedorId}
+              aoMudar={id => { setVendedorId(id); setSemVendedor(false); setPerguntaDoVendedor(null) }} />
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           <SegSelect
             options={[
@@ -747,6 +774,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <button type="button" className="btn-secondary" onClick={() => setSubstitui(null)}>Manter o pagamento combinado</button>
             <button type="button" className="btn-primary" disabled={preparando} onClick={() => irParaDocumentos(true)}>Substituir o contrato</button>
           </div>
+        </div>
+      )}
+
+      {perguntaDoVendedor && (
+        <div style={{ marginBottom: 12 }}>
+          <PerguntaDaVenda texto={perguntaDoVendedor} pendente={preparando} rotuloConfirmar="Vender assim"
+            aoVoltar={() => setPerguntaDoVendedor(null)}
+            aoConfirmar={() => { setSemVendedor(true); irParaDocumentos(false, true) }} />
         </div>
       )}
 

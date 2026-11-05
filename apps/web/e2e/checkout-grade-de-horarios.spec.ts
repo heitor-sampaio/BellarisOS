@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { euVendiOPlano } from './apoio/vender'
 
 /**
  * D8 da simulação de 2026-10-29: na etapa de agendamento do checkout do plano,
@@ -59,6 +60,7 @@ test('a grade do checkout cobre a janela da unidade, sem a pausa, e destaca o ho
     const p = await ctx.newPage()
     await p.goto(`/admin/checkout/${planId}`)
     await p.getByRole('button', { name: 'Confirmar plano' }).click()
+    await euVendiOPlano(p)
     await p.getByRole('button', { name: 'Ir para a documentação' }).click()
     await p.getByRole('button', { name: 'Ir para o agendamento' }).click()
     await p.getByLabel('Profissional do agendamento').selectOption(rede!.professionalId)

@@ -146,6 +146,7 @@ export const ISOLADOS = [
   'indicadores-venda-de-produto-de-quem-vendeu.spec.ts',
   'indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts',
   'comissoes-produto-por-produto.spec.ts',
+  'comissoes-venda-do-plano.spec.ts',
   'financeiro-fluxo-de-caixa.spec.ts',
   'indicadores-receita-paga-por-procedimento.spec.ts',
   'relatorios-profissionais-ativos.spec.ts',

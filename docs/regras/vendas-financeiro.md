@@ -11,6 +11,16 @@ Um CONJUNTO de procedimentos, iguais ou não ("5 limpezas + 3 drenagens"),
 vendido por um preço só (decisão do Heitor, 2026-09-30). Até 2026-09-30 só
 existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
 
+**Pacote × plano de tratamento** (o Heitor, 2026-11-05, decisão 4 da 7ª
+simulação): "a diferença entre pacote e plano é que um plano é algo
+personalizado de acordo com a necessidade de cliente e um pacote é um conjunto
+de procedimentos já estabelecidos previamente". O pacote é do CATÁLOGO (Vendas
+→ Pacotes) e se vende igual a qualquer cliente; o plano nasce da avaliação,
+para UMA cliente, e se fecha no checkout do plano. Os dois têm "Quem vendeu" e
+comissão de venda (`comissoes.md`): a do pacote é do cadastro de cada pacote; a
+do plano, um percentual da clínica (Configurações → Comissões → "Venda de
+plano").
+
 - **Os itens** moram em `service_package_items` (procedimento + quantidade);
   `service_packages.total_sessions` é a soma e `procedure_id` o primeiro item
   (as leituras de "o procedimento do pacote" seguem certas). Pacote e itens se
@@ -963,6 +973,17 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     (`data-hoje-entra`) —, e o total diz "(com o atendimento de hoje)". Eram
     três frases: "entram juntos", "fica fora deste checkout" e "entra
     junto". Prova: `e2e/checkout-de-plano.spec.ts` ("A38").
+- **O checkout do plano tem "Quem vendeu"** (decisão 4 da 7ª simulação,
+  2026-11-05: "concordo"): no passo do pagamento, nascendo VAZIO como em toda
+  venda (`CampoQuemVendeu`, `[data-quem-vendeu-do-plano]`); vazio, "Ir para a
+  documentação" pergunta antes ("Ninguém foi marcado em “Quem vendeu”…
+  Vender assim?", `PERGUNTA_SEM_VENDEDOR`, `lib/vendas/pergunta-sem-vendedor.ts`),
+  e o servidor faz a mesma pergunta (`checkoutTreatmentPlan` com `equipe`;
+  `quemVendeu`, antes do dinheiro). Fica em `treatment_plans.vendido_por` e
+  leva a comissão de VENDA do plano (`comissoes.md`). O chamador que não manda
+  `equipe` (os de antes) fecha sem comissão de venda. A coluna "Profissional"
+  das Vendas do plano continua a dona do plano (`indicadores.md`). Prova:
+  `e2e/comissoes-venda-do-plano.spec.ts`.
 - **O checkout do plano SUGERE o pacote equivalente** (2026-10-21, decisão
   do Heitor): quando as sessões do plano têm os MESMOS procedimentos, nas
   mesmas quantidades, de um pacote ativo à venda na unidade, e ele sai mais

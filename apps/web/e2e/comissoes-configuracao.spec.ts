@@ -60,7 +60,8 @@ test.describe.serial('comissões — configuração e regras', () => {
 
       const como = p.locator('[aria-label="Como a comissão acontece"]')
       // J-46: o padrão é a base CHEIA, e a tela diz isso com todas as letras.
-      await expect(como).toContainText('base cheia (sem taxa nem insumo descontados)')
+      // A10 da 7ª: e diz o que acontece com os pontos (a regra `base_com_pontos`, aqui "Sobre o preço").
+      await expect(como).toContainText('base cheia (sem taxa nem insumo descontados; os pontos e o voucher usados não saem dela)')
       // H4 (2026-11-01): quando a comissão vale não é escolha — a tela diz a regra.
       await expect(como).toContainText('Quando a cliente paga tudo o que a gerou')
       await expect(como.getByRole('button', { name: 'No atendimento' })).toHaveCount(0)

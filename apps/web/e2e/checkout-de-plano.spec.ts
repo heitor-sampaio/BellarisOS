@@ -4,6 +4,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
+import { euVendiOPlano } from './apoio/vender'
 
 /**
  * O checkout de um plano de tratamento, pela tela: plano → pagamento →
@@ -136,6 +137,7 @@ test.describe.serial('checkout de plano', () => {
       // A37 (6ª simulação): a forma nasce vazia.
       await page.getByRole('button', { name: 'Pix', exact: true }).click()
       await page.getByLabel('Entrada', { exact: true }).fill('100')
+      await euVendiOPlano(page)
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       // Dois procedimentos com o MESMO termo: um termo só.
@@ -262,6 +264,7 @@ test.describe.serial('checkout de plano', () => {
       await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
       await page.getByRole('button', { name: 'Pix', exact: true }).click()
       await page.getByLabel('Entrada', { exact: true }).fill('100')
+      await euVendiOPlano(page)
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
       const aviso = page.locator('[data-substitui-contrato]')
       await expect(aviso).toContainText('já foi assinado para outro pagamento')
@@ -358,6 +361,7 @@ test.describe.serial('checkout de plano', () => {
         await page.getByRole('button', { name: 'Confirmar plano' }).click()
         await page.getByRole('button', { name: 'À vista' }).click()
         await page.getByRole('button', { name: 'Pix', exact: true }).click()
+        await euVendiOPlano(page)
         await page.getByRole('button', { name: 'Ir para a documentação' }).click()
         const linhas = page.locator('[data-documento]')
         await expect(linhas).toHaveCount(3)

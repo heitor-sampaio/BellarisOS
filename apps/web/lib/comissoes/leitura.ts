@@ -10,7 +10,7 @@ import {
 /** A configuração de comissões da rede (os padrões, se ela nunca salvou). */
 export async function configDeComissaoDaRede(tenantId: string): Promise<ConfigDeComissao> {
   const linha = await ler(createAdminClient().from('commission_configs')
-    .select('modo, desconta_insumos, desconta_taxa, base_com_pontos, periodo, produto_pct, produto_modo')
+    .select('modo, desconta_insumos, desconta_taxa, base_com_pontos, periodo, produto_pct, produto_modo, plano_pct')
     .eq('tenant_id', tenantId).maybeSingle(), 'ler a configuração de comissões')
   return configDaLinha(linha)
 }
@@ -258,6 +258,10 @@ export interface LancamentoDoExtrato {
   descontaTaxa: boolean; descontaInsumos: boolean
   /** Na linha AGUARDANDO: quanto ela vai dever quando a cliente pagar tudo. */
   previsto: number | null
+  /** Se os pontos (e o voucher) saem da base desta linha — o retrato dela (A10 da 7ª). */
+  baseComPontos: 'PRECO' | 'VALOR_PAGO' | null
+  /** O plano da linha, quando é a VENDA do plano (decisão 4 da 7ª). */
+  plano: string | null
 }
 
 export interface Fechamento {
@@ -291,7 +295,7 @@ export async function resumoDasComissoes(r: Recorte): Promise<ResumoDoProfission
 export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtrato[]> {
   const admin = createAdminClient()
   const linhas = await lerTodas<Record<string, unknown>>(
-    (de, ate) => admin.rpc('comissoes_extrato', argsDoRecorte(r))
+    (de, ate) => admin.rpc('comissoes_extrato_linhas', argsDoRecorte(r))
       .order('released_at', { ascending: false }).order('id').range(de, ate),
     'ler o extrato das comissões',
   )
@@ -306,6 +310,8 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     pacote: (l.pacote as string | null) ?? null,
     descontaTaxa: l.desconta_taxa === true, descontaInsumos: l.desconta_insumos === true,
     previsto: l.previsto == null ? null : Number(l.previsto),
+    baseComPontos: l.base_com_pontos === 'VALOR_PAGO' ? 'VALOR_PAGO' : l.base_com_pontos === 'PRECO' ? 'PRECO' : null,
+    plano: (l.plano as string | null) ?? null,
   }))
 }
 

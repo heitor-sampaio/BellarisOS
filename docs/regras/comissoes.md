@@ -108,7 +108,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `rotuloDaBase` — "base cheia (sem taxa nem insumo descontados)" ou o que
   saiu dela —, o extrato pelo retrato de cada linha (`comissoes_extrato`
   devolve `desconta_taxa`/`desconta_insumos`; migration `20261029001502`), e
-  o CSV ganhou a coluna "O que saiu da base". **Taxas da maquininha** em `payment_fees`
+  o CSV ganhou a coluna "O que saiu da base". **E a frase diz os PONTOS** (A10
+  da 7ª simulação, 2026-11-05; princípio 3: a Tânia lia R$ 480 — 40% de
+  R$ 1.200 — sobre R$ 1.180 pagos e achou erro): "base cheia (sem taxa nem
+  insumo descontados; os pontos e o voucher usados não saem dela)" na regra
+  "Sobre o preço", ou "base sem os pontos e o voucher usados…" no "Sobre o valor
+  pago" (`rotuloDaBase` com `base_com_pontos`). No extrato vale o retrato da
+  linha (`comissoes_extrato_linhas` devolve `base_com_pontos`), e só no avulso:
+  no pacote, no plano e nas vendas os pontos são forma de pagamento e nunca
+  saem da base (`comissao_conta`). Prova: `tests/comissoes-config.test.ts`,
+  `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-pacote.spec.ts`.
+  **Taxas da maquininha** em `payment_fees`
   (Pix, débito, crédito 1–12x; sem teto desde a F16-3 — acima de 100% em
   `taxa_pct_sem_teto`, e a comissão sobre o líquido nunca fica negativa),
   gravadas por `comissao_taxas_definir` — a
@@ -242,6 +252,25 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     no valor e no previsto; migration `20261101000252`).
   - Prova: `e2e/comissoes-pacote.spec.ts`, `e2e/pacote-cancelar.spec.ts` (o
     cancelamento).
+- **A comissão de VENDA do PLANO de tratamento** (decisão 4 da 7ª simulação,
+  2026-11-05 — o Heitor: "concordo"; o Paulo vendeu o plano de R$ 3.672 e não
+  ganhou nada, e o pacote tinha a dele). Configurações → Comissões → "Venda de
+  plano": `commission_configs.plano_pct`, VAZIO por padrão (princípio 6; mesma
+  permissão e abrangência da configuração). Vale para quem vendeu (o "Quem
+  vendeu" do checkout do plano, `treatment_plans.vendido_por` — nasce vazio,
+  `vendas-financeiro.md`), sobre o valor do plano (a soma dos procedimentos, já
+  com o desconto rateado). O caminho é o do pacote, sem conta nova: a linha é
+  `origem = 'PLANO'` com `treatment_plan_id` e SEM atendimento, gravada por
+  `plano_comissao_de_venda` depois do aceite (migration `20261105003001`), e a
+  conta é a de sempre (`comissao_conta`: libera com o plano pago inteiro — à
+  vista ou no cartão em N vezes, na hora; no crediário, com a última parcela;
+  o estorno devolve). O plano CANCELADO depois de vendido não é venda (as
+  Vendas o tiram): `cancelTreatmentPlan` chama `plano_cancelar_comissao_de_venda`,
+  e a linha é cancelada (o acerto devolve o que liberou); as linhas das sessões
+  feitas ficam. Retrata a taxa da maquininha da rede; não desconta insumos. O
+  extrato diz "Venda do plano X" (`comissoes_extrato_linhas`, origem
+  `PLANO_VENDA`, com a cliente e o dia do aceite); o lucro desconta como toda
+  comissão lançada. Prova: `e2e/comissoes-venda-do-plano.spec.ts`.
 - **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
   oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
   chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`
@@ -348,6 +377,13 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   a manda para lá) e não fecha. O ranking do dashboard e a comissão na aba
   Profissionais dos relatórios exigem `financial` sem OWN — o dado nem sai do
   servidor. Antes ficavam sob `team` e `reports`, e mostravam a de todos.
+  **A tela de Cargos diz isso** (A48 da 7ª simulação, 2026-11-05: o cargo
+  Consultor vende e não via as próprias comissões; decidido pelos princípios
+  3 — nada de regra escondida — e 1 — a clínica decide no cargo): com o
+  Financeiro em "Sem acesso", o resumo "O que essa pessoa vai ver" diz "Não vê
+  as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira
+  “Minhas comissões”." (`[data-sem-minhas-comissoes]`). A regra de quem vê não
+  mudou. Prova: `e2e/comissoes-venda-do-plano.spec.ts` ("A48").
 - O ranking de comissão é `metrics_ranking_comissao` (ordena pela comissão;
   o dashboard reordenava o top 5 por atendimentos).
 - Prova: `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-calculo.spec.ts`,
@@ -377,4 +413,5 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
 ❌ Contar no lucro a despesa paga "Comissões" do fechamento (a comissão já desconta quando é lançada — 2026-11-04): ela fica só no caixa
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
+❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la viva no plano cancelado (plano_cancelar_comissao_de_venda)
 ```

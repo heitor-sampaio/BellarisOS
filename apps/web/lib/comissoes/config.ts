@@ -38,6 +38,12 @@ export interface ConfigDeComissao {
    * produto com a sua (`products.comissao_*`), e o sem regra cai na geral.
    */
   produto_modo:     ModoDaComissaoDoProduto
+  /**
+   * A comissão da VENDA DO PLANO de tratamento (decisão 4 da 7ª simulação,
+   * 2026-11-05): % do vendido para quem vendeu (`treatment_plans.vendido_por`),
+   * liberada com o plano pago inteiro. Nulo = sem comissão (princípio 6).
+   */
+  plano_pct:        number | null
 }
 
 export const MODOS_DA_COMISSAO_DO_PRODUTO = ['TOTAL', 'POR_PRODUTO'] as const
@@ -45,7 +51,7 @@ export type ModoDaComissaoDoProduto = typeof MODOS_DA_COMISSAO_DO_PRODUTO[number
 
 export const CONFIG_PADRAO: ConfigDeComissao = {
   modo: 'INTEGRAL', desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL',
-  produto_pct: null, produto_modo: 'TOTAL',
+  produto_pct: null, produto_modo: 'TOTAL', plano_pct: null,
 }
 
 export const EntradaDaConfigDeComissao = z.object({
@@ -59,6 +65,8 @@ export const EntradaDaConfigDeComissao = z.object({
   produto_pct:      z.number().min(0, 'A comissão não pode ser negativa.').max(100, 'A comissão é de no máximo 100%.').nullable().optional().default(null),
   // Sem o campo (um chamador antigo), uma regra sobre o total.
   produto_modo:     z.enum(MODOS_DA_COMISSAO_DO_PRODUTO).optional().default('TOTAL'),
+  // Sem o campo (um chamador antigo), sem comissão de venda do plano.
+  plano_pct:        z.number().min(0, 'A comissão não pode ser negativa.').max(100, 'A comissão é de no máximo 100%.').nullable().optional().default(null),
 })
 
 /**
@@ -106,6 +114,7 @@ export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unkn
     periodo:          l.periodo === 'QUINZENAL' || l.periodo === 'SEMANAL' ? l.periodo : 'MENSAL',
     produto_pct:      l.produto_pct == null || !(Number(l.produto_pct) > 0) ? null : Number(l.produto_pct),
     produto_modo:     l.produto_modo === 'POR_PRODUTO' ? 'POR_PRODUTO' : 'TOTAL',
+    plano_pct:        l.plano_pct == null || !(Number(l.plano_pct) > 0) ? null : Number(l.plano_pct),
   }
 }
 
@@ -114,11 +123,27 @@ export function configDaLinha(linha: Partial<Record<keyof ConfigDeComissao, unkn
  * que a comissão descontava taxa e insumo, e o padrão é a base CHEIA. A
  * configuração e o extrato dizem a mesma frase.
  */
-export function rotuloDaBase(c: { desconta_taxa: boolean; desconta_insumos: boolean }): string {
-  if (c.desconta_taxa && c.desconta_insumos) return 'base sem a taxa da maquininha e sem os insumos'
-  if (c.desconta_taxa) return 'base sem a taxa da maquininha'
-  if (c.desconta_insumos) return 'base sem o custo dos insumos'
-  return 'base cheia (sem taxa nem insumo descontados)'
+export function rotuloDaBase(c: { desconta_taxa: boolean; desconta_insumos: boolean; base_com_pontos?: BaseComPontos | null }): string {
+  // A10 da 7ª simulação: a frase também diz o que acontece com os PONTOS (e o
+  // voucher), pela regra `base_com_pontos` — a Tânia lia R$ 480 (40% de 1.200)
+  // sobre R$ 1.180 pagos e achava erro. Sem a regra (um chamador de antes), a
+  // frase de sempre.
+  const pontos = c.base_com_pontos
+  const saemOsPontos = pontos === 'VALOR_PAGO'
+  if (c.desconta_taxa && c.desconta_insumos) {
+    if (saemOsPontos) return 'base sem a taxa da maquininha, sem os insumos e sem os pontos e o voucher usados'
+    return `base sem a taxa da maquininha e sem os insumos${pontos === 'PRECO' ? ' (os pontos e o voucher usados não saem dela)' : ''}`
+  }
+  if (c.desconta_taxa) {
+    if (saemOsPontos) return 'base sem a taxa da maquininha e sem os pontos e o voucher usados'
+    return `base sem a taxa da maquininha${pontos === 'PRECO' ? ' (os pontos e o voucher usados não saem dela)' : ''}`
+  }
+  if (c.desconta_insumos) {
+    if (saemOsPontos) return 'base sem o custo dos insumos e sem os pontos e o voucher usados'
+    return `base sem o custo dos insumos${pontos === 'PRECO' ? ' (os pontos e o voucher usados não saem dela)' : ''}`
+  }
+  if (saemOsPontos) return 'base sem os pontos e o voucher usados (sem taxa nem insumo descontados)'
+  return `base cheia (sem taxa nem insumo descontados${pontos === 'PRECO' ? '; os pontos e o voucher usados não saem dela' : ''})`
 }
 
 // ─── Taxas da maquininha ─────────────────────────────────────────────────────

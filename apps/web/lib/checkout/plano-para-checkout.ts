@@ -8,6 +8,7 @@ import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
 import { pacoteEquivalente } from '@/lib/checkout/pacote-equivalente'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
+import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 
 /**
  * Monta o que o `CheckoutWizard` precisa para um plano.
@@ -26,6 +27,8 @@ export async function montarCheckoutPlan(
   tenantId: string,
   /** A anotação do profissional é prontuário: quem não vê clínico recebe nula. */
   veClinico: (professionalId: string | null) => boolean = () => false,
+  /** Quem abre o checkout (o "(você)" do "Quem vendeu"). */
+  euId: string | null = null,
 ): Promise<{ plan?: CheckoutPlan; clientId?: string; error?: string }> {
   const admin = createAdminClient()
 
@@ -44,7 +47,7 @@ export async function montarCheckoutPlan(
   type RawClient = { name: string; document: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes] = await Promise.all([
+  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe] = await Promise.all([
     getTreatmentPlanSessions(planId),
     // O total é o de ANTES do desconto: depois de um checkout que falhou no
     // meio, os preços do plano já estão rateados, e o desconto é dado de novo
@@ -56,6 +59,8 @@ export async function montarCheckoutPlan(
     atendimentoDeHojeDoPlano(admin, planId),
     // Os pacotes à venda na unidade, para sugerir o equivalente (2026-10-21).
     redeTemRecurso(tenantId, 'pacotes').then(tem => tem ? catalogoDePacotes(tenantId, { branchId, soAtivos: true }) : []),
+    // "Quem vendeu" (decisão 4 da 7ª): a equipe que alcança a unidade, como nas outras vendas.
+    equipeDaVenda(tenantId, branchId, euId),
   ])
 
   return {
@@ -78,6 +83,7 @@ export async function montarCheckoutPlan(
       currentBranchId:  branchId,
       atendimentoDeHoje,
       pacoteEquivalente: pacoteEquivalente(sessions, precos.subtotal, pacotes),
+      equipe,
     },
   }
 }

@@ -27,7 +27,7 @@ const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar
 const CHIP: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'chip chip-muted', PAID: 'chip chip-success', AGUARDANDO: 'chip chip-warning' }
 const ORIGEM: Record<string, string> = {
   AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Sessão de pacote', PACOTE_VENDA: 'Venda de pacote', PRE_PAGO: 'Pré-pago', PRODUTO: 'Venda de produto',
-  PACOTE_RESPONSAVEL: 'Pacote (responsável)',
+  PACOTE_RESPONSAVEL: 'Pacote (responsável)', PLANO_VENDA: 'Venda de plano',
 }
 /** A origem da linha, com o nome do pacote quando é dele (2026-10-30): "Venda do pacote X", "Sessão do pacote X". */
 const origemDe = (l: LancamentoDoExtrato) => {
@@ -36,6 +36,8 @@ const origemDe = (l: LancamentoDoExtrato) => {
   // com-04: a comissão de quem atende sobre o valor do pacote, da profissional responsável.
   if (l.pacote && l.origem === 'PACOTE_RESPONSAVEL') return `Pacote ${l.pacote} (responsável)`
   if (l.pacote && l.origem === 'PACOTE') return `Sessão do pacote ${l.pacote}`
+  // Decisão 4 da 7ª: a comissão de quem VENDEU o plano.
+  if (l.plano && l.origem === 'PLANO_VENDA') return `Venda do plano ${l.plano}`
   return ORIGEM[l.origem] ?? l.origem
 }
 const METODOS = [
@@ -44,8 +46,8 @@ const METODOS = [
 ]
 
 const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
-/** "base cheia (sem taxa nem insumo descontados)" ou o que saiu dela (J-46). */
-const base = (l: LancamentoDoExtrato) => rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos })
+/** "base cheia (sem taxa nem insumo descontados; os pontos…)" ou o que saiu dela (J-46, A10). Os pontos só saem da base do avulso: no pacote, no plano e nas vendas eles são forma de pagamento (`comissao_conta`). */
+const base = (l: LancamentoDoExtrato) => rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.origem === 'AVULSO' ? l.baseComPontos : 'PRECO' })
 const regra = (l: LancamentoDoExtrato) => l.regraTipo == null ? '—'
   : l.regraTipo === 'PERCENTAGE' ? `${String(l.regraValor).replace('.', ',')}%` : `${formatBRL(l.regraValor ?? 0)} fixo`
 
