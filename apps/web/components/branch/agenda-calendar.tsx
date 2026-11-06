@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
-  startOfWeek, startOfMonth, endOfMonth, isSameDay,
+  startOfWeek, isSameDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -22,6 +22,8 @@ import { ocupacaoEmPct, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horari
 import { atendimentosPorExtenso } from '@/lib/agenda/grade'
 import { BotaoBloquearHorario } from '@/components/shared/bloqueio-da-agenda'
 import type { BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
+import { dayKeyTZ } from '@/lib/datetime'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -63,6 +65,25 @@ interface AgendaCalendarProps {
 
 // -- KPI helpers -------------------------------------------------------------
 
+/**
+ * Os dias (AAAA-MM-DD) do período aberto na tela: o dia, a semana de segunda a
+ * DOMINGO, ou o mês. Pela data do calendário (meio-dia UTC como âncora), sem o
+ * fuso do processo.
+ */
+function diasDoPeriodo(view: ViewMode, date: Date): string[] {
+  const [y = 1970, m = 1, d = 1] = format(date, 'yyyy-MM-dd').split('-').map(Number)
+  const DIA = 86_400_000
+  const chave = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+  const base = Date.UTC(y, m - 1, d, 12)
+  if (view === 'dia') return [chave(base)]
+  if (view === 'semana') {
+    const segunda = base - ((new Date(base).getUTCDay() + 6) % 7) * DIA
+    return Array.from({ length: 7 }, (_, i) => chave(segunda + i * DIA))
+  }
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  return Array.from({ length: ultimo }, (_, i) => chave(Date.UTC(y, m - 1, i + 1, 12)))
+}
+
 function calcKPIs(
   events: CalendarEvent[],
   professionals: Professional[],
@@ -71,25 +92,17 @@ function calcKPIs(
   horarioDaUnidade: Horario | null,
   horariosDosProfissionais: Record<string, Horario | null>,
   ocupadoForaDosProfissionais: Record<string, BlocoOcupado[]>,
+  bloqueios: BloqueioDaAgenda[] = [],
 ) {
-  let from: Date, to: Date, workDays: number
+  // Os DIAS do período (D3 da 8ª simulação): a semana tem os 7 — era de
+  // segunda a sábado à meia-noite, e nem o sábado inteiro entrava no contador.
+  // O agendamento conta no dia dele em Brasília (`dayKeyTZ`, §13.1).
+  const dias = diasDoPeriodo(view, date)
+  const chaves = new Set(dias)
+  const from = new Date(`${dias[0]}T12:00:00-03:00`)
+  const to   = new Date(`${dias[dias.length - 1]}T12:00:00-03:00`)
 
-  if (view === 'dia') {
-    const d = new Date(date); d.setHours(0, 0, 0, 0)
-    from = d; to = new Date(d.getTime() + 86399999); workDays = 1
-  } else if (view === 'semana') {
-    from = startOfWeek(date, { weekStartsOn: 1 })
-    to   = addDays(from, 5)
-    workDays = 6
-  } else {
-    from = startOfMonth(date); to = endOfMonth(date)
-    workDays = to.getDate()
-  }
-
-  const windowEvs = events.filter(e => {
-    const d = new Date(e.start)
-    return d >= from && d <= to
-  })
+  const windowEvs = events.filter(e => chaves.has(dayKeyTZ(e.start)))
 
   const totalCount   = windowEvs.filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status)).length
   const waitingCount = windowEvs.filter(e => e.status === 'SCHEDULED').length
@@ -97,13 +110,17 @@ function calcKPIs(
   // concluídos contam — ÷ a capacidade do horário. Era 12 h por profissional
   // aqui e 8 h lá, sem os concluídos aqui: as duas telas davam números
   // diferentes (D12 da simulação de 2026-10-20).
-  void workDays
+  // O tempo BLOQUEADO da profissional sai da capacidade, como o que ela tem em
+  // outra unidade (D15 da 8ª simulação).
   const bookedMin    = windowEvs
     .filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status))
     .reduce((s, e) => s + e.durationMin, 0)
   const occupancy    = ocupacaoEmPct(bookedMin, horarioDaUnidade,
     professionals.map(p => horariosDosProfissionais[p.id] ?? null), from, to,
-    professionals.map(p => ocupadoForaDosProfissionais[p.id] ?? [])) ?? 0
+    professionals.map(p => [
+      ...(ocupadoForaDosProfissionais[p.id] ?? []),
+      ...blocosDosBloqueios(bloqueios.filter(b => b.professionalId === p.id)),
+    ])) ?? 0
 
   return { totalCount, waitingCount, occupancy }
 }
@@ -122,9 +139,12 @@ function aberturaDaUnidade(horario: Horario | null, date: Date): number | null {
 function navLabel(view: ViewMode, date: Date): string {
   if (view === 'dia')    return format(date, "EEEE, d 'de' MMMM", { locale: ptBR })
   if (view === 'semana') {
+    // De segunda a DOMINGO (D3 da 8ª): era "2 – 7 de novembro", sem o domingo.
     const mon = startOfWeek(date, { weekStartsOn: 1 })
-    const sat = addDays(mon, 5)
-    return `${format(mon, "d")} – ${format(sat, "d 'de' MMMM", { locale: ptBR })}`
+    const dom = addDays(mon, 6)
+    return mon.getMonth() === dom.getMonth()
+      ? `${format(mon, "d")} – ${format(dom, "d 'de' MMMM", { locale: ptBR })}`
+      : `${format(mon, "d 'de' MMM", { locale: ptBR })} – ${format(dom, "d 'de' MMM", { locale: ptBR })}`
   }
   return format(date, "MMMM 'de' yyyy", { locale: ptBR })
 }
@@ -132,11 +152,7 @@ function navLabel(view: ViewMode, date: Date): string {
 function isCurrent(view: ViewMode, date: Date): boolean {
   const now = new Date()
   if (view === 'dia')    return isSameDay(date, now)
-  if (view === 'semana') {
-    const mon = startOfWeek(date, { weekStartsOn: 1 })
-    const sat = addDays(mon, 5)
-    return now >= mon && now <= sat
-  }
+  if (view === 'semana') return diasDoPeriodo('semana', date).includes(format(now, 'yyyy-MM-dd'))
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
 }
 
@@ -196,7 +212,7 @@ export function AgendaCalendar({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [dropError,     setDropError]     = useState<string | null>(null)
 
-  const { totalCount, waitingCount, occupancy } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais)
+  const { totalCount, waitingCount, occupancy } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueios)
 
   // -- Drag-and-drop ----------------------------------------------------------
   const handleDrop = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {

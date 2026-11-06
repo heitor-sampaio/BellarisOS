@@ -7,6 +7,7 @@ import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { dayKeyTZ } from '@/lib/datetime'
 
 interface Professional { id: string; name: string }
 
@@ -25,7 +26,9 @@ interface Props {
   salas?:        { id: string; name: string }[]
 }
 
-const WEEKDAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
+// A semana inteira, de segunda a DOMINGO (D3 da 8ª simulação): era até o sábado,
+// numa clínica que abre os 7 dias o agendamento de domingo só aparecia no Mês e no Dia.
+const WEEKDAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM']
 
 const PROF_COLORS = [
   { bg: 'var(--brand-soft)', text: 'var(--brand)' },
@@ -74,6 +77,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
 
   return (
     <div
+      data-agendamento={ev.id}
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         padding:     '6px 8px',
@@ -113,7 +117,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
 
 export function AgendaWeekView({ currentDate, events, professionals, onEventClick, onSlotClick, canWrite, bloqueios = [], salas = [] }: Props) {
   const monday   = startOfWeek(currentDate, { weekStartsOn: 1 })
-  const weekDays = Array.from({ length: 6 }, (_, i) => addDays(monday, i))
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
   const today    = new Date()
   const nomeDaSala = (id: string | null) => salas.find(s => s.id === id)?.name ?? 'Sala'
   const daSala = bloqueios.filter(b => b.roomId && weekDays.some(d => trechoNoDia(b, d)))
@@ -160,7 +164,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                 Salas bloqueadas
               </td>
               {weekDays.map((day, di) => (
-                <td key={di} style={{ padding: '6px', borderBottom: '1px solid var(--border)', borderRight: di < 5 ? '1px solid var(--border)' : 'none', verticalAlign: 'top' }}>
+                <td key={di} style={{ padding: '6px', borderBottom: '1px solid var(--border)', borderRight: di < 6 ? '1px solid var(--border)' : 'none', verticalAlign: 'top' }}>
                   {daSala.map(b => {
                     const trecho = trechoNoDia(b, day)
                     return trecho && (
@@ -202,17 +206,19 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                 {/* Day cells */}
                 {weekDays.map((day, di) => {
                   const dayEvs = events.filter(
-                    e => e.professionalId === pro.id && isSameDay(new Date(e.start), day),
+                    // O dia do agendamento em Brasília (dayKeyTZ), não o do relógio de quem vê.
+                    e => e.professionalId === pro.id && dayKeyTZ(e.start) === format(day, 'yyyy-MM-dd'),
                   )
                   const isToday = isSameDay(day, today)
 
                   return (
                     <td
                       key={di}
+                      data-dia={format(day, 'yyyy-MM-dd')}
                       style={{
                         padding: '8px 6px',
                         borderBottom: '1px solid var(--border)',
-                        borderRight: di < 5 ? '1px solid var(--border)' : 'none',
+                        borderRight: di < 6 ? '1px solid var(--border)' : 'none',
                         verticalAlign: 'top',
                         minWidth: 110,
                         background: isToday ? 'rgba(195,77,107,0.025)' : undefined,

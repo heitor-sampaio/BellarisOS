@@ -17,6 +17,7 @@ import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 import { contagemDaAgenda } from '@/lib/metrics/resultado'
 import { useFala } from '@/components/shared/uma-unidade'
+import { dayKeyTZ } from '@/lib/datetime'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -119,16 +120,19 @@ const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; l
 }
 
 // -- Helpers de data -----------------------------------------------------------
+// As datas da tela são DIAS (AAAA-MM-DD): a conta é do calendário, com o
+// meio-dia UTC como âncora. Era a meia-noite local seguida de toISOString(), o
+// dia em UTC — que só acertava por acaso a oeste de Greenwich (D4 da 8ª).
 function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  d.setDate(d.getDate() + n)
+  const d = new Date(dateStr + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
 }
 
 function getMondayOf(dateStr: string): string {
-  const d   = new Date(dateStr + 'T00:00:00')
-  const dow = d.getDay()
-  d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow))
+  const d   = new Date(dateStr + 'T12:00:00Z')
+  const dow = d.getUTCDay()
+  d.setUTCDate(d.getUTCDate() + (dow === 0 ? -6 : 1 - dow))
   return d.toISOString().slice(0, 10)
 }
 
@@ -425,7 +429,7 @@ function WeekGrid({
         {/* Cabeçalho dos dias */}
         {days.map((d, i) => {
           const isToday = d === todayStr
-          const dayAppts = appointments.filter(a => a.scheduled_at.slice(0, 10) === d)
+          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at) === d)
           return (
             <div
               key={d}
@@ -461,12 +465,13 @@ function WeekGrid({
 
         {/* Células com agendamentos */}
         {days.map((d, i) => {
-          const dayAppts = appointments.filter(a => a.scheduled_at.slice(0, 10) === d)
+          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at) === d)
           const isToday  = d === todayStr
 
           return (
             <div
               key={d}
+              data-dia={d}
               onClick={() => onDayClick(d)}
               style={{
                 minHeight: 200,
@@ -488,7 +493,7 @@ function WeekGrid({
                 <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '8px 4px' }}>—</div>
               ) : dayAppts.map(a => {
                 const st  = STATUS_STYLE[a.status] ?? STATUS_STYLE.SCHEDULED!
-                const t   = new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                const t   = new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
                 return (
                   <div
                     key={a.id}

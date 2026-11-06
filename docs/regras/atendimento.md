@@ -126,6 +126,30 @@
     bloqueado ("…está com o horário bloqueado das 12:00 às 13:00 (Almoço).
     Escolha outro horário — o encaixe num horário bloqueado é pela agenda.").
     O bloqueio da SALA não muda os livres (o app e o Copilot agendam sem sala).
+    **E a régua da equipe também não** (D5 e D15 da 8ª simulação,
+    2026-11-06; princípio 3): o horário de N minutos está livre quando o
+    intervalo INTEIRO [início, início + N) não bate em agendamento dela (em
+    qualquer unidade da rede, até o fim da ocupação — `fimDaOcupacao`) nem em
+    bloqueio dela — `ocupanteDoHorario`, `lib/agenda/horario-livre.ts`, puro.
+    A grade das sessões do pacote/plano e do checkout (`GradeDeHorarios`, que
+    `getSchedulingDaySlots` alimenta com os agendamentos e os `bloqueios`) usa
+    essa régua: o bloqueado sai "Bloqueado · motivo", desligado (o encaixe
+    segue pelo "Outro horário"). Era só o INÍCIO dentro de um ocupado, da
+    unidade: 10:00 aparecia livre para 60 min com outro às 10:30, e o
+    Confirmar recusava. O "Horário livre" da "Minha agenda" tira o bloqueio do
+    vão (`livresEntre`): a Débora de férias via "Horário livre 02:45 – 04:00".
+    A ocupação desconta o bloqueado (`blocosDosBloqueios`, `indicadores.md`).
+    Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D5", "D15"),
+    `tests/agenda-horario-livre.test.ts`.
+  - **O Confirmar espera os avisos DESTE horário** (D9 da 8ª simulação,
+    2026-11-06): `avisosDoHorario` roda 200 ms depois de cada mudança, e o
+    botão não esperava — a Ana às 23:55, nas férias e fora do expediente,
+    gravou "sem nenhum aviso". O "Confirmar agendamento" fica em "Conferindo o
+    horário…" até a conferência do horário escolhido chegar (a falha libera,
+    sem aviso: o servidor confere ao gravar), como espera as salas (D12 da
+    7ª); o "Confirmar novo horário" do remarcar, igual. O aviso (bloqueio,
+    fora do expediente, choque) está na tela ANTES de gravar; o encaixe segue
+    permitido. Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D9").
   - **Quem bloqueia**: quem tem a Agenda em Gerenciar, na unidade ao alcance;
     com "só os meus", só o PRÓPRIO horário, sem sala ("Com a agenda “só os
     meus”, você bloqueia só o seu horário.") — decidido pela regra do Heitor
@@ -139,6 +163,17 @@
     agenda da unidade, o da profissional na célula dela e o da sala numa linha
     "Salas bloqueadas"; na da rede, no dia, com o rótulo de quem é; na "Minha
     agenda", o dia da faixa da semana diz "Bloqueado" (`[data-bloqueado-no-dia]`).
+  - **A semana tem os 7 dias** (D3 da 8ª simulação, 2026-11-06; decidido
+    pelo princípio 3): a da unidade ia de segunda a sábado — numa clínica que
+    abre aos domingos, o agendamento de domingo só aparecia no Mês e no Dia, e
+    o contador da semana parava na meia-noite de sábado (8 contra 9 do Mês).
+    Agora segunda a DOMINGO sempre (o domingo fechado também: o encaixe de
+    domingo não some), e o contador conta os dias do período pela data de
+    Brasília (`diasDoPeriodo` + `dayKeyTZ`). **Na semana da REDE, o dia é o de
+    Brasília** (D4): o agrupamento era `scheduled_at.slice(0, 10)`, o dia em
+    UTC — o das 23:55 de quinta caía na sexta; agora `dayKeyTZ`, e a conta das
+    datas da tela é do calendário (meio-dia UTC), não `toISOString` da
+    meia-noite local. Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D3", "D4").
   - Prova: `e2e/agenda-bloqueio.spec.ts`, `tests/agenda-bloqueio.test.ts`.
 - **Quem atende e é da REDE atende em TODAS as unidades** (D1 da simulação de
   2026-10-28, decisão do Heitor): o membro com `provides_services` e
@@ -1781,6 +1816,9 @@ O resto do fluxo:
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
 ❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio; nem RECUSAR o encaixe da equipe no bloqueado (é aviso — princípio 2)
+❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
+❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)
+❌ Agrupar agendamento por dia com scheduled_at.slice(0, 10) ou toISOString da meia-noite local (é o dia em UTC) — é dayKeyTZ (D4 da 8ª)
 ❌ Ler ou gravar agenda_bloqueios pela sessão (só o servidor: actions/agenda-bloqueios.ts e lib/agenda/bloqueios.ts), ou deixar quem tem "só os meus" bloquear outra pessoa ou uma sala
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem. A exceção é pacote_cancelar (F2b): cancela as sessões agendadas na MESMA transação do dinheiro, com o status, o motivo e o histórico do cancelarCore, e a action emite o evento e o aviso depois
