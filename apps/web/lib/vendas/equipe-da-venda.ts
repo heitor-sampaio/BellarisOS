@@ -10,21 +10,45 @@ import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
  * qualquer pessoa da equipe). Os membros ativos da rede que alcançam a unidade
  * — os da rede e os dela — e quem é de fora e atende aqui (o "Atende" por
  * unidade, decisão 2 da 8ª simulação). O servidor confere de novo na venda.
+ *
+ * A ordem (A15 da 8ª simulação: "Quem vendeu" trazia a Contadora, que só vê,
+ * no meio da lista): quem ATENDE aqui, depois quem RECEBE (o caixa ou o
+ * financeiro em Gerenciar — `podeReceber`), depois o resto da equipe. A
+ * regra aceita qualquer pessoa: ninguém sai da lista.
  */
 export async function equipeDaVenda(tenantId: string, branchId: string | null, euId?: string | null): Promise<MembroDaVenda[]> {
   if (!branchId) return []
-  const linhas = await lerTodas((de, ate) => createAdminClient().from('users')
-    .select('id, name, atende_em')
-    .eq('tenant_id', tenantId).eq('is_active', true)
-    .or(`branch_id.is.null,branch_id.eq.${branchId},atende_em.cs.{${branchId}}`)
-    .order('name').order('id').range(de, ate), 'carregar a equipe da venda')
+  const admin = createAdminClient()
+  const [linhas, quemRecebe] = await Promise.all([
+    lerTodas((de, ate) => admin.from('users')
+      .select('id, name, role_id, atende_em')
+      .eq('tenant_id', tenantId).eq('is_active', true)
+      .or(`branch_id.is.null,branch_id.eq.${branchId},atende_em.cs.{${branchId}}`)
+      .order('name').order('id').range(de, ate), 'carregar a equipe da venda'),
+    cargosQueRecebem(tenantId),
+  ])
+  const grupo = (m: MembroDaVenda) => (m.atende ? 0 : m.recebe ? 1 : 2)
   return (linhas ?? []).map(u => ({
     id: u.id as string, nome: (u.name as string | null) ?? '—',
     atende: ((u.atende_em as string[] | null) ?? []).includes(branchId),
+    recebe: !!u.role_id && quemRecebe.has(u.role_id as string),
     eu: !!euId && u.id === euId,
-  }))
+  })).sort((a, b) => grupo(a) - grupo(b))
 }
 
+/** Os cargos da rede que RECEBEM (caixa ou financeiro em Gerenciar, ou a Admin da rede) — o `podeReceber`. */
+async function cargosQueRecebem(tenantId: string): Promise<Set<string>> {
+  const admin = createAdminClient()
+  const [perms, admins] = await Promise.all([
+    lerTodas((de, ate) => admin.from('role_permissions').select('role_id')
+      .eq('tenant_id', tenantId).in('module', ['cashier', 'financial']).eq('level', 'MANAGE')
+      .order('role_id').range(de, ate), 'carregar os cargos que recebem'),
+    lerTodas((de, ate) => admin.from('tenant_roles').select('id')
+      .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)
+      .order('id').range(de, ate), 'carregar o cargo de Admin da rede'),
+  ])
+  return new Set([...(perms ?? []).map(p => p.role_id as string), ...(admins ?? []).map(a => a.id as string)])
+}
 
 /**
  * A pessoa da venda escolhida na tela é da equipe da rede, ativa, alcança a

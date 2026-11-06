@@ -140,7 +140,7 @@ export default async function TeamPage({
         </div>
         {canManage && (
           <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} unidade={branch?.name ?? null}
-            unidadesDoAtende={unidadesDoAtende} editaveisDoAtende={editaveisDoAtende} />
+            unidadesDoAtende={unidadesDoAtende} editaveisDoAtende={editaveisDoAtende} podeComissao={podeComissao} />
         )}
       </div>
 

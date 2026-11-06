@@ -5,6 +5,7 @@ import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
+import { toast } from 'sonner'
 
 interface Role { id: string; label: string }
 
@@ -18,16 +19,22 @@ interface TeamFormProps {
   unidadesDoAtende?: { id: string; name: string }[]
   /** As que quem cadastra marca (a gerente de unidade fixa: só a dela); null = todas. */
   editaveisDoAtende?: string[] | null
+  /** `financial: MANAGE` com comissões no plano: quem atende já nasce com a comissão padrão (A3 da 8ª). */
+  podeComissao?: boolean
 }
 
-export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAtende, editaveisDoAtende = null }: TeamFormProps) {
+export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAtende, editaveisDoAtende = null, podeComissao = false }: TeamFormProps) {
   const [open, setOpen] = useState(false)
   const [atendeEm, setAtendeEm] = useState<string[]>([])
   // O sucesso fecha o formulário na própria action, quando a resposta chega.
   const [state, action, pending] = useActionState(
     async (anterior: Parameters<typeof createTeamMember>[0], dados: FormData) => {
       const r = await createTeamMember(anterior, dados)
-      if (r && 'success' in r && r.success) setOpen(false)
+      if (r && 'success' in r && r.success) {
+        // A3 da 8ª: quem atende e entrou sem comissão fica sabendo onde se define.
+        if ('aviso' in r && r.aviso) toast(r.aviso)
+        setOpen(false)
+      }
       return r
     },
     undefined,
@@ -90,6 +97,17 @@ export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAten
 
               <AtendeNasUnidades id="tm-atende" unidades={unidadesDoAtende ?? [{ id: branchId, name: unidade ?? 'Esta unidade' }]}
                 marcadas={atendeEm} aoMudar={setAtendeEm} editaveis={editaveisDoAtende} />
+
+              {/* A3 da 8ª simulação: o cadastro da unidade não pedia a comissão. */}
+              {atendeEm.length > 0 && podeComissao && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
+                  <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    Percentual sobre cada atendimento dela. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label className="overline" htmlFor="tm-password">Senha temporária</label>

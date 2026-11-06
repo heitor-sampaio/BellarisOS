@@ -263,6 +263,19 @@
   ao desativar X" (REASSIGNED); o do lead, a troca de responsável. O filtro
   "Responsável" do quadro marca quem saiu "(inativo)". Prova:
   `e2e/equipe-desativar-repassa.spec.ts`.
+  **Cancelar também, e os vencidos entram** (A10 da 8ª simulação,
+  2026-11-06; princípio 3): a janela só repassava ou "Deixar com Débora", e a
+  Ana das 23:55 de ontem (agendada, sem ninguém fechar) ficou com ela sem
+  aviso. A lista é dos agendamentos EM ABERTO — os futuros e os que já
+  passaram sem fechar, nos últimos 30 dias, com "já passou, sem fechar" —, cada
+  um com "Cancelar este agendamento" (e "Cancelar todos" no "todos para"), que
+  cancela pelo `cancelarCore` com o motivo "Profissional desativada (Débora)";
+  e a janela diz o que fica (`[data-o-que-fica]`): "O que ficar sem repasse
+  continua no nome de Débora, desativada…", com quantos já passaram. **Sem
+  ninguém livre, diz quem atende em OUTRA unidade** (A11): "Atende em outra
+  unidade: Talita (Batel). Para repassar a ela, marque “Água Verde” no “Atende
+  clientes em” dela, na Equipe, e abra o Desativar de novo — ou cancele aqui."
+  Prova: `e2e/equipe-atritos-da-8.spec.ts` ("A10", "A11").
 - **A dona que atende** (D2 da simulação de 2026-10-29): o Admin da rede
   marca "Atende clientes", a comissão e o horário na Equipe da rede com o
   cargo TRAVADO (CLAUDE.md §11; só outra Admin da rede muda o cargo dela,

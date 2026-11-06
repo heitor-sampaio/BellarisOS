@@ -188,9 +188,15 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `lib/vendas/equipe-da-venda.ts`, devolve `confirmarSemVendedor` sem
   gravar); confirmada, `sold_by` fica nulo e nenhuma linha de comissão de
   venda nasce. A pessoa escolhida é conferida no servidor (da rede, ativa, e
-  da unidade ou da rede) e na função. O chamador que não manda o campo
-  (`vendedorId` ausente) segue como antes: quem registrou. Prova:
-  `e2e/vendas-quem-vendeu.spec.ts`.
+  da unidade ou da rede, ou de fora e que ATENDE nela — decisão 2 da 8ª) e na
+  função; a responsável do pacote tem de atender NESTA unidade. O chamador que
+  não manda o campo (`vendedorId` ausente) segue como antes: quem registrou.
+  Prova: `e2e/vendas-quem-vendeu.spec.ts`. **A lista vem em grupos** (A15 da
+  8ª simulação, 2026-11-06: a Contadora, que só vê, aparecia no meio): "Quem
+  atende" (nesta unidade), "Quem recebe" (o caixa ou o financeiro em
+  Gerenciar, ou a Admin) e "Outras pessoas da equipe" — ninguém sai, a regra
+  aceita qualquer pessoa (`equipeDaVenda`). Prova:
+  `e2e/equipe-atritos-da-8.spec.ts` ("A15").
 - **A comissão do PACOTE é do cadastro de cada pacote** (decisão do Heitor,
   2026-10-30; migration `20261029001501`): Vendas → Pacotes, seção "Comissão"
   do formulário (só para quem tem `financial: MANAGE`, da rede e com

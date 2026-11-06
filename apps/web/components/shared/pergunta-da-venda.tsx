@@ -10,6 +10,12 @@ import type { MembroDaVenda } from '@/components/shared/vender'
  * o Heitor: "nasce sempre vazio") — quem registra se acha pelo "(você)"; vazio
  * continua valendo (ninguém, sem comissão), e a venda pergunta antes.
  */
+const GRUPOS_DE_QUEM_VENDEU: { rotulo: string; de: (m: MembroDaVenda) => boolean }[] = [
+  { rotulo: 'Quem atende', de: m => m.atende },
+  { rotulo: 'Quem recebe', de: m => !m.atende && !!m.recebe },
+  { rotulo: 'Outras pessoas da equipe', de: m => !m.atende && !m.recebe },
+]
+
 export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
   equipe: MembroDaVenda[]; valor: string; aoMudar: (id: string) => void
 }) {
@@ -18,7 +24,15 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
       <span className="overline">Quem vendeu</span>
       <select className="field" aria-label="Quem vendeu" value={valor} onChange={e => aoMudar(e.target.value)}>
         <option value="">Escolha quem vendeu (vazio: ninguém, sem comissão de venda)</option>
-        {equipe.map(m => <option key={m.id} value={m.id}>{m.eu ? `${m.nome} (você)` : m.nome}</option>)}
+        {/* A15 da 8ª simulação: quem atende e quem recebe primeiro; o resto da equipe depois (a regra aceita qualquer pessoa). */}
+        {GRUPOS_DE_QUEM_VENDEU.map(g => {
+          const doGrupo = equipe.filter(g.de)
+          return doGrupo.length ? (
+            <optgroup key={g.rotulo} label={g.rotulo}>
+              {doGrupo.map(m => <option key={m.id} value={m.id}>{m.eu ? `${m.nome} (você)` : m.nome}</option>)}
+            </optgroup>
+          ) : null
+        })}
       </select>
     </label>
   )

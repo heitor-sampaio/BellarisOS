@@ -10,6 +10,7 @@ import { logHistory, loadApptCtx, fmtDateTime } from '@/lib/appointments/avisos'
 import { notifyUser } from '@/lib/notifications/notify'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { quemRealizaOsProcedimentos, realiza } from '@/lib/procedimentos/quem-realiza'
+import { cancelarCore } from '@/lib/appointments/alteracoes'
 
 /**
  * O REPASSE ao desativar um membro (H6, decisão do Heitor, 5ª simulação,
@@ -52,6 +53,17 @@ export interface AgendamentoParaRepassar {
   cliente: string
   procedimento: string
   unidade: string
+  /**
+   * Já passou sem ninguém fechar (agendado/confirmado nos últimos 30 dias — A10
+   * da 8ª simulação: a Ana das 23:55 de ontem ficava com a Débora sem aviso).
+   */
+  vencido: boolean
+  /**
+   * Quem realiza o procedimento mas não atende NESTA unidade — e em quais
+   * atende (A11 da 8ª: "ninguém livre" não dizia que havia quem atendesse em
+   * outra, nem como incluí-la). Não recebe o repasse: a tela diz como marcar.
+   */
+  emOutraUnidade: { nome: string; unidades: string[] }[]
   /** Quem atende na unidade e está livre no horário. */
   livres: PessoaDoRepasse[]
   /** Quem atende na unidade, mas já tem atendimento no horário. */
@@ -74,6 +86,8 @@ export interface PendenciasDoMembro {
 
 export const EntradaDoRepasse = z.object({
   agendamentos:  z.array(z.object({ id: z.string().uuid(), para: z.string().uuid() })).max(2000).default([]),
+  /** Os que se CANCELAM ao desativar (A10 da 8ª: só havia repassar ou deixar com ela). */
+  cancelar:      z.array(z.string().uuid()).max(2000).default([]),
   /** `para` nulo = "Sem responsável" (volta ao bolo comum). */
   oportunidades: z.array(z.object({ id: z.string().uuid(), para: z.string().uuid().nullable() })).max(5000).default([]),
 })
@@ -88,9 +102,15 @@ interface LinhaDoAgendamento {
   clients: { name: string } | null; procedures: { name: string } | null; branches: { name: string; tenant_id: string } | null
 }
 
-/** Os agendamentos futuros em aberto do membro, nas unidades ao alcance de quem age. */
+/** Quanto para trás o "vencido sem fechar" entra na janela (A10 da 8ª) — a mesma janela do aviso dos abertos de antes. */
+const DIAS_DOS_VENCIDOS = 30
+
+/**
+ * Os agendamentos em aberto do membro, nas unidades ao alcance de quem age: os
+ * futuros e os que já passaram sem ninguém fechar (últimos 30 dias, A10 da 8ª).
+ */
 async function agendamentosDoMembro(admin: Admin, ctx: TenantContext, membroId: string): Promise<LinhaDoAgendamento[]> {
-  const agora = new Date().toISOString()
+  const agora = new Date(Date.now() - DIAS_DOS_VENCIDOS * 86_400_000).toISOString()
   const linhas = await lerTodas((de, ate) => admin.from('appointments')
     .select('id, scheduled_at, duration_min, branch_id, procedure_id, clients(name), procedures(name), branches!inner(name, tenant_id)')
     .eq('branches.tenant_id', ctx.tenantId!)
@@ -134,12 +154,15 @@ const atendeNaUnidade = (p: { atende_em: string[] | null }, unidade: string) => 
 export async function pendenciasDoMembro(
   admin: Admin, ctx: TenantContext, membro: { id: string; nome: string },
 ): Promise<PendenciasDoMembro> {
-  const [ags, equipe, oportunidades, crm] = await Promise.all([
+  const [ags, equipe, oportunidades, crm, unidades] = await Promise.all([
     agendamentosDoMembro(admin, ctx, membro.id),
     quemAtendeNaRede(admin, ctx.tenantId!, membro.id),
     oportunidadesAbertas(admin, ctx.tenantId!, membro.id),
     quemTemCrm(admin, ctx.tenantId!, membro.id),
+    ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true), 'carregar as unidades da rede'),
   ])
+  const nomeDaUnidade = new Map(((unidades ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
+  const agoraMs = Date.now()
   // Quem realiza cada procedimento (por-01): o repasse oferece só elas.
   const realizam = await quemRealizaOsProcedimentos(admin, ags.map(a => a.procedure_id).filter((x): x is string => !!x))
 
@@ -171,11 +194,16 @@ export async function pendenciasDoMembro(
     agendamentos: ags.map(a => {
       const ini = new Date(a.scheduled_at).getTime()
       const fim = ini + (a.duration_min || 60) * 60_000
-      const daUnidade = equipe.filter(p => atendeNaUnidade(p, a.branch_id) && realiza(realizam.get(a.procedure_id ?? ''), p.id))
+      const realizaEste = (p: { id: string }) => realiza(realizam.get(a.procedure_id ?? ''), p.id)
+      const daUnidade = equipe.filter(p => atendeNaUnidade(p, a.branch_id) && realizaEste(p))
       const bate = (p: { id: string }) => (ocupados.get(p.id) ?? []).some(o => ini < o.fim && fim > o.ini)
       return {
         id: a.id, quando: a.scheduled_at, duracaoMin: a.duration_min || 60,
         cliente: a.clients?.name ?? 'Cliente', procedimento: a.procedures?.name ?? 'Atendimento', unidade: a.branches?.name ?? '',
+        vencido: fim <= agoraMs,
+        emOutraUnidade: equipe.filter(p => !atendeNaUnidade(p, a.branch_id) && realizaEste(p) && (p.atende_em ?? []).length)
+          .map(p => ({ nome: p.name, unidades: (p.atende_em ?? []).map(u => nomeDaUnidade.get(u)).filter((x): x is string => !!x) }))
+          .filter(p => p.unidades.length),
         livres:   daUnidade.filter(p => !bate(p)).map(p => ({ id: p.id, nome: p.name })),
         ocupadas: daUnidade.filter(bate).map(p => ({ id: p.id, nome: p.name })),
       }
@@ -208,7 +236,7 @@ export async function aplicarRepasse(
   admin: Admin, ctx: TenantContext, membro: { id: string; nome: string }, repasse: Repasse,
 ): Promise<string[]> {
   const falhas: string[] = []
-  if (repasse.agendamentos.length && !podeRepassarAgendamentos(ctx)) {
+  if ((repasse.agendamentos.length || repasse.cancelar.length) && !podeRepassarAgendamentos(ctx)) {
     return ['Seu cargo não repassa agendamentos (pede a Agenda em Gerenciar, de todos).']
   }
   if (repasse.oportunidades.length && !podeTrocarResponsavel(ctx)) {
@@ -265,6 +293,17 @@ export async function aplicarRepasse(
           body: `${c.clientName} — ${c.procedureName} em ${fmtDateTime(c.scheduledAt)}.`, data: { appointment_id: ag.id },
         })
       })
+    }
+  }
+
+  // Cancelar ao desativar (A10 da 8ª simulação): o núcleo da agenda
+  // (cancelarCore — status, motivo, histórico e evento), só nos que ainda são dela.
+  if (repasse.cancelar.length) {
+    const dela = new Set((await agendamentosDoMembro(admin, ctx, membro.id)).map(a => a.id))
+    for (const id of repasse.cancelar) {
+      if (!dela.has(id)) { falhas.push('Um dos agendamentos já não é desta pessoa (ou já foi fechado).'); continue }
+      const r = await cancelarCore(admin, ctx, { appointmentId: id, motivo: `Profissional desativada (${membro.nome})` })
+      if ('error' in r) falhas.push(`Um agendamento não foi cancelado: ${r.error}`)
     }
   }
 

@@ -7,6 +7,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFala } from '@/components/shared/uma-unidade'
 import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
+import { toast } from 'sonner'
 
 interface Branch { id: string; name: string }
 interface Role   { id: string; label: string }
@@ -60,7 +61,13 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
 
   // Fecha quando chega o resultado de sucesso.
   const sucesso = !!(state && 'success' in state && state.success)
-  useEffect(() => { if (sucesso) onFechar() }, [sucesso, onFechar])
+  // A3 da 8ª: quem atende e entrou sem comissão fica sabendo onde se define.
+  const avisoDoCadastro = state && 'aviso' in state ? state.aviso : null
+  useEffect(() => {
+    if (!sucesso) return
+    if (avisoDoCadastro) toast(avisoDoCadastro)
+    onFechar()
+  }, [sucesso, avisoDoCadastro, onFechar])
 
   return (
     <>

@@ -35,7 +35,14 @@ export interface ProdutoAVenda {
 }
 
 /** Alguém da equipe numa venda (com-04/com-06): a responsável do pacote sai de quem atende. */
-export interface MembroDaVenda { id: string; nome: string; atende: boolean; /** É quem está registrando ("(você)" em "Quem vendeu", que nasce vazio — r2-ven-12). */ eu?: boolean }
+export interface MembroDaVenda {
+  id: string; nome: string
+  /** Atende NESTA unidade (o "Atende" por unidade, decisão 2 da 8ª). */
+  atende: boolean
+  /** Recebe (o caixa ou o financeiro em Gerenciar): vem logo depois de quem atende em "Quem vendeu" (A15 da 8ª). */
+  recebe?: boolean
+  /** É quem está registrando ("(você)" em "Quem vendeu", que nasce vazio — r2-ven-12). */ eu?: boolean
+}
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
 

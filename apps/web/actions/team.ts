@@ -219,6 +219,11 @@ export async function createTeamMember(
   revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
   revalidateTag(`user:${authId}`, { expire: 0 })
   if (avisoDaComissao) return { error: avisoDaComissao }
+  // A3 da 8ª simulação: sem a comissão, o chip "Sem comissão" ficava escondido
+  // na linha — quem cadastra fica sabendo na hora, e onde se define.
+  if (providesServices && comissaoPadrao === null && can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')) {
+    return { success: true, aviso: `${name} entrou sem comissão: os atendimentos dela não geram comissão até alguém definir, no chip “Sem comissão” da linha dela.` }
+  }
   return { success: true }
 }
 
@@ -428,7 +433,7 @@ export async function deactivateTeamMember(
   // O repasse escolhido na janela (H6), ANTES de desativar: cada item é
   // conferido de novo; o que falhar volta à tela e a pessoa segue ativa até
   // o repasse escolhido valer (a janela recarrega o que sobrou).
-  if (repasse.data.agendamentos.length || repasse.data.oportunidades.length) {
+  if (repasse.data.agendamentos.length || repasse.data.cancelar.length || repasse.data.oportunidades.length) {
     const falhas = await aplicarRepasse(admin, ctx, { id: membro.id, nome: membro.name }, repasse.data)
     if (falhas.length) {
       revalidatePath(redirectPath)

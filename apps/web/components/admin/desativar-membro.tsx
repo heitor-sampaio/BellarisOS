@@ -18,6 +18,8 @@ import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/r
  */
 
 const SEM_RESPONSAVEL = '__sem__'
+/** "Cancelar este agendamento" (A10 da 8ª simulação): o que não se repassa também se cancela aqui. */
+const CANCELAR = '__cancelar__'
 
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
   timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -57,6 +59,7 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
     const avisos: Record<string, string> = {}
     for (const a of dados.agendamentos) {
       if (!pessoa) { para[a.id] = ''; continue }
+      if (pessoa === CANCELAR) { para[a.id] = CANCELAR; continue }
       if (a.livres.some(p => p.id === pessoa)) para[a.id] = pessoa
       else {
         para[a.id] = ''
@@ -77,7 +80,8 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
   function confirmar() {
     setErro(null)
     const repasse = {
-      agendamentos: Object.entries(paraAg).filter(([, p]) => p).map(([id, p]) => ({ id, para: p })),
+      agendamentos: Object.entries(paraAg).filter(([, p]) => p && p !== CANCELAR).map(([id, p]) => ({ id, para: p })),
+      cancelar: Object.entries(paraAg).filter(([, p]) => p === CANCELAR).map(([id]) => id),
       oportunidades: Object.entries(paraOp).filter(([, p]) => p).map(([id, p]) => ({ id, para: p === SEM_RESPONSAVEL ? null : p })),
     }
     iniciar(async () => {
@@ -95,13 +99,16 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
   const titulo = { fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' } as const
   const texto  = { fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 } as const
   const linha  = { display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 0', borderTop: '1px solid var(--border)' } as const
-  const repassados = Object.values(paraAg).filter(Boolean).length + Object.values(paraOp).filter(Boolean).length
+  const repassados = Object.values(paraAg).filter(p => p && p !== CANCELAR).length + Object.values(paraOp).filter(Boolean).length
+  const cancelados = Object.values(paraAg).filter(p => p === CANCELAR).length
+  const vencidos = dados?.agendamentos.filter(a => a.vencido).length ?? 0
 
   return (
     <>
+      {/* A3 da 8ª simulação: o ícone sozinho, o último da linha, se confundia com os outros. */}
       <button type="button" className="btn-ghost" title="Desativar membro" aria-label="Desativar membro"
-        style={{ padding: '5px 8px', color: 'var(--text-faint)' }} onClick={abrir}>
-        <UserMinus size={15} />
+        style={{ padding: '5px 8px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)' }} onClick={abrir}>
+        <UserMinus size={14} /> Desativar
       </button>
       {aberta && (
         <JanelaModal rotulo="Desativar membro?" largura={560} travado={fazendo} fechaNoFundo={false} onFechar={() => setAberta(false)}>
@@ -116,7 +123,13 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
 
             {dados && dados.agendamentos.length > 0 && (
               <section data-repasse="agendamentos" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <h3 style={titulo}>Agendamentos futuros ({dados.agendamentos.length})</h3>
+                <h3 style={titulo}>Agendamentos em aberto ({dados.agendamentos.length})</h3>
+                {/* A10 da 8ª: o que fica com ela, dito antes — os vencidos inclusive. */}
+                <p data-o-que-fica style={texto}>
+                  O que ficar sem repasse continua no nome de {nome}, desativada: ela sai da lista de quem atende, e
+                  alguém precisa remarcar, cancelar ou fechar pela agenda.
+                  {vencidos > 0 && <> {vencidos === 1 ? '1 já passou' : `${vencidos} já passaram`} sem ninguém fechar (marcar falta ou concluir).</>}
+                </p>
                 {!dados.podeRepassarAgendamentos ? (
                   <p style={texto}>Seu cargo não repassa agendamentos: eles ficam com {nome} até alguém com a Agenda em Gerenciar trocar a profissional.</p>
                 ) : (
@@ -126,6 +139,7 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
                       <select className="filtro-select" value={todosAg} onChange={e => repassarTodosAg(e.target.value)}>
                         <option value="">Escolher um a um</option>
                         {dados.quemAtende.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        <option value={CANCELAR}>Cancelar todos</option>
                       </select>
                     </label>
                     <div>
@@ -180,7 +194,11 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
 
             {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-              {repassados > 0 && <span style={{ ...texto, marginRight: 'auto' }}>{repassados} para repassar</span>}
+              {(repassados > 0 || cancelados > 0) && (
+                <span style={{ ...texto, marginRight: 'auto' }}>
+                  {[repassados ? `${repassados} para repassar` : '', cancelados ? `${cancelados} para cancelar` : ''].filter(Boolean).join(' · ')}
+                </span>
+              )}
               <button type="button" className="btn-secondary" disabled={fazendo} onClick={() => setAberta(false)}>Voltar</button>
               <button type="button" className="btn-primary" disabled={fazendo || (!dados && !erroCarga)} onClick={confirmar}>
                 {fazendo ? 'Um momento…' : 'Desativar'}
@@ -202,16 +220,25 @@ function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher }: {
       <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
         {quando(a.quando)} · {a.cliente}
         <span style={{ color: 'var(--text-muted)' }}> · {a.procedimento}{a.unidade ? ` · ${a.unidade}` : ''}</span>
+        {a.vencido && <span className="chip chip-warning" style={{ marginLeft: 6 }}>já passou, sem fechar</span>}
       </span>
       <select className="filtro-select" aria-label={`Quem atende ${a.cliente} em ${quando(a.quando)}`} value={valor}
         onChange={e => onEscolher(e.target.value)}>
         <option value="">Deixar com {nome} (sem repasse)</option>
         {a.livres.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         {a.ocupadas.map(p => <option key={p.id} value={p.id} disabled>{p.nome} (ocupada no horário)</option>)}
+        <option value={CANCELAR}>Cancelar este agendamento</option>
       </select>
       {aviso && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>{aviso}</span>}
       {!a.livres.length && !aviso && (
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém livre que atenda nesta unidade: remarque pela agenda.</span>
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          {/* A11 da 8ª: diz quem atende em outra unidade e como incluí-la. */}
+          {a.emOutraUnidade.length
+            ? <>Ninguém livre que atenda nesta unidade. Atende{a.emOutraUnidade.length > 1 ? 'm' : ''} em outra unidade:{' '}
+                {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}. Para repassar a ela, marque
+                “{a.unidade}” no “Atende clientes em” dela, na Equipe, e abra o Desativar de novo — ou cancele aqui.</>
+            : 'Ninguém livre que atenda nesta unidade: remarque pela agenda, ou cancele aqui.'}
+        </span>
       )}
     </div>
   )

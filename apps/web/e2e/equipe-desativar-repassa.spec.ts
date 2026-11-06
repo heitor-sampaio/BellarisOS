@@ -132,7 +132,7 @@ test.describe.serial('desativar oferece repassar o que fica com a pessoa', () =>
 
     await como(browser, async p => {
       const janela = await abrirDesativar(p, renata!)
-      await expect(janela.getByText('Agendamentos futuros (2)')).toBeVisible()
+      await expect(janela.getByText('Agendamentos em aberto (2)')).toBeVisible()
       await expect(janela.getByText('Oportunidades abertas (2)')).toBeVisible()
       const linhaA1 = janela.locator(`[data-agendamento="${a1}"]`)
       const linhaA2 = janela.locator(`[data-agendamento="${a2}"]`)
