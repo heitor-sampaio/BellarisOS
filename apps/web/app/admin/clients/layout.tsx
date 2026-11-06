@@ -4,6 +4,7 @@ import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedUltimasVisitas, getCachedNetworkBranches } from '@/lib/cached-queries'
 import { getClientesAtivos } from '@/lib/metrics/unidade'
+import { aniversariantesDoMes } from '@/lib/clientes/aniversariantes'
 
 export default async function AdminClientsLayout({
   children,
@@ -18,10 +19,11 @@ export default async function AdminClientsLayout({
   // é a trava dela (assertPermission, como toda page.tsx) que diz "sem acesso".
   if (!can(ctx, 'clients', 'VIEW')) return <>{children}</>
 
-  const [rawClients, ultimasVisitas, branchesRaw] = await Promise.all([
+  const [rawClients, ultimasVisitas, branchesRaw, aniversariantes] = await Promise.all([
     getCachedNetworkClients(ctx.tenantId!),
     getCachedUltimasVisitas(ctx.tenantId!, null),
     getCachedNetworkBranches(ctx.tenantId!),
+    aniversariantesDoMes(ctx.tenantId!),
   ])
 
   const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
@@ -36,7 +38,8 @@ export default async function AdminClientsLayout({
       phone:      c.phone as string,
       tags:       (c.tags ?? []) as string[],
       isActive:   c.is_active as boolean,
-      isNew:      new Date(c.created_at) >= thirtyDaysAgo,
+      // F35: a importada com "cliente desde" de antes não é nova.
+      isNew:      new Date((c as { cliente_desde?: string | null }).cliente_desde ?? c.created_at) >= thirtyDaysAgo,
       lastVisit:  lastVisitMap.get(c.id) ?? null,
       branchId:   (c.branch_id ?? undefined) as string | undefined,
       branchName: branch?.name ?? undefined,
@@ -64,6 +67,7 @@ export default async function AdminClientsLayout({
           availableBranches={branches}
           // A abrangência vence o `?unidade=` (J-54): quem tem unidade fixa fica nela.
           unidadeFixa={ctx.branchId}
+          aniversariantes={aniversariantes}
         />
       }
     >

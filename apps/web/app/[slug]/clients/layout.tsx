@@ -6,6 +6,7 @@ import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedBranchClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
+import { aniversariantesDoMes } from '@/lib/clientes/aniversariantes'
 
 export default async function ClientsLayout({
   children,
@@ -32,9 +33,10 @@ export default async function ClientsLayout({
     .single(), 'buscar a unidade')
   if (!branch) notFound()
 
-  const [rawClients, ultimasVisitas] = await Promise.all([
+  const [rawClients, ultimasVisitas, aniversariantes] = await Promise.all([
     getCachedBranchClients(branch.id, ctx.tenantId!),
     getCachedUltimasVisitas(ctx.tenantId!, branch.id),
+    aniversariantesDoMes(ctx.tenantId!),
   ])
 
   // A última visita NESTA unidade, agregada no banco.
@@ -47,7 +49,8 @@ export default async function ClientsLayout({
     phone:     c.phone as string,
     tags:      (c.tags ?? []) as string[],
     isActive:  c.is_active as boolean,
-    isNew:     new Date(c.created_at) >= thirtyDaysAgo,
+    // F35: a importada com "cliente desde" de antes não é nova.
+    isNew:     new Date((c as { cliente_desde?: string | null }).cliente_desde ?? c.created_at) >= thirtyDaysAgo,
     lastVisit: lastVisitMap.get(c.id) ?? null,
   }))
 
@@ -64,6 +67,7 @@ export default async function ClientsLayout({
           clients={clients}
           basePath={`/${slug}/clients`}
           totalActive={totalActive}
+          aniversariantes={aniversariantes}
         />
       }
     >

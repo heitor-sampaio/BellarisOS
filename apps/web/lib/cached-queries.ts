@@ -116,13 +116,13 @@ export function getCachedBranchClients(branchId: string, tenantId: string) {
       const nome = branch.name
       return lerTodas((de, ate) => admin
         .from('clients')
-        .select('id, name, phone, tags, is_active, created_at')
+        .select('id, name, phone, tags, is_active, created_at, cliente_desde')
         .eq('tenant_id', tenantId)
         .contains('tags', [unitTag(nome)])
         .order('name').order('id')
         .range(de, ate), 'carregar os clientes')
     },
-    [`branch-clients-${branchId}`],
+    [`branch-clients-v2-${branchId}`],
     { revalidate: 120, tags: [`clients:${tenantId}`] },
   )()
 }
@@ -153,12 +153,12 @@ export function getCachedNetworkClients(tenantId: string) {
       // Todas, em páginas (ver getCachedBranchClients).
       return lerTodas((de, ate) => admin
         .from('clients')
-        .select('id, name, phone, tags, is_active, created_at, branch_id, branches!branch_id(id, name)')
+        .select('id, name, phone, tags, is_active, created_at, cliente_desde, branch_id, branches!branch_id(id, name)')
         .eq('tenant_id', tenantId)
         .order('name').order('id')
         .range(de, ate), 'carregar os clientes')
     },
-    [`network-clients-${tenantId}`],
+    [`network-clients-v2-${tenantId}`],
     { revalidate: 120, tags: [`clients:${tenantId}`] },
   )()
 }

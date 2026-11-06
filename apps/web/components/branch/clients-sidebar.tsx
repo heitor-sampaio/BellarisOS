@@ -35,9 +35,14 @@ interface Props {
   availableBranches?: { id: string; name: string; slug?: string }[]  // admin-only: shows branch filter
   /** A unidade da abrangência de quem vê: vence o `?unidade=` da URL (J-54). */
   unidadeFixa?:      string | null
+  /**
+   * A9 da 8ª simulação: as aniversariantes do mês de Brasília — o dia de cada
+   * uma, decidido pelo banco (`aniversariantesDoMes`) — e o nome do mês.
+   */
+  aniversariantes?:  { nomeDoMes: string; mes: number; dias: Record<string, number> } | null
 }
 
-type Filter = 'ativos' | 'novos' | 'inativos'
+type Filter = 'ativos' | 'novos' | 'inativos' | 'aniversario'
 
 
 function lastVisitLabel(iso: string | null): string {
@@ -63,6 +68,7 @@ export function ClientsSidebar({
   newClientHref,
   availableBranches,
   unidadeFixa = null,
+  aniversariantes = null,
 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
@@ -97,13 +103,16 @@ export function ClientsSidebar({
     [vocabulario, clients],
   )
 
+  const diaDoAniversario = (id: string) => aniversariantes?.dias[id]
   const filtered = clients.filter(c => {
     // A regra da busca do banco (D6 da 8ª): sem acento, o telefone por dígitos.
     const matchSearch = clienteCasaComBusca(c, search)
     const matchFilter =
-      filter === 'ativos'   ? c.isActive :
-      filter === 'novos'    ? c.isActive && c.isNew :
-      filter === 'inativos' ? !c.isActive : true
+      filter === 'ativos'      ? c.isActive :
+      filter === 'novos'       ? c.isActive && c.isNew :
+      filter === 'inativos'    ? !c.isActive :
+      // A9: quem o banco disse que faz aniversário neste mês (só as ativas).
+      filter === 'aniversario' ? c.isActive && diaDoAniversario(c.id) !== undefined : true
     const matchBranch = !selectedBranchId
       || (selectedBranchName ? c.tags.includes(unitTag(selectedBranchName)) : c.branchId === selectedBranchId)
     // TODAS as tags marcadas, como no inbox: marcar duas estreita a busca.
@@ -111,6 +120,9 @@ export function ClientsSidebar({
     const matchTags = tagsEscolhidas.every(t => temTag(c.tags, t))
     return matchSearch && matchFilter && matchBranch && matchTags
   })
+  // As aniversariantes em ordem de dia (e de nome, no mesmo dia).
+  if (filter === 'aniversario') filtered.sort((a, b) => (diaDoAniversario(a.id)! - diaDoAniversario(b.id)!) || a.name.localeCompare(b.name, 'pt-BR'))
+  const mm = aniversariantes ? String(aniversariantes.mes).padStart(2, '0') : ''
 
   // Extract selected client id from pathname like /[slug]/clients/[id] or /admin/clients/[id]
   const pathParts  = pathname.split('/')
@@ -124,6 +136,8 @@ export function ClientsSidebar({
     { valor: 'novos',    rotulo: 'Novos' },
     // "Arquivadas": o nome da ação na ficha (J-23) — era "Inativos".
     { valor: 'inativos', rotulo: 'Arquivadas' },
+    // A9 da 8ª simulação: as aniversariantes do mês (o mês de Brasília).
+    ...(aniversariantes ? [{ valor: 'aniversario' as const, rotulo: `Aniversariantes de ${aniversariantes.nomeDoMes}` }] : []),
   ]
 
   const addHref = newClientHref === undefined ? `${basePath}/new` : newClientHref
@@ -303,6 +317,11 @@ export function ClientsSidebar({
                   {c.branchName && (
                     <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {lastVisitLabel(c.lastVisit)}
+                    </p>
+                  )}
+                  {filter === 'aniversario' && diaDoAniversario(c.id) !== undefined && (
+                    <p data-aniversario style={{ fontSize: 'var(--text-2xs)', color: 'var(--brand)', marginTop: 2, fontWeight: 700 }}>
+                      Aniversário dia {String(diaDoAniversario(c.id)).padStart(2, '0')}/{mm}
                     </p>
                   )}
                 </div>
