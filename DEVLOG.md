@@ -1744,6 +1744,36 @@ comissão de venda do plano.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05 (7ª)".
 
+### 2026-11-05/06 — Oitava simulação: a clínica que migra da planilha e a de duas unidades com a equipe mudando
+
+Pedido do Heitor: mais dois times, cenários novos, só anotando. Rodaram em
+produção de quinta 05/11 ~23h10 a sexta 06/11 ~01h20 (Brasília), com 14
+agentes (run `wf_6d922153-b70`, sem queda):
+
+- **Time A, "[sim] Clínica Hortênsia"** (Fortaleza, uma unidade,
+  dermato-estética de 5 anos): a migração de uma planilha suja (33 linhas,
+  CPF inválido, repetidos, datas e telefones mistos, menor) com pacote,
+  crédito e pontos de fora; e um sábado cheio (encaixe, falta com bloqueio,
+  desistência no meio, estorno de pacote no cartão, devolução de produto).
+- **Time B, "[sim] Clínica Íris"** (Curitiba, Batel e Água Verde): gerente de
+  unidade fixa, férias de 7 dias, cobertura na outra unidade, desligamento
+  com repasse, troca de cargo, contadora só vendo, transferência de estoque;
+  a cliente nas duas unidades pelo app, termo por link e LGPD.
+
+**Dinheiro:** fechou ao centavo nos dois (A: receita 4.368, lucro 3.212,24,
+comissões 837,50, estoque 3.518; B: 89 pagos, 160 a receber, estoque 740); o
+crédito e os pontos de fora não viraram faturamento. As quatro decisões da 7ª
+funcionaram em uso real (passaporte, menor com responsável, bloqueio,
+comissão de venda do plano); os defeitos novos ficam nas beiradas delas.
+
+**Defeitos:** 19 (15 confirmados, 4 prováveis), nenhuma regressão estrita, 4
+sobras (F28 e F30). **Atritos:** 58. **Regra ou engano:** 14. **Para o
+Heitor:** 3 — trazer de fora o pacote já usado (a migração), a profissional
+que atende em mais de uma unidade, e revogar consentimento / pedir exclusão
+pela LGPD.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
+
 ### 2026-10-30 — A completa depois das frentes: 6 falhas em 1.241, corrigidas
 
 A completa no GitHub Actions (run 41151753519, contra o build de 53b4a803)
@@ -9749,6 +9779,118 @@ antes de a action expirar o cache da lista. Os três passam a criar antes de
 qualquer tela abrir, ou a esperar a action voltar. As outras três foram o
 banco travado (edge_logs com respostas de 12 a 66 s às 00:50Z, 00:59Z e
 01:04Z; a de 01:04 coincide com a migration do índice único de mensagens).
+
+### Da simulação de 2026-11-05/06 (8ª: 19 defeitos e 58 atritos em aberto)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`, com as
+capturas, os 14 achados que eram regra ou engano, o dinheiro esperado ×
+sistema e o que ficou sem testar. A 7ª rodada está em
+`.sim/arquivo-2026-11-05/`. Os ids D1…D19 e A1…A58 são desta rodada.
+Caminhos relativos a `apps/web/`. Nada foi corrigido ainda: o Heitor escolhe.
+
+**Alta**
+- **D1.** A venda pela ficha no `/admin` sai da unidade de cadastro da
+  cliente (ou da primeira em ordem alfabética) sem perguntar: o estoque, o
+  caixa e o "Quem vendeu" são dessa unidade. `effBranch = branchRow ??
+  branchesRaw[0]` vira o `currentBranchId` do `<Vender>`.
+  `app/admin/clients/[id]/page.tsx:165-171, 438-452`,
+  `components/shared/vender.tsx`, `lib/vendas/equipe-da-venda.ts:13-21`.
+  Princípio 3 e H5 (nada se prende a `clients.branch_id`). A14 é o mesmo no
+  "+ Agendar" e no "Novo cliente" da ficha da rede.
+
+**Média**
+- **D2.** A importação descarta a ficha inteira por um campo opcional
+  inválido (CPF, e-mail, nascimento, gênero, CEP, UF).
+  `lib/importacao/normalizar.ts:233-343`. Princípio 2: importar sem o campo e
+  listar o motivo.
+- **D3.** A semana da agenda da unidade não tem domingo (`WEEKDAYS` com 6
+  dias), e o contador da semana não pega nem o sábado inteiro (`from + 5`).
+  `components/branch/agenda-week-view.tsx:28, 116`,
+  `agenda-calendar.tsx:80-83, 125-139`. Vem do commit inicial.
+- **D4.** Na semana da agenda da rede, o das 21:00–23:59 cai no dia seguinte
+  (`scheduled_at.slice(0, 10)`, o dia em UTC).
+  `components/admin/admin-agenda-view.tsx:124-132, 428, 464`. §14.
+- **D5.** O seletor de horários da sessão do pacote ignora a duração (só
+  testa o início). `components/branch/treatment-sessions-modal.tsx:172-179`.
+- **D6.** A busca de cliente não acha quem existe: a lista e o modal Agendar
+  não ignoram acento (`buscar_clientes` sem `sem_acento`; a lista faz
+  `includes`), a lista compara o telefone como texto, e o Ctrl K não acha o
+  número com o 55 (oferece "Cadastrar … como cliente").
+  `components/branch/clients-sidebar.tsx:99-102`, migrations
+  `20260918000002_buscar_clientes.sql:23`,
+  `20261003000001_busca_universal.sql:79-81`.
+- **D7.** O ticket médio conta quem pagou R$ 0 (pacote migrado, venda 100%
+  de desconto): "R$ 437 · 10 clientes", o certo R$ 546 ÷ 8.
+  `metrics_ticket_medio` (`20261029001102`) sem `amount > 0`.
+- **D8.** O Financeiro diz "Receita 89 · Despesas 0 · Comissões 0 ·
+  Resultado 9": insumos e taxas entram no resultado sem cartão.
+  `components/admin/admin-financial-view.tsx:378-401`. Sobra da F32 (A50).
+- **D9.** (provável) Os avisos do horário (fora do expediente, bloqueio,
+  choque) chegam depois e o Confirmar não espera: `avisosDoHorario` num
+  `setTimeout` de 200 ms. `components/branch/appointment-modal.tsx:300-321`.
+  Ao lado da F30.
+- **D10.** No app, o Confirmar da sessão coberta pelo pacote mostra "Valor
+  R$ 180,00". `components/client-portal/new-appointment-wizard.tsx:460`.
+  Sobra da F28 (D8 da 7ª).
+
+**Baixa**
+- **D11.** O atendimento CANCELADO diz "Atendimento concluído. Para corrigir,
+  use 'Editar registro'". `components/branch/appointment-session.tsx:2072-2077`.
+- **D12.** O histórico da transferência diz "Transferência → destino." /
+  "← origem." sem o nome da unidade (`estoque_transferir`,
+  `20261027000011:276-279`).
+- **D13.** O termo "no início do atendimento" nasce no Confirmar agendamento
+  (`documentos_no_agendamento` emite em CONFIRMED; o check-in é ARRIVED).
+  `20261021000010_agendamento_chegou_funcoes.sql:19-38`.
+- **D14.** O Relatório de Vendas põe o plano em nome da dona do plano, não de
+  quem vendeu (`metrics_vendas` não lê `treatment_plans.vendido_por`;
+  `indicadores.md:715-716` também). Sobra da F30.
+- **D15.** A ocupação e o "Horário livre" da "Minha agenda" ignoram o
+  bloqueio. `lib/metrics/ocupacao.ts`,
+  `components/branch/professional-agenda.tsx:426-436`. Sobra da F30.
+- **D16.** "Todos os clientes retornaram 🎉" com 30 clientes sem visita
+  nenhuma. `components/shared/quadros-de-clientes.tsx:105`.
+- **D17.** No app, Histórico → Pagamentos lista a parcela 2/2 antes da 1/2
+  (`created_at desc`). `app/[slug]/cliente/historico/page.tsx:110, 156`.
+  Sobra da F28 (D4 da 7ª).
+- **D18.** O JSON da LGPD traz `insumos: null` (lê
+  `medical_record_entries.products_used`, que ninguém grava).
+  `lib/lgpd/export.ts:96, 238`.
+- **D19.** (provável) "Itens zerados": 1 nos Relatórios, 0 no Estoque da rede
+  (pares unidade × produto × produtos). `20261104002102`,
+  `lib/estoque/situacao.ts:104`.
+
+**Para o Heitor decidir**
+1. **A migração:** trazer pacote com sessões já usadas, "última visita" e
+   "cliente desde". Hoje a dona improvisa pacote a R$ 0, que polui catálogo,
+   Vendas, app, ticket e "Novos clientes". Recomendação: "Trazer pacote de
+   fora" na ficha (sem lançamento, pontos nem comissão de venda; valor de
+   referência opcional para a comissão de execução e o rateio, zero sem ele —
+   princípios 4 e 5) e as colunas na importação.
+2. **A profissional que atende em mais de uma unidade** sem ganhar a rede
+   inteira. Recomendação: "Atende também em" no membro (agenda, repasse e
+   comissão dessas unidades; o acesso continua o da dela).
+3. **LGPD pelo app:** revogar consentimento (uso de imagem: "Revogado em…",
+   a ficha e as fotos com "não usar em divulgação") e pedir exclusão como
+   pedido à clínica, que anonimiza o que não tem guarda legal.
+
+**Decidido pelos princípios (para a frente que corrigir):** D2 importa sem o
+campo ruim; A2 avisa a taxa menor em mais vezes; A20 pré-escolhe o "Já pago"
+quando o procedimento bate com o pacote; A34 devolve por linha; A41 a forma
+do usado vem com a original; A25 "Agendar" na "Minha agenda" de quem tem a
+Agenda em Gerenciar.
+
+**Atritos (A1–A58), os que mais pesam:** o "Já pago" do pacote desligado no
+Agendar (A20, risco de cobrar duas vezes); o choque que parece aviso e é
+recusa (A21); trocar de profissional só arrastando, sem registro (A22); sem
+"Dia inteiro" no bloqueio (A23); a recepção sem Estornar/Devolver e sem dizer
+a quem pedir (A33); devolver um produto vira três lançamentos (A34); a forma
+do usado em branco no cancelamento do pacote no cartão (A41); o desativar sem
+"Cancelar este agendamento" (A10); a recepção fixa que não acha a cliente de
+outra unidade (A17); importação sem lista das recusadas nem coluna de
+responsável (A5, A6); sem aniversariantes do mês (A9); a LGPD sem o prazo na
+tela da clínica (A50); o app sem dizer a unidade (A53); sem CSV das
+movimentações para a contadora (A44). Os demais no relatório.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
