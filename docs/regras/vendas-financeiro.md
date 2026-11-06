@@ -1204,7 +1204,10 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   ordem 3/3, 2/3, 1/3. O pendente diz "Vence 05/12/2026" (`due_date`, senão
   `data_de_referencia`, por `formatDia`) e vem primeiro, pela próxima a
   vencer; o resto, pelo dia do pagamento, do mais recente. Prova: o mesmo
-  spec ("D4").
+  spec ("D4"). **E o Histórico → Pagamentos também** (D17 da 8ª simulação,
+  2026-11-06): ordenava pela criação, e a parcela 2/2 vinha antes da 1/2. A
+  ordem é UMA, `ordemDosPagamentosDoApp` (`lib/clientes/ordem-dos-pagamentos.ts`),
+  nas duas telas. Prova: o mesmo spec ("D17").
 - **O RECIBO do pagamento, em PDF** (ven-06 da revisão, 2026-11-02; o
   Heitor: "um recibo simples em PDF, pelo app ou impresso"). Todo lançamento
   de receita PAGO e vivo (sem estorno) tem "Recibo" na lista dos dois

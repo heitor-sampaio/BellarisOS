@@ -115,3 +115,16 @@ test('as parcelas dizem o vencimento, e o atendimento concluído não pago apare
     await expect(aPagar).toContainText('A pagar na clínica')
   })
 })
+
+// D17 da 8ª simulação: o Histórico → Pagamentos ordenava pela CRIAÇÃO e listava
+// a parcela 2/2 antes da 1/2 — o Financeiro do app já ordenava pelo vencimento (D4).
+test('o Histórico → Pagamentos ordena pelo vencimento, como o Financeiro do app (D17)', async ({ browser }) => {
+  await como(browser, async p => {
+    await p.goto(`/${slug}/cliente/historico`)
+    await p.getByRole('button', { name: /Pagamentos/ }).click()
+    await expect(p.locator('[data-pagamento]', { hasText: 'Parcela 1 de 2' })).toBeVisible()
+    const ordem = (await p.locator('[data-pagamento]').allTextContents())
+      .map(t => /Parcela (\d) de 2/.exec(t)?.[1]).filter(Boolean)
+    expect(ordem, 'a próxima a vencer primeiro').toEqual(['1', '2'])
+  })
+})

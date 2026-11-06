@@ -8,6 +8,7 @@ import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 import { notasDaAvaliacao, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
+import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 
 // -- Types ----------------------------------------------------------
 export type ProcedimentoItem = {
@@ -45,6 +46,8 @@ export type PagamentoItem = {
   aPagarNaClinica?: boolean
   /** Estornado: o dinheiro voltou — não é "Pago" nem tem recibo (como o Financeiro do app). */
   estornado?:     boolean
+  /** O dia de referência (o do pagamento; o vencimento no em aberto): a ordem da lista (D17). */
+  referencia?:    string
 }
 
 export type DocumentoItem = {
@@ -69,7 +72,7 @@ type AtendimentoLido = {
 }
 type PagamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
-  is_paid: boolean; paid_at: string | null; notes: string | null
+  is_paid: boolean; paid_at: string | null; notes: string | null; created_at: string
   due_date: string | null; data_de_referencia: string | null; parcela_numero: number | null; parcela_total: number | null
   type: string; category: string | null
   client_packages: { cancelado_em: string | null } | null
@@ -97,7 +100,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     // Pagamentos = transações financeiras ligadas ao cliente
     ler(admin.from('financial_transactions')
       .select(`
-        id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, notes,
+        id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, notes, created_at,
         due_date, data_de_referencia, parcela_numero, parcela_total, type, category,
         client_packages(cancelado_em),
         appointments(procedures(name))
@@ -158,7 +161,9 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
-  }))
+    // D17 da 8ª: a mesma ordem do Financeiro do app (era a da criação: 2/2 antes da 1/2).
+    referencia:     r.data_de_referencia ?? r.paid_at ?? r.created_at,
+  })).sort(ordemDosPagamentosDoApp)
   // A64: o atendimento avulso concluído e não pago (a conta de
   // `atendimentos_a_receber`, a mesma do Fechamento e da ficha) — não tinha
   // lançamento, e não aparecia para a cliente.

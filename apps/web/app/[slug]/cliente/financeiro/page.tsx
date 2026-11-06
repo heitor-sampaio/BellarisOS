@@ -5,6 +5,7 @@ import { getDoCliente, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { formatBRL, formatDia } from '@estetica-os/utils'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
+import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 
 type TxRow = {
   id:             string
@@ -88,11 +89,7 @@ export default async function ClientFinancialPage() {
     // 05/11) e na ordem 3/3, 2/3, 1/3. O que falta pagar vem primeiro, pela
     // próxima a vencer; o resto, do mais recente para o mais antigo (o dia do
     // pagamento — a data de referência).
-    .sort((a, b) => {
-      if (!!a.vencimento !== !!b.vencimento) return a.vencimento ? -1 : 1
-      if (a.vencimento && b.vencimento) return a.vencimento.localeCompare(b.vencimento)
-      return b.referencia.localeCompare(a.referencia)
-    })
+    .sort(ordemDosPagamentosDoApp)
 
   // O total é o LTV do cliente, do banco (pago, sem estorno) — a mesma conta
   // da ficha dele na clínica. Somar a lista aqui contava o estornado.
