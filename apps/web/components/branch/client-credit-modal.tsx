@@ -4,6 +4,7 @@ import { forwardRef, useImperativeHandle, useRef, useCallback, useActionState, u
 import { X, Gift, Search, Check } from 'lucide-react'
 import { grantInternalCredit } from '@/actions/clients'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { clienteCasaComBusca } from '@/lib/busca/cliente'
 
 export interface ClientCreditModalHandle { open: () => void }
 
@@ -51,7 +52,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
 
     const filtered = useMemo(
       () => search.length >= 2
-        ? clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).slice(0, 8)
+        ? clients.filter(c => clienteCasaComBusca(c, search)).slice(0, 8)
         : [],
       [clients, search],
     )

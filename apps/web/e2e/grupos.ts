@@ -60,6 +60,7 @@ export const ISOLADOS = [
   'campanha-aviso-no-celular.spec.ts',
   'busca-universal.spec.ts',
   'busca-universal-contato.spec.ts',
+  'busca-de-cliente-uma-regra.spec.ts',
   'copilot-fora-do-plano.spec.ts',
   'checkout-de-plano.spec.ts',
   'checkout-grade-de-horarios.spec.ts',

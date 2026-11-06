@@ -123,7 +123,7 @@ test.afterAll(async () => {
 test('a lista de clientes da rede e da unidade traz a 1011ª, com a última visita dela', async ({ browser }) => {
   for (const caminho of ['/admin/clients', `/${slug}/clients`]) {
     await abrir(browser, caminho, async p => {
-      await p.getByPlaceholder('Buscar por nome…').fill('Zz Última')
+      await p.getByPlaceholder('Buscar por nome ou telefone…').fill('Zz Última')
       const linha = p.getByRole('button', { name: /Zz Última/ })
       await expect(linha, `${caminho}: a Zz está na lista`).toHaveCount(1)
       await expect(linha, `${caminho}: e com a última visita`).toContainText('Última visita')

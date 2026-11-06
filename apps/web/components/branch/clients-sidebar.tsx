@@ -11,6 +11,7 @@ import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useFala } from '@/components/shared/uma-unidade'
 import { opcoesDeTag, temTag, alternarTag } from '@/lib/tags/escolha'
+import { clienteCasaComBusca } from '@/lib/busca/cliente'
 
 interface ClientItem {
   id:         string
@@ -97,9 +98,8 @@ export function ClientsSidebar({
   )
 
   const filtered = clients.filter(c => {
-    const matchSearch = !search ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
+    // A regra da busca do banco (D6 da 8ª): sem acento, o telefone por dígitos.
+    const matchSearch = clienteCasaComBusca(c, search)
     const matchFilter =
       filter === 'ativos'   ? c.isActive :
       filter === 'novos'    ? c.isActive && c.isNew :
@@ -182,7 +182,7 @@ export function ClientsSidebar({
           <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }} />
           <input
             type="text"
-            placeholder="Buscar por nome…"
+            placeholder="Buscar por nome ou telefone…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="field campo-busca"

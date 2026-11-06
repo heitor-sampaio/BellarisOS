@@ -40,6 +40,19 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
 - A guarda do inbox no navegador (`conversaCasaComBusca`, `lib/inbox/busca.ts`)
   compara como o banco — sem acento, telefone por dígitos —, senão esconde o
   que `inbox_pagina` achou.
+- **A busca de CLIENTE é uma regra só** (D6 da 8ª simulação, 2026-11-06): a
+  lista de Clientes e o modal Agendar não ignoravam acento ("Zelia" não achava
+  "Zélia") e a lista comparava o telefone cru ("85991000034" não achava "(85)
+  99100-0034"); o Ctrl K não achava o número com o 55 do WhatsApp e oferecia
+  "Cadastrar … como cliente" — a ficha em dobro. Agora a lista de Clientes, o
+  modal Agendar (`buscar_clientes`), o crédito interno e o Ctrl K
+  (`busca_universal`, as arquivadas e os contatos do CRM) casam igual: sem
+  acento, todas as palavras, e o telefone por DÍGITOS com o 55 e o nono dígito
+  do celular tolerados (`private.telefone_casa`, migration `20261106003401`;
+  o espelho do navegador é `clienteCasaComBusca` / `telefoneCasaComDigitos`,
+  `lib/busca/cliente.ts`). O telefone da ficha continua guardado como foi
+  digitado. Prova: `e2e/busca-de-cliente-uma-regra.spec.ts`,
+  `tests/busca-de-cliente.test.ts`.
 - **Telefone por dígitos só quando o termo é um telefone — sem letra.** Vale
   para `busca_universal`, `inbox_pagina` (migration `20261007000010`) e a
   guarda do navegador. Até 2026-10-07 o inbox pegava os dígitos soltos de um
@@ -106,6 +119,7 @@ URL — a busca não grava nada, e a tela de destino confere tudo de novo:
 ```
 ❌ Achar pela busca universal o que a tela própria do registro não mostraria (tipo novo sem módulo em tiposPermitidos, ou sem o recorte de dono/unidade)
 ❌ Deixar o navegador escolher o que a busca procura, ou filtrar o resultado no navegador em vez de no servidor
+❌ Filtrar cliente por nome com toLowerCase().includes ou comparar o telefone pelo texto gravado — é clienteCasaComBusca (navegador) e private.telefone_casa (banco): sem acento, por dígitos, com o 55 e o 9 tolerados (D6 da 8ª)
 ❌ Escrever à mão a lista de páginas da busca (vem de lib/menu.ts e lib/configuracoes/abas.ts)
 ❌ Ação da busca que grava, ou que aparece para quem a tela de destino não libera
 ❌ Porta por URL de modal que confia no nome/dado da URL (o id vem do navegador; o resto, do servidor) ou que não tira o parâmetro ao abrir
