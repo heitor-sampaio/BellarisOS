@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { AppointmentModal } from './appointment-modal'
 import { useNovoAgendamentoDaUrl, type PedidoDeAgendamento } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from './appointment-sheet'
+import { JanelaModal } from '@/components/shared/janela-modal'
 import { AgendaDayView } from './agenda-day-view'
 import { AgendaWeekView } from './agenda-week-view'
 import { AgendaMonthView } from './agenda-month-view'
@@ -215,7 +216,7 @@ export function AgendaCalendar({
   const { totalCount, waitingCount, occupancy } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueios)
 
   // -- Drag-and-drop ----------------------------------------------------------
-  const handleDrop = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {
+  const moverAgendamento = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {
     const formData = new FormData()
     formData.set('_appointmentId', eventId)
     formData.set('scheduled_at',   newStart.toISOString())
@@ -224,12 +225,27 @@ export function AgendaCalendar({
 
     const result = await rescheduleAppointment(undefined, formData)
     if (result?.error) {
+      // O porquê, à vista (A22 da 8ª: soltar no ocupado "voltava sem mensagem").
       setDropError(result.error)
-      setTimeout(() => setDropError(null), 4000)
+      setTimeout(() => setDropError(null), 8000)
     } else {
       router.refresh()
     }
   }, [slug, router])
+  // Soltar na coluna de OUTRA profissional troca quem atende: pergunta antes,
+  // com de quem para quem (A22 da 8ª simulação — trocava sem confirmação).
+  const [arraste, setArraste] = useState<{ eventId: string; inicio: Date; profId: string; de: string; para: string } | null>(null)
+  const handleDrop = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {
+    const ev = events.find(e => e.id === eventId)
+    if (ev && ev.professionalId && newProfId && ev.professionalId !== newProfId) {
+      setArraste({
+        eventId, inicio: newStart, profId: newProfId,
+        de: ev.professionalName, para: professionals.find(p => p.id === newProfId)?.name ?? 'outra profissional',
+      })
+      return
+    }
+    await moverAgendamento(eventId, newStart, newProfId)
+  }, [events, professionals, moverAgendamento])
 
   // -- Slot click (open create modal) ----------------------------------------
   function handleSlotClick(date: Date, profId?: string) {
@@ -250,9 +266,27 @@ export function AgendaCalendar({
 
   return (
     <>
+      {arraste && (
+        <JanelaModal onFechar={() => setArraste(null)} rotulo="Trocar a profissional" largura={420} papel="alertdialog">
+          <div data-confirmar-arraste style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)', fontWeight: 700, lineHeight: 1.5 }}>
+              Trocar a profissional de {arraste.de} para {arraste.para} e marcar às {format(arraste.inicio, 'HH:mm')} de {format(arraste.inicio, 'dd/MM')}?
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn-secondary" onClick={() => setArraste(null)}>Voltar</button>
+              <button type="button" className="btn-primary" onClick={() => {
+                const a = arraste
+                setArraste(null)
+                void moverAgendamento(a.eventId, a.inicio, a.profId)
+              }}>Confirmar</button>
+            </div>
+          </div>
+        </JanelaModal>
+      )}
+
       {/* Drop error toast */}
       {dropError && (
-        <div style={{
+        <div role="alert" style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
           zIndex: 9999, background: 'var(--danger)', color: 'var(--surface)', padding: '10px 20px',
           borderRadius: 10, fontWeight: 700, fontSize: 'var(--text-sm-sz)',

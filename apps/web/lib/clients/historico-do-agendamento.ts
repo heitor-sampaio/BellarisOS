@@ -100,7 +100,13 @@ const ROTULO_DA_ACAO: Record<string, string> = {
   REASSIGNED: 'Profissional trocado', EDITED: 'Editado', PAYMENT_CONFIRMED: 'Pagamento recebido',
   CHECKOUT_COMPLETED: 'Plano fechado', PLAN_PROPOSED: 'Plano proposto', FOTO_CLINICA: 'Foto clínica anexada',
   FOTO_CLINICA_APAGADA: 'Foto clínica apagada', PAYMENT_REVERSED: 'Pagamento estornado',
+  CREDIT_LINKED: 'Ligado ao que já foi pago',
 }
 export function rotuloDaAcao(action: string, descricao: string | null): string {
+  // A troca de profissional diz de quem para quem (A22 da 8ª simulação): a
+  // descrição gravada desde então ("Profissional trocado de X para Y", e o
+  // repasse da desativação). A de antes ("…reatribuído para X") fica no rótulo.
+  if (action === 'REASSIGNED' && descricao && /^(Profissional trocado|Repassado) /.test(descricao)) return descricao
+  if (action === 'RESCHEDULED' && descricao?.startsWith('Reagendado para ')) return `Remarcado para ${descricao.slice('Reagendado para '.length)}`
   return ROTULO_DA_ACAO[action] ?? descricao ?? action
 }

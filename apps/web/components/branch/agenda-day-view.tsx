@@ -189,6 +189,10 @@ function ProfColumn({
         const isCompleted = ev.status === 'COMPLETED'
         const timeStr   = format(new Date(ev.start), 'HH:mm')
         const isDraggable = canWrite && !isCompleted && !desmarcado
+        // A24 da 8ª: até 40 min (menos de 56 px) o cartão tem DUAS linhas — a hora e a
+        // cliente, o procedimento e a sala —, e as duas cabem; o de 40 cortava o
+        // procedimento (eram três linhas em 49 px), e o de 30 o cortava pela metade.
+        const compacto = height < 56
 
         if (desmarcado) {
           return (
@@ -237,7 +241,7 @@ function ProfColumn({
               left:       4, right: divide ? '50%' : 4,
               height,
               borderRadius: 8,
-              padding:    '5px 8px',
+              padding:    compacto ? '3px 8px' : '5px 8px',
               overflow:   'hidden',
               cursor:     isDraggable ? 'grab' : 'pointer',
               userSelect: 'none',
@@ -264,11 +268,11 @@ function ProfColumn({
               (e.currentTarget as HTMLElement).style.boxShadow = 'none'
             }}
           >
-            <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : 'var(--success)', display: 'flex', gap: 4, flexWrap: height > 42 ? 'wrap' : 'nowrap', overflow: 'hidden' }}>
+            <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : 'var(--success)', display: 'flex', gap: 4, flexWrap: 'nowrap', overflow: 'hidden', lineHeight: 1.25 }}>
               {/* A sala no cartão (A29). */}
-              <span style={{ flexShrink: 0 }}>{timeStr}{height > 42 ? ` · ${ev.durationMin}min` : ''}{height > 42 && ev.roomName ? ` · ${ev.roomName}` : ''}</span>
+              <span style={{ flexShrink: 0 }}>{timeStr}{!compacto ? ` · ${ev.durationMin}min` : ''}{!compacto && ev.roomName ? ` · ${ev.roomName}` : ''}</span>
               {/* O bloco curto (30 min) não tem altura para a linha do nome: ele vem aqui. */}
-              {height <= 42 && <span style={{ color: isCompleted ? 'var(--text-muted)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.clientName}</span>}
+              {compacto && <span style={{ color: isCompleted ? 'var(--text-muted)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.clientName}</span>}
               <SeloDaFicha estado={ev.fichaDeSaude} />
               <SeloDoMenor menor={ev.menor} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
@@ -277,20 +281,20 @@ function ProfColumn({
             </div>
             {/* O bloco curto (30 min): o procedimento e a sala numa segunda linha (A23 da 6ª
                 simulação — mostrava só "03:50 Paula Reis"). */}
-            {height <= 42 && (
-              <div style={{ fontSize: 'var(--text-overline)', lineHeight: 1.25, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {compacto && (
+              <div data-procedimento-do-cartao style={{ fontSize: 'var(--text-overline)', lineHeight: 1.25, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {[ev.procedureName, ev.roomName].filter(Boolean).join(' · ')}
               </div>
             )}
-            {height > 42 && (
+            {!compacto && (
               <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, lineHeight: 1.25, color: isCompleted ? 'var(--text-muted)' : 'var(--text)', marginTop: height > 64 ? 2 : 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.clientName}
               </div>
             )}
             {/* A29 da 7ª: o cartão de 45 min (56 px) também diz o procedimento —
                 a A23 da 6ª tinha feito o de 30. */}
-            {height > 42 && (
-              <div style={{ fontSize: 'var(--text-overline)', lineHeight: 1.2, color: isProgress ? 'var(--brand)' : isConfirmed ? 'var(--success)' : 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {!compacto && (
+              <div data-procedimento-do-cartao style={{ fontSize: 'var(--text-overline)', lineHeight: 1.2, color: isProgress ? 'var(--brand)' : isConfirmed ? 'var(--success)' : 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.procedureName}
               </div>
             )}
@@ -334,10 +338,13 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
     })
   }, [diaChave, ehHoje, g.START_HOUR, aberturaDoDia, primeiroEmMin])
 
+  // A posição na COLUNA: o retângulo dela já anda com a rolagem da grade. Somar
+  // o `scrollTop` de novo (como era) jogava o horário solto para baixo — com a
+  // grade rolada até as 10:00, soltar às 11:00 marcava às 21:00 (A22 da 8ª:
+  // "soltar volta sem mensagem").
   function getRelY(e: React.DragEvent, colEl: HTMLElement): number {
-    const rect      = colEl.getBoundingClientRect()
-    const scrollTop = scrollRef.current?.scrollTop ?? 0
-    return Math.max(0, e.clientY - rect.top + scrollTop)
+    const rect = colEl.getBoundingClientRect()
+    return Math.max(0, e.clientY - rect.top)
   }
 
   function handleDragOver(e: React.DragEvent, colEl: HTMLElement, profId: string) {

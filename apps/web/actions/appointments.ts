@@ -36,7 +36,7 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
-import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
+import { insumosPorProduto, montarInsumosDaBaixa } from '@/lib/atendimento/insumos-da-baixa'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { planejamentosDaFicha, perguntaDoPlanejamentoVazio, temPlanejadorSemPlanejamento } from '@/lib/atendimento/retrato-dos-injetaveis'
@@ -52,12 +52,15 @@ import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
 import { avisosDoHorarioCore, type AvisosDoHorario } from '@/lib/appointments/encaixe'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
+import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 
 import {
   getUserName, logHistory, fmtDateTime, loadApptCtx, notifyNewAppointment, notifyCancelledAppointment, notifyRescheduledAppointment, notifyCheckin, notifyCompleted, notifyPayment,
 } from '@/lib/appointments/avisos'
 
 // --- Criar agendamento --------------------------------------------
+const AGENDA_SO_PARA_VOCE = 'Com a agenda “só os meus”, você agenda só para você.'
+
 export async function addAppointment(
   _prev: { error?: string; success?: boolean; id?: string; jaExiste?: FichaQueJaExiste } | undefined,
   formData: FormData,
@@ -69,6 +72,13 @@ export async function addAppointment(
     const slug = formData.get('_slug') as string
     const branchId = formData.get('_branchId') as string
     const admin = createAdminClient()
+
+    // A "Minha agenda" agenda (A25 da 8ª simulação): com a agenda "só os
+    // meus", o agendamento é DELA — a regra do Heitor de 28/10 ("quem tem 'só
+    // os meus' vê 'só os meus', em qualquer lugar"), como no bloqueio.
+    if (isOwnScope(ctx, 'agenda') && (!ctx.internalUserId || formData.get('professional_id') !== ctx.internalUserId)) {
+      return { error: AGENDA_SO_PARA_VOCE }
+    }
 
     // Quem vai ser atendido: um cliente já cadastrado, ou só um nome e um
     // telefone. Exigir ficha completa (CPF e e-mail, que criam o login do
@@ -586,6 +596,34 @@ async function startAppointmentInterno(
   }
 }
 
+// --- Trocar a profissional pela janela (A22 da 8ª) -----------------
+/**
+ * Quem pode receber o agendamento na troca pela janela da agenda: quem ATENDE
+ * na unidade dele (a regra de `filtroDeQuemAtendeNaUnidade`), menos a de agora,
+ * cada uma dizendo se está livre no horário (`horarioOcupado`). Só leitura;
+ * `reassignProfessional` confere tudo de novo.
+ */
+export async function profissionaisParaTrocar(appointmentId: string): Promise<{ id: string; name: string; livre: boolean }[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+  if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return []
+  const admin = createAdminClient()
+  const a = await ler(admin.from('appointments')
+    .select('id, status, branch_id, professional_id, scheduled_at, duration_min, branches!inner(tenant_id)')
+    .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
+      id: string; status: string; branch_id: string; professional_id: string | null; scheduled_at: string; duration_min: number | null
+    } | null
+  if (!a || !alcancaUnidade(ctx, a.branch_id) || deOutroProfissional(ctx, a.professional_id)) return []
+  if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(a.status)) return []
+  const equipe = (await getCachedBranchProfessionals(a.branch_id, ctx.tenantId!)) as { id: string; name: string }[]
+  const outras = equipe.filter(p => p.id !== a.professional_id)
+  const livres = await Promise.all(outras.map(p => horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, professionalId: p.id, inicio: new Date(a.scheduled_at),
+    duracaoMin: a.duration_min ?? 60, excluir: a.id,
+  }).then(ocupado => !ocupado)))
+  return outras.map((p, i) => ({ id: p.id, name: p.name, livre: livres[i]! }))
+}
+
 // --- Reatribuir profissional --------------------------------------
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -632,6 +670,9 @@ async function reassignProfessionalInterno(
     // O profissional novo tem de ser da rede — vinha do navegador sem conferência.
     const recusaProf = await conferirPecasDoAgendamento(admin, ctx, { professionalId })
     if (recusaProf) return { error: recusaProf }
+    // E atender NA UNIDADE do agendamento (decisão 2 da 8ª: o "Atende" por unidade; A22).
+    const recusaAtende = await recusaDeQuemNaoAtende(admin, ctx.tenantId!, professionalId, apptBranch.id)
+    if (recusaAtende) return { error: recusaAtende }
     // E livre no horário do agendamento (revisão de 2026-10-08: a troca punha
     // o atendimento por cima de outro do profissional novo).
     if (professionalId !== appt.professional_id && await horarioOcupado(admin, {
@@ -642,20 +683,25 @@ async function reassignProfessionalInterno(
     }
 
     const oldProfId = (appt.professional_id ?? null) as string | null
-    const newProf = await ler(admin.from('users').select('name').eq('id', professionalId).single(), 'buscar o usuário')
+    if (oldProfId === professionalId) return {}
+    const nomes = await ler(admin.from('users').select('id, name').in('id', [professionalId, ...(oldProfId ? [oldProfId] : [])]), 'buscar os profissionais') as { id: string; name: string }[] | null
+    const nomeDe = (id: string | null) => (id && nomes?.find(n => n.id === id)?.name) || null
     await gravar(admin
       .from('appointments')
       .update({ professional_id: professionalId })
       .eq('id', appointmentId), 'trocar o profissional do agendamento')
 
+    // A22 da 8ª simulação: o histórico diz de quem para quem.
     const userName = ctx.userName || await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'REASSIGNED',
-      `Profissional reatribuído para ${newProf?.name ?? professionalId}`,
-      { new_professional_id: professionalId, new_professional_name: newProf?.name },
+      textoDaTroca(nomeDe(oldProfId), nomeDe(professionalId) ?? professionalId),
+      { old_professional_id: oldProfId, new_professional_id: professionalId, new_professional_name: nomeDe(professionalId) },
     )
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
+    revalidatePath('/admin/agenda')
+    revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
     after(async () => {
       const a = createAdminClient()
       const c = await loadApptCtx(a, appointmentId)
@@ -711,6 +757,34 @@ async function cancelAppointmentSessionInterno(
     const slug               = (formData.get('slug') as string)?.trim()
 
     if (!cancellationReason) return { error: 'Informe o motivo do cancelamento.' }
+
+    // A desistência NO MEIO (A27 da 8ª simulação): a intercorrência e o insumo
+    // já aplicado vão junto do cancelamento, numa transação
+    // (`desistir_do_atendimento`). Escrevem o prontuário e o estoque: pedem o
+    // Prontuário em Gerenciar, como concluir.
+    const intercorrencia = ((formData.get('intercorrencia') as string | null) ?? '').trim()
+    const porProduto = insumosPorProduto(formData.get('products_used') as string | null)
+    if (formData.get('desistencia') === '1' && (intercorrencia || porProduto.size)) {
+      assertPermission(ctx, 'medical_records', 'MANAGE')
+      const admin = createAdminClient()
+      const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
+      if (!existente) return { error: 'Agendamento não encontrado.' }
+      if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
+      if (existente.status !== 'IN_PROGRESS') return { error: 'A intercorrência e o insumo se registram só no atendimento em andamento.' }
+      const userName = ctx.userName || await getUserName(admin, ctx.userId)
+      const resposta = await comNovaTentativa(async () => {
+        const m = await montarInsumosDaBaixa(admin, ctx.tenantId!, existente.branch_id, porProduto)
+        return admin.rpc('desistir_do_atendimento', {
+          p_agendamento: appointmentId, p_tenant: ctx.tenantId!, p_ator: ctx.internalUserId, p_ator_nome: userName,
+          p_dados: { motivo: cancellationReason, intercorrencias: intercorrencia || null, insumos: m.insumos },
+        })
+      })
+      await gravar(Promise.resolve(resposta), 'registrar a desistência')
+      await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, appointmentId, { ...ctx, userName }, { motivo: cancellationReason })
+      revalidarAgendamento(ctx, appointmentId, slug)
+      notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
+      return {}
+    }
 
     // O núcleo (lib/appointments/alteracoes.ts) é o mesmo do Copilot.
     const r = await cancelarCore(createAdminClient(), ctx, { appointmentId, motivo: cancellationReason })
@@ -833,80 +907,12 @@ async function finishSessionInterno(
     // (decisão do Heitor, 2026-09-27). Mas também não some: o saldo fica
     // NEGATIVO e a tela recebe `avisos` dizendo o que faltou. O mínimo cruzado
     // e a baixa do lote saem dos gatilhos do banco, como qualquer saída.
-    let productsUsed: { productId: string; quantity: number }[] = []
-    try {
-      productsUsed = JSON.parse((formData.get('products_used') as string | null) ?? '[]')
-    } catch { /* JSON inválido → sem insumos */ }
-
-    // O mesmo produto duas vezes na lista soma: a baixa é calculada sobre o
-    // saldo lido UMA vez, e duas linhas do mesmo produto se sobreporiam.
-    const porProduto = new Map<string, number>()
-    for (const item of productsUsed) {
-      if (!item.productId || !item.quantity || item.quantity <= 0) continue
-      porProduto.set(item.productId, (porProduto.get(item.productId) ?? 0) + item.quantity)
-    }
-
-    type Insumo = {
-      produto: string; quantidade: number; saldo_apos: number
-      embalagens: number; rendimento: number | null; minimo: number
-      /** O saldo LIDO para a conta: o banco confere que ainda é este (PT409 se não). */
-      antes_embalagens: number; antes_rendimento: number | null
-    }
-    // Lê o saldo e calcula a baixa de cada insumo. Chamada de novo a cada
-    // tentativa: se outra saída mudar o saldo no meio, o banco recusa e a
-    // conta é refeita sobre o saldo novo (lib/estoque/nova-tentativa.ts).
-    const montarInsumos = async (): Promise<{ insumos: Insumo[]; avisos: string[] }> => {
-      const avisos: string[] = []
-      const insumos: Insumo[] = []
-      for (const [productId, quantity] of porProduto) {
-        // Leitura que falha não pode virar "saldo 0": a baixa seria calculada
-        // sobre um número inventado e gravada como verdade no movimento.
-        const [bps, prod] = await Promise.all([
-          ler(admin.from('branch_product_stock')
-            .select('current_stock, min_stock, current_rendimento')
-            .eq('product_id', productId)
-            .eq('branch_id', appt.branch_id)
-            .maybeSingle(), 'buscar o saldo do insumo'),
-          // Da rede: o id vem do navegador (`products_used`), e um produto de
-          // outra rede ganharia saldo e movimento nesta unidade.
-          ler(admin.from('products')
-            .select('name, unit, units_per_package, consumption_unit')
-            .eq('id', productId)
-            .eq('tenant_id', ctx.tenantId!)
-            .maybeSingle(), 'buscar o insumo'),
-        ])
-        if (!prod) continue
-
-        const currentStock = Number(bps?.current_stock ?? 0)
-        const upp          = prod?.units_per_package && prod?.consumption_unit ? Number(prod.units_per_package) : null
-
-        // A conta do saldo depois da saída é a mesma da entrega de produto de
-        // voucher (lib/estoque/baixa.ts): uma cópia só.
-        const { embalagens, rendimento, saldoApos } = saldoDepoisDaSaida({
-          embalagens:           currentStock,
-          rendimento:           bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
-          unidadesPorEmbalagem: upp,
-        }, quantity)
-
-        // O custo não vai daqui: o banco grava o da unidade de CONSUMO
-        // (custo_de_consumo — o frasco ÷ o que ele rende). O app mandava o
-        // preço do frasco com a quantidade em ml (D1, 2026-10-27).
-        insumos.push({
-          produto: productId, quantidade: -quantity, saldo_apos: saldoApos,
-          embalagens, rendimento,
-          minimo:  Number(bps?.min_stock ?? 0),
-          antes_embalagens: currentStock,
-          antes_rendimento: bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
-        })
-
-        if (saldoApos < 0) {
-          const unidade = upp ? (prod.consumption_unit as string) : (prod.unit as string)
-          const falta = (-saldoApos).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
-          avisos.push(`${prod.name as string}: faltaram ${falta} ${unidade} no estoque da unidade`)
-        }
-      }
-      return { insumos, avisos }
-    }
+    // O mesmo produto duas vezes na lista soma, e a conta da baixa é UMA
+    // (lib/atendimento/insumos-da-baixa.ts — a desistência no meio também a usa).
+    const porProduto = insumosPorProduto(formData.get('products_used') as string | null)
+    // Chamada de novo a cada tentativa: se outra saída mudar o saldo no meio, o
+    // banco recusa e a conta é refeita sobre o saldo novo (lib/estoque/nova-tentativa.ts).
+    const montarInsumos = () => montarInsumosDaBaixa(admin, ctx.tenantId!, appt.branch_id as string, porProduto)
 
     // A anamnese: montada aqui (a ficha atual, as respostas limpas); nula
     // quando não há resposta ou nada mudou — aí a conclusão não a toca.
@@ -2052,7 +2058,14 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
  * sem os ocupados). Devolve o horário como a tela o escreve (AAAA-MM-DDTHH:mm,
  * Brasília) ou `null`.
  */
-export async function proximoHorarioLivre(branchId: string, professionalId: string, durationMin: number): Promise<string | null> {
+export async function proximoHorarioLivre(
+  branchId: string, professionalId: string, durationMin: number,
+  /**
+   * A partir de QUANDO (ISO): o choque do modal oferece o próximo livre depois
+   * do horário escolhido (A21 da 8ª simulação), não o de agora.
+   */
+  aPartirDe?: string | null,
+): Promise<string | null> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   if (!branchId || !professionalId) return null
@@ -2061,8 +2074,15 @@ export async function proximoHorarioLivre(branchId: string, professionalId: stri
   const recusa = await conferirPecasDoAgendamento(admin, ctx, { branchId, professionalId })
   if (recusa) return null
   const duracao = Number.isFinite(durationMin) && durationMin > 0 ? Math.min(Math.round(durationMin), 480) : 30
-  const achou = await procurarHorarioLivre(dayKeyTZ(new Date()), data =>
-    computeAvailableSlots(admin, branchId, professionalId, data, duracao))
+  const desde = typeof aPartirDe === 'string' && !Number.isNaN(new Date(aPartirDe).getTime()) && new Date(aPartirDe).getTime() > Date.now()
+    ? new Date(aPartirDe) : null
+  const diaDeInicio = dayKeyTZ(desde ?? new Date())
+  const p = desde ? partsInTZ(desde) : null
+  const horaDeInicio = p ? `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` : null
+  const achou = await procurarHorarioLivre(diaDeInicio, async data => {
+    const livres = await computeAvailableSlots(admin, branchId, professionalId, data, duracao)
+    return data === diaDeInicio && horaDeInicio ? livres.filter(h => h >= horaDeInicio) : livres
+  })
   return achou ? `${achou.data}T${achou.hora}` : null
 }
 

@@ -9,6 +9,7 @@ import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoC
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { getUserName, logHistory } from '@/lib/appointments/avisos'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
+import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 
 /**
  * REMARCAR e CANCELAR um agendamento — os núcleos que a agenda (actions/
@@ -74,6 +75,13 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   // O profissional novo vinha do formulário sem conferência nenhuma.
   const recusa = await conferirPecasDoAgendamento(admin, ctx, { professionalId: input.professionalId || null })
   if (recusa) return { error: recusa }
+  // Outra profissional (o arraste para outra coluna — A22 da 8ª): ela tem de
+  // atender NA UNIDADE do agendamento (o "Atende" por unidade, decisão 2).
+  const trocaDe = input.professionalId && input.professionalId !== existente.professional_id ? input.professionalId : null
+  if (trocaDe) {
+    const naoAtende = await recusaDeQuemNaoAtende(admin, ctx.tenantId!, trocaDe, existente.branch_id)
+    if (naoAtende) return { error: naoAtende }
+  }
 
   // Conflito: remarcar para cima de outro agendamento do mesmo profissional
   // passava (a criação conferia; a remarcação, não — até 2026-10-08). Em
@@ -105,6 +113,16 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   const dtStr = inicio.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
   await logHistory(admin, existente.id, ctx.internalUserId, userName, 'RESCHEDULED',
     `Reagendado para ${dtStr}`, { scheduled_at: inicio.toISOString() })
+  // A troca de profissional junto (o arraste para outra coluna): o histórico
+  // diz de quem para quem (A22 da 8ª), não só "Remarcado".
+  if (trocaDe) {
+    const nomes = await ler(admin.from('users').select('id, name')
+      .in('id', [trocaDe, ...(existente.professional_id ? [existente.professional_id] : [])]), 'buscar os profissionais') as { id: string; name: string }[] | null
+    const nomeDe = (id: string | null) => (id && nomes?.find(n => n.id === id)?.name) || null
+    await logHistory(admin, existente.id, ctx.internalUserId, userName, 'REASSIGNED',
+      textoDaTroca(nomeDe(existente.professional_id), nomeDe(trocaDe) ?? trocaDe),
+      { old_professional_id: existente.professional_id, new_professional_id: trocaDe })
+  }
   await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_REMARCADO, existente.id, { ...ctx, userName }, {
     deAgendadoPara: existente.scheduled_at ?? null,
   })

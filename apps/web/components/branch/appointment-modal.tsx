@@ -1,12 +1,14 @@
 'use client'
 
 import { startTransition, useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, getSchedulingDaySlots } from '@/actions/appointments'
+import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
+import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
-import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle } from 'lucide-react'
+import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle, CheckCircle2, Ban } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
 import Link from 'next/link'
@@ -133,7 +135,10 @@ export function AppointmentModal({
   // Escolhido o cliente, o modal oferece as unidades pré-pagas e as sessões de
   // pacote dele. Usar uma fixa o procedimento e o preço (o servidor confere).
   const [creditos, setCreditos] = useState<{ de: string; itens: CreditoParaAgendar[] }>({ de: '', itens: [] })
-  const [creditoSel, setCreditoSel] = useState('')
+  // `null` = ninguém mexeu no "Já pago": com o crédito do MESMO procedimento,
+  // ele vem escolhido (A20 da 8ª simulação, decidido pelo princípio 3 — a Bruna
+  // saiu avulsa a R$ 180 com a sessão do pacote livre). "Não usar" é ''.
+  const [creditoSel, setCreditoSel] = useState<string | null>(null)
   useEffect(() => {
     const id = selectedClient?.id
     if (!id) return
@@ -143,7 +148,8 @@ export function AppointmentModal({
   }, [selectedClient?.id])
   const creditosDoCliente = selectedClient && creditos.de === selectedClient.id ? creditos.itens : []
   const chaveDoCredito = (c: CreditoParaAgendar) => `${c.tipo}:${c.id}`
-  const credito = creditosDoCliente.find(c => chaveDoCredito(c) === creditoSel) ?? null
+  const creditoAutomatico = creditoSel === null && procId ? (creditosDoCliente.find(c => c.procedureId === procId) ?? null) : null
+  const credito = creditoSel === null ? creditoAutomatico : (creditosDoCliente.find(c => chaveDoCredito(c) === creditoSel) ?? null)
 
   // Quem realiza o procedimento escolhido (por-01): o nome da escolhida que NÃO realiza.
   const procDoAgendamento = dados.procedures.find(p => p.id === (credito?.procedureId ?? procId))
@@ -331,7 +337,42 @@ export function AppointmentModal({
   const conflitoDoAviso = avisos && avisos.chave === chaveDosAvisos ? avisos.conflito : null
   const recusadoPorChoque = !!state?.error?.startsWith('Este profissional já tem agendamento') && !!conflitoDoAviso
   const avisosDoMomento = avisos && avisos.chave === chaveDosAvisos
-    ? [recusadoPorChoque ? null : avisos.conflito, avisos.bloqueio ?? null, avisos.foraDoHorario].filter((x): x is string => !!x) : []
+    ? [avisos.bloqueio ?? null, avisos.foraDoHorario].filter((x): x is string => !!x) : []
+  // A21 da 8ª simulação: o choque não é encaixe — o servidor RECUSA. A janela
+  // diz "Não vai ser agendado" e oferece o próximo livre dela a partir do
+  // horário escolhido (a régua de `computeAvailableSlots`, a do "próximo livre").
+  const choque = recusadoPorChoque ? null : conflitoDoAviso
+  const chaveDoProximo = choque ? chaveDosAvisos : ''
+  const [proximoLivre, setProximoLivre] = useState<{ chave: string; quando: string | null } | null>(null)
+  useEffect(() => {
+    if (!chaveDoProximo) return
+    let vivo = true
+    proximoHorarioLivre(unidadeId, profId, duracaoMin, scheduledAtUTC)
+      .then(r => { if (vivo) setProximoLivre({ chave: chaveDoProximo, quando: r }) })
+      .catch(() => { if (vivo) setProximoLivre({ chave: chaveDoProximo, quando: null }) })
+    return () => { vivo = false }
+  }, [chaveDoProximo, unidadeId, profId, duracaoMin, scheduledAtUTC])
+  const proximo = proximoLivre && proximoLivre.chave === chaveDoProximo ? proximoLivre.quando : null
+  const rotuloDoProximo = proximo
+    ? (proximo.slice(0, 10) === localDT.slice(0, 10) ? proximo.slice(11, 16) : `${proximo.slice(8, 10)}/${proximo.slice(5, 7)} às ${proximo.slice(11, 16)}`)
+    : null
+
+  // -- Os horários livres do dia (A58 da 8ª simulação) ------------------------
+  // O seletor que só existia no agendar da sessão do pacote: a mesma grade
+  // (`GradeDeHorarios`) e a mesma régua (`ocupanteDoHorario` — a duração
+  // inteira contra os agendamentos e os bloqueios dela, D5).
+  const diaEscolhido = localDT.slice(0, 10)
+  const chaveDoDia = profId && unidadeId && /^\d{4}-\d{2}-\d{2}$/.test(diaEscolhido) ? `${unidadeId}|${profId}|${diaEscolhido}` : ''
+  const [doDia, setDoDia] = useState<{ chave: string } & Awaited<ReturnType<typeof getSchedulingDaySlots>> | null>(null)
+  useEffect(() => {
+    if (!chaveDoDia) return
+    let vivo = true
+    getSchedulingDaySlots(unidadeId, profId, diaEscolhido)
+      .then(r => { if (vivo) setDoDia({ chave: chaveDoDia, ...r }) })
+      .catch(() => { /* sem a grade: fica o campo de data e hora */ })
+    return () => { vivo = false }
+  }, [chaveDoDia, unidadeId, profId, diaEscolhido])
+  const gradeDoDia = doDia && doDia.chave === chaveDoDia ? doDia : null
 
   const minDT = useMemo(() => {
     const now = new Date(agora)
@@ -516,7 +557,7 @@ export function AppointmentModal({
               que é uma avaliação. */}
           {creditosDoCliente.length > 0 && (
             <Field label="Já pago">
-              <select className="field" aria-label="Usar o que já foi pago" value={credito ? creditoSel : ''}
+              <select className="field" aria-label="Usar o que já foi pago" value={credito ? chaveDoCredito(credito) : ''}
                 onChange={e => setCreditoSel(e.target.value)}>
                 <option value="">Não usar — cobrar no atendimento</option>
                 {creditosDoCliente.map(c => (
@@ -525,6 +566,12 @@ export function AppointmentModal({
                   </option>
                 ))}
               </select>
+              {credito && creditoAutomatico && (
+                <p data-credito-pre-escolhido role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>
+                  <CheckCircle2 size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
+                  Já pago: {credito.origem}{credito.numero && credito.total ? ` (sessão ${credito.numero} de ${credito.total})` : ''} — escolhido porque o procedimento é o mesmo. Para cobrar à parte, escolha “Não usar”.
+                </p>
+              )}
               {credito && (
                 <span data-credito-escolhido style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                   O procedimento e o preço vêm do que já foi pago; a recepção não cobra de novo.
@@ -608,16 +655,44 @@ export function AppointmentModal({
               onChange={e => { horaEscolhida.current = true; setLocalDT(e.target.value) }}
             />
             <input type="hidden" name="scheduled_at" value={scheduledAtUTC} />
-            {avisosDoMomento.length > 0 && (
+            {(avisosDoMomento.length > 0 || choque) && (
               <div data-aviso-do-horario role="status" style={{
                 display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2,
                 background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
               }}>
+                {choque && (
+                  <div data-choque-do-horario style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-bold)' }}>
+                      <Ban size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden /> Não vai ser agendado: {choque}
+                    </span>
+                    {rotuloDoProximo && proximo && (
+                      <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
+                        onClick={() => { horaEscolhida.current = true; setLocalDT(proximo) }}>
+                        Usar o próximo livre: {rotuloDoProximo}
+                      </button>
+                    )}
+                  </div>
+                )}
                 {avisosDoMomento.map(t => (
                   <span key={t} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
                     <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden /> {t}
                   </span>
                 ))}
+              </div>
+            )}
+            {gradeDoDia && (
+              <div style={{ marginTop: 6 }}>
+                <GradeDeHorarios
+                  data={diaEscolhido}
+                  horarioDaUnidade={gradeDoDia.horarioDaUnidade ?? null}
+                  horarioDoProfissional={gradeDoDia.horarioDoProfissional ?? null}
+                  nomeDoProfissional={dados.professionals.find(p => p.id === profId)?.name}
+                  ocupado={h => ocupanteDoHorario(new Date(`${diaEscolhido}T${h}:00-03:00`), duracaoMin, gradeDoDia.slots, gradeDoDia.bloqueios ?? [])}
+                  selecionado={localDT.slice(11, 16)}
+                  onEscolher={h => { horaEscolhida.current = true; setLocalDT(`${diaEscolhido}T${h}`) }}
+                  carregando={false}
+                  semOutroHorario
+                />
               </div>
             )}
           </Field>

@@ -67,12 +67,26 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [gravando, iniciar] = useTransition()
+  // "Dia inteiro" (A23 da 8ª simulação): a folga e as férias eram o 12:00–13:00
+  // de padrão, trocado à mão. Marcado, o bloqueio vai da meia-noite do primeiro
+  // dia à meia-noite depois do último.
+  const diaAberto = local(dia).slice(0, 10)
+  const [diaInteiro, setDiaInteiro] = useState(false)
+  const [doDia, setDoDia] = useState(diaAberto)
+  const [ateODia, setAteODia] = useState(diaAberto)
+  // Às 23:30 a "próxima hora cheia" já é amanhã: a janela diz (A23 da 8ª).
+  const diaDoInicio = inicio.slice(0, 10)
+  const ddmm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`
+  const amanha = (() => { const d = new Date(`${diaAberto}T12:00`); d.setDate(d.getDate() + 1); return local(d).slice(0, 10) })()
 
   const alvoId = soEu ? soEu.id : para === 'PROFISSIONAL' ? profId : salaId
   function bloquear() {
     setErro(null)
     if (!alvoId) { setErro(para === 'SALA' ? 'Escolha a sala.' : 'Escolha a profissional.'); return }
-    const e = { inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(), motivo }
+    const depoisDoUltimo = (() => { const d = new Date(`${ateODia}T00:00`); d.setDate(d.getDate() + 1); return d })()
+    const e = diaInteiro
+      ? { inicio: new Date(`${doDia}T00:00`).toISOString(), fim: depoisDoUltimo.toISOString(), motivo }
+      : { inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(), motivo }
     const recusa = recusaDoBloqueio(e)
     if (recusa) { setErro(recusa); return }
     iniciar(async () => {
@@ -125,16 +139,43 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
             </select>
           </label>
         )}
-        <div className="form-2col">
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <span style={rotulo}>Início</span>
-            <input type="datetime-local" className="field" value={inicio} onChange={e => setInicio(e.target.value)} aria-label="Início" />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <span style={rotulo}>Fim</span>
-            <input type="datetime-local" className="field" value={fim} onChange={e => setFim(e.target.value)} aria-label="Fim" />
-          </label>
-        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
+          <input type="checkbox" checked={diaInteiro} onChange={e => setDiaInteiro(e.target.checked)} />
+          Dia inteiro
+        </label>
+        {diaInteiro ? (
+          <div className="form-2col">
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={rotulo}>Do dia</span>
+              <input type="date" className="field" value={doDia} aria-label="Do dia"
+                onChange={e => { setDoDia(e.target.value); if (e.target.value > ateODia) setAteODia(e.target.value) }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={rotulo}>Até o dia</span>
+              <input type="date" className="field" value={ateODia} min={doDia} aria-label="Até o dia" onChange={e => setAteODia(e.target.value)} />
+            </label>
+          </div>
+        ) : (
+          <>
+            <div className="form-2col">
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <span style={rotulo}>Início</span>
+                <input type="datetime-local" className="field" value={inicio} onChange={e => setInicio(e.target.value)} aria-label="Início" />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <span style={rotulo}>Fim</span>
+                <input type="datetime-local" className="field" value={fim} onChange={e => setFim(e.target.value)} aria-label="Fim" />
+              </label>
+            </div>
+            {diaDoInicio !== diaAberto && (
+              <p data-bloqueio-outro-dia role="note" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {diaDoInicio === amanha
+                  ? `O bloqueio começa no dia seguinte, ${ddmm(diaDoInicio)}: a próxima hora cheia já é amanhã. Confira o início.`
+                  : `O bloqueio começa em ${ddmm(diaDoInicio)}, não no dia aberto na agenda (${ddmm(diaAberto)}).`}
+              </p>
+            )}
+          </>
+        )}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <span style={rotulo}>Motivo</span>
           <input className="field" value={motivo} maxLength={200} onChange={e => setMotivo(e.target.value)} aria-label="Motivo"

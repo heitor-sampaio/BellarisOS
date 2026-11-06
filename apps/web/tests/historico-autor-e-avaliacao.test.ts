@@ -51,4 +51,10 @@ describe('rotuloDaAcao', () => {
     expect(rotuloDaAcao('CREATED', null)).toBe('Agendado')
     expect(rotuloDaAcao('XYZ', 'Algo')).toBe('Algo')
   })
+  it('A22 da 8ª: a troca de profissional diz de quem para quem; a de antes fica no rótulo', () => {
+    expect(rotuloDaAcao('REASSIGNED', 'Profissional trocado de Ana para Bia')).toBe('Profissional trocado de Ana para Bia')
+    expect(rotuloDaAcao('REASSIGNED', 'Repassado de Ana para Bia ao desativar Ana')).toBe('Repassado de Ana para Bia ao desativar Ana')
+    expect(rotuloDaAcao('REASSIGNED', 'Profissional reatribuído para Bia')).toBe('Profissional trocado')
+    expect(rotuloDaAcao('RESCHEDULED', 'Reagendado para 07/11, 10:00')).toBe('Remarcado para 07/11, 10:00')
+  })
 })

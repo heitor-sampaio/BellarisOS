@@ -159,10 +159,13 @@ export function SessionScheduler({
   // As salas que servem ao procedimento, com a ocupação no horário escolhido.
   const procId = procedimento?.id ?? null
   const procDuracao = procedimento?.duracaoMin ?? 60
+  // A32 e A58 da 8ª: a sala aparece desde o início (antes só depois do horário,
+  // e o "Agendar a 1ª sessão" da venda do pacote parecia não pedir a sala);
+  // com o horário escolhido, ela diz qual está ocupada.
   useEffect(() => {
-    if (!procId || !branchId || !date || !time) return
+    if (!procId || !branchId) return
     let vivo = true
-    salasParaAgendar(branchId, procId, new Date(`${date}T${time}:00-03:00`).toISOString(), procDuracao)
+    salasParaAgendar(branchId, procId, date && time ? new Date(`${date}T${time}:00-03:00`).toISOString() : null, procDuracao)
       .then(r => {
         if (!vivo) return
         setSalas(r.salas)
@@ -258,7 +261,7 @@ export function SessionScheduler({
         </div>
       )}
 
-      {procedimento && time && salas.length > 0 && (
+      {procedimento && salas.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>SALA (OPCIONAL)</p>
           <select className="filtro-select" aria-label="Sala" value={roomId} onChange={e => setRoomId(e.target.value)}>

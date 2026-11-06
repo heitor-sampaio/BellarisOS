@@ -14,6 +14,7 @@ import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 import { DocumentosDaJanela } from './documentos-da-janela'
+import { TrocarProfissional, UsarOQueJaFoiPago } from './janela-do-agendamento-acoes'
 import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 
 interface AppointmentEvent {
@@ -133,8 +134,12 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // expediente, choque e a cliente arquivada. Só aviso — o servidor decide.
   // Guardados com o horário a que respondem (D9 da 8ª): o aviso de um horário
   // não vale para o seguinte, e o Confirmar espera o do horário escolhido.
-  const [avisosLidos, setAvisosLidos] = useState<{ de: string; itens: string[] }>({ de: '', itens: [] })
+  const [avisosLidos, setAvisosLidos] = useState<{ de: string; itens: string[]; conflito?: string | null }>({ de: '', itens: [] })
   const avisosRemarcar = avisosLidos.de === novoDT ? avisosLidos.itens : []
+  // A21 da 8ª simulação: o choque não é encaixe — o servidor recusa. O aviso
+  // diz "Não vai ser remarcado"; recusado, fica UMA mensagem (eram as duas).
+  const conflitoRemarcar = avisosLidos.de === novoDT ? (avisosLidos.conflito ?? null) : null
+  const recusadoPorChoque = !!remarcaState?.error && !!conflitoRemarcar
   const conferindoRemarcar = remarcando && !!novoDT && novoDT !== inicioLocal && avisosLidos.de !== novoDT
   useEffect(() => {
     if (!remarcando || !novoDT) return
@@ -145,7 +150,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
           if (!vivo) return
           // O choque do horário de AGORA é o próprio agendamento: só conta o do novo.
           const novo = novoDT !== inicioLocal
-          setAvisosLidos({ de: novoDT, itens: [r.clienteArquivada, novo ? r.foraDoHorario : null, novo ? r.conflito : null, novo ? (r.bloqueio ?? null) : null].filter((x): x is string => !!x) })
+          setAvisosLidos({ de: novoDT, itens: [r.clienteArquivada, novo ? r.foraDoHorario : null, novo ? (r.bloqueio ?? null) : null].filter((x): x is string => !!x), conflito: novo ? r.conflito : null })
         })
         // Sem a conferência, nenhum aviso (o servidor ainda decide) — e o Confirmar não espera para sempre.
         .catch(() => { if (vivo) setAvisosLidos({ de: novoDT, itens: [] }) })
@@ -310,6 +315,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
           )}
         </div>
 
+        {/* A20 da 8ª: o avulso de quem tem o pacote (ou o pré-pago) do mesmo procedimento se liga a ele. */}
+        {isActive && podeGerenciar && !appointment.pagoAntes && (
+          <UsarOQueJaFoiPago appointmentId={appointment.id} onUsou={() => { onClose(); router.refresh() }} />
+        )}
+
         {/* Os termos e contratos: assinados ou não, e o que bloqueia o início (A34). */}
         {isActive && <DocumentosDaJanela appointmentId={appointment.id} />}
 
@@ -380,8 +390,13 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                   onChange={e => setNovoDT(e.target.value)}
                   style={{ background: 'var(--surface)' }}
                 />
-                {avisosRemarcar.length > 0 && (
+                {(avisosRemarcar.length > 0 || (conflitoRemarcar && !recusadoPorChoque)) && (
                   <div data-aviso-do-remarcar role="status" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {conflitoRemarcar && !recusadoPorChoque && (
+                      <p style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 700 }}>
+                        <Ban size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} /> Não vai ser remarcado: {conflitoRemarcar}
+                      </p>
+                    )}
                     {avisosRemarcar.map(a => (
                       <p key={a} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
                         <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} /> {a}
@@ -390,12 +405,20 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                   </div>
                 )}
                 {remarcaState?.error && (
-                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>{remarcaState.error}</p>
+                  <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+                    {recusadoPorChoque ? `Não foi remarcado: ${conflitoRemarcar}` : remarcaState.error}
+                  </p>
                 )}
                 <button type="submit" disabled={remarcaPending || !novoDT || novoDT === inicioLocal || conferindoRemarcar} className="btn-primary" style={{ justifyContent: 'center' }}>
                   {remarcaPending ? 'Remarcando…' : conferindoRemarcar ? 'Conferindo o horário…' : 'Confirmar novo horário'}
                 </button>
               </form>
+            )}
+
+            {/* A22 da 8ª: trocar a profissional pela janela, não só arrastando. */}
+            {!isProfessional && podeGerenciar && (
+              <TrocarProfissional appointmentId={appointment.id} slug={slug} atual={appointment.professionalName}
+                onTrocou={() => { onClose(); router.refresh() }} />
             )}
 
             {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}

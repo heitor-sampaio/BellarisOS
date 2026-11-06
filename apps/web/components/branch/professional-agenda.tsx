@@ -12,7 +12,8 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { SegSelect } from '@/components/shared/seg-select'
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react'
+import { AppointmentModal } from './appointment-modal'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { estenderJanela } from '@/lib/agenda/grade'
@@ -71,12 +72,19 @@ interface Props {
   bloqueios?:            BloqueioDaAgenda[]
   /** A agenda em Gerenciar: ela bloqueia o próprio horário (e desfaz). */
   podeBloquear?:         boolean
+  /**
+   * O agendar da "Minha agenda" (A25 da 8ª simulação, decidido pelo princípio 3):
+   * com a Agenda em Gerenciar "só os meus", ela agenda — para ela. A lista de
+   * profissionais é só ela, quando atende nesta unidade.
+   */
+  agendar?: { procedures: { id: string; name: string; category: string; duration_min: number; price: string | number }[]; rooms: { id: string; name: string }[]; professionals: { id: string; name: string }[] } | null
 }
 
 export function ProfessionalAgendaView({
   events, slug, professionalName, branchName, professionalId, branchId, janela,
-  horarioDaUnidade, horarioDaProfissional, ocupadoFora, dataInicial = null, bloqueios = [], podeBloquear = false,
+  horarioDaUnidade, horarioDaProfissional, ocupadoFora, dataInicial = null, bloqueios = [], podeBloquear = false, agendar = null,
 }: Props) {
+  const [agendando, setAgendando] = useState(false)
   const router = useRouter()
   const today  = useMemo(() => new Date(), [])
 
@@ -243,6 +251,17 @@ export function ProfessionalAgendaView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+      {agendando && agendar && (
+        <AppointmentModal
+          branchId={branchId} slug={slug}
+          procedures={agendar.procedures} professionals={agendar.professionals} rooms={agendar.rooms}
+          defaultDate={!isSameDay(selectedDate, today) ? `${format(selectedDate, 'yyyy-MM-dd')}T09:00` : undefined}
+          profissionalInicialId={professionalId}
+          onClose={() => setAgendando(false)}
+          onSuccess={() => { setAgendando(false); router.refresh() }}
+        />
+      )}
+
       {/* -- Header --------------------------------------------------- */}
       <div className="page-header">
         <div>
@@ -258,6 +277,11 @@ export function ProfessionalAgendaView({
         {/* O bloqueio do próprio horário (decisão 3 da 7ª): o almoço, a folga. */}
         {podeBloquear && professionalId && (
           <BotaoBloquearHorario branchId={branchId} profissionais={[]} soEu={{ id: professionalId, name: professionalName || 'Você' }} dia={selectedDate} />
+        )}
+        {podeBloquear && agendar && agendar.professionals.length > 0 && (
+          <button type="button" className="btn-primary" onClick={() => setAgendando(true)}>
+            <Plus size={15} /> Agendar
+          </button>
         )}
         {/* Switcher Dia / Semana / Mês */}
         <SegSelect
@@ -452,9 +476,38 @@ export function ProfessionalAgendaView({
                 const height = evHeight(ev)
                 const time   = format(parseISO(ev.start), 'HH:mm')
                 const isIP   = ev.status === 'IN_PROGRESS'
+                // A24 da 8ª: o cartão de menos de 1 h (até 72 px) não tinha altura para
+                // as duas linhas com o avatar — o procedimento saía cortado no de 30 e
+                // no de 40 min. Curto, ele é duas linhas: a hora e a cliente, o procedimento.
+                if (height - 4 < 76) {
+                  return (
+                    <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                      <div data-cartao-minha-agenda={ev.id} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})}
+                        title={[time, ev.clientName, ev.procedureName, `${ev.durationMin} min`, ev.unidade ? `Na unidade ${ev.unidade}` : null].filter(Boolean).join(' · ')}
+                        style={{
+                          position: 'absolute', top: top + 2, left: 58, right: 16, height: height - 4,
+                          borderRadius: 10, background: st.bg,
+                          border: `1.5px solid ${isIP ? 'var(--brand)' : 'var(--border)'}`, borderLeft: `3.5px solid ${st.dot}`,
+                          padding: '3px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                          cursor: 'pointer', overflow: 'hidden',
+                        }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: isIP ? 'var(--brand)' : 'var(--text)', flexShrink: 0 }}>{time}</span>
+                          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.clientName}</span>
+                          <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.pill.color, flexShrink: 0 }}>· {st.label}</span>
+                          <SeloDoMenor menor={ev.menor} />
+                          {ev.unidade && <span data-unidade-do-cartao className="chip chip-info" style={{ fontSize: 'var(--text-overline)', flexShrink: 0 }}>Na unidade {ev.unidade}</span>}
+                        </div>
+                        <p data-procedimento-do-cartao style={{ fontSize: 'var(--text-overline)', lineHeight: 1.25, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ev.procedureName} · {ev.durationMin}min
+                        </p>
+                      </div>
+                    </Link>
+                  )
+                }
                 return (
                   <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                    <div {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})} style={{
+                    <div data-cartao-minha-agenda={ev.id} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})} style={{
                       position: 'absolute', top: top + 2, left: 58, right: 16, height: height - 4,
                       borderRadius: 10,
                       background: st.bg,
@@ -504,7 +557,7 @@ export function ProfessionalAgendaView({
                           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
                             {ev.clientName}
                           </p>
-                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                          <p data-procedimento-do-cartao style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                             {ev.procedureName}
                           </p>
                           {/* A linha do responsável, quando o bloco tem altura para ela. */}

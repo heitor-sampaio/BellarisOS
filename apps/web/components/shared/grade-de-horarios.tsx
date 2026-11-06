@@ -16,7 +16,7 @@ import { gradeDoCheckout, aPartirDeAgora } from '@/lib/checkout/grade-de-horario
  * simulação: de madrugada, oferecia 00:00–04:00).
  */
 export function GradeDeHorarios({
-  data, horarioDaUnidade, horarioDoProfissional, nomeDoProfissional, ocupado, selecionado, onEscolher, carregando,
+  data, horarioDaUnidade, horarioDoProfissional, nomeDoProfissional, ocupado, selecionado, onEscolher, carregando, semOutroHorario = false,
 }: {
   data:                  string
   horarioDaUnidade:      Horario | null
@@ -30,6 +30,8 @@ export function GradeDeHorarios({
   selecionado:           string
   onEscolher:            (hora: string) => void
   carregando:            boolean
+  /** Sem o "Outro horário (encaixe)": o modal Agendar já tem o campo de data e hora (A58 da 8ª). */
+  semOutroHorario?:      boolean
 }) {
   const [agora] = useState(() => new Date())
   const limite = aPartirDeAgora(data, agora)
@@ -50,8 +52,8 @@ export function GradeDeHorarios({
       {!carregando && grade.length === 0 && (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {jaPassou
-            ? 'Os horários de hoje já passaram. Para um encaixe, use “Outro horário”.'
-            : 'A unidade não abre neste dia. Para um encaixe, use “Outro horário”.'}
+            ? `Os horários de hoje já passaram. Para um encaixe, use ${semOutroHorario ? 'o campo de data e hora' : '“Outro horário”'}.`
+            : `A unidade não abre neste dia. Para um encaixe, use ${semOutroHorario ? 'o campo de data e hora' : '“Outro horário”'}.`}
         </p>
       )}
 
@@ -92,6 +94,7 @@ export function GradeDeHorarios({
         </p>
       )}
 
+      {!semOutroHorario && (<>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
         Outro horário (encaixe)
         <input
@@ -109,6 +112,7 @@ export function GradeDeHorarios({
         />
       </label>
       {erroDoEncaixe && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erroDoEncaixe}</p>}
+      </>)}
     </div>
   )
 }

@@ -258,6 +258,11 @@ export default async function AgendaPage({ params, searchParams }: {
           dataInicial={dataInicial}
           bloqueios={bloqueios}
           podeBloquear={canManageAgenda}
+          // A25 da 8ª: com a Agenda em Gerenciar "só os meus", ela agenda — para ela,
+          // quando atende nesta unidade (a lista de quem atende aqui).
+          agendar={canManageAgenda && currentPro
+            ? { procedures: procedures ?? [], rooms: rooms ?? [], professionals: [{ id: currentPro.id, name: currentPro.name }] }
+            : null}
         />
       </div>
     )
