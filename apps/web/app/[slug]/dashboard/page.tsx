@@ -625,7 +625,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {/* Reativar clientes */}
         {canClients && (
           <ReativarClientes
-            clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince }))}
+            clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince, antesDoSistema: c.antesDoSistema }))}
             total={inactiveCount}
             comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
             hrefAgendar={`/${slug}/agenda`}

@@ -89,7 +89,8 @@ export interface ClientesParaReativar {
   /** Quantos clientes da unidade estão sem visita desde `desde`. */
   total: number
   /** Os há mais tempo sem vir; quem nunca veio fica no fim. */
-  lista: { id: string; name: string; phone: string | null; ultimaVisita: string | null }[]
+  /** `antesDoSistema`: a última visita é a do sistema de antes (a importada, F35). */
+  lista: { id: string; name: string; phone: string | null; ultimaVisita: string | null; antesDoSistema: boolean }[]
   /**
    * Para o vazio dizer o que é (D16 da 8ª): as clientes do recorte com alguma
    * visita concluída, e as cadastradas desde `desde` sem nenhuma (fora do quadro).
@@ -110,12 +111,12 @@ export async function getClientesParaReativar(args: {
   }), 'buscar os clientes para reativar')
   const d = (data ?? {}) as {
     total?: number; com_visita?: number; recentes_sem_visita?: number
-    lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null }[]
+    lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null; antes_do_sistema?: boolean }[]
   }
   return {
     total: Number(d.total ?? 0),
     comVisita: Number(d.com_visita ?? 0), recentesSemVisita: Number(d.recentes_sem_visita ?? 0),
-    lista: (d.lista ?? []).map(c => ({ id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita })),
+    lista: (d.lista ?? []).map(c => ({ id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita, antesDoSistema: c.antes_do_sistema === true })),
   }
 }
 
@@ -129,6 +130,8 @@ export async function getClientesParaReativar(args: {
 export interface ClienteParaReativarDaRede {
   id: string; name: string; phone: string | null; ultimaVisita: string | null
   unidade: string | null; unidadeSlug: string | null
+  /** A última visita é a do sistema de antes (a importada, F35). */
+  antesDoSistema: boolean
 }
 
 export async function getClientesParaReativarDaRede(args: {
@@ -142,14 +145,14 @@ export async function getClientesParaReativarDaRede(args: {
   }), 'buscar os clientes da rede para reativar')
   const d = (data ?? {}) as {
     total?: number; com_visita?: number; recentes_sem_visita?: number
-    lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null; unidade: string | null; unidade_slug: string | null }[]
+    lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null; unidade: string | null; unidade_slug: string | null; antes_do_sistema?: boolean }[]
   }
   return {
     total: Number(d.total ?? 0),
     comVisita: Number(d.com_visita ?? 0), recentesSemVisita: Number(d.recentes_sem_visita ?? 0),
     lista: (d.lista ?? []).map(c => ({
       id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita,
-      unidade: c.unidade, unidadeSlug: c.unidade_slug,
+      unidade: c.unidade, unidadeSlug: c.unidade_slug, antesDoSistema: c.antes_do_sistema === true,
     })),
   }
 }

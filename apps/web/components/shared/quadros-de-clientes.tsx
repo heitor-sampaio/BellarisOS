@@ -84,6 +84,8 @@ export interface ClienteSumida {
   diasSemVir: number | null
   /** A unidade da linha (só na rede, com mais de uma). */
   unidade?: string | null
+  /** A última visita é a importada, do sistema de antes (sobra da F35). */
+  antesDoSistema?: boolean
 }
 
 /**
@@ -137,6 +139,7 @@ export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, c
                   </p>
                   <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                     {c.diasSemVir !== null ? `Última visita há ${c.diasSemVir} dias` : 'Nunca veio'}
+                    {c.diasSemVir !== null && c.antesDoSistema && <> · <span data-antes-do-sistema>antes do sistema</span></>}
                     {c.unidade ? ` · ${c.unidade}` : ''}
                   </p>
                 </div>

@@ -246,3 +246,27 @@ test('quem não tem o Financeiro em Gerenciar não traz pacote (a tela não ofer
   })
   expect((await pacotesDela()).length).toBe(antes)
 })
+
+test('sobra da F35: cancelar o pacote trazido de fora não devolve nada e não lança nada', async ({ browser }) => {
+  const trazido = (await pacotesDela()).find(c => c.de_fora && c.valor_referencia === null)!
+  expect(trazido).toBeTruthy()
+  const rota = `/admin/clients/${cliente.clientId}`
+  await comSessao(browser, gestor, async p => {
+    await p.goto(rota)
+    const previa = await chamarAcao(p, 'actions/pacotes.ts', 'previaDoCancelamentoDoPacote', rota, [trazido.id])
+    // Nada foi pago à clínica por ele: nada a devolver, nenhuma parcela a cair.
+    expect(previa.texto).toMatch(/"devolver":0[,}]/)
+    expect(previa.texto).toMatch(/"pago":0[,}]/)
+    const r = await chamarAcao(p, 'actions/pacotes.ts', 'cancelarPacote', rota, [trazido.id, {
+      motivo: 'Migrou errado', destino: null, agendamentos: null, esperado: 0,
+    }])
+    expect(r.texto).toContain('"ok":true')
+  })
+  const { data: cp } = await db().from('client_packages').select('cancelado_em').eq('id', trazido.id).single<{ cancelado_em: string | null }>()
+  expect(cp!.cancelado_em, 'o pacote foi cancelado').not.toBeNull()
+  const { count: lancamentos } = await db().from('financial_transactions').select('id', { count: 'exact', head: true })
+    .eq('client_package_id', trazido.id)
+  expect(lancamentos, 'nenhum lançamento: o pacote trazido não passou pelo caixa').toBe(0)
+  const { count: creditos } = await db().from('internal_credits').select('id', { count: 'exact', head: true }).eq('client_id', cliente.clientId)
+  expect(creditos, 'nenhum crédito na clínica nasce dele').toBe(0)
+})

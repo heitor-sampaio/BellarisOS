@@ -175,3 +175,14 @@ test('"cliente desde" de antes do mês não é cliente nova; a "última visita" 
   // Só a Lara é cadastrada nos 90 dias sem visita (as outras são clientes de antes).
   expect(r.recentes_sem_visita).toBe(1)
 })
+
+test('sobra da F35: o "Reativar clientes" do dashboard diz "antes do sistema" ao lado da visita importada', async ({ browser }) => {
+  await como(browser, dona, async p => {
+    await p.goto('/admin/dashboard')
+    const linha = p.locator('[data-reativar-clientes] [data-cliente]', { hasText: nome('Isabela') })
+    await expect(linha).toContainText('Última visita há 120 dias')
+    await expect(linha.locator('[data-antes-do-sistema]')).toHaveText('antes do sistema')
+    // A Tatiana nunca veio: nada de "antes do sistema".
+    await expect(p.locator('[data-reativar-clientes] [data-cliente]', { hasText: nome('Tatiana') }).locator('[data-antes-do-sistema]')).toHaveCount(0)
+  })
+})

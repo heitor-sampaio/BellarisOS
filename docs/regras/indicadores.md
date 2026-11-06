@@ -399,7 +399,9 @@ E o **"Reativar clientes" lê a última visita do sistema de ANTES**
 (`clients.ultima_visita_antes`, a coluna da importação): ela conta como visita
 (quem veio há 20 dias no sistema antigo não sumiu; quem veio há 120, sim, com
 "ultima_visita" = essa data e `antes_do_sistema`), sem virar atendimento —
-nenhum outro número (atendimentos, receita, retenção) a lê. Prova:
+nenhum outro número (atendimentos, receita, retenção) a lê. **E o quadro diz
+isso** (sobra da F35): "Última visita há 120 dias · antes do sistema"
+(`[data-antes-do-sistema]`, nos dois dashboards). Prova:
 `e2e/importacao-migracao.spec.ts`.
 
 **Todo indicador tem valor esperado escrito à mão** em

@@ -269,6 +269,10 @@ plano").
     Histórico, "Pacote de antes registrado" sem valor; o app da cliente,
     "Pacote de antes: 4 de 6 restantes" (`restantesDoPacoteDeFora`) — sem
     pagamento nem recibo.
+  - **Cancelar o pacote trazido** é o cancelamento de sempre: nada foi pago à
+    clínica por ele, então não há o que devolver nem parcela a cair, e nenhum
+    lançamento nem crédito nasce (prova: o caso "sobra da F35" de
+    `e2e/pacote-de-fora.spec.ts`).
   - Os pacotes "Saldo migrado" a R$ 0 que a Hortênsia criou antes disso são
     dado de [sim] e ficaram como estão.
   - Prova: `e2e/pacote-de-fora.spec.ts`.

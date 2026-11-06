@@ -622,7 +622,7 @@ export default async function AdminDashboardPage({
   const umaSoNoRecorte = branches.length === 1 && !umaUnidade ? branches[0]! : null
   // A regra é UMA, a do Copilot também (r3-f13-10): getClientesParaReativarDoRecorte.
   const paraReativar = !canClients
-    ? { total: 0, comVisita: 0, recentesSemVisita: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null }[] }
+    ? { total: 0, comVisita: 0, recentesSemVisita: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null; antesDoSistema?: boolean }[] }
     : await getClientesParaReativarDoRecorte({
         tenantId: ctx.tenantId!,
         unidade: branches.length === 1 ? { id: branches[0]!.id as string, name: branches[0]!.name as string } : null,
@@ -642,7 +642,7 @@ export default async function AdminDashboardPage({
       />
       <ReativarClientes
         clientes={paraReativar.lista.map(c => ({
-          id: c.id, name: c.name, unidade: c.unidade,
+          id: c.id, name: c.name, unidade: c.unidade, antesDoSistema: c.antesDoSistema,
           diasSemVir: c.ultimaVisita ? differenceInDays(now, new Date(c.ultimaVisita)) : null,
         }))}
         total={paraReativar.total}
