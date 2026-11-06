@@ -405,7 +405,17 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **O pedido diz o PRAZO** (A60 da 5ª simulação; `data-request-card.tsx`): em
   preparo, "costuma ficar pronto em poucos minutos"; com o prontuário à espera
   da clínica, "responde até DD/MM (15 dias do pedido)" — o prazo da LGPD
-  (art. 19, II). Prova: `e2e/lgpd-exportacao.spec.ts`.
+  (art. 19, II). Prova: `e2e/lgpd-exportacao.spec.ts`. **A aba LGPD da clínica
+  diz o MESMO prazo** (A50 da 8ª simulação, 2026-11-06: a cliente via "até
+  21/11" e a clínica não via nada): "Responder até 21/11/2026 (15 dias do
+  pedido)" (`[data-prazo-de-resposta]`) no pedido com o prontuário a liberar ou
+  ainda em preparo, e, decidido o prontuário, "Prontuário liberado em 06/11/2026
+  · o pacote novo, com o prontuário, fica pronto em poucos minutos" (ou
+  "negado em", `[data-liberado-em]`, de `medical_reviewed_at`) — ficava "Em
+  preparo" sem data. A conta do prazo é UMA, `prazoDeResposta`
+  (`lib/lgpd/prazo.ts`), no portal e na aba. Prova: `e2e/lgpd-atritos-da-8.spec.ts`.
+  (A decisão 3 do Heitor sobre a 8ª: revogar o consentimento e pedir a exclusão
+  pelo app ficam como estão — "mantem do jeito que tá".)
 - **Prontuário no pacote depende de liberação**: `include_medical` marca o que o
   titular pediu e `medical_status` (`not_requested | pending | approved |
   denied`) registra a decisão de quem tem `medical_records: MANAGE`, na aba
@@ -413,7 +423,12 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   é regerado com a parte clínica. Sem o prontuário, o pacote diz POR QUÊ
   (`textoDoProntuarioForaDoPacote`): não pedido, pedido e em análise, ou não
   liberado — era sempre "não incluído", como se não tivesse pedido
-  (simulação de 2026-10-20).
+  (simulação de 2026-10-20). **E o pedido também** (A56 da 8ª): ao lado do
+  `solicitacao.incluiProntuario`, `solicitacao.prontuario` diz "pedido —
+  pendente de liberação pela clínica", "pedido — liberado e incluído neste
+  pacote", "pedido — não liberado pela clínica" ou "não pedido"
+  (`prontuarioNaSolicitacao`, `lib/lgpd/situacao-do-prontuario.ts`). Prova:
+  `tests/lgpd-situacao-do-prontuario.test.ts`, `e2e/lgpd-exportacao.spec.ts`.
   **Liberar pede confirmação** (o prontuário vai para a cliente; a confirmação
   nasce ABAIXO do botão, nunca no lugar dele: trocado debaixo do cursor, o
   mesmo clique liberava), e a aba mostra os pedidos esperando: "LGPD (n)".

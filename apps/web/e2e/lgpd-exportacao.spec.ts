@@ -27,7 +27,7 @@ async function jsonDoPacote(caminho: string) {
   expect(error, 'o pacote tem de estar no bucket').toBeNull()
   const r = await fetch(data!.signedUrl)
   expect(r.ok).toBe(true)
-  return await r.json() as { prontuario: unknown; solicitacao: { incluiProntuario: boolean }; fichasDeSaude: unknown; comunicacoes: unknown[] }
+  return await r.json() as { prontuario: unknown; solicitacao: { incluiProntuario: boolean; prontuario?: string }; fichasDeSaude: unknown; comunicacoes: unknown[] }
 }
 
 test.describe.serial('LGPD: exportação de dados', () => {
@@ -119,6 +119,8 @@ test.describe.serial('LGPD: exportação de dados', () => {
 
     const pacote = await jsonDoPacote(row!.export_json_path)
     expect(pacote.solicitacao.incluiProntuario).toBe(false)
+    // A56 da 8ª: o pedido diz por extenso que o prontuário espera a clínica.
+    expect(pacote.solicitacao.prontuario).toBe('pedido — pendente de liberação pela clínica')
     // Pedido e aguardando a clínica: o pacote diz que está EM ANÁLISE — era 'Não
     // incluído nesta solicitação', como se não tivesse pedido (simulação de 2026-10-20).
     expect(pacote.prontuario, 'sem liberação, o prontuário NÃO entra — e o pacote diz por quê').toMatch(/em análise/)
@@ -185,6 +187,7 @@ test.describe.serial('LGPD: exportação de dados', () => {
     const { data: row } = await db.from('lgpd_requests').select('export_json_path').eq('id', pedido).single()
     const pacote = await jsonDoPacote(row!.export_json_path)
     expect(pacote.solicitacao.incluiProntuario).toBe(true)
+    expect(pacote.solicitacao.prontuario).toBe('pedido — liberado e incluído neste pacote')
     expect(JSON.stringify(pacote.prontuario), 'agora o prontuário está no pacote').toContain(ALERGIA)
     // D16: a foto anexada na tela do atendimento conta nele.
     expect((pacote.prontuario as { atendimentos: { fotos: number }[] }).atendimentos.map(a => a.fotos), 'as fotos do atendimento').toEqual([1])

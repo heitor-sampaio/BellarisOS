@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { reviewMedicalData, type LgpdAdminRow } from '@/actions/lgpd'
 import { ShieldCheck, Check, X, AlertTriangle } from 'lucide-react'
+import { prazoDeResposta, DIAS_DO_PRAZO_DA_LGPD } from '@/lib/lgpd/prazo'
 
 interface Props {
   requests: LgpdAdminRow[]
@@ -143,6 +144,7 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
           {requests.map((r, i) => (
             <div
               key={r.id}
+              data-pedido-lgpd
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 gap: 16, padding: '14px 20px', flexWrap: 'wrap',
@@ -161,6 +163,20 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
                     {r.completed_at ? ` · entregue em ${fmt(r.completed_at)}` : ''}
                   </span>
                 </div>
+                {/* A50 da 8ª: o prazo de resposta (o mesmo que a cliente vê) e,
+                    decidido o prontuário, quando — e o que vem depois. */}
+                {(r.medical_status === 'pending' || (r.status !== 'completed' && r.status !== 'failed' && r.medical_status !== 'approved' && r.medical_status !== 'denied')) && (
+                  <span data-prazo-de-resposta style={{ fontSize: 'var(--text-xs-sz)', color: r.medical_status === 'pending' ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
+                    Responder até {prazoDeResposta(r.requested_at, true)} ({DIAS_DO_PRAZO_DA_LGPD} dias do pedido)
+                  </span>
+                )}
+                {(r.medical_status === 'approved' || r.medical_status === 'denied') && r.medical_reviewed_at && (
+                  <span data-liberado-em style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                    {r.medical_status === 'approved' ? 'Prontuário liberado' : 'Prontuário negado'} em {fmt(r.medical_reviewed_at)}
+                    {r.medical_status === 'approved' && (r.status === 'pending' || r.status === 'processing')
+                      ? ' · o pacote novo, com o prontuário, fica pronto em poucos minutos' : ''}
+                  </span>
+                )}
                 {r.error_message && (
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)' }}>{r.error_message}</span>
                 )}

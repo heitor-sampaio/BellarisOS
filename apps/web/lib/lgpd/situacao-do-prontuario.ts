@@ -37,3 +37,16 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
     ],
   }
 }
+
+/**
+ * A situação do prontuário NO PEDIDO, por extenso (A56 da 8ª simulação,
+ * 2026-11-06): com "Incluir prontuário" marcado, o JSON dizia só
+ * `incluiProntuario: false` antes da liberação, e o pedido parecia ignorado.
+ * Vai ao lado do `incluiProntuario` em `solicitacao` (`lib/lgpd/export.ts`).
+ */
+export function prontuarioNaSolicitacao(situacao: SituacaoDoProntuario, incluido: boolean): string {
+  if (incluido || situacao === 'approved') return 'pedido — liberado e incluído neste pacote'
+  if (situacao === 'pending') return 'pedido — pendente de liberação pela clínica'
+  if (situacao === 'denied') return 'pedido — não liberado pela clínica'
+  return 'não pedido'
+}

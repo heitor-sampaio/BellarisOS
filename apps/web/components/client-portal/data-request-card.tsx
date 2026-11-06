@@ -1,5 +1,6 @@
 'use client'
 
+import { prazoDeResposta } from '@/lib/lgpd/prazo'
 import { useActionState, useState, useTransition } from 'react'
 import { requestDataExport, getExportDownloadUrls, type LgpdRequestRow } from '@/actions/lgpd'
 import { ShieldCheck, Download, FileText, FileJson, Loader2 } from 'lucide-react'
@@ -32,14 +33,8 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
   )
 }
 
-/**
- * O prazo da clínica para responder sobre o prontuário (A60): 15 dias do
- * pedido, o da LGPD (art. 19, II) para a declaração completa.
- */
-function prazoDaClinica(iso: string): string {
-  return new Date(new Date(iso).getTime() + 15 * 86_400_000)
-    .toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })
-}
+/** O prazo da clínica para responder sobre o prontuário (A60): a conta de `lib/lgpd/prazo`. */
+const prazoDaClinica = (iso: string) => prazoDeResposta(iso)
 
 function fmt(iso: string | null) {
   if (!iso) return '—'

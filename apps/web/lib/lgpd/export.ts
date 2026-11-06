@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDia } from '@estetica-os/utils'
-import { textoDoProntuarioForaDoPacote, type SituacaoDoProntuario } from '@/lib/lgpd/situacao-do-prontuario'
+import { textoDoProntuarioForaDoPacote, prontuarioNaSolicitacao, type SituacaoDoProntuario } from '@/lib/lgpd/situacao-do-prontuario'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
@@ -281,7 +281,8 @@ export async function buildClientExport(
   const payload = paraOTitular({
     geradoEm: new Date().toISOString(),
     aviso: 'Documento gerado a pedido do titular, nos termos da Lei 13.709/2018 (LGPD).',
-    solicitacao: { incluiProntuario: includeMedical },
+    // A56 da 8ª: e a situação do prontuário por extenso ("pendente de liberação").
+    solicitacao: { incluiProntuario: includeMedical, prontuario: prontuarioNaSolicitacao(situacaoDoProntuario, includeMedical) },
     cadastro: {
       nome: client.name, cpf: client.document,
       // Sem CPF, o passaporte ou o RNE (decisão 1 do Heitor); e o responsável legal

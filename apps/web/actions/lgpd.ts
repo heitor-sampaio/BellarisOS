@@ -160,6 +160,8 @@ export type LgpdAdminRow = LgpdRequestRow & {
   client_id:    string
   client_name:  string
   requested_via: string
+  /** Quando a clínica liberou ou negou o prontuário (A50 da 8ª: a aba não dizia). */
+  medical_reviewed_at?: string | null
 }
 
 /** Solicitações do tenant, para a tela da equipe. */
@@ -169,7 +171,7 @@ export async function listDataRequests(): Promise<LgpdAdminRow[]> {
 
   const data = await ler(createAdminClient()
     .from('lgpd_requests')
-    .select('id, type, status, requested_at, completed_at, include_medical, medical_status, expires_at, error_message, export_pdf_path, requested_via, client_id, clients(name)')
+    .select('id, type, status, requested_at, completed_at, include_medical, medical_status, medical_reviewed_at, expires_at, error_message, export_pdf_path, requested_via, client_id, clients(name)')
     .eq('tenant_id', ctx.tenantId!)
     .order('requested_at', { ascending: false })
     .limit(100), 'carregar os pedidos de LGPD')
@@ -183,6 +185,7 @@ export async function listDataRequests(): Promise<LgpdAdminRow[]> {
     client_id: r.client_id,
     client_name: (r.clients as { name?: string } | null)?.name ?? 'Cliente',
     requested_via: r.requested_via,
+    medical_reviewed_at: (r as { medical_reviewed_at?: string | null }).medical_reviewed_at ?? null,
   }))
 }
 
