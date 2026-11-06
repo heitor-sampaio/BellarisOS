@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Search, UserPlus } from 'lucide-react'
@@ -12,6 +13,7 @@ import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useFala } from '@/components/shared/uma-unidade'
 import { opcoesDeTag, temTag, alternarTag } from '@/lib/tags/escolha'
 import { clienteCasaComBusca } from '@/lib/busca/cliente'
+import { clientesDaClinicaForaDaUnidade, clienteAbertaForaDaUnidade } from '@/actions/clientes-da-clinica'
 
 interface ClientItem {
   id:         string
@@ -40,6 +42,11 @@ interface Props {
    * uma, decidido pelo banco (`aniversariantesDoMes`) — e o nome do mês.
    */
   aniversariantes?:  { nomeDoMes: string; mes: number; dias: Record<string, number> } | null
+  /**
+   * O portal da UNIDADE (o slug): a lista é de quem tem a tag dela, e a busca
+   * diz quem é da clínica e não está aqui (A17 da 8ª simulação; H5).
+   */
+  portalDaUnidade?:  string | null
 }
 
 type Filter = 'ativos' | 'novos' | 'inativos' | 'aniversario'
@@ -69,6 +76,7 @@ export function ClientsSidebar({
   availableBranches,
   unidadeFixa = null,
   aniversariantes = null,
+  portalDaUnidade = null,
 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
@@ -127,6 +135,35 @@ export function ClientsSidebar({
   // Extract selected client id from pathname like /[slug]/clients/[id] or /admin/clients/[id]
   const pathParts  = pathname.split('/')
   const selectedId = pathParts[pathParts.indexOf('clients') + 1] ?? null
+
+  // A17 da 8ª simulação (H5: a cliente é da clínica): quem casa com a busca e
+  // não está nesta unidade, e a ficha aberta pela URL que não está na lista.
+  type DaClinica = { id: string; nome: string; unidade: string | null }
+  const [foraDaUnidade, setForaDaUnidade] = useState<{ termo: string; clientes: DaClinica[] }>({ termo: '', clientes: [] })
+  const [aberta, setAberta] = useState<DaClinica | null>(null)
+  const termoDaBusca = search.trim()
+  useEffect(() => {
+    if (!portalDaUnidade || termoDaBusca.length < 2) return
+    let vale = true
+    const t = setTimeout(() => {
+      clientesDaClinicaForaDaUnidade(portalDaUnidade, termoDaBusca)
+        .then(r => { if (vale) setForaDaUnidade({ termo: termoDaBusca, clientes: r.clientes }) })
+        .catch(() => {})
+    }, 250)
+    return () => { vale = false; clearTimeout(t) }
+  }, [portalDaUnidade, termoDaBusca])
+  const naLista = !!selectedId && clients.some(c => c.id === selectedId)
+  const idAberto = portalDaUnidade && selectedId && selectedId !== 'new' && !naLista ? selectedId : null
+  useEffect(() => {
+    if (!portalDaUnidade || !idAberto) return
+    let vale = true
+    clienteAbertaForaDaUnidade(portalDaUnidade, idAberto)
+      .then(r => { if (vale) setAberta(r.cliente) })
+      .catch(() => {})
+    return () => { vale = false }
+  }, [portalDaUnidade, idAberto])
+  const abertaAgora = aberta && aberta.id === idAberto ? aberta : null
+  const daClinica = termoDaBusca.length >= 2 && foraDaUnidade.termo === termoDaBusca ? foraDaUnidade.clientes : []
 
   // A situação: escolha única, e "Ativos" é o normal (o gatilho só fica rosé
   // fora dele). O "VIP" que morava aqui era uma tag fixa — vai pelo filtro de
@@ -251,6 +288,16 @@ export function ClientsSidebar({
           abaixo do conteúdo, a lista cresce até o tamanho de todos os clientes
           e quem rola passa a ser a página, levando os filtros embora. */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+        {abertaAgora && (
+          <div data-aberta-fora-da-unidade style={{
+            padding: '11px 16px', background: 'var(--brand-soft)', borderBottom: '1px solid var(--hairline)',
+          }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--brand)' }}>{abertaAgora.nome}</p>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
+              Cliente da clínica{abertaAgora.unidade ? `, cadastrada na unidade ${abertaAgora.unidade}` : ''} — não está na lista desta unidade.
+            </p>
+          </div>
+        )}
         {filtered.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>
             Nenhum cliente encontrado
@@ -328,6 +375,18 @@ export function ClientsSidebar({
               </button>
             )
           })
+        )}
+        {daClinica.length > 0 && (
+          <div data-da-clinica-fora-da-unidade style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Não está nesta unidade? {daClinica.length === 1 ? '1 cliente da clínica' : `${daClinica.length} clientes da clínica`} com esse nome:
+            </p>
+            {daClinica.map(c => (
+              <Link key={c.id} href={`${basePath}/${c.id}`} style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                {c.nome}{c.unidade ? <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {c.unidade}</span> : null}
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </div>

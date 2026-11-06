@@ -39,6 +39,7 @@ export const ISOLADOS = [
   'equipe-atende-por-unidade.spec.ts',
   'equipe-atritos-da-8.spec.ts',
   'configuracoes-atritos-da-8.spec.ts',
+  'clientes-da-clinica-na-unidade.spec.ts',
   'atendimento-atritos-da-7.spec.ts',
   'estoque-atritos-da-7.spec.ts',
   'financeiro-atritos-da-7.spec.ts',

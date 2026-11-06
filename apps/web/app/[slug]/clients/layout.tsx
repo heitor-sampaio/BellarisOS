@@ -68,6 +68,8 @@ export default async function ClientsLayout({
           basePath={`/${slug}/clients`}
           totalActive={totalActive}
           aniversariantes={aniversariantes}
+          // A17 da 8ª: a cliente da clínica que não está na lista desta unidade.
+          portalDaUnidade={slug}
         />
       }
     >

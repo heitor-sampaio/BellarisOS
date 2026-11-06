@@ -262,6 +262,16 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   de `clients`, que recorta pela unidade de cadastro, o recusava com "Esta cliente é de outra
   unidade."). A RLS não foi alargada. Prova: `e2e/ficha-de-outra-unidade.spec.ts`,
   `e2e/abrangencia-unidade.spec.ts`.
+  **E a lista da unidade diz quem é da clínica e não está nela** (A17 da 8ª
+  simulação, 2026-11-06): a lista de Clientes do portal da unidade é de quem
+  tem a tag dela, e a recepção fixa do Batel não achava a Helena da Água
+  Verde. A busca, abaixo da lista, diz "Não está nesta unidade? 1 cliente da
+  clínica com esse nome:" com o link da ficha (`[data-da-clinica-fora-da-unidade]`,
+  `clientesDaClinicaForaDaUnidade`, a regra de `buscar_clientes`), e a ficha
+  aberta pela URL aparece no topo da lista, marcada, com a unidade de
+  cadastro (`[data-aberta-fora-da-unidade]`, `actions/clientes-da-clinica.ts`).
+  A lista continua sendo a da tag (quem frequenta). Prova:
+  `e2e/clientes-da-clinica-na-unidade.spec.ts`.
 - **As abas da ficha são ABAS** (`tablist` "Abas da ficha" / `tab`, a escolhida com
   `aria-selected`; continuam links, a aba mora na URL — A17 da 5ª simulação):
   a aba "Oportunidades" e o "Oportunidades" do menu lateral (o quadro geral)
