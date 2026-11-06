@@ -120,7 +120,9 @@ export function ConfirmAppointmentForm({
             value={notaDoAtendimento} onChange={setNotaDoAtendimento} />
         )}
         {procedimentos.map(p => (
-          <StarRating key={p.id} label={p.nome} value={notas[p.id] ?? 0}
+          // A55 da 8ª: o bloco tinha o mesmo nome do procedimento do resumo
+          // ("Avaliação" e "Avaliação") — o rótulo diz que é a nota dele.
+          <StarRating key={p.id} label={`Procedimento: ${p.nome}`} dica={`Como ficou o resultado de ${p.nome}.`} value={notas[p.id] ?? 0}
             onChange={v => setNotas(atual => ({ ...atual, [p.id]: v }))} />
         ))}
         <div>

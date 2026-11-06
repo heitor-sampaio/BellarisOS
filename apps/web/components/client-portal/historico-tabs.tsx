@@ -32,12 +32,14 @@ interface Props {
   consentimentos: ConsentDoc[]
 }
 
-// Estrelas somente-leitura para exibir uma nota já dada.
+// Estrelas somente-leitura para exibir uma nota já dada. A54 da 8ª: as
+// estrelas desenhadas não se liam (o histórico parecia ter só o comentário):
+// a nota vai em texto ("4/5") e o grupo se anuncia ("Atendimento: 4 de 5 estrelas").
 function MiniStars({ label, value }: { label: string; value: number }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
-      <span style={{ display: 'inline-flex', gap: 1 }}>
+      <span role="img" aria-label={`${label}: ${value} de 5 estrelas`} style={{ display: 'inline-flex', gap: 1 }}>
         {[1, 2, 3, 4, 5].map(n => (
           <Star
             key={n}
@@ -45,9 +47,11 @@ function MiniStars({ label, value }: { label: string; value: number }) {
             strokeWidth={2}
             color={n <= value ? 'var(--brand)' : 'var(--text-faint)'}
             fill={n <= value ? 'var(--brand)' : 'none'}
+            aria-hidden="true"
           />
         ))}
       </span>
+      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text)', fontWeight: 700 }}>{value}/5</span>
     </span>
   )
 }
@@ -139,6 +143,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                 </p>
                 <div style={{ display: 'flex', gap: 12, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   {p.professional_name && <span>{p.professional_name}</span>}
+                  {p.unidade && <span data-unidade-do-atendimento>{p.unidade}</span>}
                   <span>
                     {new Date(p.scheduled_at).toLocaleDateString('pt-BR', {
                       day: '2-digit', month: 'short', year: 'numeric',
@@ -156,10 +161,10 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                       background: 'var(--brand-soft)', padding: '6px 12px', borderRadius: 8,
                     }}
                   >
-                    Confirmar e avaliar <ChevronRight size={14} />
+                    Confirmar e avaliar (opcional) <ChevronRight size={14} />
                   </Link>
                 ) : hasRating ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 }}>
+                  <div data-avaliacao-dada style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 }}>
                     {/* F17-3: a nota do atendimento e a de cada procedimento. */}
                     {p.notas.map(n => <MiniStars key={n.rotulo} label={n.rotulo} value={n.nota} />)}
                     {p.feedback && (

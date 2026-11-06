@@ -47,6 +47,12 @@ interface Props {
   procedimentoInicial?: string | null
   procedures:    Procedure[]
   professionals: Professional[]
+  /**
+   * O prazo do app (horas; `tenants.portal_prazo_alteracao_horas`): o horário
+   * que fica dentro dele nasce sem dar para alterar pelo app — o Confirmar
+   * avisa antes (A52 da 8ª).
+   */
+  prazoHoras?:   number | null
 }
 
 type Step = 1 | 2 | 3 | 4
@@ -55,7 +61,7 @@ type Step = 1 | 2 | 3 | 4
 const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 
 
-export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, procedures, professionals }: Props) {
+export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, procedures, professionals, prazoHoras = null }: Props) {
   const router = useRouter()
   const inicial = procedures.find(p => p.id === procedimentoInicial) ?? null
   const [step,       setStep]       = useState<Step>(inicial ? 2 : 1)
@@ -65,6 +71,8 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
   const [slots,      setSlots]      = useState<string[]>([])
   const [time,       setTime]       = useState('')
   const [error,      setError]      = useState('')
+  // O "agora" do aviso do prazo (A52): quando a tela abriu, como no alterar.
+  const [abertoEm] = useState(() => Date.now())
   const [isPending,  startTransition] = useTransition()
 
   // O dia de hoje em Brasília (o toISOString dava o de amanhã depois das 21h).
@@ -464,6 +472,19 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
             <Row label="Duração"       value={`${procedure.duration_min} min`} />
             <Row label="Valor"         value={procedure.jaPago ?? fmtPrice(procedure.price)} accent />
           </div>
+
+          {/* A52 da 8ª: o agendamento dentro do prazo do app nascia "Prazo do
+              app encerrado" — o Confirmar avisa ANTES. */}
+          {prazoHoras != null && prazoHoras > 0 && date && time
+            && new Date(`${date}T${time.padStart(5, '0')}:00-03:00`).getTime() - abertoEm < prazoHoras * 3_600_000 && (
+            <p data-dentro-do-prazo style={{
+              color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)',
+              padding: '10px 14px', fontSize: 'var(--text-sm-sz)', marginBottom: 16, lineHeight: 1.45,
+            }}>
+              Este horário fica a menos de {prazoHoras} horas: pelo app, a remarcação e o cancelamento vão até {prazoHoras} horas antes.
+              Depois de confirmar, para mudar, fale com a clínica.
+            </p>
+          )}
 
           {error && (
             <p style={{

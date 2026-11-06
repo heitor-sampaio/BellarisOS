@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { avulsosDoPlano, textoDoAvulso } from '@/lib/checkout/plano-e-avulso'
 import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
-import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MessageCircle, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MapPin, MessageCircle, Sparkles } from 'lucide-react'
 import { formatBRL, formatDia } from '@estetica-os/utils'
 import { aClinicaDoEndereco, comMensagem } from '@/lib/clientes/a-clinica'
 import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
@@ -31,6 +31,9 @@ type NextAppt = {
   scheduled_at: string
   procedures:   { name: string } | null
   professionals: { name: string } | null
+  /** A unidade do agendamento (A53 da 8ª): pode não ser a do endereço. */
+  branch_id?:   string
+  branches?:    { name: string; address: string | null; city: string | null; state: string | null } | null
 }
 
 type ActivePackage = {
@@ -59,7 +62,7 @@ type ActivePlan = {
     sort_order: number | null
     /** O agendamento da sessão (A45: feita, agendada ou a agendar). */
     appointments?: { status: string; scheduled_at: string; completed_at: string | null } | null
-    treatment_plan_session_procedures: Array<{ price: number | string | null; procedures: { name: string } | null }>
+    treatment_plan_session_procedures: Array<{ price: number | string | null; procedures: { name: string; visible_on_client_app?: boolean | null } | null }>
   }>
 }
 
@@ -77,7 +80,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
     ler(admin.from('appointments')
-      .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, branch_id, branches(name, address, city, state), procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       // A mesma regra dos "Próximos" da Agenda (D14).
       .in('status', [...STATUS_DO_PROXIMO])
@@ -101,7 +104,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, procedures(name)))')
+      .select('id, status, created_at, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, procedures(name, visible_on_client_app)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -153,6 +156,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // clínica do endereço — o aceite é na clínica.
   // A clínica do endereço também é o cartão "A clínica" do fim da página (J-66).
   const temProposto = activePlans.some(p => p.status === 'PROPOSED')
+  // A53 da 8ª: com mais de uma unidade, o próximo agendamento diz onde é.
+  const variasUnidades = redeDoCliente
+    ? await contar(admin.from('branches').select('id', { count: 'exact', head: true }).eq('tenant_id', redeDoCliente).eq('is_active', true), 'contar as unidades') > 1
+    : false
   const [validadeDias, aClinica] = await Promise.all([
     temProposto && redeDoCliente
       ? ler(admin.from('tenants').select('plano_validade_dias').eq('id', redeDoCliente).maybeSingle(), 'ler a validade do plano proposto')
@@ -259,8 +266,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 
       {/* -- Aguardando confirmação --------------------------------- */}
       {pendingConfirm.length > 0 && (
-        <section>
+        <section data-aguardando-confirmacao>
           <SectionHeader label="Aguardando sua confirmação" />
+          {/* A54 da 8ª: parecia uma pendência — é opcional. */}
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
+            É opcional: confirmar e avaliar ajuda a clínica a melhorar o atendimento.
+          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pendingConfirm.map(a => (
               <Link
@@ -292,7 +303,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       <section>
         <SectionHeader label="Próximo agendamento" />
         {nextAppt ? (
-          <div className="card" style={{ padding: '16px 18px' }}>
+          <div data-proximo-agendamento className="card" style={{ padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 15.5, marginBottom: 4, letterSpacing: '-0.01em' }}>
@@ -310,6 +321,21 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     })()}
                   </span>
                 </div>
+                {/* A53 da 8ª: com mais de uma unidade, onde é — e o endereço DELA. */}
+                {variasUnidades && nextAppt.branches?.name && (
+                  <p data-unidade-do-agendamento style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
+                    <MapPin size={13} color="var(--brand)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ overflowWrap: 'anywhere' }}>
+                      <b style={{ color: 'var(--text)' }}>{nextAppt.branches.name}</b>
+                      {(() => {
+                        const u = nextAppt.branches!
+                        const cidade = [u.city, u.state].filter(Boolean).join(' – ')
+                        const endereco = [u.address, cidade].filter(Boolean).join(', ')
+                        return endereco ? ` · ${endereco}` : ''
+                      })()}
+                    </span>
+                  </p>
+                )}
                 {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir. */}
                 {jaPassouDaHora(nextAppt.scheduled_at) && (
                   <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
@@ -554,6 +580,11 @@ function PlanoFechado({ plano, financeiro, slug }: { plano: ActivePlan; financei
     }
     return { texto: 'A agendar', cor: 'var(--text-muted)' }
   }
+  // A51 da 8ª: a sessão a agendar com procedimento que não está no app (o
+  // laser) é marcada pela clínica; a que está, a cliente agenda pelo app.
+  const aAgendar = sessoes.filter(s => situacao(s.appointments).texto === 'A agendar')
+  const soPelaClinica = aAgendar.some(s => (s.treatment_plan_session_procedures ?? [])
+    .some(x => x.procedures?.visible_on_client_app !== true))
   return (
     <details data-plano-fechado className="card cartao-que-abre" style={{ padding: '14px 18px' }}>
       <summary style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', listStyle: 'none' }}>
@@ -582,6 +613,13 @@ function PlanoFechado({ plano, financeiro, slug }: { plano: ActivePlan; financei
             )
           })}
         </ol>
+        {aAgendar.length > 0 && (
+          <p data-quem-marca-a-sessao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            {soPelaClinica
+              ? `${aAgendar.length === 1 ? 'A sessão a agendar' : 'As sessões a agendar'}: quem marca é a clínica — fale com ela para escolher o dia.`
+              : `${aAgendar.length === 1 ? 'A sessão a agendar' : 'As sessões a agendar'}: agende pelo app em “Agendar” (ela já está paga no plano).`}
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
           <span>Pago {formatBRL(financeiro.recebido)}</span>
           <span style={{ color: financeiro.aReceber > 0 ? 'var(--warning)' : 'var(--text-muted)' }}>

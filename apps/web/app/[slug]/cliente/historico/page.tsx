@@ -2,7 +2,7 @@
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assinadosDoCliente } from '@/lib/documentos/leitura'
-import { ler } from '@/lib/db'
+import { ler, contar } from '@/lib/db'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
@@ -21,6 +21,8 @@ export type ProcedimentoItem = {
   notas:               NotaNaTela[]
   /** O comentário que ela deixou ao avaliar (J-26: não voltava ao histórico). */
   feedback:            string | null
+  /** A unidade do atendimento, quando a clínica tem mais de uma (A53 da 8ª). */
+  unidade?:            string | null
 }
 
 export type PagamentoItem = {
@@ -69,6 +71,7 @@ type AtendimentoLido = {
   id: string; scheduled_at: string; client_confirmed_at: string | null
   procedure_rating: number | null; client_rating: number | null; client_feedback: string | null
   procedures: { name: string } | null; professionals: { name: string } | null
+  branches?: { name: string; tenant_id: string } | null
 }
 type PagamentoLido = {
   id: string; description: string; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
@@ -91,7 +94,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   const [procedimentosRes, pagamentosRes, docsRes, consentRes] = await Promise.all([
     // Procedimentos = appointments concluídos
     ler(admin.from('appointments')
-      .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professionals:users!professional_id(name), branches(name, tenant_id)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .order('scheduled_at', { ascending: false })
@@ -133,6 +136,11 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   const lidos = (procedimentosRes ?? []) as unknown as AtendimentoLido[]
   // F17-3: as notas que ela deu a cada procedimento.
   const notasDasAvaliacoes = await notasDosProcedimentos(admin, lidos.filter(r => r.client_confirmed_at).map(r => r.id))
+  // A53 da 8ª: com mais de uma unidade, cada atendimento diz onde foi.
+  const redeDosAtendimentos = lidos.find(r => r.branches?.tenant_id)?.branches?.tenant_id ?? null
+  const variasUnidades = redeDosAtendimentos
+    ? await contar(admin.from('branches').select('id', { count: 'exact', head: true }).eq('tenant_id', redeDosAtendimentos).eq('is_active', true), 'contar as unidades') > 1
+    : false
   const procedimentos: ProcedimentoItem[] = lidos.map(r => ({
     id:                  r.id,
     scheduled_at:        r.scheduled_at,
@@ -142,6 +150,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     notas:               notasDaAvaliacao({ client_rating: r.client_rating, procedure_rating: r.procedure_rating, procedureName: r.procedures?.name ?? 'Procedimento' },
       notasDasAvaliacoes.get(r.id) ?? []),
     feedback:            r.client_feedback?.trim() || null,
+    unidade:             variasUnidades ? r.branches?.name ?? null : null,
   }))
 
   // -- Pagamentos -------------------------------------------------

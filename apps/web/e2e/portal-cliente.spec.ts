@@ -194,7 +194,7 @@ test.describe.serial('portal do cliente', () => {
       // F17-3: a nota do atendimento e a de cada procedimento (o padrão da clínica é os dois).
       const { data: ag } = await db().from('appointments').select('procedure_id, procedures(name)').eq('id', primeiro!.id).single()
       const nomeDoProcedimento = (ag!.procedures as unknown as { name: string }).name
-      await estrelas(nomeDoProcedimento, 5).click()
+      await estrelas(`Procedimento: ${nomeDoProcedimento}`, 5).click()
       await estrelas('Atendimento', 4).click()
       await page.getByPlaceholder('Conte como foi seu atendimento (opcional)').fill(`${PREFIXO} ótimo`)
       await page.getByRole('button', { name: 'Confirmar que realizei o atendimento' }).click()

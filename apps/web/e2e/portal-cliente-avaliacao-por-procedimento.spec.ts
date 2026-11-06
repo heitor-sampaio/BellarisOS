@@ -131,10 +131,10 @@ test.describe.serial('a avaliação do atendimento e de cada procedimento', () =
     await como(browser, cliente!.estado, async p => {
       await p.goto(`/${slug}/cliente/atendimentos/${ap}/confirmar`)
       await expect(p.getByRole('group', { name: 'Atendimento', exact: true })).toBeVisible()
-      await expect(p.getByRole('group', { name: `${PREFIXO} Botox ${marca}` })).toBeVisible()
-      await expect(p.getByRole('group', { name: `${PREFIXO} Preenchimento ${marca}` })).toBeVisible()
+      await expect(p.getByRole('group', { name: `Procedimento: ${PREFIXO} Botox ${marca}` })).toBeVisible()
+      await expect(p.getByRole('group', { name: `Procedimento: ${PREFIXO} Preenchimento ${marca}` })).toBeVisible()
     })
-    await avaliar(cliente!.estado, browser, ap, { Atendimento: 3, [`${PREFIXO} Botox ${marca}`]: 5, [`${PREFIXO} Preenchimento ${marca}`]: 4 })
+    await avaliar(cliente!.estado, browser, ap, { Atendimento: 3, [`Procedimento: ${PREFIXO} Botox ${marca}`]: 5, [`Procedimento: ${PREFIXO} Preenchimento ${marca}`]: 4 })
     expect((await db().from('appointments').select('client_rating, procedure_rating, client_confirmed_at').eq('id', ap).single()).data)
       .toMatchObject({ client_rating: 3, procedure_rating: null })
     const linhas = ((await db().from('avaliacoes_dos_procedimentos').select('procedure_id, nota').eq('appointment_id', ap)).data ?? [])
@@ -157,7 +157,7 @@ test.describe.serial('a avaliação do atendimento e de cada procedimento', () =
     await como(browser, cliente!.estado, async p => {
       await p.goto(`/${slug}/cliente/atendimentos/${ap}/confirmar`)
       await expect(p.getByRole('group', { name: 'Atendimento', exact: true })).toBeVisible()
-      await expect(p.getByRole('group', { name: `${PREFIXO} Botox ${marca}` })).toHaveCount(0)
+      await expect(p.getByRole('group', { name: `Procedimento: ${PREFIXO} Botox ${marca}` })).toHaveCount(0)
     })
     await avaliar(cliente!.estado, browser, ap, { Atendimento: 1 })
     expect(await notas(), 'cada procedimento recebe a nota do atendimento').toEqual({
@@ -172,7 +172,7 @@ test.describe.serial('a avaliação do atendimento e de cada procedimento', () =
       await p.goto(`/${slug}/cliente/atendimentos/${ap}/confirmar`)
       await expect(p.getByRole('group', { name: 'Atendimento', exact: true })).toHaveCount(0)
     })
-    await avaliar(cliente!.estado, browser, ap, { [`${PREFIXO} Botox ${marca}`]: 4, [`${PREFIXO} Preenchimento ${marca}`]: 2 })
+    await avaliar(cliente!.estado, browser, ap, { [`Procedimento: ${PREFIXO} Botox ${marca}`]: 4, [`Procedimento: ${PREFIXO} Preenchimento ${marca}`]: 2 })
     expect((await db().from('appointments').select('client_rating').eq('id', ap).single()).data?.client_rating, 'sem nota do atendimento').toBeNull()
     // Botox 5, 1, 4 → 3,33; Preenchimento 4, 1, 2 → 2,33; a profissional 3, 1 e (4+2)/2 = 3 → 2,33.
     const r = await notas()

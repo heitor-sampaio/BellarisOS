@@ -229,6 +229,7 @@ export const ISOLADOS = [
   'financeiro-motivo-do-desconto.spec.ts',
   'vendas-produto-varios.spec.ts',
   'vendas-produto-devolver-parte.spec.ts',
+  'portal-cliente-atritos-da-8.spec.ts',
   'comissoes-pacote-responsavel.spec.ts',
   'vendas-quem-vendeu.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',

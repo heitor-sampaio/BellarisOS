@@ -211,6 +211,30 @@
   o cartão não aparece. Prova: `e2e/portal-cliente-a-clinica.spec.ts`,
   `e2e/portal-cliente-plano-proposto.spec.ts`,
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
+- **Os atritos do portal da 8ª simulação** (2026-11-06; princípio 3, o que a
+  tela mostra é o que vale):
+  - **A sessão "A agendar" do plano diz quem marca** (A51): com procedimento que
+    não está no app (o laser), "quem marca é a clínica — fale com ela para
+    escolher o dia"; com todos no app, "agende pelo app em Agendar"
+    (`[data-quem-marca-a-sessao]`, o cartão do plano fechado do Início).
+  - **O Confirmar avisa ANTES quando o horário fica dentro do prazo do app**
+    (A52; `tenants.portal_prazo_alteracao_horas`): "Este horário fica a menos
+    de 12 horas: pelo app, a remarcação e o cancelamento vão até 12 horas
+    antes…" (`[data-dentro-do-prazo]`). O agendamento continua permitido.
+  - **O Início e o Histórico dizem a unidade** (A53): com duas ou mais
+    unidades, o próximo agendamento mostra o nome e o endereço da unidade
+    DELE (`[data-unidade-do-agendamento]`) — a drenagem da Água Verde aparecia
+    no portal do Batel sem dizer onde —, e cada atendimento do Histórico diz
+    onde foi (`[data-unidade-do-atendimento]`). O cartão "A clínica" segue o do
+    endereço.
+  - **A nota dada se lê** (A54): as estrelas do Histórico dizem "4/5" e se
+    anunciam ("Atendimento: 4 de 5 estrelas", `[data-avaliacao-dada]`);
+    "Aguardando sua confirmação" diz que é opcional, e o link é "Confirmar e
+    avaliar (opcional)".
+  - **A nota do procedimento tem nome próprio** (A55): na tela de confirmar, o
+    grupo é "Procedimento: Avaliação" (era "Avaliação", o mesmo nome do
+    resumo).
+  - Prova: `e2e/portal-cliente-atritos-da-8.spec.ts`.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
 - Tags como `String[]` no registro; o VOCABULÁRIO é da rede (`tags`, abaixo).
   `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a

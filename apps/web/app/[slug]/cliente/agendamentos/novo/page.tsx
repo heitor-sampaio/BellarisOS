@@ -42,6 +42,9 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
 
   const branch = unidades.find(u => u.slug === slug)
   if (!branch) notFound()
+  // A52 da 8ª: o prazo do app, para o Confirmar avisar antes.
+  const rede = await ler(admin.from('tenants').select('portal_prazo_alteracao_horas').eq('id', clientRecord.tenant_id as string).single(),
+    'ler o prazo do portal') as { portal_prazo_alteracao_horas: number | null } | null
 
   // A arquivada não agenda pelo app (o Heitor: "concordo"): fala com a clínica.
   if (clientRecord.is_active === false) {
@@ -95,6 +98,7 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
       procedures={procedures}
       procedimentoInicial={typeof procedimento === 'string' ? procedimento : null}
       professionals={professionals}
+      prazoHoras={rede?.portal_prazo_alteracao_horas ?? 24}
     />
   )
 }
