@@ -179,6 +179,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   cai num bloqueio da profissional, dizendo o bloqueio e que o encaixe nele é
   pela agenda (`recusaDoBloqueado`, `lib/copilot/ferramentas/agenda-escrita.ts`).
   Bloquear e desfazer é da tela (Agenda → "Bloquear horário").
+- **A profissional é de quem ATENDE na unidade** (decisão 2 do Heitor sobre a
+  8ª simulação, 2026-11-06: o "atende" vira um checklist das unidades):
+  `resolverProfissional` (`lib/copilot/ferramentas/comum.ts`), com a unidade
+  dada, procura entre quem a tem marcada no "Atende"
+  (`filtroDeQuemAtendeNaUnidade`) — era "da unidade ou da rede". A Talita
+  marcada no Batel é achada lá; quem é da rede e não está marcada, não.
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,
