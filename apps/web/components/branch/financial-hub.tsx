@@ -16,6 +16,7 @@ import { FinancialTable, Transaction }                      from './financial-ta
 import { SegSelect }                                        from '@/components/shared/seg-select'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { resultadoDoPeriodo, type EstoqueNoResultado } from '@/lib/metrics/resultado'
+import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcelas-da-operadora'
@@ -203,7 +204,7 @@ function KpiCardFull({
       ) : (
         <span style={{ fontSize: 'var(--text-overline)', color: mutedColor }}>sem dados anteriores</span>
       )}
-      {nota && <div style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{nota}</div>}
+      {nota && <div style={{ fontSize: 'var(--text-overline)', color: hl ? 'var(--on-brand)' : 'var(--text-muted)', opacity: hl ? 0.85 : 1, lineHeight: 1.4 }}>{nota}</div>}
     </div>
   )
 }
@@ -555,7 +556,8 @@ export function FinancialHub({
   // O lucro do período vem de lib/metrics (resultadoDoPeriodo), como nos
   // Relatórios: desconta o insumo consumido; a compra de estoque fica nas
   // despesas (o caixa) e fora do lucro (2026-10-29).
-  const saldo     = resultadoDoPeriodo({ ...totais, ...estoqueNoResultado }).lucro
+  const resultado = resultadoDoPeriodo({ ...totais, ...estoqueNoResultado })
+  const saldo     = resultado.lucro
   const prevSaldo = resultadoDoPeriodo({ ...totaisAnteriores, ...estoqueNoResultadoAnterior }).lucro
 
   // -- Charts ----------------------------------------------------
@@ -650,6 +652,8 @@ export function FinancialHub({
         <KpiCardFull
           label="Lucro Líquido"
           curr={saldo} prev={prevSaldo}
+          // D8 da 8ª: a conta do resultado, para ele se explicar na tela.
+          nota={<ContaDoResultado receita={income} resultado={resultado} despesasDoCaixa={expense} />}
           icon={<Wallet size={13} style={{ color: 'var(--on-brand)' }} />}
           iconBg="rgba(255,255,255,0.18)"
           highlight

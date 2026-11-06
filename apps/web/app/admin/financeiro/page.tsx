@@ -149,6 +149,8 @@ export default async function AdminFinanceiroPage({
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
 
   const txs = (txsRaw ?? []) as unknown as LancamentoLido[]
+  // O resultado da rede e as parcelas dele (D8 da 8ª: a conta embaixo do cartão).
+  const totalConta = resultadoDoPeriodo({ ...core, ...estoqueNoResultado.total })
 
   // KPIs consolidados
   const totalRevenue  = core.revenueCash
@@ -175,7 +177,7 @@ export default async function AdminFinanceiroPage({
     slug:        b.branchSlug,
     revenue:     b.revenueCash,
     expenses:    b.expensesCash,
-    result:      resultadoDoPeriodo({ ...b, ...(estoquePorUnidade.porUnidade[b.branchId] ?? SEM_ESTOQUE_NO_RESULTADO) }).lucro,
+    ...(conta => ({ result: conta.lucro, conta }))(resultadoDoPeriodo({ ...b, ...(estoquePorUnidade.porUnidade[b.branchId] ?? SEM_ESTOQUE_NO_RESULTADO) })),
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
     aReceberEmAberto: aReceberEmAberto.porUnidade[b.branchId] ?? 0,
@@ -206,7 +208,8 @@ export default async function AdminFinanceiroPage({
         customTo={sp.to}
         totalRevenue={totalRevenue}
         totalExpenses={totalExpenses}
-        totalResult={resultadoDoPeriodo({ ...core, ...estoqueNoResultado.total }).lucro}
+        totalResult={totalConta.lucro}
+        totalConta={totalConta}
         totalCommissions={totalComm}
         totalAReceber={emAbertoDaRede.aReceber}
         totalAReceberEmAberto={aReceberEmAberto.total}

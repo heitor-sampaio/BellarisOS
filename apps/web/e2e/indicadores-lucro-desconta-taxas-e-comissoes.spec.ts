@@ -126,3 +126,18 @@ test('o financeiro da unidade e o da rede: "Lucro Líquido" e "Resultado líquid
     await expect.poll(async () => dinheiro(await card(p, 'Despesas totais').innerText()), { timeout: 15_000 }).toBe(300)
   })
 })
+
+test('D8 da 8ª: o resultado se explica na tela — a conta embaixo do "Lucro Líquido" e do "Resultado líquido" fecha', async ({ browser }) => {
+  // "Receita R$ 89 · Despesas R$ 0 · Comissões R$ 0 · Resultado líquido R$ 9":
+  // o insumo e as taxas entravam no resultado, e nenhum cartão os mostrava.
+  const conta = /Receita R\$\s*2\.100,00\s*− despesas operacionais R\$\s*200,00\s*− insumos e produtos R\$\s*0,00\s*− taxas da maquininha R\$\s*38,00\s*− comissões lançadas R\$\s*100,00\s*= R\$\s*1\.762,00/
+  await como(browser, dona!, async p => {
+    await p.goto(`/${slug}/financeiro`)
+    await expect(card(p, 'Lucro Líquido').locator('[data-conta-do-resultado]')).toHaveText(conta, { timeout: 15_000 })
+    await p.goto('/admin/financeiro?period=month')
+    const daRede = card(p, 'Resultado líquido').locator('[data-conta-do-resultado]')
+    await expect(daRede).toHaveText(conta, { timeout: 15_000 })
+    // As despesas do cartão são o caixa (R$ 300): a conta diz por que só R$ 200 entram.
+    await expect(card(p, 'Resultado líquido')).toContainText('a compra de estoque e o pagamento das comissões ficam no caixa')
+  })
+})

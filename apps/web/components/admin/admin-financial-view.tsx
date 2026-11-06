@@ -23,6 +23,8 @@ import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcel
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
+import type { ResultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 
 // --- Types -------------------------------------------------------------------
 
@@ -33,6 +35,8 @@ interface BranchStat {
   revenue:     number
   expenses:    number
   result:      number
+  /** As parcelas do resultado (lib/metrics): a conta embaixo do cartão (D8 da 8ª). */
+  conta:       ResultadoDoPeriodo
   commissions: number
   aReceber:    number
   /** D-14: todo o a receber em aberto da unidade, de qualquer vencimento. */
@@ -84,6 +88,8 @@ interface Props {
   totalRevenue:     number
   totalExpenses:    number
   totalResult:      number
+  /** As parcelas do resultado da rede (lib/metrics): a conta embaixo do cartão (D8 da 8ª). */
+  totalConta:       ResultadoDoPeriodo
   totalCommissions: number
   /** A receber e a pagar no período (lib/metrics: revenuePending, metrics_a_pagar). */
   totalAReceber:    number
@@ -217,7 +223,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalCommissions, totalAReceber, totalAReceberEmAberto, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
@@ -286,6 +292,7 @@ export function AdminFinancialView({
   const revenue     = statDaUnidade ? statDaUnidade.revenue     : totalRevenue
   const expenses    = statDaUnidade ? statDaUnidade.expenses    : totalExpenses
   const result      = statDaUnidade ? statDaUnidade.result      : totalResult
+  const conta       = statDaUnidade ? statDaUnidade.conta       : totalConta
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
   const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
   const aReceberEmAberto = statDaUnidade ? statDaUnidade.aReceberEmAberto ?? 0 : totalAReceberEmAberto
@@ -393,6 +400,7 @@ export function AdminFinancialView({
         <KpiCard
           label="Resultado líquido"
           value={fmtBRL(result)}
+          nota={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} />}
           icon={<Wallet size={16} color="var(--brand)" />}
         />
         <KpiCard

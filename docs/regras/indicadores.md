@@ -205,6 +205,18 @@
       unidade, no "Resultado líquido" do da rede (e de cada unidade), no
       "Custo do lucro" da evolução (dashboard e Relatórios) e no Copilot. A
       "taxa estimada" do Fechamento continua informativa (não sai do saldo).
+      **O resultado do Financeiro se explica na tela** (D8 da 8ª simulação,
+      2026-11-06; princípio 3): o da rede dizia "Receita R$ 89 · Despesas
+      R$ 0 · Comissões R$ 0 · Resultado líquido R$ 9", e os R$ 80 de insumo e
+      de custo do produto não apareciam em cartão nenhum. Embaixo do
+      "Resultado líquido" (rede, e cada unidade no recorte) e do "Lucro
+      Líquido" (unidade), a conta: "Receita R$ 89,00 − despesas operacionais
+      R$ 0,00 − insumos e produtos R$ 80,00 − taxas da maquininha R$ 0,00 −
+      comissões lançadas R$ 0,00 = R$ 9,00" (`ContaDoResultado`,
+      `[data-conta-do-resultado]`, as parcelas de `resultadoDoPeriodo`); quando
+      as despesas pagas do cartão passam da operacional, diz que a compra de
+      estoque e o pagamento das comissões ficam no caixa. Prova:
+      `e2e/indicadores-lucro-desconta-taxas-e-comissoes.spec.ts` ("D8").
       Prova: `e2e/indicadores-lucro-desconta-taxas-e-comissoes.spec.ts`,
       `tests/metrics-resultado.test.ts`, `tests/metrics-evolucao.test.ts`.
   - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
