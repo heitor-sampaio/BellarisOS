@@ -86,6 +86,10 @@ test('A26: a tela do atendimento diz que o digitado só fica salvo ao finalizar'
 test('A27: a desistência no meio registra a intercorrência e baixa o insumo já aplicado', async ({ browser }) => {
   const { id } = await atendimento('Desistiu')
   await como(browser, profissional!, async p => {
+    // Sobra da F37: o CancelModal chamava onClose DURANTE a renderização, e o
+    // React avisava ("Cannot update a component while rendering a different component").
+    const avisos: string[] = []
+    p.on('console', m => { if (/Cannot update a component/.test(m.text())) avisos.push(m.text()) })
     await p.goto(`/${slug}/agenda/${id}`)
     await p.getByRole('button', { name: 'Cancelar', exact: true }).click()
     const janela = p.getByRole('dialog', { name: 'Cancelar atendimento' })
@@ -94,6 +98,7 @@ test('A27: a desistência no meio registra a intercorrência e baixa o insumo j�
     await janela.getByLabel(/Baixar do estoque o que já foi aplicado/).check()
     await janela.getByRole('button', { name: 'Confirmar cancelamento' }).click()
     await expect(janela).toBeHidden()
+    expect(avisos, 'nenhum setState durante a renderização').toEqual([])
   })
   const { data: ag } = await db().from('appointments').select('status, cancellation_reason').eq('id', id).single<{ status: string; cancellation_reason: string }>()
   expect(ag).toEqual({ status: 'CANCELLED', cancellation_reason: 'A cliente passou mal e desistiu' })

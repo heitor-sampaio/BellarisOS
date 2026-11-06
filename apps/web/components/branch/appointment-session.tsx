@@ -306,7 +306,14 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
   const router = useRouter()
   const [state, action, pending] = useActionState(cancelAppointmentSession, null)
   const [baixar, setBaixar] = useState(false)
-  if (state !== null && !state?.error && !pending) { onClose(); router.refresh(); return null }
+  // Cancelado, fecha e recarrega — num efeito: chamar onClose DURANTE a
+  // renderização mudava o estado do pai no meio dela (o aviso do React, sobra
+  // da F37).
+  const cancelado = state !== null && !state?.error && !pending
+  useEffect(() => {
+    if (cancelado) { onClose(); router.refresh() }
+  }, [cancelado, onClose, router])
+  if (cancelado) return null
   const listaDosInsumos = (desistencia?.insumos ?? []).map(i => `${i.name} ${formatarDose(i.quantity)} ${i.unit}`).join(', ')
   return (
     <JanelaModal onFechar={onClose} rotulo="Cancelar atendimento" largura={460} travado={pending}>
