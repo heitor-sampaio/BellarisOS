@@ -7,6 +7,14 @@ import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
 import { ler } from '@/lib/db'
 
+/**
+ * A recusa do índice único `messages_external_id_unico` (migration
+ * `20261106000001`): a mesma mensagem do WhatsApp entra uma vez por conversa.
+ * A procura antes do insert não basta — duas entregas simultâneas passavam as
+ * duas por ela (o histórico da coexistência em dobro, e o PGRST116 depois).
+ */
+const MENSAGEM_JA_GRAVADA = '23505'
+
 interface ResolveResult {
   conversationId: string
   branchId:       string | null
@@ -413,7 +421,7 @@ export async function insertInboundMessage(
     .select('id')
     .eq('external_id', msg.externalId)
     .eq('conversation_id', conversationId)
-    .maybeSingle(), 'buscar a mensagem')
+    .limit(1).maybeSingle(), 'buscar a mensagem')
 
   if (existing) return
 
@@ -465,6 +473,9 @@ export async function insertInboundMessage(
   })
 
   // Sem isto, mensagem perdida no webhook não deixava rastro nenhum.
+  // A outra entrega simultânea gravou primeiro: o índice único
+  // (messages_external_id_unico) recusou esta, e a mensagem já estava — sem evento.
+  if (error?.code === MENSAGEM_JA_GRAVADA) return
   if (error) console.error('[insertInboundMessage]', error.message)
 
   // Mensagem do CLIENTE — é o gatilho de primeiro atendimento, resposta
@@ -519,7 +530,7 @@ export async function insertMensagemDoAplicativo(
     .from('messages').select('id')
     .eq('external_id', msg.externalId)
     .eq('conversation_id', conversationId)
-    .maybeSingle(), 'buscar a mensagem')
+    .limit(1).maybeSingle(), 'buscar a mensagem')
   if (existing) return false
 
   let mediaPath: string | null = null
@@ -544,6 +555,7 @@ export async function insertMensagemDoAplicativo(
     reply_to_external_id: msg.replyToExternalId ?? null,
     importada:          opcoes.importada,
   })
+  if (error?.code === MENSAGEM_JA_GRAVADA) return false
   if (error) { console.error('[insertMensagemDoAplicativo]', error.message); return false }
   return true
 }

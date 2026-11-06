@@ -210,6 +210,16 @@ sem erro nenhum. O ramo `IS NULL` preserva a garantia antiga; o ramo
 leva o mesmo filtro de caixa** — é o único ponto onde esquecê-lo não aparece em
 teste feliz: sob concorrência, a mensagem entra na thread errada.
 
+**A mensagem com id do provedor entra UMA vez por conversa** (2026-11-06):
+o índice único `messages_external_id_unico` (`conversation_id`, `external_id`,
+parcial em `external_id is not null`). A procura antes do insert não bastava:
+duas entregas simultâneas (o histórico da coexistência vem em pedaços e a Meta
+reentrega) passavam as duas por ela, e a Bellaris Clinic ficou com 34 mensagens
+de maio em dobro — dali em diante a procura achava duas linhas, estourava
+PGRST116 e o webhook respondia 500 a cada reentrega. O insert trata o 23505
+como "já estava" (`MENSAGEM_JA_GRAVADA` em `lib/inbox/resolve-conversation.ts`),
+sem evento. Prova: `e2e/whatsapp-historico-sem-duplicar.spec.ts`.
+
 **Nunca use um escalar de rede para decidir algo de uma conversa.**
 `canaisConectados.provedorWhatsApp` fazia exatamente isso com a janela de 24h e
 o botão de editar; com dois provedores convivendo, mentia em metade das
@@ -473,6 +483,8 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Ligar, desligar ou remover um número oficial sem acompanharCatalogos (o catálogo fica de outra conta)
 ❌ Apagar template NA META ao desligar um número (só daqui; na Meta é o "Apagar" do template)
 ❌ Oferecer ou enviar template com nao_suportado (a Meta recusa ou o cliente recebe {{1}})
+❌ Deduplicar mensagem só com "procura e, se não achou, grava" (duas entregas simultâneas gravam as duas) — é o índice único e o 23505 tratado como "já estava"
+❌ Ler a mensagem pelo external_id com maybeSingle sem limit(1) quando o erro dela derruba o webhook
 ❌ Gravar o id técnico do número (phoneNumberId) como nome da conexão — é rotuloDaConexao
 ❌ Importar o histórico da uazapi pelo parseInbound (ele descarta o fromMe e tira a identidade do remetente) — é lerDoHistorico
 ❌ Trabalho em after() com linha "em aberto" sem sinal de vida (um deploy no meio a deixa aberta e trava a próxima)
