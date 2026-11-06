@@ -67,7 +67,7 @@ export function PlanoAberto({
           display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
           fontSize: 'var(--text-sm-sz)', padding: '5px 10px', textDecoration: 'none',
         }}>
-        <ChevronLeft size={14} /> Planejamentos
+        <ChevronLeft size={14} /> Tratamentos
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>

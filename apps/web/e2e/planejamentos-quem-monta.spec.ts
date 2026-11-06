@@ -64,7 +64,7 @@ test('A18: /planejamentos/novo leva à lista, com o "Novo plano" aberto para que
   })
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/planejamentos/novo`)
-    await expect(p.getByRole('heading', { name: 'Planejamentos' })).toBeVisible()
+    await expect(p.getByRole('heading', { name: 'Tratamentos' })).toBeVisible()
     await expect(p.getByText(/Quem monta o plano é quem tem o Prontuário em Gerenciar/)).toBeVisible()
   })
 })

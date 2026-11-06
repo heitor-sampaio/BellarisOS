@@ -125,7 +125,8 @@ export function PlanejamentosClient({
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-            Planejamentos
+            {/* A30 da 8ª: o mesmo nome do menu ("Tratamentos") — o grupo "Planejamento" tem Tratamentos e Injetáveis. */}
+            Tratamentos
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {branchName ?? fala('Rede')} · {planos.length} plano{planos.length !== 1 ? 's' : ''}

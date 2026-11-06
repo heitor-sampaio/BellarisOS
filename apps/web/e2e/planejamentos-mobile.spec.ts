@@ -57,7 +57,7 @@ test('criar um plano abre a tela dele; voltar traz a lista', async ({ page }) =>
   // …e a lista saiu da tela, que é o ponto.
   await expect(busca).toBeHidden()
 
-  const voltar = page.getByRole('link', { name: 'Planejamentos' })
+  const voltar = page.locator('main').getByRole('link', { name: 'Tratamentos', exact: true })
   await expect(voltar).toBeVisible()
   await voltar.click()
 
@@ -81,7 +81,7 @@ test('o plano abre pela lista e renomear volta para a lista', async ({ page }) =
   await page.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(page.getByRole('heading', { name: novo })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Planejamentos' }).click()
+  await page.locator('main').getByRole('link', { name: 'Tratamentos', exact: true }).click()
   await expect(page.getByText(novo)).toBeVisible()
 })
 
@@ -91,7 +91,7 @@ test('a mesma navegação existe no portal da unidade', async ({ page }) => {
 
   await page.goto(`/${unidade!.slug}/planejamentos/${planId}`)
 
-  const voltar = page.getByRole('link', { name: 'Planejamentos' })
+  const voltar = page.locator('main').getByRole('link', { name: 'Tratamentos', exact: true })
   await expect(voltar).toBeVisible()
   await voltar.click()
   await expect(page).toHaveURL(new RegExp(`/${unidade!.slug}/planejamentos$`))

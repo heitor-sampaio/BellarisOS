@@ -102,8 +102,9 @@ test('depois de "Gerar plano e enviar", a evolução, a intercorrência e os ins
 
     // E vão ao Finalizar.
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
-    await expect(p.locator('#conclusao-evolucao')).toHaveValue(EVOLUCAO)
-    await expect(p.locator('#conclusao-intercorrencias')).toHaveValue(INTERC)
+    // A29 da 8ª: a janela mostra o que vai ao prontuário, sem repetir os campos.
+    await expect(p.locator('[data-evolucao-da-tela]')).toContainText(EVOLUCAO)
+    await expect(p.locator('[data-evolucao-da-tela]')).toContainText(INTERC)
     await p.getByRole('button', { name: 'Confirmar conclusão' }).click()
     await expect.poll(async () => (await db().from('appointments').select('status').eq('id', id).single<{ status: string }>()).data?.status,
       { timeout: 30_000 }).toBe('COMPLETED')
@@ -124,8 +125,10 @@ test('o Finalizar com a evolução em branco não apaga a evolução gravada', a
     await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
     await expect.poll(async () => (await db().from('medical_record_entries').select('notes').eq('appointment_id', id).maybeSingle()).data?.notes,
       { timeout: 30_000 }).toBe(EVOLUCAO)
+    // A evolução em branco na tela (o Finalizar não repete o campo — A29 da 8ª).
+    await p.locator('#atendimento-evolucao').fill('')
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
-    await p.locator('#conclusao-evolucao').fill('')
+    await expect(p.locator('#conclusao-evolucao')).toHaveValue('')
     await p.getByRole('button', { name: 'Confirmar conclusão' }).click()
     await expect.poll(async () => (await db().from('appointments').select('status').eq('id', id).single<{ status: string }>()).data?.status,
       { timeout: 30_000 }).toBe('COMPLETED')

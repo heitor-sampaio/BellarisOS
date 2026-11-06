@@ -134,8 +134,9 @@ test.describe.serial('fechar um atendimento', () => {
     await page.locator('textarea[placeholder^="Técnicas utilizadas"]').fill(`${PREFIXO} observação final`)
     await page.locator('textarea[placeholder^="Reações, intercorrências"]').fill(`${PREFIXO} eritema leve`)
     await page.getByRole('button', { name: 'Finalizar atendimento' }).click()
-    await expect(page.locator('textarea[name="notes"]'), 'o modal traz o que está na tela').toHaveValue(`${PREFIXO} observação final`)
-    await expect(page.locator('textarea[name="intercurrences"]')).toHaveValue(`${PREFIXO} eritema leve`)
+    // O modal traz o que está na tela — mostrado, sem repetir os campos (A29 da 8ª).
+    await expect(page.locator('[data-evolucao-da-tela]'), 'o modal traz o que está na tela').toContainText(`${PREFIXO} observação final`)
+    await expect(page.locator('[data-evolucao-da-tela]')).toContainText(`${PREFIXO} eritema leve`)
     await page.getByRole('button', { name: 'Confirmar conclusão' }).click()
 
     // Concluiu, e AVISOU: o modal não some calado quando falta insumo.

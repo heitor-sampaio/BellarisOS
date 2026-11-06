@@ -7,7 +7,7 @@ import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
   XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList, FileText,
-  AlertCircle,
+  AlertCircle, Info, StickyNote,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -85,6 +85,8 @@ export interface SessionAppointment {
   complaints:          string | null
   /** A observação INTERNA do agendamento (`appointments.notes`) — não é dor do cliente (A17). */
   internalNotes?:      string | null
+  /** O horário cai num BLOQUEIO da profissional ou da sala (A31 da 8ª): o aviso, pronto. */
+  bloqueioDoHorario?:  string | null
   clientConfirmedAt:   string | null
   /** A cliente tem o app (login): só então se espera a confirmação por ele. */
   clientTemApp?:       boolean
@@ -292,10 +294,20 @@ function OQueFaltaParaFinalizar({ grupos, onFechar }: { grupos: GrupoQueFalta[];
   )
 }
 
-function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; slug: string; onClose: () => void }) {
+function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
+  appointmentId: string; slug: string; onClose: () => void
+  /**
+   * A desistência NO MEIO do atendimento (A27 da 8ª simulação), para quem
+   * escreve no prontuário: registrar a intercorrência e baixar o insumo já
+   * aplicado (os marcados na tela), numa transação com o cancelamento.
+   */
+  desistencia?: { insumos: SessionProduct[] } | null
+}) {
   const router = useRouter()
   const [state, action, pending] = useActionState(cancelAppointmentSession, null)
+  const [baixar, setBaixar] = useState(false)
   if (state !== null && !state?.error && !pending) { onClose(); router.refresh(); return null }
+  const listaDosInsumos = (desistencia?.insumos ?? []).map(i => `${i.name} ${formatarDose(i.quantity)} ${i.unit}`).join(', ')
   return (
     <JanelaModal onFechar={onClose} rotulo="Cancelar atendimento" largura={460} travado={pending}>
       <div>
@@ -308,9 +320,28 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">Motivo do cancelamento *</label>
-            <textarea name="cancellation_reason" required rows={3} placeholder="Descreva o motivo…" className="field" style={{ resize: 'vertical' }} />
+            <label htmlFor="cancelamento-motivo" className="field-label">Motivo do cancelamento *</label>
+            <textarea id="cancelamento-motivo" name="cancellation_reason" required rows={3} placeholder="Descreva o motivo…" className="field" style={{ resize: 'vertical' }} />
           </div>
+          {desistencia && (
+            <div data-desistencia style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                O atendimento já começou. Se algo aconteceu ou algum insumo já foi aplicado, registre aqui — vai junto com o cancelamento (sem comissão nem cobrança).
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label htmlFor="cancelamento-intercorrencia" className="field-label">Intercorrência (opcional)</label>
+                <textarea id="cancelamento-intercorrencia" name="intercorrencia" rows={2} placeholder="O que aconteceu — fica no prontuário do atendimento" className="field" style={{ resize: 'vertical' }} />
+              </div>
+              {desistencia.insumos.length > 0 && (
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+                  <input type="checkbox" checked={baixar} onChange={e => setBaixar(e.target.checked)} style={{ marginTop: 3 }} />
+                  <span>Baixar do estoque o que já foi aplicado: {listaDosInsumos}</span>
+                </label>
+              )}
+              {baixar && <input type="hidden" name="products_used" value={JSON.stringify(desistencia.insumos)} />}
+              <input type="hidden" name="desistencia" value="1" />
+            </div>
+          )}
           {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
@@ -426,15 +457,41 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
             <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600 }}>O procedimento foi realizado com sucesso?</p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 3 }}>Confirme para liberar o cliente. Adicione observações se necessário.</p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {/* A42: a evolução tem UM nome em toda a tela (era "Anotações clínicas", "O que foi realizado" e "Observações finais"). */}
-            <label htmlFor="conclusao-evolucao" className="field-label">Evolução <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
-            <textarea id="conclusao-evolucao" name="notes" rows={3} defaultValue={initialNotes ?? ''} placeholder="Técnicas, áreas tratadas, produtos utilizados…" className="field" style={{ resize: 'vertical' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label htmlFor="conclusao-intercorrencias" className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
-            <textarea id="conclusao-intercorrencias" name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
-          </div>
+          {/* A29 da 8ª simulação: o que já foi escrito NA TELA não se repete aqui
+              como campo — a janela mostra o que vai ao prontuário (para mudar, é
+              na tela). Só o que está em branco vira campo, para escrever agora. */}
+          {(initialNotes?.trim() || initialIntercurrences?.trim()) && (
+            <div data-evolucao-da-tela style={{ padding: '10px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {initialNotes?.trim() && (
+                <div>
+                  <p className="field-label">Evolução</p>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{initialNotes.trim()}</p>
+                  <input type="hidden" name="notes" value={initialNotes} />
+                </div>
+              )}
+              {initialIntercurrences?.trim() && (
+                <div>
+                  <p className="field-label">Intercorrências</p>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{initialIntercurrences.trim()}</p>
+                  <input type="hidden" name="intercurrences" value={initialIntercurrences} />
+                </div>
+              )}
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Vai ao prontuário como está na tela. Para mudar, volte e edite na tela.</p>
+            </div>
+          )}
+          {!initialNotes?.trim() && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {/* A42: a evolução tem UM nome em toda a tela (era "Anotações clínicas", "O que foi realizado" e "Observações finais"). */}
+              <label htmlFor="conclusao-evolucao" className="field-label">Evolução <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
+              <textarea id="conclusao-evolucao" name="notes" rows={3} defaultValue="" placeholder="Técnicas, áreas tratadas, produtos utilizados…" className="field" style={{ resize: 'vertical' }} />
+            </div>
+          )}
+          {!initialIntercurrences?.trim() && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label htmlFor="conclusao-intercorrencias" className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
+              <textarea id="conclusao-intercorrencias" name="intercurrences" rows={2} defaultValue="" placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
+            </div>
+          )}
           {divergencias.map(d => (
             <div key={d.productId} data-dose-do-mapa style={{ padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -1752,7 +1809,10 @@ export function AppointmentSession({
         </JanelaModal>
       )}
 
-      {showCancel  && <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)} />}
+      {showCancel  && (
+        <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)}
+          desistencia={status === 'IN_PROGRESS' && canEditRecords ? { insumos: confirmedInsumos } : null} />
+      )}
       {oQueFalta   && <OQueFaltaParaFinalizar grupos={oQueFalta} onFechar={() => setOQueFalta(null)} />}
       {showFinish  && (
         <FinishModal
@@ -1911,6 +1971,43 @@ export function AppointmentSession({
 
         {/* A alergia em destaque, acima de tudo (só com o prontuário à vista). */}
         <AlertaDeAlergia alergias={alergiasDaAnamnese(anamneseNaTela)} />
+
+        {/* A31 da 8ª simulação: o horário cai num bloqueio da profissional (ou da
+            sala) — as férias da Débora não avisavam ao iniciar. Só aviso: o
+            atendimento segue (o encaixe no bloqueado é permitido, princípio 2). */}
+        {isActive && appointment.bloqueioDoHorario && (
+          <div data-aviso-do-bloqueio role="note" style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+          }}>
+            <Lock size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span>{appointment.bloqueioDoHorario}</span>
+          </div>
+        )}
+
+        {/* A26 da 8ª simulação: nada do que se digita aqui fica no servidor antes
+            de finalizar (o rascunho é da aba — decisão do Heitor, A31 de 27/10).
+            A tela diz isso, em vez de a profissional descobrir ao trocar de aparelho. */}
+        {status === 'IN_PROGRESS' && podeRascunhar && (
+          <p data-aviso-do-rascunho role="note" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            <Info size={14} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--info)' }} />
+            A anamnese, a evolução e a ficha digitadas ficam guardadas só nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba ou abrir em outro aparelho, não.
+          </p>
+        )}
+
+        {/* A28 da 8ª simulação: as anotações da ficha da cliente (a alergia que
+            veio da planilha) aparecem junto da anamnese — como estão escritas,
+            sem interpretar o texto (atend-15). Só a quem vê o prontuário. */}
+        {canViewRecords && client.notes?.trim() && (
+          <div data-anotacoes-da-ficha role="note" style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--info-soft)', border: '1px solid var(--border)', fontSize: 'var(--text-sm-sz)', color: 'var(--text)',
+          }}>
+            <StickyNote size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1, color: 'var(--info)' }} />
+            <span><strong>Anotações da ficha da cliente:</strong> {client.notes.trim()}</span>
+          </div>
+        )}
 
         {/* A menor de idade: quem a acompanha, ou o aviso de que falta (decisão 2 do Heitor — avisar, não barrar). */}
         {ehMenorDeIdade(client.birthDate) && (client.responsavel

@@ -27,6 +27,8 @@ import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { deOutroProfissional } from '@/lib/appointments/alteracoes'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { nomeDaSessao } from '@/lib/plano-de-tratamento/nome'
+import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
+import { avisoDoBloqueioNoAtendimento } from '@/lib/agenda/bloqueio'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -398,7 +400,25 @@ export async function SessaoDeAtendimento({
       })),
   } : null
 
+  // O bloqueio da agenda que bate com este horário (A31 da 8ª simulação): o da
+  // profissional e o da sala. Só no que ainda não terminou — é aviso para quem
+  // vai iniciar ou está atendendo.
+  let bloqueioDoHorario: string | null = null
+  if (['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)) {
+    const ini = new Date(apptRaw.scheduled_at as string)
+    const fim = new Date(ini.getTime() + (Number(apptRaw.duration_min) || 60) * 60_000)
+    const [daProf, daSala] = await Promise.all([
+      prof?.id ? bloqueiosQueBatem(admin, { professionalId: prof.id, inicio: ini, fim }) : Promise.resolve([]),
+      room?.id ? bloqueiosQueBatem(admin, { roomId: room.id, inicio: ini, fim }) : Promise.resolve([]),
+    ])
+    const doHorario = daProf[0] ?? daSala[0] ?? null
+    if (doHorario) {
+      bloqueioDoHorario = avisoDoBloqueioNoAtendimento(daProf[0] ? { profissional: prof?.name } : { sala: room?.name }, doHorario)
+    }
+  }
+
   const appointment: SessionAppointment = {
+    bloqueioDoHorario,
     id:                  apptRaw.id,
     status:              apptRaw.status,
     scheduledAt:         apptRaw.scheduled_at,
