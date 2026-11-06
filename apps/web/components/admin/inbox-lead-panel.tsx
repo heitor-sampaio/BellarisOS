@@ -46,6 +46,7 @@ import { creditosParaAgendar } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -356,7 +357,7 @@ export function InboxLeadPanel({
       if (!vender) return
       // A unidade da venda é a que o cadastro escolheu: só agora se sabe se
       // ela tem pacote à venda.
-      if (novo?.cliente && novo.venda?.branchId && (novo.venda.pacotes.length || novo.venda.procedimentos.length)) setAbrirVenda(n => n + 1)
+      if (novo?.cliente && (novo.venda?.unidades?.length || (novo.venda?.branchId && (novo.venda.pacotes.length || novo.venda.procedimentos.length)))) setAbrirVenda(n => n + 1)
       else setErro('Cliente cadastrado, mas a unidade dele não tem nada à venda.')
     })
   }
@@ -472,7 +473,11 @@ export function InboxLeadPanel({
               </button>
             ) : null}
             {card.venda && (cliente ? (
-              card.venda.branchId && (
+              // Rede de duas ou mais unidades, para quem é da rede: a venda pergunta a unidade (H5).
+              card.venda.unidades?.length ? (
+                <Vender compacto clienteId={cliente.id} branchId="" unidades={card.venda.unidades}
+                  pacotes={[]} procedimentos={[]} abrirSinal={abrirVenda} />
+              ) : card.venda.branchId && (
                 <Vender compacto clienteId={cliente.id} branchId={card.venda.branchId}
                   pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} produtos={card.venda.produtos} equipe={card.venda.equipe} abrirSinal={abrirVenda} />
               )
@@ -1077,7 +1082,9 @@ export function ScheduleModal({
 }) {
   const [nome,     setNome]     = useState(contatoInicial.nome)
   const [telefone, setTelefone] = useState(contatoInicial.telefone)
-  const [branchId,   setBranchId]   = useState(branches[0]?.id ?? '')
+  // Sobra da F33 (8ª simulação; princípio 3): com duas ou mais unidades,
+  // nenhuma vem escolhida — nascia na primeira em ordem alfabética.
+  const [branchId,   setBranchId]   = useState(() => unidadeInicial(branches))
   const [data,       setData]       = useState<CrmSchedulingData | null>(null)
   const [loadingData, setLoadingData] = useState(!!branchId)
   const [procedureId, setProcedureId] = useState('')
@@ -1283,6 +1290,7 @@ export function ScheduleModal({
             <span style={labelStyle}>Unidade</span>
             <select className="field" value={branchId} onChange={e => setBranchId(e.target.value)} style={selectStyle}>
               {branches.length === 0 && <option value="">Nenhuma unidade</option>}
+              {branches.length > 1 && !branchId && <option value="">Selecione a unidade…</option>}
               {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </label>

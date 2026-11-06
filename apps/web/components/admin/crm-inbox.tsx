@@ -44,6 +44,7 @@ import {
   maskPhone,
 } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { agruparPorDia } from '@/lib/inbox/dias-da-conversa'
 
 // --- Gesto de puxar (só no celular) ---------------------------------------------
 
@@ -1571,13 +1572,9 @@ export function CRMInbox({
   // `contarFiltros` já inclui a origem desde que ela virou uma seção do painel.
   const filtrosAtivos = contarFiltros(filtros) > 0
 
-  // Group messages by calendar day
-  const dayGroups: { date: string; msgs: Message[] }[] = []
-  for (const m of messages) {
-    const day = m.created_at.slice(0, 10)
-    if (dayGroups.at(-1)?.date === day) dayGroups.at(-1)!.msgs.push(m)
-    else dayGroups.push({ date: day, msgs: [m] })
-  }
+  // As mensagens por dia de Brasília (sobra da F33: era o dia em UTC, e a das
+  // 23:30 caía no separador do dia seguinte).
+  const dayGroups = agruparPorDia(messages)
 
   // Só avisa quando o canal DA CONVERSA não está conectado. Antes o aviso
   // aparecia em toda conversa que não fosse nota, mesmo com o canal ativo.

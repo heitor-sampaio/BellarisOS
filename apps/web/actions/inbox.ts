@@ -6,7 +6,7 @@ import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assert
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
-import type { ProcedimentoAVenda, ProdutoAVenda, MembroDaVenda } from '@/components/shared/vender'
+import type { ProcedimentoAVenda, ProdutoAVenda, MembroDaVenda, VendaDaUnidade } from '@/components/shared/vender'
 import { produtosAVenda } from '@/lib/produtos/leitura'
 import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
@@ -716,7 +716,11 @@ export interface ConversationCard {
    * com várias unidades e contato sem ficha só sabe a unidade quando o
    * cadastro a escolhe. Nesse caso as listas vêm vazias: é só o sinal.
    */
-  venda: { branchId: string | null; pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[]; produtos: ProdutoAVenda[]; equipe?: MembroDaVenda[] } | null
+  venda: {
+    branchId: string | null; pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[]; produtos: ProdutoAVenda[]; equipe?: MembroDaVenda[]
+    /** A rede com duas ou mais unidades, para quem é da rede: a venda pergunta a unidade (H5, a ficha é da clínica). */
+    unidades?: VendaDaUnidade[]
+  } | null
   /** O plano da rede inclui oportunidades? Sem elas, o painel é só contato e cliente. */
   comOportunidades: boolean
   /** E a agenda? Sem ela, a conversa não marca horário. */
@@ -840,13 +844,29 @@ export async function getConversationCard(conversationId: string): Promise<Conve
 
   let venda: ConversationCard['venda'] = null
   if (podeReceber(ctx)) {
-    let unidade = ctx.branchId ?? cliente?.branch_id ?? null
+    // A unidade da venda é a de quem atende (a fixa) ou a única da rede. Na
+    // rede com duas ou mais, quem é da rede ESCOLHE — nada se prende a
+    // `clients.branch_id` (H5; sobra da F33 da 8ª simulação: a venda saía da
+    // unidade de cadastro da cliente, sem perguntar).
+    let unidade = ctx.branchId ?? null
+    let ativas: { id: string; name: string }[] = []
     if (!unidade) {
-      const ativas = await ler(admin.from('branches').select('id')
-        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(2), 'carregar as unidades')
-      unidade = (ativas ?? []).length === 1 ? (ativas![0]!.id as string) : null
+      ativas = ((await ler(admin.from('branches').select('id, name')
+        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades')) ?? []) as { id: string; name: string }[]
+      unidade = ativas.length === 1 ? ativas[0]!.id : null
     }
-    if (unidade && alcancaUnidade(ctx, unidade)) {
+    if (!unidade && cliente && ativas.length > 1) {
+      const unidades = await Promise.all(ativas.map(async u => {
+        const [pacotes, procs, produtos, equipe] = await Promise.all([
+          pacotesAVenda(ctx.tenantId!, u.id), procedimentosAVenda(ctx.tenantId!, u.id), produtosAVenda(ctx.tenantId!, u.id),
+          equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId),
+        ])
+        return { id: u.id, nome: u.name, pacotes, procedimentos: procs, produtos, equipe }
+      }))
+      if (unidades.some(u => u.pacotes.length || u.procedimentos.length || u.produtos.length)) {
+        venda = { branchId: null, pacotes: [], procedimentos: [], produtos: [], unidades }
+      }
+    } else if (unidade && alcancaUnidade(ctx, unidade)) {
       // O produto (D4) exige a cliente: sem ficha, o botão abre o cadastro
       // primeiro, como o pacote e o pré-pago.
       const [pacotes, procs, produtos, equipe] = await Promise.all([

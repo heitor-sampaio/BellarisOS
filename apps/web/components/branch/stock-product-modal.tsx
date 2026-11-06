@@ -13,6 +13,7 @@ import { prefixoDoSku } from '@/lib/estoque/sku'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
 import { ComissaoDoProduto } from '@/components/branch/comissao-do-produto'
+import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -423,7 +424,9 @@ function ProductFields({
               {branches.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Label>Unidade que recebe o estoque *</Label>
-                  <select name="_branchId" required className="field" defaultValue={branches[0]?.id ?? ''}>
+                  <select name="_branchId" required className="field" defaultValue={unidadeInicial(branches)}>
+                    {/* Sobra da F33 (8ª simulação; princípio 3): com duas ou mais, nenhuma vem escolhida. */}
+                    {branches.length > 1 && <option value="">Selecione a unidade…</option>}
                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
