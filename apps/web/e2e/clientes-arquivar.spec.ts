@@ -90,6 +90,9 @@ test.describe.serial('arquivar a cliente', () => {
       expect((await db().from('clients').select('is_active').eq('id', id).single()).data?.is_active, 'nada antes de confirmar').toBe(true)
       await janela.getByRole('button', { name: 'Arquivar', exact: true }).click()
       await expect.poll(async () => (await db().from('clients').select('is_active').eq('id', id).single()).data?.is_active).toBe(false)
+      // A action grava ANTES de expirar o cache da lista: recarregar só depois
+      // que ela voltou (a janela fecha), senão a lista ainda vem do cache.
+      await expect(janela).toBeHidden()
       await p.reload()
       // A ficha arquivada tem marca, e o agendar fica desligado.
       const topo = p.locator('.card').filter({ has: p.locator('h1') }).first()

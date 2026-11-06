@@ -25,6 +25,7 @@ let sdr: MembroDeTeste | null = null
 let recepcao: MembroDeTeste | null = null
 let slug = ''
 let etapas: { novo: string; marcado: string; ganho: string; perdido: string } | null = null
+let salaCorporal = ''
 const automacoes: string[] = []
 
 const diaDaquiA2 = () =>
@@ -66,6 +67,13 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`al${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   expect((await db().from('users').update({ provides_services: true, branch_id: rede.branchId }).eq('id', rede.professionalId)).error).toBeNull()
+  // A sala do D12 nasce ANTES de qualquer janela abrir: as salas da unidade
+  // ficam 10 min em cache (`rooms:<rede>`), e o insert pelo banco não o
+  // expira — criada no meio do arquivo, a janela não a via e não esperava.
+  const { data: s, error: eS } = await db().from('rooms').insert({ branch_id: rede.branchId, name: `Corporal ${marca}` })
+    .select('id').single<{ id: string }>()
+  expect(eS).toBeNull()
+  salaCorporal = s!.id
   const { data: funil } = await db().from('crm_funnels')
     .insert({ tenant_id: rede.tenantId, name: 'Funil e2e', is_default: true, position: 0 }).select('id').single<{ id: string }>()
   const { data: es, error } = await db().from('crm_stages').insert([
@@ -249,10 +257,8 @@ test('A16: a oportunidade tem "Agendar" — o SDR agenda pelo card aberto no qua
 // "Agendar" espera a lista das salas.
 test('D12: a sala sugerida que aparece na janela é a que grava, mesmo com a lista das salas demorando', async ({ browser }) => {
   test.setTimeout(180_000)
-  const { data: sala, error: eS } = await db().from('rooms').insert({ branch_id: rede!.branchId, name: `Corporal ${marca}` })
-    .select('id').single<{ id: string }>()
-  expect(eS).toBeNull()
-  expect((await db().from('procedure_rooms').insert({ procedure_id: rede!.procedureId, room_id: sala!.id, tenant_id: rede!.tenantId })).error).toBeNull()
+  const sala = { id: salaCorporal }
+  expect((await db().from('procedure_rooms').insert({ procedure_id: rede!.procedureId, room_id: sala.id, tenant_id: rede!.tenantId })).error).toBeNull()
   const nome = `${PREFIXO} Lead sala ${marca}`
   const { data: lead } = await db().from('leads').insert({
     tenant_id: rede!.tenantId, name: nome, phone: `(48) 9${String(Date.now()).slice(-4)}-0012`, crm_stage_id: etapas!.novo,
@@ -283,8 +289,8 @@ test('D12: a sala sugerida que aparece na janela é a que grava, mesmo com a lis
     })
     const { data: ligado } = await db().from('leads').select('client_id').eq('id', lead!.id).single<{ client_id: string }>()
     const { data: ags } = await db().from('appointments').select('room_id').eq('client_id', ligado!.client_id)
-    expect((ags ?? []).map(a => a.room_id), 'gravou a sala que a janela sugeriu').toEqual([sala!.id])
+    expect((ags ?? []).map(a => a.room_id), 'gravou a sala que a janela sugeriu').toEqual([sala.id])
   } finally {
-    await db().from('procedure_rooms').delete().eq('room_id', sala!.id)
+    await db().from('procedure_rooms').delete().eq('room_id', sala.id)
   }
 })

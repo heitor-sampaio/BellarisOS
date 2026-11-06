@@ -478,6 +478,10 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
   test.beforeAll(async () => {
     D = await criarOutraRede(`pd${marca}`)
     await db().from('tenants').update({ pre_atendimento_envio: true }).eq('id', D.tenantId)
+    // A agenda da unidade tem uma coluna por profissional DELA — ligada antes de
+    // qualquer tela abrir: os profissionais da unidade ficam 5 min em cache
+    // (`professionals:<rede>`), e o update pelo banco não o expira.
+    expect((await db().from('users').update({ branch_id: D.branchId, provides_services: true }).eq('id', D.professionalId)).error).toBeNull()
     recepcao = await criarMembro(`pdr${marca}`, { tenant: D.tenantId, permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }] })
     soVe = await criarMembro(`pdv${marca}`, { tenant: D.tenantId, permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
   })
@@ -624,8 +628,6 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     }).select('id').single<{ id: string }>()
     expect(error).toBeNull()
     const { data: un } = await db().from('branches').select('slug').eq('id', D.branchId).single<{ slug: string }>()
-    // A agenda da unidade tem uma coluna por profissional DELA.
-    expect((await db().from('users').update({ branch_id: D.branchId, provides_services: true }).eq('id', D.professionalId)).error).toBeNull()
 
     const ctx = await browser.newContext({ storageState: recepcao.estado })
     const page = await ctx.newPage()
