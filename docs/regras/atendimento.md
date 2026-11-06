@@ -1331,6 +1331,11 @@ const procedures = await ler(
   da mesma `reference` (`notaDaTransferencia`, `lib/estoque/transferencia.ts`).
   Prova: `e2e/estoque-transferencia-com-nomes.spec.ts`,
   `tests/estoque-transferencia-nota.test.ts`.
+  **O "deu certo" diz os dois saldos** (A16 da 8ª simulação, 2026-11-06): a
+  gerente de unidade fixa vê só o estoque dela e não tinha como conferir o
+  destino. `estoque_transferir` devolve os saldos depois (com as linhas
+  travadas), e o aviso diz "Transferido: Batel agora tem 5 un; Água Verde
+  ficou com 3 un." Prova: o mesmo spec ("A16").
 - **O lote é DA UNIDADE e BAIXA com a saída** (`product_batches.branch_id`,
   migration `20260928000001`). A baixa é GATILHO (`trg_lote_do_movimento`),
   pelo mesmo argumento do evento de estoque: FEFO entre os lotes ainda válidos,

@@ -83,3 +83,37 @@ test('D12: a transferência diz o nome das unidades — "para Batel" na origem, 
     await expect(modal.getByText(/→ destino|← origem/)).toHaveCount(0)
   } finally { await ctx.close() }
 })
+
+/**
+ * A16 da 8ª simulação: a gerente de unidade fixa transferia e não tinha como
+ * conferir o saldo do destino (a tela dela mostra só a unidade dela). Agora o
+ * aviso de "deu certo" diz os dois saldos: "Batel agora tem 2 un".
+ */
+test('A16: a transferência diz o saldo do destino depois, também para a gerente de unidade fixa', async ({ browser }) => {
+  const gerente = await criarMembro(`tnf${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Gerente', permissoes: [{ modulo: 'stock', nivel: 'MANAGE' }],
+  })
+  const ctx = await browser.newContext({ storageState: gerente.estado })
+  try {
+    const antes = (await db().from('branch_product_stock').select('current_stock').eq('product_id', produto).eq('branch_id', batel).maybeSingle()).data
+    const destinoDepois = Number(antes?.current_stock ?? 0) + 2
+    const slug = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
+    const p = await ctx.newPage()
+    await p.goto(`/${slug}/estoque`)
+    const engrenagem = p.locator('tr, [role="row"], div').filter({ hasText: PRODUTO })
+      .filter({ has: p.getByTitle('Gerenciar estoque') }).last().getByTitle('Gerenciar estoque')
+    const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
+    await expect(async () => {
+      await engrenagem.click()
+      await expect(modal).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
+    await modal.getByRole('button', { name: 'Transferência', exact: true }).click()
+    await modal.locator('select[name="toBranchId"]').selectOption(batel)
+    await modal.locator('input[name="quantity"]').fill('2')
+    await modal.getByRole('button', { name: 'Confirmar transferência' }).click()
+    await expect(p.getByText(`${BATEL} agora tem ${destinoDepois} un`)).toBeVisible({ timeout: 15_000 })
+  } finally {
+    await ctx.close()
+    await gerente.limpar()
+  }
+})

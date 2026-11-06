@@ -14,6 +14,7 @@ import { validadeNaTela } from '@/lib/estoque/validade'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { SegSelect } from '@/components/shared/seg-select'
+import { toast } from 'sonner'
 import { parseDecimal } from '@estetica-os/utils'
 
 type BranchStock = {
@@ -223,7 +224,16 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
       // A chave do envio (D10): o duplo clique movimenta uma vez só.
       fd.set('_envio', envio.chave())
       const res = await adminTransferStock(undefined, fd)
-      if (res?.success) { envio.renovar(); onSuccess() }
+      if (res?.success) {
+        envio.renovar()
+        // A16 da 8ª simulação: o saldo do destino, que a gerente de unidade fixa não vê.
+        if (res.saldos) {
+          const nome = (id: string) => allBranches.find(b => b.id === id)?.name ?? 'A unidade'
+          const n = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+          toast(`Transferido: ${nome(String(fd.get('toBranchId')))} agora tem ${n(res.saldos.destino)} ${product.unit}; ${nome(String(fd.get('fromBranchId')))} ficou com ${n(res.saldos.origem)} ${product.unit}.`)
+        }
+        onSuccess()
+      }
       else setError(res?.error ?? 'Erro inesperado.')
     } catch { setError('Erro inesperado.') }
     finally { setPending(false) }

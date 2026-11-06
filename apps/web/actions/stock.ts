@@ -516,7 +516,7 @@ export async function adminTransferStock(
 async function adminTransferStockInterno(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
-) {
+): Promise<{ error?: string; success?: boolean; saldos?: { origem: number; destino: number } }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
@@ -546,7 +546,7 @@ async function adminTransferStockInterno(
     // aqui e gravar os valores absolutos: duas transferências ao mesmo tempo
     // (ou uma transferência e uma conclusão) perdiam uma. O "estoque
     // insuficiente" também é conferido lá dentro, com a linha travada.
-    const { error } = await admin.rpc('estoque_transferir', {
+    const { data: saldos, error } = await admin.rpc('estoque_transferir', {
       p_produto: productId, p_origem: fromBranchId, p_destino: toBranchId,
       p_quantidade: qty, p_observacao: notes ?? null, p_autor: ctx.internalUserId,
     })
@@ -556,7 +556,10 @@ async function adminTransferStockInterno(
     }
 
     revalidatePath('/admin/estoque')
-    return { success: true }
+    // A16 da 8ª simulação: os saldos DEPOIS (o da função, com as linhas
+    // travadas) — a gerente de unidade fixa não vê o estoque do destino.
+    const s = saldos as { origem?: number; destino?: number } | null
+    return { success: true, saldos: { origem: Number(s?.origem ?? 0), destino: Number(s?.destino ?? 0) } }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
