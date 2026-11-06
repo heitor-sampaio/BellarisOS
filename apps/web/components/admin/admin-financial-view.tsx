@@ -14,6 +14,7 @@ import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
 import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
+import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
@@ -233,6 +234,8 @@ export function AdminFinancialView({
   const router      = useRouter()
   const [estornando, startT] = useTransition()
   // O lançamento esperando a confirmação do estorno (era um clique só, sem volta).
+  // A34 da 8ª: a devolução de PARTE da venda de produto (a janela do estorno a oferece).
+  const [aDevolverParte, setADevolverParte] = useState<string | null>(null)
   const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean } | null>(null)
   const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
@@ -318,8 +321,10 @@ export function AdminFinancialView({
 
       {aEstornar && (
         <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
-          onConfirmar={(motivo, voltou) => estornar(aEstornar.id, aEstornar.slug, motivo, voltou)} onVoltar={() => setAEstornar(null)} />
+          onConfirmar={(motivo, voltou) => estornar(aEstornar.id, aEstornar.slug, motivo, voltou)} onVoltar={() => setAEstornar(null)}
+          onDevolverParte={aEstornar.vendaDeProduto && !aEstornar.cancelarVenda ? () => { setADevolverParte(aEstornar.id); setAEstornar(null) } : undefined} />
       )}
+      {aDevolverParte && <DevolverParteDaVenda transacaoId={aDevolverParte} onFechar={() => setADevolverParte(null)} />}
       {noCartao && (
         <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
           valor={noCartao.valor}

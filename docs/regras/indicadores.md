@@ -478,7 +478,14 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
 - **Produto** (D4, 2026-10-30): `product_sales.sold_at`, o vendido, quem
   vendeu; a quantidade são as embalagens ("3× Sérum"). A venda ESTORNADA sai
-  (H2, 2026-11-01): era R$ 6.013 contra R$ 5.915 na 5ª simulação.
+  (H2, 2026-11-01): era R$ 6.013 contra R$ 5.915 na 5ª simulação. **A
+  devolvida em PARTE vale o que ficou** (A34 da 8ª, 2026-11-06): o valor é
+  `price − valor_devolvido` e a quantidade, as unidades que ficaram com a
+  cliente; o custo dela no lucro é `custo − custo_devolvido`, e o que voltou
+  sem voltar ao estoque é perda ("Venda estornada (não voltou)", no dia da
+  devolução) — `metrics_vendas`, `metrics_resultado`,
+  `metrics_series_do_resultado`, `metrics_perdas` (migration
+  `20261106003802`; `vendas-financeiro.md` §9.3.3).
 - **O pacote TRAZIDO DE FORA não é venda** (decisão 1 do Heitor sobre a 8ª
   simulação, 2026-11-06; `vendas-financeiro.md` §9.3.1): `metrics_vendas`
   tira o `client_packages.de_fora` (migration `20261106003501`). Ele também

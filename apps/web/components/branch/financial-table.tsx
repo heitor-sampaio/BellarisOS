@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SegSelect } from '@/components/shared/seg-select'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
+import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
 
@@ -88,6 +89,8 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
   // pessoa veria se a operação simplesmente não tivesse efeito ainda.
   // r3-f13-01: no cartão, a baixa pergunta a bandeira antes (opcional).
   // D6: a receita SEM meio (a parcela do crediário) pergunta a forma na mesma janela.
+  // A34 da 8ª: a devolução de PARTE da venda de produto (a janela do estorno a oferece).
+  const [aDevolverParte, setADevolverParte] = useState<string | null>(null)
   const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string | null; valor: number } | null>(null)
   function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number, forma?: string | null) {
     startTx(async () => {
@@ -137,8 +140,10 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
     <>
     {aEstornar && (
       <ConfirmarEstorno alvo={aEstornar} estornando={estornando}
-        onConfirmar={(motivo, voltou) => handleReverse(aEstornar.id, motivo, voltou)} onVoltar={() => setAEstornar(null)} />
+        onConfirmar={(motivo, voltou) => handleReverse(aEstornar.id, motivo, voltou)} onVoltar={() => setAEstornar(null)}
+        onDevolverParte={aEstornar.vendaDeProduto && !aEstornar.cancelarVenda ? () => { setADevolverParte(aEstornar.id); setAEstornar(null) } : undefined} />
     )}
+    {aDevolverParte && <DevolverParteDaVenda transacaoId={aDevolverParte} onFechar={() => setADevolverParte(null)} />}
     {noCartao && (
       <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
         valor={noCartao.valor}

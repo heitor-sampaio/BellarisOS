@@ -11,7 +11,7 @@ import { previaDoCancelamentoDaUnidade, cancelarUnidadePrePaga } from '@/actions
 import type { PreviaDoCancelamentoDaUnidade } from '@/lib/pre-pago/cancelamento'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import {
-  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, type EscolhaDaDevolucaoEstado,
+  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
 
 /**
@@ -45,7 +45,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
       else {
         setPrevia(r.previa)
         // No cartão só existe o estorno inteiro: já vem escolhido.
-        if (r.previa.parcial?.cartao) setEscolha(e => ({ ...e, comoEstornar: 'INTEIRO' }))
+        if (r.previa.parcial?.cartao) setEscolha(e => comOPagamentoInteiro(e, r.previa!.parcial))
       }
     })
     return () => { vivo = false }

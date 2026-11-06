@@ -22,6 +22,24 @@ export const ESCOLHA_INICIAL: EscolhaDaDevolucaoEstado = {
   destino: null, comoEstornar: null, novoMetodo: '', novoVezes: 1, novaBandeira: '',
 }
 
+/**
+ * "Estornar o pagamento inteiro e lançar o usado de novo", com a forma do
+ * pagamento novo JÁ na forma original — o meio, as vezes e a bandeira (A41 da
+ * 8ª simulação, 2026-11-06; decidido pelo princípio 5: o Pix de R$ 800 que a
+ * Marta escolheu, no cancelamento do pacote pago em Crédito 3x, foi inventado).
+ * A recepção troca, se a cliente pagar o que fica de outro jeito. O que já foi
+ * escolhido não é desfeito.
+ */
+export function comOPagamentoInteiro(e: EscolhaDaDevolucaoEstado, parcial: PagamentoEmParte | null): EscolhaDaDevolucaoEstado {
+  const original = parcial?.metodo && (FORMAS_DO_USADO as readonly string[]).includes(parcial.metodo) ? parcial.metodo : ''
+  if (e.novoMetodo || !original) return { ...e, comoEstornar: 'INTEIRO' }
+  return {
+    ...e, comoEstornar: 'INTEIRO', novoMetodo: original,
+    novoVezes: original === 'CREDIT_CARD' ? Math.max(1, parcial?.vezes ?? 1) : 1,
+    novaBandeira: original === 'CREDIT_CARD' || original === 'DEBIT_CARD' ? parcial?.bandeira ?? '' : '',
+  }
+}
+
 /** O pagamento pego em parte, se o que volta vai por estorno. */
 export function pagamentoEmParte(devolver: number, parcial: PagamentoEmParte | null, e: EscolhaDaDevolucaoEstado) {
   return devolver > 0 && e.destino === 'ESTORNO' ? parcial : null
@@ -113,7 +131,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
           </label>
           <label style={opcao}>
             <input type="radio" name={`${prefixo}-como-estornar`} checked={estado.comoEstornar === 'INTEIRO'} disabled={desligado}
-              onChange={() => muda({ comoEstornar: 'INTEIRO' })} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
+              onChange={() => aoMudar(comOPagamentoInteiro(estado, emParte))} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
             <span>
               Estornar o pagamento inteiro e lançar o usado de novo{' '}
               <span style={{ color: 'var(--text-muted)' }}>

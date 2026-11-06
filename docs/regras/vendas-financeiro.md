@@ -161,6 +161,14 @@ plano").
     pago agora, na forma que a recepção escolher ("Forma do pagamento do
     usado", e as vezes no crédito, até o limite da rede), com o pacote
     (`client_package_id`), os pontos e a comissão pelos gatilhos de sempre.
+    **A forma do usado já vem a ORIGINAL** (A41 da 8ª simulação, 2026-11-06;
+    decidido pelo princípio 5): escolhido o "inteiro" (no cartão, ele já vem),
+    a "Forma do pagamento do usado" vem com o meio, as vezes e a bandeira do
+    pagamento estornado — "Crédito 3x" —, e a recepção troca se a cliente
+    pagar de outro jeito. Vinha em branco, e o Pix de R$ 800 da Helena foi
+    inventado (`comOPagamentoInteiro`, `escolha-da-devolucao.tsx`; vale no
+    pacote, na unidade do pré-pago e na devolução de produto). Prova:
+    `e2e/vendas-produto-devolver-parte.spec.ts` ("A41").
     O retrato do cancelamento guarda a escolha (`cancelamento.estorno`,
     `.novo`). **No cartão (crédito, em qualquer número de vezes, e débito)
     só existe a (b)** (r2-fin-03, §9.6): a (a) fica desligada com o motivo
@@ -452,6 +460,38 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   - Prova: `e2e/vendas-produto.spec.ts` (voltou pela tela, não voltou e a
     venda em entrada + parcela pela action, e o "Cancelar venda" da venda
     toda a receber pela tela).
+- **A devolução de PARTE da venda, por linha** (A34 da 8ª simulação,
+  2026-11-06; decidido pelo princípio 3): a Karina levou 2 séruns e devolveu 1,
+  e a Marta estornou a venda inteira e vendeu de novo o que ficou — três
+  lançamentos. A janela do "Estornar" de uma venda de produto oferece
+  "Devolver só parte da venda" (`[data-devolver-so-parte]`), que abre
+  "Devolver parte da venda" (`DevolverParteDaVenda`,
+  `components/shared/devolver-parte-da-venda.tsx`; `actions/devolucao-de-produto.ts`,
+  a mesma permissão do estorno — o Financeiro em Gerenciar, a unidade ao
+  alcance): quantas de cada produto voltam, se voltaram ao estoque e a conta
+  que o BANCO fez (`produto_devolver_itens` com `p_simular`; migration
+  `20261106003801`) — o que volta (a parte de cada item no vendido, com o
+  desconto rateado pela tabela, como a comissão por produto), o que a venda
+  passa a valer, o a receber que cai antes e o que volta. O dinheiro é o fluxo
+  do cancelamento da unidade do pré-pago: o a receber que passa do novo valor
+  cai antes; o pago além dele volta como a recepção escolher — ESTORNO (o
+  "Estorno parcial" na mesma forma, ou, no CARTÃO, o pagamento inteiro
+  estornado e o que fica lançado de novo, r2-fin-03) ou CRÉDITO NA CLÍNICA. O
+  estoque: voltou, um `SALE_RETURN` das unidades, aos lotes de onde a venda as
+  tirou (`private.devolver_aos_lotes`); não voltou, fica, e é perda. Cada
+  devolução fica em `product_sale_returns` (com o retrato; só o servidor lê) e
+  soma em `product_sale_items.devolvidas/valor_devolvido/custo_devolvido` e
+  `product_sales.valor_devolvido/custo_devolvido/unidades_devolvidas`. A venda
+  continua viva e passa a valer `price − valor_devolvido`: nas Vendas (valor e
+  unidades), na comissão de quem vendeu (`comissao_conta`: a quitação contra o
+  que a venda vale, e a linha do total ou a do item na proporção do que ficou),
+  no custo do lucro (`custo − custo_devolvido`) e nas perdas (o que não voltou,
+  no dia da devolução; migration `20261106003802`). O que ainda está com a
+  cliente se devolve de novo (em parte, ou o estorno da venda inteira, que
+  devolve só o que restou — `produto_estornar_venda` desconta o já devolvido).
+  Devolver tudo o que resta é o estorno da venda ("É a venda inteira…"); a
+  venda de antes de 01/11 (sem itens) só se estorna inteira. Prova:
+  `e2e/vendas-produto-devolver-parte.spec.ts`.
 - A sessão só LÊ `product_sales` (a equipe que alcança a unidade, a cliente a
   dela); as restritivas do suporte valem.
 - Prova: `e2e/vendas-produto.spec.ts`.
@@ -1406,4 +1446,6 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Gravar sold_by como quem registrou a venda quando a tela disse outra pessoa (ou ninguém) em "Quem vendeu" — sold_by é quem vendeu, registrado_por é quem registrou (com-06)
 ❌ Vender produto fora de produto_vender_itens (a de um produto só, produto_vender, é a versão velha e nada a chama), ou ler os produtos de uma venda pelo product_id do cabeçalho (no kit é só o primeiro: são os product_sale_items)
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
+❌ Devolver parte de uma venda de produto estornando a venda inteira e vendendo de novo, ou fora de produto_devolver_itens — e ler o valor, as unidades ou o custo de uma venda de produto sem tirar o devolvido (price − valor_devolvido, custo − custo_devolvido)
+❌ Deixar a "Forma do pagamento do usado" em branco no estorno inteiro: vem a do pagamento original (comOPagamentoInteiro — A41 da 8ª)
 ```

@@ -20,6 +20,8 @@ export interface PagamentoEmParte {
   descricao: string
   metodo:    string | null
   vezes:     number | null
+  /** A bandeira do pagamento: a forma do que fica vem com a original (A41 da 8ª). */
+  bandeira?: string | null
   valor:     number
   /** O que volta dele. */
   volta:     number
@@ -109,7 +111,7 @@ export function lerParcial(v: unknown): PagamentoEmParte | null {
   const p = v as Record<string, unknown>
   return {
     id: String(p.id), descricao: String(p.descricao ?? ''), metodo: (p.metodo as string | null) ?? null,
-    vezes: p.vezes == null ? null : Number(p.vezes), valor: num(p.valor), volta: num(p.volta), fica: num(p.fica),
+    vezes: p.vezes == null ? null : Number(p.vezes), bandeira: (p.bandeira as string | null | undefined) ?? null, valor: num(p.valor), volta: num(p.volta), fica: num(p.fica),
     cartao: p.cartao === true,
   }
 }

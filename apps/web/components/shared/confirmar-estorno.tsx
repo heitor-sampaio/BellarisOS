@@ -18,12 +18,17 @@ import { JanelaModal } from '@/components/shared/janela-modal'
  * lançamento em aberto dela abre esta mesma janela como "Cancelar esta venda
  * de produto?" (`cancelarVenda`, sobra da F3, 2026-11-01).
  */
-export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar }: {
+export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDevolverParte }: {
   /** `doAtendimento`: o lançamento é o recebimento de um atendimento (A51: a cobrança dele reabre). */
   alvo:        { descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean }
   estornando:  boolean
   onConfirmar: (motivo: string, voltou?: boolean) => void
   onVoltar:    () => void
+  /**
+   * A devolução de PARTE da venda de produto (A34 da 8ª simulação): a janela
+   * oferece "Devolver só parte da venda", que abre a outra janela.
+   */
+  onDevolverParte?: () => void
 }) {
   const [motivo, setMotivo] = useState('')
   const [voltou, setVoltou] = useState<boolean | null>(null)
@@ -66,6 +71,12 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar }: {
               <span>Não voltou <span style={{ color: 'var(--text-muted)' }}>— o estoque fica como está, e o produto entra nas perdas</span></span>
             </label>
           </div>
+        )}
+        {produto && !cancelar && onDevolverParte && (
+          <p data-devolver-so-parte style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            Voltou só uma parte (um dos produtos, ou menos unidades)?
+            <button type="button" className="btn-ghost" disabled={estornando} onClick={onDevolverParte}>Devolver só parte da venda</button>
+          </p>
         )}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <span className="field-label">{cancelar ? 'Motivo do cancelamento *' : 'Motivo do estorno *'}</span>
