@@ -589,6 +589,11 @@ clientes (`enquadramentoDoMapa`, `components/admin/hotmap-types.ts`); tudo no
 mesmo ponto centraliza com zoom de bairro. Pela cidade, Moinhos e Zona Sul
 caíam no mesmo ponto e o mapa abria só na Zona Sul. Prova:
 `tests/mapa-enquadra-as-unidades.test.ts` (o geocoding é externo).
+**E um marcador não esconde o outro** (A19 da 8ª simulação, 2026-11-06: a
+Água Verde ficava atrás do Batel): as unidades no mesmo ponto (~150 m) se
+afastam um pouco em volta dele e o nome diz "(local aproximado)"; as que estão
+perto (~3 km) ficam onde estão, com os nomes em lados diferentes
+(`marcadoresDasUnidades`, puro). Prova: `tests/mapa-unidades-proximas.test.ts`.
 
 **A aba do funil se chama "Funil comercial"** (A9 da 6ª simulação,
 2026-11-04: "Comercial" não dizia que é o funil de oportunidades): o mesmo nome

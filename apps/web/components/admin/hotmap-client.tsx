@@ -9,7 +9,12 @@ import type { BranchPoint, HeatPoint, LayerConfig } from './hotmap-types'
 
 export type { BranchPoint, HeatPoint, LayerConfig }
 export { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-types'
-import { enquadramentoDoMapa } from './hotmap-types'
+import { enquadramentoDoMapa, marcadoresDasUnidades, type MarcadorDaUnidade } from './hotmap-types'
+
+/** O nome sai do lado escolhido, sem encostar no círculo (raio 10). */
+const OFFSET_DO_NOME: Record<MarcadorDaUnidade['direcao'], [number, number]> = {
+  top: [0, -8], bottom: [0, 8], right: [8, 0], left: [-8, 0],
+}
 
 // --- Components --------------------------------------------------------------
 
@@ -140,7 +145,8 @@ export function HotmapClient({ branches, layers }: Props) {
         <HeatLayer key={i} points={layer.points} gradient={layer.gradient} />
       ))}
 
-      {branches.map(b => (
+      {/* A19 da 8ª: as unidades no mesmo ponto se afastam, e os nomes vão para lados diferentes. */}
+      {marcadoresDasUnidades(branches).map(b => (
         <CircleMarker
           key={`branch-${b.id}`}
           center={[b.lat, b.lng]}
@@ -152,9 +158,9 @@ export function HotmapClient({ branches, layers }: Props) {
             weight:      2.5,
           }}
         >
-          <Tooltip direction="top" offset={[0, -8]} permanent={branches.length <= 8}>
-            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--brand)' }}>
-              ✦ {b.name}
+          <Tooltip direction={b.direcao} offset={OFFSET_DO_NOME[b.direcao]} permanent={branches.length <= 8}>
+            <span data-unidade-no-mapa={b.name} style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--brand)' }}>
+              ✦ {b.name}{b.aproximado ? ' (local aproximado)' : ''}
             </span>
           </Tooltip>
         </CircleMarker>
