@@ -6,6 +6,7 @@ import { idadeEm, formatBRL } from '@estetica-os/utils'
 import { responsavelDaFicha } from '@/lib/clients/menor'
 import { unificacoesDaFicha } from '@/lib/clients/unificacoes'
 import { historicoDoCancelamento } from '@/lib/pacotes/cancelamento'
+import { camposDoPacoteDeFora, linhaDoHistoricoDoPacote } from '@/lib/pacotes/de-fora'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
@@ -128,7 +129,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, service_packages(name, procedure_id, price, procedures(name, duration_min)), package_sessions(status, appointment_id)')
+      .select('id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, de_fora, usadas_antes, valor_referencia, service_packages(name, procedure_id, price, procedures(name, duration_min)), package_sessions(status, appointment_id)')
       .eq('client_id', id)
       .order('purchased_at', { ascending: false })
       .limit(10), 'carregar os pacotes'),
@@ -248,6 +249,8 @@ export default async function AdminClientProfilePage({
       procedureName: proc?.name ?? sp?.name ?? '—',
       price:         Number(sp?.price ?? 0) / (activePkg.total_sessions || 1),
       durationMin:   proc?.duration_min ?? 60,
+      // O pacote trazido de fora (F35): "Pacote de antes" e as usadas antes do sistema (A57).
+      ...camposDoPacoteDeFora(activePkg as { de_fora?: boolean; usadas_antes?: number; valor_referencia?: number | null }),
     }
   }
 
@@ -388,7 +391,7 @@ export default async function AdminClientProfilePage({
     const sp      = pkg.service_packages as { name?: string; price?: number } | null
     const pkgDate = (pkg as { purchased_at?: string | null }).purchased_at ?? undefined
     if (pkgDate) {
-      history.push({ id: uid('pkg'), date: pkgDate, type: 'PACKAGE_PURCHASED', title: `Pacote adquirido: ${sp?.name ?? 'Pacote'}`, subtitle: `${pkg.total_sessions} sessões`, amount: Number(sp?.price ?? 0), link: null })
+      history.push({ id: uid('pkg'), date: pkgDate, type: 'PACKAGE_PURCHASED', link: null, ...linhaDoHistoricoDoPacote(pkg as { de_fora?: boolean; total_sessions: number; usadas_antes?: number }, sp?.name ?? 'Pacote', Number(sp?.price ?? 0)) })
     }
     const cancelado = historicoDoCancelamento(pkg as { cancelado_em?: string | null }, sp?.name ?? 'Pacote', formatBRL)
     if (cancelado) history.push({ id: uid('pkgc'), type: 'PACKAGE_CANCELLED', link: null, ...cancelado })

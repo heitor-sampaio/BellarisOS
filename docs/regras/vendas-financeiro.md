@@ -214,6 +214,50 @@ plano").
   `primeiraSessao`), e o agendar é o de sempre das sessões
   (`schedulePackageSession`, pelo núcleo; `[data-agendar-a-primeira-sessao]`).
   "Cancelar" deixa para depois. Prova: `e2e/financeiro-atritos-da-7.spec.ts` ("A47").
+- **"Trazer pacote de fora": o saldo que a cliente já tinha** (decisão 1 do
+  Heitor sobre a 8ª simulação, 2026-11-06: "concordo" com a recomendação (a) +
+  (c)). A Lúcia migrava a base: a Camila tinha 7 de 10 limpezas usadas no
+  sistema antigo, e a tela só vendia pacote cheio — o improviso, o pacote
+  "Saldo migrado" a R$ 0, entrou no catálogo, nas Vendas ("venda de 05/11"), no
+  ticket médio e no app ("Pix R$ 0,00 Pago", com recibo).
+  - **Na ficha**, "Trazer pacote de fora" (no cartão do tratamento em
+    andamento; `TrazerPacoteDeFora`, `trazerPacoteDeFora` em
+    `actions/pacotes.ts`): procedimento, sessões do pacote, já usadas antes do
+    sistema, validade (opcional) e o **valor de referência OPCIONAL**. Quem traz
+    é quem dá o crédito interno — o Financeiro em Gerenciar (decidido pelo
+    princípio 3: é o mesmo tipo de saldo trazido de fora). A unidade: a da
+    sessão; na ficha da rede com duas ou mais, a janela pergunta (D1). A
+    janela diz a conta antes de gravar ("Ficam 4 de 6 sessões para agendar ·
+    R$ 200,00 por sessão…", `contaDoPacoteDeFora`, `lib/pacotes/de-fora.ts`).
+    Também pela importação (a coluna "Pacote de antes", `crm-inbox.md`).
+  - **Não é venda**: sem lançamento no caixa, sem pontos, sem comissão de
+    venda; fora do catálogo de venda (`catalogoDePacotes` tira o `de_fora`; o
+    `pacote_vender` recusa o desativado), do Relatório de Vendas
+    (`metrics_vendas`), do ticket médio e do faturamento (não há lançamento).
+    `client_packages.price` fica nulo — `de_fora`, `valor_referencia`,
+    `usadas_antes` (migration `20261106003501`). Uma porta só, `pacote_trazer`
+    (`trazerPacoteCore`, `lib/pacotes/trazer.ts`): nasce um `service_packages`
+    `de_fora` e desativado ("Limpeza (pacote de antes)", o nome que as leituras
+    mostram), o pacote da cliente e as sessões — as já usadas `USED` sem
+    atendimento, as restantes `AVAILABLE`, cada uma com a parte dela no
+    valor de referência (rateio igual, a sobra na última; sem valor, nulo).
+  - **A sessão restante se agenda e se consome como a de um pacote vendido
+    aqui** ("Já pago" no agendar, no app e na sessão; a conclusão a marca
+    usada). A comissão de EXECUÇÃO sai pela regra do profissional sobre a parte
+    da sessão (`comissoes.md`); sem valor de referência, R$ 0 (princípio 4: o
+    app não cria a linha). A receita dos atendimentos (a execução) conta essa
+    parte no dia da sessão, pelo `package_sessions.preco` (r2-ind-01); sem
+    ela, nada (princípio 5). O caixa e o faturamento nunca contam.
+  - **A tela diz o que é** (A57): o cartão da ficha "PACOTE DE ANTES · 4 de 6
+    restantes · 2 usadas antes do sistema" (`[data-pacote-de-fora]`; sem valor,
+    o aviso `[data-pacote-sem-valor]`), a ficha de tratamento "Pacote de antes:
+    2 usadas antes do sistema." e, nas sessões, "Usada antes do sistema"; o
+    Histórico, "Pacote de antes registrado" sem valor; o app da cliente,
+    "Pacote de antes: 4 de 6 restantes" (`restantesDoPacoteDeFora`) — sem
+    pagamento nem recibo.
+  - Os pacotes "Saldo migrado" a R$ 0 que a Hortênsia criou antes disso são
+    dado de [sim] e ficaram como estão.
+  - Prova: `e2e/pacote-de-fora.spec.ts`.
 - **A tela de Pacotes manda ao "Vender" da ficha** (A46): dizia "Vender pacote",
   e o botão se chama "Vender" (escolha Pacote).
 - Prova: `e2e/pacotes-venda.spec.ts`.
@@ -1287,7 +1331,9 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 
 ```
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa
-❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos)
+❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos) — o trazido de fora é pacote_trazer (F35)
+❌ Migrar o saldo de um pacote de fora como venda a R$ 0 (entra no caixa, nas Vendas, no ticket e no app com recibo): é "Trazer pacote de fora" (decisão 1 da 8ª), sem lançamento
+❌ Listar no catálogo de venda (ou deixar editar) o service_packages de_fora — é o registro do pacote trazido
 ❌ Gravar pela ficha da rede (venda, crédito, pontos, voucher, sessão) na unidade de cadastro da cliente ou na primeira da lista — com duas ou mais unidades, pergunta (D1 da 8ª)
 ❌ Estornar em parte um pagamento no cartão (crédito ou débito): o cartão estorna o pagamento inteiro (r2-fin-03) — no cancelamento do pacote é o "estornar o pagamento inteiro e lançar o usado de novo"
 ❌ Cancelar pacote fora de pacote_cancelar_devolvendo, ou fazer a conta do cancelamento na tela (é a simulação da mesma função), ou ler "pacote em andamento" sem tirar o cancelado (cancelado_em)

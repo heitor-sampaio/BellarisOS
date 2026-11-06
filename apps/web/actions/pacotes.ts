@@ -23,6 +23,7 @@ import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
+import { trazerPacoteCore } from '@/lib/pacotes/trazer'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { EntradaDaComissaoDoPacote } from '@/lib/comissoes/config'
 import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
@@ -69,6 +70,12 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
     const porProcedimento = new Map<string, number>()
     for (const i of p.itens) porProcedimento.set(i.procedure_id, (porProcedimento.get(i.procedure_id) ?? 0) + i.quantity)
     const itens = [...porProcedimento].map(([procedure_id, quantity]) => ({ procedure_id, quantity }))
+    // O registro do pacote trazido de fora (F35) não é do catálogo: não se edita por aqui.
+    if (p.id) {
+      const atual = await ler(createAdminClient().from('service_packages').select('de_fora')
+        .eq('id', p.id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o pacote')
+      if (atual?.de_fora) return { error: 'Este é o registro de um pacote trazido de fora: ele não é do catálogo de venda.' }
+    }
 
     // Pacote e itens numa transação; o banco confere que os procedimentos são
     // da rede. Vendido já tem o retrato (preço, sessões e procedimento de cada
@@ -206,6 +213,71 @@ async function venderPacoteUmaVez(
     revalidatePath('/admin/financeiro')
     revalidatePath('/[slug]/financeiro', 'page')
     return { clientPackageId, primeiraSessao }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// --- Trazer pacote de fora (F35, decisão 1 do Heitor, 2026-11-06) ----------
+
+const EntradaDoPacoteDeFora = z.object({
+  clientId:    z.string().uuid(),
+  /** A unidade do pacote (na ficha da rede com duas ou mais, a escolhida; senão a da sessão). */
+  branchId:    z.string().uuid().nullable().optional(),
+  procedureId: z.string().uuid('Escolha o procedimento.'),
+  total:       z.number().int().min(1, 'O pacote tem pelo menos 1 sessão.').max(100, 'No máximo 100 sessões num pacote.'),
+  usadas:      z.number().int().min(0, 'As sessões usadas não podem ser negativas.'),
+  /** O valor de referência do pacote inteiro (opcional — sem ele, R$ 0 de comissão de execução). */
+  valor:       z.number().min(0, 'O valor de referência não pode ser negativo.').max(10_000_000).nullable(),
+  /** aaaa-mm-dd (opcional). */
+  validade:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Validade inválida.').nullable(),
+  envio:       z.string().nullable().optional(),
+}).refine(e => e.usadas < e.total, 'As sessões já usadas têm de ser menos que o total: o pacote precisa ter sessão restante.')
+
+/**
+ * "Trazer pacote de fora" (decisão 1 do Heitor sobre a 8ª simulação: "concordo"):
+ * o saldo de um pacote que a cliente já tinha no sistema de antes. Sem
+ * lançamento, pontos nem comissão de venda; fora do catálogo e das Vendas.
+ * Quem traz é quem dá o crédito interno (o Financeiro em Gerenciar) — é o mesmo
+ * tipo de saldo trazido de fora (decidido pelo princípio 3: a mesma régua do
+ * saldo que a clínica deve à cliente). A unidade: a da sessão; na rede, a
+ * escolhida (com uma só, ela).
+ */
+export async function trazerPacoteDeFora(entrada: unknown): Promise<{ error?: string; ok?: true; clientPackageId?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    if (ctx.permissions.financial !== 'MANAGE') return { error: 'Seu cargo não traz pacote de fora: é de quem tem o Financeiro em Gerenciar.' }
+    const lido = EntradaDoPacoteDeFora.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+    const e = lido.data
+    const admin = createAdminClient()
+    // A unidade: a da abrangência vence o pedido; da rede, a pedida — e, sem
+    // pedido, a única ativa (com duas ou mais, a tela pergunta).
+    let branchId = ctx.branchId ?? e.branchId ?? null
+    if (!branchId) {
+      const ativas = await ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(2), 'listar as unidades') as { id: string }[] | null
+      if ((ativas ?? []).length === 1) branchId = ativas![0]!.id
+    }
+    if (!branchId) return { error: 'Escolha a unidade do pacote.' }
+    const [unidade, cliente, procedimento] = await Promise.all([
+      ler(admin.from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
+      ler(admin.from('clients').select('id, is_active').eq('id', e.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
+      ler(admin.from('procedures').select('id').eq('id', e.procedureId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento'),
+    ])
+    if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+    if (!cliente) return { error: 'Cliente não encontrado.' }
+    if (cliente.is_active === false) return { error: CLIENTE_ARQUIVADA }
+    if (!procedimento) return { error: 'Procedimento não encontrado.' }
+    // O mesmo envio (a chave da tela) traz UMA vez (convencoes.md).
+    const clientPackageId = await umaVez(ctx.tenantId!, 'trazerPacoteDeFora', chaveDoEnvio(e.envio ?? null), () => trazerPacoteCore(admin, ctx.tenantId!, ctx.internalUserId ?? null, {
+      clientId: e.clientId, branchId: branchId!, procedureId: e.procedureId, total: e.total, usadas: e.usadas,
+      valor: e.valor === null ? null : Math.round(e.valor * 100) / 100, validade: e.validade,
+    }))
+    // A ficha é cache (client:<id>): expira na hora (CLAUDE.md §14).
+    revalidateTag(`client:${e.clientId}`, { expire: 0 })
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    return { ok: true, clientPackageId }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

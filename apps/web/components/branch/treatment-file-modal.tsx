@@ -16,6 +16,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { RespostasDaAnamnese } from '@/components/branch/anamnese-geral'
 import { quemRespondeu } from '@/lib/anamnese-geral'
 import { situacaoDaExecucao } from '@/lib/plano-de-tratamento/situacao'
+import { usadasAntesDoSistema } from '@/lib/pacotes/de-fora'
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -565,6 +566,13 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                     <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                       {activePackage.usedSessions} de {activePackage.totalSessions} sessões realizadas.
                     </p>
+                    {activePackage.deFora && (
+                      // A57: o pacote trazido de fora — as usadas antes do sistema não somem.
+                      <p data-usadas-antes style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Pacote de antes: {usadasAntesDoSistema(activePackage.usadasAntes ?? 0)}.
+                        {activePackage.semValorDeReferencia && ' Sem valor de referência: as sessões não geram comissão de execução (R$ 0).'}
+                      </p>
+                    )}
                     {onCancelarPacote && (
                       <button type="button" className="btn-ghost" onClick={onCancelarPacote} style={{ marginTop: 10 }}>
                         Cancelar pacote

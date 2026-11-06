@@ -14,6 +14,7 @@ import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
+import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -93,7 +94,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('scheduled_at', { ascending: false })
       .limit(5), 'buscar os atendimentos a confirmar'),
     ler(admin.from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, service_packages(name), package_sessions(session_number, status, appointment_id, procedures(id, name, visible_on_client_app, is_active, branch_id))')
+      .select('id, total_sessions, used_sessions, expires_at, de_fora, service_packages(name, procedures(name)), package_sessions(session_number, status, appointment_id, procedures(id, name, visible_on_client_app, is_active, branch_id))')
       .eq('client_id', ctx.clientId!)
       // O pacote cancelado (F2b) não é tratamento em curso.
       .is('cancelado_em', null)
@@ -352,13 +353,18 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     <Sparkles size={15} color="var(--brand)" />
                     <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
-                      {(pkg.service_packages as { name: string } | null)?.name ?? 'Pacote de sessões'}
+                      {/* O pacote trazido de fora (F35): o nome é o do procedimento; a linha diz que é o de antes. */}
+                      {(pkg as { de_fora?: boolean }).de_fora
+                        ? ((pkg.service_packages as { procedures?: { name: string } | null } | null)?.procedures?.name ?? 'Pacote de antes')
+                        : (pkg.service_packages as { name: string } | null)?.name ?? 'Pacote de sessões'}
                     </p>
                   </div>
                   <ProgressBar pct={pct} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      {used} de {total} sessões realizadas · restam {Math.max(0, total - used)}
+                      {(pkg as { de_fora?: boolean }).de_fora
+                        ? restantesDoPacoteDeFora(total, used)
+                        : <>{used} de {total} sessões realizadas · restam {Math.max(0, total - used)}</>}
                     </span>
                     {pkg.expires_at && (
                       <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>

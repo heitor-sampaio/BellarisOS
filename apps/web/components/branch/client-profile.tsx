@@ -44,6 +44,8 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { textoDasRestantes } from '@/lib/pre-pago/contagem'
+import { TrazerPacoteDeFora } from '@/components/shared/trazer-pacote-de-fora'
+import { usadasAntesDoSistema } from '@/lib/pacotes/de-fora'
 import { ResponsavelLegal, RESPONSAVEL_VAZIO } from '@/components/shared/responsavel-legal'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal as ResponsavelDaFicha } from '@/lib/clients/menor'
 import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
@@ -109,6 +111,12 @@ export interface ProfilePackage {
   durationMin:   number
   planId?:       string   // set for avulso multi-session plans (no client_package)
   planStatus?:   string
+  /** O pacote trazido de fora (F35, decisão 1 do Heitor): o saldo que ela já tinha antes do sistema. */
+  deFora?:       boolean
+  /** Do pacote trazido: as sessões usadas antes do sistema (A57). */
+  usadasAntes?:  number
+  /** Do pacote trazido: sem valor de referência (a comissão de execução é R$ 0 — princípio 4). */
+  semValorDeReferencia?: boolean
 }
 
 export interface ProfileTransaction {
@@ -1410,6 +1418,8 @@ export function ClientProfile({
   // Arquivada (J-23): a ficha diz isso, e agendar e vender ficam desligados —
   // o servidor também recusa (CLIENTE_ARQUIVADA).
   const arquivada = !client.isActive
+  // O pacote trazido de fora (F35): quem dá o crédito interno (o Financeiro em Gerenciar).
+  const podeTrazerPacote = !!canGrantCredit && !arquivada
   const motivoDoArquivo = 'Cliente arquivada: reative em "Mais ações" para agendar ou vender.'
   // Arquivar não cancela o que ela tem marcado: a confirmação diz (A19).
   const agendamentosAoArquivar = avisoDosAgendamentosAoArquivar(upcomingAppointments)
@@ -1751,16 +1761,18 @@ export function ClientProfile({
 
           {/* 1. Tratamento em andamento */}
           {activePackage ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} {...(activePackage.deFora ? { 'data-pacote-de-fora': '' } : {})}>
             <div role="button" onClick={() => setTreatmentModalOpen(true)} style={{
               borderRadius: 'var(--radius-card)',
               background: 'var(--gradient-brand)',
               padding: '20px 24px', color: 'var(--on-brand)', cursor: 'pointer',
             }}>
               <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75, marginBottom: 6 }}>
-                TRATAMENTO EM ANDAMENTO
+                {activePackage.deFora ? 'PACOTE DE ANTES' : 'TRATAMENTO EM ANDAMENTO'}
               </p>
-              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, marginBottom: 4 }}>{activePackage.name}</p>
+              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, marginBottom: 4 }}>
+                {activePackage.deFora ? activePackage.procedureName : activePackage.name}
+              </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
                 <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.25)' }}>
                   <div style={{
@@ -1773,12 +1785,24 @@ export function ClientProfile({
                   {activePackage.usedSessions} / {activePackage.totalSessions} sessões
                 </p>
               </div>
+              {activePackage.deFora && (
+                // A57: as usadas antes do sistema aparecem como tal (não somem).
+                <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.9, marginTop: 6, fontWeight: 700 }}>
+                  {Math.max(0, activePackage.totalSessions - activePackage.usedSessions)} de {activePackage.totalSessions} restantes
+                  {(activePackage.usadasAntes ?? 0) > 0 && ` · ${usadasAntesDoSistema(activePackage.usadasAntes!)}`}
+                </p>
+              )}
               {activePackage.totalSessions - activePackage.usedSessions > 0 && (
                 <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.7, marginTop: 6 }}>
                   {textoDasRestantes(activePackage.totalSessions - activePackage.usedSessions, activePackage.scheduledSessions ?? 0)}
                 </p>
               )}
             </div>
+            {activePackage.deFora && activePackage.semValorDeReferencia && (
+              <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>
+                Sem valor de referência: as sessões deste pacote não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos.
+              </p>
+            )}
             {/* Cancelar o pacote (F2b): fora do cartão, que já é o botão da ficha de tratamento. */}
             {pacoteCancelavel && (
               <button type="button" className="btn-ghost" onClick={() => setCancelandoPacote(true)}
@@ -1786,11 +1810,18 @@ export function ClientProfile({
                 Cancelar pacote
               </button>
             )}
+            {podeTrazerPacote && (
+              <TrazerPacoteDeFora clientId={client.id} procedimentos={planProcedures} unidades={branches} unidadeAtual={currentBranchId ?? ''} />
+            )}
             </div>
           ) : (
             <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, minHeight: 90 }}>
               <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-faint)' }}>TRATAMENTO EM ANDAMENTO</p>
               <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum pacote ativo.</p>
+              {/* A migração (F35): o pacote que ela já tinha antes do sistema. */}
+              {podeTrazerPacote && (
+                <TrazerPacoteDeFora clientId={client.id} procedimentos={planProcedures} unidades={branches} unidadeAtual={currentBranchId ?? ''} />
+              )}
             </div>
           )}
 

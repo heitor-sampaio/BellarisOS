@@ -466,6 +466,13 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - **Produto** (D4, 2026-10-30): `product_sales.sold_at`, o vendido, quem
   vendeu; a quantidade são as embalagens ("3× Sérum"). A venda ESTORNADA sai
   (H2, 2026-11-01): era R$ 6.013 contra R$ 5.915 na 5ª simulação.
+- **O pacote TRAZIDO DE FORA não é venda** (decisão 1 do Heitor sobre a 8ª
+  simulação, 2026-11-06; `vendas-financeiro.md` §9.3.1): `metrics_vendas`
+  tira o `client_packages.de_fora` (migration `20261106003501`). Ele também
+  não está no caixa, no faturamento nem no ticket (não tem lançamento). A
+  sessão dele feita entra na receita dos ATENDIMENTOS (a execução) pela parte
+  no valor de referência (`package_sessions.preco`, r2-ind-01) — sem valor,
+  nada. Prova: `e2e/pacote-de-fora.spec.ts`.
 - **Pacote CANCELADO e pré-pago com unidade cancelada valem o que ficou**
   (F2b, 2026-11-01; migration `20261101000252`): o pacote, `price −
   valor_cancelado` (o usado), e o pré-pago, o vendido menos as unidades

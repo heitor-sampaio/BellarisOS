@@ -20,6 +20,8 @@ export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: s
   let q = createAdminClient().from('service_packages')
     .select('id, name, price, total_sessions, validity_days, is_active, comissao_venda_tipo, comissao_venda_valor, comissao_execucao, comissao_execucao_valor, comissao_responsavel_tipo, comissao_responsavel_valor, service_package_items(procedure_id, quantity, sort_order, procedures(name, price))')
     .eq('tenant_id', tenantId)
+    // O registro do pacote trazido de fora (F35) não é do catálogo.
+    .eq('de_fora', false)
   if (opcoes.soAtivos) q = q.eq('is_active', true)
   if (opcoes.branchId) q = q.or(`branch_id.is.null,branch_id.eq.${opcoes.branchId}`)
   const linhas = await ler(q.order('name'), 'carregar o catálogo de pacotes')

@@ -6,6 +6,7 @@ import { idadeEm, formatBRL } from '@estetica-os/utils'
 import { responsavelDaFicha } from '@/lib/clients/menor'
 import { unificacoesDaFicha } from '@/lib/clients/unificacoes'
 import { historicoDoCancelamento } from '@/lib/pacotes/cancelamento'
+import { camposDoPacoteDeFora, linhaDoHistoricoDoPacote } from '@/lib/pacotes/de-fora'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
@@ -171,6 +172,8 @@ export default async function ClientProfilePage({
       procedureName: proc?.name ?? sp?.name ?? '—',
       price:         Number(sp?.price ?? 0) / (activePkg.total_sessions || 1),
       durationMin:   proc?.duration_min ?? 60,
+      // O pacote trazido de fora (F35): "Pacote de antes" e as usadas antes do sistema (A57).
+      ...camposDoPacoteDeFora(activePkg as { de_fora?: boolean; usadas_antes?: number; valor_referencia?: number | null }),
     }
   }
 
@@ -397,10 +400,8 @@ export default async function ClientProfilePage({
       history.push({
         id: uid('pkg'), date: pkgDate,
         type: 'PACKAGE_PURCHASED',
-        title: `Pacote adquirido: ${sp?.name ?? 'Pacote'}`,
-        subtitle: `${pkg.total_sessions} sessões`,
-        amount: Number(sp?.price ?? 0),
         link: null,
+        ...linhaDoHistoricoDoPacote(pkg as { de_fora?: boolean; total_sessions: number; usadas_antes?: number }, sp?.name ?? 'Pacote', Number(sp?.price ?? 0)),
       })
     }
     const cancelado = historicoDoCancelamento(pkg as { cancelado_em?: string | null }, sp?.name ?? 'Pacote', formatBRL)

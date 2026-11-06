@@ -470,6 +470,9 @@ export function TreatmentSessionsModal({
                             {format(new Date(sess.scheduledAt), "EEE, dd MMM · HH:mm", { locale: ptBR })}
                             {sess.professionalName && ` · ${sess.professionalName}`}
                           </p>
+                        ) : isDone && !sess.appointmentId ? (
+                          // A57: a sessão do pacote trazido de fora já usada no sistema de antes.
+                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>Usada antes do sistema</p>
                         ) : (
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>Sem agendamento</p>
                         )}

@@ -234,6 +234,16 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     `pacote_vender_com_equipe` (migration `20261101001105`; o
     `pacote_vender` de antes fica sem uso). Prova:
     `e2e/comissoes-pacote-responsavel.spec.ts`.
+  - **O pacote TRAZIDO DE FORA** (decisão 1 do Heitor sobre a 8ª simulação,
+    2026-11-06: "concordo"; `vendas-financeiro.md` §9.3.1): não tem comissão
+    de venda (não é venda). A de EXECUÇÃO da sessão trazida sai pela regra do
+    profissional (`REGRA`) sobre a parte da sessão no rateio do valor de
+    referência (`package_sessions.preco`), e libera na conclusão — o pacote
+    não tem preço de venda (`client_packages.price` nulo: nada que a cliente
+    deva à clínica, `comissao_conta`). Sem valor de referência, R$ 0 e a tela
+    avisa (princípio 4): `linhasDoAtendimento` não cria a linha para a sessão
+    sem preço de um pacote `de_fora` — nem a regra de "R$ fixo" (a decisão
+    disse R$ 0). Prova: `e2e/pacote-de-fora.spec.ts`.
   - **"Abater do pacote"** segue a execução do pacote: com `REGRA`, a linha
     avulsa vira a de pacote com a mesma regra (o de antes); com a do pacote, a
     avulsa é CANCELADA e nasce UMA linha com a regra dele (ou nenhuma).

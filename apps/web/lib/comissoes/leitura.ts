@@ -184,14 +184,19 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
   // A sessão de pacote vem antes do "sem regra nenhuma": o PACOTE pode dizer a
   // comissão da execução (2026-10-30), valendo para quem não tem regra.
   const sessaoDePacote = await ler(admin.from('package_sessions')
-    .select('procedure_id, preco, client_packages!inner(price, total_sessions, comissao_execucao, comissao_execucao_valor, service_packages!inner(price, total_sessions, procedure_id))')
+    .select('procedure_id, preco, client_packages!inner(price, total_sessions, comissao_execucao, comissao_execucao_valor, de_fora, service_packages!inner(price, total_sessions, procedure_id))')
     .eq('appointment_id', appt.id).maybeSingle(), 'buscar a sessão do pacote')
   const doCliente = sessaoDePacote?.client_packages as unknown as {
     price: number | null; total_sessions: number; comissao_execucao: string | null; comissao_execucao_valor: number | null
+    de_fora?: boolean
     service_packages: { price: number; total_sessions: number; procedure_id: string | null } | null
   } | null
   const pacote = doCliente?.service_packages
   if (sessaoDePacote && doCliente && pacote) {
+    // O pacote trazido de fora (F35) sem valor de referência: a sessão não tem
+    // valor, e a comissão de execução é R$ 0 (princípio 4 — não se chuta o
+    // valor de outro pacote; decisão 1 do Heitor).
+    if (doCliente.de_fora && sessaoDePacote.preco == null) return []
     // A parte do preço desta SESSÃO (rateio da venda, pelo preço de tabela de
     // cada procedimento). Vendido antes do rateio: preço da venda ÷ sessões; de
     // antes de existir venda: o do catálogo.
