@@ -91,7 +91,11 @@
     `schedulePlanSession` por `conferirPecasDoAgendamento` com a sala e o
     procedimento, e `horarioOcupado` da sala). A unidade pré-paga segue só
     com o horário (o crédito decide o procedimento no servidor). Prova:
-    `e2e/pacote-sessao-agendar.spec.ts`.
+    `e2e/pacote-sessao-agendar.spec.ts`. **A sala aparece desde o início**
+    (A32 e A58 da 8ª simulação, 2026-11-06): só depois do horário escolhido,
+    e o "Agendar a 1ª sessão" da venda do pacote parecia não pedir a sala;
+    escolhido o horário, ela diz qual está "(ocupada)". Prova:
+    `e2e/agenda-atritos-da-8.spec.ts` ("A32/A58").
 - **Na agenda da REDE, o novo agendamento nasce sem unidade** (A14 da 8ª
   simulação, 2026-11-06; princípio 3): o "+ Agendar" da ficha da rede (e o
   "Novo agendamento" com "Toda a rede") começava na primeira unidade em ordem
@@ -150,6 +154,21 @@
     A ocupação desconta o bloqueado (`blocosDosBloqueios`, `indicadores.md`).
     Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D5", "D15"),
     `tests/agenda-horario-livre.test.ts`.
+  - **O modal Agendar tem a grade dos livres, e o choque diz que não grava**
+    (A58 e A21 da 8ª simulação, 2026-11-06; princípio 3): o seletor de
+    horários livres só existia no agendar da sessão do pacote. Escolhida a
+    profissional e o dia, o modal mostra a MESMA `GradeDeHorarios` (a régua de
+    `ocupanteDoHorario` com os agendamentos e os bloqueios de
+    `getSchedulingDaySlots`; sem o "Outro horário", que ali é o campo de data
+    e hora — `semOutroHorario`), e clicar escolhe o horário. O choque com
+    outro atendimento dela não é encaixe — o servidor recusa —, e o aviso
+    parecia só aviso: agora "Não vai ser agendado: X já tem atendimento das…"
+    (`[data-choque-do-horario]`) com "Usar o próximo livre: 11:00"
+    (`proximoHorarioLivre` com `aPartirDe`, a partir do horário escolhido). O
+    Confirmar segue clicável (a recusa de sempre, uma mensagem só). O remarcar
+    da janela diz "Não vai ser remarcado: …" e, recusado, fica UMA mensagem
+    ("Não foi remarcado: …"). Prova: `e2e/agenda-atritos-da-8.spec.ts` ("A21",
+    "A58").
   - **O Confirmar espera os avisos DESTE horário** (D9 da 8ª simulação,
     2026-11-06): `avisosDoHorario` roda 200 ms depois de cada mudança, e o
     botão não esperava — a Ana às 23:55, nas férias e fora do expediente,
@@ -159,6 +178,19 @@
     7ª); o "Confirmar novo horário" do remarcar, igual. O aviso (bloqueio,
     fora do expediente, choque) está na tela ANTES de gravar; o encaixe segue
     permitido. Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D9").
+  - **"Dia inteiro", e o início de outro dia avisa** (A23 da 8ª simulação,
+    2026-11-06): a folga e as férias eram o 12:00–13:00 de padrão trocado à
+    mão. "Dia inteiro" troca o início e o fim por "Do dia"/"Até o dia" (da
+    meia-noite do primeiro à meia-noite depois do último). E às 23:30 a
+    "próxima hora cheia" do padrão já é amanhã: a janela diz "O bloqueio
+    começa no dia seguinte…" (`[data-bloqueio-outro-dia]`). Prova:
+    `e2e/agenda-atritos-da-8.spec.ts` ("A23").
+  - **Iniciar dentro de um bloqueio avisa** (A31): a tela do atendimento
+    ainda não concluído diz "Horário bloqueado para Débora de 06/11 às 00:00
+    a 13/11 às 00:00 (Férias). O atendimento pode seguir: o bloqueio só
+    avisa." (`[data-aviso-do-bloqueio]`, `avisoDoBloqueioNoAtendimento`; o da
+    profissional, senão o da sala). Só aviso (princípio 2). Prova:
+    `e2e/atendimento-atritos-da-8.spec.ts` ("A31").
   - **Quem bloqueia**: quem tem a Agenda em Gerenciar, na unidade ao alcance;
     com "só os meus", só o PRÓPRIO horário, sem sala ("Com a agenda “só os
     meus”, você bloqueia só o seu horário.") — decidido pela regra do Heitor
@@ -380,6 +412,30 @@
   marca no dia do agendamento". `chegarEIniciar` confere o dia
   (`ehODiaDoAgendamento`) antes de `perguntaDoInicio`. Prova:
   `e2e/agenda-inicio-adiantado.spec.ts` ("D10").
+- **A "Minha agenda" agenda — para ela** (A25 da 8ª simulação, 2026-11-06;
+  decidido pelo princípio 3): com a Agenda em Gerenciar "só os meus", a Paula
+  não marcava a avaliação nem o retorno — o cargo deixava e a tela escondia.
+  A "Minha agenda" tem "Agendar" (quando ela atende na unidade), o modal de
+  sempre com a profissional = ela, e o servidor recusa outra profissional
+  ("Com a agenda “só os meus”, você agenda só para você." — `addAppointment`;
+  a regra do Heitor de 28/10, como no bloqueio). Prova:
+  `e2e/agenda-atritos-da-8.spec.ts` ("A25").
+- **Trocar a profissional pela janela, com confirmação e "de quem para quem"**
+  (A22 da 8ª simulação, 2026-11-06): só se trocava arrastando, sem
+  confirmação, e o histórico dizia "Remarcado". A janela do agendamento tem
+  "Trocar profissional" (`TrocarProfissional`, a quem tem a Agenda em
+  Gerenciar de todos): só quem ATENDE na unidade do agendamento, com
+  "(ocupada)" na que tem atendimento no horário (`profissionaisParaTrocar`), e
+  "Trocar a profissional de A para B?" antes. Arrastar para a coluna de outra
+  profissional pergunta também ("Trocar a profissional de A para B e marcar às
+  14:00?", `[data-confirmar-arraste]`). O servidor recusa quem não atende na
+  unidade (`recusaDeQuemNaoAtende`, em `reassignProfessional` e no
+  `remarcarCore` com outra profissional), e o histórico grava "Profissional
+  trocado de A para B" (`textoDaTroca`; a janela o mostra — `rotuloDaAcao`).
+  Soltar no ocupado diz o porquê, em destaque (8 s). E o horário do arraste é
+  o da posição na coluna: somar o `scrollTop` da grade outra vez (o retângulo
+  da coluna já anda com a rolagem) jogava o solto para horas depois. Prova:
+  `e2e/agenda-atritos-da-8.spec.ts` ("A22").
 - **"Só os meus" cancela e marca a falta do DELA** (agenda-06, revisão do
   Heitor de 2026-11-02; em 28/10 ele confirmou que a profissional cancela o
   que é dela): com a agenda em Gerenciar e escopo "só os meus", a janela da
@@ -434,6 +490,14 @@
   atendimento, com a anamnese. **A alergia vai em destaque** na ficha e no
   atendimento (`alergiasDaAnamnese` + `AlertaDeAlergia`: o campo `allergies` ou
   de rótulo "alerg…", sem "não"/"nenhuma"), só para quem vê o prontuário.
+  **As anotações da ficha aparecem junto da anamnese** (A28 da 8ª simulação,
+  2026-11-06): a alergia que veio da planilha nas anotações da cliente
+  (`clients.notes`) não chegava ao atendimento. A tela do atendimento mostra
+  "Anotações da ficha da cliente: …" como estão escritas
+  (`[data-anotacoes-da-ficha]`), só a quem vê o prontuário — sem interpretar
+  o texto nem virar faixa de alergia (atend-15: "nada interpreta texto"), e
+  sem copiar para a anamnese. Prova: `e2e/atendimento-atritos-da-8.spec.ts`
+  ("A28").
   Para quem TEM o app, o concluído diz "A cliente ainda não confirmou nem
   avaliou pelo app (opcional).", sem alerta (A49 da 5ª simulação: era
   "⏳ Aguardando confirmação…", lido como pagamento pendente); sem o app, que
@@ -639,6 +703,13 @@
   o nome do termo na janela quebra a linha, inteiro (`[data-titulo-do-documento]`,
   com a dica), em vez de sair cortado. Prova: `e2e/agenda-atritos-da-7.spec.ts`
   ("A29"), `e2e/agenda-janela-termo.spec.ts`.
+  **Até 40 min, o cartão é de DUAS linhas** (A24 da 8ª simulação, 2026-11-06):
+  o de 40 min tinha três linhas em 49 px, e o de 30 cortava o procedimento.
+  Na agenda da unidade, abaixo de 56 px (menos de 45 min), a hora e a
+  cliente, e o procedimento e a sala; na "Minha agenda", abaixo de 1 h (o
+  cartão grande tem o avatar), a hora, a cliente e a situação, e o
+  procedimento e a duração (`[data-procedimento-do-cartao]`). Prova:
+  `e2e/agenda-atritos-da-8.spec.ts` ("A24").
   **"Reagendar" a falta (e o cancelado) vem com o procedimento e a
   profissional** (A27 da 7ª simulação; abria só com a cliente e sugeria um
   horário já passado): `?novo=1&cliente=&procedimento=&profissional=`
@@ -1303,6 +1374,13 @@ const procedures = await ler(
   recorte dos planos aguardando checkout no dashboard segue
   `professional_id` (indicador, §13.1). Prova:
   `e2e/planejamentos-so-os-meus.spec.ts`.
+- **A tela dos planos se chama "Tratamentos", como o menu** (A30 da 8ª
+  simulação, 2026-11-06; decidido pelo princípio 3): o menu "Tratamentos"
+  abria "Planejamentos". Ficou o nome do menu: o grupo dele é "Planejamento"
+  (Tratamentos e Injetáveis, como as duas sub-abas do Planejamento da ficha),
+  e "Planejamentos" sozinho dizia também os de injetáveis. O título da lista e
+  o "voltar" do plano aberto dizem "Tratamentos"; a rota segue
+  `/planejamentos`. Prova: `e2e/atendimento-atritos-da-8.spec.ts` ("A30").
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um
   rascunho que existe só na tela; o plano nasce no primeiro "Salvar plano"
@@ -1560,6 +1638,11 @@ const procedures = await ler(
   "Lançar o custo como despesa paga hoje" (`estoque_compra`, 1b54c531): saiu
   (migrations `20261028000801`/`802`; `estoque_inicial` perdeu
   `p_despesa`). Prova: `e2e/estoque-nunca-gera-despesa.spec.ts`.
+- **O estoque inicial do cadastro do produto, na rede de duas ou mais
+  unidades, nasce sem unidade** (sobra da F33 da 8ª simulação, 2026-11-06;
+  princípio 3): "Unidade que recebe o estoque" vinha na primeira em ordem
+  alfabética; agora "Selecione a unidade…" (`unidadeInicial`,
+  `lib/unidades/unidade-inicial.ts`). Prova: `tests/agenda-sobras-da-f33.test.ts`.
 
 ---
 
@@ -1622,7 +1705,29 @@ O resto do fluxo:
   conferido em 2026-11-05: não reproduzido — o robô recarregou num contexto
   novo, e o rascunho morre com a aba por decisão). Prova:
   `e2e/atendimento-finalizar-grava-tudo.spec.ts` ("recarregar"),
-  `e2e/atendimento-alergia-sim-nao.spec.ts`.
+  `e2e/atendimento-alergia-sim-nao.spec.ts`. **E a tela DIZ isso** (A26 da
+  8ª simulação, 2026-11-06; a regra fica): em andamento, para quem escreve no
+  prontuário, "A anamnese, a evolução e a ficha digitadas ficam guardadas só
+  nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba
+  ou abrir em outro aparelho, não." (`[data-aviso-do-rascunho]`). Prova:
+  `e2e/atendimento-atritos-da-8.spec.ts` ("A26").
+- **A desistência no meio registra a intercorrência e baixa o insumo já
+  aplicado** (A27 da 8ª simulação, 2026-11-06): o "Cancelar" do atendimento
+  EM ANDAMENTO só pedia o motivo — a cliente passou mal depois da aplicação, e
+  nem o prontuário nem o estoque ficavam sabendo. Para quem escreve no
+  prontuário, a janela tem "Intercorrência (opcional)" e "Baixar do estoque o
+  que já foi aplicado: …" (os insumos MARCADOS na tela). Uma transação,
+  `desistir_do_atendimento` (migration `20261106003701`): o agendamento
+  travado e em andamento, cancelado com o motivo e o histórico, a
+  intercorrência na entrada do prontuário do atendimento (a aba Prontuário a
+  lista, `buildRecordForms`) e cada insumo pela MESMA conta da conclusão
+  (`montarInsumosDaBaixa`, `lib/atendimento/insumos-da-baixa.ts`, com
+  `estoque_conferir_lido`/PT409 e `comNovaTentativa`). Sem comissão, sem
+  sessão de pacote usada nem pré-pago: não houve conclusão — o
+  `pre_pago_libera` devolve à cliente o que estava pago, como em todo
+  cancelamento. Pede o Prontuário em Gerenciar (como concluir) e a agenda "só
+  os meus" vale pelo id. Sem nada marcado, é o cancelar de sempre. Prova:
+  `e2e/atendimento-atritos-da-8.spec.ts` ("A27").
 - **CONCLUÍDO, a tela mostra os insumos da BAIXA** (D9 da 6ª simulação,
   2026-11-04; princípio 3): o `PROCEDURE_USAGE` do atendimento, somado por
   produto, na unidade do movimento (`app/_shared/sessao-de-atendimento.tsx`).
@@ -1638,6 +1743,13 @@ O resto do fluxo:
   sempre e "Observações finais" na janela de concluir — o mesmo
   `medical_record_entries.notes`), o nome da aba Prontuário, com o rótulo
   ligado ao campo. Prova: `e2e/atendimento-campos-da-tela.spec.ts`.
+  **A janela do "Finalizar" não repete o que está na tela** (A29 da 8ª
+  simulação, 2026-11-06): a Evolução e as Intercorrências já escritas vinham
+  de novo como campos. Escritas na tela, a janela as MOSTRA (o que vai ao
+  prontuário, `[data-evolucao-da-tela]`) — para mudar, é na tela; em branco,
+  o campo aparece para escrever ali. Prova:
+  `e2e/atendimento-atritos-da-8.spec.ts` ("A29"),
+  `e2e/atendimento-plano-gerado-mantem-a-sessao.spec.ts`.
   **E é UM estado só na tela** (D8 e A29 da 6ª simulação, 2026-11-04;
   princípio 3): o formulário da avaliação e o de sempre (o do plano gerado)
   tinham dois estados para o mesmo campo, e depois de "Gerar plano e enviar à
@@ -1907,6 +2019,11 @@ O resto do fluxo:
 ❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
 ❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)
 ❌ Agrupar agendamento por dia com scheduled_at.slice(0, 10) ou toISOString da meia-noite local (é o dia em UTC) — é dayKeyTZ (D4 da 8ª)
+❌ Trocar a profissional de um agendamento (janela, arraste, remarcação) para quem não atende na unidade dele, ou sem "de quem para quem" no histórico — é recusaDeQuemNaoAtende + textoDaTroca (A22 da 8ª)
+❌ Somar o scrollTop da grade à posição do arraste (o retângulo da coluna já anda com a rolagem — A22 da 8ª)
+❌ Gravar a desistência no meio (intercorrência, insumo) fora de desistir_do_atendimento, ou calcular a baixa fora de montarInsumosDaBaixa (A27 da 8ª)
+❌ Deixar o "Já pago" em "Não usar" quando a cliente tem crédito do MESMO procedimento (vem escolhido, com aviso — A20 da 8ª), ou ligar crédito a agendamento já marcado fora de agendamento_usar_credito
+❌ Ler as anotações da ficha (clients.notes) para decidir alergia: elas aparecem como estão escritas (A28 da 8ª; atend-15)
 ❌ Ler ou gravar agenda_bloqueios pela sessão (só o servidor: actions/agenda-bloqueios.ts e lib/agenda/bloqueios.ts), ou deixar quem tem "só os meus" bloquear outra pessoa ou uma sala
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem. A exceção é pacote_cancelar (F2b): cancela as sessões agendadas na MESMA transação do dinheiro, com o status, o motivo e o histórico do cancelarCore, e a action emite o evento e o aviso depois

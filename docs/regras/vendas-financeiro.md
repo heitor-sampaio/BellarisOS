@@ -77,10 +77,14 @@ plano").
     `e2e/vendas-unidade-da-venda.spec.ts`.
   - Também no painel da direita do inbox, com as ações da pessoa
     (`getConversationCard` → `venda`), **com ou sem ficha**. A
-    unidade é a de quem atende, senão a do cliente, senão a única da rede.
-    Com cliente, fora do alcance ou sem pacote na unidade, o botão não
-    aparece. Como as outras ações da pessoa, também some com o painel só de
-    leitura (sem `crm: MANAGE`).
+    unidade é a de quem atende (a unidade fixa), senão a única da rede; **na
+    rede com duas ou mais, quem é da rede ESCOLHE** — "Unidade da venda", sem
+    nenhuma escolhida, como na ficha da rede (`venda.unidades`; sobra da F33
+    da 8ª simulação, 2026-11-06; H5: "nada se prende a clients.branch_id" —
+    era "senão a do cliente", a unidade de cadastro). Com cliente, fora do
+    alcance ou sem nada à venda, o botão não aparece. Como as outras ações da
+    pessoa, também some com o painel só de leitura (sem `crm: MANAGE`). Prova:
+    `e2e/agenda-atritos-da-8.spec.ts` ("sobra da F33").
   - **Sem ficha, primeiro o cadastro** (decisão do Heitor, 2026-09-30): o
     botão abre o "Cadastrar como cliente" com o aviso, e ao salvar a venda
     abre sozinha para o cliente novo (`abrirSinal` do `Vender`). Rede
@@ -214,6 +218,8 @@ plano").
   `primeiraSessao`), e o agendar é o de sempre das sessões
   (`schedulePackageSession`, pelo núcleo; `[data-agendar-a-primeira-sessao]`).
   "Cancelar" deixa para depois. Prova: `e2e/financeiro-atritos-da-7.spec.ts` ("A47").
+  A sala (opcional) aparece desde o início, antes do horário (A32 da 8ª;
+  `atendimento.md` §9.1).
 - **"Trazer pacote de fora": o saldo que a cliente já tinha** (decisão 1 do
   Heitor sobre a 8ª simulação, 2026-11-06: "concordo" com a recomendação (a) +
   (c)). A Lúcia migrava a base: a Camila tinha 7 de 10 limpezas usadas no
@@ -294,6 +300,23 @@ o procedimento avulso pago antes.
     `agendarUnidadePrePaga`), o modal da agenda e o do inbox (campo "Já
     pago", `creditosParaAgendar`), e o "Agendar agora" depois de vender um
     procedimento (quem tem `agenda: MANAGE`).
+  - **No modal da agenda, o "Já pago" vem ESCOLHIDO quando o procedimento
+    bate** (A20 da 8ª simulação, 2026-11-06; decidido pelo princípio 3): a
+    Bruna saiu avulsa a R$ 180 com a sessão do pacote livre ("Não usar —
+    cobrar no atendimento" era o padrão). Escolhido o procedimento, o crédito
+    dele (o mais antigo) vem escolhido, com o aviso "Já pago: Pacote X
+    (sessão 2 de 3) — escolhido porque o procedimento é o mesmo. Para cobrar
+    à parte, escolha “Não usar”." (`[data-credito-pre-escolhido]`). Como o
+    app (que já usava o pacote sozinho).
+  - **O avulso já marcado se liga depois** (A20): a janela do agendamento EM
+    ABERTO, avulso (sem plano, sem crédito ligado, sem lançamento vivo), de
+    quem tem crédito do MESMO procedimento, oferece "Usar o pacote X (sessão
+    N de M)" (`UsarOQueJaFoiPago`, `creditosDoAgendamento` →
+    `usarCreditoNoAgendamento`). Uma transação, `agendamento_usar_credito`
+    (migration `20261106003702`): o agendamento e o crédito travados e
+    conferidos de novo, a ligação, o preço passa à parte do crédito e o
+    histórico "Ligado ao que já foi pago" (`CREDIT_LINKED`). O concluído segue
+    pelo "Abater do pacote". Prova: `e2e/agenda-atritos-da-8.spec.ts` ("A20").
   - `schedulePackageSession` (o modal de sessões do pacote) também passa
     pelo núcleo, com a sessão como crédito (2026-09-30). A tela já escondia
     o horário ocupado, mas só pelo INÍCIO (60 min às 10:00 passava por cima

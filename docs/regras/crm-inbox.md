@@ -784,6 +784,15 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   card (`leads.client_id`), o agendamento é COMMERCIAL e a linha do tempo
   do card diz que houve o agendamento. Aparece com o CRM em Gerenciar e a
   agenda no plano (`podeAgendar`). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts` ("A16").
+  **Na rede de duas ou mais unidades, a janela nasce SEM unidade** (sobra da
+  F33 da 8ª simulação, 2026-11-06; princípio 3): nascia na primeira em ordem
+  alfabética; agora "Selecione a unidade…" (`unidadeInicial`,
+  `lib/unidades/unidade-inicial.ts` — com uma só, ela). Prova:
+  `tests/agenda-sobras-da-f33.test.ts`.
+- **Os separadores de dia da conversa são do dia de Brasília** (sobra da F33):
+  agrupavam por `created_at.slice(0, 10)`, o dia em UTC — a mensagem das
+  23:30 caía no separador do dia seguinte. É `agruparPorDia`
+  (`lib/inbox/dias-da-conversa.ts`, `dayKeyTZ`). Prova: o mesmo teste.
 - `on delete restrict`: pessoa com oportunidade não se apaga.
 - **Oportunidade não se apaga** (decisão do Heitor, 2026-09-28): apagar levava
   o histórico junto (`lead_events` em cascata). A que não vai adiante é marcada
