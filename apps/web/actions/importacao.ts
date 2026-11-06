@@ -9,6 +9,8 @@ import { camposDoDestino, colunasQueFaltam, type ChaveDeCampo, type Destino } fr
 import { processarImportacao, manterImportacoes } from '@/lib/importacao/processar'
 import { variantesDoTelefone } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
+import type { LinhaDoRelatorio } from '@/lib/importacao/processar'
+import { podeTrazerPacoteDeFora } from '@/lib/pacotes/de-fora'
 
 /**
  * O importador de contatos (CSV), 2026-10-13. O navegador lê o arquivo, mapeia
@@ -59,6 +61,8 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
   // clientes (quem é de unidade importa para a dela).
   const campos = camposDoDestino(destino, {
     oportunidade: !!pedido?.oportunidade, unidadePorLinha: destino === 'clientes' && !ctx.branchId,
+    // A coluna do pacote de antes (F35): de quem traz pacote de fora — o Financeiro em Gerenciar.
+    pacote: destino === 'clientes' && podeTrazerPacoteDeFora(ctx),
   })
   const permitidos = new Set(campos.map(c => c.chave))
   const mapa = Array.isArray(pedido?.mapeamento) ? pedido.mapeamento.slice(0, MAX_COLUNAS) : []
@@ -182,7 +186,9 @@ export async function cruzamentoDaImportacao(entrada: {
 export interface AndamentoDaImportacao {
   status: string; total: number; processadas: number; novas: number; completadas: number
   sem_mudanca: number; com_erro: number; oportunidades: number; erro: string | null
-  erros: { linha: number; motivo: string }[]
+  erros: LinhaDoRelatorio[]
+  /** D2 (F35): as linhas que entraram sem algum campo ilegível. */
+  com_aviso: number; avisos: LinhaDoRelatorio[]
 }
 
 type ImportacaoLida = AndamentoDaImportacao & {
@@ -196,12 +202,12 @@ type ImportacaoLida = AndamentoDaImportacao & {
  */
 async function importacaoAoAlcance(ctx: Ctx, id: string): Promise<ImportacaoLida | null> {
   const imp = await ler(createAdminClient().from('importacoes')
-    .select('id, destino, branch_id, status, total, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erro, erros, erros_expiram_em')
+    .select('id, destino, branch_id, status, total, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erro, erros, erros_expiram_em, com_aviso, avisos')
     .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a importação') as ImportacaoLida | null
   if (!imp) return null
   if (!can(ctx, imp.destino === 'clientes' ? 'clients' : 'crm', 'MANAGE')) return null
   if (imp.destino === 'clientes' && !alcancaUnidade(ctx, imp.branch_id)) return null
-  if (imp.erros_expiram_em && imp.erros_expiram_em < new Date().toISOString()) imp.erros = []
+  if (imp.erros_expiram_em && imp.erros_expiram_em < new Date().toISOString()) { imp.erros = []; imp.avisos = [] }
   return imp
 }
 
@@ -220,6 +226,7 @@ export async function andamentoDaImportacao(id: string): Promise<AndamentoDaImpo
     status: a.status, total: a.total, processadas: a.processadas, novas: a.novas, completadas: a.completadas,
     sem_mudanca: a.sem_mudanca, com_erro: a.com_erro, oportunidades: a.oportunidades, erro: a.erro,
     erros: (a.erros ?? []).slice(0, 50),
+    com_aviso: a.com_aviso ?? 0, avisos: (a.avisos ?? []).slice(0, 50),
   }
 }
 

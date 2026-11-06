@@ -7,8 +7,9 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
 import { camposDoDestino, sugerirMapeamento, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
-import { validarLinha, marcarRepetidas, nomeDiferente, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
+import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
+import type { ImportacaoAnterior } from '@/lib/importacao/historico'
 
 /**
  * Importar contatos de um CSV (2026-10-13): arquivo → colunas → prévia →
@@ -20,6 +21,14 @@ const MAX_BYTES = 5 * 1024 * 1024
 const MAX_LINHAS = 10_000
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
+/** O placar de uma importação, numa linha (o resultado e o histórico dizem igual). */
+const placar = (a: { novas: number; completadas: number; semMudanca: number; comAviso: number; recusadas: number; oportunidades: number }) => [
+  plural(a.novas, 'novo', 'novos'), plural(a.completadas, 'completado', 'completados'),
+  a.semMudanca ? plural(a.semMudanca, 'sem mudança', 'sem mudança') : null,
+  a.comAviso ? plural(a.comAviso, 'com aviso', 'com aviso') : null,
+  plural(a.recusadas, 'recusada', 'recusadas'),
+  a.oportunidades ? plural(a.oportunidades, 'oportunidade', 'oportunidades') : null,
+].filter(Boolean).join(' · ')
 
 const DESTINOS: Record<Destino, { rotulo: string; explica: string }> = {
   clientes: {
@@ -49,6 +58,10 @@ interface Props {
   /** As origens do lead da clínica (A14 da 7ª): a da planilha casa com elas primeiro. */
   origens?: string[]
   eu: string | null
+  /** F35: a coluna "Pacote de antes" (quem traz pacote de fora — o Financeiro em Gerenciar). */
+  podePacote?: boolean
+  /** A6 da 8ª: as importações anteriores, na própria aba. */
+  historico?: ImportacaoAnterior[]
 }
 
 function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: React.ReactNode }) {
@@ -106,8 +119,8 @@ export function ImportadorDeContatos(p: Props) {
   // Os campos desta importação: os do card só com oportunidade; a unidade por
   // linha só na rede; a coluna de responsável só para quem escolhe responsável.
   const unidadePorLinha = destino === 'clientes' && !p.unidadeFixa
-  const campos = useMemo(() => camposDoDestino(destino, { oportunidade: comOportunidade, unidadePorLinha })
-    .filter(c => c.chave !== 'op_responsavel' || p.responsaveis), [destino, comOportunidade, unidadePorLinha, p.responsaveis])
+  const campos = useMemo(() => camposDoDestino(destino, { oportunidade: comOportunidade, unidadePorLinha, pacote: !!p.podePacote })
+    .filter(c => c.chave !== 'op_responsavel' || p.responsaveis), [destino, comOportunidade, unidadePorLinha, p.responsaveis, p.podePacote])
 
   // As listas da rede com que a prévia resolve os nomes da planilha.
   const funilDaEtapa = p.etapas.find(e => e.id === etapaId)?.funnel_id
@@ -122,7 +135,7 @@ export function ImportadorDeContatos(p: Props) {
   function irParaColunas() {
     if (!arquivo) return
     const oferecidos = new Set(campos.map(c => c.chave))
-    setMapa(sugerirMapeamento(arquivo.cabecalho, destino, { oportunidade: comOportunidade, unidadePorLinha })
+    setMapa(sugerirMapeamento(arquivo.cabecalho, destino, { oportunidade: comOportunidade, unidadePorLinha, pacote: !!p.podePacote })
       .map(c => (c && oferecidos.has(c) ? c : null)))
     setPasso(2)
   }
@@ -141,6 +154,14 @@ export function ImportadorDeContatos(p: Props) {
   }, [passo, arquivo, destino, mapa, refs])
   const prontas = validadas.filter(l => !l.erros.length).length
   const comErro = validadas.length - prontas
+  // D2 (F35): as que entram sem algum campo, e a menor sem responsável (A5).
+  const comAviso = destino === 'clientes'
+    ? validadas.filter(l => !l.erros.length).map(l => {
+        const menor = avisoDaMenorNaPlanilha(l.dados)
+        return { ...l, avisos: [...(l.avisos ?? []), ...(menor ? [menor] : [])] }
+      }).filter(l => l.avisos.length)
+    : validadas.filter(l => !l.erros.length && (l.avisos ?? []).length)
+  const nomeDe = (l: LinhaValidada) => (l.dados.name as string | undefined) || 'sem nome'
 
   // O que vai ser FUNDIDO (A15 da 5ª simulação): quem cada linha pronta
   // encontra na rede, pela regra da importação — antes só o resultado final
@@ -355,15 +376,12 @@ export function ImportadorDeContatos(p: Props) {
           <div data-previa style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <Aviso tom={prontas ? 'ok' : 'erro'}>
               {plural(prontas, 'linha pronta', 'linhas prontas')} para importar
-              {comErro > 0 && <> · {plural(comErro, 'com erro', 'com erro')} (ficam de fora e vão para o relatório)</>}
+              {comErro > 0 && <> · {plural(comErro, 'recusada', 'recusadas')} ({comErro === 1 ? 'fica' : 'ficam'} de fora e {comErro === 1 ? 'vai' : 'vão'} para o relatório)</>}
             </Aviso>
-            {comErro > 0 && (
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 220, overflowY: 'auto' }}>
-                {validadas.filter(l => l.erros.length).slice(0, 30).map(l => (
-                  <li key={l.numero}>Linha {l.numero}: {l.erros.join(' ')}</li>
-                ))}
-              </ul>
-            )}
+            <LinhasDoRelatorio rotulo={`${plural(comErro, 'linha recusada', 'linhas recusadas')} — só o impossível recusa (sem nome, a ficha sem telefone, a repetida):`}
+              atributo="data-linhas-recusadas" linhas={validadas.filter(l => l.erros.length).map(l => ({ linha: l.numero, nome: nomeDe(l), motivo: l.erros.join(' ') }))} />
+            <LinhasDoRelatorio rotulo={`${plural(comAviso.length, 'linha entra', 'linhas entram')} com aviso — o campo ilegível fica de fora, e o resto da ficha entra:`}
+              atributo="data-importadas-com-aviso" linhas={comAviso.map(l => ({ linha: l.numero, nome: nomeDe(l), motivo: (l.avisos ?? []).join(' ') }))} />
             {/* A16 da 7ª simulação: como a origem da planilha entra, antes de importar. */}
             <OrigensDaPlanilha destino={destino} comOportunidade={comOportunidade} validadas={validadas}
               brutas={mapa.indexOf('op_origem') >= 0 ? arquivo.linhas.map(l => (l[mapa.indexOf('op_origem')] ?? '').trim()) : null} />
@@ -424,25 +442,18 @@ export function ImportadorDeContatos(p: Props) {
                 )}
                 {a && (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0 }}>
-                    {[
-                      plural(a.novas, 'novo', 'novos'), plural(a.completadas, 'completado', 'completados'),
-                      a.sem_mudanca ? plural(a.sem_mudanca, 'sem mudança', 'sem mudança') : null,
-                      plural(a.com_erro, 'com erro', 'com erro'),
-                      a.oportunidades ? plural(a.oportunidades, 'oportunidade', 'oportunidades') : null,
-                    ].filter(Boolean).join(' · ')}
+                    {placar({ novas: a.novas, completadas: a.completadas, semMudanca: a.sem_mudanca, comAviso: a.com_aviso, recusadas: a.com_erro, oportunidades: a.oportunidades })}
                   </p>
                 )}
                 {a?.erro && <Aviso tom="erro">{a.erro}</Aviso>}
-                {a && a.erros.length > 0 && (
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 200, overflowY: 'auto' }}>
-                    {a.erros.slice(0, 20).map(e => <li key={e.linha}>Linha {e.linha}: {e.motivo}</li>)}
-                  </ul>
-                )}
+                {/* A6 da 8ª: o resultado lista as recusadas e as importadas com aviso. */}
+                {a && <LinhasDoRelatorio rotulo={`${plural(a.com_erro, 'linha recusada', 'linhas recusadas')}:`} atributo="data-linhas-recusadas" linhas={a.erros} />}
+                {a && <LinhasDoRelatorio rotulo={`${plural(a.com_aviso, 'linha entrou', 'linhas entraram')} com aviso:`} atributo="data-importadas-com-aviso" linhas={a.avisos} />}
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {a && a.com_erro > 0 && importacaoId && (
+                  {a && a.com_erro + a.com_aviso > 0 && importacaoId && (
                     <a href={`/api/importacoes/${importacaoId}/erros`} download className="btn-ghost"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <Download size={14} /> Baixar os erros
+                      <Download size={14} /> Baixar o relatório (CSV)
                     </a>
                   )}
                   {!rodando && <button type="button" className="btn-ghost" onClick={recomecar}>Importar outro arquivo</button>}
@@ -455,7 +466,63 @@ export function ImportadorDeContatos(p: Props) {
           })()}
         </div>
       )}
+
+      {passo !== 4 && p.historico && p.historico.length > 0 && <ImportacoesAnteriores itens={p.historico} />}
     </div>
+  )
+}
+
+/**
+ * As linhas do relatório — as recusadas ou as que entraram com aviso —, "Linha
+ * 5 · Isabela: CPF inválido (…): importada sem o CPF." (A6 da 8ª simulação).
+ */
+function LinhasDoRelatorio({ rotulo, atributo, linhas }: {
+  rotulo: string; atributo: string; linhas: { linha: number; nome?: string | null; motivo: string }[]
+}) {
+  if (!linhas.length) return null
+  return (
+    <div {...{ [atributo]: '' }} style={caixaDaPrevia}>
+      <span style={forte}>{rotulo}</span>
+      <ul style={listaDaPrevia}>
+        {linhas.slice(0, 50).map(l => (
+          <li key={`${l.linha}-${l.motivo.slice(0, 20)}`}>Linha {l.linha} · {l.nome || 'sem nome'}: {l.motivo}</li>
+        ))}
+      </ul>
+      {linhas.length > 50 && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>E mais {linhas.length - 50} — o relatório (CSV) traz todas.</span>}
+    </div>
+  )
+}
+
+const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+const SITUACAO: Record<string, string> = { concluida: 'Concluída', falhou: 'Falhou', importando: 'Em andamento', pendente: 'Aguardando' }
+
+/** A6 da 8ª: as importações anteriores, com o placar e o relatório (CSV) enquanto ele vale (7 dias). */
+function ImportacoesAnteriores({ itens }: { itens: ImportacaoAnterior[] }) {
+  return (
+    <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-labelledby="importacoes-anteriores">
+      <h3 id="importacoes-anteriores" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Importações anteriores</h3>
+      {itens.map(i => (
+        <div key={i.id} data-importacao-anterior className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+              {i.arquivo} <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>· {i.destino === 'clientes' ? 'clientes' : 'contatos do CRM'}</span>
+            </span>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>{SITUACAO[i.status] ?? i.status} · {quando(i.concluidaEm ?? i.criadaEm)}</span>
+          </div>
+          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+            {placar({ novas: i.novas, completadas: i.completadas, semMudanca: i.semMudanca, comAviso: i.comAviso, recusadas: i.recusadas, oportunidades: i.oportunidades })}
+          </span>
+          {i.temRelatorio && (
+            <a href={`/api/importacoes/${i.id}/erros`} download style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }}>
+              <Download size={12} /> Baixar o relatório (as recusadas e as com aviso)
+            </a>
+          )}
+          {i.relatorioVenceu && (
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>O relatório das linhas venceu (fica 7 dias: guarda dados pessoais).</span>
+          )}
+        </div>
+      ))}
+    </section>
   )
 }
 

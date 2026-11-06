@@ -14,6 +14,10 @@ export type ChaveDeCampo =
   | 'name' | 'phone' | 'document' | 'email' | 'social_media' | 'birth_date' | 'gender'
   | 'zip_code' | 'address' | 'address_number' | 'address_complement' | 'neighborhood'
   | 'city' | 'state' | 'referred_by' | 'tags' | 'notes' | 'unidade' | 'ativo'
+  // A migração (F35, decisão 1 c do Heitor): de quando ela é cliente, a última
+  // visita no sistema de antes, o pacote trazido de fora e o responsável legal (A5).
+  | 'cliente_desde' | 'ultima_visita' | 'pacote'
+  | 'responsavel_nome' | 'responsavel_cpf' | 'responsavel_parentesco' | 'responsavel_telefone'
   | 'op_origem' | 'op_valor' | 'op_observacoes' | 'op_procedimentos' | 'op_etapa' | 'op_responsavel'
   | 'op_utm_source' | 'op_utm_medium' | 'op_utm_campaign' | 'op_tags'
 
@@ -33,6 +37,11 @@ export interface OpcoesDosCampos {
   oportunidade?:    boolean
   /** Clientes importados pela REDE: a unidade de cada linha. */
   unidadePorLinha?: boolean
+  /**
+   * Quem traz pacote de fora (o Financeiro em Gerenciar, como o crédito
+   * interno — F35): a coluna "Pacote de antes" da ficha.
+   */
+  pacote?:          boolean
 }
 
 const p = (chave: ChaveDeCampo, rotulo: string, sinonimos: string[], obrigatorio = false): CampoDoSistema =>
@@ -65,6 +74,15 @@ const DA_PESSOA: Record<Destino, CampoDoSistema[]> = {
     TAGS,
     p('notes', 'Observações', ['observacoes', 'observacao', 'obs', 'notas', 'nota', 'anotacoes', 'comentarios']),
     p('ativo', 'Situação (ativo/inativo)', ['situacao', 'ativo', 'status', 'ativo inativo', 'inativo']),
+    // A migração (F35): "cliente desde" não conta como cliente nova no mês da
+    // importação, e a "última visita" é a do sistema de antes (o "Reativar").
+    p('cliente_desde', 'Cliente desde', ['cliente desde', 'desde', 'data de cadastro', 'data do cadastro', 'cadastrado em', 'cadastro', 'primeira visita', 'data da primeira visita']),
+    p('ultima_visita', 'Última visita', ['ultima visita', 'data da ultima visita', 'ultimo atendimento', 'data do ultimo atendimento', 'ultima consulta', 'visitou em']),
+    // A5: a menor importada com o responsável legal (só grava na menor).
+    p('responsavel_nome', 'Responsável legal (nome)', ['responsavel legal', 'nome do responsavel', 'nome do responsavel legal', 'responsavel pelo menor', 'mae ou responsavel']),
+    p('responsavel_cpf', 'Responsável legal (CPF)', ['cpf do responsavel', 'cpf responsavel', 'cpf do responsavel legal']),
+    p('responsavel_parentesco', 'Responsável legal (parentesco)', ['parentesco', 'grau de parentesco', 'parentesco do responsavel']),
+    p('responsavel_telefone', 'Responsável legal (telefone)', ['telefone do responsavel', 'celular do responsavel', 'fone do responsavel', 'whatsapp do responsavel']),
   ],
   contatos: [
     { ...NOME, obrigatorio: false },
@@ -76,6 +94,9 @@ const DA_PESSOA: Record<Destino, CampoDoSistema[]> = {
     TAGS,
   ],
 }
+
+/** O pacote trazido de fora (decisão 1 do Heitor): "procedimento; total; usadas" e, opcionais, o valor de referência e a validade. */
+const PACOTE = p('pacote', 'Pacote de antes (procedimento; total; usadas)', ['pacote', 'pacotes', 'pacote de antes', 'saldo de pacote', 'saldo do pacote', 'pacote em aberto', 'sessoes do pacote'])
 
 const UNIDADE = p('unidade', 'Unidade', ['unidade', 'filial', 'loja', 'clinica', 'unidade de atendimento'])
 
@@ -108,6 +129,7 @@ const ORIGEM_DA_PESSOA: CampoDoSistema = { ...DA_OPORTUNIDADE[0]!, grupo: 'pesso
 export function camposDoDestino(destino: Destino, opcoes: OpcoesDosCampos = {}): CampoDoSistema[] {
   const lista = [...DA_PESSOA[destino]]
   if (destino === 'contatos' && !opcoes.oportunidade) lista.push(ORIGEM_DA_PESSOA)
+  if (destino === 'clientes' && opcoes.pacote) lista.push(PACOTE)
   if (destino === 'clientes' && opcoes.unidadePorLinha) lista.push(UNIDADE)
   if (opcoes.oportunidade) {
     if (destino === 'clientes') lista.push({ ...p('social_media', 'Rede social', SOCIAL_SINONIMOS), grupo: 'oportunidade' })

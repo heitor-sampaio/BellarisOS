@@ -5,6 +5,8 @@ import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
 import { origensDaRede } from '@/lib/crm/origens'
 import { ImportadorDeContatos } from '@/components/branch/importador-de-contatos'
+import { importacoesAnteriores } from '@/lib/importacao/historico'
+import { podeTrazerPacoteDeFora } from '@/lib/pacotes/de-fora'
 
 /**
  * O corpo da aba Configurações → Importações (2026-10-13), dividido pelos dois
@@ -24,6 +26,8 @@ export async function ImportarContatos({ unidadeFixa }: {
   const podeClientes = can(ctx, 'clients', 'MANAGE')
   const podeContatos = can(ctx, 'crm', 'MANAGE')
   const podeOportunidade = podeContatos && temRecurso(ctx, 'oportunidades')
+  // F35: a coluna "Pacote de antes" — de quem traz pacote de fora.
+  const podePacote = podeClientes && podeTrazerPacoteDeFora(ctx)
 
   // A unidade: a da sessão vence (quem é de unidade só importa para a dela).
   let unidades: { id: string; nome: string }[] = []
@@ -50,6 +54,12 @@ export async function ImportarContatos({ unidadeFixa }: {
       ])
     : [[], [], null, null]
 
+  // O pacote de antes cita o procedimento pelo nome (a prévia resolve com esta lista).
+  const procedimentosDaPrevia = (procedimentos as { id: string; name: string }[] | null)
+    ?? (podePacote
+      ? await ler(admin.from('procedures').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'listar os procedimentos') as { id: string; name: string }[] | null
+      : null)
+
   // Só funis ATIVOS (a etapa de um arquivado criaria a oportunidade fora do
   // quadro), começando pela primeira etapa do funil padrão.
   const ativos = funis.filter(f => !f.archived_at)
@@ -68,10 +78,13 @@ export async function ImportarContatos({ unidadeFixa }: {
       etapas={doQuadro.map(e => ({ id: e.id, funnel_id: e.funnel_id, name: e.name }))}
       etapaPadrao={etapaPadrao}
       responsaveis={(pessoas as { id: string; name: string; email: string | null }[] | null) ?? null}
-      procedimentos={(procedimentos as { id: string; name: string }[] | null) ?? []}
+      procedimentos={procedimentosDaPrevia ?? []}
       // A14/A16 da 7ª: a origem da planilha casa primeiro com as origens da clínica.
       origens={podeContatos ? (await origensDaRede(admin, ctx.tenantId!)).map(o => o.nome) : []}
       eu={ctx.internalUserId ?? null}
+      podePacote={podePacote}
+      // A6 da 8ª: a aba mostra as importações anteriores, com o relatório.
+      historico={await importacoesAnteriores(ctx)}
     />
   )
 }

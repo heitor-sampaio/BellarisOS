@@ -243,6 +243,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (Ativos, Novos, Inativos — escolha única) e Tags (várias, todas valem juntas,
   sem caixa) no `PickerCompacto`, como o quadro. O segmento fixo "Todos / VIP /
   Novos / Inativos" saiu: VIP é uma tag como as outras.
+- **"Aniversariantes de novembro"** na Situação (A9 da 8ª simulação,
+  2026-11-06: só havia a automação desligada): quem faz aniversário no mês de
+  Brasília, decidido PELO BANCO (`clientes_aniversariantes`, só o servidor;
+  `aniversariantesDoMes`, `lib/clientes/aniversariantes.ts` — §14: nada de
+  filtrar no app depois de ler um lote), as ativas, em ordem de dia, com
+  "Aniversário dia 05/11" na linha (`[data-aniversario]`). Nos dois portais.
+  Prova: `e2e/clientes-aniversariantes.spec.ts`.
 - **Arquivar a cliente** (menu "Mais ações" da ficha, `clients: MANAGE`; era "Desativar") a tira das
   listas e da conta de CLIENTE NOVA do dashboard (`is_active` nas três contas: `metrics_core`,
   `metrics_by_branch`, `metrics_new_clients_series`, A24). Prova: `e2e/clientes-arquivar.spec.ts`.
@@ -538,8 +545,64 @@ dela — e vê Configurações só com essa aba.
 - ⚠️ **Nenhum evento de domínio** (`criarOportunidadeCore(…, { semEventos })`,
   e cliente/contato gravados direto): uma planilha não pode virar mil
   automações de boas-vindas.
-- Campo opcional preenchido e ilegível (CPF, e-mail, data, UF…) **recusa a
-  linha** com o motivo — sumir com o dado em silêncio seria pior.
+- **Só o impossível recusa a linha; o campo opcional ilegível vira AVISO**
+  (D2 da 8ª simulação, 2026-11-06; decidido pelo princípio 2 — "só se recusa
+  o impossível; no máximo avisar"). A Isabela (CPF 123.456.789-00) sumia
+  inteira, com nome, telefone e nascimento bons. Agora a linha entra SEM o
+  campo ruim e diz por quê: "CPF inválido ("123.456.789-00"): importada sem o
+  CPF." — o CPF, o e-mail, o nascimento, o gênero, o CEP, a UF, a situação
+  ("importada como ativa"), a unidade ("importada na unidade escolhida na
+  tela"), as datas e o responsável legal; no card, o valor, a etapa, o
+  responsável e o procedimento ("a oportunidade entra sem ele"/"na etapa
+  escolhida na tela"); no contato, o telefone ruim com um e-mail bom ("importada
+  só com o e-mail"). Recusa só: sem nome (na ficha), a ficha sem telefone que
+  preste (`clients.phone` é NOT NULL), o contato sem telefone nem e-mail
+  válido, e a repetida na planilha. `validarLinha` devolve `erros` (recusam)
+  e `avisos` (entram); a prévia e o resultado mostram as duas listas
+  ("Linha 5 · Isabela: …", `[data-linhas-recusadas]`,
+  `[data-importadas-com-aviso]`), e o servidor as guarda (`importacoes.erros`
+  e `.avisos`, com o nome da linha; `com_aviso`). Prova:
+  `e2e/importacao-migracao.spec.ts`, `tests/importacao-migracao.test.ts`.
+- **O relatório e o histórico** (A6 da 8ª simulação: a aba voltava ao passo 1
+  sem histórico, e a dona só descobria a recusada pela ausência). O CSV
+  (`/api/importacoes/[id]/erros`, "Baixar o relatório") traz "Linha; Nome;
+  Situação; Motivo" — as recusadas e as importadas com aviso. A aba mostra
+  "Importações anteriores" (`importacoesAnteriores`,
+  `lib/importacao/historico.ts`; `[data-importacao-anterior]`): as que a
+  pessoa alcança (a régua de `importacaoAoAlcance`), com o placar ("4 novos ·
+  2 com aviso · 1 recusada") e o relatório enquanto ele vale (7 dias).
+- **A migração: as colunas "Cliente desde", "Última visita", "Pacote de antes"
+  e o responsável legal** (decisão 1 (c) do Heitor sobre a 8ª simulação,
+  2026-11-06: "concordo"; A5, A7, A8; migration `20261106003502`):
+  - **"Cliente desde"** (`clients.cliente_desde`, data; aceita "03/2021" e
+    "2019"): a ficha de antes do mês NÃO conta como cliente nova dele — os
+    novos clientes contam por `coalesce(cliente_desde, created_at)`
+    (`indicadores.md`), e o selo "Novo" da lista também.
+  - **"Última visita"** (`clients.ultima_visita_antes`, data): a última
+    visita no sistema de ANTES. **Não vira atendimento** (nada se inventa: sem
+    agendamento, prontuário, receita nem comissão); entra onde a tela pergunta
+    "quando ela veio por último" — o "Reativar clientes" (sumida = sem visita,
+    nem a de antes, nos 90 dias; a "última visita" é a mais recente das duas,
+    com "antes_do_sistema"), o público "sem retorno" das campanhas e a "Última
+    visita" da lista de Clientes (decidido pelo princípio 3: o que a tela
+    mostra é o que vale na conta).
+  - **"Pacote de antes (procedimento; total; usadas)"** — e, opcionais, o valor
+    de referência e a validade ("Limpeza de pele; 10; 7; 1500; 31/12/2027";
+    mais de um com "|"; `lerPacotesDaPlanilha`): cria o pacote trazido de
+    fora (`vendas-financeiro.md` §9.3.1) na unidade da linha, pela mesma porta
+    da ficha (`trazerPacoteCore`). Só se oferece a quem traz pacote de fora (o
+    Financeiro em Gerenciar; a action recusa a coluna aos outros). Importar de
+    novo não o traz duas vezes (o mesmo procedimento, total e usadas). O que
+    não se entende fica de fora com o motivo (D2).
+  - **O responsável legal** (A5: nome, CPF, parentesco, telefone): só na
+    MENOR (pelo nascimento que a ficha fica tendo — a regra de
+    `colunasDoResponsavel`); na adulta, "Responsável legal não gravado".
+    A menor que fica sem responsável é avisada na prévia e no resultado ("Menor
+    de idade (15 anos), sem responsável legal no cadastro…") — avisar, não
+    barrar.
+  - Quem já existe só tem o VAZIO completado, como sempre (inclusive as datas
+    e o responsável).
+  Prova: `e2e/importacao-migracao.spec.ts`.
 - Roda em `after()` (`lib/importacao/processar.ts`), no padrão do histórico do
   WhatsApp: `importacoes` reivindicada com uma `execucao` nova, e TODO sinal de
   vida e a gravação final filtram por ela — a passagem que perdeu a vez para de
@@ -937,6 +1000,9 @@ o contato junto.
 ❌ Mover o card sozinho por um fato do sistema (agendar, concluir, pagar) — "não existe movimento automático padrão nos funis": é a automação da clínica (crm-05)
 ❌ Levar lead a etapa perdida pela tela sem o motivo, ou gravar crm_stage_id fora de moverEtapaCore / camposDaPerda (o motivo e o perdido_em ficam velhos)
 ❌ Importar (planilha, lote) emitindo evento de domínio, ou trocando dado que a ficha já tem
+❌ Recusar a linha da planilha por um campo OPCIONAL ilegível (CPF, e-mail, data, unidade, etapa…): ela entra sem ele, com o aviso — só o impossível recusa (D2 da 8ª, princípio 2)
+❌ Gravar a "última visita" da planilha como atendimento (inventa agendamento, receita e comissão): é clients.ultima_visita_antes (F35)
+❌ Contar como cliente nova do mês a ficha importada com "cliente desde" de antes — é coalesce(cliente_desde, created_at)
 ❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")

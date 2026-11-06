@@ -159,25 +159,28 @@ describe('os campos novos', () => {
     const mapa = ['phone', 'op_etapa', 'op_responsavel', 'op_procedimentos', 'op_valor', 'op_origem', 'social_media'] as const
     expect(validarLinha('contatos', [...mapa], ['48999990000', 'qualificados', 'BIA@X.COM', 'botox; preenchimento LABIAL', 'R$ 1.200,00', 'facebook', '@bia'], refs)).toEqual({
       dados: { phone: '5548999990000', op_etapa: 'e2', op_responsavel: 'm1', op_procedimentos: ['p1', 'p2'], op_valor: '1200', op_origem: 'Meta Ads', social_media: '@bia' },
-      erros: [],
+      erros: [], avisos: [],
     })
     expect(validarLinha('contatos', ['phone', 'op_responsavel'], ['48999990000', 'bia souza'], refs).dados.op_responsavel).toBe('m1')
     expect(validarLinha('clientes', ['name', 'phone', 'unidade', 'ativo'], ['Ana', '48999990000', 'sao jose', 'inativo'], refs).dados)
       .toMatchObject({ unidade: 'u2', ativo: 'false' })
   })
-  it('o que não se acha é erro da linha, com o motivo', () => {
+  // D2 da 8ª simulação (2026-11-06): o que não se acha é AVISO, com o motivo —
+  // a linha entra sem ele (era erro, e a linha ficava de fora).
+  it('o que não se acha é aviso da linha, com o motivo, e ela entra sem ele', () => {
     const r = validarLinha('contatos', ['phone', 'op_etapa', 'op_responsavel', 'op_procedimentos', 'op_valor'],
       ['48999990000', 'Perdidos', 'Ana Lima', 'Botox, Laser', 'muito'], refs)
-    expect(r.erros).toEqual([
-      'Valor ilegível: "muito".',
-      'Procedimento não encontrado: "Laser".',
-      'Etapa não encontrada no funil escolhido: "Perdidos".',
-      'Mais de uma pessoa da equipe se chama "Ana Lima" — use o e-mail.',
+    expect(r.erros).toEqual([])
+    expect(r.avisos).toEqual([
+      'Valor ilegível ("muito"): a oportunidade entra sem o valor.',
+      'Procedimento não encontrado ("Laser"): a oportunidade entra sem ele.',
+      'Etapa não encontrada no funil escolhido ("Perdidos"): a oportunidade entra na etapa escolhida na tela.',
+      'Mais de uma pessoa da equipe se chama "Ana Lima" (use o e-mail): a oportunidade entra com o responsável escolhido na tela.',
     ])
-    expect(validarLinha('clientes', ['name', 'phone', 'unidade'], ['Ana', '48999990000', 'Norte'], refs).erros)
-      .toEqual(['Unidade não encontrada: "Norte".'])
-    expect(validarLinha('contatos', ['phone', 'op_responsavel'], ['48999990000', 'zé'], refs).erros)
-      .toEqual(['Responsável não encontrado na equipe: "zé".'])
+    expect(validarLinha('clientes', ['name', 'phone', 'unidade'], ['Ana', '48999990000', 'Norte'], refs).avisos)
+      .toEqual(['Unidade não encontrada ("Norte"): importada na unidade escolhida na tela.'])
+    expect(validarLinha('contatos', ['phone', 'op_responsavel'], ['48999990000', 'zé'], refs).avisos)
+      .toEqual(['Responsável não encontrado na equipe ("zé"): a oportunidade entra com o responsável escolhido na tela.'])
   })
 })
 
@@ -186,14 +189,17 @@ describe('validarLinha', () => {
   it('devolve os dados prontos para gravar', () => {
     expect(validarLinha('clientes', [...mapa], ['  Ana Souza ', '(48) 99999-0000', '529.982.247-25', 'ANA@X.COM', '15/03/1990'])).toEqual({
       dados: { name: 'Ana Souza', phone: '5548999990000', document: '52998224725', email: 'ana@x.com', birth_date: '1990-03-15' },
-      erros: [],
+      erros: [], avisos: [],
     })
   })
   it('diz o que está errado — e campo vazio não é erro', () => {
+    // Só o impossível recusa (D2): sem nome e a ficha sem telefone. O CPF, o
+    // e-mail e o nascimento ilegíveis são avisos da linha que entra.
     const r = validarLinha('clientes', [...mapa], ['', '9999-0000', '111', 'ana@', 'ontem'])
-    expect(r.erros).toEqual([
-      'Nome vazio.', 'Telefone sem DDD ou inválido: "9999-0000".', 'CPF inválido: "111".',
-      'E-mail inválido: "ana@".', 'Data de nascimento ilegível: "ontem" (use dd/mm/aaaa).',
+    expect(r.erros).toEqual(['Nome vazio.', 'Telefone sem DDD ou inválido: "9999-0000".'])
+    expect(validarLinha('clientes', [...mapa], ['Ana', '48999990000', '111', 'ana@', 'ontem']).avisos).toEqual([
+      'CPF inválido ("111"): importada sem o CPF.', 'E-mail inválido ("ana@"): importada sem o e-mail.',
+      'Data de nascimento ilegível ("ontem", use dd/mm/aaaa): importada sem o nascimento.',
     ])
     expect(validarLinha('clientes', [...mapa], ['Bia', '48999990000', '', '', '']).erros).toEqual([])
   })

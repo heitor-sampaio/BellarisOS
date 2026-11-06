@@ -389,6 +389,19 @@
     com "última visita" em branco: `appointments` não tem `tenant_id`, o
     Postgres respondia 42703 e ninguém via.
 
+**Os "novos clientes" contam por quando ela é cliente** (decisão 1 (c) do
+Heitor sobre a 8ª simulação, 2026-11-06; A7 — a Lúcia importou 5 anos de base
+e o mês contou 32 clientes novas): `coalesce(clients.cliente_desde,
+created_at)` em `metrics_core`, `metrics_by_branch`,
+`metrics_new_clients_series` e no "cadastrada nos 90 dias" do Reativar
+(migration `20261106003502`). A ficha sem "cliente desde" segue pela criação.
+E o **"Reativar clientes" lê a última visita do sistema de ANTES**
+(`clients.ultima_visita_antes`, a coluna da importação): ela conta como visita
+(quem veio há 20 dias no sistema antigo não sumiu; quem veio há 120, sim, com
+"ultima_visita" = essa data e `antes_do_sistema`), sem virar atendimento —
+nenhum outro número (atendimentos, receita, retenção) a lê. Prova:
+`e2e/importacao-migracao.spec.ts`.
+
 **Todo indicador tem valor esperado escrito à mão** em
 `e2e/indicadores-cenario.spec.ts` (unidade `[e2e]` + janela em 2021, antes de
 qualquer dado real). `relatorios-coerencia` prova que tela e RPC concordam;

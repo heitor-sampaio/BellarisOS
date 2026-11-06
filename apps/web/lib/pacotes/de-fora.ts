@@ -1,4 +1,5 @@
 import { formatBRL } from '@estetica-os/utils'
+import type { TenantContext } from '@estetica-os/types'
 
 /**
  * O pacote trazido de fora (decisão 1 do Heitor sobre a 8ª simulação,
@@ -69,4 +70,13 @@ export function linhaDoHistoricoDoPacote(
     subtitle: `${p.total_sessions} sessões${usadas ? ` · ${usadasAntesDoSistema(usadas)}` : ''}`,
     amount: null,
   }
+}
+
+/**
+ * Quem traz pacote de fora (na ficha e na coluna da importação): quem dá o
+ * crédito interno — o Financeiro em Gerenciar (decidido pelo princípio 3: é o
+ * mesmo tipo de saldo trazido de fora).
+ */
+export function podeTrazerPacoteDeFora(ctx: Pick<TenantContext, 'permissions'>): boolean {
+  return ctx.permissions?.financial === 'MANAGE'
 }

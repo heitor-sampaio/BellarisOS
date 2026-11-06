@@ -7,7 +7,10 @@ import { gravar, ler } from '@/lib/db'
 import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 import type { ChaveDeCampo, Destino } from './campos'
-import { validarLinha, chaveDaPessoa, nomeDiferente, variantesDoTelefone, telefoneDaFichaImportada, type DadosDaLinha } from './normalizar'
+import { validarLinha, chaveDaPessoa, nomeDiferente, variantesDoTelefone, telefoneDaFichaImportada, pacotesDaLinha, type DadosDaLinha } from './normalizar'
+import { ehMenorDeIdade, avisoDoMenor, responsavelDaFicha } from '@/lib/clients/menor'
+import { trazerPacoteCore, jaTemOPacoteDeFora } from '@/lib/pacotes/trazer'
+import { mensagemDoErro } from '@/lib/db'
 import { referenciasDaRede } from './referencias'
 
 /**
@@ -50,12 +53,16 @@ interface Pedido {
   mapeamento: (ChaveDeCampo | null)[]
   oportunidade: { etapaId: string; responsavelId: string | null } | null
   processadas: number; novas: number; completadas: number; sem_mudanca: number
-  com_erro: number; oportunidades: number; erros: { linha: number; motivo: string }[]
+  com_erro: number; oportunidades: number; erros: LinhaDoRelatorio[]
+  /** D2 (F35): as linhas que entraram sem algum campo ilegível. */
+  com_aviso: number; avisos: LinhaDoRelatorio[] | null
   /** As linhas em que a prévia desmarcou "completar a ficha de X" (cli-07): o telefone não junta. */
   nao_completar: number[] | null
 }
 
 type Resultado = 'nova' | 'completada' | 'sem_mudanca'
+/** Uma linha do relatório: a da planilha, o nome que ela trazia e o motivo (A6). */
+export interface LinhaDoRelatorio { linha: number; nome?: string | null; motivo: string }
 
 /**
  * A manutenção (o cron de hora em hora, e quem abre a tela): sem sinal há 15
@@ -77,6 +84,10 @@ export async function manterImportacoes(tenantId?: string): Promise<void> {
   let expiradas = admin.from('importacoes').update({ erros: [] }).lt('erros_expiram_em', agora()).neq('erros', '[]')
   if (tenantId) expiradas = expiradas.eq('tenant_id', tenantId)
   await gravar(expiradas, 'expirar os relatórios de erro')
+  // D2 (F35): as importadas com aviso também guardam o valor errado — o mesmo prazo.
+  let avisosVencidos = admin.from('importacoes').update({ avisos: [] }).lt('erros_expiram_em', agora()).neq('avisos', '[]')
+  if (tenantId) avisosVencidos = avisosVencidos.eq('tenant_id', tenantId)
+  await gravar(avisosVencidos, 'expirar os avisos das importações')
 
   let consulta = admin.from('importacoes').select('id')
     .eq('status', 'falhou').lt('concluida_em', new Date(Date.now() - RETENCAO_MS).toISOString()).limit(500)
@@ -93,16 +104,17 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
   const { data: p, error: erroDaVez } = await admin.from('importacoes')
     .update({ status: 'importando', execucao, iniciada_em: agora(), atualizada_em: agora(), erro: null })
     .eq('id', importacaoId).eq('status', 'pendente').eq('tenant_id', ctx.tenantId!)
-    .select('id, tenant_id, branch_id, destino, mapeamento, oportunidade, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erros, nao_completar')
+    .select('id, tenant_id, branch_id, destino, mapeamento, oportunidade, processadas, novas, completadas, sem_mudanca, com_erro, oportunidades, erros, nao_completar, com_aviso, avisos')
     .maybeSingle<Pedido>()
   if (erroDaVez) { console.error('[importacao] reivindicar:', erroDaVez.message); return }
   if (!p) return   // outra passagem já pegou
 
   const placar = {
     processadas: p.processadas, novas: p.novas, completadas: p.completadas, sem_mudanca: p.sem_mudanca,
-    com_erro: p.com_erro, oportunidades: p.oportunidades,
+    com_erro: p.com_erro, oportunidades: p.oportunidades, com_aviso: p.com_aviso ?? 0,
   }
   const erros = [...(p.erros ?? [])]
+  const avisos = [...(p.avisos ?? [])]
   const vistas = new Map<string, { numero: number; nome: string | undefined }>()
   /**
    * Grava o andamento — só se esta passagem ainda é a dona da importação.
@@ -114,7 +126,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
   const sinal = async (extra: Record<string, unknown> = {}) => {
     for (let vez = 0; ; vez++) {
       const { data, error } = await admin.from('importacoes')
-        .update({ ...placar, erros, ...extra, atualizada_em: agora() })
+        .update({ ...placar, erros, avisos, ...extra, atualizada_em: agora() })
         .eq('id', importacaoId).eq('execucao', execucao).select('id')
       if (error) {
         if (vez < ESPERAS_DO_ANDAMENTO_MS.length) { await esperar(ESPERAS_DO_ANDAMENTO_MS[vez]!); continue }
@@ -132,7 +144,8 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
       unidades:      p.destino === 'clientes',
       etapaId:       usa('op_etapa') ? p.oportunidade?.etapaId : null,
       membros:       usa('op_responsavel'),
-      procedimentos: usa('op_procedimentos'),
+      // A coluna do pacote de antes (F35) cita o procedimento pelo nome.
+      procedimentos: usa('op_procedimentos') || usa('pacote'),
       origens:       usa('op_origem'),
     })
     // A tag de cada unidade (é por ela que a lista de clientes filtra).
@@ -150,7 +163,8 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
       if (!linhas?.length) break
 
       for (const l of linhas) {
-        const { dados, erros: problemas } = validarLinha(p.destino, p.mapeamento, l.valores, refs)
+        const { dados, erros: problemas, avisos: daLinha } = validarLinha(p.destino, p.mapeamento, l.valores, refs)
+        const nome = (dados.name as string | undefined) ?? null
         // A repetida é só da ficha (clientes): no contato, a segunda linha junta à pessoa (D-10).
         // A14: o mesmo telefone com OUTRO nome não é repetida — junta pelo
         // telefone (a regra de gravarCliente) ou, desmarcada na prévia, vira a
@@ -165,15 +179,21 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
         }
         if (problemas.length) {
           placar.com_erro++
-          if (erros.length < MAX_ERROS) erros.push({ linha: l.numero, motivo: problemas.join(' ') })
+          if (erros.length < MAX_ERROS) erros.push({ linha: l.numero, nome, motivo: problemas.join(' ') })
         } else {
           try {
             const r = await gravarLinha(admin, p, ctx, dados, tagDaUnidade, l.numero)
             placar[r.resultado === 'nova' ? 'novas' : r.resultado === 'completada' ? 'completadas' : 'sem_mudanca']++
             if (r.oportunidade) placar.oportunidades++
+            // D2 (F35): a linha entrou, e o que ficou de fora dela vai para o relatório.
+            const todos = [...(daLinha ?? []), ...r.avisos]
+            if (todos.length) {
+              placar.com_aviso++
+              if (avisos.length < MAX_ERROS) avisos.push({ linha: l.numero, nome, motivo: todos.join(' ') })
+            }
           } catch (e) {
             placar.com_erro++
-            if (erros.length < MAX_ERROS) erros.push({ linha: l.numero, motivo: e instanceof Error ? e.message : 'Erro ao gravar.' })
+            if (erros.length < MAX_ERROS) erros.push({ linha: l.numero, nome, motivo: e instanceof Error ? e.message : 'Erro ao gravar.' })
           }
         }
         placar.processadas++
@@ -233,26 +253,28 @@ async function pessoaDaLinha(admin: Admin, tenantId: string, dados: DadosDaLinha
 /** Uma linha válida: a pessoa (nova, completada ou igual) e a oportunidade, se pedida. */
 async function gravarLinha(
   admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null, numero: number,
-): Promise<{ resultado: Resultado; oportunidade: boolean }> {
+): Promise<{ resultado: Resultado; oportunidade: boolean; avisos: string[] }> {
   // Sem telefone só no contato que só tem e-mail (D-10): a ficha exige o telefone.
   const fone = dados.phone as string | undefined
   let resultado: Resultado
   let clientId: string | null = null
+  const avisos: string[] = []
   if (p.destino === 'clientes') {
-    const r = await gravarCliente(admin, p, dados, tagDaUnidade, (p.nao_completar ?? []).includes(numero))
+    const r = await gravarCliente(admin, p, ctx, dados, tagDaUnidade, (p.nao_completar ?? []).includes(numero))
     resultado = r.resultado
     clientId = r.clientId
+    avisos.push(...r.avisos)
   } else {
     resultado = await gravarContato(admin, p.tenant_id, ctx, dados)
   }
 
-  if (!p.oportunidade) return { resultado, oportunidade: false }
+  if (!p.oportunidade) return { resultado, oportunidade: false, avisos }
   // A oportunidade vai para a pessoa que JÁ existe (o gatilho a acha pelo
   // telefone EXATO): com o número dela, e não o da planilha, que pode ser a
   // outra forma (com o nono dígito).
   const pessoa = await pessoaDaLinha(admin, p.tenant_id, dados)
   if (pessoa && await temOportunidadeAberta(admin, p.tenant_id, pessoa.id, p.oportunidade.etapaId)) {
-    return { resultado, oportunidade: false }
+    return { resultado, oportunidade: false, avisos }
   }
   const nome = (dados.name as string | undefined) ?? fone ?? (dados.email as string)
   const texto = (c: ChaveDeCampo) => (dados[c] as string | undefined) ?? null
@@ -273,11 +295,11 @@ async function gravarLinha(
     ...(!fone && pessoa ? { contatoId: pessoa.id } : {}),
   })
   if ('error' in criada) throw new Error(`Oportunidade: ${criada.error}`)
-  return { resultado, oportunidade: true }
+  return { resultado, oportunidade: true, avisos }
 }
 
 /** Só o que está VAZIO no cadastro entra; as tags se juntam. */
-function soOVazio(atual: Record<string, unknown>, dados: DadosDaLinha, campos: ChaveDeCampo[]): Record<string, unknown> {
+function soOVazio(atual: Record<string, unknown>, dados: Record<string, unknown>, campos: readonly string[]): Record<string, unknown> {
   const patch: Record<string, unknown> = {}
   for (const c of campos) {
     if (c === 'tags') continue
@@ -292,21 +314,35 @@ function soOVazio(atual: Record<string, unknown>, dados: DadosDaLinha, campos: C
   return patch
 }
 
-/** O que vai para a ficha (unidade e situação são tratadas à parte). */
-const CAMPOS_DO_CLIENTE: ChaveDeCampo[] = [
+/**
+ * O que vai para a ficha, pelo nome da COLUNA (unidade, situação, responsável
+ * e pacote são tratados à parte). A migração (F35): "cliente desde" e a
+ * "última visita" do sistema de antes (`ultima_visita_antes` — não é
+ * atendimento).
+ */
+const CAMPOS_DO_CLIENTE = [
   'name', 'phone', 'document', 'email', 'birth_date', 'gender', 'zip_code', 'address', 'address_number',
   'address_complement', 'neighborhood', 'city', 'state', 'referred_by', 'notes', 'tags',
-]
+  'cliente_desde', 'ultima_visita_antes',
+] as const
+/** A5: o responsável legal — só na menor (a regra de `colunasDoResponsavel`). */
+const CAMPOS_DO_RESPONSAVEL = ['responsavel_nome', 'responsavel_cpf', 'responsavel_parentesco', 'responsavel_telefone'] as const
 
 async function gravarCliente(
-  admin: Admin, p: Pedido, linhaDaPlanilha: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
+  admin: Admin, p: Pedido, ctx: TenantContext, linhaDaPlanilha: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
   /** A prévia desmarcou "completar a ficha de X" nesta linha (cli-07): o telefone não junta. */
   naoCompletarPeloTelefone = false,
-): Promise<{ resultado: Resultado; clientId: string }> {
+): Promise<{ resultado: Resultado; clientId: string; avisos: string[] }> {
   // A ficha guarda o telefone como o cadastro (o de fora com o "+", cli-06); a
-  // busca continua pelos dígitos.
+  // busca continua pelos dígitos. A "última visita" da planilha é a coluna
+  // `ultima_visita_antes` (a de antes do sistema).
   const digitos = linhaDaPlanilha.phone as string | undefined
-  const dados: DadosDaLinha = { ...linhaDaPlanilha, ...(digitos ? { phone: telefoneDaFichaImportada(digitos) } : {}) }
+  const dados: Record<string, unknown> = {
+    ...linhaDaPlanilha,
+    ...(digitos ? { phone: telefoneDaFichaImportada(digitos) } : {}),
+    ultima_visita_antes: linhaDaPlanilha.ultima_visita,
+  }
+  const avisos: string[] = []
   // Quem já existe: pelo CPF; sem achar, a ficha SEM CPF do mesmo telefone (o
   // cadastro rápido de quem marcou às pressas) — a regra do cadastro manual.
   // Telefone de uma ficha COM CPF pode ser de outra pessoa (mãe e filha).
@@ -323,29 +359,71 @@ async function gravarCliente(
     if (id) existente = await ler(admin.from('clients').select('*').eq('id', id as string).maybeSingle(), 'buscar o cliente')
   }
 
+  // A5: o responsável legal só vai para a ficha da MENOR (pelo nascimento que a
+  // ficha fica tendo); na adulta, a planilha não o grava e a linha diz por quê.
+  const nascimento = ((existente?.birth_date as string | null | undefined) || (dados.birth_date as string | undefined)) ?? null
+  const menor = ehMenorDeIdade(nascimento)
+  const trouxeResponsavel = CAMPOS_DO_RESPONSAVEL.some(c => dados[c])
+  const campos: readonly string[] = menor ? [...CAMPOS_DO_CLIENTE, ...CAMPOS_DO_RESPONSAVEL] : CAMPOS_DO_CLIENTE
+  if (trouxeResponsavel && !menor) {
+    avisos.push(nascimento
+      ? 'Responsável legal não gravado: pela data de nascimento, não é menor de idade (só a menor tem responsável na ficha).'
+      : 'Responsável legal não gravado: sem a data de nascimento, não se sabe se é menor de idade.')
+  }
+  // A menor que fica sem responsável é avisada no resultado (avisar, não barrar — princípio 2).
+  const responsavel = responsavelDaFicha({
+    responsavel_nome: (existente?.responsavel_nome as string | null | undefined) || (menor ? dados.responsavel_nome as string | undefined : null),
+  })
+  const doMenor = avisoDoMenor({ nascimento, responsavel })
+  if (doMenor) avisos.push(doMenor)
+
+  let clientId: string
+  let resultado: Resultado
+  // A unidade da LINHA (só a rede importa assim) ou a escolhida na tela.
+  const branchId = (dados.unidade as string | undefined) ?? p.branch_id
   if (existente) {
-    const patch = soOVazio(existente, dados, CAMPOS_DO_CLIENTE)
-    if (!Object.keys(patch).length) return { resultado: 'sem_mudanca', clientId: existente.id as string }
-    await gravar(admin.from('clients').update({ ...patch, updated_at: agora() })
-      .eq('id', existente.id as string).eq('tenant_id', p.tenant_id), 'completar o cliente')
-    return { resultado: 'completada', clientId: existente.id as string }
+    clientId = existente.id as string
+    const patch = soOVazio(existente, dados, campos)
+    if (!Object.keys(patch).length) resultado = 'sem_mudanca'
+    else {
+      await gravar(admin.from('clients').update({ ...patch, updated_at: agora() })
+        .eq('id', clientId).eq('tenant_id', p.tenant_id), 'completar o cliente')
+      resultado = 'completada'
+    }
+  } else {
+    // A situação vale só para quem nasce — quem já existe mantém a da clínica.
+    const tag = tagDaUnidade(branchId)
+    const tags = [...new Set([...((dados.tags as string[] | undefined) ?? []), ...(tag ? [tag] : [])])]
+    const linha: Record<string, unknown> = { tenant_id: p.tenant_id, branch_id: branchId, is_active: dados.ativo !== 'false', tags }
+    for (const c of campos) if (c !== 'tags' && dados[c]) linha[c] = dados[c]
+    const { data: novo, error } = await admin.from('clients').insert(linha).select('id').single<{ id: string }>()
+    if (error) {
+      if (error.code === '23505') throw new Error('Já existe um cliente com este CPF nesta rede.')
+      throw new Error(`Cadastrar o cliente: ${error.message}`)
+    }
+    // A conta de pontos nasce com o cliente, como no cadastro da tela.
+    await gravar(admin.rpc('fidelidade_conta', { p_cliente: novo.id }), 'abrir a conta de fidelidade')
+    clientId = novo.id
+    resultado = 'nova'
   }
 
-  // A unidade da LINHA (só a rede importa assim) ou a escolhida na tela; a
-  // situação vale só para quem nasce — quem já existe mantém a da clínica.
-  const branchId = (dados.unidade as string | undefined) ?? p.branch_id
-  const tag = tagDaUnidade(branchId)
-  const tags = [...new Set([...((dados.tags as string[] | undefined) ?? []), ...(tag ? [tag] : [])])]
-  const linha: Record<string, unknown> = { tenant_id: p.tenant_id, branch_id: branchId, is_active: dados.ativo !== 'false', tags }
-  for (const c of CAMPOS_DO_CLIENTE) if (c !== 'tags' && dados[c]) linha[c] = dados[c]
-  const { data: novo, error } = await admin.from('clients').insert(linha).select('id').single<{ id: string }>()
-  if (error) {
-    if (error.code === '23505') throw new Error('Já existe um cliente com este CPF nesta rede.')
-    throw new Error(`Cadastrar o cliente: ${error.message}`)
+  // A8 / decisão 1 (c): o pacote de antes — o mesmo de "Trazer pacote de fora",
+  // na unidade da linha. Importar de novo não o traz duas vezes; o que o banco
+  // recusa fica de fora com o motivo (a ficha já entrou).
+  for (const pacote of pacotesDaLinha(linhaDaPlanilha)) {
+    if (!branchId) { avisos.push('Pacote de antes não registrado: escolha a unidade.'); continue }
+    if (await jaTemOPacoteDeFora(admin, clientId, { procedureId: pacote.procedimentoId, total: pacote.total, usadas: pacote.usadas })) continue
+    try {
+      await trazerPacoteCore(admin, p.tenant_id, ctx.internalUserId ?? null, {
+        clientId, branchId, procedureId: pacote.procedimentoId, total: pacote.total, usadas: pacote.usadas,
+        valor: pacote.valor, validade: pacote.validade,
+      })
+      if (resultado === 'sem_mudanca') resultado = 'completada'
+    } catch (e) {
+      avisos.push(`Pacote de antes não registrado: ${mensagemDoErro(e)}`)
+    }
   }
-  // A conta de pontos nasce com o cliente, como no cadastro da tela.
-  await gravar(admin.rpc('fidelidade_conta', { p_cliente: novo.id }), 'abrir a conta de fidelidade')
-  return { resultado: 'nova', clientId: novo.id }
+  return { resultado, clientId, avisos }
 }
 
 /**

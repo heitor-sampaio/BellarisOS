@@ -144,19 +144,23 @@ test('importar como clientes: completa o vazio de quem existe, cria o novo e rel
     await expect(p.getByLabel('Campo da coluna Data de nascimento')).toHaveValue('birth_date')
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
 
-    // A prévia: o que entra e o que tem erro, com o motivo.
+    // A prévia: o que entra, o que entra com aviso e o que é recusado, com o
+    // motivo. D2 da 8ª simulação (2026-11-06; princípio 2): o CPF ilegível da
+    // Carla não derruba a linha — ela entra SEM o CPF, com o aviso. A repetida
+    // continua recusada.
     const previa = p.locator('[data-previa]')
-    await expect(previa).toContainText('2 linhas prontas')
-    await expect(previa).toContainText('2 com erro')
-    await expect(previa).toContainText('CPF inválido')
-    await expect(previa).toContainText('Repetida na planilha')
-    await p.getByRole('button', { name: /Importar 2 linhas/ }).click()
+    await expect(previa).toContainText('3 linhas prontas')
+    await expect(previa).toContainText('1 recusada')
+    await expect(previa.locator('[data-importadas-com-aviso]')).toContainText('Carla: CPF inválido ("111.111.111-11"): importada sem o CPF.')
+    await expect(previa.locator('[data-linhas-recusadas]')).toContainText('Repetida na planilha')
+    await p.getByRole('button', { name: /Importar 3 linhas/ }).click()
 
     const andamento = p.locator('[data-importacao]')
     await expect(andamento).toContainText('Concluída', { timeout: 60_000 })
-    await expect(andamento).toContainText('1 novo')
+    await expect(andamento).toContainText('2 novos')
     await expect(andamento).toContainText('1 completado')
-    await expect(andamento).toContainText('2 com erro')
+    await expect(andamento).toContainText('1 com aviso')
+    await expect(andamento).toContainText('1 recusada')
     // A lista de clientes mostra quem entrou (o cache expira ao terminar).
     await p.goto('/admin/clients')
     await expect(p.getByText(`${PREFIXO} Conceição ${marca}`)).toBeVisible({ timeout: 15_000 })
@@ -183,6 +187,10 @@ test('importar como clientes: completa o vazio de quem existe, cria o novo e rel
   expect(nova!.tags).toEqual(expect.arrayContaining(['botox', 'retorno', `Unidade: ${unidadeNome}`]))
   const { count: contas } = await db().from('loyalty_accounts').select('client_id', { count: 'exact', head: true }).eq('client_id', nova!.id)
   expect(contas).toBe(1)
+
+  // D2: a Carla entrou, sem o CPF.
+  const { data: carla } = await db().from('clients').select('document').eq('tenant_id', outra.tenantId).eq('name', 'Carla').single()
+  expect(carla).toMatchObject({ document: null })
 
   // Nenhum evento: a automação de "cliente cadastrado" não pode disparar.
   const { count: eventos } = await db().from('domain_events').select('id', { count: 'exact', head: true }).eq('tenant_id', outra.tenantId)
@@ -389,13 +397,16 @@ test('contatos com os campos da oportunidade: e-mail e rede social na pessoa; or
     await expect(p.getByLabel('Campo da coluna Procedimento')).toHaveValue('op_procedimentos')
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
 
+    // D2: a etapa que não se acha não recusa a linha — a oportunidade entra na da tela.
     const previa = p.locator('[data-previa]')
-    await expect(previa).toContainText('1 linha pronta')
-    await expect(previa).toContainText('Etapa não encontrada no funil escolhido: "Perdidos"')
-    await p.getByRole('button', { name: /Importar 1 linha/ }).click()
+    await expect(previa).toContainText('2 linhas prontas')
+    await expect(previa).toContainText('Etapa não encontrada no funil escolhido ("Perdidos"): a oportunidade entra na etapa escolhida na tela.')
+    await p.getByRole('button', { name: /Importar 2 linhas/ }).click()
     await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
   })
-  expect(await importacao(nome)).toMatchObject({ novas: 1, oportunidades: 1, com_erro: 1 })
+  expect(await importacao(nome)).toMatchObject({ novas: 2, oportunidades: 2, com_erro: 0 })
+  const { data: semEtapa } = await db().from('leads').select('crm_stage_id').eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Sem Etapa ${marca}`).single()
+  expect(semEtapa).toMatchObject({ crm_stage_id: etapa })
 
   const { data: pessoa } = await db().from('contacts').select('id, email, social_media')
     .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Rica ${marca}`).single()
@@ -430,12 +441,16 @@ test('clientes com a unidade e a situação de cada linha', async ({ browser }) 
     await expect(p.getByLabel('Campo da coluna Unidade')).toHaveValue('unidade')
     await expect(p.getByLabel('Campo da coluna Situação')).toHaveValue('ativo')
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    // D2: a unidade que não se acha não recusa a linha — ela vai para a da tela.
     const previa = p.locator('[data-previa]')
-    await expect(previa).toContainText('2 linhas prontas')
-    await expect(previa).toContainText('Unidade não encontrada: "Marte"')
-    await p.getByRole('button', { name: /Importar 2 linhas/ }).click()
+    await expect(previa).toContainText('3 linhas prontas')
+    await expect(previa).toContainText('Unidade não encontrada ("Marte"): importada na unidade escolhida na tela.')
+    await p.getByRole('button', { name: /Importar 3 linhas/ }).click()
     await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
   })
+  const { data: marciano } = await db().from('clients').select('branch_id')
+    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Marciano ${marca}`).single()
+  expect(marciano).toMatchObject({ branch_id: outra.branchId })
 
   const { data: nortista } = await db().from('clients').select('branch_id, is_active, tags')
     .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Nortista ${marca}`).single()

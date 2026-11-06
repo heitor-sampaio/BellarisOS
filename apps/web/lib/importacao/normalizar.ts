@@ -1,15 +1,20 @@
 import type { ChaveDeCampo, Destino } from './campos'
 import { camposDoDestino } from './campos'
-import { cpfValido, maskPhone, telefoneInternacional } from '@estetica-os/utils'
+import { cpfValido, maskPhone, telefoneInternacional, telefoneDoCadastro, idadeEm } from '@estetica-os/utils'
+import { ehMenorDeIdade } from '@/lib/clients/menor'
 
 /**
  * Cada valor do CSV no formato que o sistema grava, e a linha validada
  * (2026-10-13). Puro: a prévia (navegador) e a importação (servidor) usam o
  * MESMO código — o servidor valida de novo, não confia na prévia.
  *
- * Campo vazio não é erro (só o obrigatório). Campo preenchido e ilegível É:
- * sumir com o dado em silêncio seria pior que recusar a linha, e importar de
- * novo depois de corrigir é seguro (repetido só completa o vazio).
+ * Campo vazio não é erro (só o obrigatório). Campo opcional preenchido e
+ * ilegível é AVISO (D2 da 8ª simulação, 2026-11-06; decidido pelo princípio 2
+ * — só se recusa o impossível): a linha entra sem ele e diz por quê ("CPF
+ * inválido…: importada sem o CPF"). Até ali ele recusava a linha inteira, e a
+ * Isabela, com nome, telefone e nascimento bons, sumia por um CPF errado. Só
+ * o impossível recusa: sem nome, a ficha sem telefone (clients.phone é NOT
+ * NULL), o contato sem telefone nem e-mail, e a linha repetida.
  */
 
 const soDigitos = (v: string) => v.replace(/\D/g, '')
@@ -89,6 +94,32 @@ export function normalizarData(bruto: string): string | null {
   const data = new Date(Date.UTC(a, m - 1, d))
   if (data.getUTCFullYear() !== a || data.getUTCMonth() !== m - 1 || data.getUTCDate() !== d) return null
   if (a < 1900 || data.getTime() > Date.now()) return null
+  return `${a}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+/**
+ * "Cliente desde" (F35): a planilha de outro sistema costuma trazer só o mês
+ * ou o ano — "03/2021" é 01/03/2021, "2019" é 01/01/2019. Do passado, como a
+ * data de nascimento.
+ */
+export function normalizarDesde(bruto: string): string | null {
+  const v = bruto.trim()
+  let r = /^(\d{1,2})[/.-](\d{4})$/.exec(v)
+  if (r) return normalizarData(`01/${r[1]}/${r[2]}`)
+  if ((r = /^(\d{4})$/.exec(v))) return normalizarData(`01/01/${r[1]}`)
+  return normalizarData(v)
+}
+
+/** A validade do pacote trazido: uma data de verdade, do passado ou do futuro (dd/mm/aaaa ou aaaa-mm-dd). */
+export function normalizarValidade(bruto: string): string | null {
+  const v = bruto.trim()
+  let a: number, m: number, d: number
+  let r = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(v)
+  if (r) { d = Number(r[1]); m = Number(r[2]); a = Number(r[3]) }
+  else if ((r = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(v))) { a = Number(r[1]); m = Number(r[2]); d = Number(r[3]) }
+  else return null
+  const data = new Date(Date.UTC(a, m - 1, d))
+  if (data.getUTCFullYear() !== a || data.getUTCMonth() !== m - 1 || data.getUTCDate() !== d || a < 2000 || a > 2100) return null
   return `${a}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
@@ -187,12 +218,87 @@ function acharPeloNome<T extends { id: string; nome: string }>(lista: T[] | unde
   return achados[0]?.id ?? null
 }
 
+/**
+ * O pacote trazido de fora, como a planilha o escreve (decisão 1 c do Heitor,
+ * 2026-11-06): "procedimento; total; usadas" e, opcionais, o valor de
+ * referência e a validade, em qualquer ordem depois das três ("Limpeza de
+ * pele; 10; 7; R$ 1.500,00; 31/12/2027"). Mais de um na mesma célula, com "|".
+ * O que não se entende fica de fora com o motivo — a ficha entra igual (D2).
+ */
+export interface PacoteDaPlanilha {
+  procedimentoId: string; total: number; usadas: number
+  /** O valor de referência do pacote inteiro (opcional: sem ele, a sessão trazida não gera comissão nem receita de execução). */
+  valor: number | null
+  /** aaaa-mm-dd. */
+  validade: string | null
+}
+
+const ilegivelDoPacote = (v: string) => `Pacote de antes ilegível ("${v}", use procedimento; total; usadas): importada sem esse pacote.`
+
+export function lerPacotesDaPlanilha(bruto: string, refs: Referencias = {}): { pacotes: PacoteDaPlanilha[]; avisos: string[] } {
+  const pacotes: PacoteDaPlanilha[] = []
+  const avisos: string[] = []
+  for (const trecho of bruto.split(/[|\n]/).map(t => t.trim()).filter(Boolean)) {
+    const partes = trecho.split(';').map(t => t.trim())
+    const [nome, totalTxt, usadasTxt, ...extras] = partes
+    const inteiro = (t: string | undefined) => (t && /^\d{1,3}$/.test(t) ? Number(t) : null)
+    const total = inteiro(totalTxt)
+    const usadas = inteiro(usadasTxt)
+    if (!nome || total === null || usadas === null || total < 1 || total > 200 || extras.length > 2) { avisos.push(ilegivelDoPacote(trecho)); continue }
+    if (usadas >= total) { avisos.push(`Pacote de antes sem sessão restante ("${trecho}"): importada sem esse pacote.`); continue }
+    let valor: number | null = null
+    let validade: string | null = null
+    let ruim = false
+    for (const extra of extras.filter(Boolean)) {
+      const data = normalizarValidade(extra)
+      if (data && !validade) { validade = data; continue }
+      const n = normalizarValor(extra)
+      if (n !== null && valor === null) { valor = n; continue }
+      ruim = true
+    }
+    if (ruim) { avisos.push(ilegivelDoPacote(trecho)); continue }
+    const id = acharPeloNome(refs.procedimentos, nome)
+    if (id === 'ambiguo') { avisos.push(`Pacote de antes: há mais de um procedimento chamado "${nome}": importada sem esse pacote.`); continue }
+    if (!id) { avisos.push(`Pacote de antes: procedimento não encontrado ("${nome}"): importada sem esse pacote.`); continue }
+    pacotes.push({ procedimentoId: id, total, usadas, valor, validade })
+  }
+  return { pacotes, avisos }
+}
+
+/** A linha guarda cada pacote num texto ("id|total|usadas|valor|validade"); o servidor o lê de volta. */
+const pacoteParaTexto = (p: PacoteDaPlanilha) => [p.procedimentoId, p.total, p.usadas, p.valor ?? '', p.validade ?? ''].join('|')
+
+export function pacotesDaLinha(dados: DadosDaLinha): PacoteDaPlanilha[] {
+  const lista = dados.pacote
+  if (!Array.isArray(lista)) return []
+  return lista.map(t => {
+    const [procedimentoId, total, usadas, valor, validade] = t.split('|')
+    return {
+      procedimentoId: procedimentoId!, total: Number(total), usadas: Number(usadas),
+      valor: valor ? Number(valor) : null, validade: validade || null,
+    }
+  }).filter(p => p.procedimentoId && Number.isInteger(p.total) && Number.isInteger(p.usadas))
+}
+
+/**
+ * A menor da planilha sem o responsável legal (A5): a prévia avisa; o
+ * resultado da importação confere a ficha como ficou (a que já existia pode
+ * ter o responsável). Avisar, não barrar (princípio 2).
+ */
+export function avisoDaMenorNaPlanilha(dados: DadosDaLinha, hoje: Date = new Date()): string | null {
+  const nascimento = dados.birth_date as string | undefined
+  if (!ehMenorDeIdade(nascimento, hoje) || (dados.responsavel_nome as string | undefined)?.trim()) return null
+  return `Menor de idade (${idadeEm(nascimento, hoje)} anos) sem responsável legal na planilha: cadastre o responsável na ficha.`
+}
+
 const UFS = new Set(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'])
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export type DadosDaLinha = Partial<Record<ChaveDeCampo, string | string[]>>
 export interface LinhaValidada {
   numero: number; dados: DadosDaLinha; erros: string[]
+  /** O que ficou de fora da linha que entra (D2): "CPF inválido…: importada sem o CPF". */
+  avisos?: string[]
   /**
    * A14: o telefone desta linha já veio numa linha anterior com OUTRO nome
    * (Karina × Bianca). Na ficha a clínica escolhe juntar ou criar separada; no
@@ -214,14 +320,15 @@ const MAX_OBSERVACAO = 2000
 
 /**
  * A linha do CSV (os valores na ordem das colunas) segundo o mapeamento (o
- * campo de cada coluna, ou null para não importar).
+ * campo de cada coluna, ou null para não importar). `erros` recusam a linha
+ * (só o impossível); `avisos` dizem o que ficou de fora, e ela entra (D2).
  */
 export function validarLinha(
   destino: Destino,
   mapa: (ChaveDeCampo | null)[],
   valores: string[],
   refs: Referencias = {},
-): { dados: DadosDaLinha; erros: string[] } {
+): { dados: DadosDaLinha; erros: string[]; avisos: string[] } {
   const bruto = new Map<ChaveDeCampo, string>()
   mapa.forEach((campo, i) => {
     if (!campo) return
@@ -231,9 +338,15 @@ export function validarLinha(
 
   const dados: DadosDaLinha = {}
   const erros: string[] = []
+  const avisos: string[] = []
+  /** O campo opcional ilegível: fica de fora, e a linha diz por quê. */
+  const semEle = (motivo: string, oQue: string) => { avisos.push(`${motivo}: importada sem ${oQue}.`) }
+  /** O campo do CARD que não se acha: a oportunidade entra sem ele. */
+  const doCard = (motivo: string, oQue: string) => { avisos.push(`${motivo}: a oportunidade entra ${oQue}.`) }
+  let telefoneRuim: string | null = null
   // Todos os campos que o destino pode ter: o mapeamento já foi conferido
   // contra as opções desta importação (a tela e a action).
-  for (const campo of camposDoDestino(destino, { oportunidade: true, unidadePorLinha: true })) {
+  for (const campo of camposDoDestino(destino, { oportunidade: true, unidadePorLinha: true, pacote: true })) {
     const v = bruto.get(campo.chave)
     if (!v) {
       if (campo.obrigatorio) erros.push(`${campo.rotulo} vazio.`)
@@ -242,37 +355,72 @@ export function validarLinha(
     switch (campo.chave) {
       case 'phone': {
         const t = normalizarTelefone(v)
-        if (t) dados.phone = t; else erros.push(`Telefone sem DDD ou inválido: "${v}".`)
+        if (t) dados.phone = t
+        // A ficha não existe sem telefone (clients.phone é NOT NULL): é o impossível.
+        else if (destino === 'clientes') erros.push(`Telefone sem DDD ou inválido: "${v}".`)
+        else telefoneRuim = v
         break
       }
       case 'document': {
         const c = normalizarCpf(v)
-        if (c) dados.document = c; else erros.push(`CPF inválido: "${v}".`)
+        if (c) dados.document = c; else semEle(`CPF inválido ("${v}")`, 'o CPF')
         break
       }
       case 'email': {
         const e = v.toLowerCase()
-        if (EMAIL.test(e)) dados.email = e; else erros.push(`E-mail inválido: "${v}".`)
+        if (EMAIL.test(e)) dados.email = e; else semEle(`E-mail inválido ("${v}")`, 'o e-mail')
         break
       }
       case 'birth_date': {
         const d = normalizarData(v)
-        if (d) dados.birth_date = d; else erros.push(`Data de nascimento ilegível: "${v}" (use dd/mm/aaaa).`)
+        if (d) dados.birth_date = d; else semEle(`Data de nascimento ilegível ("${v}", use dd/mm/aaaa)`, 'o nascimento')
         break
       }
       case 'gender': {
         const g = normalizarGenero(v)
-        if (g) dados.gender = g; else erros.push(`Gênero não reconhecido: "${v}" (use F, M, Outro).`)
+        if (g) dados.gender = g; else semEle(`Gênero não reconhecido ("${v}", use F, M, Outro)`, 'o gênero')
         break
       }
       case 'zip_code': {
         const c = soDigitos(v)
-        if (c.length === 8) dados.zip_code = c; else erros.push(`CEP inválido: "${v}".`)
+        if (c.length === 8) dados.zip_code = c; else semEle(`CEP inválido ("${v}")`, 'o CEP')
         break
       }
       case 'state': {
         const uf = v.toUpperCase()
-        if (UFS.has(uf)) dados.state = uf; else erros.push(`UF inválida: "${v}" (use a sigla, como SC).`)
+        if (UFS.has(uf)) dados.state = uf; else semEle(`UF inválida ("${v}", use a sigla, como SC)`, 'a UF')
+        break
+      }
+      case 'cliente_desde': {
+        const d = normalizarDesde(v)
+        if (d) dados.cliente_desde = d; else semEle(`Cliente desde ilegível ("${v}", use dd/mm/aaaa ou mm/aaaa)`, 'essa data')
+        break
+      }
+      case 'ultima_visita': {
+        const d = normalizarData(v)
+        if (d) dados.ultima_visita = d; else semEle(`Última visita ilegível ("${v}", use dd/mm/aaaa)`, 'essa data')
+        break
+      }
+      case 'responsavel_nome':
+        dados.responsavel_nome = v.slice(0, 120)
+        break
+      case 'responsavel_parentesco':
+        dados.responsavel_parentesco = v.slice(0, 40)
+        break
+      case 'responsavel_cpf': {
+        const c = normalizarCpf(v)
+        if (c) dados.responsavel_cpf = c; else semEle(`CPF do responsável inválido ("${v}")`, 'ele')
+        break
+      }
+      case 'responsavel_telefone': {
+        const t = telefoneDoCadastro(v)
+        if (t) dados.responsavel_telefone = t.gravar; else semEle(`Telefone do responsável incompleto ("${v}")`, 'ele')
+        break
+      }
+      case 'pacote': {
+        const lidos = lerPacotesDaPlanilha(v, refs)
+        avisos.push(...lidos.avisos)
+        if (lidos.pacotes.length) dados.pacote = lidos.pacotes.map(pacoteParaTexto)
         break
       }
       case 'tags':
@@ -291,7 +439,8 @@ export function validarLinha(
         break
       case 'ativo': {
         const a = normalizarAtivo(v)
-        if (a !== null) dados.ativo = String(a); else erros.push(`Situação não reconhecida: "${v}" (use Ativo ou Inativo).`)
+        if (a !== null) dados.ativo = String(a)
+        else avisos.push(`Situação não reconhecida ("${v}", use Ativo ou Inativo): importada como ativa.`)
         break
       }
       case 'op_origem':
@@ -299,16 +448,16 @@ export function validarLinha(
         break
       case 'op_valor': {
         const n = normalizarValor(v)
-        if (n !== null) dados.op_valor = String(n); else erros.push(`Valor ilegível: "${v}".`)
+        if (n !== null) dados.op_valor = String(n); else doCard(`Valor ilegível ("${v}")`, 'sem o valor')
         break
       }
       case 'op_procedimentos': {
         const ids: string[] = []
         for (const nome of separarTags(v)) {
           const id = acharPeloNome(refs.procedimentos, nome)
-          if (id === 'ambiguo') erros.push(`Há mais de um procedimento chamado "${nome}".`)
+          if (id === 'ambiguo') doCard(`Há mais de um procedimento chamado "${nome}"`, 'sem ele')
           else if (id) { if (!ids.includes(id)) ids.push(id) }
-          else erros.push(`Procedimento não encontrado: "${nome}".`)
+          else doCard(`Procedimento não encontrado ("${nome}")`, 'sem ele')
         }
         dados.op_procedimentos = ids
         break
@@ -316,22 +465,22 @@ export function validarLinha(
       case 'op_etapa': {
         const id = acharPeloNome(refs.etapas, v)
         if (id && id !== 'ambiguo') dados.op_etapa = id
-        else erros.push(`Etapa não encontrada no funil escolhido: "${v}".`)
+        else doCard(`Etapa não encontrada no funil escolhido ("${v}")`, 'na etapa escolhida na tela')
         break
       }
       case 'op_responsavel': {
         const email = v.toLowerCase()
         const porEmail = (refs.membros ?? []).find(m => m.email?.toLowerCase() === email)
         const id = porEmail?.id ?? acharPeloNome(refs.membros, v)
-        if (id === 'ambiguo') erros.push(`Mais de uma pessoa da equipe se chama "${v}" — use o e-mail.`)
+        if (id === 'ambiguo') doCard(`Mais de uma pessoa da equipe se chama "${v}" (use o e-mail)`, 'com o responsável escolhido na tela')
         else if (id) dados.op_responsavel = id
-        else erros.push(`Responsável não encontrado na equipe: "${v}".`)
+        else doCard(`Responsável não encontrado na equipe ("${v}")`, 'com o responsável escolhido na tela')
         break
       }
       case 'unidade': {
         const id = acharPeloNome(refs.unidades, v)
         if (id && id !== 'ambiguo') dados.unidade = id
-        else erros.push(`Unidade não encontrada: "${v}".`)
+        else avisos.push(`Unidade não encontrada ("${v}"): importada na unidade escolhida na tela.`)
         break
       }
       default:
@@ -339,10 +488,17 @@ export function validarLinha(
     }
   }
   // D-10 (2026-10-29): o contato precisa do telefone OU do e-mail.
-  if (destino === 'contatos' && !bruto.get('phone') && !bruto.get('email')) {
-    erros.push('Sem telefone nem e-mail: o contato precisa de um dos dois.')
+  if (destino === 'contatos') {
+    if (!dados.phone && !dados.email) {
+      erros.push(bruto.get('phone') || bruto.get('email')
+        ? 'Sem telefone nem e-mail válido: o contato precisa de um dos dois.'
+        : 'Sem telefone nem e-mail: o contato precisa de um dos dois.')
+    } else if (telefoneRuim) {
+      avisos.unshift(`Telefone sem DDD ou inválido ("${telefoneRuim}"): importada só com o e-mail.`)
+    }
   }
-  return { dados, erros }
+  // A linha recusada não entra: o aviso de "importada sem" não vale para ela.
+  return { dados, erros, avisos: erros.length ? [] : avisos }
 }
 
 /**
