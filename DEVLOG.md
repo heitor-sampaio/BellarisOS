@@ -9706,6 +9706,35 @@ Relatórios → Funil comercial com "Conversão por origem"; A21 o nome da ficha
 propaga às oportunidades e conversas ligadas. Tocou `atualizarClienteCore`
 (ficha e Copilot) e o importador: entra na completa do fim.
 
+**F32 feita em 2026-11-05 — atendimento, estoque, caixa e geral**
+(8e46d382…66b72406; sem migration). A33 a avaliação com o plano enviado diz
+"Falta finalizar a avaliação"; A34 o editor do plano diz que o desconto é do
+checkout; A36 não reproduzido (na mesma aba a anamnese volta; o robô
+recarregava em contexto novo, e o rascunho morre com a aba); A37 pela regra:
+o formulário da avaliação segue em todo avulso, a tela diz que montar o plano
+é opcional; A38 "Nenhum produto cadastrado como insumo" com o caminho; A39 o
+saldo do plano só a quem recebe; A40 "Aplicado em" no lote (cliente, data,
+profissional, quantidade; pede Estoque e Clientes); A41 "Lotes vencendo em 30
+dias" nos dois dashboards para quem tem Estoque; A43 o recibo diz
+procedimento, data, profissional e as parcelas; A44 o Fechamento do dia diz o
+que a operadora ainda vai depositar; A45 o checkout do plano volta ao passo
+em que estava (sessionStorage: morre com a aba, como o rascunho); A46 "Devolva
+o aparelho" só com a assinatura no aparelho, e "em “Vender” (escolha Pacote)";
+A47 a venda do pacote oferece "Agendar a 1ª sessão agora?"; A49 o desconto
+sem motivo lembra o que a lista vai mostrar (segue opcional); A50 a legenda de
+"Insumos e produtos" e a perda/ajuste fora do lucro ditos no DRE; A54 medida
+— Railway p50 7–9 ms, p99 ~0,5 s, CPU ≤ 0,05 vCPU; Supabase p95 < 0,4 s sem
+5xx: a demora era dos navegadores da simulação, não do sistema (medida em
+`infra.md`); o "Continuar" da importação com o arquivo escolhido antes da
+hidratação; A55 "Olá" das 00:00 às 04:59. Sobras: o pacote da LGPD leva o
+responsável legal e o documento estrangeiro; a semana da agenda desenha o
+bloqueio (profissional e sala).
+
+**Achado da F32, em aberto:** o webhook da Meta respondeu 500 em ~12 s pelo
+menos 15 vezes entre 06:08 e 09:24Z de 05/11 — "Não consegui buscar a
+mensagem", PGRST116: um `.single()` em `lib/inbox/resolve-conversation` acha
+2 linhas.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
