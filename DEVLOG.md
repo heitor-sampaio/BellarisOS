@@ -9892,6 +9892,8 @@ responsável (A5, A6); sem aniversariantes do mês (A9); a LGPD sem o prazo na
 tela da clínica (A50); o app sem dizer a unidade (A53); sem CSV das
 movimentações para a contadora (A44). Os demais no relatório.
 
+**F33 FEITA (06/11, dbf9dfa2…06686752, migration 20261106003301):** D1/A14 — a ficha da rede pergunta a unidade da venda, do crédito, dos pontos, do voucher, do agendar e do cadastro (com duas ou mais unidades nenhuma vem pré-escolhida; com uma, vem preenchida — princípio 3); D3/D4 — a semana tem os 7 dias e a da rede agrupa pelo dia de Brasília; D5/D15 — uma régua só de horário livre (duração inteira e bloqueio) na grade do pacote, no checkout do plano, na ocupação e na "Minha agenda"; D9 — o Confirmar e o remarcar esperam o aviso do horário ("Conferindo o horário…"); D11 — o cancelado e a falta dizem o que são; D13 — o termo do início nasce no check-in. Provas: `e2e/agenda-defeitos-da-8.spec.ts`, `e2e/vendas-unidade-da-venda.spec.ts`, `tests/agenda-horario-livre.test.ts`, `tests/registro-travado.test.ts`. Mexeu no modal da agenda, na ficha e no cadastro (vale completa). Sobras do mesmo padrão (Agendar do CRM e estoque inicial na primeira unidade, Vender do inbox pela unidade da cliente, separador de dia do inbox em UTC) foram para a F37.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
