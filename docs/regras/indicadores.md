@@ -620,6 +620,16 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   clientes ativas, não só as com a tag "Unidade: X" — no /admin e no
   dashboard da unidade (`redeTemUmaUnidade` → `getClientesParaReativarDaRede`).
   Prova: `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("r2-ind-03").
+  **O vazio diz o que é** (D16 da 8ª simulação, 2026-11-06): o quadro conta
+  quem SUMIU (cadastrada antes dos 90 dias, sem visita neles), e com a base
+  importada no dia dizia "Todos os clientes retornaram 🎉" para 30 clientes que
+  nunca vieram. As duas contas devolvem também `com_visita` (as do recorte com
+  alguma visita concluída) e `recentes_sem_visita` (as cadastradas nos 90 dias
+  sem nenhuma — migration `20261106003405`), e o vazio diz "Nenhuma cliente tem
+  visita registrada ainda (30 clientes cadastradas nos últimos 90 dias)…" ou
+  "Ninguém sumiu: quem já veio voltou nos últimos 90 dias 🎉 2 clientes
+  cadastradas nos últimos 90 dias ainda não têm visita." (`vazioDoReativar`,
+  `quadros-de-clientes.tsx`). Prova: `e2e/indicadores-reativar-sem-visita.spec.ts`.
   **E o Copilot dá a mesma resposta** (r3-f13-10, o Heitor, 2026-11-03: "os
   dois têm de dar a mesma resposta"): a escolha entre a conta da unidade e a
   da clínica mora num lugar só, `getClientesParaReativarDoRecorte`

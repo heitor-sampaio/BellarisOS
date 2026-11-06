@@ -86,9 +86,30 @@ export interface ClienteSumida {
   unidade?: string | null
 }
 
+/**
+ * O vazio do quadro diz o que é (D16 da 8ª simulação, 2026-11-06): "Todos os
+ * clientes retornaram 🎉" aparecia com 30 clientes que nunca tiveram visita (a
+ * base importada no dia — cadastrada há menos de 90 dias, fora do quadro).
+ * Os números vêm de lib/metrics (`comVisita`, `recentesSemVisita`).
+ */
+export function vazioDoReativar(comVisita: number, recentesSemVisita: number): string {
+  const recentes = recentesSemVisita === 1
+    ? '1 cliente cadastrada nos últimos 90 dias'
+    : `${recentesSemVisita} clientes cadastradas nos últimos 90 dias`
+  if (comVisita === 0) {
+    return recentesSemVisita > 0
+      ? `Nenhuma cliente tem visita registrada ainda (${recentes}). O quadro conta a partir da primeira visita concluída.`
+      : 'Nenhuma cliente tem visita registrada ainda.'
+  }
+  return 'Ninguém sumiu: quem já veio voltou nos últimos 90 dias 🎉'
+    + (recentesSemVisita > 0 ? ` ${recentes} ainda ${recentesSemVisita === 1 ? 'não tem' : 'não têm'} visita.` : '')
+}
+
 /** As clientes sem visita há mais de 90 dias (o total e as há mais tempo sem vir). */
-export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas }: {
+export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, comVisita = 1, recentesSemVisita = 0 }: {
   clientes: ClienteSumida[]; total: number; hrefAgendar: string; hrefVerTodas: string
+  /** As do recorte com alguma visita concluída, e as novas sem nenhuma — o texto do vazio (D16). */
+  comVisita?: number; recentesSemVisita?: number
 }) {
   return (
     <div className="card" data-reativar-clientes style={{ display: 'flex', flexDirection: 'column' }}>
@@ -102,7 +123,7 @@ export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas }:
 
       {clientes.length === 0 ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', paddingTop: 8, flex: 1 }}>
-          Todos os clientes retornaram 🎉
+          {vazioDoReativar(comVisita, recentesSemVisita)}
         </p>
       ) : (
         <>

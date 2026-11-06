@@ -90,6 +90,12 @@ export interface ClientesParaReativar {
   total: number
   /** Os há mais tempo sem vir; quem nunca veio fica no fim. */
   lista: { id: string; name: string; phone: string | null; ultimaVisita: string | null }[]
+  /**
+   * Para o vazio dizer o que é (D16 da 8ª): as clientes do recorte com alguma
+   * visita concluída, e as cadastradas desde `desde` sem nenhuma (fora do quadro).
+   */
+  comVisita: number
+  recentesSemVisita: number
 }
 
 export async function getClientesParaReativar(args: {
@@ -103,11 +109,12 @@ export async function getClientesParaReativar(args: {
     p_professional_id: args.professionalId ?? null,
   }), 'buscar os clientes para reativar')
   const d = (data ?? {}) as {
-    total?: number
+    total?: number; com_visita?: number; recentes_sem_visita?: number
     lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null }[]
   }
   return {
     total: Number(d.total ?? 0),
+    comVisita: Number(d.com_visita ?? 0), recentesSemVisita: Number(d.recentes_sem_visita ?? 0),
     lista: (d.lista ?? []).map(c => ({ id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita })),
   }
 }
@@ -128,17 +135,18 @@ export async function getClientesParaReativarDaRede(args: {
   tenantId: string; desde: Date; limite?: number
   /** "Só os meus": só as clientes dela (agendamento não cancelado com ela). */
   professionalId?: string | null
-}): Promise<{ total: number; lista: ClienteParaReativarDaRede[] }> {
+}): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; comVisita: number; recentesSemVisita: number }> {
   const data = await ler(createAdminClient().rpc('metrics_clientes_para_reativar_rede', {
     p_tenant: args.tenantId, p_desde: args.desde.toISOString(), p_limite: args.limite ?? 3,
     p_professional_id: args.professionalId ?? null,
   }), 'buscar os clientes da rede para reativar')
   const d = (data ?? {}) as {
-    total?: number
+    total?: number; com_visita?: number; recentes_sem_visita?: number
     lista?: { id: string; name: string; phone: string | null; ultima_visita: string | null; unidade: string | null; unidade_slug: string | null }[]
   }
   return {
     total: Number(d.total ?? 0),
+    comVisita: Number(d.com_visita ?? 0), recentesSemVisita: Number(d.recentes_sem_visita ?? 0),
     lista: (d.lista ?? []).map(c => ({
       id: c.id, name: c.name, phone: c.phone, ultimaVisita: c.ultima_visita,
       unidade: c.unidade, unidadeSlug: c.unidade_slug,
@@ -165,20 +173,20 @@ export async function getClientesParaReativarDoRecorte(args: {
   desde: Date; limite?: number
   /** "Só os meus" da agenda: as dela. */
   professionalId?: string | null
-}): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; daUnidade: boolean }> {
+}): Promise<{ total: number; lista: ClienteParaReativarDaRede[]; daUnidade: boolean; comVisita: number; recentesSemVisita: number }> {
   const umaSo = await redeTemUmaUnidade(args.tenantId)
   if (args.unidade && !umaSo) {
     const r = await getClientesParaReativar({
       tenantId: args.tenantId, branchId: args.unidade.id, tag: unitTag(args.unidade.name),
       desde: args.desde, limite: args.limite, professionalId: args.professionalId,
     })
-    return { total: r.total, lista: r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })), daUnidade: true }
+    return { ...r, lista: r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })), daUnidade: true }
   }
   const r = await getClientesParaReativarDaRede({
     tenantId: args.tenantId, desde: args.desde, limite: args.limite, professionalId: args.professionalId,
   })
   // Com uma unidade só, dizer a unidade de cada uma é ruído (D-19).
-  return { total: r.total, lista: umaSo ? r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })) : r.lista, daUnidade: false }
+  return { ...r, lista: umaSo ? r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })) : r.lista, daUnidade: false }
 }
 
 /**

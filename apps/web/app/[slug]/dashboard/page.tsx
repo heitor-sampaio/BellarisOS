@@ -194,7 +194,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       ? getClientesParaReativarDoRecorte({
           tenantId: ctx.tenantId!, unidade: { id: branchId, name: branch.name }, desde: ninetyDaysAgo, professionalId: proId,
         })
-      : Promise.resolve({ total: 0, lista: [] }),
+      : Promise.resolve({ total: 0, lista: [], comVisita: 0, recentesSemVisita: 0 }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): dinheiro.
     canFinancial
@@ -627,6 +627,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <ReativarClientes
             clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince }))}
             total={inactiveCount}
+            comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
             hrefAgendar={`/${slug}/agenda`}
             hrefVerTodas={`/${slug}/clients?status=active`}
           />
