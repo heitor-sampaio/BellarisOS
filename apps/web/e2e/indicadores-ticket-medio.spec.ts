@@ -81,6 +81,10 @@ test.beforeAll(async () => {
   await concluido(cli.mariana, rede.procedureId, 0)
   await pago(cli.mariana, 600, null)
   await concluido(cli.sofia, rede.procedureId, 0)
+  // Lia (D7 da 8ª): um lançamento PAGO de R$ 0 — o pacote migrado a zero, a
+  // venda com 100% de desconto. Ela não pagou nada: não é "cliente que pagou".
+  cli.lia = await rede.criarCliente('Lia')
+  await pago(cli.lia, 0, null)
 })
 test.afterAll(async () => {
   await db().from('financial_transactions').delete().eq('branch_id', rede!.branchId)
@@ -114,6 +118,23 @@ test.describe.serial('o ticket médio e o gasto da cliente', () => {
     expect(error).toBeNull()
     const total = (data as { branch_id: string | null; pago: number; clientes: number }[]).find(r => r.branch_id === null)!
     expect([Number(total.pago), Number(total.clientes)]).toEqual([780, 2])
+  })
+
+  test('D7: o lançamento de R$ 0 não faz "cliente que pagou" — nem no total, nem na unidade, nem no subtítulo', async ({ browser }) => {
+    const de = new Date(Date.now() - 86_400_000).toISOString(), ate = new Date(Date.now() + 86_400_000).toISOString()
+    const { data, error } = await db().rpc('metrics_ticket_medio', { p_tenant: rede!.tenantId, p_branch_ids: null, p_from: de, p_to: ate })
+    expect(error).toBeNull()
+    const linhas = data as { branch_id: string | null; pago: number; clientes: number }[]
+    const total = linhas.find(r => r.branch_id === null)!
+    const daUnidade = linhas.find(r => r.branch_id === rede!.branchId)!
+    // A Joana (180) e a Mariana (600); a Lia (R$ 0) e a Sofia (nada) ficam fora.
+    expect([Number(total.pago), Number(total.clientes)]).toEqual([780, 2])
+    expect([Number(daUnidade.pago), Number(daUnidade.clientes)]).toEqual([780, 2])
+    await como(browser, async p => {
+      await p.goto('/admin/reports?period=month')
+      const cartao = p.getByText('Ticket médio', { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
+      await expect.poll(async () => brl(await cartao.innerText()), { timeout: 10_000 }).toBe(390)
+    })
   })
 
   test('A26: a ficha e os relatórios saem da mesma conta do gasto da cliente', async ({ browser }) => {

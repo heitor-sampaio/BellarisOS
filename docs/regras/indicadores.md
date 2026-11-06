@@ -98,7 +98,13 @@
     (o pago e as clientes, por unidade e no total — a cliente que pagou em
     duas unidades conta uma vez no total; migration `20261029001102`),
     `getTicketMedio` e a divisão `ticketMedio()` em `lib/metrics/resultado.ts`;
-    sem cliente que pagou, nulo e a tela mostra "—". É UM indicador só com o
+    sem cliente que pagou, nulo e a tela mostra "—". **"Pagou" é pagar mais
+    que zero** (D7 da 8ª simulação, 2026-11-06): a cliente só com lançamento
+    pago de R$ 0 (o pacote migrado a zero, a venda com 100% de desconto) não
+    entra no denominador — na unidade, o que ela pagou nela; no total, o que
+    pagou na clínica (migration `20261106003402`). Eram "R$ 437 · 10 clientes
+    que pagaram" no lugar de R$ 4.368 ÷ 8 = R$ 546. Prova:
+    `e2e/indicadores-ticket-medio.spec.ts` ("D7"). É UM indicador só com o
     antigo "Gasto médio" de Relatórios → Clientes (o mesmo número), que passou
     a se chamar "Ticket médio": dashboards (o cartão e a coluna por filial),
     financeiro da unidade, Relatórios (Visão geral, Clientes, Procedimentos) e
