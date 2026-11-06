@@ -548,8 +548,15 @@ Regras:
   Para "só quem é da rede", use a abrangência: `ctx.branchId === null`.
 - Toda leitura de módulo escopável passa `ownerFilter` para dentro da query.
   Filtrar só na renderização deixa o registro acessível pelo id.
-- `provides_services` significa apenas: aparece como profissional na agenda e
-  recebe comissão. Não é permissão e não deriva escopo.
+- **O "Atende" é por unidade** (`users.atende_em`; decisão 2 do Heitor, 8ª
+  simulação: "o atende vira um checklist com todas as unidades, as que
+  estiverem marcadas ficam disponiveis"): nas unidades marcadas a pessoa
+  aparece como profissional (agenda, agendar, repasse, comissão, relatórios).
+  `provides_services` = "atende em alguma unidade", mantido junto da lista pelo
+  gatilho `atende_em_sincronizar`. Não é permissão e não deriva escopo nem
+  abrangência: numa unidade marcada fora do alcance, ela chega só aos
+  agendamentos DELA (`alcancaOAgendamento`). Regra em
+  `docs/regras/atendimento.md` §9.1 e `plataforma.md`.
 - **O OWN do CRM, no inbox, tem um refino por rede** — pela pessoa ou pela
   conversa (§9.2.1). Fica na aba Cargos, logo abaixo da matriz.
 - **Quais números de WhatsApp o cargo vê no inbox é do CARGO**
