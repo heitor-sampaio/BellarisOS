@@ -97,6 +97,9 @@ export interface CreditoParaAgendar {
   preco:        number
   restantes:    number
   venceEm:      string | null
+  /** O número da sessão/unidade que o agendamento vai usar e o total da venda ("sessão 2 de 3", D10 da 8ª). */
+  numero?:      number
+  total?:       number
 }
 
 /**
@@ -125,6 +128,7 @@ export async function creditosDoCliente(admin: Admin, tenantId: string, clientId
     saida.push({
       tipo: 'PRE_PAGO', id: livres[0]!.id, procedureId: v.procedure_id, procedimento: v.procedures?.name ?? 'Procedimento',
       origem: 'Pré-pago', preco: Number(livres[0]!.preco), restantes: livres.length, venceEm: v.expires_at,
+      numero: livres[0]!.numero, total: (v.procedure_sale_units ?? []).length,
     })
   }
 
@@ -148,6 +152,7 @@ export async function creditosDoCliente(admin: Admin, tenantId: string, clientId
         origem: p.service_packages?.name ?? 'Pacote',
         preco: primeira.preco != null ? Number(primeira.preco) : Math.round(Number(p.price ?? 0) * 100 / Math.max(1, p.total_sessions)) / 100,
         restantes: sessoes.length, venceEm: p.expires_at,
+        numero: primeira.session_number, total: p.total_sessions,
       })
     }
   }

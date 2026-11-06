@@ -18,6 +18,11 @@ interface Procedure {
   duration_min: number
   /** Quem realiza (por-01). Vazio = todas as que atendem. */
   realizam?:    string[]
+  /**
+   * O que ela já pagou deste procedimento, no lugar do preço (D10 da 8ª):
+   * "Já pago pelo pacote X (sessão 2 de 3)" — o crédito que o agendamento usa.
+   */
+  jaPago?:      string | null
 }
 
 interface Professional {
@@ -273,7 +278,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                   <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)' }}>
-                    {fmtPrice(p.price)}
+                    {p.jaPago ? 'Já pago' : fmtPrice(p.price)}
                   </p>
                 </div>
               </button>
@@ -457,7 +462,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
             <Row label="Data"          value={fmtDate(date)} />
             <Row label="Horário"       value={time} />
             <Row label="Duração"       value={`${procedure.duration_min} min`} />
-            <Row label="Valor"         value={fmtPrice(procedure.price)} accent />
+            <Row label="Valor"         value={procedure.jaPago ?? fmtPrice(procedure.price)} accent />
           </div>
 
           {error && (

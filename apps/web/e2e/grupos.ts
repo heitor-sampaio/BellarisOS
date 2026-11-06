@@ -231,6 +231,7 @@ export const ISOLADOS = [
   'agenda-minha-agenda-horario.spec.ts',
   'agenda-janela-detalhes.spec.ts',
   'portal-cliente-agendar-horarios.spec.ts',
+  'portal-cliente-confirmar-ja-pago.spec.ts',
   'portal-cliente-credito-interno.spec.ts',
   'portal-cliente-plano-proposto.spec.ts',
   'portal-cliente-plano-fechado.spec.ts',

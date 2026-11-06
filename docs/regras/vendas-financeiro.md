@@ -1062,6 +1062,13 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   `lib/creditos/pago-no-app.ts`). A ligação é compare-and-swap; perdeu a
   corrida, o agendamento fica avulso. Prova:
   `e2e/portal-cliente-agendar-o-que-ja-pagou.spec.ts`.
+  **E o Confirmar DIZ** (D10 da 8ª simulação, 2026-11-06; sobra da F28): o
+  passo mostrava "Valor R$ 180,00" na sessão que o pacote cobria. Agora o
+  "Valor" é "Já pago pelo pacote X (sessão 2 de 3)" (ou "pelo plano de
+  tratamento (sessão N de M)", ou "Já pago: Y pré-pago (unidade N de M)"), e a
+  lista de procedimentos diz "Já pago" no lugar do preço — a MESMA escolha
+  que o agendamento usa (`jaPagoNoApp`, ao lado de `pagoParaAgendar`). Prova:
+  `e2e/portal-cliente-confirmar-ja-pago.spec.ts`.
 - **O check-in só cobra o que VENCEU** (`emAbertoDoPlano` /
   `separarOEmAberto`): em aberto sem data ou com vencimento até o fim de hoje
   (Brasília). Parcela que vence depois já está combinada — aparece no banner

@@ -8,6 +8,7 @@ import { normalizarHorario, resumoDoHorario } from '@/lib/agenda/horario'
 import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { AgendarComAClinica } from '@/components/client-portal/agendar-com-a-clinica'
+import { jaPagoNoApp } from '@/lib/creditos/pago-no-app'
 
 export default async function NewClientAppointmentPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
@@ -65,8 +66,12 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
 
   // Quem realiza cada um (por-01): o passo "Profissional" oferece só elas.
   const lidos = (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[]
-  const realizam = await quemRealizaOsProcedimentos(admin, lidos.map(p => p.id))
-  const procedures = lidos.map(p => ({ ...p, realizam: realizam.get(p.id) ?? [] }))
+  const [realizam, jaPago] = await Promise.all([
+    quemRealizaOsProcedimentos(admin, lidos.map(p => p.id)),
+    // O que ela já pagou de cada um (D10 da 8ª): o Confirmar diz "Já pago pelo pacote X (sessão 2 de 3)".
+    jaPagoNoApp(admin, branchTyped.tenant_id, ctx.clientId!, lidos.map(p => p.id)),
+  ])
+  const procedures = lidos.map(p => ({ ...p, realizam: realizam.get(p.id) ?? [], jaPago: jaPago[p.id] ?? null }))
   const equipe        = (rawProfessionals ?? []) as { id: string; name: string }[]
 
   // Quando cada uma atende (J-60): a unidade ∩ ela, em texto — a cliente vê
