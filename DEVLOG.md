@@ -9739,6 +9739,17 @@ corrigir"), a migration `20261106000001` deixou uma de cada par e criou o
 índice único `messages_external_id_unico`; o app trata o 23505 como "já
 estava". Prova: `e2e/whatsapp-historico-sem-duplicar.spec.ts`.
 
+**Completa de 2026-11-06 depois da F32** (run 42138534787, em `66b72406`):
+isolados 1059 ✓ e 4 ✘, compartilhados 568 ✓ e 2 ✘ — nenhum defeito do
+sistema (a5459f72). Três specs liam o cache de antes: criavam pelo banco a
+sala (D12) e o profissional da unidade (o selo da ficha na agenda) DEPOIS que
+outro teste já tinha aberto a tela, e as listas da unidade ficam 5–10 min em
+cache que o insert pelo service role não expira; o do arquivar recarregava
+antes de a action expirar o cache da lista. Os três passam a criar antes de
+qualquer tela abrir, ou a esperar a action voltar. As outras três foram o
+banco travado (edge_logs com respostas de 12 a 66 s às 00:50Z, 00:59Z e
+01:04Z; a de 01:04 coincide com a migration do índice único de mensagens).
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
