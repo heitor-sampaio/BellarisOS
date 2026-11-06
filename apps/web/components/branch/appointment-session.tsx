@@ -59,6 +59,7 @@ import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
+import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -1321,6 +1322,7 @@ export function AppointmentSession({
   const age       = calcAge(client.birthDate)
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
   const editLocked = isDone && !isUnlocked
+  const registroTravado = textoDoRegistroTravado(status, canReassign && canEditRecords)
 
   // Observações (controladas, o estado acima) + salvar unificado da ficha
   const fichaRef = useRef<AnamnesisFormHandle>(null)
@@ -2066,20 +2068,20 @@ export function AppointmentSession({
                 : <Lock     size={15} style={{ color: 'var(--text-faint)' }} />}
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isUnlocked ? 'var(--warning)' : 'var(--text-muted)' }}>
-                {isUnlocked ? 'Editando registro finalizado' : 'Registro bloqueado para edição'}
+              <p data-registro-travado={status} style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isUnlocked ? 'var(--warning)' : 'var(--text-muted)' }}>
+                {isUnlocked ? 'Editando registro finalizado' : registroTravado.titulo}
               </p>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: isUnlocked ? 'var(--warning)' : 'var(--text-faint)', marginTop: 2 }}>
                 {isUnlocked
                   ? 'Todas as alterações serão registradas no histórico do atendimento.'
-                  : canReassign && canEditRecords
-                    ? 'Atendimento concluído. Para corrigir, use "Editar registro": a alteração fica no histórico.'
-                    : 'Atendimento concluído. Corrigir o registro pede a Agenda e o Prontuário em Gerenciar.'}
+                  // D11 da 8ª: o cancelado e a falta não dizem "Atendimento concluído".
+                  : registroTravado.texto}
               </p>
             </div>
             {/* Desbloquear é para editar o prontuário: pede os dois (A39 — o
-                botão aparecia ao lado de "Apenas gerentes podem editar"). */}
-            {canReassign && canEditRecords && (
+                botão aparecia ao lado de "Apenas gerentes podem editar"), e só
+                no concluído (D11: o cancelado não tem registro a editar). */}
+            {registroTravado.podeEditar && (
               isUnlocked ? (
                 <button type="button" onClick={() => setIsUnlocked(false)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--warning-border)', background: 'transparent', color: 'var(--warning)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>

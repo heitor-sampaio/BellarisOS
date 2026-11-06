@@ -1669,7 +1669,13 @@ O resto do fluxo:
   simulação, 2026-11-01): o botão aparecia a quem não escreve no prontuário, e
   ao lado do texto "Apenas gerentes podem editar" — que contradizia o botão da
   profissional. O texto diz agora a regra ("use Editar registro" a quem pode;
-  "pede a Agenda e o Prontuário em Gerenciar" a quem não).
+  "pede a Agenda e o Prontuário em Gerenciar" a quem não). **O cancelado e a
+  falta dizem o que são** (D11 da 8ª simulação, 2026-11-06; princípio 3):
+  "Atendimento cancelado" / "A cliente não compareceu", que não houve
+  atendimento e não há registro a editar — sem o "Editar registro", que é só
+  do concluído (`textoDoRegistroTravado`, `lib/atendimento/registro-travado.ts`).
+  Dizia "Atendimento concluído. Para corrigir, use…". Prova:
+  `tests/registro-travado.test.ts`.
 - **Gerar o plano (o "Fechar agora" e o "Gerar plano e enviar à recepção")
   pede o Prontuário em Gerenciar** (D9 da 5ª simulação, 2026-11-01): grava a
   avaliação no prontuário (`generateEvaluationPlan`). Com ele só em Ver, o
