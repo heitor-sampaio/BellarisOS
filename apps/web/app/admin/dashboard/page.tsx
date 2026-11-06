@@ -30,6 +30,8 @@ import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
 import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
 import { differenceInDays } from 'date-fns'
+import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
+import type { LoteNoDashboard } from '@/components/shared/lotes-vencendo'
 import { situacaoDoEstoque, estoqueBaixo, contarSituacoes, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
 
 
@@ -598,6 +600,17 @@ export default async function AdminDashboardPage({
   // existia no dashboard da unidade. Quem vê a agenda, com o "só os meus" dela.
   const abertos = canAgenda ? await abertosDeAntes(ctx, branches.map(b => b.id as string)) : SEM_ABERTOS_DE_ANTES
 
+  // A41 da 7ª simulação: o lote que vence em 30 dias, a quem tem o Estoque — a
+  // mesma conta do cartão "Validade em 30 dias" do Estoque.
+  const lotesVencendo: LoteNoDashboard[] = canStock
+    ? (await lotesVencendoDoRecorte(ctx.tenantId!, branchIds)).map(l => {
+        const b = branches.find(x => x.id === l.unidadeId)
+        return { id: l.id, produto: l.produto, numero: l.numero, validade: l.validade, quantidade: l.quantidade, embalagem: l.embalagem,
+          unidade: branches.length > 1 ? (b?.name as string | undefined) ?? null : null,
+          href: '/admin/estoque' + (b?.slug ? '?unidade=' + String(b.slug) : '') }
+      })
+    : []
+
   // F7b (H3): o "Reativar clientes" e o "Clientes no mês" só existiam no
   // dashboard da unidade. Na rede, as sumidas da CLÍNICA inteira (sem visita
   // em nenhuma unidade há 90 dias), com a unidade de cada uma; recortada a
@@ -684,6 +697,8 @@ export default async function AdminDashboardPage({
         todayByBranch={todayByBranch}
         pendingPlans={pendingPlans}
         lowStockItems={lowStockItems}
+        lotesVencendo={lotesVencendo}
+        agora={new Date().toISOString()}
         stockStatus={stockStatus}
         zeroStockCount={zeroStockCount}
         lowStockCount={lowStockCount}

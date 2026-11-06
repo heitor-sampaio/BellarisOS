@@ -478,7 +478,7 @@ function TabFinanceiro(p: ReportsBiProps) {
             nunca gera despesa (D13 revisto, 2026-10-28): a compra paga entra no
             financeiro por um lançamento ("Compra de estoque"), que fica no caixa. */}
         <KpiCard label="Insumos e produtos vendidos" value={stockCOGS} format="brl" accent="var(--danger)"
-          detalhe="Desconta do lucro" />
+          detalhe="Desconta do lucro" dica={DEFINICOES.insumosEProdutos} />
         {/* A despesa, o lucro e a margem não se atribuem a ela ("só os meus"). */}
         {!p.soOsMeus && <>
           <KpiCard label="Despesas pagas"  value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
@@ -493,6 +493,11 @@ function TabFinanceiro(p: ReportsBiProps) {
                 caixa), os insumos, as taxas da maquininha e as comissões lançadas: todos descontam do lucro. */}
             <DreWaterfall receita={revenue} despesas={resultado.despesaOperacional} insumos={resultado.insumoConsumido}
               taxas={resultado.taxasDaMaquininha} comissoes={resultado.comissoes} lucro={profit} />
+            {/* A50 da 7ª simulação: a perda de R$ 380 fora do lucro parecia erro (é a regra F7). */}
+            <p data-fora-do-lucro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 14 }}>
+              A perda e o ajuste de estoque ficam fora do lucro: o insumo já foi pago na compra. Eles são métrica, em
+              Relatórios → Estoque (“Perdas no período”).
+            </p>
           </SCard>
         )}
         <SCard title="Receita por Forma de Pagamento">

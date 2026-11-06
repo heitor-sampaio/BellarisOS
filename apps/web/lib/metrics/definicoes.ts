@@ -77,4 +77,11 @@ export const DEFINICOES = {
       + 'são os agendados, confirmados ou em atendimento — inclusive os que ainda vão acontecer. Os cartões de '
       + 'cima contam só até agora.',
   },
+  /** Relatórios → Financeiro e o DRE: o estoque que saiu para gerar a receita (A50 da 7ª simulação). */
+  insumosEProdutos: {
+    rotulo: 'O que entra em Insumos e produtos vendidos',
+    texto: 'O insumo usado nos atendimentos do período (ao custo de consumo: o preço da embalagem ÷ o que ela rende) '
+      + 'mais o custo dos produtos vendidos (o dos lotes que saíram). Desconta do lucro. A perda e o ajuste de '
+      + 'estoque ficam fora: o insumo já foi pago na compra — eles aparecem em Relatórios → Estoque.',
+  },
 } satisfies Record<string, DefinicaoDoNumero>

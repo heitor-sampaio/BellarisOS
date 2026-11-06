@@ -27,6 +27,8 @@ import { ChevronRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
+import { LotesVencendo } from '@/components/shared/lotes-vencendo'
+import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import { AvatarDaCliente as Avatar, ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
 
 // O avatar da cliente é o dos quadros de clientes (um desenho só, F7b).
@@ -321,6 +323,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // com o "só os meus" dela.
   const abertos = canAgenda ? await abertosDeAntes(ctx, branchId, now) : SEM_ABERTOS_DE_ANTES
 
+  // A41 da 7ª simulação: o lote que vence em 30 dias, a quem tem o Estoque — a
+  // mesma conta do cartão "Validade em 30 dias" do Estoque.
+  const lotesVencendo = perm.stock !== 'NONE'
+    ? (await lotesVencendoDoRecorte(ctx.tenantId!, [branchId], 30, now)).map(l => ({
+        id: l.id, produto: l.produto, numero: l.numero, validade: l.validade, quantidade: l.quantidade, embalagem: l.embalagem,
+        href: `/${slug}/estoque`,
+      }))
+    : []
+
   // -------------------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -339,6 +350,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts} />}
 
       <AbertosDeAntes base={`/${slug}/agenda`} abertos={abertos.abertos} semChegada={abertos.semChegada} />
+
+      {/* Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */}
+      <LotesVencendo lotes={lotesVencendo} agora={now.toISOString()} />
 
       {/* -- Checkout pendente ----------------------------------- */}
       {canCheckout && (pendingCheckouts ?? 0) > 0 && (

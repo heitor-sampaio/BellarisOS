@@ -19,6 +19,7 @@ import { PeriodSelector, type Period } from './period-selector'
 import type { ResolvedPermissions, AppModule } from '@estetica-os/types'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
+import { LotesVencendo, type LoteNoDashboard } from '@/components/shared/lotes-vencendo'
 import { FunnelSelect } from '@/components/shared/funnel-select'
 
 // --- Types -------------------------------------------------------------------
@@ -118,6 +119,10 @@ export interface AdminDashboardProps {
   todayByBranch:    TodayBranchStat[]
   pendingPlans:       AlertPendingPlan[]
   lowStockItems:      AlertLowStock[]
+  /** Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */
+  lotesVencendo?:     LoteNoDashboard[]
+  /** O instante do servidor, para o "venceu" da lista não depender do relógio do navegador. */
+  agora?:             string
   stockStatus:        'healthy' | 'warning' | 'critical'
   zeroStockCount:     number
   lowStockCount:      number
@@ -433,7 +438,7 @@ export function AdminDashboardView({
   totalClientsEver, branchCount, umaUnidade = false, unidadeRecortada = null, hrefDaRede = '/admin/dashboard',
   prevRevenue, prevAppointments, prevNewClients,
   branchStats, todayTotal, todayByBranch,
-  pendingPlans, lowStockItems, stockStatus, zeroStockCount, lowStockCount, stockTurnover,
+  pendingPlans, lowStockItems, lotesVencendo = [], agora = new Date().toISOString(), stockStatus, zeroStockCount, lowStockCount, stockTurnover,
   evolutionData,
   branchOccupancy,
   avisoDosAbertos,
@@ -800,6 +805,9 @@ export function AdminDashboardView({
         )}{/* fim coluna direita */}
       </div>
       )}
+
+      {/* -- Lotes vencendo (A41 da 7ª) -- */}
+      {can('stock') && <LotesVencendo lotes={lotesVencendo} agora={agora} />}
 
       {/* -- Alertas -- */}
       {((can('procedures') && pendingPlans.length > 0) || (can('stock') && lowStockItems.length > 0)) && (

@@ -10,6 +10,7 @@ import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
 import { SegSelect } from '@/components/shared/seg-select'
+import { BotaoAplicadoEm } from '@/components/admin/aplicacoes-do-lote'
 import {
   situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo,
   formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
@@ -95,6 +96,8 @@ interface Props {
   /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
   buscaInicial?:     string
   readOnly?:         boolean
+  /** "Aplicado em" no lote (A40 da 7ª): quem tem as Clientes vê em quem o lote foi aplicado. */
+  podeVerAplicacoes?: boolean
 }
 
 type ViewMode  = 'consolidado' | 'por-unidade'
@@ -195,7 +198,7 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '' }: Props) {
+export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false }: Props) {
   const router = useRouter()
   // Chegar com uma unidade na URL só faz sentido junto com a visão por unidade:
   // no consolidado o saldo dela ficaria somado ao das outras.
@@ -560,7 +563,8 @@ export function AdminStockView({ products, branches, categories, productCategori
                                               {l.validade ? `${vencido ? 'venceu' : 'vence'} ${validadeNaTela(l.validade)}` : 'sem validade'}
                                             </span>
                                             <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
-                                            <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}` : 'custo —'}</span>
+                                            {podeVerAplicacoes && <BotaoAplicadoEm loteId={l.id} rotulo={`${p.name} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'}`} />}
+                                            <span>{l.custoPorEmbalagem != null ?`custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}` : 'custo —'}</span>
                                           </p>
                                         )
                                       })}

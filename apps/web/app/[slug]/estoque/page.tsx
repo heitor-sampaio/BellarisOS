@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
@@ -309,6 +309,7 @@ export default async function BranchStockPage({
         suppliers={suppliers}
         defaultBranchId={branchId}
         readOnly={readOnly}
+        podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
         buscaInicial={busca}
       />
     </div>

@@ -1380,6 +1380,25 @@ const procedures = await ler(
     `lotesVencendo`; o Copilot até o fim do dia). Prova:
     `e2e/estoque-tela-consumo-e-lotes.spec.ts` ("D1"),
     `tests/estoque-validade-do-lote.test.ts`.
+  - **O lote diz em quem foi aplicado — o recall** (A40 da 7ª simulação,
+    2026-11-05: não havia "quem recebeu o lote X"; a baixa segue FEFO, a regra
+    fica). Cada lote da linha aberta tem "Aplicado em": a janela lista cada
+    saída do lote para uma cliente — o insumo de um atendimento (a cliente, o
+    dia e a hora marcados, a profissional) e a venda de produto (quem vendeu) —
+    com a quantidade na unidade do movimento ("20 UI"). A ligação é a de
+    sempre, `stock_movement_batches` (o gatilho do lote); a leitura,
+    `aplicacoesDoLote` (`lib/estoque/aplicacoes-do-lote.ts`, os nomes por
+    `nomesDosRegistros`), pela action do mesmo nome em `actions/stock.ts`:
+    pede o Estoque E as Clientes (a lista diz nomes de cliente — sem as
+    Clientes, o botão nem aparece), com o lote da rede e da unidade ao alcance.
+    Fica de fora o lote já esgotado (a linha aberta lista os lotes com saldo).
+    Prova: `e2e/estoque-atritos-da-7.spec.ts` ("A40").
+  - **O lote vencendo aparece no dashboard** (A41 da 7ª, 2026-11-05: só no
+    Estoque): quem tem o Estoque vê "Lotes vencendo em 30 dias" no dashboard da
+    rede e no da unidade (`[data-lotes-vencendo]`, `LotesVencendo`), com o
+    produto, o lote, a validade e o que sobra, e "Ver" leva ao Estoque. A conta
+    é a do cartão "Validade em 30 dias" (`lotesVencendoDoRecorte`, sobre
+    `lotesComSaldo` + `lotesVencendo`). Prova: o mesmo spec ("A41").
   - **Sem produto nenhum, a tela diz isso** (A2 da 6ª simulação,
     2026-11-04): "Nenhum produto cadastrado", que os insumos vêm antes dos
     procedimentos que os usam, e o "Novo produto" ali mesmo

@@ -10,6 +10,8 @@ import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
 import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
+import { aplicacoesDoLote as aplicacoesDoLoteCore, type AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
+import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -849,5 +851,34 @@ export async function searchProducts(query: string) {
     return { products: (data ?? []) as { id: string; name: string; sku: string | null; unit: string; barcode: string | null }[] }
   } catch {
     return { products: [] as { id: string; name: string; sku: string | null; unit: string; barcode: string | null }[] }
+  }
+}
+
+/**
+ * Em quem foi aplicado o lote (A40 da 7ª simulação, 2026-11-05 — o recall): a
+ * cliente, o dia, a profissional (ou quem vendeu) e a quantidade de cada saída
+ * do lote para uma cliente. Pede o Estoque e as Clientes (a lista diz nomes de
+ * cliente): sem as Clientes, a tela nem oferece. O lote é da rede e da unidade
+ * ao alcance — quem tem unidade fixa só o da dela.
+ */
+export async function aplicacoesDoLote(loteId: string): Promise<{ error?: string; lote?: { numero: string | null; produto: string }; aplicacoes?: AplicacaoDoLote[] }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'VIEW')
+    assertPermission(ctx, 'clients', 'VIEW')
+    if (typeof loteId !== 'string' || !/^[0-9a-f-]{36}$/i.test(loteId)) return { error: 'Lote não encontrado.' }
+    const admin = createAdminClient()
+    const lote = await ler(admin.from('product_batches')
+      .select('id, branch_id, batch_number, products!inner(name, unit, consumption_unit, units_per_package, tenant_id)')
+      .eq('id', loteId).eq('products.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o lote')
+    if (!lote || !alcancaUnidade(ctx, lote.branch_id as string)) return { error: 'Lote não encontrado.' }
+    const produto = lote.products as unknown as { name: string } & UnidadesDoProduto
+    return {
+      lote: { numero: (lote.batch_number as string | null) ?? null, produto: produto.name },
+      aplicacoes: await aplicacoesDoLoteCore(admin, ctx.tenantId!, loteId, unidadeDoInsumo(produto)),
+    }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
   }
 }

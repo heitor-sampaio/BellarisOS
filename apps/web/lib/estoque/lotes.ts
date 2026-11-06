@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import { venceAte } from './validade'
+import { addDaysTZ } from '@/lib/datetime'
 
 /**
  * Os lotes com saldo nas unidades da tela de Estoque (J-45, simulação de
@@ -58,4 +59,39 @@ export async function lotesComSaldo(
 /** Os lotes que vencem até a data, pelo DIA (os já vencidos entram — é o alerta; D1 da 7ª, `validade.ts`). */
 export function lotesVencendo(lotes: LoteDoProduto[], ate: Date): LoteDoProduto[] {
   return lotes.filter(l => venceAte(l.validade, ate))
+}
+
+/** Um lote que vence logo, como o dashboard o mostra (A41 da 7ª simulação). */
+export interface LoteVencendo extends LoteDoProduto {
+  produto:  string
+  /** A embalagem do produto ("frasco"): a quantidade do lote é nela. */
+  embalagem: string
+}
+
+/**
+ * Os lotes com saldo que vencem nos próximos `dias` (os já vencidos entram — é
+ * o alerta), nas unidades do recorte: a MESMA conta do cartão "Validade em 30
+ * dias" do Estoque (`lotesComSaldo` + `lotesVencendo`). O lote que vence em 10
+ * dias aparecia só no Estoque (A41 da 7ª simulação, 2026-11-05); o dashboard
+ * de quem tem o Estoque passa a mostrá-lo.
+ */
+export async function lotesVencendoDoRecorte(
+  tenantId: string, branchIds: string[], dias = 30, agora: Date = new Date(),
+): Promise<LoteVencendo[]> {
+  if (!branchIds.length) return []
+  const admin = createAdminClient()
+  type Produto = { id: string; name: string; unit: string; consumption_unit: string | null; units_per_package: number | string | null }
+  const produtos = await lerTodas<Produto>((de, ate) => admin.from('products')
+    .select('id, name, unit, consumption_unit, units_per_package')
+    .eq('tenant_id', tenantId).eq('is_active', true)
+    .order('name').order('id').range(de, ate) as unknown as PromiseLike<{ data: Produto[] | null; error: { message: string } | null }>,
+  'carregar os produtos dos lotes')
+  const fatorDe = (p: Produto) => (p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 1)
+  const lotes = await lotesComSaldo(admin, branchIds, produtos.map(p => ({ id: p.id, fator: fatorDe(p) })))
+  const ate = addDaysTZ(agora, dias)
+  const porId = new Map(produtos.map(p => [p.id, p]))
+  return lotesVencendo(lotes, ate).map(l => {
+    const p = porId.get(l.produtoId)!
+    return { ...l, produto: p.name, embalagem: p.unit }
+  })
 }

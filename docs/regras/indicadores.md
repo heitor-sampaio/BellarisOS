@@ -413,7 +413,13 @@ KPI que não fazia nenhum dos dois.
   produtos vendidos" — o MESMO número do DRE (`metrics_resultado`); era
   "Custo do mês R$ 0" ao lado do gráfico "Custo R$ 445", e "Consumo de
   insumos R$ 380" ao lado do DRE de R$ 445. Prova:
-  `e2e/indicadores-custo-um-nome-so.spec.ts`. De 2026-10-27 a
+  `e2e/indicadores-custo-um-nome-so.spec.ts`. **E o cartão diz o que soma, e
+  a tela diz o que fica fora** (A50 da 7ª simulação, 2026-11-05: "Insumos e
+  produtos R$ 495" sem legenda, e a perda de R$ 380 fora do lucro parecia
+  erro — é a regra F7): o cartão tem a dica `DEFINICOES.insumosEProdutos` (o
+  insumo dos atendimentos ao custo de consumo + o custo do produto vendido) e,
+  embaixo do DRE, "A perda e o ajuste de estoque ficam fora do lucro…"
+  (`[data-fora-do-lucro]`). Prova: `e2e/estoque-atritos-da-7.spec.ts` ("A50"). De 2026-10-27 a
   10-29 o consumo era informativo e o custo do gráfico, a despesa paga (D2).
 - **`lib/metrics` para a tela quando o RPC falha** (`logRpcError` lança). Ele
   registrava e devolvia zero — "R$ 0,00" com cara de dado.
