@@ -95,7 +95,9 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // Decisão 2 do Heitor (2026-11-05): a menor de idade pede o responsável legal.
   const [nascimento, setNascimento] = useState('')
   const [responsavel, setResponsavel] = useState<CamposDoResponsavel>(RESPONSAVEL_VAZIO)
-  const [unitId, setUnitId] = useState(branchId || branches?.[0]?.id || '')
+  // A14 da 8ª simulação: com várias unidades, nenhuma vem escolhida (era a
+  // primeira em ordem alfabética); com uma só, ela.
+  const [unitId, setUnitId] = useState(branchId || (branches?.length === 1 ? branches[0]!.id : ''))
 
   const router   = useRouter()
   const pathname = usePathname()
@@ -235,6 +237,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       {branches && branches.length > 0 ? (
         <Field label="Unidade de cadastro *">
           <select className="field" value={unitId} onChange={e => setUnitId(e.target.value)} required>
+            {!unitId && <option value="">Selecione a unidade…</option>}
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
           {textoDaUnidade && (

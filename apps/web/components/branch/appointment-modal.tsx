@@ -94,7 +94,10 @@ export function AppointmentModal({
   // No portal da unidade ela já veio por prop; na rede é escolhida aqui, e cada
   // troca recarrega o que é dela: procedimentos, profissionais e salas.
   const escolheUnidade = (unidades?.length ?? 0) > 0
-  const [unidadeId, setUnidadeId] = useState(branchId || unidades?.[0]?.id || '')
+  // A14 da 8ª simulação: na rede com várias unidades, nenhuma vem escolhida —
+  // era a primeira em ordem alfabética (a Água Verde), não a que a pessoa quis.
+  // Com uma só, ela; com o filtro da agenda ou o clique na coluna, a dele.
+  const [unidadeId, setUnidadeId] = useState(branchId || (unidades?.length === 1 ? unidades[0]!.id : ''))
   const [dados, setDados] = useState({ procedures, professionals, rooms, slug })
   // Nasce carregando quando há unidade a carregar; cada troca liga de novo no
   // handler do seletor, e o efeito só desliga quando os dados chegam.
@@ -104,8 +107,12 @@ export function AppointmentModal({
   const [procId, setProcId] = useState(procedimentoInicialId ?? '')
 
   function trocarUnidade(id: string) {
+    // A PRIMEIRA escolha (a unidade nasce vazia na rede — A14 da 8ª) mantém o
+    // procedimento e a profissional que vieram pedidos (o "Reagendar"); o que
+    // a unidade não tem cai quando os dados dela chegam. Trocar depois zera.
+    if (unidadeId) { setProfId(''); setProcId('') }
     setUnidadeId(id)
-    setProfId(''); setProcId(''); setSalaEscolhida(null)
+    setSalaEscolhida(null)
     if (escolheUnidade && id) setCarregandoUnidade(true)
   }
 
@@ -115,6 +122,8 @@ export function AppointmentModal({
     dadosParaAgendar(unidadeId).then(d => {
       if (!vivo) return
       setDados(d)
+      setProfId(atual => (d.professionals.some(p => p.id === atual) ? atual : ''))
+      setProcId(atual => (d.procedures.some(p => p.id === atual) ? atual : ''))
       setCarregandoUnidade(false)
     })
     return () => { vivo = false }
@@ -372,7 +381,8 @@ export function AppointmentModal({
               tem a sala, a profissional e a agenda. */}
           {escolheUnidade && (
             <Field label="Unidade *" htmlFor="ag-unidade">
-              <select id="ag-unidade" className="field" value={unidadeId} onChange={e => trocarUnidade(e.target.value)}>
+              <select id="ag-unidade" className="field" value={unidadeId} onChange={e => trocarUnidade(e.target.value)} required>
+                {!unidadeId && <option value="">Selecione a unidade…</option>}
                 {unidades!.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </Field>

@@ -59,6 +59,22 @@ plano").
     separados no banco, só dividem a porta. Vender é o que o cliente compra
     e como paga; Agendar, quando ele vem.
   - O botão fica no cabeçalho da ficha, à esquerda do "+ Agendar".
+  - **Na ficha da REDE com duas ou mais unidades, a venda pergunta a unidade**
+    (D1 da 8ª simulação, 2026-11-06; H5: "nada se prende a clients.branch_id";
+    decidido pelo princípio 3: nenhuma vem escolhida). Era a unidade de
+    CADASTRO da cliente — ou a primeira em ordem alfabética —, sem perguntar:
+    a Patrícia (Água Verde) via "Hidratante — sem estoque", e a venda no Batel
+    só deu pelo portal do Batel; o "Quem vendeu" era a equipe da Água Verde.
+    Agora "Unidade da venda" (`[data-unidade-da-venda]`, "Selecione a
+    unidade…") vem antes de tudo, e o catálogo (procedimento, pacote,
+    produto com o estoque DELA) e a equipe são os da escolhida
+    (`VendaDaUnidade`, lido por unidade na página); o caixa, a baixa e a
+    comissão saem dela. O mesmo vale para o que a ficha da rede grava por
+    unidade: o crédito interno, o ajuste de pontos, a troca e a entrega do
+    voucher (o produto baixa no estoque da escolhida) e o agendar da unidade
+    pré-paga e da sessão — todos nascem sem unidade (`perguntaAUnidade`). Com
+    uma unidade só, nada a perguntar; no portal da unidade, é ela. Prova:
+    `e2e/vendas-unidade-da-venda.spec.ts`.
   - Também no painel da direita do inbox, com as ações da pessoa
     (`getConversationCard` → `venda`), **com ou sem ficha**. A
     unidade é a de quem atende, senão a do cliente, senão a única da rede.
@@ -1261,6 +1277,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ```
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa
 ❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos)
+❌ Gravar pela ficha da rede (venda, crédito, pontos, voucher, sessão) na unidade de cadastro da cliente ou na primeira da lista — com duas ou mais unidades, pergunta (D1 da 8ª)
 ❌ Estornar em parte um pagamento no cartão (crédito ou débito): o cartão estorna o pagamento inteiro (r2-fin-03) — no cancelamento do pacote é o "estornar o pagamento inteiro e lançar o usado de novo"
 ❌ Cancelar pacote fora de pacote_cancelar_devolvendo, ou fazer a conta do cancelamento na tela (é a simulação da mesma função), ou ler "pacote em andamento" sem tirar o cancelado (cancelado_em)
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda

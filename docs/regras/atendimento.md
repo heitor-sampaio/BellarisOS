@@ -92,6 +92,15 @@
     procedimento, e `horarioOcupado` da sala). A unidade pré-paga segue só
     com o horário (o crédito decide o procedimento no servidor). Prova:
     `e2e/pacote-sessao-agendar.spec.ts`.
+- **Na agenda da REDE, o novo agendamento nasce sem unidade** (A14 da 8ª
+  simulação, 2026-11-06; princípio 3): o "+ Agendar" da ficha da rede (e o
+  "Novo agendamento" com "Toda a rede") começava na primeira unidade em ordem
+  alfabética. Com várias, "Selecione a unidade…" (obrigatório); com uma, ela;
+  com o filtro de unidade da agenda ou o clique numa coluna, a dela. A
+  primeira escolha mantém o procedimento e a profissional pedidos (o
+  "Reagendar"); o que a unidade não tem cai. O "Novo cliente" da rede, igual
+  (a unidade de cadastro sem pré-escolha). Prova:
+  `e2e/vendas-unidade-da-venda.spec.ts` ("A14").
 - **O BLOQUEIO pontual da agenda** (decisão 3 do Heitor, 7ª simulação,
   2026-11-05: "concordo" — a Lia e a Rita procuraram em Agenda, Equipe e
   Configurações onde bloquear o almoço, a folga e as férias). "Bloquear

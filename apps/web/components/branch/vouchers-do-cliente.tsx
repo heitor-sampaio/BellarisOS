@@ -21,7 +21,7 @@ const ROTULO_DA_SITUACAO = { ATIVO: 'Ativo', USADO: 'Usado', CANCELADO: 'Cancela
 const CHIP_DA_SITUACAO   = { ATIVO: 'chip chip-success', USADO: 'chip chip-muted', CANCELADO: 'chip chip-muted', VENCIDO: 'chip chip-warning' } as const
 
 export function VouchersDoCliente({
-  clientId, saldo, recompensas, inicial, podeGerenciar, unidade, onMudouSaldo,
+  clientId, saldo, recompensas, inicial, podeGerenciar, unidade: unidadeDaFicha, unidades = [], onMudouSaldo,
 }: {
   clientId:      string
   saldo:         number
@@ -29,8 +29,17 @@ export function VouchersDoCliente({
   inicial:       VoucherDoCliente[]
   podeGerenciar: boolean
   unidade:       string
+  /**
+   * Sem a unidade da ficha (a da rede com várias — D1 da 8ª simulação), as
+   * unidades para escolher: a troca e a entrega do produto (que baixa no
+   * estoque dela) perguntam, sem nenhuma escolhida.
+   */
+  unidades?:     { id: string; name: string }[]
   onMudouSaldo:  () => void
 }) {
+  const [unidadeEscolhida, setUnidadeEscolhida] = useState('')
+  const perguntaAUnidade = !unidadeDaFicha && unidades.length > 1
+  const unidade = unidadeDaFicha || (unidades.length === 1 ? unidades[0]!.id : unidadeEscolhida)
   const [vouchers, setVouchers] = useState(inicial)
   // A lista nova do servidor (`router.refresh` depois de um pagamento que usou
   // o voucher) vale sobre a cópia — o mesmo defeito do saldo (D16).
@@ -73,6 +82,16 @@ export function VouchersDoCliente({
         )}
       </div>
 
+      {podeGerenciar && perguntaAUnidade && (recompensas.length > 0 || vouchers.some(v => v.type === 'PRODUTO' && situacaoDoVoucher(v) === 'ATIVO')) && (
+        <label data-unidade-do-voucher style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="field-label">Unidade da troca e da entrega</span>
+          <select className="filtro-select" value={unidadeEscolhida} onChange={e => setUnidadeEscolhida(e.target.value)}>
+            <option value="">Selecione a unidade…</option>
+            {unidades.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </label>
+      )}
+
       {trocando && (
         <div data-testid="trocar-pontos" style={{
           display: 'flex', flexDirection: 'column', gap: 6,
@@ -93,7 +112,7 @@ export function VouchersDoCliente({
                 <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: alcanca ? 'var(--brand)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                   {formatarPontos(r.points_cost)}
                 </span>
-                <button type="button" className="btn-primary" disabled={!alcanca || ocupado}
+                <button type="button" className="btn-primary" disabled={!alcanca || ocupado || !unidade}
                   title={falta ?? undefined}
                   onClick={() => depois(async () => {
                     const res = await resgatarRecompensa({ clientId, rewardId: r.id, branchId: unidade, envio: envio.chave() })
@@ -139,7 +158,7 @@ export function VouchersDoCliente({
                 {podeGerenciar && situacao === 'ATIVO' && cancelando !== v.id && (
                   <div style={{ display: 'flex', gap: 8 }}>
                     {v.type === 'PRODUTO' && (
-                      <button type="button" className="btn-primary" disabled={ocupado}
+                      <button type="button" className="btn-primary" disabled={ocupado || !unidade} title={unidade ? undefined : 'Escolha a unidade da entrega'}
                         onClick={() => depois(() => entregarVoucherProduto({ voucherId: v.id, branchId: unidade }))}>
                         {ocupado ? <Loader2 size={13} className="animate-spin" /> : null} Entregar produto
                       </button>

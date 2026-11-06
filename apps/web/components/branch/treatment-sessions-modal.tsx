@@ -215,6 +215,8 @@ export function SessionScheduler({
             value={branchId ?? ''}
             onChange={e => trocarFilial(e.target.value)}
           >
+            {/* Sem unidade escolhida (a ficha da rede — D1 da 8ª), nenhuma vem marcada. */}
+            {!branchId && <option value="">Selecione a unidade…</option>}
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </div>

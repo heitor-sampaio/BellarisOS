@@ -30,7 +30,9 @@ export function ProcedimentosPagos({ vendas, podeCancelar, podeAgendar = false, 
   branches?:    { id: string; name: string }[]
   currentBranchId?: string
 }) {
-  const agenda: Agenda = { podeAgendar: podeAgendar && !!currentBranchId, branches, currentBranchId }
+  // Sem a unidade corrente (a ficha da rede com várias — D1 da 8ª), o agendar
+  // pergunta a unidade entre as da rede.
+  const agenda: Agenda = { podeAgendar: podeAgendar && (!!currentBranchId || branches.length > 1), branches, currentBranchId }
   if (!vendas.length) return null
   return (
     <section className="card" data-procedimentos-pagos style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>

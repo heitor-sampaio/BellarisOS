@@ -170,6 +170,22 @@ export default async function AdminClientProfilePage({
   const effBranch = branchRow ?? ((branchesRaw?.[0] ?? null) as { id: string; name: string; slug: string } | null)
   const branchId  = effBranch?.id ?? ''
   const slug      = effBranch?.slug ?? ''
+  // Com duas ou mais unidades, quem grava por unidade PERGUNTA (D1 e A14 da 8ª
+  // simulação; H5: "nada se prende a clients.branch_id"): a venda, o crédito,
+  // os pontos, o voucher e a sessão nascem sem unidade escolhida. A venda saía
+  // da unidade de cadastro da Patrícia (Água Verde, "Hidratante — sem
+  // estoque"), e só deu entrando pelo portal do Batel.
+  const unidadesAtivas = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  const perguntaAUnidade = unidadesAtivas.length > 1
+  const vendaPorUnidade = perguntaAUnidade && podeReceber(ctx)
+    ? await Promise.all(unidadesAtivas.map(async u => {
+        const [pacotes, procedimentos, produtos, equipe] = await Promise.all([
+          pacotesAVenda(ctx.tenantId!, u.id), procedimentosAVenda(ctx.tenantId!, u.id),
+          produtosAVenda(ctx.tenantId!, u.id), equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId),
+        ])
+        return { id: u.id, nome: u.name, pacotes, procedimentos, produtos, equipe }
+      }))
+    : []
 
   // KPIs
   // O dinheiro do cliente vem do banco, pela regra do sistema (§13.1): LTV é
@@ -435,7 +451,7 @@ export default async function AdminClientProfilePage({
           : null}
         canGrantCredit={ctx.permissions.financial === 'MANAGE'}
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}
-        currentBranchId={branchId}
+        currentBranchId={perguntaAUnidade ? '' : branchId}
         slug={slug}
         canManageProcedures={can(ctx, 'medical_records', 'MANAGE')}
         // Anexo clínico com o alcance da ficha (o "só os meus" do prontuário).
@@ -446,10 +462,12 @@ export default async function AdminClientProfilePage({
         podeReceber={podeReceber(ctx)}
         aReceber={aReceber}
         podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
-        pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branchId || null) : []}
-        procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branchId || null) : []}
-        produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branchId || null) : []}
-        equipeDaVenda={podeReceber(ctx) ? await equipeDaVenda(ctx.tenantId!, branchId || null, ctx.internalUserId) : []}
+        pacotesAVenda={podeReceber(ctx) && !perguntaAUnidade ? await pacotesAVenda(ctx.tenantId!, branchId || null) : []}
+        procedimentosAVenda={podeReceber(ctx) && !perguntaAUnidade ? await procedimentosAVenda(ctx.tenantId!, branchId || null) : []}
+        produtosAVenda={podeReceber(ctx) && !perguntaAUnidade ? await produtosAVenda(ctx.tenantId!, branchId || null) : []}
+        equipeDaVenda={podeReceber(ctx) && !perguntaAUnidade ? await equipeDaVenda(ctx.tenantId!, branchId || null, ctx.internalUserId) : []}
+        perguntaAUnidade={perguntaAUnidade}
+        vendaPorUnidade={vendaPorUnidade}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}
         podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}

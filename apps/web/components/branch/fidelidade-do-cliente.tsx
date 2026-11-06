@@ -127,6 +127,7 @@ export function FidelidadeDoCliente({
         inicial={fidelidade.vouchers}
         podeGerenciar={fidelidade.podeAjustar}
         unidade={unidadePadrao}
+        unidades={unidadePadrao ? [] : branches}
         onMudouSaldo={recarregar}
       />
 
@@ -202,6 +203,7 @@ function FormularioDeAjuste({
     const n = Number(pontos)
     if (!Number.isInteger(n) || n <= 0) { setErro('Informe um número inteiro de pontos, maior que zero.'); return }
     if (motivo.trim().length < 3)       { setErro('O motivo do ajuste é obrigatório.'); return }
+    if (!unidade)                       { setErro('Escolha a unidade do ajuste.'); return }
     iniciar(async () => {
       try {
         const res = await ajustarPontos({
@@ -236,6 +238,8 @@ function FormularioDeAjuste({
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Unidade</span>
             <select name="unidade" className="filtro-select" value={unidade} onChange={e => setUnidade(e.target.value)}>
+              {/* A ficha da rede com várias unidades não escolhe por ela (D1 da 8ª). */}
+              {!unidade && <option value="">Selecione…</option>}
               {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </label>

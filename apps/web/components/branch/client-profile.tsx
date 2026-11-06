@@ -34,7 +34,7 @@ import { ptBR } from 'date-fns/locale'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
-import { Vender, type ProcedimentoAVenda, type ProdutoAVenda, type MembroDaVenda } from '@/components/shared/vender'
+import { Vender, type ProcedimentoAVenda, type ProdutoAVenda, type MembroDaVenda, type VendaDaUnidade } from '@/components/shared/vender'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
@@ -244,6 +244,16 @@ interface Props {
    * (credito interno) passam a perguntar a unidade em vez de herdarem uma.
    */
   clienteSemFilial?:     boolean
+  /**
+   * A ficha da REDE com duas ou mais unidades (D1 e A14 da 8ª simulação; H5:
+   * "nada se prende a clients.branch_id"): o que grava por unidade — a venda,
+   * o crédito, os pontos, o voucher, a sessão — pergunta a unidade, sem
+   * nenhuma escolhida. Era a de cadastro da cliente, ou a primeira em ordem
+   * alfabética.
+   */
+  perguntaAUnidade?:     boolean
+  /** O catálogo à venda de CADA unidade, para o "Vender" que pergunta a unidade (D1). */
+  vendaPorUnidade?:      VendaDaUnidade[]
   clientHistory:         ClientHistoryEvent[]
   /** Procedimentos que podem entrar num plano de tratamento (sem os de avaliação). */
   planProcedures?:       { id: string; name: string; category: string; price: number; durationMin: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[]
@@ -1342,7 +1352,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
@@ -1363,7 +1373,10 @@ export function ClientProfile({
   // URL: o Vender abre quando ele passa de 0 a 1. Sem nada a vender aqui, ou
   // sem poder receber, avisa em vez de não fazer nada.
   const acaoDaUrl = params.get('acao')
-  const podeVenderAqui = podeReceber && !!currentBranchId && (pacotesAVenda.length > 0 || procedimentosAVenda.length > 0 || produtosAVenda.length > 0)
+  // Com a unidade a perguntar (D1), há o que vender se alguma unidade tem.
+  const podeVenderAqui = podeReceber && (perguntaAUnidade
+    ? vendaPorUnidade.some(u => u.pacotes.length > 0 || u.procedimentos.length > 0 || u.produtos.length > 0)
+    : !!currentBranchId && (pacotesAVenda.length > 0 || procedimentosAVenda.length > 0 || produtosAVenda.length > 0))
   const sinalDaVenda = acaoDaUrl === 'vender' && podeVenderAqui ? 1 : 0
   const aoPedirVenda = useEffectEvent(() => {
     if (!podeVenderAqui) toast.info(podeReceber ? 'Não há procedimento, pacote nem produto à venda para este cliente.' : 'Seu cargo não recebe pagamentos.')
@@ -1557,8 +1570,9 @@ export function ClientProfile({
           {/* Actions — vender à esquerda do agendar (pedido do Heitor): vender é o
               que o cliente compra e como paga; agendar, quando ele vem. */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-            {podeReceber && currentBranchId && (
+            {podeReceber && (currentBranchId || perguntaAUnidade) && (
               <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} produtos={produtosAVenda} equipe={equipeDaVenda}
+                unidades={perguntaAUnidade ? vendaPorUnidade : null}
                 podeAgendar={podeAgendar} abrirSinal={arquivada ? 0 : sinalDaVenda} aReceber={aReceber.itens}
                 desativadoPorque={arquivada ? motivoDoArquivo : null} />
             )}
@@ -1881,7 +1895,7 @@ export function ClientProfile({
               clientId={client.id}
               fidelidade={fidelidade}
               branches={branches}
-              unidadePadrao={currentBranchId || branchId}
+              unidadePadrao={perguntaAUnidade ? '' : (currentBranchId || branchId)}
             />
           )}
         </div>
@@ -2065,7 +2079,7 @@ export function ClientProfile({
           clientId={client.id}
           branchId={branchId}
           slug={slug}
-          unidadesParaCredito={clienteSemFilial ? branches : []}
+          unidadesParaCredito={clienteSemFilial || perguntaAUnidade ? branches : []}
           totais={totaisFinanceiros}
           soOsProprios={financeiroSoOsProprios}
         />

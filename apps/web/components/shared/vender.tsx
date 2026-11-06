@@ -39,7 +39,112 @@ export interface MembroDaVenda { id: string; nome: string; atende: boolean; /** 
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
 
-export function Vender({ clienteId, branchId, pacotes, procedimentos, produtos = [], compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [], desativadoPorque = null, equipe = [] }: {
+/**
+ * O que se vende em UMA unidade (D1 da 8ª simulação): na ficha da rede com
+ * mais de uma unidade, a venda pergunta a unidade, e o catálogo, o estoque e a
+ * equipe ("Quem vendeu") são os dela — o caixa e a baixa também.
+ */
+export interface VendaDaUnidade {
+  id: string; nome: string
+  pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[]; produtos: ProdutoAVenda[]; equipe: MembroDaVenda[]
+}
+
+const temAVenda = (u: { pacotes: unknown[]; procedimentos: unknown[]; produtos: unknown[] }) =>
+  u.pacotes.length > 0 || u.procedimentos.length > 0 || u.produtos.length > 0
+
+export function Vender({ unidades = null, ...resto }: Parameters<typeof VenderNaUnidade>[0] & {
+  /**
+   * As unidades da venda (D1 da 8ª simulação, H5: "nada se prende a
+   * clients.branch_id"). Com duas ou mais, a janela pergunta "Unidade da
+   * venda", sem nenhuma escolhida: era a unidade de cadastro da cliente — ou a
+   * primeira em ordem alfabética —, e a venda saía de lá sem perguntar.
+   */
+  unidades?: VendaDaUnidade[] | null
+}) {
+  if (!unidades || unidades.length < 2) return <VenderNaUnidade {...resto} />
+  return <VenderPerguntandoAUnidade {...resto} unidades={unidades} />
+}
+
+/** O "Vender" que pergunta a unidade antes: o mesmo botão, a mesma janela. */
+function VenderPerguntandoAUnidade({ unidades, clienteId, compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [], desativadoPorque = null }: Parameters<typeof VenderNaUnidade>[0] & { unidades: VendaDaUnidade[] }) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [abertura, setAbertura] = useState(0)
+  const [unidadeId, setUnidadeId] = useState('')
+  const [aba, setAba] = useState<Aba>('PROCEDIMENTO')
+  const abrir = useCallback(() => { setAbertura(n => n + 1); setUnidadeId(''); dialogRef.current?.showModal() }, [])
+  const fechar = useCallback(() => dialogRef.current?.close(), [])
+  useEffect(() => {
+    if (abrirSinal > 0 && !dialogRef.current?.open) dialogRef.current?.showModal()
+  }, [abrirSinal])
+
+  if (!unidades.some(temAVenda)) return null
+  const unidade = unidades.find(u => u.id === unidadeId) ?? null
+  const abas = unidade ? [
+    ...(unidade.procedimentos.length ? [{ key: 'PROCEDIMENTO', label: 'Procedimento' }] : []),
+    ...(unidade.pacotes.length ? [{ key: 'PACOTE', label: 'Pacote' }] : []),
+    ...(unidade.produtos.length ? [{ key: 'PRODUTO', label: 'Produto' }] : []),
+  ] : []
+  // A aba que a unidade nova não tem cai na primeira que ela tem.
+  const abaDaUnidade: Aba = abas.some(a => a.key === aba) ? aba : ((abas[0]?.key as Aba | undefined) ?? 'PROCEDIMENTO')
+  const chave = `${abertura}-${abrirSinal}-${unidadeId}`
+  const botao = compacto
+    ? { className: 'btn-ghost', style: { fontSize: 'var(--text-2xs)', padding: '4px 7px' } as const, icone: 12 }
+    : { className: 'btn-secondary', style: undefined, icone: 15 }
+  if (desativadoPorque) {
+    return (
+      <button type="button" className={botao.className} disabled title={desativadoPorque} style={botao.style}>
+        <ShoppingBag size={botao.icone} aria-hidden /> Vender
+      </button>
+    )
+  }
+  return (
+    <>
+      <button type="button" className={botao.className} onClick={abrir} style={botao.style}>
+        <ShoppingBag size={botao.icone} aria-hidden /> Vender
+      </button>
+      <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}
+        onClick={e => { if (e.target === dialogRef.current) fechar() }} aria-label="Vender">
+        <div className="modal-container">
+          <div style={{ flexShrink: 0, borderBottom: '1px solid var(--hairline)', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Vender</h2>
+            <button type="button" className="btn-ghost" onClick={fechar} style={{ padding: 6 }} aria-label="Fechar"><X size={16} /></button>
+          </div>
+          <div className="modal-body" style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div data-unidade-da-venda style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="field-label" htmlFor={`venda-unidade-${clienteId}`}>Unidade da venda</label>
+              <select id={`venda-unidade-${clienteId}`} className="field" value={unidadeId} onChange={e => setUnidadeId(e.target.value)}>
+                <option value="">Selecione a unidade…</option>
+                {unidades.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </select>
+              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                O caixa, o estoque e “Quem vendeu” são os da unidade escolhida.
+              </span>
+            </div>
+            {unidade && !temAVenda(unidade) && (
+              <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                Não há procedimento, pacote nem produto à venda na unidade {unidade.nome}.
+              </p>
+            )}
+            {unidade && temAVenda(unidade) && (
+              <>
+                {abas.length > 1 && (
+                  <SegSelect ariaLabel="O que vender" options={abas} value={abaDaUnidade} onSelect={k => setAba(k as Aba)} />
+                )}
+                {abaDaUnidade === 'PRODUTO' && unidade.produtos.length > 0
+                  ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={unidade.id} produtos={unidade.produtos} onFim={fechar} equipe={unidade.equipe} />
+                  : abaDaUnidade === 'PROCEDIMENTO' && unidade.procedimentos.length > 0
+                  ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={unidade.id} procedimentos={unidade.procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} equipe={unidade.equipe} />
+                  : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={unidade.id} pacotes={unidade.pacotes} onFim={fechar} equipe={unidade.equipe} podeAgendar={podeAgendar} />}
+              </>
+            )}
+          </div>
+        </div>
+      </dialog>
+    </>
+  )
+}
+
+function VenderNaUnidade({ clienteId, branchId, pacotes, procedimentos, produtos = [], compacto = false, abrirSinal = 0, podeAgendar = false, aReceber = [], desativadoPorque = null, equipe = [] }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
