@@ -32,6 +32,8 @@ interface TopbarProps {
   plano?:         { funcionalidades: readonly string[] } | null
   /** A agenda do cargo é "só a própria": a busca não oferece os atalhos de agendar. */
   agendaPropria?: boolean
+  /** Quem está é da REDE (`ctx.branchId === null`): a busca, no portal da unidade, acha também o que é só da rede (A18 da 8ª). */
+  daRede?:        boolean
   /** A sessão é do suporte da plataforma: mostra o aviso fixo com o "Sair". */
   suporte?:       SuporteNoContexto | null
   /** Teste acabando ou pagamento em atraso — só para quem administra a rede. */
@@ -49,7 +51,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false }: TopbarProps) {
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
   const { toggle } = useSidebar()
@@ -111,7 +113,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
-      <BuscaUniversal slug={slug} permissions={permissions} scopes={scopes} plano={plano} agendaPropria={agendaPropria} />
+      <BuscaUniversal slug={slug} permissions={permissions} scopes={scopes} plano={plano} agendaPropria={agendaPropria} daRede={daRede} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Ajuda: chamado com o suporte. No modo suporte quem está aqui é o atendente */}

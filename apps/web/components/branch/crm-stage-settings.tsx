@@ -6,7 +6,7 @@ import {
 import {
   X, Settings2, GripVertical, Trash2, Plus, CheckCircle2, Star, Archive, ArchiveRestore,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA,
   type CRMFunnel, type CRMStage, type StageOutcome,
@@ -410,6 +410,18 @@ export function CRMStageSettings({
     setFunnelErr(null)
     dialogRef.current?.showModal()
   }, [activeFunnelId])
+
+  // A18 da 8ª simulação: a busca ("funil", "etapas") leva a `?configurar=funis`
+  // — a janela abre, e o parâmetro sai da URL (recarregar não reabre).
+  const pedidoNaUrl = useSearchParams().get('configurar') === 'funis'
+  // Só o DOM: a seleção já nasce no funil ativo, e o erro, vazio.
+  useEffect(() => {
+    if (!pedidoNaUrl) return
+    if (!dialogRef.current?.open) dialogRef.current?.showModal()
+    const url = new URL(window.location.href)
+    url.searchParams.delete('configurar')
+    window.history.replaceState(null, '', url.pathname + url.search)
+  }, [pedidoNaUrl])
 
   const visiveis = useMemo(
     () => funnels.filter(f => mostrarArquivados || f.archived_at === null),

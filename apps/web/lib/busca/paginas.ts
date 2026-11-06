@@ -82,6 +82,24 @@ const ANCORA_DO_APELIDO: Record<string, string> = {
 }
 
 /**
+ * Duas telas achadas pelo MESMO apelido dizem qual é qual (A18 da 8ª
+ * simulação: "Termos" abria Documentos — os emitidos — e a dona procurava os
+ * modelos, em Configurações).
+ */
+const SUBTITULO_PELO_APELIDO: Record<string, string> = {
+  documentos:            'Os termos e contratos emitidos e assinados',
+  'settings:documentos': 'Os modelos de termo e contrato (a configuração)',
+  oportunidades:         'O quadro das oportunidades',
+}
+
+/**
+ * As abas de Configurações que só existem no portal da REDE. No portal da
+ * unidade, quem é da rede (A18 da 8ª: a dona procurou "Taxas" e não achou
+ * nada) as acha com o endereço da rede; quem tem unidade fixa, não — não abre.
+ */
+const SO_NA_REDE: readonly string[] = ABAS_DA_REDE.filter(k => !ABAS_DA_UNIDADE.includes(k))
+
+/**
  * Todas as páginas que esta pessoa abre, com o endereço do portal em que ela
  * está. `slug` nulo = portal da rede.
  */
@@ -91,6 +109,8 @@ export function paginasDaBusca(
   plano?: { funcionalidades: readonly string[] } | null,
   /** O escopo de cada módulo: o Fechamento do dia pede o financeiro de todos (D6). */
   scopes?: Partial<ResolvedScopes>,
+  /** Quem busca é da REDE (`ctx.branchId === null`): no portal da unidade, acha também o que é só da rede. */
+  opcoes: { daRede?: boolean } = {},
 ): PaginaDaBusca[] {
   const naRede = slug === null
   const prefixo = naRede ? '' : `/${slug}`
@@ -116,6 +136,36 @@ export function paginasDaBusca(
       titulo:   `Configurações → ${aba.label}`,
       href:     `${base}/settings?tab=${aba.key}`,
       apelidos: APELIDOS_DA_ABA[aba.key] ?? [],
+    })
+  }
+
+  // No portal da unidade, quem é da rede acha também as abas que só a rede
+  // tem (as taxas, a fidelidade…), com o endereço da rede (A18 da 8ª).
+  if (!naRede && opcoes.daRede) {
+    for (const aba of ABAS_DE_CONFIGURACAO) {
+      if (!SO_NA_REDE.includes(aba.key)) continue
+      if (!abaLiberada(aba, m => permissions[m] === 'MANAGE')) continue
+      if (!abaNoPlano(aba, plano)) continue
+      paginas.push({
+        key:      `settings:${aba.key}`,
+        titulo:   `Configurações → ${aba.label}`,
+        href:     `/admin/settings?tab=${aba.key}`,
+        apelidos: APELIDOS_DA_ABA[aba.key] ?? [],
+      })
+    }
+  }
+
+  // A configuração dos FUNIS (A18 da 8ª: "Funil" abria o quadro, e a
+  // configuração é a janela "Configurar funis" dele): quem gerencia o CRM, com
+  // as oportunidades no plano. No portal da unidade, só quem é da rede (H7: o
+  // "Configurar funis" some do quadro da unidade fixa).
+  const quadro = paginas.find(p => p.key === 'oportunidades')
+  if (quadro && permissions.crm === 'MANAGE' && (naRede || opcoes.daRede)) {
+    paginas.push({
+      key:      'oportunidades:funis',
+      titulo:   'Oportunidades → Configurar funis',
+      href:     `${quadro.href}?configurar=funis`,
+      apelidos: ['funil', 'funis', 'etapas', 'motivos de perda', 'origens dos leads'],
     })
   }
 
@@ -146,7 +196,8 @@ export function paginasQueCasam(
     .map(p => {
       const apelido = apelidoQueCasou(p, termo)
       const ancora = apelido ? ANCORA_DO_APELIDO[apelido.toLowerCase()] ?? '' : ''
-      return { tipo: 'pagina' as const, id: p.key, titulo: p.titulo, subtitulo: apelido, href: p.href + ancora }
+      const subtitulo = apelido ? (SUBTITULO_PELO_APELIDO[p.key] ?? apelido) : null
+      return { tipo: 'pagina' as const, id: p.key, titulo: p.titulo, subtitulo, href: p.href + ancora }
     })
 }
 

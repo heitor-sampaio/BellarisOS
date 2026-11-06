@@ -84,7 +84,9 @@ function ehCampoDeTexto(el: EventTarget | null): boolean {
   return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
 }
 
-export function BuscaUniversal({ slug, permissions, scopes, plano = null, agendaPropria = false }: {
+export function BuscaUniversal({ slug, permissions, scopes, plano = null, agendaPropria = false, daRede = false }: {
+  /** Quem busca é da rede: no portal da unidade, acha também as configurações só da rede (A18 da 8ª). */
+  daRede?: boolean
   plano?: { funcionalidades: readonly string[] } | null
   /** A agenda do cargo é "só a própria" (outra tela, sem o modal de criar): sem os atalhos de agendar. */
   agendaPropria?: boolean
@@ -117,7 +119,7 @@ export function BuscaUniversal({ slug, permissions, scopes, plano = null, agenda
   const campoRef   = useRef<HTMLInputElement>(null)
   const campoCelRef = useRef<HTMLInputElement>(null)
 
-  const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano, scopes), [slug, permissions, plano, scopes])
+  const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano, scopes, { daRede }), [slug, permissions, plano, scopes, daRede])
   const quem = useMemo(() => ({ pathname, slug, permissoes: permissions, agendaPropria }), [pathname, slug, permissions, agendaPropria])
 
   // -- O que aparece -----------------------------------------------------------
