@@ -24,7 +24,8 @@ interface Recorte {
   to:        Date
   /**
    * "Só os meus" (2026-10-28): as vendas DELA — quem atendeu o avulso, quem
-   * vendeu o pacote e o pré-pago, a dona do plano (a coluna "Profissional").
+   * vendeu o pacote, o pré-pago, o produto e o plano — sem "Quem vendeu", a
+   * dona do plano (D14 da 8ª) — (a coluna "Profissional").
    */
   professionalId?: string | null
 }

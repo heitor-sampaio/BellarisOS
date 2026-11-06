@@ -113,6 +113,7 @@ export const ISOLADOS = [
   'estoque-chip-da-unidade.spec.ts',
   'estoque-custo-de-consumo.spec.ts',
   'estoque-transferencia-com-nomes.spec.ts',
+  'relatorio-vendas-plano-de-quem-vendeu.spec.ts',
   'estoque-negativo-e-sem-saldo.spec.ts',
   'estoque-vazio.spec.ts',
   'estoque-nunca-gera-despesa.spec.ts',

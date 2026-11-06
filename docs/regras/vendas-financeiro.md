@@ -1035,7 +1035,8 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   `quemVendeu`, antes do dinheiro). Fica em `treatment_plans.vendido_por` e
   leva a comissão de VENDA do plano (`comissoes.md`). O chamador que não manda
   `equipe` (os de antes) fecha sem comissão de venda. A coluna "Profissional"
-  das Vendas do plano continua a dona do plano (`indicadores.md`). Prova:
+  das Vendas do plano é quem vendeu (D14 da 8ª; sem ele, a dona do plano —
+  `indicadores.md`). Prova:
   `e2e/comissoes-venda-do-plano.spec.ts`.
 - **O checkout do plano SUGERE o pacote equivalente** (2026-10-21, decisão
   do Heitor): quando as sessões do plano têm os MESMOS procedimentos, nas

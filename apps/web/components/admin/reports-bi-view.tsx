@@ -660,7 +660,7 @@ function TabVendas(p: ReportsBiProps) {
           )}
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-          Profissional: quem atendeu; no pacote e no pré-pago, quem vendeu. A sessão de pacote,
+          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele). A sessão de pacote,
           de plano ou pré-paga não aparece de novo — já foi vendida.
         </p>
       </SCard>

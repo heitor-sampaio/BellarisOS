@@ -476,7 +476,13 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - **Plano**: `treatment_plans.aceito_em` (gatilho `trg_plano_aceito_em` na
   passagem para ACCEPTED; os antigos herdaram o evento `plano.aceito`, o
   primeiro lançamento ou o `updated_at`), e vale a soma dos procedimentos dele
-  (já com o desconto rateado). Cancelado depois de aceito sai.
+  (já com o desconto rateado). Cancelado depois de aceito sai. **É de quem
+  VENDEU** (D14 da 8ª simulação, 2026-11-06): a coluna "Profissional" é o
+  "Quem vendeu" do checkout (`treatment_plans.vendido_por`); a dona do plano
+  só quando ninguém foi marcado (os planos de antes). Era sempre a dona — a
+  "Dra. Paula" no plano que a Marta vendeu. O "só os meus" segue a mesma
+  pessoa (migration `20261106003404`). Prova:
+  `e2e/relatorio-vendas-plano-de-quem-vendeu.spec.ts`.
 - A lista e o total fecham no `fullTo`. A exportação (`/api/relatorios/vendas`,
   CSV) leva o mesmo recorte sem página e se defende sozinha: sessão, a aba no
   cargo, a unidade ao alcance; a rede inteira só para quem vê o consolidado.
@@ -738,7 +744,8 @@ dela), `metrics_gasto_por_cliente`, `metrics_receita_por_categoria_de_procedimen
 consumo dela; a comissão dela; o saldo do estoque segue o da unidade — quem
 mostra o esconde) e `metrics_vendas` (+ `_pagina`, `_resumo`). **Venda dela**
 é a pessoa da coluna "Profissional" da venda: quem atendeu o avulso, quem
-vendeu o pacote e o pré-pago, a dona do plano.
+vendeu o pacote, o pré-pago, o produto e o plano (no plano sem "Quem vendeu",
+a dona dele — D14 da 8ª, abaixo).
 
 **Os Relatórios com "só os meus"** (`reports-bi-section`, os dois portais):
 cada número da aba no recorte do seu módulo (acima) — o da agenda a
