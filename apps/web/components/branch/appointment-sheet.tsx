@@ -131,7 +131,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
 
   // O que o remarcar avisa ANTES de confirmar (A25, cli-01): fora do
   // expediente, choque e a cliente arquivada. Só aviso — o servidor decide.
-  const [avisosRemarcar, setAvisosRemarcar] = useState<string[]>([])
+  // Guardados com o horário a que respondem (D9 da 8ª): o aviso de um horário
+  // não vale para o seguinte, e o Confirmar espera o do horário escolhido.
+  const [avisosLidos, setAvisosLidos] = useState<{ de: string; itens: string[] }>({ de: '', itens: [] })
+  const avisosRemarcar = avisosLidos.de === novoDT ? avisosLidos.itens : []
+  const conferindoRemarcar = remarcando && !!novoDT && novoDT !== inicioLocal && avisosLidos.de !== novoDT
   useEffect(() => {
     if (!remarcando || !novoDT) return
     let vivo = true
@@ -141,9 +145,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
           if (!vivo) return
           // O choque do horário de AGORA é o próprio agendamento: só conta o do novo.
           const novo = novoDT !== inicioLocal
-          setAvisosRemarcar([r.clienteArquivada, novo ? r.foraDoHorario : null, novo ? r.conflito : null, novo ? (r.bloqueio ?? null) : null].filter((x): x is string => !!x))
+          setAvisosLidos({ de: novoDT, itens: [r.clienteArquivada, novo ? r.foraDoHorario : null, novo ? r.conflito : null, novo ? (r.bloqueio ?? null) : null].filter((x): x is string => !!x) })
         })
-        .catch(() => { /* aviso é acessório: sem ele, o servidor ainda decide */ })
+        // Sem a conferência, nenhum aviso (o servidor ainda decide) — e o Confirmar não espera para sempre.
+        .catch(() => { if (vivo) setAvisosLidos({ de: novoDT, itens: [] }) })
     }, 250)
     return () => { vivo = false; clearTimeout(t) }
   }, [remarcando, novoDT, inicioLocal, appointment.id])
@@ -387,8 +392,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 {remarcaState?.error && (
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>{remarcaState.error}</p>
                 )}
-                <button type="submit" disabled={remarcaPending || !novoDT || novoDT === inicioLocal} className="btn-primary" style={{ justifyContent: 'center' }}>
-                  {remarcaPending ? 'Remarcando…' : 'Confirmar novo horário'}
+                <button type="submit" disabled={remarcaPending || !novoDT || novoDT === inicioLocal || conferindoRemarcar} className="btn-primary" style={{ justifyContent: 'center' }}>
+                  {remarcaPending ? 'Remarcando…' : conferindoRemarcar ? 'Conferindo o horário…' : 'Confirmar novo horário'}
                 </button>
               </form>
             )}

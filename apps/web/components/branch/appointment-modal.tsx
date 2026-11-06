@@ -306,10 +306,16 @@ export function AppointmentModal({
     const t = setTimeout(() => {
       avisosDoHorario(unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento || null, duracaoMin, salaId || null)
         .then(r => { if (vivo) setAvisos({ chave: chaveDosAvisos, ...r }) })
-        .catch(() => { /* sem aviso: o servidor confere ao gravar */ })
+        // Sem a conferência, nenhum aviso — e o Confirmar não espera para sempre (o servidor confere ao gravar).
+        .catch(() => { if (vivo) setAvisos({ chave: chaveDosAvisos, foraDoHorario: null, conflito: null, bloqueio: null }) })
     }, 200)
     return () => { vivo = false; clearTimeout(t) }
   }, [chaveDosAvisos, unidadeId, profId, scheduledAtUTC, procedimentoDoAgendamento, duracaoMin, salaId])
+  // D9 da 8ª simulação: o Confirmar gravava ANTES de o aviso do horário chegar
+  // — a Ana às 23:55, no bloqueio das férias e fora do expediente, gravou "sem
+  // nenhum aviso". O botão espera a conferência DESTE horário (como espera as
+  // salas, D12 da 7ª): o que a janela avisa aparece antes de gravar.
+  const conferindoOHorario = !!chaveDosAvisos && avisos?.chave !== chaveDosAvisos
   // A26 (5ª simulação): a recusa do servidor por choque e o aviso diziam o
   // mesmo, duas vezes. Recusado por choque com o aviso na tela, fica UMA
   // mensagem: a recusa, com o detalhe do aviso (horário e unidade).
@@ -348,6 +354,8 @@ export function AppointmentModal({
           ref={formRef}
           onSubmit={e => {
             e.preventDefault()
+            // O Enter no campo não fura a espera da conferência (D9).
+            if (conferindoOHorario || carregandoSalas) return
             const dados = new FormData(e.currentTarget)
             if (respostaJaExiste) dados.set('_jaExiste', respostaJaExiste)
             startTransition(() => formAction(dados))
@@ -635,12 +643,12 @@ export function AppointmentModal({
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button
               type="submit"
-              disabled={pending || !podeAgendar || carregandoSalas}
+              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario}
               className="btn-primary"
               style={{ opacity: podeAgendar ? 1 : 0.5 }}
             >
               <Calendar size={14} />
-              {pending ? 'Agendando…' : 'Confirmar agendamento'}
+              {pending ? 'Agendando…' : conferindoOHorario ? 'Conferindo o horário…' : 'Confirmar agendamento'}
             </button>
           </div>
         </form>
