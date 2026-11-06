@@ -1274,7 +1274,14 @@ const procedures = await ler(
   `estoque_transferir`, numa transação com as duas linhas de saldo travadas,
   desde 2026-10-08): as duas pernas (`TRANSFER_OUT` e `TRANSFER_IN`) no mesmo
   insert, ligadas por uma `reference` aleatória. A tabela `stock_transfers` com confirmação do destino
-  não é usada.
+  não é usada. **A nota diz o nome das unidades** (D12 da 8ª simulação,
+  2026-11-06): "Transferência para Batel." na origem e "Transferência de Água
+  Verde." no destino, com a observação depois (migration `20261106003403`);
+  dizia "Transferência → destino." e "← origem.". As linhas de antes não foram
+  reescritas: o histórico (`getProductMovements`) as resolve pela outra perna
+  da mesma `reference` (`notaDaTransferencia`, `lib/estoque/transferencia.ts`).
+  Prova: `e2e/estoque-transferencia-com-nomes.spec.ts`,
+  `tests/estoque-transferencia-nota.test.ts`.
 - **O lote é DA UNIDADE e BAIXA com a saída** (`product_batches.branch_id`,
   migration `20260928000001`). A baixa é GATILHO (`trg_lote_do_movimento`),
   pelo mesmo argumento do evento de estoque: FEFO entre os lotes ainda válidos,

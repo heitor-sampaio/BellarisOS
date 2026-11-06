@@ -112,6 +112,7 @@ export const ISOLADOS = [
   'equipe-horario-parte-da-unidade.spec.ts',
   'estoque-chip-da-unidade.spec.ts',
   'estoque-custo-de-consumo.spec.ts',
+  'estoque-transferencia-com-nomes.spec.ts',
   'estoque-negativo-e-sem-saldo.spec.ts',
   'estoque-vazio.spec.ts',
   'estoque-nunca-gera-despesa.spec.ts',

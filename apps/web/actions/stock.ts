@@ -12,6 +12,7 @@ import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
 import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
 import { aplicacoesDoLote as aplicacoesDoLoteCore, type AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
+import { notaDaTransferencia, notaDeTransferenciaSemNome } from '@/lib/estoque/transferencia'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -722,7 +723,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, created_at, unit_cost, motivo_da_perda, branches!inner(name, tenant_id), stock_movement_batches(product_batches(batch_number, expires_at))')
+    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, branches!inner(name, tenant_id), stock_movement_batches(product_batches(batch_number, expires_at))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -751,19 +752,36 @@ export async function getProductMovements(
 
   type Row = {
     id: string; type: string; quantity: number; balance_after: number
-    notes: string | null; created_at: string; branches: { name: string } | null
+    notes: string | null; reference: string | null; created_at: string; branches: { name: string } | null
     unit_cost: number | string | null
     motivo_da_perda: string | null
     stock_movement_batches: { product_batches: { batch_number: string | null; expires_at: string | null } | null }[] | null
   }
   const fator = emConsumo ? upp : 1
-  return ((data ?? []) as unknown as Row[]).map(m => ({
+  const linhas = (data ?? []) as unknown as Row[]
+
+  // D12 da 8ª: a nota antiga da transferência ("→ destino", "← origem") ganha o
+  // nome da unidade da OUTRA perna, pela mesma `reference`. As novas já nascem com ele.
+  const refs = [...new Set(linhas.filter(m => m.reference && notaDeTransferenciaSemNome(m.type, m.notes)).map(m => m.reference!))]
+  const outraPerna = new Map<string, string>()
+  if (refs.length) {
+    const pernas = await ler(admin.from('stock_movements').select('type, reference, branches!inner(name, tenant_id)')
+      .eq('product_id', productId).eq('branches.tenant_id', ctx.tenantId!).in('reference', refs), 'ler as transferências') as
+      { type: string; reference: string; branches: { name: string } | null }[] | null
+    for (const x of pernas ?? []) outraPerna.set(`${x.reference}|${x.type}`, x.branches?.name ?? '')
+  }
+  const nota = (m: Row) => {
+    if (!m.reference || !notaDeTransferenciaSemNome(m.type, m.notes)) return m.notes
+    const outra = outraPerna.get(`${m.reference}|${m.type === 'TRANSFER_OUT' ? 'TRANSFER_IN' : 'TRANSFER_OUT'}`) || null
+    return notaDaTransferencia(m.type, m.notes, outra)
+  }
+  return linhas.map(m => ({
     id:           m.id,
     type:         m.type,
     quantity:     Number(m.quantity),
     balanceAfter: Number(m.balance_after),
     // A perda diz o motivo antes da observação (D-7): "Vencido · frasco aberto".
-    notes:        m.motivo_da_perda ? [rotuloDoMotivo(m.motivo_da_perda), m.notes].filter(Boolean).join(' · ') : m.notes,
+    notes:        m.motivo_da_perda ? [rotuloDoMotivo(m.motivo_da_perda), m.notes].filter(Boolean).join(' · ') : nota(m),
     createdAt:    m.created_at,
     branchName:   m.branches?.name ?? '—',
     unidade:      emConsumo ? consumo! : embalagem,
