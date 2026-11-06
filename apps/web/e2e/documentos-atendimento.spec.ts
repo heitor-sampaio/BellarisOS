@@ -112,7 +112,13 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
     const { data: evento } = await db().from('domain_events').select('nome, dados').eq('entidade_id', docs[0]!.id).single()
     expect(evento).toMatchObject({ nome: 'termo.emitido', dados: { referencia: TITULO_TERMO, exigencia: 'BLOQUEIA' } })
 
+    // D13 da 8ª simulação: confirmar a presença não é o check-in — o contrato
+    // do início nascia no "Confirmar agendamento" (um resto de quando o
+    // check-in gravava CONFIRMED). Ele nasce na chegada (ARRIVED).
     await db().from('appointments').update({ status: 'CONFIRMED' }).eq('id', ag1)
+    docs = await documentos({ appointment_id: ag1 })
+    expect(docs.map(d => d.template_id), 'confirmar não emite o do início').toEqual([termo])
+    await db().from('appointments').update({ status: 'ARRIVED', arrived_at: new Date().toISOString() }).eq('id', ag1)
     docs = await documentos({ appointment_id: ag1 })
     expect(docs.map(d => d.template_id).sort(), 'o contrato nasce no check-in').toEqual([termo, contrato].sort())
 
@@ -128,7 +134,7 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
       await expect(painel.getByText('O atendimento só começa depois da assinatura')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Iniciar atendimento' })).toBeDisabled()
     })
-    expect(await status(ag1)).toBe('CONFIRMED')
+    expect(await status(ag1)).toBe('ARRIVED')
   })
 
   test('sem CPF o termo fica incompleto; completado o cadastro, gera de novo', async ({ browser }) => {

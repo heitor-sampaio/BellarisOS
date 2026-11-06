@@ -136,6 +136,12 @@ DEVLOG ("Termos e contratos").
   AGENDAMENTO; check-in, os de INICIO_ATENDIMENTO; cancelar/falta cancela os
   abertos; trocar o procedimento troca os documentos) — o agendamento nasce em
   cinco INSERTs. Agendamento de plano não emite (o plano tem os dele).
+  **Confirmar não é o check-in** (D13 da 8ª simulação, 2026-11-06; migration
+  `20261106003301`): o de INICIO_ATENDIMENTO nascia no "Confirmar
+  agendamento", um resto de quando o check-in gravava CONFIRMED. Nasce na
+  CHEGADA (ARRIVED) e, no início direto de Confirmado, ao iniciar (a trava do
+  início emite antes de conferir). Os que já tinham nascido num confirmar
+  ficaram (a emissão é idempotente). Prova: `e2e/documentos-atendimento.spec.ts`.
 - **O texto concorda com o sexo da ficha** (A50 da 6ª simulação,
   2026-11-04: o termo dizia "fui informada(o)" ao Bruno, com o sexo
   cadastrado). Ao montar, o par "a(o)"/"o(a)" no fim de uma palavra — ou
