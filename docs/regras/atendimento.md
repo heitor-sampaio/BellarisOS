@@ -132,7 +132,13 @@
     de 28/10 ("quem tem 'só os meus' vê 'só os meus', em qualquer lugar").
     Quem só vê a agenda vê o bloqueio e não bloqueia. Desfazer segue a mesma
     regra.
-  - Fica de fora: a vista da SEMANA não desenha o bloqueio (a do dia, sim).
+  - **A vista da SEMANA também mostra** (sobra da F30, 2026-11-05): a célula do
+    dia não tem horas, então o bloqueio é uma etiqueta que abre a mesma janela
+    (`EtiquetaDoBloqueio`, `[data-bloqueio-da-semana]`; o pedaço do dia por
+    `trechoNoDia` — "das 12:00 às 13:00", "o dia todo" no meio das férias): na
+    agenda da unidade, o da profissional na célula dela e o da sala numa linha
+    "Salas bloqueadas"; na da rede, no dia, com o rótulo de quem é; na "Minha
+    agenda", o dia da faixa da semana diz "Bloqueado" (`[data-bloqueado-no-dia]`).
   - Prova: `e2e/agenda-bloqueio.spec.ts`, `tests/agenda-bloqueio.test.ts`.
 - **Quem atende e é da REDE atende em TODAS as unidades** (D1 da simulação de
   2026-10-28, decisão do Heitor): o membro com `provides_services` e

@@ -79,3 +79,16 @@ export function bloqueioNoDia(b: Periodo, dia: Date): { de: number; ate: number 
 
 /** A recusa de quem tem a agenda "só os meus" ao bloquear outra pessoa ou uma sala. */
 export const SO_O_PROPRIO = 'Com a agenda “só os meus”, você bloqueia só o seu horário.'
+
+/**
+ * O pedaço do bloqueio num dia, em palavras, para a vista da SEMANA (sobra da
+ * F30): "das 12:00 às 13:00", ou "o dia todo" no meio das férias. No relógio de
+ * quem vê, como a grade. Nulo: o bloqueio não toca o dia.
+ */
+export function trechoNoDia(b: Periodo, dia: Date): string | null {
+  const noDia = bloqueioNoDia(b, dia)
+  if (!noDia) return null
+  if (noDia.de <= 0 && noDia.ate >= 24 * 60) return 'o dia todo'
+  const h = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`
+  return `das ${h(noDia.de)} às ${h(noDia.ate)}`
+}

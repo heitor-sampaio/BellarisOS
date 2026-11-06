@@ -385,6 +385,8 @@ export function AgendaCalendar({
             canWrite={canWrite}
             onEventClick={setSelectedEvent}
             onSlotClick={handleSlotClick}
+            bloqueios={bloqueios}
+            salas={rooms}
           />
         )}
         {view === 'mes' && (

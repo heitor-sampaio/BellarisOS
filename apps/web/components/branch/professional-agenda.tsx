@@ -562,6 +562,12 @@ export function ProfessionalAgendaView({
                     ))}
                     {dayEvs.length > 4 && <p style={{ fontSize: 'var(--text-overline)', color: isSel ? 'rgba(255,255,255,0.65)' : 'var(--text-faint)', marginTop: 1 }}>+{dayEvs.length - 4}</p>}
                   </div>
+                  {/* O bloqueio dela no dia (sobra da F30): a semana também o diz; o dia o desenha. */}
+                  {bloqueios.some(b => bloqueioNoDia(b, day)) && (
+                    <span data-bloqueado-no-dia style={{ display: 'block', marginTop: 6, fontSize: 'var(--text-overline)', fontWeight: 700, color: isSel ? 'var(--on-brand)' : 'var(--warning)' }}>
+                      Bloqueado
+                    </span>
+                  )}
                 </button>
               )
             })}

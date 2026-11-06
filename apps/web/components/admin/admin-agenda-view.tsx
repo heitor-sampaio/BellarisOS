@@ -11,8 +11,8 @@ import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { estenderJanela } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, type Horario } from '@/lib/agenda/horario'
-import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
-import { BlocoDoBloqueio, BotaoBloquearHorario } from '@/components/shared/bloqueio-da-agenda'
+import { bloqueioNoDia, trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { BlocoDoBloqueio, BotaoBloquearHorario, EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 import { contagemDaAgenda } from '@/lib/metrics/resultado'
@@ -403,13 +403,16 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
 
 // -- View Semana ---------------------------------------------------------------
 function WeekGrid({
-  mondayStr, todayStr, branches, appointments, onDayClick,
+  mondayStr, todayStr, branches, appointments, onDayClick, bloqueios = [], podeDesfazer = false,
 }: {
   mondayStr:   string
   todayStr:    string
   branches:    Branch[]
   appointments: Appointment[]
   onDayClick:  (dateStr: string) => void
+  /** Os bloqueios pontuais (sobra da F30): a semana também os mostra, como o dia. */
+  bloqueios?:  (BloqueioDaAgenda & { rotulo: string })[]
+  podeDesfazer?: boolean
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(mondayStr, i))
 
@@ -474,6 +477,13 @@ function WeekGrid({
                 display: 'flex', flexDirection: 'column', gap: 3,
               }}
             >
+              {bloqueios.map(bl => {
+                const trecho = trechoNoDia(bl, new Date(`${d}T12:00:00`))
+                return trecho && (
+                  <EtiquetaDoBloqueio key={bl.id} bloqueio={bl} podeDesfazer={podeDesfazer}
+                    texto={`${bl.rotulo} · ${trecho}`} titulo={bl.rotulo} />
+                )
+              })}
               {dayAppts.length === 0 ? (
                 <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '8px 4px' }}>—</div>
               ) : dayAppts.map(a => {
@@ -718,6 +728,8 @@ export function AdminAgendaView({
           branches={branches}
           appointments={appointments}
           onDayClick={d => navigate(d, 'day')}
+          bloqueios={bloqueios}
+          podeDesfazer={podeAgendar}
         />
       )}
 

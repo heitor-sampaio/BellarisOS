@@ -203,6 +203,27 @@ test('com "só os meus", a profissional bloqueia só o próprio horário (sem sa
   expect((await bloqueiosDe({})).filter(b => b.motivo === 'Sem permissão'), 'quem só vê não grava').toEqual([])
 })
 
+test('a vista da SEMANA também desenha o bloqueio: a da unidade, a da rede e a "Minha agenda" (sobra da F30)', async ({ browser }) => {
+  await como(browser, recepcao!, async p => {
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    await p.getByRole('button', { name: 'Semana', exact: true }).click()
+    const daProf = p.locator(`[data-bloqueio-da-semana][data-profissional="${rede!.professionalId}"]`)
+    await expect(daProf).toContainText('Bloqueado das 12:00 às 13:00 · Almoço')
+    await expect(p.locator('[data-bloqueio-da-semana][data-sala]')).toContainText(`${NOME_DA_SALA} · das 15:00 às 16:00 · Manutenção`)
+    await daProf.click()
+    await expect(p.getByRole('dialog', { name: 'Horário bloqueado' })).toContainText('Almoço')
+    await p.keyboard.press('Escape')
+
+    await p.goto(`/admin/agenda?date=${DIA}&view=week`)
+    await expect(p.locator('[data-bloqueio-da-semana]').filter({ hasText: 'Almoço' })).toBeVisible()
+  })
+  await como(browser, propria!, async p => {
+    await p.goto(`/${slug}/agenda?date=${DIA}`)
+    await p.getByRole('button', { name: 'Semana', exact: true }).click()
+    await expect(p.locator('[data-bloqueado-no-dia]')).toContainText('Bloqueado')
+  })
+})
+
 test('desfazer o bloqueio devolve o horário aos livres', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)

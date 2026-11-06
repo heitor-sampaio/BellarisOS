@@ -195,6 +195,44 @@ export function BlocoDoBloqueio({ bloqueio, top, height, rotulo, podeDesfazer, e
   )
 }
 
+/**
+ * O bloqueio na vista da SEMANA (sobra da F30, 2026-11-05): a célula do dia não
+ * tem horas, então ele é uma etiqueta — "Bloqueado das 12:00 às 13:00 · Almoço"
+ * — que abre a mesma janela do bloqueio. O clique não sobe à célula (que abre
+ * o novo agendamento).
+ */
+export function EtiquetaDoBloqueio({ bloqueio, texto, titulo, podeDesfazer }: {
+  bloqueio: BloqueioDaAgenda
+  /** O que a etiqueta diz. */
+  texto: string
+  /** O título da janela ("Bloqueado · Almoço", e de quem é na rede). */
+  titulo: string
+  podeDesfazer: boolean
+}) {
+  const [aberto, setAberto] = useState(false)
+  return (
+    <>
+      <button type="button" data-bloqueio-da-semana={bloqueio.id}
+        data-profissional={bloqueio.professionalId ?? undefined} data-sala={bloqueio.roomId ?? undefined}
+        title={texto} onClick={e => { e.stopPropagation(); setAberto(true) }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4, width: '100%', marginBottom: 4, padding: '3px 6px',
+          borderRadius: 'var(--radius-chip-token)', border: '1px dashed var(--warning-border)', background: 'var(--warning-soft)',
+          fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)', cursor: 'pointer', textAlign: 'left',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+        <Ban size={11} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{texto}</span>
+      </button>
+      {aberto && (
+        <span style={{ display: 'contents' }} onClick={e => e.stopPropagation()}>
+          <JanelaDoBloqueio bloqueio={bloqueio} titulo={titulo} podeDesfazer={podeDesfazer} onFechar={() => setAberto(false)} />
+        </span>
+      )}
+    </>
+  )
+}
+
 export function JanelaDoBloqueio({ bloqueio, titulo, podeDesfazer, onFechar }: {
   bloqueio: BloqueioDaAgenda; titulo: string; podeDesfazer: boolean; onFechar: () => void
 }) {

@@ -5,6 +5,8 @@ import { addDays, startOfWeek, isSameDay, format } from 'date-fns'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
+import { EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
+import { trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 
 interface Professional { id: string; name: string }
 
@@ -15,6 +17,12 @@ interface Props {
   onEventClick:  (ev: CalendarEvent) => void
   onSlotClick:   (date: Date, profId?: string) => void
   canWrite:      boolean
+  /**
+   * Os bloqueios pontuais (sobra da F30, decisão 3 da 7ª): o da profissional na
+   * célula dela, o da sala numa linha à parte — a vista do dia já os desenhava.
+   */
+  bloqueios?:    BloqueioDaAgenda[]
+  salas?:        { id: string; name: string }[]
 }
 
 const WEEKDAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
@@ -103,10 +111,12 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
   )
 }
 
-export function AgendaWeekView({ currentDate, events, professionals, onEventClick, onSlotClick, canWrite }: Props) {
+export function AgendaWeekView({ currentDate, events, professionals, onEventClick, onSlotClick, canWrite, bloqueios = [], salas = [] }: Props) {
   const monday   = startOfWeek(currentDate, { weekStartsOn: 1 })
   const weekDays = Array.from({ length: 6 }, (_, i) => addDays(monday, i))
   const today    = new Date()
+  const nomeDaSala = (id: string | null) => salas.find(s => s.id === id)?.name ?? 'Sala'
+  const daSala = bloqueios.filter(b => b.roomId && weekDays.some(d => trechoNoDia(b, d)))
 
   if (professionals.length === 0) {
     return (
@@ -144,6 +154,25 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
         </thead>
 
         <tbody>
+          {daSala.length > 0 && (
+            <tr data-salas-da-semana>
+              <td style={{ padding: '10px', borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', verticalAlign: 'top', fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Salas bloqueadas
+              </td>
+              {weekDays.map((day, di) => (
+                <td key={di} style={{ padding: '6px', borderBottom: '1px solid var(--border)', borderRight: di < 5 ? '1px solid var(--border)' : 'none', verticalAlign: 'top' }}>
+                  {daSala.map(b => {
+                    const trecho = trechoNoDia(b, day)
+                    return trecho && (
+                      <EtiquetaDoBloqueio key={b.id} bloqueio={b} podeDesfazer={canWrite}
+                        texto={`${nomeDaSala(b.roomId)} · ${trecho} · ${b.motivo}`}
+                        titulo={`${nomeDaSala(b.roomId)} bloqueada · ${b.motivo}`} />
+                    )
+                  })}
+                </td>
+              ))}
+            </tr>
+          )}
           {professionals.map((pro, pi) => {
             const clr = PROF_COLORS[pi % PROF_COLORS.length]!
             return (
@@ -191,6 +220,13 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                       }}
                       onClick={() => canWrite && onSlotClick(day, pro.id)}
                     >
+                      {bloqueios.filter(b => b.professionalId === pro.id).map(b => {
+                        const trecho = trechoNoDia(b, day)
+                        return trecho && (
+                          <EtiquetaDoBloqueio key={b.id} bloqueio={b} podeDesfazer={canWrite}
+                            texto={`Bloqueado ${trecho} · ${b.motivo}`} titulo={`Bloqueado · ${b.motivo}`} />
+                        )
+                      })}
                       {dayEvs
                         .sort((a, b) => a.start.localeCompare(b.start))
                         .map(ev => (
