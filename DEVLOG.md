@@ -9730,10 +9730,14 @@ hidratação; A55 "Olá" das 00:00 às 04:59. Sobras: o pacote da LGPD leva o
 responsável legal e o documento estrangeiro; a semana da agenda desenha o
 bloqueio (profissional e sala).
 
-**Achado da F32, em aberto:** o webhook da Meta respondeu 500 em ~12 s pelo
-menos 15 vezes entre 06:08 e 09:24Z de 05/11 — "Não consegui buscar a
-mensagem", PGRST116: um `.single()` em `lib/inbox/resolve-conversation` acha
-2 linhas.
+**Achado da F32, corrigido em 2026-11-06 (d9791aeb):** o webhook da Meta
+respondeu 500 em ~12 s pelo menos 15 vezes em 05/11 (PGRST116 em "buscar a
+mensagem"). O dedup "procura e grava" deixava duas entregas simultâneas
+gravarem as duas: a Bellaris Clinic tinha 34 mensagens do histórico de maio em
+dobro, e a procura achava duas linhas. Com a autorização do Heitor ("sim pode
+corrigir"), a migration `20261106000001` deixou uma de cada par e criou o
+índice único `messages_external_id_unico`; o app trata o 23505 como "já
+estava". Prova: `e2e/whatsapp-historico-sem-duplicar.spec.ts`.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
