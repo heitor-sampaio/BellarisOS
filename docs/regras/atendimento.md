@@ -212,7 +212,9 @@
     Batel", `[data-outra-unidade]`), e a agenda inteira da unidade, a lista
     "Seus atendimentos em outras unidades" (`[data-meus-de-outras-unidades]`);
     os dois abrem a tela do atendimento pelo portal dela
-    (`/[slug]/agenda/[id]` resolve a unidade do agendamento).
+    (`/[slug]/agenda/[id]` resolve a unidade do agendamento). "Minhas comissões" (o
+    financeiro "só as próprias") cobre também as unidades em que ela atende,
+    com o filtro de unidade (`app/[slug]/financeiro/comissoes`).
   - **`provides_services` = "atende em alguma unidade"**, mantido junto da
     lista por um gatilho só (`private.atende_em_sincronizar`): gravar a lista
     acerta o `provides_services`; gravar só o `provides_services` (o caminho de

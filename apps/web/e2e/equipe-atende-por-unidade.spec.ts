@@ -77,6 +77,7 @@ test.beforeAll(async () => {
     permissoes: [
       { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
       { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'OWN' },
+      { modulo: 'financial', nivel: 'VIEW', escopo: 'OWN' },
     ],
   })
   // Ela atende — e, de uma unidade, fica marcada só na dela (a migração do dado).
@@ -225,5 +226,14 @@ test('a unidade nova nasce sem ninguém marcado, e a Equipe dela diz', async ({ 
     await p.goto('/admin/settings?tab=unidades')
     await expect(p.locator('.card').filter({ hasText: `${PREFIXO} Centro ${marca}` }).locator('[data-quem-atende-na-unidade]'))
       .toContainText('Ninguém atende nesta unidade ainda')
+  })
+})
+
+test('a comissão: "Minhas comissões" da Talita, pela Água Verde, cobre também o Batel em que ela atende', async ({ browser }) => {
+  expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', talita!.userId)).error).toBeNull()
+  await como(browser, talita!.estado, async p => {
+    await p.goto(`/${slugA}/financeiro/comissoes`)
+    await expect(p.getByRole('heading', { name: 'Minhas comissões' })).toBeVisible()
+    await expect(p.locator('option', { hasText: nomeBatel }), 'o Batel entra no recorte dela').toHaveCount(1)
   })
 })
