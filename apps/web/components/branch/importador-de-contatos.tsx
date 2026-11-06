@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUp, Download, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -93,6 +93,15 @@ export function ImportadorDeContatos(p: Props) {
     if (lido.linhas.length > MAX_LINHAS) { setErroArquivo(`O arquivo tem ${lido.linhas.length.toLocaleString('pt-BR')} linhas; o máximo é ${MAX_LINHAS.toLocaleString('pt-BR')} por importação.`); return }
     setArquivo({ nome: f.name, ...lido })
   }
+
+  // A54 da 7ª simulação: o arquivo escolhido ANTES de a tela hidratar fica no
+  // campo sem passar pelo onChange (o React ainda não estava lá), e o
+  // "Continuar" ficava desligado. Ao montar, a tela lê o que já está no campo.
+  const campoDoArquivo = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const f = campoDoArquivo.current?.files?.[0]
+    if (f) void lerArquivo(f)
+  }, [])
 
   // Os campos desta importação: os do card só com oportunidade; a unidade por
   // linha só na rede; a coluna de responsável só para quem escolhe responsável.
@@ -212,7 +221,7 @@ export function ImportadorDeContatos(p: Props) {
         <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label htmlFor="importar-arquivo" style={rotuloCampo}>Arquivo CSV</label>
-            <input id="importar-arquivo" type="file" accept=".csv,text/csv" className="field"
+            <input id="importar-arquivo" ref={campoDoArquivo} type="file" accept=".csv,text/csv" className="field"
               onChange={e => void lerArquivo(e.target.files?.[0])} />
             <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0 }}>
               A primeira linha é o cabeçalho. Até 5 MB e 10 mil linhas. No Excel: Arquivo → Salvar como → CSV.

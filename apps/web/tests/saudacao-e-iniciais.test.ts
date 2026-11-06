@@ -9,7 +9,15 @@ describe('a saudação da topbar', () => {
     expect(saudacao(new Date('2026-10-20T11:00:00-03:00'))).toBe('Bom dia')
     expect(saudacao(new Date('2026-10-20T14:00:00-03:00'))).toBe('Boa tarde')
     expect(saudacao(new Date('2026-10-20T19:30:00-03:00'))).toBe('Boa noite')
-    expect(saudacao(new Date('2026-10-20T03:00:00-03:00'))).toBe('Boa noite')
+    expect(saudacao(new Date('2026-10-20T23:30:00-03:00'))).toBe('Boa noite')
+  })
+  // A55 da 7ª simulação (2026-11-05): "Boa noite" às 04h30 numa clínica 24 h.
+  // De madrugada (00:00–04:59) a saudação é neutra; o "Bom dia" começa às 05:00.
+  it('de madrugada, "Olá" — nem "Boa noite" nem "Bom dia"', () => {
+    expect(saudacao(new Date('2026-10-20T00:00:00-03:00'))).toBe('Olá')
+    expect(saudacao(new Date('2026-10-20T03:00:00-03:00'))).toBe('Olá')
+    expect(saudacao(new Date('2026-10-20T04:30:00-03:00'))).toBe('Olá')
+    expect(saudacao(new Date('2026-10-20T05:00:00-03:00'))).toBe('Bom dia')
   })
   it('o primeiro nome guarda o título', () => {
     expect(primeiroNome('Dra. Lívia Ramos')).toBe('Dra. Lívia')

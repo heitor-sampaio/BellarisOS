@@ -415,6 +415,12 @@ Gerenciar (`alternativas` em `lib/configuracoes/abas.ts`, lidas por
 `abaLiberada` na tela, na busca e no menu; a página de Configurações aceita
 `MODULOS_DAS_ABAS`): a SDR que só tem o CRM também importa a lista de leads
 dela — e vê Configurações só com essa aba.
+- **O arquivo escolhido antes de a tela hidratar vale** (A54 da 7ª simulação,
+  2026-11-05: o "Continuar" ficava desligado — o `onChange` do React ainda não
+  existia, e o arquivo ficava no campo sem chegar ao estado): ao montar, o
+  importador lê o arquivo que já está no campo. Prova:
+  `e2e/importacao-antes-da-hidratacao.spec.ts` (o JavaScript da página
+  segurado até o arquivo estar escolhido).
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
   escolhida — na unidade, a dela; `clients: MANAGE`) ou *contatos do CRM* (só a
   pessoa: nome, telefone, e-mail, rede social, tags; `crm: MANAGE`). Oportunidade no funil é

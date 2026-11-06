@@ -147,6 +147,18 @@ No DNS do `bellarisos.com` ficam os registros do Resend (MX, SPF, DKIM) — o
 apontamento do domínio raiz não os toca, e no domínio raiz o CNAME só vale com
 ALIAS/"CNAME flattening".
 
+**Medir lentidão antes de mexer** (A54 da 7ª simulação, 2026-11-05: "10–15 s
+por tela, o 1º clique > 60 s" na madrugada): o tempo do SERVIDOR é o
+`http-response-time` do serviço BellarisOS no Railway (p50/p99 por faixa) e os
+`http` logs com `@totalDuration:>3000`; o do BANCO, o `edge_logs` do Supabase
+por minuto (contagem, 5xx, maior `response.origin_time`). Naquela madrugada,
+das 05:12 às 09:36Z, o servidor respondeu com p50 de 7–9 ms e p99 de ~0,5 s,
+o banco com p95 < 0,4 s e nenhum 5xx, CPU ≤ 0,05 vCPU e 1,3 GB de 8 GB: a
+demora era do lado de quem usava (os navegadores dos agentes da simulação, na mesma
+máquina), não do código. As únicas respostas > 3 s foram o webhook do WhatsApp
+da Meta (500 em ~12 s, "Não consegui buscar a mensagem" — PGRST116, duas linhas
+num `.single()` em `lib/inbox/resolve-conversation`), à parte.
+
 ## O CSP da clínica (bloqueia desde 2026-10-22)
 
 Toda página da clínica leva `Content-Security-Policy` (`lib/seguranca/csp.ts`,

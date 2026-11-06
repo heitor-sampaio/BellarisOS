@@ -95,6 +95,11 @@ Princípios inegociáveis:
   do app; com o mesmo tom do fundo ela sumia na superfície em vez de convidar
   a digitar. O critério do que é busca é o ÍCONE DE LUPA, não o placeholder.
 - **Copy em pt-BR**, sentence case, moeda no formato `R$ 1.240`, percentuais com vírgula (`12,4%`).
+- **A saudação da topbar segue a hora de Brasília** (`saudacao`, `lib/saudacao.ts`):
+  "Bom dia" das 05:00 às 11:59, "Boa tarde" até as 17:59, "Boa noite" até as
+  23:59 e, de madrugada (00:00–04:59), "Olá" — A55 da 7ª simulação
+  (2026-11-05): "Boa noite" às 04h30 numa clínica 24 h. Prova:
+  `tests/saudacao-e-iniciais.test.ts`.
 - **A clínica de UMA unidade não fala "rede"** (F8 da 5ª simulação,
   2026-11-02, levando o D-19 de `docs/regras/indicadores.md` a toda tela). A
   régua é a mesma, `redeTemUmaUnidade`; o texto passa por
