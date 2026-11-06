@@ -1016,7 +1016,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     parcelas de R$ 1.700,00 no cartão de crédito". O meio, as vezes e a
     bandeira do "entrada + parcelas" são da ENTRADA. O contrato
     (`pagamento.forma`) diz "entrada de R$ 1.000,00 no cartão de crédito em 3x
-    + 2 parcelas de R$ 1.700,00 com a clínica, a primeira em 04/12/2026"
+    + 2 parcelas de R$ 1.700,00 com a clínica: R$ 1.700,00 em 04/12/2026 e R$ 1.700,00 em 04/01/2027"
     (`pagamento.metodo` é o da entrada; sem entrada, vazio), a tela e a linha
     do tempo dizem o mesmo (`frasesDoPagamento`, `rotuloDoPagamento`: "entrada
     de R$ 1.000,00 em Crédito 3x + 2x com a clínica"), e a ficha e o app

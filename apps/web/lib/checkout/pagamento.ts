@@ -164,8 +164,12 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
   const iguais = valorDaParcela(valores) === formatBRL(valores[0] ?? 0)
   const quanto = iguais ? `de ${formatBRL(valores[0] ?? 0)}` : `(${parcelasEmTexto(saldo, gravadas.length)})`
   // D6: o saldo é o crediário da CLÍNICA — não vai "no cartão de crédito".
-  const parcelas = `${gravadas.length} parcela${gravadas.length > 1 ? 's' : ''} ${quanto} com a clínica, a primeira em ${formatDate(p.primeiroVencimento)}`
-    + (gravadas.length > 1 ? `: ${listaDasParcelas(gravadas)}` : '')
+  // A39 da 8ª: com a lista, a data de cada uma já está nela — "a primeira em
+  // 06/12/2026" antes dela repetia a data ("…a primeira em 06/12/2026: R$ 750,00
+  // em 06/12/2026 e…"). Uma só diz o vencimento dela.
+  const parcelas = gravadas.length > 1
+    ? `${gravadas.length} parcelas ${quanto} com a clínica: ${listaDasParcelas(gravadas)}`
+    : `1 parcela ${quanto} com a clínica, com vencimento em ${formatDate(p.primeiroVencimento)}`
   return {
     // O meio é o da entrada (sem entrada, nenhum).
     'pagamento.metodo':              p.entrada > 0 ? meioDaEntrada(p) : null,

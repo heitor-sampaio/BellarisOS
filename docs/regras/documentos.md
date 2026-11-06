@@ -226,8 +226,8 @@ DEVLOG ("Termos e contratos").
     (`pagamentoCombinadoDoAtendimento`) — orienta, não trava.
   - **No "entrada + parcelas", o meio é da ENTRADA** (D5/D6 da 6ª simulação,
     2026-11-04): `pagamento.forma` diz "entrada de R$ 1.000,00 no cartão de
-    crédito em 3x + 2 parcelas de R$ 1.700,00 com a clínica, a primeira em
-    04/12/2026" — as parcelas são o crediário da clínica, não o cartão (dizia
+    crédito em 3x + 2 parcelas de R$ 1.700,00 com a clínica: R$ 1.700,00 em
+    04/12/2026 e R$ 1.700,00 em 04/01/2027" — as parcelas são o crediário da clínica, não o cartão (dizia
     "+ 2 parcelas … no cartão de crédito"). `pagamento.metodo` é o meio da
     entrada (sem entrada, vazio). O retrato guarda as vezes da entrada quando
     passam de 1. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`,
@@ -237,10 +237,12 @@ DEVLOG ("Termos e contratos").
     dizia "3 parcelas de R$ 890,67" — a média, que soma R$ 2.672,01 — e o
     banco gravou 890,66 + 890,66 + 890,68. `valoresDoPagamento` divide pela
     MESMA conta dos lançamentos (`dividirEmParcelas`): `pagamento.forma` diz
-    "3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) com a clínica, a primeira
-    em 05/12/2026: R$ 890,66 em 05/12/2026, R$ 890,66 em 05/01/2027 e
-    R$ 890,68 em 05/02/2027" (iguais: "2 parcelas de R$ 1.700,00 …: R$ 1.700,00
-    em … e R$ 1.700,00 em …"; uma só, sem a lista), e
+    "3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) com a clínica: R$ 890,66
+    em 05/12/2026, R$ 890,66 em 05/01/2027 e R$ 890,68 em 05/02/2027" (iguais:
+    "2 parcelas de R$ 1.700,00 com a clínica: R$ 1.700,00 em … e R$ 1.700,00
+    em …"; uma só, "1 parcela de R$ 300,00 com a clínica, com vencimento em
+    05/12/2026"). O "a primeira em 06/12/2026" antes da lista saiu: repetia a
+    data da primeira (A39 da 8ª simulação, 2026-11-06). E
     `pagamento.valor_parcela` "R$ 890,66 (a última, R$ 890,68)" — também no
     cartão em N vezes. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`
     ("D2, A42"), `tests/checkout-parcelas-gravadas.test.ts`.

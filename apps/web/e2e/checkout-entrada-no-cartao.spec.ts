@@ -121,7 +121,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
-      await expect(page.getByText(/3 parcelas \(2x de R\$\s890,66 \+ 1x de R\$\s890,68\) com a clínica, a primeira em \d\d\/\d\d\/\d{4}: R\$\s890,66 em \d\d\/\d\d\/\d{4}, R\$\s890,66 em \d\d\/\d\d\/\d{4} e R\$\s890,68 em \d\d\/\d\d\/\d{4}/),
+      await expect(page.getByText(/3 parcelas \(2x de R\$\s890,66 \+ 1x de R\$\s890,68\) com a clínica: R\$\s890,66 em \d\d\/\d\d\/\d{4}, R\$\s890,66 em \d\d\/\d\d\/\d{4} e R\$\s890,68 em \d\d\/\d\d\/\d{4}/),
         'o contrato lista cada parcela com o valor e a data').toBeVisible()
       await page.getByRole('button', { name: 'Assinar no papel' }).click()
       await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()

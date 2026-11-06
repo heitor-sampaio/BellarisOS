@@ -13,7 +13,7 @@ describe('o pagamento no contrato', () => {
     expect(valoresDoPagamento({ forma: 'AVISTA', metodo: 'PIX' }, 400)['pagamento.forma']).toMatch(/R\$\s400,00 à vista, no Pix/)
     expect(valoresDoPagamento(parcelado, 400)['pagamento.forma'])
       // D6 (6ª simulação): as parcelas são o crediário da CLÍNICA, não o cartão da entrada.
-      .toMatch(/^entrada de R\$\s100,00 no cartão de crédito \+ 3 parcelas de R\$\s100,00 com a clínica, a primeira em 10\/10\/2026: R\$\s100,00 em 10\/10\/2026, R\$\s100,00 em 10\/11\/2026 e R\$\s100,00 em 10\/12\/2026$/)
+      .toMatch(/^entrada de R\$\s100,00 no cartão de crédito \+ 3 parcelas de R\$\s100,00 com a clínica: R\$\s100,00 em 10\/10\/2026, R\$\s100,00 em 10\/11\/2026 e R\$\s100,00 em 10\/12\/2026$/)
     expect(valoresDoPagamento({ forma: 'A_RECEBER', metodo: null, vencimento: venc }, 400)['pagamento.forma'])
       .toMatch(/a receber em 10\/10\/2026$/)
   })

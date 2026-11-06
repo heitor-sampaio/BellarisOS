@@ -33,8 +33,8 @@ describe('D2: as parcelas que a tela e o contrato dizem são as gravadas', () =>
   it('o contrato diz cada parcela com o valor e a data (A42)', () => {
     const v = valoresDoPagamento(larissa, 3672)
     expect(br(v['pagamento.forma'])).toBe(
-      'entrada de R$ 1.000,00 no cartão de crédito em 3x + 3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) com a clínica, '
-      + 'a primeira em 05/12/2026: R$ 890,66 em 05/12/2026, R$ 890,66 em 05/01/2027 e R$ 890,68 em 05/02/2027')
+      'entrada de R$ 1.000,00 no cartão de crédito em 3x + 3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) com a clínica'
+      + ': R$ 890,66 em 05/12/2026, R$ 890,66 em 05/01/2027 e R$ 890,68 em 05/02/2027')
     expect(br(v['pagamento.valor_parcela']), 'nunca a média arredondada (890,67)').toBe('R$ 890,66 (a última, R$ 890,68)')
   })
 
@@ -47,13 +47,13 @@ describe('D2: as parcelas que a tela e o contrato dizem são as gravadas', () =>
   it('parcelas iguais: o valor uma vez e as datas de todas', () => {
     const v = valoresDoPagamento({ forma: 'PARCELADO', metodo: 'PIX', entrada: 0, parcelas: 2, primeiroVencimento: venc }, 3400)
     expect(br(v['pagamento.forma'])).toBe(
-      '2 parcelas de R$ 1.700,00 com a clínica, a primeira em 05/12/2026: R$ 1.700,00 em 05/12/2026 e R$ 1.700,00 em 05/01/2027')
+      '2 parcelas de R$ 1.700,00 com a clínica: R$ 1.700,00 em 05/12/2026 e R$ 1.700,00 em 05/01/2027')
     expect(br(v['pagamento.valor_parcela'])).toBe('R$ 1.700,00')
   })
 
   it('uma parcela só não repete a data', () => {
     const v = valoresDoPagamento({ forma: 'PARCELADO', metodo: 'PIX', entrada: 100, parcelas: 1, primeiroVencimento: venc }, 400)
-    expect(br(v['pagamento.forma'])).toBe('entrada de R$ 100,00 no Pix + 1 parcela de R$ 300,00 com a clínica, a primeira em 05/12/2026')
+    expect(br(v['pagamento.forma'])).toBe('entrada de R$ 100,00 no Pix + 1 parcela de R$ 300,00 com a clínica, com vencimento em 05/12/2026')
   })
 
   it('o cartão em N vezes: o valor da parcela é o da divisão em centavos', () => {
