@@ -624,9 +624,19 @@ function StepDone({ tenantName, foraDoPlano = [] }: { tenantName: string; foraDo
         A clínica <strong style={{ color: 'var(--text)' }}>{tenantName}</strong> está configurada. Você já pode começar a usar o painel completo.
       </p>
 
+      {/* A1 da 8ª simulação: o "Acessar o painel" ficava no fim, sem destaque, depois da lista. */}
+      <button
+        onClick={() => handleFinish()}
+        disabled={pending}
+        className="btn-primary"
+        style={{ justifyContent: 'center', padding: '12px 28px', fontSize: 'var(--text-base-sz)', marginBottom: 28 }}
+      >
+        {pending ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Abrindo painel…</> : 'Acessar o painel →'}
+      </button>
+
       {/* A3 da 6ª simulação: a ordem que evita o "ninguém atende" e o "o insumo precisa existir antes". */}
       <div data-proximos-passos style={{ textAlign: 'left', maxWidth: 380, margin: '0 auto 28px' }}>
-        <p className="overline" style={{ marginBottom: 10 }}>Próximos passos, nesta ordem</p>
+        <p className="overline" style={{ marginBottom: 10 }}>Ou comece pelos próximos passos, nesta ordem</p>
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {passosDoPlano.map((passo, i) => (
             <li key={passo.titulo}>
@@ -650,14 +660,6 @@ function StepDone({ tenantName, foraDoPlano = [] }: { tenantName: string; foraDo
         </ol>
       </div>
 
-      <button
-        onClick={() => handleFinish()}
-        disabled={pending}
-        className="btn-primary"
-        style={{ justifyContent: 'center', padding: '12px 28px', fontSize: 'var(--text-base-sz)' }}
-      >
-        {pending ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Abrindo painel…</> : 'Acessar o painel →'}
-      </button>
 
       <style>{`
         @keyframes popIn {
@@ -675,7 +677,11 @@ function StepDone({ tenantName, foraDoPlano = [] }: { tenantName: string; foraDo
  * consome, e a taxa da maquininha vale desde a primeira venda no cartão.
  */
 const PROXIMOS_PASSOS = [
-  { titulo: 'Equipe', porque: 'Quem atende: sem profissional, o procedimento não tem quem o realize.', href: '/admin/team' },
+  // A1 da 8ª simulação: a 2ª unidade e as salas não apareciam (com duas
+  // unidades, as salas passam ao "Ver detalhes" de cada uma, sem pista).
+  { titulo: 'Outra unidade (se houver)', porque: 'A segunda unidade vem antes da equipe: quem atende se marca em cada unidade.', href: '/admin/settings?tab=unidades' },
+  { titulo: 'Equipe', porque: 'Quem atende, e em quais unidades: sem profissional, o procedimento não tem quem o realize.', href: '/admin/team' },
+  { titulo: 'Salas', porque: 'As salas ou cabines: o agendar oferece a livre. Com duas unidades, ficam no “Ver detalhes” de cada uma.', href: '/admin/settings?tab=unidades#salas' },
   { titulo: 'Estoque', porque: 'Os insumos: o procedimento só baixa o que já está cadastrado.', href: '/admin/estoque' },
   // A1 da 7ª simulação: o procedimento pede a ficha e o termo JÁ existentes.
   { titulo: 'Fichas', porque: 'A anamnese de cada procedimento: ele escolhe uma ficha que já existe.', href: '/admin/settings?tab=fichas', recurso: 'fichas' },

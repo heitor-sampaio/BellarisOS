@@ -201,6 +201,14 @@ um muro que não depende de cada trava do código.
   da unidade diz "O domingo vem fechado. Se a clínica abre aos domingos (ou
   24 horas), marque o domingo…" (`data-domingo-fechado`). Prova: o mesmo spec
   ("A3/A1", "A2").
+  **E começam pela 2ª unidade e passam pelas Salas, com o painel em destaque**
+  (A1 da 8ª simulação, 2026-11-06): "Outra unidade (se houver)" vem antes da
+  Equipe (quem atende se marca em cada unidade — o checklist do "Atende") e
+  "Salas" antes do Estoque e do Procedimento (`/admin/settings?tab=unidades#salas`;
+  com duas unidades, as salas ficam no "Ver detalhes" de cada uma, e o passo
+  diz). O "Acessar o painel →" é o botão principal, logo abaixo do "Tudo
+  pronto!", e a lista vem depois ("Ou comece pelos próximos passos"). Prova:
+  `e2e/setup-retoma.spec.ts` ("A3/A1").
 - **A unidade nova NÃO herda o CNPJ da rede calada** (cfg-01, revisão do
   Heitor de 2026-11-02: "se em branco, avisa e confirma decisão. Talvez uma
   clínica possa ter 2 unidades físicas operando no mesmo CNPJ. Uma unidade

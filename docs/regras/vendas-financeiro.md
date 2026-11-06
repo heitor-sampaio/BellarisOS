@@ -784,6 +784,19 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       texto do "taxa por parcela" diz que ele serve à operadora que cobra a
       mesma taxa por parcela. Prova: `e2e/configuracoes-atritos-da-7.spec.ts`
       ("A3"), `tests/tabela-da-operadora.test.ts`.
+    - **O "Preencher" diz antes o que vai pôr, e a taxa que BAIXA com mais
+      vezes avisa** (A2 da 8ª simulação, 2026-11-06; decidido pelo princípio
+      2 — "no máximo, avisar"): os dois times multiplicaram sem ver (1x 2,80%
+      virou 0,99%, e o 2x 1,98% ficou abaixo do à vista). A caixa do "taxa por
+      parcela" mostra, enquanto se digita, "Vai preencher: 1x 0,99% · 2x
+      1,98% …" e "o crédito à vista (1x) deixa de ser 2,80%"
+      (`data-vai-preencher`), e tem o "Colar a tabela da operadora" ali dentro.
+      O "Salvar taxas" grava o que a clínica escolheu e, quando mais vezes sai
+      mais barato (na regra geral ou numa bandeira), avisa: "2x (1,98%) sai
+      mais barato que o crédito à vista (2,80%)… Ficou salvo como está."
+      (`avisoDaTaxaQueBaixa`, `lib/financeiro/bandeiras.ts`;
+      `data-aviso-taxa-menor`). Prova: `e2e/configuracoes-atritos-da-8.spec.ts`,
+      `tests/taxa-que-baixa.test.ts`.
     - **As linhas do crédito só até o "Parcelar no crédito até"** (F17-4, o
       Heitor: "as linhas só devem aparecer se estiverem dentro do range de
       parcelas que são oferecidas"): com o limite escolhido (até 5x), a tabela

@@ -186,3 +186,23 @@ export function taxasDaTabelaColada(texto: string): {
   const taxas = [...lidas.entries()].sort((a, b) => a[0] - b[0]).map(([parcelas, taxa]) => ({ parcelas, taxa }))
   return { taxas, ignoradas, erros }
 }
+
+/**
+ * A taxa do crédito que BAIXA com mais vezes (A2 da 8ª simulação, 2026-11-06;
+ * decidido pelo princípio 2 — "no máximo, avisar"): o "Preencher pela taxa por
+ * parcela" deixou 1x 2,80% e 2x 1,98%, e a tabela salvou calada. A operadora
+ * costuma cobrar mais em mais vezes; a tela grava o que a clínica escolheu e
+ * diz o que parece engano. Nulo = nada a avisar. Só as vezes preenchidas.
+ */
+export function avisoDaTaxaQueBaixa(taxas: { parcelas: number; taxa: number }[]): string | null {
+  const ordem = [...taxas].filter(t => Number.isFinite(t.taxa)).sort((a, b) => a.parcelas - b.parcelas)
+  const pct = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false })
+  const nome = (n: number) => (n === 1 ? 'o crédito à vista' : `${n}x`)
+  for (let i = 1; i < ordem.length; i++) {
+    const antes = ordem[i - 1]!, agora = ordem[i]!
+    if (agora.taxa < antes.taxa) {
+      return `${agora.parcelas}x (${pct(agora.taxa)}%) sai mais barato que ${nome(antes.parcelas)} (${pct(antes.taxa)}%). A operadora costuma cobrar mais em mais vezes: confira a tabela. Ficou salvo como está.`
+    }
+  }
+  return null
+}

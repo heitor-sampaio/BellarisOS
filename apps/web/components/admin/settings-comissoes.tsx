@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira } from '@/actions/comissoes'
-import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
+import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
@@ -361,6 +361,14 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
   // r4-f15-01 é "1x a 12x"), e diz isso quando o 1x tinha outro valor
   // (princípio 3: nada muda calado).
   const [avisoDo1x, setAvisoDo1x] = useState<string | null>(null)
+  // A2 da 8ª simulação: o que o "Preencher" vai pôr, à vista ANTES do clique —
+  // a multiplicação deixou 2x 1,98% abaixo do 1x 2,80% sem ninguém ver.
+  const pctPorParcela = taxaPorParcela.trim() ? parseDecimal(taxaPorParcela.trim(), 4) : NaN
+  const vaiPreencher = Number.isNaN(pctPorParcela) || pctPorParcela < 0
+    ? [] : creditoPelaTaxaPorParcela(pctPorParcela).filter(t => t.parcelas <= ateQuantasVezes)
+  const oDe1xAgora = ((bandeira ? daBandeira.valores : valores)[chave('CREDIT_CARD', 1)] ?? '').trim()
+  // A2: a tabela com mais vezes mais barata grava e AVISA (princípio 2).
+  const [avisoTaxaMenor, setAvisoTaxaMenor] = useState<string[]>([])
   function preencherPelaTaxaPorParcela() {
     const texto = taxaPorParcela.trim()
     const pct = texto ? parseDecimal(texto, 4) : NaN
@@ -458,6 +466,24 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         const pz = await salvarPrazoDaOperadora(dias)
         if (pz.error) { setErro(pz.error); return }
       }
+      // A2 da 8ª: o que parece engano (mais vezes, taxa menor) vira aviso, sem recusar.
+      const avisos: string[] = []
+      const doCredito = (t: Record<string, number>) => Object.entries(t).map(([n, taxa]) => ({ parcelas: Number(n), taxa }))
+      const geral = Object.fromEntries(lista.filter(t => t.metodo === 'CREDIT_CARD').map(t => [t.parcelas, t.taxa_pct]))
+      const avisoGeral = avisoDaTaxaQueBaixa(doCredito(geral))
+      if (avisoGeral) avisos.push(avisoGeral)
+      for (const b of BANDEIRAS) {
+        const taxasDela = bandeiras[b.value]?.taxas
+        if (!taxasDela) continue
+        const efetiva: Record<string, number> = { ...geral }
+        for (const [k, v] of Object.entries(taxasDela)) {
+          const m = /^CREDIT_CARD:(\d+)$/.exec(k)
+          if (m) efetiva[m[1]!] = v
+        }
+        const a = avisoDaTaxaQueBaixa(doCredito(efetiva))
+        if (a && a !== avisoGeral) avisos.push(`${b.label}: ${a}`)
+      }
+      setAvisoTaxaMenor(avisos)
       setSalvo(true)
       router.refresh()
     })
@@ -627,8 +653,22 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
             {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x (à vista, inclusive) a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 1x 1,15%, 2x 2,30%, 3x 3,45%…).
             {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
-            {' '}Serve quando a operadora cobra a mesma taxa por parcela; se a tabela dela é outra, use “Colar a tabela da operadora”.
+            {' '}Serve só quando a operadora cobra a MESMA taxa por parcela — a maioria cobra uma tabela própria, mais cara a cada vez.
           </p>
+          {vaiPreencher.length > 0 && (
+            <p data-vai-preencher role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
+              <strong>Vai preencher:</strong> {vaiPreencher.map(t => `${t.parcelas}x ${taxaNaTela(t.taxa)}%`).join(' · ')}
+              {oDe1xAgora && parseDecimal(oDe1xAgora, 4) !== vaiPreencher[0]!.taxa && (
+                <> — o crédito à vista (1x) deixa de ser {oDe1xAgora}%.</>
+              )}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            A tabela da operadora é outra?
+            <button type="button" className="btn-secondary" onClick={() => { setColarAberto(true); setPorParcelaAberto(false); setErroPorParcela(null) }}>
+              Colar a tabela da operadora
+            </button>
+          </div>
           {erroPorParcela && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroPorParcela}</p>}
         </div>
       )}
@@ -667,6 +707,15 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         </span>
       </label>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {avisoTaxaMenor.length > 0 && (
+        <p data-aviso-taxa-menor role="status" style={{
+          fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)', padding: '8px 12px',
+          borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+          display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          {avisoTaxaMenor.map(a => <span key={a}>{a}</span>)}
+        </p>
+      )}
       {podeEditar && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
           {salvo && <span role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>Salvo.</span>}

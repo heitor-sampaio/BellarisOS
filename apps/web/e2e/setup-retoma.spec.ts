@@ -87,8 +87,11 @@ test('A3/A1: o fim do setup sugere os próximos passos na ordem, como links — 
   await como(browser, donaComUnidade!, async p => {
     await p.goto('/setup')
     const passos = p.locator('[data-proximos-passos] li')
+    // A1 da 8ª simulação: a 2ª unidade (antes da equipe, que se marca nela) e as salas (antes do procedimento, que as escolhe).
     const esperados: [RegExp, RegExp][] = [
+      [/Outra unidade/, /\/admin\/settings\?tab=unidades$/],
       [/Equipe/, /\/admin\/team$/],
+      [/Salas/, /\/admin\/settings\?tab=unidades#salas$/],
       [/Estoque/, /\/admin\/estoque$/],
       [/Fichas/, /\/admin\/settings\?tab=fichas$/],
       [/Termos e contratos/, /\/admin\/settings\?tab=documentos$/],
@@ -102,7 +105,14 @@ test('A3/A1: o fim do setup sugere os próximos passos na ordem, como links — 
       await expect(passos.nth(i)).toContainText(nome)
       await expect(passos.nth(i).getByRole('link'), `o passo ${i + 1} é um link`).toHaveAttribute('href', href)
     }
-    await passos.nth(0).getByRole('link').click()
+    // A1 da 8ª: "Acessar o painel" em destaque, ANTES da lista (ficava no fim).
+    const painel = p.getByRole('button', { name: /Acessar o painel/ })
+    await expect(painel).toHaveClass(/btn-primary/)
+    expect(await painel.evaluate(b => {
+      const lista = document.querySelector('[data-proximos-passos]')
+      return !!lista && !!(b.compareDocumentPosition(lista) & Node.DOCUMENT_POSITION_FOLLOWING)
+    }), 'o botão vem antes da lista').toBe(true)
+    await passos.nth(1).getByRole('link').click()
     await expect(p).toHaveURL(/\/admin\/team/, { timeout: 20_000 })
   })
 })
