@@ -258,6 +258,10 @@ export default async function AdminEstoquePage({
           },
           {
             label:   'SEM ESTOQUE',
+            // D19 da 8ª: a tela diz o que conta — os PRODUTOS sem saldo positivo no recorte.
+            detalhe: (unidadeId ? 'produtos sem saldo nesta unidade'
+              : umaUnidadeSo(branches.length) ? 'produtos sem saldo'
+              : 'produtos sem saldo em nenhuma unidade') as string | undefined,
             value:   String(semEstoque),
             icon:    <Package size={18} style={{ color: semEstoque > 0 ? 'var(--danger)' : 'var(--text-faint)' }} />,
             iconBg:  semEstoque > 0 ? 'var(--danger-soft)' : 'var(--bg-app)',

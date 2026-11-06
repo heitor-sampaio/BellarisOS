@@ -244,6 +244,7 @@ export const ISOLADOS = [
   'documentos-assinar-sem-passo-extra.spec.ts',
   'lgpd-exportacao-pela-equipe.spec.ts',
   'lgpd-insumos-do-atendimento.spec.ts',
+  'estoque-zerados-uma-conta.spec.ts',
   'lgpd-portal-pacote-legivel.spec.ts',
   'rotas-com-sessao-levam-ao-destino.spec.ts',
   'crm-responsavel.spec.ts',

@@ -1475,6 +1475,18 @@ const procedures = await ler(
     `20261104002102`). Era `= 0` sobre as linhas que existiam: o Gel em −1 un
     e a luva sem entrada não contavam. Prova:
     `e2e/estoque-negativo-e-sem-saldo.spec.ts`.
+    **E é UMA conta de PRODUTOS em todo lugar** (D19 da 8ª simulação,
+    2026-11-06; decidido pelo princípio 3): Relatórios → Estoque contava pares
+    unidade × produto e dizia "Itens zerados 1" (o Hidratante × Água Verde)
+    enquanto o Estoque da rede dizia "Sem estoque 0" (ele tem saldo no
+    Batel). O total de `zerados` de `metrics_relatorio` passou a ser os
+    PRODUTOS ativos sem saldo positivo em nenhuma unidade do recorte (migration
+    `20261106003406`), a conta de `contarSituacoes`; a linha de cada unidade
+    ("Saúde do Estoque por Unidade") continua os produtos sem saldo NELA. A
+    tela diz qual é: "Produtos zerados — sem saldo em nenhuma unidade do
+    recorte" nos Relatórios, e "SEM ESTOQUE — produtos sem saldo em nenhuma
+    unidade" (ou "nesta unidade", com o filtro) no Estoque. Prova:
+    `e2e/estoque-zerados-uma-conta.spec.ts`.
 - **Movimentação de estoque NUNCA gera despesa** (D13 revisto, decisão do
   Heitor, 2026-10-28: "tanto entrada quanto saída, não gera despesa. Os
   valores são informados apenas para base de cálculo de insumos, custo,

@@ -196,7 +196,7 @@ test('"só os meus": o estoque mostra só o insumo dela; o saldo não se atribui
   await como(browser, ela!, async p => {
     await aba(p, 'estoque')
     await expect.soft(kpi(p, 'Consumo no Período'), 'o insumo dos atendimentos dela').toContainText('R$ 20,00')
-    for (const r of ['Valor em Estoque', 'Itens Críticos', 'Itens Zerados', 'Valor em Estoque por Categoria', 'Saúde do Estoque por Unidade']) {
+    for (const r of ['Valor em Estoque', 'Itens Críticos', 'Produtos zerados', 'Valor em Estoque por Categoria', 'Saúde do Estoque por Unidade']) {
       await expect.soft(p.getByText(r, { exact: true }), r).toHaveCount(0)
     }
   })

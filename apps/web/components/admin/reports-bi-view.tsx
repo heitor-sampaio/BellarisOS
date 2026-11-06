@@ -1157,7 +1157,9 @@ function TabEstoque(p: ReportsBiProps) {
         {!p.soOsMeus && <>
           <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro == null ? undefined : giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
           <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
-          <KpiCard label="Itens Zerados"  value={zerados}  format="int" accent="var(--danger)" />
+          {/* D19 da 8ª: produtos (não pares unidade × produto) — a conta do Estoque e do dashboard. */}
+          <KpiCard label="Produtos zerados" value={zerados} format="int" accent="var(--danger)"
+            detalhe={e.porUnidade.length > 1 ? 'sem saldo em nenhuma unidade do recorte' : 'sem saldo na unidade'} />
         </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
