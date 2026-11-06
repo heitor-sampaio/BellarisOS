@@ -1314,7 +1314,31 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   receita paga nasce em cinco lugares. O saldo é a soma de
   `internal_credits.amount` — concessão positiva, uso NEGATIVO com o
   `transaction_id` que o consumiu. Estornar um pagamento feito com crédito
-  devolve o crédito.
+  devolve o crédito. **A tela de cobrança diz o saldo antes** (A36 da 8ª
+  simulação, 2026-11-06; princípio 3): escolhido o crédito na clínica — no
+  "Vender" (`CamposDoPagamento`), no "Confirmar pagamento" do atendimento e
+  no checkout do plano —, "Crédito na clínica: R$ 270,00 · depois deste
+  pagamento: R$ 170,00", ou que não cobre e quanto falta
+  (`[data-saldo-do-credito]`, `SaldoDoCredito`; o saldo do banco,
+  `getCreditoInternoDoCliente`, pela action `saldoDoCreditoDaCliente`, de quem
+  recebe). Prova: `e2e/caixa-atritos-da-8.spec.ts`.
+- **A ficha diz o que ela pagou com crédito** (A43 da 8ª): "+ R$ 180,00 pagos
+  com crédito na clínica: não contam aqui…" embaixo do "Investido total" e na
+  aba Financeiro (`[data-pago-com-credito]`,
+  `metrics_pago_com_credito_do_cliente`, migration `20261106003803`) — o
+  crédito não é receita (F7), e a ficha dizia "R$ 0" ao lado do "Preço médio
+  R$ 450" sem explicar.
+- **A quem pedir o que o caixa não desfaz** (A33 da 8ª; a regra de cargo fica:
+  estornar, devolver e cancelar pacote são do Financeiro em Gerenciar): para
+  quem recebe e não desfaz, a aba Financeiro da ficha diz "Estornar um
+  pagamento, devolver uma venda de produto ou cancelar um pacote é de quem tem
+  o Financeiro em Gerenciar: Lúcia, Fernanda." (`[data-quem-desfaz]`) e o cartão
+  do pacote, "Cancelar o pacote é de…" — os nomes de `quemDesfazNoCaixa`
+  (`lib/equipe/quem-desfaz.ts`: ativos, ao alcance da unidade, e a Admin da
+  rede).
+- **A venda concluída avisa** (A46 da 8ª): o "Vender" (produto, procedimento e
+  pacote) fechava a janela calado; agora "Venda registrada: 2× Sérum —
+  R$ 200,00. O recibo fica na aba Financeiro da ficha." (`avisoDaVenda`).
 - **O plano PROPOSTO no app** (D-18, decisão do Heitor, 2026-10-30): a home
   do portal mostra o plano proposto (`data-plano-proposto`) com as sessões e
   os procedimentos, o valor (a soma dos preços das sessões, em centavos), a

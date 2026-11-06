@@ -54,6 +54,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
@@ -593,8 +594,10 @@ function AbaterDoPacote({ appointmentId, pacotes, onFeito }: {
   )
 }
 
-function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], onClose }: {
+function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], onClose, clienteId }: {
   appointmentId: string; slug: string; price: number
+  /** A cliente: com o crédito na clínica escolhido, o saldo dela e o que sobra (A36 da 8ª). */
+  clienteId?: string
   /** O pagamento combinado no contrato do procedimento: o meio (e o desconto) já vêm escolhidos. */
   pagamentoCombinado?: { metodo: string | null; rotulo: string; desconto?: number } | null
   /** Sessões de pacote da cliente que podem pagar este atendimento (D9). */
@@ -730,6 +733,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                   <option value="">Selecione…</option>
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
+                {metodoEscolhido === 'INTERNAL_CREDIT' && clienteId && <SaldoDoCredito clienteId={clienteId} valor={resgate.restante} />}
                 {metodoEscolhido === 'CREDIT_CARD' && (
                   <>
                     {/* A39: o campo das vezes tem rótulo, como os outros. */}
@@ -1853,7 +1857,7 @@ export function AppointmentSession({
       {showPayment && (
         <PaymentModal
           appointmentId={appointment.id} slug={slug} price={appointment.price} pagamentoCombinado={pagamentoCombinado}
-          pacotesParaAbater={pacotesParaAbater}
+          pacotesParaAbater={pacotesParaAbater} clienteId={client.id}
           onClose={() => setShowPayment(false)}
         />
       )}

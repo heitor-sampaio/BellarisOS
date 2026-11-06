@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { toast } from 'sonner'
+import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
 import Link from 'next/link'
 import { ShoppingBag, X, AlertTriangle, Plus } from 'lucide-react'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
@@ -279,6 +281,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
+      // A46 da 8ª: a janela fechava calada.
+      toast.success(avisoDaVenda(linhas.map(l => `${l.qtd}× ${l.prod.name}`).join(' + '), conta.liquido, estado.forma))
       onFim()
     })
   }
@@ -337,7 +341,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} clienteId={clienteId} />
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}
@@ -400,6 +404,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       envio.renovar()
       router.refresh()
       if (podeAgendar && r.primeiraUnidadeId) { setVendida(r.primeiraUnidadeId); return }
+      toast.success(avisoDaVenda(`${qtd}× ${proc.name}`, conta.liquido, estado.forma))
       onFim()
     })
   }
@@ -468,7 +473,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} clienteId={clienteId} />
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}

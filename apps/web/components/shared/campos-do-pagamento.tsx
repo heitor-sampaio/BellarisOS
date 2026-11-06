@@ -8,6 +8,7 @@ import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes, ResumoDasParcelas } from '@/components/shared/resumo-das-vezes'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 import { temBandeira } from '@/lib/financeiro/bandeiras'
+import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -107,7 +108,7 @@ function recusaDaEntradaDoEstado(e: EstadoDoPagamento, total?: number, doQue = '
   return total !== undefined && 'valor' in lida ? recusaDaEntradaAcimaDoTotal(lida.valor, total, doQue) : null
 }
 
-export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da venda' }: {
+export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da venda', clienteId }: {
   estado: EstadoDoPagamento
   aoMudar: (e: EstadoDoPagamento) => void
   formas: FormaDoPagamento[]
@@ -115,6 +116,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
   total?: number
   /** Completa a recusa da entrada acima do total: "da venda", "do atendimento". */
   doQue?: string
+  /** A cliente: com o crédito na clínica escolhido, o saldo dela e o que sobra (A36 da 8ª). */
+  clienteId?: string
 }) {
   const recusaDaEntrada = recusaDaEntradaDoEstado(estado, total, doQue)
   const mudar = (parte: Partial<EstadoDoPagamento>) => aoMudar({ ...estado, ...parte })
@@ -137,6 +140,10 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
               <option value="">{forma === 'A_RECEBER' ? 'Não informado' : 'Selecione…'}</option>
               {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
+            {estado.metodo === 'INTERNAL_CREDIT' && clienteId && total !== undefined && (
+              <SaldoDoCredito clienteId={clienteId}
+                valor={forma === 'PARCELADO' ? (() => { const l = lerEntrada(estado.entrada); return 'valor' in l ? l.valor : 0 })() : total} />
+            )}
           </label>
           {(forma === 'AVISTA' || forma === 'PARCELADO') && estado.metodo === 'CREDIT_CARD' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

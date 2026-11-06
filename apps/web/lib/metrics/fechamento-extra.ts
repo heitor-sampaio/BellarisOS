@@ -21,23 +21,55 @@ export interface EstornoDoDia {
  * A42: os estornos FEITOS no dia na unidade — o contra-lançamento
  * (`category = 'Estorno'`, pago no dia). Pela regra única, a venda estornada e
  * o estorno saem das entradas e das saídas, e o resumo do dia não mostrava que
- * o dinheiro voltou à cliente ("Saídas R$ 0"). A lista é do dia (curta), e o
- * total é a soma dela, em centavos.
+ * o dinheiro voltou à cliente ("Saídas R$ 0"). A lista e o total são do banco
+ * (`metrics_estornos_do_dia`).
  */
 export async function getEstornosDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<{ itens: EstornoDoDia[]; total: number }> {
-  const linhas = await lerTodas((de, ate) => createAdminClient().from('financial_transactions')
-    .select('id, description, payment_method, cartao_vezes, amount, estorno_motivo, branches!inner(tenant_id)')
-    .eq('branch_id', args.branchId).eq('branches.tenant_id', args.tenantId)
-    .eq('category', 'Estorno').eq('is_paid', true)
-    .gte('paid_at', args.from.toISOString()).lte('paid_at', args.to.toISOString())
-    .order('paid_at').order('id').range(de, ate), 'carregar os estornos do dia')
+  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_estornos_do_dia', {
+    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  }).range(de, ate), 'carregar os estornos do dia') as { id: string; descricao: string | null; forma: string | null; vezes: number | null; valor: number | string; motivo: string | null; total: number | string }[]
   const itens = (linhas ?? []).map(t => ({
-    id: t.id as string, descricao: String(t.description ?? 'Estorno'),
-    forma: (t.payment_method as string | null) ?? null, vezes: (t.cartao_vezes as number | null) ?? null,
-    valor: Number(t.amount ?? 0), motivo: (t.estorno_motivo as string | null) ?? null,
+    id: t.id, descricao: String(t.descricao ?? 'Estorno'), forma: t.forma ?? null, vezes: t.vezes ?? null,
+    valor: Number(t.valor ?? 0), motivo: t.motivo ?? null,
   }))
-  const centavos = itens.reduce((s, i) => s + Math.round(i.valor * 100), 0)
-  return { itens, total: centavos / 100 }
+  return { itens, total: Number(linhas?.[0]?.total ?? 0) }
+}
+
+/** O que não traz receita nas execuções, por nome (A47 e A43 da 8ª). */
+export interface SemReceita { semPagamento: { n: number; valor: number }; comCredito: { n: number; valor: number } }
+
+/**
+ * A47 + A43 da 8ª: por procedimento e por profissional, as execuções do
+ * período sem receita — o avulso concluído sem pagamento e o pago com crédito
+ * na clínica (`metrics_atendimentos_sem_receita`). A regra F18 fica: a receita
+ * dos atendimentos é a PAGA; a tela só passa a dizer o que ficou de fora.
+ */
+export async function getAtendimentosSemReceita(args: {
+  tenantId: string; branchIds: string[] | null; from: Date; to: Date; professionalId?: string | null
+}): Promise<{ porProcedimento: Record<string, SemReceita>; porProfissional: Record<string, SemReceita> }> {
+  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_atendimentos_sem_receita', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+    p_professional_id: args.professionalId ?? null,
+  }).range(de, ate), 'contar os atendimentos sem receita') as {
+    eixo: string; nome: string; sem_pagamento_n: number; sem_pagamento_valor: number | string; com_credito_n: number; com_credito_valor: number | string
+  }[]
+  const porProcedimento: Record<string, SemReceita> = {}
+  const porProfissional: Record<string, SemReceita> = {}
+  for (const l of linhas ?? []) {
+    const v = {
+      semPagamento: { n: Number(l.sem_pagamento_n), valor: Number(l.sem_pagamento_valor) },
+      comCredito:   { n: Number(l.com_credito_n), valor: Number(l.com_credito_valor) },
+    }
+    ;(l.eixo === 'PROCEDIMENTO' ? porProcedimento : porProfissional)[l.nome] = v
+  }
+  return { porProcedimento, porProfissional }
+}
+
+/** A43 da 8ª: o que a cliente pagou com crédito na clínica (não é receita). */
+export async function getPagoComCreditoDoCliente(tenantId: string, clientId: string): Promise<number> {
+  const { data, error } = await createAdminClient().rpc('metrics_pago_com_credito_do_cliente', { p_tenant: tenantId, p_client: clientId })
+  if (error) throw new Error(`Não consegui somar o pago com crédito: ${error.message}`)
+  return Number(data ?? 0)
 }
 
 export interface MovimentoDaUnidade { id: string; nome: string; entradas: number; saidas: number; lancamentos: number }

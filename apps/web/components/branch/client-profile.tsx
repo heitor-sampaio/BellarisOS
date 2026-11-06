@@ -293,6 +293,14 @@ interface Props {
   podeVerPlanos?:        boolean
   /** Cancelar o pacote (F2b, 2026-11-01): `financial: MANAGE`. */
   podeCancelarPacote?:   boolean
+  /**
+   * A33 da 8ª: quem estorna, devolve e cancela pacote (o Financeiro em
+   * Gerenciar), para quem recebe e não desfaz saber a quem pedir. Nulo: quem
+   * vê já desfaz (ou não recebe).
+   */
+  quemDesfaz?:           string[] | null
+  /** A43 da 8ª: o que ela pagou com crédito na clínica (não é receita: o LTV não conta). */
+  pagoComCredito?:       number
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
@@ -1138,6 +1146,8 @@ function FinanceiroTab({
   unidadesParaCredito = [],
   totais,
   soOsProprios = false,
+  quemDesfaz = null,
+  pagoComCredito = 0,
 }: {
   transactions:    ProfileTransaction[]
   internalCredits: ProfileInternalCredit[]
@@ -1154,6 +1164,10 @@ function FinanceiroTab({
   totais:          { pago: number; aReceber: number; credito: number | null }
   /** Recortado pelos atendimentos de quem vê (o financeiro "só os meus"). */
   soOsProprios?:   boolean
+  /** A33 da 8ª: a quem pedir o estorno, a devolução e o cancelamento do pacote. */
+  quemDesfaz?:     string[] | null
+  /** A43 da 8ª: o pago com crédito na clínica (fora do "Total pago"). */
+  pagoComCredito?: number
 }) {
   const [showGrantForm, setShowGrantForm] = useState(false)
 
@@ -1185,6 +1199,18 @@ function FinanceiroTab({
       {soOsProprios && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           Só os lançamentos dos atendimentos que você fez com esta cliente.
+        </p>
+      )}
+      {pagoComCredito > 0 && (
+        <p data-pago-com-credito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          {fmtBRL(pagoComCredito)} foram pagos com crédito na clínica e não entram no “Total pago”: o dinheiro entrou quando o crédito nasceu (ou veio de fora).
+        </p>
+      )}
+      {/* A33 da 8ª: a recepção (Recebimentos em Gerenciar) não vê Estornar, Devolver nem Cancelar pacote — a regra de cargo fica, e a tela diz a quem pedir. */}
+      {quemDesfaz && (
+        <p data-quem-desfaz style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px' }}>
+          Estornar um pagamento, devolver uma venda de produto ou cancelar um pacote é de quem tem o Financeiro em Gerenciar
+          {quemDesfaz.length > 0 ? `: ${quemDesfaz.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
         </p>
       )}
 
@@ -1362,7 +1388,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
+  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1691,12 +1717,14 @@ export function ClientProfile({
       <div className="kpi-grid" style={{ gap: 8 }}>
         {[
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
-          { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested) },
+          { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested),
+            // A43 da 8ª: "R$ 0" ao lado do preço médio de R$ 450, sem dizer que ela pagou com crédito.
+            nota: pagoComCredito > 0 ? `+ ${fmtBRL(pagoComCredito)} pagos com crédito na clínica: não contam aqui (o dinheiro entrou quando o crédito nasceu, ou veio de fora).` : undefined },
           // A56: ao lado do que ela PAGOU (de tudo), o preço médio dos
           // atendimentos cobrados — outra conta, outro nome, e a dica diz qual.
           { label: 'PREÇO MÉDIO POR ATEND.', value: stats.mediaPorAtendimento == null ? '—' : fmtBRL(stats.mediaPorAtendimento), dica: DEFINICOES.precoMedioPorAtendimento },
           ...(fidelidade ? [{ label: 'PONTOS', value: fidelidade.saldo.toLocaleString('pt-BR') }] : []),
-        ].map((k: { label: string; value: string; dica?: { rotulo: string; texto: string } }) => (
+        ].map((k: { label: string; value: string; dica?: { rotulo: string; texto: string }; nota?: string }) => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
               {k.label}{k.dica && <Dica rotulo={k.dica.rotulo}>{k.dica.texto}</Dica>}
@@ -1704,6 +1732,7 @@ export function ClientProfile({
             <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
               {k.value}
             </p>
+            {k.nota && <p data-pago-com-credito style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{k.nota}</p>}
           </div>
         ))}
       </div>
@@ -1801,6 +1830,12 @@ export function ClientProfile({
             {activePackage.deFora && activePackage.semValorDeReferencia && (
               <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>
                 Sem valor de referência: as sessões deste pacote não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos.
+              </p>
+            )}
+            {/* A33 da 8ª: quem recebe e não cancela sabe a quem pedir. */}
+            {!pacoteCancelavel && !activePackage.planId && quemDesfaz && quemDesfaz.length > 0 && (
+              <p data-quem-cancela-o-pacote style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                Cancelar o pacote é de quem tem o Financeiro em Gerenciar: {quemDesfaz.join(', ')}.
               </p>
             )}
             {/* Cancelar o pacote (F2b): fora do cartão, que já é o botão da ficha de tratamento. */}
@@ -2113,6 +2148,8 @@ export function ClientProfile({
           unidadesParaCredito={clienteSemFilial || perguntaAUnidade ? branches : []}
           totais={totaisFinanceiros}
           soOsProprios={financeiroSoOsProprios}
+          quemDesfaz={quemDesfaz}
+          pagoComCredito={pagoComCredito}
         />
       )}
 

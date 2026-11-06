@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { toast } from 'sonner'
+import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote } from '@/actions/pacotes'
 import { schedulePackageSession } from '@/actions/appointments'
@@ -71,6 +73,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       envio.renovar()
       router.refresh()
       if (podeAgendar && r.primeiraSessao) { setVendida(r.primeiraSessao); return }
+      toast.success(avisoDaVenda(pacote.name, conta.liquido, estado.forma))
       onFim()
     })
   }
@@ -130,7 +133,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={pacote.price} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} clienteId={clienteId} />
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}

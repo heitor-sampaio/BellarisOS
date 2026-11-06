@@ -2,6 +2,8 @@
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
+import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
+import { getPagoComCreditoDoCliente } from '@/lib/metrics/fechamento-extra'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
 import { responsavelDaFicha } from '@/lib/clients/menor'
 import { unificacoesDaFicha } from '@/lib/clients/unificacoes'
@@ -492,6 +494,8 @@ export default async function ClientProfilePage({
       podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
       podeVerPlanos={can(ctx, 'agenda', 'VIEW')}
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
+      quemDesfaz={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branch.id as string) : null}
+      pagoComCredito={await getPagoComCreditoDoCliente(ctx.tenantId!, id)}
       isNetworkWide={ctx.branchId === null}
       clientHistory={clientHistory}
       opportunities={oportunidades}

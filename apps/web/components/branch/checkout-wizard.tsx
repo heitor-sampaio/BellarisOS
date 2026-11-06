@@ -22,6 +22,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
@@ -759,6 +760,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             </button>
           ))}
         </div>
+        {/* A36 da 8ª: com o crédito na clínica, o saldo dela e o que sobra. */}
+        {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && paymentMethod === 'INTERNAL_CREDIT' && (
+          <div style={{ marginBottom: 16 }}>
+            <SaldoDoCredito clienteId={plan.clientId} valor={formaPgto === 'PARCELADO' ? entradaNum : liquido} />
+          </div>
+        )}
         {/* D5: na entrada + parcelas, a ENTRADA no crédito também em N vezes. */}
         {(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && paymentMethod === 'CREDIT_CARD' && (
           <div style={{ marginBottom: 16, maxWidth: 220 }}>
