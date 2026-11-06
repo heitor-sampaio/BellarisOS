@@ -74,6 +74,11 @@ export function ClientesDoPeriodo({ titulo, subtitulo, etapas }: {
           )
         })}
       </div>
+      {/* A49 da 8ª: o "Cancelados/faltas" daqui (2) e o dos Relatórios (6)
+          diferiam sem dizer por quê — a regra de indicadores.md fica. */}
+      <p data-recorte-dos-cancelados style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 12, lineHeight: 1.45 }}>
+        Contados até agora, os cancelados e as faltas também. Relatórios → Agenda conta o período inteiro, com os que ainda vão acontecer.
+      </p>
     </div>
   )
 }

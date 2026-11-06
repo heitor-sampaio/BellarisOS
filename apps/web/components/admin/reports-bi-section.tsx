@@ -7,6 +7,7 @@ import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { addDaysTZ } from '@/lib/datetime'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
+import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
@@ -330,6 +331,9 @@ export async function ReportsBiSection({
         perdas={perdas}
         quemAtende={quemAtende}
         receitaDaClinica={profAgenda !== null && profDinheiro === null}
+        semReceita={tab === 'procedimentos' || tab === 'profissionais'
+          ? await getAtendimentosSemReceita({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda })
+          : null}
       />
     </>
   )

@@ -19,6 +19,7 @@ import { rotuloDoMotivo } from '@/lib/estoque/perda'
 import {
   TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda,
 } from '@/lib/metrics/vendas-comum'
+import type { SemReceita } from '@/lib/metrics/fechamento-extra'
 import { Download } from 'lucide-react'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
@@ -107,6 +108,12 @@ export interface ReportsBiProps {
    * por procedimento e por profissional é a da clínica, e a tela diz isso.
    */
   receitaDaClinica?: boolean
+  /**
+   * A47 e A43 da 8ª: por procedimento e por profissional (pelo nome), o que
+   * ficou FORA da receita dos atendimentos — o concluído sem pagamento e o
+   * pago com crédito na clínica (`getAtendimentosSemReceita`). A regra F18 fica.
+   */
+  semReceita?: { porProcedimento: Record<string, SemReceita>; porProfissional: Record<string, SemReceita> } | null
   /** Quem ATENDE no recorte (D14, lib/metrics `getQuemAtende`): o "Profissionais ativos" e as linhas da tabela. Só na aba Profissionais. */
   quemAtende?: { total: number; nomes: string[] }
   /** Vê a comissão da equipe (financeiro com escopo de todos). Sem, a aba Profissionais não a mostra. */
@@ -884,6 +891,17 @@ function AgeRankCard({ data }: {
 // -----------------------------------------------------------------------------
 // TAB: PROCEDIMENTOS
 // -----------------------------------------------------------------------------
+/** "R$ 160,00 concluídos sem pagamento (1)" e "R$ 450,00 pagos com crédito na clínica (não é receita)" — A47/A43 da 8ª. */
+function NotaSemReceita({ s }: { s: SemReceita | undefined }) {
+  if (!s || (s.semPagamento.n === 0 && s.comCredito.valor <= 0)) return null
+  return (
+    <span data-sem-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
+      {s.semPagamento.n > 0 && <span style={{ display: 'block' }}>{fmtBRLFull(s.semPagamento.valor)} concluídos sem pagamento ({s.semPagamento.n})</span>}
+      {s.comCredito.valor > 0 && <span style={{ display: 'block' }}>{fmtBRLFull(s.comCredito.valor)} pagos com crédito na clínica (não é receita)</span>}
+    </span>
+  )
+}
+
 function TabProcedimentos(p: ReportsBiProps) {
   const { relatorio: r } = p
   const faixas = r.procedimentosPorFaixa
@@ -924,7 +942,8 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right',
+      render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProcedimento[String(row.name)]} /></> },
     // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
     // conta os cobrados), e o nome diz isso (D11).
     { key: 'ticket',   label: 'Média por execução', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
@@ -1027,7 +1046,8 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'revenue', label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right',
+      render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProfissional[String(row.name)]} /></> },
     { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     {

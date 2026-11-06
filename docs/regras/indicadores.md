@@ -467,6 +467,17 @@ KPI que não fazia nenhum dos dois.
   Sem isso, parte das réplicas do PostgREST não conhece a função nova por um
   tempo e a chamada falha às vezes (visto em 2026-09-27: 1 em 3 rodadas).
 
+**O que fica fora da receita dos atendimentos, a tela diz** (A47 e A43 da 8ª
+simulação, 2026-11-06; a regra F18 fica — a receita dos atendimentos é a PAGA,
+e o crédito interno não é receita, F7): nas tabelas por procedimento e por
+profissional dos Relatórios, embaixo da receita, "R$ 160,00 concluídos sem
+pagamento (1)" e "R$ 450,00 pagos com crédito na clínica (não é receita)"
+(`[data-sem-receita]`) — `metrics_atendimentos_sem_receita` (o avulso
+concluído no período, o conjunto de `atendimentos_a_receber`; migration
+`20261106003803`) → `getAtendimentosSemReceita`. A Rafaela via R$ 474 de
+comissão e a receita sem o atendimento pago com crédito, sem nota. Prova:
+`e2e/relatorios-atritos-da-8.spec.ts`.
+
 **Relatório de vendas** (aba Vendas, 2026-10-14): cada venda do período, uma
 linha — `metrics_vendas` (migration `20261014000001`), paginada por
 `metrics_vendas_pagina` e totalizada por `metrics_vendas_resumo` (por tipo e
@@ -632,7 +643,12 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   (D12). A "Taxa de aproveitamento" da rede segue como está, até agora: é
   "horários PASSADOS concluídos ÷ total marcado". A aba Agenda dos Relatórios
   continua uma LISTA do período, até o fim dele (acima).
-  Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
+  Prova: `e2e/indicadores-uma-conta-so.spec.ts`. **E o quadro diz o recorte**
+  (A49 da 8ª simulação, 2026-11-06: "Cancelados 2" no dashboard e 6 nos
+  Relatórios, sem dizer por quê): embaixo do "Clientes no mês/no período" (os
+  dois dashboards), "Contados até agora, os cancelados e as faltas também.
+  Relatórios → Agenda conta o período inteiro, com os que ainda vão acontecer."
+  (`[data-recorte-dos-cancelados]`). Prova: `e2e/relatorios-atritos-da-8.spec.ts`.
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios. **Cada ponto diz o que é** (A44 da 6ª simulação,
   2026-11-04): `rotulo` — "03h" na série por hora (o "Hoje"), a DATA ("04/11",

@@ -234,6 +234,7 @@ export const ISOLADOS = [
   'financeiro-atritos-da-8.spec.ts',
   'procedimentos-atritos-da-8.spec.ts',
   'caixa-atritos-da-8.spec.ts',
+  'relatorios-atritos-da-8.spec.ts',
   'comissoes-pacote-responsavel.spec.ts',
   'vendas-quem-vendeu.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',
