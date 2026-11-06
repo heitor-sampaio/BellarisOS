@@ -35,6 +35,8 @@ export const ISOLADOS = [
   'pacote-de-fora.spec.ts',
   'importacao-migracao.spec.ts',
   'clientes-aniversariantes.spec.ts',
+  // A F36 (o "atende" por unidade e os atritos de setup, equipe e unidades).
+  'equipe-atende-por-unidade.spec.ts',
   'atendimento-atritos-da-7.spec.ts',
   'estoque-atritos-da-7.spec.ts',
   'financeiro-atritos-da-7.spec.ts',

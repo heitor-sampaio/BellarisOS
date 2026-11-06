@@ -16,6 +16,8 @@ import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { vocabulario } from '@/lib/unidades/vocabulario'
+import { getCachedNetworkBranches } from '@/lib/cached-queries'
+import { listaDeUnidades } from '@/lib/equipe/atende'
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -59,10 +61,10 @@ export default async function TeamPage({
 
   const branchId = branch?.id ?? ctx.branchId!
 
-  const [todosOsMembros, tenantRoles, daRedeQueAtendem] = await Promise.all([
+  const [todosOsMembros, tenantRoles, daRedeQueAtendem, unidadesDaRede] = await Promise.all([
     ler(supabase
       .from('users')
-      .select('id, name, email, role_id, is_active, provides_services, horario')
+      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario')
       .eq('branch_id', branchId)
       .order('name'), 'carregar a equipe'),
     ler(supabase
@@ -70,19 +72,28 @@ export default async function TeamPage({
       .select('id, key, label, is_system')
       .eq('tenant_id', ctx.tenantId!)
       .order('label'), 'carregar os cargos'),
-    // Quem é da REDE e atende atende nesta unidade também (§9.1) — a dona da
-    // clínica que atende é o caso típico (A5/D2, 2026-10-29). A sessão de
-    // unidade não lê os membros da rede (RLS): o servidor lê só estes, só o
-    // nome e o cargo, e a linha vai sem e-mail nem ações.
+    // Quem é DE FORA (da rede ou de outra unidade) e tem esta unidade marcada
+    // no "Atende" (decisão 2 da 8ª simulação; era só "da rede, que atende em
+    // todas") — a dona da clínica que atende é o caso típico (A5/D2,
+    // 2026-10-29), e a Talita da Água Verde cobrindo o Batel. A sessão de
+    // unidade não lê esses membros (RLS): o servidor lê só estes, só o nome,
+    // o cargo e onde atendem, e a linha vai sem e-mail nem ações.
     ler(createAdminClient()
       .from('users')
-      .select('id, name, role_id')
+      .select('id, name, role_id, branch_id, atende_em')
       .eq('tenant_id', ctx.tenantId!)
-      .is('branch_id', null)
-      .eq('provides_services', true)
+      .contains('atende_em', [branchId])
+      .or(`branch_id.is.null,branch_id.neq.${branchId}`)
       .eq('is_active', true)
-      .order('name'), 'carregar quem é da rede e atende'),
+      .order('name'), 'carregar quem é de fora e atende aqui'),
+    getCachedNetworkBranches(ctx.tenantId!),
   ])
+  const nomeDa = new Map(((unidadesDaRede ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
+  const unidadesDoAtende = (unidadesDaRede ?? []) as { id: string; name: string }[]
+  // A gerente de unidade fixa marca e desmarca só a dela (H7); quem é da rede, todas.
+  const editaveisDoAtende = ctx.branchId === null ? null : [branchId]
+  const ninguemAtendeAqui = ![...(todosOsMembros ?? []), ...(daRedeQueAtendem ?? [])]
+    .some(m => (m as { is_active?: boolean }).is_active !== false && ((m as { atende_em?: string[] | null }).atende_em ?? []).includes(branchId))
 
   const members  = (todosOsMembros ?? []).filter(m => contemSemAcento([m.name, m.email], termo))
   const daRede   = (daRedeQueAtendem ?? []).filter(m => contemSemAcento([m.name], termo))
@@ -116,11 +127,20 @@ export default async function TeamPage({
           </p>
           {/* A12 da 6ª simulação: a gerente via 3 de 7 sem saber o recorte. */}
           <p data-recorte-da-equipe style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
-            {fala(`Equipe da unidade ${branch?.name ?? ''}: quem é dela e quem é da rede e atende aqui. Quem é da rede e não atende fica na Equipe da rede.`)}
+            {fala(`Equipe da unidade ${branch?.name ?? ''}: quem é dela e quem é de fora e atende aqui. Quem é da rede e não atende fica na Equipe da rede.`)}
           </p>
+          {ninguemAtendeAqui && (
+            <p data-ninguem-atende role="status" style={{
+              marginTop: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)', maxWidth: 560,
+              background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+            }}>
+              {fala('Ninguém atende nesta unidade ainda: marque esta unidade no “Atende clientes” de quem atende aqui, no lápis de cada pessoa. Quem é de fora, a Equipe da rede marca.')}
+            </p>
+          )}
         </div>
         {canManage && (
-          <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} unidade={branch?.name ?? null} />
+          <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} unidade={branch?.name ?? null}
+            unidadesDoAtende={unidadesDoAtende} editaveisDoAtende={editaveisDoAtende} />
         )}
       </div>
 
@@ -211,8 +231,11 @@ export default async function TeamPage({
                           roleId:           m.role_id ?? null,
                           branchId:         branchId,
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
+                          atendeEm: ((m as { atende_em?: string[] | null }).atende_em ?? []) as string[],
                         }}
                         branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade', horario: branch?.horario }]}
+                        unidadesDoAtende={unidadesDoAtende}
+                        editaveisDoAtende={editaveisDoAtende}
                         roles={assignableRoles}
                         canChooseScope={false}
                         redirectPath={`/${slug}/team`}
@@ -257,7 +280,11 @@ export default async function TeamPage({
                           {m.name}
                         </p>
                         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
-                          Atende em todas as unidades
+                          {(() => {
+                            const onde = ((m.atende_em as string[] | null) ?? []).map(u => nomeDa.get(u)).filter((x): x is string => !!x)
+                            return onde.length >= unidadesDoAtende.length && unidadesDoAtende.length > 1
+                              ? 'Atende em todas as unidades' : `Atende em ${listaDeUnidades(onde)}`
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -267,7 +294,9 @@ export default async function TeamPage({
                       {(m.role_id ? roleLabel[m.role_id] : null) ?? '—'}
                     </span>
                     <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
-                    <span className="chip chip-info" style={{ marginLeft: 6 }}>{fala('Da rede')}</span>
+                    <span className="chip chip-info" style={{ marginLeft: 6 }}>
+                      {m.branch_id ? `Da unidade ${nomeDa.get(m.branch_id as string) ?? 'outra'}` : fala('Da rede')}
+                    </span>
                   </td>
                   <td style={{ padding: '14px 20px' }}>
                     <span className="chip chip-success">Ativo</span>

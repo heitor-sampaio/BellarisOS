@@ -162,8 +162,14 @@ export function ProfessionalAgendaView({
   // (§13.1): sobre o horário dela — era um dia fixo de 8 h, na tela (D11 da
   // simulação de 2026-10-29). Nulo = sem expediente hoje: a tela mostra "—".
   // O tempo que ela bloqueou sai da capacidade, como o de outra unidade (D15 da 8ª).
-  const occupancyPct = useMemo(() => ocupacaoDoDia(todayEvents,
-    { unidade: horarioDaUnidade, profissional: horarioDaProfissional, ocupadoFora: [...ocupadoFora, ...blocosDosBloqueios(bloqueios)] }, today),
+  // O dela em OUTRA unidade (decisão 2 da 8ª: `unidade` preenchida) é cartão
+  // na grade, mas na ocupação desta unidade conta como "ocupado fora", como antes.
+  const occupancyPct = useMemo(() => ocupacaoDoDia(todayEvents.filter(e => !e.unidade),
+    { unidade: horarioDaUnidade, profissional: horarioDaProfissional, ocupadoFora: [
+      ...ocupadoFora,
+      ...todayEvents.filter(e => e.unidade && !['CANCELLED', 'NO_SHOW'].includes(e.status)).map(e => ({ inicio: e.start, minutos: e.durationMin })),
+      ...blocosDosBloqueios(bloqueios),
+    ] }, today),
   [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, today, bloqueios])
 
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
@@ -448,7 +454,7 @@ export function ProfessionalAgendaView({
                 const isIP   = ev.status === 'IN_PROGRESS'
                 return (
                   <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                    <div style={{
+                    <div {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})} style={{
                       position: 'absolute', top: top + 2, left: 58, right: 16, height: height - 4,
                       borderRadius: 10,
                       background: st.bg,
@@ -477,6 +483,12 @@ export function ProfessionalAgendaView({
                         </span>
                         {/* A menor de idade (decisão 2 da 7ª; sobra da F29): a marca e o responsável na dica. */}
                         <SeloDoMenor menor={ev.menor} />
+                        {/* O dela numa outra unidade em que atende (decisão 2 da 8ª). */}
+                        {ev.unidade && (
+                          <span data-unidade-do-cartao className="chip chip-info" style={{ fontSize: 'var(--text-overline)' }}>
+                            Na unidade {ev.unidade}
+                          </span>
+                        )}
                       </div>
                       {/* Linha inferior: avatar + nome + procedimento */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

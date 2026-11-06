@@ -122,7 +122,13 @@ export interface TenantContext {
   permissions: ResolvedPermissions  // nível resolvido por módulo
   scopes: ResolvedScopes            // alcance por módulo (OWN = só os próprios)
   reportTabs: ReportTab[]           // abas de Relatórios liberadas para o cargo
-  providesServices: boolean         // atende clientes (profissional)
+  providesServices: boolean         // atende clientes (profissional) em ALGUMA unidade
+  /**
+   * As unidades em que atende (o checklist do "Atende", decisão 2 do Heitor
+   * sobre a 8ª simulação). Não é abrangência: numa unidade marcada fora do
+   * alcance ela chega só aos agendamentos DELA (`alcancaOAgendamento`).
+   */
+  atendeEm?: string[]
   isNetworkAdmin: boolean
   isClient: boolean
   /**

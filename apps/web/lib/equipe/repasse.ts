@@ -103,9 +103,9 @@ async function agendamentosDoMembro(admin: Admin, ctx: TenantContext, membroId: 
 
 /** Quem atende (ativo, `provides_services`) na rede, menos o membro que sai. */
 async function quemAtendeNaRede(admin: Admin, tenantId: string, membroId: string) {
-  return ((await ler(admin.from('users').select('id, name, branch_id')
+  return ((await ler(admin.from('users').select('id, name, branch_id, atende_em')
     .eq('tenant_id', tenantId).eq('is_active', true).eq('provides_services', true).neq('id', membroId)
-    .order('name'), 'carregar quem atende')) ?? []) as { id: string; name: string; branch_id: string | null }[]
+    .order('name'), 'carregar quem atende')) ?? []) as { id: string; name: string; branch_id: string | null; atende_em: string[] | null }[]
 }
 
 /** Quem tem o CRM (Ver ou Gerenciar, ou o cargo de sistema Admin da rede), ativo, menos o membro. */
@@ -127,8 +127,8 @@ async function quemTemCrm(admin: Admin, tenantId: string, membroId: string): Pro
     .map(m => ({ id: m.id, nome: m.name }))
 }
 
-/** A mesma regra de `filtroDeQuemAtendeNaUnidade` (a da rede atende em todas), sobre a lista já lida. */
-const atendeNaUnidade = (p: { branch_id: string | null }, unidade: string) => p.branch_id === null || p.branch_id === unidade
+/** A mesma regra de `filtroDeQuemAtendeNaUnidade` (a unidade marcada no "Atende"), sobre a lista já lida. */
+const atendeNaUnidade = (p: { atende_em: string[] | null }, unidade: string) => (p.atende_em ?? []).includes(unidade)
 
 /** O que fica com o membro, e para quem pode ir. Não grava nada. */
 export async function pendenciasDoMembro(

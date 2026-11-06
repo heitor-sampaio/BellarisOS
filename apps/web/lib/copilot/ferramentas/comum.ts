@@ -1,7 +1,7 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { alcancaUnidade } from '@/lib/auth'
-import { getCachedNetworkBranches } from '@/lib/cached-queries'
+import { getCachedNetworkBranches, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { zonedToUtc, BUSINESS_TZ } from '@/lib/datetime'
 export { BUSINESS_TZ }
@@ -113,14 +113,15 @@ export const STATUS_DO_AGENDAMENTO: Record<string, string> = {
 
 /**
  * Acha o profissional pelo id ou pelo nome, entre quem atende (`provides_services`)
- * na rede — e, quando a unidade é dada, nela (ou da rede, que atende em todas).
+ * na rede — e, quando a unidade é dada, quem a tem marcada no "Atende" (decisão
+ * 2 do Heitor sobre a 8ª simulação: `filtroDeQuemAtendeNaUnidade`).
  */
 export async function resolverProfissional(
   c: ContextoDaFerramenta, pedido: string, unidadeId?: string | null,
 ): Promise<{ id: string; name: string; branch_id: string | null } | { erro: string }> {
   let q = c.admin.from('users').select('id, name, branch_id')
     .eq('tenant_id', c.ctx.tenantId!).eq('is_active', true).eq('provides_services', true)
-  if (unidadeId) q = q.or(`branch_id.eq.${unidadeId},branch_id.is.null`)
+  if (unidadeId) q = q.or(filtroDeQuemAtendeNaUnidade(unidadeId))
   const todos = (await ler(q.limit(200), 'ler os profissionais') as { id: string; name: string; branch_id: string | null }[] | null) ?? []
   const p = pedido.trim().toLowerCase()
   const exatos = todos.filter(u => u.id === pedido || u.name.toLowerCase() === p)

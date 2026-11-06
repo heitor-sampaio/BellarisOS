@@ -289,8 +289,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 - A comissão de cada membro se define na **Equipe** (chip "Comissão …" na
   linha, `ComissaoDoMembro`), só com `financial: MANAGE` — gerir a equipe não
   dá acesso a quanto cada um ganha. Quem é de unidade só mexe nos da unidade
-  (a Equipe da unidade mostra quem é da rede e atende ali, mas sem o chip: a
-  comissão dele é da Equipe da rede). Vale para o Admin da rede que atende
+  (a Equipe da unidade mostra quem é de fora — da rede ou de outra unidade — e
+  atende ali, mas sem o chip: a comissão dele é da Equipe da rede). A regra é
+  da PESSOA, na rede: a Talita marcada no Batel (decisão 2 da 8ª) tem a mesma
+  comissão nas duas unidades. O formulário de novo membro da UNIDADE também
+  pede a comissão padrão (A3 da 8ª simulação). Vale para o Admin da rede que atende
   (D2, 2026-10-29): o chip aparece quando ele marca "Atende clientes".
 - **A comissão DEVIDA é uma linha por procedimento executado**
   (`commission_lines`), e `commissions` é o EXTRATO dela: cada lançamento

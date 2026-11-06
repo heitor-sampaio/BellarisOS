@@ -6,6 +6,7 @@ import { createTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFala } from '@/components/shared/uma-unidade'
+import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
 
 interface Branch { id: string; name: string }
 interface Role   { id: string; label: string }
@@ -46,7 +47,9 @@ export function AdminTeamForm(props: AdminTeamFormProps) {
  * profissional (D8, regressão de 4e5bef5).
  */
 function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, cargoDeAdminId = null, onFechar }: AdminTeamFormProps & { onFechar: () => void }) {
-  const [atende, setAtende] = useState(false)
+  // O "Atende" é o checklist das unidades (decisão 2 da 8ª simulação).
+  const [atendeEm, setAtendeEm] = useState<string[]>([])
+  const atende = atendeEm.length > 0
   const [escolhido, setScope] = useState<'branch' | 'network'>('branch')
   const [roleId, setRoleId] = useState('')
   const ehAdmin = !!cargoDeAdminId && roleId === cargoDeAdminId
@@ -148,13 +151,9 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                   </span>
                 )}
 
-                {/* Atende clientes */}
-                <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" name="providesServices" checked={atende} onChange={e => setAtende(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--brand)' }} />
-                  <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                    Atende clientes (aparece na agenda como profissional e gera comissão)
-                  </span>
-                </label>
+                {/* Atende clientes: em quais unidades */}
+                <AtendeNasUnidades id="tm-atende" unidades={branches} marcadas={atendeEm} aoMudar={setAtendeEm}
+                  editaveis={isNetworkAdmin ? null : []} />
 
                 {atende && podeComissao && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>

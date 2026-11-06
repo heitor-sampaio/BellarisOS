@@ -17,8 +17,9 @@ import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
-  getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
+  getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
+import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-outras-unidades'
 
 export default async function AgendaPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
@@ -128,6 +129,35 @@ export default async function AgendaPage({ params, searchParams }: {
     }
   }
 
+  // Os MEUS agendamentos nas outras unidades em que atendo (decisão 2 da 8ª
+  // simulação: o "atende" vira um checklist das unidades). A Talita é da Água
+  // Verde e cobre o Batel: o dela no Batel aparece aqui, com a unidade, e abre
+  // pela tela do atendimento deste portal. O resto do Batel, não.
+  const outrasOndeAtendo = (ctx.atendeEm ?? []).filter(u => u !== branchId)
+  const meusDeFora = ctx.internalUserId && outrasOndeAtendo.length
+    ? ((await lerTodas((de, ate) => createAdminClient().from('appointments')
+        .select('id, scheduled_at, duration_min, status, price, professional_id, client_id, procedure_id, branch_id, arrived_at, completed_at, procedures(name), branches!inner(tenant_id)')
+        .eq('branches.tenant_id', ctx.tenantId!)
+        .eq('professional_id', ctx.internalUserId!)
+        .in('branch_id', outrasOndeAtendo)
+        .not('status', 'in', '("CANCELLED","NO_SHOW")')
+        .gte('scheduled_at', from).lte('scheduled_at', to)
+        .order('scheduled_at').order('id').range(de, ate), 'carregar os meus agendamentos nas outras unidades')) ?? [])
+    : []
+  const nomeDaUnidade = meusDeFora.length
+    ? new Map(((await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string }[]).map(b => [b.id, b.name]))
+    : new Map<string, string>()
+  // O que já está à vista como cartão sai do "ocupado fora" (senão conta duas vezes).
+  if (ctx.internalUserId && ocupadoFora[ctx.internalUserId] && meusDeFora.length) {
+    const vistos = meusDeFora.map(a => `${a.scheduled_at}|${a.duration_min}`)
+    ocupadoFora[ctx.internalUserId] = ocupadoFora[ctx.internalUserId]!.filter(b => {
+      const i = vistos.indexOf(`${b.inicio}|${b.minutos}`)
+      if (i < 0) return true
+      vistos.splice(i, 1)
+      return false
+    })
+  }
+
   // Agenda vazia é um fato; agenda que falhou é outra coisa. `appointments` tem
   // duas chaves para `users` (`professional_id` e `created_by_id`), então o
   // embed precisa dizer qual — sem isso o PostgREST recusa, o erro era
@@ -149,7 +179,7 @@ export default async function AgendaPage({ params, searchParams }: {
   const [selos, nomes, jaPagos, menores, bloqueios] = await Promise.all([
     selosDaFicha(ctx.tenantId!, (rawAppointments ?? []) as { id: string; client_id: string | null; status: string }[]),
     nomesDosRegistros(ctx.tenantId!, {
-      clientes: (rawAppointments ?? []).map(a => a.client_id as string | null),
+      clientes: [...(rawAppointments ?? []), ...meusDeFora].map(a => a.client_id as string | null),
       membros:  (rawAppointments ?? []).map(a => a.professional_id as string | null),
     }),
     pagosAntes(createAdminClient(), (rawAppointments ?? []).map(a => a.id as string)),
@@ -189,13 +219,33 @@ export default async function AgendaPage({ params, searchParams }: {
     }
   })
 
+  // Os de fora, como cartões da "Minha agenda" (com a unidade) ou na lista
+  // "Seus atendimentos em outras unidades" da agenda inteira.
+  const eventosDeFora = meusDeFora.map(a => ({
+    id:               a.id as string,
+    start:            a.scheduled_at as string,
+    end:              new Date(new Date(a.scheduled_at as string).getTime() + (a.duration_min as number) * 60000).toISOString(),
+    durationMin:      a.duration_min as number,
+    status:           a.status as string,
+    clientName:       (a.client_id && nomes.clientes[a.client_id as string]) || '—',
+    procedureName:    (a.procedures as unknown as { name: string } | null)?.name ?? '—',
+    professionalName: '',
+    professionalId:   (a.professional_id as string | null) ?? '',
+    price:            String(a.price),
+    clientId:         (a.client_id as string | null) ?? null,
+    procedureId:      (a.procedure_id as string | null) ?? null,
+    unidade:          nomeDaUnidade.get(a.branch_id as string) ?? 'outra unidade',
+    arrivedAt:        (a.arrived_at as string | null) ?? null,
+    completedAt:      (a.completed_at as string | null) ?? null,
+  }))
+
   if (professionalOnly) {
     const currentPro = professionals?.find(p => p.id === ctx.internalUserId)
     return (
       <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {avisoDosAbertos}
         <ProfessionalAgendaView
-          events={events}
+          events={[...events, ...eventosDeFora].sort((x, y) => x.start.localeCompare(y.start))}
           slug={slug}
           professionalName={currentPro?.name ?? ''}
           branchName={branch.name}
@@ -217,6 +267,11 @@ export default async function AgendaPage({ params, searchParams }: {
     <div>
       <RealtimeRefresher tables={['appointments']} />
       {(abertos.abertos.total > 0 || abertos.semChegada.total > 0) && <div style={{ marginBottom: 16 }}>{avisoDosAbertos}</div>}
+      {eventosDeFora.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <MeusAtendimentosEmOutrasUnidades slug={slug} eventos={eventosDeFora} />
+        </div>
+      )}
 
       <AgendaCalendar
         branchId={branchId}

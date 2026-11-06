@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { headers } from 'next/headers'
-import { getTenantContext, assertPermission, assertRecurso, alcancaUnidade, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, alcancaOAgendamento, ownerFilter } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { origemPublicaDe } from '@/lib/origem'
 import { novoToken, telefoneParaWhatsApp, VALIDADE_DO_LINK_DIAS } from '@/lib/documentos/link'
@@ -107,7 +107,7 @@ async function agendamentoAoAlcance(ctx: Awaited<ReturnType<typeof getTenantCont
   const ap = await ler(admin.from('appointments').select('id, client_id, branch_id, professional_id, branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as
     { id: string; client_id: string | null; branch_id: string; professional_id: string | null } | null
-  if (!ap || !alcancaUnidade(ctx, ap.branch_id)) return null
+  if (!ap || !alcancaOAgendamento(ctx, ap.branch_id, ap.professional_id)) return null
   const dono = ownerFilter(ctx, 'agenda')
   if (dono && ap.professional_id !== dono) return null
   return ap

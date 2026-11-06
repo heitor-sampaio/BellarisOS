@@ -13,6 +13,12 @@ export type CachedMember = {
   id: string; name: string; roleId: string | null; roleLabel: string
   providesServices: boolean
   /**
+   * As unidades em que ele ATENDE (decisão 2 do Heitor, 8ª simulação): o
+   * checklist do "Atende" na Equipe. Não é abrangência — ele alcança nelas só
+   * os agendamentos DELE (`alcancaOAgendamento`, lib/auth.ts).
+   */
+  atendeEm: string[]
+  /**
    * Abrangência do membro: `null` = rede inteira.
    *
    * Vem do banco pelo mesmo motivo que `role_id` vem: trocar a abrangência de
@@ -35,7 +41,7 @@ export function getCachedMember(authId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('users')
-        .select('id, name, role_id, branch_id, provides_services, is_active, tenant_roles(label)')
+        .select('id, name, role_id, branch_id, provides_services, atende_em, is_active, tenant_roles(label)')
         .eq('auth_id', authId)
         .maybeSingle(), 'buscar o usuário')
       if (!data) return null
@@ -46,6 +52,7 @@ export function getCachedMember(authId: string) {
         roleId: data.role_id ?? null,
         roleLabel: roleRef?.label ?? '',
         providesServices: data.provides_services ?? false,
+        atendeEm: ((data as { atende_em?: string[] | null }).atende_em ?? []) as string[],
         branchId: (data.branch_id as string | null) ?? null,
         isActive: data.is_active !== false,
       }
@@ -286,16 +293,18 @@ export function getCachedNetworkProcedures(tenantId: string) {
   )()
 }
 
-// ─── Profissionais da filial (quem atende clientes: provides_services) ────────
+// ─── Profissionais da unidade (quem atende clientes nela) ────────────────────
 /**
- * Quem atende NA unidade: os dela e os da REDE (`branch_id` nulo), que atendem
- * em todas (D1 da simulação de 2026-10-28; a abrangência de rede alcança todas,
- * §11). Era `branch_id = unidade`, e a profissional da rede não aparecia em
- * unidade nenhuma. Toda lista de "quem atende aqui" usa este filtro. A tag é da
- * REDE: mexer num membro da rede expira a lista de todas as unidades.
+ * Quem atende NA unidade: quem tem a unidade marcada no "Atende" da Equipe
+ * (`users.atende_em`, decisão 2 do Heitor sobre a 8ª simulação, 2026-11-06:
+ * "o atende vira um checklist com todas as unidades, as que estiverem marcadas
+ * ficam disponiveis"). Até ali eram os da unidade e os da REDE, que atendiam em
+ * todas (D1 de 2026-10-28) — e a Talita, da Água Verde, só cobria o Batel
+ * ganhando a rede inteira. Toda lista de "quem atende aqui" usa este filtro
+ * (num `.or()`). A tag é da REDE: mexer num membro expira todas as unidades.
  */
 export function filtroDeQuemAtendeNaUnidade(branchId: string): string {
-  return `branch_id.eq.${branchId},branch_id.is.null`
+  return `atende_em.cs.{${branchId}}`
 }
 
 export function getCachedBranchProfessionals(branchId: string, tenantId: string) {

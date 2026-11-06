@@ -638,6 +638,25 @@ um muro que não depende de cada trava do código.
   área recusada para a gerente, com a dona como controle; a aba Unidade; as
   telas).
 
+**O "Atende" é por unidade — e não é abrangência (§11 do CLAUDE.md; decisão 2
+do Heitor sobre a 8ª simulação, 2026-11-06: "Inves de atende também em, o
+atende vira um checklist com todas as unidades, as que estiverem marcadas ficam
+disponiveis"):**
+- `provides_services` passou a querer dizer "atende em ALGUMA unidade"; ONDE
+  atende é `users.atende_em` (o checklist do "Atende" na Equipe), e o gatilho
+  `private.atende_em_sincronizar` mantém os dois juntos. Continua não sendo
+  permissão: diz onde a pessoa aparece como profissional (agenda, agendar,
+  repasse, comissão, relatórios da unidade) — §9.1 de `atendimento.md`.
+- A ABRANGÊNCIA (`users.branch_id`) é a mesma de antes: marcar a Talita (da
+  Água Verde) no Batel não a põe no Batel. Ela alcança lá só os agendamentos
+  DELA (`alcancaOAgendamento`, `lib/auth.ts`) — ver, iniciar, concluir, a
+  comissão —, e o resto do Batel (agenda, clientes, caixa) continua fora. A
+  dona deixou de precisar dar a rede inteira para alguém cobrir uma unidade (A12).
+- Marca e desmarca quem gere a equipe; a gerente de unidade fixa, só a
+  unidade DELA (H7) — as outras aparecem travadas e o servidor as mantém
+  (`atendeQueGrava`, `lib/equipe/atende.ts`).
+- Prova: `e2e/equipe-atende-por-unidade.spec.ts`.
+
 ---
 
 ## O que nunca fazer aqui

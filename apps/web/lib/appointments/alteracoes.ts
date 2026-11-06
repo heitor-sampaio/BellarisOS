@@ -2,7 +2,7 @@ import 'server-only'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
-import { alcancaUnidade, isOwnScope } from '@/lib/auth'
+import { alcancaOAgendamento, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoConflito } from '@/lib/appointments/core'
@@ -44,13 +44,16 @@ export function deOutroProfissional(ctx: TenantContext, professionalId: string |
   return isOwnScope(ctx, 'agenda') && (!ctx.internalUserId || professionalId !== ctx.internalUserId)
 }
 
-/** O agendamento, se for da rede E de uma unidade ao alcance. */
+/**
+ * O agendamento, se for da rede E de uma unidade ao alcance — ou dela mesma,
+ * numa unidade em que atende (decisão 2 da 8ª simulação, `alcancaOAgendamento`).
+ */
 export async function agendamentoAoAlcance(admin: Admin, ctx: TenantContext, id: string): Promise<AgendamentoAoAlcance | null> {
   const a = await ler(admin.from('appointments')
     .select('id, branch_id, status, scheduled_at, professional_id, duration_min, room_id, branches!inner(id, tenant_id)')
     .eq('id', id).maybeSingle(), 'buscar o agendamento')
   const branch = a?.branches as unknown as { id: string; tenant_id: string } | null
-  if (!a || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, branch.id)) return null
+  if (!a || branch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, branch.id, a.professional_id as string | null)) return null
   return a as unknown as AgendamentoAoAlcance
 }
 

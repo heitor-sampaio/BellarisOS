@@ -9,6 +9,7 @@ import { updateTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFala } from '@/components/shared/uma-unidade'
+import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 interface Role   { id: string; label: string }
@@ -20,6 +21,8 @@ export interface EditableMember {
   roleId:           string | null
   branchId:         string | null
   providesServices: boolean
+  /** As unidades em que atende (o checklist do "Atende", decisão 2 da 8ª). */
+  atendeEm?:        string[]
   /** O horário de atendimento (nulo = segue a unidade). */
   horario?:         unknown
 }
@@ -45,6 +48,10 @@ interface Props {
    * abrangência some: a Admin é sempre da rede.
    */
   cargoDeAdminId?: string
+  /** As unidades do checklist do "Atende" (todas as ativas da rede); sem isto, `branches`. */
+  unidadesDoAtende?: { id: string; name: string }[]
+  /** As que quem edita pode marcar ou desmarcar (a gerente de unidade fixa: só a dela); null = todas. */
+  editaveisDoAtende?: string[] | null
 }
 
 /**
@@ -79,7 +86,7 @@ export function TeamMemberEdit(props: Props) {
  * o resultado da última tentativa nascem dos valores do membro a cada abertura,
  * e não do que se mexeu antes de cancelar.
  */
-function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, cargoDeAdminId, onFechar }: Props & { onFechar: () => void }) {
+function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, cargoDeAdminId, unidadesDoAtende, editaveisDoAtende = null, onFechar }: Props & { onFechar: () => void }) {
   const [scopeEscolhido, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
   // Uma unidade só: já vem escolhida (F8).
   const [filial, setFilial] = useState(member.branchId ?? (branches.length === 1 ? branches[0]!.id : ''))
@@ -97,7 +104,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
   // solto do formulário depois de cada envio, e a resposta reenvia.
   const pergunta = state && 'pergunta' in state ? state.pergunta : null
   const [rebaixar, setRebaixar] = useState(false)
-  const [atende, setAtende] = useState(member.providesServices)
+  const [atendeEm, setAtendeEm] = useState<string[]>(member.atendeEm ?? [])
   const formRef = useRef<HTMLFormElement>(null)
 
   // Fecha quando chega o resultado de sucesso.
@@ -196,16 +203,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                   </span>
                 )}
 
-                <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox" name="providesServices"
-                    checked={atende} onChange={e => setAtende(e.target.checked)}
-                    style={{ width: 16, height: 16, accentColor: 'var(--brand)' }}
-                  />
-                  <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                    Atende clientes (aparece na agenda como profissional e gera comissão)
-                  </span>
-                </label>
+                <AtendeNasUnidades id={`tme-atende-${member.id}`} unidades={unidadesDoAtende ?? branches}
+                  marcadas={atendeEm} aoMudar={setAtendeEm} editaveis={editaveisDoAtende} />
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span className="field-label">Horário de atendimento</span>

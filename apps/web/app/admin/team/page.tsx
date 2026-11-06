@@ -15,6 +15,8 @@ import { ler } from '@/lib/db'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { vocabulario } from '@/lib/unidades/vocabulario'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { listaDeUnidades } from '@/lib/equipe/atende'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -65,7 +67,7 @@ export default async function AdminTeamPage({
     ler((() => {
       let query = supabase
         .from('users')
-        .select('id, name, email, role_id, is_active, branch_id, provides_services, horario, branches(name)')
+        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
       if (branch) query = query.eq('branch_id', branch)
@@ -116,6 +118,16 @@ export default async function AdminTeamPage({
 
   const hasFilters = !!(q || branch || role || status)
 
+  // O "Atende" por unidade (decisão 2 da 8ª): a unidade sem ninguém marcado
+  // (a nova nasce assim — princípio 6) diz, e quem atende diz onde.
+  const ativosQueAtendem = (await ler(createAdminClient().from('users').select('atende_em')
+    .eq('tenant_id', ctx.tenantId!).eq('is_active', true).eq('provides_services', true), 'carregar onde a equipe atende')) ?? []
+  const comAlguem = new Set(ativosQueAtendem.flatMap(u => (u.atende_em as string[] | null) ?? []))
+  const semNinguem = (branches ?? []).filter(b => !comAlguem.has(b.id))
+  const variasUnidades = (branches ?? []).length > 1
+  const ondeAtende = (m: { atende_em?: string[] | null }) =>
+    (branches ?? []).filter(b => (m.atende_em ?? []).includes(b.id)).map(b => b.name)
+
   return (
     <div>
       <RealtimeRefresher tables={['users']} />
@@ -142,6 +154,17 @@ export default async function AdminTeamPage({
             cargoDeAdminId={souAdmin && cargoDeAdmin ? cargoDeAdmin.id : null} />
         )}
       </div>
+
+      {semNinguem.length > 0 && (
+        <p data-ninguem-atende role="status" style={{
+          marginBottom: 16, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+          background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+        }}>
+          {semNinguem.length === 1 && !variasUnidades
+            ? 'Ninguém atende nesta unidade ainda: marque o “Atende clientes” de quem atende, no lápis de cada pessoa.'
+            : `Ninguém atende ${semNinguem.length === 1 ? 'na unidade' : 'nas unidades'} ${listaDeUnidades(semNinguem.map(b => b.name))} ainda: marque a unidade no “Atende clientes em” de quem atende lá, no lápis de cada pessoa.`}
+        </p>
+      )}
 
       {/* Filtros */}
       <div style={{ marginBottom: 16 }}>
@@ -230,7 +253,7 @@ export default async function AdminTeamPage({
                             marginTop: 3, gap: 5, flexWrap: 'wrap',
                           }}>
                             {label}
-                            {m.provides_services ? ' · Atende' : ''}
+                            {m.provides_services ? (variasUnidades && ondeAtende(m).length ? ` · Atende em ${listaDeUnidades(ondeAtende(m))}` : ' · Atende') : ''}
                             {' · '}
                             {branchName}
                           </p>
@@ -247,7 +270,9 @@ export default async function AdminTeamPage({
                     <td data-label="Cargo" className="so-desktop" style={{ padding: '14px 20px' }}>
                       <span className="chip chip-brand">{label}</span>
                       {m.provides_services && (
-                        <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
+                        <span className="chip chip-success" style={{ marginLeft: 6 }} data-atende-em>
+                          {variasUnidades && ondeAtende(m).length ? `Atende em ${listaDeUnidades(ondeAtende(m))}` : 'Atende'}
+                        </span>
                       )}
                     </td>
 
@@ -271,8 +296,10 @@ export default async function AdminTeamPage({
                           roleId:           m.role_id ?? null,
                           branchId:         m.branch_id ?? null,
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
+                          atendeEm: ((m as { atende_em?: string[] | null }).atende_em ?? []) as string[],
                         }}
                         branches={branches ?? []}
+                        editaveisDoAtende={ctx.branchId === null ? null : [ctx.branchId]}
                         roles={rolesParaDar}
                         canChooseScope={ctx.branchId === null}
                         redirectPath="/admin/team"

@@ -6,19 +6,25 @@ import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
 
 /**
  * Quem pode aparecer numa venda da unidade: a profissional RESPONSÁVEL do
- * pacote (com-04, só quem atende) e QUEM VENDEU (com-06, qualquer pessoa da
- * equipe). Os membros ativos da rede que alcançam a unidade — os da rede e os
- * dela. O servidor confere de novo na venda.
+ * pacote (com-04, só quem atende NESTA unidade) e QUEM VENDEU (com-06,
+ * qualquer pessoa da equipe). Os membros ativos da rede que alcançam a unidade
+ * — os da rede e os dela — e quem é de fora e atende aqui (o "Atende" por
+ * unidade, decisão 2 da 8ª simulação). O servidor confere de novo na venda.
  */
 export async function equipeDaVenda(tenantId: string, branchId: string | null, euId?: string | null): Promise<MembroDaVenda[]> {
   if (!branchId) return []
   const linhas = await lerTodas((de, ate) => createAdminClient().from('users')
-    .select('id, name, provides_services')
+    .select('id, name, atende_em')
     .eq('tenant_id', tenantId).eq('is_active', true)
-    .or(`branch_id.is.null,branch_id.eq.${branchId}`)
+    .or(`branch_id.is.null,branch_id.eq.${branchId},atende_em.cs.{${branchId}}`)
     .order('name').order('id').range(de, ate), 'carregar a equipe da venda')
-  return (linhas ?? []).map(u => ({ id: u.id as string, nome: (u.name as string | null) ?? '—', atende: !!u.provides_services, eu: !!euId && u.id === euId }))
+  return (linhas ?? []).map(u => ({
+    id: u.id as string, nome: (u.name as string | null) ?? '—',
+    atende: ((u.atende_em as string[] | null) ?? []).includes(branchId),
+    eu: !!euId && u.id === euId,
+  }))
 }
+
 
 /**
  * A pessoa da venda escolhida na tela é da equipe da rede, ativa, alcança a
@@ -29,12 +35,14 @@ export async function recusaDoMembroDaVenda(
 ): Promise<string | null> {
   if (!/^[0-9a-f-]{36}$/i.test(membroId)) return `${opcoes.papel}: escolha alguém da equipe.`
   const { data, error } = await createAdminClient().from('users')
-    .select('id, branch_id, is_active, provides_services')
+    .select('id, branch_id, is_active, atende_em')
     .eq('id', membroId).eq('tenant_id', tenantId).maybeSingle()
   if (error) throw new Error(`Não consegui conferir ${opcoes.papel.toLowerCase()}: ${error.message}`)
   if (!data || data.is_active === false) return `${opcoes.papel}: não é da equipe desta clínica.`
-  if (data.branch_id && data.branch_id !== branchId) return `${opcoes.papel}: é de outra unidade.`
-  if (opcoes.atende && !data.provides_services) return `${opcoes.papel}: escolha quem atende clientes.`
+  // Quem é de outra unidade e atende AQUI (decisão 2 da 8ª) também entra.
+  const atendeAqui = ((data.atende_em as string[] | null) ?? []).includes(branchId)
+  if (data.branch_id && data.branch_id !== branchId && !atendeAqui) return `${opcoes.papel}: é de outra unidade.`
+  if (opcoes.atende && !atendeAqui) return `${opcoes.papel}: escolha quem atende clientes nesta unidade.`
   return null
 }
 

@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
 
 interface Role { id: string; label: string }
 
@@ -13,10 +14,15 @@ interface TeamFormProps {
   roles:    Role[]
   /** A unidade em que a pessoa entra (A13: a gerente não via onde). */
   unidade?: string | null
+  /** As unidades do checklist do "Atende" (decisão 2 da 8ª); sem isto, só esta. */
+  unidadesDoAtende?: { id: string; name: string }[]
+  /** As que quem cadastra marca (a gerente de unidade fixa: só a dela); null = todas. */
+  editaveisDoAtende?: string[] | null
 }
 
-export function TeamForm({ branchId, slug, roles, unidade = null }: TeamFormProps) {
+export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAtende, editaveisDoAtende = null }: TeamFormProps) {
   const [open, setOpen] = useState(false)
+  const [atendeEm, setAtendeEm] = useState<string[]>([])
   // O sucesso fecha o formulário na própria action, quando a resposta chega.
   const [state, action, pending] = useActionState(
     async (anterior: Parameters<typeof createTeamMember>[0], dados: FormData) => {
@@ -30,7 +36,7 @@ export function TeamForm({ branchId, slug, roles, unidade = null }: TeamFormProp
 
   return (
     <>
-      <button className="btn-primary" onClick={() => setOpen(true)}>
+      <button className="btn-primary" onClick={() => { setAtendeEm([]); setOpen(true) }}>
         <Plus size={15} />
         Adicionar membro
       </button>
@@ -82,12 +88,8 @@ export function TeamForm({ branchId, slug, roles, unidade = null }: TeamFormProp
                 )}
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" name="providesServices" style={{ width: 16, height: 16, accentColor: 'var(--brand)' }} />
-                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                  Atende clientes (aparece na agenda e gera comissão)
-                </span>
-              </label>
+              <AtendeNasUnidades id="tm-atende" unidades={unidadesDoAtende ?? [{ id: branchId, name: unidade ?? 'Esta unidade' }]}
+                marcadas={atendeEm} aoMudar={setAtendeEm} editaveis={editaveisDoAtende} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label className="overline" htmlFor="tm-password">Senha temporária</label>

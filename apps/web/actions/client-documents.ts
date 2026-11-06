@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, alcancaUnidade, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, alcancaOAgendamento, can, isOwnScope } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { notifyClient } from '@/lib/notifications/notify'
 import type { TenantContext } from '@estetica-os/types'
@@ -84,10 +84,10 @@ export async function uploadClientDocument(
   // O atendimento vem do formulário: é desta cliente, desta rede e de uma
   // unidade ao alcance — senão a foto iria para o atendimento de outra pessoa.
   if (appointmentId) {
-    const ag = await ler(admin.from('appointments').select('id, client_id, branch_id, branches!inner(tenant_id)')
+    const ag = await ler(admin.from('appointments').select('id, client_id, branch_id, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId).maybeSingle(), 'conferir o atendimento do anexo')
     const redeDoAtendimento = (ag?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-    if (!ag || redeDoAtendimento !== ctx.tenantId || !alcancaUnidade(ctx, ag.branch_id as string)) return { error: 'Atendimento não encontrado.' }
+    if (!ag || redeDoAtendimento !== ctx.tenantId || !alcancaOAgendamento(ctx, ag.branch_id as string, ag.professional_id as string | null)) return { error: 'Atendimento não encontrado.' }
     if (ag.client_id !== clientId) return { error: 'Este atendimento não é desta cliente.' }
   }
 

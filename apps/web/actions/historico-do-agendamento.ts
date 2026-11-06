@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaOAgendamento, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { rotuloDaAcao } from '@/lib/clients/historico-do-agendamento'
@@ -28,7 +28,7 @@ export async function historicoDoAgendamento(appointmentId: string): Promise<Pas
     .select('id, branch_id, professional_id, branches!inner(tenant_id)')
     .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento')
   const rede = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!appt || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) return []
+  if (!appt || rede !== ctx.tenantId || !alcancaOAgendamento(ctx, appt.branch_id as string, appt.professional_id as string | null)) return []
   const dono = ownerFilter(ctx, 'agenda')
   if (dono && appt.professional_id !== dono) return []
 

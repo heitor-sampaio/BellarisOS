@@ -14,6 +14,13 @@ import { cargoEhAdminDaRede, souAdminDaRede, recusaDeMexerNaAdmin } from '@/lib/
 import { comLoginNovo } from '@/lib/login-novo'
 import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
 import { falaDaRede } from '@/lib/unidades/uma-so'
+import { atendeDoFormulario, atendeQueGrava } from '@/lib/equipe/atende'
+
+/** As unidades ATIVAS da rede (o checklist do "Atende" só marca estas). */
+async function unidadesAtivas(admin: ReturnType<typeof createAdminClient>, tenantId: string): Promise<string[]> {
+  return ((await ler(admin.from('branches').select('id').eq('tenant_id', tenantId).eq('is_active', true), 'carregar as unidades da rede')) ?? [])
+    .map(b => b.id as string)
+}
 
 // Resolve a abrangência (branch_id) de um membro a partir do form.
 // Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
@@ -105,11 +112,15 @@ export async function createTeamMember(
   const password         = formData.get('password') as string
   const scope            = formData.get('scope') as string | null
   const branchId         = formData.get('branchId') as string | null
-  const providesServices = formData.get('providesServices') === 'on'
+  // O "Atende" por unidade (decisão 2 da 8ª): a lista do checklist; o
+  // formulário de antes manda só `providesServices` (o gatilho do banco dá a
+  // unidade que a pessoa alcança).
+  const pedidoDoAtende   = atendeDoFormulario(formData)
+  let   providesServices = pedidoDoAtende ? pedidoDoAtende.length > 0 : formData.get('providesServices') === 'on'
   const redirectPath     = (formData.get('redirectPath') as string) ?? '/admin/team'
   // O percentual padrão de comissão de quem atende (A10): só quem gere o financeiro grava.
   const comissaoTexto    = ((formData.get('comissao_padrao') as string | null) ?? '').trim()
-  const comissaoPadrao   = providesServices && comissaoTexto ? parseDinheiro(comissaoTexto) : null
+  let   comissaoPadrao   = providesServices && comissaoTexto ? parseDinheiro(comissaoTexto) : null
   if (comissaoPadrao !== null && (!Number.isFinite(comissaoPadrao) || comissaoPadrao < 0 || comissaoPadrao > 100)) {
     return { error: 'A comissão padrão é um percentual entre 0 e 100.' }
   }
@@ -131,6 +142,13 @@ export async function createTeamMember(
   const effectiveBranchId = scoped.branchId
   const branchCheck = await assertBranchInTenant(admin, ctx.tenantId!, effectiveBranchId)
   if ('error' in branchCheck) return branchCheck
+  const atendeEm = pedidoDoAtende
+    ? atendeQueGrava({ pedido: pedidoDoAtende, antes: [], ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: ctx.branchId })
+    : null
+  if (atendeEm) {
+    providesServices = atendeEm.length > 0
+    if (!providesServices) comissaoPadrao = null
+  }
 
   // 1. Criar usuário no Supabase Auth (exige service role)
   // A senha é de quem criou: provisória, troca-se no primeiro acesso (o proxy).
@@ -172,6 +190,7 @@ export async function createTeamMember(
         email,
         role_id:           roleId,
         provides_services: providesServices,
+        ...(atendeEm ? { atende_em: atendeEm } : {}),
       }).select('id').single()
       return insertError || !data ? null : data as { id: string }
     }, r => r === null)
@@ -216,6 +235,7 @@ export async function updateTeamMember(
   const roleId           = formData.get('roleId') as string
   const scope            = formData.get('scope') as string | null
   const branchId         = formData.get('branchId') as string | null
+  const pedidoDoAtende   = atendeDoFormulario(formData)
   const providesServices = formData.get('providesServices') === 'on'
   const redirectPath     = (formData.get('redirectPath') as string) ?? '/admin/team'
   // O horário de atendimento (2026-10-21): vazio = segue a unidade.
@@ -235,7 +255,7 @@ export async function updateTeamMember(
 
   const member = await ler(admin
     .from('users')
-    .select('id, auth_id, branch_id, role_id, is_active, name')
+    .select('id, auth_id, branch_id, role_id, is_active, name, atende_em')
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar o usuário')
@@ -289,11 +309,20 @@ export async function updateTeamMember(
     if ('error' in branchCheck) return branchCheck
   }
 
+  // O checklist (decisão 2 da 8ª): a gerente de unidade fixa muda só a dela.
+  const atendeEm = pedidoDoAtende
+    ? atendeQueGrava({
+        pedido: pedidoDoAtende, antes: ((member as { atende_em?: string[] | null }).atende_em ?? []) as string[],
+        ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: ctx.branchId,
+      })
+    : null
+
   const { error } = await admin
     .from('users')
     .update({
       ...(mantemCargoDoSistema ? {} : { role_id: roleId, branch_id: effectiveBranchId }),
-      provides_services: providesServices,
+      // Com a lista, o gatilho do banco acerta `provides_services` (= atende em alguma).
+      ...(atendeEm ? { atende_em: atendeEm } : { provides_services: providesServices }),
       ...(horario !== undefined ? { horario } : {}),
     })
     .eq('id', userId)

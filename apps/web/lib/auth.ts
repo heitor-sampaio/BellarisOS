@@ -157,6 +157,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     scopes,
     reportTabs,
     providesServices: member?.providesServices ?? false,
+    atendeEm: member?.atendeEm ?? [],
     isNetworkAdmin,
     isClient,
     plano,
@@ -394,6 +395,22 @@ export function ownerFilter(ctx: TenantContext, module: AppModule): string | nul
  */
 export function alcancaUnidade(ctx: TenantContext, branchId: string | null | undefined): boolean {
   return ctx.branchId === null || (!!branchId && branchId === ctx.branchId)
+}
+
+/**
+ * O AGENDAMENTO está ao alcance? A unidade dele (`alcancaUnidade`) — ou é da
+ * própria pessoa, numa unidade em que ela ATENDE (decisão 2 do Heitor sobre a
+ * 8ª simulação, 2026-11-06: o "atende" vira um checklist das unidades). A
+ * Talita é da Água Verde e, marcada no Batel, alcança no Batel só os
+ * agendamentos DELA: ver, marcar a chegada, iniciar, concluir. A abrangência
+ * não cresce — o resto do Batel continua fora.
+ */
+export function alcancaOAgendamento(
+  ctx: TenantContext, branchId: string | null | undefined, professionalId: string | null | undefined,
+): boolean {
+  if (alcancaUnidade(ctx, branchId)) return true
+  return !!branchId && !!ctx.internalUserId && professionalId === ctx.internalUserId
+    && (ctx.atendeEm ?? []).includes(branchId)
 }
 
 /** `alcancaUnidade` que barra — mesma resposta de quem não tem o módulo. */

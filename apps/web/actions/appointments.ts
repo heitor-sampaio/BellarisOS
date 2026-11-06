@@ -5,7 +5,7 @@ import { CLIENTE_ARQUIVADA, CLIENTE_ARQUIVADA_NO_APP } from '@/lib/clients/arqui
 import { NAO_REALIZA, quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
-import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso } from '@/lib/auth'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -338,7 +338,8 @@ async function completeAppointment(
   // Concluir baixa estoque, lança comissão e pontos: até 2026-09-28 o id
   // bastava, de qualquer rede e de qualquer unidade.
   const redeDoAppt = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!appt || redeDoAppt !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) {
+  // A do agendamento DELA numa unidade em que atende também (decisão 2 da 8ª).
+  if (!appt || redeDoAppt !== ctx.tenantId || !alcancaOAgendamento(ctx, appt.branch_id as string, appt.professional_id as string | null)) {
     throw new Error('Agendamento não encontrado.')
   }
 
@@ -552,7 +553,8 @@ async function startAppointmentInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
+    // O DELA numa unidade em que atende também (decisão 2 da 8ª simulação).
+    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED' && appt.status !== 'ARRIVED') return { error: 'O cliente precisa estar confirmado ou ter chegado (check-in) antes de iniciar.' }
 
     if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
@@ -791,7 +793,8 @@ async function finishSessionInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
+    // O DELA numa unidade em que atende também (decisão 2 da 8ª simulação).
+    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status === 'COMPLETED')                      return { error: 'Atendimento já concluído.' }
     if (['CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
 
@@ -1230,7 +1233,8 @@ async function saveDraftNotesInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
+    // O DELA numa unidade em que atende também (decisão 2 da 8ª simulação).
+    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     // A evolução do atendimento de OUTRA, com a agenda "só os meus" (D4, 2026-10-28).
     if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
 
@@ -2109,7 +2113,7 @@ export async function avisosDoRemarcar(appointmentId: string, scheduledAt: strin
     .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
       branch_id: string; professional_id: string | null; procedure_id: string | null; duration_min: number | null; client_id: string
     } | null
-  if (!a || !alcancaUnidade(ctx, a.branch_id) || deOutroProfissional(ctx, a.professional_id)) return nada
+  if (!a || !alcancaOAgendamento(ctx, a.branch_id, a.professional_id) || deOutroProfissional(ctx, a.professional_id)) return nada
   const [avisos, ficha] = await Promise.all([
     a.professional_id
       ? avisosDoHorarioCore(ctx, {

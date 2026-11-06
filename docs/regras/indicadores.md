@@ -903,8 +903,8 @@ Prova: `e2e/indicadores-avaliacao-com-uma-nota.spec.ts`,
 `tests/metrics-avaliacoes.test.ts`.
 
 **"Profissionais ativos" é quem ATENDE** (D14 da 5ª simulação,
-2026-11-02): ativo, com `provides_services` e ao alcance das unidades do
-recorte (as dela e as da rede) — `getQuemAtende` (`lib/metrics/relatorio.ts`,
+2026-11-02): ativo, com alguma unidade do recorte marcada no "Atende"
+(`atende_em`, decisão 2 da 8ª simulação; era "as dela e as da rede") — `getQuemAtende` (`lib/metrics/relatorio.ts`,
 contado no banco). Era quem teve produção no período, contado na tela (a
 Renata, sem atendimento, ficava de fora). A tabela "Comissões por
 Profissional" lista quem atende (e quem atendeu no período); a comissão de

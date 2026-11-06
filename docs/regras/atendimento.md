@@ -184,17 +184,53 @@
     datas da tela é do calendário (meio-dia UTC), não `toISOString` da
     meia-noite local. Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D3", "D4").
   - Prova: `e2e/agenda-bloqueio.spec.ts`, `tests/agenda-bloqueio.test.ts`.
-- **Quem atende e é da REDE atende em TODAS as unidades** (D1 da simulação de
-  2026-10-28, decisão do Heitor): o membro com `provides_services` e
-  `branch_id` nulo aparece na agenda de cada unidade, no agendar (equipe e app
-  da cliente), no horário dos profissionais e na ocupação do dashboard da
-  unidade; o de uma unidade, só na dele. O filtro é UM,
-  `filtroDeQuemAtendeNaUnidade` (`lib/cached-queries.ts`, com a rede), usado
-  por `getCachedBranchProfessionals` e por toda lista ou conferência de "quem
-  atende aqui" — nunca `branch_id = unidade`. A tag da lista é da rede
-  (`professionals:<rede>`): mexer num membro da rede expira todas as unidades.
-  Escolher em QUAIS unidades ele atende fica para depois. Prova:
-  `e2e/agenda-profissional-da-rede.spec.ts`.
+- **Quem atende é marcado POR UNIDADE** (decisão 2 do Heitor sobre a 8ª
+  simulação, 2026-11-06: "Inves de atende também em, o atende vira um
+  checklist com todas as unidades, as que estiverem marcadas ficam
+  disponiveis"; até ali, D1 de 2026-10-28: o da REDE atendia em todas e o de
+  uma unidade só na dele, e a Talita da Água Verde só cobria o Batel ganhando
+  a rede inteira — A12). O "Atende" da Equipe é a lista das unidades ativas,
+  cada uma marcável (`users.atende_em`, migration `20261106003601`); numa
+  clínica de uma unidade, a caixa de sempre. Marcada, a pessoa aparece ali na
+  agenda, no agendar (equipe, app e Copilot), no horário dos profissionais, na
+  ocupação, no "próximo livre", no repasse da desativação, na comissão e nos
+  relatórios. O filtro é UM, `filtroDeQuemAtendeNaUnidade`
+  (`lib/cached-queries.ts`: `atende_em cs {unidade}`, num `.or()`), usado por
+  `getCachedBranchProfessionals` e por toda lista ou conferência de "quem
+  atende aqui" — nunca `branch_id = unidade` nem "a da rede atende em todas".
+  A tag da lista é da rede (`professionals:<rede>`).
+  - **A abrangência NÃO muda com o checklist** (decidido por "ficam
+    disponíveis" + o acesso continuar o dela): a Talita é da Água Verde e,
+    marcada no Batel, alcança no Batel só os agendamentos DELA — ver, marcar a
+    chegada, iniciar, concluir, a evolução, o anexo do atendimento e a
+    comissão. A regra é UMA, `alcancaOAgendamento` (`lib/auth.ts`: a unidade
+    ao alcance, ou o agendamento dela numa unidade marcada), em
+    `agendamentoAoAlcance`, `startAppointment`, `finishSession`, a conclusão,
+    a evolução, o histórico, o pré-atendimento e o anexo. A agenda do Batel, os
+    clientes e o caixa de lá seguem fora (o layout de `[slug]` a leva à dela).
+    A "Minha agenda" dela traz os dela de fora como cartões ("Na unidade
+    Batel", `[data-outra-unidade]`), e a agenda inteira da unidade, a lista
+    "Seus atendimentos em outras unidades" (`[data-meus-de-outras-unidades]`);
+    os dois abrem a tela do atendimento pelo portal dela
+    (`/[slug]/agenda/[id]` resolve a unidade do agendamento).
+  - **`provides_services` = "atende em alguma unidade"**, mantido junto da
+    lista por um gatilho só (`private.atende_em_sincronizar`): gravar a lista
+    acerta o `provides_services`; gravar só o `provides_services` (o caminho de
+    antes) liga com o que a pessoa alcança (unidade fixa → a dela; da rede → as
+    ativas de agora) ou esvazia a lista; trocar a abrangência sem mexer na
+    lista leva junto a lista que seguia a abrangência. A lista só aceita
+    unidade da rede. Coluna, não tabela membro × unidade: a tabela com
+    chave estrangeira para `users` e `branches` viraria junção no PostgREST
+    (PGRST201, §14 do CLAUDE.md).
+  - **A unidade NOVA nasce sem ninguém marcado** (princípio 6), e a Equipe
+    dela (e a da rede) diz "Ninguém atende nesta unidade ainda" (`[data-ninguem-atende]`).
+  - **A gerente de unidade fixa marca e desmarca só a DELA** (H7): as outras
+    unidades aparecem travadas no checklist, e `updateTeamMember`/
+    `createTeamMember` mudam só a dela (`atendeQueGrava`, `lib/equipe/atende.ts`).
+    Quem é de fora e atende ali aparece na Equipe da unidade ("Da rede" ou
+    "Da unidade Água Verde"), sem ações.
+  Prova: `e2e/equipe-atende-por-unidade.spec.ts`, `tests/equipe-atende.test.ts`,
+  `e2e/agenda-profissional-da-rede.spec.ts` (a da rede marcada nas duas).
 - **O nome de quem está no registro da unidade não vem pelo join da SESSÃO**
   (D2 da simulação de 2026-11-01): a agenda da unidade (o cartão, a janela,
   a "Minha agenda") e o Financeiro da unidade leem o agendamento e o
@@ -232,7 +268,7 @@
   cargo TRAVADO (CLAUDE.md §11; só outra Admin da rede muda o cargo dela,
   revisão do Heitor de 2026-10-29) e entra na agenda, no agendar e na comissão
   como qualquer profissional da rede. A **Equipe da unidade** lista também
-  quem é da rede e atende ali (ativo), com o chip "Da rede", só o nome e o
+  quem é de fora e atende ali (ativo, com a unidade marcada no "Atende"), com o chip "Da rede" ou "Da unidade X", só o nome e o
   cargo, e SEM ações: cargo, comissão e acesso se mexem na Equipe da rede
   (quem é da rede vê o lápis que leva para lá). A sessão de unidade não lê
   membros da rede (RLS): essa lista vem pelo servidor. **E diz o recorte**
@@ -1839,7 +1875,9 @@ O resto do fluxo:
 ❌ Gravar o token do link da ficha (só o SHA-256), ou contar tentativas fora de pre_atendimento_link_abrir
 ❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, "Este atendimento é de outra profissional" (AtendimentoDeOutraProfissional), nem 404 nem semAcesso() (o cargo libera; o atendimento é que não é dela)
 ❌ Botão que grava o prontuário (gerar o plano, "Editar registro") para quem não tem o Prontuário em Gerenciar (canEditRecords)
-❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade (a da rede atende em todas: filtroDeQuemAtendeNaUnidade)
+❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade, ou com "a da rede atende em todas" — é a unidade marcada no "Atende" (atende_em, filtroDeQuemAtendeNaUnidade)
+❌ Gravar users.atende_em ou provides_services sem passar pelo gatilho que os mantém juntos (atende_em_sincronizar), ou dar à unidade nova alguém marcado sozinho (princípio 6)
+❌ Abrir a unidade inteira a quem só ATENDE nela (a Talita no Batel): o alcance é dos agendamentos DELA — alcancaOAgendamento, nunca crescer a abrangência
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
