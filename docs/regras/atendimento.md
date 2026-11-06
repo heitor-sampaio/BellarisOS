@@ -223,7 +223,9 @@
     chave estrangeira para `users` e `branches` viraria junção no PostgREST
     (PGRST201, §14 do CLAUDE.md).
   - **A unidade NOVA nasce sem ninguém marcado** (princípio 6), e a Equipe
-    dela (e a da rede) diz "Ninguém atende nesta unidade ainda" (`[data-ninguem-atende]`).
+    dela (e a da rede) diz "Ninguém atende nesta unidade ainda" (`[data-ninguem-atende]`),
+    como o cartão dela em Configurações → Unidades ("N pessoas atendem aqui",
+    `[data-quem-atende-na-unidade]`).
   - **A gerente de unidade fixa marca e desmarca só a DELA** (H7): as outras
     unidades aparecem travadas no checklist, e `updateTeamMember`/
     `createTeamMember` mudam só a dela (`atendeQueGrava`, `lib/equipe/atende.ts`).

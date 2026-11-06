@@ -16,6 +16,11 @@ import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-
 export async function SettingsBranches() {
   const ctx = await getTenantContext()
   const supabase = await createClient()
+  // Quantos atendem em cada unidade (o "Atende" por unidade, decisão 2 da 8ª):
+  // a unidade nova nasce sem ninguém marcado (princípio 6), e o cartão diz.
+  // Em paralelo com o resto: a página não pode demorar mais (o #salas do link).
+  const lendoOndeAtendem = ler(createAdminClient().from('users').select('atende_em')
+    .eq('tenant_id', ctx.tenantId!).eq('is_active', true).eq('provides_services', true), 'carregar onde a equipe atende')
 
   const branches = await ler(supabase
     .from('branches')
@@ -37,6 +42,8 @@ export async function SettingsBranches() {
   // da 5ª simulação: o caminho era Ver detalhes → o fim da página). Com duas ou
   // mais, as salas são de cada unidade, no "Ver detalhes" dela.
   const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+  const ondeAtendem = ((await lendoOndeAtendem) ?? []).flatMap(u => (u.atende_em as string[] | null) ?? [])
+  const quantosAtendem = (id: string) => ondeAtendem.filter(u => u === id).length
   const unica = umaUnidade ? (branches ?? []).find(b => b.is_active) ?? null : null
   const salasDaUnica = unica
     ? ((await ler(createAdminClient().from('rooms').select('id, name, is_active')
@@ -129,6 +136,17 @@ export async function SettingsBranches() {
 
                 {/* Detalhes */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {branch.is_active && (quantosAtendem(branch.id) === 0 ? (
+                    <Link href="/admin/team" data-quem-atende-na-unidade style={{
+                      fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', textDecoration: 'none',
+                    }}>
+                      Ninguém atende nesta unidade ainda: marque-a no “Atende” de quem atende, em Equipe.
+                    </Link>
+                  ) : (
+                    <span data-quem-atende-na-unidade style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      {quantosAtendem(branch.id) === 1 ? '1 pessoa atende aqui' : `${quantosAtendem(branch.id)} pessoas atendem aqui`}
+                    </span>
+                  ))}
                   {location && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       <MapPin size={12} style={{ flexShrink: 0 }} /> {location}

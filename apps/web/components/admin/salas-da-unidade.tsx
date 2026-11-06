@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Pencil, Power, PowerOff, DoorOpen } from 'lucide-react'
@@ -24,6 +24,13 @@ export function SalasDaUnidade({ branchId, salas }: { branchId: string; salas: S
 
   const ordenadas = [...salas].sort((a, b) =>
     Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+
+  // O link "#salas" (a busca, os próximos passos do setup — A1 da 8ª): a rolagem
+  // do navegador ao carregar não alcança o conteúdo (é o <main> que rola, e a
+  // página chega em partes). A seção rola até ela mesma quando o endereço pede.
+  useEffect(() => {
+    if (window.location.hash === '#salas') document.getElementById('salas')?.scrollIntoView({ block: 'start' })
+  }, [])
 
   function agir(fazer: () => Promise<{ error?: string }>, aviso: string, depois?: () => void) {
     setErro(null)

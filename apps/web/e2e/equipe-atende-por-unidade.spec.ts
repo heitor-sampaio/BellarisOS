@@ -221,5 +221,9 @@ test('a unidade nova nasce sem ninguém marcado, e a Equipe dela diz', async ({ 
     expect(await quemAtendeNa(p, c!.id), 'ninguém atende na unidade nova').toEqual([])
     await p.goto(`/${c!.slug}/team`)
     await expect(p.locator('[data-ninguem-atende]')).toContainText('Ninguém atende nesta unidade ainda')
+    // E o cartão da unidade, em Configurações → Unidades, também diz.
+    await p.goto('/admin/settings?tab=unidades')
+    await expect(p.locator('.card').filter({ hasText: `${PREFIXO} Centro ${marca}` }).locator('[data-quem-atende-na-unidade]'))
+      .toContainText('Ninguém atende nesta unidade ainda')
   })
 })
