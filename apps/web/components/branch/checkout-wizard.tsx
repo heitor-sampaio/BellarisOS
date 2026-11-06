@@ -23,6 +23,8 @@ import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estad
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
+import { textoDasSessoesSemData, avisoDoPlanoFechado } from '@/lib/checkout/sessoes-sem-data'
+import { toast } from 'sonner'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
@@ -378,6 +380,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   function handleFinish() {
     setError(recusaDaEntrada)
     if (recusaDaEntrada) return
+    const semData = plan.sessions.map((s, i) => ({ s, n: i + 1 }))
+      .filter(({ s }) => !(sessionDates[s.id]?.date && sessionDates[s.id]?.time && schedProfId && schedBranchId)).map(x => x.n)
     const schedules: SessionScheduleInput[] = plan.sessions
       .filter(s => {
         const d = sessionDates[s.id]
@@ -403,6 +407,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       // O plano fechou (com ou sem o aviso do atendimento de hoje): o passo guardado não serve mais.
       limparPassoDoCheckout(plan.id)
       if ('aviso' in result && result.aviso) { setError(result.aviso); return }
+      // A37 da 8ª: concluir caía na ficha sem confirmação nenhuma.
+      toast.success(avisoDoPlanoFechado(plan.sessions.length, semData))
       if (onDone) { onDone(plan.clientId); return }
       router.push(rotaCliente(pathname, slug, plan.clientId))
     })
@@ -1046,6 +1052,15 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           </p>
         </div>
       )}
+
+      {/* A37 da 8ª: as sessões que ficam sem data, ditas antes de concluir. */}
+      {(() => {
+        const texto = textoDasSessoesSemData(plan.sessions.map((s, i) => ({ s, n: i + 1 }))
+          .filter(({ s }) => !(sessionDates[s.id]?.date && sessionDates[s.id]?.time)).map(x => x.n))
+        return texto && (
+          <p data-sessoes-sem-data style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>{texto}</p>
+        )
+      })()}
 
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 

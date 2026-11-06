@@ -128,7 +128,10 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
       await page.getByRole('button', { name: 'Continuar' }).click()
       await page.getByRole('button', { name: 'Ir para o agendamento' }).click()
+      // A37 da 8ª: as sessões sem data ficam ditas ANTES de concluir, e concluir confirma.
+      await expect(page.locator('[data-sessoes-sem-data]')).toContainText('As sessões 1 e 2 ficam sem data')
       await page.getByRole('button', { name: 'Concluir sem agendar' }).click()
+      await expect(page.getByText(/Plano fechado/)).toBeVisible({ timeout: 20_000 })
     })
     await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
     const { data: fts } = await db().from('financial_transactions').select('amount, parcela_numero')

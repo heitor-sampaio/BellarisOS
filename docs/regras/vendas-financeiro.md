@@ -1194,6 +1194,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     pagamento (o contrato assinado para ele fica; `prepararDocumentosDoCheckout`
     confere). Fechar ou cancelar o checkout o apaga. Prova:
     `e2e/financeiro-atritos-da-7.spec.ts` ("A45").
+- **O checkout do plano diz o que fica sem data e confirma ao concluir** (A37
+  da 8ª simulação, 2026-11-06; princípio 3 — agendar no checkout continua
+  opcional): no passo do agendamento, "As sessões 2 e 3 ficam sem data: agende
+  pela ficha da cliente (Tratamentos) quando ela marcar."
+  (`[data-sessoes-sem-data]`), e concluir mostra "Plano fechado: 3 sessões. 2
+  sem data — agende pela ficha…" (`avisoDoPlanoFechado`,
+  `lib/checkout/sessoes-sem-data.ts`) — caía na ficha calado. Prova:
+  `e2e/checkout-entrada-no-cartao.spec.ts` ("D2, A42"),
+  `tests/checkout-sessoes-sem-data.test.ts`.
 - **O checkout do plano tem "Quem vendeu"** (decisão 4 da 7ª simulação,
   2026-11-05: "concordo"): no passo do pagamento, nascendo VAZIO como em toda
   venda (`CampoQuemVendeu`, `[data-quem-vendeu-do-plano]`); vazio, "Ir para a
