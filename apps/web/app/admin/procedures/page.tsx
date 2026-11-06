@@ -189,6 +189,12 @@ export default async function AdminProceduresPage({
             {totalActive} {totalActive === 1 ? 'ativo' : 'ativos'} · {totalInactive} {totalInactive === 1 ? 'inativo' : 'inativos'} · {fala('catálogo da rede')}
           </p>
         </div>
+        {/* A35 da 8ª: quem só vê lê por quê (o catálogo é de quem o gerencia). */}
+        {!canEdit && (
+          <p data-catalogo-so-consulta style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', maxWidth: 360, textAlign: 'right' }}>
+            Seu cargo só consulta o catálogo: cria e muda quem tem Procedimentos em Gerenciar.
+          </p>
+        )}
         {canEdit && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* O catálogo é da rede: as categorias também (a mesma trava de criar procedimento). */}
@@ -358,7 +364,8 @@ export default async function AdminProceduresPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 16 }}>
             Nenhum procedimento cadastrado na rede ainda.
           </p>
-          <ProcedureModal salas={salasDoCadastro} profissionais={profissionaisDoCadastro} branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
+          {/* A4 da 8ª: só para quem cadastra (aparecia também a quem só vê). */}
+          {canEdit && <ProcedureModal salas={salasDoCadastro} profissionais={profissionaisDoCadastro} branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />}
         </div>
       )}
     </div>

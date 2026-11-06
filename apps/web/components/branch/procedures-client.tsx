@@ -150,6 +150,12 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
         </div>
       </div>
 
+      {/* A35 da 8ª: a gerente via o catálogo só para ler, sem saber por quê (a
+          regra: o catálogo é da rede — plataforma.md). */}
+      <p data-catalogo-da-rede style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 16 }}>
+        {fala('O catálogo de procedimentos é da clínica toda: quem cria e muda é quem administra a rede (Procedimentos em Gerenciar, no portal da rede). Aqui ele é consulta.')}
+      </p>
+
       {/* Filtro por categoria. As opções vêm do catálogo da rede — são dado,
           sem número fixo —, e por isso é dropdown e não segmentado.
           Ver §13 do CLAUDE.md. */}

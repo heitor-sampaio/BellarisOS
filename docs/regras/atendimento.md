@@ -858,6 +858,15 @@
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
+- **A tela diz de quem é o catálogo** (A35 da 8ª simulação, 2026-11-06; a regra
+  — o catálogo é da rede — não mudou): no portal da unidade, "O catálogo de
+  procedimentos é da clínica toda: quem cria e muda é quem administra a rede…
+  Aqui ele é consulta." (`[data-catalogo-da-rede]`, pela fala da clínica de uma
+  unidade); na rede, quem só vê lê "Seu cargo só consulta o catálogo"
+  (`[data-catalogo-so-consulta]`). E o formulário do procedimento só existe
+  com a janela ABERTA (A4: montado escondido em cada linha, eram N+1
+  formulários no DOM, `name=price` repetido; o "Novo procedimento" do vazio
+  aparecia a quem só vê). Prova: `e2e/procedimentos-atritos-da-8.spec.ts`.
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
 - **O preço vazio é R$ 0,00 — o procedimento gratuito** (A1 da 6ª simulação,
   2026-11-04; princípios 2 e 4): a avaliação grátis tinha só o "0,00" de

@@ -63,8 +63,12 @@ export function ProcedureModal({ salas = [], profissionais = [], branches, produ
    * produção, 2026-09-28).
    */
   const [abertura, setAbertura] = useState(0)
+  // A4 da 8ª: o formulário só existe com a janela ABERTA — montado escondido em
+  // cada linha, a tela tinha N+1 formulários (`name=price` repetido).
+  const [aberto, setAberto] = useState(false)
   const open  = useCallback(() => {
     setAbertura(n => n + 1)
+    setAberto(true)
     dialogRef.current?.showModal()
   }, [])
   const close = useCallback(() => dialogRef.current?.close(), [])
@@ -92,6 +96,7 @@ export function ProcedureModal({ salas = [], profissionais = [], branches, produ
         className="modal modal-flex"
         style={{ maxWidth: 640 }}
         onClick={e => { if (e.target === dialogRef.current) close() }}
+        onClose={() => setAberto(false)}
       >
         {/* Wrapper visual: arredondamento + overflow na mesma camada → scrollbar clipada corretamente */}
         <div className="modal-container">
@@ -127,7 +132,7 @@ export function ProcedureModal({ salas = [], profissionais = [], branches, produ
 
           {/* Corpo rolável */}
           <div className="modal-body" style={{ padding: '24px 24px 28px' }}>
-            <ProcedureForm
+            {aberto && <ProcedureForm
               key={abertura}
               salas={salas}
               profissionais={profissionais}
@@ -141,7 +146,7 @@ export function ProcedureModal({ salas = [], profissionais = [], branches, produ
               comissao={comissao}
               onSuccess={handleSuccess}
               onCancel={close}
-            />
+            />}
           </div>
         </div>
       </dialog>
