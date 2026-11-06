@@ -6,6 +6,8 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { dayKeyTZ } from '@/lib/datetime'
+import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
 import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
@@ -25,6 +27,8 @@ export default async function FinancialPage({
   const { slug } = await params
   const sp       = await searchParams
   const period   = sp.period ?? 'month'
+  /** A38 da 8ª: a lista de todo o a receber em aberto, de qualquer vencimento. */
+  const soOEmAberto = sp.aberto === 'todos'
   // Janela no fuso do negócio e período anterior de mesma duração decorrida.
   const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
     resolvePeriod(period, sp.from, sp.to)
@@ -84,17 +88,17 @@ export default async function FinancialPage({
     .from('financial_transactions')
     .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id')
     .eq('branch_id', branch.id)
-    // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
-    // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
-    // pela criação, o parcelado inteiro caía no mês da venda. O saldo zerado
-    // (substituído no check-in) é histórico: fica fora da lista.
-    .or('is_paid.eq.true,amount.neq.0')
-    .gte('data_de_referencia', start.toISOString())
-    // Fim do PERÍODO, não "agora" — ver o mesmo comentário no financeiro da
-    // rede. O relógio do Postgres está à frente do relógio do app, e um
-    // lançamento feito neste segundo sumia da tela que acabou de criá-lo.
-    .lte('data_de_referencia', fimDoPeriodo.toISOString())
-    .order('data_de_referencia', { ascending: false }).order('id')
+    .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
+    // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
+    // vencimento (a parcela do mês que vem não aparecia em lugar nenhum).
+    // Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia
+    // do pagamento; o em aberto, no vencimento — e até o fim do PERÍODO, não
+    // "agora" (o relógio do Postgres está à frente do do app).
+    .gte(soOEmAberto ? 'amount' : 'data_de_referencia', soOEmAberto ? 0.01 : start.toISOString())
+    .lte('data_de_referencia', soOEmAberto ? '9999-12-31' : fimDoPeriodo.toISOString())
+    .in('type', soOEmAberto ? ['INCOME'] : ['INCOME', 'EXPENSE'])
+    .in('is_paid', soOEmAberto ? [false] : [true, false])
+    .order('data_de_referencia', { ascending: soOEmAberto }).order('id')
     .range(de, ate), 'carregar os lançamentos')
 
   // O nome da cliente NÃO vem pelo join da sessão (D2 da simulação de
@@ -182,6 +186,8 @@ export default async function FinancialPage({
         customFrom={sp.from}
         customTo={sp.to}
         transactions={transactions as unknown as Props['transactions']}
+        soOEmAberto={soOEmAberto}
+        nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start), dayKeyTZ(fimDoPeriodo))}
         serie={serie}
         emAberto={emAberto}
         aPagarAnterior={aPagarAnterior}

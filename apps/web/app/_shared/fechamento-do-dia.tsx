@@ -9,6 +9,7 @@ import { diaDoFechamento, janelaDoDia, diaAindaAberto } from '@/lib/financeiro/f
 import { normalizarHorario } from '@/lib/agenda/horario'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/fechamento-do-dia-tela'
+import { getEstornosDoDia, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
 
 /**
  * O fechamento do dia, o corpo dos dois portais (2026-10-21, decisão do
@@ -16,16 +17,18 @@ import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/f
  * dinheiro em espécie que deve estar na gaveta, a conferência e quem fechou.
  * A página da unidade passa a dela; a da rede, a escolhida (`?unidade=`).
  */
-export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, basePath }: {
+export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, basePath, daRede = null }: {
   ctx:       TenantContext
   unidades:  { id: string; name: string }[]
   unidadeId: string
   diaPedido?: string
   basePath:  string
+  /** A45 da 8ª: o dia de cada unidade e o da clínica (o portal da rede, com duas ou mais). */
+  daRede?:   { unidades: MovimentoDaUnidade[]; total: { entradas: number; saidas: number; lancamentos: number } } | null
 }) {
   const dia = diaDoFechamento(diaPedido)
   const janela = janelaDoDia(dia)!
-  const [resumo, aReceber, feitos, emAberto, unidade, operadora] = await Promise.all([
+  const [resumo, aReceber, feitos, emAberto, unidade, operadora, estornos] = await Promise.all([
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to, dia }),
     // Os concluídos a receber da unidade, de qualquer dia (D5, 2026-10-27):
     // o que ficou sem pagamento ontem continua aqui até alguém receber.
@@ -43,6 +46,8 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
     // A44 da 7ª simulação: o que a operadora do cartão ainda vai depositar — mora
     // no Financeiro (F20, D3), e o fechamento aponta para lá.
     getAReceberDaOperadora({ tenantId: ctx.tenantId!, branchIds: [unidadeId], from: janela.from, to: janela.to }),
+    // A42 da 8ª: o que foi estornado no dia (a venda e o estorno se anulam no resumo).
+    getEstornosDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
   ])
   // Quem informou o fundo de troco do dia (ven-03), para a tela dizer.
   const fundo = resumo.fundoDeTroco != null
@@ -82,6 +87,9 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
           quando:    String(f.fechado_em),
         }) satisfies FechamentoFeito)}
         podeFechar={podeReceber(ctx)}
+        estornos={estornos}
+        daRede={daRede}
+        ehHoje={dia === diaDoFechamento(undefined)}
         aReceber={aReceber}
         emAberto={emAberto.total}
         operadora={{ emAberto: operadora.total.emAberto, proximo: operadora.total.proximo, link: financeiroDaUnidade }}

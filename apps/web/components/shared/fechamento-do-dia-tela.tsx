@@ -8,6 +8,7 @@ import { fecharODia, informarFundoDeTroco } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
+import type { EstornoDoDia, MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
@@ -41,7 +42,7 @@ export interface OperadoraNoFechamento {
   link:     string | null
 }
 
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null, estornos = null, daRede = null, ehHoje = true }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -66,6 +67,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   atendeAte?: string | null
   /** Quem informou o fundo de troco do dia, e quando (ven-03). */
   fundoInformado?: { quem: string | null; quando: string } | null
+  /** A42 da 8ª: o que foi estornado no dia (do banco; o total, de lib/metrics). */
+  estornos?: { itens: EstornoDoDia[]; total: number } | null
+  /** A45 da 8ª: o dia de cada unidade e o da clínica (o portal da rede). */
+  daRede?: { unidades: MovimentoDaUnidade[]; total: { entradas: number; saidas: number; lancamentos: number } } | null
+  /** O dia aberto é hoje (A48: o "a receber" é sempre o de hoje, de qualquer dia). */
+  ehHoje?: boolean
 }) {
   const router = useRouter()
   const [contado, setContado] = useState('')
@@ -121,6 +128,35 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
         </div>
       </div>
 
+      {/* A45 da 8ª: a clínica toda no dia, e cada unidade (a aberta, marcada). */}
+      {daRede && (
+        <div data-fechamento-da-rede className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span className="overline">O dia na clínica</span>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {daRede.unidades.map(u => (
+              <li key={u.id}>
+                <button type="button" onClick={() => ir(dia, u.id)} aria-current={u.id === unidadeId ? 'true' : undefined}
+                  style={{
+                    width: '100%', display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 10px',
+                    borderRadius: 'var(--radius-field-token)', cursor: 'pointer', fontSize: 'var(--text-sm-sz)',
+                    border: `1px solid ${u.id === unidadeId ? 'var(--brand-soft-border)' : 'transparent'}`,
+                    background: u.id === unidadeId ? 'var(--brand-soft)' : 'transparent', color: 'var(--text)',
+                  }}>
+                  <span style={{ fontWeight: 700 }}>{u.nome}</span>
+                  <span style={{ color: u.lancamentos > 0 ? 'var(--text)' : 'var(--text-muted)' }}>
+                    {u.lancamentos > 0 ? `Entradas ${brl(u.entradas)} · saídas ${brl(u.saidas)}` : 'Sem movimento'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)', borderTop: '1px solid var(--hairline)', paddingTop: 8 }}>
+            <span>Total da clínica</span>
+            <span>Entradas {brl(daRede.total.entradas)} · saídas {brl(daRede.total.saidas)}</span>
+          </p>
+        </div>
+      )}
+
       <AvisosDoDia resumo={resumo} aReceber={aReceber} emAberto={emAberto} operadora={operadora} avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
 
       {/* O dia por forma de pagamento */}
@@ -154,8 +190,39 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
         </div>
       </div>
 
-      {/* O que foi atendido e ainda não foi pago — de qualquer dia. */}
-      {aReceber && <AtendimentosAReceber lista={aReceber} podeReceber={podeReceberAtendimento} />}
+      {/* A42 da 8ª: o estorno do dia — a venda e o estorno saem das entradas e
+          das saídas pela regra única, e o resumo não mostrava o que voltou. */}
+      {estornos && estornos.itens.length > 0 && (
+        <div data-estornos-do-dia className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
+            Estornos do dia · {brl(estornos.total)}
+          </p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            O que voltou às clientes neste dia. O pagamento estornado e o estorno ficam fora das entradas e das saídas acima — um anula o outro.
+          </p>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {estornos.itens.map(e => (
+              <li key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--text-sm-sz)' }}>
+                <span style={{ color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' }}>
+                  {e.descricao}{e.forma ? ` · ${rotuloDaForma(e.forma, e.vezes)}` : ''}
+                  {e.motivo && <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Motivo: {e.motivo}</span>}
+                </span>
+                <span style={{ color: 'var(--danger)', fontWeight: 700, whiteSpace: 'nowrap' }}>− {brl(e.valor)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* O que foi atendido e ainda não foi pago — de qualquer dia. A48 da 8ª:
+          num dia passado, a tela diz que a lista é a de HOJE (D5 de 27/10). */}
+      {aReceber && aReceber.itens.length > 0 && !ehHoje && (
+        <p data-a-receber-de-qualquer-dia style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: -8 }}>
+          Os concluídos a receber abaixo são os de hoje, de qualquer dia (até alguém receber) — não só os deste dia.
+        </p>
+      )}
+      {aReceber && <AtendimentosAReceber lista={aReceber} podeReceber={podeReceberAtendimento}
+        titulo={ehHoje ? undefined : 'Concluídos a receber hoje, de qualquer dia'} />}
 
       {/* A conferência do dinheiro */}
       <div className="card" style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>

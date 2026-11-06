@@ -85,6 +85,10 @@ interface Props {
   customFrom?:      string
   customTo?:        string
   transactions:     Transaction[]
+  /** A38 da 8ª: a lista é todo o a receber em aberto, de qualquer vencimento (`?aberto=todos`). */
+  soOEmAberto?:     boolean
+  /** A44 da 8ª: o nome do CSV das movimentações (o recorte da lista). */
+  nomeDoCsv?:       string
   /** A série de receita × despesa do período (metrics_series). */
   serie:            PontoDaSerie[]
   /** A despesa a pagar do período e do anterior (metrics_a_pagar). */
@@ -511,7 +515,7 @@ export function FinancialHub({
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
-  transactions, serie, emAberto, aPagarAnterior,
+  transactions, soOEmAberto = false, nomeDoCsv, serie, emAberto, aPagarAnterior,
   commissions,
   canReverse,
   canWrite,
@@ -690,7 +694,8 @@ export function FinancialHub({
         />
         <KpiCardFull
           chave="a-receber"
-          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento} />}
+          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+            hrefDaBaixa={`/${slug}/financeiro?aberto=todos#lancamentos`} />}
           label="A receber da cliente"
           curr={pendingIncome} prev={prevPendingIncome}
           icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
@@ -814,11 +819,19 @@ export function FinancialHub({
       {!ownScope && <ParcelasDaOperadora parcelas={parcelasDaOperadora} podeMarcar={canWrite} slug={slug} />}
 
       {/* Transactions */}
-      {!ownScope && <div>
+      {!ownScope && <div id="lancamentos">
         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 12 }}>
           Lançamentos
         </p>
+        {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
+        {soOEmAberto && (
+          <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 12 }}>
+            Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.{' '}
+            <a href={`/${slug}/financeiro?period=${period}#lancamentos`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
+          </p>
+        )}
         <FinancialTable
+          nomeDoCsv={nomeDoCsv}
           transactions={transactions}
           branchId={branchId}
           slug={slug}

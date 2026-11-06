@@ -577,6 +577,26 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     `a-receber-da-operadora`), com "Ver no Financeiro" (a lista das parcelas,
     `#recebiveis-da-operadora`) a quem abre o Financeiro da unidade inteira. Só
     informação: não mexe no saldo. Prova: `e2e/financeiro-atritos-da-7.spec.ts` ("A44").
+  - **Os atritos do Fechamento da 8ª simulação** (2026-11-06; princípio 3):
+    - **Os estornos do dia aparecem** (A42): pela regra única, a venda
+      estornada e o estorno saem das entradas e das saídas ("Saídas R$ 0"), e
+      o resumo não dizia que o dinheiro voltou. "Estornos do dia · R$ 397,00"
+      (`[data-estornos-do-dia]`) lista cada contra-lançamento pago no dia (a
+      descrição, a forma e o motivo), com o total de `getEstornosDoDia`
+      (`lib/metrics/fechamento-extra.ts`, em centavos). O resumo não muda.
+    - **O da rede abre na unidade com movimento e mostra a clínica toda**
+      (A45): com duas ou mais, "O dia na clínica" (`[data-fechamento-da-rede]`)
+      — cada unidade com as entradas e as saídas do dia (ou "Sem movimento"),
+      a aberta marcada, e o "Total da clínica" (`getMovimentoDasUnidades`, a
+      conta do Fechamento por unidade); sem `?unidade=`, abre na primeira que
+      teve movimento (era a primeira em ordem alfabética). Fechar continua por
+      unidade.
+    - **Num dia passado, o "a receber" diz que é o de hoje** (A48; a regra D5
+      de 27/10 fica): "Os concluídos a receber abaixo são os de hoje, de
+      qualquer dia (até alguém receber) — não só os deste dia."
+      (`[data-a-receber-de-qualquer-dia]`), e o título "Concluídos a receber
+      hoje, de qualquer dia".
+    - Prova: `e2e/financeiro-atritos-da-8.spec.ts`.
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
   de 2026-10-27, decisões do Heitor). A conta é UMA, no banco
@@ -681,6 +701,22 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   lida inteira (`lerTodas`); a tela fazia o reduce e tirava o sinal com
   `Math.abs` (só a cor dizia que era negativo). Prova:
   `e2e/financeiro-lista-total-com-sinal.spec.ts`, `tests/metrics-resultado-da-lista.test.ts`.
+- **O "Em aberto, todos os vencimentos" leva à baixa** (A38 da 8ª simulação,
+  2026-11-06): a parcela do crediário que vence no mês que vem não aparecia em
+  Lançamentos (a lista é do período, pela data de referência), e não se via
+  onde dar baixa. O cartão "A receber da cliente" diz "Ver e dar baixa", que
+  abre a lista com TODO o a receber em aberto, de qualquer vencimento
+  (`?aberto=todos`, `[data-so-o-em-aberto]`, nos dois financeiros), com o
+  "Pagar" na linha e "Voltar ao período". O período da lista não mudou.
+- **O CSV das movimentações** (A44 da 8ª: a contadora só tinha o de Comissões):
+  "Exportar CSV" na lista dos dois financeiros — o que a lista tem, com os
+  filtros da tela (na rede, todas as movimentações do recorte, não só as 100
+  que a tabela desenha), com Data; Descrição; Cliente; (Unidade;) Categoria;
+  Tipo; Forma; Situação; Valor — o valor com sinal (despesa e estorno
+  negativos), ponto e vírgula e BOM (`csvDosLancamentos`,
+  `lib/financeiro/csv-dos-lancamentos.ts`; o arquivo
+  "lancamentos-AAAA-MM-DD-a-AAAA-MM-DD.csv"). Prova: o mesmo spec,
+  `tests/financeiro-csv-dos-lancamentos.test.ts`.
 - **"Novo lançamento" é de quem lança** (D7 da 5ª simulação, 2026-11-01):
   com o Financeiro em Ver, o financeiro da rede mostrava o botão
   (`AdminFinancialView canWrite`, como o da unidade já fazia), e a recusa

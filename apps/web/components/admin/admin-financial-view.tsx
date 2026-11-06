@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
   ArrowUpRight, ArrowDownRight,
-  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle, CreditCard, FileText,
+  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle, CreditCard, FileText, Download,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
@@ -26,6 +26,7 @@ import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 import type { ResultadoDoPeriodo } from '@/lib/metrics/resultado'
 import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
+import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 
 // --- Types -------------------------------------------------------------------
 
@@ -119,6 +120,10 @@ interface Props {
   /** A rede tem UMA unidade ativa (D-19): sem "Por filial", "Total rede" nem o filtro de filial. */
   umaUnidade?:      boolean
   transactions:     AdminTx[]
+  /** A38 da 8ª: a lista é todo o a receber em aberto, de qualquer vencimento (`?aberto=todos`). */
+  soOEmAberto?:     boolean
+  /** A44 da 8ª: o nome do CSV das movimentações. */
+  nomeDoCsv?:       string
   branchSlugMap:    Record<string, string>
   branches:         { id: string; name: string; slug: string }[]
   /**
@@ -228,7 +233,7 @@ export function AdminFinancialView({
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
-  branchStats, umaUnidade = false, transactions, branchSlugMap, branches, unidadeInicial = '',
+  branchStats, umaUnidade = false, transactions, soOEmAberto = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
   canWrite = false, canPay = false, canReverse = false, podeDarCredito = false, clients = [],
 }: Props) {
   const router      = useRouter()
@@ -418,7 +423,8 @@ export function AdminFinancialView({
           chave="a-receber"
           label="A receber da cliente"
           value={fmtBRL(aReceber)}
-          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento} />}
+          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+            hrefDaBaixa={`/admin/financeiro?aberto=todos${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
         {/* F2c: o que a operadora ainda deposita do cartão em N vezes — não é
@@ -545,7 +551,14 @@ export function AdminFinancialView({
         unidades={umaUnidade ? undefined : Object.fromEntries(branches.map(b => [b.id, b.name]))} />
 
       {/* Movimentações */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
+      {soOEmAberto && (
+        <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px' }}>
+          Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.{' '}
+          <a href={`/admin/financeiro?period=${period}#movimentacoes`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
+        </p>
+      )}
+      <div id="movimentacoes" className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
             Movimentações
@@ -553,6 +566,13 @@ export function AdminFinancialView({
               {visibleTxs.length} registro{visibleTxs.length !== 1 ? 's' : ''}
             </span>
           </span>
+
+          {/* A44 da 8ª: o CSV de todas as movimentações do recorte (a tela mostra as 100 primeiras). */}
+          <button type="button" className="btn-secondary" disabled={visibleTxs.length === 0} style={{ marginLeft: 'auto' }}
+            onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(
+              visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null)), { comUnidade: !umaUnidade }))}>
+            <Download size={14} aria-hidden /> Exportar CSV
+          </button>
 
           {/* Filtro por filial — só com mais de uma unidade (D-19). */}
           {!umaUnidade && <select

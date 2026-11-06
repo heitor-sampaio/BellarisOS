@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import {
   Search, X, TrendingUp, TrendingDown, CheckCircle2,
-  Clock, RotateCcw, ChevronUp, ChevronDown, XCircle, FileText,
+  Clock, RotateCcw, ChevronUp, ChevronDown, XCircle, FileText, Download,
 } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
@@ -15,6 +15,7 @@ import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
+import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 
 export interface Transaction {
   id:             string
@@ -49,6 +50,8 @@ interface Props {
   slug:         string
   canReverse:   boolean
   canPay:       boolean
+  /** A44 da 8ª: o nome do CSV das movimentações (o recorte da tela). */
+  nomeDoCsv?:   string
 }
 
 const PM_COLORS: Record<string, { bg: string; color: string }> = {
@@ -72,7 +75,7 @@ function fmtDatetime(iso: string) {
 type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
-export function FinancialTable({ transactions, slug, canReverse, canPay }: Props) {
+export function FinancialTable({ transactions, slug, canReverse, canPay, nomeDoCsv = 'lancamentos.csv' }: Props) {
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'pending'>('all')
@@ -199,6 +202,12 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
         >
           {sortDir === 'desc' ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
           {sortDir === 'desc' ? 'Mais recente' : 'Mais antigo'}
+        </button>
+
+        {/* A44 da 8ª: o CSV do que está na lista (os filtros valem), para a contadora. */}
+        <button type="button" className="btn-secondary" disabled={filtered.length === 0}
+          onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(filtered.map(t => linhaDoLancamento(t))))}>
+          <Download size={14} aria-hidden /> Exportar CSV
         </button>
 
         {/* Resultado filtrado */}

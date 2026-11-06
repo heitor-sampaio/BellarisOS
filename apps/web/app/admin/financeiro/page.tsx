@@ -3,6 +3,8 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { dayKeyTZ } from '@/lib/datetime'
+import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
@@ -26,6 +28,8 @@ export default async function AdminFinanceiroPage({
   searchParams: Promise<Record<string, string>>
 }) {
   const sp     = await searchParams
+  /** A38 da 8ª: a lista de todo o a receber em aberto, de qualquer vencimento. */
+  const soOEmAberto = sp.aberto === 'todos'
   const period = sp.period ?? 'month'
   // Janela e comparação vêm da camada de métricas: no fuso do negócio e com o
   // período anterior de mesma duração. A resolução local antes montava "custom"
@@ -94,19 +98,21 @@ export default async function AdminFinanceiroPage({
       .from('financial_transactions')
       .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
-      // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
-    // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
-    // pela criação, o parcelado inteiro caía no mês da venda. O saldo zerado
-    // (substituído no check-in) é histórico: fica fora da lista.
-      .or('is_paid.eq.true,amount.neq.0')
-      .gte('data_de_referencia', start.toISOString())
+      // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
+      // vencimento. Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o
+      // pago, no dia do pagamento; o em aberto, no vencimento. O saldo zerado
+      // (substituído no check-in) é histórico: fica fora da lista.
+      .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
+      .gte(soOEmAberto ? 'amount' : 'data_de_referencia', soOEmAberto ? 0.01 : start.toISOString())
+      .in('type', soOEmAberto ? ['INCOME'] : ['INCOME', 'EXPENSE'])
+      .in('is_paid', soOEmAberto ? [false] : [true, false])
     // Fim do PERÍODO, não "agora": o `to` do resolvePeriod é a janela
     // DECORRIDA, que existe para o delta comparar coisas de mesmo tamanho. Numa
     // LISTA ele vira um bug de corrida — o relógio do Postgres está à frente do
     // relógio do app (medi 0,2s), então um lançamento feito neste segundo nasce
     // com `created_at` no futuro e some da tela que acabou de criá-lo.
-      .lte('data_de_referencia', fimDoPeriodo.toISOString())
-      .order('data_de_referencia', { ascending: false }).order('id')
+      .lte('data_de_referencia', soOEmAberto ? '9999-12-31' : fimDoPeriodo.toISOString())
+      .order('data_de_referencia', { ascending: soOEmAberto }).order('id')
       .range(de, ate), 'carregar os lançamentos da rede'),
 
     // Clientes da rede, para o crédito interno. Só quem recebe precisa.
@@ -226,6 +232,8 @@ export default async function AdminFinanceiroPage({
         branchStats={branchStats}
         umaUnidade={await redeTemUmaUnidade(ctx.tenantId!)}
         transactions={transactions}
+        soOEmAberto={soOEmAberto}
+        nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start), dayKeyTZ(fimDoPeriodo))}
         branchSlugMap={branchSlugMap}
         branches={branches}
         unidadeInicial={branches.find(b => b.id === sp.unidade || b.slug === sp.unidade)?.id ?? ""}

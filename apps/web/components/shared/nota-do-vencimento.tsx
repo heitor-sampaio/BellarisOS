@@ -14,7 +14,7 @@ const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
  * Os números vêm de `getEmAberto` e `getAReceberEmAberto` (lib/metrics); aqui
  * só se escreve.
  */
-export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento }: {
+export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa }: {
   valor: number
   proximo: ProximoVencimento | null
   /** Todo o em aberto, de qualquer vencimento (só no "A receber"). */
@@ -24,6 +24,11 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
    * separados e nomeados — não são lançamento em aberto, e não se somam a ele.
    */
   concluidosSemPagamento?: { n: number; valor: number }
+  /**
+   * A38 da 8ª: onde se dá baixa nesse em aberto — a lista dos lançamentos com
+   * todo o a receber, de qualquer vencimento (`?aberto=todos`).
+   */
+  hrefDaBaixa?: string
 }) {
   return (
     <span>
@@ -32,6 +37,9 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
       {emAbertoTotal !== undefined && (
         <span data-em-aberto style={{ display: 'block', marginTop: 2 }}>
           Em aberto, todos os vencimentos: <strong>{formatBRL(emAbertoTotal)}</strong>
+          {hrefDaBaixa && emAbertoTotal > 0 && (
+            <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>Ver e dar baixa</a></>
+          )}
         </span>
       )}
       {concluidosSemPagamento && concluidosSemPagamento.n > 0 && (
