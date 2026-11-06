@@ -12,6 +12,8 @@ import { euVendi } from './apoio/vender'
  * - A43: a ficha dizia "Investido total R$ 0" ao lado do "Preço médio R$ 450",
  *   sem dizer que ela pagou com crédito na clínica (que não é receita, F7).
  * - A46: a venda concluída fechava a janela sem toast nem comprovante.
+ * - A40: o líquido e a taxa só apareciam no Financeiro, não ao escolher o
+ *   cartão e as vezes; a linha "Até 12x no crédito" não tinha função.
  * Numa rede [e2e] própria, de uma unidade.
  */
 
@@ -55,6 +57,8 @@ test.beforeAll(async () => {
     branch_id: rede.branchId, client_id: cliente, appointment_id: ap!.id, type: 'INCOME', category: 'Procedimento',
     description: 'Atendimento', amount: 180, is_paid: true, paid_at: new Date().toISOString(), payment_method: 'INTERNAL_CREDIT', created_by: 'e2e',
   })).error).toBeNull()
+  // A40: a taxa do crédito em 3x (2,97%), para a tela dizer o líquido.
+  expect((await b.from('payment_fees').insert({ tenant_id: rede.tenantId, metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 2.97 })).error).toBeNull()
   // O produto (antes de qualquer tela abrir).
   const pr = await b.from('products').insert({ tenant_id: rede.tenantId, name: SERUM, unit: 'un', uso: 'REVENDA', sale_price: 100 })
     .select('id').single<{ id: string }>()
@@ -100,5 +104,23 @@ test('A36 + A46: o crédito interno mostra o saldo e o que sobra, e a venda conc
     await euVendi(dlg)
     await dlg.getByRole('button', { name: /^Vender por/ }).click()
     await expect(p.getByText(/Venda registrada: 1× .*Sérum cx/)).toBeVisible({ timeout: 15_000 })
+  })
+})
+
+test('A40: ao escolher o cartão e as vezes, a tela diz a taxa e o líquido; a linha das vezes diz o que fazer', async ({ browser }) => {
+  await como(browser, recepcao!, async p => {
+    await p.goto(`/${slug}/clients/${cliente}`)
+    await p.getByRole('button', { name: 'Vender', exact: true }).click()
+    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
+    const produto = dlg.getByLabel('Produto', { exact: true })
+    await produto.selectOption((await produto.locator('option', { hasText: SERUM }).getAttribute('value'))!)
+    await dlg.getByLabel('Quantidade').fill('1')
+    await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
+    await expect(dlg.locator('[data-valor-da-parcela]')).toContainText('parcela até')
+    await dlg.getByLabel('Vezes no cartão').selectOption('3')
+    const liquido = dlg.locator('[data-liquido-do-cartao]')
+    await expect(liquido).toContainText('2,97%')
+    await expect(liquido).toContainText(/a clínica recebe R\$\s97,03/)
   })
 })

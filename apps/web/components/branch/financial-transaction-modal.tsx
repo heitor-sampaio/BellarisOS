@@ -374,7 +374,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                     (no “A receber da operadora”). Não é um parcelamento da cliente com a clínica.
                   </span>
                 )}
-                <AvisoDaTaxa vezes={vezesNoCartao} bandeira={bandeira} />
+                <AvisoDaTaxa vezes={vezesNoCartao} bandeira={bandeira} total={finalAmount} />
               </div>
             )}
 

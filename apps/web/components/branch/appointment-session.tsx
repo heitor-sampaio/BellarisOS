@@ -742,7 +742,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                       {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
                     </select>
                     <DicaDasVezes total={resgate.restante} vezes={vezes} opcoes={opcoesDeVezes} />
-                    <AvisoDaTaxa vezes={vezes} bandeira={bandeira} />
+                    <AvisoDaTaxa vezes={vezes} bandeira={bandeira} total={resgate.restante} />
                   </>
                 )}
                 <CampoDaBandeira metodo={metodoEscolhido} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" />

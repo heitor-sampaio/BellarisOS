@@ -64,7 +64,8 @@ test('A46: "Entrada + parcelas" mostra o resumo antes de vender; A47: o crédito
     await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
     const vezes = dlg.getByLabel('Vezes no cartão')
     await expect(vezes.locator('option')).toHaveCount(4)
-    await expect(dlg.locator('[data-valor-da-parcela]')).toHaveText('Até 4x no crédito')
+    // A40 da 8ª: à vista, a linha diz para que serve.
+    await expect(dlg.locator('[data-valor-da-parcela]')).toHaveText('À vista · parcela até 4x no crédito em “Vezes no cartão”')
     await vezes.selectOption('3')
     await expect(dlg.locator('[data-valor-da-parcela]')).toHaveText(/Até 4x no crédito · 3× R\$\s1\.100,00/)
   })

@@ -778,7 +778,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               </select>
             </label>
             <DicaDasVezes total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
-            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} />
+            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} />
           </div>
         )}
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && (

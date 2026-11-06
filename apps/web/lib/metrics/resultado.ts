@@ -314,3 +314,16 @@ export function rankingDasAvaliacoes(lista: { name: string; avgRating: number | 
     .sort((a, b) => a.avgRating - b.avgRating || b.count - a.count).slice(0, 5)
   return { melhores, piores, avaliados: avaliados.length }
 }
+
+/**
+ * O que a maquininha desconta e o que a operadora deposita, ao ESCOLHER o
+ * cartão e as vezes (A40 da 8ª simulação, 2026-11-06: o líquido e a taxa só
+ * apareciam no Financeiro). A taxa é a que vale para aquelas vezes e bandeira
+ * (`taxaDoCreditoNaBandeira`, o espelho de `private.comissao_taxa_pct`); a
+ * conta, em centavos, a do recebível da operadora (a taxa nunca passa do valor).
+ */
+export function liquidoNaMaquininha(total: number, taxaPct: number): { taxa: number; liquido: number } {
+  const t = Math.round(Math.max(total, 0) * 100)
+  const taxa = Math.min(t, Math.round(t * Math.max(taxaPct, 0) / 100))
+  return { taxa: taxa / 100, liquido: (t - taxa) / 100 }
+}

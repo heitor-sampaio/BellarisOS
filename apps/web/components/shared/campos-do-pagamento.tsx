@@ -157,7 +157,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
                 const base = forma === 'PARCELADO' ? (lida && 'valor' in lida ? lida.valor : 0) : total
                 return base !== undefined && <DicaDasVezes total={base} vezes={estado.vezes} opcoes={opcoesDeVezes} />
               })()}
-              <AvisoDaTaxa vezes={estado.vezes} bandeira={estado.bandeira} />
+              <AvisoDaTaxa vezes={estado.vezes} bandeira={estado.bandeira}
+                total={forma === 'PARCELADO' ? (() => { const l = lerEntrada(estado.entrada); return 'valor' in l ? l.valor : 0 })() : total} />
             </label>
           )}
           {(forma === 'AVISTA' || forma === 'PARCELADO') && (

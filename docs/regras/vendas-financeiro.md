@@ -1113,7 +1113,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
     antes do "Vender por…" (A46): "Entrada R$ 300,00 + 3× R$ 1.000,00"
     (`ResumoDasParcelas`, `lib/checkout/resumo-do-pagamento.ts`; as
     parcelas iguais se juntam). Prova: `e2e/vendas-resumo-do-pagamento.spec.ts`,
-    `tests/resumo-do-pagamento.test.ts`.
+    `tests/resumo-do-pagamento.test.ts`. **E a taxa e o líquido aparecem ao
+    escolher** (A40 da 8ª simulação, 2026-11-06; só apareciam no Financeiro):
+    com a taxa daquelas vezes (e bandeira) cadastrada, "Taxa da maquininha no
+    crédito 3x: 2,97% (R$ 2,97) — a clínica recebe R$ 97,03, que a operadora
+    deposita em 3 parcelas." (`[data-liquido-do-cartao]`, no `AvisoDaTaxa` —
+    sem a taxa, o aviso de sempre; a conta é `liquidoNaMaquininha`,
+    `lib/metrics/resultado.ts`); e, à vista, a linha das vezes diz para que
+    serve: "À vista · parcela até 4x no crédito em “Vezes no cartão”". Prova:
+    `e2e/caixa-atritos-da-8.spec.ts` ("A40"), `tests/liquido-na-maquininha.test.ts`.
   - **Uma conta só para a parcela do crediário** (D2 da 7ª simulação,
     2026-11-05; princípio 3): o checkout do plano dizia "3× de R$ 890,67" (o
     saldo ÷ 3) e o recebimento do plano no check-in "3x de R$ 890,67", e o
