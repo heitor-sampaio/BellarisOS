@@ -60,7 +60,7 @@ test.beforeAll(async () => {
   // A recepção da rede (sem unidade fixa) recebe e agenda.
   recepcao = await criarMembro(`vur${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepcao da rede',
-    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
   })
   // A Débora é do Batel: só aparece em "Quem vendeu" de uma venda do Batel.
   debora = await criarMembro(`vud${marca}`, { tenant: rede.tenantId, branchId: batel, rotulo: 'Debora', permissoes: [] })
@@ -108,5 +108,14 @@ test('A14: o "+ Agendar" da ficha da rede e o "Novo cliente" nascem sem unidade 
 
     await p.goto('/admin/clients/new')
     await expect(p.getByLabel('Unidade de cadastro *')).toHaveValue('')
+  })
+})
+
+test('D1: o crédito interno da ficha da rede pergunta a unidade — mesmo da cliente com unidade de cadastro', async ({ browser }) => {
+  await como(browser, async p => {
+    await p.goto(`/admin/clients/${cliente}?aba=financeiro`)
+    await p.getByRole('button', { name: /Conceder crédito/ }).first().click()
+    // Era o caixa da Água Verde (a de cadastro), calado.
+    await expect(p.getByLabel('Unidade do crédito *')).toHaveValue('')
   })
 })
