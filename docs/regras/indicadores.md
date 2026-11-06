@@ -220,6 +220,13 @@
     na capacidade com o horário dele MENOS o que tem agendado em outra
     unidade (`ocupadoFora`; o da rede atende em todas — decisão do Heitor,
     2026-10-28). Sem isso ele aparecia livre em duas unidades ao mesmo tempo.
+    **E menos o tempo BLOQUEADO dele** (D15 da 8ª simulação, 2026-11-06;
+    princípio 3): o bloqueio pontual da profissional (`agenda_bloqueios`) entra
+    como bloco ocupado (`blocosDosBloqueios`, `lib/agenda/horario-livre.ts`; os
+    blocos se fundem com os de fora, nada sai duas vezes) — no dashboard da
+    unidade, na agenda da unidade e na "Minha agenda". "430 min de 4.230 min
+    disponíveis" somava as 23 h e meia da Iara bloqueada. Prova:
+    `e2e/agenda-defeitos-da-8.spec.ts` ("D15"), `tests/agenda-horario-livre.test.ts`.
     A **"Minha agenda"** (agenda "só os meus") usa a MESMA conta para a
     "Ocupação hoje": `ocupacaoDoDia` (`lib/metrics/ocupacao.ts`, puro, roda no
     navegador) — os minutos dela no dia de Brasília ÷ o horário unidade ∩

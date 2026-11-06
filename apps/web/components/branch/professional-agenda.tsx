@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { estenderJanela } from '@/lib/agenda/grade'
 import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
+import { blocosDosBloqueios, livresEntre } from '@/lib/agenda/horario-livre'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
 import type { CalendarEvent } from './agenda-month-view'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
@@ -160,9 +161,10 @@ export function ProfessionalAgendaView({
   // A conta de lib/metrics, a mesma da agenda da unidade e do dashboard
   // (§13.1): sobre o horário dela — era um dia fixo de 8 h, na tela (D11 da
   // simulação de 2026-10-29). Nulo = sem expediente hoje: a tela mostra "—".
+  // O tempo que ela bloqueou sai da capacidade, como o de outra unidade (D15 da 8ª).
   const occupancyPct = useMemo(() => ocupacaoDoDia(todayEvents,
-    { unidade: horarioDaUnidade, profissional: horarioDaProfissional, ocupadoFora }, today),
-  [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, today])
+    { unidade: horarioDaUnidade, profissional: horarioDaProfissional, ocupadoFora: [...ocupadoFora, ...blocosDosBloqueios(bloqueios)] }, today),
+  [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, today, bloqueios])
 
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const weekEnd   = endOfWeek(today, { weekStartsOn: 1 })
@@ -212,24 +214,25 @@ export function ProfessionalAgendaView({
     return Math.max(44, ev.durationMin / 60 * PX_PER_HOUR)
   }
 
-  // Slots livres ≥ 30 min entre atendimentos
+  // Slots livres ≥ 30 min entre atendimentos — tirado o que ela BLOQUEOU (D15
+  // da 8ª simulação: a Débora de férias via "Horário livre 02:45 – 04:00"
+  // dentro do bloqueio). A régua é a de lib/agenda/horario-livre.
   const freeSlots = useMemo(() => {
     if (dayEvents.length < 2) return []
     return dayEvents.slice(0, -1).flatMap((ev, i) => {
       const endMs  = parseISO(ev.start).getTime() + ev.durationMin * 60000
       const nextMs = parseISO(dayEvents[i + 1]!.start).getTime()
-      const gapMin = (nextMs - endMs) / 60000
-      if (gapMin < 30) return []
-      const endDate  = new Date(endMs)
-      const nextDate = new Date(nextMs)
-      const top      = (getHours(endDate) - DAY_START + getMinutes(endDate) / 60) * PX_PER_HOUR
-      const height   = gapMin / 60 * PX_PER_HOUR
-      return [{
-        top, height,
-        label: `${format(endDate, 'HH:mm')} – ${format(nextDate, 'HH:mm')}`,
-      }]
+      return livresEntre(endMs, nextMs, bloqueios).map(([de, ate]) => {
+        const deDate  = new Date(de)
+        const ateDate = new Date(ate)
+        return {
+          top:    (getHours(deDate) - DAY_START + getMinutes(deDate) / 60) * PX_PER_HOUR,
+          height: (ate - de) / 3_600_000 * PX_PER_HOUR,
+          label:  `${format(deDate, 'HH:mm')} – ${format(ateDate, 'HH:mm')}`,
+        }
+      })
     })
-  }, [dayEvents, DAY_START])
+  }, [dayEvents, DAY_START, bloqueios])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

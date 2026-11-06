@@ -22,8 +22,11 @@ export function GradeDeHorarios({
   horarioDaUnidade:      Horario | null
   horarioDoProfissional: Horario | null
   nomeDoProfissional?:   string
-  /** O agendamento que já ocupa o horário (o mesmo profissional), ou nulo. */
-  ocupado:               (hora: string) => { clientName: string | null } | null
+  /**
+   * Quem já ocupa o horário (o mesmo profissional), ou nulo: o agendamento, ou
+   * o bloqueio dela (`rotulo` "Bloqueado · motivo" — D5 da 8ª simulação).
+   */
+  ocupado:               (hora: string) => { clientName: string | null; rotulo?: string } | null
   selecionado:           string
   onEscolher:            (hora: string) => void
   carregando:            boolean
@@ -62,7 +65,7 @@ export function GradeDeHorarios({
               <button key={hora} type="button" disabled={!!booked} onClick={() => onEscolher(hora)}
                 data-horario={hora} data-encaixe={encaixe ? '' : undefined}
                 aria-pressed={sel}
-                title={booked ? `Ocupado${booked.clientName ? ` — ${booked.clientName}` : ''}`
+                title={booked ? (booked.rotulo ?? `Ocupado${booked.clientName ? ` — ${booked.clientName}` : ''}`)
                   : encaixe ? `Fora do horário de ${quem} — encaixe` : undefined}
                 style={{
                   padding: '8px 4px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700,

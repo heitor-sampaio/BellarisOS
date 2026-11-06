@@ -11,6 +11,7 @@ import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
+import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import type { Horario } from '@/lib/agenda/horario'
 import { rotaCliente, rotaAtendimento } from '@/lib/rotas'
 import Link from 'next/link'
@@ -214,8 +215,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     : ''
   // Com os horários da unidade e do profissional: a grade cobre a janela da unidade (D8).
   const [slotsLidos, setSlotsLidos] = useState<{
-    chave: string; slots: DaySlot[]; unidade: Horario | null; profissional: Horario | null
-  }>({ chave: '', slots: [], unidade: null, profissional: null })
+    chave: string; slots: DaySlot[]; bloqueios: { inicio: string; fim: string; motivo: string }[]; unidade: Horario | null; profissional: Horario | null
+  }>({ chave: '', slots: [], bloqueios: [], unidade: null, profissional: null })
   const daySlots     = chaveDosSlots && slotsLidos.chave === chaveDosSlots ? slotsLidos.slots : []
   const loadingSlots = !!chaveDosSlots && slotsLidos.chave !== chaveDosSlots
 
@@ -253,7 +254,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   useEffect(() => {
     if (!chaveDosSlots || !schedBranchId) return
     getSchedulingDaySlots(schedBranchId, schedProfId, activeDate).then(res => {
-      setSlotsLidos({ chave: chaveDosSlots, slots: res.slots, unidade: res.horarioDaUnidade ?? null, profissional: res.horarioDoProfissional ?? null })
+      setSlotsLidos({ chave: chaveDosSlots, slots: res.slots, bloqueios: res.bloqueios ?? [], unidade: res.horarioDaUnidade ?? null, profissional: res.horarioDoProfissional ?? null })
     })
   }, [chaveDosSlots, schedBranchId, schedProfId, activeDate])
 
@@ -268,14 +269,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     }))
   }
 
-  function isSlotBooked(time: string): DaySlot | null {
+  // A régua única do horário livre (D5 da 8ª): a sessão INTEIRA (a duração
+  // dela, como o servidor confere) contra os agendamentos e os bloqueios.
+  function isSlotBooked(time: string): { clientName: string | null; rotulo?: string } | null {
     if (!activeDate) return null
-    const slotMs = new Date(`${activeDate}T${time}:00-03:00`).getTime()
-    return daySlots.find(s => {
-      const start = new Date(s.scheduledAt).getTime()
-      const end   = start + s.durationMin * 60000
-      return slotMs >= start && slotMs < end
-    }) ?? null
+    const duracao = plan.sessions.find(s => s.id === activeSession)?.mainDurationMin || 60
+    return ocupanteDoHorario(new Date(`${activeDate}T${time}:00-03:00`), duracao, daySlots, slotsLidos.chave === chaveDosSlots ? slotsLidos.bloqueios : [])
   }
 
   // A37: o que se recebe agora (à vista, entrada + parcelas) pede a forma.

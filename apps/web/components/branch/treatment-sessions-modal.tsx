@@ -21,6 +21,7 @@ import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import type { Horario } from '@/lib/agenda/horario'
+import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -105,6 +106,7 @@ export function SessionScheduler({
   const [profId,       setProfId]       = useState('')
   const [date,         setDate]         = useState('')
   const [slots,        setSlots]        = useState<{ scheduledAt: string; durationMin: number; clientName: string | null }[]>([])
+  const [bloqueios,    setBloqueios]    = useState<{ inicio: string; fim: string; motivo: string }[]>([])
   // Os horários da unidade e do profissional: a grade cobre a janela da unidade (D8).
   const [horarios,     setHorarios]     = useState<{ unidade: Horario | null; profissional: Horario | null }>({ unidade: null, profissional: null })
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -148,6 +150,7 @@ export function SessionScheduler({
     if (!branchId || !profId || !date) return
     getSchedulingDaySlots(branchId, profId, date).then(res => {
       setSlots(res.slots)
+      setBloqueios(res.bloqueios ?? [])
       setHorarios({ unidade: res.horarioDaUnidade ?? null, profissional: res.horarioDoProfissional ?? null })
       setLoadingSlots(false)
     })
@@ -169,13 +172,13 @@ export function SessionScheduler({
     return () => { vivo = false }
   }, [procId, procDuracao, branchId, date, time])
 
+  // D5 da 8ª simulação: o intervalo INTEIRO da sessão contra os agendamentos
+  // dela e os bloqueios (a régua de lib/agenda/horario-livre). Só o início
+  // caindo dentro de um ocupado oferecia 10:00 livre para 60 min com outro às
+  // 10:30 — e o Confirmar recusava. Sem o procedimento (a unidade pré-paga, que
+  // o servidor decide), o passo da grade.
   function isBooked(t: string) {
-    const ms = new Date(`${date}T${t}:00-03:00`).getTime()
-    return slots.find(s => {
-      const start = new Date(s.scheduledAt).getTime()
-      const end   = start + s.durationMin * 60000
-      return ms >= start && ms < end
-    }) ?? null
+    return ocupanteDoHorario(new Date(`${date}T${t}:00-03:00`), procedimento?.duracaoMin ?? 30, slots, bloqueios)
   }
 
   async function handleSave() {

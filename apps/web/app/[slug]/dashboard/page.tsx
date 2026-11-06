@@ -3,6 +3,8 @@ import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
+import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
+import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { getTenantContext, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
@@ -253,6 +255,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       .lte('scheduled_at', todayEnd.toISOString()), 'carregar a agenda dos profissionais nas outras unidades')
     for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number }[]) {
       (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min })
+    }
+    // O tempo BLOQUEADO de cada uma (D15 da 8ª simulação) também sai da
+    // capacidade: "430 min de 4.230 min disponíveis" contava as 23 h e meia da
+    // Iara bloqueada. Os blocos se fundem com os de fora (nada conta duas vezes).
+    const bloqueios = await bloqueiosDoPeriodo(ctx.tenantId!, {
+      de: todayStart.toISOString(), ate: todayEnd.toISOString(), profissionais: profissionais.map(p => p.id),
+    }, admin)
+    for (const p of profissionais) {
+      const dela = blocosDosBloqueios(bloqueios.filter(b => b.professionalId === p.id))
+      if (dela.length) (ocupadoFora[p.id] ??= []).push(...dela)
     }
   }
   const horarios = {

@@ -15,7 +15,8 @@ import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
-import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia } from '@/lib/appointments/core'
+import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao } from '@/lib/appointments/core'
+import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-preferencia'
 import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
 import {
@@ -1840,6 +1841,8 @@ export async function getSchedulingDaySlots(
   date: string,
 ): Promise<{
   slots: { scheduledAt: string; durationMin: number; clientName: string | null }[]
+  /** Os bloqueios da profissional no dia (D5 da 8ª): a grade não os oferece. */
+  bloqueios?: { inicio: string; fim: string; motivo: string }[]
   /** Os horários de funcionamento: a grade do checkout e das sessões do plano cobre a janela da unidade e marca a do profissional (D8). */
   horarioDaUnidade?: Horario | null
   horarioDoProfissional?: Horario | null
@@ -1859,27 +1862,39 @@ export async function getSchedulingDaySlots(
   // Brazil UTC-3
   const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
+  // Desde a véspera: o atendimento da noite anterior pode atravessar a meia-noite.
+  const desdeAVespera = new Date(new Date(dayStart).getTime() - 86_400_000).toISOString()
 
-  const data = await ler(admin
-    .from('appointments')
-    .select('scheduled_at, duration_min, clients(name)')
-    .eq('branch_id', branchId)
-    .eq('professional_id', professionalId)
-    .gte('scheduled_at', dayStart)
-    .lte('scheduled_at', dayEnd)
-    .not('status', 'in', '("CANCELLED","NO_SHOW")')
-    .order('scheduled_at'), 'carregar os agendamentos')
+  // D5 da 8ª simulação: os agendamentos DELA em qualquer unidade da rede (a
+  // da rede atende em todas — o servidor recusa o choque em qualquer uma, a
+  // regra de `horarioOcupado`) e os bloqueios dela. A grade testa o intervalo
+  // inteiro contra os dois (`ocupanteDoHorario`, lib/agenda/horario-livre).
+  const [data, prof, bloqueios] = await Promise.all([
+    ler(admin
+      .from('appointments')
+      .select('scheduled_at, duration_min, status, completed_at, branch_id, clients(name), branches!inner(tenant_id)')
+      .eq('branches.tenant_id', ctx.tenantId!)
+      .eq('professional_id', professionalId)
+      .gte('scheduled_at', desdeAVespera)
+      .lte('scheduled_at', dayEnd)
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
+      .order('scheduled_at'), 'carregar os agendamentos'),
+    // O horário do profissional (da rede): sem ele, segue a unidade.
+    ler(admin.from('users').select('horario')
+      .eq('id', professionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o horário do profissional') as Promise<{ horario: unknown } | null>,
+    bloqueiosDoPeriodo(ctx.tenantId!, { de: dayStart, ate: dayEnd, profissionais: [professionalId] }, admin),
+  ])
 
-  // O horário do profissional (da rede): sem ele, segue a unidade.
-  const prof = await ler(admin.from('users').select('horario')
-    .eq('id', professionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o horário do profissional') as { horario: unknown } | null
-
+  type Linha = { scheduled_at: string; duration_min: number; status: string; completed_at: string | null; branch_id: string; clients: { name: string } | null }
   return {
-    slots: ((data ?? []) as unknown as { scheduled_at: string; duration_min: number; clients: { name: string } | null }[]).map(d => ({
+    slots: ((data ?? []) as unknown as Linha[]).map(d => ({
       scheduledAt: d.scheduled_at,
-      durationMin: d.duration_min,
-      clientName:  d.clients?.name ?? null,
+      // Até quando OCUPA (o concluído adiantado libera o resto — A31).
+      durationMin: Math.max(0, Math.round((fimDaOcupacao(d) - new Date(d.scheduled_at).getTime()) / 60_000)),
+      // O nome da cliente só da agenda desta unidade; o de outra unidade diz só que está ocupado.
+      clientName:  d.branch_id === branchId ? (d.clients?.name ?? null) : null,
     })),
+    bloqueios: bloqueios.map(b => ({ inicio: b.inicio, fim: b.fim, motivo: b.motivo })),
     horarioDaUnidade:      normalizarHorario((branch as { horario?: unknown }).horario),
     horarioDoProfissional: normalizarHorario(prof?.horario),
   }
