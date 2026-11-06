@@ -399,6 +399,16 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   categoria `foto_clinica`, não apagada) — no JSON e no PDF. Dizia "fotos: 0"
   com a foto anexada. O arquivo continua listado em "Documentos anexados".
   Prova: `e2e/lgpd-exportacao.spec.ts`.
+- **Os insumos de cada atendimento vêm do ESTOQUE** (D18 da 8ª simulação,
+  2026-11-06): o pacote lia `medical_record_entries.products_used`, que
+  nenhuma action nem função grava, e dizia `insumos: null` no atendimento que
+  baixou 1 Gel condutor. O consumo mora no movimento `PROCEDURE_USAGE` com o
+  `appointment_id` (a conclusão o grava): `insumosDosAtendimentos`
+  (`lib/lgpd/insumos.ts`) leva, por atendimento do prontuário liberado, o
+  produto, a quantidade na unidade de consumo (`unidadeDoInsumo`) e o lote da
+  baixa — no JSON (`insumos`, lista vazia quando nada foi usado) e no PDF ("—
+  insumos: Gel condutor 1 un"). A entrada sem atendimento segue com o
+  `products_used` de antes. Prova: `e2e/lgpd-insumos-do-atendimento.spec.ts`.
 - **A ficha de saúde (pré-atendimento) no pacote** (2026-10-21): o
   HISTÓRICO (`fichasDeSaude`: quando foi mandada, ficha completa ou
   confirmação, a situação, quando e por onde foi respondida) vai na parte
@@ -912,6 +922,7 @@ o contato junto.
 ```
 ❌ Gerar exportação de LGPD dentro do request — usar after() + o cron de retomada
 ❌ Entregar pacote de LGPD com consulta que falhou em silêncio — no export, erro aborta
+❌ Ler os insumos do atendimento de medical_record_entries.products_used (nada grava ali) — moram no estoque: o movimento PROCEDURE_USAGE do appointment_id (D18 da 8ª)
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
 ❌ Editar nome/telefone numa cópia (conversa, oportunidade) sem propagarDadosDaPessoa
 ❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a dona é contato_id)

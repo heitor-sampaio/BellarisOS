@@ -11,6 +11,7 @@ import { lerTodas } from '@/lib/db'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { planoParaOTitular, linhaDoPlano, linhaDaComunicacao, type PlanoLido } from '@/lib/lgpd/plano'
 import { responsavelNoPacote, documentoNoPacote } from '@/lib/lgpd/responsavel'
+import { insumosDosAtendimentos, insumosEmTexto, type InsumoDoAtendimento } from '@/lib/lgpd/insumos'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -93,7 +94,8 @@ function prontuarioLegivel(medical: Json | null): Json | null {
         observacoes: e.notes ?? null,
         intercorrencias: e.intercurrences ?? null,
         doresRelatadas: e.queixas ?? null,
-        insumos: e.products_used ?? null,
+        // D18 da 8ª: do estoque do atendimento (era products_used, que nada grava).
+        insumos: e.insumos_do_estoque ?? e.products_used ?? null,
         fichaDoProcedimento: f ? { ficha: f.nome ?? 'Ficha do procedimento', respostas: respostasLegiveis(f, f.respostas) } : null,
         fotos: Number(e.fotos_do_atendimento ?? ((e.record_photos ?? []) as unknown[]).length),
       }
@@ -250,6 +252,10 @@ export async function buildClientExport(
       respostas:     respostasLegiveis(p.ficha, p.respostas),
     }))
 
+    // D18 da 8ª: os insumos de cada atendimento moram no estoque (o consumo).
+    const insumos = await insumosDosAtendimentos(admin, (record?.medical_record_entries ?? [])
+      .map(e => e.appointment_id as string | null).filter((x): x is string => !!x))
+
     if (record || fichasRespondidas.length) {
       medical = {
         criadoEm:      record?.created_at ?? null,
@@ -261,6 +267,7 @@ export async function buildClientExport(
           ...e,
           fotos_do_atendimento: ((e.record_photos ?? []) as unknown[]).length
             + (documents ?? []).filter(d => d.appointment_id && d.appointment_id === e.appointment_id && d.category === 'foto_clinica' && !d.apagado_em).length,
+          insumos_do_estoque: e.appointment_id ? insumos.get(e.appointment_id as string) ?? [] : null,
         })),
         fichasDeSaude: fichasRespondidas,
       }
@@ -508,10 +515,12 @@ export async function buildClientExport(
           const notas = String(e.notes ?? '').replace(/\s+/g, ' ').trim()
           const inter = String(e.intercurrences ?? '').replace(/\s+/g, ' ').trim()
           const dores = String(e.queixas ?? '').replace(/\s+/g, ' ').trim()
+          const insumos = insumosEmTexto((e.insumos_do_estoque ?? []) as InsumoDoAtendimento[])
           return `${fmtDate(e.created_at as string)} — profissional: ${prof} — fotos: ${fotos}`
                + (dores ? ` — dores relatadas: ${dores}` : '')
                + (notas ? ` — observações: ${notas}` : '')
                + (inter ? ` — intercorrências: ${inter}` : '')
+               + (insumos ? ` — insumos: ${insumos}` : '')
         }),
       },
     )

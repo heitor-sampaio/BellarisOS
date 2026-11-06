@@ -243,6 +243,7 @@ export const ISOLADOS = [
   'portal-cliente-documentos-do-agendamento.spec.ts',
   'documentos-assinar-sem-passo-extra.spec.ts',
   'lgpd-exportacao-pela-equipe.spec.ts',
+  'lgpd-insumos-do-atendimento.spec.ts',
   'lgpd-portal-pacote-legivel.spec.ts',
   'rotas-com-sessao-levam-ao-destino.spec.ts',
   'crm-responsavel.spec.ts',
