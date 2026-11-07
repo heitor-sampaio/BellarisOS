@@ -17,6 +17,7 @@ import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
 import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
+import { PagarDespesa } from '@/components/shared/pagar-despesa'
 import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } from '@/components/shared/remarcar-vencimento'
 import type { AReceberVencido } from '@/lib/metrics/vencidas'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -269,11 +270,13 @@ export function AdminFinancialView({
   // r3-f13-01: no cartão, a baixa pergunta a bandeira antes (opcional).
   // D6: a receita SEM meio (a parcela do crediário) pergunta a forma na mesma janela.
   const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string | null; valor: number } | null>(null)
+  // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
+  const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; slug: string; descricao: string; valor: number } | null>(null)
   function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null) {
     startT(async () => {
       const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null)
       if (r?.error) toast.error(r.error)
-      else { setNoCartao(null); router.refresh() }
+      else { setNoCartao(null); setDespesaAPagar(null); router.refresh() }
     })
   }
   function estornar(id: string, slug: string, motivo: string, voltou?: boolean) {
@@ -351,6 +354,10 @@ export function AdminFinancialView({
       {aDevolverParte && <DevolverParteDaVenda transacaoId={aDevolverParte} onFechar={() => setADevolverParte(null)} />}
       {creditoAEstornar && (
         <EstornarVendaDeCredito transacaoId={creditoAEstornar.id} descricao={creditoAEstornar.descricao} onFechar={() => setCreditoAEstornar(null)} />
+      )}
+      {despesaAPagar && (
+        <PagarDespesa descricao={despesaAPagar.descricao} valor={despesaAPagar.valor} pendente={estornando}
+          aoConfirmar={f => marcarPago(despesaAPagar.id, despesaAPagar.slug, null, undefined, f)} aoFechar={() => setDespesaAPagar(null)} />
       )}
       {noCartao && (
         <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
@@ -722,6 +729,8 @@ export function AdminFinancialView({
                         {!t.is_paid && !estornada && canPay && (
                           <button type="button" onClick={() => t.type === 'INCOME' && (temBandeira(t.payment_method) || !t.payment_method)
                             ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount) })
+                            : t.type === 'EXPENSE' && !t.payment_method
+                            ? setDespesaAPagar({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Despesa', valor: Number(t.amount) })
                             : marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,
                             fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,

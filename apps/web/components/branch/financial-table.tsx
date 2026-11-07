@@ -15,6 +15,7 @@ import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
 import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
+import { PagarDespesa } from '@/components/shared/pagar-despesa'
 import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } from '@/components/shared/remarcar-vencimento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
@@ -108,11 +109,13 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
   // Decisão 1 da 9ª: o estorno da venda de crédito na clínica (volta o saldo não usado).
   const [creditoAEstornar, setCreditoAEstornar] = useState<{ id: string; descricao: string } | null>(null)
   const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string | null; valor: number } | null>(null)
+  // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
+  const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; descricao: string; valor: number } | null>(null)
   function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number, forma?: string | null) {
     startTx(async () => {
       const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null)
       if (r?.error) toast.error(r.error)
-      else { setNoCartao(null); router.refresh() }
+      else { setNoCartao(null); setDespesaAPagar(null); router.refresh() }
     })
   }
 
@@ -163,6 +166,10 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
     {aDevolverParte && <DevolverParteDaVenda transacaoId={aDevolverParte} onFechar={() => setADevolverParte(null)} />}
     {creditoAEstornar && (
       <EstornarVendaDeCredito transacaoId={creditoAEstornar.id} descricao={creditoAEstornar.descricao} onFechar={() => setCreditoAEstornar(null)} />
+    )}
+    {despesaAPagar && (
+      <PagarDespesa descricao={despesaAPagar.descricao} valor={despesaAPagar.valor} pendente={estornando}
+        aoConfirmar={f => handleMarkPaid(despesaAPagar.id, null, undefined, f)} aoFechar={() => setDespesaAPagar(null)} />
     )}
     {noCartao && (
       <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
@@ -394,6 +401,8 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           {!tx.is_paid && !isReversed && canPay && (
                             <button type="button" onClick={() => tx.type === 'INCOME' && (temBandeira(tx.payment_method) || !tx.payment_method)
                               ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method ?? null, valor: Number(tx.amount) })
+                              : tx.type === 'EXPENSE' && !tx.payment_method
+                              ? setDespesaAPagar({ id: tx.id, descricao: tx.description ?? 'Despesa', valor: Number(tx.amount) })
                               : handleMarkPaid(tx.id)} title="Marcar como pago" style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
                               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,

@@ -133,6 +133,8 @@ export async function marcarPagoCore(
   const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
   if (!tx) return { error: 'Lançamento não encontrado.' }
   if (bandeira && !ehBandeira(bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
+  // A14 da 9ª: o Boleto é forma da despesa.
+  if (forma === 'BOLETO' && tx.type !== 'EXPENSE') return { error: 'Boleto é forma de pagar uma despesa.' }
   const daBandeira = bandeiraDoPagamento(forma ?? tx.payment_method, bandeira)
   const recusa = await recusaDasVezesDaBaixa(ctx, tx.type, forma ?? tx.payment_method, vezes)
   if (recusa) return { error: recusa }

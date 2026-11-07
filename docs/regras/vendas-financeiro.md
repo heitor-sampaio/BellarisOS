@@ -923,6 +923,18 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `lancamentosDoPagamento` fica só como rede de segurança. Prova:
     `e2e/vendas-entrada-acima-do-total.spec.ts`.
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
+  e, só na DESPESA, `BOLETO` (A14 da 9ª simulação, 2026-11-07: a luz e o
+  aluguel ficavam "Não informado"; migration `20261107004405`; o nome é
+  "Boleto" em `rotuloDaForma` e em `private.rotulo_da_forma`). A tela só o
+  oferece na despesa (`FORMAS_DA_DESPESA`), e a action recusa na receita
+  ("Boleto é forma de pagar uma despesa.").
+- **A despesa parcelada (ou recorrente) pede UM vencimento** (A14): o da 1ª
+  parcela (ou o primeiro); o "Vencimento" do lançamento único não aparece junto.
+- **O "Pagar" da despesa sem forma pergunta a forma** (A15 da 9ª; decidido pelo
+  princípio 3 — a parcela da cliente e a comissão já perguntavam): "Pagar
+  despesa" (`PagarDespesa`, nos dois financeiros), a forma nasce vazia e é
+  obrigatória, com o Boleto; a despesa que já tem forma baixa direto, como
+  antes. Prova: `e2e/financeiro-atritos-da-9.spec.ts` ("A14", "A15").
 - **A forma nasce VAZIA em toda tela de cobrança** (A37 da 6ª simulação,
   2026-11-04; princípio 3): o "Confirmar pagamento" do atendimento (que o
   `?receber=1` abre sozinho — e só abre, nunca confirma), o "Receber" do plano

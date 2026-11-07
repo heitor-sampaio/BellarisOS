@@ -6,11 +6,18 @@
  */
 
 const CURTO: Record<string, string> = {
-  CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Débito', CREDIT_CARD: 'Crédito', INTERNAL_CREDIT: 'Crédito interno',
+  CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Débito', CREDIT_CARD: 'Crédito', INTERNAL_CREDIT: 'Crédito interno', BOLETO: 'Boleto',
 }
 const LONGO: Record<string, string> = {
-  CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Cartão de débito', CREDIT_CARD: 'Cartão de crédito', INTERNAL_CREDIT: 'Crédito interno',
+  CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Cartão de débito', CREDIT_CARD: 'Cartão de crédito', INTERNAL_CREDIT: 'Crédito interno', BOLETO: 'Boleto',
 }
+
+/**
+ * As formas de pagar uma DESPESA (A14 da 9ª simulação: faltava o Boleto, e a
+ * luz e o aluguel ficavam "Não informado"). O Boleto é só da despesa: a
+ * cliente não paga a recepção por boleto.
+ */
+export const FORMAS_DA_DESPESA = ['PIX', 'BOLETO', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
 
 /**
  * "Crédito 3x", "Pix"… — `longo` para "Cartão de crédito 3x". Sem forma: "Sem

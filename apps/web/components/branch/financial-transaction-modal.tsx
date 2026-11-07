@@ -32,6 +32,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   DEBIT_CARD:      'Cartão de débito',
   CREDIT_CARD:     'Cartão de crédito',
   INTERNAL_CREDIT: 'Crédito interno',
+  // A14 da 9ª: o Boleto, só na despesa (a luz, o aluguel).
+  BOLETO:          'Boleto',
 }
 
 /** `htmlFor` liga o rótulo ao campo (2026-10-21: soltos, o leitor de tela não os ligava). */
@@ -338,7 +340,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                 <select id="lanc-forma" name="payment_method" className="field"
                   value={formaDePagamento} onChange={e => setFormaDePagamento(e.target.value)}>
                   <option value="">Não informado</option>
-                  {Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => (
+                  {Object.entries(PAYMENT_METHOD_LABELS).filter(([v]) => v !== 'BOLETO' || type === 'EXPENSE').map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
                 </select>
@@ -405,7 +407,8 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                     key={hojeBR} defaultValue={hojeBR} max={hojeBR} required />
                 </div>
               )}
-              {!isPaid && (
+              {/* A14 da 9ª: a despesa parcelada (ou recorrente) tem o vencimento da 1ª abaixo — um campo só. */}
+              {!isPaid && (type !== 'EXPENSE' || scheduleMode === 'single') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Label htmlFor="lanc-vencimento">Vencimento</Label>
                   <input id="lanc-vencimento" name="due_date" type="date" className="field" />

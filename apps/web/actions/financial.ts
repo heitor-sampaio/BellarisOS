@@ -73,6 +73,8 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
     const vezesNoCartao = str(formData, 'cartao_vezes')
 
     if (!type)                return { error: 'Tipo é obrigatório.' }
+    // A14 da 9ª: o Boleto é forma da despesa (a cliente não paga a recepção por boleto).
+    if (paymentMethod === 'BOLETO' && type !== 'EXPENSE') return { error: 'Boleto é forma de pagar uma despesa.' }
     if (!category)            return { error: 'Categoria é obrigatória.' }
     if (!description)         return { error: 'Descrição é obrigatória.' }
     if (!amount || amount <= 0) return { error: 'Valor deve ser maior que zero.' }
@@ -168,7 +170,8 @@ export async function markTransactionPaid(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'cashier', 'MANAGE')
-    if (forma != null && !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma)) return { error: 'Forma de pagamento inválida.' }
+    // A15 da 9ª: a despesa também diz a forma na baixa — e pode ser Boleto (A14).
+    if (forma != null && !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma) && forma !== 'BOLETO') return { error: 'Forma de pagamento inválida.' }
 
     // O núcleo (lib/financeiro/lancamento.ts) é o mesmo do Copilot: confere a
     // rede e a unidade ao alcance antes de escrever. A bandeira (r3-f13-01)
