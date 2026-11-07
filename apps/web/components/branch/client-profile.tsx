@@ -4,7 +4,7 @@ import React, { useActionState, useEffect, useEffectEvent, useState, useRef } fr
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
@@ -1830,6 +1830,10 @@ export function ClientProfile({
                   {textoDasRestantes(activePackage.totalSessions - activePackage.usedSessions, activePackage.scheduledSessions ?? 0)}
                 </p>
               )}
+              {/* A18 da 9ª: nada dizia que o cartão abre — e é por ele que se agendam as sessões. */}
+              <p data-tratamento-que-abre style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, marginTop: 10 }}>
+                Abrir para ver e agendar as sessões <ChevronRight size={14} aria-hidden="true" />
+              </p>
             </div>
             {activePackage.deFora && activePackage.semValorDeReferencia && (
               <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>

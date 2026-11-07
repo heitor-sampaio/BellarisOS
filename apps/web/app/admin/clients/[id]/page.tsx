@@ -259,7 +259,7 @@ export default async function AdminClientProfilePage({
   if (!activePackage && activePlansRaw && activePlansRaw.length > 0) {
     type RawSessProc = { procedure_id: string; price: string; procedures: { name: string; duration_min: number } | null }
     type RawSess     = { id: string; treatment_plan_session_procedures: RawSessProc[] }
-    const plan       = activePlansRaw[0] as { id: string; status: string; treatment_plan_sessions: RawSess[] }
+    const plan       = activePlansRaw[0] as unknown as { id: string; status: string; treatment_plan_sessions: RawSess[] }
     const sessions   = plan.treatment_plan_sessions ?? []
     const totalSess  = sessions.length
     const completedSess = (appts ?? []).filter(

@@ -223,7 +223,7 @@ export async function createAppointmentCore(
 
   // O crédito vem primeiro: é ele que diz o procedimento e o preço. Um
   // procedimento diferente do crédito é recusado (o navegador não escolhe).
-  let doCredito: { procedureId: string; preco: number } | null = null
+  let doCredito: { procedureId: string; preco: number; duracaoMin?: number; planoId?: string } | null = null
   if (input.credito) {
     const c = await conferirCredito(admin, ctx.tenantId!, input.clientId, input.credito)
     if ('error' in c) return { error: c.error }
@@ -262,7 +262,8 @@ export async function createAppointmentCore(
   if (doProcedimento.error || !doProcedimento.data) return { error: 'Procedimento não encontrado.' }
   const procedure = doProcedimento.data as { price: number; duration_min: number }
 
-  const durationMin = procedure?.duration_min ?? 60
+  // A sessão do plano dura o que a sessão dura (D5 da 9ª: a soma dos procedimentos dela).
+  const durationMin = doCredito?.duracaoMin ?? procedure?.duration_min ?? 60
   const start       = new Date(input.scheduledAt)
 
   // O conflito de SALA (quando há sala) e o de PROFISSIONAL (sempre — impede o
@@ -295,6 +296,9 @@ export async function createAppointmentCore(
       source:          origem,
       created_by_id:   ctx.internalUserId,
       sem_preferencia: input.semPreferencia ?? false,
+      // A sessão do plano nasce no plano (o gatilho dos documentos não emite o
+      // do avulso para ela — o plano tem os dele).
+      ...(doCredito?.planoId ? { treatment_plan_id: doCredito.planoId } : {}),
     })
     .select('id')
     .single()

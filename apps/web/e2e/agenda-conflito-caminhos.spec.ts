@@ -57,6 +57,8 @@ test.beforeAll(async ({ browser }) => {
     scheduled_at: quando, duration_min: 60, price: 100, status: 'SCHEDULED', source: 'INTERNAL',
   })
   const { planId: plano } = await outra.criarPlanoProposto('sessão', { semTermo: true })
+  // A sessão se agenda no plano FECHADO (D5/A18 da 9ª: pelo núcleo, a sessão como crédito).
+  expect((await b.from('treatment_plans').update({ status: 'ACCEPTED' }).eq('id', plano)).error).toBeNull()
   const { planId: planoCheckout } = await outra.criarPlanoProposto('checkout', { semTermo: true })
   const sessaoDo = async (planId: string) => {
     const { data } = await b.from('treatment_plan_sessions').select('id').eq('plan_id', planId).single()

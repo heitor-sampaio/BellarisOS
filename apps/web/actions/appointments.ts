@@ -306,15 +306,6 @@ async function updateAppointmentStatusInterno(
   if (status === 'CANCELLED') notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
 }
 
-/** O procedimento é da rede? A mensagem de recusa, ou null. */
-async function procedimentoDaRedeOuRecusa(
-  admin: ReturnType<typeof createAdminClient>, procedureId: string, tenantId: string,
-): Promise<string | null> {
-  const proc = await ler(admin.from('procedures').select('id')
-    .eq('id', procedureId).eq('tenant_id', tenantId).maybeSingle(), 'buscar o procedimento')
-  return proc ? null : 'Procedimento não encontrado.'
-}
-
 // Resolve o branchId pelo appointmentId (para validar acesso)
 async function resolveBranchId(
   supabase: Awaited<ReturnType<typeof createSupabase>>,
@@ -1425,6 +1416,8 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
     professionalName: string | null
     procedureName:    string | null
     procedureId:      string
+    /** A duração DELA (a soma dos procedimentos — D5 da 9ª): a grade do agendar mede o horário com ela. */
+    durationMin:      number
   }>
 }> {
   const ctx   = await getTenantContext()
@@ -1451,13 +1444,13 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
     .from('treatment_plan_sessions')
     .select(`
       id, sort_order, appointment_id,
-      treatment_plan_session_procedures(procedure_id, sort_order, procedures(name)),
+      treatment_plan_session_procedures(procedure_id, sort_order, procedures(name, duration_min)),
       appointments:appointment_id(id, status, scheduled_at, professional:users!professional_id(name))
     `)
     .eq('plan_id', planId)
     .order('sort_order'), 'carregar as sessões do plano')
 
-  type RawSessProc = { procedure_id: string; sort_order: number; procedures: { name: string } | null }
+  type RawSessProc = { procedure_id: string; sort_order: number; procedures: { name: string; duration_min: number | null } | null }
   type RawAppt = { id: string; status: string; scheduled_at: string; professional: { name: string } | null } | null
   type RawSess = { id: string; sort_order: number; appointment_id: string | null; treatment_plan_session_procedures: RawSessProc[]; appointments: RawAppt }
 
@@ -1480,6 +1473,7 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
       professionalName: appt?.professional?.name ?? null,
       procedureName:    procNames || '—',
       procedureId:      firstProc?.procedure_id ?? '',
+      durationMin:      procs.reduce((t, p) => t + ((p.procedures as { duration_min?: number | null } | null)?.duration_min ?? 60), 0),
     }
   })
 
@@ -1659,6 +1653,7 @@ async function schedulePlanSessionInterno(params: {
   scheduledAt:    string
   clientId:       string
   procedureId:    string
+  /** Ignorados (D5 da 9ª): o preço e a duração são os da sessão, lidos no servidor. */
   price:          number
   durationMin:    number
   slug:           string
@@ -1668,7 +1663,6 @@ async function schedulePlanSessionInterno(params: {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   const admin = createAdminClient()
-  const roomId = params.roomId || null
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -1686,49 +1680,26 @@ async function schedulePlanSessionInterno(params: {
   if (!sessao) return { error: 'Sessão não encontrada neste plano.' }
   if (sessao.appointment_id) return { error: 'Sessão já está agendada.' }
   if (params.clientId !== plan.client_id) return { error: 'Cliente não confere com o plano.' }
-  const recusa = await conferirPecasDoAgendamento(admin, ctx, {
-    branchId: params.branchId, professionalId: params.professionalId, clientId: params.clientId,
-    roomId, procedureId: params.procedureId,
-  }) ?? await procedimentoDaRedeOuRecusa(admin, params.procedureId, ctx.tenantId!)
-  if (recusa) return { error: recusa }
-  if (roomId && await horarioOcupado(admin, {
-    tenantId: ctx.tenantId!, roomId, branchId: params.branchId,
-    inicio: new Date(params.scheduledAt), duracaoMin: params.durationMin || 60,
-  })) {
-    return { error: 'Esta sala já está ocupada nesse horário.' }
-  }
-  // E o horário livre (revisão de 2026-10-08: marcava por cima de outro).
-  if (await horarioOcupado(admin, {
-    tenantId: ctx.tenantId!, professionalId: params.professionalId,
-    inicio: new Date(params.scheduledAt), duracaoMin: params.durationMin || 60,
-  })) {
-    return { error: 'Este profissional já tem agendamento nesse horário.' }
-  }
 
-  const { data: appt, error: apptErr } = await admin
-    .from('appointments')
-    .insert({
-      branch_id:         params.branchId,
-      client_id:         params.clientId,
-      procedure_id:      params.procedureId,
-      professional_id:   params.professionalId,
-      scheduled_at:      params.scheduledAt,
-      duration_min:      params.durationMin,
-      price:             params.price,
-      status:            'SCHEDULED',
-      source:            'INTERNAL',
-      treatment_plan_id: params.planId,
-      room_id:           roomId,
-    })
-    .select('id')
-    .single()
-  if (apptErr || !appt) return { error: `Erro ao criar agendamento: ${apptErr?.message}` }
-
-  // Vincula o agendamento à sessão — necessário para getPlannedSessionAppointments exibir corretamente
-  await gravar(admin
-    .from('treatment_plan_sessions')
-    .update({ appointment_id: appt.id })
-    .eq('id', params.sessionId), 'vincular a sessão do plano ao agendamento')
+  // Pelo NÚCLEO, com a sessão do plano como crédito (D5 e A18 da 9ª simulação,
+  // 2026-11-07), como a sessão do pacote: o procedimento, o PREÇO e a DURAÇÃO
+  // são os da SESSÃO, lidos no servidor (o modal mandava os da sessão vizinha —
+  // a drenagem nasceu a R$ 585 e 60 min da criolipólise); o procedimento que o
+  // navegador manda tem de ser o dela. O núcleo confere as peças, a sala, o
+  // conflito com a duração, grava o histórico e o evento, e liga a sessão por
+  // compare-and-swap.
+  const res = await createAppointmentCore(admin, ctx, {
+    branchId:       params.branchId,
+    clientId:       params.clientId,
+    procedureId:    params.procedureId,
+    professionalId: params.professionalId,
+    scheduledAt:    params.scheduledAt,
+    roomId:         params.roomId || null,
+    credito:        { tipo: 'PLANO', id: params.sessionId },
+    source:         'INTERNAL',
+  })
+  if ('error' in res) return { error: res.error }
+  const appt = { id: res.id }
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })

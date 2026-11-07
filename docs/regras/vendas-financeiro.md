@@ -345,8 +345,9 @@ o procedimento avulso pago antes.
   e a tela esconde o botão.
 - **Agendar usando o que já foi pago** (unidade pré-paga OU sessão de pacote)
   é o **crédito** do agendamento, e passa pelo NÚCLEO:
-  `createAppointmentCore(… credito: { tipo: 'PRE_PAGO' | 'PACOTE', id })`
-  (`lib/creditos/credito.ts`). O crédito é conferido (do cliente, da rede,
+  `createAppointmentCore(… credito: { tipo: 'PRE_PAGO' | 'PACOTE' | 'PLANO', id })`
+  (`lib/creditos/credito.ts`; a sessão do plano fechado desde a D5/A18 da 9ª —
+  `atendimento.md`). O crédito é conferido (do cliente, da rede,
   livre, na validade) e decide o procedimento e o preço — procedimento
   diferente é recusado; depois do insert ele é ligado por compare-and-swap
   (`appointment_id` nulo), e quem perde a corrida tem o agendamento desfeito.

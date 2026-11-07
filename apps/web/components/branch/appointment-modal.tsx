@@ -241,8 +241,9 @@ export function AppointmentModal({
   // próximo livre da profissional (hoje: a partir de agora). A hora que a
   // pessoa digitou ela mesma não é trocada.
   const horaEscolhida = useRef(!!defaultDate)
+  // A sessão do plano dura o que a sessão dura (D5 da 9ª: a soma dos procedimentos dela).
   const duracaoMin = credito
-    ? (dados.procedures.find(p => p.id === credito.procedureId)?.duration_min ?? 30)
+    ? (credito.duracaoMin ?? dados.procedures.find(p => p.id === credito.procedureId)?.duration_min ?? 30)
     : (dados.procedures.find(p => p.id === procId)?.duration_min ?? 30)
   useEffect(() => {
     if (!profId || !unidadeId || horaEscolhida.current) return

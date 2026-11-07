@@ -23,7 +23,8 @@ async function lerOJaPago(admin: Admin, tenantId: string, clientId: string): Pro
       .order('created_at'), 'buscar os planos da cliente') as Promise<{ id: string; treatment_plan_sessions: Sessao[] }[] | null>,
     creditosDoCliente(admin, tenantId, clientId),
   ])
-  return { planos: planos ?? [], creditos }
+  // As sessões dos planos já vêm acima (`planos`): o crédito é o do pacote e o do pré-pago.
+  return { planos: planos ?? [], creditos: creditos.filter(c => c.tipo !== 'PLANO') }
 }
 
 /** "(sessão 2 de 3)" — sem o número, nada. */

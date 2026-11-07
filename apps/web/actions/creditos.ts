@@ -50,7 +50,9 @@ export async function creditosDoAgendamento(appointmentId: string): Promise<Cred
     ler(admin.from('financial_transactions').select('id').eq('appointment_id', appointmentId).or('notes.is.null,notes.neq.Estornada').limit(1), 'conferir o lançamento do atendimento'),
   ])
   if ((sessao ?? []).length || (unidade ?? []).length || (lancamento ?? []).length) return []
-  return (await creditosDoCliente(admin, ctx.tenantId!, ag.client_id)).filter(c => c.procedureId === ag.procedure_id)
+  // A sessão do plano (A18 da 9ª) se oferece ao agendar, não ao ligar um avulso já
+  // marcado: `agendamento_usar_credito` é do pacote e do pré-pago.
+  return (await creditosDoCliente(admin, ctx.tenantId!, ag.client_id)).filter(c => c.procedureId === ag.procedure_id && c.tipo !== 'PLANO')
 }
 
 /**

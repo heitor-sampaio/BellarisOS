@@ -87,9 +87,9 @@
     pacote e de plano dizem o procedimento e oferecem a sala**
     (`SessionScheduler` com `procedimento`, `[data-agendar-sessao]`): a
     sala é opcional, a lista é a do agendar (`salasParaAgendar`, "(ocupada)"
-    desligada) e o servidor confere (`schedulePackageSession` pelo núcleo;
-    `schedulePlanSession` por `conferirPecasDoAgendamento` com a sala e o
-    procedimento, e `horarioOcupado` da sala). A unidade pré-paga segue só
+    desligada) e o servidor confere (`schedulePackageSession` e, desde a D5 da
+    9ª simulação, `schedulePlanSession` pelo núcleo, com a sessão como
+    crédito). A unidade pré-paga segue só
     com o horário (o crédito decide o procedimento no servidor). Prova:
     `e2e/pacote-sessao-agendar.spec.ts`. **A sala aparece desde o início**
     (A32 e A58 da 8ª simulação, 2026-11-06): só depois do horário escolhido,
@@ -864,6 +864,36 @@
   min", a do procedimento principal. `sessao-de-atendimento.tsx` lê
   `appointments.duration_min`; o procedimento só vale sem ela. Prova: o mesmo
   spec ("D5").
+- **A sessão do plano grava o preço e a duração DELA** (D5 da 9ª simulação,
+  2026-11-07; princípio 3): as sessões alternavam criolipólise (R$ 585, 60 min)
+  e drenagem (R$ 144, 50 min), e a sessão 2 nasceu com R$ 585 e 60 min — o
+  modal mandava o preço e a duração do cartão (os do primeiro procedimento do
+  plano), e `schedulePlanSession` gravava o que vinha. Agora a sessão é um
+  CRÉDITO do núcleo (`credito: { tipo: 'PLANO', id: sessão }`,
+  `lib/creditos/credito.ts`): o servidor lê a sessão e decide o procedimento (o
+  primeiro dela — outro é recusado), o PREÇO (a soma dos procedimentos dela no
+  plano, com o desconto) e a DURAÇÃO (a soma das durações;
+  `valoresDaSessaoDoPlano`, a conta do checkout); o agendamento nasce com o
+  `treatment_plan_id` (o gatilho dos documentos não emite o do avulso), e a
+  sessão se liga por compare-and-swap. Só o plano FECHADO (ACCEPTED) agenda
+  sessão — o proposto se agenda no checkout; o cancelado, não. O preço é o
+  VENDIDO no plano (o da unidade entrou quando o plano foi montado — D2): o
+  plano fechado não muda de preço ao agendar. A grade do modal mede o horário
+  com a duração da sessão. Na produção, 1 agendamento ligado a sessão de plano
+  estava com o preço e a duração de outra (na [sim] Begônia, já fechado; ficou
+  como está — a comissão da sessão lê o preço do plano). Prova:
+  `e2e/plano-atritos-da-9.spec.ts` ("D5").
+- **O "+ Agendar" da ficha oferece a sessão do plano** (A18 da 9ª simulação;
+  "os dois são, em essencia, conjuntos de procedimentos" — decisão 2 do
+  Heitor): o "Já pago" do modal (`creditosDoCliente`) lista também a próxima
+  sessão livre de cada plano fechado, por procedimento principal ("Drenagem —
+  Plano de tratamento · 2 restantes"), e ela vem escolhida quando o
+  procedimento bate, como a do pacote (A20 da 8ª): "Já pago: Plano de
+  tratamento (sessão 2 de 3)". A grade de horários é a do modal. O avulso já
+  marcado não se liga a uma sessão de plano (`agendamento_usar_credito` é do
+  pacote e do pré-pago). E o cartão "Tratamento em andamento" diz "Abrir para
+  ver e agendar as sessões" (`[data-tratamento-que-abre]`). Prova: o mesmo spec
+  ("A18").
 - **Cancelar (ou faltar) devolve o que estava pago**: o gatilho
   `private.pre_pago_libera` solta a unidade pré-paga, a sessão de pacote e a
   sessão do plano (estas duas ficavam presas ao agendamento cancelado).
@@ -2148,6 +2178,7 @@ O resto do fluxo:
 ❌ Decidir qual sala serve a um procedimento fora de salasParaOProcedimento (lib/agenda/salas.ts), ou gravar sala pela sessão (só o servidor, actions/salas.ts)
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem. A exceção é pacote_cancelar (F2b): cancela as sessões agendadas na MESMA transação do dinheiro, com o status, o motivo e o histórico do cancelarCore, e a action emite o evento e o aviso depois
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
+❌ Gravar o preço ou a duração da sessão do plano que o navegador mandou: é a sessão como crédito do núcleo (valoresDaSessaoDoPlano — D5 da 9ª)
 ❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_inicial/estoque_ajuste_em (trava: tests/estoque-so-pelas-funcoes.test.ts) (a linha do saldo travada; duas entradas juntas perdiam uma)
 ❌ Lançar despesa (ou qualquer financial_transactions) a partir de uma movimentação de estoque — entrada, cadastro, ajuste, perda, transferência ou consumo (D13 revisto, 2026-10-28)
 ❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)

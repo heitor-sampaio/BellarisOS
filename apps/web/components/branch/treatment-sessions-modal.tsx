@@ -34,6 +34,8 @@ type Session = {
   professionalName: string | null
   procedureName:    string | null
   procedureId?:     string
+  /** A duração da sessão do plano (a soma dos procedimentos dela — D5 da 9ª). */
+  durationMin?:     number
 }
 
 interface Props {
@@ -316,7 +318,7 @@ export function TreatmentSessionsModal({
   const buscarSessoes = useCallback(async (): Promise<Session[] | null> => {
     if (isPlanMode) {
       const res = await getPlannedSessionAppointments(planId!)
-      return res.sessions.map(s => ({ ...s, procedureId: s.procedureId }))
+      return res.sessions.map(s => ({ ...s, procedureId: s.procedureId, durationMin: s.durationMin }))
     }
     if (clientPackageId) {
       const res = await getClientPackageSessions(clientPackageId)
@@ -503,7 +505,7 @@ export function TreatmentSessionsModal({
                         branches={branches}
                         currentBranchId={currentBranchId}
                         procedimento={(sess.procedureId ?? procedureId)
-                          ? { id: (sess.procedureId ?? procedureId)!, nome: sess.procedureName ?? procedureName, duracaoMin: durationMin || 60 }
+                          ? { id: (sess.procedureId ?? procedureId)!, nome: sess.procedureName ?? procedureName, duracaoMin: sess.durationMin ?? (durationMin || 60) }
                           : null}
                         onCancel={() => setSchedulingId(null)}
                         onSave={async (params) => {
