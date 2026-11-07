@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
+import { getTenantContext, temRecurso, can } from '@/lib/auth'
 import { listarMapasDeInjetaveis } from '@/actions/injectable-map'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { InjetaveisLista } from '@/components/branch/injetaveis-lista'
@@ -22,8 +22,12 @@ export async function ListaDeInjetaveis({
   children: React.ReactNode
 }) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'VIEW')
-  assertRecurso(ctx, 'injetaveis')
+  // Sem o prontuário (ou sem o recurso no plano), o layout NÃO lança: só passa
+  // a página, que trava por si (`assertPermission`/`assertRecurso` em cada
+  // `page.tsx`, CLAUDE.md §6) DENTRO do Suspense do `loading.tsx` — e a tela
+  // de sem acesso sai com 200, como em toda tela negada. Lançado aqui, fora do
+  // Suspense, o `semAcesso()` subia ao portal como HTTP 500 (D17 da 9ª).
+  if (!can(ctx, 'medical_records', 'VIEW') || !temRecurso(ctx, 'injetaveis')) return <>{children}</>
 
   const { mapas, error } = await listarMapasDeInjetaveis({ branchId })
 

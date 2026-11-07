@@ -7,7 +7,7 @@ import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
   XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList, FileText,
-  AlertCircle, Info, StickyNote,
+  AlertCircle, Info, StickyNote, Syringe,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -1297,7 +1297,9 @@ export function AppointmentSession({
 
   // Checkout aberto sobre a tela, quando quem atende também recebe.
   const [checkoutPlan, setCheckoutPlan] = useState<CheckoutPlan | null>(null)
-  const [planejamentoAberto, setPlanejamentoAberto] = useState(false)
+  // Aberto em qual aba: o "Planejamento" abre no plano de tratamento, e o "Mapa
+  // de injetáveis" direto nos injetáveis (A10 da 9ª simulação).
+  const [planejamentoAberto, setPlanejamentoAberto] = useState<false | 'tratamento' | 'injetaveis'>(false)
 
   /** Total do plano — some os preços das sessões, como o checkout faz. */
   const totalDoPlano = (existingPlan?.sessions ?? []).reduce(
@@ -1747,14 +1749,14 @@ export function AppointmentSession({
           O plano é do CLIENTE, não deste atendimento: aqui ele só é aberto —
           e o atendimento fica registrado como a origem de um plano novo. */}
       {planejamentoAberto && (
-        <JanelaModal onFechar={() => setPlanejamentoAberto(false)} rotulo="Planejamento de tratamento" largura={760}>
+        <JanelaModal onFechar={() => setPlanejamentoAberto(false)} rotulo={planejamentoAberto === 'injetaveis' ? 'Mapa de injetáveis' : 'Planejamento de tratamento'} largura={760}>
           <div style={{ padding: '22px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   {client.name}
                 </p>
-                <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Planejamento de tratamento</h3>
+                <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{planejamentoAberto === 'injetaveis' ? 'Mapa de injetáveis' : 'Planejamento de tratamento'}</h3>
               </div>
               <button type="button" onClick={() => setPlanejamentoAberto(false)} className="btn-ghost" style={{ padding: '6px 10px' }}>
                 Fechar
@@ -1771,6 +1773,7 @@ export function AppointmentSession({
               // Injetáveis é prontuário: o clínico desta sessão.
               podeVerInjetaveis={canViewRecords}
               podeReceber={podeReceber}
+              abaInicial={planejamentoAberto === 'injetaveis' ? 'injetaveis' : 'tratamento'}
               // Registro bloqueado: a avaliação não monta mais o plano na tela
               // (A30), então o "Novo plano" volta a ser o caminho.
               // A avaliação concluída voltou a montar o plano na tela (2026-10-29).
@@ -1895,10 +1898,19 @@ export function AppointmentSession({
             {/* Check-in (SCHEDULED + canCheckin) */}
             {/* O planejamento é do cliente e abre de qualquer atendimento —
                 não só da consulta de avaliação, como era antes. */}
-            <button type="button" onClick={() => setPlanejamentoAberto(true)} className="btn-ghost"
+            <button type="button" onClick={() => setPlanejamentoAberto('tratamento')} className="btn-ghost"
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 'var(--text-base-sz)' }}>
               <ClipboardList size={14} /> Planejamento
             </button>
+            {/* A10 da 9ª simulação: o mapa de injetáveis da cliente abre (e se
+                cria) daqui, sem ir ao menu Injetáveis e voltar. É prontuário:
+                só para quem vê o clínico, no plano que tem o recurso. */}
+            {podeInjetaveis && canViewRecords && (
+              <button type="button" onClick={() => setPlanejamentoAberto('injetaveis')} className="btn-ghost"
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 'var(--text-base-sz)' }}>
+                <Syringe size={14} /> Mapa de injetáveis
+              </button>
+            )}
 
             {/* A profissional deste atendimento: chegada e início num gesto só (A21). */}
             {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && canManage && ehDaProfissional && (

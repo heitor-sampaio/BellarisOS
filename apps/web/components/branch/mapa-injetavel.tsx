@@ -89,7 +89,7 @@ export function MapaInjetavel({
     const res = await registrarAplicacao(mapId, appointmentId, mapa, null, slug)
     setSalvando(false)
     if (res.error) { setErro(res.error); return }
-    setMsg('Aplicação registrada neste atendimento.')
+    setMsg(res.atualizada ? 'Aplicação deste atendimento atualizada.' : 'Aplicação registrada neste atendimento.')
     await carregar()
     onMudou?.()
   }
@@ -150,6 +150,11 @@ export function MapaInjetavel({
   }
 
   const totais = injectableTotals(mapa)
+  // D14 da 9ª: o mapa já registrado NESTE atendimento atualiza a aplicação, não
+  // grava outra (cada clique gravava uma, e o Finalizar somava as duas).
+  const registrada = appointmentId
+    ? plano.aplicacoes.find(a => a.appointmentId === appointmentId && a.mapId === mapId) ?? null
+    : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -268,8 +273,13 @@ export function MapaInjetavel({
           {appointmentId && plano.clientId && (
             <button type="button" onClick={registrar} disabled={salvando} className="btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-              <Syringe size={14} /> Registrar aplicação
+              <Syringe size={14} /> {registrada ? 'Atualizar a aplicação registrada' : 'Registrar aplicação'}
             </button>
+          )}
+          {registrada && !msg && (
+            <span data-aplicacao-registrada style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              Aplicação registrada neste atendimento às {new Date(registrada.appliedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}: atualizar troca a registrada.
+            </span>
           )}
 
           {msg && (

@@ -28,6 +28,7 @@ export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
   podeEditar, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
+  abaInicial = 'tratamento',
 }: {
   clientId:       string
   branchId:       string
@@ -54,12 +55,14 @@ export function PainelPlanejamento({
   navegarPorUrl?: boolean
   /** A avaliação já tem o editor do plano na tela: aqui não se abre outro (A29). */
   planoNaTela?:   boolean
+  /** A aba em que abre (A10 da 9ª: o "Mapa de injetáveis" da sessão abre direto nos injetáveis). */
+  abaInicial?:    Aba
 }) {
   const router   = useRouter()
   const pathname = usePathname()
   const params   = useSearchParams()
 
-  const [abaLocal,    setAbaLocal]    = useState<Aba>('tratamento')
+  const [abaLocal,    setAbaLocal]    = useState<Aba>(abaInicial)
   const [abertoLocal, setAbertoLocal] = useState<string | null>(null)
 
   const abaDaUrl = params.get('planejamento')

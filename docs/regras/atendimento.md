@@ -1352,6 +1352,30 @@ const procedures = await ler(
   procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
   (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do
   Planejamento. Prova: `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`.
+  **UMA aplicação por mapa por atendimento** (D14 da 9ª simulação,
+  2026-11-07): cada clique em "Registrar aplicação" gravava outra — a Marina
+  ficou com duas iguais de 56 UI, e o "Finalizar" somava as duas na conta com
+  a baixa. Registrada, o botão diz "Atualizar a aplicação registrada" (e a
+  linha "Aplicação registrada neste atendimento às HH:MM",
+  `[data-aplicacao-registrada]`), e o servidor grava por
+  `injetavel_registrar_aplicacao` (migration `20261107004201`, só o servidor):
+  o mapa TRAVADO, e a aplicação deste mapa neste atendimento é ATUALIZADA (os
+  pontos, os totais, quem e a hora) em vez de nascer outra — com o atendimento
+  ainda aberto; encerrado, a registrada fica ("Este atendimento já foi
+  encerrado…"). O evento `injetavel.aplicado` sai só na primeira. O par
+  duplicado de antes (dado de [sim]) ficou. Prova: `e2e/injetaveis-da-9.spec.ts`
+  ("D14", também dois envios ao mesmo tempo).
+  **O mapa se abre e se cria da própria sessão** (A10 da 9ª): era preciso ir
+  ao menu Injetáveis, criar, ligar a cliente e voltar. A tela do atendimento
+  tem "Mapa de injetáveis" ao lado do "Planejamento" (quem vê o clínico, no
+  plano com o recurso), que abre a mesma janela direto nos injetáveis
+  (`PainelPlanejamento abaInicial`), com "Novo planejamento" já ligado à
+  cliente. Prova: o mesmo spec ("A10").
+  **`/injetaveis` sem o prontuário é a tela de sem acesso com 200** (D17 da
+  9ª): a trava do LAYOUT (`ListaDeInjetaveis`) lançava fora do Suspense do
+  `loading.tsx` e o portal respondia 500. O layout, sem o módulo ou o recurso,
+  só passa a página — que trava por si, como toda `page.tsx`. Prova: o mesmo
+  spec ("D17").
 - **O campo "Planejador de injetáveis" da ficha abre o planejamento DA
   CLIENTE** (pedido do Heitor, 2026-10-29). Era um mapa SOLTO, só na resposta
   da ficha. No atendimento, o campo (`CampoDoPlanejador`,
@@ -2168,6 +2192,8 @@ O resto do fluxo:
 ❌ Gravar na ficha os pontos do planejador de injetáveis que vieram do navegador (o retrato é do planejamento gravado: retratarInjetaveis), ou um planejamento de outra cliente
 ❌ Um segundo planejador de injetáveis: o campo da ficha é o PlanejamentoInjetaveis de Planejamento → Injetáveis
 ❌ Exportar de actions/injectable-map.ts ('use server') uma regra de alcance do mapa — ela mora em lib/injetaveis/alcance.ts
+❌ Inserir em injectable_applications fora de injetavel_registrar_aplicacao (uma por mapa por atendimento, com o mapa travado — D14 da 9ª)
+❌ Trava de permissão (assertPermission/semAcesso) num LAYOUT fora do Suspense da página: vira HTTP 500 — o layout só passa a página, que trava por si (D17 da 9ª)
 ❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts

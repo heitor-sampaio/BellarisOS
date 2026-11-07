@@ -30,6 +30,8 @@ import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
 export interface AplicacaoInjetavel {
   id:             string
   appointmentId:  string | null
+  /** O planejamento de onde veio (D14 da 9ª: uma aplicação por mapa por atendimento). */
+  mapId:          string | null
   appliedAt:      string
   profissional:   string | null
   notes:          string | null
@@ -206,17 +208,18 @@ async function aplicacoesDoCliente(
 ): Promise<AplicacaoInjetavel[]> {
   const data = await ler(admin
     .from('injectable_applications')
-    .select('id, appointment_id, applied_at, notes, view, points, totals, users(name)')
+    .select('id, appointment_id, map_id, applied_at, notes, view, points, totals, users(name)')
     .eq('client_id', clientId)
     .order('applied_at', { ascending: false }), 'carregar as aplicações')
 
   type AplicacaoLida = {
-    id: string; appointment_id: string | null; applied_at: string; notes: string | null
+    id: string; appointment_id: string | null; map_id: string | null; applied_at: string; notes: string | null
     view: unknown; points: unknown; totals: unknown; users: { name?: string } | null
   }
   return ((data ?? []) as unknown as AplicacaoLida[]).map(a => ({
     id:            a.id as string,
     appointmentId: (a.appointment_id as string | null) ?? null,
+    mapId:         a.map_id ?? null,
     appliedAt:     a.applied_at as string,
     profissional:  (a.users as { name?: string } | null)?.name ?? null,
     notes:         (a.notes as string | null) ?? null,
@@ -329,7 +332,7 @@ export async function registrarAplicacao(
   mapa: InjectableMapValue,
   notes: string | null,
   slug: string,
-): Promise<{ error?: string; id?: string }> {
+): Promise<{ error?: string; id?: string; atualizada?: boolean }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
   assertRecurso(ctx, 'injetaveis')
@@ -344,34 +347,45 @@ export async function registrarAplicacao(
   }
   // O atendimento é DESTE cliente e está ao alcance: até 2026-09-28 qualquer
   // id servia, e a aplicação apontava para o atendimento de outra pessoa.
+  let atendimentoAberto = true
   if (appointmentId) {
-    const appt = await ler(admin.from('appointments').select('id, branch_id, branches!inner(tenant_id)')
+    const appt = await ler(admin.from('appointments').select('id, branch_id, status, branches!inner(tenant_id)')
       .eq('id', appointmentId).eq('client_id', clientId).maybeSingle(), 'buscar o atendimento')
     const rede = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
     if (!appt || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) {
       return { error: 'Atendimento não encontrado para este cliente.' }
     }
+    atendimentoAberto = !['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
   }
   if ((mapa.points ?? []).length === 0) {
     return { error: 'Marque ao menos um ponto antes de registrar a aplicação.' }
   }
 
-  const { data, error } = await admin
-    .from('injectable_applications')
-    .insert({
-      client_id:       clientId,
-      map_id:          mapId,
-      appointment_id:  appointmentId,
-      professional_id: ctx.internalUserId,
-      view:            mapa.view ?? 'front',
-      points:          mapa.points,
-      totals:          injectableTotals(mapa),
-      notes:           notes?.trim() || null,
-    })
-    .select('id')
-    .single()
-
+  // UMA aplicação por mapa por atendimento (D14 da 9ª simulação: cada clique
+  // gravava outra, e o "Finalizar" somava as duas). Já registrada, atualiza —
+  // com o atendimento ainda aberto; fechado, a registrada fica como está.
+  const { data: gravada, error } = await admin.rpc('injetavel_registrar_aplicacao', {
+    p_mapa:         mapId,
+    p_cliente:      clientId,
+    p_agendamento:  appointmentId,
+    p_profissional: ctx.internalUserId,
+    p_view:         mapa.view ?? 'front',
+    p_points:       mapa.points,
+    p_totals:       injectableTotals(mapa),
+    p_notes:        notes?.trim() || null,
+    p_atualizar:    atendimentoAberto,
+  })
+  const data = gravada as { id: string; novo: boolean; atualizada: boolean } | null
   if (error || !data) return { error: `Erro ao registrar a aplicação: ${error?.message}` }
+  if (!data.novo) {
+    if (!data.atualizada) return { error: 'Este atendimento já foi encerrado: a aplicação registrada nele fica como está.' }
+    revalidarPlanejamento(slug, clientId)
+    if (appointmentId) {
+      if (slug) revalidatePath(`/${slug}/agenda/${appointmentId}`)
+      revalidatePath(`/admin/agenda/${appointmentId}`)
+    }
+    return { id: data.id, atualizada: true }
+  }
 
   // A aplicação é o fato clínico de retorno: é dela que sai o lembrete de
   // reaplicação, que é a automação mais óbvia sobre toxina. `referencia` leva
