@@ -723,7 +723,9 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     try {
       await page.goto(`/pre-atendimento/${token}`)
       await expect(page.getByText('Ficha já respondida')).toHaveCount(0)
-      await expect(page.getByRole('heading', { level: 1 })).toContainText('já preencheu a sua ficha')
+      // A50 da 9ª: antes do CPF, nada da ficha — nem que a clínica já a preencheu.
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('mandou a sua ficha de pré-atendimento')
+      await expect(page.getByRole('heading', { level: 1 })).not.toContainText('já preencheu')
       await page.getByLabel('CPF').fill(cpf)
       await page.getByRole('button', { name: 'Continuar' }).click()
       await expect(page.getByText('Confira as respostas que a equipe preencheu')).toBeVisible()

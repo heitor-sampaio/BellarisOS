@@ -106,6 +106,31 @@ test.describe('A49: a ficha de pré-atendimento se manda à mão, com o envio au
     expect(await pendentesDe(cliente)).toEqual([expect.objectContaining({ modo: 'CONFIRMAR', appointment_id: agendamento })])
   })
 
+  /**
+   * A22 da 9ª simulação (2026-11-07): o link aparecia uma vez só, e quem o
+   * perdia tinha de "Gerar outro link" — que cancela o anterior (a recepção
+   * gerava vários). Enquanto vale, a janela o copia de novo, o MESMO.
+   */
+  test('A22 da 9ª: o link que ainda vale se copia de novo, sem gerar outro', async ({ browser }) => {
+    const { cliente, agendamento } = await agendada('De novo')
+    const primeiro = await gerarLink(browser, agendamento, recepcao)
+    expect(primeiro).not.toBe('')
+    const ctx = await browser.newContext({ storageState: recepcao.estado })
+    const page = await ctx.newPage()
+    try {
+      await page.goto(`/admin/agenda?date=${DIA}`)
+      await page.locator(`[title*="De novo pm${marca}"]`).first().click()
+      const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
+      await ficha.getByRole('button', { name: 'Mostrar o link de novo' }).click()
+      await expect(ficha.getByLabel('Link da ficha')).toHaveValue(new RegExp(`/pre-atendimento/${primeiro}$`))
+    } finally {
+      await ctx.close()
+    }
+    const pre = (await pendentesDe(cliente))[0]!
+    const { data: links } = await db().from('pre_atendimento_links').select('revoked_at').eq('pre_atendimento_id', pre.id)
+    expect(links, 'um link só, e valendo').toEqual([{ revoked_at: null }])
+  })
+
   test('quem só vê a agenda não manda — nem abre o pendente', async ({ browser }) => {
     const { cliente, agendamento } = await agendada('So ve')
     expect(await gerarLink(browser, agendamento, soVe)).toBe('')

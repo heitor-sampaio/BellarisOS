@@ -18,6 +18,7 @@ import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
+import { cifrarSegredos, decifrarSegredos, chaveDoAmbiente } from '@/lib/integracoes/cofre'
 
 /**
  * O pré-atendimento pela equipe (2026-10-20, decisões do Heitor): a ficha
@@ -126,6 +127,8 @@ export interface SituacaoDoPreAtendimento {
   pelaConversa?: boolean
   /** Já há um link valendo (não usado, não revogado, no prazo): até quando. */
   linkValidoAte?: string | null
+  /** A22 da 9ª: o link valendo se mostra de novo (guardado cifrado; os de antes, não). */
+  linkDeNovo?: boolean
 }
 
 /**
@@ -155,13 +158,13 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
     // (2026-10-21; a simulação viu o anterior ser revogado em silêncio).
     const { data: pre } = await admin.from('pre_atendimentos').select('id').eq('client_id', ap.client_id)
       .eq('tenant_id', ctx.tenantId!).eq('status', 'PENDENTE').maybeSingle()
-    const valendo = pre ? await ler(admin.from('pre_atendimento_links').select('expires_at')
+    const valendo = pre ? await ler(admin.from('pre_atendimento_links').select('expires_at, token_cifrado')
       .eq('pre_atendimento_id', pre.id as string).is('revoked_at', null).is('used_at', null)
       .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      'buscar o link da ficha') as { expires_at: string } | null : null
+      'buscar o link da ficha') as { expires_at: string; token_cifrado: string | null } | null : null
     return {
       estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, pelaConversa, clienteId: ap.client_id as string,
-      linkValidoAte: valendo?.expires_at ?? null,
+      linkValidoAte: valendo?.expires_at ?? null, linkDeNovo: !!valendo?.token_cifrado,
     }
   }
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }
@@ -270,7 +273,23 @@ async function criarLinkDaFicha(
   await gravar(admin.rpc('pre_atendimento_link_criar', {
     p_pre: pendente.id, p_tenant: ctx.tenantId!, p_token_hash: hash, p_expira: expiraEm, p_ator: ctx.internalUserId ?? null,
   }), 'gerar o link da ficha')
+  // A22 da 9ª: o token, CIFRADO pelo cofre, para a equipe copiar de novo
+  // enquanto vale. Sem a chave do cofre no ambiente, o link sai e só não se
+  // mostra de novo (nunca em texto no banco).
+  if (chaveDoAmbiente()) {
+    await gravar(admin.from('pre_atendimento_links').update({ token_cifrado: cifrarSegredos({ token }).token })
+      .eq('token_hash', hash).eq('tenant_id', ctx.tenantId!), 'guardar o link da ficha')
+  }
+  return { link: await montarLinkDaFicha(ap, cliente, token, expiraEm, temCpf) }
+}
 
+/** O link da ficha com a mensagem pronta e o wa.me — o novo e o que se mostra de novo (A22). */
+async function montarLinkDaFicha(
+  ap: { branch_id: string },
+  cliente: { name?: unknown; phone?: unknown } | null,
+  token: string, expiraEm: string, temCpf: boolean,
+): Promise<LinkDoPreAtendimento> {
+  const admin = createAdminClient()
   const unidade = await ler(admin.from('branches').select('name').eq('id', ap.branch_id).maybeSingle(), 'buscar a unidade')
   const clinica = (unidade?.name as string) || 'A clínica'
   const url = `${origemPublicaDe(await headers())}/pre-atendimento/${token}`
@@ -279,5 +298,36 @@ async function criarLinkDaFicha(
     acao: 'Para responder', temCpf, dias: VALIDADE_DO_LINK_DIAS, url,
   })
   const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
-  return { link: { url, expiraEm, mensagem, whatsapp: `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(mensagem)}` } }
+  return { url, expiraEm, mensagem, whatsapp: `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(mensagem)}` }
+}
+
+/**
+ * A22 da 9ª simulação (2026-11-07): o link da ficha que AINDA VALE, de novo —
+ * o mesmo, sem gerar outro (gerar cancela o anterior, e a recepção que o
+ * perdia gerava vários). Só a equipe com a agenda em Gerenciar, no
+ * agendamento ao alcance; o suporte não manda.
+ */
+export async function linkDaFichaDeNovo(appointmentId: string): Promise<{ error: string } | { link: LinkDoPreAtendimento }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de pré-atendimento')
+    if (travado) return { error: travado }
+    const ap = await agendamentoAoAlcance(ctx, appointmentId)
+    if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
+    const admin = createAdminClient()
+    const pendente = await preAtendimentoPendente(admin, ap.client_id)
+    if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de pré-atendimento esperando resposta.' }
+    const valendo = await ler(admin.from('pre_atendimento_links').select('expires_at, token_cifrado')
+      .eq('pre_atendimento_id', pendente.id).eq('tenant_id', ctx.tenantId!).is('revoked_at', null).is('used_at', null)
+      .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    'buscar o link da ficha') as { expires_at: string; token_cifrado: string | null } | null
+    if (!valendo?.token_cifrado) return { error: 'Este link não se mostra de novo (é de antes desta função, ou já não vale). Gere outro.' }
+    const { token } = decifrarSegredos({ token: valendo.token_cifrado })
+    const cliente = await ler(admin.from('clients').select('name, document, phone').eq('id', ap.client_id).single(), 'buscar a cliente')
+    const temCpf = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0
+    return { link: await montarLinkDaFicha(ap, cliente, token as string, valendo.expires_at, temCpf) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
 }

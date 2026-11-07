@@ -7,7 +7,7 @@ import { ClipboardList, Copy, MessageCircle } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaCliente } from '@/lib/rotas'
 import {
-  situacaoDoPreAtendimento, gerarLinkDoPreAtendimento, enviarFichaPelaConversa,
+  situacaoDoPreAtendimento, gerarLinkDoPreAtendimento, enviarFichaPelaConversa, linkDaFichaDeNovo,
   type SituacaoDoPreAtendimento, type LinkDoPreAtendimento,
 } from '@/actions/pre-atendimento'
 
@@ -74,6 +74,16 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
     })
   }
 
+  // A22 da 9ª: o link que ainda vale, o MESMO — sem gerar outro (que cancela este).
+  function deNovo() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await linkDaFichaDeNovo(appointmentId)
+      if ('error' in r) setErro(r.error)
+      else setLink(r.link)
+    })
+  }
+
   async function copiar(texto: string) {
     try {
       await navigator.clipboard.writeText(texto)
@@ -125,16 +135,24 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
         </Link>
       )}
       {situacao.linkValidoAte && !link && !enviado && (
-        <p className="pre-atendimento-agendamento-texto">
-          Já há um link valendo até {formatDate(situacao.linkValidoAte)} às {formatTime(situacao.linkValidoAte)}. Gerar outro cancela esse.
-        </p>
+        <div className="pre-atendimento-agendamento-link">
+          <p className="pre-atendimento-agendamento-texto">
+            Já há um link valendo até {formatDate(situacao.linkValidoAte)} às {formatTime(situacao.linkValidoAte)}.
+            {situacao.linkDeNovo ? ' Mostre-o de novo para copiar ou mandar.' : ''} Gerar outro cancela esse.
+          </p>
+          {podeMandar && situacao.linkDeNovo && (
+            <button type="button" className="btn-secondary pre-atendimento-agendamento-botao" style={{ alignSelf: 'flex-start' }} disabled={gerando} onClick={deNovo}>
+              <Copy size={13} aria-hidden="true" /> Mostrar o link de novo
+            </button>
+          )}
+        </div>
       )}
       {enviado && <p role="status" className="pre-atendimento-agendamento-texto">Link enviado pela conversa do WhatsApp da clínica.</p>}
       {erro && <p role="alert" className="pre-atendimento-agendamento-erro">{erro}</p>}
       {link && (
         <div className="pre-atendimento-agendamento-link">
           <p className="pre-atendimento-agendamento-texto">
-            Vale até {formatDate(link.expiraEm)} às {formatTime(link.expiraEm)}. Ele só aparece agora: se perder, gere outro.
+            Vale até {formatDate(link.expiraEm)} às {formatTime(link.expiraEm)}. Enquanto valer, ele se mostra de novo nesta janela (“Mostrar o link de novo”).
           </p>
           <input className="field" readOnly value={link.url} aria-label="Link da ficha" onFocus={e => e.currentTarget.select()} />
           <div className="pre-atendimento-agendamento-acoes">

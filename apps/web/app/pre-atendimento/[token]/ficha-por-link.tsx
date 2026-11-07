@@ -78,12 +78,15 @@ export function FichaPorLink({ token, clinica, pede, conferir = false }: {
       <div>
         <p className="overline">Antes do seu atendimento</p>
         <h1 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4 }}>
-          {conferir ? `${clinica} já preencheu a sua ficha de pré-atendimento. Confira as respostas.` : `${clinica} mandou a sua ficha de pré-atendimento.`}
+          {/* A50 da 9ª: antes do CPF a página não diz nada da ficha — nem que a
+              clínica já a preencheu. Depois dele, o modo CONFERIR diz
+              "Confira as respostas que a equipe preencheu". */}
+          {`${clinica} mandou a sua ficha de pré-atendimento.`}
         </h1>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8 }}>
         <Lock size={15} style={{ flexShrink: 0, marginTop: 2 }} />
-        Para proteger os seus dados, confirme {pede === 'CPF' ? 'o seu CPF' : 'a sua data de nascimento'} antes de ver as perguntas.
+        Para proteger os seus dados, confirme {pede === 'CPF' ? 'o seu CPF' : 'a sua data de nascimento'} antes de ver {conferir ? 'a sua ficha' : 'as perguntas'}.
       </p>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>

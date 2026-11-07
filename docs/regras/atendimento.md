@@ -1163,6 +1163,22 @@ const procedures = await ler(
     segue "já respondida". A espiada diz `conferir: true` com o estado `usado`
     (migration `20261105002902`: a função serviu ao código de antes até o
     push). Prova: `e2e/ficha-pre-atendimento.spec.ts` ("A52").
+    **Antes do CPF, a página não diz nada da ficha** (A50 da 9ª simulação,
+    2026-11-07: os dois times viram "A clínica já preencheu a sua ficha…"
+    antes da identidade): o título é sempre "X mandou a sua ficha de
+    pré-atendimento."; o "Confira as respostas que a equipe preencheu" vem
+    depois do CPF (o modo CONFERIR). Prova: o mesmo spec ("A52").
+    **O link que ainda vale se mostra de novo** (A22 da 9ª simulação: ele
+    aparecia uma vez, e quem o perdia gerava outro — que cancela o anterior):
+    o token é guardado CIFRADO pelo cofre das integrações
+    (`pre_atendimento_links.token_cifrado`, `cifrarSegredos`, a chave
+    `CREDENCIAIS_CHAVE` fora do banco; migration `20261107004303`), ao lado
+    do hash que confere quem abre. Com o link valendo, a janela do agendamento
+    tem "Mostrar o link de novo" (`linkDaFichaDeNovo`: Agenda em Gerenciar, o
+    agendamento ao alcance, sem o suporte) — o MESMO link, com a mensagem e o
+    wa.me; "Gerar outro" continua cancelando o anterior. Os links de antes
+    (sem o token guardado) não se mostram de novo. Prova:
+    `e2e/ficha-pre-atendimento-envio-manual.spec.ts` ("A22 da 9ª").
     **"Enviar a ficha" está SEMPRE na janela** (A49 da 6ª simulação,
     2026-11-04; princípio 1): sem pendente — o envio automático da rede
     desligado, que é o padrão (princípio 6), ou a ficha respondida há pouco —,
