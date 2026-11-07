@@ -121,6 +121,8 @@ export interface AvailableProduct {
   id:   string
   name: string
   unit: string
+  /** O SKU (A6 da 9ª): dois insumos de mesmo nome se distinguem na busca. */
+  sku?: string | null
 }
 
 export interface SessionProfessional {
@@ -1036,7 +1038,7 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
                   style={{ width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none', display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                  <span style={{ flex: 1 }}>{p.name}</span>
+                  <span style={{ flex: 1 }}>{p.name}{p.sku && <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}> · {p.sku}</span>}</span>
                   <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{p.unit}</span>
                 </button>
               ))}

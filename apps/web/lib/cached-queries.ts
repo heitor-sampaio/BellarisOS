@@ -358,13 +358,13 @@ export function getCachedProductsReference(tenantId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('products')
-        .select('id, name, unit, branch_id, consumption_unit, units_per_package, cost_price, uso')
+        .select('id, name, sku, unit, branch_id, consumption_unit, units_per_package, cost_price, uso')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .order('name'), 'carregar os produtos')
       return data ?? []
     },
-    [`products-reference-${tenantId}`],
+    [`products-reference-v2-${tenantId}`],
     { revalidate: 300, tags: [`products:${tenantId}`] },
   )()
 }

@@ -27,6 +27,8 @@ interface Branch { id: string; name: string }
 interface Product {
   id:                string
   name:              string
+  /** O SKU (A6 da 9ª): dois produtos de mesmo nome se distinguem no seletor. */
+  sku?:              string | null
   unit:              string
   /** A unidade do insumo; nulo = da clínica toda (sem sufixo). */
   branch_name:       string | null
@@ -598,7 +600,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                   }}
                 >
                   {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.unit}){p.branch_name ? ` — ${p.branch_name}` : ''}</option>
+                    <option key={p.id} value={p.id}>{p.name} ({p.unit}){p.sku ? ` · ${p.sku}` : ''}{p.branch_name ? ` — ${p.branch_name}` : ''}</option>
                   ))}
                 </select>
 

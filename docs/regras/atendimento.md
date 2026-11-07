@@ -1693,6 +1693,18 @@ const procedures = await ler(
   princípio 3): "Unidade que recebe o estoque" vinha na primeira em ordem
   alfabética; agora "Selecione a unidade…" (`unidadeInicial`,
   `lib/unidades/unidade-inicial.ts`). Prova: `tests/agenda-sobras-da-f33.test.ts`.
+  **No Estoque da UNIDADE, o estoque inicial entra nela, e nada fica pela
+  metade** (D8 da 9ª simulação, 2026-11-07; princípio 3): a Carolina (da rede)
+  criou o produto pelo Estoque da Menino Deus com "Adicionar estoque inicial",
+  sem seletor, e só o estoque foi recusado — o produto ficou (OUT-001, 0 un) e
+  repetir criou o OUT-002. O modal da unidade recebe a própria unidade (o
+  cabeçalho e o vazio), e `createProduct` confere a unidade ANTES de o produto
+  nascer; se o `estoque_inicial` falha, o produto recém-criado sai (sem
+  movimento). **O nome repetido pergunta, sem recusar** (A6; princípio 2):
+  "Já existe o produto “Manta” (OUT-001). Cadastrar outro com o mesmo nome?"
+  com "Cadastrar mesmo assim" (`_nomeRepetido=sim`, `[data-nome-repetido]`), e o
+  seletor de insumo diz o SKU (o cadastro do procedimento e o "Adicionar
+  insumo" do atendimento). Prova: `e2e/estoque-unidade-da-9.spec.ts`.
 
 ---
 

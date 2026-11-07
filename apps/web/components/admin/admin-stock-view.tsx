@@ -393,7 +393,8 @@ export function AdminStockView({ products, branches, categories, productCategori
                 <StockProductModal
                   suppliers={suppliers ?? []}
                   categories={productCategories ?? []}
-                  branches={defaultBranchId ? undefined : branches}
+                  // Na unidade, a da tela (D8 da 9ª); na rede, a escolha.
+                  branches={defaultBranchId ? branches.filter(x => x.id === defaultBranchId) : branches}
                   trigger={
                     <button type="button" className="btn-primary">
                       <Plus size={15} /> Novo produto

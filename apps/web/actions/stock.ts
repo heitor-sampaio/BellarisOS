@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
@@ -120,6 +120,35 @@ async function createProductInterno(
       if (!daRede || !alcancaUnidade(ctx, filialPedida)) return { error: 'Unidade não encontrada.' }
     }
 
+    // Estoque inicial.
+    //
+    // A unidade vem do formulário, não do contexto: quem é da REDE não tem
+    // `ctx.branchId`, e a condição antiga (`&& ctx.branchId`) descartava tudo em
+    // silêncio — o produto nascia sem movimento, sem saldo na filial, sem lote e
+    // sem a despesa, com a tela dizendo que deu certo. O modal pede a unidade
+    // quando quem cria é da rede; na unidade ela já vem do contexto (ou da tela).
+    // Tudo conferido ANTES de o produto nascer (D8 da 9ª simulação: a recusa
+    // vinha depois do insert, e repetir criava o OUT-002).
+    const initialQty    = num(formData, 'initial_qty')
+    const initialCost   = num(formData, 'initial_cost')
+    const filialEstoque = str(formData, '_branchId') || ctx.branchId
+    const comEstoque    = !!initialQty && initialQty > 0
+    if (comEstoque && !filialEstoque) return { error: 'Escolha a unidade que vai receber o estoque inicial.' }
+    if (comEstoque && ctx.branchId !== null && filialEstoque !== ctx.branchId) return { error: 'O estoque inicial é só da sua unidade.' }
+
+    // O nome repetido AVISA, sem recusar (A6 da 9ª; princípio 2): dois "Manta
+    // térmica" iguais apareciam em dobro no seletor de insumo, sem nada que os
+    // distinguisse. Confirmado, cadastra.
+    if (formData.get('_nomeRepetido') !== 'sim') {
+      const mesmos = await ler(admin.from('products').select('name, sku')
+        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).ilike('name', name.replace(/[%_\\]/g, '\\$&')).limit(3),
+      'conferir o nome do produto') as { name: string; sku: string | null }[] | null
+      if (mesmos?.length) {
+        const skus = mesmos.map(m => m.sku).filter(Boolean).join(', ')
+        return { pergunta: `Já existe o produto “${mesmos[0]!.name}”${skus ? ` (${skus})` : ''}. Cadastrar outro com o mesmo nome? O SKU os diferencia no seletor de insumo.` }
+      }
+    }
+
     const sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
 
     const minStock = num(formData, 'min_stock') ?? 0
@@ -144,29 +173,15 @@ async function createProductInterno(
 
     if (error) return { error: error.message }
 
-    // Estoque inicial.
-    //
-    // A unidade vem do formulário, não do contexto: quem é da REDE não tem
-    // `ctx.branchId`, e a condição antiga (`&& ctx.branchId`) descartava tudo em
-    // silêncio — o produto nascia sem movimento, sem saldo na filial, sem lote e
-    // sem a despesa, com a tela dizendo que deu certo. O modal pede a unidade
-    // quando quem cria é da rede; na unidade ela já vem do contexto.
-    const initialQty    = num(formData, 'initial_qty')
-    const initialCost   = num(formData, 'initial_cost')
-    const filialEstoque = str(formData, '_branchId') || ctx.branchId
-
-    if (initialQty && initialQty > 0 && newProduct && !filialEstoque) {
-      return { error: 'Escolha a unidade que vai receber o estoque inicial.' }
-    }
-
-    if (initialQty && initialQty > 0 && filialEstoque && newProduct) {
+    if (comEstoque && filialEstoque && newProduct) {
       // Numa transação só (estoque_inicial, sobre estoque_entrada — 2026-10-21):
       // movimento, saldo com o mínimo, lote e custo. Eram quatro gravações
       // soltas. Sem despesa: movimentação de estoque nunca gera despesa (D13
-      // revisto, decisão do Heitor, 2026-10-28).
-      if (ctx.branchId !== null && filialEstoque !== ctx.branchId) return { error: 'Produto criado, mas o estoque inicial é só da sua unidade.' }
+      // revisto, decisão do Heitor, 2026-10-28). Se o estoque não entra, o
+      // produto recém-nascido sai (sem movimento nenhum): nada pela metade (D8 da 9ª).
+      const desfazer = () => tentar(admin.from('products').delete().eq('id', newProduct.id).eq('tenant_id', ctx.tenantId!), 'desfazer o produto sem o estoque inicial')
       const unidadeDaRede = await produtoEUnidadesDaRede(admin, ctx.tenantId!, newProduct.id, [filialEstoque])
-      if (!unidadeDaRede) return { error: 'Produto criado, mas a unidade do estoque inicial não é desta rede.' }
+      if (!unidadeDaRede) { await desfazer(); return { error: 'A unidade do estoque inicial não é desta rede.' } }
       try {
         await gravar(admin.rpc('estoque_inicial', {
           p_produto: newProduct.id, p_unidade: filialEstoque, p_quantidade: initialQty,
@@ -176,7 +191,8 @@ async function createProductInterno(
           p_autor: ctx.internalUserId, p_minimo: minStock,
         }), 'registrar o estoque inicial')
       } catch (e) {
-        return { error: `Produto criado, mas o estoque inicial não entrou: ${mensagemDoErro(e)} Lance a entrada pela tela de estoque.` }
+        await desfazer()
+        return { error: `O produto não foi criado: o estoque inicial não entrou (${mensagemDoErro(e)}).` }
       }
     }
 

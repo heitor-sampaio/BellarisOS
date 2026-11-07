@@ -137,7 +137,7 @@ function Label({ children }: { children: React.ReactNode }) {
 
 // -- Campos compartilhados --------------------------------------------
 function ProductFields({
-  product, suppliers, categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false,
+  product, suppliers, categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false, pergunta = null,
 }: {
   product?:    StockProduct
   suppliers:   string[]
@@ -148,6 +148,8 @@ function ProductFields({
   pending:     boolean
   submitLabel: string
   isCreate?:   boolean
+  /** O nome repetido (A6 da 9ª): o servidor pergunta antes de cadastrar outro igual. */
+  pergunta?:   { texto: string; onConfirmar: () => void } | null
 }) {
   const [categoryId,       setCategoryId]       = useState(product?.category_id ?? '')
   const [barcodeValue,     setBarcodeValue]     = useState(product?.barcode ?? '')
@@ -504,6 +506,19 @@ function ProductFields({
         </p>
       )}
 
+      {pergunta && (
+        <div role="alert" data-nome-repetido style={{
+          display: 'flex', flexDirection: 'column', gap: 10,
+          color: 'var(--warning)', background: 'var(--warning-soft)',
+          borderRadius: 8, padding: '10px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 700,
+        }}>
+          <span>{pergunta.texto}</span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn-primary" disabled={pending} onClick={pergunta.onConfirmar}>Cadastrar mesmo assim</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
         <button type="button" onClick={onClose} className="btn-secondary" disabled={pending}>
           Cancelar
@@ -527,15 +542,18 @@ function CreateForm({ suppliers, categories, branches, onClose, onSuccess }: {
 }) {
   const [error,   setError]   = useState<string>()
   const [pending, setPending] = useState(false)
+  const [pergunta, setPergunta] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function enviar(dados: FormData) {
     setPending(true)
     setError(undefined)
+    setPergunta(null)
     try {
-      const result = await createProduct(undefined, new FormData(e.currentTarget))
-      if (result?.success) onSuccess()
-      else setError(result?.error ?? 'Erro inesperado.')
+      const result = await createProduct(undefined, dados)
+      if (result && 'pergunta' in result && result.pergunta) setPergunta(result.pergunta)
+      else if (result?.success) onSuccess()
+      else setError((result && 'error' in result ? result.error : undefined) ?? 'Erro inesperado.')
     } catch {
       setError('Erro inesperado.')
     } finally {
@@ -543,13 +561,27 @@ function CreateForm({ suppliers, categories, branches, onClose, onSuccess }: {
     }
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    void enviar(new FormData(e.currentTarget))
+  }
+
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ProductFields
         isCreate
         suppliers={suppliers} categories={categories} branches={branches} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Criar produto"
+        pergunta={pergunta ? {
+          texto: pergunta,
+          onConfirmar: () => {
+            if (!formRef.current) return
+            const dados = new FormData(formRef.current)
+            dados.set('_nomeRepetido', 'sim')
+            void enviar(dados)
+          },
+        } : null}
       />
     </form>
   )

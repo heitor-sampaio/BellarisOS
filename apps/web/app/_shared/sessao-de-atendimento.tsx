@@ -307,11 +307,12 @@ export async function SessaoDeAtendimento({
 
   // Os INSUMOS ativos da rede (para o profissional adicionar avulso) — o
   // produto só de revenda não é insumo (D-6).
-  type RawBranchProduct = { id: string; name: string; unit: string; consumption_unit: string | null; units_per_package: number | null; uso?: string | null }
+  type RawBranchProduct = { id: string; name: string; sku?: string | null; unit: string; consumption_unit: string | null; units_per_package: number | null; uso?: string | null }
   const availableProducts: AvailableProduct[] = ((branchProductsRaw ?? []) as RawBranchProduct[]).filter(p => ehInsumo(p.uso)).map(p => ({
     id:   p.id,
     name: p.name,
     unit: unidadeDoInsumo(p),
+    sku:  p.sku ?? null,
   }))
 
   const professionals: SessionProfessional[] = ((professionalsRaw ?? []) as { id: string; name: string }[]).map(p => ({

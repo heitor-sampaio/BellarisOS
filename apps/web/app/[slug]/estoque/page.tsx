@@ -198,6 +198,9 @@ export default async function BranchStockPage({
               <StockProductModal
                 suppliers={suppliers}
                 categories={categories}
+                // O estoque inicial entra NESTA unidade (D8 da 9ª: quem é da rede
+                // ficava sem seletor e o estoque era recusado).
+                branches={[{ id: branch.id as string, name: branch.name as string }]}
                 trigger={
                   <button type="button" className="btn-primary">
                     <Package size={15} />

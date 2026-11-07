@@ -155,6 +155,8 @@ export default async function AdminProceduresPage({
   const productList = (products ?? []).filter(p => ehInsumo((p as { uso?: string | null }).uso) || ligados.has(p.id)).map(p => ({
     id:                p.id,
     name:              p.name,
+    // A6 da 9ª: o SKU distingue dois produtos de mesmo nome no seletor de insumo.
+    sku:               (p as { sku?: string | null }).sku ?? null,
     unit:              p.unit,
     // O insumo da clínica toda não leva sufixo (A11: era "— Rede" em todos).
     branch_name:       p.branch_id ? (branchNameMap[p.branch_id] ?? '—') : null,
