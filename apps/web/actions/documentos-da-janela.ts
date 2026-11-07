@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
@@ -13,7 +13,15 @@ import { documentosDoAgendamento } from '@/lib/documentos/leitura'
  * (nada do conteúdo); o agendamento da rede, ao alcance da unidade e, com a
  * agenda "só os meus", dela.
  */
-export interface DocumentoDaJanela { id: string; titulo: string; situacao: string; bloqueia: boolean; assinado: boolean }
+export interface DocumentoDaJanela {
+  id: string; titulo: string; situacao: string; bloqueia: boolean; assinado: boolean
+  /**
+   * Quem tem os Termos em Gerenciar colhe daqui (A23 da 9ª simulação: o termo
+   * que bloqueia não tinha caminho na janela — era Clientes → Documentos →
+   * Colher assinatura). Só no que falta assinar, com o documento pronto.
+   */
+  podeColher: boolean
+}
 
 const SITUACAO: Record<string, string> = {
   ASSINADO: 'Assinado', DISPENSADO: 'Dispensado', PENDENTE: 'Falta assinar', INCOMPLETO: 'Faltam dados do cadastro', A_GERAR: 'Em preparação',
@@ -30,8 +38,10 @@ export async function documentosDaJanela(appointmentId: string): Promise<Documen
   const dono = ownerFilter(ctx, 'agenda')
   if (dono && ap.professional_id !== dono) return []
   const docs = await documentosDoAgendamento(ctx.tenantId!, ap.id)
+  const colhe = can(ctx, 'documents', 'MANAGE')
   return docs.map(d => ({
     id: d.id, titulo: d.titulo, situacao: SITUACAO[d.status] ?? d.status,
     bloqueia: d.exigencia === 'BLOQUEIA', assinado: d.status === 'ASSINADO' || d.status === 'DISPENSADO',
+    podeColher: colhe && (d.status === 'PENDENTE' || d.status === 'A_GERAR'),
   }))
 }

@@ -45,6 +45,7 @@ import type { AnamnesisRow } from '@/lib/anamnesis'
 import { retratarInjetaveis, planejamentoAplicadoNoAtendimento } from '@/lib/injetaveis/alcance'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { perguntaDoInicioAdiantado } from '@/lib/appointments/inicio-adiantado'
+import { emitirDocumentosDoInicio } from '@/lib/documentos/inicio'
 import { planosComOProcedimento, textoDoPlano } from '@/lib/checkout/plano-e-avulso'
 import { nomeParaSaudar } from '@/lib/saudacao'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
@@ -263,11 +264,14 @@ async function updateAppointmentStatusInterno(
   // Pelo cliente de serviço (2026-10-08), com o alcance conferido antes
   // (resolveBranchId): a sessão de suporte não grava pelo PostgREST
   // (`suporte_sem_escrita`), e o suporte muda status de agendamento pela tela.
+  const unidadeDoAgendamento = await resolveBranchId(supabase, appointmentId, ctx)
+  // D7 da 9ª: o termo do início nasce ANTES do update (a trava recusa e desfaria a emissão).
+  if (status === 'IN_PROGRESS') await emitirDocumentosDoInicio(createAdminClient(), appointmentId)
   const { data: atualizadas, error: updErr } = await createAdminClient()
     .from('appointments')
     .update(fields)
     .eq('id', appointmentId)
-    .eq('branch_id', await resolveBranchId(supabase, appointmentId, ctx))
+    .eq('branch_id', unidadeDoAgendamento)
     .select('id')
 
   if (updErr) throw new Error(`Não foi possível atualizar o agendamento: ${updErr.message}`)
@@ -569,6 +573,11 @@ async function startAppointmentInterno(
       if (pergunta) return { error: pergunta, confirmarInicioAdiantado: true }
     }
 
+    // Os termos e contratos do início nascem num passo próprio, ANTES do
+    // update (D7 da 9ª, regressão da F33): a trava do banco recusa o início sem
+    // assinatura no mesmo update e a transação desfazia a emissão — a recepção
+    // lia "Falta assinar: …" e o termo não existia para colher.
+    await emitirDocumentosDoInicio(admin, appointmentId)
     await gravar(admin
       .from('appointments')
       .update({ status: 'IN_PROGRESS', started_at: new Date().toISOString() })

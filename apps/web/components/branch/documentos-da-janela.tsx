@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { FileCheck, FileText } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { FileCheck, FileText, PenLine } from 'lucide-react'
+import { rotaNoPortal } from '@/lib/rotas'
 import { documentosDaJanela, type DocumentoDaJanela } from '@/actions/documentos-da-janela'
 
 /**
@@ -9,7 +12,8 @@ import { documentosDaJanela, type DocumentoDaJanela } from '@/actions/documentos
  * simulação): o título, a situação e se bloqueia o início — a recepção vê antes
  * de iniciar se falta a assinatura. Sem documento, não mostra nada.
  */
-export function DocumentosDaJanela({ appointmentId }: { appointmentId: string }) {
+export function DocumentosDaJanela({ appointmentId, slug }: { appointmentId: string; slug: string }) {
+  const pathname = usePathname()
   const [docs, setDocs] = useState<DocumentoDaJanela[] | null>(null)
   useEffect(() => {
     let vivo = true
@@ -32,6 +36,13 @@ export function DocumentosDaJanela({ appointmentId }: { appointmentId: string })
             <span style={{ flexShrink: 0, fontWeight: 700, color: d.assinado ? 'var(--success)' : d.bloqueia ? 'var(--warning)' : 'var(--text-muted)' }}>
               {d.situacao}{!d.assinado && d.bloqueia ? ' · bloqueia o início' : ''}
             </span>
+            {/* A23 da 9ª: colher a assinatura daqui, a quem tem os Termos em Gerenciar. */}
+            {d.podeColher && (
+              <Link href={rotaNoPortal(pathname, slug, `/documentos/${d.id}/assinar?voltar=${encodeURIComponent(pathname)}`)} data-colher-assinatura
+                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                <PenLine size={12} aria-hidden="true" /> Colher assinatura
+              </Link>
+            )}
           </li>
         ))}
       </ul>

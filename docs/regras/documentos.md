@@ -139,9 +139,24 @@ DEVLOG ("Termos e contratos").
   **Confirmar não é o check-in** (D13 da 8ª simulação, 2026-11-06; migration
   `20261106003301`): o de INICIO_ATENDIMENTO nascia no "Confirmar
   agendamento", um resto de quando o check-in gravava CONFIRMED. Nasce na
-  CHEGADA (ARRIVED) e, no início direto de Confirmado, ao iniciar (a trava do
-  início emite antes de conferir). Os que já tinham nascido num confirmar
-  ficaram (a emissão é idempotente). Prova: `e2e/documentos-atendimento.spec.ts`.
+  CHEGADA (ARRIVED) e, no início direto de Confirmado, ao iniciar. Os que já
+  tinham nascido num confirmar ficaram (a emissão é idempotente). Prova:
+  `e2e/documentos-atendimento.spec.ts`.
+  **No início direto de Confirmado, o termo nasce ANTES da trava** (D7 da 9ª
+  simulação, 2026-11-07; regressão da F33): a trava do início
+  (`trg_documentos_bloqueiam_inicio`) emitia e recusava no MESMO update, e a
+  transação desfazia a emissão — a recepção lia "Falta assinar: Termo… Colha a
+  assinatura" e o termo não existia (a ficha dizia "Nenhum termo…"). Os dois
+  caminhos que iniciam (`startAppointment` e o IN_PROGRESS de
+  `updateAppointmentStatus`; o "Marcar chegada e iniciar" passa pelo check-in)
+  emitem antes num passo próprio, gravado (`emitirDocumentosDoInicio`,
+  `lib/documentos/inicio.ts`, o agendamento de plano fora); a trava segue sendo
+  a segunda linha, e o termo fica para colher. Prova:
+  `e2e/documentos-inicio-da-9.spec.ts` ("D7").
+  **A janela do agendamento leva a colher** (A23 da 9ª): o termo que falta
+  assinar tem "Colher assinatura" (`[data-colher-assinatura]`, a tela
+  `/documentos/[id]/assinar` com a volta à agenda) para quem tem os Termos em
+  Gerenciar; quem só vê, só a situação. Prova: o mesmo spec ("A23").
 - **O texto concorda com o sexo da ficha** (A50 da 6ª simulação,
   2026-11-04: o termo dizia "fui informada(o)" ao Bruno, com o sexo
   cadastrado). Ao montar, o par "a(o)"/"o(a)" no fim de uma palavra — ou
@@ -167,7 +182,8 @@ DEVLOG ("Termos e contratos").
   a situação — "Assinado", "Falta assinar · bloqueia o início", "Faltam dados
   do cadastro", "Em preparação" — sem o conteúdo, a quem vê a agenda, com o
   agendamento da rede, ao alcance da unidade e, no "só os meus", dela. Colher
-  a assinatura continua na sessão e na ficha. Prova:
+  a assinatura é na sessão, na ficha e, desde a A23 da 9ª, pelo link da
+  janela (acima). Prova:
   `e2e/agenda-janela-termo.spec.ts`.
 - **Assinar é UMA função** para todos os canais (`documento_assinar`): trava,
   confere hash, grava a evidência (`document_signatures`, imutável, sem
@@ -410,7 +426,8 @@ DEVLOG ("Termos e contratos").
 ❌ Pôr fonte em documento que não esteja no catálogo e em public/fontes-documento (a tela e o PDF têm de desenhar a mesma)
 ❌ Alterar uma versão de modelo de documento ou apagar um modelo (edita → versão nova; o que não serve, desativa)
 ❌ Gravar ou mostrar quem assina fora de quemAssina/dadosDoAssinante (a menor com responsável é assinada por ELE — decisão 2 da 7ª)
-❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho
+❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho (a exceção é emitirDocumentosDoInicio, antes de iniciar — a mesma função do gatilho)
+❌ Contar com a emissão feita DENTRO de uma trava que recusa no mesmo update: a recusa desfaz a emissão (D7 da 9ª) — emita antes, num passo gravado
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
 ```

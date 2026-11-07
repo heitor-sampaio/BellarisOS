@@ -321,7 +321,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
         )}
 
         {/* Os termos e contratos: assinados ou não, e o que bloqueia o início (A34). */}
-        {isActive && <DocumentosDaJanela appointmentId={appointment.id} />}
+        {isActive && <DocumentosDaJanela appointmentId={appointment.id} slug={slug} />}
 
         {/* A ficha de pré-atendimento: pendente (com o link) ou respondida. */}
         {isActive && <PreAtendimentoDoAgendamento appointmentId={appointment.id} slug={slug} podeMandar={!isProfessional} />}
