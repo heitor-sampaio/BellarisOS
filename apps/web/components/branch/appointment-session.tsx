@@ -61,6 +61,7 @@ import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
 import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
+import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -2494,7 +2495,7 @@ export function AppointmentSession({
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {status === 'COMPLETED' && (
                         <p data-plano-da-avaliacao-concluida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
-                          A avaliação está concluída: o plano nasce ligado a ela, e o registro daquele dia (dores, evolução, ficha e anamnese) fica como está.
+                          {textoDoPlanoDoConcluido()}
                         </p>
                       )}
                       {genError && (

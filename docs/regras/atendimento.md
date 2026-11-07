@@ -2075,7 +2075,12 @@ O resto do fluxo:
   (atend-04: a action e a função; era "já passaram no Finalizar" — e o
   caminho que concluiu sem passar por ele gerava o plano); as dores não são
   exigidas. A tela diz que o registro fica
-  como está (`data-plano-da-avaliacao-concluida`), e o Planejamento por cima
+  como está (`data-plano-da-avaliacao-concluida`) — e diz "Este atendimento está
+  concluído", não "A avaliação" (A27 da 9ª simulação: a drenagem avulsa
+  concluída se lia como avaliação; o formulário vale para todo avulso da rede
+  que monta plano, e o texto não decide pelo procedimento —
+  `textoDoPlanoDoConcluido`, `lib/plano-de-tratamento/textos.ts`; prova:
+  `tests/textos-do-plano-da-9.test.ts`) —, e o Planejamento por cima
   volta a não oferecer "Novo plano" (o plano se monta na tela, A29). Prova:
   `e2e/atendimento-plano-da-avaliacao-concluida.spec.ts`.
 - **As dores do cliente são do PRONTUÁRIO do atendimento**

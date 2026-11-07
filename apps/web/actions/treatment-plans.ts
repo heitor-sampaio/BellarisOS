@@ -27,6 +27,7 @@ import { lerPreviaDoCancelamento, agendamentosCancelados, type PreviaDoCancelame
 import { EntradaDoCancelamento } from '@/lib/pacotes/entrada-do-cancelamento'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment } from '@/lib/appointments/avisos'
+import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -666,13 +667,25 @@ export async function listarPlanejamentos(opcoes?: {
  * e as sessões feitas. O mesmo público que já via o saldo do plano na tela do
  * atendimento: quem vê a agenda, com o alcance do plano (planoDoTenant).
  */
-export async function getResumoDoPlano(planId: string): Promise<{ resumo?: FinanceiroDoPlano; error?: string }> {
+export async function getResumoDoPlano(planId: string): Promise<{
+  resumo?: FinanceiroDoPlano
+  /**
+   * A28 da 9ª: quem tem o Financeiro em Gerenciar (a quem a recepção sem o
+   * Financeiro pede a parcela que vence depois). Nulo: quem lê já o tem.
+   */
+  quemRecebe?: string[] | null
+  error?: string
+}> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
-  return { resumo: await getFinanceiroDoPlano(ctx.tenantId!, planId) }
+  const [resumo, quemRecebe] = await Promise.all([
+    getFinanceiroDoPlano(ctx.tenantId!, planId),
+    can(ctx, 'financial', 'MANAGE') ? Promise.resolve(null) : quemDesfazNoCaixa(ctx.tenantId!, plan.branch_id as string),
+  ])
+  return { resumo, quemRecebe }
 }
 
 export async function getPlanoParaEditar(planId: string): Promise<{

@@ -169,7 +169,7 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await p.goto(`/admin/planejamentos/${plano}`)
       const resumo = p.locator('[data-resumo-do-plano]')
       await expect(resumo).toBeVisible()
-      await expect(resumo.locator('[data-rodape-do-plano]')).toContainText(`com quem tem o Financeiro em Gerenciar: ${PREFIXO} Gestão ${marca}`)
+      await expect(resumo.locator('[data-rodape-do-plano]')).toContainText(`com quem tem o Financeiro em Gerenciar: ${PREFIXO} Gestão pla9g${marca}`)
       await expect(resumo.locator('[data-rodape-do-plano]')).not.toContainText('se recebe no financeiro.')
     })
   })

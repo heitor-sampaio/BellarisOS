@@ -1318,7 +1318,15 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   …" ou "Vencida em … · cobrada no check-in" — e "1 de 3 sessões feitas · 1
   agendada". Dizia só "O que estiver em aberto é recebido no check-in", e o
   check-in só cobra o que venceu. Migration `20261029001801`. Prova:
-  `e2e/plano-tela-mostra-o-pago.spec.ts`.
+  `e2e/plano-tela-mostra-o-pago.spec.ts`. **O rodapé diz com quem fica a
+  parcela que vence depois** (A28 da 9ª simulação; a regra de cargo fica): a
+  recepcionista sem o Financeiro lia "se recebe no financeiro", tela que ela
+  não abre; para quem não tem o Financeiro em Gerenciar, "…a que vence depois
+  se recebe no Financeiro, com quem tem o Financeiro em Gerenciar: Lúcia,
+  Fernanda." (`rodapeDoPlanoFechado`, `lib/plano-de-tratamento/textos.ts`; os
+  nomes de `quemDesfazNoCaixa`, a lista da A33 da 8ª, pela unidade do plano;
+  `[data-rodape-do-plano]`). Prova: `e2e/plano-atritos-da-9.spec.ts` ("A28"),
+  `tests/textos-do-plano-da-9.test.ts`.
 - **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
   lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
   lançamento é de R$ 0 e sem forma de pagamento.

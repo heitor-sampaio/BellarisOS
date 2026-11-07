@@ -15,6 +15,7 @@ import type { TreatmentProcedure, ExistingPlan, AvailableProduct } from '@/compo
 import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
+import { rodapeDoPlanoFechado } from '@/lib/plano-de-tratamento/textos'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -514,11 +515,13 @@ function situacaoDoLancamento(l: LancamentoDoPlano): { texto: string; cor: strin
 
 function ResumoDoPlano({ planId }: { planId: string }) {
   const [resumo, setResumo] = useState<FinanceiroDoPlano | null>(null)
+  // A28 da 9ª: a quem a recepção sem o Financeiro pede a parcela que vence depois.
+  const [quemRecebe, setQuemRecebe] = useState<string[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   useEffect(() => {
     let vivo = true
     getResumoDoPlano(planId)
-      .then(res => { if (vivo) { if (res.resumo) setResumo(res.resumo); else setErro(res.error ?? 'Não foi possível ler o plano.') } })
+      .then(res => { if (vivo) { if (res.resumo) { setResumo(res.resumo); setQuemRecebe(res.quemRecebe ?? null) } else setErro(res.error ?? 'Não foi possível ler o plano.') } })
       .catch(() => { if (vivo) setErro('Não foi possível ler o pagamento do plano.') })
     return () => { vivo = false }
   }, [planId])
@@ -570,11 +573,9 @@ function ResumoDoPlano({ planId }: { planId: string }) {
         </div>
       )}
 
-      <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: resumo.aReceber > 0 ? 'var(--text-muted)' : 'var(--success)', fontWeight: 600 }}>
-        <CheckCircle2 size={13} />
-        {resumo.aReceber > 0
-          ? 'Plano fechado. A parcela vencida é cobrada no check-in do atendimento; a que vence depois se recebe no financeiro.'
-          : 'Plano fechado e pago.'}
+      <p data-rodape-do-plano style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: resumo.aReceber > 0 ? 'var(--text-muted)' : 'var(--success)', fontWeight: 600 }}>
+        <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
+        {rodapeDoPlanoFechado(resumo.aReceber, quemRecebe)}
       </p>
     </div>
   )
