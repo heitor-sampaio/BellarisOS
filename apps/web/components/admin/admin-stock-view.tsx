@@ -10,7 +10,7 @@ import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
 import { SegSelect } from '@/components/shared/seg-select'
-import { BotaoAplicadoEm } from '@/components/admin/aplicacoes-do-lote'
+import { BotaoAplicadoEm, LotesEsgotados } from '@/components/admin/aplicacoes-do-lote'
 import {
   situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo,
   formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
@@ -571,6 +571,8 @@ export function AdminStockView({ products, branches, categories, productCategori
                                       })}
                                     </div>
                                   )}
+                                  {/* D15 da 9ª: o lote que acabou, com o "Aplicado em" (o recall). */}
+                                  <LotesEsgotados produtoId={p.id} unidadeId={b.branchId} produto={p.name} podeVerAplicacoes={podeVerAplicacoes} />
                                 </div>
                                 )
                               })}

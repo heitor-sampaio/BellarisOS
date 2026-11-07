@@ -3,8 +3,56 @@
 import { useState, useTransition } from 'react'
 import { X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { aplicacoesDoLote } from '@/actions/stock'
+import { aplicacoesDoLote, lotesEsgotados, type LoteEsgotado } from '@/actions/stock'
 import type { AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
+import { validadeNaTela } from '@/lib/estoque/validade'
+
+/**
+ * "Lotes esgotados" (D15 da 9ª simulação, 2026-11-07): a linha aberta do
+ * Estoque lista os lotes com saldo, e o que acabou sumia com o "Aplicado em" —
+ * o recall é justamente do lote que já foi usado. Abre a lista dos esgotados do
+ * produto naquela unidade, cada um com o "Aplicado em" (para quem tem as
+ * Clientes).
+ */
+export function LotesEsgotados({ produtoId, unidadeId, produto, podeVerAplicacoes }: {
+  produtoId: string; unidadeId: string; produto: string; podeVerAplicacoes: boolean
+}) {
+  const [lista, setLista] = useState<LoteEsgotado[] | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+  const [carregando, iniciar] = useTransition()
+
+  function abrir(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (lista) { setLista(null); return }
+    setErro(null)
+    iniciar(async () => {
+      const r = await lotesEsgotados(produtoId, unidadeId)
+      if (r.error) { setErro(r.error); return }
+      setLista(r.lotes ?? [])
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }} onClick={e => e.stopPropagation()}>
+      <button type="button" onClick={abrir} className="btn-ghost" aria-expanded={!!lista}
+        style={{ alignSelf: 'flex-start', fontSize: 'var(--text-2xs)', padding: '0 6px', color: 'var(--text-muted)', fontWeight: 700 }}>
+        {carregando ? 'Carregando…' : lista ? 'Esconder lotes esgotados' : 'Lotes esgotados'}
+      </button>
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {lista && lista.length === 0 && (
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Nenhum lote esgotado nesta unidade.</p>
+      )}
+      {lista?.map(l => (
+        <p key={l.id} data-lote-esgotado style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <strong style={{ color: 'var(--text)' }}>{l.numero ? `Lote ${l.numero}` : 'Lote sem número'}</strong>
+          <span>{l.validade ? `validade ${validadeNaTela(l.validade)}` : 'sem validade'}</span>
+          <span>esgotado</span>
+          {podeVerAplicacoes && <BotaoAplicadoEm loteId={l.id} rotulo={`${produto} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'} (esgotado)`} />}
+        </p>
+      ))}
+    </div>
+  )
+}
 
 /**
  * "Aplicado em" (A40 da 7ª simulação, 2026-11-05 — o recall): em quem o lote
@@ -74,6 +122,7 @@ export function BotaoAplicadoEm({ loteId, rotulo }: { loteId: string; rotulo: st
                 </div>
               )}
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                A quantidade é a que saiu deste lote, e “Quando” é a hora da aplicação (a conclusão do atendimento), não a marcada.
                 A baixa segue o lote que vence primeiro (FEFO): é por ela que cada aplicação fica ligada ao lote.
               </p>
             </div>

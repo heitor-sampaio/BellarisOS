@@ -1716,13 +1716,32 @@ const procedures = await ler(
     saída do lote para uma cliente — o insumo de um atendimento (a cliente, o
     dia e a hora marcados, a profissional) e a venda de produto (quem vendeu) —
     com a quantidade na unidade do movimento ("20 UI"). A ligação é a de
-    sempre, `stock_movement_batches` (o gatilho do lote); a leitura,
+    sempre, `stock_movement_batches` (o gatilho do lote; a quantidade e a hora,
+    abaixo, desde a 9ª); a leitura,
     `aplicacoesDoLote` (`lib/estoque/aplicacoes-do-lote.ts`, os nomes por
     `nomesDosRegistros`), pela action do mesmo nome em `actions/stock.ts`:
     pede o Estoque E as Clientes (a lista diz nomes de cliente — sem as
     Clientes, o botão nem aparece), com o lote da rede e da unidade ao alcance.
-    Fica de fora o lote já esgotado (a linha aberta lista os lotes com saldo).
     Prova: `e2e/estoque-atritos-da-7.spec.ts` ("A40").
+    **A dose é a DAQUELE lote, a hora é a da aplicação, e o esgotado continua
+    aberto** (D6, D15 e A12 da 9ª simulação, 2026-11-07; princípio 3): a
+    Carolina recebeu 50 U, 44 do TOX-A1 e 6 do TOX-B2, e o TOX-B2 dizia
+    "Carolina · 50 U" (a baixa inteira); o TOX-A1, que acabou — o recall mais
+    provável —, sumia da tela com a lista; e o "Quando" era a hora marcada
+    (02:00) da aplicação feita às 00:15. Agora a quantidade é a da ligação
+    (`stock_movement_batches.quantity`, em embalagens, × o rendimento), o
+    "Quando" é a conclusão do atendimento (sem ela — a desistência —, a hora da
+    baixa), e a linha aberta tem "Lotes esgotados" por unidade
+    (`lotesEsgotados`, `actions/stock.ts`, pede o Estoque e a unidade ao
+    alcance; `[data-lote-esgotado]`), cada um com o "Aplicado em". Era
+    documentado "o dia e a hora marcados" (A40 da 7ª): mudou pela hora real.
+    Prova: `e2e/estoque-lotes-da-9.spec.ts`.
+  - **O giro do Estoque diz o que conta** (A13 da 9ª, 2026-11-07): "insumos
+    dos atendimentos, sem a venda de produto" (`DETALHE_DO_GIRO`,
+    `[data-kpi="giro"]`, nas duas telas) — o Financeiro somava o custo da
+    revenda em "Insumos e produtos" (R$ 288 × R$ 243) e parecia não bater. A
+    conta não mudou (`metrics_giro_estoque`, `indicadores.md`). Prova: o mesmo
+    spec ("A13").
   - **O lote vencendo aparece no dashboard** (A41 da 7ª, 2026-11-05: só no
     Estoque): quem tem o Estoque vê "Lotes vencendo em 30 dias" no dashboard da
     rede e no da unidade (`[data-lotes-vencendo]`, `LotesVencendo`), com o
@@ -2191,6 +2210,7 @@ O resto do fluxo:
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Mostrar no ajuste o saldo em embalagens arredondadas, ou ler a contagem do inventário tirando dela o "já consumido do frasco aberto" (estoque_ajuste, o de antes): a contagem vale EXATA na unidade digitada — estoque_ajuste_em (D3 da 7ª)
+❌ Dizer no "Aplicado em" do lote a baixa INTEIRA do atendimento (é stock_movement_batches.quantity × o rendimento) ou a hora marcada (é a conclusão) — D6/A12 da 9ª; ou listar só os lotes com saldo onde o recall pede o esgotado (D15)
 ❌ Ler a validade do lote (product_batches.expires_at) com new Date(...)/toLocaleDateString — é um DIA gravado à meia-noite UTC e vira a véspera: é lib/estoque/validade.ts (D1 da 7ª)
 ❌ Deletar anexo clínico de client_documents pela tela (é apagado_em), ou ler client_documents numa tela sem .is('apagado_em', null)
 ❌ Mostrar no portal da cliente um client_documents sem enviado_em (a clínica decide o que vai ao app)

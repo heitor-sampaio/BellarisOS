@@ -119,3 +119,12 @@ export function formatarQuantidade(n: number): string {
 export function formatarQuantidadeComUnidade(q: Quantidade): string {
   return `${formatarQuantidade(q.quantidade)} ${q.unidade}`
 }
+
+/**
+ * O que o GIRO do Estoque conta (A13 da 9ª simulação, 2026-11-07): o insumo
+ * dos ATENDIMENTOS no mês, ao custo do movimento (`metrics_giro_estoque`). A
+ * venda de produto fica de fora — o custo dela entra em "Insumos e produtos
+ * vendidos", no Financeiro e nos Relatórios —, e o Estoque (R$ 243) e o
+ * Financeiro (R$ 288) pareciam não bater. O cartão diz isso.
+ */
+export const DETALHE_DO_GIRO = 'insumos dos atendimentos, sem a venda de produto'

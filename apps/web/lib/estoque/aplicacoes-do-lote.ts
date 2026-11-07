@@ -17,26 +17,36 @@ import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 export interface AplicacaoDoLote {
   movimentoId:  string
   tipo:         'ATENDIMENTO' | 'VENDA'
-  /** O dia do atendimento (a hora marcada) ou o da venda. */
+  /**
+   * QUANDO saiu: a hora da aplicação — a conclusão do atendimento (sem ela, a
+   * da baixa: a desistência no meio) — ou a da venda. Era a hora MARCADA (A12
+   * da 9ª simulação: "02:00" para a aplicação das 00:15); no recall vale a real.
+   */
   quando:       string
   cliente:      string
   /** A profissional do atendimento, ou quem vendeu. */
   quem:         string | null
-  /** O que saiu do lote, na unidade do movimento (a de consumo: "20 UI"). */
+  /**
+   * O que saiu DESTE lote, na unidade de consumo ("44 U"): a ligação do lote
+   * (em embalagens) × o rendimento. Era a baixa inteira do atendimento (D6 da
+   * 9ª: a Carolina recebeu 44 U do A1 e 6 U do B2, e o B2 dizia 50 U).
+   */
   quantidade:   number
   unidade:      string
 }
 
 type Admin = ReturnType<typeof createAdminClient>
 
-export async function aplicacoesDoLote(admin: Admin, tenantId: string, loteId: string, unidade: string): Promise<AplicacaoDoLote[]> {
-  type Ligacao = { movement_id: string; stock_movements: { id: string; type: string; quantity: number | string; created_at: string; appointment_id: string | null } | null }
+export async function aplicacoesDoLote(admin: Admin, tenantId: string, loteId: string, unidade: string, fator = 1): Promise<AplicacaoDoLote[]> {
+  type Ligacao = { movement_id: string; quantity: number | string; stock_movements: { id: string; type: string; quantity: number | string; created_at: string; appointment_id: string | null } | null }
   const ligacoes = await lerTodas<Ligacao>((de, ate) => admin.from('stock_movement_batches')
-    .select('movement_id, stock_movements!inner(id, type, quantity, created_at, appointment_id)')
+    .select('movement_id, quantity, stock_movements!inner(id, type, quantity, created_at, appointment_id)')
     .eq('batch_id', loteId)
     .in('stock_movements.type', ['PROCEDURE_USAGE', 'SALE'])
     .order('movement_id').range(de, ate) as unknown as PromiseLike<{ data: Ligacao[] | null; error: { message: string } | null }>,
   'carregar as saídas do lote')
+  // O que saiu deste lote em cada movimento, em consumo (a ligação é em embalagens).
+  const doLote = new Map(ligacoes.map(l => [l.movement_id, Math.round(Number(l.quantity) * (fator > 0 ? fator : 1) * 1000) / 1000]))
   const movimentos = ligacoes.map(l => l.stock_movements).filter((m): m is NonNullable<Ligacao['stock_movements']> => !!m)
   if (!movimentos.length) return []
 
@@ -47,7 +57,7 @@ export async function aplicacoesDoLote(admin: Admin, tenantId: string, loteId: s
 
   const [atendimentos, itens, vendasAntigas] = await Promise.all([
     Promise.all(emLotes([...new Set(doAtendimento.map(m => m.appointment_id!))]).map(ids => ler(admin.from('appointments')
-      .select('id, client_id, professional_id, scheduled_at, branches!inner(tenant_id)')
+      .select('id, client_id, professional_id, scheduled_at, completed_at, branches!inner(tenant_id)')
       .in('id', ids).eq('branches.tenant_id', tenantId), 'ler os atendimentos do lote'))),
     Promise.all(emLotes(daVenda.map(m => m.id)).map(ids => ler(admin.from('product_sale_items')
       .select('stock_movement_id, product_sales!inner(client_id, sold_at, sold_by, tenant_id)')
@@ -56,7 +66,7 @@ export async function aplicacoesDoLote(admin: Admin, tenantId: string, loteId: s
       .select('stock_movement_id, client_id, sold_at, sold_by')
       .in('stock_movement_id', ids).eq('tenant_id', tenantId), 'ler as vendas antigas do lote'))),
   ])
-  type Atend = { id: string; client_id: string | null; professional_id: string | null; scheduled_at: string }
+  type Atend = { id: string; client_id: string | null; professional_id: string | null; scheduled_at: string; completed_at: string | null }
   type Venda = { client_id: string | null; sold_at: string; sold_by: string | null }
   const porAtendimento = new Map((atendimentos.flat().filter(Boolean) as Atend[]).map(a => [a.id, a]))
   const porVenda = new Map<string, Venda>()
@@ -70,11 +80,11 @@ export async function aplicacoesDoLote(admin: Admin, tenantId: string, loteId: s
 
   const saida: AplicacaoDoLote[] = []
   for (const m of movimentos) {
-    const quantidade = Math.abs(Number(m.quantity))
+    const quantidade = doLote.get(m.id) ?? Math.abs(Number(m.quantity))
     if (m.type === 'PROCEDURE_USAGE') {
       const a = m.appointment_id ? porAtendimento.get(m.appointment_id) : null
       if (!a?.client_id) continue
-      saida.push({ movimentoId: m.id, tipo: 'ATENDIMENTO', quando: a.scheduled_at, cliente: nomes.clientes[a.client_id] ?? 'Cliente',
+      saida.push({ movimentoId: m.id, tipo: 'ATENDIMENTO', quando: a.completed_at ?? m.created_at, cliente: nomes.clientes[a.client_id] ?? 'Cliente',
         quem: a.professional_id ? nomes.membros[a.professional_id] ?? null : null, quantidade, unidade })
     } else {
       const v = porVenda.get(m.id)

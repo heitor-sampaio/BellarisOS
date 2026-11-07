@@ -11,7 +11,7 @@ import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { lotesComSaldo, lotesVencendo, type LoteDoProduto } from '@/lib/estoque/lotes'
-import { contarSituacoes } from '@/lib/estoque/situacao'
+import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
 type ProdutoLido = {
@@ -237,6 +237,8 @@ export default async function AdminEstoquePage({
             brand:   true,
           },
           {
+            id:      'giro',
+            detalhe: DETALHE_DO_GIRO as string | undefined,
             label:   'GIRO MENSAL',
             value:   fmtBRL(valorGiro),
             icon:    <ShoppingCart size={18} style={{ color: 'var(--brand)' }} />,

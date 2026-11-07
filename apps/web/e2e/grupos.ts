@@ -246,6 +246,8 @@ export const ISOLADOS = [
   'plano-atritos-da-9.spec.ts',
   'comissoes-pacote-responsavel.spec.ts',
   'vendas-quem-vendeu.spec.ts',
+  // F42 (os injetáveis e o atendimento da 9ª simulação), cada um na sua rede [e2e].
+  'estoque-lotes-da-9.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',
   'fechamento-do-dia-fundo-de-troco.spec.ts',
   'financeiro-recibo.spec.ts',

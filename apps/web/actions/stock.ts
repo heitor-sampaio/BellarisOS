@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, lerTodas, tentar, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
@@ -912,8 +912,50 @@ export async function aplicacoesDoLote(loteId: string): Promise<{ error?: string
     const produto = lote.products as unknown as { name: string } & UnidadesDoProduto
     return {
       lote: { numero: (lote.batch_number as string | null) ?? null, produto: produto.name },
-      aplicacoes: await aplicacoesDoLoteCore(admin, ctx.tenantId!, loteId, unidadeDoInsumo(produto)),
+      aplicacoes: await aplicacoesDoLoteCore(admin, ctx.tenantId!, loteId, unidadeDoInsumo(produto), fatorDoProduto(produto)),
     }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** O rendimento da embalagem em consumo (o `fator_de_consumo` do banco); sem unidade de consumo, 1. */
+function fatorDoProduto(p: UnidadesDoProduto): number {
+  return p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 1
+}
+
+/** Um lote que já acabou, como a tela o lista (D15 da 9ª). */
+export interface LoteEsgotado { id: string; numero: string | null; validade: string | null }
+
+/**
+ * Os lotes ESGOTADOS do produto numa unidade (D15 da 9ª simulação, 2026-11-07):
+ * a linha aberta do Estoque lista só os lotes com saldo, e o lote que acabou
+ * sumia com o "Aplicado em" — o recall é justamente do lote que já foi usado.
+ * Pede o Estoque; o produto é da rede e a unidade, ao alcance. O "Aplicado em"
+ * de cada um segue pedindo as Clientes (`aplicacoesDoLote`).
+ */
+export async function lotesEsgotados(produtoId: string, unidadeId: string): Promise<{ error?: string; lotes?: LoteEsgotado[] }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'VIEW')
+    const uuid = /^[0-9a-f-]{36}$/i
+    if (typeof produtoId !== 'string' || !uuid.test(produtoId) || typeof unidadeId !== 'string' || !uuid.test(unidadeId)) return { error: 'Produto não encontrado.' }
+    if (!alcancaUnidade(ctx, unidadeId)) return { error: 'Produto não encontrado.' }
+    const admin = createAdminClient()
+    const [produto, unidade] = await Promise.all([
+      ler(admin.from('products').select('id').eq('id', produtoId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto'),
+      ler(admin.from('branches').select('id').eq('id', unidadeId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
+    ])
+    if (!produto || !unidade) return { error: 'Produto não encontrado.' }
+    type Linha = { id: string; batch_number: string | null; expires_at: string | null }
+    const lotes = await lerTodas<Linha>((de, ate) => admin.from('product_batches')
+      .select('id, batch_number, expires_at')
+      .eq('product_id', produtoId).eq('branch_id', unidadeId).lte('quantity', 0)
+      .order('expires_at', { ascending: false, nullsFirst: false }).order('id')
+      .range(de, ate) as unknown as PromiseLike<{ data: Linha[] | null; error: { message: string } | null }>,
+    'carregar os lotes esgotados')
+    return { lotes: lotes.map(l => ({ id: l.id, numero: l.batch_number, validade: l.expires_at })) }
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
