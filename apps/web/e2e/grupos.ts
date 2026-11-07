@@ -235,6 +235,8 @@ export const ISOLADOS = [
   'procedimentos-atritos-da-8.spec.ts',
   'caixa-atritos-da-8.spec.ts',
   'relatorios-atritos-da-8.spec.ts',
+  // F40 (a 2ª unidade da 9ª simulação), cada um na sua rede [e2e].
+  'procedimento-preco-da-unidade.spec.ts',
   'comissoes-pacote-responsavel.spec.ts',
   'vendas-quem-vendeu.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',

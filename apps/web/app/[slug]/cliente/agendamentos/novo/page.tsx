@@ -9,6 +9,7 @@ import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { AgendarComAClinica } from '@/components/client-portal/agendar-com-a-clinica'
 import { jaPagoNoApp } from '@/lib/creditos/pago-no-app'
+import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 export default async function NewClientAppointmentPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
@@ -68,7 +69,9 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
   ])
 
   // Quem realiza cada um (por-01): o passo "Profissional" oferece só elas.
-  const lidos = (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[]
+  // O preço DA UNIDADE do endereço, quando ela tem um (D2 da 9ª).
+  const lidos = await comPrecoDaUnidade(admin, branchTyped.id,
+    (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[])
   const [realizam, jaPago] = await Promise.all([
     quemRealizaOsProcedimentos(admin, lidos.map(p => p.id)),
     // O que ela já pagou de cada um (D10 da 8ª): o Confirmar diz "Já pago pelo pacote X (sessão 2 de 3)".

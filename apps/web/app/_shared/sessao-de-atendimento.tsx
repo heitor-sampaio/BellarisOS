@@ -29,6 +29,7 @@ import { creditosDoCliente } from '@/lib/creditos/credito'
 import { nomeDaSessao } from '@/lib/plano-de-tratamento/nome'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { avisoDoBloqueioNoAtendimento } from '@/lib/agenda/bloqueio'
+import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -342,7 +343,8 @@ export async function SessaoDeAtendimento({
     procedure_products: RawProcInsumo[]
   }
 
-  const allProcs = (allProceduresRaw ?? []) as unknown as RawAllProc[]
+  // O editor do plano propõe o preço DA UNIDADE do atendimento (D2 da 9ª).
+  const allProcs = await comPrecoDaUnidade(admin, branchId, (allProceduresRaw ?? []) as unknown as RawAllProc[])
 
   const treatmentProcedures = allProcs.map(p => ({
     id:          p.id,

@@ -421,7 +421,8 @@ export default async function AdminClientProfilePage({
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
   // plano do cliente sem depender de nenhum atendimento.
-  const planoProcs = await procedimentosParaPlano(ctx.tenantId!)
+  // Com várias unidades, o plano não tem unidade aqui: o preço da rede (D2 da 9ª).
+  const planoProcs = await procedimentosParaPlano(ctx.tenantId!, perguntaAUnidade ? null : branchId || null)
 
   // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
   // abrir oportunidade nova para quem ja comprou.

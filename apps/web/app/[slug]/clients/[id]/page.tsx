@@ -438,7 +438,7 @@ export default async function ClientProfilePage({
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
   // plano do cliente sem depender de nenhum atendimento.
-  const planoProcs = await procedimentosParaPlano(ctx.tenantId!)
+  const planoProcs = await procedimentosParaPlano(ctx.tenantId!, branch.id as string)
 
   // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
   // abrir oportunidade nova para quem ja comprou.

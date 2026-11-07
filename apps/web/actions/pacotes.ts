@@ -190,7 +190,7 @@ async function venderPacoteUmaVez(
     const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, `Pacote ${pacote.name as string}`), motivoDoDesconto(d.data, reais))
     // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio
     // pelo preço de tabela): é a base da comissão dela. O banco confere a soma.
-    const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId), vendido)
+    const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId, branchId), vendido)
     const clientPackageId = await gravar(admin.rpc('pacote_vender_com_equipe', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_pacote: pacoteId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor,

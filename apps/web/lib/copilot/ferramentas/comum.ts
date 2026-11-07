@@ -7,6 +7,7 @@ import { zonedToUtc, BUSINESS_TZ } from '@/lib/datetime'
 export { BUSINESS_TZ }
 import { rotaNoPortal } from '@/lib/rotas'
 import type { ContextoDaFerramenta } from '@/lib/copilot/ferramentas/tipos'
+import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
  * O que as ferramentas do Copilot dividem: a unidade (sempre dentro da
@@ -162,11 +163,13 @@ export async function procedimentosDaUnidade(c: ContextoDaFerramenta, unidadeId?
     id: string; name: string; category: string | null; duration_min: number; price: number; branch_id: string | null
     procedure_branch_availability: { branch_id: string }[] | null
   }[] | null) ?? []
-  return todos.filter(p => {
+  const oferecidos = todos.filter(p => {
     if (!unidadeId) return true
     const av = p.procedure_branch_availability ?? []
     return !av.length || av.some(a => a.branch_id === unidadeId)
   })
+  // O preço DA UNIDADE, quando ela tem um (D2 da 9ª): o que o cartão diz é o que o núcleo grava.
+  return comPrecoDaUnidade(c.admin, unidadeId, oferecidos)
 }
 
 /** Acha o procedimento ativo pelo id ou pelo nome (entre os que a unidade oferece). */

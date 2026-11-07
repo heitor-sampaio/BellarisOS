@@ -4,6 +4,7 @@ import { unitTag } from '@estetica-os/utils'
 import { ler, lerTodas } from '@/lib/db'
 import type { FichaDoLogin } from '@/lib/clientes/ficha-da-requisicao'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
+import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 // ─── Membro por auth_id (usado no getTenantContext) ───────────────────────────
 // Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
@@ -267,10 +268,17 @@ export function getCachedBranchProcedures(branchId: string, tenantId: string) {
         .order('name'), 'carregar os procedimentos')
       // Quem realiza cada um (por-01): a agenda avisa quando a escolhida não
       // realiza. Gravar o procedimento expira a tag `procedures:<rede>`.
-      const realizam = await quemRealizaOsProcedimentos(admin, (data ?? []).map(p => p.id as string))
-      return (data ?? []).map(p => ({ ...p, realizam: realizam.get(p.id as string) ?? [] }))
+      const [realizam, daUnidade] = await Promise.all([
+        quemRealizaOsProcedimentos(admin, (data ?? []).map(p => p.id as string)),
+        // O preço DA UNIDADE, quando ela tem um (D2 da 9ª). Gravar o
+        // procedimento (e os preços por unidade) expira a mesma tag.
+        precosDaUnidade(admin, branchId),
+      ])
+      return (data ?? []).map(p => ({
+        ...p, price: precoNaUnidade(p.price as number, daUnidade.get(p.id as string)), realizam: realizam.get(p.id as string) ?? [],
+      }))
     },
-    [`branch-procedures-v2-${branchId}`],
+    [`branch-procedures-v3-${branchId}`],
     { revalidate: 300, tags: [`procedures:${tenantId}`] },
   )()
 }

@@ -26,6 +26,7 @@ import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointme
 import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { BANDEIRAS, bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { lerPreviaDaUnidade, type PreviaDoCancelamentoDaUnidade } from '@/lib/pre-pago/cancelamento'
+import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 const UUID = /^[0-9a-f-]{36}$/i
 
@@ -98,7 +99,10 @@ async function venderProcedimentoUmaVez(
     if (proc.is_active === false) return { error: 'Este procedimento está desativado.' }
     if (proc.branch_id && proc.branch_id !== branchId) return { error: 'Este procedimento é de outra unidade.' }
 
-    const tabela = Math.round(Number(proc.price ?? 0) * 100) * qtd / 100
+    // O preço DA UNIDADE da venda, quando ela tem um (D2 da 9ª); o banco confere
+    // pela mesma regra (`private.preco_na_unidade`).
+    const unitario = await precoDoProcedimentoNaUnidade(admin, procedimentoId, branchId, proc.price as number | null)
+    const tabela = Math.round(unitario * 100) * qtd / 100
     const recusa = recusaDoDesconto(tabela, d.data)
     if (recusa) return { error: recusa }
     const reais = descontoEmReais(tabela, d.data)

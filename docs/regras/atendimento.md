@@ -875,6 +875,26 @@
   atendimento não tem o que cobrar" (`[data-preco-gratuito]`), e o servidor
   grava 0 (`dinheiroDoFormulario`; negativo e ilegível seguem recusados).
   Prova: `e2e/procedimento-preco-em-reais.spec.ts` ("A1").
+- **O preço DA UNIDADE vale em todo caminho de preço** (D2 da 9ª simulação,
+  2026-11-07; decidido pelo princípio 3): o cadastro grava o preço próprio de
+  cada unidade em `procedure_branch_pricing` ("1 unidade com preço próprio"), e
+  nada o lia — na Menino Deus a criolipólise de R$ 590 era listada, agendada,
+  cobrada e comissionada a R$ 650. A regra é UMA, `precoNaUnidade` /
+  `precosDaUnidade` / `comPrecoDaUnidade` (`lib/procedimentos/preco-na-unidade.ts`;
+  no banco, `private.preco_na_unidade`, migration `20261107004001`): o da
+  unidade quando ela tem um, senão o da rede. Lê por ela o agendar
+  (`createAppointmentCore` — logo a agenda, o app, o Copilot e o CRM — e as
+  listas `getCachedBranchProcedures`, o app da cliente, o Copilot), o Vender
+  (o pré-pago, na action e em `procedimento_vender*`; o rateio do pacote,
+  `itensParaRateio`, e o pacote equivalente do checkout, `catalogoDePacotes`
+  com a unidade), o editor do plano (`procedimentosParaPlano` com a unidade,
+  a tela do atendimento — o preço do plano segue editável) e o catálogo da
+  unidade. A comissão sai do preço GRAVADO no agendamento/venda, então segue
+  sozinha. A lista de procedimentos da rede diz embaixo do preço "R$ 590,00
+  na Menino Deus" (`[data-preco-da-unidade]`). Sem unidade (a oportunidade, a
+  recompensa da fidelidade, a ficha da rede com várias unidades no editor do
+  plano), vale o da rede. Prova: `e2e/procedimento-preco-da-unidade.spec.ts`,
+  `tests/preco-na-unidade.test.ts`.
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um procedimento
 - `ProcedureProduct`: insumos consumidos por execução — base do consumo automático de estoque
 - **"Quem realiza"** (por-01, revisão do Heitor de 2026-11-02: "já deveria ter
@@ -1992,6 +2012,7 @@ O resto do fluxo:
 ```
 ❌ Atualizar currentStock diretamente sem criar StockMovement
 ❌ Alterar price de um procedimento sem criar ProcedurePriceHistory
+❌ Ler o preço de um procedimento para uma UNIDADE direto de procedures.price — é precoNaUnidade/comPrecoDaUnidade (lib/procedimentos/preco-na-unidade.ts; no banco, private.preco_na_unidade): o preço próprio da unidade vale (D2 da 9ª)
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores, a anamnese e a ficha do procedimento do "Finalizar"
 ❌ Ramo da tela do atendimento sem a ficha própria do procedimento (o avulso da rede que monta plano ficou sem ela de 2026-09-25 a 2026-10-29)

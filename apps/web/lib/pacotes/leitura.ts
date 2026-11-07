@@ -2,6 +2,7 @@ import 'server-only'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { composicaoDoPacote, type ItemDoPacote } from './rateio'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import { comissaoDoPacoteDaLinha, type ComissaoDoPacote } from '@/lib/comissoes/config'
@@ -24,7 +25,12 @@ export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: s
     .eq('de_fora', false)
   if (opcoes.soAtivos) q = q.eq('is_active', true)
   if (opcoes.branchId) q = q.or(`branch_id.is.null,branch_id.eq.${opcoes.branchId}`)
-  const linhas = await ler(q.order('name'), 'carregar o catálogo de pacotes')
+  // Com a unidade, a tabela de cada item é a DELA (D2 da 9ª): o pacote
+  // equivalente do checkout compara com o preço que o plano tem ali.
+  const [linhas, daUnidade] = await Promise.all([
+    ler(q.order('name'), 'carregar o catálogo de pacotes'),
+    precosDaUnidade(createAdminClient(), opcoes.branchId),
+  ])
   return ((linhas ?? []) as unknown as {
     id: string; name: string; price: number; total_sessions: number; validity_days: number | null; is_active: boolean
     comissao_venda_tipo: string | null; comissao_venda_valor: number | null; comissao_execucao: string; comissao_execucao_valor: number | null
@@ -33,7 +39,7 @@ export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: s
   }[]).map(p => {
     const itens = [...(p.service_package_items ?? [])].sort((a, b) => a.sort_order - b.sort_order).map(i => ({
       procedureId: i.procedure_id, procedureName: i.procedures?.name ?? '—',
-      quantidade: i.quantity, precoTabela: Number(i.procedures?.price ?? 0),
+      quantidade: i.quantity, precoTabela: precoNaUnidade(i.procedures?.price, daUnidade.get(i.procedure_id)),
     }))
     return {
       id: p.id, name: p.name, price: Number(p.price), totalSessions: p.total_sessions,
@@ -56,11 +62,19 @@ export async function pacotesAVenda(tenantId: string, branchId: string | null): 
   }))
 }
 
-/** Os itens de um pacote para o rateio da venda (preço de tabela ATUAL de cada procedimento). */
-export async function itensParaRateio(tenantId: string, pacoteId: string): Promise<ItemDoPacote[]> {
-  const linhas = await ler(createAdminClient().from('service_package_items')
-    .select('procedure_id, quantity, sort_order, procedures(price)')
-    .eq('tenant_id', tenantId).eq('package_id', pacoteId).order('sort_order'), 'ler os itens do pacote')
+/**
+ * Os itens de um pacote para o rateio da venda: o preço de tabela ATUAL de cada
+ * procedimento NA UNIDADE da venda (D2 da 9ª: o preço por unidade vale em todo
+ * caminho de preço; sem preço próprio, o da rede).
+ */
+export async function itensParaRateio(tenantId: string, pacoteId: string, branchId?: string | null): Promise<ItemDoPacote[]> {
+  const admin = createAdminClient()
+  const [linhas, daUnidade] = await Promise.all([
+    ler(admin.from('service_package_items')
+      .select('procedure_id, quantity, sort_order, procedures(price)')
+      .eq('tenant_id', tenantId).eq('package_id', pacoteId).order('sort_order'), 'ler os itens do pacote'),
+    precosDaUnidade(admin, branchId),
+  ])
   return ((linhas ?? []) as unknown as { procedure_id: string; quantity: number; procedures: { price: number | null } | null }[])
-    .map(i => ({ procedureId: i.procedure_id, quantidade: i.quantity, precoTabela: Number(i.procedures?.price ?? 0) }))
+    .map(i => ({ procedureId: i.procedure_id, quantidade: i.quantity, precoTabela: precoNaUnidade(i.procedures?.price, daUnidade.get(i.procedure_id)) }))
 }

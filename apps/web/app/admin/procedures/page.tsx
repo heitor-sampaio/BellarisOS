@@ -23,6 +23,12 @@ function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+/** As unidades com preço próprio (o vazio segue o da rede). */
+function precosProprios(linhas: unknown): { branch_id: string; price: number }[] {
+  return ((linhas ?? []) as { branch_id: string; price: number | null }[])
+    .filter(l => l.price != null).map(l => ({ branch_id: l.branch_id, price: Number(l.price) }))
+}
+
 /** Largura fixa por coluna, compartilhada por todas as tabelas de categoria.
  *  A de comissão só existe para quem vê quanto cada um ganha. */
 const colunas = (comComissao: boolean) => [
@@ -296,6 +302,12 @@ export default async function AdminProceduresPage({
                       </td>
                       <td data-label="Preço" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>{formatBRL(p.price)}</span>
+                        {/* D2 da 9ª: o preço próprio de cada unidade, que agora vale na conta. */}
+                        {precosProprios(p.procedure_branch_pricing).map(bp => (
+                          <p key={bp.branch_id} data-preco-da-unidade style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'normal' }}>
+                            {formatBRL(bp.price)} na {branchNameMap[bp.branch_id] ?? 'unidade'}
+                          </p>
+                        ))}
                       </td>
                       <td data-label="Unidades" data-par style={{ padding: '13px 16px' }}>
                         <span style={{

@@ -27,6 +27,7 @@ import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-real
 import { textoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
 import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
+import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -248,10 +249,12 @@ export async function createAppointmentCore(
   //    cliente que agenda sozinha pelo app segue CLIENT_APP.
   //  - O nome de quem agenda (o histórico). A cliente pelo app (por-05) não é
   //    membro: o nome não se busca em `users`.
-  const [recusa, doProcedimento, oportunidade, userName] = await Promise.all([
+  //  - O preço DA UNIDADE, quando ela tem um (D2 da 9ª: era salvo e ignorado).
+  const [recusa, doProcedimento, daUnidade, oportunidade, userName] = await Promise.all([
     conferirPecasDoAgendamento(admin, ctx, input),
     admin.from('procedures').select('price, duration_min')
       .eq('id', input.procedureId).eq('tenant_id', ctx.tenantId!).single(),
+    precosDaUnidade(admin, input.branchId),
     oportunidadeDoAgendamento(admin, ctx, input.clientId, input.leadId),
     ctx.userName ? Promise.resolve(ctx.userName) : ctx.isClient ? Promise.resolve('') : getUserName(admin, ctx.userId),
   ])
@@ -285,8 +288,8 @@ export async function createAppointmentCore(
       room_id:         input.roomId ?? null,
       scheduled_at:    input.scheduledAt,
       duration_min:    durationMin,
-      // Com crédito, o preço é a parte dele na venda (já paga).
-      price:           doCredito ? doCredito.preco : (procedure?.price ?? 0),
+      // Com crédito, o preço é a parte dele na venda (já paga); sem, o da unidade.
+      price:           doCredito ? doCredito.preco : precoNaUnidade(procedure?.price, daUnidade.get(input.procedureId)),
       notes:           input.notes ?? null,
       status:          'SCHEDULED',
       source:          origem,

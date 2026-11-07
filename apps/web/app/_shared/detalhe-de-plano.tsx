@@ -25,7 +25,8 @@ export async function DetalheDePlano({
 
   const [{ plano, error }, procs] = await Promise.all([
     getCabecalhoDoPlano(planId),
-    procedimentosParaPlano(ctx.tenantId!),
+    // O preço da unidade da TELA, quando ela tem um (D2 da 9ª).
+    procedimentosParaPlano(ctx.tenantId!, branchId),
   ])
 
   if (error || !plano) {

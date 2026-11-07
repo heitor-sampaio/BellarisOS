@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { ProcedimentoAVenda } from '@/components/shared/vender'
 import { contagemDoPago } from '@/lib/pre-pago/contagem'
+import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
  * Procedimento pré-pago (2026-09-30): o que se vende e o que o cliente tem.
@@ -15,13 +16,18 @@ export async function procedimentosAVenda(tenantId: string, branchId: string | n
   if (!branchId) return []
   // Pré-pago fora do PLANO da rede: nada a oferecer (lib/planos/recursos.ts).
   if (!(await redeTemRecurso(tenantId, 'pre_pago'))) return []
-  const linhas = await ler(createAdminClient().from('procedures')
-    .select('id, name, price')
-    .eq('tenant_id', tenantId).eq('is_active', true)
-    .or(`branch_id.is.null,branch_id.eq.${branchId}`)
-    .order('name'), 'carregar os procedimentos à venda')
+  const admin = createAdminClient()
+  const [linhas, daUnidade] = await Promise.all([
+    ler(admin.from('procedures')
+      .select('id, name, price')
+      .eq('tenant_id', tenantId).eq('is_active', true)
+      .or(`branch_id.is.null,branch_id.eq.${branchId}`)
+      .order('name'), 'carregar os procedimentos à venda'),
+    // O preço DA UNIDADE da venda, quando ela tem um (D2 da 9ª).
+    precosDaUnidade(admin, branchId),
+  ])
   return ((linhas ?? []) as { id: string; name: string; price: number | null }[])
-    .map(p => ({ id: p.id, name: p.name, price: Number(p.price ?? 0) }))
+    .map(p => ({ id: p.id, name: p.name, price: precoNaUnidade(p.price, daUnidade.get(p.id)) }))
 }
 
 export interface UnidadePrePaga {

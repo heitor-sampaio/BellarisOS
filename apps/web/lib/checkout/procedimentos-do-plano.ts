@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
+import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
  * Procedimentos e insumos que alimentam o editor de plano de tratamento.
@@ -14,10 +15,13 @@ import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-d
  * O insumo vai na unidade de CONSUMO (`unidadeDoInsumo`, D9 de 2026-10-29):
  * "5 ml", como no atendimento — não "5 frasco".
  */
-export async function procedimentosParaPlano(tenantId: string) {
+export async function procedimentosParaPlano(tenantId: string, branchId?: string | null) {
   const admin = createAdminClient()
 
-  const [procsRaw, prodsRaw] = await Promise.all([
+  // O preço que o editor propõe é o DA UNIDADE do plano, quando ela tem um (D2
+  // da 9ª); sem unidade (a ficha da rede com várias), o da rede. O preço do
+  // plano segue editável: é escolha de quem monta.
+  const [procsRaw, prodsRaw, daUnidade] = await Promise.all([
     ler(admin
       .from('procedures')
       .select('id, name, category, duration_min, price, procedure_products(product_id, quantity, products(id, name, unit, consumption_unit, units_per_package))')
@@ -35,6 +39,7 @@ export async function procedimentosParaPlano(tenantId: string) {
       // Só os insumos: o produto só de revenda não entra no plano (D-6).
       .neq('uso', 'REVENDA')
       .order('name'), 'carregar os produtos'),
+    precosDaUnidade(admin, branchId),
   ])
 
   type Produto = { id: string; name: string } & UnidadesDoProduto
@@ -49,7 +54,7 @@ export async function procedimentosParaPlano(tenantId: string) {
     name:        p.name,
     category:    p.category,
     durationMin: p.duration_min,
-    price:       Number(p.price),
+    price:       precoNaUnidade(p.price, daUnidade.get(p.id)),
     products:    (p.procedure_products ?? [])
       .filter(pp => pp.products !== null)
       .map(pp => ({

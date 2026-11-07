@@ -8,6 +8,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { getSessoesPorProcedimento } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
+import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 export default async function BranchProceduresPage({
   params, searchParams,
@@ -50,6 +51,8 @@ export default async function BranchProceduresPage({
     // trazer uma linha por atendimento cortava em 1000 (§13.1).
     getSessoesPorProcedimento([branch.id]),
   ])
+  // O preço DA UNIDADE, quando ela tem um (D2 da 9ª).
+  const daUnidade = await precosDaUnidade(admin, branch.id as string)
 
   // Filtra procedimentos de rede pela disponibilidade de filial
   const procedures = (allProcs ?? []).filter(p => {
@@ -72,7 +75,7 @@ export default async function BranchProceduresPage({
     category:           (p.category as string) ?? 'Outros',
     description:        (p.description as string | null) ?? null,
     durationMin:        Number(p.duration_min) || 0,
-    price:              parseFloat(String(p.price ?? 0)),
+    price:              precoNaUnidade(p.price as number | null, daUnidade.get(p.id as string)),
     sessionCount:       sessionsMap.get(p.id as string) ?? 0,
     visibleOnClientApp: Boolean(p.visible_on_client_app),
   }))
