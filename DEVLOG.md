@@ -9971,7 +9971,7 @@ em `.sim/arquivo-2026-11-06/`. Os ids D1…D18 e A1…A53 são desta rodada. Cam
 2. **O cancelamento do plano: "sim usa a mesma coisa do pacote… os dois são, em essencia, conjuntos de procedimentos"**
    — a mesma regra do "Cancelar pacote", sem configurações novas.
 3. **O "só os meus" e a ficha: "ve tudo, só os meus não se aplica para visualização de clientes pq os clientes são da
-   clinica, isso já foi decidido antes"** — nada muda; a regra entrou em .
+   clinica, isso já foi decidido antes"** — nada muda; a regra entrou em `docs/regras/crm-inbox.md`.
 
 Frentes F40–F45, uma depois da outra (a F45 é a lentidão do banco que derrubou as duas completas).
 
