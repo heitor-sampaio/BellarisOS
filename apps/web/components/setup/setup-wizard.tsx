@@ -456,6 +456,10 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
             value={phone}
             onChange={e => setPhone(maskPhoneDigitando(e.target.value))}
           />
+          {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da clínica) que a tela não dizia. */}
+          <span data-telefone-vazio-no-app style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            Em branco, o app da cliente mostra o telefone da clínica (o do passo anterior).
+          </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <label className="overline" htmlFor="br-email">E-mail</label>

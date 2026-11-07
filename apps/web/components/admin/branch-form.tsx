@@ -178,6 +178,10 @@ export function BranchForm() {
                       <label className="overline" htmlFor="br-phone">Telefone</label>
                       <input id="br-phone" name="phone" type="tel" className="field" placeholder="(00) 00000-0000"
                         value={telefone} onChange={e => setTelefone(maskPhoneDigitando(e.target.value))} />
+                      {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da clínica). */}
+                      <span data-telefone-vazio-no-app style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                        Em branco, o app da cliente mostra o telefone da clínica (o de Configurações → Geral).
+                      </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-email">E-mail</label>

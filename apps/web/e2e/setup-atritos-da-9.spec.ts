@@ -45,6 +45,8 @@ test('A2 e A7: um id por campo, "repetir em todos os dias", e o número do ender
     await p.getByRole('button', { name: /Continuar/ }).click()
     await expect(p.locator('#br-name')).toBeVisible()
     await expect(p.locator('[id="br-phone"]'), 'A2: um campo de telefone só').toHaveCount(1)
+    // A3 (F43): em branco, o app mostra o telefone da clínica — a regra J-66, que o setup não dizia.
+    await expect(p.locator('[data-telefone-vazio-no-app]')).toContainText('Em branco, o app da cliente mostra o telefone da clínica')
 
     await p.locator('#br-name').fill(`${PREFIXO} Unidade s9 ${marca}`)
     // A2: a clínica 24 h ajusta a segunda e repete em todos os dias (o domingo também).

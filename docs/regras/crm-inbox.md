@@ -220,7 +220,11 @@
   pronta** (A66, `comMensagem`): o plano proposto ("Vi no app o plano de
   tratamento proposto (N sessões, R$ X)…") e o agendamento ("Quero falar
   sobre o meu agendamento de X em DD/MM HH:MM"). Sem nenhum dado cadastrado,
-  o cartão não aparece. Prova: `e2e/portal-cliente-a-clinica.spec.ts`,
+  o cartão não aparece. **E o cadastro da unidade diz isso** (A3 da 9ª
+  simulação, 2026-11-07): junto do telefone, no setup e em Unidades, "Em
+  branco, o app da cliente mostra o telefone da clínica…"
+  (`[data-telefone-vazio-no-app]`; prova: `e2e/setup-atritos-da-9.spec.ts`).
+  Prova: `e2e/portal-cliente-a-clinica.spec.ts`,
   `e2e/portal-cliente-plano-proposto.spec.ts`,
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
 - **Os atritos do portal da 8ª simulação** (2026-11-06; princípio 3, o que a
