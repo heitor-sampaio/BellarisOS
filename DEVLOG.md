@@ -1774,6 +1774,28 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-07 — Nona simulação: harmonização com comercial e o mês que fecha, e a clínica que abre a 2ª unidade com a operação rodando
+
+Pedido do Heitor: corrigir, rodar outra completa e mais dois times, "até que os times não retornem mais defeitos ou
+problema de uso". Rodaram em produção na madrugada de sábado 07/11 (Brasília), com 14 agentes (run
+`wf_ae69aef1-acd`, sem queda):
+
+- **Time A, "[sim] Clínica Lavanda"** (Belo Horizonte, uma unidade, harmonização): o injetável de ponta a ponta (mapa,
+  lote e validade, retorno, recepção sem prontuário), o comercial do lead à venda com crediário, as despesas e o
+  pagamento das comissões, o resgate de pontos.
+- **Time B, "[sim] Clínica Orquídea"** (Porto Alegre, corporal): a 2ª unidade aberta com gente agendada, a dona que
+  atende, o plano de 10 sessões cancelado no meio, a parcela atrasada, cargos com recorte e automações montadas.
+
+**Dinheiro:** fechou nos dois (A: entradas 6.528, lucro −4.325,82 com o aluguel pago; B: receita 3.000, resultado
+2.165,93), salvo o preço por unidade ignorado (D2) e o "vale" sem como entrar no caixa (para o Heitor). Quase tudo o
+que a 8ª pediu funcionou em uso real; os defeitos novos ficam na 2ª unidade, no plano longo e no injetável.
+
+**Defeitos:** 18 (15 confirmados, 3 prováveis), 2 regressões (o texto da revisão da campanha, F31; o termo do início
+sem o "Chegou", F33), 5 sobras. **Atritos:** 53. **Regra ou engano:** 16. **Para o Heitor:** 3 — vender crédito em
+dinheiro (o "vale"), a conta do cancelamento do plano, o que a profissional "só os meus" vê no histórico da cliente.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-07 (9ª)".
+
 ### 2026-10-30 — A completa depois das frentes: 6 falhas em 1.241, corrigidas
 
 A completa no GitHub Actions (run 41151753519, contra o build de 53b4a803)
@@ -9907,6 +9929,58 @@ movimentações para a contadora (A44). Os demais no relatório.
 **F39 FEITA (06/11, 17f7273c…2215204f) — as 9 falhas da completa 42313006118 (1713 passaram):** nenhuma era defeito. Quatro specs velhos diante das regras da 8ª: a grade mostra a profissional ocupada em qualquer unidade (D5/F33, `abrangencia-unidade`), a evolução já escrita só se confere no Finalizar (A29/F37, `atendimento-campos-da-tela`), o crédito na ficha da rede pede a unidade (D1/F33, `acoes-entre-redes`), só se troca para quem atende na unidade (A22/F37 + F36, `agenda-conflito-caminhos`). Cinco instabilidades na janela 23:45–00:02 UTC em que o banco de produção respondeu em 9–52 s com 5xx e statement timeout (`ficha-pre-atendimento`, `portal-cliente-varias-clinicas`, `pre-pago-cancelar-unidade`, `copilot-gravacoes`, `fase2-agenda`): o que a ação grava DEPOIS da resposta se lê com `expect.poll` (regra nova em `docs/regras/e2e.md`), e a limpeza do `fase2-agenda` acha a ficha rápida pelo nome. Em aberto: o `GrantCreditForm` (`client-profile.tsx:1070`) chama `onClose()` na renderização (aviso do React, de junho).
 
 **A 8ª rodada fechou em 06/11** (F33–F38): os 19 defeitos e os 58 atritos feitos, as decisões 1 e 2 do Heitor implementadas e a 3 mantida como estava. Seis frentes mexeram em arquivo compartilhado (auth, cached-queries, topbar, `metrics_*`, comissão, agendar do Copilot): vale a completa, quando o Heitor pedir.
+
+### Da simulação de 2026-11-07 (9ª: 18 defeitos e 53 atritos em aberto)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`, com as capturas, os 16 achados que eram regra
+ou engano, o dinheiro esperado × sistema, o que a 8ª pediu e se funcionou, e o que ficou sem testar. A 8ª rodada está
+em `.sim/arquivo-2026-11-06/`. Os ids D1…D18 e A1…A53 são desta rodada. Caminhos relativos a `apps/web/`.
+
+**Alta**
+- **D1.** A campanha "Sem visita há mais de N dias" não filtra ninguém (`max_days_since_visit` gravado, nunca passado
+  à prévia nem ao disparo) e a revisão diz "Vieram nos últimos 60 dias" (regressão da F31). Princípios 3 e 6.
+- **D2.** O preço por unidade (`procedure_branch_pricing`) é salvo e nenhum caminho de preço o lê: agendar, Vender,
+  checkout, app, Copilot. A criolipólise de R$ 590 da Menino Deus saiu a R$ 650, com a comissão junto. Princípio 3.
+- **D3.** Desmarcar a unidade no "Atende clientes em" esconde da grade os agendamentos dela ali, sem aviso nem repasse
+  (sobra da F36). Princípio 3.
+- **D4.** O plano fechado não se cancela (`cancelTreatmentPlan` só aceita ACCEPTED e não mexe nas parcelas): o a receber
+  e o app seguem com as parcelas. A conta é para o Heitor.
+- **D5.** A sessão do plano grava o preço e a duração de outra sessão (a drenagem com R$ 585 e 60 min da criolipólise).
+- **D6.** O "Aplicado em" do lote mostra a dose do atendimento inteiro, não a do lote — num recall aponta o lote errado.
+
+**Média**
+- **D7.** (regressão da F33) Iniciar sem o "Chegou" recusa "Falta assinar: Termo…", com o termo ainda não emitido.
+- **D8.** No Estoque da unidade, quem é da rede cria o produto e o estoque inicial é recusado sem seletor; repetir
+  duplica o produto.
+- **D9.** (provável) A sessão aberta antes de mudar a unidade do membro dá 500 até relogar.
+- **D10.** "Seus atendimentos em outras unidades" abre 404 para quem é da rede.
+- **D11.** A oportunidade com o telefone de uma cliente nasce sem aviso e sem ligar à ficha.
+- **D12.** No app, o atalho do pacote não pergunta a unidade (sobra da F38).
+- **D13.** A parcela vencida aparece "Pendente", igual à que vai vencer, em toda tela.
+- **D14.** "Registrar aplicação" grava de novo a cada clique.
+- **D15.** O lote esgotado some do Estoque e leva o "Aplicado em" (sobra da F32).
+- **D16.** (provável) O mapa em UI e o insumo em U não se comparam no "Finalizar".
+
+**Baixa**
+- **D17.** `/injetaveis` sem acesso responde HTTP 500 (a trava no layout).
+- **D18.** (provável) Hidratação #418 na saudação da topbar na virada das faixas de hora.
+
+**Para o Heitor decidir**
+1. **Vender crédito na clínica em dinheiro (o "vale")** — hoje o pré-pago é de procedimento e o "Conceder crédito" fica
+   fora do caixa. Recomendação: "Crédito na clínica" no Vender, no caixa no dia do dinheiro, pontos na venda, sem
+   comissão.
+2. **A conta do cancelamento do plano (D4)** — a mesma função do pacote (prévia, crediário caindo antes, estorno ou
+   crédito), com duas escolhas da clínica: a sessão feita pelo preço com desconto (padrão) ou o de tabela, e multa sobre
+   o saldo (0% padrão), valendo também para o pacote.
+3. **O que a profissional "só os meus" vê no histórico** — recomendação: o histórico (procedimento, data, quem
+   atendeu), sem os valores, o plano e o contrato que não são dela.
+
+**Atritos (A1–A53), os que mais pesam:** o `/setup` que volta a cada URL até o "Acessar o painel" (A1, sobra da F36);
+o "Preencher pela taxa por parcela" que ainda faz digitar as 12 caixas (A4); o mapa e o lote fora da sessão (A10, A11);
+a sala bloqueada que não risca a grade (A17); o "+ Agendar" da ficha sem a sessão do plano (A18); o "A receber da
+operadora" no bruto (A30); os dois "resultados" do Financeiro (A31); não dá para mudar a unidade de um agendamento
+(A33); sem remarcar o vencimento da parcela (A37); a troca de pontos sem a quem pedir (A38); a oportunidade sem tarefa
+com data (A42); o app que diz "quem marca é a clínica" e deixa marcar (A47). Os demais no relatório.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
