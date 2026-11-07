@@ -159,6 +159,36 @@ máquina), não do código. As únicas respostas > 3 s foram o webhook do WhatsA
 da Meta (500 em ~12 s, "Não consegui buscar a mensagem" — PGRST116, duas linhas
 num `.single()` em `lib/inbox/resolve-conversation`), à parte.
 
+**A lentidão do BANCO nas completas (F45, 2026-11-07).** As duas completas de
+06–07/11 caíram por paradas do Postgres de produção, de 9 a 52 s
+(`edge_logs`: 23:45–00:15 e 01:29–01:58 UTC), com o resto do tempo normal
+(p50 ~40 ms). Nas paradas: INSERT simples cancelado pelo `statement_timeout`
+(57014, o de 8 s do `authenticator`), o Auth em "context deadline exceeded"
+(até a consulta dele ao HaveIBeenPwned esgotou), o Realtime com o
+`list_changes` cancelado, o pool dele sem conexão e o slot recriado. Como
+medir: `pg_stat_statements` (o tempo total por consulta), `get_advisors` de
+performance, `query_logs` (`edge_logs` por minuto, `postgres_logs`,
+`realtime_logs`, `auth_logs`). O que se viu:
+- **O Realtime é o maior consumidor do banco**: `realtime.list_changes` era
+  61% de todo o tempo de execução desde 04/11 (401 mil chamadas, ~5.840 s;
+  a mais lenta, 12,7 s). Cada linha mudada de tabela PUBLICADA passa por
+  `apply_rls`, uma vez por inscrito. **Tabela que nenhuma tela assina não fica
+  na publicação `supabase_realtime`** (saíram `crm_stages`, `cash_registers`,
+  `treatment_plan_items` — migration `20261107004501`). Tela nova que assina
+  uma tabela a põe na publicação na mesma migration.
+- **Toda chave estrangeira de public tem índice** (migration
+  `20261107004502`, as 131 que o advisor apontava): apagar o pai conferia cada
+  filho por varredura — `e2e_apagar_rede`, `DELETE users` (45 colunas apontam
+  para `users`). `role_permissions` sem índice no `tenant_id` somava 47
+  milhões de linhas lidas desde 04/11. Chave estrangeira nova nasce com índice.
+- Os gatilhos do INSERT em `tenants` (as sementes: cargos, permissões, abas,
+  tags, categorias, ficha, motivos, origens — ~90 linhas) levam ~17–46 ms; o
+  máximo de 6 s era a parada, não eles.
+- **A instância é Micro** (`max_connections` 60, `shared_buffers` 256 MB:
+  1 GB e 2 vCPUs compartilhadas), e o Auth tem 10 conexões FIXAS (advisor
+  `auth_db_connections_absolute`). Subir de tamanho é decisão de custo do
+  Heitor; ver o relatório da F45.
+
 ## O CSP da clínica (bloqueia desde 2026-10-22)
 
 Toda página da clínica leva `Content-Security-Policy` (`lib/seguranca/csp.ts`,
