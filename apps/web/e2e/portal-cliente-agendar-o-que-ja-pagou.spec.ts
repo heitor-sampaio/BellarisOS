@@ -78,3 +78,39 @@ test('com sessão paga no plano, o agendamento pelo app nasce como ela — e o s
     await ctx.close()
   }
 })
+
+/**
+ * Sobra da F41 (9ª simulação, 2026-11-07): o agendar do APP ligava a sessão do
+ * plano DEPOIS de criar o agendamento — com a duração do procedimento, não a
+ * da sessão (a soma dos procedimentos dela), e sem passar pelo crédito `PLANO`
+ * do núcleo, que a equipe usa desde a F41. Agora o app passa pelo mesmo
+ * crédito: a sessão de "procedimento + Drenagem" (30 + 20 min, R$ 150 + R$ 90)
+ * nasce com 50 min e R$ 240, ligada à sessão e ao plano.
+ */
+test('sobra da F41: a sessão do plano agendada pelo app tem a duração e o preço DA SESSÃO', async ({ browser }) => {
+  const { data: dren, error: eD } = await db().from('procedures').insert({
+    tenant_id: rede!.tenantId, name: `[e2e] Drenagem ${marca}`, category: 'e2e', duration_min: 20, price: 120,
+  }).select('id').single<{ id: string }>()
+  expect(eD).toBeNull()
+  const { data: pl } = await db().from('treatment_plans').insert({
+    branch_id: rede!.branchId, professional_id: rede!.professionalId, client_id: cliente!.clientId, status: 'ACCEPTED', name: `[e2e] Plano misto ${marca}`,
+  }).select('id').single<{ id: string }>()
+  const { data: se } = await db().from('treatment_plan_sessions').insert({ plan_id: pl!.id, sort_order: 1 }).select('id').single<{ id: string }>()
+  expect((await db().from('treatment_plan_session_procedures').insert([
+    { session_id: se!.id, procedure_id: rede!.procedureId, price: 150, sort_order: 0 },
+    { session_id: se!.id, procedure_id: dren!.id, price: 90, sort_order: 1 },
+  ])).error).toBeNull()
+
+  const ctx = await browser.newContext({ storageState: cliente!.estado })
+  try {
+    const p = await ctx.newPage()
+    await p.goto(`/${slug}/cliente/home`)
+    const id = await agendar(p, '14:00')
+    const { data: ap } = await db().from('appointments').select('treatment_plan_id, price, duration_min').eq('id', id).single()
+    expect(ap, 'a duração e o preço da sessão, ligada ao plano').toEqual({ treatment_plan_id: pl!.id, price: 240, duration_min: 50 })
+    expect((await db().from('treatment_plan_sessions').select('appointment_id').eq('id', se!.id).single()).data?.appointment_id).toBe(id)
+  } finally {
+    await ctx.close()
+    await db().from('treatment_plan_sessions').update({ appointment_id: null }).eq('plan_id', pl!.id)
+  }
+})

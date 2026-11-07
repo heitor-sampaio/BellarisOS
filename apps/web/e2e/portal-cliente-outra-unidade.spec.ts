@@ -121,8 +121,9 @@ test.describe.serial('a cliente agenda em outra unidade da clínica pelo app', (
     expect(ag?.source).toBe('CLIENT_APP')
 
     // por-05: o núcleo da agenda emite o "agendamento criado" (o app não emitia).
-    const { data: ev } = await db().from('domain_events').select('nome').eq('entidade_id', ag!.id)
-    expect((ev ?? []).map(e => e.nome)).toContain('agendamento.criado')
+    // Sai no after() do núcleo, depois da resposta: expect.poll (F39, e2e.md).
+    await expect.poll(async () => ((await db().from('domain_events').select('nome').eq('entidade_id', ag!.id)).data ?? [])
+      .map(e => e.nome)).toContain('agendamento.criado')
   })
 
   test('A65: na agenda do app, o atendimento diz que é da Zona Sul', async ({ browser }) => {

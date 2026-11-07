@@ -1284,8 +1284,14 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   antiga, cujo primeiro procedimento é o agendado — preço = a soma da sessão)
   ou, sem ela, o crédito de pacote/pré-pago (`pagoParaAgendar`,
   `lib/creditos/pago-no-app.ts`). A ligação é compare-and-swap; perdeu a
-  corrida, o agendamento fica avulso. Prova:
-  `e2e/portal-cliente-agendar-o-que-ja-pagou.spec.ts`.
+  corrida, o agendamento fica avulso. **A sessão do plano passa pelo crédito
+  `PLANO` do núcleo, como na equipe** (sobra da F41, 9ª simulação,
+  2026-11-07): o app a ligava DEPOIS de criar, com a duração do procedimento;
+  agora `createClientAppointment` manda `credito: { tipo: 'PLANO', id: sessão }`
+  ao `createAppointmentCore` — o preço, a DURAÇÃO (a soma da sessão: a grade
+  livre e o "Sem preferência" medem com ela) e o plano vêm da sessão. Quem perde
+  a disputa pelo crédito (`CREDITO_JA_USADO`) agenda sem ele, avulso. Prova:
+  `e2e/portal-cliente-agendar-o-que-ja-pagou.spec.ts` ("sobra da F41").
   **E o Confirmar DIZ** (D10 da 8ª simulação, 2026-11-06; sobra da F28): o
   passo mostrava "Valor R$ 180,00" na sessão que o pacote cobria. Agora o
   "Valor" é "Já pago pelo pacote X (sessão 2 de 3)" (ou "pelo plano de

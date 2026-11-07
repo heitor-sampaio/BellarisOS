@@ -16,7 +16,8 @@ import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
-import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao } from '@/lib/appointments/core'
+import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao, CREDITO_JA_USADO } from '@/lib/appointments/core'
+import { conferirCredito } from '@/lib/creditos/credito'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-preferencia'
 import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
@@ -1802,6 +1803,20 @@ export async function createClientAppointment(params: {
       .maybeSingle(), 'buscar o procedimento')
     if (!procedure) return { error: 'Procedimento não disponível.' }
 
+    // O que ela JÁ PAGOU deste procedimento (2026-10-21, decisão do Heitor): a
+    // sessão livre de um plano vendido, ou o crédito de pacote/pré-pago. Sem
+    // isso, o agendamento nascia avulso e o checkout cobraria de novo. Vem
+    // ANTES da grade (sobra da F41): a sessão do plano dura a soma dos
+    // procedimentos dela, e é essa a duração que tem de caber no horário.
+    const pago = await pagoParaAgendar(admin, cliente.tenant_id as string, ctx.clientId!, params.procedureId)
+    const creditoDoPago = pago?.tipo === 'CREDITO' ? pago.credito
+      : pago?.tipo === 'PLANO' ? { tipo: 'PLANO' as const, id: pago.sessionId } : null
+    let duracao = Number(procedure.duration_min)
+    if (creditoDoPago?.tipo === 'PLANO') {
+      const c = await conferirCredito(admin, cliente.tenant_id as string, ctx.clientId!, creditoDoPago)
+      if (!('error' in c) && c.duracaoMin) duracao = c.duracaoMin
+    }
+
     // O horário tem de ser um dos que a tela ofereceu: futuro e livre na grade
     // de `computeAvailableSlots` — que já desconta os agendamentos existentes,
     // e por isso também é a guarda contra dois clientes no mesmo horário.
@@ -1819,7 +1834,7 @@ export async function createClientAppointment(params: {
     // conferências de quem foi escolhida pela cliente.
     let professionalId = params.professionalId
     if (!professionalId) {
-      const candidatas = await candidatasDoDia(admin, branch.tenant_id as string, params.branchId, dayKeyTZ(inicio), Number(procedure.duration_min), params.procedureId)
+      const candidatas = await candidatasDoDia(admin, branch.tenant_id as string, params.branchId, dayKeyTZ(inicio), duracao, params.procedureId)
       professionalId = escolherQuemAtende(candidatas, hora)
       if (!professionalId) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
@@ -1841,16 +1856,11 @@ export async function createClientAppointment(params: {
     if (!realiza(await quemRealizaOProcedimento(admin, params.procedureId), professionalId)) return { error: NAO_REALIZA }
 
     const livres = await computeAvailableSlots(
-      admin, params.branchId, professionalId, dayKeyTZ(inicio), Number(procedure.duration_min),
+      admin, params.branchId, professionalId, dayKeyTZ(inicio), duracao,
     )
     if (!livres.includes(hora)) {
       return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
-
-    // O que ela JÁ PAGOU deste procedimento (2026-10-21, decisão do Heitor): a
-    // sessão livre de um plano vendido, ou o crédito de pacote/pré-pago. Sem
-    // isso, o agendamento nascia avulso e o checkout cobraria de novo.
-    const pago = await pagoParaAgendar(admin, cliente.tenant_id as string, ctx.clientId!, params.procedureId)
 
     // O NÚCLEO da agenda da clínica grava (por-05, revisão do Heitor de
     // 2026-11-02: "passar pelas mesmas regras da agenda da clínica"): as peças
@@ -1858,30 +1868,27 @@ export async function createClientAppointment(params: {
     // profissional (`horarioOcupado`), o preço, o crédito pré-pago/pacote, a
     // oportunidade aberta e o evento "agendamento criado" — que o app não
     // emitia. A cliente não tem rede no JWT (§5): a rede é a da ficha.
-    const criado = await createAppointmentCore(admin, { ...ctx, tenantId: cliente.tenant_id as string, branchId: null }, {
+    //
+    // A sessão do plano passa pelo MESMO crédito `PLANO` da equipe (sobra da
+    // F41, 9ª simulação): o núcleo grava o preço, a DURAÇÃO e o plano da
+    // sessão e a liga por compare-and-swap. Ligava-se depois, à mão, com a
+    // duração do procedimento. Quem perde a disputa pelo crédito (outro
+    // agendamento o pegou no meio) agenda sem ele — como antes, avulso.
+    const agendar = (credito: typeof creditoDoPago) => createAppointmentCore(admin, { ...ctx, tenantId: cliente.tenant_id as string, branchId: null }, {
       branchId:       params.branchId,
       clientId:       ctx.clientId!,
       procedureId:    params.procedureId,
-      professionalId,
+      professionalId: professionalId!,
       scheduledAt:    params.scheduledAt,
       source:         'CLIENT_APP',
-      credito:        pago?.tipo === 'CREDITO' ? pago.credito : null,
+      credito,
       // "Sem preferência" (A59): o remarcar do app começa por aí.
       semPreferencia: !params.professionalId,
     })
+    let criado = await agendar(creditoDoPago)
+    if ('error' in criado && creditoDoPago && criado.error === CREDITO_JA_USADO) criado = await agendar(null)
     if ('error' in criado) return { error: criado.error === CLIENTE_ARQUIVADA ? CLIENTE_ARQUIVADA_NO_APP : criado.error }
     const appt = criado
-
-    // A sessão livre de um plano vendido: liga só se ainda estiver livre
-    // (compare-and-swap). Perdeu a corrida: este segue avulso.
-    if (pago?.tipo === 'PLANO') {
-      const ligou = ((await gravar(admin.from('treatment_plan_sessions').update({ appointment_id: appt.id })
-        .eq('id', pago.sessionId).is('appointment_id', null).select('id'), 'ligar a sessão do plano')) as unknown[] | null)?.length
-      if (ligou) {
-        await gravar(admin.from('appointments').update({ treatment_plan_id: pago.planId, price: pago.preco })
-          .eq('id', appt.id), 'ligar o agendamento ao plano')
-      }
-    }
 
     revalidatePath(`/${params.slug}/cliente/agendamentos`)
     // Marcado pelo proprio cliente no portal: nao ha ator da equipe a excluir.

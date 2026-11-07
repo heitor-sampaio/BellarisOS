@@ -213,6 +213,9 @@ export async function conferirPecasDoAgendamento(
  * e do "Reagendar" — são cinco caminhos, e expirar em cada um é esquecer o
  * sexto.
  */
+/** A recusa de quem perdeu a disputa pelo crédito (o app tenta de novo sem ele). */
+export const CREDITO_JA_USADO = 'Este crédito acabou de ser usado em outro agendamento.'
+
 export async function createAppointmentCore(
   admin: Admin,
   ctx: TenantContext,
@@ -309,7 +312,7 @@ export async function createAppointmentCore(
   // agendamento o pegou no meio): o agendamento sai, antes de virar fato.
   if (input.credito && !(await ligarCredito(admin, input.credito, data.id as string))) {
     await tentar(admin.from('appointments').delete().eq('id', data.id as string), 'desfazer o agendamento sem crédito')
-    return { error: 'Este crédito acabou de ser usado em outro agendamento.' }
+    return { error: CREDITO_JA_USADO }
   }
 
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
