@@ -272,7 +272,9 @@ export default async function AdminDashboardPage({
 
     // Margem por procedimento — contada no banco, com o custo da unidade de
     // consumo do insumo (era o da embalagem, feito aqui na página).
-    recorteProprio ? Promise.resolve([]) : getMargemPorProcedimento({ tenantId: ctx.tenantId!, limit: 5 }),
+    // Sobra da F40 (9ª): recortada a UMA unidade (o ?unidade=, a unidade fixa ou a
+    // clínica de uma só), o preço e a mão de obra dela.
+    recorteProprio ? Promise.resolve([]) : getMargemPorProcedimento({ tenantId: ctx.tenantId!, limit: 5, unidadeId: branchIds.length === 1 ? branchIds[0] : null }),
 
     // Giro do período: consumo em procedimentos, ao custo do MOVIMENTO (não
     // ao custo atual do produto, que mudaria o giro a cada compra). Fim do

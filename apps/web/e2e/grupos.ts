@@ -260,6 +260,7 @@ export const ISOLADOS = [
   'financeiro-vencidas-da-9.spec.ts',
   'financeiro-atritos-da-9.spec.ts',
   'financeiro-ficha-e-app-da-9.spec.ts',
+  'indicadores-margem-da-unidade.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',
   'fechamento-do-dia-fundo-de-troco.spec.ts',
   'financeiro-recibo.spec.ts',

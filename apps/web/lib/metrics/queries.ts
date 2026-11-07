@@ -351,11 +351,19 @@ export async function getRankingDeComissao(args: Args & { limit?: number }): Pro
  * banco (`metrics_margem_procedimentos`); até 2026-10-21 a página fazia, com o
  * preço da embalagem inteira — a Toxina saía com −3858%.
  */
-export async function getMargemPorProcedimento(args: { tenantId: string; limit?: number }): Promise<{ name: string; price: number; cost: number; marginPct: number }[]> {
-  const { data, error } = await createAdminClient().rpc('metrics_margem_procedimentos', {
-    p_tenant: args.tenantId, p_limit: args.limit ?? 5,
-  })
-  logRpcError('metrics_margem_procedimentos', error)
+export async function getMargemPorProcedimento(args: {
+  tenantId: string; limit?: number
+  /**
+   * Sobra da F40 (9ª): recortada a UMA unidade, o preço e a mão de obra dela
+   * (`metrics_margem_procedimentos_na_unidade`); sem ela, o catálogo da rede.
+   */
+  unidadeId?: string | null
+}): Promise<{ name: string; price: number; cost: number; marginPct: number }[]> {
+  const fn = args.unidadeId ? 'metrics_margem_procedimentos_na_unidade' : 'metrics_margem_procedimentos'
+  const { data, error } = await createAdminClient().rpc(fn, args.unidadeId
+    ? { p_tenant: args.tenantId, p_unidade: args.unidadeId, p_limit: args.limit ?? 5 }
+    : { p_tenant: args.tenantId, p_limit: args.limit ?? 5 })
+  logRpcError(fn, error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
     name:      String(r.procedure_name),
     price:     n(r.price),

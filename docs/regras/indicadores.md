@@ -294,6 +294,16 @@
     `20261101000707`): sem custo nenhum a margem é 100% por construção, e a
     5ª simulação via "100%" em todos; a tabela tem colunas fixas e cabe no
     cartão estreito (a coluna "Margem" saía cortada).
+    **Recortada a UMA unidade, o preço e a mão de obra dela** (sobra da F40,
+    9ª simulação, 2026-11-07): com o preço por unidade (D2,
+    `private.preco_na_unidade`), o ranking do dashboard da rede com
+    `?unidade=` (ou a unidade fixa, ou a clínica de uma só) usa o preço DELA e a
+    mão de obra dela (`procedure_branch_pricing.labor_cost`), com o insumo e os
+    outros custos do catálogo — `metrics_margem_procedimentos_na_unidade`
+    (migration `20261107004408`), por `getMargemPorProcedimento({ unidadeId })`.
+    A rede inteira segue o catálogo. Prova: `e2e/indicadores-margem-da-unidade.spec.ts`.
+    (A margem por faixa etária dos Relatórios segue o preço do atendimento e o
+    custo do catálogo.)
     **O custo do procedimento é UMA conta** (`metrics_custo_dos_procedimentos`,
     2026-10-27): a margem do dashboard e a margem por faixa etária dos
     relatórios (`metrics_relatorio`, aba Procedimentos — só procedimentos com
