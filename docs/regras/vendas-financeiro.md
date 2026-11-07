@@ -1111,7 +1111,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       pagamento", o campo das vezes tem o rótulo "Vezes no cartão", e os
       rótulos `.field-label` (a classe que os formulários usavam e não
       existia) têm um tamanho só. Prova: `e2e/financeiro-recibo.spec.ts`
-      ("A39").
+      ("A39"). **E a opção diz "6x", como em toda tela de cobrança**
+      (acessibilidade, 9ª simulação: só aqui era "6x no cartão", e quem
+      escolhe pelo nome da opção — o leitor de tela, o robô — não achava o
+      "6x" e a venda ficou em 1x). Prova: `e2e/financeiro-atritos-da-9.spec.ts`
+      ("acessibilidade").
     - **O pagamento no cartão diz a bandeira, opcional** ("Bandeira (opcional)",
       `CampoDaBandeira`): o recebimento do atendimento e do plano no check-in,
       o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —

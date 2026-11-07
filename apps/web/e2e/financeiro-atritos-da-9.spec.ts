@@ -103,6 +103,29 @@ test('A30: o "A receber da operadora" e o fluxo de caixa dizem o LÍQUIDO, com o
   }
 })
 
+test('acessibilidade: no recebimento do atendimento, o seletor de vezes se acha pelo rótulo e grava 6x', async ({ browser }) => {
+  const b = db()
+  // A clínica parcela até 12x (sem depender das taxas cadastradas acima).
+  expect((await b.from('tenants').update({ cartao_max_vezes: 12 }).eq('id', rede!.tenantId)).error).toBeNull()
+  const cliente = await rede!.criarCliente('Carolina')
+  const agora = new Date().toISOString()
+  const { data: ap, error } = await b.from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 1200, scheduled_at: agora, completed_at: agora,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  await como(browser, dona!, async p => {
+    await p.goto(`/${slug}/agenda/${ap!.id}?receber=1`)
+    const dlg = p.getByRole('dialog', { name: 'Confirmar pagamento' })
+    await dlg.getByRole('combobox', { name: 'Forma de pagamento' }).selectOption('CREDIT_CARD')
+    // A opção diz "6x", como em toda tela de cobrança (era "6x no cartão" só aqui).
+    await dlg.getByRole('combobox', { name: 'Vezes no cartão' }).selectOption({ label: '6x' })
+    await dlg.getByRole('button', { name: 'Confirmar pagamento' }).click()
+    await expect(dlg).toBeHidden({ timeout: 15_000 })
+  })
+  await expect.poll(async () => (await b.from('financial_transactions').select('cartao_vezes').eq('appointment_id', ap!.id).maybeSingle()).data?.cartao_vezes).toBe(6)
+})
+
 test('A32: o "Estornar" da linha tem texto, nos dois financeiros', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro#lancamentos`)

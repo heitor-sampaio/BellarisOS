@@ -756,7 +756,8 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                     {/* A39: o campo das vezes tem rótulo, como os outros. */}
                     <label className="field-label" htmlFor="pagamento-vezes" style={{ marginTop: 6 }}>Vezes no cartão</label>
                     <select id="pagamento-vezes" name="cartao_vezes" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
-                      {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x no cartão`}</option>)}
+                      {/* Acessibilidade (9ª): a opção diz "6x", como em toda tela de cobrança (era "6x no cartão" só aqui). */}
+                      {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                     </select>
                     <DicaDasVezes total={resgate.restante} vezes={vezes} opcoes={opcoesDeVezes} />
                     <AvisoDaTaxa vezes={vezes} bandeira={bandeira} total={resgate.restante} />
