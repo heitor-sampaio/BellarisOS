@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { cabeHoje } from './apoio/datas'
 
 /**
  * A32 da 5ª simulação: dava para iniciar o atendimento 1h30 a 2h antes do
@@ -36,6 +37,9 @@ async function agendamento(status: string, minutosAdiante = 45): Promise<string>
   expect(error).toBeNull()
   return data!.id
 }
+// Perto da meia-noite "daqui a 45 min" é amanhã, e a tela fala da chegada do dia
+// em vez de perguntar do horário (sobra da F42): o teste pula.
+const MEIA_NOITE = 'perto da meia-noite: o agendamento cairia amanhã'
 const status = async (id: string) => (await db().from('appointments').select('status').eq('id', id).single()).data?.status
 
 test.beforeAll(async () => {
@@ -56,6 +60,7 @@ test.afterAll(async () => {
 })
 
 test('pela tela: "Iniciar atendimento" 45 min antes pergunta, e só a resposta inicia', async ({ browser }) => {
+  test.skip(!cabeHoje(46), MEIA_NOITE)
   const id = await agendamento('ARRIVED')
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
@@ -69,13 +74,17 @@ test('pela tela: "Iniciar atendimento" 45 min antes pergunta, e só a resposta i
 })
 
 test('pelo servidor: os três caminhos recusam sem a confirmação e iniciam com ela', async ({ browser }) => {
+  test.skip(!cabeHoje(46), MEIA_NOITE)
   const peloStatus = await agendamento('CONFIRMED')
   const peloInicio = await agendamento('CONFIRMED')
   const chegandoAgora = await agendamento('SCHEDULED')
   await como(browser, async p => {
     const rota = `/${slug}/agenda/${peloStatus}`
+    // updateAppointmentStatus é da janela da AGENDA, não da tela do atendimento:
+    // no next dev a action só existe nas rotas cujas páginas a usam (sobra da F42).
+    const agenda = `/${slug}/agenda`
     await p.goto(rota)
-    const a = await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', rota, [peloStatus, 'IN_PROGRESS', slug])
+    const a = await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', agenda, [peloStatus, 'IN_PROGRESS', slug])
     expect(a.texto).toContain('Iniciar mesmo assim?')
     const b = await chamarAcao(p, 'actions/appointments.ts', 'startAppointment', rota, [peloInicio, slug])
     expect(b.texto).toContain('Iniciar mesmo assim?')
@@ -84,7 +93,7 @@ test('pelo servidor: os três caminhos recusam sem a confirmação e iniciam com
     expect([await status(peloStatus), await status(peloInicio), await status(chegandoAgora)], 'nada mudou — nem a chegada')
       .toEqual(['CONFIRMED', 'CONFIRMED', 'SCHEDULED'])
 
-    await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', rota, [peloStatus, 'IN_PROGRESS', slug, null, { inicioAdiantadoConfirmado: true }])
+    await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', agenda, [peloStatus, 'IN_PROGRESS', slug, null, { inicioAdiantadoConfirmado: true }])
     await chamarAcao(p, 'actions/appointments.ts', 'startAppointment', rota, [peloInicio, slug, { inicioAdiantadoConfirmado: true }])
     await chamarAcao(p, 'actions/appointments.ts', 'chegarEIniciar', rota, [chegandoAgora, slug, { inicioAdiantadoConfirmado: true }])
   })
@@ -92,6 +101,7 @@ test('pelo servidor: os três caminhos recusam sem a confirmação e iniciam com
 })
 
 test('"Marcar chegada e iniciar" também pergunta — e sem a resposta nem a chegada se marca', async ({ browser }) => {
+  test.skip(!cabeHoje(46), MEIA_NOITE)
   const id = await agendamento('CONFIRMED')
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
@@ -105,6 +115,7 @@ test('"Marcar chegada e iniciar" também pergunta — e sem a resposta nem a che
 })
 
 test('r2-age-06: 10 min antes também pergunta, no "Iniciar atendimento" e no "Marcar chegada e iniciar"', async ({ browser }) => {
+  test.skip(!cabeHoje(11), MEIA_NOITE)
   const chegou = await agendamento('ARRIVED', 10)
   const confirmado = await agendamento('CONFIRMED', 10)
   await como(browser, async p => {

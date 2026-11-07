@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { dayKeyTZ } from '@/lib/datetime'
-import { haMinutosHoje } from '../e2e/apoio/datas'
+import { haMinutosHoje, cabeHoje } from '../e2e/apoio/datas'
 
 /**
  * "Agora, N minutos atrás" — mas HOJE, em Brasília (F26, 2026-11-05).
@@ -28,5 +28,24 @@ describe('haMinutosHoje', () => {
   it('uma hora atrás às 00:12 também fica hoje', () => {
     const agora = AS('2026-11-05T03:12:00Z')
     expect(dayKeyTZ(haMinutosHoje(60, agora))).toBe('2026-11-05')
+  })
+})
+
+/**
+ * "Daqui a N minutos" ainda é HOJE em Brasília? (sobra da F42, 2026-11-07).
+ * `agenda-inicio-adiantado` agenda "daqui a 45 min" e confere a pergunta do
+ * início adiantado — das 23:15 às 23:59 o agendamento caía em AMANHÃ, e a tela
+ * dizia "A chegada só se marca no dia do agendamento" em vez de perguntar.
+ */
+describe('cabeHoje', () => {
+  it('no meio do dia, 45 min adiante cabe', () => {
+    expect(cabeHoje(45, AS('2026-11-05T15:00:00Z'))).toBe(true) // 12:00
+  })
+  it('às 23:20 de Brasília, 45 min adiante é amanhã', () => {
+    expect(cabeHoje(45, AS('2026-11-06T02:20:00Z'))).toBe(false) // 23:20
+  })
+  it('às 23:20, 10 min adiante ainda cabe; às 23:55, não', () => {
+    expect(cabeHoje(10, AS('2026-11-06T02:20:00Z'))).toBe(true)
+    expect(cabeHoje(10, AS('2026-11-06T02:55:00Z'))).toBe(false)
   })
 })

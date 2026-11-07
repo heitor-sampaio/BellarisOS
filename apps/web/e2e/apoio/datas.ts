@@ -30,3 +30,15 @@ export function haMinutosHoje(minutos: number, agora = new Date()): string {
   const antes = agora.getTime() - minutos * 60_000
   return new Date(Math.max(antes, startOfDayTZ(agora).getTime())).toISOString()
 }
+
+/**
+ * "Daqui a N minutos" ainda é HOJE em Brasília? (sobra da F42, 2026-11-07).
+ *
+ * Teste que agenda "daqui a 45 min" e confere algo do DIA (a pergunta do
+ * início adiantado, a chegada) falha perto da meia-noite: o agendamento cai em
+ * amanhã. `agenda-inicio-adiantado` falhava das 23:15 às 23:59 ("A chegada só
+ * se marca no dia do agendamento"). Quem depende disso pula com `cabeHoje`.
+ */
+export function cabeHoje(minutos: number, agora = new Date()): boolean {
+  return dayKeyTZ(new Date(agora.getTime() + minutos * 60_000)) === dayKeyTZ(agora)
+}
