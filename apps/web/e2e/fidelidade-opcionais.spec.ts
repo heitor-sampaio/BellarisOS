@@ -269,7 +269,7 @@ test.describe.serial('fidelidade: opcionais da rede', () => {
         points_cost: 500, discount_value: 50, validity_days: 30, is_active: true,
       }).select('id').single<{ id: string }>()
       await p.goto(rota)
-      await expect(p.getByText('A troca é feita na recepção.')).toBeVisible()
+      await expect(p.getByText('A troca é feita na recepção')).toBeVisible()
       await expect(p.locator('li', { hasText: `${PREFIXO} Peeling ${marca}` })).toContainText('Faltam 350 pontos')
       await db().from('loyalty_rewards').delete().eq('id', cara!.id)
       await expect(p.getByRole('button', { name: /^Trocar pontos por/ })).toHaveCount(0)

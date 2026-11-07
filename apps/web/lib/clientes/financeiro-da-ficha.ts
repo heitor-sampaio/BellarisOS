@@ -64,7 +64,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
       'calcular os totais da cliente'),
     getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: clientId, profissionalId: meu }),
     soOsProprios ? Promise.resolve([]) : ler(admin.from('internal_credits')
-      .select('id, amount, description, created_at').eq('client_id', clientId)
+      .select('id, amount, description, created_at, concedido, transaction_id').eq('client_id', clientId)
       .order('created_at', { ascending: false }), 'carregar o crédito interno'),
   ])
 
@@ -99,8 +99,9 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
 
   return {
     veFinanceiro, soOsProprios, transactions, aReceber,
-    internalCredits: ((creditos ?? []) as { id: string; amount: number | string; description: string; created_at: string }[])
-      .map(c => ({ id: c.id, amount: Number(c.amount), description: c.description, createdAt: c.created_at })),
+    internalCredits: ((creditos ?? []) as { id: string; amount: number | string; description: string; created_at: string; concedido: boolean | null; transaction_id: string | null }[])
+      // A41 da 9ª: de onde veio cada crédito (o concedido nunca teve dinheiro).
+      .map(c => ({ id: c.id, amount: Number(c.amount), description: c.description, createdAt: c.created_at, concedido: !!c.concedido, transactionId: c.transaction_id })),
     totais: {
       pago:     Number(t?.pago ?? 0),
       aReceber: Number(t?.a_receber ?? 0),

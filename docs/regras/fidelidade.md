@@ -51,7 +51,14 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   saiu do banco (fase 4). Extrato e conta só se LEEM pela sessão: quem
   escreve é o gatilho e o servidor, com a trava `fidelidade:<cliente>`.
 - Módulo `loyalty`: VIEW = saldo e extrato; MANAGE = ajustar. Configurar é
-  Configurações.
+  Configurações. **Quem só vê lê a quem pedir** (A38 da 9ª simulação,
+  2026-11-07; a regra de cargo fica, como a A33 da 8ª): na ficha, "Trocar
+  pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em
+  Gerenciar: Lúcia, Fernanda." (`[data-quem-troca]`, `quemTrocaPontos`,
+  `lib/equipe/quem-desfaz.ts`: ativos, ao alcance da unidade, e a Admin da
+  rede); no app sem a troca pelo portal, "A troca é feita na recepção, com
+  quem cuida da fidelidade: Lúcia." (pela unidade do endereço). Prova:
+  `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A38").
 - **Pontos como desconto no pagamento** (fase 2): na recepção, o cliente abate
   pontos do atendimento. Regras da rede: valor do ponto, mínimo e teto (% do
   valor). `financial_transactions.amount` continua sendo o DINHEIRO RECEBIDO; o

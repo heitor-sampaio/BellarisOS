@@ -25,6 +25,10 @@ export function ContaDoResultado({ receita, resultado, despesasDoCaixa }: {
         {' '}− taxas da maquininha {formatBRL(resultado.taxasDaMaquininha)}
         {' '}− comissões lançadas {formatBRL(resultado.comissoes)} = {formatBRL(resultado.lucro)}
       </span>
+      {/* A31 da 9ª: qual "resultado" é este — o do período, não o caixa. */}
+      <span data-base-do-resultado style={{ display: 'block', marginTop: 2 }}>
+        É o resultado do período (competência): o insumo conta quando é usado e a comissão quando é lançada. O total da lista de lançamentos é o caixa.
+      </span>
       {ficaNoCaixa && (
         <span style={{ display: 'block', marginTop: 2 }}>
           Das despesas pagas ({formatBRL(despesasDoCaixa)}), a compra de estoque e o pagamento das comissões ficam no caixa, fora do resultado.

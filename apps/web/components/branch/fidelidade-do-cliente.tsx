@@ -120,6 +120,14 @@ export function FidelidadeDoCliente({
         />
       )}
 
+      {/* A38 da 9ª: quem só vê lê a quem pedir a troca e o ajuste (a regra de cargo fica). */}
+      {fidelidade.quemTroca && (
+        <p data-quem-troca style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px' }}>
+          Trocar pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em Gerenciar
+          {fidelidade.quemTroca.length > 0 ? `: ${fidelidade.quemTroca.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+        </p>
+      )}
+
       <VouchersDoCliente
         clientId={clientId}
         saldo={saldo}

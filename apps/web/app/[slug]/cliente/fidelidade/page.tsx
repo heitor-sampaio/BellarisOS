@@ -8,6 +8,7 @@ import {
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
 import { formatarPontos, rotuloDoLancamento, faltamPontos } from '@/lib/fidelidade/formato'
 import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
+import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
 
 /**
  * Portal do cliente → Meus pontos: saldo e extrato.
@@ -48,6 +49,12 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
     saldoParaTrocar = porUnidade.find(u => u.branch_id === unidade?.id)?.saldo ?? 0
   }
   const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  // A38 da 9ª: sem a troca pelo app, a quem ela pede (quem tem a Fidelidade em Gerenciar na unidade do endereço).
+  const quemTroca = cfg.client_redeem ? [] : await (async () => {
+    const u = await ler(admin.from('branches').select('id').eq('slug', slug).eq('tenant_id', cliente!.tenant_id!).maybeSingle(),
+      'buscar a unidade do endereço') as { id: string } | null
+    return quemTrocaPontos(cliente!.tenant_id!, u?.id ?? null)
+  })()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -123,7 +130,9 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
             ))}
           </ul>
           {!cfg.client_redeem && (
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>A troca é feita na recepção.</p>
+            <p data-quem-troca style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>
+              A troca é feita na recepção{quemTroca.length > 0 ? `, com quem cuida da fidelidade: ${quemTroca.join(', ')}` : ''}.
+            </p>
           )}
         </section>
       )}

@@ -126,6 +126,8 @@ export default async function ClientProfilePage({
     totalSessions: doCliente.atendimentos,
     totalInvested: doCliente.ltv,
     mediaPorAtendimento: doCliente.mediaPorAtendimento,
+    receitaServico: doCliente.receitaServico,
+    atendimentosCobrados: doCliente.atendimentosCobrados,
     age,
   }
 

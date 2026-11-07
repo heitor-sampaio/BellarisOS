@@ -34,6 +34,9 @@ export interface DoCliente {
   atendimentos: number
   /** A "Média por atend." da ficha: serviço ÷ concluídos COBRADOS (não é o ticket médio do sistema, pago ÷ clientes — numa cliente só ele seria o LTV). Nulo sem atendimento cobrado. */
   mediaPorAtendimento: number | null
+  /** A conta do preço médio, para a tela dizê-la (A39 da 9ª): a soma do preço dos cobrados e quantos. */
+  receitaServico: number
+  atendimentosCobrados: number
 }
 
 export async function getDoCliente(tenantId: string, clientId: string): Promise<DoCliente> {
@@ -45,6 +48,8 @@ export async function getDoCliente(tenantId: string, clientId: string): Promise<
     ltv: Number(d?.pago ?? 0),
     atendimentos: Number(d?.atendimentos ?? 0),
     mediaPorAtendimento: mediaPorAtendimentoCobrado({ serviceRevenue: Number(d?.receita_servico ?? 0), appointmentsCharged: Number(d?.atendimentos_cobrados ?? 0) }),
+    receitaServico: Number(d?.receita_servico ?? 0),
+    atendimentosCobrados: Number(d?.atendimentos_cobrados ?? 0),
   }
 }
 

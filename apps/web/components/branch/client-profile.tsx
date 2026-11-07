@@ -50,6 +50,7 @@ import { ResponsavelLegal, RESPONSAVEL_VAZIO } from '@/components/shared/respons
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal as ResponsavelDaFicha } from '@/lib/clients/menor'
 import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
 import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
+import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 
 // -- Types --------------------------------------------------------------------
 
@@ -87,6 +88,9 @@ export interface ProfileStats {
   /** Nulo sem atendimento cobrado: "—", não R$ 0,00 (2026-10-27). */
   /** A média por atendimento da ficha (serviço ÷ cobrados) — não é o ticket médio do sistema. */
   mediaPorAtendimento: number | null
+  /** A39 da 9ª: a conta do preço médio, dita na tela (a soma e quantos cobrados). */
+  receitaServico?:       number
+  atendimentosCobrados?: number
   age:            number | null
 }
 
@@ -160,6 +164,10 @@ export interface ProfileInternalCredit {
   amount:      number
   description: string
   createdAt:   string
+  /** A41 da 9ª: concedido pela clínica (sem dinheiro). */
+  concedido?:  boolean
+  /** O lançamento cujo estorno o devolveu (um uso que voltou). */
+  transactionId?: string | null
 }
 
 export interface ClientHistoryEvent {
@@ -1225,7 +1233,7 @@ function FinanceiroTab({
       )}
       {pagoComCredito > 0 && (
         <p data-pago-com-credito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {fmtBRL(pagoComCredito)} foram pagos com crédito na clínica e não entram no “Total pago”: o dinheiro entrou quando o crédito nasceu (ou veio de fora).
+          {fmtBRL(pagoComCredito)} foram pagos com crédito na clínica e não entram no “Total pago”: {textoDaOrigemDoCredito(internalCredits)}.
         </p>
       )}
       {/* A33 da 8ª: a recepção (Recebimentos em Gerenciar) não vê Estornar, Devolver nem Cancelar pacote — a regra de cargo fica, e a tela diz a quem pedir. */}
@@ -1750,12 +1758,17 @@ export function ClientProfile({
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
           { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested),
             // A43 da 8ª: "R$ 0" ao lado do preço médio de R$ 450, sem dizer que ela pagou com crédito.
-            nota: pagoComCredito > 0 ? `+ ${fmtBRL(pagoComCredito)} pagos com crédito na clínica: não contam aqui (o dinheiro entrou quando o crédito nasceu, ou veio de fora).` : undefined },
+            // A41 da 9ª: de onde veio o crédito — o concedido nunca teve dinheiro.
+            nota: pagoComCredito > 0 ? `+ ${fmtBRL(pagoComCredito)} pagos com crédito na clínica: não contam aqui (${textoDaOrigemDoCredito(internalCredits)}).` : undefined },
           // A56: ao lado do que ela PAGOU (de tudo), o preço médio dos
           // atendimentos cobrados — outra conta, outro nome, e a dica diz qual.
-          { label: 'PREÇO MÉDIO POR ATEND.', value: stats.mediaPorAtendimento == null ? '—' : fmtBRL(stats.mediaPorAtendimento), dica: DEFINICOES.precoMedioPorAtendimento },
+          { label: 'PREÇO MÉDIO POR ATEND.', value: stats.mediaPorAtendimento == null ? '—' : fmtBRL(stats.mediaPorAtendimento), dica: DEFINICOES.precoMedioPorAtendimento,
+            // A39 da 9ª: a conta na tela (só no tooltip, não parecia com o investido ao lado).
+            explica: stats.mediaPorAtendimento != null && stats.atendimentosCobrados
+              ? `${fmtBRL(stats.receitaServico ?? 0)} ÷ ${stats.atendimentosCobrados} ${stats.atendimentosCobrados === 1 ? 'atendimento cobrado' : 'atendimentos cobrados'} (o preço de cada um, pago ou não) — não é o investido ÷ as sessões.`
+              : undefined },
           ...(fidelidade ? [{ label: 'PONTOS', value: fidelidade.saldo.toLocaleString('pt-BR') }] : []),
-        ].map((k: { label: string; value: string; dica?: { rotulo: string; texto: string }; nota?: string }) => (
+        ].map((k: { label: string; value: string; dica?: { rotulo: string; texto: string }; nota?: string; explica?: string }) => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
               {k.label}{k.dica && <Dica rotulo={k.dica.rotulo}>{k.dica.texto}</Dica>}
@@ -1764,6 +1777,7 @@ export function ClientProfile({
               {k.value}
             </p>
             {k.nota && <p data-pago-com-credito style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{k.nota}</p>}
+            {k.explica && <p data-preco-medio-explica style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{k.explica}</p>}
           </div>
         ))}
       </div>

@@ -129,7 +129,10 @@
     `mediaPorAtendimentoCobrado`, a conta antiga do ticket: numa cliente só, o
     ticket novo seria o próprio LTV; desde 2026-11-02, A56, o cartão se chama
     "Preço médio por atend." e tem a dica `DEFINICOES.precoMedioPorAtendimento`
-    — ao lado do "Investido total", que é tudo o que ela pagou) e "Média por execução" (por
+    — ao lado do "Investido total", que é tudo o que ela pagou; desde a A39 da
+    9ª, 2026-11-07, a conta aparece na tela, "R$ 2.400,00 ÷ 2 atendimentos
+    cobrados (o preço de cada um, pago ou não)…", `[data-preco-medio-explica]`,
+    com a soma e os cobrados de `getDoCliente`) e "Média por execução" (por
     procedimento, nos Relatórios; na aba Procedimentos, a receita paga dos
     atendimentos ÷ as execuções, num cartão ao lado do "Ticket médio por
     cliente" — A55, 2026-11-02: o ticket fica, com o nome que diz a conta). Até 2026-10-28 o dashboard dizia "receita ÷ atendimentos" e a

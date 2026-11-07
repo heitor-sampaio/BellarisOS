@@ -541,7 +541,11 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   devolve só o que restou — `produto_estornar_venda` desconta o já devolvido).
   Devolver tudo o que resta é o estorno da venda ("É a venda inteira…"); a
   venda de antes de 01/11 (sem itens) só se estorna inteira. Prova:
-  `e2e/vendas-produto-devolver-parte.spec.ts`.
+  `e2e/vendas-produto-devolver-parte.spec.ts`. **A janela só fala em pontos
+  se a venda pontuou** (A40 da 9ª simulação; princípio 3): "e os pontos dele
+  saem do saldo" aparecia na venda que "não pontua" — agora só quando algum
+  pagamento da venda tem o GANHO no extrato (`previaDaDevolucao`, `vendaPontuou`).
+  Prova: `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A40").
 - A sessão só LÊ `product_sales` (a equipe que alcança a unidade, a cliente a
   dela); as restritivas do suporte valem.
 - Prova: `e2e/vendas-produto.spec.ts`.
@@ -811,6 +815,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   lida inteira (`lerTodas`); a tela fazia o reduce e tirava o sinal com
   `Math.abs` (só a cor dizia que era negativo). Prova:
   `e2e/financeiro-lista-total-com-sinal.spec.ts`, `tests/metrics-resultado-da-lista.test.ts`.
+  **E diz que é o caixa da lista, não o resultado do período** (A31 da 9ª
+  simulação, 2026-11-07; princípio 3): eram dois "resultados" na tela (o
+  "Lucro líquido" de −R$ 4.325,82 e a lista de −R$ 1.929). A lista diz "14
+  lançamentos · caixa da lista −R$ 1.929,00", e embaixo da conta do Lucro
+  (e do Resultado da rede) "É o resultado do período (competência): o insumo
+  conta quando é usado e a comissão quando é lançada. O total da lista de
+  lançamentos é o caixa." (`[data-base-do-resultado]`, `ContaDoResultado`).
+  Em Relatórios → Financeiro, o cartão é "Despesas pagas (caixa)", com o
+  detalhe de que entram a compra de estoque e o pagamento das comissões (o DRE
+  usa só a operacional). Prova: `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A31").
 - **O "Em aberto, todos os vencimentos" leva à baixa** (A38 da 8ª simulação,
   2026-11-06): a parcela do crediário que vence no mês que vem não aparecia em
   Lançamentos (a lista é do período, pela data de referência), e não se via
@@ -1551,7 +1565,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   aba Financeiro (`[data-pago-com-credito]`,
   `metrics_pago_com_credito_do_cliente`, migration `20261106003803`) — o
   crédito não é receita (F7), e a ficha dizia "R$ 0" ao lado do "Preço médio
-  R$ 450" sem explicar.
+  R$ 450" sem explicar. **E diz de onde veio o crédito** (A41 da 9ª; princípio
+  3): "o dinheiro entrou quando o crédito nasceu" era falso no CONCEDIDO.
+  Agora "o crédito foi concedido pela clínica, sem dinheiro — não é receita",
+  "o dinheiro entrou quando o crédito foi comprado (ou ficou de um
+  cancelamento)" ou as duas coisas (`textoDaOrigemDoCredito`,
+  `lib/creditos/origem.ts`), pela origem de cada crédito:
+  `internal_credits.concedido` (o "Conceder crédito" grava; os de antes,
+  marcados pela migration `20261107004407`), o comprado (`credito_vendido_id`)
+  e o que ficou de um pagamento. Prova: `e2e/financeiro-ficha-e-app-da-9.spec.ts`
+  ("A41"), `tests/credito-origem.test.ts`.
 - **A quem pedir o que o caixa não desfaz** (A33 da 8ª; a regra de cargo fica:
   estornar, devolver e cancelar pacote são do Financeiro em Gerenciar): para
   quem recebe e não desfaz, a aba Financeiro da ficha diz "Estornar um
@@ -1600,7 +1623,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   zero — `getCreditoInternoDoCliente` (`lib/metrics/unidade.ts`, a conta de
   `metrics_financeiro_do_cliente`, a mesma da ficha). Só o saldo: os
   lançamentos do crédito (com a descrição interna) ficam com a equipe.
-  Prova: `e2e/portal-cliente-credito-interno.spec.ts`.
+  Prova: `e2e/portal-cliente-credito-interno.spec.ts`. **E o Início também**
+  (A46 da 9ª simulação: a Rosana, sem plano, só chegou ao Financeiro pela URL —
+  o único link ficava no detalhe de um plano): o cartão "Crédito na clínica ·
+  R$ 181,00 · Use em qualquer atendimento ou produto · Ver no Financeiro"
+  (`[data-credito-na-clinica-no-inicio]`), com o mesmo saldo. Prova:
+  `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A46").
 - **Os pagamentos do app dizem o vencimento e o que falta pagar** (A64 da 5ª
   simulação; Histórico → Pagamentos): a parcela pendente diz "Parcela 2 de 3 ·
   vence em 01/12/2026" (`due_date`, senão `data_de_referencia`, por

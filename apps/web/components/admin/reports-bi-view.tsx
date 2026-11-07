@@ -488,7 +488,9 @@ function TabFinanceiro(p: ReportsBiProps) {
           detalhe="Desconta do lucro" dica={DEFINICOES.insumosEProdutos} />
         {/* A despesa, o lucro e a margem não se atribuem a ela ("só os meus"). */}
         {!p.soOsMeus && <>
-          <KpiCard label="Despesas pagas"  value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
+          {/* A31 da 9ª: a base é o caixa (o que se pagou), outra conta que a despesa operacional do DRE. */}
+          <KpiCard label="Despesas pagas (caixa)"  value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta
+            detalhe="O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o DRE abaixo usa só a despesa operacional" />
           <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
           <KpiCard label="Margem"          value={margin}    format="pct" accent={margin == null ? undefined : margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={marginDeltaPp} showDelta deltaUnit="p.p." />
         </>}

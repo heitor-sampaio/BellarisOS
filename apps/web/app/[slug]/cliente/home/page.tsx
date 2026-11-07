@@ -14,6 +14,7 @@ import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
+import { getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 
@@ -140,6 +141,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // desligado = nenhum sinal de pontos, nem com saldo.
   const redeDoCliente = (clientRes as { tenant_id: string | null } | null)?.tenant_id ?? null
   const fidelidadeLigada = redeDoCliente ? (await configDaRede(redeDoCliente, admin)).enabled : false
+  // A46 da 9ª: o crédito na clínica aparece no Início (só estava no Financeiro, e o
+  // caminho até lá ficava dentro do detalhe de um plano). A conta é a do Financeiro do app.
+  const creditoNaClinica = redeDoCliente ? await getCreditoInternoDoCliente(redeDoCliente, ctx.clientId!) : 0
   // O plano FECHADO abre (A45): as sessões e o dinheiro dele, de lib/metrics.
   const financeiroDosPlanos = new Map(redeDoCliente ? await Promise.all(activePlans
     .filter(p => p.status === 'ACCEPTED')
@@ -262,6 +266,22 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', fontWeight: 700 }}>
             Ver extrato <ChevronRight size={16} />
           </div>
+        </Link>
+      )}
+
+      {/* -- Crédito na clínica (A46 da 9ª) ----------------------------- */}
+      {creditoNaClinica > 0 && (
+        <Link href={`/${slug}/cliente/financeiro`} prefetch={false} data-credito-na-clinica-no-inicio className="card" style={{
+          padding: '14px 18px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div>
+            <p className="overline">Crédito na clínica</p>
+            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{formatBRL(creditoNaClinica)}</p>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Use em qualquer atendimento ou produto na clínica.</p>
+          </div>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', flexShrink: 0 }}>
+            Ver no Financeiro <ChevronRight size={16} aria-hidden />
+          </span>
         </Link>
       )}
 

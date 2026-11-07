@@ -527,6 +527,8 @@ async function concederCredito(ctx: TenantContext, formData: FormData): Promise<
     branch_id:   branchId,
     amount,
     description,
+    // A41 da 9ª: concedido pela clínica, sem dinheiro (o comprado é o "Crédito na clínica" do Vender).
+    concedido:   true,
   })
   if (dbErr) return { error: `Erro ao conceder crédito: ${dbErr.message}` }
 

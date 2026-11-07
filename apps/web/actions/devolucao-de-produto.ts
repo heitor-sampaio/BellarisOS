@@ -35,6 +35,15 @@ async function vendaAoAlcance(
   return { id: v.id as string, clientId: v.client_id as string, descricao: (v.descricao as string | null) ?? nome }
 }
 
+/** A venda deu pontos (algum pagamento dela tem o GANHO no extrato)? */
+async function vendaPontuou(admin: ReturnType<typeof createAdminClient>, vendaId: string): Promise<boolean> {
+  const txs = await ler(admin.from('financial_transactions').select('id').eq('product_sale_id', vendaId), 'buscar os pagamentos da venda')
+  const ids = (txs ?? []).map(t => t.id as string)
+  if (!ids.length) return false
+  const ganhos = await ler(admin.from('loyalty_transactions').select('id').in('transaction_id', ids).eq('kind', 'GANHO').limit(1), 'conferir os pontos da venda')
+  return (ganhos ?? []).length > 0
+}
+
 /** A venda do lançamento e os itens dela, para a janela perguntar quantas voltam. */
 export async function vendaParaDevolver(transacaoId: string): Promise<{ error?: string; venda?: VendaParaDevolver }> {
   try {
@@ -79,7 +88,11 @@ export async function previaDaDevolucao(vendaId: string, itens: unknown): Promis
       p_motivo: null, p_itens: lidos.data, p_voltou: null, p_destino: null, p_esperado: null, p_simular: true,
       p_estorno: null, p_novo: null,
     }), 'calcular a devolução') as Record<string, unknown>
-    return { previa: lerPreviaDaDevolucao(j) }
+    const previa = lerPreviaDaDevolucao(j)
+    // A40 da 9ª: "os pontos dele saem do saldo" só quando a venda PONTUOU (a
+    // venda de produto só pontua com a opção da clínica ligada).
+    if (previa.fidelidade && !await vendaPontuou(admin, vendaId)) previa.fidelidade = false
+    return { previa }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

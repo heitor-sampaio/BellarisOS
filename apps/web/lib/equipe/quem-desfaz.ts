@@ -11,10 +11,24 @@ import { lerTodas } from '@/lib/db'
  * (o cargo de sistema) entra sempre.
  */
 export async function quemDesfazNoCaixa(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemEmGerenciar(tenantId, branchId, 'financial')
+}
+
+/**
+ * Quem TROCA pontos por recompensa e ajusta pontos (A38 da 9ª simulação; a regra
+ * de cargo fica: é a Fidelidade em Gerenciar) — a recepção com a Fidelidade em
+ * Ver não tinha o botão nem lia a quem pedir, e o app dizia só "A troca é feita
+ * na recepção". A mesma lista da A33 da 8ª, pelo módulo da fidelidade.
+ */
+export async function quemTrocaPontos(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemEmGerenciar(tenantId, branchId, 'loyalty')
+}
+
+async function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: 'financial' | 'loyalty'): Promise<string[]> {
   const admin = createAdminClient()
   const [perms, admins] = await Promise.all([
     lerTodas((de, ate) => admin.from('role_permissions').select('role_id')
-      .eq('tenant_id', tenantId).eq('module', 'financial').eq('level', 'MANAGE')
+      .eq('tenant_id', tenantId).eq('module', modulo).eq('level', 'MANAGE')
       .order('role_id').range(de, ate), 'carregar os cargos que desfazem no caixa'),
     lerTodas((de, ate) => admin.from('tenant_roles').select('id')
       .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)

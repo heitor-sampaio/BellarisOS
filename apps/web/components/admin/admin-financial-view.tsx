@@ -760,7 +760,7 @@ export function AdminFinancialView({
                             coisa do financeiro, não um segundo clique. */}
                         {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
                           // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
-                          <button type="button" data-estornar onClick={() => t.credito_vendido_id
+                          <button type="button" data-estornar title="Estornar" onClick={() => t.credito_vendido_id
                             ? setCreditoAEstornar({ id: t.id, descricao: t.description })
                             : setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id })} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,

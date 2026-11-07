@@ -1,4 +1,5 @@
 import 'server-only'
+import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { can } from '@/lib/auth'
@@ -82,6 +83,8 @@ export interface FidelidadeDoPerfil {
   vencendo:     number
   /** Abrangência por unidade: o saldo de cada uma. Nulo = saldo único da rede. */
   porUnidade:   { branch_id: string; nome: string; saldo: number }[] | null
+  /** A38 da 9ª: quem troca os pontos (a Fidelidade em Gerenciar), para quem só vê. Nulo para quem troca. */
+  quemTroca?:   string[] | null
 }
 
 export interface Recompensa {
@@ -150,7 +153,10 @@ export async function fidelidadeDoPerfil(ctx: TenantContext, clientId: string): 
     cfg.expiry_months ? pontosVencendo(clientId, 30, null, admin) : Promise.resolve(0),
     cfg.scope_per_branch ? saldosPorUnidade(clientId, admin) : Promise.resolve(null),
   ])
-  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar: can(ctx, 'loyalty', 'MANAGE'), vouchers, recompensas, vencendo, porUnidade }
+  const podeAjustar = can(ctx, 'loyalty', 'MANAGE')
+  // A38 da 9ª: quem só vê lê a quem pedir a troca e o ajuste.
+  const quemTroca = podeAjustar ? null : await quemTrocaPontos(ctx.tenantId!, ctx.branchId ?? null)
+  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar, vouchers, recompensas, vencendo, porUnidade, quemTroca }
 }
 
 /** O extrato, do mais recente para o mais antigo, em páginas. */

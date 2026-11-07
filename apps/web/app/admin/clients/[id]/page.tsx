@@ -204,6 +204,8 @@ export default async function AdminClientProfilePage({
     totalSessions: doCliente.atendimentos,
     totalInvested: doCliente.ltv,
     mediaPorAtendimento: doCliente.mediaPorAtendimento,
+    receitaServico: doCliente.receitaServico,
+    atendimentosCobrados: doCliente.atendimentosCobrados,
     age,
   }
 

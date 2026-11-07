@@ -236,11 +236,12 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
         </button>
 
         {/* Resultado filtrado */}
-        <span data-total-da-lista style={{
+        {/* A31 da 9ª: é o CAIXA da lista (o pago que entrou − o que saiu), não o resultado do período (o Lucro). */}
+        <span data-total-da-lista title="O caixa do que está na lista: o pago que entrou menos o pago que saiu. O resultado do período (o Lucro, acima) é outra conta." style={{
           marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', fontWeight: 800,
           color: totalFiltered >= 0 ? 'var(--success)' : 'var(--danger)',
         }}>
-          {filtered.length} lançamento{filtered.length !== 1 ? 's' : ''} · resultado {totalFiltered < 0 ? '−' : ''}{fmtBRL(Math.abs(totalFiltered))}
+          {filtered.length} lançamento{filtered.length !== 1 ? 's' : ''} · caixa da lista {totalFiltered < 0 ? '−' : ''}{fmtBRL(Math.abs(totalFiltered))}
         </span>
       </div>
 
@@ -431,7 +432,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           {/* Estorno não se estorna — o banco também recusa. */}
                           {tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
                             // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
-                            <button type="button" data-estornar onClick={() => tx.credito_vendido_id
+                            <button type="button" data-estornar title="Estornar" onClick={() => tx.credito_vendido_id
                               ? setCreditoAEstornar({ id: tx.id, descricao: tx.description })
                               : setAEstornar({ id: tx.id, descricao: tx.description, valor: tx.amount, vendaDeProduto: !!tx.product_sale_id, doAtendimento: !!tx.appointment_id })} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
