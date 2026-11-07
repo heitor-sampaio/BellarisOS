@@ -290,8 +290,11 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
         const g = data?.general_anamnesis as { versao?: number; origem?: string; respostas?: Record<string, string> }
         return { versao: g?.versao, origem: g?.origem, alergia: g?.respostas?.allergies, quais: g?.respostas?.allergiesDetalhe, pele: g?.respostas?.skinType }
       }).toEqual({ versao: 2, origem: 'EQUIPE', alergia: 'Sim', quais: `látex ${marca}`, pele: 'Oleosa' })
-      expect((await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente)).data,
-        'a equipe respondeu: o pendente fecha').toEqual([{ status: 'RESPONDIDO', origem: 'EQUIPE' }])
+      // O pendente fecha DEPOIS de gravar a anamnese (`gravarAnamneseGeral`: o
+      // prontuário primeiro, o pré-atendimento em seguida) — com o banco lento,
+      // a leitura logo depois da anamnese pegava o pendente ainda aberto.
+      await expect.poll(async () => (await db().from('pre_atendimentos').select('status, origem').eq('client_id', cliente)).data,
+        { message: 'a equipe respondeu: o pendente fecha' }).toEqual([{ status: 'RESPONDIDO', origem: 'EQUIPE' }])
     } finally {
       await ctx.close()
     }

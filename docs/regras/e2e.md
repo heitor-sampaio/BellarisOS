@@ -234,6 +234,19 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     reiniciou às 05:24:56: 13 das 15 falhas caíam nessas janelas. Sinais no
     log do teste: "Não achei o tenant" com o JSON do Cloudflare (521), action
     em "Salvando…" para sempre, "abrir a sessão" com HTTP 504.
+  - **O que a action grava DEPOIS do que o teste espera se lê com
+    `expect.poll`** (a completa de 06/11, F39, com o banco engasgado): o
+    evento do agendamento sai no `after()` do `createAppointmentCore` (depois
+    do "Feito"), e a anamnese fecha o pré-atendimento numa segunda gravação,
+    depois do prontuário. Lidos logo em seguida, com um `.single()`, davam
+    `null` ou o pendente ainda aberto — só quando o banco estava lento.
+    Provas: `copilot-gravacoes` ("agendar"), `ficha-pre-atendimento` ("salvar
+    fecha o pendente").
+  - Teste que cria pela TELA e cai antes de ler o id do que gravou (a janela
+    não fechou a tempo) limpa no `afterAll` pelo que só ele tem (o nome
+    `[e2e]` da ficha): o agendamento que ficava para trás travava a rodada
+    seguinte do mesmo dia por choque de horário até a varredura (uma hora) —
+    `fase2-agenda`.
   - Mensagem de sucesso que mora num componente que o `router.refresh()`
     desmonta (o bloco de alterar some quando o agendamento é cancelado) pisca
     e some: o teste confere o estado que FICA na tela, não ela.
@@ -251,5 +264,6 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 ❌ Contar ou procurar em "todos os logins" ou "todas as redes" só na primeira página: na completa as da rodada ficam até o fim
 ❌ Gravar "Date.now() - N minutos" num teste que lê o que é de HOJE (agenda do dia, chegada, period=today): à meia-noite vira ontem — é haMinutosHoje(n)
 ❌ Adulterar o value de um input escondido numa tela que se renderiza sozinha (o relógio do atendimento): o React o desfaz antes do envio — troque no evento formdata (F27)
+❌ Ler com um .single() logo depois da tela o que a action grava em seguida (o evento do after(), a segunda gravação): é expect.poll (F39)
 ❌ Comando com espaço no -g de um spawnSync com shell no Windows (o argumento se parte): use uma palavra só
 ```

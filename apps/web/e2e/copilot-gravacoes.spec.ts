@@ -82,9 +82,12 @@ test('agendar: o cartão primeiro, nada gravado; Confirmar grava uma vez, "via C
     expect(de_novo.texto).toContain('"status":"feita"')
     expect(await doCopilot()).toHaveLength(1)
 
-    // O evento diz quem pediu, e por onde.
-    const { data: ev } = await db().from('domain_events').select('ator_nome').eq('entidade_id', gravados[0]!.id).eq('nome', 'agendamento.criado').single()
-    expect(ev!.ator_nome).toMatch(/\(via Copilot\)$/)
+    // O evento diz quem pediu, e por onde. Ele sai DEPOIS da resposta (o
+    // `after()` do createAppointmentCore, A33): com o banco lento, a leitura
+    // logo depois do "Feito" ainda não o achava.
+    await expect.poll(async () => (await db().from('domain_events').select('ator_nome')
+      .eq('entidade_id', gravados[0]!.id).eq('nome', 'agendamento.criado').maybeSingle()).data?.ator_nome ?? null,
+    { message: 'o evento do agendamento', timeout: 30_000 }).toMatch(/\(via Copilot\)$/)
   })
 })
 

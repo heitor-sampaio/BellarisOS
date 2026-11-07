@@ -34,9 +34,20 @@ function diaDeTeste() {
 }
 
 test.afterAll(async () => {
+  // O teste que cai antes de ler o que gravou (o "Agendando…" lento da
+  // completa de 06/11, com o banco engasgado) deixava o agendamento e a ficha
+  // para trás — e a rodada seguinte, no mesmo dia, esbarrava no choque com
+  // eles. Acha pelo nome da ficha rápida, que é só deste teste.
+  if (!clientId) {
+    const { data } = await banco().from('clients').select('id').eq('name', nomeCliente).maybeSingle()
+    clientId = (data?.id as string | undefined) ?? null
+  }
+  const ids = appointmentId ? [appointmentId]
+    : clientId ? ((await banco().from('appointments').select('id').eq('client_id', clientId)).data ?? []).map(a => a.id as string)
+    : []
   // Pela limpeza central: aqui o `delete` do cliente falhava calado (a conta de
   // fidelidade que nasce junto travava a FK) e deixou 78 clientes `[e2e]`.
-  const falhas = appointmentId ? await apagarAgendamentos([appointmentId]) : []
+  const falhas = ids.length ? await apagarAgendamentos(ids) : []
   if (clientId) await apagarClientes([clientId], falhas)
   expect(falhas, 'a limpeza do teste tem de apagar tudo que ele criou').toEqual([])
 })
