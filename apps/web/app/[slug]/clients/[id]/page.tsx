@@ -16,6 +16,7 @@ import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
+import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
 import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { historicoDosAgendamentos } from '@/lib/clients/autores-do-historico'
@@ -453,6 +454,7 @@ export default async function ClientProfilePage({
     <RealtimeRefresher tables={['appointments', 'client_packages']} />
     <ClientProfile
       client={client}
+      pedidoLgpd={await pedidoLgpdDaFicha(ctx, id)}
       branchId={branch.id}
       stats={stats}
       upcomingAppointments={upcomingAppointments}

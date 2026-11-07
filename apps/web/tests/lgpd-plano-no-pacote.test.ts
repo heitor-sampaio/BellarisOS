@@ -24,3 +24,26 @@ describe('o plano e as comunicações no pacote LGPD', () => {
     expect(linhaDaComunicacao({ created_at: '2026-11-03T13:45:00Z', title: 'Lembrete' })).toBe('03/11/2026, 10:45 — Lembrete')
   })
 })
+
+// Sobra da F41 (9ª simulação): o plano CANCELADO saía só com "Cancelado" — sem
+// o dia nem o que ele passou a valer (o usado), como o pacote cancelado diz.
+describe('o plano cancelado no pacote LGPD', () => {
+  const plano = planoParaOTitular({
+    created_at: '2026-11-03T13:00:00Z', status: 'CANCELLED', branch_id: 'b1',
+    cancelado_em: '2026-11-07T15:00:00Z', valor_cancelado: 1500,
+    treatment_plan_sessions: [
+      { sort_order: 0, treatment_plan_session_procedures: [{ price: 800, procedures: { name: 'Botox' } }] },
+      { sort_order: 1, treatment_plan_session_procedures: [{ price: 1500, procedures: { name: 'Preenchimento' } }] },
+    ],
+  }, 'Cancelado', 'Moinhos')
+  it('diz quando, o que valeu (as sessões feitas) e o que caiu', () => {
+    expect(plano.cancelamento).toEqual({ em: '2026-11-07T15:00:00Z', valorUsado: 800, valorQueCaiu: 1500 })
+  })
+  it('a linha do PDF diz o cancelamento', () => {
+    const linha = linhaDoPlano(plano, v => (v.startsWith('2026-11-07') ? '07/11/2026' : '03/11/2026')).replace(/ /g, ' ')
+    expect(linha).toContain('cancelado em 07/11/2026: valeu R$ 800,00 (as sessões feitas); as que sobraram (R$ 1.500,00) saíram do plano')
+  })
+  it('o plano que não foi cancelado não tem cancelamento', () => {
+    expect(planoParaOTitular({ created_at: '2026-11-03T13:00:00Z', status: 'ACCEPTED', branch_id: null }, 'Aceito', null).cancelamento).toBeNull()
+  })
+})

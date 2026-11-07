@@ -187,7 +187,7 @@ export async function buildClientExport(
     // Com as sessões, os procedimentos e os valores (A21 da 6ª simulação): o
     // plano saía só com a data e a situação. Sem a anotação da profissional.
     admin.from('treatment_plans')
-      .select('created_at, status, branch_id, treatment_plan_sessions(sort_order, treatment_plan_session_procedures(price, procedures(name)))')
+      .select('created_at, status, branch_id, cancelado_em, valor_cancelado, treatment_plan_sessions(sort_order, treatment_plan_session_procedures(price, procedures(name)))')
       .eq('client_id', clientId).order('created_at', { ascending: false }),
     admin.from('branches').select('id, name').eq('tenant_id', client.tenant_id),
     // Termos e contratos (§9.4.1): na parte GERAL, porque não carregam dado

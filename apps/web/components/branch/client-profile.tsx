@@ -4,7 +4,7 @@ import React, { useActionState, useEffect, useEffectEvent, useState, useRef } fr
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
@@ -240,6 +240,8 @@ interface Props {
   podeAnexarClinico?:    boolean
   /** Anexar o que não é clínico (RG, comprovante…): o cadastro (`clients: MANAGE`). */
   podeAnexarComum?:      boolean
+  /** A49 da 9ª: o pedido de dados (LGPD) feito pelo app, em aberto, e onde responder (null = a quem não responde). */
+  pedidoLgpd?:           { pedidoEm: string; prazo: string; aberto: boolean; caminho: string | null } | null
   /** O financeiro do cliente (pagamentos, crédito): `financial` ou quem recebe. */
   veFinanceiro?:         boolean
   /** Os totais da aba Financeiro, do banco (lib/clientes/financeiro-da-ficha.ts). */
@@ -356,14 +358,16 @@ const formatarDiaDaFalta = (iso: string) =>
  * responsável (decisão 2), o documento que o cadastro trava (A24) e as faltas
  * (A25 da 7ª: a falta só aparecia no Histórico). Nada aparece sem o que dizer.
  */
-function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHistorico }: {
+function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHistorico, pedidoLgpd = null }: {
+  /** A49 da 9ª: o pedido de dados do app em aberto — e onde se responde. */
+  pedidoLgpd?: { pedidoEm: string; prazo: string; aberto: boolean; caminho: string | null } | null
   menor: string | null
   faltando: { titulo: string; faltando: string[] }[]
   faltas: ProfileAppointment[]
   linkDosDados: string
   linkDoHistorico: string
 }) {
-  if (!menor && !faltando.length && !faltas.length) return null
+  if (!menor && !faltando.length && !faltas.length && !pedidoLgpd) return null
   const ultima = [...faltas].sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt))[0]
   const linha: React.CSSProperties = {
     display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', padding: '10px 14px',
@@ -372,6 +376,18 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
   const link: React.CSSProperties = { color: 'var(--brand)', fontWeight: 'var(--weight-bold)', textDecoration: 'none' }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {pedidoLgpd && (
+        <p data-pedido-lgpd-da-ficha role="note" style={{ ...linha, background: 'var(--info-soft)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+          <ShieldCheck size={15} color="var(--info)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <span style={{ flex: 1, minWidth: 200 }}>
+            Pedido de dados (LGPD) feito pelo app em {formatarDiaDaFalta(pedidoLgpd.pedidoEm)}: {pedidoLgpd.aberto
+              ? `responder até ${pedidoLgpd.prazo} (15 dias do pedido).`
+              : 'o pacote já está no app dela.'}
+            {!pedidoLgpd.caminho && ' Quem administra a clínica responde em Configurações → LGPD.'}
+          </span>
+          {pedidoLgpd.caminho && <Link href={pedidoLgpd.caminho} style={link}>Abrir Configurações → LGPD</Link>}
+        </p>
+      )}
       {menor && (
         <p data-aviso-do-menor role="note" style={{ ...linha, background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)', fontWeight: 'var(--weight-semibold)' }}>
           <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 2 }} /> <span style={{ flex: 1, minWidth: 200 }}>{menor}</span>
@@ -1389,7 +1405,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
@@ -1789,6 +1805,7 @@ export function ClientProfile({
           faltas={allAppointments.filter(a => a.status === 'NO_SHOW')}
           linkDosDados={linkDaAba('dados')}
           linkDoHistorico={linkDaAba('historico')}
+          pedidoLgpd={pedidoLgpd}
         />
         <NotasDoCliente client={client} slug={slug} podeEditar={podeEditarCadastro} />
         <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar && !arquivada}

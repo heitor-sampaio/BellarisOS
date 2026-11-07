@@ -7,6 +7,7 @@ import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LGPD_BUCKET } from '@/lib/lgpd/export'
 import { processExportRequest } from '@/lib/lgpd/processar'
+import { avisarPedidoDaCliente } from '@/lib/lgpd/aviso-do-pedido'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 
@@ -85,6 +86,8 @@ export async function requestDataExport(
 
     // Fora do request: o titular recebe a confirmação sem esperar o pacote.
     after(() => processExportRequest(created.id))
+    // A49 da 9ª: a clínica fica sabendo no sino (e com o caminho da aba LGPD).
+    after(() => avisarPedidoDaCliente(created.id))
 
     revalidatePath('/[slug]/cliente/perfil', 'page')
     return { success: true }

@@ -233,6 +233,7 @@ export const ISOLADOS = [
   'vendas-produto-devolver-parte.spec.ts',
   'portal-cliente-atritos-da-8.spec.ts',
   'lgpd-atritos-da-8.spec.ts',
+  'lgpd-atritos-da-9.spec.ts',
   'financeiro-atritos-da-8.spec.ts',
   'procedimentos-atritos-da-8.spec.ts',
   'caixa-atritos-da-8.spec.ts',

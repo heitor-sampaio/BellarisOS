@@ -414,6 +414,25 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `prontuario_acessos`; baixar o pacote com prontuário pede o mesmo. O
   suporte não exporta (`bloqueioDoSuporte`). O pacote da equipe não aparece
   nos pedidos da cliente no app. Prova: `e2e/lgpd-exportacao-pela-equipe.spec.ts`.
+- **O pedido feito pelo app avisa a clínica, e a ficha aponta onde responder**
+  (A49 da 9ª simulação, 2026-11-07: a Beatriz procurou o pedido da Marina na
+  ficha e no sino; ele estava em Configurações → LGPD). O `requestDataExport`
+  avisa no sino, no `after()`, quem responde — Configurações em Gerenciar da
+  clínica toda e a Admin da rede (`avisarPedidoDaCliente`,
+  `lib/lgpd/aviso-do-pedido.ts`): "Pedido de dados (LGPD): Marina — … Responder
+  até 22/11/2026 (15 dias do pedido), em Configurações → LGPD", com o "Abrir"
+  da aba (`data.caminho`). A Visão geral da ficha diz o pedido do app
+  (`[data-pedido-lgpd-da-ficha]`): o em aberto, "responder até …", e o dos
+  últimos 30 dias já entregue, "o pacote já está no app dela"; a quem responde,
+  o link "Abrir Configurações → LGPD"; aos outros, "Quem administra a clínica
+  responde em Configurações → LGPD". O pacote da equipe (`requested_via =
+  'equipe'`) não entra. Prova: `e2e/lgpd-atritos-da-9.spec.ts`.
+- **O plano cancelado diz o cancelamento no pacote** (sobra da F41, 9ª
+  simulação): `cancelamento: { em, valorUsado, valorQueCaiu }` no JSON e, no
+  PDF, "cancelado em 07/11/2026: valeu R$ 800,00 (as sessões feitas); as que
+  sobraram (R$ 1.500,00) saíram do plano" — saía só "Cancelado", sem o dia nem
+  o valor (o pacote cancelado já dizia "cancelado em"). Prova:
+  `tests/lgpd-plano-no-pacote.test.ts`.
 - **O plano vai com as sessões, os procedimentos e os valores; a
   comunicação, com a hora** (A21): `planosDeTratamento` traz `total` e
   `sessoes[{ numero, procedimentos[{ procedimento, valor }] }]` (sem a
