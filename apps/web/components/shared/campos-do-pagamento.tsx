@@ -168,7 +168,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
             </label>
           )}
           {(forma === 'AVISTA' || forma === 'PARCELADO') && (
-            <CampoDaBandeira metodo={estado.metodo} valor={estado.bandeira} aoMudar={v => mudar({ bandeira: v })} />
+            <CampoDaBandeira metodo={estado.metodo} valor={estado.bandeira} aoMudar={v => mudar({ bandeira: v })}
+              total={forma === 'PARCELADO' ? (() => { const l = lerEntrada(estado.entrada); return 'valor' in l ? l.valor : 0 })() : total} />
           )}
           {forma === 'PARCELADO' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

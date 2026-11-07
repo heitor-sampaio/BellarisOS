@@ -763,7 +763,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                     <AvisoDaTaxa vezes={vezes} bandeira={bandeira} total={resgate.restante} />
                   </>
                 )}
-                <CampoDaBandeira metodo={metodoEscolhido} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" />
+                <CampoDaBandeira metodo={metodoEscolhido} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" total={resgate.restante} />
                 {pagamentoCombinado && (
                   <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     Combinado no contrato: {pagamentoCombinado.rotulo}.

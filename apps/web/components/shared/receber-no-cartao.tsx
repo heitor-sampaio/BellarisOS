@@ -60,7 +60,7 @@ export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar
             </select>
           </label>
         )}
-        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} />
+        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valor} />
         {noCredito && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label htmlFor="baixa-vezes" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Vezes no cartão</label>

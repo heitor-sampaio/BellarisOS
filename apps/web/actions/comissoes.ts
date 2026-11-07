@@ -346,6 +346,20 @@ export async function estornarFechamento(fechamentoId: string, motivo: string): 
  * (A33 da simulação de 2026-10-27): escolher "3x" sem a taxa de 3x cadastrada
  * não dizia nada, e a comissão usava outra. Só leitura; pede quem recebe.
  */
+/**
+ * A taxa da maquininha do DÉBITO na regra geral (A34 da 9ª simulação): o débito
+ * com a bandeira "Não informada" aplica a regra geral, e a tela não dizia qual.
+ * Nula = não cadastrada (vale 0%, F16-2). Para quem recebe.
+ */
+export async function taxaDoDebito(): Promise<number | null> {
+  const ctx = await getTenantContext()
+  if (!podeReceber(ctx)) return null
+  const linha = await ler(createAdminClient().from('payment_fees')
+    .select('taxa_pct, taxa_pct_sem_teto').eq('tenant_id', ctx.tenantId!).eq('metodo', 'DEBIT_CARD').eq('parcelas', 1).maybeSingle(),
+  'carregar a taxa do débito') as { taxa_pct: number | string; taxa_pct_sem_teto: number | string | null } | null
+  return linha ? Number(linha.taxa_pct_sem_teto ?? linha.taxa_pct) : null
+}
+
 export async function taxasDoCartaoDeCredito(): Promise<{ parcelas: number; taxa_pct: number }[]> {
   const ctx = await getTenantContext()
   if (!podeReceber(ctx)) return []

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Info } from 'lucide-react'
-import { taxasDoCartaoDeCredito, cartaoPorBandeiraDaRede } from '@/actions/comissoes'
+import { taxasDoCartaoDeCredito, cartaoPorBandeiraDaRede, taxaDoDebito } from '@/actions/comissoes'
 import { ehBandeira, taxaDoCreditoNaBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { liquidoNaMaquininha } from '@/lib/metrics/resultado'
 import { formatBRL } from '@estetica-os/utils'
@@ -55,6 +55,43 @@ export function AvisoDaTaxa({ vezes, bandeira, total }: {
         Não há taxa da maquininha cadastrada para o crédito {rotulo}: a venda sai sem desconto da operadora (0%), também na comissão.
         {' '}Cadastre em Configurações → Comissões.
       </span>
+    </p>
+  )
+}
+
+/**
+ * A taxa do DÉBITO que vai valer (A34 da 9ª simulação; princípio 3): com a
+ * bandeira "Não informada", vale a regra geral — e a tela não dizia qual. Diz a
+ * taxa (a da bandeira escolhida, se ela tiver a sua; senão a geral), o valor e
+ * o líquido; sem nenhuma cadastrada, que sai sem desconto (0%, F16-2). A conta
+ * é a de `private.comissao_taxa_pct` com a bandeira, como no crédito.
+ */
+export function AvisoDaTaxaDoDebito({ bandeira, total }: { bandeira?: string; total?: number }) {
+  const [geral, setGeral] = useState<number | null | undefined>(undefined)
+  const [porBandeira, setPorBandeira] = useState<CartaoPorBandeira>({})
+  useEffect(() => {
+    let vivo = true
+    Promise.all([taxaDoDebito(), cartaoPorBandeiraDaRede()])
+      .then(([t, b]) => { if (vivo) { setGeral(t); setPorBandeira(b) } })
+      .catch(e => console.error('[pagamento] taxa do débito:', e))
+    return () => { vivo = false }
+  }, [])
+  if (geral === undefined) return null
+  const daBandeira = ehBandeira(bandeira) ? porBandeira[bandeira]?.taxas['DEBIT_CARD:1'] : undefined
+  const taxa = typeof daBandeira === 'number' ? daBandeira : geral
+  const deOnde = typeof daBandeira === 'number' ? 'a da bandeira' : ehBandeira(bandeira) ? 'a regra geral (a bandeira não tem taxa própria)' : 'a regra geral (bandeira não informada)'
+  if (taxa == null) {
+    return (
+      <p data-taxa-do-debito role="note" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+        Não há taxa da maquininha cadastrada para o débito: a venda sai sem desconto da operadora (0%). Cadastre em Configurações → Comissões.
+      </p>
+    )
+  }
+  const conta = total && total > 0 ? liquidoNaMaquininha(total, taxa) : null
+  return (
+    <p data-taxa-do-debito role="note" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+      Taxa da maquininha no débito: {taxa.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% — {deOnde}
+      {conta ? ` (${formatBRL(conta.taxa)}); a clínica recebe ${formatBRL(conta.liquido)}` : ''}.
     </p>
   )
 }

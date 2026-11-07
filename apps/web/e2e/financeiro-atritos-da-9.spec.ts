@@ -126,6 +126,26 @@ test('acessibilidade: no recebimento do atendimento, o seletor de vezes se acha 
   await expect.poll(async () => (await b.from('financial_transactions').select('cartao_vezes').eq('appointment_id', ap!.id).maybeSingle()).data?.cartao_vezes).toBe(6)
 })
 
+test('A34: o débito com a bandeira "Não informada" diz a taxa que vai valer', async ({ browser }) => {
+  const b = db()
+  expect((await b.from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 1.6 })).error).toBeNull()
+  const cliente = await rede!.criarCliente('Bruna')
+  const agora = new Date().toISOString()
+  const { data: ap, error } = await b.from('appointments').insert({
+    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 190, scheduled_at: agora, completed_at: agora,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  await como(browser, dona!, async p => {
+    await p.goto(`/${slug}/agenda/${ap!.id}?receber=1`)
+    const dlg = p.getByRole('dialog', { name: 'Confirmar pagamento' })
+    await dlg.getByRole('combobox', { name: 'Forma de pagamento' }).selectOption('DEBIT_CARD')
+    const aviso = dlg.locator('[data-taxa-do-debito]')
+    await expect(aviso).toContainText('Taxa da maquininha no débito: 1,6% — a regra geral (bandeira não informada)')
+    await expect(aviso).toContainText(/a clínica recebe R\$\s186,96/)
+  })
+})
+
 test('A32: o "Estornar" da linha tem texto, nos dois financeiros', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro#lancamentos`)

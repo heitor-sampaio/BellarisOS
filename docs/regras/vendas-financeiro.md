@@ -1116,6 +1116,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       escolhe pelo nome da opção — o leitor de tela, o robô — não achava o
       "6x" e a venda ficou em 1x). Prova: `e2e/financeiro-atritos-da-9.spec.ts`
       ("acessibilidade").
+    - **O débito diz a taxa que vai valer** (A34 da 9ª simulação; princípio
+      3): com a bandeira "Não informada" vale a regra geral, e a tela não
+      dizia qual. Embaixo do "Bandeira (opcional)", no débito, "Taxa da
+      maquininha no débito: 1,6% — a regra geral (bandeira não informada) (R$
+      3,04); a clínica recebe R$ 186,96" — a da bandeira quando ela tem a sua
+      (`AvisoDaTaxaDoDebito`, `[data-taxa-do-debito]`, em `CampoDaBandeira` com
+      o `total`; sem nenhuma cadastrada, "sai sem desconto (0%)"). Prova:
+      `e2e/financeiro-atritos-da-9.spec.ts` ("A34").
     - **O pagamento no cartão diz a bandeira, opcional** ("Bandeira (opcional)",
       `CampoDaBandeira`): o recebimento do atendimento e do plano no check-in,
       o checkout do plano, o "Vender" (pacote, pré-pago, produto, contrato —
