@@ -446,6 +446,14 @@
   check-in se marca). A tela do atendimento e a janela da agenda mostram a
   pergunta com "Iniciar mesmo assim" / "Agora não". Prova:
   `e2e/agenda-inicio-adiantado.spec.ts`, `tests/inicio-adiantado.test.ts`.
+  **Em OUTRO dia, a pergunta diz os dias e pede cuidado** (A24 da 9ª
+  simulação, 2026-11-07): era a mesma com 19 minutos e com 15 dias ("faltam
+  369 h 30 min"), e o retorno de 22/11 foi concluído em 07/11. Marcado para
+  outro dia do calendário de Brasília: "O atendimento está marcado para 22/11
+  às 10:00 — faltam 15 dias, não é hoje. Iniciar agora registra o atendimento
+  como feito hoje, 07/11: confira se é este o agendamento da cliente. Iniciar
+  mesmo assim?" ("falta 1 dia" amanhã). A regra — perguntar sempre — fica.
+  Prova: `tests/inicio-adiantado.test.ts` ("A24").
 - **A chegada é do DIA do agendamento** (A18, 2026-10-27): `checkinCore`
   recusa fora do dia (Brasília, `ehODiaDoAgendamento`) — vale para a agenda, o
   Copilot e "Marcar chegada e iniciar" — e a janela não oferece "Chegou". O
@@ -1477,7 +1485,13 @@ const procedures = await ler(
   mapa" (ou "Incluir … na baixa"), que muda o cartão de insumos. Só avisa: a
   baixa continua a da tela. A dose sai com vírgula em toda tela do mapa
   (`formatarDose`: "0,5 ml"). Prova: `e2e/injetaveis-produto-do-estoque.spec.ts`,
-  `tests/injetaveis-dose.test.ts`.
+  `tests/injetaveis-dose.test.ts`. **"U" e "UI" são a mesma unidade na
+  comparação** (D16 da 9ª simulação, 2026-11-07): a toxina do estoque se conta
+  em "U" (o frasco de 100 U, J-11) e o ponto do mapa nasce em "UI" — os 56 UI
+  do mapa da Marina e os 40 U da baixa nunca se comparavam, e o aviso não
+  saía. A soma do mapa e a comparação juntam as duas, e o texto fala na
+  unidade do insumo ("O mapa soma 56 U de Toxina; a baixa está em 40 U.").
+  ml e UI seguem sem se comparar. Prova: `tests/injetaveis-dose-u-e-ui.test.ts`.
 - **Os mapas de injetáveis seguem o prontuário "só os meus"** (decisão do
   Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer
   lugar"). Com `medical_records` OWN, a lista de Injetáveis
