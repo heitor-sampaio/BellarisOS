@@ -890,6 +890,16 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
     `_leadId`). Os dois portões exigem `crm: VIEW`: `clients: MANAGE` não é
     passe para mexer em card nem em conversa.
 
+**O CRM ligado num cargo nasce em "Todos"** (A5 da 9ª simulação, 2026-11-07;
+decidido pelo princípio 1, padrão sensato): na matriz de Cargos, ligar o CRM
+num cargo que não o tinha nascia em "Só os próprios leads", e o funil da
+Comercial ficava sem os leads de outro responsável. O funil é o trabalho do
+time; "só os meus" é a escolha da clínica para distribuir leads (a SDR), a um
+clique. Os outros escopáveis (agenda, prontuário, financeiro — dado sensível)
+seguem nascendo em "só os meus"; o já ligado mantém o escolhido, e o "só os
+meus" guardado do CRM desligado volta ao religar (D6). `escopoInicial`
+(`lib/cargos/escopo-inicial.ts`). Prova: `tests/cargo-escopo-inicial.test.ts`.
+
 **O RESPONSÁVEL da oportunidade** (`leads.owner_id`, 2026-10-09). Na tela e no
 histórico é sempre "Responsável", nunca "Dono" (decisão do Heitor: o mesmo
 conceito não pode ter dois nomes) — no código segue `owner`.

@@ -5,6 +5,7 @@ import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2, AlertTriangle, User
 import Link from 'next/link'
 import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
+import { escopoInicial } from '@/lib/cargos/escopo-inicial'
 import {
   ALL_MODULES, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
   SCOPE_LABELS, isScoped,
@@ -57,17 +58,9 @@ function buildLevels(perms: Partial<Record<AppModule, RoleModulePermission>>): L
   return Object.fromEntries(ALL_MODULES.map(m => [m, perms[m]?.level ?? 'NONE'])) as Levels
 }
 
-/**
- * Escopo inicial. Módulo que está em "Sem acesso" nasce em OWN quando for
- * habilitado: o valor gravado ali é `ALL` por default do banco, nunca uma
- * escolha de alguém — e a opção mais permissiva não deve vencer por omissão.
- * Módulo já liberado carrega o que foi realmente escolhido.
- */
+/** Escopo inicial de cada módulo: `escopoInicial` (lib/cargos) — o CRM ligado nasce em "Todos" (A5 da 9ª). */
 function buildScopes(perms: Partial<Record<AppModule, RoleModulePermission>>): Scopes {
-  return Object.fromEntries(ALL_MODULES.map(m => {
-    const p = perms[m]
-    return [m, p && p.level !== 'NONE' ? p.scope : 'OWN']
-  })) as Scopes
+  return Object.fromEntries(ALL_MODULES.map(m => [m, escopoInicial(m, perms[m])])) as Scopes
 }
 
 export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [] }: RolesEditorProps) {
