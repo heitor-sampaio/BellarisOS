@@ -45,6 +45,11 @@ interface Props {
   unidades?:     { slug: string; nome: string }[]
   /** Vindo do cartão do pacote (A63): o procedimento já escolhido, e o agendar começa pela profissional. */
   procedimentoInicial?: string | null
+  /**
+   * A unidade já foi escolhida para o procedimento do atalho (D12 da 9ª): sem
+   * isto, com mais de uma unidade, o atalho do pacote começa por "Em qual unidade?".
+   */
+  unidadeEscolhida?: boolean
   procedures:    Procedure[]
   professionals: Professional[]
   /**
@@ -61,10 +66,12 @@ type Step = 1 | 2 | 3 | 4
 const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 
 
-export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, procedures, professionals, prazoHoras = null }: Props) {
+export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, unidadeEscolhida = false, procedures, professionals, prazoHoras = null }: Props) {
   const router = useRouter()
   const inicial = procedures.find(p => p.id === procedimentoInicial) ?? null
-  const [step,       setStep]       = useState<Step>(inicial ? 2 : 1)
+  // O atalho do pacote (A63) começa na profissional — mas, com mais de uma
+  // unidade, pergunta antes onde (D12 da 9ª; H5: a cliente agenda em qualquer unidade).
+  const [step,       setStep]       = useState<Step>(inicial && (unidades.length <= 1 || unidadeEscolhida) ? 2 : 1)
   const [procedure,  setProcedure]  = useState<Procedure | null>(inicial)
   const [prof,       setProf]       = useState<Professional | null>(null)
   const [date,       setDate]       = useState('')
@@ -227,7 +234,9 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
                   return (
                     <Link
                       key={u.slug}
-                      href={`/${u.slug}/cliente/agendamentos/novo`}
+                      href={procedure
+                        ? `/${u.slug}/cliente/agendamentos/novo?procedimento=${procedure.id}&unidade=escolhida`
+                        : `/${u.slug}/cliente/agendamentos/novo`}
                       aria-current={atual ? 'page' : undefined}
                       replace
                       style={{

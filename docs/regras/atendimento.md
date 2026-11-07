@@ -696,7 +696,13 @@
   profissional (`?procedimento=`). Se o procedimento não é agendável pelo app
   (fora do app, inativo ou de outra unidade), diz "<procedimento>: agende com
   a clínica", com o WhatsApp. Era "Agendar procedimento", cuja lista não tinha
-  o Laser. Prova: `e2e/agenda-pago-antes.spec.ts` ("A63").
+  o Laser. Prova: `e2e/agenda-pago-antes.spec.ts` ("A63"). **Com mais de uma
+  unidade, o atalho pergunta "Em qual unidade?" antes** (D12 da 9ª simulação,
+  2026-11-07; H5): "Agendar Drenagem linfática" assumia a Moinhos e listava só
+  quem atende lá. O agendar com `?procedimento=` começa no passo da unidade,
+  com o procedimento já escolhido, e cada unidade leva a
+  `?procedimento=…&unidade=escolhida`, que segue direto para a profissional.
+  Prova: `e2e/portal-cliente-unidade-da-9.spec.ts`.
 - **O cartão do plano FECHADO abre** (A45 da 6ª simulação, 2026-11-04): na
   home do app, "Plano de tratamento · 1 de 3 sessões feitas · 1 agendada", e
   aberto (`<details>`, `.cartao-que-abre`) cada sessão com os procedimentos e

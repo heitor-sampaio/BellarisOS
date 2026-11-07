@@ -14,10 +14,10 @@ import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 export default async function NewClientAppointmentPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
   /** `?procedimento=`: o cartão do pacote leva ao agendamento do procedimento dele (A63). */
-  searchParams: Promise<{ procedimento?: string }>
+  searchParams: Promise<{ procedimento?: string; unidade?: string }>
 }) {
   const { slug } = await params
-  const { procedimento } = await searchParams
+  const { procedimento, unidade: unidadeDaUrl } = await searchParams
   const ctx = await getTenantContext()
   assertClient(ctx)
 
@@ -100,6 +100,7 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
       unidades={unidades.length > 1 ? unidades.map(u => ({ slug: u.slug, nome: u.name })) : []}
       procedures={procedures}
       procedimentoInicial={typeof procedimento === 'string' ? procedimento : null}
+      unidadeEscolhida={unidadeDaUrl === 'escolhida'}
       professionals={professionals}
       prazoHoras={rede?.portal_prazo_alteracao_horas ?? 24}
     />
