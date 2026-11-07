@@ -548,7 +548,10 @@
   falta, a chegada ou conclua"), no Dia e na Semana da agenda da unidade
   (`passouSemFechar`, `lib/use-agora.ts` — o relógio do navegador, sem erro
   de hidratação: no servidor não marca). Nada se fecha sozinho (princípio 6).
-  Prova: `e2e/agenda-atritos-da-9.spec.ts`.
+  **E na agenda da REDE** (`/admin/agenda`, o Dia e a Semana; sobra da F43,
+  2026-11-07), com a duração MARCADA (`duration_min`) — a grade da rede usa 60
+  min para desenhar o bloco sem a duração real, e o "passou" não pode esperar
+  por ela. Prova: `e2e/agenda-atritos-da-9.spec.ts`.
 - **O concluído mostra a hora REAL** ao lado da agendada (J-34): "23:30 ·
   concluído em 29/10 às 00:22" na grade do dia, na janela, na agenda da rede e
   no cartão da Agenda do app da cliente (`textoDoConcluido`,

@@ -18,6 +18,10 @@ import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 import { contagemDaAgenda } from '@/lib/metrics/resultado'
 import { useFala } from '@/components/shared/uma-unidade'
 import { dayKeyTZ } from '@/lib/datetime'
+import { useAgora, passouSemFechar } from '@/lib/use-agora'
+
+/** A dica do agendamento em aberto que passou do horário (A21 da 9ª; sobra da F43 na agenda da rede). */
+const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -188,6 +192,8 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
   /** Nulo quando quem olha não pode agendar. */
   onHorarioVazio: ((branchId: string, quando: string) => void) | null
 }) {
+  // A21 da 9ª (sobra da F43): o relógio do navegador, para marcar o que passou do horário.
+  const agora = useAgora()
   const { inicio, fim } = estenderJanela(janela, appointments.map(a => ({ start: a.scheduled_at, durationMin: apptDuration(a) })))
   const HOURS  = Array.from({ length: fim - inicio }, (_, i) => i + inicio)
   const GRID_H = HOURS.length * HOUR_H
@@ -347,6 +353,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                   const w   = `calc(${100 / totalCols}% - 6px)`
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
                   const encaixe = b.horario !== undefined && !desmarcado(a) && foraDoHorarioDaUnidade(b.horario, a.scheduled_at, apptDuration(a))
+                  const passou  = passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: a.duration_min ?? apptDuration(a) }, agora)
 
                   return (
                     // Clicar abre a folha do agendamento — confirmar, dar
@@ -359,7 +366,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       data-agendamento={a.id}
                       data-encaixe={encaixe ? '' : undefined}
                       onClick={() => onSelecionar(a)}
-                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${encaixe ? ' · Encaixe: fora do horário da unidade' : ''}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}`}
+                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${encaixe ? ' · Encaixe: fora do horário da unidade' : ''}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passou ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
                       style={{
                         opacity:      desmarcado(a) ? 0.6 : 1,
                         position: 'absolute',
@@ -391,7 +398,8 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {desmarcado(a)
                           ? <>{st.label}{a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}</>
-                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.status === 'COMPLETED' && textoDoConcluido(a.scheduled_at, a.completed_at) && <strong>{textoDoConcluido(a.scheduled_at, a.completed_at)} · </strong>}{a.users?.name ?? '—'}</>}
+                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.status === 'COMPLETED' && textoDoConcluido(a.scheduled_at, a.completed_at) && <strong>{textoDoConcluido(a.scheduled_at, a.completed_at)} · </strong>}{a.users?.name ?? '—'}
+                            {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}> · passou do horário</span>}</>}
                       </div>
                     </button>
                   )
@@ -418,6 +426,7 @@ function WeekGrid({
   bloqueios?:  (BloqueioDaAgenda & { rotulo: string })[]
   podeDesfazer?: boolean
 }) {
+  const agora = useAgora()
   const days = Array.from({ length: 7 }, (_, i) => addDays(mondayStr, i))
 
   const DAY_NAMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -498,7 +507,7 @@ function WeekGrid({
                   <div
                     key={a.id}
                     data-agendamento={a.id}
-                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}`}
+                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: a.duration_min ?? apptDuration(a) }, agora) ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
                     style={{
                       opacity:      desmarcado(a) ? 0.6 : 1,
                       background:   st.bg,
@@ -523,6 +532,9 @@ function WeekGrid({
                     </div>
                     <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                       {a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}
+                      {passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: a.duration_min ?? apptDuration(a) }, agora) && (
+                        <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}> · passou do horário</span>
+                      )}
                     </div>
                   </div>
                 )

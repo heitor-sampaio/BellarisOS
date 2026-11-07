@@ -69,6 +69,40 @@ test('A21: o agendamento que passou do horário e segue "Agendado" é marcado no
 })
 
 /**
+ * Sobra da F43: a agenda da REDE (`/admin/agenda`) não tinha a marca da A21 —
+ * o agendamento em aberto que passou do horário parecia um como outro
+ * qualquer para quem opera pela rede. Agora o dia e a semana dela também dizem
+ * "passou do horário".
+ */
+test('sobra da F43: a agenda da rede também marca o que passou do horário — e o futuro não', async ({ browser }) => {
+  test.skip(Date.now() - startOfDayTZ(new Date()).getTime() < 20 * 60_000, 'meia-noite: nada de hoje já passou')
+  const dona = await criarMembro(`a9d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  try {
+    const cliente = await rede.criarCliente('Rosana rede')
+    const novo = async (quando: string) => {
+      const { data, error } = await db().from('appointments').insert({
+        branch_id: rede.branchId, client_id: cliente, procedure_id: rede.procedureId, professional_id: rede.professionalId,
+        scheduled_at: quando, duration_min: 10, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+      }).select('id').single<{ id: string }>()
+      expect(error).toBeNull()
+      return data!.id
+    }
+    const passou = await novo(haMinutosHoje(25))
+    const futuro = await novo(new Date(Date.now() + 3 * 3600_000).toISOString())
+    await como(browser, dona, async p => {
+      await p.goto('/admin/agenda')
+      for (const visao of ['Dia', 'Semana']) {
+        if (visao === 'Semana') await p.getByRole('button', { name: 'Semana', exact: true }).click()
+        await expect(p.locator(`[data-agendamento="${passou}"] [data-passou-sem-fechar]`), visao).toContainText('passou do horário')
+        await expect(p.locator(`[data-agendamento="${futuro}"] [data-passou-sem-fechar]`)).toHaveCount(0)
+      }
+    })
+  } finally {
+    await dona.limpar()
+  }
+})
+
+/**
  * A53 da 9ª simulação (2026-11-07): a ocupação ("13%") não dizia a base — a
  * Carolina não conseguiu prová-la (340 ÷ 2.720). A agenda e o dashboard da
  * unidade dizem a conta: minutos agendados de minutos abertos, de quem atende.
