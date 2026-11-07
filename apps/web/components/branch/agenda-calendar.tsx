@@ -460,6 +460,7 @@ export function AgendaCalendar({
           professionals={professionals}
           rooms={rooms}
           defaultDate={defaultDate}
+          diaInicial={format(currentDate, 'yyyy-MM-dd')}
           clienteInicialId={clienteInicial}
           procedimentoInicialId={pedidoInicial.procedimento}
           profissionalInicialId={pedidoInicial.profissional}

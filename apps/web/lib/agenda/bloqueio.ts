@@ -36,6 +36,12 @@ export function trechoDoBloqueio(b: Periodo): string {
   const ini = new Date(b.inicio), fim = new Date(b.fim)
   // O fim à meia-noite do dia seguinte ainda é "do mesmo dia" ("das 08:00 às 24:00").
   const fimNoDia = new Date(fim.getTime() - 1)
+  // O "Dia inteiro" (A17 da 9ª: dizia "das 00:00 às 24:00"): de meia-noite a meia-noite.
+  if (hh(ini) === '00:00' && hh(fim) === '00:00' && fim.getTime() > ini.getTime()) {
+    return dayKeyTZ(ini) === dayKeyTZ(fimNoDia)
+      ? `o dia ${ddmm(ini)} inteiro`
+      : `de ${ddmm(ini)} a ${ddmm(fimNoDia)}, os dias inteiros`
+  }
   if (dayKeyTZ(ini) === dayKeyTZ(fimNoDia)) {
     const ate = hh(fim) === '00:00' && fim.getTime() > ini.getTime() ? '24:00' : hh(fim)
     return `das ${hh(ini)} às ${ate}`

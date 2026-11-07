@@ -782,6 +782,8 @@ export function AdminAgendaView({
           // abriria pedindo de novo o que o clique já disse.
           branchId={agendando === true ? unidadeId : agendando.branchId}
           defaultDate={agendando === true ? undefined : agendando.quando}
+          // A16 da 9ª: o "Agendar" abre no dia que está na tela.
+          diaInicial={agendando === true ? selectedDate : null}
           slug=""
           procedures={[]}
           professionals={[]}

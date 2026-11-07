@@ -24,6 +24,8 @@ let carolina: MembroDeTeste | null = null
 let michele: MembroDeTeste | null = null
 let priscila: MembroDeTeste | null = null
 let cliente = ''
+let sala = ''
+const SALA = `${PREFIXO} Sala Rosa ag9${marca}`
 
 async function como(browser: Browser, estado: string, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: estado })
@@ -52,6 +54,10 @@ test.beforeAll(async () => {
   priscila = await criarMembro(`ag9p${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
   expect((await db().from('users').update({ atende_em: [menino] }).eq('id', michele.userId)).error).toBeNull()
   expect((await db().from('users').update({ atende_em: [moinhos] }).eq('id', priscila.userId)).error).toBeNull()
+  // A sala da Moinhos, criada antes de qualquer tela (o cache das salas).
+  const { data: r, error: eR } = await db().from('rooms').insert({ branch_id: moinhos, name: SALA }).select('id').single<{ id: string }>()
+  expect(eR).toBeNull()
+  sala = r!.id
 })
 
 test.afterAll(async () => {
@@ -117,4 +123,39 @@ test('A33: a janela muda a UNIDADE do agendamento, com quem atende lá, e o hist
     .toEqual({ branch_id: menino, professional_id: michele!.userId })
   const h = (await db().from('appointment_history').select('description').eq('appointment_id', ag!.id)).data ?? []
   expect(h.map(x => x.description).join(' | ')).toContain(`de ${nomeMoinhos} para ${nomeMenino}`)
+})
+
+test('A16: o "Agendar" do cabeçalho abre no dia que a pessoa está olhando, não hoje', async ({ browser }) => {
+  const dia = diaEmQueAUnidadeAbre(6)
+  await como(browser, carolina!.estado, async p => {
+    await p.goto(`/${slugMoinhos}/agenda?date=${dia}`)
+    await p.getByRole('button', { name: 'Agendar', exact: true }).click()
+    const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
+    await expect(modal.locator('#ag-quando'), 'a data já é a do dia na tela').toHaveValue(new RegExp(`^${dia}T`))
+    // Escolhida a profissional, o "próximo livre" é desse dia em diante, não de agora.
+    await modal.locator('#ag-profissional').selectOption(carolina!.userId)
+    await expect(modal.locator('#ag-quando')).toHaveValue(new RegExp(`^${dia}T`))
+  })
+})
+
+test('A17: a sala bloqueada o dia inteiro risca a grade de horários do Agendar, e o aviso diz "o dia inteiro"', async ({ browser }) => {
+  const dia = diaEmQueAUnidadeAbre(7)
+  const meiaNoite = new Date(`${dia}T00:00:00-03:00`)
+  const { error } = await db().from('agenda_bloqueios').insert({
+    tenant_id: rede!.tenantId, branch_id: moinhos, room_id: sala, motivo: 'Manutenção',
+    inicio: meiaNoite.toISOString(), fim: new Date(meiaNoite.getTime() + 86_400_000).toISOString(),
+  })
+  expect(error).toBeNull()
+  await como(browser, carolina!.estado, async p => {
+    await p.goto(`/${slugMoinhos}/agenda?date=${dia}`)
+    await p.getByRole('button', { name: 'Agendar', exact: true }).click()
+    const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
+    await modal.locator('#ag-profissional').selectOption(carolina!.userId)
+    await modal.locator('#ag-procedimento').selectOption(rede!.procedureId)
+    await modal.locator('#ag-quando').fill(`${dia}T10:00`)
+    await modal.locator('#ag-sala').selectOption({ label: SALA })
+    await expect(modal.locator('[data-horario="10:00"]'), 'a sala bloqueada risca').toBeDisabled()
+    await expect(modal.locator('[data-aviso-do-horario]')).toContainText('o dia ')
+    await expect(modal.locator('[data-aviso-do-horario]')).not.toContainText('00:00 às 24:00')
+  })
 })

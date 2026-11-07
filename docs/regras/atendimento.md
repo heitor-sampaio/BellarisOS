@@ -178,6 +178,22 @@
     7ª); o "Confirmar novo horário" do remarcar, igual. O aviso (bloqueio,
     fora do expediente, choque) está na tela ANTES de gravar; o encaixe segue
     permitido. Prova: `e2e/agenda-defeitos-da-8.spec.ts` ("D9").
+  - **A sala escolhida no Agendar risca a grade, e o "Dia inteiro" se diz
+    assim** (A17 da 9ª simulação, 2026-11-07; princípio 3): o bloqueio da
+    profissional riscava a grade de horários livres do modal, o da sala não —
+    a sala bloqueada o dia inteiro parecia livre. Com a sala escolhida,
+    `getSchedulingDaySlots` traz também os bloqueios dela ("Sala Rosa:
+    Manutenção"), e a grade os mostra como bloqueados (o encaixe segue pelo
+    campo de data e hora). E o aviso dizia "das 00:00 às 24:00": o bloqueio de
+    meia-noite a meia-noite é "o dia 10/11 inteiro" (ou "de 10/11 a 12/11, os
+    dias inteiros"; `trechoDoBloqueio`). Prova: `e2e/agenda-unidade-da-9.spec.ts`
+    ("A17"), `tests/agenda-bloqueio-dia-inteiro.test.ts`.
+  - **O "Agendar" do cabeçalho abre no dia que está na tela** (A16 da 9ª,
+    2026-11-07): abria no próximo horário a partir de agora, e a Ana agendou no
+    dia errado. Com um dia DEPOIS de hoje na agenda (da unidade ou da rede), o
+    modal abre nele (`diaInicial`), e o "próximo livre" da profissional é dele
+    em diante (`proximoHorarioLivre` com `aPartirDe`); hoje e o passado, como
+    antes. Prova: o mesmo spec ("A16").
   - **"Dia inteiro", e o início de outro dia avisa** (A23 da 8ª simulação,
     2026-11-06): a folga e as férias eram o 12:00–13:00 de padrão trocado à
     mão. "Dia inteiro" troca o início e o fim por "Do dia"/"Até o dia" (da

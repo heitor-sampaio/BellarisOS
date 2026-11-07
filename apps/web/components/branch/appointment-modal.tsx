@@ -14,6 +14,7 @@ import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
+import { dayKeyTZ } from '@/lib/datetime'
 
 interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; /** Quem realiza (por-01; vazio = todas). */ realizam?: string[] }
@@ -35,6 +36,12 @@ interface AppointmentModalProps {
    */
   unidades?:     Unidade[]
   defaultDate?:  string   // ISO datetime hint (from calendar click)
+  /**
+   * O dia que a pessoa está olhando na agenda (AAAA-MM-DD; A16 da 9ª): sem
+   * horário clicado, o agendar abre nele — e o próximo livre é dele em diante.
+   * Abria em hoje, e a Ana agendou no dia errado.
+   */
+  diaInicial?:   string | null
   /** O cliente já escolhido (`?cliente=` da busca universal e da ficha): o nome vem do servidor. */
   clienteInicialId?: string | null
   /** O procedimento e a profissional que já vêm escolhidos (o "Reagendar" da falta — A27 da 7ª; o clique na coluna — A29). */
@@ -58,7 +65,7 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; 
 
 export function AppointmentModal({
   branchId, slug, procedures, professionals, rooms,
-  unidades, defaultDate, clienteInicialId = null, procedimentoInicialId = null, profissionalInicialId = null, onClose, onSuccess,
+  unidades, defaultDate, diaInicial = null, clienteInicialId = null, procedimentoInicialId = null, profissionalInicialId = null, onClose, onSuccess,
 }: AppointmentModalProps) {
   const [state, formAction, pending] = useActionState(addAppointment, undefined)
   // A resposta a "Já existe a ficha de X" do agendar com nome e telefone
@@ -215,14 +222,17 @@ export function AppointmentModal({
 
   // "Agora", lido uma vez quando o modal abre — o render não pode ler o relógio.
   const [agora] = useState(() => Date.now())
+  // O dia da tela só vale quando é DEPOIS de hoje (hoje e o passado: a partir de agora).
+  const diaDaTela = diaInicial && !defaultDate && diaInicial > dayKeyTZ(new Date(agora)) ? diaInicial : null
 
   // Data/hora padrão em horário local (não UTC)
   const defaultDT = useMemo(() => {
     if (defaultDate) return defaultDate.substring(0, 16)  // já vem como local de agenda-calendar
+    if (diaDaTela) return `${diaDaTela}T08:00`
     const rounded = new Date(Math.ceil(agora / 1800000) * 1800000)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${rounded.getFullYear()}-${pad(rounded.getMonth()+1)}-${pad(rounded.getDate())}T${pad(rounded.getHours())}:${pad(rounded.getMinutes())}`
-  }, [defaultDate, agora])
+  }, [defaultDate, agora, diaDaTela])
 
   // Controla o valor do input (exibe local) e o hidden UTC para envio
   const [localDT, setLocalDT] = useState(defaultDT)
@@ -237,11 +247,11 @@ export function AppointmentModal({
   useEffect(() => {
     if (!profId || !unidadeId || horaEscolhida.current) return
     let vivo = true
-    proximoHorarioLivre(unidadeId, profId, duracaoMin)
+    proximoHorarioLivre(unidadeId, profId, duracaoMin, diaDaTela ? new Date(`${diaDaTela}T00:00:00-03:00`).toISOString() : null)
       .then(r => { if (vivo && r && !horaEscolhida.current) setLocalDT(r) })
       .catch(() => { /* fica a hora de antes */ })
     return () => { vivo = false }
-  }, [profId, unidadeId, duracaoMin])
+  }, [profId, unidadeId, duracaoMin, diaDaTela])
 
   // Ao mudar o defaultDate (novo clique no calendário), reseta — ajustado
   // durante o render, guardando o padrão anterior.
@@ -362,16 +372,17 @@ export function AppointmentModal({
   // (`GradeDeHorarios`) e a mesma régua (`ocupanteDoHorario` — a duração
   // inteira contra os agendamentos e os bloqueios dela, D5).
   const diaEscolhido = localDT.slice(0, 10)
-  const chaveDoDia = profId && unidadeId && /^\d{4}-\d{2}-\d{2}$/.test(diaEscolhido) ? `${unidadeId}|${profId}|${diaEscolhido}` : ''
+  // Com a sala escolhida, o bloqueio dela também risca a grade (A17 da 9ª).
+  const chaveDoDia = profId && unidadeId && /^\d{4}-\d{2}-\d{2}$/.test(diaEscolhido) ? `${unidadeId}|${profId}|${diaEscolhido}|${salaId}` : ''
   const [doDia, setDoDia] = useState<{ chave: string } & Awaited<ReturnType<typeof getSchedulingDaySlots>> | null>(null)
   useEffect(() => {
     if (!chaveDoDia) return
     let vivo = true
-    getSchedulingDaySlots(unidadeId, profId, diaEscolhido)
+    getSchedulingDaySlots(unidadeId, profId, diaEscolhido, salaId || null)
       .then(r => { if (vivo) setDoDia({ chave: chaveDoDia, ...r }) })
       .catch(() => { /* sem a grade: fica o campo de data e hora */ })
     return () => { vivo = false }
-  }, [chaveDoDia, unidadeId, profId, diaEscolhido])
+  }, [chaveDoDia, unidadeId, profId, diaEscolhido, salaId])
   const gradeDoDia = doDia && doDia.chave === chaveDoDia ? doDia : null
 
   const minDT = useMemo(() => {

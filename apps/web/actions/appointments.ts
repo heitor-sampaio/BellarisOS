@@ -1920,6 +1920,11 @@ export async function getSchedulingDaySlots(
   branchId: string,
   professionalId: string,
   date: string,
+  /**
+   * A sala escolhida (A17 da 9ª): o bloqueio DELA também risca a grade — o da
+   * profissional riscava, e a sala bloqueada o dia inteiro parecia livre.
+   */
+  roomId?: string | null,
 ): Promise<{
   slots: { scheduledAt: string; durationMin: number; clientName: string | null }[]
   /** Os bloqueios da profissional no dia (D5 da 8ª): a grade não os oferece. */
@@ -1950,6 +1955,9 @@ export async function getSchedulingDaySlots(
   // da rede atende em todas — o servidor recusa o choque em qualquer uma, a
   // regra de `horarioOcupado`) e os bloqueios dela. A grade testa o intervalo
   // inteiro contra os dois (`ocupanteDoHorario`, lib/agenda/horario-livre).
+  const sala = roomId && /^[0-9a-f-]{36}$/i.test(roomId)
+    ? await ler(admin.from('rooms').select('id, name').eq('id', roomId).eq('branch_id', branchId).maybeSingle(), 'buscar a sala') as { id: string; name: string } | null
+    : null
   const [data, prof, bloqueios] = await Promise.all([
     ler(admin
       .from('appointments')
@@ -1963,7 +1971,7 @@ export async function getSchedulingDaySlots(
     // O horário do profissional (da rede): sem ele, segue a unidade.
     ler(admin.from('users').select('horario')
       .eq('id', professionalId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o horário do profissional') as Promise<{ horario: unknown } | null>,
-    bloqueiosDoPeriodo(ctx.tenantId!, { de: dayStart, ate: dayEnd, profissionais: [professionalId] }, admin),
+    bloqueiosDoPeriodo(ctx.tenantId!, { de: dayStart, ate: dayEnd, profissionais: [professionalId], salas: sala ? [sala.id] : [] }, admin),
   ])
 
   type Linha = { scheduled_at: string; duration_min: number; status: string; completed_at: string | null; branch_id: string; clients: { name: string } | null }
@@ -1975,7 +1983,8 @@ export async function getSchedulingDaySlots(
       // O nome da cliente só da agenda desta unidade; o de outra unidade diz só que está ocupado.
       clientName:  d.branch_id === branchId ? (d.clients?.name ?? null) : null,
     })),
-    bloqueios: bloqueios.map(b => ({ inicio: b.inicio, fim: b.fim, motivo: b.motivo })),
+    // O da sala diz que é da sala ("Sala Rosa: Manutenção").
+    bloqueios: bloqueios.map(b => ({ inicio: b.inicio, fim: b.fim, motivo: b.roomId && sala ? `${sala.name}: ${b.motivo}` : b.motivo })),
     horarioDaUnidade:      normalizarHorario((branch as { horario?: unknown }).horario),
     horarioDoProfissional: normalizarHorario(prof?.horario),
   }
