@@ -3,7 +3,7 @@ import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { haMinutosHoje } from './apoio/datas'
-import { startOfDayTZ } from '../lib/datetime'
+import { startOfDayTZ, addDaysTZ, dayKeyTZ } from '../lib/datetime'
 
 /**
  * A21 da 9ª simulação (2026-11-07): a agenda não marcava o agendamento que
@@ -96,6 +96,42 @@ test('sobra da F43: a agenda da rede também marca o que passou do horário — 
         await expect(p.locator(`[data-agendamento="${passou}"] [data-passou-sem-fechar]`), visao).toContainText('passou do horário')
         await expect(p.locator(`[data-agendamento="${futuro}"] [data-passou-sem-fechar]`)).toHaveCount(0)
       }
+    })
+  } finally {
+    await dona.limpar()
+  }
+})
+
+/**
+ * Sobra da F44: a grade do dia da agenda da REDE desenhava todo bloco com 60
+ * min (o de 30 parecia de 50, o de 90 parecia de 60 — a altura mentia sobre a
+ * duração). Agora ela usa a duração marcada (`duration_min`), como a agenda da
+ * unidade: o bloco de 90 min tem três vezes a altura do de 30.
+ */
+test('sobra da F44: a grade da rede desenha o bloco com a duração marcada', async ({ browser }) => {
+  const dona = await criarMembro(`a9h${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  try {
+    const cliente = await rede.criarCliente('Duração')
+    const amanha = dayKeyTZ(addDaysTZ(new Date(), 1))
+    const novo = async (hhmm: string, min: number) => {
+      const { data, error } = await db().from('appointments').insert({
+        branch_id: rede.branchId, client_id: cliente, procedure_id: rede.procedureId, professional_id: rede.professionalId,
+        scheduled_at: new Date(`${amanha}T${hhmm}:00-03:00`).toISOString(), duration_min: min, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+      }).select('id').single<{ id: string }>()
+      expect(error).toBeNull()
+      return data!.id
+    }
+    const de30 = await novo('09:00', 30)
+    const de90 = await novo('14:00', 90)
+    await como(browser, dona, async p => {
+      await p.goto(`/admin/agenda?view=day&date=${amanha}`)
+      await expect(p.locator(`[data-agendamento="${de30}"]`)).toBeVisible()
+      await expect(p.locator(`[data-agendamento="${de90}"]`)).toBeVisible()
+      const h30 = (await p.locator(`[data-agendamento="${de30}"]`).boundingBox())!.height
+      const h90 = (await p.locator(`[data-agendamento="${de90}"]`).boundingBox())!.height
+      // 72 px por hora: 30 min ≈ 34 px, 90 min ≈ 106 px.
+      expect(h90 / h30, `90 min (${h90}px) e 30 min (${h30}px)`).toBeGreaterThan(2.7)
+      expect(h90 / h30).toBeLessThan(3.3)
     })
   } finally {
     await dona.limpar()

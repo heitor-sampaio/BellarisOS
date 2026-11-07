@@ -146,13 +146,12 @@ function fmtDayFull(dateStr: string) {
   })
 }
 
-// Duração do agendamento em minutos
+// Duração do agendamento em minutos: a MARCADA (`duration_min`), como na agenda
+// da unidade (sobra da F44, 2026-11-07). Era 60 para todo bloco ainda não
+// concluído — o de 30 min parecia de uma hora, e o de 90 também. Os 60 ficam
+// só para a linha sem duração.
 function apptDuration(a: Appointment): number {
-  if (a.started_at && a.completed_at) {
-    const d = (new Date(a.completed_at).getTime() - new Date(a.started_at).getTime()) / 60000
-    if (d > 5 && d <= 480) return d
-  }
-  return 60
+  return a.duration_min && a.duration_min > 0 ? a.duration_min : 60
 }
 
 // Top/height em px para o grid de dia
@@ -162,8 +161,10 @@ function apptTop(a: Appointment, inicio: number): number {
   return Math.max(0, (h - inicio) * HOUR_H)
 }
 
+// A altura É a duração (o piso só segura o de poucos minutos clicável); o texto
+// que não cabe é cortado, e a dica do bloco diz tudo — como na da unidade.
 function apptHeight(a: Appointment): number {
-  return Math.max(58, (apptDuration(a) / 60) * HOUR_H)
+  return Math.max(24, (apptDuration(a) / 60) * HOUR_H)
 }
 
 // -- View Dia -----------------------------------------------------------------
@@ -353,7 +354,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                   const w   = `calc(${100 / totalCols}% - 6px)`
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
                   const encaixe = b.horario !== undefined && !desmarcado(a) && foraDoHorarioDaUnidade(b.horario, a.scheduled_at, apptDuration(a))
-                  const passou  = passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: a.duration_min ?? apptDuration(a) }, agora)
+                  const passou  = passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agora)
 
                   return (
                     // Clicar abre a folha do agendamento — confirmar, dar
@@ -366,7 +367,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       data-agendamento={a.id}
                       data-encaixe={encaixe ? '' : undefined}
                       onClick={() => onSelecionar(a)}
-                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${encaixe ? ' · Encaixe: fora do horário da unidade' : ''}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passou ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
+                      title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'} · ${apptDuration(a)} min${encaixe ? ' · Encaixe: fora do horário da unidade' : ''}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passou ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
                       style={{
                         opacity:      desmarcado(a) ? 0.6 : 1,
                         position: 'absolute',
@@ -507,7 +508,7 @@ function WeekGrid({
                   <div
                     key={a.id}
                     data-agendamento={a.id}
-                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: a.duration_min ?? apptDuration(a) }, agora) ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
+                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agora) ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
                     style={{
                       opacity:      desmarcado(a) ? 0.6 : 1,
                       background:   st.bg,
@@ -532,7 +533,7 @@ function WeekGrid({
                     </div>
                     <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                       {a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}
-                      {passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: a.duration_min ?? apptDuration(a) }, agora) && (
+                      {passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agora) && (
                         <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}> · passou do horário</span>
                       )}
                     </div>
