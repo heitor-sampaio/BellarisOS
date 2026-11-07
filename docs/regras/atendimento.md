@@ -670,6 +670,15 @@
   unidade Boa Viagem." (`textoDoHorarioMarcado`, `unidadeParaOAviso`, nos dois
   avisos de agendamento novo). Prova: `e2e/pacote-sessao-agendar.spec.ts`,
   `tests/texto-do-horario-marcado.test.ts`.
+  **E o remarcado e o cancelado também; e nenhum aviso decide o gênero** (A48
+  da 9ª simulação, 2026-11-07): "Seu Avaliação foi concluído" e "Seu Drenagem
+  linfática foi concluído" — o nome do procedimento é da clínica, e o texto
+  não decide por ele. Os avisos à cliente ficam neutros, com o procedimento
+  depois de dois-pontos ("Atendimento concluído: Avaliação.", "Pagamento
+  confirmado: Avaliação.", "Agendamento cancelado: Avaliação de 07/11 às
+  10:00, na unidade Moinhos.", "Novo horário: … na unidade Moinhos." —
+  `lib/appointments/texto-do-aviso.ts`), e o da equipe também ("Cancelado:
+  Juliana — Avaliação de …"). Prova: `tests/textos-dos-avisos-da-9.test.ts`.
 - **O agendar do app passa pelo NÚCLEO da agenda** (por-05, revisão do Heitor
   de 2026-11-02): `createClientAppointment` confere o que é do app (o
   procedimento visível no app, o horário entre os livres, quem atende na

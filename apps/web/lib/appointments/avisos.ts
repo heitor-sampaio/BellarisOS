@@ -7,7 +7,7 @@ import { ler, tentar } from '@/lib/db'
 import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { avisarDoPreAtendimento } from '@/lib/pre-atendimento/ficha'
-import { textoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
+import { textoDoHorarioMarcado, textoDoRemarcado, textoDoCancelado, textoDoConcluido, textoDoPagamento } from '@/lib/appointments/texto-do-aviso'
 import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
 
 /**
@@ -121,13 +121,13 @@ export function notifyCancelledAppointment(appointmentId: string, reason?: strin
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
       type: 'appointment_cancelled', title: 'Agendamento cancelado',
-      body: `${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
+      body: textoDoCancelado(c.procedureName, when, await unidadeParaOAviso(admin, c.branchId), reason ?? null), data,
     })
     await notificarInteressados(admin,
       { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
       {
         type: 'appointment_cancelled', title: 'Agendamento cancelado',
-        body: `${c.clientName} — ${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
+        body: `Cancelado: ${c.clientName} — ${c.procedureName} de ${when}.${motivo}`, data,
       })
   })
 }
@@ -143,7 +143,7 @@ export function notifyRescheduledAppointment(appointmentId: string, ator?: strin
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
       type: 'appointment_rescheduled', title: 'Agendamento remarcado',
-      body: `Novo horário: ${c.procedureName} em ${when}.`, data,
+      body: textoDoRemarcado(c.procedureName, when, await unidadeParaOAviso(admin, c.branchId)), data,
     })
     await notificarInteressados(admin,
       { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
@@ -183,7 +183,7 @@ export function notifyCompleted(appointmentId: string): void {
     if (!c) return
     await avisarCliente(admin, c.clientId, {
       type: 'appointment_completed', title: 'Confirme seu atendimento',
-      body: `Seu ${c.procedureName} foi concluído. Confirme e avalie pelo app.`,
+      body: textoDoConcluido(c.procedureName),
       data: {
         appointment_id: appointmentId,
         link: c.slug ? `/${c.slug}/cliente/atendimentos/${appointmentId}/confirmar` : undefined,
@@ -201,7 +201,7 @@ export function notifyPayment(appointmentId: string): void {
     if (!c) return
     await avisarCliente(admin, c.clientId, {
       type: 'payment_received', title: 'Pagamento confirmado',
-      body: `Pagamento do ${c.procedureName} confirmado.`,
+      body: textoDoPagamento(c.procedureName),
       data: { appointment_id: appointmentId },
     })
   })
