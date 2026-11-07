@@ -252,6 +252,16 @@
     dia fixo de 8 h, dividido na tela: a Camila (18:00–23:30) via 32% em vez
     de 47% (D11 da simulação de 2026-10-29). Prova:
     `e2e/agenda-minha-ocupacao.spec.ts`, `tests/metrics-ocupacao.test.ts`.
+    **A ocupação diz a base** (A53 da 9ª simulação, 2026-11-07: "13%" sem a
+    conta, e a Carolina não conseguiu prová-la — 340 ÷ 2.720): o dashboard da
+    unidade e o topo da agenda dizem "340 min agendados de 2.720 min abertos
+    (o horário de 4 profissionais que atendem)" (`baseDaOcupacao`,
+    `lib/metrics/ocupacao.ts`; `[data-base-da-ocupacao]`; os minutos abertos
+    são os de `capacidadeEmMinutos`, a mesma da porcentagem), com a dica
+    `DEFINICOES.ocupacao` (o que entra: os concluídos; o que sai: cancelados,
+    faltas, o tempo bloqueado e o que ela tem em outra unidade). A conta não
+    mudou. Prova: `e2e/agenda-atritos-da-9.spec.ts` ("A53"),
+    `tests/metrics-ocupacao.test.ts`.
   - **composição do financeiro** (receita por forma de pagamento, receita e
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.
@@ -659,6 +669,13 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   {eixo}" sempre: no "Hoje" de madrugada, o hover das 03h dizia "DIA 3", e por
   dia o eixo era o dia do período (1, 2, 3…), não a data. Prova:
   `tests/metrics-evolucao.test.ts`.
+  **E o eixo não repete rótulo, nem a curva inventa valor** (A52 da 9ª
+  simulação, 2026-11-07): o eixo dizia "2k, 2k" (o 1.500 arredondado ao lado
+  do 2.000), e a curva suavizada parecia subir antes do primeiro dia com valor.
+  O rótulo curto do eixo guarda a casa decimal ("1,5k" — `rotuloDoEixo`,
+  `lib/chart-utils.ts`, também nos Relatórios e no fluxo de caixa), e a
+  curva é reta entre os pontos (`CURVA_DA_EVOLUCAO`), com o ponto de cada dia
+  à vista (até 45 pontos). Prova: `tests/eixo-dos-graficos.test.ts`.
 - **O dashboard da rede tem os quadros de clientes da unidade** (F7b, H3: "a
   dona vê tudo, sempre"): "Clientes no período" (o mesmo núcleo dos cartões,
   no período escolhido, até agora) e "Reativar clientes". Na rede, as

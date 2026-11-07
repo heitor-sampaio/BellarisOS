@@ -6,6 +6,13 @@
 export interface DefinicaoDoNumero { rotulo: string; texto: string }
 
 export const DEFINICOES = {
+  /** A ocupação da agenda (A53 da 9ª): a conta de `ocupacaoEmPct`. */
+  ocupacao: {
+    rotulo: 'Como a ocupação é contada',
+    texto: 'Os minutos agendados (os concluídos contam; cancelados e faltas não) ÷ os minutos abertos: o horário de '
+      + 'cada profissional que atende nesta unidade, dentro do horário da unidade, menos o tempo bloqueado e o que ela '
+      + 'tem agendado em outra unidade.',
+  },
   /** Dashboard da rede: o aproveitamento de cada unidade (getByBranch, até agora). */
   aproveitamento: {
     rotulo: 'O que é a taxa de aproveitamento',

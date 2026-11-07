@@ -184,7 +184,7 @@ test('D15: a ocupação desconta o tempo bloqueado, e a "Minha agenda" não ofer
   await bloquear(rede!.professionalId, em(hoje, '00:00'), em(hoje, '06:00'), 'Exame')
   await como(browser, gestor!, async p => {
     await p.goto(`/${slug}/dashboard`)
-    await expect(p.getByText(/min disponíveis/)).toContainText(`de ${2 * 24 * 60 - 6 * 60}min disponíveis`)
+    await expect(p.locator('[data-base-da-ocupacao]').last()).toContainText(`de ${(2 * 24 * 60 - 6 * 60).toLocaleString('pt-BR')} min abertos`)
   })
 
   // A "Minha agenda": 10:00 e 14:00, com o bloqueio das 11:00 às 13:00 no meio.

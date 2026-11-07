@@ -112,3 +112,20 @@ describe('ocupacaoDoDia (a "Minha agenda")', () => {
     expect(ocupacaoDoDia([], { unidade, profissional: soSegunda }, dia)).toBeNull()
   })
 })
+
+// A53 da 9ª simulação (2026-11-07): "13%" sem a base — a Carolina não
+// conseguiu prová-la (340 ÷ 2.720). A tela diz a conta inteira.
+describe('A53 da 9ª: a ocupação diz a base', async () => {
+  const { baseDaOcupacao } = await import('@/lib/metrics/ocupacao')
+  const { DEFINICOES } = await import('@/lib/metrics/definicoes')
+  it('minutos agendados ÷ minutos abertos, de quem atende', () => {
+    expect(baseDaOcupacao({ agendados: 340, abertos: 2720, profissionais: 4 }))
+      .toBe('340 min agendados de 2.720 min abertos (o horário de 4 profissionais que atendem)')
+    expect(baseDaOcupacao({ agendados: 30, abertos: 600, profissionais: 1 }))
+      .toBe('30 min agendados de 600 min abertos (o horário de 1 profissional que atende)')
+  })
+  it('a dica diz o que entra e o que sai', () => {
+    expect(DEFINICOES.ocupacao.texto).toContain('minutos agendados')
+    expect(DEFINICOES.ocupacao.texto).toContain('bloque')
+  })
+})

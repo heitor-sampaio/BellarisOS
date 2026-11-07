@@ -67,3 +67,17 @@ test('A21: o agendamento que passou do horário e segue "Agendado" é marcado no
   })
   expect((await db().from('appointments').select('status').eq('id', passou).single()).data?.status, 'nada se fecha sozinho').toBe('SCHEDULED')
 })
+
+/**
+ * A53 da 9ª simulação (2026-11-07): a ocupação ("13%") não dizia a base — a
+ * Carolina não conseguiu prová-la (340 ÷ 2.720). A agenda e o dashboard da
+ * unidade dizem a conta: minutos agendados de minutos abertos, de quem atende.
+ */
+test('A53: a ocupação diz a base na agenda e no dashboard da unidade', async ({ browser }) => {
+  await como(browser, recepcao, async p => {
+    await p.goto(`/${slug}/agenda`)
+    await expect(p.locator('[data-base-da-ocupacao]').first()).toContainText(/min agendados de [\d.]+ min abertos \(o horário de 1 profissional que atende\)/)
+    await p.goto(`/${slug}/dashboard`)
+    await expect(p.locator('[data-base-da-ocupacao]')).toContainText(/min agendados de [\d.]+ min abertos \(o horário de 1 profissional que atende\)/)
+  })
+})

@@ -24,3 +24,15 @@ export function ocupacaoDoDia(
     .reduce((s, e) => s + e.durationMin, 0)
   return ocupacaoEmPct(minutos, horarios.unidade, [horarios.profissional], de, ate, [horarios.ocupadoFora ?? []])
 }
+
+/**
+ * A base da ocupação, em palavras (A53 da 9ª simulação, 2026-11-07: "13%" sem
+ * a conta, e a Carolina não conseguiu prová-la): "340 min agendados de 2.720
+ * min abertos (o horário de 4 profissionais que atendem)". Os números já vêm
+ * contados (a capacidade é a de `capacidadeEmMinutos`); aqui é só o texto.
+ */
+export function baseDaOcupacao(n: { agendados: number; abertos: number; profissionais: number }): string {
+  const min = (v: number) => `${Math.round(v).toLocaleString('pt-BR')} min`
+  const quem = n.profissionais === 1 ? '1 profissional que atende' : `${n.profissionais} profissionais que atendem`
+  return `${min(n.agendados)} agendados de ${min(n.abertos)} abertos (o horário de ${quem})`
+}

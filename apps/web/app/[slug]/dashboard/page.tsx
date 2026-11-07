@@ -1,6 +1,7 @@
 ﻿import Link from 'next/link'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
+import { baseDaOcupacao } from '@/lib/metrics/ocupacao'
 import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
@@ -464,7 +465,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </div>
         ) : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <p className="overline">Taxa de ocupação</p>
+          <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            Taxa de ocupação
+            <Dica rotulo={DEFINICOES.ocupacao.rotulo}>{DEFINICOES.ocupacao.texto}</Dica>
+          </p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {professionalsCount ? `${occupancy}%` : '—'}
           </p>
@@ -473,7 +477,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               <div style={{ height: '100%', width: `${occupancy}%`, background: occupancy > 70 ? 'var(--brand)' : occupancy > 40 ? 'var(--warning)' : 'var(--border)', borderRadius: 99, transition: 'width 600ms ease' }} />
             </div>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
-              {scheduledMin}min de {capacityMin}min disponíveis
+              {/* A53 da 9ª: a base da conta, de quem atende (era "340min de 2720min disponíveis"). */}
+              <span data-base-da-ocupacao>{baseDaOcupacao({ agendados: scheduledMin, abertos: capacityMin, profissionais: professionalsCount })}, hoje</span>
             </p>
           </div>
         </div>

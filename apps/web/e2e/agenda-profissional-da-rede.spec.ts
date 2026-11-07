@@ -177,6 +177,6 @@ test('a ocupação de B desconta o que a profissional da rede tem agendado em A'
   await como(browser, gestora!.estado, async p => {
     await p.goto(`/${slugB}/dashboard`)
     const ocupacao = p.locator('.card', { has: p.getByText('Taxa de ocupação') })
-    await expect(ocupacao).toContainText(/de 600min disponíveis/)
+    await expect(ocupacao).toContainText(/de 600 min abertos/)
   })
 })

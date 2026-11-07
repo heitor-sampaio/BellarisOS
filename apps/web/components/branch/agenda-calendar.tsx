@@ -19,7 +19,10 @@ import { AgendaWeekView } from './agenda-week-view'
 import { AgendaMonthView } from './agenda-month-view'
 import { rescheduleAppointment } from '@/actions/appointments'
 import type { CalendarEvent } from './agenda-month-view'
-import { ocupacaoEmPct, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
+import { ocupacaoEmPct, capacidadeEmMinutos, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
+import { baseDaOcupacao } from '@/lib/metrics/ocupacao'
+import { DEFINICOES } from '@/lib/metrics/definicoes'
+import { Dica } from '@/components/shared/dica'
 import { atendimentosPorExtenso } from '@/lib/agenda/grade'
 import { BotaoBloquearHorario } from '@/components/shared/bloqueio-da-agenda'
 import type { BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
@@ -118,14 +121,18 @@ function calcKPIs(
   const bookedMin    = windowEvs
     .filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status))
     .reduce((s, e) => s + e.durationMin, 0)
-  const occupancy    = ocupacaoEmPct(bookedMin, horarioDaUnidade,
-    professionals.map(p => horariosDosProfissionais[p.id] ?? null), from, to,
-    professionals.map(p => [
-      ...(ocupadoForaDosProfissionais[p.id] ?? []),
-      ...blocosDosBloqueios(bloqueios.filter(b => b.professionalId === p.id)),
-    ])) ?? 0
+  const horarios = professionals.map(p => horariosDosProfissionais[p.id] ?? null)
+  const ocupados = professionals.map(p => [
+    ...(ocupadoForaDosProfissionais[p.id] ?? []),
+    ...blocosDosBloqueios(bloqueios.filter(b => b.professionalId === p.id)),
+  ])
+  const occupancy    = ocupacaoEmPct(bookedMin, horarioDaUnidade, horarios, from, to, ocupados) ?? 0
+  // A53 da 9ª: a base, para a tela dizer a conta (a mesma capacidade de ocupacaoEmPct).
+  const base = professionals.length
+    ? baseDaOcupacao({ agendados: bookedMin, abertos: capacidadeEmMinutos(horarioDaUnidade, horarios, from, to, ocupados), profissionais: professionals.length })
+    : null
 
-  return { totalCount, waitingCount, occupancy }
+  return { totalCount, waitingCount, occupancy, base }
 }
 
 /** Minutos desde a meia-noite em que a unidade abre neste dia; nulo se fechada. */
@@ -217,7 +224,7 @@ export function AgendaCalendar({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [dropError,     setDropError]     = useState<string | null>(null)
 
-  const { totalCount, waitingCount, occupancy } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueios)
+  const { totalCount, waitingCount, occupancy, base: baseDaOcupacaoDaTela } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueios)
 
   // -- Drag-and-drop ----------------------------------------------------------
   const moverAgendamento = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {
@@ -310,6 +317,8 @@ export function AgendaCalendar({
             <span style={{ fontWeight: 700, color: 'var(--text)' }}>{totalCount}</span> {atendimentosPorExtenso(totalCount)}
             {' · '}
             <span style={{ fontWeight: 700, color: occupancy >= 80 ? 'var(--brand)' : 'var(--text)' }}>{occupancy}%</span> de ocupação
+            {/* A53 da 9ª: a conta da ocupação, à vista. */}
+            {baseDaOcupacaoDaTela && <> <span data-base-da-ocupacao>({baseDaOcupacaoDaTela})</span> <Dica rotulo={DEFINICOES.ocupacao.rotulo}>{DEFINICOES.ocupacao.texto}</Dica></>}
             {waitingCount > 0 && (
               <>
                 {' · '}
