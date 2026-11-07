@@ -1,5 +1,6 @@
 'use server'
 
+import { enderecoComNumero } from '@/lib/unidades/endereco-com-numero'
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { lerHorarioDoForm } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
@@ -52,7 +53,8 @@ export async function createBranch(
   const stateRegistration = (formData.get('state_registration') as string)?.trim() || null
   const email    = (formData.get('email') as string)?.trim().toLowerCase() || null
   const phone    = (formData.get('phone') as string)?.trim() || null
-  const address  = (formData.get('address') as string)?.trim() || null
+  // O número entra no endereço, depois do logradouro (A7 da 9ª).
+  const address  = enderecoComNumero(formData.get('address') as string | null, formData.get('address_number') as string | null)
   const city     = (formData.get('city') as string)?.trim() || null
   const state    = (formData.get('state') as string)?.trim().toUpperCase() || null
   const zipCode  = (formData.get('zip_code') as string)?.trim() || null

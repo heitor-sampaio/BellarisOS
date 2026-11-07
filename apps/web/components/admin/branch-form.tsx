@@ -268,14 +268,21 @@ export function BranchForm() {
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor="br-address">Logradouro</label>
-                    <input
-                      id="br-address" type="text" className="field"
-                      value={address}
-                      onChange={e => setAddress(e.target.value)}
-                      placeholder="Rua das Flores, 123 — Bairro"
-                    />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <label className="overline" htmlFor="br-address">Logradouro</label>
+                      <input
+                        id="br-address" type="text" className="field"
+                        value={address}
+                        onChange={e => setAddress(e.target.value)}
+                        placeholder="Rua das Flores — Bairro"
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {/* A7 da 9ª: o CEP preenche só o logradouro, e não havia onde pôr o número. */}
+                      <label className="overline" htmlFor="br-number">Número</label>
+                      <input id="br-number" type="text" className="field" inputMode="numeric" placeholder="123" name="address_number" />
+                    </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 12 }}>

@@ -251,6 +251,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
   const [email,      setEmail]      = useState('')
   const [zipCode,    setZipCode]    = useState('')
   const [address,    setAddress]    = useState('')
+  const [numero,     setNumero]     = useState('')
   const [city,       setCity]       = useState('')
   const [uf,         setUf]         = useState('')
   const [cepLoading, setCepLoading] = useState(false)
@@ -332,6 +333,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
     formData.set('email',    email)
     formData.set('zip_code', zipCode)
     formData.set('address',  address)
+    formData.set('address_number', numero)
     formData.set('city',     city)
     formData.set('state',    uf)
     // O horário vem do editor (campo oculto do formulário).
@@ -495,16 +497,23 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label className="overline" htmlFor="br-address">Logradouro</label>
-        <input
-          id="br-address"
-          type="text"
-          className="field"
-          value={address}
-          onChange={e => setAddress(e.target.value)}
-          placeholder="Rua das Flores, 123 — Bairro"
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <label className="overline" htmlFor="br-address">Logradouro</label>
+          <input
+            id="br-address"
+            type="text"
+            className="field"
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            placeholder="Rua das Flores — Bairro"
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {/* A7 da 9ª: o CEP preenche só o logradouro, e não havia onde pôr o número. */}
+          <label className="overline" htmlFor="br-number">Número</label>
+          <input id="br-number" type="text" className="field" inputMode="numeric" placeholder="123" value={numero} onChange={e => setNumero(e.target.value)} />
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 12 }}>

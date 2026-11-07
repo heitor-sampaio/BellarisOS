@@ -55,6 +55,16 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
         </label>
       )}
 
+      {/* A2 da 9ª: a clínica 24 h preenchia 14 campos — ajusta a segunda e repete (o domingo também). */}
+      {!segue && (
+        <button type="button" className="btn-ghost" data-repetir-horario
+          style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
+          disabled={!(dias['1'] ?? []).length}
+          onClick={() => { const seg = dias['1'] ?? []; setMexeu(true); setDias(Object.fromEntries(DIAS.map(d => [d.chave, seg.map(i => ({ ...i }))]))) }}>
+          Repetir o horário de segunda em todos os dias (domingo incluído)
+        </button>
+      )}
+
       {!segue && DIAS.map(({ chave, nome: nomeDoDia }) => {
         const lista = dias[chave] ?? []
         const aberto = lista.length > 0

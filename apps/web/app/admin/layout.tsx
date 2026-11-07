@@ -41,7 +41,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       : Promise.resolve({ count: 0, error: null }),
   ])
 
-  if (ctx.role === 'NETWORK_ADMIN' && !tenant?.onboarding_completed_at) redirect('/setup')
+  // O setup se dá por concluído quando a unidade existe (A1 da 9ª simulação):
+  // criada a unidade, toda URL do /admin voltava ao "Tudo pronto!" até o
+  // clique em "Acessar o painel" — quem fechava a aba no fim caía nele de
+  // novo. Sem unidade ativa, o setup segue sendo o caminho.
+  if (ctx.role === 'NETWORK_ADMIN' && !tenant?.onboarding_completed_at) {
+    const unidade = await ler(admin.from('branches').select('id')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(1), 'conferir a unidade da rede') as { id: string }[] | null
+    if (!unidade?.length) redirect('/setup')
+  }
 
   // O contador do sino é acessório: falhar aqui não pode derrubar o portal
   // inteiro. A falha fica no log e o sino começa em zero (o realtime corrige).

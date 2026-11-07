@@ -175,6 +175,19 @@ um muro que não depende de cada trava do código.
   o telefone), a rede que já tem unidade ativa vai direto ao "Tudo pronto!"
   (sem isso, a única saída era criar uma segunda unidade), e o passo da
   unidade tem "Voltar". Prova: `e2e/setup-retoma.spec.ts`.
+- **O setup se dá por concluído quando a unidade existe** (A1 da 9ª simulação,
+  2026-11-07): criada a unidade, toda URL do `/admin` voltava ao "Tudo pronto!"
+  até o clique em "Acessar o painel", e quem fechava a aba no fim caía nele de
+  novo (os dois times). O layout do `/admin` só manda ao `/setup` a rede SEM
+  unidade ativa; o "Tudo pronto!" segue a quem abre o `/setup`. **E o passo da
+  unidade** (A2, A7): "Repetir o horário de segunda em todos os dias (domingo
+  incluído)" no editor de horário (`[data-repetir-horario]`; a clínica 24 h
+  preenchia 14 campos) e o "Número" do endereço, que entra depois do
+  logradouro ("Rua Padre Chagas, 123 — Moinhos de Vento",
+  `enderecoComNumero`, `lib/unidades/endereco-com-numero.ts`; também no "Nova
+  unidade"). O `id="br-phone"` em dobro não se reproduziu: o passo 1 usa
+  `net-phone`, e o setup tem um campo só. Prova: `e2e/setup-atritos-da-9.spec.ts`,
+  `tests/endereco-com-numero.test.ts`.
 - **O endereço que se dá à cliente é o do APP DA CLIENTE, inteiro** (A4 da
   6ª simulação, 2026-11-04; princípio 3): Configurações → Geral mostrava como
   "Endereço do portal" o identificador da rede (`/{tenants.slug}`), que não
