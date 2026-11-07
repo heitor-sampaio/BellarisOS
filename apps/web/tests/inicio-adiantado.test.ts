@@ -20,3 +20,16 @@ describe('perguntaDoInicioAdiantado (A32; r2-age-06: qualquer tempo antes)', () 
   it('atrasado: inicia sem perguntar', () => expect(perguntaDoInicioAdiantado('2026-11-03T13:00:00.000Z', agora)).toBeNull())
   it('sem horário: nada', () => expect(perguntaDoInicioAdiantado(null, agora)).toBeNull())
 })
+
+describe('A24: "Iniciar mesmo assim" diz quanto falta e pede cuidado quando não é hoje', () => {
+  const agora = new Date('2026-11-07T03:30:00.000Z') // 07/11 às 00:30 em Brasília
+  it('15 dias antes: diz os dias e a data, e que não é hoje', () =>
+    expect(perguntaDoInicioAdiantado('2026-11-22T13:00:00.000Z', agora)).toBe(
+      'O atendimento está marcado para 22/11 às 10:00 — faltam 15 dias, não é hoje. Iniciar agora registra o atendimento como feito hoje, 07/11: confira se é este o agendamento da cliente. Iniciar mesmo assim?'))
+  it('amanhã: "falta 1 dia"', () =>
+    expect(perguntaDoInicioAdiantado('2026-11-08T12:00:00.000Z', agora)).toBe(
+      'O atendimento está marcado para 08/11 às 09:00 — falta 1 dia, não é hoje. Iniciar agora registra o atendimento como feito hoje, 07/11: confira se é este o agendamento da cliente. Iniciar mesmo assim?'))
+  it('hoje, mais tarde: a pergunta de sempre, com o tempo', () =>
+    expect(perguntaDoInicioAdiantado('2026-11-07T03:49:00.000Z', agora)).toBe(
+      'O atendimento está marcado para as 00:49 — faltam 19 min. Iniciar mesmo assim?'))
+})
