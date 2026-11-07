@@ -277,6 +277,12 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **Arquivar a cliente** (menu "Mais ações" da ficha, `clients: MANAGE`; era "Desativar") a tira das
   listas e da conta de CLIENTE NOVA do dashboard (`is_active` nas três contas: `metrics_core`,
   `metrics_by_branch`, `metrics_new_clients_series`, A24). Prova: `e2e/clientes-arquivar.spec.ts`.
+- **O "só os meus" não recorta a ficha da cliente** (o Heitor, 2026-11-07, 9ª simulação: "ve tudo,
+  só os meus não se aplica para visualização de clientes pq os clientes são da clinica, isso já foi
+  decidido antes"): a profissional com a Agenda ou o Prontuário em "só os meus" abre a ficha de
+  qualquer cliente e vê a Visão geral e o Histórico inteiros — os atendimentos de outras
+  profissionais, os valores, o plano e o contrato. O escopo continua valendo onde é do módulo: a
+  aba Prontuário (o dado clínico de quem ela não atendeu) e a aba Financeiro (o OWN do Financeiro).
 - **A ficha é da CLÍNICA, não da unidade de cadastro** (H5, "A cliente é da clínica, pode agendar
   em qualquer unidade da clínica"; F6 da 5ª simulação, o Heitor: "concordo"): quem tem Clientes em
   Gerenciar edita os dados, as anotações e as tags e ARQUIVA/REATIVA a ficha de qualquer cliente da

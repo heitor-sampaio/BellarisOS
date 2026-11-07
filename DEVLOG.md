@@ -9965,15 +9965,15 @@ em `.sim/arquivo-2026-11-06/`. Os ids D1…D18 e A1…A53 são desta rodada. Cam
 - **D17.** `/injetaveis` sem acesso responde HTTP 500 (a trava no layout).
 - **D18.** (provável) Hidratação #418 na saudação da topbar na virada das faixas de hora.
 
-**Para o Heitor decidir**
-1. **Vender crédito na clínica em dinheiro (o "vale")** — hoje o pré-pago é de procedimento e o "Conceder crédito" fica
-   fora do caixa. Recomendação: "Crédito na clínica" no Vender, no caixa no dia do dinheiro, pontos na venda, sem
-   comissão.
-2. **A conta do cancelamento do plano (D4)** — a mesma função do pacote (prévia, crediário caindo antes, estorno ou
-   crédito), com duas escolhas da clínica: a sessão feita pelo preço com desconto (padrão) ou o de tabela, e multa sobre
-   o saldo (0% padrão), valendo também para o pacote.
-3. **O que a profissional "só os meus" vê no histórico** — recomendação: o histórico (procedimento, data, quem
-   atendeu), sem os valores, o plano e o contrato que não são dela.
+**Decidido pelo Heitor em 2026-11-07**
+1. **O "vale": "concordo"** — "Crédito na clínica" no Vender, no caixa no dia do dinheiro, pontos na venda, sem
+   comissão; o "Conceder crédito" fica para o que não teve dinheiro.
+2. **O cancelamento do plano: "sim usa a mesma coisa do pacote… os dois são, em essencia, conjuntos de procedimentos"**
+   — a mesma regra do "Cancelar pacote", sem configurações novas.
+3. **O "só os meus" e a ficha: "ve tudo, só os meus não se aplica para visualização de clientes pq os clientes são da
+   clinica, isso já foi decidido antes"** — nada muda; a regra entrou em .
+
+Frentes F40–F45, uma depois da outra (a F45 é a lentidão do banco que derrubou as duas completas).
 
 **Atritos (A1–A53), os que mais pesam:** o `/setup` que volta a cada URL até o "Acessar o painel" (A1, sobra da F36);
 o "Preencher pela taxa por parcela" que ainda faz digitar as 12 caixas (A4); o mapa e o lote fora da sessão (A10, A11);
