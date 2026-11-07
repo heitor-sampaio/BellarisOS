@@ -22,12 +22,26 @@ export function banco(): SupabaseClient {
  * Na completa de 2026-10-22 um GET de `package_sessions` nunca chegou ao
  * Supabase (não está no log dele): o runner ficou ~70 s pendurado e o
  * supabase-js devolveu `data: null` — o teste morreu num `null.id` sem dizer
- * nada. Só GET e HEAD: repetir uma gravação que talvez tenha chegado gravaria
+ * nada. GET e HEAD: repetir uma gravação que talvez tenha chegado gravaria
  * duas vezes. Resposta de erro (4xx, 5xx) não é repetida — é o banco falando.
+ *
+ * A exceção é a GRAVAÇÃO cancelada pelo `statement_timeout` (57014, F45 —
+ * a completa de 06–07/11, com o Postgres parado 9 a 45 s): o Postgres desfez
+ * a transação inteira, nada ficou gravado, e repetir não grava duas vezes.
+ * Era o INSERT da rede, da oportunidade, do agendamento do próprio teste.
  */
-async function fetchQueInsiste(entrada: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export async function fetchQueInsiste(entrada: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const metodo = (init?.method ?? 'GET').toUpperCase()
-  if (metodo !== 'GET' && metodo !== 'HEAD') return fetch(entrada, init)
+  if (metodo !== 'GET' && metodo !== 'HEAD') {
+    // Só o corpo que dá para mandar de novo (o supabase-js manda texto).
+    const repetivel = init?.body === undefined || init?.body === null || typeof init.body === 'string'
+    for (let tentativa = 1; ; tentativa++) {
+      const r = await fetch(entrada, init)
+      if (!repetivel || tentativa >= 3 || r.status < 500 || !(await foiCanceladaPeloTempo(r))) return r
+      console.warn(`[e2e] ${metodo} cancelado pelo statement_timeout (57014) — nada gravado, tentando de novo`)
+      await new Promise(ok => setTimeout(ok, 3_000 * tentativa))
+    }
+  }
   for (let tentativa = 1; ; tentativa++) {
     try {
       return await fetch(entrada, { ...init, signal: init?.signal ?? AbortSignal.timeout(20_000) })
@@ -36,6 +50,53 @@ async function fetchQueInsiste(entrada: RequestInfo | URL, init?: RequestInit): 
       await new Promise(r => setTimeout(r, 1_000 * tentativa))
     }
   }
+}
+
+async function foiCanceladaPeloTempo(r: Response): Promise<boolean> {
+  try {
+    const corpo = await r.clone().json() as { code?: string }
+    return corpo?.code === '57014'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * O login de teste no Auth, com a mesma paciência (F45). Com o banco parado, o
+ * Auth responde 5xx ou um erro sem mensagem ("context deadline exceeded") —
+ * `ficha-lista-de-clientes` morreu em "criar o login: {}". Repete; se a
+ * repetição diz "já existe", a primeira tentativa chegou a criar, e vale o
+ * login com este e-mail. "Já existe" de PRIMEIRA é erro do teste (o e-mail é
+ * de outro), e lança.
+ */
+export async function criarLoginDeTeste(db: SupabaseClient, email: string, oQue: string): Promise<string> {
+  let falhou = false
+  for (const espera of [0, 5, 15, 30]) {
+    if (espera) await new Promise(ok => setTimeout(ok, espera * 1000))
+    const r = await db.auth.admin.createUser({ email, email_confirm: true })
+    if (r.data.user) return r.data.user.id
+    const msg = r.error?.message ?? ''
+    if (/already|registered|exists/i.test(msg)) {
+      const id = falhou ? await loginPeloEmail(db, email) : null
+      if (id) return id
+      throw new Error(`${oQue}: ${msg}`)
+    }
+    falhou = true
+    console.warn(`[e2e] ${oQue}: ${msg || JSON.stringify(r.error) || 'sem usuário'} — tentando de novo`)
+  }
+  throw new Error(`${oQue}: o Auth não respondeu`)
+}
+
+/** O id do login com este e-mail (o Auth não busca por e-mail: pagina). */
+async function loginPeloEmail(db: SupabaseClient, email: string): Promise<string | null> {
+  for (let pagina = 1; pagina < 50; pagina++) {
+    const { data, error } = await db.auth.admin.listUsers({ page: pagina, perPage: 200 })
+    if (error) return null
+    const achado = data.users.find(u => u.email === email)
+    if (achado) return achado.id
+    if (data.users.length < 200) return null
+  }
+  return null
 }
 
 /** Prefixo de tudo que a suíte cria — e o único critério da limpeza. */

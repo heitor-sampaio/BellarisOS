@@ -3,7 +3,7 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { banco, tenantId, PREFIXO } from './banco'
+import { banco, tenantId, PREFIXO, criarLoginDeTeste } from './banco'
 import { apagarClientes } from './limpeza'
 import { redeAdiada } from './limpeza-adiada'
 
@@ -213,9 +213,8 @@ export async function criarMembro(
       if (erroPerm) throw new Error(`gravar a matriz do cargo: ${erroPerm.message}`)
     }
 
-    const { data: auth, error: erroAuth } = await db.auth.admin.createUser({ email, email_confirm: true })
-    if (erroAuth || !auth.user) throw new Error(`criar o login: ${erroAuth?.message}`)
-    authId = auth.user.id
+    // Com o banco parado, o Auth falha calado ("criar o login: {}"): repete (F45).
+    authId = await criarLoginDeTeste(db, email, 'criar o login')
 
     const { error: erroClaims } = await db.rpc('set_user_claims', {
       p_auth_id: authId, p_tenant_id: tenant, p_branch_id: branchId, p_role_id: roleId,
@@ -288,9 +287,7 @@ export async function clienteComSessao(
   }
 
   try {
-    const { data: auth, error: erroAuth } = await db.auth.admin.createUser({ email, email_confirm: true })
-    if (erroAuth || !auth.user) throw new Error(`criar o login do cliente: ${erroAuth?.message}`)
-    authId = auth.user.id
+    authId = await criarLoginDeTeste(db, email, 'criar o login do cliente')
 
     const { data: cliente, error: erroCliente } = await db.from('clients')
       .insert({

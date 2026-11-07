@@ -217,6 +217,21 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     — até 3 vezes, 20 s cada; gravação nunca (poderia gravar duas vezes).
     Leitura com `.single()` que o teste usa a seguir confere o `error`: sem
     isso, a queda vira um `null.id` mudo.
+  - **A exceção é a gravação cancelada pelo `statement_timeout`** (57014, F45 —
+    a completa de 06–07/11, com o Postgres parado de 9 a 45 s às 01:29, 01:38 e
+    01:50): o Postgres desfez a transação, nada ficou gravado, e `banco()`
+    repete até 3 vezes. Era o INSERT da rede (`criarOutraRede`), da
+    oportunidade e do agendamento do próprio teste. Outro erro de gravação volta
+    na hora. E o login de teste sai de `criarLoginDeTeste` (`apoio/banco.ts`):
+    o Auth com o banco parado responde erro VAZIO ("criar o login: {}") — repete,
+    e se a repetição diz "já existe", vale o login que a primeira criou. Prova:
+    `tests/e2e-banco-insiste.test.ts`.
+  - Clique num cartão da grade do DIA da agenda da unidade é por
+    `cartaoNaGradeDoDia` (`apoio/agenda.ts`, F45): ele espera a grade rolar
+    sozinha (`data-rolagem="pronta"`). Clicado antes, o cartão saía de baixo do
+    ponteiro, o clique caía na coluna e abria o "Novo agendamento" às 01:45 — e
+    o `click()` sem tempo esperava 5 minutos por um botão que não vinha (A27 da
+    7ª e A20 da 8ª).
   - **O log inteiro dos servidores está no artefato `playwright-falhas`**
     (`servidor.log`, `servidor-sistema.log`, `servidor-suporte.log`, desde
     2026-10-27). O passo "Log dos servidores" mostra só as últimas 300 linhas
@@ -266,4 +281,6 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 ❌ Adulterar o value de um input escondido numa tela que se renderiza sozinha (o relógio do atendimento): o React o desfaz antes do envio — troque no evento formdata (F27)
 ❌ Ler com um .single() logo depois da tela o que a action grava em seguida (o evento do after(), a segunda gravação): é expect.poll (F39)
 ❌ Comando com espaço no -g de um spawnSync com shell no Windows (o argumento se parte): use uma palavra só
+❌ Repetir uma gravação que falhou por outro motivo que não o 57014 (só o cancelamento por tempo garante que nada foi gravado)
+❌ Clicar num cartão da grade do dia logo depois do goto sem cartaoNaGradeDoDia (a rolagem da grade o tira de baixo do ponteiro — F45)
 ```

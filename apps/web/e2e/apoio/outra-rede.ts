@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { banco, PREFIXO } from './banco'
+import { banco, PREFIXO, criarLoginDeTeste } from './banco'
 import { adiarRede, apagarRedeDeTeste, limpezaAdiada, redeAdiada } from './limpeza-adiada'
 
 /**
@@ -52,19 +52,9 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
   expect(ePr, 'criar o procedimento da outra rede').toBeNull()
   // O erro do Auth olhado (era descartado, e a falha aparecia como "null.id"
   // uma linha abaixo); sob a carga da completa, o 5xx/limite passageiro repete.
-  let auth: { user: { id: string } | null } = { user: null }
-  for (const espera of [0, 5, 15, 30]) {
-    if (espera) await new Promise(ok => setTimeout(ok, espera * 1000))
-    const r = await db.auth.admin.createUser({ email: `e2e-prof-${marca}@bellaris.invalid`, email_confirm: true })
-    if (r.data.user) { auth = r.data; break }
-    if (r.error && /already|registered|exists/i.test(r.error.message)) {
-      throw new Error(`criar o login do profissional da outra rede: ${r.error.message}`)
-    }
-    console.warn(`[e2e] criar o login do profissional: ${r.error?.message ?? 'sem usuário'} — tentando de novo`)
-  }
-  if (!auth.user) throw new Error('criar o login do profissional da outra rede: o Auth não respondeu')
+  const authDoProf = await criarLoginDeTeste(db, `e2e-prof-${marca}@bellaris.invalid`, 'criar o login do profissional da outra rede')
   const { data: prof, error: eP } = await db.from('users')
-    .insert({ tenant_id: t!.id, auth_id: auth.user!.id, name: `${PREFIXO} Prof ${marca}`, email: `e2e-prof-${marca}@bellaris.invalid` })
+    .insert({ tenant_id: t!.id, auth_id: authDoProf, name: `${PREFIXO} Prof ${marca}`, email: `e2e-prof-${marca}@bellaris.invalid` })
     .select('id').single<{ id: string }>()
   expect(eP, 'criar o profissional da outra rede').toBeNull()
 
