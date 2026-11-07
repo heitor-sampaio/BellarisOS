@@ -1,3 +1,4 @@
+import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import type { TenantContext } from '@estetica-os/types'
 import { can, isOwnScope, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -87,6 +88,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     procedureName: l.appointment?.procedures?.name ?? null,
     scheduledAt:   l.appointment?.scheduled_at ?? null,
     dueDate:       l.due_date,
+    // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).
+    vencida:       l.type === 'INCOME' && !l.is_paid && l.notes !== 'Estornada' && situacaoDoVencimento(l.due_date) === 'VENCIDA',
     isCheckout:    !l.appointment_id && l.category !== 'Estorno',
     // O estorno com o sinal certo e o original marcado (D6, 2026-10-28).
     estornada:     l.notes === 'Estornada',

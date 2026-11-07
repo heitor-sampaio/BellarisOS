@@ -1,4 +1,6 @@
-import { getTenantContext, temRecurso, can, podeVerRelatorio } from '@/lib/auth'
+import { getTenantContext, temRecurso, can, podeVerRelatorio, isOwnScope } from '@/lib/auth'
+import { ParcelasVencidas } from '@/components/shared/parcelas-vencidas'
+import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -85,6 +87,8 @@ export default async function AdminDashboardPage({
   // da 6ª simulação; CLAUDE.md §11: "o time comercial vê o funil sem ver o
   // faturamento"). Sem ela, o dado nem sai do servidor: as props vão vazias.
   const veDinheiro = can(ctx, 'financial', 'VIEW') || podeVerRelatorio(ctx, 'financeiro')
+  // D13 da 9ª: o aviso das parcelas vencidas é de quem vê o financeiro inteiro.
+  const veVencidas = can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial')
   // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
   const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports
 
@@ -154,6 +158,8 @@ export default async function AdminDashboardPage({
   const branches  = unidadeId ? todasAsUnidades.filter(b => b.id === unidadeId) : todasAsUnidades
   const unidadeRecortada = unidadeId && !umaUnidade ? (branches[0]?.name ?? null) : null
   const branchIds = branches.map(b => b.id)
+  const vencidasDoRecorte = veVencidas && branchIds.length
+    ? (await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds })).total : null
 
   if (branchIds.length === 0) {
     return (
@@ -661,7 +667,12 @@ export default async function AdminDashboardPage({
       <AdminDashboardView
         permissions={ctx.permissions}
         quadrosDeClientes={quadrosDeClientes}
-        avisoDosAbertos={<AbertosDeAntes base="/admin/agenda" abertos={abertos.abertos} semChegada={abertos.semChegada} mostrarUnidade={branches.length > 1} />}
+        avisoDosAbertos={<>
+          <AbertosDeAntes base="/admin/agenda" abertos={abertos.abertos} semChegada={abertos.semChegada} mostrarUnidade={branches.length > 1} />
+          {/* D13 da 9ª: as parcelas vencidas, a quem vê o financeiro inteiro. */}
+          {vencidasDoRecorte && <ParcelasVencidas vencidas={vencidasDoRecorte}
+            href={`/admin/financeiro?aberto=vencidas${unidadeId ? `&unidade=${unidadeId}` : ''}#movimentacoes`} />}
+        </>}
         userName={ctx.userName}
         leadFunnel={leadFunnel}
         funnels={funisAtivos.map(f => ({ id: f.id, name: f.name }))}

@@ -30,6 +30,8 @@ import { ChevronRight, ClipboardList } from 'lucide-react'
 import { ler, contar } from '@/lib/db'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
+import { ParcelasVencidas } from '@/components/shared/parcelas-vencidas'
+import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { LotesVencendo } from '@/components/shared/lotes-vencendo'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import { AvatarDaCliente as Avatar, ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
@@ -345,6 +347,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       }))
     : []
 
+  // D13 da 9ª: as parcelas vencidas da unidade, a quem vê o financeiro dela inteiro.
+  const vencidas = canFinancial && !isOwnScope(ctx, 'financial')
+    ? (await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: [branchId] })).total
+    : null
+
   // -------------------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -363,6 +370,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts} />}
 
       <AbertosDeAntes base={`/${slug}/agenda`} abertos={abertos.abertos} semChegada={abertos.semChegada} />
+
+      {vencidas && <ParcelasVencidas vencidas={vencidas} href={`/${slug}/financeiro?aberto=vencidas#lancamentos`} />}
 
       {/* Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */}
       <LotesVencendo lotes={lotesVencendo} agora={now.toISOString()} />

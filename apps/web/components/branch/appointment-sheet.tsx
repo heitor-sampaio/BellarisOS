@@ -183,6 +183,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
     if (r?.error) { setErro(r.error); return }
     const aviso = AVISO[status]
     if (aviso) toast.success(aviso)
+    // D13 da 9ª: a chegada de quem tem parcela vencida avisa (a chegada vale).
+    if (r && 'aviso' in r && r.aviso) toast.warning(r.aviso, { duration: 12_000 })
     if (status === 'IN_PROGRESS') {
       onClose()
       router.push(rotaAtendimento(pathname, slug, appointment.id))

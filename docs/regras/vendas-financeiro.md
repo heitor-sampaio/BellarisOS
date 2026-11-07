@@ -818,6 +818,42 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   abre a lista com TODO o a receber em aberto, de qualquer vencimento
   (`?aberto=todos`, `[data-so-o-em-aberto]`, nos dois financeiros), com o
   "Pagar" na linha e "Voltar ao período". O período da lista não mudou.
+- **A parcela VENCIDA tem nome, filtro e aviso** (D13 da 9ª simulação,
+  2026-11-07; decidido pelo princípio 3): a 1ª parcela da Mariana venceu em
+  05/11 e era "Pendente", igual à que vai vencer, no Financeiro, na ficha, no
+  dashboard e no app. Vencida é o a receber em aberto com o vencimento ANTES
+  de hoje em Brasília (o que vence hoje ainda não venceu) — a régua é UMA,
+  `situacaoDoVencimento` (`lib/financeiro/vencimentos.ts`, decidida no
+  servidor, que manda `vencida` à tela) e, para os números,
+  `metrics_a_receber_vencido` → `getAReceberVencido` (`lib/metrics/vencidas.ts`;
+  migration `20261107004403`).
+  - As listas dos dois financeiros e a aba Financeiro da ficha dizem "Vencida
+    em 05/11" (`SituacaoDoEmAberto`, `[data-vencida]`); a lista da unidade tem
+    a situação "Vencidas" no filtro.
+  - O cartão "A receber da cliente" diz "Vencidas: R$ 1.294,00 (1 parcela,
+    desde 05/11) · Ver as vencidas" (`[data-vencidas]`), que abre a lista só
+    das vencidas, de qualquer mês (`?aberto=vencidas`, nos dois financeiros).
+  - O dashboard (da unidade e da rede, a quem vê o financeiro inteiro) avisa
+    "1 parcela vencida da cliente: R$ 1.294,00 (a mais antiga venceu em
+    05/11)… Ver no Financeiro" (`ParcelasVencidas`, `[data-parcelas-vencidas]`).
+  - O app (Financeiro e Histórico → Pagamentos) diz "Vencida em 05/11" e a
+    situação "Vencida".
+  - **O check-in avisa, sem recusar**: a recepção marca "Chegou" e lê
+    "Mariana tem 1 parcela vencida (R$ 1.294,00, desde 05/11): receba no
+    Financeiro." (`updateAppointmentStatus`/`checkinAppointment` devolvem
+    `aviso`, só para quem recebe). A cobrança no check-in continua só a do
+    plano (`emAbertoDoPlano`).
+  - Prova: `e2e/financeiro-vencidas-da-9.spec.ts`, `tests/financeiro-vencida.test.ts`.
+- **Remarcar o vencimento** (A37 da 9ª simulação): a parcela do crediário só
+  tinha "Pagar". Quem tem o Financeiro em Gerenciar (sem "só os meus", com a
+  unidade ao alcance) tem "Remarcar vencimento" na linha em aberto dos dois
+  financeiros (`RemarcarVencimento`, `remarcarVencimento` em
+  `actions/financial.ts`): o novo dia e um motivo opcional, gravados por
+  `lancamento_remarcar_vencimento` (migration `20261107004404`), que guarda o
+  histórico no lançamento (`vencimentos_anteriores`: de, para, quem, quando,
+  motivo). A linha diz "Vencimento remarcado: era 05/11 (Lúcia, em 07/11 —
+  combinado com a cliente)" (`[data-vencimento-remarcado]`). O pago e o
+  estornado não se remarcam. Prova: `e2e/financeiro-vencidas-da-9.spec.ts` ("A37").
 - **O CSV das movimentações** (A44 da 8ª: a contadora só tinha o de Comissões):
   "Exportar CSV" na lista dos dois financeiros — o que a lista tem, com os
   filtros da tela (na rede, todas as movimentações do recorte, não só as 100
@@ -1666,6 +1702,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ❌ Devolver parte de uma venda de produto estornando a venda inteira e vendendo de novo, ou fora de produto_devolver_itens — e ler o valor, as unidades ou o custo de uma venda de produto sem tirar o devolvido (price − valor_devolvido, custo − custo_devolvido)
 ❌ Deixar a "Forma do pagamento do usado" em branco no estorno inteiro: vem a do pagamento original (comOPagamentoInteiro — A41 da 8ª)
+❌ Mostrar o a receber vencido como "Pendente", ou decidir no navegador se venceu (o dia é do servidor: situacaoDoVencimento; os números, metrics_a_receber_vencido — D13 da 9ª)
+❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
 ❌ Vender crédito na clínica pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na clínica" do Vender (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
 ```

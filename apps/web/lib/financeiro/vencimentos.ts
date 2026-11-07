@@ -32,3 +32,26 @@ export function vencimentosRecorrentes(primeiro: string, freq: FrequenciaRecorre
     return alvo.toISOString()
   })
 }
+
+const diaDe = (d: Date | string) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+const curto = (d: Date | string) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })
+const longo = (d: Date | string) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+
+/**
+ * O lançamento em aberto VENCEU? (D13 da 9ª simulação, princípio 3: a parcela
+ * vencida era "Pendente", igual à que vai vencer.) Vencida é a do dia ANTES de
+ * hoje em Brasília — o que vence hoje ainda não venceu. A mesma régua de
+ * `metrics_a_receber_vencido`.
+ */
+export function situacaoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date()): 'VENCIDA' | 'HOJE' | 'A_VENCER' | null {
+  if (!vencimento) return null
+  const dia = diaDe(vencimento), hoje = diaDe(agora)
+  return dia < hoje ? 'VENCIDA' : dia === hoje ? 'HOJE' : 'A_VENCER'
+}
+
+/** "Vencida em 05/11", "Vence hoje" ou "Vence 05/12/2026" — a mesma frase em toda tela. */
+export function textoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date()): string | null {
+  const s = situacaoDoVencimento(vencimento, agora)
+  if (!s || !vencimento) return null
+  return s === 'VENCIDA' ? `Vencida em ${curto(vencimento)}` : s === 'HOJE' ? 'Vence hoje' : `Vence ${longo(vencimento)}`
+}

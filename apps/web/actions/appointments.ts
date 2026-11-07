@@ -6,7 +6,9 @@ import { NAO_REALIZA, quemRealizaOProcedimento, realiza } from '@/lib/procedimen
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { after } from 'next/server'
-import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso, podeReceber } from '@/lib/auth'
+import { getAReceberVencido, parcelasVencidas } from '@/lib/metrics/vencidas'
+import { formatBRL } from '@estetica-os/utils'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -150,9 +152,11 @@ export async function addAppointment(
  */
 export async function updateAppointmentStatus(
   ...args: Parameters<typeof updateAppointmentStatusInterno>
-): Promise<{ error?: string; confirmarInicioAdiantado?: boolean }> {
+): Promise<{ error?: string; confirmarInicioAdiantado?: boolean; aviso?: string | null }> {
   try {
     await updateAppointmentStatusInterno(...args)
+    // D13 da 9ª: a chegada de quem tem parcela vencida avisa (sem recusar).
+    if (args[1] === 'ARRIVED') return { aviso: await avisoDasVencidasNaChegada(args[0]) }
     return {}
   } catch (e) {
     if (e && typeof e === 'object' && 'digest' in e) throw e
@@ -455,7 +459,7 @@ export async function checkinAppointment(
 async function checkinAppointmentInterno(
   appointmentId: string,
   slug: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; aviso?: string | null }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'MANAGE')
@@ -466,7 +470,7 @@ async function checkinAppointmentInterno(
 
     revalidarAgendamento(ctx, appointmentId, slug || null)
     notifyCheckin(appointmentId)
-    return {}
+    return { aviso: await avisoDasVencidasNaChegada(appointmentId) }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
@@ -2287,6 +2291,35 @@ export async function avisoDoPlanoAoAgendar(clientId: string, procedureId: strin
     return { texto: textoDoPlano(nomeParaSaudar(cli.name), plano), planId: plano.id }
   } catch (e) {
     console.error('[agenda] aviso do plano:', mensagemDoErro(e))
+    return null
+  }
+}
+
+/**
+ * D13 da 9ª simulação (decidido pelo princípio 3): o check-in de quem tem
+ * parcela VENCIDA avisa — "Mariana tem 1 parcela vencida (R$ 1.294,00, desde
+ * 05/11): receba no Financeiro." —, sem recusar a chegada. Só para quem recebe
+ * (a A39 da 7ª: o saldo é de quem cuida do dinheiro). A conta é a de
+ * `getAReceberVencido` (a do cartão "A receber da cliente"). Acessório: se a
+ * leitura falha, a chegada vale e o motivo vai ao log.
+ */
+async function avisoDasVencidasNaChegada(appointmentId: string): Promise<string | null> {
+  try {
+    const ctx = await getTenantContext()
+    if (!podeReceber(ctx)) return null
+    const admin = createAdminClient()
+    const ag = await ler(admin.from('appointments')
+      .select('client_id, clients(name), branches!inner(tenant_id)').eq('id', appointmentId).maybeSingle(), 'buscar a cliente do agendamento')
+    const tenant = (ag?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!ag?.client_id || tenant !== ctx.tenantId) return null
+    const { total } = await getAReceberVencido({ tenantId: ctx.tenantId!, clientId: ag.client_id as string })
+    if (total.quantidade <= 0) return null
+    const nome = ((ag.clients as unknown as { name: string } | null)?.name ?? 'A cliente').split(' ')[0]
+    const desde = total.maisAntiga
+      ? `, desde ${new Date(total.maisAntiga).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })}` : ''
+    return `${nome} tem ${parcelasVencidas(total.quantidade)} (${formatBRL(total.valor)}${desde}): receba no Financeiro.`
+  } catch (e) {
+    console.error('[agenda] aviso das parcelas vencidas na chegada:', e)
     return null
   }
 }

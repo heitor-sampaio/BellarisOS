@@ -16,6 +16,9 @@ import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
+import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
+import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } from '@/components/shared/remarcar-vencimento'
+import type { AReceberVencido } from '@/lib/metrics/vencidas'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
@@ -44,6 +47,8 @@ interface BranchStat {
   aReceber:    number
   /** D-14: todo o a receber em aberto da unidade, de qualquer vencimento. */
   aReceberEmAberto?: number
+  /** D13 da 9ª: o que já venceu na unidade. */
+  vencidas?: AReceberVencido
   /** "Reforça", item 4: os concluídos sem pagamento da unidade. */
   concluidosSemPagamento?: { n: number; valor: number }
   aPagar:      number
@@ -75,6 +80,10 @@ interface AdminTx {
   notes:          string | null
   /** Por que foi estornado (A36): na original e no estorno. */
   estorno_motivo?: string | null
+  /** D13 da 9ª: em aberto com o vencimento antes de hoje (decidido no servidor). */
+  vencida?: boolean
+  /** A37 da 9ª: as remarcações do vencimento. */
+  vencimentos_anteriores?: RemarcacaoDoVencimento[] | null
   /** O desconto e o motivo, embaixo do valor (fin-01). */
   desconto_texto?: string | null
   /** Da venda de produto: o estorno é da venda e pergunta se o produto voltou (H2). */
@@ -100,6 +109,8 @@ interface Props {
   totalAReceber:    number
   /** D-14: todo o a receber em aberto da rede, de qualquer vencimento (getAReceberEmAberto). */
   totalAReceberEmAberto: number
+  /** D13 da 9ª: o que já venceu na rede (getAReceberVencido). */
+  totalVencidas?:   AReceberVencido
   /** "Reforça", item 4: os atendimentos concluídos sem pagamento da rede, separados dos lançamentos. */
   totalConcluidosSemPagamento?: { n: number; valor: number }
   totalAPagar:      number
@@ -125,6 +136,8 @@ interface Props {
   transactions:     AdminTx[]
   /** A38 da 8ª: a lista é todo o a receber em aberto, de qualquer vencimento (`?aberto=todos`). */
   soOEmAberto?:     boolean
+  /** D13 da 9ª: só as VENCIDAS (`?aberto=vencidas`). */
+  soAsVencidas?:    boolean
   /** A44 da 8ª: o nome do CSV das movimentações. */
   nomeDoCsv?:       string
   branchSlugMap:    Record<string, string>
@@ -232,11 +245,11 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
-  branchStats, umaUnidade = false, transactions, soOEmAberto = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
+  branchStats, umaUnidade = false, transactions, soOEmAberto = false, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
   canWrite = false, canPay = false, canReverse = false, podeDarCredito = false, clients = [],
 }: Props) {
   const router      = useRouter()
@@ -309,6 +322,7 @@ export function AdminFinancialView({
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
   const aReceber    = statDaUnidade ? statDaUnidade.aReceber    : totalAReceber
   const aReceberEmAberto = statDaUnidade ? statDaUnidade.aReceberEmAberto ?? 0 : totalAReceberEmAberto
+  const vencidas = statDaUnidade ? statDaUnidade.vencidas : totalVencidas
   const concluidosSemPagamento = statDaUnidade ? statDaUnidade.concluidosSemPagamento : totalConcluidosSemPagamento
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
   const proximoAReceber = statDaUnidade ? statDaUnidade.proximoAReceber ?? null : totalProximoAReceber
@@ -432,7 +446,8 @@ export function AdminFinancialView({
           label="A receber da cliente"
           value={fmtBRL(aReceber)}
           nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
-            hrefDaBaixa={`/admin/financeiro?aberto=todos${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} />}
+            hrefDaBaixa={`/admin/financeiro?aberto=todos${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`}
+            vencidas={vencidas} hrefDasVencidas={`/admin/financeiro?aberto=vencidas${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
         {/* F2c: o que a operadora ainda deposita do cartão em N vezes — não é
@@ -562,7 +577,9 @@ export function AdminFinancialView({
       {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
       {soOEmAberto && (
         <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px' }}>
-          Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.{' '}
+          {soAsVencidas
+            ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês. Para dar baixa, use “Pagar” na linha.'
+            : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.'}{' '}
           <a href={`/admin/financeiro?period=${period}#movimentacoes`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
         </p>
       )}
@@ -647,6 +664,7 @@ export function AdminFinancialView({
                       {t.category === 'Estorno' && (
                         <span data-anula-a-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a receita estornada</span>
                       )}
+                      <VencimentoRemarcado historico={t.vencimentos_anteriores} />
                       {t.estorno_motivo && (
                         <span data-motivo-do-estorno style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Motivo: {t.estorno_motivo}</span>
                       )}
@@ -685,13 +703,7 @@ export function AdminFinancialView({
                           <CheckCircle2 size={10} /> Pago
                         </span>
                       ) : (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                          background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)',
-                        }}>
-                          <Clock size={10} /> Pendente
-                        </span>
+                        <SituacaoDoEmAberto vencida={t.vencida} vencimento={t.due_date} />
                       )}
                     </td>
 
@@ -718,6 +730,10 @@ export function AdminFinancialView({
                           }}>
                             <CheckCircle2 size={12} /> Pagar
                           </button>
+                        )}
+                        {/* A37 da 9ª: remarcar o vencimento do que está em aberto. */}
+                        {!t.is_paid && !estornada && canWrite && (
+                          <RemarcarVencimento lancamento={{ id: t.id, descricao: t.description, valor: Number(t.amount), vencimento: t.due_date }} />
                         )}
                         {/* ven-06: o recibo do que foi pago (PDF — imprimir ou baixar). */}
                         {isIncome && t.is_paid && !estornada && t.category !== 'Estorno' && (

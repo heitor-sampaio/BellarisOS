@@ -49,6 +49,7 @@ import { usadasAntesDoSistema } from '@/lib/pacotes/de-fora'
 import { ResponsavelLegal, RESPONSAVEL_VAZIO } from '@/components/shared/responsavel-legal'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal as ResponsavelDaFicha } from '@/lib/clients/menor'
 import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
+import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
 
 // -- Types --------------------------------------------------------------------
 
@@ -134,6 +135,8 @@ export interface ProfileTransaction {
    * 2/3" na descrição), e o que está em aberto mostra quando vence.
    */
   dueDate:       string | null
+  /** D13 da 9ª: em aberto com o vencimento antes de hoje. */
+  vencida?:      boolean
   isCheckout?:   boolean
   /** Cartão de crédito em N vezes (2–12), pago na hora. */
   cartaoVezes?:  number | null
@@ -1265,7 +1268,7 @@ function FinanceiroTab({
                 const isLast = i === transactions.length - 1
 
                 return (
-                  <tr key={t.id} data-lancamento={t.id} style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
+                  <tr key={t.id} data-lancamento={t.id} data-transacao-da-ficha style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
                     <td style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {!t.isPaid && t.dueDate
                         ? `Vence ${new Date(t.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
@@ -1311,9 +1314,14 @@ function FinanceiroTab({
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span className={t.estornada || t.estorno ? 'chip chip-muted' : t.isPaid ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
-                          {t.estornada ? 'Estornado' : t.estorno ? 'Estorno' : t.isPaid ? 'Pago' : 'Pendente'}
-                        </span>
+                        {/* D13 da 9ª: a vencida não é "Pendente", igual à que vai vencer. */}
+                        {t.vencida && t.dueDate && !t.isPaid && !t.estornada ? (
+                          <SituacaoDoEmAberto vencida vencimento={t.dueDate} />
+                        ) : (
+                          <span className={t.estornada || t.estorno ? 'chip chip-muted' : t.isPaid ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
+                            {t.estornada ? 'Estornado' : t.estorno ? 'Estorno' : t.isPaid ? 'Pago' : 'Pendente'}
+                          </span>
+                        )}
                         {/* r2-ven-13: o recibo do pago (PDF), onde a recepção procura. Quem só vê
                             o dela não tira recibo (a rota pede quem recebe ou vê a unidade inteira). */}
                         {t.isPaid && !t.estornada && !t.estorno && !t.saida && !soOsProprios && (

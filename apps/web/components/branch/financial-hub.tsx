@@ -22,6 +22,7 @@ import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcelas-da-operadora'
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
+import type { AReceberVencido } from '@/lib/metrics/vencidas'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 
 // --- Types --------------------------------------------------------
@@ -87,6 +88,10 @@ interface Props {
   transactions:     Transaction[]
   /** A38 da 8ª: a lista é todo o a receber em aberto, de qualquer vencimento (`?aberto=todos`). */
   soOEmAberto?:     boolean
+  /** D13 da 9ª: a lista é só das VENCIDAS (`?aberto=vencidas`). */
+  soAsVencidas?:    boolean
+  /** D13 da 9ª: o a receber da cliente que já venceu (getAReceberVencido). */
+  vencidas?:        AReceberVencido
   /** A44 da 8ª: o nome do CSV das movimentações (o recorte da lista). */
   nomeDoCsv?:       string
   /** A série de receita × despesa do período (metrics_series). */
@@ -515,7 +520,7 @@ export function FinancialHub({
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
-  transactions, soOEmAberto = false, nomeDoCsv, serie, emAberto, aPagarAnterior,
+  transactions, soOEmAberto = false, soAsVencidas = false, vencidas, nomeDoCsv, serie, emAberto, aPagarAnterior,
   commissions,
   canReverse,
   canWrite,
@@ -695,7 +700,8 @@ export function FinancialHub({
         <KpiCardFull
           chave="a-receber"
           nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
-            hrefDaBaixa={`/${slug}/financeiro?aberto=todos#lancamentos`} />}
+            hrefDaBaixa={`/${slug}/financeiro?aberto=todos#lancamentos`}
+            vencidas={vencidas} hrefDasVencidas={`/${slug}/financeiro?aberto=vencidas#lancamentos`} />}
           label="A receber da cliente"
           curr={pendingIncome} prev={prevPendingIncome}
           icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
@@ -826,7 +832,9 @@ export function FinancialHub({
         {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
         {soOEmAberto && (
           <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 12 }}>
-            Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.{' '}
+            {soAsVencidas
+              ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês. Para dar baixa, use “Pagar” na linha.'
+              : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.'}{' '}
             <a href={`/${slug}/financeiro?period=${period}#lancamentos`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
           </p>
         )}
@@ -837,6 +845,7 @@ export function FinancialHub({
           slug={slug}
           canReverse={canReverse}
           canPay={canPay}
+          podeRemarcar={canWrite}
         />
       </div>}
     </div>

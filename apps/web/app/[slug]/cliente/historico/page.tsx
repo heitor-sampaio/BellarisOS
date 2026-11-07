@@ -1,4 +1,5 @@
-﻿import { getTenantContext, assertClient } from '@/lib/auth'
+﻿import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { getTenantContext, assertClient } from '@/lib/auth'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assinadosDoCliente } from '@/lib/documentos/leitura'
@@ -36,6 +37,8 @@ export type PagamentoItem = {
   procedure_name: string | null
   /** O vencimento da parcela/conta a receber (A64), AAAA-MM-DD. */
   vencimento?:    string | null
+  /** D13 da 9ª: em aberto com o vencimento antes de hoje. */
+  vencida?:       boolean
   /** "Parcela 2 de 3" (A64). */
   parcela?:       string | null
   /** A forma pronta (`formaDoLancamento`): a parcela do crediário sem meio é "Com a clínica" (D6). */
@@ -166,6 +169,8 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     estornado:      r.notes === 'Estornada',
     // A64: o vencimento e a parcela — "Pendente" sozinho não dizia quando.
     vencimento:     r.is_paid ? null : (r.due_date ?? r.data_de_referencia ?? null),
+    // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).
+    vencida:        !r.is_paid && r.notes !== 'Estornada' && situacaoDoVencimento(r.due_date) === 'VENCIDA',
     parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
     forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',

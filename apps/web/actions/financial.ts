@@ -328,3 +328,38 @@ async function mudarParcelaDaOperadora(
     return { error: mensagemDoErro(e) }
   }
 }
+
+/**
+ * Remarca o vencimento de um lançamento em aberto (A37 da 9ª simulação: a
+ * parcela do crediário só tinha "Pagar"). Quem tem o Financeiro em Gerenciar,
+ * sem "só os meus", e alcança a unidade. O histórico fica no lançamento
+ * (`vencimentos_anteriores`: de, para, quem, quando, o motivo), numa
+ * gravação só (`lancamento_remarcar_vencimento`).
+ */
+export async function remarcarVencimento(transactionId: string, dia: string, motivo?: string | null): Promise<{ error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (isOwnScope(ctx, 'financial')) return { error: 'Seu cargo não libera esta ação.' }
+    if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Escolha o novo vencimento.' }
+    const admin = createAdminClient()
+    const tx = await ler(admin.from('financial_transactions')
+      .select('branch_id, branches!inner(tenant_id)').eq('id', transactionId).maybeSingle(), 'buscar o lançamento')
+    const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) return { error: 'Lançamento não encontrado.' }
+    const { error } = await admin.rpc('lancamento_remarcar_vencimento', {
+      p_tenant: ctx.tenantId!, p_lancamento: transactionId, p_vencimento: vencimentoDoDia(dia),
+      p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName || null,
+      p_motivo: (motivo ?? '').trim().slice(0, 300) || null,
+    })
+    if (error) return { error: error.code === 'P0001' ? error.message : mensagemDoErro(error) }
+    revalidatePath('/[slug]/financeiro', 'page')
+    revalidatePath('/admin/financeiro')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    revalidatePath('/admin/clients/[id]', 'page')
+    return {}
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}

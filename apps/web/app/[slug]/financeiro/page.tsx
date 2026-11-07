@@ -16,6 +16,9 @@ import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
 import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
+import { getAReceberVencido } from '@/lib/metrics/vencidas'
+import { startOfDayTZ } from '@/lib/datetime'
+import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 
 export default async function FinancialPage({
   params,
@@ -28,7 +31,9 @@ export default async function FinancialPage({
   const sp       = await searchParams
   const period   = sp.period ?? 'month'
   /** A38 da 8ª: a lista de todo o a receber em aberto, de qualquer vencimento. */
-  const soOEmAberto = sp.aberto === 'todos'
+  // D13 da 9ª: ou só as VENCIDAS (o vencimento antes de hoje), de qualquer mês.
+  const soAsVencidas = sp.aberto === 'vencidas'
+  const soOEmAberto = sp.aberto === 'todos' || soAsVencidas
   // Janela no fuso do negócio e período anterior de mesma duração decorrida.
   const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
     resolvePeriod(period, sp.from, sp.to)
@@ -81,13 +86,20 @@ export default async function FinancialPage({
     // lançamentos (só apareciam no Fechamento), no escopo do financeiro.
     getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: branch.id as string, profissionalId: recorteDosModulos(ctx).financeiro }),
   ])
+  // D13 da 9ª: o que já venceu (antes de hoje), no escopo do financeiro.
+  const vencidas = await getAReceberVencido({ ...argsDoNucleo, professionalId: recorteDosModulos(ctx).financeiro })
 
   // Em páginas (2026-10-22): o PostgREST corta em 1000, e o extrato do período
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
-  const lancamentos = await lerTodas((de, ate) => supabase
+  const unidadeId = branch.id as string
+  const lancamentos = await lerTodas((de, ate) => soAsVencidas
+    ? doPeriodo(de, ate).lt('due_date', startOfDayTZ(new Date()).toISOString())
+    : doPeriodo(de, ate), 'carregar os lançamentos')
+  function doPeriodo(de: number, ate: number) {
+    return supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id')
-    .eq('branch_id', branch.id)
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores')
+    .eq('branch_id', unidadeId)
     .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
     // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
     // vencimento (a parcela do mês que vem não aparecia em lugar nenhum).
@@ -99,7 +111,8 @@ export default async function FinancialPage({
     .in('type', soOEmAberto ? ['INCOME'] : ['INCOME', 'EXPENSE'])
     .in('is_paid', soOEmAberto ? [false] : [true, false])
     .order('data_de_referencia', { ascending: soOEmAberto }).order('id')
-    .range(de, ate), 'carregar os lançamentos')
+    .range(de, ate)
+  }
 
   // O nome da cliente NÃO vem pelo join da sessão (D2 da simulação de
   // 2026-11-01): a RLS mostra a ficha só à unidade de CADASTRO, e a venda da
@@ -113,6 +126,8 @@ export default async function FinancialPage({
   const transactions = (lancamentos ?? []).map(({ client_id, ...t }) => ({
     ...t,
     desconto_texto: descontos[t.id as string] ?? null,
+    // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
+    vencida: !t.is_paid && situacaoDoVencimento(t.due_date as string | null) === 'VENCIDA',
     cliente: client_id && nomes.clientes[client_id] ? { name: nomes.clientes[client_id] } : null,
   }))
 
@@ -151,7 +166,7 @@ export default async function FinancialPage({
     ? await lerTodas((de, ate) => supabase
         .from('clients')
         .select('id, name')
-        .eq('branch_id', branch.id)
+        .eq('branch_id', unidadeId)
         .eq('is_active', true)
         .order('name').order('id')
         .range(de, ate), 'carregar os clientes da unidade')
@@ -187,6 +202,8 @@ export default async function FinancialPage({
         customTo={sp.to}
         transactions={transactions as unknown as Props['transactions']}
         soOEmAberto={soOEmAberto}
+        soAsVencidas={soAsVencidas}
+        vencidas={vencidas.total}
         nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start), dayKeyTZ(fimDoPeriodo))}
         serie={serie}
         emAberto={emAberto}

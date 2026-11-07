@@ -203,6 +203,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                     ? new Date(p.paid_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
                     : p.aPagarNaClinica
                       ? 'A pagar na clínica'
+                      : p.vencida && p.vencimento ? `Vencida em ${(formatDia(p.vencimento) ?? "").slice(0, 5)}`
                       : p.vencimento ? `vence em ${formatDia(p.vencimento)}` : 'Pendente'}
                   {/* D6: a parcela do crediário sem meio diz "Com a clínica" (a forma pronta da página). */}
                   {!p.aPagarNaClinica && (p.forma !== undefined ? (p.forma ? ` · ${p.forma}` : '') : p.payment_method ? ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}` : '')}
@@ -226,8 +227,8 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                       ? <CheckCircle2 size={11} color="var(--success)" />
                       : <Clock3 size={11} color="var(--warning)" />}
                   {/* O estornado não é "Pago": o dinheiro voltou (como no Financeiro do app). */}
-                  <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: p.estornado || p.estorno ? 'var(--text-muted)' : p.is_paid ? 'var(--success)' : 'var(--warning)' }}>
-                    {p.estorno ? 'Estorno' : p.estornado ? 'Estornado' : p.is_paid ? 'Pago' : 'Pendente'}
+                  <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: p.estornado || p.estorno ? 'var(--text-muted)' : p.is_paid ? 'var(--success)' : p.vencida ? 'var(--danger)' : 'var(--warning)' }}>
+                    {p.estorno ? 'Estorno' : p.estornado ? 'Estornado' : p.is_paid ? 'Pago' : p.vencida ? 'Vencida' : 'Pendente'}
                   </span>
                 </div>
                 {/* r2-ven-13: o recibo do que ela pagou (PDF), também aqui. */}

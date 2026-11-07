@@ -1,5 +1,6 @@
 import { formatBRL } from '@estetica-os/utils'
 import type { ProximoVencimento } from '@/lib/metrics/queries'
+import type { AReceberVencido } from '@/lib/metrics/vencidas'
 
 /** "05/11" — o dia vem do banco já no fuso da clínica ("2026-11-05"). */
 const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
@@ -14,7 +15,7 @@ const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
  * Os números vêm de `getEmAberto` e `getAReceberEmAberto` (lib/metrics); aqui
  * só se escreve.
  */
-export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa }: {
+export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas }: {
   valor: number
   proximo: ProximoVencimento | null
   /** Todo o em aberto, de qualquer vencimento (só no "A receber"). */
@@ -29,10 +30,24 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
    * todo o a receber, de qualquer vencimento (`?aberto=todos`).
    */
   hrefDaBaixa?: string
+  /** D13 da 9ª: o que já VENCEU (antes de hoje), de `getAReceberVencido`. */
+  vencidas?: AReceberVencido
+  /** Onde se vê só as vencidas (`?aberto=vencidas`). */
+  hrefDasVencidas?: string
 }) {
   return (
     <span>
       Pelo vencimento, no período.
+      {vencidas && vencidas.quantidade > 0 && (
+        <span data-vencidas style={{ display: 'block', marginTop: 2, color: 'var(--danger)', fontWeight: 600 }}>
+          Vencidas: <strong>{formatBRL(vencidas.valor)}</strong>
+          {' '}({vencidas.quantidade} {vencidas.quantidade === 1 ? 'parcela' : 'parcelas'}
+          {vencidas.maisAntiga ? `, desde ${diaCurto(new Date(vencidas.maisAntiga).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }))}` : ''})
+          {hrefDasVencidas && (
+            <> · <a href={hrefDasVencidas} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>Ver as vencidas</a></>
+          )}
+        </span>
+      )}
       {valor === 0 && proximo && <> Próximo: <strong>{formatBRL(proximo.valor)} em {diaCurto(proximo.dia)}</strong>.</>}
       {emAbertoTotal !== undefined && (
         <span data-em-aberto style={{ display: 'block', marginTop: 2 }}>

@@ -57,6 +57,13 @@
     financeiro "só os meus", os dela). Só aparecia no Fechamento do dia, que
     passou a citar também as parcelas e lançamentos em aberto da unidade
     (`getAReceberEmAberto`, aviso `parcelas-em-aberto`).
+  - **a receber VENCIDO** (D13 da 9ª simulação, 2026-11-07) = o a receber da
+    cliente em aberto (o conjunto de `metrics_a_receber_em_aberto`) com o
+    vencimento antes de hoje em Brasília — `metrics_a_receber_vencido` →
+    `getAReceberVencido` (`lib/metrics/vencidas.ts`), por unidade e no total,
+    por cliente (o check-in) e no escopo do financeiro. O cartão "A receber
+    da cliente", o dashboard e o check-in dizem esse número
+    (`vendas-financeiro.md` §9.6).
   - **O cartão em N vezes conta no dia da VENDA** (decisão do Heitor,
     2026-11-01: "conta no mês do dia da venda"): a receita é o lançamento
     pago, inteiro, no `paid_at` dele — a regra única não muda. As parcelas

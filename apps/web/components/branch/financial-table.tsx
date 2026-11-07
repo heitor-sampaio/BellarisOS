@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import {
   Search, X, TrendingUp, TrendingDown, CheckCircle2,
-  Clock, RotateCcw, ChevronUp, ChevronDown, XCircle, FileText, Download,
+  RotateCcw, ChevronUp, ChevronDown, XCircle, FileText, Download,
 } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
@@ -14,6 +14,8 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
+import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
+import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } from '@/components/shared/remarcar-vencimento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
@@ -43,6 +45,10 @@ export interface Transaction {
   credito_vendido_id?: string | null
   /** O pago, no dia do pagamento; o em aberto, no vencimento (ou na criação). */
   data_de_referencia?: string | null
+  /** D13 da 9ª: em aberto com o vencimento antes de hoje (decidido no servidor). */
+  vencida?:       boolean
+  /** A37 da 9ª: as remarcações do vencimento. */
+  vencimentos_anteriores?: RemarcacaoDoVencimento[] | null
   /** De quem é o lançamento (2026-10-21). */
   cliente?: { name: string } | null
 }
@@ -53,6 +59,8 @@ interface Props {
   slug:         string
   canReverse:   boolean
   canPay:       boolean
+  /** A37 da 9ª: remarca o vencimento (o Financeiro em Gerenciar). */
+  podeRemarcar?: boolean
   /** A44 da 8ª: o nome do CSV das movimentações (o recorte da tela). */
   nomeDoCsv?:   string
 }
@@ -78,10 +86,10 @@ function fmtDatetime(iso: string) {
 type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
-export function FinancialTable({ transactions, slug, canReverse, canPay, nomeDoCsv = 'lancamentos.csv' }: Props) {
+export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv' }: Props) {
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
-  const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'pending'>('all')
+  const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all')
   const [sortDir,    setSortDir]    = useState<SortDir>('desc')
 
   const router        = useRouter()
@@ -125,6 +133,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, nomeDoC
         if (filterType !== 'all' && tx.type !== filterType) return false
         if (filterPaid === 'paid'    && !tx.is_paid) return false
         if (filterPaid === 'pending' &&  tx.is_paid) return false
+        if (filterPaid === 'overdue' && !tx.vencida) return false
         if (q && !tx.description.toLowerCase().includes(q) && !tx.category.toLowerCase().includes(q)) return false
         return true
       })
@@ -197,10 +206,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, nomeDoC
         />
 
         {/* Status */}
-        <select value={filterPaid} onChange={e => setFilterPaid(e.target.value as 'all' | 'paid' | 'pending')} className="filtro-select">
+        <select value={filterPaid} onChange={e => setFilterPaid(e.target.value as 'all' | 'paid' | 'pending' | 'overdue')} className="filtro-select" aria-label="Situação">
           <option value="all">Todos os status</option>
           <option value="paid">Pago</option>
           <option value="pending">Pendente</option>
+          <option value="overdue">Vencidas</option>
         </select>
 
         {/* Ordenar */}
@@ -300,6 +310,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, nomeDoC
                             {tx.estorno_motivo && (
                               <p data-motivo-do-estorno style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Motivo: {tx.estorno_motivo}</p>
                             )}
+                            <VencimentoRemarcado historico={tx.vencimentos_anteriores} />
                             {tx.appointment_id && (
                               <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 1 }}>Atendimento</p>
                             )}
@@ -373,13 +384,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, nomeDoC
                             <CheckCircle2 size={10} /> Pago
                           </span>
                         ) : (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                            background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)',
-                          }}>
-                            <Clock size={10} /> Pendente
-                          </span>
+                          <SituacaoDoEmAberto vencida={tx.vencida} vencimento={tx.due_date} />
                         )}
                       </td>
 
@@ -398,6 +403,10 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, nomeDoC
                               <CheckCircle2 size={12} />
                               Pagar
                             </button>
+                          )}
+                          {/* A37 da 9ª: remarcar o vencimento do que está em aberto. */}
+                          {!tx.is_paid && !isReversed && podeRemarcar && (
+                            <RemarcarVencimento lancamento={{ id: tx.id, descricao: tx.description, valor: Number(tx.amount), vencimento: tx.due_date }} />
                           )}
                           {/* ven-06: o recibo do que foi pago (PDF — imprimir ou baixar). */}
                           {isIncome && tx.is_paid && !isReversed && tx.category !== 'Estorno' && (

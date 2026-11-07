@@ -3,7 +3,9 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { dayKeyTZ } from '@/lib/datetime'
+import { dayKeyTZ, startOfDayTZ } from '@/lib/datetime'
+import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
@@ -29,7 +31,9 @@ export default async function AdminFinanceiroPage({
 }) {
   const sp     = await searchParams
   /** A38 da 8ª: a lista de todo o a receber em aberto, de qualquer vencimento. */
-  const soOEmAberto = sp.aberto === 'todos'
+  // D13 da 9ª: ou só as VENCIDAS (o vencimento antes de hoje), de qualquer mês.
+  const soAsVencidas = sp.aberto === 'vencidas'
+  const soOEmAberto = sp.aberto === 'todos' || soAsVencidas
   const period = sp.period ?? 'month'
   // Janela e comparação vêm da camada de métricas: no fuso do negócio e com o
   // período anterior de mesma duração. A resolução local antes montava "custom"
@@ -86,17 +90,10 @@ export default async function AdminFinanceiroPage({
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
-    getCore(metricArgs),
-    getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
-    getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
-
-    // A lista de lançamentos continua sendo lida direto — é extrato, não KPI.
-    // Inteira, em páginas (2026-10-22): tinha teto de 500. Consulta que falha
-    // PARA, em vez de virar um extrato vazio.
-    lerTodas((de, ate) => admin
+  // A lista do período (ou de todo o em aberto, A38 da 8ª), lida em páginas.
+  const daLista = (de: number, ate: number) => admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
+      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
       // vencimento. Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o
@@ -113,7 +110,19 @@ export default async function AdminFinanceiroPage({
     // com `created_at` no futuro e some da tela que acabou de criá-lo.
       .lte('data_de_referencia', soOEmAberto ? '9999-12-31' : fimDoPeriodo.toISOString())
       .order('data_de_referencia', { ascending: soOEmAberto }).order('id')
-      .range(de, ate), 'carregar os lançamentos da rede'),
+      .range(de, ate)
+
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
+    getCore(metricArgs),
+    getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
+    getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
+
+    // A lista de lançamentos continua sendo lida direto — é extrato, não KPI.
+    // Inteira, em páginas (2026-10-22): tinha teto de 500. Consulta que falha
+    // PARA, em vez de virar um extrato vazio.
+    lerTodas((de, ate) => soAsVencidas
+      ? daLista(de, ate).lt('due_date', startOfDayTZ(new Date()).toISOString())
+      : daLista(de, ate), 'carregar os lançamentos da rede'),
 
     // Clientes da rede, para o crédito interno. Só quem recebe precisa.
     ctx.permissions.financial === 'MANAGE'
@@ -152,6 +161,8 @@ export default async function AdminFinanceiroPage({
   const concluidosSemPagamentoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
     [b.branchId, await getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: b.branchId })] as const)))
   const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
+  // D13 da 9ª: o que já venceu (antes de hoje) — o total e cada unidade.
+  const vencidas = await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: null })
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
 
   const txs = (txsRaw ?? []) as unknown as LancamentoLido[]
@@ -187,6 +198,7 @@ export default async function AdminFinanceiroPage({
     commissions: b.commissionsOpen + b.commissionsPaid,
     aReceber:    emAbertoDe[b.branchId]?.aReceber ?? 0,
     aReceberEmAberto: aReceberEmAberto.porUnidade[b.branchId] ?? 0,
+    vencidas: vencidas.porUnidade[b.branchId],
     concluidosSemPagamento: concluidosSemPagamentoDe[b.branchId],
     aPagar:      emAbertoDe[b.branchId]?.aPagar ?? 0,
     proximoAReceber: emAbertoDe[b.branchId]?.proximoAReceber ?? null,
@@ -199,6 +211,8 @@ export default async function AdminFinanceiroPage({
   const transactions = txs.map(t => ({
     ...t,
     desconto_texto: descontos[t.id] ?? null,
+    // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
+    vencida: !t.is_paid && situacaoDoVencimento(t.due_date) === 'VENCIDA',
     branchName: branchNameMap[t.branch_id] ?? '—',
     clienteNome: t.cliente?.name ?? null,
     amount:     Number(t.amount),
@@ -219,6 +233,7 @@ export default async function AdminFinanceiroPage({
         totalCommissions={totalComm}
         totalAReceber={emAbertoDaRede.aReceber}
         totalAReceberEmAberto={aReceberEmAberto.total}
+        totalVencidas={vencidas.total}
         totalConcluidosSemPagamento={concluidosSemPagamento}
         totalAPagar={emAbertoDaRede.aPagar}
         aReceberDaOperadora={operadora}
@@ -233,6 +248,7 @@ export default async function AdminFinanceiroPage({
         umaUnidade={await redeTemUmaUnidade(ctx.tenantId!)}
         transactions={transactions}
         soOEmAberto={soOEmAberto}
+        soAsVencidas={soAsVencidas}
         nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start), dayKeyTZ(fimDoPeriodo))}
         branchSlugMap={branchSlugMap}
         branches={branches}
