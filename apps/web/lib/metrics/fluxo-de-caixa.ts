@@ -11,7 +11,10 @@ export interface MesDoFluxo {
   /** "AAAA-MM". */
   mes:         string
   daCliente:   number
+  /** O que a operadora deposita no mês — o LÍQUIDO (A30 da 9ª). */
   daOperadora: number
+  /** O mesmo, bruto (antes da taxa da maquininha). */
+  daOperadoraBruto: number
   aPagar:      number
   saldo:       number
 }
@@ -19,15 +22,16 @@ export interface MesDoFluxo {
 const n = (v: unknown): number => (v == null ? 0 : Number(v))
 
 async function umFluxo(tenantId: string, branchIds: string[] | null, meses: number): Promise<MesDoFluxo[]> {
-  const { data, error } = await createAdminClient().rpc('metrics_fluxo_de_caixa', {
+  // A30 da 9ª: a operadora no LÍQUIDO (o que ela deposita), com o bruto ao lado.
+  const { data, error } = await createAdminClient().rpc('metrics_fluxo_de_caixa_liquido', {
     p_tenant: tenantId, p_branch_ids: branchIds, p_meses: meses,
   })
   if (error) {
-    console.error(`[metrics] metrics_fluxo_de_caixa falhou: ${error.message}`)
-    throw new Error(`Não consegui calcular os indicadores (metrics_fluxo_de_caixa): ${error.message}`)
+    console.error(`[metrics] metrics_fluxo_de_caixa_liquido falhou: ${error.message}`)
+    throw new Error(`Não consegui calcular os indicadores (metrics_fluxo_de_caixa_liquido): ${error.message}`)
   }
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
-    mes: String(r.mes).slice(0, 7), daCliente: n(r.da_cliente), daOperadora: n(r.da_operadora), aPagar: n(r.a_pagar), saldo: n(r.saldo),
+    mes: String(r.mes).slice(0, 7), daCliente: n(r.da_cliente), daOperadora: n(r.da_operadora), daOperadoraBruto: n(r.da_operadora_bruto), aPagar: n(r.a_pagar), saldo: n(r.saldo),
   }))
 }
 

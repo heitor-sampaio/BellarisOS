@@ -130,7 +130,7 @@ export function FluxoDeCaixa({ meses: todos }: { meses: MesDoFluxo[] }) {
             <tr>
               <th style={{ ...th, textAlign: 'left' }}>MÊS</th>
               <th style={th}>DA CLIENTE</th>
-              <th style={th}>DA OPERADORA</th>
+              <th style={th}>DA OPERADORA (LÍQUIDO)</th>
               <th style={th}>A PAGAR</th>
               <th style={th}>SALDO</th>
             </tr>
@@ -140,7 +140,13 @@ export function FluxoDeCaixa({ meses: todos }: { meses: MesDoFluxo[] }) {
               <tr key={m.mes} data-mes={m.mes} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <td style={{ ...td, textAlign: 'left', fontWeight: 700 }}>{rotuloDoMes(m.mes)}</td>
                 <td style={td}>{formatBRL(m.daCliente)}</td>
-                <td style={td}>{formatBRL(m.daOperadora)}</td>
+                <td style={td} data-da-operadora>
+                  {formatBRL(m.daOperadora)}
+                  {/* A30 da 9ª: o líquido (o que a operadora deposita), com o bruto embaixo. */}
+                  {m.daOperadoraBruto > m.daOperadora && (
+                    <span style={{ display: 'block', fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>{formatBRL(m.daOperadoraBruto)} bruto</span>
+                  )}
+                </td>
                 <td style={td}>{formatBRL(m.aPagar)}</td>
                 <td style={{ ...td, fontWeight: 800, color: m.saldo < 0 ? 'var(--danger)' : 'var(--text)' }}>{formatBRL(m.saldo)}</td>
               </tr>

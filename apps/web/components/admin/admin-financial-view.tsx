@@ -330,7 +330,7 @@ export function AdminFinancialView({
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
   const proximoAReceber = statDaUnidade ? statDaUnidade.proximoAReceber ?? null : totalProximoAReceber
   const proximoAPagar   = statDaUnidade ? statDaUnidade.proximoAPagar ?? null   : totalProximoAPagar
-  const SEM_OPERADORA: AReceberDaOperadora = { aReceber: 0, recebido: 0, emAberto: 0, proximo: null }
+  const SEM_OPERADORA: AReceberDaOperadora = { aReceber: 0, aReceberBruto: 0, recebido: 0, emAberto: 0, emAbertoBruto: 0, proximo: null }
   const operadora = statDaUnidade ? aReceberDaOperadora.porUnidade[statDaUnidade.id] ?? SEM_OPERADORA : aReceberDaOperadora.total
   const parcelasVisiveis = filterBranch === 'all' ? parcelasDaOperadora : parcelasDaOperadora.filter(p => p.branchId === filterBranch)
 
@@ -464,7 +464,8 @@ export function AdminFinancialView({
           label="A receber da operadora"
           value={fmtBRL(operadora.aReceber)}
           nota={<>
-            <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto} />
+            <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto}
+              bruto={{ periodo: operadora.aReceberBruto, emAberto: operadora.emAbertoBruto }} />
             {/* D3: o cartão leva à lista das parcelas. */}
             <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} />
           </>}

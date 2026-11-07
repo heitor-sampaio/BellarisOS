@@ -378,7 +378,8 @@ function AvisosDoDia({ resumo, aReceber, emAberto = 0, operadora = null, avisos,
     const proximo = operadora.proximo ? ' (o próximo, ' + brl(operadora.proximo.valor) + ' em ' + operadora.proximo.dia.split('-').reverse().join('/') + ')' : ''
     lista.push({
       chave: 'a-receber-da-operadora',
-      texto: 'A operadora do cartão ainda vai depositar ' + brl(operadora.emAberto) + proximo + ': são as vendas no crédito, a receber dela — não da cliente.',
+      // A30 da 9ª: o que ela deposita é o LÍQUIDO (já sem a taxa da maquininha).
+      texto: 'A operadora do cartão ainda vai depositar ' + brl(operadora.emAberto) + ' líquido' + proximo + ': são as vendas no crédito, a receber dela — não da cliente.',
       ...(operadora.link ? { link: { href: operadora.link, rotulo: 'Ver no Financeiro' } } : {}),
     })
   }

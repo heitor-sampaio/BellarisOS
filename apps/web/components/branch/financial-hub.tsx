@@ -713,7 +713,8 @@ export function FinancialHub({
         <KpiCardFull
           chave="a-receber-operadora"
           nota={<>
-            <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto} />
+            <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto}
+              bruto={{ periodo: aReceberDaOperadora.aReceberBruto, emAberto: aReceberDaOperadora.emAbertoBruto }} />
             {/* D3: o cartão leva à lista das parcelas. */}
             <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} />
           </>}

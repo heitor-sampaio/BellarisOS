@@ -15,32 +15,38 @@ import type { ProximoVencimento } from './queries'
  * `recebiveis_do_cartao_lista`); aqui só se lê.
  */
 export interface AReceberDaOperadora {
-  /** Em aberto com vencimento no período. */
+  /** Em aberto com vencimento no período — o LÍQUIDO, o que ela deposita (A30 da 9ª). */
   aReceber:  number
-  /** O que a operadora depositou no período (na data ou antecipado). */
+  /** O mesmo, bruto (antes da taxa da maquininha). */
+  aReceberBruto: number
+  /** O que a operadora depositou no período (na data ou antecipado), líquido. */
   recebido:  number
-  /** Todo o em aberto, de qualquer vencimento. */
+  /** Todo o em aberto, de qualquer vencimento — líquido. */
   emAberto:  number
-  /** O primeiro vencimento DEPOIS do período, e quanto vence nele. */
+  /** O mesmo, bruto. */
+  emAbertoBruto: number
+  /** O primeiro vencimento DEPOIS do período, e quanto vence nele (líquido). */
   proximo:   ProximoVencimento | null
 }
 
 const n = (v: unknown): number => (v == null ? 0 : Number(v))
-const VAZIO: AReceberDaOperadora = { aReceber: 0, recebido: 0, emAberto: 0, proximo: null }
+const VAZIO: AReceberDaOperadora = { aReceber: 0, aReceberBruto: 0, recebido: 0, emAberto: 0, emAbertoBruto: 0, proximo: null }
 
 export async function getAReceberDaOperadora(args: {
   tenantId: string; branchIds?: string[] | null; from: Date; to: Date
 }): Promise<{ total: AReceberDaOperadora; porUnidade: Record<string, AReceberDaOperadora> }> {
-  const { data, error } = await createAdminClient().rpc('metrics_a_receber_da_operadora', {
+  // A30 da 9ª: no LÍQUIDO (o que a operadora deposita), com o bruto ao lado.
+  const { data, error } = await createAdminClient().rpc('metrics_a_receber_da_operadora_liquido', {
     p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null,
     p_from: args.from.toISOString(), p_to: args.to.toISOString(),
   })
   if (error) {
-    console.error(`[metrics] metrics_a_receber_da_operadora falhou: ${error.message}`)
-    throw new Error(`Não consegui calcular os indicadores (metrics_a_receber_da_operadora): ${error.message}`)
+    console.error(`[metrics] metrics_a_receber_da_operadora_liquido falhou: ${error.message}`)
+    throw new Error(`Não consegui calcular os indicadores (metrics_a_receber_da_operadora_liquido): ${error.message}`)
   }
   const linha = (r: Record<string, unknown> | undefined): AReceberDaOperadora => r ? {
-    aReceber: n(r.a_receber), recebido: n(r.recebido), emAberto: n(r.em_aberto),
+    aReceber: n(r.a_receber), aReceberBruto: n(r.a_receber_bruto), recebido: n(r.recebido),
+    emAberto: n(r.em_aberto), emAbertoBruto: n(r.em_aberto_bruto),
     proximo: r.proximo_dia ? { dia: String(r.proximo_dia), valor: n(r.proximo_valor) } : null,
   } : VAZIO
   const linhas = (data as Record<string, unknown>[] | null) ?? []

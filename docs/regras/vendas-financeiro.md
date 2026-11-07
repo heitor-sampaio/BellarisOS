@@ -1189,6 +1189,17 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       migration `20261104002003`; prova:
       `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`, "D3"). Com o
       financeiro "só os meus", não aparece.
+      **E conta o LÍQUIDO, com o bruto ao lado** (A30 da 9ª simulação,
+      2026-11-07; decidido pelo princípio 3): o cartão e o fluxo de caixa
+      somavam o bruto e a lista mostrava o líquido (R$ 2.386,82 × R$ 2.289,47).
+      O que a operadora deposita é o líquido (`recebiveis_do_cartao.liquido`,
+      entre zero e a parcela): o cartão diz "Líquido (o que a operadora
+      deposita)… — R$ X bruto" e "Em aberto…: R$ 950,00 líquido (R$ 1.000,00
+      bruto)", a coluna do fluxo é "Da operadora (líquido)" com o bruto
+      embaixo, e o aviso do Fechamento diz "R$ X líquido"
+      (`metrics_a_receber_da_operadora_liquido`, `metrics_fluxo_de_caixa_liquido`;
+      migration `20261107004406` — as funções de antes ficaram sem leitor).
+      Prova: `e2e/financeiro-atritos-da-9.spec.ts` ("A30").
     - **O estorno no cartão é sempre do pagamento INTEIRO** (r2-fin-03, o
       Heitor, 2026-11-03: "estornar no cartão estorna a venda inteira, todas
       as operadoras fazem assim"): crédito à vista ou em N vezes, e débito.

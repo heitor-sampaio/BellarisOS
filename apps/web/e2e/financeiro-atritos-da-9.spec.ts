@@ -81,6 +81,28 @@ test('A15: o "Pagar" da despesa pergunta a forma (com o Boleto) e grava', async 
     .toEqual({ is_paid: true, payment_method: 'BOLETO' })
 })
 
+test('A30: o "A receber da operadora" e o fluxo de caixa dizem o LÍQUIDO, com o bruto ao lado', async ({ browser }) => {
+  const b = db()
+  // Crédito 2x a 5%: a operadora deposita 2 × R$ 475,00 (R$ 500,00 bruto cada).
+  expect((await b.from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'CREDIT_CARD', parcelas: 2, taxa_pct: 5 })).error).toBeNull()
+  expect((await b.from('financial_transactions').insert({
+    branch_id: rede!.branchId, type: 'INCOME', category: 'Procedimento', description: `Cartão fa9${marca}`,
+    amount: 1000, is_paid: true, paid_at: new Date().toISOString(), payment_method: 'CREDIT_CARD', cartao_vezes: 2, created_by: 'e2e',
+  })).error).toBeNull()
+  const primeira = new Date(Date.now() + 30 * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7)
+  for (const rota of [`/${slug}/financeiro`, '/admin/financeiro']) {
+    await como(browser, dona!, async p => {
+      await p.goto(rota)
+      const cartao = p.locator('[data-kpi="a-receber-operadora"]')
+      await expect(cartao.locator('[data-em-aberto]')).toContainText(/R\$\s950,00 líquido/)
+      await expect(cartao.locator('[data-em-aberto]')).toContainText(/R\$\s1\.000,00 bruto/)
+      const mes = p.locator(`[data-mes="${primeira}"] [data-da-operadora]`)
+      await expect(mes).toContainText(/R\$\s475,00/)
+      await expect(mes).toContainText(/R\$\s500,00 bruto/)
+    })
+  }
+})
+
 test('A32: o "Estornar" da linha tem texto, nos dois financeiros', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro#lancamentos`)

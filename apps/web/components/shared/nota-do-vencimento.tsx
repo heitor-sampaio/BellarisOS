@@ -15,7 +15,7 @@ const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
  * Os números vêm de `getEmAberto` e `getAReceberEmAberto` (lib/metrics); aqui
  * só se escreve.
  */
-export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas }: {
+export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, bruto }: {
   valor: number
   proximo: ProximoVencimento | null
   /** Todo o em aberto, de qualquer vencimento (só no "A receber"). */
@@ -34,10 +34,16 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
   vencidas?: AReceberVencido
   /** Onde se vê só as vencidas (`?aberto=vencidas`). */
   hrefDasVencidas?: string
+  /**
+   * A30 da 9ª: o "A receber da operadora" conta o LÍQUIDO (o que ela deposita);
+   * o bruto vai ao lado, do período e de todo o em aberto.
+   */
+  bruto?: { periodo: number; emAberto: number }
 }) {
   return (
     <span>
-      Pelo vencimento, no período.
+      {bruto ? 'Líquido (o que a operadora deposita), pelo vencimento, no período' : 'Pelo vencimento, no período'}
+      {bruto && bruto.periodo > valor ? <> — {formatBRL(bruto.periodo)} bruto</> : null}.
       {vencidas && vencidas.quantidade > 0 && (
         <span data-vencidas style={{ display: 'block', marginTop: 2, color: 'var(--danger)', fontWeight: 600 }}>
           Vencidas: <strong>{formatBRL(vencidas.valor)}</strong>
@@ -51,7 +57,8 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
       {valor === 0 && proximo && <> Próximo: <strong>{formatBRL(proximo.valor)} em {diaCurto(proximo.dia)}</strong>.</>}
       {emAbertoTotal !== undefined && (
         <span data-em-aberto style={{ display: 'block', marginTop: 2 }}>
-          Em aberto, todos os vencimentos: <strong>{formatBRL(emAbertoTotal)}</strong>
+          Em aberto, todos os vencimentos: <strong>{formatBRL(emAbertoTotal)}{bruto ? ' líquido' : ''}</strong>
+          {bruto && <> ({formatBRL(bruto.emAberto)} bruto)</>}
           {hrefDaBaixa && emAbertoTotal > 0 && (
             <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>Ver e dar baixa</a></>
           )}
