@@ -199,7 +199,7 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await p.goto(`/admin/checkout/${planId}`)
       const aviso = p.locator('[data-contrato-sem-documento]')
       await expect(aviso).toContainText('não tem CPF')
-      await expect(aviso).toContainText('o contrato do plano sai sem o documento dela')
+      await expect(aviso).toContainText('o contrato do plano sai sem esse documento')
       await p.getByRole('button', { name: 'Confirmar plano' }).click()
       await expect(p.locator('[data-contrato-sem-documento]'), 'repete antes da documentação').toBeVisible()
       await expect(p.getByRole('button', { name: /Ir para a documentação/ })).toBeEnabled()

@@ -211,6 +211,25 @@ DEVLOG ("Termos e contratos").
   (à vista no Pix)") e não troca nada; só com `{ substituirContrato: true }`
   (o "Substituir o contrato" da tela) substitui. "Manter o pagamento
   combinado" volta ao pagamento. Prova: `e2e/checkout-de-plano.spec.ts` ("A45").
+  **Reabrir o checkout parte do pagamento ASSINADO** (A36 da 9ª simulação,
+  2026-11-07; princípio 3): reabrir o checkout de um plano com o contrato já
+  assinado (outra aba, outro dia) mostrava "Receber no atendimento" — o
+  pagamento zerado — e o "Assinado" na documentação. Sem o passo guardado na
+  aba (ou com ele ainda no passo do plano), o pagamento e o desconto vêm do
+  retrato do contrato assinado (`contratoAssinadoDoPlano`,
+  `lib/documentos/plano.ts`), e o passo do pagamento diz "O contrato “X” já foi
+  assinado com este pagamento: À vista, no Pix. Mudar as condições pede um
+  contrato novo: a cliente assina de novo." (`[data-contrato-assinado-com]`); se
+  mudar, a pergunta do A45 segue valendo. Prova:
+  `e2e/plano-atritos-da-9.spec.ts` ("A36").
+- **O contrato do plano sem o documento da cliente AVISA antes de emitir** (A35
+  da 9ª simulação; princípio 2 — avisar, não recusar; o contrato padrão segue
+  sem exigir o CPF): com um contrato de plano ativo na rede e a ficha sem CPF,
+  passaporte nem RNE, o checkout diz no passo do plano e no do pagamento "O
+  cadastro de Renata não tem CPF (nem passaporte ou RNE): o contrato do plano
+  sai sem esse documento. Para incluir, complete o cadastro antes de ir para a
+  documentação." com "Completar o cadastro" (`[data-contrato-sem-documento]`,
+  `contratoSemDocumentoDaCliente`). O checkout segue. Prova: o mesmo spec ("A35").
 - **O contrato do PROCEDIMENTO também cita o pagamento** (decisão do Heitor,
   2026-09-30): `pagamento.*` vale em CONTRATO e CONTRATO_PLANO. No avulso o
   pagamento só é recebido depois do atendimento, então a recepção o DEFINE

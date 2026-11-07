@@ -9,6 +9,7 @@ import { pacoteEquivalente } from '@/lib/checkout/pacote-equivalente'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
+import { contratoAssinadoDoPlano, contratoSemDocumentoDaCliente } from '@/lib/documentos/plano'
 
 /**
  * Monta o que o `CheckoutWizard` precisa para um plano.
@@ -34,7 +35,7 @@ export async function montarCheckoutPlan(
 
   const planRaw = await ler(admin
     .from('treatment_plans')
-    .select('id, status, professional_notes, professional_id, client_id, branch_id, clients(name, document, phone)')
+    .select('id, status, professional_notes, professional_id, client_id, branch_id, clients(name, document, documento_numero, phone)')
     .eq('id', planId)
     .eq('branch_id', branchId)
     .maybeSingle(), 'carregar o plano do checkout')
@@ -44,10 +45,10 @@ export async function montarCheckoutPlan(
     return { error: 'Este plano já foi fechado.', clientId: planRaw.client_id as string }
   }
 
-  type RawClient = { name: string; document: string | null; phone: string | null }
+  type RawClient = { name: string; document: string | null; documento_numero: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe] = await Promise.all([
+  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe, contratoAssinado, contratoSemDocumento] = await Promise.all([
     getTreatmentPlanSessions(planId),
     // O total é o de ANTES do desconto: depois de um checkout que falhou no
     // meio, os preços do plano já estão rateados, e o desconto é dado de novo
@@ -61,6 +62,10 @@ export async function montarCheckoutPlan(
     redeTemRecurso(tenantId, 'pacotes').then(tem => tem ? catalogoDePacotes(tenantId, { branchId, soAtivos: true }) : []),
     // "Quem vendeu" (decisão 4 da 7ª): a equipe que alcança a unidade, como nas outras vendas.
     equipeDaVenda(tenantId, branchId, euId),
+    // A36 da 9ª: o contrato já assinado — o checkout parte do pagamento dele.
+    contratoAssinadoDoPlano(tenantId, planId),
+    // A35 da 9ª: o contrato vai sem o documento da cliente? Avisa antes de emitir.
+    contratoSemDocumentoDaCliente(tenantId, cli),
   ])
 
   return {
@@ -84,6 +89,8 @@ export async function montarCheckoutPlan(
       atendimentoDeHoje,
       pacoteEquivalente: pacoteEquivalente(sessions, precos.subtotal, pacotes),
       equipe,
+      contratoAssinado,
+      contratoSemDocumento,
     },
   }
 }

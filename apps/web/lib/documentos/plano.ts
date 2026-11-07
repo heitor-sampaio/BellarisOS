@@ -47,6 +47,38 @@ export async function contratoQueSeriaSubstituido(
 }
 
 /**
+ * O contrato de plano JÁ ASSINADO e o pagamento que ele diz (A36 da 9ª
+ * simulação): reabrir o checkout zerava o pagamento na tela ("Receber no
+ * atendimento") e mantinha o "Assinado". O checkout parte dele e diz que mudar
+ * as condições pede um contrato novo. Nulo: nenhum assinado que cite o pagamento.
+ */
+export async function contratoAssinadoDoPlano(
+  tenantId: string, planId: string,
+): Promise<{ titulo: string; pagamento: PagamentoDoPlano | null; desconto: number; frase: string } | null> {
+  if (!(await redeTemRecurso(tenantId, 'documentos'))) return null
+  const c = (await contratosAssinadosComPagamento(tenantId, planId))[0]
+  if (!c) return null
+  const pagamento = pagamentoDoRetrato(c.payment_snapshot)
+  const desconto = descontoDoRetrato(c.payment_snapshot)
+  return { titulo: c.title, pagamento, desconto, frase: frasesDoPagamento(pagamento, desconto) }
+}
+
+/**
+ * A35 da 9ª: o contrato do plano vai sem o documento da cliente? A rede tem um
+ * contrato de plano ativo e a ficha não tem CPF, passaporte nem RNE. Só aviso
+ * (princípio 2): o contrato padrão não exige o CPF, e a clínica decide.
+ */
+export async function contratoSemDocumentoDaCliente(
+  tenantId: string, cliente: { document: string | null; documento_numero: string | null } | null,
+): Promise<boolean> {
+  if (!cliente || cliente.document?.trim() || cliente.documento_numero?.trim()) return false
+  if (!(await redeTemRecurso(tenantId, 'documentos'))) return false
+  const contrato = await ler(createAdminClient().from('document_templates').select('id')
+    .eq('tenant_id', tenantId).eq('kind', 'CONTRATO_PLANO').eq('is_active', true).limit(1), 'conferir o contrato de plano da rede')
+  return (contrato ?? []).length > 0
+}
+
+/**
  * Emite o que falta, troca o contrato já assinado com OUTRO pagamento (ele
  * fica substituído, com a assinatura, como prova) e monta o texto com o
  * pagamento escolhido. Devolve os documentos do plano.

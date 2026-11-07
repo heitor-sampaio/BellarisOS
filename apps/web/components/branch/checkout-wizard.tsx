@@ -64,6 +64,14 @@ export interface CheckoutPlan {
    * do plano vai para quem vendeu. Sem a lista, o campo não aparece.
    */
   equipe?: MembroDaVenda[]
+  /**
+   * A36 da 9ª simulação: o contrato de plano JÁ ASSINADO e o pagamento que ele
+   * diz. Reabrir o checkout zerava o pagamento na tela e mantinha o "Assinado":
+   * a tela parte dele e diz que mudar as condições pede um contrato novo.
+   */
+  contratoAssinado?: { titulo: string; pagamento: PagamentoDoPlano | null; desconto: number; frase: string } | null
+  /** A35 da 9ª: a rede tem contrato de plano e a ficha não tem CPF, passaporte nem RNE (só aviso — princípio 2). */
+  contratoSemDocumento?: boolean
 }
 
 interface DaySlot {
@@ -312,16 +320,35 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   useEffect(() => {
     const r = lerPassoDoCheckout(plan.id)
     /* eslint-disable react-hooks/set-state-in-effect -- o sessionStorage só existe no navegador: ler na renderização desencontraria a hidratação */
-    if (r) {
+    // No passo 0 nada do pagamento foi escolhido ainda: o guardado não diz nada,
+    // e o contrato assinado (A36) vale.
+    if (r && (r.step > 0 || !plan.contratoAssinado)) {
       setFormaPgto(r.formaPgto); setPaymentMethod(r.paymentMethod); setEntrada(r.entrada); setParcelas(r.parcelas)
       setVezesCartao(r.vezesCartao); setBandeira(r.bandeira); if (r.primeiroVenc) setPrimeiroVenc(r.primeiroVenc)
       setDesconto(r.desconto); setVendedorId(r.vendedorId); setSemVendedor(r.semVendedor)
       setStep(Math.min(r.step, 1))
       if (r.step >= 2) setRetomada(r)
+    } else if (plan.contratoAssinado) {
+      // A36 da 9ª: sem o passo guardado (outra aba, outro dia), o pagamento é o
+      // que a cliente ASSINOU — não o "Receber no atendimento" de nascença.
+      const p = plan.contratoAssinado.pagamento
+      const dia = (iso: string) => format(new Date(iso), 'yyyy-MM-dd')
+      if (!p) setFormaPgto('NADA_AGORA')
+      else {
+        setFormaPgto(p.forma)
+        setPaymentMethod(p.metodo ?? '')
+        if (p.forma === 'AVISTA') setVezesCartao(p.vezes ?? 1)
+        if (p.forma === 'PARCELADO') {
+          setEntrada(p.entrada > 0 ? p.entrada.toFixed(2).replace('.', ',') : '')
+          setParcelas(p.parcelas); setPrimeiroVenc(dia(p.primeiroVencimento)); setVezesCartao(p.vezes ?? 1)
+        }
+        if (p.forma === 'A_RECEBER' && p.vencimento) setPrimeiroVenc(dia(p.vencimento))
+      }
+      if (plan.contratoAssinado.desconto > 0) setDesconto(estadoDoDesconto(plan.contratoAssinado.desconto))
     }
     setPassoLido(true)
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [plan.id])
+  }, [plan.id, plan.contratoAssinado])
   useEffect(() => {
     if (!retomada) return
     const alvo = retomada.step
@@ -422,6 +449,19 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       router.push(rotaCliente(pathname, slug, plan.clientId))
     })
   }
+
+  // A35 da 9ª: o contrato vai sem o documento da cliente — avisa antes de
+  // emitir, sem recusar (princípio 2); completar o cadastro é na ficha.
+  const avisoSemDocumento = plan.contratoSemDocumento ? (
+    <div data-contrato-sem-documento role="note" style={{ padding: '12px 14px', marginBottom: 16, borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+      <AlertTriangle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+        O cadastro de {plan.clientName} não tem CPF (nem passaporte ou RNE): o contrato do plano sai sem esse documento.
+        Para incluir, complete o cadastro antes de ir para a documentação.{' '}
+        <Link href={`${rotaCliente(pathname, slug, plan.clientId)}?aba=dados`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Completar o cadastro</Link>
+      </p>
+    </div>
+  ) : null
 
   const cancelBlock = showCancel ? (
     <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 'var(--radius-field-token)', border: '1.5px solid var(--danger-border)', background: 'var(--danger-soft)' }}>
@@ -550,6 +590,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           </p>
         </div>
       </div>
+
+      {avisoSemDocumento}
 
       {/* Sessões do plano */}
       <div className="card" style={{ padding: '18px 20px', marginBottom: 16 }}>
@@ -809,6 +851,19 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       </div>
       )}
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+
+      {/* A36 da 9ª: o contrato assinado diz este pagamento; mudar pede um novo (princípio 3). */}
+      {plan.contratoAssinado && !substitui && (
+        <div data-contrato-assinado-com role="note" style={{ padding: '12px 14px', marginBottom: 12, borderRadius: 'var(--radius-field-token)', background: 'var(--info-soft)', border: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <ScrollText size={15} aria-hidden="true" style={{ color: 'var(--info)', flexShrink: 0, marginTop: 2 }} />
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+            O contrato “{plan.contratoAssinado.titulo}” já foi assinado com este pagamento: {plan.contratoAssinado.frase}.
+            Mudar as condições pede um contrato novo: a cliente assina de novo.
+          </p>
+        </div>
+      )}
+
+      {avisoSemDocumento}
 
       {/* A45 da 5ª simulação: o contrato assinado virava SUBSTITUIDO sem aviso. */}
       {substitui && (
