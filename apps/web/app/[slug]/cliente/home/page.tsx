@@ -15,6 +15,7 @@ import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
+import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -62,7 +63,7 @@ type ActivePlan = {
     sort_order: number | null
     /** O agendamento da sessão (A45: feita, agendada ou a agendar). */
     appointments?: { status: string; scheduled_at: string; completed_at: string | null } | null
-    treatment_plan_session_procedures: Array<{ price: number | string | null; procedures: { name: string; visible_on_client_app?: boolean | null } | null }>
+    treatment_plan_session_procedures: Array<{ price: number | string | null; sort_order?: number | null; procedures: { name: string; visible_on_client_app?: boolean | null } | null }>
   }>
 }
 
@@ -104,7 +105,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, procedures(name, visible_on_client_app)))')
+      .select('id, status, created_at, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -580,11 +581,14 @@ function PlanoFechado({ plano, financeiro, slug }: { plano: ActivePlan; financei
     }
     return { texto: 'A agendar', cor: 'var(--text-muted)' }
   }
-  // A51 da 8ª: a sessão a agendar com procedimento que não está no app (o
-  // laser) é marcada pela clínica; a que está, a cliente agenda pelo app.
-  const aAgendar = sessoes.filter(s => situacao(s.appointments).texto === 'A agendar')
-  const soPelaClinica = aAgendar.some(s => (s.treatment_plan_session_procedures ?? [])
-    .some(x => x.procedures?.visible_on_client_app !== true))
+  // A51 da 8ª e A47 da 9ª: cada sessão a agendar diz quem a marca — pelo app a
+  // que o agendar do app liga (`pagoParaAgendar`: o primeiro procedimento da
+  // sessão está no app); a outra, a clínica. Era uma frase para o plano inteiro,
+  // "quem marca é a clínica", e o app deixava a Luana marcar a drenagem.
+  const peloApp = (s: (typeof sessoes)[number]) => [...(s.treatment_plan_session_procedures ?? [])]
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.procedures?.visible_on_client_app === true
+  const aAgendar = sessoes.map((s, i) => ({ s, numero: i + 1 })).filter(({ s }) => situacao(s.appointments).texto === 'A agendar')
+  const quemMarca = quemMarcaAsSessoes(aAgendar.map(({ s, numero }) => ({ numero, peloApp: peloApp(s) })))
   return (
     <details data-plano-fechado className="card cartao-que-abre" style={{ padding: '14px 18px' }}>
       <summary style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', listStyle: 'none' }}>
@@ -602,23 +606,22 @@ function PlanoFechado({ plano, financeiro, slug }: { plano: ActivePlan; financei
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {sessoes.map((s, i) => {
             const sit = situacao(s.appointments)
+            const texto = sit.texto === 'A agendar' ? `A agendar · ${peloApp(s) ? 'pelo app' : 'quem marca é a clínica'}` : sit.texto
             return (
-              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: 1, fontSize: 'var(--text-sm-sz)' }}>
+              <li key={i} data-sessao-do-plano={i + 1} style={{ display: 'flex', flexDirection: 'column', gap: 1, fontSize: 'var(--text-sm-sz)' }}>
                 <span style={{ color: 'var(--text-soft)', overflowWrap: 'anywhere' }}>
                   <b style={{ color: 'var(--text-faint)' }}>Sessão {i + 1}</b>{' '}
                   {(s.treatment_plan_session_procedures ?? []).map(x => x.procedures?.name ?? 'Procedimento').join(' + ') || '—'}
                 </span>
-                <span style={{ color: sit.cor, fontWeight: 600, fontSize: 'var(--text-xs-sz)' }}>{sit.texto}</span>
+                <span style={{ color: sit.cor, fontWeight: 600, fontSize: 'var(--text-xs-sz)' }}>{texto}</span>
               </li>
             )
           })}
         </ol>
-        {aAgendar.length > 0 && (
-          <p data-quem-marca-a-sessao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            {soPelaClinica
-              ? `${aAgendar.length === 1 ? 'A sessão a agendar' : 'As sessões a agendar'}: quem marca é a clínica — fale com ela para escolher o dia.`
-              : `${aAgendar.length === 1 ? 'A sessão a agendar' : 'As sessões a agendar'}: agende pelo app em “Agendar” (ela já está paga no plano).`}
-          </p>
+        {quemMarca.length > 0 && (
+          <div data-quem-marca-a-sessao style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            {quemMarca.map(l => <p key={l}>{l}</p>)}
+          </div>
         )}
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
           <span>Pago {formatBRL(financeiro.recebido)}</span>

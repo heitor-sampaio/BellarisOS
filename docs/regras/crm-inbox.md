@@ -217,6 +217,16 @@
     não está no app (o laser), "quem marca é a clínica — fale com ela para
     escolher o dia"; com todos no app, "agende pelo app em Agendar"
     (`[data-quem-marca-a-sessao]`, o cartão do plano fechado do Início).
+    **E cada sessão diz a dela** (A47 da 9ª simulação, 2026-11-07): o plano que
+    alterna criolipólise (fora do app) e drenagem (no app) dizia "quem marca é
+    a clínica" para todas, e o app deixava a Luana marcar a drenagem. Cada
+    sessão "A agendar" diz "A agendar · pelo app" ou "A agendar · quem marca é
+    a clínica" (`[data-sessao-do-plano]`), e o resumo separa: "Sessão 2: agende
+    pelo app em “Agendar” (já está paga no plano)." / "Sessões 3 e 5: quem
+    marca é a clínica…" (`quemMarcaAsSessoes`, `lib/plano-de-tratamento/textos.ts`).
+    A régua é a do agendar do app (`pagoParaAgendar`): pelo app vai a sessão
+    cujo PRIMEIRO procedimento está no app. Prova: `e2e/plano-atritos-da-9.spec.ts`
+    ("A47"), `tests/textos-do-plano-da-9.test.ts`.
   - **O Confirmar avisa ANTES quando o horário fica dentro do prazo do app**
     (A52; `tenants.portal_prazo_alteracao_horas`): "Este horário fica a menos
     de 12 horas: pelo app, a remarcação e o cancelamento vão até 12 horas

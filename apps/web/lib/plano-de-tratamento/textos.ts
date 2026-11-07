@@ -28,3 +28,30 @@ export function rodapeDoPlanoFechado(aReceber: number, quem: string[] | null): s
     ? `${base}, com quem tem o Financeiro em Gerenciar: ${quem.join(', ')}.`
     : `${base}, com quem tem o Financeiro em Gerenciar.`
 }
+
+/** "2", "2 e 4", "2, 4 e 6". */
+function listaDeNumeros(ns: number[]): string {
+  return ns.length > 1 ? `${ns.slice(0, -1).join(', ')} e ${ns[ns.length - 1]}` : String(ns[0] ?? '')
+}
+
+/**
+ * A47 da 9ª: quem marca CADA sessão a agendar do plano, no app. O cartão dizia
+ * "quem marca é a clínica" para o plano inteiro (havia sessões de
+ * criolipólise, fora do app) e o app deixava a Luana marcar a drenagem. A regra
+ * é a do agendar do app (`pagoParaAgendar`): pelo app vai a sessão cujo
+ * primeiro procedimento a cliente agenda (`visible_on_client_app`).
+ */
+export function quemMarcaAsSessoes(aAgendar: { numero: number; peloApp: boolean }[]): string[] {
+  const peloApp = aAgendar.filter(s => s.peloApp).map(s => s.numero)
+  const pelaClinica = aAgendar.filter(s => !s.peloApp).map(s => s.numero)
+  const saida: string[] = []
+  if (peloApp.length) {
+    saida.push(peloApp.length === 1
+      ? `Sessão ${peloApp[0]}: agende pelo app em “Agendar” (já está paga no plano).`
+      : `Sessões ${listaDeNumeros(peloApp)}: agende pelo app em “Agendar” (já estão pagas no plano).`)
+  }
+  if (pelaClinica.length) {
+    saida.push(`${pelaClinica.length === 1 ? 'Sessão' : 'Sessões'} ${listaDeNumeros(pelaClinica)}: quem marca é a clínica — fale com ela para escolher o dia.`)
+  }
+  return saida
+}
