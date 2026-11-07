@@ -39,6 +39,10 @@ test('o "Conceder crédito" tem os rótulos ligados aos campos e um exemplo comu
   const ctx = await browser.newContext({ storageState: financeiro!.estado })
   try {
     const p = await ctx.newPage()
+    // Sobra da F39: o GrantCreditForm chamava onClose() DURANTE a renderização, e
+    // o React avisava ("Cannot update a component while rendering a different component").
+    const avisos: string[] = []
+    p.on('console', m => { if (/Cannot update a component/.test(m.text())) avisos.push(m.text()) })
     await p.goto(`/admin/clients/${cliente}?aba=financeiro`)
     await p.getByRole('button', { name: /Conceder crédito/ }).first().click()
     const valor = p.getByLabel('Valor (R$) *')
@@ -52,5 +56,7 @@ test('o "Conceder crédito" tem os rótulos ligados aos campos e um exemplo comu
       const { data } = await db().from('internal_credits').select('amount').eq('client_id', cliente)
       return (data ?? []).map(c => Number(c.amount))
     }, { timeout: 15_000 }).toEqual([25])
+    await expect(p.locator('form').getByRole('button', { name: 'Conceder crédito' }), 'o formulário fecha').toHaveCount(0)
+    expect(avisos, 'nenhum setState durante a renderização').toEqual([])
   } finally { await ctx.close() }
 })

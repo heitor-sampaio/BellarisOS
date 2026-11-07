@@ -1066,11 +1066,14 @@ function GrantCreditForm({
   // A chave do envio (D10): o duplo clique concede uma vez só (o formulário some ao conceder).
   const envio = useEnvioUnico()
 
-  if (state !== null && !state?.error && !pending) {
-    onClose()
-    router.refresh()
-    return null
-  }
+  // Concedido, fecha e recarrega — num efeito: chamar onClose DURANTE a
+  // renderização muda o estado do pai no meio dela (o aviso do React; sobra
+  // da F39, o mesmo conserto do CancelModal, 59cbee98).
+  const concedido = state !== null && !state?.error && !pending
+  useEffect(() => {
+    if (concedido) { onClose(); router.refresh() }
+  }, [concedido, onClose, router])
+  if (concedido) return null
 
   return (
     <form
