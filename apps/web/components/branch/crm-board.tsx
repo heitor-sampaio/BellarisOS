@@ -5,7 +5,7 @@ import { useState, useTransition, useRef, useEffect, useMemo, useCallback, useSy
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, Phone, Mail, X,
-  MoreHorizontal, Trophy, XCircle, CalendarClock,
+  MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage } from '@/actions/leads'
@@ -13,6 +13,7 @@ import { ClientForm } from './client-form'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { rotaCliente } from '@/lib/rotas'
 import { dayKeyTZ } from '@/lib/datetime'
+import { textoDoRetorno } from '@/lib/crm/retorno'
 import { rotaComParams } from '@/lib/query-params'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
@@ -411,6 +412,9 @@ export interface Lead {
   proximo_agendamento?: string | null
   /** A18: a compra da cliente depois de a oportunidade nascer ("Pacote X"): o card SUGERE o Ganho. */
   compra?: string | null
+  /** A42 da 9ª: o dia do retorno combinado (yyyy-mm-dd) e o que fazer. */
+  retornar_em?: string | null
+  retornar_obs?: string | null
 }
 
 interface CRMBoardProps {
@@ -650,6 +654,7 @@ function LeadCard({
           tags: lead.tags,
           lead_procedures: lead.lead_procedures.map(lp => ({ procedure_id: lp.procedure_id })),
           owner_id: lead.owner_id ?? null, owner_name: lead.owner_name ?? null,
+          retornar_em: lead.retornar_em ?? null, retornar_obs: lead.retornar_obs ?? null,
         }}
         agendar={unidadesParaAgendar ? { unidades: unidadesParaAgendar, clienteId: lead.client_id } : undefined}
       />
@@ -928,6 +933,18 @@ function LeadCard({
         {/* A18 da 7ª simulação: o card diz quando a cliente vem, e — depois
             de ela comprar — SUGERE levar a oportunidade a Ganho. Não move
             sozinho (crm-05, princípio 6): quem move é a pessoa, no botão. */}
+        {/* A42 da 9ª: o lembrete de retorno — o dia combinado; hoje e atrasado em destaque. */}
+        {lead.retornar_em && (() => {
+          const r = textoDoRetorno(lead.retornar_em, nowMs != null ? dayKeyTZ(new Date(nowMs)) : '0000-00-00')
+          return (
+            <p data-retornar-em title={lead.retornar_obs ?? undefined} style={{
+              marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700,
+              color: r.atrasado ? 'var(--danger)' : r.hoje ? 'var(--warning)' : 'var(--text-muted)',
+            }}>
+              <BellRing size={11} /> {r.texto}{lead.retornar_obs ? ` · ${lead.retornar_obs}` : ''}
+            </p>
+          )
+        })()}
         {lead.proximo_agendamento && (
           <p data-agendado-em style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--info)' }}>
             <CalendarClock size={11} /> Agendado {quandoNoCard(lead.proximo_agendamento)}

@@ -210,7 +210,7 @@ as duas variáveis; sem `SISTEMA_URL`, o `assinaturas` é PULADO com aviso (o si
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`, `suporte-sessoes`, `copilot-retencao` (as conversas do Copilot com mais de 90 dias), `importacoes` (a importação de contatos parada vira interrompida; o relatório de erros some em 7 dias), `assinaturas`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`, `suporte-sessoes`, `copilot-retencao` (as conversas do Copilot com mais de 90 dias), `importacoes` (a importação de contatos parada vira interrompida; o relatório de erros some em 7 dias), `crm-lembretes` (o retorno combinado e o ganho a marcar, no sino de quem tem o lead — A42/A45 da 9ª; o retorno do dia a partir das 7h), `assinaturas`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:

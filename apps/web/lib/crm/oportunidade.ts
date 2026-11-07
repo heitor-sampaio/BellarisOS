@@ -81,6 +81,9 @@ export interface NovaOportunidade {
   utmSource?: string | null
   utmMedium?: string | null
   utmCampaign?: string | null
+  /** A42 da 9ª: o dia do retorno combinado (yyyy-mm-dd) e o que fazer — o lembrete de quem tem o lead. */
+  retornarEm?: string | null
+  retornarObs?: string | null
 }
 
 /**
@@ -130,6 +133,7 @@ export async function criarOportunidadeCore(
     owner_id: opcoes.responsavelId !== undefined ? opcoes.responsavelId : ctx.internalUserId,
     ...(opcoes.clientId ? { client_id: opcoes.clientId } : {}),
     ...(opcoes.contatoId ? { contato_id: opcoes.contatoId } : {}),
+    ...(o.retornarEm ? { retornar_em: o.retornarEm, retornar_obs: o.retornarObs ?? null } : {}),
   }).select('id, created_at').single()
   if (error || !lead) {
     console.error('[criarOportunidadeCore]', error?.message)

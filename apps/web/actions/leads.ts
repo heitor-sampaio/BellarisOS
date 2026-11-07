@@ -6,6 +6,7 @@ import type { LeadChange } from '@/lib/lead-events'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, ownerFilter, assertRecurso, can } from '@/lib/auth'
 import { fichasDoTelefoneDoLead, respostaDaFichaDoTelefone } from '@/lib/crm/ficha-do-telefone'
+import { diaDoRetorno } from '@/lib/crm/retorno'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   registrarEventoLead, estadoAtualDoLead,
@@ -123,6 +124,7 @@ export async function createLead(
       nome: name, telefone: phone, email, social, origem: source, observacoes: notes,
       crmStageId, funnelId, procedureIds, tags: manualTags,
       fbclid, gclid, utmSource, utmMedium, utmCampaign,
+      retornarEm: diaDoRetorno(str(formData, 'retornar_em')), retornarObs: str(formData, 'retornar_obs'),
     }, contatoId || clientId ? { ...(contatoId ? { contatoId } : {}), ...(clientId ? { clientId } : {}) } : undefined)
     if ('error' in r) return { error: r.error }
     const lead = { id: r.leadId, created_at: r.createdAt }
@@ -231,6 +233,17 @@ export async function updateLead(
     // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
     const novasTags = formData.has('tags') ? parseStringArray(formData, 'tags') : null
     if (novasTags) patch.tags = novasTags
+
+    // A42 da 9ª: o lembrete de retorno (o dia e o que fazer), só quando o form
+    // o mandou. Trocar o dia zera o aviso — o novo dia avisa de novo.
+    if (formData.has('retornar_em')) {
+      const dia = diaDoRetorno(str(formData, 'retornar_em'))
+      patch.retornar_em = dia
+      patch.retornar_obs = dia ? str(formData, 'retornar_obs') : null
+      const atual = await ler(createAdminClient().from('leads').select('retornar_em')
+        .eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler o retorno do lead') as { retornar_em: string | null } | null
+      if ((atual?.retornar_em ?? null) !== dia) patch.retorno_avisado_em = null
+    }
 
     // Retrato ANTES do update: depois já é o valor novo, e o histórico
     // registraria "de Y para Y".

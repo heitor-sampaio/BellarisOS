@@ -37,6 +37,9 @@ interface ExistingLead {
   lead_procedures?: { procedure_id: string }[]
   owner_id?:      string | null
   owner_name?:    string | null
+  /** A42 da 9ª: o lembrete de retorno. */
+  retornar_em?:   string | null
+  retornar_obs?:  string | null
 }
 
 type Responsaveis = Awaited<ReturnType<typeof responsaveisParaOportunidade>>
@@ -322,6 +325,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           client_id:    /^mesma:/.test(campo('_fichaDoTelefone')) ? campo('_fichaDoTelefone').slice(7) : null,
           created_at:   (state as { createdAt?: string }).createdAt ?? new Date().toISOString(),
           tags,
+          retornar_em:  campo('retornar_em') || null,
+          retornar_obs: campo('retornar_em') ? campo('retornar_obs') || null : null,
           lead_procedures: selectedProcs.map(pid => ({
             procedure_id: pid,
             procedures:   procedures.find(p => p.id === pid)
@@ -687,6 +692,28 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   defaultValue={existing?.notes ?? ''}
                   placeholder="Interesse, contexto, próximos passos…"
                   style={{ resize: 'vertical' }} />
+              </div>
+
+              {/* A42 da 9ª: o lembrete de retorno. No dia, quem tem o lead é
+                  avisado no sino — o card não anda sozinho (princípio 6). */}
+              <div data-lembrete-de-retorno style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                  LEMBRETE DE RETORNO
+                </p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '0 0 170px' }}>
+                    <span className="field-label">Retornar em</span>
+                    <input name="retornar_em" type="date" className="field" defaultValue={existing?.retornar_em ?? ''} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '1 1 220px' }}>
+                    <span className="field-label">O que fazer no retorno</span>
+                    <input name="retornar_obs" type="text" className="field" maxLength={200}
+                      defaultValue={existing?.retornar_obs ?? ''} placeholder="Ex.: ligar para falar do orçamento" />
+                  </label>
+                </div>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  No dia, quem é o responsável pelo lead recebe o lembrete no sino. O card não muda de etapa sozinho.
+                </p>
               </div>
 
               {/* Histórico — só na edição: card que ainda não existe não tem

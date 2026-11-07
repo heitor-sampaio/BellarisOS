@@ -1,6 +1,6 @@
 import {
   Bell, CalendarDays, CalendarClock, CalendarPlus, CheckCircle2, AlertCircle,
-  Star, Sparkles, CreditCard, DoorOpen, UserCog, LifeBuoy,
+  Star, Sparkles, CreditCard, DoorOpen, UserCog, LifeBuoy, BellRing, ShieldCheck,
 } from 'lucide-react'
 
 // Config visual dos tipos de notificação (cliente + staff). Ícones Lucide, cores dos tokens.
@@ -23,6 +23,10 @@ export const NOTIFICATION_TYPE_CFG: Record<string, { Icon: React.ElementType; co
   'suporte.chamado':       { Icon: LifeBuoy,     color: 'var(--brand)' },
   'suporte.acesso':        { Icon: LifeBuoy,     color: 'var(--danger)' },
   'assinatura':            { Icon: CreditCard,   color: 'var(--warning)' },
+  // CRM: o retorno combinado e o ganho a marcar (9ª simulação, A42/A45).
+  'crm.lembrete':          { Icon: BellRing,     color: 'var(--brand)' },
+  // LGPD: o pedido de dados feito pelo app (A49 da 9ª).
+  'lgpd.pedido':           { Icon: ShieldCheck,  color: 'var(--info)' },
   // Fallback
   general:                 { Icon: Bell,         color: 'var(--text-muted)' },
 }

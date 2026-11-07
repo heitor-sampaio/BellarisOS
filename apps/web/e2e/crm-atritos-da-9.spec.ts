@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { dayKeyTZ } from '../lib/datetime'
 
 /**
  * O CRM da 9ª simulação (2026-11-07), pelas regras de sempre:
@@ -116,4 +117,21 @@ test('A44: o resumo diz a base da conversão, e "1 perdido" leva à coluna Perdi
     await resumo.getByRole('button', { name: /1 perdido/ }).click()
     await expect(coluna).toBeInViewport({ ratio: 0.9 })
   })
+})
+
+test('A42: o lembrete de retorno se marca no card, com o dia e o que fazer, e o card diz quando', async ({ browser }) => {
+  const id = await lead('Retorno A42')
+  const hoje = dayKeyTZ(new Date())
+  await como(browser, sdr, async p => {
+    await p.goto('/admin/oportunidades')
+    await p.locator(`[data-lead-id="${id}"]`).click()
+    const janela = p.locator('dialog[open]')
+    await janela.getByLabel('Retornar em').fill(hoje)
+    await janela.getByLabel('O que fazer no retorno').fill('Ligar para falar do orçamento')
+    await janela.getByRole('button', { name: 'Salvar' }).click()
+    await expect(p.locator('dialog[open]')).toHaveCount(0)
+    await expect(p.locator(`[data-lead-id="${id}"] [data-retornar-em]`)).toContainText('Retornar hoje')
+  })
+  const { data } = await db().from('leads').select('retornar_em, retornar_obs, crm_stage_id').eq('id', id).single()
+  expect(data).toEqual({ retornar_em: hoje, retornar_obs: 'Ligar para falar do orçamento', crm_stage_id: etapa.novo })
 })

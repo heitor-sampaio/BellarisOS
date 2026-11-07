@@ -9,6 +9,7 @@ import {
 } from '@/actions/user-notifications'
 import { NOTIFICATION_TYPE_CFG, notificationRelativeTime } from '@/components/shared/notification-types'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { caminhoInterno } from '@/lib/origem'
 
 interface Props {
   internalUserId: string
@@ -254,8 +255,16 @@ export function StaffNotificationBell({ internalUserId, initialUnread, comAjuda 
                   Ver a resposta
                 </button>
               )}
+              {/* O aviso que leva a um lugar (o card do lead, o pedido da LGPD — 9ª
+                  simulação): `data.caminho`, só caminho DESTE app. */}
+              {typeof selected.data?.caminho === 'string' && caminhoInterno(selected.data.caminho, '') && (
+                <a data-abrir-do-aviso href={caminhoInterno(selected.data.caminho, '')} className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'center' }} onClick={() => setSelected(null)}>
+                  Abrir
+                </a>
+              )}
               <button type="button" onClick={() => setSelected(null)}
-                className={selected.type === 'suporte.chamado' ? 'btn-ghost' : 'btn-primary'}
+                className={selected.type === 'suporte.chamado' || typeof selected.data?.caminho === 'string' ? 'btn-ghost' : 'btn-primary'}
                 style={{ width: '100%', justifyContent: 'center' }}>Fechar</button>
             </div>
           </div>

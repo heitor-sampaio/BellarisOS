@@ -1027,7 +1027,34 @@ oportunidade segue aberta." com "Mover para Fechado" (`data-sugere-ganho`). É
 SUGESTÃO: nada se move sozinho (crm-05, princípio 6) — quem move é a pessoa,
 no botão, pelo `updateLeadStage` de sempre. Uma ida ao banco para o quadro
 inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
-`service_role`; `lib/crm/sinais-do-card.ts`). **O resumo do quadro diz a base e leva aos perdidos** (A44 da 9ª simulação,
+`service_role`; `lib/crm/sinais-do-card.ts`). **Os lembretes do CRM são avisos para a pessoa, nunca o card andando** (A42 e
+A45 da 9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
+- **O lembrete de retorno** (A42: a SDR só tinha as Observações para "ligar de
+  novo na quinta"): o card tem "Lembrete de retorno" — "Retornar em" (o DIA,
+  `leads.retornar_em`) e "O que fazer no retorno" (`retornar_obs`), no "Novo
+  lead" e na edição (`diaDoRetorno`, `lib/crm/retorno.ts`) — e o quadro diz
+  "Retornar 12/11", "Retornar hoje" (aviso) ou "Retorno atrasado (10/11)"
+  (`[data-retornar-em]`, `textoDoRetorno`). No dia, o cron `crm-lembretes` (de
+  hora em hora) avisa o RESPONSÁVEL no sino: "Retorno de hoje: X" a partir das
+  7h de Brasília (o de madrugada tocaria o celular), ou "Retorno atrasado: X
+  (10/11)"; uma vez por dia marcado (`retorno_avisado_em`, reivindicado antes
+  de sair; trocar a data o zera). Card ganho ou perdido não avisa; sem
+  responsável, não há a quem avisar (o card mostra).
+- **O ganho a marcar** (A45: a SDR criou o lead, outra pessoa vendeu o plano, e
+  o card ficou em "Mover para Fechado"): quando a cliente ligada compra (pacote,
+  pré-pago ou plano aceito) com a oportunidade aberta — a régua da sugestão do
+  card (A18 da 7ª) —, o responsável recebe "Marque o ganho: X — X comprou Plano
+  Y, e a oportunidade dela segue aberta…" (`crm_lembretes_de_ganho`, só
+  `service_role`; uma vez por oportunidade, `ganho_lembrado_em`). As que já
+  estavam assim no dia da migration foram marcadas como lembradas (o card já
+  sugeria).
+- O aviso abre o card: `data.caminho` (`/admin/oportunidades?lead=` ou o da
+  unidade do responsável), que o sino da equipe mostra como "Abrir" (só caminho
+  deste app, `caminhoInterno`).
+- Prova: `e2e/crm-lembretes.spec.ts` (o cron, uma vez cada, sem mover o card),
+  `e2e/crm-atritos-da-9.spec.ts` ("A42", o campo e o card).
+
+**O resumo do quadro diz a base e leva aos perdidos** (A44 da 9ª simulação,
 2026-11-07): "0,0% de conversão: 0 ganhas de 7 oportunidades do funil (abertas,
 ganhas e perdidas)" (`ResumoDoQuadro`, `[data-resumo-do-quadro]`) — era "0 de 7
 ganhas", sem dizer que a base é todo lead; e o "N perdidos" é um botão que leva
