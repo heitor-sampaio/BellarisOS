@@ -142,9 +142,26 @@ function trechosDe(nos: NoPM[] | undefined, ctx: Contexto): TrechoDeModelo[] {
   }
   for (const n of nos ?? []) {
     switch (n.type) {
-      case 'text':
-        pushTexto(typeof n.text === 'string' ? n.text : '', estiloDasMarcas(n.marks))
+      case 'text': {
+        // A9 da 9ª simulação: a variável DIGITADA ("{{cliente.nome}}") vira
+        // variável, com o estilo do texto — ficava literal na prévia e no
+        // documento (princípio 3). Chaves que não formam variável são recusadas
+        // dizendo qual, como na marcação (`chavesMalFormadas`).
+        const texto = typeof n.text === 'string' ? n.text : ''
+        const estilo = estiloDasMarcas(n.marks)
+        let desde = 0
+        for (const m of texto.matchAll(/\{\{([^{}]*)\}\}/g)) {
+          const nome = m[1]!.trim()
+          if (!RE_VARIAVEL.test(nome)) {
+            throw new ErroDoDocumento(`“${m[0]}” não é uma variável: use “Inserir variável” (ou escreva no formato {{cliente.nome}}).`)
+          }
+          pushTexto(texto.slice(desde, m.index), estilo)
+          saida.push({ variavel: nome, ...estilo })
+          desde = m.index! + m[0].length
+        }
+        pushTexto(texto.slice(desde), estilo)
         break
+      }
       case 'hardBreak':
         pushTexto('\n', estiloDasMarcas(n.marks))
         break

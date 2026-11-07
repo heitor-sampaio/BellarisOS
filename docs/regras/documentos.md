@@ -75,6 +75,16 @@ DEVLOG ("Termos e contratos").
     do editor NUNCA vai para a tela como HTML.
   - A variável é interpolada sobre a árvore (vira texto puro, com o estilo que
     tinha no modelo).
+  - **A variável DIGITADA também é variável** (A9 da 9ª simulação, 2026-11-07;
+    princípio 3): "{{cliente.nome}}" escrito à mão ficava literal na prévia e
+    no documento — só o "Inserir variável" funcionava, e ele depende do cursor
+    no lugar. O conversor (a porta única) troca, no texto, cada
+    `{{grupo.campo}}` (com ou sem espaços dentro) pela variável, com o
+    estilo do texto; a prévia, que usa o mesmo conversor, já mostra o valor de
+    exemplo, e o catálogo do tipo vale como no "Inserir" (fora do tipo, recusada
+    ao salvar). Chaves que não formam variável ("{{ Nome }}", "{{}}") são
+    recusadas dizendo qual — como `chavesMalFormadas` na marcação. Prova:
+    `tests/documentos-arvore.test.ts` ("A9 da 9ª").
   - A marcação leve de antes ainda vale (versões antigas, o contrato de plano
     semeado, E2E por `p_texto`): `editor/da-marcacao.ts` a converte para o
     MESMO JSON, e ela passa pelo mesmo conversor. A v1 gravada (array) se lê

@@ -162,3 +162,25 @@ describe('fontes', () => {
     expect(faltam).toEqual([])
   })
 })
+
+// A9 da 9ª simulação (2026-11-07): a variável DIGITADA à mão ("{{cliente.nome}}")
+// ficava literal na prévia e no documento — só o "Inserir variável" funcionava.
+// Princípio 3: o que a tela mostra é o que vale. Digitada certa, vira variável
+// (com o estilo do texto); chaves que não formam variável avisam, como na marcação.
+describe('A9 da 9ª: a variável digitada no texto', () => {
+  it('"{{cliente.nome}}" digitado vira variável, no meio do texto e com o estilo', () => {
+    const d = converter(doc(p(txt('Eu, {{cliente.nome}}, CPF {{ cliente.cpf }}.', { type: 'bold' }))))
+    expect(d.blocos).toEqual([{ tipo: 'paragrafo', trechos: [
+      { texto: 'Eu, ', negrito: true },
+      { variavel: 'cliente.nome', negrito: true },
+      { texto: ', CPF ', negrito: true },
+      { variavel: 'cliente.cpf', negrito: true },
+      { texto: '.', negrito: true },
+    ] }])
+    expect(variaveisDoDocumento(d)).toEqual(['cliente.nome', 'cliente.cpf'])
+  })
+  it('chaves que não formam variável são recusadas, dizendo qual', () => {
+    expect(converterDocumentoDoEditor(doc(p(txt('Eu, {{ Nome }}'))), { tenantId: null }))
+      .toEqual({ erro: expect.stringContaining('{{ Nome }}') })
+  })
+})
