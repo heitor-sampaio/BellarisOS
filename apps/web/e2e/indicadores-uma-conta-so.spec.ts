@@ -157,7 +157,7 @@ test.describe('D10: a conversão é da OPORTUNIDADE (ganhas ÷ do funil), uma co
     await como(browser, gestor, async p => {
       await p.goto(`/admin/oportunidades?funil=${funil}`)
       await expect(resumoDoQuadro(p)).toContainText('33,3% de conversão')
-      await expect(resumoDoQuadro(p)).toContainText('1 de 3 ganhas')
+      await expect(resumoDoQuadro(p)).toContainText('1 ganha de 3 oportunidades do funil')
       await expect(resumoDoQuadro(p)).not.toContainText('viraram clientes')
 
       // O controle: o dashboard (lib/metrics) diz o mesmo.
@@ -171,7 +171,7 @@ test.describe('D10: a conversão é da OPORTUNIDADE (ganhas ÷ do funil), uma co
     await como(browser, sdr, async p => {
       await p.goto(`/${slug}/oportunidades?funil=${funil}`)
       await expect(resumoDoQuadro(p)).toContainText('0,0% de conversão')
-      await expect(resumoDoQuadro(p)).toContainText('0 de 2 ganhas')
+      await expect(resumoDoQuadro(p)).toContainText('0 ganhas de 2 oportunidades do funil')
     })
   })
 

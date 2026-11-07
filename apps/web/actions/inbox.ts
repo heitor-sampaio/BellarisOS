@@ -3,6 +3,7 @@
 import { moverEtapaCore } from '@/lib/crm/oportunidade'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso, temRecurso, can } from '@/lib/auth'
+import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
@@ -1374,6 +1375,19 @@ export async function openLeadConversation(
   // Cria uma conversa a partir do lead (whatsapp se tem telefone; senão manual)
   const contactPhone = l.phone ? l.phone.replace(/\D/g, '') : null
   const channel: InboxChannel = contactPhone ? 'whatsapp' : 'manual'
+
+  // A43 da 9ª simulação: sem conversa e sem WhatsApp conectado, NÃO há canal
+  // para falar com a pessoa — nascia uma conversa de WhatsApp com o banner "não
+  // está conectado" (o lead do Instagram numa clínica sem número). Diz isso.
+  if (channel === 'whatsapp' && !(await redeTemWhatsapp(ctx.tenantId!))) {
+    const quem = can(ctx, 'settings', 'MANAGE') && ctx.branchId === null
+      ? 'Conecte o WhatsApp em Configurações → Integrações'
+      : 'Peça a quem administra a clínica para conectar o WhatsApp'
+    return {
+      conversationId: null,
+      error: `Ainda não há conversa com ${l.name}, e a clínica não tem um WhatsApp conectado: não há por onde conversar daqui. ${quem}, ou fale pelo canal de onde ela veio.`,
+    }
+  }
 
   // ⚠️ Aqui havia um `upsert` com `onConflict: 'tenant_id,channel,contact_phone'`.
   // O índice que garante essa unicidade é PARCIAL

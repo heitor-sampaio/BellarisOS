@@ -8,7 +8,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare, CalendarPlus } from 'lucide-react'
 import { ScheduleModal } from '@/components/admin/inbox-lead-panel'
 import type { PessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
-import { createLead, updateLead, responsaveisParaOportunidade } from '@/actions/leads'
+import { createLead, updateLead, responsaveisParaOportunidade, fichaDoTelefoneDoLead } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
 import { rotaInbox } from '@/lib/rotas'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
@@ -17,7 +17,7 @@ import { MotivoDaPerdaCampos, type OpcaoDeMotivo } from './pergunta-da-perda'
 import { listarMotivosDePerda } from '@/actions/crm-motivos'
 import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
-import { LEAD_SOURCES, unitTag, maskPhone as telefoneParaExibir, maskTelefoneDigitando } from '@estetica-os/utils'
+import { LEAD_SOURCES, unitTag, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
@@ -139,6 +139,30 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '',
     )
     const [tags,      setTags]      = useState<string[]>(existing?.tags ?? [])
+
+    /**
+     * D11 da 9ª: o telefone do lead NOVO é de uma cliente? A janela pergunta
+     * "É a mesma pessoa?" junto ao telefone, assim que ele fica completo (o
+     * inverso do cadastro, `pessoaDoCrmDoTelefone`). "Sim" liga a oportunidade
+     * à ficha; o servidor confere de novo (`createLead`).
+     */
+    const [fichasDoFone, setFichasDoFone] = useState<{ telefone: string; fichas: { id: string; nome: string | null }[] } | null>(null)
+    const [respostaDoFone, setRespostaDoFone] = useState<{ telefone: string; valor: string } | null>(null)
+    const digitosDoFone = telefoneDoCadastro(phone)?.digitos ?? null
+    const conferirFicha = !isEdit && !pessoa && !!digitosDoFone && digitosDoFone.length >= 10
+    useEffect(() => {
+      if (!conferirFicha || !digitosDoFone) return
+      let vivo = true
+      const t = setTimeout(() => {
+        fichaDoTelefoneDoLead(digitosDoFone)
+          .then(r => { if (vivo) setFichasDoFone({ telefone: digitosDoFone, fichas: r.fichas }) })
+          .catch(() => { if (vivo) setFichasDoFone(null) })
+      }, 300)
+      return () => { vivo = false; clearTimeout(t) }
+    }, [conferirFicha, digitosDoFone])
+    const fichaDoFone = conferirFicha && fichasDoFone?.telefone === digitosDoFone ? fichasDoFone.fichas[0] ?? null : null
+    const resposta = fichaDoFone && respostaDoFone?.telefone === digitosDoFone ? respostaDoFone.valor : ''
+    const [faltaResponder, setFaltaResponder] = useState(false)
 
     // Levar o lead (já existente) a uma etapa de desfecho perdido pede o motivo
     // ali mesmo, como o quadro (2026-10-21). A lista só é buscada quando precisa.
@@ -295,7 +319,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           source:       campo('source') || null,
           notes:        campo('notes') || null,
           crm_stage_id: stageId || null,
-          client_id:    null,
+          client_id:    /^mesma:/.test(campo('_fichaDoTelefone')) ? campo('_fichaDoTelefone').slice(7) : null,
           created_at:   (state as { createdAt?: string }).createdAt ?? new Date().toISOString(),
           tags,
           lead_procedures: selectedProcs.map(pid => ({
@@ -417,7 +441,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
           {/* Body */}
           <div style={{ padding: '24px 24px 28px' }}>
-            <form key={pessoa?.id ?? 'novo'} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form key={pessoa?.id ?? 'novo'} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+              onSubmit={e => {
+                // D11: sem a resposta do "É a mesma pessoa?", não envia (o envio limparia o formulário) e diz o que falta.
+                if (fichaDoFone && !resposta) { e.preventDefault(); setFaltaResponder(true) } else setFaltaResponder(false)
+              }}>
               {pessoa && <input type="hidden" name="_contatoId" value={pessoa.id} />}
               <input type="hidden" name="_funnelId"     value={funnelId ?? ''} />
               <input type="hidden" name="_slug"         value={activeBranchSlug} />
@@ -449,6 +477,29 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                       value={phone} onChange={e => setPhone(maskTelefoneDigitando(e.target.value))}
                       placeholder="(00) 00000-0000" />
                   </div>
+                  {fichaDoFone && (
+                    <div data-ficha-do-telefone role="group" aria-label="É a mesma pessoa?" style={{
+                      background: 'var(--info-soft)', border: '1px solid var(--border)', borderRadius: 10,
+                      padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
+                    }}>
+                      <input type="hidden" name="_fichaDoTelefone" value={resposta} />
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
+                        Este telefone é {fichaDoFone.nome ? <>da ficha de <strong>{fichaDoFone.nome}</strong></> : 'de uma cliente da clínica'}. É a mesma pessoa?
+                      </p>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {([
+                          [`mesma:${fichaDoFone.id}`, 'Sim, é ela', 'a oportunidade nasce ligada à ficha'],
+                          ['outra', 'Não, é outra pessoa', 'a oportunidade nasce sem ficha'],
+                        ] as const).map(([valor, rotulo, dica]) => (
+                          <button key={valor} type="button" title={dica} aria-pressed={resposta === valor}
+                            className={resposta === valor ? 'btn-primary' : 'btn-secondary'}
+                            onClick={() => digitosDoFone && setRespostaDoFone({ telefone: digitosDoFone, valor })}>
+                            {resposta === valor && <Check size={13} />} {rotulo}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>E-mail</span>
                     <input name="email" type="email" className="field" style={{ flex: 1 }} aria-label="E-mail"
@@ -647,6 +698,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               )}
 
               {/* Feedback */}
+              {faltaResponder && fichaDoFone && !resposta && (
+                <p data-falta-responder style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 700 }}>
+                  Responda antes de criar: este telefone é {fichaDoFone.nome ? `da ficha de ${fichaDoFone.nome}` : 'de uma cliente da clínica'}. É a mesma pessoa? (logo abaixo do telefone)
+                </p>
+              )}
               {state?.error && (
                 <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 700 }}>
                   {state.error}

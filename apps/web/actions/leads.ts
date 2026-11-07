@@ -4,7 +4,8 @@ import { camposDaPerda } from '@/lib/crm/motivos-perda'
 import { etapaDeCrm } from '@/lib/events/lead'
 import type { LeadChange } from '@/lib/lead-events'
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, ownerFilter, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, assertRecurso, can } from '@/lib/auth'
+import { fichasDoTelefoneDoLead, respostaDaFichaDoTelefone } from '@/lib/crm/ficha-do-telefone'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   registrarEventoLead, estadoAtualDoLead,
@@ -100,12 +101,29 @@ export async function createLead(
       return { error: 'Pessoa não encontrada, ou ela já tem oportunidade.' }
     }
 
+    // D11 da 9ª: o telefone de uma CLIENTE pergunta "É a mesma pessoa?" antes
+    // de gravar; o "Sim" liga a oportunidade à ficha. A pessoa que veio da
+    // busca (`_contatoId`) já disse quem é.
+    let clientId: string | null = null
+    if (phone && !contatoId) {
+      const fichas = await fichasDoTelefoneDoLead(ctx.tenantId!, phone)
+      const resposta = respostaDaFichaDoTelefone(str(formData, '_fichaDoTelefone'))
+      if (fichas.length && !resposta) {
+        const quem = can(ctx, 'clients', 'VIEW') ? `da ficha de ${fichas[0]!.nome}` : 'de uma cliente da clínica'
+        return { error: `Responda antes de criar: este telefone é ${quem}. É a mesma pessoa? (logo abaixo do telefone)` }
+      }
+      if (resposta && 'mesma' in resposta) {
+        if (!fichas.some(f => f.id === resposta.mesma)) return { error: 'A ficha deste telefone não foi encontrada. Confira o telefone.' }
+        clientId = resposta.mesma
+      }
+    }
+
     // O núcleo (lib/crm/oportunidade.ts) é o mesmo do Copilot.
     const r = await criarOportunidadeCore(createAdminClient(), ctx, {
       nome: name, telefone: phone, email, social, origem: source, observacoes: notes,
       crmStageId, funnelId, procedureIds, tags: manualTags,
       fbclid, gclid, utmSource, utmMedium, utmCampaign,
-    }, contatoId ? { contatoId } : undefined)
+    }, contatoId || clientId ? { ...(contatoId ? { contatoId } : {}), ...(clientId ? { clientId } : {}) } : undefined)
     if ('error' in r) return { error: r.error }
     const lead = { id: r.leadId, created_at: r.createdAt }
 
@@ -126,6 +144,21 @@ export async function createLead(
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
+}
+
+/**
+ * D11 da 9ª: as fichas da clínica com o telefone que se digita no "Novo
+ * lead" — a janela pergunta "É a mesma pessoa?" junto ao telefone, antes do
+ * clique. Só lê. O nome da ficha vai a quem vê Clientes; aos outros, "uma
+ * cliente da clínica".
+ */
+export async function fichaDoTelefoneDoLead(telefone: string): Promise<{ fichas: { id: string; nome: string | null }[] }> {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'oportunidades')
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const fichas = await fichasDoTelefoneDoLead(ctx.tenantId!, telefone)
+  const veNome = can(ctx, 'clients', 'VIEW')
+  return { fichas: fichas.map(f => ({ id: f.id, nome: veNome ? f.nome : null })) }
 }
 
 // --- Responsável ----------------------------------------------------

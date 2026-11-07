@@ -92,6 +92,7 @@ export const ISOLADOS = [
   'configuracoes-endereco-do-app.spec.ts',
   'configuracoes-atritos-da-7.spec.ts',
   'crm-atritos-da-7.spec.ts',
+  'crm-atritos-da-9.spec.ts',
   'clientes-arquivar.spec.ts',
   'clientes-ficha-proximos-depois-de-agendar.spec.ts',
   'clientes-ficha-aba-oportunidades.spec.ts',

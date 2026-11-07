@@ -153,6 +153,18 @@
     no formato do WhatsApp (abaixo), e a busca do cadastro olha também a forma
     antiga, sem o 55 (`formasParaAcharAPessoa`, `lib/importacao/normalizar.ts`).
     Prova: `e2e/ficha-cadastro-mesma-pessoa-do-lead.spec.ts`;
+  - **e o inverso: o lead NOVO com o telefone de uma cliente** (D11 da 9ª
+    simulação, 2026-11-07: a "Camila D. (repetida)" nascia em Novo, sem "✓
+    Cliente", com o telefone da Camila Duarte). O "Novo lead" pergunta, junto
+    ao telefone e antes do clique, "Este telefone é da ficha de Camila Duarte.
+    É a mesma pessoa?" (`fichaDoTelefoneDoLead`, as fichas ATIVAS por
+    `fichas_do_telefone`; `[data-ficha-do-telefone]`): "Sim, é ela" → a
+    oportunidade nasce ligada à ficha (`leads.client_id`); "Não, é outra
+    pessoa" → sem ficha. Sem resposta, "Criar lead" não envia e diz o que falta
+    (`[data-falta-responder]`), e o `createLead` confere de novo e recusa. Quem
+    não vê Clientes lê "de uma cliente da clínica", sem o nome. A pessoa que
+    veio da busca (`_contatoId`) já disse quem é. Prova:
+    `e2e/crm-atritos-da-9.spec.ts` ("D11");
   - o telefone de uma ficha ARQUIVADA (A20 da 5ª simulação — virou o "Valdir
     Duplicado" do D10) pergunta primeiro: "Reativar a ficha de X" (a ficha
     volta como estava, com o histórico, ligada ao card ou à conversa de onde
@@ -1015,7 +1027,18 @@ oportunidade segue aberta." com "Mover para Fechado" (`data-sugere-ganho`). É
 SUGESTÃO: nada se move sozinho (crm-05, princípio 6) — quem move é a pessoa,
 no botão, pelo `updateLeadStage` de sempre. Uma ida ao banco para o quadro
 inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
-`service_role`; `lib/crm/sinais-do-card.ts`). **Ganhar ou perder sem rolar**
+`service_role`; `lib/crm/sinais-do-card.ts`). **O resumo do quadro diz a base e leva aos perdidos** (A44 da 9ª simulação,
+2026-11-07): "0,0% de conversão: 0 ganhas de 7 oportunidades do funil (abertas,
+ganhas e perdidas)" (`ResumoDoQuadro`, `[data-resumo-do-quadro]`) — era "0 de 7
+ganhas", sem dizer que a base é todo lead; e o "N perdidos" é um botão que leva
+à coluna de desfecho LOST, fora da primeira dobra (`IrParaOsPerdidos`). A
+conta não mudou. **"Ir para a conversa" sem canal diz que não há canal** (A43):
+sem conversa da pessoa e sem WhatsApp conectado (`redeTemWhatsapp`),
+`openLeadConversation` não cria mais a conversa de WhatsApp com o banner "não
+está conectado": diz "Ainda não há conversa com X, e a clínica não tem um
+WhatsApp conectado…", com o caminho (Configurações → Integrações, ou pedir a
+quem administra). Prova: `e2e/crm-atritos-da-9.spec.ts` ("A43", "A44").
+**Ganhar ou perder sem rolar**
 (A19): a 1440 px as colunas de desfecho ficam fora da tela; o menu do card tem
 "Marcar como ganho (Fechado)" e "Marcar como perdido (Perdido)", e arrastando
 um card aparece embaixo "Soltar em Fechado / Soltar em Perdido"
