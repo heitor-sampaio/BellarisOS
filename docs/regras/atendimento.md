@@ -1461,8 +1461,9 @@ const procedures = await ler(
   os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
   atendimento) e TODA action pelo id do plano que passa por `planoDoTenant`
   (cabeçalho, editar, salvar, renomear, ligar cliente, enviar à recepção,
-  fechar o checkout, o arquivo do tratamento), mais `getTreatmentPlanSessions`
-  e `cancelTreatmentPlan`, só valem para o plano DELA (`planoDaProfissional`).
+  fechar o checkout, o arquivo do tratamento), mais `getTreatmentPlanSessions`,
+  só valem para o plano DELA (`planoDaProfissional`). Cancelar o plano fechado
+  é do Financeiro em Gerenciar, como o pacote (D4 da 9ª, `vendas-financeiro.md`).
   **"O plano é da cliente, não da profissional"** (revisão do Heitor,
   2026-10-29): dela é o plano de toda cliente que ela atende — um agendamento
   com ela NÃO CANCELADO, inclusive futuro (eq-02, 2026-11-02: UMA regra só, a

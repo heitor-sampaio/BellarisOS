@@ -160,7 +160,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('treatment_plans')
-      .select('id, status, created_at, updated_at')
+      .select('id, status, created_at, updated_at, name, cancelado_em, cancelamento_motivo, cancelamento')
       .eq('client_id', id)
       .order('created_at', { ascending: false }), 'carregar o histórico de planos'),
   ])
@@ -335,7 +335,7 @@ export default async function AdminClientProfilePage({
 
   const appAccountCreatedAt = raw.app_account_created_at as string | null
 
-  type RawHistoryPlan  = { id: string; status: string; created_at: string; updated_at: string | null }
+  type RawHistoryPlan  = { id: string; status: string; created_at: string; updated_at: string | null; name: string | null; cancelado_em: string | null; cancelamento_motivo: string | null; cancelamento: unknown }
 
   let evIdx = 0
   const uid = (prefix: string) => `${prefix}-${evIdx++}`
@@ -384,6 +384,10 @@ export default async function AdminClientProfilePage({
       history.push({ id: uid('pp'), date: plan.created_at, type: 'PLAN_PROPOSED', title: 'Plano de tratamento proposto', subtitle: null, amount: null, link: null })
     } else if (plan.status === 'ACCEPTED') {
       history.push({ id: uid('pa'), date: plan.updated_at ?? plan.created_at, type: 'PLAN_ACCEPTED', title: 'Plano de tratamento aceito', subtitle: 'Checkout realizado', amount: null, link: null })
+    } else if (plan.cancelado_em) {
+      // O plano fechado cancelado (D4 da 9ª): a conta, como o do pacote.
+      const cancelado = historicoDoCancelamento(plan, plan.name?.trim() || 'Plano de tratamento', formatBRL, 'Plano')
+      if (cancelado) history.push({ id: uid('pc'), type: 'PLAN_CANCELLED', link: null, ...cancelado })
     } else if (plan.status === 'CANCELLED' || plan.status === 'REJECTED') {
       history.push({ id: uid('pc'), date: plan.updated_at ?? plan.created_at, type: 'PLAN_CANCELLED', title: 'Plano de tratamento cancelado', subtitle: null, amount: null, link: null })
     }

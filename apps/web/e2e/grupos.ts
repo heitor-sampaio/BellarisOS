@@ -241,6 +241,8 @@ export const ISOLADOS = [
   'estoque-unidade-da-9.spec.ts',
   'agenda-unidade-da-9.spec.ts',
   'portal-cliente-unidade-da-9.spec.ts',
+  // F41 (o plano e o pacote da 9ª simulação), cada um na sua rede [e2e].
+  'plano-cancelar.spec.ts',
   'comissoes-pacote-responsavel.spec.ts',
   'vendas-quem-vendeu.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',

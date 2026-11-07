@@ -122,13 +122,16 @@ export function agendamentosCancelados(j: Record<string, unknown>): string[] {
 }
 
 /**
- * O "Pacote cancelado" do histórico da ficha (os dois portais), a partir do
- * retrato gravado em `client_packages.cancelamento`.
+ * O "Pacote cancelado" (e o "Plano cancelado") do histórico da ficha (os dois
+ * portais), a partir do retrato gravado em `client_packages.cancelamento` ou
+ * `treatment_plans.cancelamento`.
  */
 export function historicoDoCancelamento(
   pkg: { cancelado_em?: string | null; cancelamento_motivo?: string | null; cancelamento?: unknown },
   nome: string,
   brl: (v: number) => string,
+  /** O conjunto: o pacote ou o plano fechado (D4 da 9ª — a mesma conta). */
+  rotulo: 'Pacote' | 'Plano' = 'Pacote',
 ): { date: string; title: string; subtitle: string; amount: number | null } | null {
   if (!pkg.cancelado_em) return null
   const c = (pkg.cancelamento ?? {}) as Record<string, unknown>
@@ -144,5 +147,5 @@ export function historicoDoCancelamento(
     comoVoltou,
     pkg.cancelamento_motivo ? `Motivo: ${pkg.cancelamento_motivo}` : null,
   ].filter(Boolean)
-  return { date: pkg.cancelado_em, title: `Pacote cancelado: ${nome}`, subtitle: partes.join(' · '), amount: devolver > 0 ? devolver : null }
+  return { date: pkg.cancelado_em, title: `${rotulo} cancelado: ${nome}`, subtitle: partes.join(' · '), amount: devolver > 0 ? devolver : null }
 }

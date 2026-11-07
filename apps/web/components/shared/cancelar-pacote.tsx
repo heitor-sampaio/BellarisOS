@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoCancelamentoDoPacote, cancelarPacote } from '@/actions/pacotes'
+import { previaDoCancelamentoDoPlano, cancelarPlano } from '@/actions/treatment-plans'
 import type { EscolhaDosAgendamentos, PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import {
@@ -31,6 +32,23 @@ import {
  * (r2-fin-03: "todas as operadoras fazem assim").
  */
 export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId: string; onFechar: () => void }) {
+  return <CancelarConjunto tipo="PACOTE" id={clientPackageId} onFechar={onFechar} />
+}
+
+/**
+ * "Cancelar plano" (D4 da 9ª simulação; decisão 2 do Heitor, 2026-11-07:
+ * "sim usa a mesma coisa do pacote (...) os dois são, em essencia, conjuntos de
+ * procedimentos"): a MESMA janela, com a conta de `plano_cancelar_devolvendo`
+ * — o usado é o preço das sessões feitas no plano, com o desconto, sem multa.
+ */
+export function CancelarPlano({ planId, onFechar }: { planId: string; onFechar: () => void }) {
+  return <CancelarConjunto tipo="PLANO" id={planId} onFechar={onFechar} />
+}
+
+function CancelarConjunto({ tipo, id, onFechar }: { tipo: 'PACOTE' | 'PLANO'; id: string; onFechar: () => void }) {
+  const doPlano = tipo === 'PLANO'
+  const nome = doPlano ? 'plano' : 'pacote'
+  const Nome = doPlano ? 'Plano' : 'Pacote'
   const router = useRouter()
   const [previa, setPrevia] = useState<PreviaDoCancelamento | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -44,7 +62,8 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
 
   useEffect(() => {
     let vivo = true
-    previaDoCancelamentoDoPacote(clientPackageId).then(r => {
+    const conta = doPlano ? previaDoCancelamentoDoPlano(id) : previaDoCancelamentoDoPacote(id)
+    conta.then(r => {
       if (!vivo) return
       if (r.error || !r.previa) setErro(r.error ?? 'Não consegui calcular o cancelamento.')
       else {
@@ -54,7 +73,7 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
       }
     })
     return () => { vivo = false }
-  }, [clientPackageId])
+  }, [doPlano, id])
 
   const temAgendadas = (previa?.agendamentos.length ?? 0) > 0
   const pronto = !!previa && motivo.trim().length > 0
@@ -64,18 +83,19 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
   function confirmar() {
     if (!previa) return
     iniciar(async () => {
-      const r = await cancelarPacote(clientPackageId, {
+      const entrada = {
         motivo: motivo.trim(),
         ...escolhaParaAAcao(previa.devolver, previa.parcial, escolha),
         agendamentos: temAgendadas ? agendamentos : null,
         esperado: previa.devolver,
-      })
+      }
+      const r = doPlano ? await cancelarPlano(id, entrada) : await cancelarPacote(id, entrada)
       if (r.error) { toast.error(r.error); return }
       toast.success(previa.devolver > 0
         ? escolha.destino === 'CREDITO'
-          ? `Pacote cancelado. ${formatBRL(previa.devolver)} ficaram de crédito na clínica.`
-          : `Pacote cancelado. ${formatBRL(previa.devolver)} estornados à cliente.`
-        : 'Pacote cancelado.')
+          ? `${Nome} cancelado. ${formatBRL(previa.devolver)} ficaram de crédito na clínica.`
+          : `${Nome} cancelado. ${formatBRL(previa.devolver)} estornados à cliente.`
+        : `${Nome} cancelado.`)
       onFechar()
       router.refresh()
     })
@@ -86,10 +106,10 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
   const opcao = { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' } as const
 
   return (
-    <JanelaModal rotulo="Cancelar pacote" largura={480} travado={cancelando} onFechar={onFechar} fechaNoFundo={false}>
+    <JanelaModal rotulo={`Cancelar ${nome}`} largura={480} travado={cancelando} onFechar={onFechar} fechaNoFundo={false}>
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-          {previa ? `Cancelar o pacote ${previa.pacote}?` : 'Cancelar pacote'}
+          {previa ? `Cancelar o ${nome} ${previa.pacote}?` : `Cancelar ${nome}`}
         </h2>
 
         {erro ? (
@@ -109,7 +129,9 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
                 <span style={valor}>{formatBRL(previa.valorRestante)}</span>
               </div>
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                O valor das restantes é a parte de cada uma no preço do pacote ({formatBRL(previa.preco)}, com o desconto).
+                {doPlano
+                  ? <>O valor das restantes é o preço de cada sessão no plano ({formatBRL(previa.preco)} no total, com o desconto); a feita vale o dela, sem multa.</>
+                  : <>O valor das restantes é a parte de cada uma no preço do pacote ({formatBRL(previa.preco)}, com o desconto).</>}
                 Usado: {formatBRL(previa.usado)}.
               </p>
               <div style={linha}><span>Pago</span><span style={valor}>{formatBRL(previa.pago)}</span></div>
@@ -182,7 +204,7 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
           <button type="button" className="btn-secondary" disabled={cancelando} onClick={onFechar}>Voltar</button>
           {previa && !erro && (
             <button type="button" className="btn-primary" disabled={cancelando || !pronto} onClick={confirmar}>
-              {cancelando ? 'Cancelando…' : 'Cancelar pacote'}
+              {cancelando ? 'Cancelando…' : `Cancelar ${nome}`}
             </button>
           )}
         </div>

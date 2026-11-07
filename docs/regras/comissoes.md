@@ -280,10 +280,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `plano_comissao_de_venda` depois do aceite (migration `20261105003001`), e a
   conta é a de sempre (`comissao_conta`: libera com o plano pago inteiro — à
   vista ou no cartão em N vezes, na hora; no crediário, com a última parcela;
-  o estorno devolve). O plano CANCELADO depois de vendido não é venda (as
-  Vendas o tiram): `cancelTreatmentPlan` chama `plano_cancelar_comissao_de_venda`,
-  e a linha é cancelada (o acerto devolve o que liberou); as linhas das sessões
-  feitas ficam. Retrata a taxa da maquininha da rede; não desconta insumos. O
+  o estorno devolve). **O plano CANCELADO segue a regra do pacote** (D4 da 9ª
+  simulação, decisão 2 do Heitor, 2026-11-07: "sim usa a mesma coisa do
+  pacote"): a de VENDA volta na proporção do que foi cancelado — 10% de um plano
+  de R$ 1.314 com R$ 729 cancelados deve R$ 58,50, e o previsto cai junto —, a
+  quitação passa a ser pelo usado (soma − `treatment_plans.valor_cancelado`) e as
+  de EXECUÇÃO das sessões feitas ficam (`private.comissao_conta`, migration
+  `20261107004102`; o cancelamento acerta cada linha, `plano_cancelar_devolvendo`).
+  Era `cancelTreatmentPlan`, que cancelava a linha de venda inteira; os planos
+  cancelados assim (sem `valor_cancelado`) ficaram como estavam, e
+  `plano_cancelar_comissao_de_venda` ficou sem chamador. Prova:
+  `e2e/plano-cancelar.spec.ts`. Retrata a taxa da maquininha da rede; não desconta insumos. O
   extrato diz "Venda do plano X" (`comissoes_extrato_linhas`, origem
   `PLANO_VENDA`, com a cliente e o dia do aceite); o lucro desconta como toda
   comissão lançada. Prova: `e2e/comissoes-venda-do-plano.spec.ts`.
@@ -432,5 +439,5 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
 ❌ Contar no lucro a despesa paga "Comissões" do fechamento (a comissão já desconta quando é lançada — 2026-11-04): ela fica só no caixa
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
-❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la viva no plano cancelado (plano_cancelar_comissao_de_venda)
+❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la inteira no plano cancelado (ela vale o usado, na proporção — D4 da 9ª)
 ```

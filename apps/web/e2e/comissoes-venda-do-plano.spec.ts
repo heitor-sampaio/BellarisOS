@@ -205,6 +205,9 @@ test('no crediário a comissão espera a última parcela (H4), e libera quando e
   }
 })
 
+// D4 da 9ª (decisão 2 do Heitor: "usa a mesma coisa do pacote"): o cancelamento
+// do plano fechado é o do pacote — a comissão de venda volta na proporção do que
+// caiu. Sem sessão feita, cai tudo: nada fica lançado.
 test('o plano cancelado depois de vendido não é venda: a comissão de venda volta', async ({ browser }) => {
   test.setTimeout(150_000)
   const { planId, cliente } = await plano('Renata')
@@ -218,11 +221,15 @@ test('o plano cancelado depois de vendido não é venda: a comissão de venda vo
   })
   await expect.poll(async () => (await comissaoDaVenda(planId))[0]?.lancado).toBe(220)
   await como(browser, async p => {
-    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'cancelTreatmentPlan', `/admin/clients/${cliente}`, [planId, 'desistiu', ''])
-    expect(r.status).toBe(200)
+    const previa = await chamarAcao(p, 'actions/treatment-plans.ts', 'previaDoCancelamentoDoPlano', `/admin/clients/${cliente}`, [planId])
+    const devolver = Number(/"devolver":([\d.]+)/.exec(previa.texto)?.[1])
+    expect(devolver, 'nada feito: volta tudo').toBeGreaterThan(0)
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'cancelarPlano', `/admin/clients/${cliente}`,
+      [planId, { motivo: 'desistiu', destino: 'CREDITO', agendamentos: null, esperado: devolver }])
+    expect(r.texto).toMatch(/"ok":true/)
   })
   await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('CANCELLED')
-  expect(await comissaoDaVenda(planId)).toEqual([expect.objectContaining({ status: 'CANCELADA', lancado: 0 })])
+  expect(await comissaoDaVenda(planId)).toEqual([expect.objectContaining({ lancado: 0 })])
 })
 
 // A48 da 7ª: o cargo Consultor vende e não via as próprias comissões —

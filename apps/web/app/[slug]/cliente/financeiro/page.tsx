@@ -31,6 +31,8 @@ type TxRow = {
   estorno:        boolean
   /** A46: o pagamento de um pacote cancelado — o dia do cancelamento. */
   pacoteCancelado: string | null
+  /** D4 da 9ª: o pagamento de um plano cancelado — o dia do cancelamento, como o do pacote. */
+  planoCancelado: string | null
 }
 
 /** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
@@ -40,6 +42,7 @@ type LancamentoLido = {
   due_date: string | null; data_de_referencia: string | null
   cartao_bandeira: string | null; product_sale_id: string | null
   type: string; category: string | null; client_packages: { cancelado_em: string | null } | null
+  treatment_plans: { cancelado_em: string | null } | null
   appointments: { procedures: { name: string } | null } | null
 }
 
@@ -54,7 +57,7 @@ export default async function ClientFinancialPage() {
     .select(`
       id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, product_sale_id,
       due_date, data_de_referencia,
-      type, category, client_packages(cancelado_em),
+      type, category, client_packages(cancelado_em), treatment_plans(cancelado_em),
       appointments(procedures(name))
     `)
     // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
@@ -84,6 +87,7 @@ export default async function ClientFinancialPage() {
     semPontos:      produtoNaoPontua && !!r.product_sale_id && Boolean(r.is_paid) && r.notes !== 'Estornada',
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
+    planoCancelado:  r.treatment_plans?.cancelado_em ?? null,
   }))
     // D4 da 7ª simulação: as parcelas apareciam com a data de CRIAÇÃO (todas
     // 05/11) e na ordem 3/3, 2/3, 1/3. O que falta pagar vem primeiro, pela
@@ -157,6 +161,11 @@ export default async function ClientFinancialPage() {
               {r.pacoteCancelado && (
                 <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
                   Pacote cancelado em {new Date(r.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                </p>
+              )}
+              {r.planoCancelado && (
+                <p data-plano-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
+                  Plano cancelado em {new Date(r.planoCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                 </p>
               )}
               {r.semPontos && (

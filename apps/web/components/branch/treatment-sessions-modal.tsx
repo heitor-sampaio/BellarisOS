@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaAtendimento } from '@/lib/rotas'
-import { X, Calendar, Play, CheckCircle2, Loader2, ChevronRight, AlertTriangle } from 'lucide-react'
+import { X, Calendar, Play, CheckCircle2, Loader2, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
@@ -16,7 +16,6 @@ import {
   salasParaAgendar,
 } from '@/actions/appointments'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
-import { cancelTreatmentPlan } from '@/actions/treatment-plans'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
@@ -58,6 +57,15 @@ interface Props {
   canManageProcedures: boolean
   isNetworkWide:       boolean
   onClose:          () => void
+  /**
+   * Cancelar o plano fechado (D4 da 9ª simulação; decisão 2 do Heitor: "usa a
+   * mesma coisa do pacote"): abre a janela do cancelamento — a conta, o
+   * crediário que cai, o que volta e as sessões agendadas, com um motivo só
+   * (o A19: cancelar sessão a sessão pedia o motivo a cada uma). Só para quem
+   * tem o Financeiro em Gerenciar; era o "Cancelar tratamento", que não mexia
+   * no dinheiro.
+   */
+  onCancelarPlano?: () => void
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -293,37 +301,16 @@ export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,
   packageName, totalSessions,
   clientId, procedureId, procedureName, price, durationMin,
-  slug, branches, currentBranchId, canManageProcedures, isNetworkWide, onClose,
+  slug, branches, currentBranchId, onClose, onCancelarPlano,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const [sessions,      setSessions]      = useState<Session[]>([])
   const [loading,       setLoading]       = useState(true)
   const [schedulingId,  setSchedulingId]  = useState<string | null>(null)
-  const [showCancel,    setShowCancel]    = useState(false)
-  const [cancelReason,  setCancelReason]  = useState('')
-  const [cancelling,    setCancelling]    = useState(false)
-  const [cancelError,   setCancelError]   = useState<string | null>(null)
 
   const isPlanMode = !!planId && !clientPackageId
-
-  // Espelho da regra de cancelTreatmentPlan: gestão de procedimentos sempre; e
-  // abrangência de rede a mais quando o tratamento tem várias sessões.
-  const isAccepted = planStatus === 'ACCEPTED'
-  const canCancelTreatment = isPlanMode && isAccepted && canManageProcedures && (
-    totalSessions === 1 || isNetworkWide
-  )
-
-  async function handleCancelTreatment() {
-    if (!planId) return
-    setCancelling(true)
-    setCancelError(null)
-    const res = await cancelTreatmentPlan(planId, cancelReason, slug)
-    setCancelling(false)
-    if (res.error) { setCancelError(res.error); return }
-    router.refresh()
-    onClose()
-  }
+  const podeCancelarPlano = isPlanMode && planStatus === 'ACCEPTED' && !!onCancelarPlano
 
   /** Busca as sessões — sem tocar em estado; quem aplica é quem chamou. */
   const buscarSessoes = useCallback(async (): Promise<Session[] | null> => {
@@ -560,40 +547,12 @@ export function TreatmentSessionsModal({
           )}
         </div>
 
-        {/* Footer — cancelar tratamento */}
-        {canCancelTreatment && (
+        {/* Footer — cancelar o plano (D4 da 9ª): a janela do cancelamento, a mesma do pacote. */}
+        {podeCancelarPlano && (
           <div style={{ borderTop: '1px solid var(--hairline)', padding: '14px 24px' }}>
-            {!showCancel ? (
-              <button type="button" onClick={() => setShowCancel(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)', textDecoration: 'underline', padding: 0 }}>
-                Cancelar tratamento
-              </button>
-            ) : (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <AlertTriangle size={14} color="var(--danger)" />
-                  <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--danger)' }}>Confirmar cancelamento</p>
-                </div>
-                <textarea
-                  value={cancelReason}
-                  onChange={e => setCancelReason(e.target.value)}
-                  placeholder="Motivo do cancelamento (opcional)…"
-                  rows={2}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--danger-border)', fontSize: 'var(--text-sm-sz)', background: 'var(--danger-soft)', color: 'var(--text)', resize: 'none', outline: 'none', boxSizing: 'border-box' as const, marginBottom: 10 }}
-                />
-                {cancelError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 8 }}>{cancelError}</p>}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={() => { setShowCancel(false); setCancelError(null) }}
-                    style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                    Voltar
-                  </button>
-                  <button type="button" onClick={handleCancelTreatment} disabled={cancelling}
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--surface)', cursor: cancelling ? 'not-allowed' : 'pointer', opacity: cancelling ? 0.7 : 1 }}>
-                    {cancelling ? <><Loader2 size={12} className="animate-spin" /> Cancelando…</> : 'Confirmar cancelamento'}
-                  </button>
-                </div>
-              </div>
-            )}
+            <button type="button" className="btn-ghost" onClick={() => { onClose(); onCancelarPlano!() }}>
+              Cancelar plano
+            </button>
           </div>
         )}
       </div>

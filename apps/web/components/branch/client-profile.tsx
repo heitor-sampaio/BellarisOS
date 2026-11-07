@@ -10,7 +10,7 @@ import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clien
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { TreatmentFileModal } from './treatment-file-modal'
-import { CancelarPacote } from '@/components/shared/cancelar-pacote'
+import { CancelarPacote, CancelarPlano } from '@/components/shared/cancelar-pacote'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
@@ -1424,6 +1424,9 @@ export function ClientProfile({
   // Cancelar o pacote em andamento (F2b): a janela da conta.
   const [cancelandoPacote, setCancelandoPacote] = useState(false)
   const pacoteCancelavel = podeCancelarPacote && !!activePackage && !activePackage.planId
+  // Cancelar o plano FECHADO (D4 da 9ª; decisão 2 do Heitor: "usa a mesma coisa
+  // do pacote"): a mesma janela e a mesma permissão — o Financeiro em Gerenciar.
+  const planoCancelavel = podeCancelarPacote && !!activePackage?.planId && activePackage.planStatus === 'ACCEPTED'
 
   // Menu do cabeçalho: desativar e reativar o cliente.
   // `?acao=reativar` (a busca universal acha a arquivada, A19): a ficha abre
@@ -1532,11 +1535,12 @@ export function ClientProfile({
           isNetworkWide={isNetworkWide}
           onClose={() => setTreatmentModalOpen(false)}
           onCancelarPacote={pacoteCancelavel ? () => { setTreatmentModalOpen(false); setCancelandoPacote(true) } : undefined}
+          onCancelarPlano={planoCancelavel ? () => { setTreatmentModalOpen(false); setCancelandoPacote(true) } : undefined}
         />
       )}
-      {cancelandoPacote && activePackage && (
-        <CancelarPacote clientPackageId={activePackage.id} onFechar={() => setCancelandoPacote(false)} />
-      )}
+      {cancelandoPacote && activePackage && (activePackage.planId
+        ? <CancelarPlano planId={activePackage.planId} onFechar={() => setCancelandoPacote(false)} />
+        : <CancelarPacote clientPackageId={activePackage.id} onFechar={() => setCancelandoPacote(false)} />)}
 
       {/* -- Hero card ------------------------------------------------- */}
       <div className="card" style={{ padding: '20px 24px' }}>
@@ -1833,16 +1837,17 @@ export function ClientProfile({
               </p>
             )}
             {/* A33 da 8ª: quem recebe e não cancela sabe a quem pedir. */}
-            {!pacoteCancelavel && !activePackage.planId && quemDesfaz && quemDesfaz.length > 0 && (
+            {!pacoteCancelavel && !planoCancelavel && quemDesfaz && quemDesfaz.length > 0
+              && (!activePackage.planId || activePackage.planStatus === 'ACCEPTED') && (
               <p data-quem-cancela-o-pacote style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                Cancelar o pacote é de quem tem o Financeiro em Gerenciar: {quemDesfaz.join(', ')}.
+                Cancelar o {activePackage.planId ? 'plano' : 'pacote'} é de quem tem o Financeiro em Gerenciar: {quemDesfaz.join(', ')}.
               </p>
             )}
-            {/* Cancelar o pacote (F2b): fora do cartão, que já é o botão da ficha de tratamento. */}
-            {pacoteCancelavel && (
+            {/* Cancelar o pacote (F2b) e o plano (D4 da 9ª): fora do cartão, que já é o botão da ficha de tratamento. */}
+            {(pacoteCancelavel || planoCancelavel) && (
               <button type="button" className="btn-ghost" onClick={() => setCancelandoPacote(true)}
                 style={{ alignSelf: 'flex-start' }}>
-                Cancelar pacote
+                {planoCancelavel ? 'Cancelar plano' : 'Cancelar pacote'}
               </button>
             )}
             {podeTrazerPacote && (

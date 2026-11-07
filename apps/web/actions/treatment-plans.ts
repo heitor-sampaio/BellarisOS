@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -23,7 +23,10 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import type { PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
-import { falaDaRede } from '@/lib/unidades/uma-so'
+import { lerPreviaDoCancelamento, agendamentosCancelados, type PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
+import { EntradaDoCancelamento } from '@/lib/pacotes/entrada-do-cancelamento'
+import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
+import { notifyCancelledAppointment } from '@/lib/appointments/avisos'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -986,134 +989,103 @@ export async function cancelCheckout(
   return {}
 }
 
-// -- Cancelar tratamento em andamento (ACCEPTED → CANCELLED) ------------------
+// -- Cancelar o plano fechado (D4 da 9ª simulação, decisão 2 do Heitor) -------
 
 /**
- * Erro de banco vira mensagem na tela, e não uma exceção nua.
- *
- * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
- * captura a exceção subiria até o cliente como rejeição sem tratamento: o
- * log teria o motivo e a tela não mostraria nada — que é o silêncio de
- * novo, só que mais caro de achar.
+ * O plano fechado da cliente, da rede e com a unidade ao alcance (§11: a
+ * abrangência se confere na action). Nulo quando não é.
  */
-export async function cancelTreatmentPlan(
-  ...args: Parameters<typeof cancelTreatmentPlanInterno>
-): ReturnType<typeof cancelTreatmentPlanInterno> {
+async function planoFechadoAoAlcance(
+  admin: ReturnType<typeof createAdminClient>, ctx: TenantContext, id: string,
+): Promise<{ id: string; branch_id: string; client_id: string | null } | null> {
+  if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return null
+  const tp = await ler(admin.from('treatment_plans')
+    .select('id, branch_id, client_id, branches!branch_id(tenant_id)')
+    .eq('id', id).maybeSingle(), 'buscar o plano')
+  const rede = (tp?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+  if (!tp || rede !== ctx.tenantId || !alcancaUnidade(ctx, tp.branch_id as string)) return null
+  return { id: tp.id as string, branch_id: tp.branch_id as string, client_id: (tp.client_id as string | null) ?? null }
+}
+
+/**
+ * A conta do cancelamento do plano, ANTES de cancelar — a MESMA função que
+ * grava (`plano_cancelar_devolvendo` com `p_simular`), no formato da janela do
+ * pacote: "sim usa a mesma coisa do pacote" (decisão 2 do Heitor, 2026-11-07).
+ * Quem cancela o plano é quem cancela o pacote: o Financeiro em Gerenciar.
+ */
+export async function previaDoCancelamentoDoPlano(
+  planId: string,
+): Promise<{ error?: string; previa?: PreviaDoCancelamento }> {
   try {
-    return await cancelTreatmentPlanInterno(...args)
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    const admin = createAdminClient()
+    const plano = await planoFechadoAoAlcance(admin, ctx, planId)
+    if (!plano) return { error: 'Plano não encontrado.' }
+    const j = await ler(admin.rpc('plano_cancelar_devolvendo', {
+      p_tenant: ctx.tenantId!, p_plano: plano.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName ?? null,
+      p_motivo: null, p_destino: null, p_agendamentos: null, p_esperado: null, p_simular: true,
+      p_estorno: null, p_novo: null,
+    }), 'calcular o cancelamento do plano') as Record<string, unknown>
+    return { previa: lerPreviaDoCancelamento(j) }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
 }
 
-async function cancelTreatmentPlanInterno(
-  planId: string,
-  reason: string,
-  slug:   string,
-): Promise<{ error?: string }> {
-  const ctx   = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'MANAGE')
-  const admin = createAdminClient()
-
-  const plan = await ler(admin
-    .from('treatment_plans')
-    .select('id, status, branch_id, client_id, professional_id, evaluation_appointment_id')
-    .eq('id', planId)
-    .maybeSingle(), 'buscar o plano')
-  if (!plan || !(await planoDaProfissional(admin, ctx, plan))) return { error: 'Plano não encontrado.' }
-
-  const branch = await ler(admin
-    .from('branches')
-    .select('tenant_id')
-    .eq('id', plan.branch_id)
-    .maybeSingle(), 'buscar a unidade')
-  if (branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Acesso negado.' }
-
-  if (plan.status !== 'ACCEPTED') return { error: 'Apenas tratamentos ativos (aceitos) podem ser cancelados.' }
-
-  // Cancelar tratamento é gestão de procedimentos. Para os de múltiplas sessões
-  // exige-se também abrangência de rede — que é atributo do membro
-  // (`users.branch_id = null`), não mais o nome do cargo NETWORK_ADMIN.
-  // É a trava de quem pode cancelar: contagem que falha não pode virar "uma
-  // sessão só" e liberar o cancelamento a quem não tem abrangência de rede.
-  const sessionCount = await contar(admin
-    .from('treatment_plan_sessions')
-    .select('id', { count: 'exact', head: true })
-    .eq('plan_id', planId), 'contar as sessões do plano')
-
-  if (sessionCount > 1 && ctx.branchId !== null) {
-    return { error: await falaDaRede(ctx.tenantId, 'Tratamentos com múltiplas sessões só podem ser cancelados por quem tem abrangência de rede.') }
-  }
-
-  const { error } = await admin
-    .from('treatment_plans')
-    .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
-    .eq('id', planId)
-  if (error) return { error: error.message }
-
-  // O plano cancelado não é venda (Relatórios → Vendas o tira): a comissão de
-  // VENDA dele volta (decisão 4 da 7ª). A das sessões feitas fica.
-  await gravar(admin.rpc('plano_cancelar_comissao_de_venda', { p_tenant: ctx.tenantId, p_plano: planId }),
-    'cancelar a comissão de venda do plano')
-
-  // Cancela agendamentos futuros vinculados ao plano
-  const cancelledAt  = new Date().toISOString()
-  const cancelReason = reason.trim() ? `Tratamento cancelado: ${reason.trim()}` : 'Tratamento cancelado'
-
-  const futureAppts = await ler(admin
-    .from('appointments')
-    .select('id, price')
-    .eq('treatment_plan_id', planId)
-    .in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED']), 'carregar os agendamentos')
-
-  if (futureAppts && futureAppts.length > 0) {
-    const apptIds = futureAppts.map(a => a.id)
-
-    await gravar(admin
-      .from('appointments')
-      .update({
-        status:              'CANCELLED',
-        cancelled_at:        cancelledAt,
-        cancellation_reason: cancelReason,
-      })
-      .in('id', apptIds), 'cancelar os agendamentos do plano')
-
-    // Registra histórico em cada agendamento cancelado
-    await tentar(admin.from('appointment_history').insert(
-      apptIds.map(apptId => ({
-        appointment_id:  apptId,
-        changed_by_id:   ctx.internalUserId,
-        changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
-        action:          'CANCELLED',
-        description:     cancelReason,
-      }))
-    ), 'registrar o cancelamento no histórico')
-
-    // Emite crédito interno pelo valor das sessões não realizadas (plano já estava pago)
-    const totalCredit = futureAppts.reduce((s, a) => s + Number(a.price ?? 0), 0)
-    if (totalCredit > 0 && plan.client_id) {
-      await gravar(admin.from('internal_credits').insert({
-        client_id:   plan.client_id,
-        branch_id:   plan.branch_id,
-        amount:      totalCredit,
-        description: `Cancelamento de plano — ${futureAppts.length} sessão(ões) não realizada(s)`,
-        created_at:  new Date().toISOString(),
-      }), 'gerar o crédito do cancelamento')
+/**
+ * Cancela o plano fechado com a regra do pacote: o usado vale o preço das
+ * sessões feitas no plano (com o desconto), sem multa; o crediário que passa do
+ * usado cai antes; o resto volta como estorno ou crédito na clínica, a
+ * escolher; as sessões agendadas se cancelam ou ficam avulsas; a comissão de
+ * venda volta na proporção — numa transação (`plano_cancelar_devolvendo`).
+ * Era `cancelTreatmentPlan`, que não mexia nas parcelas e dava de crédito o
+ * preço dos agendamentos futuros, pago ou não.
+ */
+export async function cancelarPlano(planId: string, entrada: unknown): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    const lido = EntradaDoCancelamento.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+    const admin = createAdminClient()
+    const plano = await planoFechadoAoAlcance(admin, ctx, planId)
+    if (!plano) return { error: 'Plano não encontrado.' }
+    const novo = lido.data.estorno === 'INTEIRO' ? lido.data.novo ?? null : null
+    if (novo && novo.metodo === 'CREDIT_CARD') {
+      const recusa = await recusaDasVezesDaRede(ctx.tenantId!, novo.vezes)
+      if (recusa) return { error: recusa }
     }
-  }
+    const userName = ctx.userName || ctx.roleLabel || 'Equipe'
+    const j = await gravar(admin.rpc('plano_cancelar_devolvendo', {
+      p_tenant: ctx.tenantId!, p_plano: plano.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: userName,
+      p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_agendamentos: lido.data.agendamentos,
+      p_esperado: lido.data.esperado, p_simular: false,
+      p_estorno: lido.data.estorno ?? null,
+      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1, bandeira: bandeiraDoPagamento(novo.metodo, novo.bandeira) } : null,
+    }), 'cancelar o plano') as Record<string, unknown>
 
-  if (plan.evaluation_appointment_id) {
-    await tentar(admin.from('appointment_history').insert({
-      appointment_id:  plan.evaluation_appointment_id,
-      changed_by_id:   ctx.internalUserId,
-      changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
-      action:          'TREATMENT_CANCELLED',
-      description:     cancelReason,
-    }), 'registrar no histórico do agendamento')
-  }
+    // Os agendamentos cancelados com o plano avisam como qualquer cancelamento
+    // (o evento das automações e a cliente/equipe), depois da transação.
+    const motivo = `Plano cancelado: ${lido.data.motivo}`
+    for (const id of agendamentosCancelados(j)) {
+      await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, id, { ...ctx, userName }, { motivo })
+      notifyCancelledAppointment(id, motivo, ctx.internalUserId)
+    }
 
-  revalidatePath(`/${slug}/clients`)
-  return {}
+    if (plano.client_id) revalidateTag(`client:${plano.client_id}`, { expire: 0 })
+    revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+    revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    revalidatePath('/admin/financeiro')
+    revalidatePath('/[slug]/financeiro', 'page')
+    revalidatePath('/admin/agenda')
+    revalidatePath('/[slug]/agenda', 'page')
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
 }
 
 // -- Gerar plano completo de uma só vez (avaliação) ----------------------------

@@ -212,6 +212,49 @@ plano").
     R$ 200 Pix Pago". O "Total investido" segue o do banco. Prova:
     `e2e/portal-cliente-pacote-cancelado.spec.ts`.
   - Prova: `e2e/pacote-cancelar.spec.ts`.
+- **Cancelar o plano fechado é o "Cancelar pacote"** (D4 da 9ª simulação,
+  2026-11-07; decisão 2 do Heitor: "sim usa a mesma coisa do pacote, como ja
+  expliquei, a diferenca entre pacote e plano é que o plano é personalizado
+  para o cliente conforme a necessidade dele e o pacote é uma oferta de um
+  conjunto de procedimentos montado previsamente, os dois são, em essencia,
+  conjuntos de procedimentos"). A Luana fez 1 de 10 sessões e desistiu: o plano
+  fechado não se cancelava, e o "A receber" e o app dela seguiam com as
+  parcelas. Agora a MESMA regra, sem configuração nova (nem tabela, nem multa):
+  - **"Cancelar plano"** no cartão "Tratamento em andamento" da ficha, na ficha
+    de tratamento e no "Gerenciar" das sessões, para quem tem o Financeiro em
+    Gerenciar (a permissão do pacote), com a unidade do plano ao alcance
+    (`cancelarPlano` e `previaDoCancelamentoDoPlano`, `actions/treatment-plans.ts`).
+    Quem recebe e não cancela lê "Cancelar o plano é de quem tem o Financeiro em
+    Gerenciar: …" (`quemDesfazNoCaixa`). A janela é a do pacote
+    (`CancelarPlano`, `components/shared/cancelar-pacote.tsx`).
+  - **O usado é o preço das sessões FEITAS no plano** (o agendamento
+    concluído), cada uma pela soma dos procedimentos dela, já com o desconto
+    rateado — sem multa e sem preço de tabela. Ex.: 3 sessões (R$ 585 + R$ 144 +
+    R$ 585, R$ 1.314), entrada de R$ 500 + 2 × R$ 407, 1 sessão feita: usado
+    R$ 585, caem R$ 729 — a 2ª parcela inteira e R$ 322 da 1ª, que fica com
+    R$ 85 — e nada a devolver. O crediário que passa do usado cai antes; o
+    pago além dele volta como estorno (parcial ou o inteiro com o usado lançado
+    de novo; no cartão, só o inteiro) ou crédito na clínica, a escolher; as
+    sessões agendadas se cancelam (com o evento e o aviso) ou ficam AVULSAS, a
+    cobrar, com o preço da sessão. Sessão em atendimento agora recusa.
+  - **O mesmo núcleo**: o dinheiro do cancelamento mora em
+    `private.cancelamento_dinheiro`, que `pacote_cancelar_devolvendo` e
+    `plano_cancelar_devolvendo` chamam (uma transação cada; a prévia é a mesma
+    função com `p_simular`, e confirmar manda o "a devolver" que a janela
+    mostrou). O plano fica `CANCELLED` com o retrato (`cancelado_em`,
+    `cancelado_por`, `cancelamento_motivo`, `valor_cancelado`, `cancelamento`;
+    migration `20261107004101`).
+  - A comissão de venda volta na proporção (`comissoes.md`); nas Vendas, o plano
+    vale o usado, e a sessão feita segue na receita dos atendimentos
+    (`indicadores.md`).
+  - Depois: a ficha tira o plano do "Tratamento em andamento" e o Histórico diz
+    "Plano cancelado: X — 2 sessões canceladas · nada a devolver · Motivo: …";
+    o "A receber" não tem mais as parcelas que caíram; o app não mostra o cartão
+    do plano ("N sessões a agendar") e o pagamento diz "Plano cancelado em …"
+    (`data-plano-cancelado`).
+  - Substitui o "Cancelar tratamento" (`cancelTreatmentPlan`, que não mexia nas
+    parcelas e dava de crédito o preço dos agendamentos futuros, pago ou não, a
+    quem tinha a Agenda em Gerenciar). Prova: `e2e/plano-cancelar.spec.ts`.
 - A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
 - Comissão: a de VENDA e a de EXECUÇÃO são do cadastro de cada pacote
@@ -1494,6 +1537,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Gravar pela ficha da rede (venda, crédito, pontos, voucher, sessão) na unidade de cadastro da cliente ou na primeira da lista — com duas ou mais unidades, pergunta (D1 da 8ª)
 ❌ Estornar em parte um pagamento no cartão (crédito ou débito): o cartão estorna o pagamento inteiro (r2-fin-03) — no cancelamento do pacote é o "estornar o pagamento inteiro e lançar o usado de novo"
 ❌ Cancelar pacote fora de pacote_cancelar_devolvendo, ou fazer a conta do cancelamento na tela (é a simulação da mesma função), ou ler "pacote em andamento" sem tirar o cancelado (cancelado_em)
+❌ Cancelar o plano fechado fora de plano_cancelar_devolvendo, com uma conta própria (preço de tabela, multa) ou mexendo no dinheiro fora de private.cancelamento_dinheiro — é a regra do pacote (decisão 2 do Heitor sobre a 9ª)
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
 ❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
 ❌ Gravar um parcelado como um lançamento só (cada parcela é um lançamento; divida com dividirEmParcelas) ou escrever em installments

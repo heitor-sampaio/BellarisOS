@@ -516,7 +516,10 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - **Plano**: `treatment_plans.aceito_em` (gatilho `trg_plano_aceito_em` na
   passagem para ACCEPTED; os antigos herdaram o evento `plano.aceito`, o
   primeiro lançamento ou o `updated_at`), e vale a soma dos procedimentos dele
-  (já com o desconto rateado). Cancelado depois de aceito sai. **É de quem
+  (já com o desconto rateado). **O plano cancelado vale o que foi usado, como o
+  pacote** (D4 da 9ª simulação, decisão 2 do Heitor, 2026-11-07; migration
+  `20261107004103`): a soma menos `treatment_plans.valor_cancelado`; o que caiu
+  inteiro sai. O cancelado antes desta regra (sem `cancelado_em`) segue fora. **É de quem
   VENDEU** (D14 da 8ª simulação, 2026-11-06): a coluna "Profissional" é o
   "Quem vendeu" do checkout (`treatment_plans.vendido_por`); a dona do plano
   só quando ninguém foi marcado (os planos de antes). Era sempre a dona — a
@@ -880,7 +883,11 @@ parte da unidade no vendido (`procedure_sale_units.preco` — "3 limpezas por
 R$ 450" → R$ 150 por limpeza atendida) e a soma dos procedimentos da sessão
 no plano vendido (ACCEPTED/COMPLETED; `treatment_plan_session_procedures
 .price`, com o desconto rateado), no dia da sessão, para quem atendeu — nas
-mesmas quatro contas. O plano cancelado fica de fora, como nas Vendas.
+mesmas quatro contas. **A sessão FEITA de um plano cancelado continua contando**
+(D4 da 9ª, princípio 5: "sem execução, sem valor" — a execução existiu): as
+contas aceitam o plano ACCEPTED/COMPLETED e o cancelado pelo "Cancelar plano"
+(`cancelado_em`), e só as sessões concluídas entram nelas (migration
+`20261107004103`). O plano cancelado antes da regra segue fora.
 **No ranking por PROCEDIMENTO, cada procedimento da sessão conta no SEU**
 (r4-f15-03, o Heitor, revisão das decisões da F15, 2026-11-03: "dividir pelos
 procedimentos da sessão"; migration `20261103001601`): sessão Botox R$ 800 +
