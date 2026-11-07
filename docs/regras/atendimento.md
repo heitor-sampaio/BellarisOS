@@ -549,9 +549,20 @@
   (`passouSemFechar`, `lib/use-agora.ts` — o relógio do navegador, sem erro
   de hidratação: no servidor não marca). Nada se fecha sozinho (princípio 6).
   **E na agenda da REDE** (`/admin/agenda`, o Dia e a Semana; sobra da F43,
-  2026-11-07), com a duração MARCADA (`duration_min`) — a grade da rede usa 60
-  min para desenhar o bloco sem a duração real, e o "passou" não pode esperar
-  por ela. Prova: `e2e/agenda-atritos-da-9.spec.ts`.
+  2026-11-07), com a duração MARCADA (`duration_min`). Prova:
+  `e2e/agenda-atritos-da-9.spec.ts`.
+- **A grade do dia da REDE desenha o bloco com a duração marcada** (sobra da
+  F44, 2026-11-07): `duration_min`, como a da unidade — era 60 min para todo
+  bloco não concluído (o de 30 parecia de uma hora, o de 90 também). A altura
+  é a duração (`apptHeight`, piso de 24 px); o texto que não cabe é cortado, e
+  a dica do bloco diz tudo, com os minutos. Prova:
+  `e2e/agenda-atritos-da-9.spec.ts` ("sobra da F44").
+- **A grade do dia da unidade marca quando já rolou** (F45):
+  `[data-grade-do-dia][data-rolagem="pronta"]`, posto pelo efeito de
+  `rolagemDaGrade` depois de hidratar. O clique num cartão logo depois de abrir
+  a tela disputava com essa rolagem e caía na coluna ("Novo agendamento" às
+  01:45 no lugar da janela). O E2E clica pelo `cartaoNaGradeDoDia`
+  (`e2e/apoio/agenda.ts`), que espera a marca.
 - **O concluído mostra a hora REAL** ao lado da agendada (J-34): "23:30 ·
   concluído em 29/10 às 00:22" na grade do dia, na janela, na agenda da rede e
   no cartão da Agenda do app da cliente (`textoDoConcluido`,

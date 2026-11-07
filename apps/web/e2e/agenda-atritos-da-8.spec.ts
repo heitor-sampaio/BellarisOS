@@ -3,6 +3,7 @@ import { banco, PREFIXO, apagarConversas } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcaoComFormulario } from './apoio/acao-direta'
+import { cartaoNaGradeDoDia } from './apoio/agenda'
 import { addDaysTZ, dayKeyTZ } from '../lib/datetime'
 
 /**
@@ -158,7 +159,7 @@ test('A20: o agendamento avulso se liga ao pacote depois, pela janela', async ({
   const avulso = await agendar({ quando: em(DIA4, '14:00'), cli: bruna, preco: 200 })
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA4}`)
-    await p.locator(`[data-agendamento="${avulso}"]`).first().click()
+    await (await cartaoNaGradeDoDia(p, avulso)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
     await janela.locator('[data-usar-o-que-ja-foi-pago]').getByRole('button', { name: /Usar/ }).click()
     await expect.poll(async () => ((await db().from('package_sessions').select('id').eq('appointment_id', avulso)).data ?? []).length,
@@ -189,7 +190,7 @@ test('A21: o choque diz "não vai ser agendado" e oferece o próximo livre; o Re
 
     // O Remarcar para cima do das 10:00: uma mensagem só.
     await p.goto(`/${slug}/agenda?date=${DIA1}`)
-    await p.locator(`[data-agendamento="${outro}"]`).first().click()
+    await (await cartaoNaGradeDoDia(p, outro)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
     await janela.getByRole('button', { name: 'Remarcar' }).click()
     await janela.locator('input[type="datetime-local"]').fill(`${DIA1}T10:15`)
@@ -224,7 +225,7 @@ test('A22: a janela troca a profissional (só quem atende na unidade), com confi
   const ag = await agendar({ quando: em(DIA2, '10:00') })
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA2}`)
-    await p.locator(`[data-agendamento="${ag}"]`).first().click()
+    await (await cartaoNaGradeDoDia(p, ag)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
     await janela.getByRole('button', { name: 'Trocar profissional' }).click()
     const escolha = janela.getByLabel('Nova profissional')
@@ -245,7 +246,8 @@ test('A22: arrastar para outra profissional pergunta, e soltar no ocupado diz po
   const ag = await agendar({ quando: em(DIA2, '13:00'), min: 30 })
   await agendar({ quando: em(DIA2, '15:00'), prof: bia!.userId })
   // A grade rolada até as 12:00: o meio-dia e a tarde à vista.
-  const rolarAte12 = (p: Page) => p.locator('[data-grade-do-dia]').evaluate(el => { el.scrollTop = 12 * 80 })
+  // Depois que a grade rolou sozinha (F45): antes, a rolagem dela desfazia esta.
+  const rolarAte12 = async (p: Page) => { await cartaoNaGradeDoDia(p, ag); await p.locator('[data-grade-do-dia]').evaluate(el => { el.scrollTop = 12 * 80 }) }
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA2}`)
     await rolarAte12(p)

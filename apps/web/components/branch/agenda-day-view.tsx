@@ -345,6 +345,11 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
       ehHoje, horaAgora: new Date().getHours(), startHour: g.START_HOUR, hourPx: HOUR_PX,
       aberturaEmMin: aberturaDoDia ?? null, primeiroEmMin,
     })
+    // A grade já hidratou e rolou (F45): o clique num cartão antes disso caía
+    // noutro lugar — a rolagem o tirava de baixo do ponteiro, e o "Novo
+    // agendamento" abria às 01:45 no lugar da janela do agendamento. Quem
+    // precisa saber (o E2E, `cartaoNaGradeDoDia`) espera por esta marca.
+    scrollRef.current.dataset.rolagem = 'pronta'
   }, [diaChave, ehHoje, g.START_HOUR, aberturaDoDia, primeiroEmMin])
 
   // A posição na COLUNA: o retângulo dela já anda com a rolagem da grade. Somar

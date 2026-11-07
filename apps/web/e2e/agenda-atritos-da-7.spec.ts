@@ -4,6 +4,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 import { haMinutosHoje } from './apoio/datas'
+import { cartaoNaGradeDoDia } from './apoio/agenda'
 import { addDaysTZ, dayKeyTZ } from '../lib/datetime'
 
 /**
@@ -97,7 +98,7 @@ test('A27: "Reagendar" depois da falta vem com o procedimento e a profissional, 
   const falta = await agendar({ cliente, quando: em(ONTEM, '10:00'), min: 45, status: 'NO_SHOW' })
   await como(browser, gestor!, async p => {
     await p.goto(`/${slug}/agenda?date=${ONTEM}&cancelados=1`)
-    await p.locator(`[data-agendamento="${falta}"]`).first().click()
+    await (await cartaoNaGradeDoDia(p, falta)).click()
     await p.getByRole('dialog', { name: 'Agendamento' }).getByRole('button', { name: 'Reagendar' }).click()
     const modal = p.getByRole('dialog', { name: 'Novo agendamento' })
     await expect(modal.locator('#ag-procedimento')).toHaveValue(rede!.procedureId)
