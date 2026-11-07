@@ -198,7 +198,13 @@ test.describe.serial('quem tem unidade fixa age só na dela', () => {
     // Controle: a rede faz na B.
     await como(browser, 'rede', async p => {
       const horarios = await acao(p, 'rede', 'appointments', 'getSchedulingDaySlots', [f!.outra.branchId, f!.outra.professionalId, dia])
-      expect((devolvido(horarios.texto) as { slots: unknown[] }).slots, 'a rede vê a agenda da B').toHaveLength(1)
+      // A grade traz a profissional em QUALQUER unidade da rede (D5 da 8ª,
+      // atendimento.md §9.1): o da B com o nome da cliente, o da A (mesma
+      // profissional, mesmo horário) só como ocupado, sem nome.
+      const slots = (devolvido(horarios.texto) as { slots: { clientName: string | null }[] }).slots
+      expect(slots.filter(s => s.clientName !== null).map(s => s.clientName), 'a rede vê a agenda da B')
+        .toEqual([expect.stringContaining('abrangência')])
+      expect(slots.filter(s => s.clientName === null), 'o da A aparece só como ocupado').toHaveLength(1)
       await acao(p, 'rede', 'appointments', 'updateAppointmentStatus', [f!.apptB, 'CONFIRMED', f!.slugB])
     })
     expect((await linha('appointments', f!.apptB)).status, 'a rede confirma o da B').toBe('CONFIRMED')

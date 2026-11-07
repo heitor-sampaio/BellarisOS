@@ -45,6 +45,10 @@ test.beforeAll(async ({ browser }) => {
   const rede = await criarMembro(`cflR${marca}`, { tenant: outra.tenantId, rotulo: 'Gestão', permissoes: PERMISSOES })
   criado.membros.push(rede)
   const p2 = rede.userId
+  // A segunda profissional ATENDE na unidade (o "Atende" por unidade, decisão 2
+  // da 8ª; A22: a troca só vai a quem atende ali). Sem isso a troca é recusada
+  // por "não atende nesta unidade" antes de chegar ao choque de horário.
+  expect((await b.from('users').update({ atende_em: [outra.branchId] }).eq('id', p2)).error, 'marcar o atende').toBeNull()
 
   const cliente = await outra.criarCliente('conflito')
   const t = new Date(Date.now() + 2 * 86_400_000); t.setUTCHours(13, 0, 0, 0)

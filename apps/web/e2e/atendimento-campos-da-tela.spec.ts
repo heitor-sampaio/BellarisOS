@@ -86,8 +86,13 @@ test('A42: a evolução tem um nome só — no formulário e na janela de conclu
     await p.getByLabel('Evolução', { exact: true }).fill(`Peeling em zona T ${marca}`)
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
     const janela = p.getByRole('dialog')
-    await expect(janela.getByLabel(/^Evolução/)).toHaveValue(`Peeling em zona T ${marca}`)
+    // A29 da 8ª: escrita na tela, a janela MOSTRA a evolução (não repete o
+    // campo) — com o mesmo nome, "Evolução".
+    const daTela = janela.locator('[data-evolucao-da-tela]')
+    await expect(daTela.getByText('Evolução', { exact: true })).toBeVisible()
+    await expect(daTela).toContainText(`Peeling em zona T ${marca}`)
     await expect(janela.getByText('Observações finais')).toHaveCount(0)
+    await expect(janela.getByText('O que foi realizado')).toHaveCount(0)
   })
 })
 

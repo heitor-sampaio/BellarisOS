@@ -129,6 +129,9 @@ test.describe.serial('ações de dinheiro e estoque entre redes', () => {
       await page.goto(`/admin/clients/${cli!.id}?aba=financeiro`)
       await page.getByRole('button', { name: /Conceder crédito/ }).first().click()
       const form = page.locator('form').filter({ has: page.locator('input[name="amount"]') })
+      // Na ficha da rede, o crédito pergunta a unidade (D1 da 8ª): sem ela, o
+      // formulário não sai (o campo é obrigatório) e a action nunca chegava.
+      await form.getByLabel('Unidade do crédito *').selectOption(unidade.id)
       await form.locator('input[name="amount"]').fill('15')
       await form.locator('input[name="description"]').fill(`${PREFIXO} credito legitimo`)
 
