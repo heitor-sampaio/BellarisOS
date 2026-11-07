@@ -8,6 +8,7 @@ import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { dayKeyTZ } from '@/lib/datetime'
+import { useAgora, passouSemFechar } from '@/lib/use-agora'
 
 /** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a linha fica, marcada. */
 interface Professional { id: string; name: string; foraDoAtende?: boolean }
@@ -51,6 +52,7 @@ function shortName(name: string) {
 }
 
 function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) {
+  const agora       = useAgora()
   const time        = format(new Date(ev.start), 'HH:mm')
   if (eventoDesmarcado(ev)) {
     return (
@@ -75,10 +77,13 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
   const isProgress  = ev.status === 'IN_PROGRESS'
   const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'ARRIVED'
   const isScheduled = ev.status === 'SCHEDULED'
+  // A21 da 9ª: passou do horário e segue em aberto — marcado, nada se fecha sozinho.
+  const passou      = passouSemFechar(ev, agora)
 
   return (
     <div
       data-agendamento={ev.id}
+      title={passou ? 'Passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua' : undefined}
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         padding:     '6px 8px',
@@ -103,6 +108,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
       <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
         {time}
         {ev.status === 'ARRIVED' && <span>· Chegou</span>}
+        {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>· passou do horário</span>}
         <SeloDaFicha estado={ev.fichaDeSaude} />
               <SeloDoMenor menor={ev.menor} />
       </div>

@@ -43,6 +43,7 @@ export const ISOLADOS = [
   'busca-configuracoes.spec.ts',
   // A F37 (os atritos da agenda e do atendimento da 8ª simulação).
   'agenda-atritos-da-8.spec.ts',
+  'agenda-atritos-da-9.spec.ts',
   'atendimento-atritos-da-8.spec.ts',
   'atendimento-atritos-da-7.spec.ts',
   'estoque-atritos-da-7.spec.ts',

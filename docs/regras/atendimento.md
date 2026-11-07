@@ -541,6 +541,14 @@
   há mais de uma e o link para `/admin/agenda/<id>`. Respeita o "só os meus"
   da agenda. Prova:
   `e2e/agenda-abertos-de-dias-anteriores.spec.ts`.
+- **O de HOJE que passou do horário em aberto é marcado no cartão** (A21 da 9ª
+  simulação, 2026-11-07: o órfão das 00:30 da Rosana parecia um agendamento
+  como outro qualquer): agendado ou confirmado com o FIM já passado diz "·
+  passou do horário" (`[data-passou-sem-fechar]`, aviso; a dica: "marque a
+  falta, a chegada ou conclua"), no Dia e na Semana da agenda da unidade
+  (`passouSemFechar`, `lib/use-agora.ts` — o relógio do navegador, sem erro
+  de hidratação: no servidor não marca). Nada se fecha sozinho (princípio 6).
+  Prova: `e2e/agenda-atritos-da-9.spec.ts`.
 - **O concluído mostra a hora REAL** ao lado da agendada (J-34): "23:30 ·
   concluído em 29/10 às 00:22" na grade do dia, na janela, na agenda da rede e
   no cartão da Agenda do app da cliente (`textoDoConcluido`,

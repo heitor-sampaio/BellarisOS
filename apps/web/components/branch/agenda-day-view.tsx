@@ -11,6 +11,7 @@ import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
 import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
+import { useAgora, passouSemFechar } from '@/lib/use-agora'
 
 /** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a coluna fica, marcada. */
 interface Professional { id: string; name: string; foraDoAtende?: boolean }
@@ -99,6 +100,9 @@ interface ColProps {
   onDrop:       (e: React.DragEvent, el: HTMLElement) => Promise<void>
 }
 
+/** A dica do cartão que passou do horário em aberto (A21 da 9ª). */
+const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a falta, a chegada ou conclua'
+
 function ProfColumn({
   pro, bloqueios, horarioDoDia, events, currentDate, isFirst, canWrite,
   draggingId, dropPreviewY,
@@ -106,6 +110,7 @@ function ProfColumn({
 }: ColProps) {
   const colRef = useRef<HTMLDivElement>(null)
   const g = useContext(GradeCtx)
+  const agora = useAgora()
   // O fora do horário dela, sombreado (J-30). O clique continua marcando ali:
   // o encaixe é permitido (§9.1) — o modal avisa.
   const foras = horarioDoDia ? forasDoHorario(horarioDoDia, g.START_HOUR * 60, g.END_HOUR * 60) : []
@@ -188,6 +193,8 @@ function ProfColumn({
         const isArrived   = ev.status === 'ARRIVED'
         const isScheduled = ev.status === 'SCHEDULED'
         const isCompleted = ev.status === 'COMPLETED'
+        // A21 da 9ª: passou do horário e segue em aberto — marcado, nada se fecha sozinho.
+        const passou      = passouSemFechar(ev, agora)
         const timeStr   = format(new Date(ev.start), 'HH:mm')
         const isDraggable = canWrite && !isCompleted && !desmarcado
         // A24 da 8ª: até 40 min (menos de 56 px) o cartão tem DUAS linhas — a hora e a
@@ -231,7 +238,7 @@ function ProfColumn({
             key={ev.id}
             data-agendamento={ev.id}
             // O cartão curto corta o texto (A23): a dica diz tudo.
-            title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`].filter(Boolean).join(' · ')}
+            title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`, passou ? TEXTO_DO_PASSOU : null].filter(Boolean).join(' · ')}
             draggable={isDraggable}
             onDragStart={isDraggable ? e => { e.stopPropagation(); onDragStart(e, ev.id) } : undefined}
             onDragEnd={isDraggable ? onDragEnd : undefined}
@@ -279,6 +286,7 @@ function ProfColumn({
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
               {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt) ?? 'concluído'}</span>}
+              {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>· passou do horário</span>}
             </div>
             {/* O bloco curto (30 min): o procedimento e a sala numa segunda linha (A23 da 6ª
                 simulação — mostrava só "03:50 Paula Reis"). */}
