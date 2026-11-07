@@ -33,13 +33,20 @@ export interface DivergenciaDaBaixa {
 }
 
 const chave = (t: string) => t.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+/**
+ * A unidade da dose: "U" e "UI" são a mesma medida da toxina (D16 da 9ª
+ * simulação, 2026-11-07): o frasco do estoque é "de 100 U" (J-11) e o ponto do
+ * mapa nasce em "UI" — sem isto, os 56 UI do mapa da Marina e os 40 U da baixa
+ * nunca se comparavam, e o "Finalizar" não avisava.
+ */
+const chaveDaUnidade = (u: string) => { const k = chave(u); return k === 'ui' ? 'u' : k }
 
 /**
  * As divergências entre o mapa e a baixa: o produto do mapa (pelo NOME do
  * produto do estoque — é o que o ponto guarda) na MESMA unidade do insumo,
  * com outra dose na baixa, ou fora dela. Unidade diferente não se compara
- * (o mapa em UI e o insumo em frasco não são a mesma conta). Centésimos de
- * diferença não contam.
+ * (o mapa em UI e o insumo em frasco não são a mesma conta) — "U" e "UI" são a
+ * mesma (D16 da 9ª). Centésimos de diferença não contam.
  */
 export function divergenciasDaBaixa(
   totais: TotalDoMapa[], marcados: InsumoDaBaixa[], doEstoque: ProdutoDaBaixa[],
@@ -48,20 +55,20 @@ export function divergenciasDaBaixa(
   const somados = new Map<string, TotalDoMapa>()
   for (const t of totais) {
     if (!(t.total > 0) || !t.product.trim()) continue
-    const k = `${chave(t.product)}|${chave(t.unit)}`
+    const k = `${chave(t.product)}|${chaveDaUnidade(t.unit)}`
     const cur = somados.get(k) ?? { product: t.product.trim(), unit: t.unit, total: 0 }
     cur.total = Math.round((cur.total + t.total) * 1000) / 1000
     somados.set(k, cur)
   }
   for (const t of somados.values()) {
-    const insumo = marcados.find(i => chave(i.name) === chave(t.product) && chave(i.unit) === chave(t.unit))
+    const insumo = marcados.find(i => chave(i.name) === chave(t.product) && chaveDaUnidade(i.unit) === chaveDaUnidade(t.unit))
     if (insumo) {
       if (Math.abs(insumo.quantity - t.total) >= 0.01) {
         saida.push({ productId: insumo.productId, nome: insumo.name, unidade: insumo.unit, doMapa: t.total, naBaixa: insumo.quantity })
       }
       continue
     }
-    const doCatalogo = doEstoque.find(p => chave(p.name) === chave(t.product) && chave(p.unit) === chave(t.unit))
+    const doCatalogo = doEstoque.find(p => chave(p.name) === chave(t.product) && chaveDaUnidade(p.unit) === chaveDaUnidade(t.unit))
     if (doCatalogo && !marcados.some(i => i.productId === doCatalogo.id)) {
       saida.push({ productId: doCatalogo.id, nome: doCatalogo.name, unidade: doCatalogo.unit, doMapa: t.total, naBaixa: null })
     }
