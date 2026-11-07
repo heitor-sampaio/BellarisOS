@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira } from '@/actions/comissoes'
-import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
+import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, faixaDaOperadora, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
 import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
@@ -371,6 +371,9 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
   const [avisoTaxaMenor, setAvisoTaxaMenor] = useState<string[]>([])
   function preencherPelaTaxaPorParcela() {
     const texto = taxaPorParcela.trim()
+    // A4 da 9ª: "de 3,1 a 11,9" é a faixa da tabela — vai ao colar, com as pontas.
+    const faixa = faixaDaOperadora(texto)
+    if (faixa) { colarAFaixa(faixa); return }
     const pct = texto ? parseDecimal(texto, 4) : NaN
     if (Number.isNaN(pct)) { setErroPorParcela(`Taxa por parcela: ${NUMERO_INVALIDO}`); return }
     // F16-3 (o Heitor: "não é pra recusar nada, juros podem passar facilmente
@@ -405,6 +408,17 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
   const lidaNaTela = lida ? lida.taxas.filter(t => t.parcelas <= ateQuantasVezes) : []
   const lidaForaDoLimite = lida ? lida.taxas.filter(t => t.parcelas > ateQuantasVezes) : []
   const taxaNaTela = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false })
+  // A4 da 9ª: a faixa "de 3,1 a 11,9" vira o começo da tabela colada — o 1x e a
+  // última vez; o meio não se inventa (princípio 4): a clínica cola ou digita.
+  const faixaDigitada = faixaDaOperadora(taxaPorParcela)
+  const pctDaFaixa = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 4, useGrouping: false })
+  function colarAFaixa(f: { de: number; ate: number }) {
+    setTabelaColada(`1x ${pctDaFaixa(f.de)}%\n…\n${ateQuantasVezes}x ${pctDaFaixa(f.ate)}%`)
+    setColarAberto(true)
+    setPorParcelaAberto(false)
+    setErroPorParcela(null)
+  }
+
   function preencherComATabela() {
     if (!lida || lida.erros.length || !lidaNaTela.length) return
     const novos = Object.fromEntries(lidaNaTela.map(t => [chave('CREDIT_CARD', t.parcelas), taxaNaTela(t.taxa)]))
@@ -586,7 +600,8 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         <p className="overline">Crédito parcelado</p>
         {podeEditar && !porParcelaAberto && !colarAberto && (
           <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn-secondary" onClick={() => { setColarAberto(true); setPorParcelaAberto(false) }}>
+            {/* A4 da 9ª: o caminho principal (ninguém o achava, e as 12 caixas eram digitadas à mão). */}
+            <button type="button" className="btn-primary" onClick={() => { setColarAberto(true); setPorParcelaAberto(false) }}>
               Colar a tabela da operadora
             </button>
             <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(true); setColarAberto(false); setErroPorParcela(null) }}>
@@ -655,6 +670,17 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
             {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
             {' '}Serve só quando a operadora cobra a MESMA taxa por parcela — a maioria cobra uma tabela própria, mais cara a cada vez.
           </p>
+          {faixaDigitada && (
+            <div data-faixa-da-operadora role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span>
+                “{taxaPorParcela.trim()}” é a faixa da tabela da operadora (o 1x e o {ateQuantasVezes}x), não uma taxa por parcela.
+                {' '}Cada vez tem a taxa dela: cole a tabela — o sistema não inventa as do meio.
+              </span>
+              <button type="button" className="btn-primary" style={{ alignSelf: 'flex-start' }} onClick={() => colarAFaixa(faixaDigitada)}>
+                Colar a tabela com 1x {pctDaFaixa(faixaDigitada.de)}% e {ateQuantasVezes}x {pctDaFaixa(faixaDigitada.ate)}%
+              </button>
+            </div>
+          )}
           {vaiPreencher.length > 0 && (
             <p data-vai-preencher role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
               <strong>Vai preencher:</strong> {vaiPreencher.map(t => `${t.parcelas}x ${taxaNaTela(t.taxa)}%`).join(' · ')}

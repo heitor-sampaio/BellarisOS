@@ -132,6 +132,21 @@ export function creditoPelaTaxaPorParcela(taxaPorParcela: number): { parcelas: n
 }
 
 /**
+ * "de 3,1 a 11,9" digitado na taxa por parcela (A4 da 9ª simulação,
+ * 2026-11-07): é a FAIXA da tabela da operadora — o 1x e a última vez —, não
+ * uma taxa por parcela. As pontas, ou nulo. O meio não se inventa (princípio
+ * 4): a tela leva ao "Colar a tabela" com o 1x e a última, e a clínica cola
+ * (ou digita) o resto.
+ */
+export function faixaDaOperadora(texto: string): { de: number; ate: number } | null {
+  const m = texto.trim().match(/^(?:de\s+)?(\d+(?:[.,]\d+)?)\s*%?\s*(?:a|até|ate|-|–)\s*(\d+(?:[.,]\d+)?)\s*%?$/i)
+  if (!m) return null
+  const n = (s: string) => Number(s.replace(',', '.'))
+  const de = n(m[1]!), ate = n(m[2]!)
+  return Number.isFinite(de) && Number.isFinite(ate) && de >= 0 && ate >= 0 ? { de, ate } : null
+}
+
+/**
  * "Colar a tabela da operadora" (A3 da 7ª simulação, 2026-11-05; decidido pelo
  * princípio 3): o "Preencher pela taxa por parcela" multiplica (a regra do
  * Heitor) e a tabela real não é assim — 2,99% à vista e 6,50% em 6x. A tela

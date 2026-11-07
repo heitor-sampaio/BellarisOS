@@ -37,3 +37,16 @@ describe('a tabela da operadora colada', () => {
     expect(taxasDaTabelaColada('1x -2').erros[0]).toContain('negativa')
   })
 })
+
+describe('A4 da 9ª: a faixa da tabela digitada na taxa por parcela', async () => {
+  const { faixaDaOperadora } = await import('@/lib/financeiro/bandeiras')
+  it('reconhece "de X a Y", com ou sem %, e só as pontas', () => {
+    expect(faixaDaOperadora('de 3,1 a 11,9')).toEqual({ de: 3.1, ate: 11.9 })
+    expect(faixaDaOperadora('2,9% até 9,5%')).toEqual({ de: 2.9, ate: 9.5 })
+    expect(faixaDaOperadora('3.1 - 11.9')).toEqual({ de: 3.1, ate: 11.9 })
+  })
+  it('a taxa por parcela de sempre não é faixa', () => {
+    expect(faixaDaOperadora('1,15')).toBeNull()
+    expect(faixaDaOperadora('de a')).toBeNull()
+  })
+})

@@ -933,6 +933,18 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
       texto do "taxa por parcela" diz que ele serve à operadora que cobra a
       mesma taxa por parcela. Prova: `e2e/configuracoes-atritos-da-7.spec.ts`
       ("A3"), `tests/tabela-da-operadora.test.ts`.
+      **É o caminho principal, e "de X a Y" leva a ele** (A4 da 9ª simulação,
+      2026-11-07: com a tabela "de 3,1 a 11,9", os dois times digitaram as 12
+      caixas sem achar o colar): "Colar a tabela da operadora" é o botão cheio
+      (o "taxa por parcela" fica ao lado, secundário). A faixa digitada na
+      taxa por parcela ("de 3,1 a 11,9", "2,9% até 9,5%" — `faixaDaOperadora`)
+      não vira taxa por parcela nem é recusada como número inválido: a caixa
+      diz "é a faixa da tabela da operadora (o 1x e o 12x)… o sistema não
+      inventa as do meio" (`[data-faixa-da-operadora]`) e o botão (ou o
+      Enter) abre o colar já com "1x 3,1% / … / 12x 11,9%" — as pontas; o meio
+      a clínica cola ou digita (princípio 4: não chutar número). Prova:
+      `e2e/configuracoes-atritos-da-8.spec.ts` ("A4 da 9ª"),
+      `tests/tabela-da-operadora.test.ts`.
     - **O "Preencher" diz antes o que vai pôr, e a taxa que BAIXA com mais
       vezes avisa** (A2 da 8ª simulação, 2026-11-06; decidido pelo princípio
       2 — "no máximo, avisar"): os dois times multiplicaram sem ver (1x 2,80%
