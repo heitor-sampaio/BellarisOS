@@ -71,6 +71,7 @@ export const ISOLADOS = [
   'automacoes-quadro-encaixe.spec.ts',
   'automacoes-modelos.spec.ts',
   'campanha-aviso-no-celular.spec.ts',
+  'campanha-cada-filtro-chega.spec.ts',
   'busca-universal.spec.ts',
   'busca-universal-contato.spec.ts',
   'busca-de-cliente-uma-regra.spec.ts',

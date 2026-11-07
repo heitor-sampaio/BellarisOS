@@ -26,7 +26,7 @@ export function filtrosDoPublico(
   if (regras.branch_ids?.length) saida.push(`Unidades: ${regras.branch_ids.map(id => nomeDe(nomes.unidades, id)).join(', ')}`)
   if (regras.genders?.length) saida.push(`Sexo: ${regras.genders.map(g => SEXO[g]).join(', ')}`)
   if (regras.procedure_ids?.length) saida.push(`Fez: ${regras.procedure_ids.map(id => nomeDe(nomes.procedimentos, id)).join(', ')}`)
-  if (regras.max_days_since_visit) saida.push(`Vieram nos últimos ${regras.max_days_since_visit} dias`)
+  if (regras.max_days_since_visit) saida.push(`Sem visita há mais de ${regras.max_days_since_visit} dias`)
   if (regras.min_visits) saida.push(`Com ao menos ${regras.min_visits} ${regras.min_visits === 1 ? 'visita' : 'visitas'}`)
   if (regras.has_app_account) saida.push('Só quem tem o app')
   return saida

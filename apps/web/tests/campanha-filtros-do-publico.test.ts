@@ -7,7 +7,7 @@ describe('os filtros do público da campanha, em português', () => {
     expect(filtrosDoPublico(
       { tags: ['VIP'], branch_ids: ['b1'], genders: ['F'], procedure_ids: ['p1'], has_app_account: true, max_days_since_visit: 60 },
       { unidades: [{ id: 'b1', name: 'Setor Bueno' }], procedimentos: [{ id: 'p1', name: 'Botox' }] },
-    )).toEqual(['Tags: VIP', 'Unidades: Setor Bueno', 'Sexo: feminino', 'Fez: Botox', 'Vieram nos últimos 60 dias', 'Só quem tem o app'])
+    )).toEqual(['Tags: VIP', 'Unidades: Setor Bueno', 'Sexo: feminino', 'Fez: Botox', 'Sem visita há mais de 60 dias', 'Só quem tem o app'])
   })
   it('sem filtro, nada (a tela diz "todas as clientes ativas")', () => {
     expect(filtrosDoPublico({})).toEqual([])

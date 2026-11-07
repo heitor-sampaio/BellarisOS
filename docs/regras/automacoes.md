@@ -195,6 +195,27 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   Só quem tem o app" (`filtrosDoPublico`, `lib/notifications/resumo-do-publico.ts`,
   `data-filtros-do-publico`); sem filtro, "todas as clientes ativas". Prova: o
   mesmo spec ("A15"), `tests/campanha-filtros-do-publico.test.ts`.
+- **Cada regra gravada do público chega à prévia E ao disparo** (D1 da 9ª
+  simulação, 2026-11-07, ALTA: a "Reativação 60 dias" gravava
+  `max_days_since_visit: 60` e nem a prévia nem o disparo o liam — ativada,
+  iria a TODA cliente, e o "Revisar" dizia "Vieram nos últimos 60 dias"). A
+  conta é UMA, `filtrosDaCampanha` (`lib/notifications/filtros-da-campanha.ts`),
+  usada pela prévia (`previewAudienceCount`), pelo disparo
+  (`dispatchCampaignInline`: a imediata, a agendada e a data anual) e pelo
+  cron das automáticas: o aniversário lê todas as regras (lia só a unidade e o
+  app), e o "dias depois da visita", o "antes do agendamento" e o "antes do
+  pacote vencer" passam as clientes do fato por `clientes_do_publico` com
+  `client_ids` (não liam regra nenhuma). **"Sem visita há mais de N dias"** =
+  nenhum atendimento concluído desde N dias atrás (nem a última visita do
+  sistema de antes) E cliente da clínica de antes disso
+  (`cliente_desde_antes`: `coalesce(cliente_desde, created_at)` — a cadastrada
+  ontem não "sumiu", a régua do "Reativar clientes"); o resumo diz "Sem visita
+  há mais de 60 dias". "Com ao menos N visitas" (`min_visits`) conta os
+  concluídos. Migration `20261107004301`. Regra nova em `AudienceRules` sem
+  leitor em `filtrosDaCampanha` quebra
+  `tests/campanha-filtros-chegam-ao-disparo.test.ts`. Prova (uma regra por
+  teste, a prévia e o disparo): `e2e/campanha-cada-filtro-chega.spec.ts`; as
+  automáticas pelo cron: `e2e/campanha-aniversario.spec.ts` ("D1").
 - **Automações e Campanhas são da clínica, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
   alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa
@@ -211,4 +232,5 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 
 ```
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
+❌ Montar o filtro do público da campanha à mão (branch_ids: rules.branch_ids…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
 ```

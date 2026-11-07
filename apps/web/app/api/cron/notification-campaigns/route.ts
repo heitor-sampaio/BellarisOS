@@ -6,6 +6,7 @@ import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { gravar, ler, lerTodas } from '@/lib/db'
 import { lerPublico } from '@/lib/clientes/publico'
+import { filtrosDaCampanha } from '@/lib/notifications/filtros-da-campanha'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
@@ -165,6 +166,21 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, processed: results.length, results })
 }
 
+/**
+ * Das clientes que o FATO escolheu (a visita de N dias atrás, o horário daqui
+ * a N horas, o pacote vencendo), só as do público da campanha — as regras
+ * gravadas dela, pela conta da prévia (`filtrosDaCampanha`), no banco. Até a
+ * 9ª simulação (D1) estas três não liam regra nenhuma.
+ */
+async function doPublico<T extends Destinatario>(camp: NotificationCampaign, clientes: T[]): Promise<T[]> {
+  if (!clientes.length) return clientes
+  const doPublico = new Set((await lerPublico(camp.tenant_id, {
+    ...filtrosDaCampanha(camp.audience_rules ?? {}),
+    client_ids: clientes.map(c => c.id),
+  })).map(c => c.id))
+  return clientes.filter(c => doPublico.has(c.id))
+}
+
 // -- Birthday: send to clients whose birth_date month/day == today ------
 
 async function processBirthdayCampaign(
@@ -179,8 +195,11 @@ async function processBirthdayCampaign(
   // `new Date()`, a meia-noite em UTC ainda é a véspera em São Paulo. Até
   // então o app lia os clientes sem ordem, o PostgREST devolvia 1000, e o
   // filtro do dia era feito sobre esse lote: quem ficava de fora nunca recebia.
+  // E com TODAS as regras da campanha (D1 da 9ª simulação): só a unidade e o
+  // "só quem tem o app" chegavam aqui — a tag, o sexo, o procedimento e o
+  // "sem visita" ficavam de fora.
   const birthdayClients: Destinatario[] = (await lerPublico(camp.tenant_id, {
-    branch_ids: rules.branch_ids, has_app_account: rules.has_app_account,
+    ...filtrosDaCampanha(rules),
     aniversario: { mes: today.month, dia: today.day },
   })).map(c => ({ id: c.id, name: c.name }))
 
@@ -241,7 +260,7 @@ async function processVisitCampaign(
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
-  const toSend = clients.filter(c => !alreadySent.has(c.id))
+  const toSend = (await doPublico(camp, clients)).filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
   return sendBatch(camp, toSend, admin)
 }
@@ -284,7 +303,7 @@ async function processExpiryCampaign(
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
-  const toSend = clients.filter(c => !alreadySent.has(c.id))
+  const toSend = (await doPublico(camp, clients)).filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
   return sendBatch(camp, toSend, admin)
 }
@@ -327,7 +346,7 @@ async function processAppointmentReminderCampaign(
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
-  const toSend = clients.filter(c => !alreadySent.has(c.id))
+  const toSend = (await doPublico(camp, clients)).filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
 
   return sendBatch(camp, toSend, admin)

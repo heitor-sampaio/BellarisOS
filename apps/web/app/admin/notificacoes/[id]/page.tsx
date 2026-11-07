@@ -271,7 +271,7 @@ function AudienceRow({ rules }: { rules: Record<string, unknown> }) {
   if (r.procedure_ids?.length)    items.push({ label: 'Procedimentos', value: `${r.procedure_ids.length} selecionado(s)` })
   if (r.tags?.length)             items.push({ label: 'Tags',       value: r.tags.join(', ') })
   if (r.has_app_account)          items.push({ label: 'App',        value: 'Apenas com app' })
-  if (r.max_days_since_visit)     items.push({ label: 'Inatividade', value: `>${r.max_days_since_visit} dias` })
+  if (r.max_days_since_visit)     items.push({ label: 'Sem visita', value: `há mais de ${r.max_days_since_visit} dias` })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

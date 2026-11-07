@@ -6,6 +6,7 @@ import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { lerPublico } from '@/lib/clientes/publico'
+import { filtrosDaCampanha } from '@/lib/notifications/filtros-da-campanha'
 import { nomeParaSaudar } from '@/lib/saudacao'
 
 /**
@@ -46,10 +47,9 @@ export async function dispatchCampaignInline(
   // aplicado depois, sobre esse lote.
   let eligibleClients: { id: string; name: string; auth_id: string | null }[]
   try {
-    eligibleClients = await lerPublico(tenantId, {
-      branch_ids: rules.branch_ids, genders: rules.genders, tags: rules.tags,
-      has_app_account: rules.has_app_account, procedure_ids: rules.procedure_ids,
-    })
+    // Todas as regras gravadas (filtrosDaCampanha, a conta da prévia): até a
+    // 9ª simulação o "sem visita há mais de N dias" não chegava aqui (D1).
+    eligibleClients = await lerPublico(tenantId, filtrosDaCampanha(rules))
   } catch (e) {
     return { sent: 0, error: e instanceof Error ? e.message : String(e) }
   }
