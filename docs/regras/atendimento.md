@@ -1324,6 +1324,11 @@ const procedures = await ler(
   `enviarDocumentoACliente`, para quem anexa (`canEditRecords`; a action
   confere `recusaDoAnexo`), com "Só a equipe vê" / "No app da cliente".
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
+  **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, 2026-11-07;
+  princípio 3): dizia "Ela fica no prontuário da cliente", e a foto vai para a
+  ficha, aba Documentos, categoria Foto clínica — a regra fica. Agora "Ela
+  fica na ficha da cliente, em Documentos → Foto clínica, ligada a este
+  atendimento." Prova: `e2e/atendimento-atritos-da-9.spec.ts` ("A26").
 - **No app da cliente aparece só o arquivo que a clínica ENVIA** (decisão do
   Heitor, 2026-10-30; migration `20261029001201`). Anexar (pela ficha ou pela
   foto do atendimento) não manda nada à cliente: o arquivo nasce "Só a equipe
@@ -1919,7 +1924,22 @@ O resto do fluxo:
   `pre_pago_libera` devolve à cliente o que estava pago, como em todo
   cancelamento. Pede o Prontuário em Gerenciar (como concluir) e a agenda "só
   os meus" vale pelo id. Sem nada marcado, é o cancelar de sempre. Prova:
-  `e2e/atendimento-atritos-da-8.spec.ts` ("A27").
+  `e2e/atendimento-atritos-da-8.spec.ts` ("A27"). **E a tela do cancelado
+  mostra a intercorrência** (A25 da 9ª, 2026-11-07): ia ao prontuário e não
+  aparecia no atendimento cancelado — agora "Intercorrência: …" abaixo do
+  motivo (`[data-intercorrencia-do-cancelado]`), só a quem vê o prontuário.
+  Prova: `e2e/atendimento-atritos-da-9.spec.ts` ("A25").
+- **O insumo diz de qual lote sai** (A11 da 9ª simulação, 2026-11-07): o FEFO
+  estava certo, mas só o Estoque dizia de qual frasco saiu. No cartão "Insumos
+  utilizados", o marcado diz "Sai do lote TOX-A1 (vence 26/11/2026)" — ou,
+  passando de um lote ao outro, "…: 100 U; e do lote TOX-B2 (…): 20 U", e o
+  que nenhum lote cobre, "N U sem lote" (`[data-lote-do-insumo]`). É a MESMA
+  ordem do gatilho (`lotesDaBaixa`, `lib/estoque/fefo.ts`, puro: os vencidos
+  por último, o que vence primeiro, o sem validade depois, o que chegou antes)
+  sobre os lotes com saldo da unidade; a baixa continua do gatilho (a regra
+  fica, a tela não escolhe o lote). Concluído (ou desistido com baixa), "Saiu
+  do lote …", da ligação que houve (`stock_movement_batches`). Prova:
+  `e2e/atendimento-atritos-da-9.spec.ts` ("A11"), `tests/estoque-fefo-da-baixa.test.ts`.
 - **CONCLUÍDO, a tela mostra os insumos da BAIXA** (D9 da 6ª simulação,
   2026-11-04; princípio 3): o `PROCEDURE_USAGE` do atendimento, somado por
   produto, na unidade do movimento (`app/_shared/sessao-de-atendimento.tsx`).
@@ -2181,7 +2201,7 @@ O resto do fluxo:
 ❌ Atualizar currentStock diretamente sem criar StockMovement
 ❌ Alterar price de um procedimento sem criar ProcedurePriceHistory
 ❌ Ler o preço de um procedimento para uma UNIDADE direto de procedures.price — é precoNaUnidade/comPrecoDaUnidade (lib/procedimentos/preco-na-unidade.ts; no banco, private.preco_na_unidade): o preço próprio da unidade vale (D2 da 9ª)
-❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
+❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece) — a tela só PREVÊ o lote pela mesma ordem (lotesDaBaixa, lib/estoque/fefo.ts); mudou a ordem do gatilho, muda a dela (A11 da 9ª)
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só) — inclusive as dores, a anamnese e a ficha do procedimento do "Finalizar"
 ❌ Ramo da tela do atendimento sem a ficha própria do procedimento (o avulso da rede que monta plano ficou sem ela de 2026-09-25 a 2026-10-29)
 ❌ Concluir o atendimento ou gerar o plano da avaliação sem oQueFaltaParaSeguir (a obrigatória barra; a trava não é só da tela)

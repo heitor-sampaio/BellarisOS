@@ -61,6 +61,7 @@ import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal } from '@/lib/clients/menor'
 import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
+import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 
 
@@ -118,6 +119,17 @@ export interface SessionProduct {
   quantity:  number
 }
 
+/**
+ * Os lotes dos insumos (A11 da 9ª simulação): em aberto, os lotes com saldo da
+ * unidade por produto (`prever`, a conta do FEFO na tela) e o rendimento de
+ * cada um; concluído, o que saiu de cada lote (`feita`).
+ */
+export interface LotesDosInsumos {
+  prever:  Record<string, LoteParaBaixa[]>
+  fatores: Record<string, number>
+  feita:   Record<string, ParteDaBaixa[]> | null
+}
+
 export interface AvailableProduct {
   id:   string
   name: string
@@ -153,6 +165,8 @@ interface Props {
   respostasDaFicha:   Record<string, unknown>
   products:           SessionProduct[]
   availableProducts:  AvailableProduct[]
+  /** De qual lote sai (ou saiu) cada insumo — A11 da 9ª. */
+  lotesDosInsumos?:   LotesDosInsumos
   professionals:      SessionProfessional[]
   history:            HistoryEntry[]
   branchId:           string
@@ -973,9 +987,11 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
 // -- Insumos -------------------------------------------------------------------
 
-function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd, onRemove, readonly, embedded, slug }: {
+function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty, onAdd, onRemove, readonly, embedded, slug }: {
   items:       SessionProduct[]
   available:   AvailableProduct[]
+  /** De qual lote sai cada insumo (A11 da 9ª): a conta do FEFO, ou a baixa que houve. */
+  lotes?:      LotesDosInsumos
   checkedIds:  Set<string>
   onToggle:    (id: string) => void
   onChangeQty: (id: string, qty: number) => void
@@ -1072,6 +1088,14 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: checked ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.3 }}>{item.name}</p>
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{item.unit}</p>
+                {(() => {
+                  // A11 da 9ª: o lote (e a validade) de onde sai o insumo — o FEFO do gatilho.
+                  if (!lotes || (!lotes.feita && !checked)) return null
+                  const texto = lotes.feita
+                    ? textoDosLotesDaBaixa(lotes.feita[item.productId] ?? [], item.unit, item.quantity, true)
+                    : textoDosLotesDaBaixa(lotesDaBaixa(lotes.prever[item.productId] ?? [], item.quantity, lotes.fatores[item.productId] ?? 1), item.unit, item.quantity)
+                  return texto ? <p data-lote-do-insumo style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>{texto}</p> : null
+                })()}
               </div>
               {/* Qty */}
               {readonly || !checked ? (
@@ -1194,7 +1218,7 @@ function DorasCard({ value, onChange, readonly, erro }: {
 // -- Main component ------------------------------------------------------------
 
 export function AppointmentSession({
-  appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts,
+  appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts, lotesDosInsumos,
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
@@ -1719,6 +1743,7 @@ export function AppointmentSession({
     slug,
     items:       insumos,
     available:   availableProducts,
+    lotes:       lotesDosInsumos,
     checkedIds,
     readonly:    isDone,
     onToggle:    (id: string) => {
@@ -2312,6 +2337,14 @@ export function AppointmentSession({
               <>
                 <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--warning)', fontWeight: 700 }}>Atendimento cancelado</p>
                 {appointment.cancellationReason && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Motivo: {appointment.cancellationReason}</p>}
+                {/* A25 da 9ª: a intercorrência da desistência no meio (A27 da 8ª)
+                    ia ao prontuário e não aparecia aqui. É clínico: só chega
+                    à tela com o prontuário (savedIntercurrences). */}
+                {appointment.savedIntercurrences && (
+                  <p data-intercorrencia-do-cancelado style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                    Intercorrência: {appointment.savedIntercurrences}
+                  </p>
+                )}
               </>
             )}
             {status === 'NO_SHOW' && <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', fontWeight: 600 }}>Cliente não compareceu.</p>}

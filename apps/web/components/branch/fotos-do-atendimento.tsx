@@ -82,7 +82,9 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
 
         {fotos.length === 0 && !anexando && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-            Nenhuma foto neste atendimento. Ela fica no prontuário da cliente, ligada a ele.
+            {/* A26 da 9ª: a foto mora na ficha da cliente, aba Documentos (categoria
+                Foto clínica), ligada a este atendimento — não na aba Prontuário. */}
+            Nenhuma foto neste atendimento. Ela fica na ficha da cliente, em Documentos → Foto clínica, ligada a este atendimento.
           </p>
         )}
 

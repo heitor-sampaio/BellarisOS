@@ -11,7 +11,8 @@ import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/
 import { ehInsumo } from '@/lib/estoque/uso'
 import { AppointmentSession } from '@/components/branch/appointment-session'
 import { AtendimentoDeOutraProfissional } from '@/components/branch/atendimento-de-outra-profissional'
-import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
+import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry, LotesDosInsumos } from '@/components/branch/appointment-session'
+import type { LoteParaBaixa, ParteDaBaixa } from '@/lib/estoque/fefo'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
@@ -21,7 +22,7 @@ import { fichaDeSaudeVencida } from '@/lib/pre-atendimento/validade'
 import { responsavelDaFicha } from '@/lib/clients/menor'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { ler } from '@/lib/db'
+import { ler, lerTodas } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { deOutroProfissional } from '@/lib/appointments/alteracoes'
@@ -315,6 +316,45 @@ export async function SessaoDeAtendimento({
     sku:  p.sku ?? null,
   }))
 
+  // De qual lote sai cada insumo (A11 da 9ª simulação, 2026-11-07): o FEFO estava
+  // certo, mas só o Estoque dizia de qual frasco saiu. Em aberto, os lotes com
+  // saldo da unidade (a tela faz a conta do gatilho, `lotesDaBaixa`); concluído
+  // (ou desistido no meio), a ligação da baixa que houve (`stock_movement_batches`).
+  const fatorDe = (p: { consumption_unit: string | null; units_per_package: number | string | null } | null | undefined) =>
+    p?.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 1
+  const fatores: Record<string, number> = Object.fromEntries(((branchProductsRaw ?? []) as RawBranchProduct[]).map(p => [p.id, fatorDe(p)]))
+  const baixaFeita = apptRaw.status === 'COMPLETED' || apptRaw.status === 'CANCELLED'
+  const lotesDosInsumos: LotesDosInsumos = baixaFeita
+    ? await (async () => {
+        type Lig = { quantity: number | string; product_batches: { id: string; batch_number: string | null; expires_at: string | null } | null
+          stock_movements: { product_id: string; products: { consumption_unit: string | null; units_per_package: number | null } | null } | null }
+        const ligs = (await ler(admin.from('stock_movement_batches')
+          .select('quantity, product_batches(id, batch_number, expires_at), stock_movements!inner(product_id, appointment_id, branch_id, type, products(consumption_unit, units_per_package))')
+          .eq('stock_movements.appointment_id', apptRaw.id as string).eq('stock_movements.branch_id', branchId)
+          .eq('stock_movements.type', 'PROCEDURE_USAGE'), 'ler os lotes da baixa do atendimento') ?? []) as unknown as Lig[]
+        const feita: Record<string, ParteDaBaixa[]> = {}
+        for (const l of ligs) {
+          if (!l.product_batches || !l.stock_movements) continue
+          const q = Math.round(Number(l.quantity) * fatorDe(l.stock_movements.products) * 1000) / 1000
+          ;(feita[l.stock_movements.product_id] ??= []).push({ id: l.product_batches.id, numero: l.product_batches.batch_number, validade: l.product_batches.expires_at, quantidade: q })
+        }
+        return { feita, prever: {}, fatores }
+      })()
+    : await (async () => {
+        type Lote = { id: string; product_id: string; batch_number: string | null; expires_at: string | null; received_at: string | null; quantity: number | string }
+        const lotes = await lerTodas<Lote>((de, ate) => admin.from('product_batches')
+          .select('id, product_id, batch_number, expires_at, received_at, quantity')
+          .eq('branch_id', branchId).gt('quantity', 0)
+          .order('expires_at', { ascending: true, nullsFirst: false }).order('id')
+          .range(de, ate) as unknown as PromiseLike<{ data: Lote[] | null; error: { message: string } | null }>,
+        'carregar os lotes dos insumos')
+        const prever: Record<string, LoteParaBaixa[]> = {}
+        for (const l of lotes) {
+          (prever[l.product_id] ??= []).push({ id: l.id, numero: l.batch_number, validade: l.expires_at, recebidoEm: l.received_at, quantidade: Number(l.quantity) })
+        }
+        return { feita: null, prever, fatores }
+      })()
+
   const professionals: SessionProfessional[] = ((professionalsRaw ?? []) as { id: string; name: string }[]).map(p => ({
     id:   p.id,
     name: p.name,
@@ -581,6 +621,7 @@ export async function SessaoDeAtendimento({
         respostasDaFicha={respostasDaFicha}
         products={products}
         availableProducts={availableProducts}
+        lotesDosInsumos={lotesDosInsumos}
         professionals={professionals}
         history={history}
         branchId={branchId}
