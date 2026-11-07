@@ -239,6 +239,7 @@ export const ISOLADOS = [
   'procedimento-preco-da-unidade.spec.ts',
   'equipe-unidade-da-9.spec.ts',
   'estoque-unidade-da-9.spec.ts',
+  'agenda-unidade-da-9.spec.ts',
   'comissoes-pacote-responsavel.spec.ts',
   'vendas-quem-vendeu.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',

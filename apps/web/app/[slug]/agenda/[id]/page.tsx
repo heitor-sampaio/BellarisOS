@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, alcancaUnidade, alcancaOAgendamento } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -31,13 +31,16 @@ export default async function AppointmentSessionPage({
   // Batel): abre pelo portal dela, com a unidade do agendamento. O de outra
   // pessoa nessa unidade continua 404 — a abrangência não cresce.
   let unidadeDoAtendimento = branch.id as string
-  if (ctx.internalUserId && (ctx.atendeEm ?? []).length) {
-    const ag = await ler(createAdminClient().from('appointments')
-      .select('branch_id, professional_id, branches!inner(tenant_id)')
-      .eq('id', id).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade do atendimento') as
-      { branch_id: string; professional_id: string | null } | null
-    if (ag && ag.branch_id !== branch.id && !alcancaUnidade(ctx, ag.branch_id)
-      && alcancaOAgendamento(ctx, ag.branch_id, ag.professional_id)) unidadeDoAtendimento = ag.branch_id
+  const ag = await ler(createAdminClient().from('appointments')
+    .select('branch_id, professional_id, branches!inner(tenant_id, slug)')
+    .eq('id', id).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade do atendimento') as
+    { branch_id: string; professional_id: string | null; branches: { slug: string } | null } | null
+  if (ag && ag.branch_id !== branch.id) {
+    // De outra unidade que a pessoa ALCANÇA (quem é da rede): o endereço certo
+    // é o da unidade dele (D10 da 9ª: o "Seus atendimentos em outras
+    // unidades" levava a Carolina a /menino-deus/agenda/<id da Moinhos>, 404).
+    if (alcancaUnidade(ctx, ag.branch_id) && ag.branches?.slug) redirect(`/${ag.branches.slug}/agenda/${id}`)
+    if (ctx.internalUserId && alcancaOAgendamento(ctx, ag.branch_id, ag.professional_id)) unidadeDoAtendimento = ag.branch_id
   }
 
   const { receber } = await searchParams

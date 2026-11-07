@@ -144,9 +144,15 @@ export default async function AgendaPage({ params, searchParams }: {
         .gte('scheduled_at', from).lte('scheduled_at', to)
         .order('scheduled_at').order('id').range(de, ate), 'carregar os meus agendamentos nas outras unidades')) ?? [])
     : []
-  const nomeDaUnidade = meusDeFora.length
-    ? new Map(((await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string }[]).map(b => [b.id, b.name]))
-    : new Map<string, string>()
+  const unidadesDaRede = meusDeFora.length ? (await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string; slug: string }[] : []
+  const nomeDaUnidade = new Map(unidadesDaRede.map(b => [b.id, b.name]))
+  // D10 da 9ª: quem é da rede abre o atendimento no endereço da unidade DELE
+  // (era o desta tela, e a página dava 404); quem tem unidade fixa, pelo portal dela.
+  const slugDaUnidade = new Map(unidadesDaRede.map(b => [b.id, b.slug]))
+  const enderecoDoDeFora = (a: { id: unknown; branch_id: unknown }) =>
+    ctx.branchId === null && slugDaUnidade.get(a.branch_id as string)
+      ? `/${slugDaUnidade.get(a.branch_id as string)}/agenda/${a.id as string}`
+      : `/${slug}/agenda/${a.id as string}`
   // O que já está à vista como cartão sai do "ocupado fora" (senão conta duas vezes).
   if (ctx.internalUserId && ocupadoFora[ctx.internalUserId] && meusDeFora.length) {
     const vistos = meusDeFora.map(a => `${a.scheduled_at}|${a.duration_min}`)
@@ -243,6 +249,7 @@ export default async function AgendaPage({ params, searchParams }: {
     clientId:         (a.client_id as string | null) ?? null,
     procedureId:      (a.procedure_id as string | null) ?? null,
     unidade:          nomeDaUnidade.get(a.branch_id as string) ?? 'outra unidade',
+    href:             enderecoDoDeFora(a),
     arrivedAt:        (a.arrived_at as string | null) ?? null,
     completedAt:      (a.completed_at as string | null) ?? null,
   }))

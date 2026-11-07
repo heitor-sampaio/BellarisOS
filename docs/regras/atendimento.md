@@ -244,7 +244,14 @@
     Batel", `[data-outra-unidade]`), e a agenda inteira da unidade, a lista
     "Seus atendimentos em outras unidades" (`[data-meus-de-outras-unidades]`);
     os dois abrem a tela do atendimento pelo portal dela
-    (`/[slug]/agenda/[id]` resolve a unidade do agendamento). "Minhas comissões" (o
+    (`/[slug]/agenda/[id]` resolve a unidade do agendamento). **Quem é da
+    rede abre no endereço da unidade DO AGENDAMENTO** (D10 da 9ª simulação,
+    2026-11-07): a Carolina, na agenda da Menino Deus, clicava num da Moinhos
+    e ia a `/menino-deus/agenda/<id da Moinhos>` — 404. O link da lista é o
+    da unidade dele (o portal dela para quem tem unidade fixa), e
+    `/[slug]/agenda/[id]` de outra unidade ao alcance redireciona ao endereço
+    certo. A lista mostra só o que está EM ABERTO (o concluído de hoje
+    aparecia como pendente). Prova: `e2e/agenda-unidade-da-9.spec.ts` ("D10"). "Minhas comissões" (o
     financeiro "só as próprias") cobre também as unidades em que ela atende,
     com o filtro de unidade (`app/[slug]/financeiro/comissoes`).
   - **`provides_services` = "atende em alguma unidade"**, mantido junto da

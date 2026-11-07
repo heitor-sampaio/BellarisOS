@@ -3,8 +3,13 @@ import { ChevronRight, MapPin } from 'lucide-react'
 import { partsInTZ, startOfDayTZ } from '@/lib/datetime'
 
 interface EventoDeFora {
-  id: string; start: string; clientName: string; procedureName: string; unidade?: string | null
+  id: string; start: string; status?: string; clientName: string; procedureName: string; unidade?: string | null
+  /** O endereço do atendimento (D10 da 9ª): o portal da unidade dele para quem é da rede. */
+  href?: string
 }
+
+/** O que ainda está por fazer (D10 da 9ª: o concluído aparecia como pendente). */
+const EM_ABERTO = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
 const dd = (n: number) => String(n).padStart(2, '0')
 
@@ -17,7 +22,7 @@ const dd = (n: number) => String(n).padStart(2, '0')
  */
 export function MeusAtendimentosEmOutrasUnidades({ slug, eventos }: { slug: string; eventos: EventoDeFora[] }) {
   const hoje = startOfDayTZ(new Date()).getTime()
-  const proximos = eventos.filter(e => new Date(e.start).getTime() >= hoje).slice(0, 8)
+  const proximos = eventos.filter(e => new Date(e.start).getTime() >= hoje && (!e.status || EM_ABERTO.includes(e.status))).slice(0, 8)
   if (!proximos.length) return null
   return (
     <section data-meus-de-outras-unidades className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -32,7 +37,7 @@ export function MeusAtendimentosEmOutrasUnidades({ slug, eventos }: { slug: stri
           const p = partsInTZ(new Date(e.start))
           return (
             <li key={e.id}>
-              <Link href={`/${slug}/agenda/${e.id}`} data-outra-unidade style={{
+              <Link href={e.href ?? `/${slug}/agenda/${e.id}`} data-outra-unidade style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
                 fontSize: 'var(--text-xs-sz)', color: 'var(--text)', textDecoration: 'none',
               }}>
