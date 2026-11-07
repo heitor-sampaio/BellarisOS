@@ -236,7 +236,9 @@ plano").
     pago além dele volta como estorno (parcial ou o inteiro com o usado lançado
     de novo; no cartão, só o inteiro) ou crédito na clínica, a escolher; as
     sessões agendadas se cancelam (com o evento e o aviso) ou ficam AVULSAS, a
-    cobrar, com o preço da sessão. Sessão em atendimento agora recusa.
+    cobrar, com o preço da sessão. Sessão em atendimento agora recusa. As
+    sessões agendadas se cancelam juntas, com UM motivo (o A19 da 9ª: cancelar
+    sessão a sessão pedia o motivo a cada uma; o caminho é o "Cancelar plano").
   - **O mesmo núcleo**: o dinheiro do cancelamento mora em
     `private.cancelamento_dinheiro`, que `pacote_cancelar_devolvendo` e
     `plano_cancelar_devolvendo` chamam (uma transação cada; a prévia é a mesma
