@@ -73,3 +73,23 @@ test('A4: o formulário do procedimento só existe no DOM com a janela aberta (u
     await expect(p.locator('input[name="price"]')).toHaveCount(1)
   })
 })
+
+/**
+ * A20 da 9ª simulação (2026-11-07): na clínica de uma unidade, a dona abria
+ * Procedimentos pelo portal da unidade e lia "aqui ele é consulta", sem saber
+ * que se edita no portal da clínica. Quem pode editar (Procedimentos em
+ * Gerenciar, da clínica toda) ganha o "Editar no catálogo da clínica"; a
+ * gerente de unidade fixa, não (H7: o catálogo é da clínica toda).
+ */
+test('A20 da 9ª: o catálogo da unidade leva quem pode editar ao catálogo da clínica', async ({ browser }) => {
+  await como(browser, dona!, async p => {
+    await p.goto(`/${slug}/procedures`)
+    const link = p.locator('[data-catalogo-da-rede]').getByRole('link', { name: /Editar no catálogo da (rede|clínica)/ })
+    await expect(link).toHaveAttribute('href', '/admin/procedures')
+  })
+  await como(browser, gerente!, async p => {
+    await p.goto(`/${slug}/procedures`)
+    await expect(p.locator('[data-catalogo-da-rede]')).toBeVisible()
+    await expect(p.locator('[data-catalogo-da-rede]').getByRole('link')).toHaveCount(0)
+  })
+})

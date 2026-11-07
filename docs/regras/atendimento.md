@@ -982,6 +982,12 @@
   com a janela ABERTA (A4: montado escondido em cada linha, eram N+1
   formulários no DOM, `name=price` repetido; o "Novo procedimento" do vazio
   aparecia a quem só vê). Prova: `e2e/procedimentos-atritos-da-8.spec.ts`.
+  **Quem pode editar é levado ao catálogo da clínica** (A20 da 9ª simulação,
+  2026-11-07: a dona da clínica de uma unidade lia "aqui ele é consulta" e não
+  sabia que se edita no `/admin`): com Procedimentos em Gerenciar e a clínica
+  toda (`ctx.branchId === null`, o mesmo do "Novo procedimento"), a frase ganha
+  "Editar no catálogo da clínica →" (`/admin/procedures`); a gerente de unidade
+  fixa segue só lendo (H7). Prova: o mesmo spec ("A20 da 9ª").
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
 - **O preço vazio é R$ 0,00 — o procedimento gratuito** (A1 da 6ª simulação,
   2026-11-04; princípios 2 e 4): a avaliação grátis tinha só o "0,00" de

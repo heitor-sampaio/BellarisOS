@@ -154,6 +154,15 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
           regra: o catálogo é da rede — plataforma.md). */}
       <p data-catalogo-da-rede style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 16 }}>
         {fala('O catálogo de procedimentos é da clínica toda: quem cria e muda é quem administra a rede (Procedimentos em Gerenciar, no portal da rede). Aqui ele é consulta.')}
+        {/* A20 da 9ª: quem pode editar (a dona da clínica de uma unidade) não sabia onde. */}
+        {podeCadastrar && (
+          <>
+            {' '}
+            <Link href="/admin/procedures" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              {fala('Editar no catálogo da rede')} →
+            </Link>
+          </>
+        )}
       </p>
 
       {/* Filtro por categoria. As opções vêm do catálogo da rede — são dado,
