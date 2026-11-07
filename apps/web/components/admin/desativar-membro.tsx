@@ -19,7 +19,7 @@ import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/r
 
 const SEM_RESPONSAVEL = '__sem__'
 /** "Cancelar este agendamento" (A10 da 8ª simulação): o que não se repassa também se cancela aqui. */
-const CANCELAR = '__cancelar__'
+export const CANCELAR = '__cancelar__'
 
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
   timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -211,9 +211,12 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
   )
 }
 
-function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher }: {
+/** Uma linha do repasse (o Desativar, e o "Atende" desmarcado — D3 da 9ª). */
+export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, deNovo = 'abra o Desativar de novo' }: {
   a: AgendamentoParaRepassar; nome: string; valor: string; aviso?: string
   estilo: React.CSSProperties; onEscolher: (v: string) => void
+  /** Como voltar a esta janela depois de marcar a unidade em outra pessoa. */
+  deNovo?: string
 }) {
   return (
     <div data-agendamento={a.id} style={estilo}>
@@ -236,7 +239,7 @@ function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher }: {
           {a.emOutraUnidade.length
             ? <>Ninguém livre que atenda nesta unidade. Atende{a.emOutraUnidade.length > 1 ? 'm' : ''} em outra unidade:{' '}
                 {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}. Para repassar a ela, marque
-                “{a.unidade}” no “Atende clientes em” dela, na Equipe, e abra o Desativar de novo — ou cancele aqui.</>
+                “{a.unidade}” no “Atende clientes em” dela, na Equipe, e {deNovo} — ou cancele aqui.</>
             : 'Ninguém livre que atenda nesta unidade: remarque pela agenda, ou cancele aqui.'}
         </span>
       )}

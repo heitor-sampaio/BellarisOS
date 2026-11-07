@@ -12,7 +12,8 @@ import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type 
 import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 
-interface Professional { id: string; name: string }
+/** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a coluna fica, marcada. */
+interface Professional { id: string; name: string; foraDoAtende?: boolean }
 
 interface Props {
   currentDate:   Date
@@ -419,6 +420,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
                 </div>
                 <div>
                   <div style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{pro.name}</div>
+                  {pro.foraDoAtende && <div data-nao-atende-aqui style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, marginTop: 1 }}>Não atende mais nesta unidade</div>}
                   <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                     {proEvs.length} atendimento{proEvs.length !== 1 ? 's' : ''}
                   </div>

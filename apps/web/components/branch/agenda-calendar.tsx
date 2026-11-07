@@ -34,7 +34,7 @@ function toLocalDT(date: Date): string {
 }
 
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number }
-interface Professional { id: string; name: string }
+interface Professional { id: string; name: string; foraDoAtende?: boolean }
 interface Room        { id: string; name: string }
 
 interface AgendaCalendarProps {
@@ -44,6 +44,8 @@ interface AgendaCalendarProps {
   events:        CalendarEvent[]
   procedures:    Procedure[]
   professionals: Professional[]
+  /** Quem tem agendamento aqui e não atende mais aqui (D3 da 9ª): só a grade, não o agendar. */
+  colunasDeQuemNaoAtende?: Professional[]
   rooms:         Room[]
   canWrite:      boolean
   userRole:      string
@@ -172,9 +174,11 @@ function todayDate(): Date {
 export function AgendaCalendar({
   branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
-  bloqueios = [],
+  bloqueios = [], colunasDeQuemNaoAtende = [],
 }: AgendaCalendarProps) {
   const router = useRouter()
+  // A grade (dia e semana) tem também a coluna de quem não atende mais aqui e tem agendamento (D3 da 9ª).
+  const colunas = colunasDeQuemNaoAtende.length ? [...professionals, ...colunasDeQuemNaoAtende] : professionals
 
   // Liga e desliga pela URL: quem traz os cancelados é o servidor (a consulta
   // da agenda os deixa de fora). O dia aberto vai junto, já na URL.
@@ -418,7 +422,7 @@ export function AgendaCalendar({
             horariosDosProfissionais={horariosDosProfissionais}
             currentDate={currentDate}
             events={events}
-            professionals={professionals}
+            professionals={colunas}
             canWrite={canWrite}
             onEventClick={setSelectedEvent}
             onSlotClick={handleSlotClick}
@@ -431,7 +435,7 @@ export function AgendaCalendar({
           <AgendaWeekView
             currentDate={currentDate}
             events={events}
-            professionals={professionals}
+            professionals={colunas}
             canWrite={canWrite}
             onEventClick={setSelectedEvent}
             onSlotClick={handleSlotClick}

@@ -14,7 +14,7 @@ import { cargoEhAdminDaRede, souAdminDaRede, recusaDeMexerNaAdmin } from '@/lib/
 import { comLoginNovo } from '@/lib/login-novo'
 import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
 import { falaDaRede } from '@/lib/unidades/uma-so'
-import { atendeDoFormulario, atendeQueGrava } from '@/lib/equipe/atende'
+import { atendeDoFormulario, atendeQueGrava, listaDeUnidades } from '@/lib/equipe/atende'
 
 /** As unidades ATIVAS da rede (o checklist do "Atende" só marca estas). */
 async function unidadesAtivas(admin: ReturnType<typeof createAdminClient>, tenantId: string): Promise<string[]> {
@@ -227,10 +227,15 @@ export async function createTeamMember(
   return { success: true }
 }
 
+/** O que a janela de editar recebe: erro, sucesso, a pergunta de rebaixar a Admin ou o repasse do "Atende" (D3 da 9ª). */
+export type ResultadoDaEdicaoDoMembro =
+  | { error: string } | { success: boolean } | { pergunta: string }
+  | { repasseDoAtende: PendenciasDoMembro & { unidades: string } }
+
 export async function updateTeamMember(
-  _prevState: { error: string } | { success: boolean } | { pergunta: string } | undefined,
+  _prevState: ResultadoDaEdicaoDoMembro | undefined,
   formData: FormData,
-) {
+): Promise<ResultadoDaEdicaoDoMembro> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'team', 'MANAGE')
   const travado = bloqueioDoSuporte(ctx, 'mudar o cargo ou o acesso de um membro')
@@ -321,6 +326,36 @@ export async function updateTeamMember(
         ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: ctx.branchId,
       })
     : null
+
+  // Deixar de atender numa unidade com agendamentos em aberto ali (D3 da 9ª
+  // simulação; decidido pelo princípio 3): eles sumiam da grade, sem aviso nem
+  // repasse. Sem a resposta, o "Atende" não muda — a janela oferece o repasse
+  // do Desativar (H6: repassar, um a um ou todos, ou cancelar); com ela, o
+  // repasse vale antes, e o que falhar volta à tela sem mudar nada.
+  const antesDoAtende = ((member as { atende_em?: string[] | null }).atende_em ?? []) as string[]
+  const depoisDoAtende = atendeEm ?? (providesServices ? null : [])
+  const saem = depoisDoAtende ? antesDoAtende.filter(u => !depoisDoAtende.includes(u)) : []
+  if (saem.length) {
+    const nomes = listaDeUnidades(((await ler(admin.from('branches').select('name')
+      .eq('tenant_id', ctx.tenantId!).in('id', saem).order('name'), 'buscar as unidades que saem')) ?? []).map(b => b.name as string))
+    const quem = { id: member.id as string, nome: ((member as { name?: string | null }).name ?? '') || 'A profissional' }
+    const resposta = formData.get('_repasseDoAtende')
+    if (typeof resposta !== 'string' || !resposta) {
+      const pendencias = await pendenciasDoMembro(admin, ctx, quem, { unidades: saem })
+      if (pendencias.agendamentos.length) return { repasseDoAtende: { ...pendencias, unidades: nomes } }
+    } else {
+      let lido: ReturnType<typeof EntradaDoRepasse.safeParse> | null = null
+      try { lido = EntradaDoRepasse.safeParse(JSON.parse(resposta)) } catch { lido = null }
+      if (!lido?.success) return { error: 'O repasse veio inválido. Feche a janela e tente de novo.' }
+      if (lido.data.agendamentos.length || lido.data.cancelar.length) {
+        const falhas = await aplicarRepasse(admin, ctx, quem, { ...lido.data, oportunidades: [] }, { deixouDeAtenderEm: nomes })
+        if (falhas.length) {
+          revalidatePath(redirectPath)
+          return { error: `O “Atende” não mudou: ${falhas.join(' ')} O resto do repasse já foi feito.` }
+        }
+      }
+    }
+  }
 
   const { error } = await admin
     .from('users')

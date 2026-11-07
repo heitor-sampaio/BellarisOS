@@ -150,17 +150,24 @@ async function quemTemCrm(admin: Admin, tenantId: string, membroId: string): Pro
 /** A mesma regra de `filtroDeQuemAtendeNaUnidade` (a unidade marcada no "Atende"), sobre a lista já lida. */
 const atendeNaUnidade = (p: { atende_em: string[] | null }, unidade: string) => (p.atende_em ?? []).includes(unidade)
 
-/** O que fica com o membro, e para quem pode ir. Não grava nada. */
+/**
+ * O que fica com o membro, e para quem pode ir. Não grava nada.
+ *
+ * Com `unidades`, só os agendamentos NELAS e nenhuma oportunidade: é o que
+ * desmarcar a unidade no "Atende" deixa para trás (D3 da 9ª simulação).
+ */
 export async function pendenciasDoMembro(
-  admin: Admin, ctx: TenantContext, membro: { id: string; nome: string },
+  admin: Admin, ctx: TenantContext, membro: { id: string; nome: string }, opcoes: { unidades?: string[] } = {},
 ): Promise<PendenciasDoMembro> {
-  const [ags, equipe, oportunidades, crm, unidades] = await Promise.all([
+  const soNelas = opcoes.unidades ? new Set(opcoes.unidades) : null
+  const [todos, equipe, oportunidades, crm, unidades] = await Promise.all([
     agendamentosDoMembro(admin, ctx, membro.id),
     quemAtendeNaRede(admin, ctx.tenantId!, membro.id),
-    oportunidadesAbertas(admin, ctx.tenantId!, membro.id),
-    quemTemCrm(admin, ctx.tenantId!, membro.id),
+    soNelas ? Promise.resolve([]) : oportunidadesAbertas(admin, ctx.tenantId!, membro.id),
+    soNelas ? Promise.resolve([]) : quemTemCrm(admin, ctx.tenantId!, membro.id),
     ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true), 'carregar as unidades da rede'),
   ])
+  const ags = soNelas ? todos.filter(a => soNelas.has(a.branch_id)) : todos
   const nomeDaUnidade = new Map(((unidades ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
   const agoraMs = Date.now()
   // Quem realiza cada procedimento (por-01): o repasse oferece só elas.
@@ -234,7 +241,18 @@ async function oportunidadesAbertas(admin: Admin, tenantId: string, membroId: st
  */
 export async function aplicarRepasse(
   admin: Admin, ctx: TenantContext, membro: { id: string; nome: string }, repasse: Repasse,
+  /**
+   * Por que sai dela: desativada (H6, o padrão) ou porque deixou de atender
+   * nas unidades (o "Atende", D3 da 9ª) — o histórico e o motivo do cancelamento dizem.
+   */
+  porque: { deixouDeAtenderEm: string } | null = null,
 ): Promise<string[]> {
+  const textoDoRepasse = (para: string) => porque
+    ? `Repassado de ${membro.nome} para ${para}: ${membro.nome} deixou de atender em ${porque.deixouDeAtenderEm}`
+    : `Repassado de ${membro.nome} para ${para} ao desativar ${membro.nome}`
+  const motivoDoCancelamento = porque
+    ? `${membro.nome} deixou de atender em ${porque.deixouDeAtenderEm}`
+    : `Profissional desativada (${membro.nome})`
   const falhas: string[] = []
   if ((repasse.agendamentos.length || repasse.cancelar.length) && !podeRepassarAgendamentos(ctx)) {
     return ['Seu cargo não repassa agendamentos (pede a Agenda em Gerenciar, de todos).']
@@ -283,8 +301,8 @@ export async function aplicarRepasse(
       'repassar o agendamento') as { id: string }[] | null
       if (!trocados?.length) { falhas.push(`O agendamento de ${quando} mudou enquanto isso: confira na agenda.`); continue }
       await logHistory(admin, ag.id, ctx.internalUserId, ctx.userName || 'Equipe', 'REASSIGNED',
-        `Repassado de ${membro.nome} para ${para.name} ao desativar ${membro.nome}`,
-        { de: membro.id, new_professional_id: para.id, new_professional_name: para.name, motivo: 'desativacao' })
+        textoDoRepasse(para.name),
+        { de: membro.id, new_professional_id: para.id, new_professional_name: para.name, motivo: porque ? 'atende' : 'desativacao' })
       after(async () => {
         const c = await loadApptCtx(admin, ag.id)
         if (!c) return
@@ -302,7 +320,7 @@ export async function aplicarRepasse(
     const dela = new Set((await agendamentosDoMembro(admin, ctx, membro.id)).map(a => a.id))
     for (const id of repasse.cancelar) {
       if (!dela.has(id)) { falhas.push('Um dos agendamentos já não é desta pessoa (ou já foi fechado).'); continue }
-      const r = await cancelarCore(admin, ctx, { appointmentId: id, motivo: `Profissional desativada (${membro.nome})` })
+      const r = await cancelarCore(admin, ctx, { appointmentId: id, motivo: motivoDoCancelamento })
       if ('error' in r) falhas.push(`Um agendamento não foi cancelado: ${r.error}`)
     }
   }

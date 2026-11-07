@@ -69,11 +69,15 @@ export default async function BranchLayout({
 
   // Usuário de filial só pode acessar a própria filial
   if (ctx.branchId && ctx.branchId !== branch.id) {
-    const userBranch = await ler(supabase
+    // A unidade DO MEMBRO pelo servidor, não pela sessão (D9 da 9ª simulação):
+    // mudada a unidade com a sessão aberta, o token ainda tem a claim velha, a
+    // RLS escondia a unidade nova e o `.single()` lançava — 500 em toda tela.
+    const userBranch = await ler(createAdminClient()
       .from('branches')
       .select('slug')
       .eq('id', ctx.branchId)
-      .single(), 'buscar a unidade')
+      .eq('tenant_id', ctx.tenantId!)
+      .maybeSingle(), 'buscar a unidade')
     // Com o aviso (J-29): sem ele, o link "quebrado" voltava calado ao dashboard.
     redirect(comAviso(`/${userBranch?.slug ?? ''}/dashboard`, 'outra-unidade'))
   }

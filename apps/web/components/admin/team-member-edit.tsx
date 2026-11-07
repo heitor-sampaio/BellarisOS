@@ -10,6 +10,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFala } from '@/components/shared/uma-unidade'
 import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
+import { RepasseDoAtende, repasseDasEscolhas } from '@/components/admin/repasse-do-atende'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 interface Role   { id: string; label: string }
@@ -106,6 +107,14 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
   const [rebaixar, setRebaixar] = useState(false)
   const [atendeEm, setAtendeEm] = useState<string[]>(member.atendeEm ?? [])
   const formRef = useRef<HTMLFormElement>(null)
+  // D3 da 9ª: desmarcar a unidade com agendamentos ali devolve o repasse. Ele
+  // vale para o "Atende" que foi enviado — mexeu de novo, some (e o servidor pergunta de novo).
+  const repasse = state && 'repasseDoAtende' in state ? state.repasseDoAtende : null
+  const [atendeEnviado, setAtendeEnviado] = useState<string | null>(null)
+  const [escolhas, setEscolhas] = useState<Record<string, string>>({})
+  const [responderRepasse, setResponderRepasse] = useState(false)
+  const repasseVale = !!repasse && atendeEnviado === atendeEm.join(',')
+  const escolheuAlgum = Object.values(escolhas).some(Boolean)
 
   // Fecha quando chega o resultado de sucesso.
   const sucesso = !!(state && 'success' in state && state.success)
@@ -130,7 +139,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
               </button>
             </div>
 
-            <form ref={formRef} action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form ref={formRef} action={action} onSubmit={() => setAtendeEnviado(atendeEm.join(','))} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <input type="hidden" name="_repasseDoAtende" value={repasseVale && responderRepasse ? JSON.stringify(repasseDasEscolhas(escolhas)) : ''} />
               <input type="hidden" name="userId" value={member.id} />
               <input type="hidden" name="_rebaixarAdmin" value={rebaixar ? 'sim' : ''} />
               <input type="hidden" name="redirectPath" value={redirectPath} />
@@ -244,11 +254,20 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                 </div>
               )}
 
+              {repasseVale && repasse && <RepasseDoAtende dados={repasse} escolhas={escolhas} aoEscolher={setEscolhas} />}
+
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
                 <button type="button" className="btn-secondary" onClick={onFechar}>Cancelar</button>
-                <button type="submit" disabled={pending} className="btn-primary">
-                  {pending ? 'Salvando…' : 'Salvar'}
-                </button>
+                {repasseVale ? (
+                  <button type="button" disabled={pending} className="btn-primary"
+                    onClick={() => { flushSync(() => setResponderRepasse(true)); formRef.current?.requestSubmit() }}>
+                    {pending ? 'Salvando…' : escolheuAlgum ? 'Salvar e repassar' : 'Salvar sem repassar'}
+                  </button>
+                ) : (
+                  <button type="submit" disabled={pending} className="btn-primary" onClick={() => setResponderRepasse(false)}>
+                    {pending ? 'Salvando…' : 'Salvar'}
+                  </button>
+                )}
               </div>
             </form>
           </div>

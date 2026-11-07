@@ -9,7 +9,8 @@ import { EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { dayKeyTZ } from '@/lib/datetime'
 
-interface Professional { id: string; name: string }
+/** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a linha fica, marcada. */
+interface Professional { id: string; name: string; foraDoAtende?: boolean }
 
 interface Props {
   currentDate:   Date
@@ -199,6 +200,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                     </div>
                     <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>
                       {pro.name}
+                      {pro.foraDoAtende && <span data-nao-atende-aqui style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, marginTop: 1 }}>Não atende mais nesta unidade</span>}
                     </span>
                   </div>
                 </td>

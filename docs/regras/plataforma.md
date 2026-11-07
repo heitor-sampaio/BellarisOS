@@ -665,6 +665,23 @@ disponiveis"):**
   (`atendeQueGrava`, `lib/equipe/atende.ts`).
 - Prova: `e2e/equipe-atende-por-unidade.spec.ts`.
 
+**A sessão aberta quando a unidade ou o cargo mudam (D9 da 9ª simulação,
+2026-11-07):** o app lê a unidade e o cargo do BANCO (`buildContext`), mas a
+RLS lê o TOKEN, e `set_user_claims` não renova o token que já está aberto. A
+Priscila, mudada da Moinhos para a Menino Deus com a sessão aberta, via 500 em
+toda tela até relogar: o layout de `[slug]` lia a unidade nova pela sessão, a
+RLS (claim velha) a escondia, e o `.single()` lançava.
+- O layout lê a unidade do membro pelo servidor (com a rede), como o `/admin`.
+- Com o token diferente do banco (`claimsVelhas`, `lib/sessao/claims-velhas.ts`:
+  a unidade, ou o cargo quando o token o tem), a PÁGINA (GET, fora de `/api` e
+  `/auth`) passa por `/auth/renovar` (`getTenantContext`, só fora da sessão de
+  suporte): grava as claims do banco do membro DESTA sessão (`set_user_claims`)
+  e renova o token (`refreshSession`), e volta ao mesmo caminho (só interno).
+  O pedido RSC/prefetch responde 200 sem RSC (o Next refaz como navegação
+  inteira). Um cookie de 60 s (`bellaris-renovou`) evita o laço se a renovação
+  não pegar. A action segue pelo banco, como antes.
+- Prova: `e2e/equipe-unidade-da-9.spec.ts` ("D9"), `tests/claims-velhas.test.ts`.
+
 ---
 
 ## O que nunca fazer aqui
@@ -712,4 +729,5 @@ disponiveis"):**
 ❌ Mandar automação, campanha ou push ao paciente de uma rede bloqueada (redeEstaBloqueada)
 ❌ Action ou tela que grava configuração da clínica toda sem recusaDaConfigDaClinica / mexeNaConfigDaClinica (a gerente de unidade fixa mudava para todas — H7), ou decidir isso pelo nome do cargo
 ❌ Chamar assinaturas_aplicar_regras em teste sem p_tenant (vale para as redes reais)
+❌ Ler pela SESSÃO a unidade do membro que vem do banco (ctx.branchId) com .single(): com a claim velha a RLS a esconde e a tela dá 500 (D9 da 9ª) — é pelo servidor, com a rede
 ```

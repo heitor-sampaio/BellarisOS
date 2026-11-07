@@ -312,6 +312,27 @@
   unidade: Talita (Batel). Para repassar a ela, marque “Água Verde” no “Atende
   clientes em” dela, na Equipe, e abra o Desativar de novo — ou cancele aqui."
   Prova: `e2e/equipe-atritos-da-8.spec.ts` ("A10", "A11").
+  **Deixar de atender numa unidade também oferece o repasse** (D3, A8 e A51
+  da 9ª simulação, 2026-11-07; decidido pelo princípio 3): a Priscila passou a
+  atender só na Menino Deus, e os 2 agendamentos dela na Moinhos sumiram da
+  grade (o cabeçalho dizia 6, a tela mostrava 4), sem aviso; no app da Rosana,
+  um virou "já no horário". Desmarcar a unidade no "Atende clientes em" (ou
+  desmarcar o "Atende" de vez) com agendamentos EM ABERTO ali não grava:
+  `updateTeamMember` devolve `repasseDoAtende` (a lista de
+  `pendenciasDoMembro` só daquelas unidades), e a janela de editar mostra
+  "Priscila tem 2 agendamentos em aberto em Moinhos. Sem atender lá, quem fica
+  com eles?" com o MESMO repasse do Desativar — "Todos para", um a um, "Cancelar
+  este agendamento", ou deixar com ela (`[data-repasse-do-atende]`,
+  `RepasseDoAtende`). "Salvar e repassar" aplica o repasse (`aplicarRepasse`,
+  com o histórico "Repassado de A para B: A deixou de atender em Moinhos" e o
+  cancelamento "A deixou de atender em Moinhos") e só então muda o "Atende"; o
+  que falhar volta à tela sem mudar nada. **E a grade da unidade mantém a
+  coluna de quem tem agendamento ali** sem atender mais
+  (`colunasDeQuemNaoAtende`, "Não atende mais nesta unidade",
+  `[data-nao-atende-aqui]`, no dia e na semana): nada some; a coluna não entra
+  no agendar. O "a partir de" (A8) não existe: a mudança vale na hora, e o
+  repasse cuida do que já estava marcado. Prova:
+  `e2e/equipe-unidade-da-9.spec.ts` ("D3").
 - **A dona que atende** (D2 da simulação de 2026-10-29): o Admin da rede
   marca "Atende clientes", a comissão e o horário na Equipe da rede com o
   cargo TRAVADO (CLAUDE.md §11; só outra Admin da rede muda o cargo dela,

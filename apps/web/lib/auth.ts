@@ -16,7 +16,8 @@ import {
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
 import { abasForaDoPlano, modulosForaDoPlano, type ChaveDeFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
+import { claimsVelhas, renovaNestaRequisicao, COOKIE_DA_RENOVACAO } from '@/lib/sessao/claims-velhas'
 import { sessaoDeSuporte, sessaoVigente, registrarAcessoDoSuporte } from '@/lib/suporte/sessao'
 import { marcarSessaoDeSuporte } from '@/lib/suporte/requisicao'
 import { nomeComSuporte } from '@/lib/suporte/regras'
@@ -187,9 +188,14 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
   // Achada pelo `session_id` do JWT (lib/suporte/sessao.ts) — não depende de
   // cookie nenhum que o atendente possa apagar.
   const sessionId = (claims as { session_id?: string }).session_id
-  if (!sessionId || ctx.isClient || !ctx.internalUserId) return ctx
-  const sessao = await sessaoDeSuporte(sessionId)
-  if (!sessao) return ctx
+  if (ctx.isClient || !ctx.internalUserId) return ctx
+  const sessao = sessionId ? await sessaoDeSuporte(sessionId) : null
+  if (!sessao) {
+    // A unidade ou o cargo mudaram com a sessão aberta (D9 da 9ª): a página
+    // renova o token antes de seguir (lib/sessao/claims-velhas.ts).
+    await renovarSeAsClaimsEstaoVelhas(ctx, meta)
+    return ctx
+  }
 
   // Encerrada, revogada ou vencida: o fim devolve o atendente ao painel.
   if (!sessaoVigente(sessao) || sessao.targetUserId !== ctx.internalUserId) redirect('/auth/suporte-fim?motivo=venceu')
@@ -213,6 +219,15 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     },
   }
 })
+
+async function renovarSeAsClaimsEstaoVelhas(ctx: TenantContext, meta: Partial<JwtClaims>): Promise<void> {
+  if (!claimsVelhas(meta as { branch_id?: string | null; role_id?: string | null }, { branchId: ctx.branchId, roleId: ctx.roleId })) return
+  const caminho = renovaNestaRequisicao(await caminhoDaRequisicao())
+  if (!caminho) return
+  // Acabou de renovar e não pegou: segue com o banco (sem laço).
+  try { if ((await cookies()).get(COOKIE_DA_RENOVACAO)?.value === ctx.userId) return } catch { return }
+  redirect(`/auth/renovar?next=${encodeURIComponent(caminho)}`)
+}
 
 /**
  * O "MÉTODO /caminho" desta requisição, como o proxy anotou

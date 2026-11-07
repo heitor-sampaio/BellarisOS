@@ -219,6 +219,14 @@ export default async function AgendaPage({ params, searchParams }: {
     }
   })
 
+  // Quem tem agendamento AQUI e não atende mais aqui (D3 da 9ª simulação): a
+  // Priscila desmarcou a Moinhos e os dela de hoje sumiram da grade, com o
+  // cabeçalho dizendo "6 atendimentos" e 4 na tela. A coluna dela fica enquanto
+  // houver agendamento, marcada — sem entrar no agendar (não atende aqui).
+  const naGrade = new Set(((professionals ?? []) as { id: string }[]).map(p => p.id))
+  const semColuna = [...new Set((rawAppointments ?? []).map(a => a.professional_id as string | null).filter((x): x is string => !!x && !naGrade.has(x)))]
+  const colunasDeQuemNaoAtende = semColuna.map(id => ({ id, name: nomes.membros[id] || 'Profissional', foraDoAtende: true as const }))
+
   // Os de fora, como cartões da "Minha agenda" (com a unidade) ou na lista
   // "Seus atendimentos em outras unidades" da agenda inteira.
   const eventosDeFora = meusDeFora.map(a => ({
@@ -285,6 +293,7 @@ export default async function AgendaPage({ params, searchParams }: {
         events={events}
         procedures={procedures ?? []}
         professionals={professionals ?? []}
+        colunasDeQuemNaoAtende={colunasDeQuemNaoAtende}
         horarioDaUnidade={horarioDaUnidade}
         horariosDosProfissionais={horariosDosProfissionais}
         ocupadoForaDosProfissionais={ocupadoFora}
