@@ -171,6 +171,8 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
   }
 
   await passo(falhas, 'créditos internos', db.from('internal_credits').delete().in('client_id', clientes))
+  // A venda de crédito na clínica (decisão 1 da 9ª) aponta para a cliente.
+  await passo(falhas, 'créditos vendidos', db.from('creditos_vendidos').delete().in('client_id', clientes))
 
   // Arquivos no Storage: a linha some em cascata (documento) ou aqui (LGPD),
   // mas o ARQUIVO ficaria — dado pessoal de teste esquecido num bucket.
