@@ -166,7 +166,8 @@ edições do sistema". O mecanismo é UM:
   conteúdo enfileirado); o DINHEIRO — o lançamento manual
   (`createTransactionAdvanced`), o crédito interno (`grantInternalCredit`, nas
   duas telas), as vendas de pacote, de pré-pago e de produto (`venderPacote`,
-  `venderProcedimento`, `venderProduto`: a chave é o último argumento); o
+  `venderProcedimento`, `venderProduto`, e o crédito na clínica vendido,
+  `venderCredito`: a chave é o último argumento); o
   ESTOQUE — a entrada (`adminAddStock`, também a do leitor de código de
   barras), a transferência e a perda; os PONTOS — o ajuste e a troca por
   recompensa (`ajustarPontos`, `resgatarRecompensa`: `envio` no objeto);

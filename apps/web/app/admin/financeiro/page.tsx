@@ -96,7 +96,7 @@ export default async function AdminFinanceiroPage({
     // PARA, em vez de virar um extrato vazio.
     lerTodas((de, ate) => admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
+      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
       // vencimento. Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o

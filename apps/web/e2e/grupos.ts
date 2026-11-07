@@ -255,6 +255,8 @@ export const ISOLADOS = [
   'injetaveis-da-9.spec.ts',
   'documentos-inicio-da-9.spec.ts',
   'atendimento-atritos-da-9.spec.ts',
+  // F44 (o dinheiro da 9ª simulação), cada um na sua rede [e2e].
+  'vendas-credito-na-clinica.spec.ts',
   'estoque-perda-unidade-de-consumo.spec.ts',
   'fechamento-do-dia-fundo-de-troco.spec.ts',
   'financeiro-recibo.spec.ts',

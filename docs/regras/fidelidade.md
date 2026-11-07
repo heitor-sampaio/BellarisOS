@@ -34,6 +34,15 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   cliente pagou tudo na maquininha. O que a operadora deposita em parcelas
   (`recebiveis_do_cartao`) não é pagamento e não pontua de novo. Prova:
   `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`.
+- **O crédito na clínica VENDIDO pontua na venda, pelo dinheiro pago** (decisão
+  1 do Heitor sobre a 9ª simulação, 2026-11-07: "os pontos na VENDA do
+  crédito, pelo dinheiro pago, não no uso"; `vendas-financeiro.md` §9.3.4):
+  `floor(valor × points_per_real)` em QUALQUER modo de ganho — também "por
+  procedimento", que o crédito não tem procedimento (como o produto). O uso
+  depois, pago com crédito interno, não pontua. O estorno da venda do crédito
+  tira os pontos do que voltou (na proporção, no estorno parcial). É o
+  primeiro ramo de `fidelidade_pontos_do_pagamento` (`credito_vendido_id`).
+  Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
 - **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu
   (lê o GANHO). Saldo pode ficar **negativo**, como estoque.
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por

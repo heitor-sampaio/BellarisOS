@@ -294,6 +294,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   extrato diz "Venda do plano X" (`comissoes_extrato_linhas`, origem
   `PLANO_VENDA`, com a cliente e o dia do aceite); o lucro desconta como toda
   comissão lançada. Prova: `e2e/comissoes-venda-do-plano.spec.ts`.
+- **O crédito na clínica VENDIDO não tem comissão de venda** (decisão 1 do
+  Heitor sobre a 9ª simulação, 2026-11-07; `vendas-financeiro.md` §9.3.4): a
+  venda do "vale" não pergunta "Quem vendeu" e nenhuma linha nasce. Quem
+  atende depois, pago com o crédito, recebe a comissão de EXECUÇÃO do
+  atendimento, como sempre. Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
 - **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
   oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
   chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`

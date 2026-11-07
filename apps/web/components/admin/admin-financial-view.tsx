@@ -15,6 +15,7 @@ import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
 import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
+import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
@@ -78,6 +79,8 @@ interface AdminTx {
   desconto_texto?: string | null
   /** Da venda de produto: o estorno é da venda e pergunta se o produto voltou (H2). */
   product_sale_id?: string | null
+  /** Da venda de crédito na clínica (decisão 1 da 9ª): o estorno é da venda e devolve o saldo não usado. */
+  credito_vendido_id?: string | null
   /** O recebimento de um atendimento: estornar reabre a cobrança dele (A51). */
   appointment_id?: string | null
 }
@@ -241,6 +244,8 @@ export function AdminFinancialView({
   // O lançamento esperando a confirmação do estorno (era um clique só, sem volta).
   // A34 da 8ª: a devolução de PARTE da venda de produto (a janela do estorno a oferece).
   const [aDevolverParte, setADevolverParte] = useState<string | null>(null)
+  // Decisão 1 da 9ª: o estorno da venda de crédito na clínica (volta o saldo não usado).
+  const [creditoAEstornar, setCreditoAEstornar] = useState<{ id: string; descricao: string } | null>(null)
   const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean } | null>(null)
   const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
@@ -330,6 +335,9 @@ export function AdminFinancialView({
           onDevolverParte={aEstornar.vendaDeProduto && !aEstornar.cancelarVenda ? () => { setADevolverParte(aEstornar.id); setAEstornar(null) } : undefined} />
       )}
       {aDevolverParte && <DevolverParteDaVenda transacaoId={aDevolverParte} onFechar={() => setADevolverParte(null)} />}
+      {creditoAEstornar && (
+        <EstornarVendaDeCredito transacaoId={creditoAEstornar.id} descricao={creditoAEstornar.descricao} onFechar={() => setCreditoAEstornar(null)} />
+      )}
       {noCartao && (
         <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
           valor={noCartao.valor}
@@ -725,13 +733,16 @@ export function AdminFinancialView({
                         {/* Estorno não se estorna (o banco também recusa): desfazer é
                             coisa do financeiro, não um segundo clique. */}
                         {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
-                          <button type="button" onClick={() => setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id })} title="Estornar" style={{
-                            width: 30, height: 30, borderRadius: 7,
+                          // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
+                          <button type="button" data-estornar onClick={() => t.credito_vendido_id
+                            ? setCreditoAEstornar({ id: t.id, descricao: t.description })
+                            : setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id })} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
                             border: '1px solid var(--border)', background: 'var(--surface)',
-                            color: 'var(--text-faint)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap',
                           }}>
-                            <RotateCcw size={12} />
+                            <RotateCcw size={12} aria-hidden /> Estornar
                           </button>
                         )}
                         {/* A venda de produto toda a receber não tem o que estornar: se

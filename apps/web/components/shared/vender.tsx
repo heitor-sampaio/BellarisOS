@@ -8,8 +8,9 @@ import Link from 'next/link'
 import { ShoppingBag, X, AlertTriangle, Plus } from 'lucide-react'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
 import { rotaDoRecebimento } from '@/components/shared/atendimentos-a-receber'
-import { formatBRL } from '@estetica-os/utils'
+import { formatBRL, parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
+import { venderCredito } from '@/actions/credito-na-clinica'
 import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -46,7 +47,10 @@ export interface MembroDaVenda {
   /** É quem está registrando ("(você)" em "Quem vendeu", que nasce vazio — r2-ven-12). */ eu?: boolean
 }
 
-type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO'
+type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO' | 'CREDITO'
+
+/** O crédito na clínica (decisão 1 da 9ª) se vende em qualquer unidade: a aba existe sempre. */
+const ABA_DO_CREDITO = { key: 'CREDITO', label: 'Crédito na clínica' }
 
 /**
  * O que se vende em UMA unidade (D1 da 8ª simulação): na ficha da rede com
@@ -86,12 +90,12 @@ function VenderPerguntandoAUnidade({ unidades, clienteId, compacto = false, abri
     if (abrirSinal > 0 && !dialogRef.current?.open) dialogRef.current?.showModal()
   }, [abrirSinal])
 
-  if (!unidades.some(temAVenda)) return null
   const unidade = unidades.find(u => u.id === unidadeId) ?? null
   const abas = unidade ? [
     ...(unidade.procedimentos.length ? [{ key: 'PROCEDIMENTO', label: 'Procedimento' }] : []),
     ...(unidade.pacotes.length ? [{ key: 'PACOTE', label: 'Pacote' }] : []),
     ...(unidade.produtos.length ? [{ key: 'PRODUTO', label: 'Produto' }] : []),
+    ABA_DO_CREDITO,
   ] : []
   // A aba que a unidade nova não tem cai na primeira que ela tem.
   const abaDaUnidade: Aba = abas.some(a => a.key === aba) ? aba : ((abas[0]?.key as Aba | undefined) ?? 'PROCEDIMENTO')
@@ -131,15 +135,17 @@ function VenderPerguntandoAUnidade({ unidades, clienteId, compacto = false, abri
             </div>
             {unidade && !temAVenda(unidade) && (
               <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                Não há procedimento, pacote nem produto à venda na unidade {unidade.nome}.
+                Não há procedimento, pacote nem produto à venda na unidade {unidade.nome} — só o crédito na clínica.
               </p>
             )}
-            {unidade && temAVenda(unidade) && (
+            {unidade && (
               <>
                 {abas.length > 1 && (
                   <SegSelect ariaLabel="O que vender" options={abas} value={abaDaUnidade} onSelect={k => setAba(k as Aba)} />
                 )}
-                {abaDaUnidade === 'PRODUTO' && unidade.produtos.length > 0
+                {abaDaUnidade === 'CREDITO'
+                  ? <FormularioDoCredito key={chave} clienteId={clienteId} branchId={unidade.id} onFim={fechar} />
+                  : abaDaUnidade === 'PRODUTO' && unidade.produtos.length > 0
                   ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={unidade.id} produtos={unidade.produtos} onFim={fechar} equipe={unidade.equipe} />
                   : abaDaUnidade === 'PROCEDIMENTO' && unidade.procedimentos.length > 0
                   ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={unidade.id} procedimentos={unidade.procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} equipe={unidade.equipe} />
@@ -182,18 +188,18 @@ function VenderNaUnidade({ clienteId, branchId, pacotes, procedimentos, produtos
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
-  const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : pacotes.length ? 'PACOTE' : 'PRODUTO')
+  const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : pacotes.length ? 'PACOTE' : produtos.length ? 'PRODUTO' : 'CREDITO')
   const abrir = useCallback(() => { setAbertura(n => n + 1); dialogRef.current?.showModal() }, [])
   const fechar = useCallback(() => dialogRef.current?.close(), [])
   useEffect(() => {
     if (abrirSinal > 0 && !dialogRef.current?.open) dialogRef.current?.showModal()
   }, [abrirSinal])
 
-  if (!pacotes.length && !procedimentos.length && !produtos.length) return null
   const abas = [
     ...(procedimentos.length ? [{ key: 'PROCEDIMENTO', label: 'Procedimento' }] : []),
     ...(pacotes.length ? [{ key: 'PACOTE', label: 'Pacote' }] : []),
     ...(produtos.length ? [{ key: 'PRODUTO', label: 'Produto' }] : []),
+    ABA_DO_CREDITO,
   ]
   const chave = `${abertura}-${abrirSinal}`
   if (desativadoPorque) {
@@ -226,7 +232,9 @@ function VenderNaUnidade({ clienteId, branchId, pacotes, procedimentos, produtos
             {abas.length > 1 && (
               <SegSelect ariaLabel="O que vender" options={abas} value={aba} onSelect={k => setAba(k as Aba)} />
             )}
-            {aba === 'PRODUTO' && produtos.length > 0
+            {aba === 'CREDITO'
+              ? <FormularioDoCredito key={chave} clienteId={clienteId} branchId={branchId} onFim={fechar} />
+              : aba === 'PRODUTO' && produtos.length > 0
               ? <FormularioDoProduto key={chave} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={fechar} equipe={equipe} />
               : aba === 'PROCEDIMENTO' && procedimentos.length > 0
               ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} aReceber={aReceber} equipe={equipe} />
@@ -357,6 +365,67 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Crédito na clínica — o "vale" (decisão 1 do Heitor sobre a 9ª simulação,
+ * 2026-11-07): a cliente paga agora para usar depois em qualquer coisa. Entra
+ * no caixa hoje, na forma escolhida; o uso depois não conta como receita de
+ * novo. Sem "Quem vendeu": não tem comissão de venda.
+ */
+function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string; branchId: string; onFim: () => void }) {
+  const router = useRouter()
+  const [valor, setValor] = useState('')
+  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
+  const [erro, setErro] = useState<string | null>(null)
+  const [pendente, iniciar] = useTransition()
+  const envio = useEnvioUnico()
+  const lido = parseDinheiro(valor)
+  const reais = Number.isFinite(lido) && lido > 0 ? Math.round(lido * 100) / 100 : 0
+  const ilegivel = valor.trim() !== '' && !Number.isFinite(lido)
+
+  function vender() {
+    const recusa = recusaDoPagamento(estado, reais)
+    setErro(recusa)
+    if (recusa || reais <= 0) return
+    iniciar(async () => {
+      const r = await venderCredito(clienteId, branchId, valor, montarPagamento(estado), envio.chave())
+      if (r.error) { setErro(r.error); return }
+      envio.renovar()
+      router.refresh()
+      toast.success(avisoDaVenda('Crédito na clínica', reais, estado.forma))
+      onFim()
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
+        <span className="field-label">Valor do crédito</span>
+        <input className="field" inputMode="decimal" placeholder="0,00" value={valor} aria-invalid={ilegivel}
+          onChange={e => setValor(e.target.value)} />
+        {ilegivel && (
+          <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{DINHEIRO_INVALIDO}</span>
+        )}
+      </label>
+      {/* A regra na tela (princípio 3): onde o dinheiro conta e o que acontece no uso. */}
+      <p data-regra-do-credito style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.45 }}>
+        Entra no caixa hoje, na forma escolhida, e fica de saldo para a cliente usar em qualquer atendimento ou produto.
+        Usar depois não conta como receita de novo. Sem comissão de venda.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+        <p className="overline">Pagamento</p>
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA']} total={reais} semCredito />
+      </div>
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
+        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || reais <= 0 || !!recusaDoPagamento(estado, reais)}>
+          {pendente ? 'Vendendo…' : `Vender por ${formatBRL(reais)}`}
+        </button>
+      </div>
     </div>
   )
 }

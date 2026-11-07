@@ -108,7 +108,7 @@ function recusaDaEntradaDoEstado(e: EstadoDoPagamento, total?: number, doQue = '
   return total !== undefined && 'valor' in lida ? recusaDaEntradaAcimaDoTotal(lida.valor, total, doQue) : null
 }
 
-export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da venda', clienteId }: {
+export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da venda', clienteId, semCredito = false }: {
   estado: EstadoDoPagamento
   aoMudar: (e: EstadoDoPagamento) => void
   formas: FormaDoPagamento[]
@@ -118,6 +118,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
   doQue?: string
   /** A cliente: com o crédito na clínica escolhido, o saldo dela e o que sobra (A36 da 8ª). */
   clienteId?: string
+  /** Sem "Crédito do cliente" entre os meios: a venda do próprio crédito na clínica (decisão 1 da 9ª). */
+  semCredito?: boolean
 }) {
   const recusaDaEntrada = recusaDaEntradaDoEstado(estado, total, doQue)
   const mudar = (parte: Partial<EstadoDoPagamento>) => aoMudar({ ...estado, ...parte })
@@ -125,20 +127,24 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
   const { forma } = estado
   // Até quantas vezes a clínica parcela no crédito (D-15).
   const opcoesDeVezes = useOpcoesDeVezes()
+  const metodos = semCredito ? METODOS.filter(m => m.value !== 'INTERNAL_CREDIT') : METODOS
   return (
     <>
-      <SegSelect
-        ariaLabel="Como vai ser pago"
-        options={formas.map(f => ({ key: f, label: ROTULOS[f] }))}
-        value={forma} onSelect={k => mudar({ forma: k as FormaDoPagamento })}
-      />
+      {/* Uma forma só (o crédito na clínica é pago na hora): não há o que escolher. */}
+      {formas.length > 1 && (
+        <SegSelect
+          ariaLabel="Como vai ser pago"
+          options={formas.map(f => ({ key: f, label: ROTULOS[f] }))}
+          value={forma} onSelect={k => mudar({ forma: k as FormaDoPagamento })}
+        />
+      )}
       {forma !== 'NADA_AGORA' && (
         <div className="form-2col">
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={rotulo}>Meio de pagamento{forma === 'A_RECEBER' ? ' (opcional)' : ' *'}</span>
             <select className="field" value={estado.metodo} onChange={e => mudar({ metodo: e.target.value })} aria-label="Meio de pagamento">
               <option value="">{forma === 'A_RECEBER' ? 'Não informado' : 'Selecione…'}</option>
-              {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              {metodos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
             {estado.metodo === 'INTERNAL_CREDIT' && clienteId && total !== undefined && (
               <SaldoDoCredito clienteId={clienteId}

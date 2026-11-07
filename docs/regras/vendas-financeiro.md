@@ -546,6 +546,70 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   dela); as restritivas do suporte valem.
 - Prova: `e2e/vendas-produto.spec.ts`.
 
+### 9.3.4 Crédito na clínica VENDIDO — o "vale" (decisão 1 do Heitor sobre a 9ª simulação, 2026-11-07)
+
+O Heitor: "concordo" com a recomendação — "'Crédito na clínica' no Vender, para
+quem recebe, com a forma de pagamento; entra no caixa, no fechamento e no
+faturamento no dia em que o dinheiro entrou (princípio 5), e o uso depois segue
+a regra de hoje (não é receita de novo); os pontos na VENDA do crédito, pelo
+dinheiro pago, não no uso; sem comissão de venda; o 'Conceder crédito' continua
+como está, para o que não teve dinheiro". A Rosana pagou R$ 300 no Pix para usar
+depois em qualquer coisa, e a recepção só achou o "Conceder crédito" (fora do
+caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
+
+- **A porta é o "Vender"**, aba "Crédito na clínica" (`FormularioDoCredito`,
+  `components/shared/vender.tsx`), na ficha (os dois portais) e no painel do
+  inbox, para quem recebe (`podeReceber`); a aba existe em toda unidade (não
+  depende de catálogo). "Valor do crédito" (`parseDinheiro`) e a forma — só À
+  VISTA: Pix, dinheiro, débito ou crédito em N vezes (com a bandeira), nunca
+  "Crédito do cliente" (`CamposDoPagamento semCredito`). Sem "Quem vendeu":
+  não há comissão de venda. A tela diz a regra ("Entra no caixa hoje… Usar
+  depois não conta como receita de novo. Sem comissão de venda.",
+  `[data-regra-do-credito]`). Decidido pelo princípio 5 ("sem dinheiro, sem
+  crédito vendido"): o crédito vendido é o dinheiro que entrou, então não há
+  crediário nem "a receber" para ele — o crédito sem dinheiro é a concessão.
+- **Uma transação, `credito_vender`** (`venderCredito`, `actions/credito-na-clinica.ts`;
+  a chave do envio vale, D10): a venda (`creditos_vendidos`, só o servidor
+  lê), o lançamento de receita PAGO agora ("Crédito na clínica", categoria
+  "Crédito na clínica", `financial_transactions.credito_vendido_id`) e o
+  crédito (`internal_credits` +valor, "Crédito na clínica comprado", com o
+  `credito_vendido_id`). Migrations `20261107004401` e `…004402`.
+- **O dinheiro**: o lançamento é receita paga com cliente — a regra única
+  (`metrics_receitas_pagas`) o conta sem mudar nada: caixa, Fechamento do dia
+  (na forma), faturamento, ticket médio. O USO depois é o pagamento com
+  `INTERNAL_CREDIT` de sempre: desconta do saldo e não é receita (F7). Nas
+  Vendas (Relatórios), o crédito NÃO aparece: a venda de verdade é a do
+  procedimento ou do produto pago com ele, quando a cliente usa (decidido pelo
+  princípio 3 — senão o mesmo dinheiro seria duas vendas).
+- **Os pontos** saem na VENDA, pelo dinheiro pago (`points_per_real`), em
+  qualquer modo de ganho — também "por procedimento" (`fidelidade.md`). O uso
+  não pontua.
+- **Sem comissão de venda**: nenhuma linha nasce. Quem atende depois recebe a
+  comissão de execução do atendimento, como sempre.
+- **O estorno é da VENDA e devolve o saldo não usado** (`EstornarVendaDeCredito`,
+  o "Estornar" do lançamento nos dois financeiros; `previaDoEstornoDoCredito`
+  e `estornarVendaDeCredito`, com o Financeiro em Gerenciar e a unidade ao
+  alcance — a permissão do estorno). A conta é do banco
+  (`credito_estornar_venda`, com `p_simular`): volta o SALDO de crédito da
+  cliente hoje, até o que ela pagou — o que ela já usou fica pago. A janela
+  diz "Vendido R$ 300,00 · Já usado R$ 119,00 · Volta à cliente R$ 181,00".
+  Voltando tudo, o estorno de sempre; voltando parte, a escolha de sempre
+  (`EscolhaDaDevolucao soEstorno`): estorno parcial (o pagamento fica com o
+  usado e um "Estorno parcial" leva o resto, com os pontos na proporção) ou o
+  pagamento inteiro estornado e o usado lançado de novo — no CARTÃO, só este
+  (r2-fin-03). O crédito que voltou sai do saldo dela (`internal_credits`
+  negativo), e a venda guarda `estornado_em` e o retrato. Confirmar manda o
+  "volta" que a janela mostrou (`p_esperado`); o banco recusa se mudou.
+  Decidido pelo princípio 3: o crédito é um saldo só, então "o que ela não
+  usou" é o saldo dela hoje, até o vendido (a tela mostra a conta).
+- **O lançamento solto não se estorna**: `estornar_transacao` recusa o da venda
+  do crédito ("Este lançamento é de uma venda de crédito na clínica: estorne a
+  venda…") — só `credito_estornar_venda` o deixa passar
+  (`set_config('bellaris.estorno_do_credito', …)`), como a venda de produto.
+- O **"Conceder crédito"** (`grantInternalCredit`) continua como está: fora do
+  caixa, para o crédito de fora e o que não teve dinheiro.
+- Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
+
 ---
 
 ### 9.6 Financeiro
@@ -1602,4 +1666,6 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 ❌ Estornar o lançamento de uma venda de produto fora de produto_estornar_venda (a venda, o estoque e o custo não saberiam), ou contar product_sales sem tirar a estornada (estornada_em)
 ❌ Devolver parte de uma venda de produto estornando a venda inteira e vendendo de novo, ou fora de produto_devolver_itens — e ler o valor, as unidades ou o custo de uma venda de produto sem tirar o devolvido (price − valor_devolvido, custo − custo_devolvido)
 ❌ Deixar a "Forma do pagamento do usado" em branco no estorno inteiro: vem a do pagamento original (comOPagamentoInteiro — A41 da 8ª)
+❌ Vender crédito na clínica pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na clínica" do Vender (decisão 1 da 9ª)
+❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
 ```

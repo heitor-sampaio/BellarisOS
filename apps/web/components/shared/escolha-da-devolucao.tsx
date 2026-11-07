@@ -71,7 +71,7 @@ export function escolhaParaAAcao(devolver: number, parcial: PagamentoEmParte | n
  * estorno parcial fica desligado, com o motivo (r2-fin-03), e o inteiro já
  * vem escolhido (quem abre a janela o marca ao ler a prévia).
  */
-export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, estado, aoMudar, desligado, opcoesDeVezes }: {
+export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, estado, aoMudar, desligado, opcoesDeVezes, soEstorno = false }: {
   /** O prefixo dos ids dos grupos ("cancelar-pacote", "cancelar-unidade"). */
   prefixo:       string
   devolver:      number
@@ -81,6 +81,11 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
   aoMudar:       (e: EscolhaDaDevolucaoEstado) => void
   desligado:     boolean
   opcoesDeVezes: number[]
+  /**
+   * Sem o "Como devolver?": o que volta só pode voltar por estorno (a venda do
+   * próprio crédito na clínica — decisão 1 da 9ª). Quem chama já escolhe o ESTORNO.
+   */
+  soEstorno?:    boolean
 }) {
   const opcao = { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' } as const
   const muda = (parte: Partial<EscolhaDaDevolucaoEstado>) => aoMudar({ ...estado, ...parte })
@@ -88,7 +93,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
   if (devolver <= 0) return null
   return (
     <>
-      <div role="radiogroup" aria-labelledby={`${prefixo}-destino`} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {!soEstorno && <div role="radiogroup" aria-labelledby={`${prefixo}-destino`} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span id={`${prefixo}-destino`} className="field-label">Como devolver {formatBRL(devolver)}? *</span>
         <label style={opcao}>
           <input type="radio" name={`${prefixo}-destino`} checked={estado.destino === 'ESTORNO'} disabled={desligado}
@@ -100,7 +105,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
             onChange={() => muda({ destino: 'CREDITO' })} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
           <span>Crédito na clínica <span style={{ color: 'var(--text-muted)' }}>— fica de saldo para ela usar em outro atendimento</span></span>
         </label>
-      </div>
+      </div>}
 
       {emParte && (
         <div data-como-estornar role="radiogroup" aria-labelledby={`${prefixo}-como-estornar`} style={{

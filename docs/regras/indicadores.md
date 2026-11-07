@@ -438,6 +438,14 @@ KPI que não fazia nenhum dos dois.
   R$ 300 que entraram. Função nova que soma receita paga parte de
   `metrics_receitas_pagas` ou repete o predicado INTEIRO, com o crédito
   interno fora. Prova: `e2e/indicadores-credito-interno.spec.ts`.
+- **O crédito na clínica VENDIDO é receita no dia em que o dinheiro entrou**
+  (decisão 1 do Heitor sobre a 9ª simulação, 2026-11-07; princípio 5;
+  `vendas-financeiro.md` §9.3.4): o lançamento pago da venda do "vale"
+  (`credito_vendido_id`) é receita paga com cliente — a regra única o conta
+  sem mudança (caixa, Fechamento, faturamento, ticket, LTV). O uso depois é
+  o pagamento com crédito interno, fora da receita (acima). Não entra em
+  Relatórios → Vendas (`metrics_vendas`): a venda é a do que for pago com
+  ele. Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
 - **LTV é o que o cliente PAGOU**, desde sempre (`metrics_do_cliente`,
   `metrics_top_clients`). Não é "preço dos atendimentos": atendimento concluído
   e não pago não é dinheiro que entrou.

@@ -86,7 +86,7 @@ export default async function FinancialPage({
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
   const lancamentos = await lerTodas((de, ate) => supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id')
     .eq('branch_id', branch.id)
     .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
     // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
