@@ -215,6 +215,13 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
 
                 <AtendeNasUnidades id={`tme-atende-${member.id}`} unidades={unidadesDoAtende ?? branches}
                   marcadas={atendeEm} aoMudar={setAtendeEm} editaveis={editaveisDoAtende} />
+                {/* A33 da 9ª: os dois controles não se alinham sozinhos, e a tela não dizia. */}
+                {(unidadesDoAtende ?? branches).length > 1 && (
+                  <span data-atende-e-unidade style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    A unidade (ou a rede) é o acesso: o que a pessoa abre no sistema. O “Atende clientes em” é onde ela
+                    aparece para agendar. Um não muda o outro: mudou a unidade, confira também onde ela atende.
+                  </span>
+                )}
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span className="field-label">Horário de atendimento</span>

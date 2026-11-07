@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { HandCoins, UserCog } from 'lucide-react'
+import { HandCoins, MapPin, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
-import { profissionaisParaTrocar, reassignProfessional } from '@/actions/appointments'
+import { profissionaisParaTrocar, reassignProfessional, opcoesParaMudarDeUnidade, mudarUnidadeDoAgendamento, type UnidadeParaMudar } from '@/actions/appointments'
+import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import { creditosDoAgendamento, usarCreditoNoAgendamento } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 
@@ -75,6 +76,108 @@ export function TrocarProfissional({ appointmentId, slug, atual, onTrocou }: {
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-ghost" onClick={() => setAberto(false)}>Cancelar</button>
           <button type="button" className="btn-primary" disabled={!nova} onClick={() => setConfirmando(true)}>Trocar</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * MUDAR A UNIDADE do agendamento pela janela (A33 da 9ª simulação, 2026-11-07;
+ * H5: "a cliente é da clínica"): mover a sessão da Luana para a Menino Deus
+ * exigia cancelar e refazer. A unidade nova, a profissional que ATENDE lá
+ * ("(ocupada)" desligada) e a sala (opcional); o horário fica. Confirma antes,
+ * e o servidor confere tudo de novo (`mudarUnidadeDoAgendamento`). Na clínica
+ * de uma unidade, nem aparece.
+ */
+export function MudarDeUnidade({ appointmentId, unidadeAtual, onMudou }: {
+  appointmentId: string; unidadeAtual: string | null; onMudou: () => void
+}) {
+  const umaUnidade = useUmaUnidade()
+  const [aberto, setAberto] = useState(false)
+  const [opcoes, setOpcoes] = useState<UnidadeParaMudar[] | null>(null)
+  const [unidade, setUnidade] = useState('')
+  const [profissional, setProfissional] = useState('')
+  const [sala, setSala] = useState('')
+  const [confirmando, setConfirmando] = useState(false)
+  const [gravando, setGravando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  useEffect(() => {
+    if (!aberto) return
+    let vivo = true
+    opcoesParaMudarDeUnidade(appointmentId).then(r => { if (vivo) setOpcoes(r) }).catch(() => { if (vivo) setOpcoes([]) })
+    return () => { vivo = false }
+  }, [aberto, appointmentId])
+  if (umaUnidade) return null
+  const nova = opcoes?.find(o => o.id === unidade) ?? null
+  const quem = nova?.profissionais.find(p => p.id === profissional) ?? null
+
+  async function mudar() {
+    if (!nova || !quem) return
+    setGravando(true); setErro(null)
+    const r = await mudarUnidadeDoAgendamento(appointmentId, { branchId: nova.id, professionalId: quem.id, roomId: sala || null })
+    setGravando(false)
+    if (r?.error) { setErro(r.error); setConfirmando(false); return }
+    toast.success(`Agendamento mudado para ${nova.nome}, com ${quem.name}.`)
+    onMudou()
+  }
+
+  if (!aberto) {
+    return (
+      <button type="button" className="btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setAberto(true)}>
+        <MapPin size={14} /> Mudar de unidade
+      </button>
+    )
+  }
+  return (
+    <div data-mudar-de-unidade style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
+      <label htmlFor="mudar-unidade" className="field-label">Unidade nova</label>
+      <select id="mudar-unidade" className="field" style={{ background: 'var(--surface)' }} value={unidade} disabled={!opcoes}
+        onChange={e => { setUnidade(e.target.value); setProfissional(''); setSala(''); setConfirmando(false) }}>
+        <option value="">{opcoes ? 'Selecione a unidade…' : 'Carregando…'}</option>
+        {(opcoes ?? []).map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+      </select>
+      {opcoes && opcoes.length === 0 && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Não há outra unidade ao seu alcance para onde mudar.</p>
+      )}
+      {nova && (
+        <>
+          <label htmlFor="mudar-profissional" className="field-label">Profissional na unidade nova</label>
+          <select id="mudar-profissional" className="field" style={{ background: 'var(--surface)' }} value={profissional}
+            onChange={e => { setProfissional(e.target.value); setConfirmando(false) }}>
+            <option value="">Selecione…</option>
+            {nova.profissionais.map(p => <option key={p.id} value={p.id} disabled={!p.livre}>{p.livre ? p.name : `${p.name} (ocupada)`}</option>)}
+          </select>
+          {nova.profissionais.length === 0 && (
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Ninguém atende em {nova.nome} ainda (o “Atende clientes em”, na Equipe).</p>
+          )}
+          {nova.salas.length > 0 && (
+            <>
+              <label htmlFor="mudar-sala" className="field-label">Sala (opcional)</label>
+              <select id="mudar-sala" className="field" style={{ background: 'var(--surface)' }} value={sala} onChange={e => setSala(e.target.value)}>
+                <option value="">Sem sala</option>
+                {nova.salas.map(s => <option key={s.id} value={s.id} disabled={!s.livre}>{s.livre ? s.name : `${s.name} (ocupada)`}</option>)}
+              </select>
+            </>
+          )}
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>O horário fica o mesmo; para mudar o horário, use o Remarcar.</p>
+        </>
+      )}
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
+      {confirmando && nova && quem ? (
+        <div role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)' }}>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 700 }}>
+            Mudar o agendamento{unidadeAtual ? ` de ${unidadeAtual}` : ''} para {nova.nome}, com {quem.name}? A cliente é avisada da unidade nova.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-secondary" disabled={gravando} onClick={() => setConfirmando(false)}>Voltar</button>
+            <button type="button" className="btn-primary" disabled={gravando} onClick={mudar}>{gravando ? 'Mudando…' : 'Confirmar a mudança'}</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-ghost" onClick={() => setAberto(false)}>Cancelar</button>
+          <button type="button" className="btn-primary" disabled={!nova || !quem} onClick={() => setConfirmando(true)}>Mudar</button>
         </div>
       )}
     </div>

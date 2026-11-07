@@ -464,6 +464,24 @@
   o da posição na coluna: somar o `scrollTop` da grade outra vez (o retângulo
   da coluna já anda com a rolagem) jogava o solto para horas depois. Prova:
   `e2e/agenda-atritos-da-8.spec.ts` ("A22").
+- **Mudar a UNIDADE de um agendamento pela janela** (A33 da 9ª simulação,
+  2026-11-07; H5: "a cliente é da clínica"): mover a sessão da Luana para a
+  Menino Deus exigia cancelar e refazer — o Remarcar só muda o horário e o
+  "Trocar profissional" só oferece quem atende na unidade. A janela do
+  agendamento em aberto (Agendado/Confirmado), na clínica de duas ou mais
+  unidades e para quem tem a Agenda em Gerenciar de todos, tem "Mudar de
+  unidade" (`MudarDeUnidade`, `[data-mudar-de-unidade]`): a unidade nova (as
+  que quem muda alcança), a profissional que ATENDE lá ("(ocupada)"
+  desligada) e a sala (opcional, livre); o horário fica. Confirma antes. O
+  servidor confere tudo de novo (`mudarUnidadeCore`, `lib/appointments/alteracoes.ts`:
+  as duas unidades ao alcance, `conferirPecasDoAgendamento`,
+  `recusaDeQuemNaoAtende`, conflito da profissional e da sala); o avulso sem
+  lançamento passa ao preço da unidade nova (D2), o já pago fica com o dele;
+  o histórico grava "Unidade mudada de Moinhos para Menino Deus"
+  (`BRANCH_CHANGED`) e a troca de profissional; a cliente recebe o "Novo
+  horário … na unidade Menino Deus". A Equipe diz que "Unidade" (o acesso) e
+  "Atende clientes em" (onde agenda) são dois controles
+  (`[data-atende-e-unidade]`). Prova: `e2e/agenda-unidade-da-9.spec.ts` ("A33").
 - **"Só os meus" cancela e marca a falta do DELA** (agenda-06, revisão do
   Heitor de 2026-11-02; em 28/10 ele confirmou que a profissional cancela o
   que é dela): com a agenda em Gerenciar e escopo "só os meus", a janela da

@@ -2,7 +2,7 @@ import 'server-only'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
-import { alcancaOAgendamento, isOwnScope } from '@/lib/auth'
+import { alcancaOAgendamento, alcancaUnidade, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoConflito } from '@/lib/appointments/core'
@@ -10,6 +10,8 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { getUserName, logHistory } from '@/lib/appointments/avisos'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
+import { pagosAntes } from '@/lib/appointments/pago-antes'
+import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
  * REMARCAR e CANCELAR um agendamento — os núcleos que a agenda (actions/
@@ -127,6 +129,87 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
     deAgendadoPara: existente.scheduled_at ?? null,
   })
   return { ok: true, deAgendadoPara: existente.scheduled_at }
+}
+
+/**
+ * MUDAR A UNIDADE de um agendamento (A33 da 9ª simulação, 2026-11-07; H5: "a
+ * cliente é da clínica, pode agendar em qualquer unidade"): mover a sessão da
+ * Luana para a Menino Deus exigia cancelar e refazer. O horário fica (mudar o
+ * horário é o remarcar); a profissional é uma que ATENDE na unidade nova
+ * (`recusaDeQuemNaoAtende`) e está livre, a sala (opcional) é da unidade nova e
+ * livre, e quem muda alcança as DUAS unidades. O avulso passa ao preço da
+ * unidade nova (D2); o que já foi pago (pacote, plano, pré-pago) ou tem
+ * lançamento fica com o preço que tinha. O histórico diz de onde para onde.
+ */
+export async function mudarUnidadeCore(admin: Admin, ctx: TenantContext, input: {
+  appointmentId: string; branchId: string; professionalId: string; roomId?: string | null
+}): Promise<{ ok: true; de: string; para: string } | { error: string }> {
+  const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
+  if (!existente || !alcancaUnidade(ctx, existente.branch_id)) return { error: 'Agendamento não encontrado.' }
+  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
+  if (!['SCHEDULED', 'CONFIRMED'].includes(existente.status)) {
+    return { error: 'Só o agendamento que ainda não começou muda de unidade.' }
+  }
+  if (input.branchId === existente.branch_id) return { error: 'O agendamento já é desta unidade.' }
+  if (!alcancaUnidade(ctx, input.branchId)) return { error: 'Unidade não encontrada.' }
+
+  const ag = await ler(admin.from('appointments').select('procedure_id, procedures(price)')
+    .eq('id', existente.id).maybeSingle(), 'buscar o procedimento do agendamento') as
+    { procedure_id: string | null; procedures: { price: number | null } | null } | null
+  const procedureId = ag?.procedure_id ?? null
+  const recusa = await conferirPecasDoAgendamento(admin, ctx, {
+    branchId: input.branchId, professionalId: input.professionalId, roomId: input.roomId ?? null, procedureId,
+  })
+  if (recusa) return { error: recusa }
+  const naoAtende = await recusaDeQuemNaoAtende(admin, ctx.tenantId!, input.professionalId, input.branchId)
+  if (naoAtende) return { error: naoAtende }
+  const inicio = new Date(existente.scheduled_at)
+  const duracaoMin = existente.duration_min || 60
+  const choque = await primeiroConflito(admin, {
+    tenantId: ctx.tenantId!, professionalId: input.professionalId, excluir: existente.id, inicio, duracaoMin,
+  })
+  if (choque) return { error: recusaDoConflito(choque, input.branchId) }
+  if (input.roomId && await horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, roomId: input.roomId, branchId: input.branchId, excluir: existente.id, inicio, duracaoMin,
+  })) return { error: 'Esta sala já está ocupada nesse horário.' }
+
+  // O preço: o avulso ainda sem lançamento passa ao da unidade nova (D2 da 9ª).
+  const [jaPago, lancamentos] = await Promise.all([
+    pagosAntes(admin, [existente.id]),
+    ler(admin.from('financial_transactions').select('id').eq('appointment_id', existente.id)
+      .or('notes.is.null,notes.neq.Estornada').limit(1), 'buscar o lançamento do agendamento') as Promise<{ id: string }[] | null>,
+  ])
+  const avulso = !jaPago.has(existente.id) && !(lancamentos ?? []).length && procedureId
+  const precoNovo = avulso
+    ? await precoDoProcedimentoNaUnidade(admin, procedureId, input.branchId, ag?.procedures?.price ?? null)
+    : undefined
+
+  const mudados = await gravar(admin.from('appointments').update({
+    branch_id: input.branchId, professional_id: input.professionalId, room_id: input.roomId ?? null,
+    ...(precoNovo !== undefined ? { price: precoNovo } : {}),
+    updated_at: new Date().toISOString(),
+  }).eq('id', existente.id).in('status', ['SCHEDULED', 'CONFIRMED']).select('id'), 'mudar a unidade do agendamento') as { id: string }[] | null
+  if (!mudados?.length) return { error: 'O agendamento mudou de situação. Confira na agenda.' }
+
+  const [unidades, nomes] = await Promise.all([
+    ler(admin.from('branches').select('id, name').in('id', [existente.branch_id, input.branchId]), 'buscar as unidades') as Promise<{ id: string; name: string }[] | null>,
+    ler(admin.from('users').select('id, name').in('id', [input.professionalId, ...(existente.professional_id ? [existente.professional_id] : [])]), 'buscar os profissionais') as Promise<{ id: string; name: string }[] | null>,
+  ])
+  const de = unidades?.find(u => u.id === existente.branch_id)?.name ?? 'outra unidade'
+  const para = unidades?.find(u => u.id === input.branchId)?.name ?? 'outra unidade'
+  const userName = ctx.userName || await getUserName(admin, ctx.userId)
+  await logHistory(admin, existente.id, ctx.internalUserId, userName, 'BRANCH_CHANGED',
+    `Unidade mudada de ${de} para ${para}`, { old_branch_id: existente.branch_id, new_branch_id: input.branchId })
+  if (input.professionalId !== existente.professional_id) {
+    const nomeDe = (id: string | null) => (id && nomes?.find(n => n.id === id)?.name) || null
+    await logHistory(admin, existente.id, ctx.internalUserId, userName, 'REASSIGNED',
+      textoDaTroca(nomeDe(existente.professional_id), nomeDe(input.professionalId) ?? input.professionalId),
+      { old_professional_id: existente.professional_id, new_professional_id: input.professionalId })
+  }
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_REMARCADO, existente.id, { ...ctx, userName }, {
+    deAgendadoPara: existente.scheduled_at ?? null,
+  })
+  return { ok: true, de, para }
 }
 
 export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {

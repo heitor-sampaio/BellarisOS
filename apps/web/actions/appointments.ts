@@ -4,6 +4,7 @@ import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
 import { CLIENTE_ARQUIVADA, CLIENTE_ARQUIVADA_NO_APP } from '@/lib/clients/arquivada'
 import { NAO_REALIZA, quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { z } from 'zod'
 import { after } from 'next/server'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso } from '@/lib/auth'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -12,7 +13,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
 import {
-  getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade,
+  getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado, candidatasDoDia, fimDaOcupacao } from '@/lib/appointments/core'
@@ -20,7 +21,7 @@ import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { juntarHorarios, escolherQuemAtende } from '@/lib/appointments/sem-preferencia'
 import { proximoHorarioLivre as procurarHorarioLivre } from '@/lib/agenda/proximo-livre'
 import {
-  agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento,
+  agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento, mudarUnidadeCore,
   deOutroProfissional, DE_OUTRO_PROFISSIONAL,
 } from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
@@ -622,6 +623,76 @@ export async function profissionaisParaTrocar(appointmentId: string): Promise<{ 
     duracaoMin: a.duration_min ?? 60, excluir: a.id,
   }).then(ocupado => !ocupado)))
   return outras.map((p, i) => ({ id: p.id, name: p.name, livre: livres[i]! }))
+}
+
+// --- Mudar a unidade do agendamento (A33 da 9ª) ---------------------
+export interface UnidadeParaMudar {
+  id: string; nome: string
+  profissionais: { id: string; name: string; livre: boolean }[]
+  salas: { id: string; name: string; livre: boolean }[]
+}
+
+/**
+ * As unidades para onde o agendamento pode ir (A33 da 9ª simulação): as outras
+ * ativas que quem muda alcança, cada uma com quem ATENDE lá (livre ou não no
+ * horário) e as salas (livres ou não). Só leitura; `mudarUnidadeDoAgendamento`
+ * confere tudo de novo (`mudarUnidadeCore`).
+ */
+export async function opcoesParaMudarDeUnidade(appointmentId: string): Promise<UnidadeParaMudar[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+  if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return []
+  const admin = createAdminClient()
+  const a = await ler(admin.from('appointments')
+    .select('id, status, branch_id, professional_id, scheduled_at, duration_min, branches!inner(tenant_id)')
+    .eq('id', appointmentId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o agendamento') as {
+      id: string; status: string; branch_id: string; professional_id: string | null; scheduled_at: string; duration_min: number | null
+    } | null
+  if (!a || !alcancaUnidade(ctx, a.branch_id) || deOutroProfissional(ctx, a.professional_id)) return []
+  if (!['SCHEDULED', 'CONFIRMED'].includes(a.status)) return []
+  const inicio = new Date(a.scheduled_at)
+  const duracaoMin = a.duration_min ?? 60
+  const unidades = ((await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string }[])
+    .filter(u => u.id !== a.branch_id && alcancaUnidade(ctx, u.id))
+  return Promise.all(unidades.map(async u => {
+    const [equipe, salas] = await Promise.all([
+      getCachedBranchProfessionals(u.id, ctx.tenantId!) as Promise<{ id: string; name: string }[]>,
+      getCachedRoomsByBranch(u.id, ctx.tenantId!) as Promise<{ id: string; name: string }[]>,
+    ])
+    const [livresP, livresS] = await Promise.all([
+      Promise.all(equipe.map(p => horarioOcupado(admin, { tenantId: ctx.tenantId!, professionalId: p.id, inicio, duracaoMin, excluir: a.id }).then(o => !o))),
+      Promise.all(salas.map(s => horarioOcupado(admin, { tenantId: ctx.tenantId!, roomId: s.id, branchId: u.id, inicio, duracaoMin, excluir: a.id }).then(o => !o))),
+    ])
+    return {
+      id: u.id, nome: u.name,
+      profissionais: equipe.map((p, i) => ({ id: p.id, name: p.name, livre: livresP[i]! })),
+      salas: salas.map((s, i) => ({ id: s.id, name: s.name, livre: livresS[i]! })),
+    }
+  }))
+}
+
+const EntradaDaMudancaDeUnidade = z.object({
+  branchId: z.string().uuid(), professionalId: z.string().uuid(), roomId: z.string().uuid().nullable().optional(),
+})
+
+export async function mudarUnidadeDoAgendamento(appointmentId: string, entrada: unknown): Promise<{ error?: string; de?: string; para?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    if (typeof appointmentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(appointmentId)) return { error: 'Agendamento não encontrado.' }
+    const lido = EntradaDaMudancaDeUnidade.safeParse(entrada)
+    if (!lido.success) return { error: 'Escolha a unidade e a profissional.' }
+    const admin = createAdminClient()
+    const r = await mudarUnidadeCore(admin, ctx, { appointmentId, ...lido.data })
+    if ('error' in r) return { error: r.error }
+    revalidarAgendamento(ctx, appointmentId)
+    revalidatePath('/[slug]/agenda', 'page')
+    // A cliente fica sabendo, com a unidade nova (A48).
+    notifyRescheduledAppointment(appointmentId, ctx.internalUserId)
+    return { de: r.de, para: r.para }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
 }
 
 // --- Reatribuir profissional --------------------------------------

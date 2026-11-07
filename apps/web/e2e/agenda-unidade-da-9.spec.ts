@@ -2,10 +2,13 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { haMinutosHoje } from './apoio/datas'
+import { haMinutosHoje, diaEmQueAUnidadeAbre } from './apoio/datas'
+import { chamarAcao } from './apoio/acao-direta'
 
 /**
  * A agenda da 2ª unidade na 9ª simulação (2026-11-07):
+ * - A33: não havia como mudar a UNIDADE de um agendamento (H5: a cliente é da
+ *   clínica) — mover a sessão da Luana para a Menino Deus exigia cancelar e refazer.
  * - D10: "Seus atendimentos em outras unidades" levava quem é da rede a
  *   `/menino-deus/agenda/<id da Moinhos>` (404), e listava o já concluído.
  */
@@ -18,6 +21,8 @@ let slugMoinhos = ''
 let menino = ''
 let slugMenino = ''
 let carolina: MembroDeTeste | null = null
+let michele: MembroDeTeste | null = null
+let priscila: MembroDeTeste | null = null
 let cliente = ''
 
 async function como(browser: Browser, estado: string, fn: (p: Page) => Promise<void>) {
@@ -42,10 +47,15 @@ test.beforeAll(async () => {
   // A dona que atende, nas duas unidades.
   carolina = await criarMembro(`ag9c${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Carolina', permissoes: [] })
   expect((await db().from('users').update({ atende_em: [moinhos, menino] }).eq('id', carolina.userId)).error).toBeNull()
+  // A Michele atende só na Menino Deus; a Priscila, só na Moinhos.
+  michele = await criarMembro(`ag9m${marca}`, { tenant: rede.tenantId, branchId: menino, rotulo: 'Michele', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
+  priscila = await criarMembro(`ag9p${marca}`, { tenant: rede.tenantId, branchId: moinhos, rotulo: 'Priscila', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })
+  expect((await db().from('users').update({ atende_em: [menino] }).eq('id', michele.userId)).error).toBeNull()
+  expect((await db().from('users').update({ atende_em: [moinhos] }).eq('id', priscila.userId)).error).toBeNull()
 })
 
 test.afterAll(async () => {
-  await carolina?.limpar()
+  await priscila?.limpar(); await michele?.limpar(); await carolina?.limpar()
   await rede?.limpar()
 })
 
@@ -75,4 +85,36 @@ test('D10: o atendimento de outra unidade abre no endereço dela, e o concluído
     await p.goto(`/${slugMenino}/agenda/${aberto}`)
     await expect(p).toHaveURL(new RegExp(`/${slugMoinhos}/agenda/${aberto}`))
   })
+})
+
+test('A33: a janela muda a UNIDADE do agendamento, com quem atende lá, e o histórico diz de onde para onde', async ({ browser }) => {
+  const dia = diaEmQueAUnidadeAbre(4)
+  const { data: ag, error } = await db().from('appointments').insert({
+    branch_id: moinhos, client_id: cliente, procedure_id: rede!.procedureId, professional_id: carolina!.userId,
+    scheduled_at: new Date(`${dia}T10:00:00-03:00`).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const nomeDaMichele = (await db().from('users').select('name').eq('id', michele!.userId).single<{ name: string }>()).data!.name
+  const nomeMoinhos = (await db().from('branches').select('name').eq('id', moinhos).single<{ name: string }>()).data!.name
+  const nomeMenino = `${PREFIXO} Menino Deus ag9${marca}`
+  await como(browser, carolina!.estado, async p => {
+    // O servidor recusa quem não atende na unidade nova.
+    const r = await chamarAcao(p, 'actions/appointments.ts', 'mudarUnidadeDoAgendamento', `/${slugMoinhos}/agenda`,
+      [ag!.id, { branchId: menino, professionalId: priscila!.userId, roomId: null }])
+    expect(r.texto).toContain('não atende')
+    await p.goto(`/${slugMoinhos}/agenda?date=${dia}`)
+    await p.locator(`[data-agendamento="${ag!.id}"]`).first().click()
+    const janela = p.getByRole('dialog', { name: 'Agendamento' })
+    await janela.getByRole('button', { name: 'Mudar de unidade' }).click()
+    const mudar = janela.locator('[data-mudar-de-unidade]')
+    await mudar.getByLabel('Unidade nova').selectOption({ label: nomeMenino })
+    await mudar.getByLabel('Profissional na unidade nova').selectOption({ label: nomeDaMichele })
+    await mudar.getByRole('button', { name: 'Mudar', exact: true }).click()
+    await mudar.getByRole('button', { name: 'Confirmar a mudança' }).click()
+    await expect(janela).toBeHidden()
+  })
+  await expect.poll(async () => (await db().from('appointments').select('branch_id, professional_id').eq('id', ag!.id).single()).data)
+    .toEqual({ branch_id: menino, professional_id: michele!.userId })
+  const h = (await db().from('appointment_history').select('description').eq('appointment_id', ag!.id)).data ?? []
+  expect(h.map(x => x.description).join(' | ')).toContain(`de ${nomeMoinhos} para ${nomeMenino}`)
 })

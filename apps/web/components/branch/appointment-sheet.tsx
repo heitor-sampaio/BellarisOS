@@ -14,7 +14,7 @@ import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 import { DocumentosDaJanela } from './documentos-da-janela'
-import { TrocarProfissional, UsarOQueJaFoiPago } from './janela-do-agendamento-acoes'
+import { MudarDeUnidade, TrocarProfissional, UsarOQueJaFoiPago } from './janela-do-agendamento-acoes'
 import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 
 interface AppointmentEvent {
@@ -419,6 +419,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             {!isProfessional && podeGerenciar && (
               <TrocarProfissional appointmentId={appointment.id} slug={slug} atual={appointment.professionalName}
                 onTrocou={() => { onClose(); router.refresh() }} />
+            )}
+            {/* A33 da 9ª: mudar a UNIDADE (a cliente é da clínica — H5). */}
+            {!isProfessional && podeGerenciar && ['SCHEDULED', 'CONFIRMED'].includes(appointment.status) && (
+              <MudarDeUnidade appointmentId={appointment.id} unidadeAtual={appointment.unidade ?? null}
+                onMudou={() => { onClose(); router.refresh() }} />
             )}
 
             {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
