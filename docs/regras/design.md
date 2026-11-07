@@ -99,7 +99,14 @@ Princípios inegociáveis:
   "Bom dia" das 05:00 às 11:59, "Boa tarde" até as 17:59, "Boa noite" até as
   23:59 e, de madrugada (00:00–04:59), "Olá" — A55 da 7ª simulação
   (2026-11-05): "Boa noite" às 04h30 numa clínica 24 h. Prova:
-  `tests/saudacao-e-iniciais.test.ts`.
+  `tests/saudacao-e-iniciais.test.ts`. **E não dá erro de hidratação** (D18 da
+  9ª simulação, 2026-11-07): o servidor e o navegador calculavam cada um, e na
+  virada das faixas (ou com o relógio do aparelho adiantado) o React #418
+  aparecia ("Boa noite" virando "Olá"). O layout passa a do servidor
+  (`saudacaoInicial`), a hidratação a usa e o navegador troca pela dele em
+  seguida e a cada minuto (`useSyncExternalStore` na topbar). Texto que depende
+  da HORA num componente de cliente segue o mesmo caminho. Prova:
+  `e2e/atendimento-atritos-da-9.spec.ts` ("D18", o navegador 12 h à frente).
 - **A clínica de UMA unidade não fala "rede"** (F8 da 5ª simulação,
   2026-11-02, levando o D-19 de `docs/regras/indicadores.md` a toda tela). A
   régua é a mesma, `redeTemUmaUnidade`; o texto passa por

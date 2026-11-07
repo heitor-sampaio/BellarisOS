@@ -17,6 +17,7 @@ import { ler } from '@/lib/db'
 import { ENDERECOS_RESERVADOS } from '@/lib/unidades/endereco'
 import { comAviso } from '@/lib/aviso-da-url'
 import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
+import { saudacao } from '@/lib/saudacao'
 
 export default async function BranchLayout({
   children,
@@ -122,7 +123,7 @@ export default async function BranchLayout({
         allBranches={allBranches}
         umaUnidade={umaUnidade}
       />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao()} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',

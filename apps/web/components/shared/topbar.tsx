@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { saudacao, primeiroNome } from '@/lib/saudacao'
 import { Menu } from 'lucide-react'
@@ -38,6 +38,24 @@ interface TopbarProps {
   suporte?:       SuporteNoContexto | null
   /** Teste acabando ou pagamento em atraso — só para quem administra a rede. */
   assinatura?:    AvisoDaAssinaturaDados | null
+  /**
+   * A saudação que o SERVIDOR calculou (`saudacao()` no layout): é ela que
+   * a hidratação usa, e o navegador troca pela dele logo depois (D18 da 9ª).
+   */
+  saudacaoInicial?: ReturnType<typeof saudacao>
+}
+
+/**
+ * A saudação pela hora, sem erro de hidratação (D18 da 9ª simulação,
+ * 2026-11-07): o servidor e o navegador a calculavam cada um, e na virada das
+ * faixas (00:00, 05:00, 12:00, 18:00 — ou com o relógio do aparelho adiantado)
+ * os dois textos diferiam — o React #418 ao recarregar o Estoque, "Boa noite"
+ * virando "Olá". A hidratação usa a do servidor (`saudacaoInicial`), e o
+ * navegador passa à dele em seguida e a cada minuto.
+ */
+function assinarOMinuto(avisar: () => void): () => void {
+  const t = setInterval(avisar, 60_000)
+  return () => clearInterval(t)
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -51,9 +69,10 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, saudacaoInicial }: TopbarProps) {
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
+  const ola        = useSyncExternalStore(assinarOMinuto, () => saudacao(), () => saudacaoInicial ?? saudacao())
   const { toggle } = useSidebar()
   const umaUnidade = useUmaUnidade()
 
@@ -109,7 +128,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
         color:      'var(--text-muted)',
         fontWeight: 'var(--weight-semibold)',
       }}>
-        {saudacao()}, {firstName} ✦
+        {ola}, {firstName} ✦
       </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
