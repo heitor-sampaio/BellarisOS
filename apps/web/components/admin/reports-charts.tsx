@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
 } from 'recharts'
-import { categoryAxisWidth, numericAxisWidth } from '@/lib/chart-utils'
+import { categoryAxisWidth, numericAxisWidth, rotuloDoEixo } from '@/lib/chart-utils'
 
 // -- Palette -------------------------------------------------------------------
 export const CHART_COLORS = ['var(--brand)', 'var(--cat-4)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--text-muted)']
@@ -15,8 +15,8 @@ const _fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export const fmtBRLShort = (v: number): string => {
-  if (Math.abs(v) >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`
-  if (Math.abs(v) >= 1_000)     return `R$${(v / 1_000).toFixed(0)}k`
+  // A52 da 9ª: o rótulo curto guarda a casa decimal ("R$1,5k", não "R$2k").
+  if (Math.abs(v) >= 1_000) return rotuloDoEixo(v, 'R$')
   return _fmtBRL(v)
 }
 

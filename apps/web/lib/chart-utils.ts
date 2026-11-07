@@ -33,3 +33,23 @@ export function numericAxisWidth(
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v))
 }
+
+/**
+ * O rótulo do eixo em reais, curto ("500", "1,5k", "1,3M"), com a casa
+ * decimal quando ela distingue (A52 da 9ª simulação: o "toFixed(0)" fazia o
+ * 1.500 virar "2k" ao lado do 2.000 — "2k, 2k" no eixo). Um só para a
+ * evolução, os relatórios e o fluxo de caixa.
+ */
+export function rotuloDoEixo(v: number, prefixo = ''): string {
+  const curto = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1, useGrouping: false })
+  if (Math.abs(v) >= 1_000_000) return `${prefixo}${curto(v / 1_000_000)}M`
+  if (Math.abs(v) >= 1_000)     return `${prefixo}${curto(v / 1_000)}k`
+  return `${prefixo}${v}`
+}
+
+/**
+ * A curva do "Evolução do período" (A52 da 9ª): reta entre os pontos, com o
+ * ponto de cada dia à vista. A suavizada parecia subir antes do primeiro dia
+ * com valor (o zero de 04/11 ia "subindo" até o 05/11).
+ */
+export const CURVA_DA_EVOLUCAO = 'linear' as const

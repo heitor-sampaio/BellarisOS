@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { numericAxisWidth } from '@/lib/chart-utils'
+import { numericAxisWidth, rotuloDoEixo, CURVA_DA_EVOLUCAO } from '@/lib/chart-utils'
 
 export interface ChartPoint {
   day:     number
@@ -41,11 +41,8 @@ function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function fmtAxis(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
-  if (Math.abs(v) >= 1_000)     return `${(v / 1_000).toFixed(0)}k`
-  return `${v}`
-}
+/** O eixo em reais (A52 da 9ª: "1,5k", não "2k" ao lado do 2.000). */
+const fmtAxis = (v: number) => rotuloDoEixo(v)
 
 /** O que o Recharts entrega ao `content` do Tooltip — só o que é lido aqui. */
 interface EntradaDoTooltip { dataKey?: string | number; color?: string; value?: unknown; payload?: { rotulo?: string } }
@@ -95,6 +92,9 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day', soReceit
   const totalCost    = data.reduce((s, d) => s + d.cost,    0)
   const totals = { revenue: totalRevenue, cost: totalCost, profit: totalRevenue - totalCost }
   const yAxisW = numericAxisWidth(data.flatMap(d => series.map(k => d[k])), fmtAxis)
+  // A52 da 9ª: o ponto de cada dia (ou hora) à vista — a reta entre dois pontos
+  // não parece mais um valor que não houve. Com muitos pontos, só a linha.
+  const pontos = data.length <= 45
 
   return (
     <div style={{ padding: '18px 20px 8px' }}>
@@ -165,14 +165,14 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day', soReceit
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border, var(--border))', strokeWidth: 1.5, strokeDasharray: '4 3' }} />
 
           <Area
-            type="monotone" dataKey="revenue"
+            type={CURVA_DA_EVOLUCAO} dataKey="revenue"
             stroke={COLORS.revenue} strokeWidth={2.5}
             fill="url(#gradRevenue)"
-            dot={false} activeDot={{ r: 5, fill: COLORS.revenue, stroke: 'var(--surface)', strokeWidth: 2 }}
+            dot={pontos ? { r: 2.5, fill: COLORS.revenue, stroke: 'none' } : false} activeDot={{ r: 5, fill: COLORS.revenue, stroke: 'var(--surface)', strokeWidth: 2 }}
             animationDuration={1000} animationEasing="ease-out"
           />
           {!soReceita && <Area
-            type="monotone" dataKey="cost"
+            type={CURVA_DA_EVOLUCAO} dataKey="cost"
             stroke={COLORS.cost} strokeWidth={2}
             fill="url(#gradCost)"
             strokeDasharray="6 3"
@@ -180,7 +180,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day', soReceit
             animationDuration={1100} animationEasing="ease-out"
           />}
           {!soReceita && <Area
-            type="monotone" dataKey="profit"
+            type={CURVA_DA_EVOLUCAO} dataKey="profit"
             stroke={COLORS.profit} strokeWidth={2.5}
             fill="url(#gradProfit)"
             dot={false} activeDot={{ r: 5, fill: COLORS.profit, stroke: 'var(--surface)', strokeWidth: 2 }}
