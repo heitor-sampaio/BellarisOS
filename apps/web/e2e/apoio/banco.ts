@@ -87,6 +87,27 @@ export async function criarLoginDeTeste(db: SupabaseClient, email: string, oQue:
   throw new Error(`${oQue}: o Auth não respondeu`)
 }
 
+/**
+ * A senha de teste no login, com a mesma paciência (F46 — a completa de 07/11,
+ * com o banco parado ~40 s às 22:19Z: o PUT do Auth respondeu 504 depois de
+ * 36 s, e `portal-cliente-varias-clinicas` morreu em "pôr a senha de teste:
+ * {}"). Pôr a MESMA senha de novo não muda nada: repete o Auth que caiu (5xx,
+ * erro sem mensagem, o fetch que não voltou). O erro com mensagem (o login não
+ * existe) é o Auth falando, e volta na hora.
+ */
+export async function porSenhaDeTeste(db: SupabaseClient, authId: string, senha: string): Promise<void> {
+  for (const espera of [0, 5, 15, 30]) {
+    if (espera) await new Promise(ok => setTimeout(ok, espera * 1000))
+    const { error } = await db.auth.admin.updateUserById(authId, { password: senha })
+    if (!error) return
+    const e = error as { message?: string; status?: number; name?: string }
+    const caiu = !e.message || (e.status ?? 0) >= 500 || e.name === 'AuthRetryableFetchError'
+    if (!caiu) throw new Error(`pôr a senha de teste: ${e.message}`)
+    console.warn(`[e2e] pôr a senha de teste: ${e.message || JSON.stringify(error)}${e.status ? ` (HTTP ${e.status})` : ''} — tentando de novo`)
+  }
+  throw new Error('pôr a senha de teste: o Auth não respondeu')
+}
+
 /** O id do login com este e-mail (o Auth não busca por e-mail: pagina). */
 async function loginPeloEmail(db: SupabaseClient, email: string): Promise<string | null> {
   for (let pagina = 1; pagina < 50; pagina++) {

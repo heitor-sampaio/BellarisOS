@@ -3,7 +3,7 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { banco, tenantId, PREFIXO, criarLoginDeTeste } from './banco'
+import { banco, tenantId, PREFIXO, criarLoginDeTeste, porSenhaDeTeste } from './banco'
 import { apagarClientes } from './limpeza'
 import { redeAdiada } from './limpeza-adiada'
 
@@ -73,8 +73,7 @@ export interface Permissao {
 export async function sessaoDeTeste(authId: string, email: string): Promise<{ cliente: SupabaseClient; sessao: Session }> {
   const db = banco()
   const senha = `E2e-${randomUUID()}`
-  const { error: erroSenha } = await db.auth.admin.updateUserById(authId, { password: senha })
-  if (erroSenha) throw new Error(`pôr a senha de teste: ${erroSenha.message}`)
+  await porSenhaDeTeste(db, authId, senha)
   const cliente = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } },

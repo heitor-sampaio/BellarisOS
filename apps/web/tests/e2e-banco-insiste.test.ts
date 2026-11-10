@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchQueInsiste, criarLoginDeTeste } from '../e2e/apoio/banco'
+import { fetchQueInsiste, criarLoginDeTeste, porSenhaDeTeste } from '../e2e/apoio/banco'
 
 /**
  * O banco do E2E com o Postgres engasgado (F45, 2026-11-07).
@@ -15,6 +15,10 @@ import { fetchQueInsiste, criarLoginDeTeste } from '../e2e/apoio/banco'
  *   erro de gravação volta na hora (é o banco falando).
  * - O login que o Auth não criou (5xx, erro sem mensagem) repete; se a
  *   repetição diz "já existe", a primeira chegou a criar — vale o que existe.
+ * - A senha de teste que o Auth não pôs (F46, a completa de 07/11: o PUT
+ *   /auth/v1/admin/users/<id> respondeu 504 depois de 36 s, e o teste morreu
+ *   em "pôr a senha de teste: {}") repete: pôr a MESMA senha de novo não muda
+ *   nada. O erro com mensagem (4xx: o login não existe) volta na hora.
  */
 
 const CANCELADA = JSON.stringify({ code: '57014', details: null, hint: null, message: 'canceling statement due to statement timeout' })
@@ -89,5 +93,37 @@ describe('criarLoginDeTeste', () => {
   it('"já existe" de primeira é erro do teste (o e-mail é de outro), não se adota', async () => {
     const d = db([{ data: { user: null }, error: { message: 'A user with this email address has already been registered' } }], [{ id: 'u1', email }])
     await expect(criarLoginDeTeste(d as never, email, 'criar o login')).rejects.toThrow(/criar o login: .*already been registered/)
+  })
+})
+
+describe('porSenhaDeTeste', () => {
+  const db = (respostas: Array<{ error: { message?: string; status?: number; name?: string } | null }>) => ({
+    auth: { admin: { updateUserById: vi.fn().mockImplementation(async () => ({ data: { user: null }, ...respostas.shift()! })) } },
+  })
+
+  it('o Auth que caiu (504, erro vazio) repete com a MESMA senha, e a segunda vale', async () => {
+    vi.useFakeTimers()
+    const d = db([{ error: { message: '', status: 504, name: 'AuthRetryableFetchError' } }, { error: null }])
+    const p = porSenhaDeTeste(d as never, 'u1', 'E2e-x')
+    await vi.runAllTimersAsync()
+    await expect(p).resolves.toBeUndefined()
+    expect(d.auth.admin.updateUserById).toHaveBeenCalledTimes(2)
+    expect(d.auth.admin.updateUserById.mock.calls.map(c => c[1])).toEqual([{ password: 'E2e-x' }, { password: 'E2e-x' }])
+  })
+
+  it('o erro com mensagem (o login não existe) volta na hora', async () => {
+    const d = db([{ error: { message: 'User not found', status: 404 } }])
+    await expect(porSenhaDeTeste(d as never, 'u1', 'E2e-x')).rejects.toThrow('pôr a senha de teste: User not found')
+    expect(d.auth.admin.updateUserById).toHaveBeenCalledTimes(1)
+  })
+
+  it('caído em todas as tentativas, lança dizendo (não insiste para sempre)', async () => {
+    vi.useFakeTimers()
+    const d = db([{ error: {} }, { error: {} }, { error: {} }, { error: {} }])
+    const p = porSenhaDeTeste(d as never, 'u1', 'E2e-x')
+    const conferida = expect(p).rejects.toThrow(/pôr a senha de teste: o Auth não respondeu/)
+    await vi.runAllTimersAsync()
+    await conferida
+    expect(d.auth.admin.updateUserById).toHaveBeenCalledTimes(4)
   })
 })

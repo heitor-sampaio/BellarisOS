@@ -224,7 +224,11 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     oportunidade e do agendamento do próprio teste. Outro erro de gravação volta
     na hora. E o login de teste sai de `criarLoginDeTeste` (`apoio/banco.ts`):
     o Auth com o banco parado responde erro VAZIO ("criar o login: {}") — repete,
-    e se a repetição diz "já existe", vale o login que a primeira criou. Prova:
+    e se a repetição diz "já existe", vale o login que a primeira criou. A
+    SENHA do login de teste (`sessaoDeTeste`) sai de `porSenhaDeTeste` (F46 —
+    a completa de 07/11, o PUT do Auth em 504 depois de 36 s: "pôr a senha de
+    teste: {}"): pôr a mesma senha de novo não muda nada, e o Auth caído
+    repete; o erro com mensagem volta na hora. Prova:
     `tests/e2e-banco-insiste.test.ts`.
   - Clique num cartão da grade do DIA da agenda da unidade é por
     `cartaoNaGradeDoDia` (`apoio/agenda.ts`, F45): ele espera a grade rolar
