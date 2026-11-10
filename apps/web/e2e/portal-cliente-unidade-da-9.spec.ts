@@ -44,9 +44,10 @@ test('D12: o atalho do procedimento pergunta a unidade quando a clínica tem mai
     await p.goto(`/${slugMoinhos}/cliente/agendamentos/novo?procedimento=${rede!.procedureId}`)
     await expect(p.getByText('Em qual unidade?'), 'pergunta antes de seguir').toBeVisible()
     await expect(p.getByText('Tem preferência de profissional?')).toHaveCount(0)
-    // A escolha da unidade segue com o procedimento, direto para a profissional.
+    // A escolha da unidade segue com o procedimento — e, com UMA profissional lá,
+    // direto para a data (A2 da 10ª).
     await p.getByRole('group', { name: 'Unidade' }).getByRole('link', { name: new RegExp(`Menino Deus pc9${marca}`) }).click()
     await expect(p).toHaveURL(new RegExp(`/${slugMenino}/cliente/agendamentos/novo\\?procedimento=${rede!.procedureId}`))
-    await expect(p.getByText('Tem preferência de profissional?')).toBeVisible()
+    await expect(p.getByText('Escolha a data e o horário disponível.')).toBeVisible()
   } finally { await ctx.close() }
 })

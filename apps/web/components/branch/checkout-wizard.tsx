@@ -30,6 +30,7 @@ import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
+import { unicaOpcao } from '@/lib/uma-opcao'
 import { lerPassoDoCheckout, gravarPassoDoCheckout, limparPassoDoCheckout, type PassoDoCheckout } from '@/lib/checkout/passo-do-checkout'
 
 // -- Types ---------------------------------------------------------------------
@@ -252,6 +253,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     getSchedulingBranchProfessionals(schedBranchId).then(res => {
       setSchedProfs(res.professionals)
       setLoadingProfs(false)
+      // A2 da 10ª: com UMA profissional na unidade, ela vem escolhida.
+      const unica = unicaOpcao(res.professionals)
+      if (unica) setSchedProfId(atual => atual || unica)
     })
   }, [schedBranchId])
 

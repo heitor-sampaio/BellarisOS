@@ -69,7 +69,10 @@ test('D10: o Confirmar da sessão coberta pelo pacote diz "Já pago pelo pacote 
     const confirmar = async (procedimento: string) => {
       await p.goto(`/${slug}/cliente/agendamentos/novo`)
       await p.getByRole('button', { name: new RegExp(procedimento) }).first().click()
-      await p.getByRole('button', { name: /\[e2e\] Prof/ }).first().click()
+      // A2 da 10ª: com UMA profissional, o passo dela some e a tela vai à data.
+      const prof = p.getByRole('button', { name: /\[e2e\] Prof/ }).first()
+      await expect(prof.or(p.getByText('Escolha a data e o horário disponível.'))).toBeVisible()
+      if (await prof.isVisible()) await prof.click()
       // O primeiro dia com horário livre: amanhã em diante.
       for (let d = 1; d <= 7; d++) {
         const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + d * 86_400_000))

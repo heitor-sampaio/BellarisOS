@@ -72,7 +72,7 @@ async function ateAPrevia(p: Page, nome: string, conteudo: string, destino: 'Com
     await expect(p.getByRole('button', { name: 'Continuar', exact: true })).toBeEnabled({ timeout: 1500 })
   }).toPass()
   await p.getByRole('button', { name: destino, exact: true }).click()
-  if (destino === 'Como clientes') await p.getByLabel('Unidade', { exact: true }).selectOption({ label: unidadeNome })
+  if (destino === 'Como clientes') await expect(p.getByText(`Unidade: ${unidadeNome}`)).toBeVisible() // A2 da 10ª: uma unidade só, a pergunta some
   await p.getByRole('button', { name: 'Continuar', exact: true }).click()
   await p.getByRole('button', { name: 'Continuar', exact: true }).click()
   return p.locator('[data-previa]')

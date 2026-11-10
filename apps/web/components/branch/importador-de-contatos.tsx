@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { unicaOpcao } from '@/lib/uma-opcao'
 import { useRouter } from 'next/navigation'
 import { FileUp, Download, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -86,7 +87,7 @@ export function ImportadorDeContatos(p: Props) {
   const [arquivo, setArquivo] = useState<{ nome: string; cabecalho: string[]; linhas: string[][]; numeros: number[]; separador: string } | null>(null)
   const [erroArquivo, setErroArquivo] = useState<string | null>(null)
   const [destino, setDestino] = useState<Destino>(destinosPossiveis[0] ?? 'clientes')
-  const [branchId, setBranchId] = useState(p.unidades.length === 1 ? p.unidades[0]!.id : '')
+  const [branchId, setBranchId] = useState(unicaOpcao(p.unidades))
   const [mapa, setMapa] = useState<(ChaveDeCampo | null)[]>([])
   const [comOportunidade, setComOportunidade] = useState(false)
   const [etapaId, setEtapaId] = useState(p.etapaPadrao)
@@ -269,7 +270,8 @@ export function ImportadorDeContatos(p: Props) {
           </div>
 
           {destino === 'clientes' && (
-            p.unidadeFixa ? (
+            // A2 da 10ª: com UMA unidade, a pergunta some (como a de quem tem unidade fixa).
+            p.unidadeFixa || p.unidades.length === 1 ? (
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
                 Unidade: <strong style={{ color: 'var(--text)' }}>{p.unidades[0]?.nome}</strong>
               </p>

@@ -70,7 +70,7 @@ test('a planilha da migração: o CPF ruim não derruba a ficha, as datas de ant
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=importacoes')
     await p.getByLabel('Arquivo CSV').setInputFiles({ name: ARQUIVO, mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf-8') })
-    await p.getByLabel('Unidade', { exact: true }).selectOption({ label: unidadeNome })
+    await expect(p.getByText(`Unidade: ${unidadeNome}`)).toBeVisible() // A2 da 10ª: uma unidade só, a pergunta some
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     // As colunas da migração são sugeridas pelo cabeçalho.
     await expect(p.getByLabel('Campo da coluna Cliente desde')).toHaveValue('cliente_desde')
@@ -138,7 +138,7 @@ test('importar de novo não traz o pacote duas vezes', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=importacoes')
     await p.getByLabel('Arquivo CSV').setInputFiles({ name: `de-novo-${marca}.csv`, mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf-8') })
-    await p.getByLabel('Unidade', { exact: true }).selectOption({ label: unidadeNome })
+    await expect(p.getByText(`Unidade: ${unidadeNome}`)).toBeVisible() // A2 da 10ª: uma unidade só, a pergunta some
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     await p.getByRole('button', { name: /Importar 1 linha/ }).click()

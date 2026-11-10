@@ -1,6 +1,7 @@
 'use client'
 
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { unicaOpcao } from '@/lib/uma-opcao'
 import { useRouter, usePathname } from 'next/navigation'
 import { addClient, conferirTelefoneDoCadastro, type ResultadoDoCadastro } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
@@ -97,7 +98,10 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const [responsavel, setResponsavel] = useState<CamposDoResponsavel>(RESPONSAVEL_VAZIO)
   // A14 da 8ª simulação: com várias unidades, nenhuma vem escolhida (era a
   // primeira em ordem alfabética); com uma só, ela.
-  const [unitId, setUnitId] = useState(branchId || (branches?.length === 1 ? branches[0]!.id : ''))
+  const [unitId, setUnitId] = useState(branchId || unicaOpcao(branches))
+  // A2 da 10ª: com UMA unidade, a pergunta some — a unidade é dita, não escolhida.
+  const unidadeUnica = !branchId && branches?.length === 1 ? branches[0]! : null
+  const nomeDaUnidade = unidadeUnica?.name ?? branchName
 
   const router   = useRouter()
   const pathname = usePathname()
@@ -234,7 +238,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       {conversationId && <input type="hidden" name="_conversationId" value={conversationId} />}
       <input type="hidden" name="tags" value={JSON.stringify(selectedTags)} />
 
-      {branches && branches.length > 0 ? (
+      {branches && branches.length > 1 ? (
         <Field label="Unidade de cadastro *">
           <select className="field" value={unitId} onChange={e => setUnitId(e.target.value)} required>
             {!unitId && <option value="">Selecione a unidade…</option>}
@@ -246,13 +250,13 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             </span>
           )}
         </Field>
-      ) : branchName ? (
+      ) : nomeDaUnidade ? (
         <div style={{
           fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
           background: 'var(--bg-app)', border: '1px solid var(--hairline)',
           borderRadius: 10, padding: '8px 12px', display: 'flex', gap: 6, alignItems: 'center',
         }}>
-          <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade de cadastro:</span> {branchName}
+          <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade de cadastro:</span> {nomeDaUnidade}
           {textoDaUnidade && <span style={{ color: 'var(--text-faint)' }}>— {textoDaUnidade}</span>}
         </div>
       ) : null}

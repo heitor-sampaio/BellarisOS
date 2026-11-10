@@ -8,6 +8,7 @@ import { getClientAvailableSlots, createClientAppointment } from '@/actions/appo
 import { toast } from 'sonner'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
+import { aUnica } from '@/lib/uma-opcao'
 
 const diaNoFuso = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(ms))
 
@@ -69,11 +70,19 @@ const SEM_PREFERENCIA: Professional = { id: '', name: 'Sem preferência' }
 export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], procedimentoInicial = null, unidadeEscolhida = false, procedures, professionals, prazoHoras = null }: Props) {
   const router = useRouter()
   const inicial = procedures.find(p => p.id === procedimentoInicial) ?? null
+  // Só quem REALIZA o procedimento (por-01; sem ninguém marcado, todas).
+  const realizam = (p: Procedure | null) => p?.realizam?.length
+    ? professionals.filter(x => p.realizam!.includes(x.id))
+    : professionals
+  // A2 da 10ª: com UMA profissional, o passo "Tem preferência de profissional?"
+  // não pergunta nada — ela vem escolhida, e o agendar segue para a data.
+  const unicaDe = (p: Procedure | null) => aUnica(realizam(p))
+  const unicaInicial = inicial ? unicaDe(inicial) : null
   // O atalho do pacote (A63) começa na profissional — mas, com mais de uma
   // unidade, pergunta antes onde (D12 da 9ª; H5: a cliente agenda em qualquer unidade).
-  const [step,       setStep]       = useState<Step>(inicial && (unidades.length <= 1 || unidadeEscolhida) ? 2 : 1)
+  const [step,       setStep]       = useState<Step>(inicial && (unidades.length <= 1 || unidadeEscolhida) ? (unicaInicial ? 3 : 2) : 1)
   const [procedure,  setProcedure]  = useState<Procedure | null>(inicial)
-  const [prof,       setProf]       = useState<Professional | null>(null)
+  const [prof,       setProf]       = useState<Professional | null>(unicaInicial)
   const [date,       setDate]       = useState('')
   const [slots,      setSlots]      = useState<string[]>([])
   const [time,       setTime]       = useState('')
@@ -85,18 +94,17 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
   // O dia de hoje em Brasília (o toISOString dava o de amanhã depois das 21h).
   const [{ today, tomorrow }] = useState(() => ({ today: diaNoFuso(Date.now()), tomorrow: diaNoFuso(Date.now() + 86_400_000) }))
 
-  // Só quem REALIZA o procedimento escolhido (por-01; sem ninguém marcado, todas).
-  const quemRealiza = procedure?.realizam?.length
-    ? professionals.filter(p => procedure.realizam!.includes(p.id))
-    : professionals
+  const quemRealiza = realizam(procedure)
+  const soUma = !!procedure && quemRealiza.length === 1
 
   function handleSelectProcedure(p: Procedure) {
     setProcedure(p)
-    setProf(null)
+    const unica = unicaDe(p)
+    setProf(unica)
     setDate('')
     setSlots([])
     setTime('')
-    setStep(2)
+    setStep(unica ? 3 : 2)
   }
 
   function handleSelectProfessional(p: Professional) {
@@ -179,11 +187,13 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
           type="button"
           onClick={() => {
             if (step > 1) {
-              setStep((step - 1) as Step)
+              // Com uma profissional só, o passo dela não existe: volta ao procedimento.
+              setStep((step === 3 && soUma ? 1 : step - 1) as Step)
             } else {
               router.back()
             }
           }}
+          aria-label="Voltar"
           style={{
             width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)',
             background: 'var(--surface)', cursor: 'pointer', display: 'flex',
@@ -387,6 +397,11 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
             Escolha a data e o horário disponível.
           </p>
+          {soUma && prof?.id && (
+            <p data-profissional-unica style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, marginTop: -8, marginBottom: 16 }}>
+              Com {prof.name}
+            </p>
+          )}
 
           <div style={{ marginBottom: 20 }}>
             <label htmlFor="novo-agendamento-data" style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 6, textTransform: 'uppercase' }}>

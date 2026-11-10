@@ -35,9 +35,11 @@ async function como(browser: Browser, quem: ClienteDeTeste, fn: (p: Page) => Pro
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
-async function noPassoDaProfissional(p: Page) {
+// A2 da 10ª: com UMA profissional o passo dela não existe — o procedimento leva
+// direto à data, com ela escolhida ("Com X" e quando ela atende).
+async function noPassoDaData(p: Page) {
   await p.goto(`/${slug}/cliente/agendamentos/novo`)
-  const passo2 = p.getByText('Tem preferência de profissional?')
+  const passo2 = p.getByText('Escolha a data e o horário disponível.')
   await expect(async () => {
     if (!(await passo2.isVisible())) await p.getByRole('button', { name: new RegExp(`Proc ho${marca}`) }).click({ timeout: 2000 })
     await expect(passo2).toBeVisible({ timeout: 2000 })
@@ -63,9 +65,8 @@ test.afterAll(async () => {
 
 test('a profissional mostra quando atende', async ({ browser }) => {
   await como(browser, cliente!, async p => {
-    await noPassoDaProfissional(p)
-    await expect(p.getByRole('button', { name: /Prof ho/ })).toContainText('Seg a sex, 18:00–22:00')
-    await p.getByRole('button', { name: /Prof ho/ }).click()
+    await noPassoDaData(p)
+    await expect(p.locator('[data-profissional-unica]')).toContainText('Prof ho')
     // No passo da data, o lembrete de quando ela atende.
     await expect(p.getByText(/atende: Seg a sex, 18:00–22:00/)).toBeVisible()
   })
@@ -73,8 +74,7 @@ test('a profissional mostra quando atende', async ({ browser }) => {
 
 test('a data tem Hoje e Amanhã, e os horários vêm por período', async ({ browser }) => {
   await como(browser, cliente!, async p => {
-    await noPassoDaProfissional(p)
-    await p.getByRole('button', { name: /Prof ho/ }).click()
+    await noPassoDaData(p)
     await p.getByRole('button', { name: 'Amanhã', exact: true }).click()
     await expect(p.getByLabel('Data')).toHaveValue(amanha())
 

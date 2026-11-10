@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { dayKeyTZ } from '@/lib/datetime'
+import { unicaOpcao } from '@/lib/uma-opcao'
 
 interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; /** Quem realiza (por-01; vazio = todas). */ realizam?: string[] }
@@ -106,13 +107,14 @@ export function AppointmentModal({
   // A14 da 8ª simulação: na rede com várias unidades, nenhuma vem escolhida —
   // era a primeira em ordem alfabética (a Água Verde), não a que a pessoa quis.
   // Com uma só, ela; com o filtro da agenda ou o clique na coluna, a dele.
-  const [unidadeId, setUnidadeId] = useState(branchId || (unidades?.length === 1 ? unidades[0]!.id : ''))
+  const [unidadeId, setUnidadeId] = useState(branchId || unicaOpcao(unidades))
   const [dados, setDados] = useState({ procedures, professionals, rooms, slug })
   // Nasce carregando quando há unidade a carregar; cada troca liga de novo no
   // handler do seletor, e o efeito só desliga quando os dados chegam.
   const [carregandoUnidade, setCarregandoUnidade] = useState(escolheUnidade && !!unidadeId)
 
-  const [profId, setProfId] = useState(profissionalInicialId ?? '')
+  // A2 da 10ª: com UMA profissional, ela vem escolhida (a clínica de uma pessoa).
+  const [profId, setProfId] = useState(profissionalInicialId ?? unicaOpcao(professionals))
   const [procId, setProcId] = useState(procedimentoInicialId ?? '')
 
   function trocarUnidade(id: string) {
@@ -131,7 +133,7 @@ export function AppointmentModal({
     dadosParaAgendar(unidadeId).then(d => {
       if (!vivo) return
       setDados(d)
-      setProfId(atual => (d.professionals.some(p => p.id === atual) ? atual : ''))
+      setProfId(atual => (d.professionals.some(p => p.id === atual) ? atual : unicaOpcao(d.professionals)))
       setProcId(atual => (d.procedures.some(p => p.id === atual) ? atual : ''))
       setCarregandoUnidade(false)
     })
@@ -296,7 +298,11 @@ export function AppointmentModal({
   const [salaEscolhida, setSalaEscolhida] = useState<string | null>(null)
   const salaId = salaEscolhida !== null
     ? (salaEscolhida === '' || salasOferecidas.some(s => s.id === salaEscolhida) ? salaEscolhida : '')
-    : (salasDoServidor?.chave === chaveDasSalas ? (salasDoServidor.sugerida ?? '') : '')
+    : (salasDoServidor?.chave === chaveDasSalas
+      // A2 da 10ª: a unidade de UMA sala livre já a traz escolhida (a sugestão
+      // do procedimento ligado a salas vem antes — A27 da 5ª).
+      ? (salasDoServidor.sugerida ?? unicaOpcao(salasDoServidor.salas.filter(s => s.livre).length === salasDoServidor.salas.length ? salasDoServidor.salas : []))
+      : '')
   // A28: as salas DO procedimento todas ocupadas no horário — vai sem sala
   // (a sala é opcional, H1), e a janela diz isso em vez de calar.
   const semSalaLivre = !salaId && salasDoServidor?.chave === chaveDasSalas && !!salasDoServidor.doProcedimento

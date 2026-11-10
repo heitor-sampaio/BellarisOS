@@ -101,13 +101,14 @@ test.describe.serial('a cliente agenda em outra unidade da clínica pelo app', (
       await unidades.getByRole('link', { name: nomeB }).click()
       await expect(p).toHaveURL(new RegExp(`/${slugB}/cliente/agendamentos/novo$`))
 
-      // O procedimento da Zona Sul aparece; a profissional é a de lá.
-      const passo2 = p.getByText('Tem preferência de profissional?')
+      // O procedimento da Zona Sul aparece; a profissional é a de lá — a ÚNICA,
+      // então já vem escolhida e a tela vai à data (A2 da 10ª).
+      const passoDaData = p.getByText('Escolha a data e o horário disponível.')
       await expect(async () => {
-        if (!(await passo2.isVisible())) await p.getByRole('button', { name: nomeProc }).click({ timeout: 2000 })
-        await expect(passo2).toBeVisible({ timeout: 2000 })
+        if (!(await passoDaData.isVisible())) await p.getByRole('button', { name: nomeProc }).click({ timeout: 2000 })
+        await expect(passoDaData).toBeVisible({ timeout: 2000 })
       }).toPass({ timeout: 30_000 })
-      await p.getByRole('button', { name: /Esteticista ZS|Membro/ }).first().click()
+      await expect(p.locator('[data-profissional-unica]')).toContainText(/Esteticista ZS|Membro/)
       await p.getByLabel('Data').fill(dia(2))
       await p.getByRole('button', { name: '10:00', exact: true }).click()
       await expect(p.getByText(nomeB).last()).toBeVisible()

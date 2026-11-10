@@ -151,6 +151,19 @@ Princípios inegociáveis:
     Equipe, lançamento); a pergunta que não tem o que perguntar some (crédito
     para cliente, "Disponível nas unidades" e o preço por unidade do
     procedimento, a unidade do checkout).
+  - **A clínica de uma opção só** (A2 da 10ª simulação, 2026-11-10; CLAUDE.md
+    §1): com UMA profissional, UMA sala livre, UMA unidade, ela vem
+    escolhida — a regra é UMA, `unicaOpcao`/`aUnica` (`lib/uma-opcao.ts`;
+    `unidadeInicial` passa por ela): o Agendar (unidade, profissional, sala —
+    a sugestão do procedimento ligado a salas vem antes), o checkout do plano
+    (a profissional), a importação e o Novo cliente (a unidade, que vira
+    texto: a pergunta some) e o agendar do app (o passo "Tem preferência de
+    profissional?" não existe com uma só: o procedimento leva à data, "Com
+    X", e o Voltar volta ao procedimento). Com duas ou mais, nenhuma (A14 da
+    8ª). Os próximos passos do setup terminam pela outra unidade, não começam
+    (`lib/setup/proximos-passos.ts`). "Quem vendeu" fica fora: nasce sempre
+    vazio (r2-ven-12, `comissoes.md`). Prova:
+    `e2e/agenda-clinica-de-uma-opcao.spec.ts`, `tests/setup-proximos-passos.test.ts`.
   - Texto novo com "rede" na clínica passa pela fala. Prova:
     `e2e/rede-de-uma-unidade.spec.ts` percorre as telas dos dois portais e os
     modais e não acha "rede"/"filial"; com a segunda unidade, o vocabulário

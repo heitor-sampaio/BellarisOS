@@ -144,7 +144,10 @@ test('A52: o Confirmar avisa antes quando o horário fica dentro do prazo do app
       await p.goto(`/${slug}/cliente/agendamentos/novo`)
       // Duas unidades: a do endereço já vem escolhida.
       await p.getByRole('button', { name: new RegExp(`Avaliação ${marca}`) }).first().click()
-      await p.getByRole('button', { name: /\[e2e\] Prof/ }).first().click()
+      // A2 da 10ª: com UMA profissional, o passo dela some e a tela vai à data.
+      const prof = p.getByRole('button', { name: /\[e2e\] Prof/ }).first()
+      await expect(prof.or(p.getByText('Escolha a data e o horário disponível.'))).toBeVisible()
+      if (await prof.isVisible()) await prof.click()
       const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + dias * 86_400_000))
       await p.locator('input[type="date"]').fill(dia)
       await p.getByRole('button', { name: /^\s*\d{2}:\d{2}\s*$/ }).first().click()

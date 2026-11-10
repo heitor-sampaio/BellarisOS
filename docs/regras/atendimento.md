@@ -714,6 +714,10 @@
   "Horário marcado — Com Bia, quarta, 05/11 às 10:00." (`quemAtende` de
   `createClientAppointment`; vale também para quem escolheu). Prova:
   `e2e/portal-cliente-sem-preferencia.spec.ts`, `tests/sem-preferencia.test.ts`.
+  **Com UMA profissional que realiza, o passo nem aparece** (A2 da 10ª
+  simulação, 2026-11-10): o procedimento leva direto à data, com "Com X" e
+  quando ela atende; o Voltar volta ao procedimento. Prova:
+  `e2e/agenda-clinica-de-uma-opcao.spec.ts`.
 - **A cliente agenda em QUALQUER unidade da clínica pelo app** (H5, decisão do
   Heitor, 2026-11-01: "A cliente é da clínica, pode agendar em qualquer
   unidade da clínica"; A62/A65 da 5ª simulação). A ficha é da REDE: o portal
@@ -975,7 +979,10 @@
     Corporal escolhida. Enquanto a lista das salas do horário não chega, o
     botão espera ("Conferindo as salas…" no CRM); a falha da lista vira a
     lista da unidade, sem sugestão. Prova:
-    `e2e/crm-agendar-liga-oportunidade.spec.ts` ("D12"). **Unidade sem sala: o
+    `e2e/crm-agendar-liga-oportunidade.spec.ts` ("D12"). **A unidade de UMA
+    sala, livre no horário, a traz escolhida** no Agendar (A2 da 10ª, a clínica
+    de uma opção só — `unicaOpcao`, `design.md`), e a profissional única
+    também; prova: `e2e/agenda-clinica-de-uma-opcao.spec.ts`. **Unidade sem sala: o
     campo nem aparece.** **A sala é opcional** em todo agendamento e
     atendimento (decisão do Heitor, 2026-11-01: "não deve ser obrigatório
     selecionar sala"): o app da cliente, o checkout, as sessões e o Copilot

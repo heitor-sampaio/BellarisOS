@@ -143,7 +143,8 @@ test('A63: o cartão do pacote diz quantas restam e leva ao agendamento do proce
     const agendar = cartao.getByRole('link', { name: /^Agendar/ })
     await expect(agendar).toHaveAttribute('href', `/${slug}/cliente/agendamentos/novo?procedimento=${rede!.procedureId}`)
     await agendar.click()
-    // O agendar abre já no passo da profissional, com o procedimento do pacote.
-    await expect(p.getByText('Tem preferência de profissional?')).toBeVisible()
+    // O agendar abre já depois do procedimento do pacote — e, com UMA profissional,
+    // já na data, com ela escolhida (A2 da 10ª).
+    await expect(p.getByText('Escolha a data e o horário disponível.')).toBeVisible()
   })
 })

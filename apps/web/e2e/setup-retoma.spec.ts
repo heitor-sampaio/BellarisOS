@@ -87,9 +87,9 @@ test('A3/A1: o fim do setup sugere os próximos passos na ordem, como links — 
   await como(browser, donaComUnidade!, async p => {
     await p.goto('/setup')
     const passos = p.locator('[data-proximos-passos] li')
-    // A1 da 8ª simulação: a 2ª unidade (antes da equipe, que se marca nela) e as salas (antes do procedimento, que as escolhe).
+    // A1 da 8ª simulação: as salas antes do procedimento, que as escolhe. A2 da
+    // 10ª: a 2ª unidade é a ÚLTIMA — a clínica única não começa pelo que não tem.
     const esperados: [RegExp, RegExp][] = [
-      [/Outra unidade/, /\/admin\/settings\?tab=unidades$/],
       [/Equipe/, /\/admin\/team$/],
       [/Salas/, /\/admin\/settings\?tab=unidades#salas$/],
       [/Estoque/, /\/admin\/estoque$/],
@@ -99,6 +99,7 @@ test('A3/A1: o fim do setup sugere os próximos passos na ordem, como links — 
       [/Taxas da maquininha/, /\/admin\/settings\?tab=comissoes$/],
       [/Fidelidade/, /\/admin\/settings\?tab=fidelidade$/],
       [/Funil/, /\/admin\/oportunidades$/],
+      [/Outra unidade/, /\/admin\/settings\?tab=unidades$/],
     ]
     await expect(passos).toHaveCount(esperados.length)
     for (const [i, [nome, href]] of esperados.entries()) {
@@ -112,7 +113,7 @@ test('A3/A1: o fim do setup sugere os próximos passos na ordem, como links — 
       const lista = document.querySelector('[data-proximos-passos]')
       return !!lista && !!(b.compareDocumentPosition(lista) & Node.DOCUMENT_POSITION_FOLLOWING)
     }), 'o botão vem antes da lista').toBe(true)
-    await passos.nth(1).getByRole('link').click()
+    await passos.nth(0).getByRole('link').click()
     await expect(p).toHaveURL(/\/admin\/team/, { timeout: 20_000 })
   })
 })
