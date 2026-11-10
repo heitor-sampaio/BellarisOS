@@ -32,7 +32,8 @@
     atender. Avisar a gerência de cada chegada seria um sino tocando o dia
     inteiro.
 - Notificações operacionais: novo agendamento, cancelamento, remarcação,
-  check-in e estoque abaixo do mínimo
+  check-in e estoque no mínimo ou abaixo (pela régua da tela, uma vez por
+  cruzamento — A48 da 11ª, `atendimento.md` §9.5)
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
 - **O aviso da cliente vai aos aparelhos de TODAS as fichas do login dela**
   (2026-10-19: a mesma pessoa pode ser cliente de várias clínicas com uma

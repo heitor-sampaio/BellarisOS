@@ -1995,6 +1995,21 @@ const procedures = await ler(
     `lib/estoque/aviso-de-lote.ts`, tipo `batch_expiring`; `?rede=` recorta uma
     rede, para o teste). Prova: o mesmo spec ("A39"),
     `e2e/estoque-lote-vencendo-no-sino.spec.ts`.
+    **E o mínimo chega ao sino pela régua da TELA** (A48 da 11ª simulação,
+    2026-11-10; princípio 3: o dashboard da Gisele dizia "2" e o sino "Tudo em
+    dia"). O job avisava pelo evento `estoque.abaixo_do_minimo` do gatilho,
+    que compara as embalagens (o frasco aberto conta inteiro) e só o "abaixo"
+    estrito — a Lâmina com 190 un (3,8 caixas) e mínimo de 4 caixas nunca
+    cruzava. Agora é `avisarEstoqueMinimo` (`lib/estoque/aviso-do-minimo.ts`):
+    o ESTADO de cada linha com mínimo, por `situacaoDoEstoque` (no rendimento,
+    "No mínimo" conta), a quem tem o Estoque em Gerenciar na unidade ("Lâmina:
+    190 un em estoque, mínimo 200 un."), UMA vez por cruzamento — a linha
+    avisada ganha `branch_product_stock.minimo_avisado_em` (reivindicada antes
+    de avisar), e a que sai do mínimo a perde e volta a poder avisar. O evento
+    continua, para as automações. O `?rede=` recorta também o mínimo (o
+    `notificacoes-interessados` rodava sem recorte e avisou uma rede [sim] na
+    F51). Prova: `e2e/estoque-minimo-no-sino.spec.ts`,
+    `e2e/notificacoes-interessados.spec.ts`.
   - **O giro do Estoque diz o que conta** (A13 da 9ª, 2026-11-07): "insumos
     dos atendimentos, sem a venda de produto" (`DETALHE_DO_GIRO`,
     `[data-kpi="giro"]`, nas duas telas) — o Financeiro somava o custo da

@@ -15,7 +15,9 @@ import { banco, filiaisAtivas, nomeDeTeste, tenantId } from './apoio/banco'
  * ponta a ponta por HTTP (sem importar módulo `server-only`, que não carrega
  * fora do Next), e ele é o alerta que o CLAUDE.md §9.8 prometia e **nunca
  * chegava a ninguém** — o evento era emitido por gatilho no banco desde
- * 2026-09-23 e morria ali.
+ * 2026-09-23 e morria ali. Desde a A48 da 11ª (2026-11-10) o job avisa pelo
+ * ESTADO da linha (a régua da tela, uma vez por cruzamento), e roda recortado
+ * à rede do teste (`?rede=`): sem o recorte, na F51 ele avisou uma rede [sim].
  *
  * O que se prova:
  *  - quem responde pelo módulo na unidade recebe;
@@ -91,26 +93,30 @@ test('o aviso vai para quem responde pelo módulo na unidade, e só para ele', a
   const olheiro          = await membro(tenant, cargoOlheiro, unidade.id, 'olheiro')
   const deOutraUnidade   = outra ? await membro(tenant, cargoGerente, outra.id, 'gerente de outra') : null
 
-  // -- O fato: um produto cruzou o mínimo nesta unidade ---------------------
+  // -- O fato: um produto abaixo do mínimo nesta unidade --------------------
   const produto = nomeDeTeste('produto no mínimo')
-  const { data: evento, error: evErr } = await db.from('domain_events')
-    .insert({
-      tenant_id: tenant, branch_id: unidade.id,
-      nome: 'estoque.abaixo_do_minimo', entidade: 'estoque',
-      dados: { produtoNome: produto, saldo: 1, minimo: 10, unidade: 'un' },
-      ator_tipo: 'sistema', origem: 'banco', ocorrido_em: new Date().toISOString(),
-    })
+  const { data: p, error: pErr } = await db.from('products')
+    .insert({ tenant_id: tenant, name: produto, unit: 'un', min_stock: 10, uso: 'INSUMO' })
     .select('id').single()
-  if (evErr) throw new Error(`não criei o evento: ${evErr.message}`)
-  criados.push({ tabela: 'domain_events', id: evento!.id as string })
+  if (pErr) throw new Error(`não criei o produto: ${pErr.message}`)
+  const produtoId = p!.id as string
+  const { error: sErr } = await db.from('branch_product_stock')
+    .insert({ product_id: produtoId, branch_id: unidade.id, current_stock: 1, min_stock: 10 })
+  if (sErr) throw new Error(`não criei o saldo: ${sErr.message}`)
+  limparSaldo = async () => {
+    await db.from('domain_events').delete().eq('tenant_id', tenant).eq('entidade_id', produtoId)
+    await db.from('branch_product_stock').delete().eq('product_id', produtoId)
+    await db.from('products').delete().eq('id', produtoId)
+  }
 
-  // -- O job roda ------------------------------------------------------------
-  const r = await request.get('/api/cron/estoque-minimo', {
+  // -- O job roda, recortado à rede do teste ----------------------------------
+  const rodar = () => request.get(`/api/cron/estoque-minimo?rede=${tenant}`, {
     headers: { authorization: `Bearer ${segredo}` },
   })
+  const r = await rodar()
   expect(r.ok(), await r.text()).toBe(true)
 
-  const avisados = await quemFoiAvisado(evento!.id as string)
+  const avisados = await quemFoiAvisado(produtoId)
 
   expect(avisados, 'quem gerencia o estoque da unidade tem de receber').toContain(gerenteDaUnidade)
   expect(avisados, 'quem alcança a rede inteira também responde pela unidade').toContain(gerenteDaRede)
@@ -120,27 +126,26 @@ test('o aviso vai para quem responde pelo módulo na unidade, e só para ele', a
   }
 
   // -- E rodar de novo não avisa de novo -------------------------------------
-  // A janela do job tem folga de propósito (90 min para um ritmo de 60), então
-  // o mesmo evento reaparece na execução seguinte. Quem evita a repetição é a
-  // pergunta "já avisei deste?", e é isso que está sob teste.
-  const r2 = await request.get('/api/cron/estoque-minimo', {
-    headers: { authorization: `Bearer ${segredo}` },
-  })
+  // A linha continua abaixo do mínimo; quem evita a repetição é a marca do
+  // aviso (minimo_avisado_em), e é isso que está sob teste.
+  const r2 = await rodar()
   expect(r2.ok()).toBe(true)
-  expect((await r2.json()).repetidos, 'a segunda passada tinha de pular este evento').toBeGreaterThan(0)
 
-  const depois = await quemFoiAvisado(evento!.id as string)
+  const depois = await quemFoiAvisado(produtoId)
   expect(depois.length, 'ninguém pode ser avisado duas vezes do mesmo fato').toBe(avisados.length)
 })
 
-/** Ids de quem recebeu notificação daquele evento. */
-async function quemFoiAvisado(eventoId: string): Promise<string[]> {
+let limparSaldo: (() => Promise<void>) | null = null
+test.afterAll(async () => { await limparSaldo?.() })
+
+/** Ids de quem recebeu o aviso daquele produto. */
+async function quemFoiAvisado(produtoId: string): Promise<string[]> {
   const db = banco()
   const { data } = await db
     .from('user_notifications')
     .select('id, user_id')
     .eq('type', 'stock_below_minimum')
-    .filter('data->>evento_id', 'eq', eventoId)
+    .filter('data->>produto_id', 'eq', produtoId)
 
   for (const n of data ?? []) criados.push({ tabela: 'user_notifications', id: n.id as string })
   return (data ?? []).map(n => n.user_id as string)
