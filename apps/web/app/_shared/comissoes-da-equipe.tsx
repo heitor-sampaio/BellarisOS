@@ -28,7 +28,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   periodoPedido?: string
 }) {
   const config = await configDeComissaoDaRede(ctx.tenantId!)
-  const periodos = periodosRecentes(config.periodo, new Date(), 12)
+  const agora = new Date()
+  const periodos = periodosRecentes(config.periodo, agora, 12)
   const periodo = periodoDaChave(periodoPedido, config.periodo) ?? periodos[0]!
   // O período pedido pode ser mais antigo que a lista: entra nela.
   const lista = periodos.some(p => p.chave === periodo.chave) ? periodos : [...periodos, periodo]
@@ -74,7 +75,7 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         periodos={lista.map(p => ({ chave: p.chave, rotulo: p.rotulo }))}
         periodoAtual={periodo.chave}
         // A32 da 10ª: o período que ainda corre — o "Fechar e pagar" paga até AGORA, não até o fim dele.
-        periodoEmCurso={periodo.fim.getTime() > Date.now()}
+        periodoEmCurso={periodo.fim.getTime() > agora.getTime()}
         unidades={unidades.length > 1 ? unidades : undefined}
         unidadeAtual={unidadeAtual}
         resumo={resumo}
