@@ -289,6 +289,8 @@ export const ISOLADOS = [
   'comissoes-defeitos-da-11.spec.ts',
   'campanha-defeitos-da-11.spec.ts',
   'atendimento-sobras-da-11.spec.ts',
+  // F52 (as decisões do Heitor sobre a 10ª: a indicação que premia e o pagamento parcial da comissão).
+  'comissoes-pagamento-parcial.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',

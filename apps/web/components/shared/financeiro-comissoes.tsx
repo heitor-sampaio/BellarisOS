@@ -89,7 +89,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     const campo = (v: string) => /[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
     const linhas = [
       // D3 da 10ª: "Base" é a EFETIVA (a que a conta usou), com o preço e o que saiu dele ao lado.
-      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação'],
+      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação', 'Pago em'],
       ...p.extrato.map(l => [
         data(l.releasedAt), nome.get(l.professionalId) ?? '', unidade.get(l.branchId) ?? '', data(l.scheduledAt),
         l.cliente ?? '', l.procedimento ?? '', origemDe(l),
@@ -97,6 +97,8 @@ export function FinanceiroComissoes(p: PropsDaTela) {
         l.preco == null || l.baseFator >= 1 ? '' : `${String(Math.round(l.baseFator * 10000) / 100).replace('.', ',')}%`,
         reais(l.base ?? l.preco), l.preco == null ? '' : base(l), regra(l), TIPO[l.kind], l.motivo ?? '',
         l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), SITUACAO[l.status],
+        // A21 da 10ª: com o pagamento parcial, o dia em que CADA lançamento foi pago.
+        l.pagoEm ? data(l.pagoEm) : '',
       ]),
     ]
     // BOM + ponto e vírgula: é o que o Excel em pt-BR abre certo.
@@ -190,7 +192,8 @@ export function FinanceiroComissoes(p: PropsDaTela) {
                   </div>
                 </div>
                 {p.podeFechar && r.aPagar > 0 && (
-                  <Fechar profissional={r} periodo={p.periodoAtual} rotuloDoPeriodo={p.periodos.find(x => x.chave === p.periodoAtual)?.rotulo ?? ''} emCurso={!!p.periodoEmCurso} />
+                  <Fechar profissional={r} periodo={p.periodoAtual} rotuloDoPeriodo={p.periodos.find(x => x.chave === p.periodoAtual)?.rotulo ?? ''} emCurso={!!p.periodoEmCurso}
+                    lancamentos={doProfissional.filter(l => l.status === 'OPEN' && l.kind !== 'AGUARDANDO')} />
                 )}
                 {aberto === chave && <Extrato linhas={doProfissional} />}
               </div>
@@ -220,18 +223,49 @@ function Numero({ rotulo, valor, forte = false }: { rotulo: string; valor: numbe
   )
 }
 
-function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso }: { profissional: ResumoDoProfissional; periodo: string; rotuloDoPeriodo: string; emCurso: boolean }) {
+/**
+ * "Fechar e pagar" (A21 da 10ª; decisão do Heitor, 2026-11-10: "concordo com
+ * marcar e desmarcar"): os lançamentos a pagar da pessoa, TODOS MARCADOS, e o
+ * "Pagar agora" se refaz ao desmarcar. O desmarcado continua a pagar e volta
+ * marcado no próximo fechamento. Não há valor digitado: o lançamento é pago
+ * inteiro ou fica. A soma é da TELA só para mostrar; quem paga é o banco
+ * (`comissao_fechar_escolhidos`), pelos ids marcados.
+ */
+function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }: {
+  profissional: ResumoDoProfissional; periodo: string; rotuloDoPeriodo: string; emCurso: boolean
+  /** Os lançamentos a pagar desta pessoa nesta unidade (os de antes do período inclusive). */
+  lancamentos: LancamentoDoExtrato[]
+}) {
   const router = useRouter()
   const [confirmando, setConfirmando] = useState(false)
   const [metodo, setMetodo] = useState('PIX')
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
+  const [desmarcados, setDesmarcados] = useState<Set<string>>(new Set())
+
+  const marcados = lancamentos.filter(l => !desmarcados.has(l.id))
+  const pagarAgora = Math.round(marcados.reduce((t, l) => t + l.amount * 100, 0)) / 100
+  const ficam = lancamentos.length - marcados.length
+
+  function alternar(id: string) {
+    setDesmarcados(atual => {
+      const novo = new Set(atual)
+      if (novo.has(id)) novo.delete(id); else novo.add(id)
+      return novo
+    })
+  }
+
+  function abrir() {
+    setDesmarcados(new Set())
+    setErro(null)
+    setConfirmando(true)
+  }
 
   function confirmar() {
     setErro(null)
     iniciar(async () => {
-      const r = await fecharComissoes(profissional.professionalId, profissional.branchId, periodo, metodo)
-      if (r.error) { setErro(r.error); return }
+      const r = await fecharComissoes(profissional.professionalId, profissional.branchId, periodo, metodo, marcados.map(l => l.id))
+      if (r.error) { setErro(r.error); router.refresh(); return }
       setConfirmando(false)
       router.refresh()
     })
@@ -240,27 +274,62 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso }: { profissio
   return (
     <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
       {!confirmando ? (
-        <button type="button" className="btn-primary" style={{ alignSelf: 'flex-end' }} onClick={() => setConfirmando(true)}>
+        <button type="button" className="btn-primary" style={{ alignSelf: 'flex-end' }} onClick={abrir}>
           Fechar e pagar
         </button>
       ) : (
         <div role="group" aria-label={`Fechar as comissões de ${profissional.professionalName}`}
           style={{ padding: 12, borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-            Pagar <strong>{formatBRL(profissional.aPagar)}</strong> a {profissional.professionalName} ({profissional.branchName}),
+            Pagar a {profissional.professionalName} ({profissional.branchName}) os lançamentos marcados abaixo,
             {/* A32 da 10ª: no dia 10, "até o fim de nov/2026" prometia o mês inteiro, e o fechamento ia só até agora. */}
             {emCurso
-              ? <> tudo o que está a pagar até agora. O período de {rotuloDoPeriodo} ainda está em curso: o que for lançado até o fim dele fica para o próximo fechamento.</>
-              : <> tudo o que está a pagar até o fim de {rotuloDoPeriodo}.</>}
-            {' '}Vira uma despesa paga no financeiro da unidade.
+              ? <> a pagar até agora. O período de {rotuloDoPeriodo} ainda está em curso: o que for lançado até o fim dele fica para o próximo fechamento.</>
+              : <> a pagar até o fim de {rotuloDoPeriodo}.</>}
+            {' '}Vira uma despesa paga no financeiro da unidade. Desmarque o que fica para depois: ele continua a pagar e volta marcado no próximo fechamento.
+          </p>
+          <ul data-lancamentos-do-fechamento style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--hairline)' }}>
+            {lancamentos.map(l => (
+              <li key={l.id} style={{ borderBottom: '1px solid var(--hairline)' }}>
+                <label style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!desmarcados.has(l.id)} onChange={() => alternar(l.id)} disabled={pendente}
+                    aria-label={`${l.procedimento ?? 'Procedimento'}${l.cliente ? ` · ${l.cliente}` : ''} · ${data(l.releasedAt)} · ${formatBRL(l.amount)}`} />
+                  <span style={{ flex: '1 1 auto', minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+                      {l.procedimento ?? 'Procedimento'}{l.cliente ? ` · ${l.cliente}` : ''}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      {data(l.releasedAt)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}{l.origem ? ` · ${origemDe(l)}` : ''}
+                    </span>
+                  </span>
+                  <strong style={{ fontSize: 'var(--text-sm-sz)', whiteSpace: 'nowrap', color: l.amount < 0 ? 'var(--danger)' : 'var(--text)' }}>
+                    {formatBRL(l.amount)}
+                  </strong>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <p data-pagar-agora style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <span>Pagar agora{ficam > 0 ? ` (${ficam === 1 ? '1 lançamento fica' : `${ficam} lançamentos ficam`} a pagar)` : ''}</span>
+            <strong style={{ color: 'var(--brand)' }}>{formatBRL(pagarAgora)}</strong>
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <select className="filtro-select" aria-label="Forma de pagamento" value={metodo} onChange={e => setMetodo(e.target.value)}>
               {METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
             </select>
             <button type="button" className="btn-secondary" onClick={() => setConfirmando(false)} disabled={pendente}>Cancelar</button>
-            <button type="button" className="btn-primary" onClick={confirmar} disabled={pendente}>{pendente ? 'Pagando…' : 'Confirmar pagamento'}</button>
+            <button type="button" className="btn-primary" onClick={confirmar} disabled={pendente || marcados.length === 0 || pagarAgora <= 0}>
+              {pendente ? 'Pagando…' : 'Confirmar pagamento'}
+            </button>
           </div>
+          {marcados.length === 0 && (
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Marque ao menos um lançamento para pagar.</p>
+          )}
+          {marcados.length > 0 && pagarAgora <= 0 && (
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              Os marcados somam {formatBRL(pagarAgora)}: um estorno maior que o liberado fica para o próximo fechamento.
+            </p>
+          )}
         </div>
       )}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
@@ -288,7 +357,8 @@ function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
               {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regra(l)}` : ''}
             </p>
           </div>
-          <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando' : SITUACAO[l.status]}</span>
+          {/* A21 da 10ª: com o pagamento parcial, cada lançamento diz se foi pago (e quando) ou se ficou a pagar. */}
+          <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando' : l.status === 'PAID' && l.pagoEm ? `Paga em ${data(l.pagoEm)}` : SITUACAO[l.status]}</span>
           {l.kind === 'AGUARDANDO' ? (
             <span style={{ minWidth: 90, textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               previsto {formatBRL(l.previsto ?? 0)}

@@ -437,6 +437,29 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     o próximo fechamento."; e cada fechamento diz "lançamentos de 10/11/2026
     até 10/11/2026 às 02:30" (o primeiro lançamento e o fim, que é a hora do
     pagamento). A regra não mudou. Prova: `e2e/comissoes-uso-da-10.spec.ts` ("A32").
+  - **Pagar só parte: marcar e desmarcar os lançamentos** (A21 da 10ª
+    simulação; decisão do Heitor, 2026-11-10: "concordo com marcar e
+    desmarcar" — a dona queria pagar parte da comissão da Camila agora e o
+    resto depois). O "Fechar e pagar" lista os lançamentos a pagar da pessoa na
+    unidade (os de antes do período inclusive), TODOS MARCADOS
+    (`[data-lancamentos-do-fechamento]`), e o "Pagar agora" se refaz ao
+    desmarcar (`[data-pagar-agora]`: "Pagar agora (1 lançamento fica a pagar)
+    R$ 54,00"). O desmarcado continua "a pagar" no extrato e volta MARCADO no
+    próximo fechamento. **Não existe pagar um valor digitado**: um lançamento é
+    pago inteiro ou fica (o adiantamento em valor criaria um saldo que a próxima
+    conta teria de descontar). Quem paga é o banco, pelos ids marcados:
+    `comissao_fechar_escolhidos` (migration `20261110005201`) — o fechamento de
+    sempre (despesa paga, `commission_payouts`, lançamentos `PAID` com o
+    `payout_id`, `comissao.paga`, a mesma trava por profissional e unidade)
+    sobre os escolhidos; cada um tem de ser desta pessoa, desta unidade, aberto,
+    sem fechamento e lançado até o fim, senão nada se paga ("Um dos lançamentos
+    escolhidos já foi pago ou mudou…"). `comissao_fechar` (tudo) passou a chamar
+    este com todos os abertos — a conta do fechamento mora num lugar só; o
+    `fecharComissoes` sem a lista (chamador antigo) segue pagando tudo. **E cada
+    lançamento diz se foi pago**: o extrato e o "Minhas comissões" mostram
+    "Paga em 10/11/2026" ou "A pagar" na linha, e o CSV ganhou a coluna "Pago
+    em" ao lado da "Situação" (o dia do fechamento dele, `pagoEm` em
+    `extratoDasComissoes`). Prova: `e2e/comissoes-pagamento-parcial.spec.ts`.
   - Fechamento não se reabre: estorno depois dele vira lançamento negativo
     no próximo. Saldo negativo não fecha.
   - **Estornar um fechamento** (`estornarFechamento` →
@@ -488,7 +511,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)
 ❌ Gravar a comissão de um procedimento sem recusaDaComissaoDaAdmin (quem não é Admin mexia no valor da Admin)
 ❌ Criar a comissão da responsável do pacote com outra conta que não a da linha PACOTE_VENDA (pacote_responsavel = true) — ela é sobre o pacote pago inteiro e cai com o cancelamento, como a de venda
-❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
+❌ Pagar comissão fora de comissao_fechar / comissao_fechar_escolhidos (a despesa e os lançamentos pagos vão juntos)
+❌ Pagar parte de um lançamento, ou um valor digitado no fechamento: o lançamento é pago inteiro ou fica (A21 da 10ª — "marcar e desmarcar")
 ❌ Contar no lucro a despesa paga "Comissões" do fechamento (a comissão já desconta quando é lançada — 2026-11-04): ela fica só no caixa
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la inteira no plano cancelado (ela vale o usado, na proporção — D4 da 9ª)

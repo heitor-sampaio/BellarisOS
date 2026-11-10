@@ -265,9 +265,16 @@ const METODOS_DO_FECHAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as co
  * do período (ou até agora, se o período ainda corre). Uma função no banco
  * (`comissao_fechar`) grava tudo junto — o fechamento, a DESPESA paga no
  * financeiro e os lançamentos marcados pagos — e dois cliques fecham uma vez.
+ *
+ * `lancamentos` (A21 da 10ª; decisão do Heitor, 2026-11-10: "concordo com
+ * marcar e desmarcar"): os lançamentos MARCADOS na janela. Só eles se pagam,
+ * inteiros; o desmarcado continua a pagar e volta no próximo fechamento. O
+ * banco confere que cada um é desta pessoa, desta unidade e ainda está aberto
+ * (`comissao_fechar_escolhidos`). Sem a lista (chamador antigo), tudo o que está a pagar.
  */
 export async function fecharComissoes(
   profissionalId: string, branchId: string, periodoChave: string, metodo: string,
+  lancamentos?: string[] | null,
 ): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
@@ -290,10 +297,21 @@ export async function fecharComissoes(
     const agora = new Date()
     const fim = periodo.fim.getTime() < agora.getTime() ? periodo.fim : agora
 
-    await gravar(admin.rpc('comissao_fechar', {
-      p_tenant: ctx.tenantId!, p_profissional: profissionalId, p_unidade: branchId,
-      p_fim: fim.toISOString(), p_ator: ctx.internalUserId ?? null, p_metodo: metodo,
-    }), 'fechar as comissões')
+    if (lancamentos != null) {
+      if (!Array.isArray(lancamentos) || lancamentos.some(id => typeof id !== 'string' || !uuid.test(id))) {
+        return { error: 'Lançamentos inválidos.' }
+      }
+      if (!lancamentos.length) return { error: 'Escolha ao menos um lançamento para pagar.' }
+      await gravar(admin.rpc('comissao_fechar_escolhidos', {
+        p_tenant: ctx.tenantId!, p_profissional: profissionalId, p_unidade: branchId,
+        p_fim: fim.toISOString(), p_ator: ctx.internalUserId ?? null, p_metodo: metodo, p_lancamentos: lancamentos,
+      }), 'fechar as comissões')
+    } else {
+      await gravar(admin.rpc('comissao_fechar', {
+        p_tenant: ctx.tenantId!, p_profissional: profissionalId, p_unidade: branchId,
+        p_fim: fim.toISOString(), p_ator: ctx.internalUserId ?? null, p_metodo: metodo,
+      }), 'fechar as comissões')
+    }
 
     revalidatePath('/admin/financeiro')
     revalidatePath('/admin/financeiro/comissoes')

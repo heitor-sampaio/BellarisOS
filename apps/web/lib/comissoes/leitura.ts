@@ -287,6 +287,12 @@ export interface LancamentoDoExtrato {
    * preço até ela — D3 da 10ª: o extrato mostrava o preço onde dizia base.
    */
   base: number | null; baseDesconto: number; baseTaxa: number; baseInsumos: number; baseFator: number
+  /**
+   * Quando o lançamento foi pago (o dia do fechamento dele); nulo a pagar. A21
+   * da 10ª: com o pagamento parcial, o extrato diz por lançamento o que foi pago
+   * e o que ficou.
+   */
+  pagoEm: string | null
 }
 
 export interface Fechamento {
@@ -324,6 +330,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
       .order('released_at', { ascending: false }).order('id').range(de, ate),
     'ler o extrato das comissões',
   )
+  const pagoEm = await diasDosFechamentos(r.tenantId, linhas.map(l => (l.payout_id as string | null) ?? null))
   return linhas.map(l => ({
     id: String(l.id), professionalId: String(l.professional_id), branchId: String(l.branch_id),
     releasedAt: String(l.released_at), kind: l.kind as LancamentoDoExtrato['kind'], motivo: (l.motivo as string | null) ?? null,
@@ -340,7 +347,20 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     base: l.base == null ? null : Number(l.base),
     baseDesconto: Number(l.base_desconto ?? 0), baseTaxa: Number(l.base_taxa ?? 0), baseInsumos: Number(l.base_insumos ?? 0),
     baseFator: l.base_fator == null ? 1 : Number(l.base_fator),
+    pagoEm: l.status === 'PAID' && l.payout_id ? pagoEm.get(String(l.payout_id)) ?? null : null,
   }))
+}
+
+/** O dia em que cada fechamento foi pago, pelo id (em lotes: a lista de ids vai na URL). */
+async function diasDosFechamentos(tenantId: string, ids: (string | null)[]): Promise<Map<string, string>> {
+  const unicos = [...new Set(ids.filter((x): x is string => !!x))]
+  const mapa = new Map<string, string>()
+  for (let i = 0; i < unicos.length; i += 150) {
+    const lote = await ler(createAdminClient().from('commission_payouts').select('id, paid_at')
+      .eq('tenant_id', tenantId).in('id', unicos.slice(i, i + 150)), 'ler quando os fechamentos foram pagos')
+    for (const f of (lote ?? []) as { id: string; paid_at: string }[]) mapa.set(f.id, f.paid_at)
+  }
+  return mapa
 }
 
 /** Os últimos fechamentos no recorte. */
