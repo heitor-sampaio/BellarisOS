@@ -722,7 +722,9 @@
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
   O prazo aparece em DIA E HORA (J-61, `limiteParaAlterar`,
   `lib/clientes/agenda-do-portal.ts`, Brasília): "Pelo app, você cancela ou
-  remarca até ter, 03/11 às 10:00 (24 horas antes do horário)", "O prazo …
+  remarca até terça-feira, 03/11 às 10:00 (24 horas antes do horário)" — o dia
+  da semana por extenso (A58 da 11ª simulação, 2026-11-10: "até ter, 10/11"),
+  "O prazo …
   terminou em …", e no cartão da agenda "Alterar até …", com a seta de que o
   cartão abre. **Fora do prazo, a saída é inteira** (A53 da 7ª simulação,
   2026-11-05; a regra do prazo fica): o cartão da lista diz "Prazo do app
@@ -742,6 +744,18 @@
   manhã). **O cancelamento sem motivo** grava "Pela cliente no app" (A61: era
   "Pela cliente no app: Cancelado pela cliente no app"). Prova:
   `e2e/portal-cliente-remarcar-sem-preferencia.spec.ts`.
+  **E diz quem atende ANTES de confirmar, sem contar o próprio horário** (A56
+  da 11ª simulação, 2026-11-10; princípio 3: a Bruna virou Carla e a cliente
+  só soube depois): escolhido o horário em "Sem preferência", "Com Bia (a
+  mesma de antes) — quem está livre neste horário."
+  (`[data-quem-atende-no-remarcar]`, `quemAtendeNoRemarcar`, a MESMA escolha do
+  remarcar); e o próprio agendamento não conta como atendimento do dia de quem
+  o tem (`candidatasDoDia` com `ignorarAgendamentoId` tira ele da contagem —
+  contava, e a escolha pendia para a outra). **O horário novo dentro do prazo
+  avisa** (A57 da 11ª): "Este horário fica a menos de 24 horas: depois de
+  remarcar, para mudar de novo ou cancelar, fale com a clínica."
+  (`[data-dentro-do-prazo]`), como o Confirmar do agendar (A52 da 8ª, que já
+  valia para qualquer dia). Prova: `e2e/portal-cliente-atritos-da-11.spec.ts`.
 - **"Sem preferência" de profissional no app** (D-16, decisão do Heitor,
   2026-10-30): com mais de uma profissional na unidade, o passo
   "Profissional" do agendamento oferece "Sem preferência". A data mostra os

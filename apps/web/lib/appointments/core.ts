@@ -444,12 +444,17 @@ export async function candidatasDoDia(
 
   const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
+  // A56 da 11ª: ao remarcar, o próprio agendamento não conta como atendimento
+  // do dia de quem o tem — senão a escolha pendia para a outra (a Bruna virou
+  // Carla no mesmo dia, com a Bruna livre).
+  let doDiaQ = admin.from('appointments').select('professional_id')
+    .in('professional_id', equipe.map(p => p.id))
+    .gte('scheduled_at', dayStart).lte('scheduled_at', dayEnd)
+    .not('status', 'in', IGNORED_STATUS)
+  if (ignorarAgendamentoId) doDiaQ = doDiaQ.neq('id', ignorarAgendamentoId)
   const [livres, doDia] = await Promise.all([
     Promise.all(equipe.map(p => computeAvailableSlots(admin, branchId, p.id, date, durationMin, ignorarAgendamentoId))),
-    ler(admin.from('appointments').select('professional_id')
-      .in('professional_id', equipe.map(p => p.id))
-      .gte('scheduled_at', dayStart).lte('scheduled_at', dayEnd)
-      .not('status', 'in', IGNORED_STATUS), 'contar os atendimentos do dia'),
+    ler(doDiaQ, 'contar os atendimentos do dia'),
   ])
   const conta = new Map<string, number>()
   for (const a of (doDia ?? []) as { professional_id: string }[]) conta.set(a.professional_id, (conta.get(a.professional_id) ?? 0) + 1)

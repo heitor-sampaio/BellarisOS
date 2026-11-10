@@ -24,7 +24,6 @@ let rede: OutraRede
 let slug = ''
 let dona: MembroDeTeste
 let cera = ''
-let gel = ''
 const nomeCera = `${PREFIXO} Cera ${marca}`
 const nomeGel = `${PREFIXO} Gel ${marca}`
 
@@ -50,7 +49,6 @@ test.beforeAll(async () => {
   ]).select('id, name')
   expect(produtos.error).toBeNull()
   cera = produtos.data!.find(p => p.name === nomeCera)!.id as string
-  gel = produtos.data!.find(p => p.name === nomeGel)!.id as string
   // 10,84 refis: 10 fechados e um aberto com 840 g.
   expect((await b.rpc('estoque_entrada', {
     p_produto: cera, p_unidade: rede.branchId, p_quantidade: 11, p_custo: 39.5, p_observacao: null,

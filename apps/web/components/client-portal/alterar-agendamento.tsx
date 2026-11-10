@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarClock, XCircle, MessageCircle, Phone } from 'lucide-react'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
-import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar } from '@/actions/portal-agendamentos'
+import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar } from '@/actions/portal-agendamentos'
 
 const diaNoFuso = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(ms))
 const diaDeHoje = () => diaNoFuso(Date.now())
@@ -50,6 +50,20 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   // Com quem remarcar (A59): a mesma profissional, ou "Sem preferência" — que
   // escolhe de novo, entre quem realiza, quem estiver livre no horário.
   const [semPreferencia, setSemPreferencia] = useState(ofereceSemPreferencia && semPreferenciaInicial)
+  // A56 da 11ª: em "Sem preferência", quem fica com o horário — antes de confirmar.
+  // A resposta guarda o dia e a hora a que se refere: a de outro horário não aparece.
+  const [quemAtendeDe, setQuemAtendeDe] = useState<{ chave: string; nome: string | null; mesma: boolean } | null>(null)
+  const chaveDoHorario = semPreferencia && dia && hora ? `${dia} ${hora}` : null
+  const quemAtende = quemAtendeDe && quemAtendeDe.chave === chaveDoHorario ? quemAtendeDe : null
+  useEffect(() => {
+    if (!chaveDoHorario || !dia || !hora) return
+    let vivo = true
+    quemAtendeNoRemarcar(appointmentId, dia, hora).then(r => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, ...r }) }).catch(() => {})
+    return () => { vivo = false }
+  }, [chaveDoHorario, dia, hora, appointmentId])
+  // A57 da 11ª: o horário novo dentro do prazo do app — depois de remarcar, só a clínica muda.
+  const novoDentroDoPrazo = !!dia && !!hora && prazoHoras > 0
+    && new Date(`${dia}T${hora}:00-03:00`).getTime() - abertoEm < prazoHoras * 3_600_000
 
   if (!podeAlterar) {
     // A53 da 7ª simulação: a regra do prazo fica; a saída diz o prazo, liga e
@@ -167,6 +181,19 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
               </div>
             </div>
           ))}
+          {semPreferencia && hora && quemAtende?.nome && (
+            <p data-quem-atende-no-remarcar role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
+              Com {quemAtende.nome}{quemAtende.mesma ? ' (a mesma de antes)' : ''} — quem está livre neste horário.
+            </p>
+          )}
+          {novoDentroDoPrazo && (
+            <p data-dentro-do-prazo style={{
+              color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)',
+              padding: '10px 14px', fontSize: 'var(--text-sm-sz)', lineHeight: 1.45,
+            }}>
+              Este horário fica a menos de {prazoHoras} horas: depois de remarcar, para mudar de novo ou cancelar, fale com a clínica.
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn-secondary" disabled={enviando} onClick={() => setModo('nada')}>Voltar</button>
             <button type="button" className="btn-primary" disabled={enviando || !hora} onClick={confirmarRemarcar}>

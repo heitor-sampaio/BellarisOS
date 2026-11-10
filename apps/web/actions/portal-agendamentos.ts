@@ -141,6 +141,23 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
   }
 }
 
+/**
+ * A56 da 11ª: em "Sem preferência", QUEM fica com o horário escolhido — a
+ * mesma escolha do remarcar (`escolherQuemAtende`), dita antes de confirmar
+ * (a Bruna virou Carla, e só depois de confirmar ela ficava sabendo).
+ */
+export async function quemAtendeNoRemarcar(appointmentId: string, dia: string, hora: string): Promise<{ nome: string | null; mesma: boolean }> {
+  try {
+    const achado = await agendamentoDaCliente(appointmentId)
+    if (!achado || !/^\d{4}-\d{2}-\d{2}$/.test(dia) || !/^\d{2}:\d{2}$/.test(hora)) return { nome: null, mesma: false }
+    const candidatas = await candidatasParaRemarcar(achado.admin, achado.a, dia)
+    const id = escolherQuemAtende(candidatas, hora)
+    return { nome: candidatas.find(c => c.id === id)?.nome ?? null, mesma: !!id && id === achado.a.professional_id }
+  } catch {
+    return { nome: null, mesma: false }
+  }
+}
+
 /** Os horários livres para remarcar: os do self-service, do mesmo profissional (ou de todas, em "Sem preferência") e duração. */
 export async function horariosParaRemarcar(appointmentId: string, dia: string, semPreferencia = false): Promise<{ slots: string[] } | { error: string }> {
   try {

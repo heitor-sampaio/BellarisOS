@@ -49,10 +49,13 @@ export function separarAgendaDoPortal<T extends { status: string; scheduled_at: 
   return { proximos, historico }
 }
 
-/** "ter, 03/11 às 10:00" — o dia e a hora em Brasília (o servidor roda em UTC). */
+/**
+ * "terça-feira, 03/11 às 10:00" — o dia e a hora em Brasília (o servidor roda
+ * em UTC). A58 da 11ª: "até ter, 10/11 às 14:00" — o dia da semana por extenso.
+ */
 export function diaEHoraNoPortal(d: Date): string {
   const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', ...o }).format(d)
-  const semana = f({ weekday: 'short' }).replace('.', '')
+  const semana = f({ weekday: 'long' })
   return `${semana}, ${f({ day: '2-digit', month: '2-digit' })} às ${f({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`
 }
 
