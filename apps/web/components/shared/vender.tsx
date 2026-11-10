@@ -10,7 +10,9 @@ import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
 import { rotaDoRecebimento } from '@/components/shared/atendimentos-a-receber'
 import { formatBRL, parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
-import { venderCredito } from '@/actions/credito-na-clinica'
+import { venderCredito, acessoDaClienteAoApp } from '@/actions/credito-na-clinica'
+import { textoDoBonus } from '@/lib/creditos/bonus'
+import { rotaCliente } from '@/lib/rotas'
 import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -377,25 +379,39 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
  */
 function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string; branchId: string; onFim: () => void }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [valor, setValor] = useState('')
+  // A20 da 11ª (decisão do Heitor): o bônus, opcional — nasce vazio (princípio 6).
+  const [bonus, setBonus] = useState('')
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
+  // A55 da 11ª: a cliente sem acesso ao app não vê o saldo pelo celular.
+  const [semAcessoAoApp, setSemAcessoAoApp] = useState(false)
   const envio = useEnvioUnico()
   const lido = parseDinheiro(valor)
   const reais = Number.isFinite(lido) && lido > 0 ? Math.round(lido * 100) / 100 : 0
   const ilegivel = valor.trim() !== '' && !Number.isFinite(lido)
+  const bonusLido = bonus.trim() === '' ? 0 : parseDinheiro(bonus)
+  const bonusIlegivel = bonus.trim() !== '' && (!Number.isFinite(bonusLido) || bonusLido < 0)
+  const bonusEmReais = !bonusIlegivel && bonusLido > 0 ? Math.round(bonusLido * 100) / 100 : 0
+
+  useEffect(() => {
+    let vivo = true
+    acessoDaClienteAoApp(clienteId).then(r => { if (vivo) setSemAcessoAoApp(r.semAcesso) }).catch(() => {})
+    return () => { vivo = false }
+  }, [clienteId])
 
   function vender() {
     const recusa = recusaDoPagamento(estado, reais)
     setErro(recusa)
-    if (recusa || reais <= 0) return
+    if (recusa || reais <= 0 || bonusIlegivel) return
     iniciar(async () => {
-      const r = await venderCredito(clienteId, branchId, valor, montarPagamento(estado), envio.chave())
+      const r = await venderCredito(clienteId, branchId, valor, montarPagamento(estado), envio.chave(), bonus.trim())
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
-      toast.success(avisoDaVenda('Crédito na clínica', reais, estado.forma))
+      toast.success(avisoDaVenda(bonusEmReais > 0 ? `Crédito na clínica (${textoDoBonus(reais, bonusEmReais)})` : 'Crédito na clínica', reais, estado.forma))
       onFim()
     })
   }
@@ -410,6 +426,32 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
           <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{DINHEIRO_INVALIDO}</span>
         )}
       </label>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
+        <span className="field-label">Bônus (opcional)</span>
+        <input className="field" inputMode="decimal" placeholder="0,00" value={bonus} aria-invalid={bonusIlegivel}
+          onChange={e => setBonus(e.target.value)} />
+        {bonusIlegivel && (
+          <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
+            {Number.isFinite(bonusLido) ? 'O bônus não pode ser negativo.' : DINHEIRO_INVALIDO}
+          </span>
+        )}
+      </label>
+      {/* A20 da 11ª: a conta do bônus antes de vender — o caixa recebe só o pago. */}
+      {bonusEmReais > 0 && reais > 0 && (
+        <p data-conta-do-bonus style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.45 }}>
+          A cliente fica com <strong>{formatBRL(Math.round((reais + bonusEmReais) * 100) / 100)}</strong> de crédito: {textoDoBonus(reais, bonusEmReais)}.
+          {' '}O caixa recebe só os {formatBRL(reais)} pagos, e os pontos são sobre eles. Se a venda for estornada, o bônus sai junto.
+        </p>
+      )}
+      {/* A55 da 11ª: sem acesso ao app, ela não vê o saldo pelo celular. */}
+      {semAcessoAoApp && (
+        <p data-sem-acesso-ao-app style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.45, padding: '8px 10px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--hairline)' }}>
+          Esta cliente não tem acesso ao app: ela não vai ver o saldo do crédito pelo celular.{' '}
+          <Link href={`${rotaCliente(pathname, pathname.split('/')[1], clienteId)}?aba=dados`} style={{ color: 'var(--brand)', fontWeight: 700 }}>
+            Dar acesso ao app
+          </Link> na aba Dados da ficha.
+        </p>
+      )}
       {/* A regra na tela (princípio 3): onde o dinheiro conta e o que acontece no uso. */}
       <p data-regra-do-credito style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.45 }}>
         Entra no caixa hoje, na forma escolhida, e fica de saldo para a cliente usar em qualquer atendimento ou produto.
@@ -422,7 +464,7 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || reais <= 0 || !!recusaDoPagamento(estado, reais)}>
+        <button type="button" className="btn-primary" onClick={vender} disabled={pendente || reais <= 0 || bonusIlegivel || !!recusaDoPagamento(estado, reais)}>
           {pendente ? 'Vendendo…' : `Vender por ${formatBRL(reais)}`}
         </button>
       </div>

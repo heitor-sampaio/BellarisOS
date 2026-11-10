@@ -618,6 +618,44 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - O **"Conceder crédito"** (`grantInternalCredit`) continua como está: fora do
   caixa, para o crédito de fora e o que não teve dinheiro.
 - Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
+- **O bônus no crédito** (A20 da 11ª simulação; DECIDIDO pelo Heitor,
+  2026-11-10: "No estorno sai o bonus junto, a clinica decide se integral ou
+  parcial" — e "não vamos fazer as clinicas perderem dinheiro"). A Marta quis
+  vender R$ 500 de crédito que vira R$ 550.
+  - "Bônus (opcional)" no "Crédito na clínica", VAZIO por padrão (princípio 6;
+    só o negativo é recusado). A janela diz a conta antes de vender ("A cliente
+    fica com R$ 550,00 de crédito: R$ 500,00 pagos + R$ 50,00 de bônus. O
+    caixa recebe só os R$ 500,00 pagos…", `[data-conta-do-bonus]`).
+  - **O caixa e o faturamento recebem só o pago**: o lançamento é o valor pago
+    (a regra única o conta), e os pontos saem dele (o gatilho de sempre). O
+    bônus entra no saldo como CONCESSÃO ligada à venda (`internal_credits`
+    com `concedido` e o `credito_vendido_id`): sem dinheiro, não é receita.
+    `creditos_vendidos.bonus`; `credito_vender` ganhou `p_bonus` (a de 9
+    argumentos chama a nova com zero; migration `20261110005602`).
+  - **A tela e o app dizem** "R$ 500,00 pagos + R$ 50,00 de bônus"
+    (`textoDoBonus`, `lib/creditos/bonus.ts`): na linha do crédito da ficha (a
+    descrição do crédito comprado) e no app, no Início e no Financeiro, ao lado
+    do saldo (`bonusDosCreditosDaCliente`, as compras de pé).
+  - **No estorno o bônus SAI junto, e a clínica escolhe como** (a janela
+    pergunta "Como o bônus sai?", `[data-como-sai-o-bonus]`, com a conta do banco
+    de cada opção; sem escolher, não confirma, e o banco recusa): INTEIRO — o
+    bônus sai todo (até o saldo), e volta o saldo menos o bônus, até o pago —
+    ou PROPORCIONAL — o saldo se divide entre o pago e o bônus, e o bônus sai
+    na proporção do que volta. Ex.: R$ 500 + R$ 50, usados R$ 130 (saldo
+    R$ 420): inteiro, volta R$ 370 e saem R$ 50 de bônus; na proporção, volta
+    R$ 381,82 e saem R$ 38,18. **Nunca volta mais do que ela pagou**, e o que
+    sai do crédito nunca passa do saldo dela. O resto do estorno é o de sempre
+    (parcial ou o inteiro com o usado de novo; no cartão, só o inteiro; os
+    pontos do que voltou). `credito_estornar_venda` ganhou `p_bonus`.
+  - O uso segue a regra do crédito: não é receita de novo, e a comissão de
+    execução é a do atendimento. Sem comissão de venda.
+  - Prova: `e2e/vendas-credito-bonus.spec.ts`.
+- **A venda do crédito avisa que a cliente não tem acesso ao app** (A55 da 11ª;
+  princípio 3: a Daniela comprou o pré-pago e o login dizia só "E-mail ou senha
+  incorretos"): "Esta cliente não tem acesso ao app: ela não vai ver o saldo do
+  crédito pelo celular. Dar acesso ao app na aba Dados da ficha."
+  (`[data-sem-acesso-ao-app]`, `acessoDaClienteAoApp`). Só aviso: quem cria o
+  acesso continua sendo a clínica, na ficha (CLAUDE.md §5). Prova: o mesmo spec.
 
 ---
 
@@ -1895,4 +1933,5 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Rotular o cartão do caixa só "Despesas": é "Despesas pagas (caixa)", que tem a compra de estoque e o pagamento das comissões (A24 da 10ª)
 ❌ Vender crédito na clínica pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na clínica" do Vender (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
+❌ Lançar o bônus do crédito na clínica como receita, ou deixar o bônus no saldo depois do estorno da venda (ele sai junto, inteiro ou na proporção — a clínica escolhe; A20 da 11ª)
 ```

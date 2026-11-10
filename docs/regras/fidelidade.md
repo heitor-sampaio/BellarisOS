@@ -42,7 +42,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   depois, pago com crédito interno, não pontua. O estorno da venda do crédito
   tira os pontos do que voltou (na proporção, no estorno parcial). É o
   primeiro ramo de `fidelidade_pontos_do_pagamento` (`credito_vendido_id`).
-  Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
+  Prova: `e2e/vendas-credito-na-clinica.spec.ts`. **O bônus do crédito não
+  pontua** (A20 da 11ª, decisão do Heitor): os pontos são sobre o PAGO (R$ 500
+  de R$ 500 + R$ 50 de bônus), pelo lançamento; o bônus é concessão sem
+  dinheiro. Prova: `e2e/vendas-credito-bonus.spec.ts`.
 - **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu
   (lê o GANHO). Saldo pode ficar **negativo**, como estoque.
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por

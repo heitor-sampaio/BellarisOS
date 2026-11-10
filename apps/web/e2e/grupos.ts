@@ -303,6 +303,7 @@ export const ISOLADOS = [
   'prontuario-atritos-da-11.spec.ts',
   // F56 (os atritos da 11ª: caixa, financeiro, comissões, estoque e portal), cada um na sua rede [e2e].
   'financeiro-atritos-da-11.spec.ts',
+  'vendas-credito-bonus.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',

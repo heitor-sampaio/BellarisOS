@@ -57,12 +57,18 @@ export async function venderCredito(
   clienteId: string, branchId: string, valor: unknown, pagamento: unknown,
   /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
   envio?: string | null,
+  /**
+   * A20 da 11ª (decisão do Heitor, 2026-11-10): o bônus, opcional — vazio é
+   * sem bônus. O caixa recebe só o pago; o bônus entra no saldo dela como
+   * concessão ligada à venda.
+   */
+  bonus?: unknown,
 ): Promise<ResultadoDaVenda> {
   try {
     const ctx = await getTenantContext()
     if (!podeReceber(ctx)) throw semAcesso()
     return await umaVez(ctx.tenantId!, 'venderCredito', chaveDoEnvio(envio),
-      () => venderUmaVez(ctx, clienteId, branchId, valor, pagamento), { gravou: r => !!r.vendaId })
+      () => venderUmaVez(ctx, clienteId, branchId, valor, pagamento, bonus), { gravou: r => !!r.vendaId })
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
@@ -71,7 +77,7 @@ export async function venderCredito(
 
 async function venderUmaVez(
   ctx: Awaited<ReturnType<typeof getTenantContext>>,
-  clienteId: string, branchId: string, valor: unknown, pagamento: unknown,
+  clienteId: string, branchId: string, valor: unknown, pagamento: unknown, bonus?: unknown,
 ): Promise<ResultadoDaVenda> {
   try {
     if (typeof clienteId !== 'string' || !UUID.test(clienteId)) return { error: 'Escolha a cliente.' }
@@ -79,6 +85,11 @@ async function venderUmaVez(
     const reais = typeof valor === 'number' ? valor : parseDinheiro(String(valor ?? ''))
     if (!Number.isFinite(reais)) return { error: DINHEIRO_INVALIDO }
     if (reais <= 0) return { error: 'Informe um valor maior que zero.' }
+    // O bônus vazio é zero (nasce vazio — princípio 6); só o negativo é recusado (princípio 2).
+    const textoDoBonus = typeof bonus === 'number' ? String(bonus) : String(bonus ?? '').trim()
+    const bonusEmReais = textoDoBonus === '' ? 0 : parseDinheiro(textoDoBonus)
+    if (!Number.isFinite(bonusEmReais)) return { error: `Bônus: ${DINHEIRO_INVALIDO}` }
+    if (bonusEmReais < 0) return { error: 'O bônus não pode ser negativo.' }
     const lido = PagamentoDoCredito.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
     const vezes = lido.data.metodo === 'CREDIT_CARD' ? lido.data.vezes ?? 1 : 1
@@ -98,6 +109,7 @@ async function venderUmaVez(
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_unidade: branchId,
       p_valor: Math.round(reais * 100) / 100, p_metodo: lido.data.metodo, p_vezes: vezes,
       p_bandeira: lido.data.bandeira ?? null, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName || null,
+      p_bonus: Math.round(bonusEmReais * 100) / 100,
     })
     if (error) {
       if (error.code === 'P0001') return { error: error.message }
@@ -126,13 +138,18 @@ async function vendaDoLancamento(transacaoId: unknown) {
 }
 
 /** A conta do estorno (o banco simulando): o vendido, o saldo dela, o que volta e o usado. */
-export async function previaDoEstornoDoCredito(transacaoId: string): Promise<{ error?: string; previa?: PreviaDoEstornoDoCredito }> {
+export async function previaDoEstornoDoCredito(
+  transacaoId: string,
+  /** A20 da 11ª: como o bônus sai (a clínica escolhe); sem escolha, a conta do inteiro. */
+  bonus?: 'INTEIRO' | 'PROPORCIONAL' | null,
+): Promise<{ error?: string; previa?: PreviaDoEstornoDoCredito }> {
   try {
     const { ctx, venda } = await vendaDoLancamento(transacaoId)
     if (!venda) return { error: 'Venda de crédito não encontrada.' }
     const { data, error } = await createAdminClient().rpc('credito_estornar_venda', {
       p_tenant: ctx.tenantId!, p_venda: venda.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName || null,
       p_motivo: null, p_esperado: null, p_simular: true, p_estorno: null, p_novo: null,
+      p_bonus: bonus === 'INTEIRO' || bonus === 'PROPORCIONAL' ? bonus : null,
     })
     if (error) return { error: error.code === 'P0001' ? error.message : mensagemDoErro(error) }
     return { previa: lerPreviaDoEstornoDoCredito(data) }
@@ -147,6 +164,8 @@ const EntradaDoEstorno = z.object({
   estorno:  z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
   novo:     z.object({ metodo: z.enum(FORMAS), vezes: z.number().int().min(1).max(12).optional(), bandeira: z.string().nullable().optional() }).nullable().optional(),
   esperado: z.number().min(0),
+  /** A20 da 11ª: na venda com bônus, como o bônus sai — a clínica escolhe. */
+  bonus:    z.enum(['INTEIRO', 'PROPORCIONAL']).nullable().optional(),
 })
 
 /** Estorna a venda do crédito: volta o saldo que ela ainda não usou (até o vendido). */
@@ -164,6 +183,7 @@ export async function estornarVendaDeCredito(transacaoId: string, entrada: unkno
       p_tenant: ctx.tenantId!, p_venda: venda.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName || null,
       p_motivo: lido.data.motivo, p_esperado: lido.data.esperado, p_simular: false,
       p_estorno: lido.data.estorno ?? null, p_novo: lido.data.novo ?? null,
+      p_bonus: lido.data.bonus ?? null,
     })
     if (error) return { error: error.code === 'P0001' ? error.message : mensagemDoErro(error) }
     revalidar()
@@ -172,4 +192,19 @@ export async function estornarVendaDeCredito(transacaoId: string, entrada: unkno
     if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
   }
+}
+
+/**
+ * A55 da 11ª: a venda do crédito avisa quando a cliente não tem acesso ao app
+ * (a Daniela comprou o pré-pago e não via o saldo: o login dizia só "e-mail ou
+ * senha incorretos"). Só o sinal e o caminho da ficha — quem dá o acesso é a
+ * aba Dados ("Dar acesso ao app").
+ */
+export async function acessoDaClienteAoApp(clienteId: string): Promise<{ semAcesso: boolean }> {
+  const ctx = await getTenantContext()
+  if (!podeReceber(ctx)) throw semAcesso()
+  if (typeof clienteId !== 'string' || !UUID.test(clienteId)) return { semAcesso: false }
+  const c = await ler(createAdminClient().from('clients').select('auth_id').eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+    'ver se a cliente tem acesso ao app')
+  return { semAcesso: !!c && !c.auth_id }
 }

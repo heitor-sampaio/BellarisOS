@@ -34,10 +34,13 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
   const [escolha, setEscolha] = useState<EscolhaDaDevolucaoEstado>({ ...ESCOLHA_INICIAL, destino: 'ESTORNO' })
   const opcoesDeVezes = useOpcoesDeVezes()
   const [estornando, iniciar] = useTransition()
+  // A20 da 11ª (decisão do Heitor: "No estorno sai o bonus junto, a clinica
+  // decide se integral ou parcial"): na venda com bônus, como ele sai.
+  const [bonusComo, setBonusComo] = useState<'INTEIRO' | 'PROPORCIONAL' | null>(null)
 
   useEffect(() => {
     let vivo = true
-    previaDoEstornoDoCredito(transacaoId).then(r => {
+    previaDoEstornoDoCredito(transacaoId, bonusComo).then(r => {
       if (!vivo) return
       if (r.error || !r.previa) { setErro(r.error ?? 'Não consegui calcular o estorno.'); return }
       setPrevia(r.previa)
@@ -45,16 +48,19 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
       if (r.previa.parcial?.cartao) setEscolha(e => comOPagamentoInteiro({ ...e, comoEstornar: null }, r.previa!.parcial))
     })
     return () => { vivo = false }
-  }, [transacaoId])
+  }, [transacaoId, bonusComo])
 
-  const pronto = !!previa && previa.volta > 0 && motivo.trim().length > 0 && escolhaCompleta(previa.volta, previa.parcial, escolha)
+  const temBonus = !!previa && previa.bonus > 0
+  // A conta da janela é a da escolha: com bônus, só depois de escolher como ele sai.
+  const contaPronta = !!previa && (!temBonus || !!bonusComo)
+  const pronto = !!previa && contaPronta && previa.volta > 0 && motivo.trim().length > 0 && escolhaCompleta(previa.volta, previa.parcial, escolha)
 
   function confirmar() {
     if (!previa) return
     setErro(null)
     const { estorno, novo } = escolhaParaAAcao(previa.volta, previa.parcial, escolha)
     iniciar(async () => {
-      const r = await estornarVendaDeCredito(transacaoId, { motivo: motivo.trim(), estorno, novo, esperado: previa.volta })
+      const r = await estornarVendaDeCredito(transacaoId, { motivo: motivo.trim(), estorno, novo, esperado: previa.volta, bonus: temBonus ? bonusComo : null })
       if (r.error) { setErro(r.error); return }
       toast.success(`Venda de crédito estornada: ${formatBRL(r.volta ?? previa.volta)} voltam à cliente.`)
       onFechar()
@@ -78,7 +84,27 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
             <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Calculando…
           </p>
         )}
-        {previa && (
+        {previa && temBonus && previa.opcoesDoBonus && (
+          <div data-como-sai-o-bonus role="radiogroup" aria-label="Como o bônus sai" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="field-label">Esta venda teve {formatBRL(previa.bonus)} de bônus. Como o bônus sai?</span>
+            {(['INTEIRO', 'PROPORCIONAL'] as const).map(op => {
+              const o = previa.opcoesDoBonus![op]
+              return (
+                <label key={op} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="radio" name="como-sai-o-bonus" checked={bonusComo === op} disabled={estornando}
+                    onChange={() => setBonusComo(op)} style={{ marginTop: 3 }} />
+                  <span>
+                    {op === 'INTEIRO' ? 'Inteiro' : 'Na proporção do que volta'} — sai {formatBRL(o.bonusSai)} de bônus; volta {formatBRL(o.volta)}
+                  </span>
+                </label>
+              )
+            })}
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+              O bônus sai junto do estorno (ele não teve dinheiro). Nunca volta mais do que a cliente pagou.
+            </p>
+          </div>
+        )}
+        {previa && contaPronta && (
           <>
             <div data-conta-do-estorno-do-credito style={{
               display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px',
@@ -86,6 +112,7 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
             }}>
               <div style={linha}><span>Vendido</span><span style={valor}>{formatBRL(previa.pago)}</span></div>
               <div style={linha}><span>Já usado</span><span style={valor}>{formatBRL(previa.usado)}</span></div>
+              {temBonus && <div style={linha}><span>Bônus que sai</span><span style={valor}>{formatBRL(previa.bonusSai)}</span></div>}
               <div style={{ ...linha, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
                 <span style={{ color: 'var(--text)', fontWeight: 700 }}>Volta à cliente</span><span style={valor}>{formatBRL(previa.volta)}</span>
               </div>
@@ -102,6 +129,10 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
               <EscolhaDaDevolucao prefixo="estorno-credito" devolver={previa.volta} parcial={previa.parcial} fidelidade={false}
                 estado={escolha} aoMudar={setEscolha} desligado={estornando} opcoesDeVezes={opcoesDeVezes} soEstorno />
             ) : null}
+          </>
+        )}
+        {previa && (
+          <>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <span className="field-label">Motivo do estorno *</span>
               <textarea className="field" rows={2} maxLength={500} value={motivo} disabled={estornando}

@@ -15,6 +15,7 @@ import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import { getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
+import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 
@@ -144,6 +145,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // A46 da 9ª: o crédito na clínica aparece no Início (só estava no Financeiro, e o
   // caminho até lá ficava dentro do detalhe de um plano). A conta é a do Financeiro do app.
   const creditoNaClinica = redeDoCliente ? await getCreditoInternoDoCliente(redeDoCliente, ctx.clientId!) : 0
+  // A20 da 11ª: o bônus do crédito comprado, dito ao lado do saldo.
+  const bonusDoCredito = redeDoCliente && creditoNaClinica > 0 ? await bonusDosCreditosDaCliente(redeDoCliente, ctx.clientId!) : []
   // O plano FECHADO abre (A45): as sessões e o dinheiro dele, de lib/metrics.
   const financeiroDosPlanos = new Map(redeDoCliente ? await Promise.all(activePlans
     .filter(p => p.status === 'ACCEPTED')
@@ -278,6 +281,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             <p className="overline">Crédito na clínica</p>
             <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{formatBRL(creditoNaClinica)}</p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Use em qualquer atendimento ou produto na clínica.</p>
+            {bonusDoCredito.map((b, i) => (
+              <p key={i} data-bonus-do-credito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Crédito comprado: {b}.</p>
+            ))}
           </div>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', flexShrink: 0 }}>
             Ver no Financeiro <ChevronRight size={16} aria-hidden />

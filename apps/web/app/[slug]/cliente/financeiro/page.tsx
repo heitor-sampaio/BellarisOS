@@ -3,6 +3,7 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
+import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { formatBRL, formatDia } from '@estetica-os/utils'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
@@ -102,9 +103,11 @@ export default async function ClientFinancialPage() {
   if (!ficha) throw new Error('Cadastro do cliente não encontrado.')
   // O crédito interno é o da ficha DESTA clínica (ctx.clientId é a do
   // endereço, §5): D-17, 2026-10-30.
-  const [{ ltv: total }, credito] = await Promise.all([
+  const [{ ltv: total }, credito, bonus] = await Promise.all([
     getDoCliente(ficha.tenant_id as string, ctx.clientId!),
     getCreditoInternoDoCliente(ficha.tenant_id as string, ctx.clientId!),
+    // A20 da 11ª: "R$ 500,00 pagos + R$ 50,00 de bônus" ao lado do saldo.
+    bonusDosCreditosDaCliente(ficha.tenant_id as string, ctx.clientId!),
   ])
 
   return (
@@ -133,6 +136,9 @@ export default async function ClientFinancialPage() {
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Crédito na clínica</p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Use como forma de pagamento nos próximos atendimentos.</p>
+            {bonus.map((b, i) => (
+              <p key={i} data-bonus-do-credito style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Crédito comprado: {b}.</p>
+            ))}
           </div>
           <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--success)', letterSpacing: '-0.01em' }}>
             {formatBRL(credito)}
