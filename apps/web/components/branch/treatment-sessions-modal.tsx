@@ -21,6 +21,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import type { Horario } from '@/lib/agenda/horario'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
+import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -68,6 +69,8 @@ interface Props {
    * no dinheiro.
    */
   onCancelarPlano?: () => void
+  /** A41 da 11ª: o crediário deste pacote ainda em aberto (só a quem recebe). */
+  emAberto?: { valor: number; parcelas: number } | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -303,7 +306,7 @@ export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,
   packageName, totalSessions,
   clientId, procedureId, procedureName, price, durationMin,
-  slug, branches, currentBranchId, onClose, onCancelarPlano,
+  slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -413,6 +416,8 @@ export function TreatmentSessionsModal({
 
         {/* Body */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px 20px' }}>
+          {/* A41 da 11ª: ao agendar a sessão, o que falta pagar do pacote (as sessões seguem liberadas). */}
+          {emAberto && <div style={{ marginBottom: 12 }}><AvisoDoPacoteEmAberto valor={emAberto.valor} parcelas={emAberto.parcelas} /></div>}
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: 'var(--text-faint)' }}>
               <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />

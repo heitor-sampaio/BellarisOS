@@ -49,6 +49,7 @@ import { ler } from '@/lib/db'
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import { registrarAcessoAoProntuario, acessosAoProntuario } from '@/lib/prontuario/acessos'
 import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
+import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
@@ -185,6 +186,8 @@ export default async function ClientProfilePage({
       // O pacote trazido de fora (F35): "Pacote de antes" e as usadas antes do sistema (A57).
       ...camposDoPacoteDeFora(activePkg as { de_fora?: boolean; usadas_antes?: number; valor_referencia?: number | null }),
     }
+    // A41 da 11ª: o crediário do pacote ainda em aberto (só a quem recebe — o dinheiro é do caixa, A39 da 7ª).
+    if (podeReceber(ctx)) activePackage.emAberto = (await getEmAbertoDosPacotes(ctx.tenantId!, [activePkg.id as string]))[activePkg.id as string] ?? null
   }
 
   // Fallback: plano de tratamento avulso ACCEPTED (sem client_package) — modelo sessão-primeiro

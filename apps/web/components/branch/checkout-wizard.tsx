@@ -34,6 +34,8 @@ import type { MembroDaVenda } from '@/components/shared/vender'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { lerPassoDoCheckout, gravarPassoDoCheckout, limparPassoDoCheckout, type PassoDoCheckout } from '@/lib/checkout/passo-do-checkout'
+import { maskPhone } from '@estetica-os/utils'
+import { documentoNaTela } from '@/lib/clients/documento-na-tela'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -598,8 +600,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <div>
           <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{plan.clientName}</p>
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            {plan.clientDocument ? `CPF ${plan.clientDocument}` : 'CPF não informado'}
-            {plan.clientPhone ? ` · ${plan.clientPhone}` : ''}
+            {/* A45 da 11ª: com máscara ("CPF 005.159.962-70 · (31) 99700-0013"); o passaporte/RNE fica como veio. */}
+            {plan.clientDocument ? `CPF ${documentoNaTela(plan.clientDocument)}` : 'CPF não informado'}
+            {plan.clientPhone ? ` · ${maskPhone(plan.clientPhone)}` : ''}
           </p>
         </div>
       </div>

@@ -104,6 +104,18 @@ plano").
     vencimento do "a receber" é OPCIONAL (aqui e no pagamento do contrato):
     sem data, o lançamento nasce sem `due_date` e o contrato diz "a receber"
     sem o dia.
+- **O pacote no crediário segue liberando, e a tela diz o que falta pagar**
+  (A41 da 11ª simulação, 2026-11-10; decidido pelos princípios — o pacote
+  segue liberando: princípio 1, nada muda sem a clínica pedir; a tela avisa:
+  princípio 2). O pacote de entrada R$ 150 + 3 × R$ 100 liberava as 6 sessões
+  calado. Na ficha, embaixo do cartão "Tratamento em andamento", e ao agendar a
+  sessão (a ficha de tratamento → "Gerenciar sessões"): "R$ 300,00 deste
+  pacote ainda em aberto (3 parcelas do crediário). As sessões seguem
+  liberadas; o que falta se recebe no Financeiro." (`AvisoDoPacoteEmAberto`,
+  `[data-pacote-em-aberto]`), só a quem recebe (o dinheiro é do caixa, como o
+  saldo do plano — A39 da 7ª). A conta é do banco (`metrics_em_aberto_dos_pacotes`
+  → `getEmAbertoDosPacotes`, `lib/metrics/pacote-em-aberto.ts`; migration
+  `20261110005604`). Prova: `e2e/vendas-atritos-da-11.spec.ts` ("A41").
 - **"Abater do pacote": o pacote vendido DEPOIS paga o avulso já concluído**
   (D9 da simulação de 2026-10-28, decisão do Heitor). Na janela do
   "Confirmar pagamento" de um avulso CONCLUÍDO e a receber, se a cliente tem
@@ -1577,6 +1589,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   das Vendas do plano é quem vendeu (D14 da 8ª; sem ele, a dona do plano —
   `indicadores.md`). Prova:
   `e2e/comissoes-venda-do-plano.spec.ts`.
+- **O CPF e o telefone com máscara no checkout e no atendimento** (A45 da 11ª;
+  princípio 3: "CPF 00515996270 · 31997000013"): "CPF 005.159.962-70 · (31)
+  99700-0013" (`documentoNaTela`, `lib/clients/documento-na-tela.ts` — o
+  passaporte e o RNE ficam como vieram; `maskPhone`), e o telefone do cartão do
+  atendimento (`AttendanceRecordCard`). Prova: `e2e/vendas-atritos-da-11.spec.ts` ("A45").
+- **O "Quem vendeu" vazio cabe no celular** (A46 da 11ª): a opção vazia é
+  "Escolha quem vendeu", e a explicação ("Vazio: ninguém vendeu — sem comissão
+  de venda.", `[data-quem-vendeu-vazio]`) fica embaixo do campo — o texto longo
+  saía cortado a 412 px. O "Quem vendeu" e o "Profissional" do checkout seguem
+  nascendo vazios com mais de uma pessoa (r2-ven-12; A14 da 8ª). Prova: o mesmo spec ("A46").
 - **O checkout do plano SUGERE o pacote equivalente** (2026-10-21, decisão
   do Heitor): quando as sessões do plano têm os MESMOS procedimentos, nas
   mesmas quantidades, de um pacote ativo à venda na unidade, e ele sai mais

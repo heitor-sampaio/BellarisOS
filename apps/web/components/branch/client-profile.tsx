@@ -56,6 +56,7 @@ import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
 import { RemarcarVencimento } from '@/components/shared/remarcar-vencimento'
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
+import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 
 // -- Types --------------------------------------------------------------------
 
@@ -131,6 +132,8 @@ export interface ProfilePackage {
   usadasAntes?:  number
   /** Do pacote trazido: sem valor de referência (a comissão de execução é R$ 0 — princípio 4). */
   semValorDeReferencia?: boolean
+  /** A41 da 11ª: o que ainda está em aberto deste pacote (o crediário) — só a quem recebe. */
+  emAberto?:     { valor: number; parcelas: number } | null
 }
 
 export interface ProfileTransaction {
@@ -1986,6 +1989,8 @@ export function ClientProfile({
                 Abrir para ver e agendar as sessões <ChevronRight size={14} aria-hidden="true" />
               </p>
             </div>
+            {/* A41 da 11ª: o pacote segue liberando; a ficha diz o que falta pagar dele. */}
+            {activePackage.emAberto && <AvisoDoPacoteEmAberto valor={activePackage.emAberto.valor} parcelas={activePackage.emAberto.parcelas} />}
             {activePackage.deFora && activePackage.semValorDeReferencia && (
               <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>
                 Sem valor de referência: as sessões deste pacote não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos.

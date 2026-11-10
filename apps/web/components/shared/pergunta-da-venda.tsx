@@ -25,7 +25,8 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span className="overline">Quem vendeu</span>
       <select className="field" aria-label="Quem vendeu" value={valor} onChange={e => aoMudar(e.target.value)}>
-        <option value="">Escolha quem vendeu (vazio: ninguém, sem comissão de venda)</option>
+        {/* A46 da 11ª: o texto longo saía cortado no celular — a explicação vai embaixo. */}
+        <option value="">Escolha quem vendeu</option>
         {/* A15 da 8ª simulação: quem atende e quem recebe primeiro; depois quem tem Vendas no cargo (A42 da 11ª). */}
         {GRUPOS_DE_QUEM_VENDEU.map(g => {
           const doGrupo = equipe.filter(g.de)
@@ -36,6 +37,11 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
           ) : null
         })}
       </select>
+      {!valor && (
+        <span data-quem-vendeu-vazio style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+          Vazio: ninguém vendeu — sem comissão de venda.
+        </span>
+      )}
     </label>
   )
 }

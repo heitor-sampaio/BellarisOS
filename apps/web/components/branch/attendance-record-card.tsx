@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { formatDia, idadeEm } from '@estetica-os/utils'
+import { formatDia, idadeEm, maskPhone } from '@estetica-os/utils'
 import { FileText } from 'lucide-react'
 
 // Documento único do atendimento, em 3 seções:
@@ -107,7 +107,7 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
           <IdentityRow label="Nome"       value={client.name} />
           <IdentityRow label="CPF"        value={maskCPF(client.document)} />
           <IdentityRow label="Nascimento" value={birth ? `${birth}${age !== null ? ` · ${age} anos` : ''}` : null} />
-          <IdentityRow label="Telefone"   value={client.phone} />
+          <IdentityRow label="Telefone"   value={client.phone ? maskPhone(client.phone) : client.phone} />
         </div>
         {generalAnamnesis}
 

@@ -333,6 +333,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
         isNetworkWide={isNetworkWide}
         onClose={() => setSessionsOpen(false)}
         onCancelarPlano={onCancelarPlano}
+        emAberto={activePackage.emAberto ?? null}
       />
     )
   }
