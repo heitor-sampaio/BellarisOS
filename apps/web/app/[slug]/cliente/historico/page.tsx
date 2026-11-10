@@ -26,6 +26,17 @@ export type ProcedimentoItem = {
   unidade?:            string | null
 }
 
+/**
+ * O que veio do sistema de ANTES (A42 da 10ª simulação): as sessões feitas nos
+ * pacotes trazidos de fora e a última visita da planilha. Não vira atendimento
+ * — sem data, profissional nem nota que não existiram (a migração, crm-inbox.md).
+ */
+export type DeAntesDoSistema = {
+  sessoes:      { procedimento: string; quantas: number }[]
+  /** AAAA-MM-DD (o dia gravado). */
+  ultimaVisita: string | null
+}
+
 export type PagamentoItem = {
   id:             string
   description:    string
@@ -181,7 +192,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   // A64: o atendimento avulso concluído e não pago (a conta de
   // `atendimentos_a_receber`, a mesma do Fechamento e da ficha) — não tinha
   // lançamento, e não aparecia para a cliente.
-  const ficha = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar a ficha') as { tenant_id: string } | null
+  const ficha = await ler(admin.from('clients').select('tenant_id, ultima_visita_antes').eq('id', ctx.clientId!).maybeSingle(), 'buscar a ficha') as { tenant_id: string; ultima_visita_antes: string | null } | null
   const aReceber = ficha ? await getAtendimentosAReceber({ tenantId: ficha.tenant_id, clienteId: ctx.clientId! }) : null
   pagamentos.unshift(...(aReceber?.itens ?? []).map(a => ({
     id:             `a-receber-${a.appointmentId}`,
@@ -194,6 +205,18 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     procedure_name: a.procedureName,
     aPagarNaClinica: true,
   })))
+
+  // -- De antes do sistema (A42 da 10ª) ----------------------------
+  // A Ana Clara, importada com 5 de 8 sessões feitas, via no Histórico só os
+  // 2 atendimentos do sistema: as de antes moravam só no cartão da home.
+  const pacotesDeFora = (await ler(admin.from('client_packages')
+    .select('usadas_antes, service_packages(procedures(name))')
+    .eq('client_id', ctx.clientId!).eq('de_fora', true).gt('usadas_antes', 0), 'carregar os pacotes de antes') ?? []) as unknown as
+    { usadas_antes: number; service_packages: { procedures: { name: string } | null } | null }[]
+  const deAntes: DeAntesDoSistema = {
+    sessoes: pacotesDeFora.map(pc => ({ procedimento: pc.service_packages?.procedures?.name ?? 'Pacote de antes', quantas: Number(pc.usadas_antes) })),
+    ultimaVisita: ficha?.ultima_visita_antes ? String(ficha.ultima_visita_antes).slice(0, 10) : null,
+  }
 
   // -- Documentos -------------------------------------------------
   const rawDocs = (docsRes ?? []) as unknown as DocumentoLido[]
@@ -222,6 +245,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
       <HistoricoTabs
         slug={slug}
         procedimentos={procedimentos}
+        deAntes={deAntes}
         pagamentos={pagamentos}
         documentos={clientDocs}
         consentimentos={consentDocs}

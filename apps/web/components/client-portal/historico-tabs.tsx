@@ -5,7 +5,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { formatDia } from '@estetica-os/utils'
 import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
-import type { ProcedimentoItem, PagamentoItem } from '@/app/[slug]/cliente/historico/page'
+import type { ProcedimentoItem, PagamentoItem, DeAntesDoSistema } from '@/app/[slug]/cliente/historico/page'
 
 // -- Types ----------------------------------------------------------
 type ClientDoc = {
@@ -27,6 +27,8 @@ type ConsentDoc = {
 interface Props {
   slug:           string
   procedimentos:  ProcedimentoItem[]
+  /** O que veio do sistema de antes (A42 da 10ª): as sessões dos pacotes trazidos e a última visita. */
+  deAntes?:       DeAntesDoSistema
   pagamentos:     PagamentoItem[]
   documentos:     ClientDoc[]
   consentimentos: ConsentDoc[]
@@ -67,7 +69,8 @@ const DOC_CATEGORY: Record<string, string> = {
 }
 
 // -- Component ------------------------------------------------------
-export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, consentimentos }: Props) {
+export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, documentos, consentimentos }: Props) {
+  const temDeAntes = !!deAntes && (deAntes.sessoes.length > 0 || !!deAntes.ultimaVisita)
   const [tab, setTab] = useState<Tab>('procedimentos')
 
   const TABS: { key: Tab; label: string; count: number }[] = [
@@ -131,7 +134,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
       {/* -- Procedimentos ------------------------------------------ */}
       {tab === 'procedimentos' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {procedimentos.length === 0 && (
+          {procedimentos.length === 0 && !temDeAntes && (
             <EmptyState message="Nenhum procedimento realizado ainda." />
           )}
           {procedimentos.map(p => {
@@ -183,6 +186,19 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
           })}
         </div>
       )}
+
+          {/* A42 da 10ª: o que veio de antes do sistema, por último (é o mais antigo). */}
+          {tab === 'procedimentos' && temDeAntes && (
+            <div data-de-antes-do-sistema className="card" style={{ padding: '13px 18px', marginTop: 8, background: 'var(--bg-app)' }}>
+              <p className="overline" style={{ marginBottom: 6 }}>Antes do sistema</p>
+              <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+                {deAntes!.sessoes.map((s, i) => (
+                  <li key={i}>{s.quantas} {s.quantas === 1 ? 'sessão' : 'sessões'} de {s.procedimento}, do pacote que você trouxe</li>
+                ))}
+                {deAntes!.ultimaVisita && <li>Última visita antes do sistema: {formatDia(deAntes!.ultimaVisita)}</li>}
+              </ul>
+            </div>
+          )}
 
       {/* -- Pagamentos --------------------------------------------- */}
       {tab === 'pagamentos' && (

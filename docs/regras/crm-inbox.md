@@ -701,7 +701,13 @@ dela — e vê Configurações só com essa aba.
     da ficha (`trazerPacoteCore`). Só se oferece a quem traz pacote de fora (o
     Financeiro em Gerenciar; a action recusa a coluna aos outros). Importar de
     novo não o traz duas vezes (o mesmo procedimento, total e usadas). O que
-    não se entende fica de fora com o motivo (D2).
+    não se entende fica de fora com o motivo (D2). **O Histórico do app diz o
+    que veio de antes** (A42 da 10ª simulação, 2026-11-10: as 5 sessões da
+    Ana Clara apareciam só no cartão da home): "Antes do sistema — 5 sessões
+    de Limpeza de pele, do pacote que você trouxe · Última visita antes do
+    sistema: 12/09/2026" (`[data-de-antes-do-sistema]`, a última visita é a
+    `ultima_visita_antes`). Não vira atendimento: sem data, profissional nem
+    avaliação. Prova: `e2e/portal-cliente-historico-da-10.spec.ts`.
   - **O responsável legal** (A5: nome, CPF, parentesco, telefone): só na
     MENOR (pelo nascimento que a ficha fica tendo — a regra de
     `colunasDoResponsavel`); na adulta, "Responsável legal não gravado".
