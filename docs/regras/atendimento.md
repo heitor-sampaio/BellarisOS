@@ -1761,6 +1761,22 @@ const procedures = await ler(
     `ajusteDeEstoqueCore`, a tela e o Copilot — que, sem lote, abre o novo sem
     número); `estoque_ajuste_em` ficou sem chamador no app. Prova: o mesmo
     spec ("D5").
+  - **O ajuste a MENOS escolhe o lote, e a entrada errada se DESFAZ** (A38 da
+    10ª, 2026-11-10; o relatório: "desfazer duas entradas erradas zerou o lote
+    real AH-2026-0451, pelo FEFO"): a contagem menor pergunta "De qual lote sai
+    a diferença" ("O que vence primeiro" por padrão) — o movimento leva o lote
+    em `reference = 'lote:<id>'` e o gatilho tira dele primeiro, como a perda
+    (`estoque_ajuste_com_lote`, migration `20261110005101`). E o Histórico tem
+    "Desfazer entrada" na entrada cujo lote não teve saída nenhuma (sem lote:
+    quando o produto não tem lote com saldo na unidade): uma ENTRADA negativa
+    (`PURCHASE` com quantidade < 0, "Entrada desfeita") que tira do lote dela —
+    não é perda nem consumo (fora de "Perdas no período" e do giro) —, e a
+    original fica marcada (`desfeita_em`, `desfeita_por`, `desfeita_motivo`,
+    `desfeita_pelo`); o último custo volta ao da entrada anterior quando era o
+    dela. Nada se apaga. `estoque_desfazer_entrada` (com o motivo obrigatório)
+    confere tudo de novo com o saldo e o lote travados; a action é
+    `desfazerEntradaDeEstoque` (Estoque em Gerenciar, a unidade ao alcance).
+    Prova: `e2e/estoque-uso-da-10.spec.ts` ("A38").
   - **A regra é UMA, no banco**: `tem_unidade_de_consumo`, `fator_de_consumo`,
     `custo_de_consumo` (o preço da embalagem ÷ o que ela rende; sem unidade de
     consumo, ÷ 1), `saldo_de_consumo`, `valor_do_saldo` e
@@ -1900,7 +1916,30 @@ const procedures = await ler(
     (`lotesEsgotados`, `actions/stock.ts`, pede o Estoque e a unidade ao
     alcance; `[data-lote-esgotado]`), cada um com o "Aplicado em". Era
     documentado "o dia e a hora marcados" (A40 da 7ª): mudou pela hora real.
-    Prova: `e2e/estoque-lotes-da-9.spec.ts`.
+    Prova: `e2e/estoque-lotes-da-9.spec.ts`. **"Ver lotes esgotados", só onde
+    há algum** (A36 da 10ª, 2026-11-10: "Lotes esgotados" parecia um estado e
+    aparecia em produto que nunca teve lote): a página manda os pares produto ×
+    unidade com lote esgotado (`paresComLoteEsgotado`, `lib/estoque/lotes.ts`)
+    e o botão só aparece neles. Prova: `e2e/estoque-uso-da-10.spec.ts` ("A36").
+  - **Os cartões do topo cabem, e a validade diz o lote e a data** (A40 da
+    10ª): a 1440 px saíam cortados (cinco colunas, rótulo e detalhe numa linha
+    com reticências). Os dois Estoques usam `CartoesDoEstoque`
+    (`components/shared/cartoes-do-estoque.tsx`: a grade se ajusta, o rótulo
+    quebra linha) e o "Validade em 30 dias" lista "Gel — lote GA-1 ·
+    15/11/2026", até três, e "e mais N" (`loteNoCartao`). Prova: o mesmo spec
+    ("A40").
+  - **Salvar o mínimo tem nome e confirma** (A41 da 10ª): "Salvar mínimo" e
+    "Mínimo salvo" (`[data-minimo-salvo]`) — era um ícone. Prova: ("A41").
+  - **O mínimo e o lote vencendo avisam** (A39 da 10ª): o dashboard da
+    UNIDADE ganhou o quadro "Estoque no mínimo ou abaixo"
+    (`[data-estoque-abaixo-do-minimo]`, `itensAbaixoDoMinimo`,
+    `lib/estoque/abaixo-do-minimo.ts`, a régua da tela de estoque) — o da rede já
+    tinha o "Estoque crítico"; e o job `estoque-minimo` (de hora em hora, que já
+    levava o mínimo ao sino) avisa também o lote que vence em 30 dias, UMA vez
+    por lote, a quem responde pelo Estoque na unidade (`avisarLotesVencendo`,
+    `lib/estoque/aviso-de-lote.ts`, tipo `batch_expiring`; `?rede=` recorta uma
+    rede, para o teste). Prova: o mesmo spec ("A39"),
+    `e2e/estoque-lote-vencendo-no-sino.spec.ts`.
   - **O giro do Estoque diz o que conta** (A13 da 9ª, 2026-11-07): "insumos
     dos atendimentos, sem a venda de produto" (`DETALHE_DO_GIRO`,
     `[data-kpi="giro"]`, nas duas telas) — o Financeiro somava o custo da
@@ -1955,7 +1994,15 @@ const procedures = await ler(
   que a clínica PAGOU, se ela quiser no financeiro, é um lançamento manual
   (Financeiro → Novo lançamento, categoria "Compra de estoque": conta no caixa e
   fica FORA do lucro, que já desconta o insumo consumido — 2026-10-29,
-  `indicadores.md`). Por 28/10 a Entrada e o cadastro tiveram
+  `indicadores.md`). **A Entrada DIZ isso, e guarda o fornecedor e a nota**
+  (A37 da 10ª, 2026-11-10: a Perda dizia "não gera despesa" e a Entrada não; o
+  fornecedor e a nota iam nas Observações): "Não gera despesa: o custo é a
+  base…" (`[data-entrada-sem-despesa]`) e os campos "Fornecedor" (vem o do
+  cadastro do produto) e "Nota fiscal", gravados no movimento
+  (`stock_movements.fornecedor`/`nota_fiscal`, `estoque_entrada` de 10
+  argumentos — a de 8 chama ela; migration `20261110005101`) e mostrados no
+  Histórico ("NF 004630 · Distribuidora Sul"). Prova:
+  `e2e/estoque-uso-da-10.spec.ts` ("A37"). Por 28/10 a Entrada e o cadastro tiveram
   "Lançar o custo como despesa paga hoje" (`estoque_compra`, 1b54c531): saiu
   (migrations `20261028000801`/`802`; `estoque_inicial` perdeu
   `p_despesa`). Prova: `e2e/estoque-nunca-gera-despesa.spec.ts`.
@@ -2413,6 +2460,7 @@ O resto do fluxo:
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
 ❌ Avaliar o estoque ou o consumo pelo último custo (products.cost_price) quando há lote: é custo_do_lote (o gatilho do lote grava o do consumo; valor_do_saldo soma os lotes — D2 da 10ª)
 ❌ Ajuste positivo de estoque fora de um lote, ou o negativo fora de "Perdas no período" (estoque_ajuste_com_lote, motivo INVENTARIO — D5 da 10ª)
+❌ Corrigir uma entrada lançada errada com um ajuste a menos (vira perda e sai do lote errado pelo FEFO): é "Desfazer entrada" (estoque_desfazer_entrada — A38 da 10ª), ou o ajuste com o lote escolhido
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Mostrar no ajuste o saldo em embalagens arredondadas, ou ler a contagem do inventário tirando dela o "já consumido do frasco aberto" (estoque_ajuste, o de antes): a contagem vale EXATA na unidade digitada — estoque_ajuste_em (D3 da 7ª)
 ❌ Dizer no "Aplicado em" do lote a baixa INTEIRA do atendimento (é stock_movement_batches.quantity × o rendimento) ou a hora marcada (é a conclusão) — D6/A12 da 9ª; ou listar só os lotes com saldo onde o recall pede o esgotado (D15)

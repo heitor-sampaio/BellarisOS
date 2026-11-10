@@ -98,6 +98,8 @@ interface Props {
   readOnly?:         boolean
   /** "Aplicado em" no lote (A40 da 7ª): quem tem as Clientes vê em quem o lote foi aplicado. */
   podeVerAplicacoes?: boolean
+  /** A36 da 10ª: os pares `produto:unidade` com lote esgotado — só neles o "Ver lotes esgotados". */
+  comLoteEsgotado?:  string[]
 }
 
 type ViewMode  = 'consolidado' | 'por-unidade'
@@ -198,7 +200,8 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false }: Props) {
+export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [] }: Props) {
+  const temLoteEsgotado = useMemo(() => new Set(comLoteEsgotado), [comLoteEsgotado])
   const router = useRouter()
   // Chegar com uma unidade na URL só faz sentido junto com a visão por unidade:
   // no consolidado o saldo dela ficaria somado ao das outras.
@@ -572,7 +575,10 @@ export function AdminStockView({ products, branches, categories, productCategori
                                     </div>
                                   )}
                                   {/* D15 da 9ª: o lote que acabou, com o "Aplicado em" (o recall). */}
-                                  <LotesEsgotados produtoId={p.id} unidadeId={b.branchId} produto={p.name} podeVerAplicacoes={podeVerAplicacoes} />
+                                  {/* A36 da 10ª: só onde há lote esgotado (não é um estado do produto). */}
+                                  {temLoteEsgotado.has(`${p.id}:${b.branchId}`) && (
+                                    <LotesEsgotados produtoId={p.id} unidadeId={b.branchId} produto={p.name} podeVerAplicacoes={podeVerAplicacoes} />
+                                  )}
                                 </div>
                                 )
                               })}

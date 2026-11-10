@@ -10,7 +10,8 @@ import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/un
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
-import { lotesComSaldo, lotesVencendo, type LoteDoProduto } from '@/lib/estoque/lotes'
+import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
+import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
@@ -181,7 +182,10 @@ export default async function AdminEstoquePage({
   const vencendo        = lotesVencendo(lotes, in30Days)
   const validadeProxima = vencendo.length
   const nomeDoProduto   = new Map(products.map(p => [p.id, p.name]))
-  const quaisVencem     = [...new Set(vencendo.map(l => nomeDoProduto.get(l.produtoId) ?? ''))].filter(Boolean)
+  // A40 da 10ª: o cartão diz o lote e a data, não só o produto.
+  const quaisVencem     = vencendo.map(l => loteNoCartao(nomeDoProduto.get(l.produtoId) ?? '', l))
+  // A36 da 10ª: o "Ver lotes esgotados" só onde há algum.
+  const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, unidadesDoRecorte) : []
 
   const suppliers      = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
@@ -225,8 +229,7 @@ export default async function AdminEstoquePage({
       </div>
 
       {/* KPIs — 5 cards (auto-colapsa no mobile) */}
-      <div className="kpi-grid-auto">
-        {[
+      <CartoesDoEstoque cartoes={[
           {
             label:   'VALOR EM ESTOQUE',
             value:   fmtBRL(valorEstoque),
@@ -274,7 +277,7 @@ export default async function AdminEstoquePage({
           {
             id:      'validade',
             label:   'VALIDADE EM 30 DIAS',
-            detalhe: quaisVencem.length ? quaisVencem.slice(0, 2).join(', ') + (quaisVencem.length > 2 ? ` e mais ${quaisVencem.length - 2}` : '') : undefined,
+            detalhe: linhasDaValidade(quaisVencem),
             value:   String(validadeProxima),
             icon:    <CalendarClock size={18} style={{ color: validadeProxima > 0 ? 'var(--warning)' : 'var(--text-faint)' }} />,
             iconBg:  validadeProxima > 0 ? 'var(--warning-soft)' : 'var(--bg-app)',
@@ -282,36 +285,7 @@ export default async function AdminEstoquePage({
             labelColor: 'var(--text-muted)',
             brand:   false,
           },
-        ].map(k => (
-          <div
-            key={k.label}
-            data-kpi={'id' in k ? k.id : undefined}
-            title={'detalhe' in k && k.detalhe ? `${k.label}: ${k.detalhe}` : undefined}
-            className={k.brand ? 'card-brand' : 'card'}
-            style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}
-          >
-            <div className="kpi-icone" style={{
-              width: 40, height: 40, borderRadius: 'var(--radius-field-token)', flexShrink: 0,
-              background: k.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {k.icon}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <p className="kpi-rotulo" style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                {k.label}
-              </p>
-              <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.color, marginTop: 3, whiteSpace: 'nowrap' }}>
-                {k.value}
-              </p>
-              {'detalhe' in k && k.detalhe && (
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {k.detalhe}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+        ] as CartaoDoEstoque[]} />
 
       <AdminStockView
         products={products.map(p => ({
@@ -329,6 +303,7 @@ export default async function AdminEstoquePage({
         unidadeInicial={unidadeId}
         readOnly={!canEdit}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
+        comLoteEsgotado={comLoteEsgotado}
         buscaInicial={busca}
       />
     </div>

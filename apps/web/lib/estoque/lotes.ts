@@ -95,3 +95,23 @@ export async function lotesVencendoDoRecorte(
     return { ...l, produto: p.name, embalagem: p.unit }
   })
 }
+
+/**
+ * Os pares produto × unidade que têm algum lote ESGOTADO (A36 da 10ª
+ * simulação, 2026-11-10): o "Ver lotes esgotados" aparecia em todo produto,
+ * também no que nunca teve lote, e parecia um estado. Só a chave
+ * `produto:unidade` — a lista dos esgotados continua vindo na hora
+ * (`lotesEsgotados`, actions/stock.ts).
+ */
+export async function paresComLoteEsgotado(admin: Admin, branchIds: string[]): Promise<string[]> {
+  if (!branchIds.length) return []
+  type Linha = { product_id: string; branch_id: string }
+  const linhas = await lerTodas<Linha>((de, ate) => admin.from('product_batches')
+    .select('product_id, branch_id')
+    .in('branch_id', branchIds)
+    .lte('quantity', 0)
+    .order('id')
+    .range(de, ate) as unknown as PromiseLike<{ data: Linha[] | null; error: { message: string } | null }>,
+  'carregar os lotes esgotados')
+  return [...new Set(linhas.map(l => `${l.product_id}:${l.branch_id}`))]
+}

@@ -108,7 +108,7 @@ test('D15 e A12: o lote esgotado continua com o "Aplicado em", e a hora é a da 
   await como(browser, gerente!, async p => {
     await abrirProduto(p)
     await expect(p.locator('[data-lotes-do-produto]').filter({ hasText: loteA }), 'o A1 não tem saldo').toHaveCount(0)
-    await p.getByRole('button', { name: /Lotes esgotados/ }).click()
+    await p.getByRole('button', { name: /lotes esgotados/i }).click()
     const esgotado = p.locator('[data-lote-esgotado]').filter({ hasText: loteA })
     await expect(esgotado).toBeVisible()
     await esgotado.getByRole('button', { name: 'Aplicado em' }).click()

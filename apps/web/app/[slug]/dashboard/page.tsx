@@ -33,6 +33,8 @@ import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
 import { ParcelasVencidas } from '@/components/shared/parcelas-vencidas'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { LotesVencendo } from '@/components/shared/lotes-vencendo'
+import { EstoqueAbaixoDoMinimo } from '@/components/shared/estoque-abaixo-do-minimo'
+import { itensAbaixoDoMinimo } from '@/lib/estoque/abaixo-do-minimo'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import { AvatarDaCliente as Avatar, ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
 
@@ -347,6 +349,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       }))
     : []
 
+  // A39 da 10ª: o que está no mínimo ou abaixo, a quem tem o Estoque (a régua da tela de estoque).
+  const abaixoDoMinimo = perm.stock !== 'NONE' ? await itensAbaixoDoMinimo([branchId]) : []
+
   // D13 da 9ª: as parcelas vencidas da unidade, a quem vê o financeiro dela inteiro.
   const vencidas = canFinancial && !isOwnScope(ctx, 'financial')
     ? (await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: [branchId] })).total
@@ -375,6 +380,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
       {/* Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */}
       <LotesVencendo lotes={lotesVencendo} agora={now.toISOString()} />
+
+      {/* A39 da 10ª: o mínimo também no dashboard da unidade, a quem tem o Estoque. */}
+      <EstoqueAbaixoDoMinimo itens={abaixoDoMinimo} href={`/${slug}/estoque`} />
 
       {/* -- Checkout pendente ----------------------------------- */}
       {canCheckout && (pendingCheckouts ?? 0) > 0 && (

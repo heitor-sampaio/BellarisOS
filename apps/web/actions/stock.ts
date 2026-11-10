@@ -497,6 +497,9 @@ async function adminAddStockInterno(
       observacao:    str(formData, 'notes'),
       lote:          str(formData, 'batch_number'),
       validade:      str(formData, 'expires_at'),
+      // A37 da 10ª: o fornecedor e a nota da compra, estruturados.
+      fornecedor:    str(formData, 'fornecedor'),
+      notaFiscal:    str(formData, 'nota_fiscal'),
     })
     if ('error' in r) return { error: r.error }
 
@@ -726,6 +729,17 @@ export interface MovimentoDeEstoque {
   custoPorEmbalagem: number | null
   /** Os lotes do movimento (de onde saiu, ou o que a entrada criou) — J-45. */
   lotes: { numero: string | null; validade: string | null }[]
+  /** A37 da 10ª: o fornecedor e a nota fiscal da entrada. */
+  fornecedor: string | null
+  notaFiscal: string | null
+  /** A38 da 10ª: a entrada desfeita (quando e por quê). */
+  desfeita: { em: string; motivo: string | null } | null
+  /**
+   * A entrada ainda se desfaz: o lote dela não teve saída (ou, sem lote, o
+   * produto não tem lote com saldo na unidade). O banco confere de novo
+   * (estoque_desfazer_entrada).
+   */
+  desfazivel: boolean
 }
 
 /**
@@ -746,7 +760,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, branches!inner(name, tenant_id), stock_movement_batches(product_batches(batch_number, expires_at))')
+    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, nota_fiscal, desfeita_em, desfeita_motivo, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -778,7 +792,9 @@ export async function getProductMovements(
     notes: string | null; reference: string | null; created_at: string; branches: { name: string } | null
     unit_cost: number | string | null
     motivo_da_perda: string | null
-    stock_movement_batches: { product_batches: { batch_number: string | null; expires_at: string | null } | null }[] | null
+    fornecedor: string | null; nota_fiscal: string | null; desfeita_em: string | null; desfeita_motivo: string | null
+    branch_id: string
+    stock_movement_batches: { quantity: number | string; product_batches: { id: string; batch_number: string | null; expires_at: string | null; quantity: number | string } | null }[] | null
   }
   const fator = emConsumo ? upp : 1
   const linhas = (data ?? []) as unknown as Row[]
@@ -792,6 +808,31 @@ export async function getProductMovements(
       .eq('product_id', productId).eq('branches.tenant_id', ctx.tenantId!).in('reference', refs), 'ler as transferências') as
       { type: string; reference: string; branches: { name: string } | null }[] | null
     for (const x of pernas ?? []) outraPerna.set(`${x.reference}|${x.type}`, x.branches?.name ?? '')
+  }
+  // A38 da 10ª: a entrada se desfaz enquanto o lote dela não teve saída — só a
+  // ligação da própria entrada, com a quantidade inteira. Sem lote, só quando o
+  // produto não tem lote com saldo na unidade (o gatilho tiraria de outro).
+  const entradas = linhas.filter(m => m.type === 'PURCHASE' && Number(m.quantity) > 0 && !m.desfeita_em)
+  const lotesDasEntradas = [...new Set(entradas.flatMap(m => (m.stock_movement_batches ?? []).map(l => l.product_batches?.id).filter(Boolean) as string[]))]
+  const ligacoesDosLotes = new Map<string, number>()
+  if (lotesDasEntradas.length) {
+    const ligs = await ler(admin.from('stock_movement_batches').select('batch_id').in('batch_id', lotesDasEntradas), 'conferir as saídas dos lotes') as { batch_id: string }[] | null
+    for (const l of ligs ?? []) ligacoesDosLotes.set(l.batch_id, (ligacoesDosLotes.get(l.batch_id) ?? 0) + 1)
+  }
+  const unidadesSemLote = [...new Set(entradas.filter(m => !(m.stock_movement_batches ?? []).length).map(m => m.branch_id))]
+  const unidadesComLote = new Set<string>()
+  if (unidadesSemLote.length) {
+    const comSaldo = await ler(admin.from('product_batches').select('branch_id').eq('product_id', productId)
+      .in('branch_id', unidadesSemLote).gt('quantity', 0), 'conferir os lotes com saldo') as { branch_id: string }[] | null
+    for (const l of comSaldo ?? []) unidadesComLote.add(l.branch_id)
+  }
+  const desfazivel = (m: Row) => {
+    if (m.type !== 'PURCHASE' || !(Number(m.quantity) > 0) || m.desfeita_em) return false
+    const ligs = m.stock_movement_batches ?? []
+    if (!ligs.length) return !unidadesComLote.has(m.branch_id)
+    const l = ligs[0]!
+    const lote = l.product_batches
+    return !!lote && ligacoesDosLotes.get(lote.id) === 1 && Math.abs(Number(lote.quantity) - Number(l.quantity)) < 1e-6
   }
   const nota = (m: Row) => {
     if (!m.reference || !notaDeTransferenciaSemNome(m.type, m.notes)) return m.notes
@@ -816,6 +857,10 @@ export async function getProductMovements(
     custoPorEmbalagem: m.unit_cost != null ? Math.round(Number(m.unit_cost) * fator * 100) / 100 : null,
     lotes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
       ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at }] : []),
+    fornecedor:   m.fornecedor,
+    notaFiscal:   m.nota_fiscal,
+    desfeita:     m.desfeita_em ? { em: m.desfeita_em, motivo: m.desfeita_motivo } : null,
+    desfazivel:   desfazivel(m),
   }))
 }
 
@@ -960,6 +1005,43 @@ export async function lotesEsgotados(produtoId: string, unidadeId: string): Prom
       .range(de, ate) as unknown as PromiseLike<{ data: Linha[] | null; error: { message: string } | null }>,
     'carregar os lotes esgotados')
     return { lotes: lotes.map(l => ({ id: l.id, numero: l.batch_number, validade: l.expires_at })) }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * Desfazer uma ENTRADA lançada errada (A38 da 10ª simulação, 2026-11-10: para
+ * desfazer duas entradas erradas, o Time B fez um ajuste a menos e zerou pelo
+ * FEFO o lote real). Enquanto o lote dela não teve saída: uma entrada ao
+ * contrário, que tira do lote dela — não é perda nem consumo. A original fica,
+ * marcada como desfeita, com o motivo. Pede o Estoque em Gerenciar e a unidade
+ * da entrada ao alcance; a conferência do lote é do banco
+ * (`estoque_desfazer_entrada`).
+ */
+export async function desfazerEntradaDeEstoque(movimentoId: string, motivo: string): Promise<{ error?: string; success?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    if (typeof movimentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(movimentoId)) return { error: 'Entrada não encontrada.' }
+    const porque = typeof motivo === 'string' ? motivo.trim() : ''
+    if (!porque) return { error: 'Diga por que a entrada é desfeita.' }
+    if (porque.length > 300) return { error: 'O motivo passa de 300 caracteres.' }
+    const admin = createAdminClient()
+    const mov = await ler(admin.from('stock_movements').select('id, branch_id, branches!inner(tenant_id)')
+      .eq('id', movimentoId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a entrada')
+    if (!mov || !alcancaUnidade(ctx, mov.branch_id as string)) return { error: 'Entrada não encontrada.' }
+    const { error } = await admin.rpc('estoque_desfazer_entrada', {
+      p_tenant: ctx.tenantId!, p_movimento: movimentoId, p_motivo: porque, p_autor: ctx.internalUserId,
+    })
+    if (error) {
+      if (error.code === 'P0001') return { error: error.message }
+      throw new Error(`Não consegui desfazer a entrada: ${error.message}`)
+    }
+    revalidatePath('/admin/estoque')
+    if (ctx.branchId) revalidatePath('/*/stock')
+    return { success: true }
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }

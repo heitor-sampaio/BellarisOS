@@ -272,6 +272,8 @@ export const ISOLADOS = [
   'financeiro-atritos-da-10.spec.ts',
   'comissoes-atritos-da-10.spec.ts',
   'estoque-atritos-da-10.spec.ts',
+  // F51 (os atritos da 10ª: caixa, financeiro, comissões, estoque).
+  'estoque-uso-da-10.spec.ts',
   // F50 (os atritos da 10ª: a clínica de uma opção só, setup, importação, agenda e atendimento).
   'agenda-clinica-de-uma-opcao.spec.ts',
   'atendimento-uso-da-10.spec.ts',

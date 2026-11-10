@@ -49,6 +49,9 @@ export interface EntradaDeEstoque {
   observacao?: string | null
   lote?: string | null
   validade?: string | null
+  /** A37 da 10ª: o fornecedor e a nota fiscal da compra (informação — não gera despesa). */
+  fornecedor?: string | null
+  notaFiscal?: string | null
 }
 
 export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: EntradaDeEstoque): Promise<{ ok: true; saldo: number } | { error: string }> {
@@ -66,6 +69,7 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
     p_produto: e.productId, p_unidade: e.branchId, p_quantidade: e.quantidade,
     p_custo: e.custoUnitario ?? null, p_observacao: e.observacao ?? null,
     p_lote: e.lote || null, p_validade: e.validade || null, p_autor: ctx.internalUserId,
+    p_fornecedor: e.fornecedor?.trim() || null, p_nota_fiscal: e.notaFiscal?.trim() || null,
   }), 'registrar a entrada de estoque') as number
   return { ok: true, saldo: Number(saldo) }
 }
@@ -81,7 +85,8 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
   productId: string; branchId: string; novoSaldo: number; motivo: string; emConsumo?: boolean
   /**
    * D5 da 10ª: a contagem MAIOR que o saldo entra num lote — o escolhido, ou um
-   * novo "sem número" (com a validade, se vier). O negativo sai pelo FEFO.
+   * novo "sem número" (com a validade, se vier). A MENOR sai do lote escolhido
+   * (A38 da 10ª), e sem ele pelo FEFO.
    */
   loteId?: string | null; loteValidade?: string | null
 }): Promise<{ ok: true; de: number } | { error: string }> {

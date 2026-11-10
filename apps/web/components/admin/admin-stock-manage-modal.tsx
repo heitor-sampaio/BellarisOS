@@ -1,14 +1,16 @@
 ﻿'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   X, PackagePlus, ArrowLeftRight, SlidersHorizontal,
   AlertTriangle, TrendingDown, Check, Loader2, PackageX,
 } from 'lucide-react'
 import {
   adminAddStock, adminTransferStock, adminAdjustStock, adminUpdateMinStock, registrarPerda,
-  getProductMovements, type MovimentoDeEstoque,
+  getProductMovements, desfazerEntradaDeEstoque, type MovimentoDeEstoque,
 } from '@/actions/stock'
+import { JanelaModal } from '@/components/shared/janela-modal'
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
 import { validadeNaTela } from '@/lib/estoque/validade'
 import { erroParaTela } from '@/lib/erro-na-tela'
@@ -36,6 +38,8 @@ type ProductInfo = {
   /** A unidade de consumo (ml, UI) e quanto a embalagem rende: a perda aceita as duas (est-03). */
   consumptionUnit?: string | null
   unitsPerPackage?: number | null
+  /** O fornecedor do cadastro: a Entrada já o sugere (A37 da 10ª). */
+  supplier?:        string | null
 }
 
 type AllBranch = { id: string; name: string }
@@ -52,9 +56,9 @@ type Tab   = 'movimentacoes' | 'min-stock' | 'historico'
 type MovOp = 'entrada' | 'transferencia' | 'ajuste' | 'perda'
 
 // -- Primitivos --------------------------------------------------------
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+    <label htmlFor={htmlFor} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
       {children}
     </label>
   )
@@ -146,45 +150,62 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
           label="Unidade de destino" required />
       )}
 
+      {/* A37 da 10ª: a Entrada diz a regra, como a Perda (D13 revisto, decisão do
+          Heitor, 2026-10-28: movimentação de estoque nunca gera despesa). */}
+      <p data-entrada-sem-despesa style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a clínica pagou entra no
+        Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
+      </p>
+
       <div className="form-2col">
         <FieldWrap>
-          <Label>Quantidade *</Label>
+          <Label htmlFor="entrada-quantidade">Quantidade *</Label>
           <div style={{ position: 'relative' }}>
-            <input name="quantity" type="number" step="0.001" min="0.001" required className="field"
+            <input id="entrada-quantidade" name="quantity" type="number" step="0.001" min="0.001" required className="field"
               placeholder="0" style={{ paddingRight: 36 }} />
             <UnitSuffix unit={product.unit} />
           </div>
         </FieldWrap>
         <FieldWrap>
-          <Label>Custo unitário</Label>
+          <Label htmlFor="entrada-custo">Custo unitário</Label>
           <div style={{ position: 'relative' }}>
             <span style={{
               position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
               fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
             }}>R$</span>
-            <input name="unit_cost" type="number" step="0.01" min="0" className="field"
+            <input id="entrada-custo" name="unit_cost" type="number" step="0.01" min="0" className="field"
               placeholder="0,00" style={{ paddingLeft: 28 }} />
           </div>
         </FieldWrap>
       </div>
-      {/* Sem "lançar como despesa": movimentação de estoque nunca gera despesa
-          (D13 revisto, decisão do Heitor, 2026-10-28). O custo é base de
-          insumo, custo e margem. */}
 
       <div className="form-2col">
         <FieldWrap>
-          <Label>Nº do lote</Label>
-          <input name="batch_number" type="text" className="field" placeholder="LOT-001" />
+          <Label htmlFor="entrada-lote">Nº do lote</Label>
+          <input id="entrada-lote" name="batch_number" type="text" className="field" placeholder="LOT-001" />
         </FieldWrap>
         <FieldWrap>
-          <Label>Validade</Label>
-          <input name="expires_at" type="date" className="field" />
+          <Label htmlFor="entrada-validade">Validade</Label>
+          <input id="entrada-validade" name="expires_at" type="date" className="field" />
+        </FieldWrap>
+      </div>
+
+      {/* A37 da 10ª: o fornecedor e a nota, estruturados (eram as Observações). */}
+      <div className="form-2col">
+        <FieldWrap>
+          <Label htmlFor="entrada-fornecedor">Fornecedor</Label>
+          <input id="entrada-fornecedor" name="fornecedor" type="text" maxLength={120} className="field"
+            defaultValue={product.supplier ?? ''} placeholder="Nome do fornecedor" />
+        </FieldWrap>
+        <FieldWrap>
+          <Label htmlFor="entrada-nota">Nota fiscal</Label>
+          <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota" />
         </FieldWrap>
       </div>
 
       <FieldWrap>
-        <Label>Observações</Label>
-        <textarea name="notes" className="field" rows={2} placeholder="Nota fiscal, fornecedor…"
+        <Label htmlFor="entrada-obs">Observações</Label>
+        <textarea id="entrada-obs" name="notes" className="field" rows={2} placeholder="Ex.: chegou com a caixa amassada"
           style={{ resize: 'vertical' }} />
       </FieldWrap>
 
@@ -458,9 +479,31 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
         </>
       )}
       {delta !== null && delta < 0 && (
-        <p data-ajuste-negativo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          A diferença sai do lote que vence primeiro e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
-        </p>
+        <>
+          {/* A38 da 10ª: o ajuste a menos escolhe o lote (desfazer duas entradas
+              erradas zerou o lote real pelo FEFO). Sem escolha, o que vence primeiro. */}
+          {lotesDaUnidade.length > 0 && (
+            <FieldWrap>
+              <label htmlFor="ajuste-lote-saida" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                De qual lote sai a diferença
+              </label>
+              <select id="ajuste-lote-saida" name="loteId" className="field" value={loteDoAjuste} onChange={e => setLoteDoAjuste(e.target.value)}>
+                <option value="">O que vence primeiro</option>
+                {lotesDaUnidade.map(l => (
+                  <option key={l.id} value={l.id}>
+                    {l.numero ? `Lote ${l.numero}` : 'Lote sem número'}
+                    {l.validade ? ` · vence ${validadeNaTela(l.validade)}` : ''}
+                    {` · ${fmtQ(l.quantidade)} ${product.unit}`}
+                  </option>
+                ))}
+              </select>
+            </FieldWrap>
+          )}
+          <p data-ajuste-negativo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            A diferença sai {loteDoAjuste ? 'do lote escolhido (o que faltar nele, do que vence primeiro)' : 'do lote que vence primeiro'} e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
+            Entrada lançada errada se desfaz no Histórico (“Desfazer entrada”), sem virar perda.
+          </p>
+        </>
       )}
 
       <FieldWrap>
@@ -647,7 +690,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
     setSaving(p => ({ ...p, [branchId]: false }))
     if (res?.success) {
       setSaved(p => ({ ...p, [branchId]: true }))
-      setTimeout(() => setSaved(p => ({ ...p, [branchId]: false })), 2000)
+      setTimeout(() => setSaved(p => ({ ...p, [branchId]: false })), 5000)
     } else {
       setErrors(p => ({ ...p, [branchId]: res?.error ?? 'Erro.' }))
     }
@@ -669,7 +712,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 
         return (
           <div key={b.id} style={{
-            display: 'flex', alignItems: 'center', gap: 12,
+            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             padding: '11px 14px', borderRadius: 10,
             border: '1px solid var(--border)', background: 'var(--surface)',
           }}>
@@ -684,6 +727,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
             {/* Input */}
             <div style={{ position: 'relative', width: 110 }}>
               <input
+                aria-label={`Estoque mínimo em ${b.name}`}
                 type="number" step="0.001" min="0"
                 value={values[b.id] ?? '0'}
                 onChange={e => {
@@ -700,29 +744,25 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
               }}>{product.unit}</span>
             </div>
 
-            {/* Save button */}
+            {/* A41 da 10ª: era um ícone sem rótulo nem confirmação. */}
             <button
               type="button"
               onClick={() => save(b.id)}
               disabled={isBusy}
-              style={{
-                width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: 'none', cursor: isBusy ? 'wait' : 'pointer',
-                background: isDone ? 'var(--success-bg)' : 'var(--brand-soft)',
-                color: isDone ? 'var(--success)' : 'var(--brand)',
-                transition: 'all 150ms',
-              }}
-              title="Salvar"
+              className="btn-secondary"
+              style={{ flexShrink: 0, gap: 6, whiteSpace: 'nowrap' }}
             >
               {isBusy
-                ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                : isDone
-                ? <Check size={14} />
-                : <TrendingDown size={14} />
-              }
+                ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} aria-hidden />
+                : <TrendingDown size={14} aria-hidden />}
+              Salvar mínimo
             </button>
 
+            {isDone && (
+              <span role="status" data-minimo-salvo style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-2xs)', color: 'var(--success)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                <Check size={12} aria-hidden /> Mínimo salvo
+              </span>
+            )}
             {errMsg && (
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 700 }}>{errMsg}</span>
             )}
@@ -736,6 +776,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 // -- Modal principal ---------------------------------------------------
 export function AdminStockManageModal({ product, allBranches, defaultBranchId, onClose, onSuccess }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const router = useRouter()
   const [tab,   setTab]   = useState<Tab>('movimentacoes')
   const [movOp, setMovOp] = useState<MovOp>('entrada')
 
@@ -839,7 +880,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
             {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
           </div>
         ) : tab === 'historico' ? (
-          <HistoricoTab product={product} defaultBranchId={defaultBranchId} />
+          <HistoricoTab product={product} defaultBranchId={defaultBranchId} onAlterou={() => router.refresh()} />
         ) : (
           <MinStockTab product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} />
         )}
@@ -865,12 +906,18 @@ const MOV_LABEL: Record<string, string> = {
   SALE_RETURN:       'Devolução de venda',
 }
 
-function HistoricoTab({ product, defaultBranchId }: {
+function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou }: {
   product: ProductInfo
   defaultBranchId?: string
+  /** O modal é de quem tem o Estoque em Gerenciar (o botão da engrenagem). */
+  podeDesfazer?: boolean
+  /** O saldo mudou (a entrada desfeita): a tela de trás recarrega. */
+  onAlterou?: () => void
 }) {
   const [movs,    setMovs]    = useState<MovimentoDeEstoque[] | null>(null)
   const [erro,    setErro]    = useState<string | null>(null)
+  const [recarga, setRecarga] = useState(0)
+  const [aDesfazer, setADesfazer] = useState<MovimentoDeEstoque | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -878,7 +925,7 @@ function HistoricoTab({ product, defaultBranchId }: {
       .then(r => { if (vivo) setMovs(r) })
       .catch(e => { if (vivo) setErro(erroParaTela(e, 'Não foi possível carregar as movimentações.')) })
     return () => { vivo = false }
-  }, [product.id, defaultBranchId])
+  }, [product.id, defaultBranchId, recarga])
 
   if (erro)   return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
   if (!movs)  return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>
@@ -892,6 +939,11 @@ function HistoricoTab({ product, defaultBranchId }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
+      {aDesfazer && (
+        <DesfazerEntrada movimento={aDesfazer} unidade={product.unit}
+          onFechar={() => setADesfazer(null)}
+          onDesfeita={() => { setADesfazer(null); setRecarga(n => n + 1); onAlterou?.() }} />
+      )}
       {movs.map(m => {
         const entrada = m.quantity >= 0
         const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
@@ -915,9 +967,20 @@ function HistoricoTab({ product, defaultBranchId }: {
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-                {MOV_LABEL[m.type] ?? m.type}
+                {m.type === 'PURCHASE' && m.quantity < 0 ? 'Entrada desfeita' : (MOV_LABEL[m.type] ?? m.type)}
                 <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {m.branchName}</span>
               </p>
+              {/* A37 da 10ª: o fornecedor e a nota da entrada. */}
+              {(m.fornecedor || m.notaFiscal) && (
+                <p data-nota-da-entrada style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
+                  {[m.notaFiscal ? `NF ${m.notaFiscal}` : null, m.fornecedor].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              {m.desfeita && (
+                <p data-entrada-desfeita style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 700, marginTop: 1 }}>
+                  Desfeita em {new Date(m.desfeita.em).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}{m.desfeita.motivo ? ` — ${m.desfeita.motivo}` : ''}
+                </p>
+              )}
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
                 {new Date(m.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 {m.notes ? ` · ${m.notes}` : ''}
@@ -944,10 +1007,66 @@ function HistoricoTab({ product, defaultBranchId }: {
                 saldo {m.balanceAfter.toLocaleString('pt-BR')} {m.unidade}
                 {m.saldoEmEmbalagens != null ? ` · ${m.saldoEmEmbalagens.toLocaleString('pt-BR')} ${m.embalagem}` : ''}
               </p>
+              {/* A38 da 10ª: a entrada errada se desfaz enquanto o lote dela não teve saída. */}
+              {m.desfazivel && podeDesfazer && (
+                <button type="button" className="btn-ghost" onClick={() => setADesfazer(m)}
+                  style={{ marginTop: 4, fontSize: 'var(--text-2xs)', padding: '2px 6px', color: 'var(--danger)', fontWeight: 700 }}>
+                  Desfazer entrada
+                </button>
+              )}
             </div>
           </div>
         )
       })}
     </div>
+  )
+}
+
+/**
+ * "Desfazer entrada" (A38 da 10ª simulação): a entrada lançada errada, enquanto
+ * o lote dela não teve saída. A janela diz o que acontece antes — sai do lote
+ * dela, não é perda — e pede o motivo; o banco confere o lote de novo.
+ */
+function DesfazerEntrada({ movimento, unidade, onFechar, onDesfeita }: {
+  movimento: MovimentoDeEstoque; unidade: string; onFechar: () => void; onDesfeita: () => void
+}) {
+  const [motivo, setMotivo] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+  const [gravando, iniciar] = useTransition()
+  const qtd = Math.abs(movimento.emEmbalagens ?? movimento.quantity).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+  const lote = movimento.lotes[0]
+  const doLote = lote ? ` do ${lote.numero ? `lote ${lote.numero}` : 'lote sem número'}` : ''
+  function desfazer() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await desfazerEntradaDeEstoque(movimento.id, motivo)
+      if (r.error) { setErro(r.error); return }
+      toast.success('Entrada desfeita.')
+      onDesfeita()
+    })
+  }
+  return (
+    <JanelaModal rotulo="Desfazer a entrada" largura={420} travado={gravando} onFechar={onFechar}>
+      <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer a entrada</h2>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Saem {qtd} {unidade}{doLote}, que entraram em{' '}
+          {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Não é perda: a entrada fica no
+          histórico, marcada como desfeita, e o valor em estoque volta ao de antes dela.
+        </p>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="field-label">Motivo</span>
+          <input className="field" maxLength={300} value={motivo} onChange={e => setMotivo(e.target.value)} disabled={gravando}
+            placeholder="Ex.: lançada em dobro" />
+        </label>
+        {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 700 }}>{erro}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn-secondary" onClick={onFechar} disabled={gravando}>Voltar</button>
+          <button type="button" className="btn-primary" onClick={desfazer} disabled={gravando || !motivo.trim()}>
+            {gravando ? 'Desfazendo…' : 'Desfazer entrada'}
+          </button>
+        </div>
+      </div>
+    </JanelaModal>
   )
 }

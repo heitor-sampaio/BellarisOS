@@ -36,7 +36,7 @@ export function LotesEsgotados({ produtoId, unidadeId, produto, podeVerAplicacoe
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }} onClick={e => e.stopPropagation()}>
       <button type="button" onClick={abrir} className="btn-ghost" aria-expanded={!!lista}
         style={{ alignSelf: 'flex-start', fontSize: 'var(--text-2xs)', padding: '0 6px', color: 'var(--text-muted)', fontWeight: 700 }}>
-        {carregando ? 'Carregando…' : lista ? 'Esconder lotes esgotados' : 'Lotes esgotados'}
+        {carregando ? 'Carregando…' : lista ? 'Esconder lotes esgotados' : 'Ver lotes esgotados'}
       </button>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {lista && lista.length === 0 && (

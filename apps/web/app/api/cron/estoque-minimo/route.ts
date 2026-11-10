@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { contar } from '@/lib/db'
+import { avisarLotesVencendo } from '@/lib/estoque/aviso-de-lote'
 
 /**
  * Avisa quem cuida do estoque que um produto cruzou o mínimo.
@@ -85,7 +86,12 @@ export async function GET(req: NextRequest) {
       avisados++
     }
 
-    return NextResponse.json({ ok: true, eventos: eventos?.length ?? 0, avisados, repetidos })
+    // A39 da 10ª: o lote que vence em 30 dias também chega ao sino, uma vez por
+    // lote. `?rede=` recorta uma rede (o teste passa a [e2e]; o cron, nenhuma).
+    const rede = req.nextUrl.searchParams.get('rede')
+    const lotes = await avisarLotesVencendo(admin, { tenantId: rede && /^[0-9a-f-]{36}$/i.test(rede) ? rede : null })
+
+    return NextResponse.json({ ok: true, eventos: eventos?.length ?? 0, avisados, repetidos, lotesVencendo: lotes.lotes, lotesAvisados: lotes.avisados })
   } catch (e) {
     // Sai com erro de propósito: o script do cron marca a execução como
     // vermelha no painel do Railway em vez de falhar em silêncio.
