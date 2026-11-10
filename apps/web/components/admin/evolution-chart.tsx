@@ -5,6 +5,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { numericAxisWidth, rotuloDoEixo, CURVA_DA_EVOLUCAO } from '@/lib/chart-utils'
+import { DEFINICOES } from '@/lib/metrics/definicoes'
 
 export interface ChartPoint {
   day:     number
@@ -121,6 +122,13 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day', soReceit
           ))}
         </div>
       </div>
+      {/* A39 da 11ª: o que o "Custo do lucro" soma, à vista — o nome sozinho não dizia. */}
+      {!soReceita && (
+        <p data-custo-do-lucro-soma title={DEFINICOES.custoDoLucro.texto}
+          style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', margin: '-8px 0 12px', lineHeight: 1.4 }}>
+          {DEFINICOES.custoDoLucro.texto.split('. ')[0]}.
+        </p>
+      )}
 
       <ResponsiveContainer width="100%" height={220}>
         <AreaChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>

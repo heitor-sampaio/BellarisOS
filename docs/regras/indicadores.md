@@ -521,7 +521,12 @@ KPI que não fazia nenhum dos dois.
   produtos vendidos" — o MESMO número do DRE (`metrics_resultado`); era
   "Custo do mês R$ 0" ao lado do gráfico "Custo R$ 445", e "Consumo de
   insumos R$ 380" ao lado do DRE de R$ 445. Prova:
-  `e2e/indicadores-custo-um-nome-so.spec.ts`. O cartão do caixa no Financeiro
+  `e2e/indicadores-custo-um-nome-so.spec.ts`. **E a legenda diz o que o
+  "Custo do lucro" soma** (A39 da 11ª simulação, 2026-11-10; princípio 3):
+  embaixo dela, "Custo do lucro = despesas operacionais + insumos e produtos
+  vendidos + taxas da maquininha + comissões lançadas."
+  (`[data-custo-do-lucro-soma]`, `DEFINICOES.custoDoLucro`, com o resto na
+  dica). O nome e a conta não mudaram. Prova: o mesmo spec. O cartão do caixa no Financeiro
   (unidade e rede) e na Visão geral dos Relatórios é "Despesas pagas (caixa)",
   com a compra de estoque e o pagamento das comissões, que o lucro não desconta
   (A24 da 10ª simulação, 2026-11-10; `vendas-financeiro.md` §9.6). **E o cartão diz o que soma, e

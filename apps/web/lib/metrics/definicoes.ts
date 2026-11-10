@@ -93,6 +93,16 @@ export const DEFINICOES = {
       + 'são os agendados, confirmados ou em atendimento — inclusive os que ainda vão acontecer. Os cartões de '
       + 'cima contam só até agora.',
   },
+  /**
+   * A linha "Custo do lucro" do gráfico de evolução (A39 da 11ª simulação):
+   * a legenda dizia o nome sem dizer o que soma — a parcela de `pontosDaEvolucao`.
+   */
+  custoDoLucro: {
+    rotulo: 'O que o Custo do lucro soma',
+    texto: 'Custo do lucro = despesas operacionais + insumos e produtos vendidos + taxas da maquininha + comissões lançadas. '
+      + 'As despesas operacionais são as pagas no período, sem a compra de estoque e sem o pagamento das comissões '
+      + '(essas ficam no caixa). Faturamento − Custo do lucro = Lucro.',
+  },
   /** Relatórios → Financeiro e o DRE: o estoque que saiu para gerar a receita (A50 da 7ª simulação). */
   insumosEProdutos: {
     rotulo: 'O que entra em Insumos e produtos vendidos',

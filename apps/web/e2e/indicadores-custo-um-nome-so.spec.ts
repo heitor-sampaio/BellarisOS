@@ -64,6 +64,9 @@ test('o cartão do caixa diz "Despesas pagas", o gráfico diz "Custo do lucro", 
     await expect(p.getByText('Custo do mês', { exact: true })).toHaveCount(0)
     const evolucao = p.locator('.card').filter({ hasText: /Evolução —/ }).first()
     await expect(evolucao).toContainText(/Custo do lucro\s*R\$\s*20,00/)
+    // A39 da 11ª: a legenda diz o que o "Custo do lucro" soma.
+    await expect(evolucao.locator('[data-custo-do-lucro-soma]')).toContainText(
+      'Custo do lucro = despesas operacionais + insumos e produtos vendidos + taxas da maquininha + comissões lançadas')
 
     await p.goto('/admin/reports?period=month&tab=financeiro')
     await expect(cartao(p, 'Insumos e produtos vendidos')).toContainText('R$ 20,00')
