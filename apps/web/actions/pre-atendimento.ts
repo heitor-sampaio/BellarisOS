@@ -1,9 +1,10 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { headers } from 'next/headers'
-import { getTenantContext, assertPermission, assertRecurso, alcancaOAgendamento, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, alcancaOAgendamento, ownerFilter, can } from '@/lib/auth'
+import { dayKeyTZ } from '@/lib/datetime'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { origemPublicaDe } from '@/lib/origem'
 import { novoToken, telefoneParaWhatsApp, VALIDADE_DO_LINK_DIAS } from '@/lib/documentos/link'
@@ -129,6 +130,11 @@ export interface SituacaoDoPreAtendimento {
   linkValidoAte?: string | null
   /** A22 da 9ª: o link valendo se mostra de novo (guardado cifrado; os de antes, não). */
   linkDeNovo?: boolean
+  /**
+   * Sem CPF nem nascimento, quem edita a cliente completa o nascimento ali
+   * mesmo (A12 da 10ª: a cliente do Agendar, só com nome e telefone).
+   */
+  podeCompletarNascimento?: boolean
 }
 
 /**
@@ -153,6 +159,7 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
     envioPelaConversaLigado(ctx.tenantId!),
   ])
   const podeLink = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0 || !!cliente?.birth_date
+  const podeCompletarNascimento = !podeLink && can(ctx, 'clients', 'MANAGE') && can(ctx, 'agenda', 'MANAGE')
   if (pendente) {
     // O link que já está valendo: gerar outro o cancela, e a tela precisa dizer
     // (2026-10-21; a simulação viu o anterior ser revogado em silêncio).
@@ -163,14 +170,45 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
       .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       'buscar o link da ficha') as { expires_at: string; token_cifrado: string | null } | null : null
     return {
-      estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, pelaConversa, clienteId: ap.client_id as string,
+      estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string,
       linkValidoAte: valendo?.expires_at ?? null, linkDeNovo: !!valendo?.token_cifrado,
     }
   }
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }
   // Nenhuma ficha mandada (o envio automático da rede desligado, ou respondida
   // há pouco): a equipe manda à mão daqui (A49 da 6ª simulação).
-  return { estado: 'NAO_ENVIADA', podeLink, pelaConversa, clienteId: ap.client_id as string }
+  return { estado: 'NAO_ENVIADA', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string }
+}
+
+/**
+ * O nascimento da cliente do agendamento, completado na janela (A12 da 10ª
+ * simulação, 2026-11-10): a cliente criada pelo Agendar (só nome e telefone)
+ * não recebia a ficha — o link confirma o CPF ou o nascimento, e a janela só
+ * levava ao cadastro. Quem edita a cliente (as Clientes em Gerenciar) e manda a
+ * ficha (a Agenda em Gerenciar) completa aqui. Só PREENCHE o vazio: o
+ * nascimento que já existe se muda no cadastro.
+ */
+export async function completarNascimentoDaCliente(appointmentId: string, nascimento: string): Promise<{ error: string } | { ok: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    assertPermission(ctx, 'clients', 'MANAGE')
+    if (typeof nascimento !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(nascimento) || Number.isNaN(new Date(`${nascimento}T12:00:00Z`).getTime())) {
+      return { error: 'Informe a data de nascimento.' }
+    }
+    if (nascimento > dayKeyTZ(new Date())) return { error: 'A data de nascimento não pode ser no futuro.' }
+    if (nascimento < '1900-01-01') return { error: 'Confira o ano da data de nascimento.' }
+    const ap = await agendamentoAoAlcance(ctx, appointmentId)
+    if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
+    const admin = createAdminClient()
+    const gravada = await gravar(admin.from('clients').update({ birth_date: nascimento })
+      .eq('id', ap.client_id).eq('tenant_id', ctx.tenantId!).is('birth_date', null).select('id'), 'gravar o nascimento da cliente')
+    if (!gravada?.length) return { error: 'A cliente já tem a data de nascimento: confira no cadastro.' }
+    revalidateTag(`clients:${ctx.tenantId!}`, { expire: 0 })
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
 }
 
 export interface LinkDoPreAtendimento {

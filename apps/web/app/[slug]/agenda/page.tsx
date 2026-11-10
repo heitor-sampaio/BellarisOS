@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, isOwnScope, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizarHorario, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
@@ -309,6 +309,7 @@ export default async function AgendaPage({ params, searchParams }: {
         userRole={ctx.role}
         escopoProprio={isOwnScope(ctx, 'agenda')}
         meuId={ctx.internalUserId ?? null}
+        podeConcluir={can(ctx, 'medical_records', 'MANAGE')}
         dataInicial={dataInicial}
         comCancelados={comCancelados}
         bloqueios={bloqueios}

@@ -44,7 +44,13 @@
     o aviso e a recusa repetidos). O horário no passado diz "Escolha a partir
     de 01/11/2026 às 10:40." (`limiteLegivel`, `ValidacaoEmPortugues`; era o
     ISO "2026-11-01T10:40"). Prova: `e2e/agenda-encaixe-avisa.spec.ts`,
-    `tests/validacao-limite-legivel.test.ts`.
+    `tests/validacao-limite-legivel.test.ts`. **O horário fora da grade de 30
+    em 30 min também se diz encaixe** (A17 da 10ª, 2026-11-10; como o "Outro
+    horário (encaixe)" do plano): no expediente, o Agendar com 04:15 diz "04:15
+    fica fora da grade de 30 em 30 minutos: é um encaixe (permitido)."
+    (`[data-fora-da-grade]`, a grade de `gradeDoCheckout`); fora do
+    expediente, vale o aviso de sempre. Prova:
+    `e2e/atendimento-uso-da-10.spec.ts` ("A17").
   - **Na agenda da REDE, cada coluna de unidade sombreia o fechado DELA, e o
     encaixe fica marcado** (A26 da 6ª simulação, 2026-11-04): ao lado de uma
     unidade 24 h, a madrugada de quem abre às 10:00 parecia livre, e o
@@ -413,6 +419,18 @@
   agendamento é do membro logado e ele tem a agenda em Gerenciar (`meuId`).
   O início adiantado continua perguntando (r2-age-06). Prova:
   `e2e/agenda-dona-chega-e-inicia.spec.ts`.
+  **Um gesto de chegada em destaque** (A5 da 10ª simulação, 2026-11-10;
+  princípio 3): no agendamento DELA a janela tinha "Confirmar agendamento",
+  "Chegou" e "Marcar chegada e iniciar", dois em rosé. Só o próximo passo é
+  primário — o gesto dela no agendamento dela (que vem primeiro); chegou,
+  iniciar; confirmado, a chegada; agendado, confirmar — e, com mais de um, a
+  linha diz o que cada um faz ("Confirmar: a cliente confirmou que vem.
+  Chegou: ela está na espera. …", `[data-o-que-cada-um-faz]`). **Quem não
+  conclui lê ANTES de iniciar** (A20): sem o Prontuário em Gerenciar, a janela
+  (`podeConcluir`) e a tela do atendimento dizem "Quem conclui é o
+  profissional" já no agendado/confirmado/chegou, não só depois de iniciar. E
+  o concluído A RECEBER não diz "Este agendamento já foi encerrado." embaixo
+  do "Receber pagamento" (A14). Prova: `e2e/atendimento-uso-da-10.spec.ts`.
 - **A agenda "só os meus" vale também pelo ID** (D4 da simulação de
   2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
   (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
@@ -1168,7 +1186,13 @@ const procedures = await ler(
     com `agenda: MANAGE`), que mostra só o ESTADO
     (pendente/respondida) — as respostas são do prontuário. Cliente sem CPF
     nem nascimento: a janela diz "Complete o CPF ou a data de nascimento para
-    enviar o link" e leva ao cadastro (`?aba=dados`, via `lib/rotas`). "Ficha já
+    enviar o link" e leva ao cadastro (`?aba=dados`, via `lib/rotas`). **E
+    pede o nascimento ali mesmo** (A12 da 10ª simulação, 2026-11-10: a cliente
+    do Agendar, só com nome e telefone, ficava sem a ficha): quem tem as
+    Clientes E a Agenda em Gerenciar preenche "Data de nascimento" → "Salvar o
+    nascimento" (`completarNascimentoDaCliente`, `actions/pre-atendimento.ts`:
+    o agendamento ao alcance, só preenche o VAZIO, nunca o futuro), e o "Enviar
+    a ficha" aparece. Prova: `e2e/atendimento-uso-da-10.spec.ts` ("A12"). "Ficha já
     respondida" mostra o telefone/WhatsApp da UNIDADE para corrigir algo.
     **A ficha que a EQUIPE preencheu se CONFERE pelo link** (A52 da 7ª
     simulação, 2026-11-05: a equipe respondeu na clínica, e o link mandado
@@ -1388,6 +1412,12 @@ const procedures = await ler(
   ficha, aba Documentos, categoria Foto clínica — a regra fica. Agora "Ela
   fica na ficha da cliente, em Documentos → Foto clínica, ligada a este
   atendimento." Prova: `e2e/atendimento-atritos-da-9.spec.ts` ("A26").
+  **A foto diz o momento** (A13 da 10ª, 2026-11-10: as duas saíam "Foto
+  clínica — 10/11/2026"): o anexar da foto do atendimento pergunta "Momento
+  da foto" — Antes, Durante, Depois (a primeira nasce "antes", a seguinte
+  "depois") — e o nome sugerido o diz ("Foto clínica (antes) — 10/11/2026");
+  o nome segue editável, e nada novo se grava além dele (`UploadForm
+  momentos`). Prova: `e2e/atendimento-uso-da-10.spec.ts` ("A13").
 - **No app da cliente aparece só o arquivo que a clínica ENVIA** (decisão do
   Heitor, 2026-10-30; migration `20261029001201`). Anexar (pela ficha ou pela
   foto do atendimento) não manda nada à cliente: o arquivo nasce "Só a equipe
@@ -2041,7 +2071,9 @@ O resto do fluxo:
   Era o cadastro do procedimento (ou a sessão do plano): o insumo acrescentado
   na hora sumia — "Nenhum insumo registrado" com a baixa no banco — e o do
   cadastro que não foi usado aparecia. Prova:
-  `e2e/atendimento-concluido-mostra-a-baixa.spec.ts`.
+  `e2e/atendimento-concluido-mostra-a-baixa.spec.ts`. A quantidade sai em
+  pt-BR ("0,2 un" — era "0.2 un", A19 da 10ª); prova:
+  `e2e/atendimento-uso-da-10.spec.ts` ("A19").
 - **O "Finalizar" leva a evolução que está NA TELA**: o modal abre com o que a
   profissional escreveu na página (avaliação ou ficha), não com o gravado —
   sem "Salvar" antes, a evolução se perdia (simulação de 2026-10-20).
@@ -2300,7 +2332,11 @@ O resto do fluxo:
   (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
   aparecer no estoque, e a tela mostra o que faltou.
 - Sessão de **plano** e de **pacote** já foi paga em outro lugar:
-  `confirmPayment` recusa as duas no servidor, e a tela esconde o botão.
+  `confirmPayment` recusa as duas no servidor, e a tela esconde o botão. A do
+  pacote TRAZIDO DE FORA (F35) não teve venda: a tela e a janela do
+  "Finalizar" dizem "Sessão do pacote trazido de fora: já paga antes do
+  sistema, nada a receber." (era "paga na venda do pacote" — A15 da 10ª;
+  prova: `e2e/atendimento-uso-da-10.spec.ts`).
 - Pontos: não são do fechamento — nascem quando o atendimento é PAGO (§9.2.2).
 
 ---

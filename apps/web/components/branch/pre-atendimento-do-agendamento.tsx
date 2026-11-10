@@ -7,7 +7,7 @@ import { ClipboardList, Copy, MessageCircle } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaCliente } from '@/lib/rotas'
 import {
-  situacaoDoPreAtendimento, gerarLinkDoPreAtendimento, enviarFichaPelaConversa, linkDaFichaDeNovo,
+  situacaoDoPreAtendimento, gerarLinkDoPreAtendimento, enviarFichaPelaConversa, linkDaFichaDeNovo, completarNascimentoDaCliente,
   type SituacaoDoPreAtendimento, type LinkDoPreAtendimento,
 } from '@/actions/pre-atendimento'
 
@@ -31,6 +31,9 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
   const [enviado, setEnviado] = useState(false)
   const [copiado, setCopiado] = useState(false)
   const [gerando, iniciar] = useTransition()
+  const [nascimento, setNascimento] = useState('')
+  // Relida depois de completar o nascimento (A12 da 10ª).
+  const [leitura, setLeitura] = useState(0)
 
   useEffect(() => {
     let vivo = true
@@ -38,7 +41,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
       if (vivo && !('error' in r)) setSituacao(r)
     }).catch(() => { /* sem o estado, o bloco não aparece */ })
     return () => { vivo = false }
-  }, [appointmentId])
+  }, [appointmentId, leitura])
 
   if (!situacao?.estado) return null
   const naoEnviada = situacao.estado === 'NAO_ENVIADA'
@@ -71,6 +74,16 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
       setErro(r.error)
       // Gerado e não enviado: o link volta para copiar.
       if (r.link) setLink(r.link)
+    })
+  }
+
+  // A12 da 10ª: sem CPF nem nascimento, o nascimento se completa aqui — e o link sai.
+  function salvarNascimento() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await completarNascimentoDaCliente(appointmentId, nascimento)
+      if ('error' in r) setErro(r.error)
+      else setLeitura(n => n + 1)
     })
   }
 
@@ -129,6 +142,17 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
             ? 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
             : 'Complete o CPF ou a data de nascimento para enviar o link. Sem eles, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
       </p>
+      {!situacao.podeLink && situacao.podeCompletarNascimento && (
+        <div data-completar-nascimento className="pre-atendimento-agendamento-acoes" style={{ alignItems: 'flex-end' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="field-label">Data de nascimento</span>
+            <input type="date" className="field" value={nascimento} onChange={e => setNascimento(e.target.value)} />
+          </label>
+          <button type="button" className="btn-primary pre-atendimento-agendamento-botao" disabled={gerando || !nascimento} onClick={salvarNascimento}>
+            Salvar o nascimento
+          </button>
+        </div>
+      )}
       {!situacao.podeLink && situacao.clienteId && (
         <Link href={`${rotaCliente(pathname, slug, situacao.clienteId)}?aba=dados`} className="btn-secondary pre-atendimento-agendamento-botao" style={{ alignSelf: 'flex-start' }}>
           Editar o cadastro

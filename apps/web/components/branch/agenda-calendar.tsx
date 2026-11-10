@@ -56,6 +56,8 @@ interface AgendaCalendarProps {
   escopoProprio?: boolean
   /** O membro logado: no agendamento dele, "Marcar chegada e iniciar" (A25). */
   meuId?: string | null
+  /** Conclui o atendimento (o Prontuário em Gerenciar) — sem ele, a janela diz quem conclui antes do Iniciar (A20 da 10ª). */
+  podeConcluir?: boolean
   /** O horário de funcionamento da unidade e de cada profissional (nulo = o padrão / segue a unidade). */
   horarioDaUnidade?:          Horario | null
   horariosDosProfissionais?:  Record<string, Horario | null>
@@ -179,7 +181,7 @@ function todayDate(): Date {
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null,
+  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole, escopoProprio, meuId = null, podeConcluir = true,
   horarioDaUnidade = null, horariosDosProfissionais = {}, ocupadoForaDosProfissionais = {}, dataInicial = null, comCancelados = false,
   bloqueios = [], colunasDeQuemNaoAtende = [],
 }: AgendaCalendarProps) {
@@ -485,6 +487,7 @@ export function AgendaCalendar({
           userRole={userRole}
           escopoProprio={escopoProprio}
           podeGerenciar={canWrite}
+          podeConcluir={podeConcluir}
           meuId={meuId}
           onClose={() => setSelectedEvent(null)}
         />

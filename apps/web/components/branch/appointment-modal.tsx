@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, getSchedulingDaySlots } from '@/actions/appointments'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
+import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
@@ -391,6 +392,12 @@ export function AppointmentModal({
     return () => { vivo = false }
   }, [chaveDoDia, unidadeId, profId, diaEscolhido, salaId])
   const gradeDoDia = doDia && doDia.chave === chaveDoDia ? doDia : null
+  // A grade de horários do dia (`gradeDoCheckout`, a da `GradeDeHorarios`): o
+  // horário que não é dela é encaixe, como no plano (A17 da 10ª). O que cai
+  // fora do expediente já tem o aviso dele (`foraDoHorario`).
+  const horasDaGrade = gradeDoDia ? gradeDoCheckout(gradeDoDia.horarioDaUnidade ?? null, null, diaEscolhido).map(h => h.hora) : []
+  const foraDaGrade = horasDaGrade.length > 0 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(localDT)
+    && !horasDaGrade.includes(localDT.slice(11, 16)) && avisosDoMomento.length === 0
 
   const minDT = useMemo(() => {
     const now = new Date(agora)
@@ -697,6 +704,14 @@ export function AppointmentModal({
                   </span>
                 ))}
               </div>
+            )}
+            {/* A17 da 10ª: o horário fora da grade (de 30 em 30 min) é encaixe, como
+                diz o "Outro horário (encaixe)" do plano — permitido, e dito. */}
+            {foraDaGrade && (
+              <p data-fora-da-grade role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
+                <AlertTriangle size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
+                {localDT.slice(11, 16)} fica fora da grade de 30 em 30 minutos: é um encaixe (permitido).
+              </p>
             )}
             {gradeDoDia && (
               <div style={{ marginTop: 6 }}>

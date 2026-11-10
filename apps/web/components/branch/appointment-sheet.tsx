@@ -66,6 +66,11 @@ interface AppointmentSheetProps {
   podeGerenciar?: boolean
   /** O membro logado (users.id): no agendamento DELE, "Marcar chegada e iniciar" (A25). */
   meuId?: string | null
+  /**
+   * Conclui o atendimento (o Prontuário em Gerenciar: concluir grava o
+   * prontuário). Sem ele, a janela diz quem conclui ANTES do Iniciar (A20 da 10ª).
+   */
+  podeConcluir?: boolean
   onClose:     () => void
 }
 
@@ -88,7 +93,7 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, onClose }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
   // A dona (ou a gerente) que atende, no agendamento DELA: o gesto da
   // profissional, em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação: eram
@@ -217,6 +222,20 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // janela não oferece o que ele recusaria.
   const ehODia = ehODiaDoAgendamento(appointment.start, new Date(abertaEm))
 
+  // Os gestos de chegada e início, e UM em destaque — o próximo passo (A5 da
+  // 10ª: eram três quase iguais, dois em rosé). No agendamento DELA, o gesto
+  // dela; chegou, iniciar; confirmado, a chegada; agendado, confirmar.
+  const aindaNaoChegou = appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED'
+  const mostraChegarEIniciar = aindaNaoChegou && (isProfessional || ehMeu) && ehODia
+  const mostraConfirmar = appointment.status === 'SCHEDULED' && !isProfessional
+  const mostraChegou = aindaNaoChegou && !isProfessional && ehODia
+  const mostraIniciar = appointment.status === 'ARRIVED' || (appointment.status === 'CONFIRMED' && !isProfessional)
+  const principal = mostraChegarEIniciar ? 'chegarEIniciar'
+    : appointment.status === 'ARRIVED' ? 'iniciar'
+    : appointment.status === 'CONFIRMED' && mostraChegou ? 'chegou'
+    : mostraConfirmar ? 'confirmar'
+    : mostraIniciar ? 'iniciar' : null
+
   // A cobrança do concluído vem do servidor (a conta de atendimentos_a_receber).
   const [cobranca, setCobranca] = useState<Awaited<ReturnType<typeof situacaoDaCobranca>>>(null)
   useEffect(() => {
@@ -331,31 +350,49 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
         {/* Ações de status */}
         {isActive && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* A profissional no agendamento que ainda não chegou: o mesmo
+                check-in e o mesmo início, num gesto (A21, 2026-10-27). Ela não
+                via "Iniciar" no "Agendado", e a janela não dizia por quê. É o
+                gesto DELA, então vem primeiro (A5 da 10ª). */}
+            {mostraChegarEIniciar && (
+              <button disabled={loading} onClick={() => chegarEComecar()} className={principal === 'chegarEIniciar' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
+                <Play size={14} /> Marcar chegada e iniciar
+              </button>
+            )}
             {/* Confirmar: só admins/recepcionistas */}
-            {appointment.status === 'SCHEDULED' && !isProfessional && (
-              <button disabled={loading} onClick={() => changeStatus('CONFIRMED')} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+            {mostraConfirmar && (
+              <button disabled={loading} onClick={() => changeStatus('CONFIRMED')} className={principal === 'confirmar' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
                 <CheckCircle2 size={14} /> Confirmar agendamento
               </button>
             )}
             {/* Chegou (o check-in): a recepção marca quem está na sala de espera. */}
-            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && !isProfessional && ehODia && (
+            {mostraChegou && (
               <button disabled={loading} onClick={() => changeStatus('ARRIVED')}
-                className={appointment.status === 'CONFIRMED' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
+                className={principal === 'chegou' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
                 <DoorOpen size={14} /> Chegou
               </button>
             )}
-            {/* A profissional no agendamento que ainda não chegou: o mesmo
-                check-in e o mesmo início, num gesto (A21, 2026-10-27). Ela não
-                via "Iniciar" no "Agendado", e a janela não dizia por quê. */}
-            {(appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') && (isProfessional || ehMeu) && ehODia && (
-              <button disabled={loading} onClick={() => chegarEComecar()} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                <Play size={14} /> Marcar chegada e iniciar
-              </button>
+            {/* A5 da 10ª: três botões quase iguais, dois em rosé. Um só em
+                destaque (o próximo passo) e, com mais de um, o que cada um faz. */}
+            {[mostraConfirmar, mostraChegou, mostraChegarEIniciar].filter(Boolean).length > 1 && (
+              <p data-o-que-cada-um-faz style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                {[
+                  mostraConfirmar && 'Confirmar: a cliente confirmou que vem.',
+                  mostraChegou && 'Chegou: ela está na espera.',
+                  mostraChegarEIniciar && 'Marcar chegada e iniciar: ela chegou e o atendimento começa agora.',
+                ].filter(Boolean).join(' ')}
+              </p>
             )}
-            {(appointment.status === 'ARRIVED' || (appointment.status === 'CONFIRMED' && !isProfessional)) && (
-              <button disabled={loading} onClick={() => changeStatus('IN_PROGRESS')} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+            {mostraIniciar && (
+              <button disabled={loading} onClick={() => changeStatus('IN_PROGRESS')} className={principal === 'iniciar' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
                 <Play size={14} /> Iniciar atendimento
               </button>
+            )}
+            {/* A20 da 10ª: quem não conclui (sem o Prontuário em Gerenciar) lê ANTES de iniciar. */}
+            {(mostraIniciar || mostraChegarEIniciar) && !podeConcluir && (
+              <p data-quem-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                Quem conclui é o profissional (concluir grava o prontuário).
+              </p>
             )}
             {appointment.status === 'IN_PROGRESS' && (
               <Link
@@ -539,7 +576,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             <CalendarClock size={14} /> Reagendar
           </button>
         )}
-        {isDone && (
+        {/* A14 da 10ª: com o pagamento ainda a receber, o atendimento não está
+            "encerrado" — a frase contradizia o "Receber pagamento" logo acima. */}
+        {isDone && cobranca?.situacao !== 'A_RECEBER' && (
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-xs-sz)' }}>
             Este agendamento já foi encerrado.
           </p>

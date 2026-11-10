@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+﻿import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import type { ComponentProps } from 'react'
@@ -179,6 +179,7 @@ export default async function AdminAgendaPage({
         podeAgendar={ctx.permissions.agenda === 'MANAGE'}
         escopoProprio={agendaOwner !== null}
         meuId={ctx.internalUserId ?? null}
+        podeConcluir={can(ctx, 'medical_records', 'MANAGE')}
         bloqueios={bloqueios}
         paraBloquear={paraBloquear}
       />
