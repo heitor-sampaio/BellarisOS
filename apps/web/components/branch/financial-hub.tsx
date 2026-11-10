@@ -662,7 +662,7 @@ export function FinancialHub({
           label="Lucro Líquido"
           curr={saldo} prev={prevSaldo}
           // D8 da 8ª: a conta do resultado, para ele se explicar na tela.
-          nota={<ContaDoResultado receita={income} resultado={resultado} despesasDoCaixa={expense} />}
+          nota={<ContaDoResultado receita={income} resultado={resultado} despesasDoCaixa={expense} aPagar={pendingExpense} />}
           icon={<Wallet size={13} style={{ color: 'var(--on-brand)' }} />}
           iconBg="rgba(255,255,255,0.18)"
           highlight

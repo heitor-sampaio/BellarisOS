@@ -439,7 +439,7 @@ export function AdminFinancialView({
         <KpiCard
           label="Resultado líquido"
           value={fmtBRL(result)}
-          nota={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} />}
+          nota={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} aPagar={aPagar} />}
           icon={<Wallet size={16} color="var(--brand)" />}
         />
         <KpiCard

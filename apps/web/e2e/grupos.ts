@@ -269,6 +269,7 @@ export const ISOLADOS = [
   'atendimento-atritos-da-10.spec.ts',
   'ficha-atritos-da-10.spec.ts',
   'vendas-pergunta-no-celular.spec.ts',
+  'financeiro-atritos-da-10.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',

@@ -232,6 +232,15 @@
       `e2e/indicadores-lucro-desconta-taxas-e-comissoes.spec.ts` ("D8").
       Prova: `e2e/indicadores-lucro-desconta-taxas-e-comissoes.spec.ts`,
       `tests/metrics-resultado.test.ts`, `tests/metrics-evolucao.test.ts`.
+      **E a frase diz a regra de verdade** (D4 da 10ª simulação, 2026-11-10;
+      princípio 3): dizia "É o resultado do período (competência)", e o
+      aluguel de novembro a pagar (R$ 9.000) ficava fora — a regra é a despesa
+      PAGA, como a receita ("Receita e despesa simétricas", abaixo). Agora "É o
+      resultado do período: a receita e a despesa pelo que foi pago; o insumo
+      quando é usado; a comissão quando é lançada." e, com despesa em aberto
+      vencendo no período, "A pagar no período, fora do resultado: R$ 9.000,00"
+      (`[data-a-pagar-fora-do-resultado]`, o "A pagar" de `getEmAberto`). A
+      conta não mudou. Prova: `e2e/financeiro-atritos-da-10.spec.ts` ("D4").
   - **O gasto de cada cliente é UMA conta** (`metrics_gasto_por_cliente`: o
     pago pela regra de receita, a receita de serviço, os concluídos e os
     cobrados). A ficha a chama com a cliente e a janela inteira (`getDoCliente`:
@@ -335,7 +344,15 @@
     quantidade e do valor perdidos por produto (ao custo do lote), os cartões
     "Perdas no período" e "Consumo com perdas" (o insumo consumido + as
     perdas, `consumoComPerdas` em `lib/metrics/resultado.ts`) — o custo com
-    perdas para análise. Prova: `e2e/estoque-perda.spec.ts`.
+    perdas para análise. Prova: `e2e/estoque-perda.spec.ts`. **O motivo que
+    a tela dá é a regra** (D8 da 10ª simulação, 2026-11-10; princípio 3): era
+    "Não sai do lucro: já foi paga na compra" — mas a compra também fica fora
+    do lucro (o lucro tira a compra de estoque paga, acima), e os R$ 640 da
+    Toxina quebrada nunca apareciam no resultado. Agora o cartão diz "Métrica:
+    não entra no lucro, nem quando a compra é paga", e a nota do DRE
+    (`[data-fora-do-lucro]`), que a perda e o ajuste são métrica e não entram
+    no resultado, nem quando a compra é paga. Prova:
+    `e2e/financeiro-atritos-da-10.spec.ts` ("D8").
   - **A conversão é da OPORTUNIDADE** (decisão do Heitor, 2026-10-29: "o
     objeto é a oportunidade"): as oportunidades na etapa de GANHO (desfecho
     `WON`) ÷ as oportunidades do funil, sem importar se a pessoa já é cliente.

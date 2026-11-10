@@ -95,9 +95,9 @@ test('A31: o Financeiro diz qual "resultado" é o do período e qual é o caixa 
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro`)
     await expect(p.locator('[data-total-da-lista]')).toContainText('caixa da lista')
-    await expect(p.locator('[data-base-do-resultado]').first()).toContainText('competência')
+    await expect(p.locator('[data-base-do-resultado]').first()).toContainText('pelo que foi pago')
     await p.goto('/admin/financeiro')
-    await expect(p.locator('[data-base-do-resultado]').first()).toContainText('competência')
+    await expect(p.locator('[data-base-do-resultado]').first()).toContainText('pelo que foi pago')
     await p.goto('/admin/reports?tab=financeiro')
     await expect(p.getByText('Despesas pagas (caixa)')).toBeVisible()
   })

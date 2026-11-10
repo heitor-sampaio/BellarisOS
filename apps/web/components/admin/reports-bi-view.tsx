@@ -504,8 +504,9 @@ function TabFinanceiro(p: ReportsBiProps) {
               taxas={resultado.taxasDaMaquininha} comissoes={resultado.comissoes} lucro={profit} />
             {/* A50 da 7ª simulação: a perda de R$ 380 fora do lucro parecia erro (é a regra F7). */}
             <p data-fora-do-lucro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 14 }}>
-              A perda e o ajuste de estoque ficam fora do lucro: o insumo já foi pago na compra. Eles são métrica, em
-              Relatórios → Estoque (“Perdas no período”).
+              {/* D8 da 10ª: "já foi pago na compra" era falso — a compra também fica fora do lucro. */}
+              A perda e o ajuste de estoque ficam fora do lucro: são métrica e não entram no resultado, nem quando a
+              compra é paga (a compra de estoque fica no caixa). Estão em Relatórios → Estoque (“Perdas no período”).
             </p>
           </SCard>
         )}
@@ -1168,11 +1169,11 @@ function TabEstoque(p: ReportsBiProps) {
             dos atendimentos dela (o consumo e os mais consumidos). */}
         {!p.soOsMeus && <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />}
         <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" />
-        {/* est-04/est-05: a perda é MÉTRICA (já foi paga na compra; não sai do
-            lucro nem do caixa), e o custo com perdas é para análise. */}
+        {/* est-04/est-05: a perda é MÉTRICA (não entra no lucro nem no caixa — D8
+            da 10ª: nem quando a compra é paga), e o custo com perdas é para análise. */}
         {p.perdas && <>
           <KpiCard label="Perdas no período" value={p.perdas.total.custo} format="brl" accent="var(--danger)"
-            detalhe="Não sai do lucro: já foi paga na compra" />
+            detalhe="Métrica: não entra no lucro, nem quando a compra é paga" />
           <KpiCard label="Consumo com perdas" value={consumoComPerdas({ consumo: consumoValue, perdas: p.perdas.total.custo })} format="brl"
             detalhe="Insumo consumido + perdas, ao custo do lote" />
         </>}
