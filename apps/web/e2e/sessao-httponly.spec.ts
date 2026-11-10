@@ -50,6 +50,15 @@ async function semSessao<T>(browser: Browser, fn: (p: Page) => Promise<T>) {
   try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
+/**
+ * O login pela tela passa pelo Auth e pelo banco (a ficha, o destino) antes de
+ * a URL mudar. Na completa, com o banco lento, isso levou 32 s (09/11, o Auth)
+ * e 18 s (10/11: o POST do login em 10,6 s e o /auth/v1/user do destino em
+ * 7,7 s — F48). A prova aqui é o cookie, não o tempo: a URL tem até 45 s, e o
+ * destino errado ou o erro do login continuam falhando.
+ */
+const ATE_O_DESTINO = { timeout: 45_000 }
+
 async function entrarPelaTela(p: Page, email: string) {
   await p.goto('/login')
   await p.locator('input[name="email"]').fill(email)
@@ -76,7 +85,7 @@ test.describe.serial('sessão só no servidor', () => {
   test('equipe: o login pela tela grava a sessão em cookie httpOnly', async ({ browser }) => {
     await semSessao(browser, async p => {
       await entrarPelaTela(p, f!.emailMembro)
-      await expect(p).toHaveURL(/\/admin\/dashboard/)
+      await expect(p).toHaveURL(/\/admin\/dashboard/, ATE_O_DESTINO)
       await conferirSoNoServidor(p)
     })
   })
@@ -84,7 +93,7 @@ test.describe.serial('sessão só no servidor', () => {
   test('cliente final: o login pela tela também', async ({ browser }) => {
     await semSessao(browser, async p => {
       await entrarPelaTela(p, f!.emailCliente)
-      await expect(p).toHaveURL(new RegExp(`/${f!.cliente.slug}/cliente`))
+      await expect(p).toHaveURL(new RegExp(`/${f!.cliente.slug}/cliente`), ATE_O_DESTINO)
       await conferirSoNoServidor(p)
     })
   })
