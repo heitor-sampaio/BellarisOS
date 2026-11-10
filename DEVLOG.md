@@ -9998,6 +9998,20 @@ com data (A42); o app que diz "quem marca é a clínica" e deixa marcar (A47). O
 
 **F46 FEITA (09/11, d87d744e…9e9dc84f) — as 10 falhas da 3ª completa 42417370822 (1.784 passaram):** 2 defeitos, ambos corrigidos. (1) **Regressão da F41 (A36):** no checkout, assinar o documento voltava a tela ao Pagamento e reabria o mesmo documento, porque o efeito que relê o passo guardado dependia de `plan.contratoAssinado`, um objeto novo a cada atualização. O efeito agora roda uma vez por plano. (2) **Cartão do Copilot:** ficava em "Gravando…" até a tela de trás terminar de recarregar. Agora diz "Feito" quando a ação responde (estado próprio, com a atualização da tela correndo à parte). As outras 8 foram paradas do banco, cruzadas pela hora do trace com o `query_logs`: consultas de 10 a 40 s, um checkpoint com `sync` de 9 s e o Auth respondendo 504 depois de 36 s. Todas passam local. O apoio do E2E ganhou `porSenhaDeTeste`, que tenta de novo quando o Auth cai ao pôr a senha. **Para o Heitor:** a instância Micro segue parando durante a completa, e subir a instância continua sendo a correção direta.
 
+**F47 FEITA (10/11, 41baa3cd…19f31de4) — as 9 falhas da 4ª completa 42744786971 (1.790 passaram; rodou das 23:44 às 00:40, cruzando a meia-noite):** nenhum defeito do sistema e nenhuma migration. Quatro eram o teste preso ao relógio ou ao Auth lento:
+- A10: o "vencido" das 23:55 de 24 h atrás ainda estava em andamento à meia-noite. A tela confere pelo FIM, e está certa; o teste agora usa o de 25 h atrás.
+- O livre de hoje: depois das 23:30 não sobra nenhum livre de 30 min, e o teste agora pula com `cabeHoje(60)`.
+- O TOTP do atendente: o código era calculado antes de um desafio que levou 34 s, e agora sai depois dele e repete na janela seguinte (`e2e/apoio/totp.ts`, `passarOCodigo`).
+- O `fidelidade-opcionais`: passou a usar `criarLoginDeTeste` e `porSenhaDeTeste`.
+
+As outras cinco foram o banco ou o Auth parados, conferidos no `edge_logs`/`postgres_logs`:
+- os dois do Financeiro: 500 por statement timeout nas `metrics_*` às 03:07Z;
+- o login da cliente: token com 32,6 s;
+- o ajuste de pontos: gravou em 291 ms, mas a releitura do saldo esperou 5–7 s por consulta;
+- o "Salvo" do prontuário: a ficha gravou, e o redesenho passou do prazo.
+
+As paradas de 03:10 e de 03:25 começam logo depois de um "checkpoint starting" (escrita de 200–270 s, de 5 em 5 min). **Para o Heitor:** subir a instância segue sendo a correção direta.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
