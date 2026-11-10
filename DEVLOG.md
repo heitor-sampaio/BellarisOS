@@ -10256,6 +10256,17 @@ As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: 
   - a segunda visita ao dashboard da rede de duas unidades caiu por statement timeout no `metrics_lead_funnel` (12:02Z).
   - A tela de duas unidades abriu certa na primeira visita.
 
+**F54 FEITA (10/11, 24c37d68…1faf4949, um push só; migrations 20261110005401–03) — os 8 defeitos da 11ª e as sobras A31, A39, A48:**
+- **D1:** o lead criado em sequência nasce com quem o cria. O vazio só tira o responsável quando a tela mostrou o campo (princípio 3).
+- **D2:** a linha da unidade herda o mínimo do cadastro do produto; o mínimo salvo à mão na unidade vale como digitado, inclusive 0 (princípio 2). As 4 linhas antigas com mínimo 0 cujo produto tem mínimo (2 da [sim] Violeta, 1 da [sim] Camélia, 1 da Bellaris Clinic) NÃO foram consertadas: nada registra se alguém zerou de propósito. A linha que nasce com saldo 0 não emite mais "abaixo do mínimo" (efeito colateral corrigido em d0bdc799).
+- **D3:** o concluído antes de começar não bloqueia o horário na recusa — a mesma régua da grade, também nos horários livres do app.
+- **D4–D6 (estoque):** o lote do ajuste mostra o custo ("R$ 39,50/refil (último custo)"); "Desfazer ajuste" enquanto nada saiu do lote, e a perda desfeita sai de Perdas; o "Contar em" do Ajuste e da Perda nasce na embalagem, na mesma ordem (reverte o "UI por padrão" do D3 da 7ª, que foi decisão de frente); aviso vermelho acima de 50% de variação, sem bloquear; `procedure_products.unit_cost` com 4 casas.
+- **D7:** cada lançamento do extrato com a base da hora dele ("base cheia: R$ 1.100,00 · 3%" na liberação antiga). A conta não mudou.
+- **D8:** o gatilho da campanha começa sem escolha, e a revisão diz quando dispara. As campanhas do dia (aniversário, data comemorativa, pós-visita, vencimento de pacote) passam a sair **a partir das 09:00**, não logo depois da meia-noite (princípio 3).
+- **A31, A39, A48:** "na barra do rodapé" no celular; a legenda diz o que o "Custo do lucro" soma; o sino avisa o estoque no mínimo ou abaixo pela régua do dashboard, uma vez por cruzamento, a quem tem o Estoque em Gerenciar na unidade. O job aceita `?rede=` e o spec `notificacoes-interessados` roda recortado. No primeiro passe depois do deploy, o que já está no mínimo avisa uma vez (inclusive nas [sim]).
+- Fora da frente, anotado: a entrega de recompensa (voucher) grava ajuste de estoque negativo e aparece em "Perdas no período" como Inventário.
+- Mexeu em `globals.css` do núcleo, `lib/appointments/core.ts`, `actions/stock.ts` e nos crons `estoque-minimo` e `notification-campaigns`: vale a completa do fim do ciclo.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
