@@ -178,7 +178,10 @@ export async function Configuracoes({
           .select('id, key, label, is_system, inbox_caixas, users(count)')
           .eq('tenant_id', ctx.tenantId!)
           .order('is_system', { ascending: false })
-          .order('created_at'), 'carregar os cargos')
+          .order('created_at')
+          // A9 da 10ª: os modelos nascem na mesma transação (o mesmo
+          // created_at), e salvar um trocava a ordem entre eles. O nome desempata.
+          .order('label').order('id'), 'carregar os cargos')
       : [],
     // Matriz e abas de relatório: uma falha aqui mostraria o cargo SEM
     // permissão nenhuma, e salvar gravaria isso por cima do que existe.

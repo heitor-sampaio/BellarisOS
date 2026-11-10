@@ -13,7 +13,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, NETWORK_ONLY_NOTE, SO_NA_REDE_NOTE,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -287,6 +287,7 @@ function RoleCard({
 
   return (
     <div
+      data-cargo={role.id}
       onClick={onSelect}
       style={{
         padding: '12px 14px', cursor: 'pointer',
@@ -647,7 +648,7 @@ function ModuleRow({
               fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 4,
               fontStyle: 'italic',
             }}>
-              <Fala>{soNaRede ?? NETWORK_ONLY_NOTE}</Fala>
+              <Fala>{soNaRede ?? notaDeAbrangencia(module)}</Fala>
             </div>
           )}
           {sensitive && enabled && (

@@ -146,7 +146,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   settings: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Cadastra e edita unidades, conecta WhatsApp e contas de anúncio, monta os funis do CRM (etapas e motivos de perda) e trata os pedidos de LGPD.',
+    // A10 da 10ª: as Integrações vêm junto, e a tela tem de dizer.
+    MANAGE: 'Cadastra e edita unidades e salas, as integrações (conecta o WhatsApp e as contas de anúncio, na aba Integrações), monta os funis do CRM (etapas e motivos de perda) e trata os pedidos de LGPD.',
   },
   automations: {
     NONE:   SEM_ACESSO,
@@ -179,6 +180,19 @@ export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
 export const NETWORK_ONLY_NOTE = 'Só funciona para quem tem abrangência de rede.'
 
 export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'automations', 'roles', 'settings']
+
+/**
+ * A nota de abrangência de um módulo de rede. Configurações é a exceção (H7, o
+ * Heitor, 2026-11-01: "gerente de uma unidade só mexe no que é da unidade"):
+ * quem tem unidade fixa usa a aba Unidade — a nota "só funciona para quem tem
+ * abrangência de rede" era falsa ali (A10 da 10ª simulação).
+ */
+export function notaDeAbrangencia(modulo: AppModule): string {
+  if (modulo === 'settings') {
+    return 'Quem tem unidade fixa mexe só na aba Unidade (os dados, o horário e as salas dela): as integrações, os funis, as fichas, os termos e o resto são da clínica toda e ficam com quem é da rede.'
+  }
+  return NETWORK_ONLY_NOTE
+}
 
 /**
  * Campanhas e Automações ficam SÓ no portal da rede (D-2, decisão do Heitor,

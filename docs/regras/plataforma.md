@@ -648,7 +648,18 @@ um muro que não depende de cada trava do código.
   da unidade" — em Relatórios o escopo é a unidade (CLAUDE.md §11). **A Admin
   vem primeiro no seletor de cargo** da Equipe (A9), como na tela de Cargos.
   Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A7/A8", "A9"),
-  `tests/resumo-do-cargo.test.ts`.
+  `tests/resumo-do-cargo.test.ts`. **A linha de Configurações na matriz diz o
+  que vem junto e o que a unidade fixa alcança** (A10 da 10ª, 2026-11-10;
+  princípio 3): o Gerenciar cita as integrações (o WhatsApp e as contas de
+  anúncio, na aba Integrações), e a nota deixou de dizer "Só funciona para
+  quem tem abrangência de rede" — falso desde a H7: "Quem tem unidade fixa
+  mexe só na aba Unidade (os dados, o horário e as salas dela): as
+  integrações, os funis, as fichas, os termos e o resto são da clínica toda…"
+  (`notaDeAbrangencia`, `lib/permissions-copy.ts`). **E a lista de cargos não
+  muda de ordem ao salvar** (A9): os modelos nascem na mesma transação (o
+  mesmo `created_at`), e o nome desempata. Prova:
+  `tests/permissoes-copia-configuracoes.test.ts`,
+  `e2e/configuracoes-atritos-da-10.spec.ts` ("A9").
 - **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
   simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
   descreve): sem o módulo, a gerente fixa não chegava à aba Unidade até a dona
