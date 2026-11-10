@@ -10152,6 +10152,16 @@ As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: 
 - **Copilot:** "clientes novos" por `coalesce(cliente_desde, created_at)`.
 - **Dado numa rede [sim]:** o spec `notificacoes-interessados` chama o job `estoque-minimo` sem recortar a rede e criou 1 aviso "Lote vencendo" (`batch_expiring`) para um membro da [sim] Tulipa. É o mesmo aviso que o job de produção criaria. Ficou, porque não se apaga dado das redes [sim]. **Pendência:** o spec precisa recortar a rede.
 
+**F53 FEITA (10/11, ebe8e01b) — as 4 falhas da 6ª completa 42806897903 (1.866 passaram):** nenhum defeito do sistema, nenhuma migration.
+- **Dois testes não conheciam o A2 da F50.** Com uma profissional só, o agendar do app pula o passo da profissional e mostra "Com X" (`[data-profissional-unica]`). Foram ajustados:
+  - `agenda-profissional-da-rede` continua provando que a de A não entra em B;
+  - `portal-cliente`, que roda na rede real, aceita os dois casos.
+  - A lição foi para `docs/regras/e2e.md`.
+- **Duas foram paradas da instância.** Os registros do Supabase mostram as respostas lentas nos mesmos minutos:
+  - o cadastro com telefone +351 gravou tudo, mas a resposta não chegou (11:41–11:42Z, respostas de 53–61 s);
+  - a segunda visita ao dashboard da rede de duas unidades caiu por statement timeout no `metrics_lead_funnel` (12:02Z).
+  - A tela de duas unidades abriu certa na primeira visita.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
