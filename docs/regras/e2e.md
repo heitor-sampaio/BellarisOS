@@ -293,6 +293,13 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   - Mensagem de sucesso que mora num componente que o `router.refresh()`
     desmonta (o bloco de alterar some quando o agendamento é cancelado) pisca
     e some: o teste confere o estado que FICA na tela, não ela.
+  - **Com uma só opção, o agendar do app pula o passo da profissional** (A2
+    da 10ª, F50): ela vem escolhida e a data diz "Com X"
+    (`[data-profissional-unica]`). Spec com rede própria sabe quantas há e
+    confere o que vale para ele; spec na unidade da rede REAL não sabe (a
+    rede e os outros specs mudam a conta) e aceita os dois — o botão dela ou
+    o "Com X" com o nome dela (`portal-cliente`, F53: a completa de 10/11
+    esperava o botão de um passo que tinha sumido).
   - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
     `<script>` sem nonce. Ele não existe no build.
 

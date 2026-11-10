@@ -120,15 +120,20 @@ test.describe.serial('portal do cliente', () => {
       await page.getByRole('button', { name: new RegExp(`Proc do app ${marca}`) }).click()
       // A lista de profissionais é cacheada (5 min, `stale-while-revalidate`):
       // a primeira leitura depois de invalidar pode ainda vir velha.
+      // Quantas profissionais a unidade tem depende da rede real (e dos outros
+      // specs): com várias, o passo pergunta e ela é um botão; com ela SÓ, o
+      // passo some e ela já vem escolhida — "Com X" na data (A2 da 10ª).
+      const nomeDela = new RegExp(`Profissional do app prof${marca}`)
+      const botao = page.getByRole('button', { name: nomeDela })
+      const unica = page.locator('[data-profissional-unica]', { hasText: nomeDela })
       await expect(async () => {
-        const botao = page.getByRole('button', { name: new RegExp(`Profissional do app prof${marca}`) })
-        if (!(await botao.isVisible())) {
+        if (!(await botao.isVisible()) && !(await unica.isVisible())) {
           await page.reload()
           await page.getByRole('button', { name: new RegExp(`Proc do app ${marca}`) }).click()
         }
-        await expect(botao).toBeVisible({ timeout: 3000 })
+        await expect(botao.or(unica)).toBeVisible({ timeout: 3000 })
       }).toPass({ timeout: 60_000 })
-      await page.getByRole('button', { name: new RegExp(`Profissional do app prof${marca}`) }).click()
+      if (await botao.isVisible()) await botao.click()
 
       await page.locator('input[type="date"]').fill(DIA)
       await page.getByRole('button', { name: '10:00', exact: true }).click()

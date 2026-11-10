@@ -116,7 +116,12 @@ test('a cliente de B vê e agenda a profissional da rede pelo app; a de A, não'
   await como(browser, cliente!.estado, async p => {
     await p.goto(`/${slugB}/cliente/agendamentos/novo`)
     await p.getByRole('button', { name: new RegExp(`Proc pr${marca}`) }).click()
-    await expect(p.getByRole('button', { name: new RegExp(nomeDaRede.replace(/[[\]]/g, '\\$&')) })).toBeVisible()
+    // Em B só a da rede atende — a ÚNICA: o passo da profissional some e ela
+    // já vem escolhida (A2 da 10ª). Se a de A aparecesse em B, seriam duas e o
+    // passo voltaria a perguntar.
+    await expect(p.getByText('Escolha a data e o horário disponível.')).toBeVisible()
+    await expect(p.locator('[data-profissional-unica]')).toHaveText(`Com ${nomeDaRede}`)
+    await expect(p.getByText('Tem preferência de profissional?')).toHaveCount(0)
     await expect(p.getByText(nomeDeA)).toHaveCount(0)
 
     const agendar = (professionalId: string, hora: string) => chamarAcao(p, 'actions/appointments.ts', 'createClientAppointment',
