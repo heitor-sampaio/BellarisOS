@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import type { Session } from '@supabase/supabase-js'
-import { totp } from './totp'
+import { passarOCodigo } from './totp'
 export { totp } from './totp'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -88,14 +88,9 @@ async function sessaoVerificada(authId: string, email: string, segredo: string |
   const { data: fatores } = await cliente.auth.mfa.listFactors()
   const fator = fatores?.totp?.[0]
   if (!fator) throw new Error('o autenticador não está cadastrado')
-  let { error } = await cliente.auth.mfa.challengeAndVerify({ factorId: fator.id, code: totp(segredo) })
-  if (error) {
-    // O mesmo código, dentro da mesma janela de 30 s, pode já ter sido usado
-    // (a sessão da casa): espera a próxima janela e tenta uma vez.
-    await new Promise(ok => setTimeout(ok, 31_000 - (Date.now() % 30_000)))
-    ;({ error } = await cliente.auth.mfa.challengeAndVerify({ factorId: fator.id, code: totp(segredo) }))
-  }
-  if (error) throw new Error(`verificar o código: ${error.message}`)
+  // O mesmo código, dentro da mesma janela de 30 s, pode já ter sido usado
+  // (a sessão da casa): passarOCodigo tenta de novo na janela seguinte.
+  await passarOCodigo(cliente.auth.mfa, fator.id, segredo)
   const { data: s2 } = await cliente.auth.getSession()
   if (!s2.session) throw new Error('a sessão aal2 não veio')
   return s2.session
@@ -155,8 +150,7 @@ export async function criarAtendente(
       const { data: fator, error: eF } = await cliente.auth.mfa.enroll({ factorType: 'totp', friendlyName: `e2e ${marca}` })
       if (eF || !fator) throw new Error(`cadastrar o autenticador: ${eF?.message}`)
       segredo = fator.totp.secret
-      const { error: eV } = await cliente.auth.mfa.challengeAndVerify({ factorId: fator.id, code: totp(segredo) })
-      if (eV) throw new Error(`verificar o código: ${eV.message}`)
+      await passarOCodigo(cliente.auth.mfa, fator.id, segredo)
       const { data: s2 } = await cliente.auth.getSession()
       if (!s2.session) throw new Error('a sessão aal2 não veio')
       sessao = s2.session

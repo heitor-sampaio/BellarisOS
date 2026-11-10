@@ -36,3 +36,33 @@ export function hotp(chave: Buffer, contador: number): string {
 export function totp(segredoBase32: string, agoraMs = Date.now()): string {
   return hotp(base32(segredoBase32), Math.floor(agoraMs / 1000 / 30))
 }
+
+/** O pedaço do `auth.mfa` do supabase-js que o código usa (um falso no teste de unidade). */
+export interface MfaDoTeste {
+  challenge(p: { factorId: string }): Promise<{ data: { id: string } | null; error: { message?: string } | null }>
+  verify(p: { factorId: string; challengeId: string; code: string }): Promise<{ error: { message?: string } | null }>
+}
+
+/**
+ * Passa a verificação em duas etapas do login de teste (F47 — a completa de
+ * 09–10/11): o desafio primeiro, e o código calculado só DEPOIS dele.
+ *
+ * Com `challengeAndVerify({ code: totp(segredo) })` o código saía antes do
+ * desafio: às 03:24:58Z o desafio levou 34,6 s, o verify chegou com o código
+ * de duas janelas antes, e o Auth respondeu "Invalid TOTP code entered"
+ * (`sistema-redes`). O recusado — o código atrasado, ou o já usado nesta
+ * janela por outra sessão do mesmo atendente — tenta de novo na janela
+ * seguinte, com desafio novo, até três vezes.
+ */
+export async function passarOCodigo(mfa: MfaDoTeste, factorId: string, segredo: string): Promise<void> {
+  let motivo = ''
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    if (tentativa) await new Promise(ok => setTimeout(ok, 31_000 - (Date.now() % 30_000)))
+    const { data: desafio, error: eD } = await mfa.challenge({ factorId })
+    if (eD || !desafio) { motivo = `abrir o desafio: ${eD?.message || JSON.stringify(eD)}`; continue }
+    const { error } = await mfa.verify({ factorId, challengeId: desafio.id, code: totp(segredo) })
+    if (!error) return
+    motivo = error.message || JSON.stringify(error)
+  }
+  throw new Error(`verificar o código: ${motivo}`)
+}
