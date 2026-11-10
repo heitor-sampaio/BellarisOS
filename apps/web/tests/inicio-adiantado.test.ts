@@ -33,3 +33,19 @@ describe('A24: "Iniciar mesmo assim" diz quanto falta e pede cuidado quando não
     expect(perguntaDoInicioAdiantado('2026-11-07T03:49:00.000Z', agora)).toBe(
       'O atendimento está marcado para as 00:49 — faltam 19 min. Iniciar mesmo assim?'))
 })
+
+// A25 da 11ª simulação (2026-11-10): iniciar 57 min DEPOIS do horário não
+// avisava nem marcava o atraso (antes da hora, a tela pergunta). Princípio 3:
+// a tela diz o atraso — sem perguntar (atrasar não é engano de agendamento).
+describe('A25 da 11ª: o atraso do início', () => {
+  it('57 min depois do horário diz o atraso, com a hora marcada', async () => {
+    const { atrasoDoInicio } = await import('@/lib/appointments/inicio-adiantado')
+    expect(atrasoDoInicio('2026-11-10T13:00:00Z', new Date('2026-11-10T13:57:00Z'))).toBe('57 min depois do horário marcado (10:00)')
+    expect(atrasoDoInicio('2026-11-10T13:00:00Z', new Date('2026-11-10T14:12:00Z'))).toBe('1 h 12 min depois do horário marcado (10:00)')
+  })
+  it('até 5 min de atraso, e o início adiantado, não marcam nada', async () => {
+    const { atrasoDoInicio } = await import('@/lib/appointments/inicio-adiantado')
+    expect(atrasoDoInicio('2026-11-10T13:00:00Z', new Date('2026-11-10T13:05:00Z'))).toBeNull()
+    expect(atrasoDoInicio('2026-11-10T13:00:00Z', new Date('2026-11-10T12:40:00Z'))).toBeNull()
+  })
+})

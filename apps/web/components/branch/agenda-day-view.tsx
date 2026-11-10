@@ -51,6 +51,8 @@ function gradeDe(inicio: number, fim: number): Grade {
 }
 const GradeCtx = createContext<Grade>(gradeDe(START_PADRAO, END_PADRAO))
 const TIME_COL_W = 60
+/** A coluna de cada profissional: duas cabem num celular de 390–412 px (A26 da 11ª). */
+const COL_MIN_W = 150
 
 const PROF_COLORS = [
   { bg: 'var(--brand-soft)', text: 'var(--brand)' },
@@ -121,7 +123,7 @@ function ProfColumn({
       data-coluna-do-profissional={pro.name}
       data-horario-de-trabalho={horarioDoDia ? (textoDosIntervalos(horarioDoDia) || 'Não atende') : undefined}
       style={{
-        flex: 1, minWidth: 160, position: 'relative', height: g.TOTAL_PX,
+        flex: 1, minWidth: COL_MIN_W, position: 'relative', height: g.TOTAL_PX,
         borderLeft: isFirst ? 'none' : '1px solid var(--border)',
         background: dropPreviewY !== null ? 'rgba(195,77,107,0.025)' : undefined,
         cursor: canWrite ? 'crosshair' : 'default',
@@ -407,7 +409,9 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
         podeDesfazer={canWrite} onFechar={() => setSalaAberta(null)} />
     )}
     <div className="table-wrap">
-    <div ref={scrollRef} data-grade-do-dia style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minWidth: 500 }}>
+    {/* A26 da 11ª: a largura mínima é a das colunas que há (era 500 fixo — no
+        celular de 412 px a coluna da segunda profissional saía cortada). */}
+    <div ref={scrollRef} data-grade-do-dia style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 320px)', minWidth: TIME_COL_W + Math.max(1, professionals.length) * COL_MIN_W }}>
       {/* Sticky professional headers — dentro do scroll para largura idêntica à do grid */}
       <div style={{
         display: 'flex', position: 'sticky', top: 0, zIndex: 10,
@@ -419,7 +423,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
           const proEvs = todayEvents.filter(e => e.professionalId === pro.id && !eventoDesmarcado(e))
           return (
             <div key={pro.id} style={{
-              flex: 1, minWidth: 160, padding: '12px 14px',
+              flex: 1, minWidth: COL_MIN_W, padding: '12px 14px',
               borderLeft: i > 0 ? '1px solid var(--border)' : 'none',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>

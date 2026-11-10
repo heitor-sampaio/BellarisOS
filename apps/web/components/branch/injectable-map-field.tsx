@@ -356,12 +356,13 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
               valor={sexo}
               onEscolher={sx => trocarVista(viewDe(corpo, sx as 'f' | 'm'))}
             />
-          </div>
 
-          {/* Controles sobre a imagem: aproximar é o que dá precisão em região
-              densa, sem depender de um marcador minúsculo. */}
-          <div style={{
-            position: 'absolute', top: 16, right: 16, zIndex: 1,
+          {/* Controles do zoom: aproximar é o que dá precisão em região densa,
+              sem depender de um marcador minúsculo. Na MESMA linha das escolhas,
+              não por cima (A27 da 11ª: a 360 px, o zoom solto no canto cobria o
+              "Masculino"); sem espaço, ele desce para a linha de baixo. */}
+          <div data-zoom-do-mapa style={{
+            marginLeft: 'auto',
             display: 'inline-flex', alignItems: 'center', gap: 2, padding: 2,
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 'var(--radius-field-token)',
@@ -394,6 +395,7 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
                 <Maximize2 size={12} />
               </BotaoZoom>
             )}
+          </div>
           </div>
 
           <svg
@@ -482,11 +484,12 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
             })}
           </svg>
 
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>
+          {/* A27 da 11ª: a dica fala de TOQUE também (no celular não há mouse a rolar). */}
+          <p data-dica-do-mapa style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>
             {canEdit
               ? zoom > ZOOM_MIN
-                ? 'Clique para marcar. Arraste o fundo para deslocar. Role para aproximar.'
-                : 'Clique para marcar. Role o mouse sobre a ilustração para aproximar.'
+                ? 'Toque (ou clique) para marcar. Arraste o fundo para deslocar; aproxime com + e −.'
+                : 'Toque (ou clique) para marcar. Aproxime com + e − (ou a roda do mouse).'
               : `${daVista.length} ${daVista.length === 1 ? 'ponto marcado' : 'pontos marcados'} · toque para identificar`}
           </p>
         </div>

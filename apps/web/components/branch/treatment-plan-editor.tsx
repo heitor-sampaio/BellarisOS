@@ -163,8 +163,10 @@ function ProcRow({
 
   return (
     <div style={{ borderRadius: 10, border: '1px solid var(--hairline)', overflow: 'hidden' }}>
-      {/* Linha do procedimento */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--surface)' }}>
+      {/* Linha do procedimento — A29 da 11ª: no celular o nome longo empurrava
+          o valor para fora da tela (só o "R$" aparecia); a linha quebra, e o
+          valor desce inteiro. */}
+      <div data-linha-do-procedimento style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--surface)', flexWrap: 'wrap' }}>
         <select
           value={proc.procedureId}
           onChange={e => {
@@ -178,7 +180,7 @@ function ProcRow({
             }
           }}
           style={{
-            flex: 1, padding: '7px 10px', borderRadius: 8,
+            flex: '1 1 180px', minWidth: 0, padding: '7px 10px', borderRadius: 8,
             border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)',
             background: 'var(--surface)', color: 'var(--text)', outline: 'none',
           }}
@@ -192,6 +194,7 @@ function ProcRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', fontWeight: 600 }}>R$</span>
           <input
+            data-preco-do-procedimento aria-label="Valor do procedimento"
             type="number" min={0} step={0.01} value={proc.price || ''}
             onChange={e => onChangePrice(proc.localId, parseFloat(e.target.value) || 0)}
             placeholder="0,00"

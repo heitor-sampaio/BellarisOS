@@ -538,6 +538,34 @@
   ARQUIVADA ("avisar ao remarcar, sem recusar" — revisão do Heitor):
   `avisosDoRemarcar` → `[data-aviso-do-remarcar]`. Só aviso: o remarcar
   continua. Prova: `e2e/agenda-remarcar-avisa.spec.ts`.
+- **Os atritos da agenda da 11ª simulação** (2026-11-10; princípios 2 e 3):
+  - **Na agenda da REDE, o bloqueio de UMA profissional é uma faixa estreita**
+    na borda da coluna da unidade, com o rótulo dizendo de quem é (A23: pintava
+    a coluna inteira, e parecia a clínica fechada; `BlocoDoBloqueio estreita`,
+    `[data-bloqueio-estreito]`). O da sala segue como era; na agenda da
+    unidade, a coluna já é dela.
+  - **Remarcar para um horário que já passou avisa e deixa** (A24): "O horário
+    novo (09/11/2026 às 10:00) já passou: o agendamento fica no passado…"
+    (`avisoDoHorarioPassado`, `lib/appointments/horario-passado.ts`, no
+    `avisosDoRemarcar`).
+  - **O atraso do início se diz** (A25: começar 57 min depois não dizia nada,
+    e antes da hora a tela pergunta): sem perguntar (atrasar não é engano de
+    agendamento), a tela do atendimento diz "Atrasado: 57 min depois do horário
+    marcado (10:00)." antes de iniciar (o relógio do navegador, `useAgora`) e,
+    iniciado, "Iniciado 57 min depois do horário marcado (10:00)."
+    (`atrasoDoInicio`, `lib/appointments/inicio-adiantado.ts`; até 5 min é a
+    hora — a régua da tela). Nada se grava.
+  - **A "Minha agenda" abre perto de agora** (A26: na clínica 24 h ela abria
+    às 00:00, 12 telas até o meio-dia no celular): a grade dela rola pela MESMA
+    régua da agenda da unidade (`rolagemDaGrade`: hoje, uma hora antes de
+    agora; outro dia, o primeiro atendimento ou o começo do horário dela;
+    `[data-rolagem-minha-agenda][data-rolagem="pronta"]`). O destaque
+    "Próximo atendimento" é um LINK para a tela do atendimento e o nome quebra
+    a linha em vez de cortar. E a grade do Dia da unidade tem a largura mínima
+    das colunas que há (60 + 150 por profissional — era 500 fixo, e a segunda
+    profissional saía cortada a 412 px).
+  - Prova: `e2e/agenda-atritos-da-11.spec.ts`, `e2e/atendimento-atritos-da-11.spec.ts`,
+    `tests/agenda-remarcar-no-passado.test.ts`, `tests/inicio-adiantado.test.ts` ("A25").
 - **A grade do dia rola a cada troca de dia** (D8): hoje, uma hora antes de
   agora; outro dia, o primeiro atendimento ou a abertura da unidade, o que
   vier antes (`rolagemDaGrade`). O novo agendamento sugere o próximo horário
@@ -1499,6 +1527,22 @@ const procedures = await ler(
   `loading.tsx` e o portal respondia 500. O layout, sem o módulo ou o recurso,
   só passa a página — que trava por si, como toda `page.tsx`. Prova: o mesmo
   spec ("D17").
+- **O mapa no celular** (A27 e A28 da 11ª simulação, 2026-11-10): o zoom fica
+  na MESMA linha das escolhas Rosto/Corpo e Feminino/Masculino (era um bloco
+  solto no canto, que a 360 px cobria o "Masculino"; `[data-zoom-do-mapa]`), e a
+  dica fala de toque ("Toque (ou clique) para marcar. Aproxime com + e −…",
+  `[data-dica-do-mapa]`). O "marcar um ponto rola a folha" NÃO se reproduziu
+  (toque de verdade a 360 e 412 px, na tela de Injetáveis e na folha do
+  atendimento: a ilustração fica onde estava, e o segundo toque marca) — a
+  prova continua no spec. Na folha do atendimento, uma linha diz o que cada
+  botão faz (`[data-o-que-cada-botao-faz]`): "Salvar planejamento" guarda os
+  pontos e as doses previstas; "Confirmar aplicação" copia a prevista para a
+  aplicada, na tela; "Registrar aplicação" grava neste atendimento (depois,
+  "Atualizar a aplicação registrada"). **A linha do procedimento no editor do
+  plano quebra** (A29: no celular só aparecia o "R$"): `flex-wrap` e o select
+  que encolhe; não se reproduziu no Chromium a 360 px, e o spec guarda o valor
+  dentro da tela. Prova: `e2e/injetaveis-atritos-da-11.spec.ts`,
+  `e2e/atendimento-atritos-da-11.spec.ts` ("A29").
 - **O campo "Planejador de injetáveis" da ficha abre o planejamento DA
   CLIENTE** (pedido do Heitor, 2026-10-29). Era um mapa SOLTO, só na resposta
   da ficha. No atendimento, o campo (`CampoDoPlanejador`,

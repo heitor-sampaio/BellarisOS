@@ -195,7 +195,7 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
  * O bloco do bloqueio na grade: a faixa (sem segurar o clique, que agenda e
  * avisa) e o rótulo, que abre a janela do bloqueio.
  */
-export function BlocoDoBloqueio({ bloqueio, top, height, rotulo, podeDesfazer, esquerda = 0 }: {
+export function BlocoDoBloqueio({ bloqueio, top, height, rotulo, podeDesfazer, esquerda = 0, estreita = false }: {
   bloqueio: BloqueioDaAgenda
   top: number
   height: number
@@ -203,13 +203,20 @@ export function BlocoDoBloqueio({ bloqueio, top, height, rotulo, podeDesfazer, e
   rotulo: string
   podeDesfazer: boolean
   esquerda?: number
+  /**
+   * A23 da 11ª: na agenda da REDE a coluna é da UNIDADE inteira — o bloqueio
+   * de UMA profissional pintado nela toda parecia a clínica fechada. Ali ele
+   * é uma faixa estreita na borda, com o rótulo dizendo de quem é.
+   */
+  estreita?: boolean
 }) {
   const [aberto, setAberto] = useState(false)
   return (
     <>
-      <div data-bloqueio={bloqueio.id} style={{
-        position: 'absolute', top, height, left: esquerda, right: 0, zIndex: 0, pointerEvents: 'none',
-        background: 'var(--warning-soft)', borderTop: '1px dashed var(--warning-border)', borderBottom: '1px dashed var(--warning-border)',
+      <div data-bloqueio={bloqueio.id} data-bloqueio-estreito={estreita || undefined} style={{
+        position: 'absolute', top, height, ...(estreita ? { right: 0, width: 6 } : { left: esquerda, right: 0 }), zIndex: 0, pointerEvents: 'none',
+        background: estreita ? 'var(--warning-border)' : 'var(--warning-soft)',
+        borderTop: '1px dashed var(--warning-border)', borderBottom: '1px dashed var(--warning-border)',
         opacity: 0.85,
       }} />
       {/* O rótulo é um irmão, por cima dos cartões: o agendamento que começa

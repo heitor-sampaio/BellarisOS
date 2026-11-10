@@ -324,7 +324,8 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                   const topo = Math.max(0, (noDia.de / 60 - inicio) * HOUR_H)
                   const fundo = Math.min(GRID_H, (noDia.ate / 60 - inicio) * HOUR_H)
                   if (fundo <= topo) return null
-                  return <BlocoDoBloqueio key={bl.id} bloqueio={bl} top={topo} height={fundo - topo} rotulo={bl.rotulo} podeDesfazer={podeDesfazer} />
+                  // A23 da 11ª: o de UMA profissional não pinta a unidade inteira.
+                  return <BlocoDoBloqueio key={bl.id} bloqueio={bl} top={topo} height={fundo - topo} rotulo={bl.rotulo} podeDesfazer={podeDesfazer} estreita={!!bl.professionalId} />
                 })}
 
                 {/* Linhas de hora */}

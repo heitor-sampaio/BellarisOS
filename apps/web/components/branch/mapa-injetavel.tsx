@@ -260,6 +260,14 @@ export function MapaInjetavel({
         </div>
       )}
 
+      {/* A28 da 11ª: quatro botões sem dizer a diferença — a linha diz. */}
+      {podeEditar && appointmentId && plano.clientId && (
+        <p data-o-que-cada-botao-faz style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+          <strong>Salvar planejamento</strong> guarda os pontos e as doses previstas (o plano, para esta e as próximas sessões).{' '}
+          <strong>Confirmar aplicação</strong> copia a dose prevista de cada ponto para a aplicada, na tela, para você ajustar.{' '}
+          <strong>Registrar aplicação</strong> grava neste atendimento o que foi aplicado — uma vez; depois, “Atualizar a aplicação registrada” troca a gravada.
+        </p>
+      )}
       {podeEditar && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={salvar} disabled={salvando} className="btn-ghost"

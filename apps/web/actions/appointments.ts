@@ -56,6 +56,7 @@ import { lerCredito } from '@/lib/creditos/credito'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
 import { avisosDoHorarioCore, type AvisosDoHorario } from '@/lib/appointments/encaixe'
+import { avisoDoHorarioPassado } from '@/lib/appointments/horario-passado'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
 import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 
@@ -2195,7 +2196,7 @@ export async function avisosDoHorario(
  * próprio agendamento), e a cliente ARQUIVADA ("avisar ao remarcar, sem
  * recusar" — revisão do Heitor). Só aviso: `remarcarCore` decide.
  */
-export async function avisosDoRemarcar(appointmentId: string, scheduledAt: string): Promise<AvisosDoHorario & { clienteArquivada: string | null }> {
+export async function avisosDoRemarcar(appointmentId: string, scheduledAt: string): Promise<AvisosDoHorario & { clienteArquivada: string | null; passado?: string | null }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
   const nada = { foraDoHorario: null, conflito: null, clienteArquivada: null }
@@ -2218,6 +2219,8 @@ export async function avisosDoRemarcar(appointmentId: string, scheduledAt: strin
   ])
   return {
     ...avisos,
+    // A24 da 11ª: o horário novo que já passou avisa (princípio 2: não recusa).
+    passado: avisoDoHorarioPassado(scheduledAt),
     clienteArquivada: ficha && ficha.is_active === false
       ? `${ficha.name} está arquivada. Remarcar é permitido; para agendar de novo, reative a ficha (em "Mais ações").`
       : null,

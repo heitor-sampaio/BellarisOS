@@ -103,6 +103,12 @@ Princípios inegociáveis:
   tela, e o que fica de fora não tem rolagem que o alcance. O `<SegSelect>`
   já decide o lado sozinho (mede o gatilho); painel escrito à mão precisa de
   `left: auto; right: 0` e um teto de largura em `vw`.
+- **A tela de erro (e a de "sem acesso") fica DENTRO do portal** (A32 da 11ª
+  simulação, 2026-11-10: vinha sem menu e sem topbar, só com "Ir para o
+  início"): `app/admin/error.tsx` e `app/[slug]/error.tsx` desenham a mesma
+  `TelaDeErro` (`components/shared/tela-de-erro.tsx`) no lugar da página, com
+  o layout do portal em volta; o `app/error.tsx` da raiz fica para o que quebra
+  fora dos portais (e num layout). Prova: `e2e/agenda-atritos-da-11.spec.ts` ("A32").
 - **Campo de busca tem fundo branco** (`.campo-busca`), diferente dos demais
   campos, que usam `--bg-app`. A busca vive numa barra de filtros sobre o fundo
   do app; com o mesmo tom do fundo ela sumia na superfície em vez de convidar

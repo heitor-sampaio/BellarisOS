@@ -64,6 +64,8 @@ import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
+import { useAgora } from '@/lib/use-agora'
+import { atrasoDoInicio } from '@/lib/appointments/inicio-adiantado'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -1421,6 +1423,10 @@ export function AppointmentSession({
   const selectedProfName = professionals.find(p => p.id === selectedProfId)?.name ?? appointment.professionalName
 
   const status    = appointment.status
+  // A25 da 11ª: o relógio do navegador (sem erro de hidratação), para o atraso antes de iniciar.
+  const agoraMs   = useAgora()
+  const atrasoAgora = !appointment.startedAt && ['SCHEDULED', 'CONFIRMED', 'ARRIVED'].includes(status) && agoraMs != null
+    ? atrasoDoInicio(appointment.scheduledAt, new Date(agoraMs)) : null
   const overline  = STATUS_OVERLINE[status] ?? STATUS_OVERLINE['SCHEDULED']!
   const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status)
   // As ações principais do topo (uma por estado) — no celular, a barra do rodapé (D1 da 10ª).
@@ -1653,10 +1659,12 @@ export function AppointmentSession({
         </div>
       )}
 
+
       {appointment.startedAt && (
         <div>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Início real</p>
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.startedAt), 'HH:mm', { locale: ptBR })}</p>
+
         </div>
       )}
       {appointment.completedAt && (
@@ -1928,6 +1936,18 @@ export function AppointmentSession({
             <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
               {appointment.procedureName}
             </h1>
+            {/* A25 da 11ª: o atraso se diz — antes de iniciar (o relógio do
+                navegador) e, iniciado, fica marcado. Antes da hora, a tela pergunta. */}
+            {atrasoAgora && (
+              <p data-atraso-antes-de-iniciar style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--warning)', marginTop: 4 }}>
+                Atrasado: {atrasoAgora}.
+              </p>
+            )}
+            {atrasoDoInicio(appointment.scheduledAt, appointment.startedAt) && (
+              <p data-atraso-do-inicio style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-muted)', marginTop: 4 }}>
+                Iniciado {atrasoDoInicio(appointment.scheduledAt, appointment.startedAt)}.
+              </p>
+            )}
           </div>
 
           {/* Ações do topo */}

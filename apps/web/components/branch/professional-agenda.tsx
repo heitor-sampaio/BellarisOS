@@ -16,7 +16,7 @@ import { ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react'
 import { AppointmentModal } from './appointment-modal'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { estenderJanela } from '@/lib/agenda/grade'
+import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
 import { ocupacaoDoDia } from '@/lib/metrics/ocupacao'
 import { blocosDosBloqueios, livresEntre } from '@/lib/agenda/horario-livre'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, janelaDoDia, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
@@ -220,6 +220,28 @@ export function ProfessionalAgendaView({
   const gridHeight = (DAY_END - DAY_START) * PX_PER_HOUR
   const hourLines  = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => i + DAY_START)
 
+  // A26 da 11ª: na clínica 24 h a "Minha agenda" abria às 00:00 — eram 12
+  // telas até o meio-dia no celular. Hoje, a grade rola até uma hora antes de
+  // agora; outro dia, até o primeiro atendimento ou o começo do horário dela
+  // (`rolagemDaGrade`, a régua da agenda da unidade).
+  const gradeRef = useRef<HTMLDivElement>(null)
+  const diaDaGrade = format(selectedDate, 'yyyy-MM-dd')
+  const ehHojeNaGrade = diaDaGrade === format(new Date(), 'yyyy-MM-dd')
+  const primeiroDoDia = dayEvents.length
+    ? Math.min(...dayEvents.map(e => { const d = parseISO(e.start); return getHours(d) * 60 + getMinutes(d) }))
+    : null
+  const comecoDela = intervalosDela.length
+    ? Math.min(...intervalosDela.map(i => { const [h, m] = i.de.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0) }))
+    : null
+  useEffect(() => {
+    if (!gradeRef.current) return
+    gradeRef.current.scrollTop = rolagemDaGrade({
+      ehHoje: ehHojeNaGrade, horaAgora: new Date().getHours(), startHour: DAY_START, hourPx: PX_PER_HOUR,
+      aberturaEmMin: comecoDela, primeiroEmMin: primeiroDoDia,
+    })
+    gradeRef.current.dataset.rolagem = 'pronta'
+  }, [diaDaGrade, ehHojeNaGrade, DAY_START, comecoDela, primeiroDoDia])
+
   function evTop(ev: CalendarEvent) {
     const d = parseISO(ev.start)
     return Math.max(0, (getHours(d) - DAY_START + getMinutes(d) / 60) * PX_PER_HOUR)
@@ -296,10 +318,10 @@ export function ProfessionalAgendaView({
       {/* -- KPI strip ------------------------------------------------ */}
       <div className="kpi-grid" style={{ gap: 12 }}>
 
-        {/* Card hero */}
-        <div data-destaque-de-hoje style={{
+        {/* Card hero — A26 da 11ª: abre o atendimento, e o nome não sai cortado. */}
+        <DestaqueQueAbre href={heroEvent ? `/${slug}/agenda/${heroEvent.ev.id}` : null} style={{
           borderRadius: 'var(--radius-card-token)', padding: '18px 20px',
-          display: 'flex', alignItems: 'center', gap: 14,
+          display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none',
           background: heroEvent ? 'var(--brand)' : 'var(--surface)',
           border: heroEvent ? 'none' : '1.5px solid var(--border)',
           boxShadow: heroEvent ? '0 2px 12px rgba(195,77,107,.22)' : 'none',
@@ -320,10 +342,10 @@ export function ProfessionalAgendaView({
             </p>
             {heroEvent ? (
               <>
-                <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--on-brand)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p data-nome-do-destaque style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--on-brand)', letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>
                   {heroEvent.ev.clientName}
                 </p>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'rgba(255,255,255,0.75)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'rgba(255,255,255,0.75)', marginTop: 2, overflowWrap: 'anywhere' }}>
                   {format(parseISO(heroEvent.ev.start), 'HH:mm')} · {heroEvent.ev.procedureName}
                 </p>
               </>
@@ -335,7 +357,7 @@ export function ProfessionalAgendaView({
               </p>
             )}
           </div>
-        </div>
+        </DestaqueQueAbre>
 
         {/* Hoje */}
         <div className="card" style={{ padding: '18px 20px' }}>
@@ -418,7 +440,7 @@ export function ProfessionalAgendaView({
           </div>
 
           {/* Grade de horários */}
-          <div style={{ overflowY: 'auto', maxHeight: 620 }}>
+          <div ref={gradeRef} data-rolagem-minha-agenda style={{ overflowY: 'auto', maxHeight: 620 }}>
             <div data-grade-minha-agenda style={{ position: 'relative', height: gridHeight }}>
 
               {/* Linhas de hora */}
@@ -700,4 +722,13 @@ export function ProfessionalAgendaView({
       )}
     </div>
   )
+}
+
+/**
+ * O destaque de hoje (o próximo atendimento): com atendimento, é um LINK para
+ * a tela dele (A26 da 11ª: o cartão não abria nada); sem, a caixa de sempre.
+ */
+function DestaqueQueAbre({ href, style, children }: { href: string | null; style: React.CSSProperties; children: React.ReactNode }) {
+  if (!href) return <div data-destaque-de-hoje style={style}>{children}</div>
+  return <Link data-destaque-de-hoje href={href} style={style}>{children}</Link>
 }

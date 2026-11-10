@@ -155,7 +155,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
           if (!vivo) return
           // O choque do horário de AGORA é o próprio agendamento: só conta o do novo.
           const novo = novoDT !== inicioLocal
-          setAvisosLidos({ de: novoDT, itens: [r.clienteArquivada, novo ? r.foraDoHorario : null, novo ? (r.bloqueio ?? null) : null].filter((x): x is string => !!x), conflito: novo ? r.conflito : null })
+          setAvisosLidos({ de: novoDT, itens: [r.clienteArquivada, novo ? (r.passado ?? null) : null, novo ? r.foraDoHorario : null, novo ? (r.bloqueio ?? null) : null].filter((x): x is string => !!x), conflito: novo ? r.conflito : null })
         })
         // Sem a conferência, nenhum aviso (o servidor ainda decide) — e o Confirmar não espera para sempre.
         .catch(() => { if (vivo) setAvisosLidos({ de: novoDT, itens: [] }) })

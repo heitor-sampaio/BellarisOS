@@ -42,3 +42,21 @@ export function perguntaDoInicioAdiantado(marcadoPara: string | Date | null | un
     : `${faltam} min`
   return `O atendimento está marcado para as ${hora(quando)} — faltam ${tempo}. Iniciar mesmo assim?`
 }
+
+/**
+ * O ATRASO do início (A25 da 11ª simulação, 2026-11-10: a Elaine iniciou 57 min
+ * depois do horário, e nada dizia — antes da hora, a tela pergunta). Não
+ * pergunta (atrasar não é engano de agendamento); a tela do atendimento DIZ:
+ * "57 min depois do horário marcado (10:00)". Até 5 min é a hora (a régua da
+ * tela, não uma regra de negócio).
+ */
+export const TOLERANCIA_DO_ATRASO_MIN = 5
+export function atrasoDoInicio(marcadoPara: string | Date | null | undefined, inicio: string | Date | null | undefined): string | null {
+  if (!marcadoPara || !inicio) return null
+  const quando = new Date(marcadoPara), comecou = new Date(inicio)
+  if (Number.isNaN(quando.getTime()) || Number.isNaN(comecou.getTime())) return null
+  const atraso = Math.round((comecou.getTime() - quando.getTime()) / 60_000)
+  if (atraso <= TOLERANCIA_DO_ATRASO_MIN) return null
+  const tempo = atraso >= 60 ? `${Math.floor(atraso / 60)} h${atraso % 60 ? ` ${atraso % 60} min` : ''}` : `${atraso} min`
+  return `${tempo} depois do horário marcado (${hora(quando)})`
+}
