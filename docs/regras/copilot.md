@@ -185,6 +185,14 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   dada, procura entre quem a tem marcada no "Atende"
   (`filtroDeQuemAtendeNaUnidade`) — era "da unidade ou da rede". A Talita
   marcada no Batel é achada lá; quem é da rede e não está marcada, não.
+- **O "Feito" do cartão é da DECISÃO, não da tela de trás** (F46, a completa
+  de 2026-11-07): o Confirmar gravou em 1,2 s, mas o cartão ficou 15 s em
+  "Gravando…" — o `router.refresh()` estava dentro da transição do cartão, e
+  o pendente dela esperava o dashboard por trás recarregar com o banco lento.
+  O pendente é um estado próprio (`CartaoDoCopilot`), que acaba quando a
+  action responde; o refresh corre à parte. Prova: o caso "o cartão diz Feito
+  assim que grava" de `e2e/copilot-extras.spec.ts` (a tela de trás atrasada
+  30 s pelo `page.route`).
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,
@@ -220,6 +228,7 @@ completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 ❌ Guardar o anexo (áudio, foto, documento) — lido no pedido e descartado
 ❌ Mandar a chamada de ferramenta ao histórico com o id do item (a API recusa sem o raciocínio)
 ❌ Liberar o Copilot para rede sem plano (ele custa por uso)
+❌ router.refresh() dentro da transição que mostra o "Gravando…" do cartão (o pendente espera a tela de trás inteira — F46)
 ❌ Criar exclusão/anonimização de cliente (LGPD) sem levar as conversas do Copilot que o citam (copilot_mensagens, copilot_acoes) — hoje não há exclusão, e a retenção de 90 dias é o limite
 ❌ Liberar o Copilot (ou uma gravação dele) sem conferir o módulo copilot do cargo (Ver / Gerenciar)
 ❌ Chamar a OpenAI (resposta, transcrição) sem somar o gasto na cota — também quando falha ou cai

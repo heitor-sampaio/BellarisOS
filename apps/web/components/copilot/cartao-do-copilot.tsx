@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Check, Loader2, X } from 'lucide-react'
@@ -32,7 +32,10 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
   aoMudar?: (c: Cartao) => void
 }) {
   const router = useRouter()
-  const [pendente, startTransition] = useTransition()
+  // O "Gravando…" é da DECISÃO (a action), não de uma transição: com o
+  // router.refresh() dentro de uma, ele esperava a tela de trás recarregar
+  // inteira (15 s com o banco lento, a completa de 07/11), com tudo já gravado.
+  const [pendente, setPendente] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   if (cartao.tipo === 'links') {
@@ -58,18 +61,23 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
 
   function decidir(decisao: 'confirmar' | 'cancelar', escolha?: string) {
     if (cartao.tipo !== 'acao') return
+    if (pendente) return
     setErro(null)
-    startTransition(async () => {
+    setPendente(true)
+    void (async () => {
       try {
         const r = await decidirAcaoDoCopilot(cartao.acaoId, decisao, pagina, escolha ?? null)
         if (r.error && r.status === 'falhou' && !r.resultado) { setErro(r.error); return }
         aoMudar?.({ ...cartao, status: r.status, resultado: r.resultado ?? (r.error ? { mensagem: r.error } : null) })
-        // A tela por trás mostra o que mudou (o agendamento novo na agenda).
+        // A tela por trás mostra o que mudou (o agendamento novo na agenda) —
+        // o refresh corre à parte; o "Feito" é do que o servidor respondeu.
         if (r.status === 'feita') router.refresh()
       } catch (e) {
         setErro(erroParaTela(e, 'Não foi possível concluir. Tente de novo.'))
+      } finally {
+        setPendente(false)
       }
-    })
+    })()
   }
 
   const { resumo, status, resultado } = cartao

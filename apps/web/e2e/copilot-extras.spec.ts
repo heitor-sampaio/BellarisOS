@@ -4,6 +4,7 @@ import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
 import { subirOpenaiFalsa, type OpenaiFalsa } from './apoio/openai-falsa'
 import { redeDoCopilot, contraAFalsa, comSessao, falarComOCopilot, esperarResposta, type RedeDoCopilot } from './apoio/copilot'
 import { docx, xlsx } from './apoio/zip'
+import { haMinutosHoje } from './apoio/datas'
 
 /**
  * O que ficou de fora da primeira entrega do Copilot (a dívida, 2026-10-08):
@@ -58,7 +59,7 @@ test.afterAll(async () => {
 test('check-in pelo Copilot: o cartão, e o Confirmar marca a chegada com histórico "via Copilot"', async ({ browser }) => {
   const { data, error } = await db().from('appointments').insert({
     branch_id: rede.outra.branchId, client_id: clienteId, procedure_id: rede.outra.procedureId, professional_id: rede.outra.professionalId,
-    scheduled_at: new Date(Date.now() + 1800_000).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED', source: 'INTERNAL',
+    scheduled_at: haMinutosHoje(5), duration_min: 30, price: 100, status: 'SCHEDULED', source: 'INTERNAL',
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   agendamentos.push(data!.id)
@@ -74,6 +75,34 @@ test('check-in pelo Copilot: o cartão, e o Confirmar marca a chegada com histó
   const { data: h } = await db().from('appointment_history').select('action, changed_by_name').eq('appointment_id', data!.id)
   expect(h!.map(x => x.action)).toContain('CHECKIN')
   expect(h!.find(x => x.action === 'CHECKIN')!.changed_by_name).toContain('(via Copilot)')
+})
+
+// A completa de 07/11 (F46): o Confirmar gravou em 1,2 s, mas o cartão ficou em
+// "Gravando…" 15 s — o tempo de a tela de trás (o dashboard, com o banco lento)
+// recarregar. O "Feito" é do que o servidor gravou; o refresh da tela de trás
+// corre à parte.
+test('o cartão diz "Feito" assim que grava, sem esperar a tela de trás recarregar', async ({ browser }) => {
+  const { data, error } = await db().from('appointments').insert({
+    branch_id: rede.outra.branchId, client_id: clienteId, procedure_id: rede.outra.procedureId, professional_id: rede.outra.professionalId,
+    // De HOJE em Brasília (a chegada só se marca no dia), mesmo perto da meia-noite.
+    scheduled_at: haMinutosHoje(10), duration_min: 30, price: 100, status: 'SCHEDULED', source: 'INTERNAL',
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  agendamentos.push(data!.id)
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/dashboard')
+    const cartao = await pedir(p, 'fazer_check_in', { agendamento: data!.id })
+    // A tela de trás demora 30 s para recarregar (o refresh é um GET com `_rsc`).
+    await p.route(/[?&]_rsc=/, async r => {
+      await new Promise(ok => setTimeout(ok, 30_000))
+      await r.continue().catch(() => {})
+    })
+    await cartao.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(cartao.getByRole('status'), 'o "Feito" não espera o refresh').toContainText('Feito', { timeout: 10_000 })
+    await expect(cartao.locator('.copilot-pensando')).toHaveCount(0)
+    await p.unrouteAll({ behavior: 'ignoreErrors' })
+  })
+  expect((await db().from('appointments').select('status').eq('id', data!.id).single()).data!.status).toBe('ARRIVED')
 })
 
 test('cadastrar COM acesso ao app: o cartão diz o login, e o Confirmar cria a conta do cliente', async ({ browser }) => {
