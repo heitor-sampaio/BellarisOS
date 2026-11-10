@@ -248,6 +248,14 @@ DEVLOG ("Termos e contratos").
   contrato novo: a cliente assina de novo." (`[data-contrato-assinado-com]`); se
   mudar, a pergunta do A45 segue valendo. Prova:
   `e2e/plano-atritos-da-9.spec.ts` ("A36").
+  **O retrato vale ao ABRIR, não a cada refresh** (F46, a completa de
+  2026-11-07): com o `contratoAssinado` nas dependências do efeito que relê o
+  passo guardado, cada `router.refresh()` (assinar um documento chama um)
+  trazia um objeto novo, o efeito rodava de novo, voltava ao Pagamento e
+  remontava a documentação — o "Documento assinado" sumia e o mesmo documento
+  reabria para assinar. O efeito roda uma vez por plano (`plan.id`). Prova:
+  `e2e/checkout-de-plano.spec.ts` ("o caixa sem o módulo de Termos", que
+  espera o refresh e confere que a tela ficou).
 - **O contrato do plano sem o documento da cliente AVISA antes de emitir** (A35
   da 9ª simulação; princípio 2 — avisar, não recusar; o contrato padrão segue
   sem exigir o CPF): com um contrato de plano ativo na rede e a ficha sem CPF,
@@ -439,5 +447,6 @@ DEVLOG ("Termos e contratos").
 ❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho (a exceção é emitirDocumentosDoInicio, antes de iniciar — a mesma função do gatilho)
 ❌ Contar com a emissão feita DENTRO de uma trava que recusa no mesmo update: a recusa desfaz a emissão (D7 da 9ª) — emita antes, num passo gravado
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
+❌ Pôr nas dependências do efeito que relê o passo do checkout um objeto que vem do servidor (cada refresh traz um novo, e a tela volta ao Pagamento — F46)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
 ```

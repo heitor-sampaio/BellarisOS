@@ -370,6 +370,13 @@ test.describe.serial('checkout de plano', () => {
           await page.getByRole('button', { name: 'Assinar no papel' }).click()
           await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
           await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
+          // A completa de 07/11 (F46): assinado o contrato, cada refresh da tela
+          // trazia o `contratoAssinado` como objeto novo, o efeito que relê o
+          // passo guardado rodava de novo, voltava ao Pagamento e remontava a
+          // documentação — o "Documento assinado" sumia e o mesmo termo reabria
+          // para assinar. Depois do refresh, a tela continua onde estava.
+          await page.waitForLoadState('networkidle')
+          await expect(page.getByRole('heading', { name: 'Documento assinado' }), 'o refresh não volta ao pagamento').toBeVisible()
           await page.getByRole('button', { name: 'Continuar' }).click()
         }
         await expect(page.getByText('Forbidden')).toHaveCount(0)

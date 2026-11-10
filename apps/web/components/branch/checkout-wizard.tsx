@@ -348,7 +348,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     }
     setPassoLido(true)
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [plan.id, plan.contratoAssinado])
+    // Só ao abrir o checkout (o plano). Com `plan.contratoAssinado` aqui, cada
+    // refresh da tela (assinar um documento chama router.refresh) trazia um
+    // objeto NOVO, o efeito rodava de novo, voltava ao Pagamento e remontava a
+    // documentação: o "Documento assinado" sumia e o mesmo termo reabria (a
+    // completa de 07/11, F46). O contrato assinado DURANTE o checkout já é o
+    // pagamento da tela; o retrato só vale para quem chega.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- relê o passo uma vez por plano, não a cada refresh
+  }, [plan.id])
   useEffect(() => {
     if (!retomada) return
     const alvo = retomada.step
