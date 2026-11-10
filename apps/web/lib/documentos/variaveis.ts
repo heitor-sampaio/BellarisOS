@@ -91,7 +91,8 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'procedimento.valor':    { grupo: 'Procedimento', rotulo: 'Valor do atendimento', tipos: SO_CONTRATO, exemplo: 'R$ 1.200,00' },
   'agendamento.data':      { grupo: 'Atendimento', rotulo: 'Data do atendimento', tipos: SO_CONTRATO, exemplo: '02/10/2026' },
   'agendamento.hora':      { grupo: 'Atendimento', rotulo: 'Hora do atendimento', tipos: SO_CONTRATO, exemplo: '14:30' },
-  'profissional.nome':     { grupo: 'Atendimento', rotulo: 'Profissional',      tipos: SO_CONTRATO, exemplo: 'Dra. Helena Prado' },
+  // No termo também (A5 da 11ª): a profissional do atendimento em que é colhido; no plano, a do plano.
+  'profissional.nome':     { grupo: 'Atendimento', rotulo: 'Profissional que atende', tipos: DO_PROCEDIMENTO, exemplo: 'Dra. Helena Prado' },
 
   'procedimentos.lista':   { grupo: 'Plano',       rotulo: 'Procedimentos do plano (sessões e valor)', tipos: SO_PLANO, exemplo: 'Toxina botulínica — 2 sessões — R$ 2.400,00' },
   'plano.total':           { grupo: 'Plano',       rotulo: 'Valor total do plano', tipos: SO_PLANO, exemplo: 'R$ 4.800,00' },
@@ -184,7 +185,15 @@ export function validarDocumentoDoEditor(
   entrada: unknown, tipo: TipoDeModelo, tenantId: string | null,
 ): ValidacaoDoModelo & { documento?: DocumentoDoModelo } {
   const r = converterDocumentoDoEditor(entrada, { tenantId })
-  if ('erro' in r) return { erro: r.erro, variaveis: [], usaPagamento: false }
+  if ('erro' in r) {
+    // A6 da 11ª: com chave mal escrita, o resto também se confere — a tela diz
+    // TODAS de uma vez (eram uma por "Salvar").
+    if (r.malFormadas?.length && r.parcial) {
+      const problemas = problemasDasVariaveis(variaveisDoDocumento(r.parcial), tipo)
+      return { erro: [r.erro, ...problemas].join(' '), variaveis: [], usaPagamento: false }
+    }
+    return { erro: r.erro, variaveis: [], usaPagamento: false }
+  }
   const v = validarVariaveis(variaveisDoDocumento(r.documento), tipo)
   return v.erro ? v : { ...v, documento: r.documento }
 }
@@ -194,21 +203,24 @@ function rotuloDaVariavel(v: string): string {
   return c ? `“${c.grupo} · ${c.rotulo}”` : `{{${v}}}`
 }
 
+/** As frases do que impede salvar: as que não existem e as de outro tipo — todas (A6 da 11ª). */
+function problemasDasVariaveis(variaveis: string[], tipo: TipoDeModelo): string[] {
+  const problemas: string[] = []
+  const desconhecidas = [...new Set(variaveis.filter(v => !ehVariavelConhecida(v)))]
+  if (desconhecidas.length) {
+    problemas.push(`Variável que não existe: ${desconhecidas.map(v => `{{${v}}}`).join(', ')}.`)
+  }
+  const foraDoTipo = [...new Set(variaveis.filter(v => ehVariavelConhecida(v) && !CATALOGO[v]!.tipos.includes(tipo)))]
+  if (foraDoTipo.length) {
+    problemas.push(`${foraDoTipo.map(rotuloDaVariavel).join(', ')} não ${foraDoTipo.length > 1 ? 'servem' : 'serve'} em ${ROTULO_DO_TIPO[tipo].toLowerCase()}. ${DICA_DO_TIPO[tipo]}`)
+  }
+  return problemas
+}
+
 function validarVariaveis(variaveis: string[], tipo: TipoDeModelo): ValidacaoDoModelo {
   const vazio = { variaveis: [], usaPagamento: false }
-  const desconhecidas = variaveis.filter(v => !ehVariavelConhecida(v))
-  if (desconhecidas.length) {
-    return { ...vazio, erro: `Variável que não existe: ${desconhecidas.map(v => `{{${v}}}`).join(', ')}.` }
-  }
-
-  const foraDoTipo = variaveis.filter(v => !CATALOGO[v]!.tipos.includes(tipo))
-  if (foraDoTipo.length) {
-    return {
-      ...vazio,
-      erro: `${foraDoTipo.map(rotuloDaVariavel).join(', ')} não ${foraDoTipo.length > 1 ? 'servem' : 'serve'} em ${ROTULO_DO_TIPO[tipo].toLowerCase()}. ${DICA_DO_TIPO[tipo]}`,
-    }
-  }
-
+  const problemas = problemasDasVariaveis(variaveis, tipo)
+  if (problemas.length) return { ...vazio, erro: problemas.join(' ') }
   return { variaveis, usaPagamento: usaPagamento(variaveis) }
 }
 

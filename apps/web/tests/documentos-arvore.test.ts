@@ -181,6 +181,64 @@ describe('A9 da 9ª: a variável digitada no texto', () => {
   })
   it('chaves que não formam variável são recusadas, dizendo qual', () => {
     expect(converterDocumentoDoEditor(doc(p(txt('Eu, {{ Nome }}'))), { tenantId: null }))
-      .toEqual({ erro: expect.stringContaining('{{ Nome }}') })
+      .toMatchObject({ erro: expect.stringContaining('{{ Nome }}') })
+  })
+})
+
+// A6 da 11ª simulação (2026-11-10): o editor recusava UMA variável errada por
+// vez — "{{paciente.nome}}", salvar, depois "{{data}}", salvar de novo. A
+// Renata corrigiu o termo em três idas. Princípio 3: a tela diz de uma vez
+// tudo o que impede salvar.
+describe('A6 da 11ª: as variáveis erradas, todas de uma vez', () => {
+  it('a mal escrita, a que não existe e a de outro tipo saem na MESMA mensagem', () => {
+    const entrada = doc(p(txt('Eu, {{paciente.nome}}, em {{data}}, com {{ Nome }} às {{agendamento.hora}}.')))
+    const r = validarDocumentoDoEditor(entrada, 'TERMO', null)
+    expect(r.erro).toBeTruthy()
+    expect(r.erro).toContain('{{data}}')
+    expect(r.erro).toContain('{{ Nome }}')
+    expect(r.erro).toContain('{{paciente.nome}}')
+    expect(r.erro).toContain('Hora do atendimento')
+  })
+  it('só uma errada continua com a mensagem de sempre', () => {
+    expect(validarDocumentoDoEditor(doc(p(txt('Eu, {{paciente.nome}}.'))), 'TERMO', null).erro)
+      .toBe('Variável que não existe: {{paciente.nome}}.')
+  })
+})
+
+// A7 da 11ª simulação (2026-11-10): "2. 2. Compreendi…" — a Renata escreveu os
+// itens com o número ("2. Compreendi…") dentro de uma lista NUMERADA, e o
+// documento saía com os dois números. O número digitado igual ao da lista é o
+// mesmo número: sai uma vez (princípio 3).
+describe('A7 da 11ª: o número digitado no item da lista numerada', () => {
+  const lista = (start: number | null, ...itens: string[]): NoPM => ({
+    type: 'orderedList', ...(start ? { attrs: { start } } : {}),
+    content: itens.map(t => ({ type: 'listItem', content: [p(txt(t))] })),
+  })
+  it('"1. Li o termo" no item 1 da lista numerada perde o "1. "', () => {
+    const d = converter(doc(lista(null, '1. Li o termo.', '2) Compreendi os riscos.', 'Autorizo.')))
+    const b = d.blocos[0] as { tipo: 'lista'; itens: { trechos: { texto?: string }[] }[][] }
+    expect(b.itens.map(i => i[0]!.trechos[0]!.texto)).toEqual(['Li o termo.', 'Compreendi os riscos.', 'Autorizo.'])
+  })
+  it('a lista que começa no 3 confere o número dela; um número diferente fica como está', () => {
+    const d = converter(doc(lista(3, '3. Terceiro.', '7. Outro número.')))
+    const b = d.blocos[0] as { tipo: 'lista'; itens: { trechos: { texto?: string }[] }[][] }
+    expect(b.itens.map(i => i[0]!.trechos[0]!.texto)).toEqual(['Terceiro.', '7. Outro número.'])
+  })
+  it('na lista com marcadores (não numerada), o texto fica como foi escrito', () => {
+    const d = converter(doc({ type: 'bulletList', content: [{ type: 'listItem', content: [p(txt('1. Item'))] }] }))
+    const b = d.blocos[0] as { tipo: 'lista'; itens: { trechos: { texto?: string }[] }[][] }
+    expect(b.itens[0]![0]!.trechos[0]!.texto).toBe('1. Item')
+  })
+})
+
+// A5 da 11ª simulação (2026-11-10): o termo de injetável saía com
+// "Profissional responsável: ____" — `profissional.nome` só valia no contrato.
+// O termo também a tem: a profissional do atendimento em que é colhido (no
+// plano, a do plano).
+describe('A5 da 11ª: o termo tem a variável da profissional', () => {
+  it('{{profissional.nome}} é aceita no termo e segue no contrato; o contrato de plano não a tem', () => {
+    expect(validarDocumentoDoEditor(doc(p(txt('Profissional responsável: {{profissional.nome}}'))), 'TERMO', null).erro).toBeUndefined()
+    expect(validarDocumentoDoEditor(doc(p(txt('Profissional: {{profissional.nome}}'))), 'CONTRATO', null).erro).toBeUndefined()
+    expect(validarDocumentoDoEditor(doc(p(txt('Profissional: {{profissional.nome}}'))), 'CONTRATO_PLANO', null).erro).toBeTruthy()
   })
 })

@@ -11,6 +11,7 @@ import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
+import { EnviarLinkDeAssinatura } from '@/components/shared/enviar-link-de-assinatura'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import type { Horario } from '@/lib/agenda/horario'
 import { rotaCliente, rotaAtendimento } from '@/lib/rotas'
@@ -960,6 +961,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                           style={{ padding: '7px 14px', fontSize: 'var(--text-sm-sz)' }}>
                           Colher assinatura
                         </button>}
+                {/* A8 da 11ª: ou mandar o link — sem sair do checkout (sair o reabria do início). */}
+                {d.status === 'PENDENTE' && <EnviarLinkDeAssinatura documentoId={d.id} jaEnviadoAte={d.linkAte} />}
               </div>
             )
           })}

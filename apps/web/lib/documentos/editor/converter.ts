@@ -129,6 +129,8 @@ interface Contexto {
   caracteres: number
   imagens:    number
   tenantId:   string | null
+  /** As chaves que não formam variável — juntas, para a tela dizer todas de uma vez (A6 da 11ª). */
+  malFormadas: string[]
 }
 
 function trechosDe(nos: NoPM[] | undefined, ctx: Contexto): TrechoDeModelo[] {
@@ -153,7 +155,9 @@ function trechosDe(nos: NoPM[] | undefined, ctx: Contexto): TrechoDeModelo[] {
         for (const m of texto.matchAll(/\{\{([^{}]*)\}\}/g)) {
           const nome = m[1]!.trim()
           if (!RE_VARIAVEL.test(nome)) {
-            throw new ErroDoDocumento(`“${m[0]}” não é uma variável: use “Inserir variável” (ou escreva no formato {{cliente.nome}}).`)
+            // Anotada, não lançada: a tela diz todas de uma vez (A6 da 11ª).
+            ctx.malFormadas.push(m[0])
+            continue
           }
           pushTexto(texto.slice(desde, m.index), estilo)
           saida.push({ variavel: nome, ...estilo })
@@ -251,6 +255,23 @@ function tabela(n: NoPM, ctx: Contexto): Bloco<TrechoDeModelo> {
   return { tipo: 'tabela', larguras, linhas: saida.map(l => ({ celulas: l.celulas })) }
 }
 
+/**
+ * A7 da 11ª simulação: "2. 2. Compreendi…". O item da lista NUMERADA que
+ * começa com o próprio número digitado ("2. ", "2) ") perde esse número — a
+ * lista já o escreve. Número diferente do item fica como foi escrito.
+ */
+function semONumeroDigitado(itens: Bloco<TrechoDeModelo>[], numero: number): Bloco<TrechoDeModelo>[] {
+  const primeiro = itens[0]
+  if (!primeiro || primeiro.tipo !== 'paragrafo') return itens
+  const t = primeiro.trechos[0]
+  if (!t || !('texto' in t)) return itens
+  const m = /^\s*(\d{1,4})[.)]\s+/.exec(t.texto)
+  if (!m || Number(m[1]) !== numero) return itens
+  const resto = t.texto.slice(m[0].length)
+  const trechos = resto ? [{ ...t, texto: resto }, ...primeiro.trechos.slice(1)] : primeiro.trechos.slice(1)
+  return [{ ...primeiro, trechos }, ...itens.slice(1)]
+}
+
 function blocos(nos: NoPM[] | undefined, onde: Onde, ctx: Contexto): Bloco<TrechoDeModelo>[] {
   const saida: Bloco<TrechoDeModelo>[] = []
   for (const n of nos ?? []) {
@@ -265,9 +286,12 @@ function blocos(nos: NoPM[] | undefined, onde: Onde, ctx: Contexto): Bloco<Trech
         saida.push({
           tipo: 'lista', ordenada: n.type === 'orderedList',
           ...(n.type === 'orderedList' && Number.isInteger(inicio) && inicio > 1 && inicio < 10_000 ? { inicio } : {}),
-          itens: (n.content ?? []).map(item => {
+          itens: (n.content ?? []).map((item, i) => {
             if (item.type !== 'listItem') throw new ErroDoDocumento('Há um elemento inválido numa lista.')
-            return blocos(item.content, 'lista', ctx)
+            const doItem = blocos(item.content, 'lista', ctx)
+            return n.type === 'orderedList'
+              ? semONumeroDigitado(doItem, (Number.isInteger(inicio) && inicio > 0 ? inicio : 1) + i)
+              : doItem
           }),
         })
         break
@@ -311,14 +335,21 @@ function parte(no: NoPM | null | undefined, onde: Onde, ctx: Contexto): Bloco<Tr
  * Converte, ou diz por que não. `tenantId` confere que as imagens são da rede
  * (no servidor); a prévia do navegador passa nulo.
  */
+/** "“{{ Nome }}” não é uma variável…" — ou todas, numa frase só (A6 da 11ª). */
+export function textoDasMalFormadas(ruins: readonly string[]): string {
+  const unicas = [...new Set(ruins)]
+  const lista = unicas.map(r => `“${r}”`).join(', ')
+  return `${lista} não ${unicas.length > 1 ? 'são variáveis' : 'é uma variável'}: use “Inserir variável” (ou escreva no formato {{cliente.nome}}).`
+}
+
 export function converterDocumentoDoEditor(
   entrada: unknown, opcoes: { tenantId: string | null },
-): { documento: DocumentoDoModelo } | { erro: string } {
+): { documento: DocumentoDoModelo } | { erro: string; malFormadas?: string[]; parcial?: DocumentoDoModelo } {
   try {
     if (!entrada || typeof entrada !== 'object') throw new ErroDoDocumento('O documento enviado não tem a forma esperada.')
     if (JSON.stringify(entrada).length > LIMITES.bytes) throw new ErroDoDocumento('O documento ficou grande demais para salvar.')
     const e = entrada as DocumentoDoEditor
-    const ctx: Contexto = { caracteres: 0, imagens: 0, tenantId: opcoes.tenantId }
+    const ctx: Contexto = { caracteres: 0, imagens: 0, tenantId: opcoes.tenantId, malFormadas: [] }
     const documento: DocumentoDoModelo = {
       versao: 2,
       base: { fonte: FONTE_BASE, tamanho: TAMANHO_BASE },
@@ -328,6 +359,9 @@ export function converterDocumentoDoEditor(
     }
     if (ctx.caracteres > LIMITES.caracteres) {
       throw new ErroDoDocumento(`O texto passou de ${LIMITES.caracteres.toLocaleString('pt-BR')} caracteres.`)
+    }
+    if (ctx.malFormadas.length) {
+      return { erro: textoDasMalFormadas(ctx.malFormadas), malFormadas: ctx.malFormadas, parcial: documento }
     }
     const temConteudo = documento.blocos.some(b => b.tipo !== 'paragrafo' || b.trechos.length > 0)
     if (!temConteudo) throw new ErroDoDocumento('Escreva o texto do documento.')

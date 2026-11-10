@@ -33,6 +33,8 @@ export interface DadosDoDocumento {
   unidade:  { name: string | null; document: string | null; address: string | null; city: string | null; state: string | null; phone: string | null } | null
   procedimento: { name: string | null } | null
   agendamento:  { scheduled_at: string | null; price: number | null; profissional: string | null } | null
+  /** A profissional que atende: a do agendamento ou, no termo do plano, a do plano (A5 da 11ª). */
+  profissional?: string | null
   /** Documento do fechamento do plano. */
   plano?:       { itens: { nome: string; sessoes: number; valor: number }[]; total: number; sessoes: number } | null
   /** Termo do plano: os procedimentos do plano que usam este termo. */
@@ -137,7 +139,7 @@ export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string |
     'procedimento.valor':  a?.price != null ? formatBRL(Number(a.price)) : null,
     'agendamento.data':    a?.scheduled_at ? formatDate(a.scheduled_at) : null,
     'agendamento.hora':    a?.scheduled_at ? formatTime(a.scheduled_at) : null,
-    'profissional.nome':   vazio(a?.profissional),
+    'profissional.nome':   vazio(a?.profissional ?? d.profissional),
 
     'procedimentos.lista': d.plano?.itens.length
       ? d.plano.itens.map(i => `${i.nome} — ${i.sessoes} ${i.sessoes === 1 ? 'sessão' : 'sessões'} — ${formatBRL(i.valor)}`).join('\n')

@@ -446,12 +446,16 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
 export async function gerarLinkDeAssinatura(id: string): Promise<{ error?: string; link?: LinkDeAssinatura }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
+    // Quem colhe: os Termos em Gerenciar — ou quem RECEBE, no documento do plano
+    // no checkout (A8 da 11ª: o link também sai do passo Documentação, e o
+    // caixa sem o módulo de Termos já colhia ali — a exceção de 2026-10-20).
+    if (!can(ctx, 'documents', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
     // Gerar revoga o link que o cliente já tem nas mãos.
     const travado = bloqueioDoSuporte(ctx, 'gerar link de assinatura')
     if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
+    await assertPodeColher(ctx, doc)
     return await criarLink(ctx, doc)
   } catch (e) {
     return { error: mensagemDoErro(e) }

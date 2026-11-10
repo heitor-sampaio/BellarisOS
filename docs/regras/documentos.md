@@ -424,6 +424,39 @@ DEVLOG ("Termos e contratos").
   - Sem o prontuário no cargo (NONE), o escopo não vale (CLAUDE.md §11): quem
     tem só os Termos vê todos. O checkout do plano (quem recebe) segue como
     estava. Prova: `e2e/documentos-so-os-meus.spec.ts`.
+- **Os atritos dos termos da 11ª simulação** (2026-11-10; princípio 3):
+  - **O termo tem a profissional** (A5: o termo de injetável saía com
+    "Profissional responsável: ____"): `profissional.nome` ("Profissional que
+    atende") vale no TERMO e no CONTRATO. No avulso é a do agendamento; no
+    termo do PLANO, que não tem agendamento, a profissional do plano
+    (`treatment_plans.professional_id`, sempre preenchido) — `dadosDoDocumento`.
+    Continua obrigatória: sem ela, INCOMPLETO.
+  - **O editor diz TODAS as variáveis erradas de uma vez** (A6: "{{paciente.nome}}",
+    salvar, depois "{{data}}"): o conversor anota as chaves mal escritas em vez
+    de parar na primeira, e `validarDocumentoDoEditor` junta na mesma mensagem
+    as que não existem e as de outro tipo (`problemasDasVariaveis`).
+  - **O número digitado no item da lista numerada sai uma vez** (A7: "2. 2.
+    Compreendi…"): no conversor (a porta única), o item que começa com o
+    PRÓPRIO número ("2. ", "2) ") o perde — a lista já o escreve; número
+    diferente fica como foi escrito (`semONumeroDigitado`).
+  - **O link de assinatura onde a assinatura é pedida** (A8: só a ficha tinha
+    "Enviar link"; sair do checkout para pegá-lo reabria o checkout do início):
+    a janela da agenda (`DocumentosDaJanela`, quem tem os Termos em Gerenciar,
+    o documento PENDENTE) e o passo Documentação do checkout têm "Enviar link de
+    assinatura" (`EnviarLinkDeAssinatura`, o mesmo `gerarLinkDeAssinatura` da
+    ficha: uso único, 7 dias, gerar outro revoga). No checkout, quem RECEBE
+    gera o link do documento do plano — a exceção de 2026-10-20 (`assertPodeColher`):
+    o link é um jeito de colher.
+  - **A janela diz o que falta no cadastro** (A9: "Faltam dados do cadastro ·
+    bloqueia o início", e a Vera salvou o nascimento quando faltava o CPF):
+    "Faltam dados: CPF · bloqueia o início", com "Completar o cadastro" (a aba
+    Dados, a quem edita Clientes; `[data-completar-cadastro]`).
+  - **O PDF de uma página com 521 KB** (A10) é a fonte inteira embutida
+    (`subset: false`, Arimo regular e negrito ≈ 870 KB crus): o subset do
+    `pdf-lib` troca glifos (acima). Ficou como está — encolher pede um subset
+    que não troque glifo.
+  - Prova: `e2e/documentos-atritos-da-11.spec.ts`, `tests/documentos-arvore.test.ts`
+    ("A5", "A6", "A7 da 11ª").
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado

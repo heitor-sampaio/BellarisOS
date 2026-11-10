@@ -117,8 +117,15 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
       : Promise.resolve(null),
   ])
   let profissional: string | null = null
-  if (agendamento?.professional_id) {
-    const u = await ler(admin.from('users').select('name').eq('id', agendamento.professional_id).maybeSingle(), 'buscar o profissional')
+  // A5 da 11ª: no termo do plano (sem agendamento), a profissional é a do plano.
+  let profissionalId = (agendamento?.professional_id as string | null | undefined) ?? null
+  if (!profissionalId && doc.treatment_plan_id && !doc.appointment_id) {
+    const plano = await ler(admin.from('treatment_plans').select('professional_id')
+      .eq('id', doc.treatment_plan_id).maybeSingle(), 'buscar a profissional do plano do documento')
+    profissionalId = (plano?.professional_id as string | null) ?? null
+  }
+  if (profissionalId) {
+    const u = await ler(admin.from('users').select('name').eq('id', profissionalId).eq('tenant_id', doc.tenant_id).maybeSingle(), 'buscar o profissional')
     profissional = (u?.name as string) ?? null
   }
   const doPlano = doc.treatment_plan_id && !doc.appointment_id ? await dadosDoPlano(doc) : null
@@ -143,6 +150,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
     agendamento:  agendamento
       ? { scheduled_at: agendamento.scheduled_at as string, price: agendamento.price as number, profissional }
       : null,
+    profissional,
   }
 }
 

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { FileCheck, FileText, PenLine } from 'lucide-react'
 import { rotaNoPortal } from '@/lib/rotas'
 import { documentosDaJanela, type DocumentoDaJanela } from '@/actions/documentos-da-janela'
+import { EnviarLinkDeAssinatura } from '@/components/shared/enviar-link-de-assinatura'
 
 /**
  * Os termos e contratos do agendamento na janela da agenda (A34 da 6ª
@@ -43,6 +44,15 @@ export function DocumentosDaJanela({ appointmentId, slug }: { appointmentId: str
                 <PenLine size={12} aria-hidden="true" /> Colher assinatura
               </Link>
             )}
+            {/* A9 da 11ª: o que falta no cadastro, com o caminho para completar. */}
+            {d.podeCompletar && d.clienteId && (
+              <Link href={rotaNoPortal(pathname, slug, `/clients/${d.clienteId}?aba=dados`)} data-completar-cadastro
+                style={{ flexShrink: 0, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                Completar o cadastro
+              </Link>
+            )}
+            {/* A8 da 11ª: o link de assinatura também daqui, não só da ficha. */}
+            {d.podeEnviarLink && <EnviarLinkDeAssinatura documentoId={d.id} jaEnviadoAte={d.linkAte} compacto />}
           </li>
         ))}
       </ul>
