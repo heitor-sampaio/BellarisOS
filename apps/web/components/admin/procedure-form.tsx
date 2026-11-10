@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 import { parseDinheiro, formatDinheiroCampo, DINHEIRO_INVALIDO } from '@estetica-os/utils'
+import { custoDoInsumoNoCampo, lerCustoDoInsumo } from '@/lib/estoque/custo-do-insumo'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
@@ -142,12 +143,13 @@ function fechaDinheiro(v: string) {
  * O custo do insumo como todo dinheiro do sistema (A11 da 5ª simulação): era
  * um campo numérico, e o insumo de R$ 380 aparecia "380", sem centavos. O texto
  * acompanha o produto escolhido (o custo muda com ele) e fecha no formato ao
- * sair do campo.
+ * sair do campo. É o custo por unidade de CONSUMO, com até 4 casas (D6 da 11ª:
+ * R$ 0,038/g da cera virava R$ 0,04).
  */
 function CustoDoInsumo({ valor, onValor }: { valor: number; onValor: (n: number) => void }) {
-  const [texto, setTexto] = useState(() => formatDinheiroCampo(valor))
+  const [texto, setTexto] = useState(() => custoDoInsumoNoCampo(valor))
   const [visto, setVisto] = useState(valor)
-  if (valor !== visto) { setVisto(valor); setTexto(formatDinheiroCampo(valor)) }
+  if (valor !== visto) { setVisto(valor); setTexto(custoDoInsumoNoCampo(valor)) }
   return (
     <input
       type="text" inputMode="decimal" className="field"
@@ -155,11 +157,11 @@ function CustoDoInsumo({ valor, onValor }: { valor: number; onValor: (n: number)
       value={texto}
       onChange={e => {
         const t = soDinheiro(e.target.value)
-        const n = parseDinheiro(t)
+        const n = lerCustoDoInsumo(t)
         const numero = Number.isFinite(n) ? n : 0
         setTexto(t); setVisto(numero); onValor(numero)
       }}
-      onBlur={() => setTexto(fechaDinheiro(texto))}
+      onBlur={() => { const n = lerCustoDoInsumo(texto); setTexto(Number.isFinite(n) ? custoDoInsumoNoCampo(n) : texto.trim()) }}
       placeholder="0,00"
       title="Custo por unidade"
     />

@@ -345,7 +345,9 @@
     **E o ajuste de inventário que contou a MENOS** (`INVENTARIO`,
     "Inventário" — D5 da 10ª, 2026-11-10; migration `20261110004903`): o
     movimento `MANUAL_ADJUSTMENT` negativo, ao custo do lote de onde saiu (os
-    de antes, sem custo gravado, ao último custo).
+    de antes, sem custo gravado, ao último custo). **O ajuste desfeito não é
+    perda** (D5 da 11ª, migration `20261110005401`): nem ele nem o movimento
+    que o desfaz entram (`desfeita_em`, `desfeita_pelo`).
     **A perda é MÉTRICA, não dinheiro** (est-04/est-05, revisão de 2026-11-02:
     "perdido ou não, o insumo já foi pago na compra … serve como métrica"):
     não entra no lucro nem no financeiro, e o relatório mostra, além da

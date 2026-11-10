@@ -438,6 +438,10 @@ async function adminUpdateMinStockInterno(productId: string, branchId: string, m
       min_stock:  minStock,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'product_id,branch_id' }), 'salvar o estoque mínimo')
+    // D2 da 11ª: a linha que NASCE herda o mínimo do cadastro (gatilho
+    // trg_bps_minimo_do_produto); o mínimo salvo à mão é o da unidade, mesmo 0.
+    await gravar(admin.from('branch_product_stock').update({ min_stock: minStock })
+      .eq('product_id', productId).eq('branch_id', branchId), 'salvar o estoque mínimo')
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
@@ -740,6 +744,14 @@ export interface MovimentoDeEstoque {
    * (estoque_desfazer_entrada).
    */
   desfazivel: boolean
+  /**
+   * D5 da 11ª: o ajuste de inventário ainda se desfaz — nada saiu do lote dele
+   * depois (o que achou a mais) ou dos lotes de onde saiu (o que achou a
+   * menos). O banco confere de novo (estoque_desfazer_ajuste).
+   */
+  ajusteDesfazivel: boolean
+  /** Este movimento desfaz um ajuste ("Ajuste desfeito"). */
+  desfazAjuste: boolean
 }
 
 /**
@@ -760,7 +772,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, nota_fiscal, desfeita_em, desfeita_motivo, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
+    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, nota_fiscal, desfeita_em, desfeita_motivo, desfeita_pelo, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -793,6 +805,7 @@ export async function getProductMovements(
     unit_cost: number | string | null
     motivo_da_perda: string | null
     fornecedor: string | null; nota_fiscal: string | null; desfeita_em: string | null; desfeita_motivo: string | null
+    desfeita_pelo: string | null
     branch_id: string
     stock_movement_batches: { quantity: number | string; product_batches: { id: string; batch_number: string | null; expires_at: string | null; quantity: number | string } | null }[] | null
   }
@@ -819,7 +832,28 @@ export async function getProductMovements(
     const ligs = await ler(admin.from('stock_movement_batches').select('batch_id').in('batch_id', lotesDasEntradas), 'conferir as saídas dos lotes') as { batch_id: string }[] | null
     for (const l of ligs ?? []) ligacoesDosLotes.set(l.batch_id, (ligacoesDosLotes.get(l.batch_id) ?? 0) + 1)
   }
-  const unidadesSemLote = [...new Set(entradas.filter(m => !(m.stock_movement_batches ?? []).length).map(m => m.branch_id))]
+  // D5 da 11ª: os ajustes que ainda se desfazem. O movimento que DESFAZ um
+  // ajuste é achado pelo `desfeita_pelo` do original (na lista ou fora dela).
+  const ajustes = linhas.filter(m => m.type === 'MANUAL_ADJUSTMENT' && Number(m.quantity) !== 0 && !m.desfeita_em
+    && !(m.reference ?? '').startsWith('voucher:'))
+  const desfazimentos = new Set(linhas.map(m => m.desfeita_pelo).filter(Boolean) as string[])
+  const semOriginalNaLista = ajustes.filter(m => !desfazimentos.has(m.id)).map(m => m.id)
+  if (semOriginalNaLista.length) {
+    const fora = await ler(admin.from('stock_movements').select('desfeita_pelo').in('desfeita_pelo', semOriginalNaLista), 'conferir os ajustes desfeitos') as { desfeita_pelo: string }[] | null
+    for (const f of fora ?? []) desfazimentos.add(f.desfeita_pelo)
+  }
+  const lotesDosAjustes = [...new Set(ajustes.flatMap(m => (m.stock_movement_batches ?? []).map(l => l.product_batches?.id).filter(Boolean) as string[]))]
+  const saidasDosLotes = new Map<string, { id: string; em: string }[]>()
+  if (lotesDosAjustes.length) {
+    const ligs = await ler(admin.from('stock_movement_batches').select('batch_id, movement_id, stock_movements!inner(created_at, quantity)')
+      .in('batch_id', lotesDosAjustes).lt('stock_movements.quantity', 0), 'conferir as saídas dos lotes dos ajustes') as unknown as
+      { batch_id: string; movement_id: string; stock_movements: { created_at: string } }[] | null
+    for (const l of ligs ?? []) saidasDosLotes.set(l.batch_id, [...(saidasDosLotes.get(l.batch_id) ?? []), { id: l.movement_id, em: l.stock_movements.created_at }])
+  }
+  const saiuDepois = (loteId: string, m: Row) => (saidasDosLotes.get(loteId) ?? [])
+    .some(s => s.id !== m.id && (s.em > m.created_at || (s.em === m.created_at && s.id > m.id)))
+  const unidadesSemLote = [...new Set([...entradas, ...ajustes.filter(m => Number(m.quantity) > 0)]
+    .filter(m => !(m.stock_movement_batches ?? []).length).map(m => m.branch_id))]
   const unidadesComLote = new Set<string>()
   if (unidadesSemLote.length) {
     const comSaldo = await ler(admin.from('product_batches').select('branch_id').eq('product_id', productId)
@@ -833,6 +867,18 @@ export async function getProductMovements(
     const l = ligs[0]!
     const lote = l.product_batches
     return !!lote && ligacoesDosLotes.get(lote.id) === 1 && Math.abs(Number(lote.quantity) - Number(l.quantity)) < 1e-6
+  }
+  const ajusteDesfazivel = (m: Row) => {
+    if (m.type !== 'MANUAL_ADJUSTMENT' || !Number(m.quantity) || m.desfeita_em || desfazimentos.has(m.id)) return false
+    if ((m.reference ?? '').startsWith('voucher:')) return false
+    const ligs = m.stock_movement_batches ?? []
+    if (Number(m.quantity) > 0) {
+      if (!ligs.length) return !unidadesComLote.has(m.branch_id)
+      const l = ligs[0]!
+      const lote = l.product_batches
+      return !!lote && !saiuDepois(lote.id, m) && Number(lote.quantity) + 1e-6 >= Number(l.quantity)
+    }
+    return ligs.every(l => !l.product_batches || !saiuDepois(l.product_batches.id, m))
   }
   const nota = (m: Row) => {
     if (!m.reference || !notaDeTransferenciaSemNome(m.type, m.notes)) return m.notes
@@ -861,6 +907,8 @@ export async function getProductMovements(
     notaFiscal:   m.nota_fiscal,
     desfeita:     m.desfeita_em ? { em: m.desfeita_em, motivo: m.desfeita_motivo } : null,
     desfazivel:   desfazivel(m),
+    ajusteDesfazivel: ajusteDesfazivel(m),
+    desfazAjuste: desfazimentos.has(m.id),
   }))
 }
 
@@ -1038,6 +1086,43 @@ export async function desfazerEntradaDeEstoque(movimentoId: string, motivo: stri
     if (error) {
       if (error.code === 'P0001') return { error: error.message }
       throw new Error(`Não consegui desfazer a entrada: ${error.message}`)
+    }
+    revalidatePath('/admin/estoque')
+    if (ctx.branchId) revalidatePath('/*/stock')
+    return { success: true }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * "Desfazer ajuste" (D5 da 11ª simulação): o ajuste de inventário lançado
+ * errado — a Gisele contou em gramas querendo refis, e −14.745 g viraram perda
+ * de R$ 567,79 que não aconteceu. Enquanto nada saiu do lote dele depois, o
+ * ajuste se desfaz como a entrada (`desfazerEntradaDeEstoque`): o saldo e os
+ * lotes voltam, o original fica marcado, e a perda que ele gerou sai de
+ * "Perdas no período". Estoque em Gerenciar, a unidade do ajuste ao alcance;
+ * a conferência dos lotes é do banco (`estoque_desfazer_ajuste`).
+ */
+export async function desfazerAjusteDeEstoque(movimentoId: string, motivo: string): Promise<{ error?: string; success?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    if (typeof movimentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(movimentoId)) return { error: 'Ajuste não encontrado.' }
+    const porque = typeof motivo === 'string' ? motivo.trim() : ''
+    if (!porque) return { error: 'Diga por que o ajuste é desfeito.' }
+    if (porque.length > 300) return { error: 'O motivo passa de 300 caracteres.' }
+    const admin = createAdminClient()
+    const mov = await ler(admin.from('stock_movements').select('id, branch_id, branches!inner(tenant_id)')
+      .eq('id', movimentoId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o ajuste')
+    if (!mov || !alcancaUnidade(ctx, mov.branch_id as string)) return { error: 'Ajuste não encontrado.' }
+    const { error } = await admin.rpc('estoque_desfazer_ajuste', {
+      p_tenant: ctx.tenantId!, p_movimento: movimentoId, p_motivo: porque, p_autor: ctx.internalUserId,
+    })
+    if (error) {
+      if (error.code === 'P0001') return { error: error.message }
+      throw new Error(`Não consegui desfazer o ajuste: ${error.message}`)
     }
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath('/*/stock')

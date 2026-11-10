@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import {
   adminAddStock, adminTransferStock, adminAdjustStock, adminUpdateMinStock, registrarPerda,
-  getProductMovements, desfazerEntradaDeEstoque, type MovimentoDeEstoque,
+  getProductMovements, desfazerEntradaDeEstoque, desfazerAjusteDeEstoque, type MovimentoDeEstoque,
 } from '@/actions/stock'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
@@ -333,7 +333,9 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   // aparece em consumo E em embalagens, e a contagem vale EXATA na unidade
   // escolhida — em embalagens, a fração é o frasco aberto (7,7 = 770 UI).
   const rende        = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
-  const [emConsumo, setEmConsumo] = useState(true)
+  // D5 da 11ª: o "Contar em" nasce na EMBALAGEM, como o da Perda e o que se
+  // conta na prateleira (a Gisele digitou 15 querendo refis, com o campo em g).
+  const [emConsumo, setEmConsumo] = useState(false)
   const contaEmConsumo = !!rende && emConsumo
   const linha        = branchId ? product.branches.find(b => b.branchId === branchId) : undefined
   const embalagens   = branchId ? (linha?.currentStock ?? 0) : null
@@ -350,6 +352,14 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
     ? (contaEmConsumo
       ? `${fmtQ(parsedNew)} ${product.consumptionUnit} = ${fmtQ(parsedNew / rende, 4)} ${product.unit}`
       : `${fmtQ(parsedNew, 4)} ${product.unit} = ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}: o ${product.unit} aberto conta pela fração que sobra nele (0,7 ${product.unit} = ${fmtQ(0.7 * rende)} ${product.consumptionUnit}).`)
+    : null
+  // D5 da 11ª: a variação de mais da metade do saldo avisa forte, com a conta
+  // na outra unidade — −98% passava só com a caixa genérica.
+  const variacaoPct = delta !== null && currentStock !== null && currentStock > 0 ? Math.abs(delta) / currentStock * 100 : null
+  const variacaoGrande = variacaoPct !== null && variacaoPct > 50 && parsedNew !== null
+  const naOutraUnidade = rende && parsedNew !== null
+    ? (contaEmConsumo ? `${fmtQ(parsedNew)} ${product.consumptionUnit} são ${fmtQ(parsedNew / rende, 4)} ${product.unit}`
+                      : `${fmtQ(parsedNew, 4)} ${product.unit} são ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}`)
     : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -429,7 +439,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
         <div role="group" aria-label="Contar em" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Contar em</span>
           <SegSelect ariaLabel="Contar em" value={contaEmConsumo ? 'CONSUMO' : 'EMBALAGEM'}
-            options={[{ key: 'CONSUMO', label: product.consumptionUnit! }, { key: 'EMBALAGEM', label: product.unit }]}
+            options={[{ key: 'EMBALAGEM', label: product.unit }, { key: 'CONSUMO', label: product.consumptionUnit! }]}
             onSelect={k => { setEmConsumo(k === 'CONSUMO'); setNewQty(''); setConfirmed(false) }} />
         </div>
       )}
@@ -447,6 +457,20 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
         </div>
         {equivale && <span data-ajuste-equivale style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>{equivale}</span>}
       </FieldWrap>
+
+      {variacaoGrande && (
+        <div data-variacao-grande role="alert" style={{
+          padding: '10px 13px', borderRadius: 9, background: 'var(--danger-soft)', border: '1.5px solid var(--danger)',
+          display: 'flex', gap: 9, alignItems: 'flex-start',
+        }}>
+          <AlertTriangle size={15} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', lineHeight: 1.5 }}>
+            <strong>A contagem muda o saldo em {fmtQ(variacaoPct!, 0)}%.</strong>{' '}
+            Confira se contou na unidade certa: a contagem está em {unidadeDaContagem}
+            {naOutraUnidade ? ` (${naOutraUnidade})` : ''}. Errado, o ajuste vira perda — e se desfaz no Histórico enquanto nada sair do lote.
+          </p>
+        </div>
+      )}
 
       {/* D5 da 10ª simulação: o que a contagem achou a MAIS entra num lote (era
           saldo sem lote, sem validade); o que achou a MENOS sai pelo lote que
@@ -501,7 +525,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
           )}
           <p data-ajuste-negativo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             A diferença sai {loteDoAjuste ? 'do lote escolhido (o que faltar nele, do que vence primeiro)' : 'do lote que vence primeiro'} e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
-            Entrada lançada errada se desfaz no Histórico (“Desfazer entrada”), sem virar perda.
+            Entrada ou ajuste lançados errados se desfazem no Histórico (“Desfazer entrada”, “Desfazer ajuste”), sem virar perda.
           </p>
         </>
       )}
@@ -918,6 +942,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
   const [erro,    setErro]    = useState<string | null>(null)
   const [recarga, setRecarga] = useState(0)
   const [aDesfazer, setADesfazer] = useState<MovimentoDeEstoque | null>(null)
+  const [ajusteADesfazer, setAjusteADesfazer] = useState<MovimentoDeEstoque | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -944,10 +969,18 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
           onFechar={() => setADesfazer(null)}
           onDesfeita={() => { setADesfazer(null); setRecarga(n => n + 1); onAlterou?.() }} />
       )}
+      {ajusteADesfazer && (
+        <DesfazerAjuste movimento={ajusteADesfazer}
+          onFechar={() => setAjusteADesfazer(null)}
+          onDesfeito={() => { setAjusteADesfazer(null); setRecarga(n => n + 1); onAlterou?.() }} />
+      )}
       {movs.map(m => {
         const entrada = m.quantity >= 0
         const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
         const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        // D6 da 11ª: o custo da unidade de CONSUMO tem até 4 casas (R$ 0,0395/g
+        // saía "R$ 0,04/g"); o da embalagem, os centavos de sempre.
+        const fmtBRL4 = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 })
         // O lote e o custo do movimento (J-45): de qual lote saiu (ou qual a
         // entrada criou) e quanto custou a unidade de consumo e a embalagem.
         const lotes = m.lotes.map(l => [
@@ -956,7 +989,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
         ].filter(Boolean).join(' ')).join(' · ')
         const custo = m.custoUnitario != null && m.custoUnitario > 0
           ? (m.porEmbalagem
-            ? `${fmtBRL(m.custoUnitario)}/${m.unidade} (${fmtBRL(m.custoPorEmbalagem ?? 0)}/${m.embalagem})`
+            ? `${fmtBRL4(m.custoUnitario)}/${m.unidade} (${fmtBRL(m.custoPorEmbalagem ?? 0)}/${m.embalagem})`
             : `${fmtBRL(m.custoUnitario)}/${m.unidade}`)
           : null
         return (
@@ -967,7 +1000,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-                {m.type === 'PURCHASE' && m.quantity < 0 ? 'Entrada desfeita' : (MOV_LABEL[m.type] ?? m.type)}
+                {m.type === 'PURCHASE' && m.quantity < 0 ? 'Entrada desfeita' : m.desfazAjuste ? 'Ajuste desfeito' : (MOV_LABEL[m.type] ?? m.type)}
                 <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {m.branchName}</span>
               </p>
               {/* A37 da 10ª: o fornecedor e a nota da entrada. */}
@@ -978,7 +1011,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
               )}
               {m.desfeita && (
                 <p data-entrada-desfeita style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 700, marginTop: 1 }}>
-                  Desfeita em {new Date(m.desfeita.em).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}{m.desfeita.motivo ? ` — ${m.desfeita.motivo}` : ''}
+                  {m.type === 'MANUAL_ADJUSTMENT' ? 'Desfeito' : 'Desfeita'} em {new Date(m.desfeita.em).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}{m.desfeita.motivo ? ` — ${m.desfeita.motivo}` : ''}
                 </p>
               )}
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
@@ -1012,6 +1045,13 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                 <button type="button" className="btn-ghost" onClick={() => setADesfazer(m)}
                   style={{ marginTop: 4, fontSize: 'var(--text-2xs)', padding: '2px 6px', color: 'var(--danger)', fontWeight: 700 }}>
                   Desfazer entrada
+                </button>
+              )}
+              {/* D5 da 11ª: o ajuste errado se desfaz enquanto nada saiu do lote dele depois. */}
+              {m.ajusteDesfazivel && podeDesfazer && (
+                <button type="button" className="btn-ghost" onClick={() => setAjusteADesfazer(m)}
+                  style={{ marginTop: 4, fontSize: 'var(--text-2xs)', padding: '2px 6px', color: 'var(--danger)', fontWeight: 700 }}>
+                  Desfazer ajuste
                 </button>
               )}
             </div>
@@ -1064,6 +1104,58 @@ function DesfazerEntrada({ movimento, unidade, onFechar, onDesfeita }: {
           <button type="button" className="btn-secondary" onClick={onFechar} disabled={gravando}>Voltar</button>
           <button type="button" className="btn-primary" onClick={desfazer} disabled={gravando || !motivo.trim()}>
             {gravando ? 'Desfazendo…' : 'Desfazer entrada'}
+          </button>
+        </div>
+      </div>
+    </JanelaModal>
+  )
+}
+
+/**
+ * "Desfazer ajuste" (D5 da 11ª simulação): o inventário lançado errado,
+ * enquanto nada saiu do lote dele depois. A janela diz o que acontece antes —
+ * o saldo e os lotes voltam ao de antes dele e a perda que ele gerou sai de
+ * "Perdas no período" — e pede o motivo; o banco confere os lotes de novo.
+ */
+function DesfazerAjuste({ movimento, onFechar, onDesfeito }: {
+  movimento: MovimentoDeEstoque; onFechar: () => void; onDesfeito: () => void
+}) {
+  const [motivo, setMotivo] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+  const [gravando, iniciar] = useTransition()
+  const fmt = (n: number, casas = 3) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
+  const qtd = `${fmt(Math.abs(movimento.quantity))} ${movimento.unidade}`
+    + (movimento.emEmbalagens != null ? ` (${fmt(Math.abs(movimento.emEmbalagens))} ${movimento.embalagem})` : '')
+  const achouAMais = movimento.quantity > 0
+  function desfazer() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await desfazerAjusteDeEstoque(movimento.id, motivo)
+      if (r.error) { setErro(r.error); return }
+      toast.success('Ajuste desfeito.')
+      onDesfeito()
+    })
+  }
+  return (
+    <JanelaModal rotulo="Desfazer o ajuste" largura={440} travado={gravando} onFechar={onFechar}>
+      <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer o ajuste</h2>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          {achouAMais ? `Saem ${qtd} que o ajuste pôs` : `Voltam ${qtd} que o ajuste tirou`} em{' '}
+          {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+          {achouAMais ? ', do lote em que entraram' : ', aos lotes de onde saíram'}. O ajuste fica no histórico,
+          marcado como desfeito, e não fica em Perdas.
+        </p>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="field-label">Motivo</span>
+          <input className="field" maxLength={300} value={motivo} onChange={e => setMotivo(e.target.value)} disabled={gravando}
+            placeholder="Ex.: contei em gramas, era em refis" />
+        </label>
+        {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 700 }}>{erro}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn-secondary" onClick={onFechar} disabled={gravando}>Voltar</button>
+          <button type="button" className="btn-primary" onClick={desfazer} disabled={gravando || !motivo.trim()}>
+            {gravando ? 'Desfazendo…' : 'Desfazer ajuste'}
           </button>
         </div>
       </div>

@@ -220,6 +220,8 @@ test.describe.serial('a tela de estoque', () => {
       const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
       await modal.getByRole('button', { name: 'Ajuste', exact: true }).click()
       await expect(modal.locator('[data-saldo-do-ajuste]')).toContainText('770 UI')
+      // D5 da 11ª: o "Contar em" nasce na embalagem (frasco), como o da Perda.
+      await modal.getByRole('group', { name: 'Contar em' }).getByRole('button', { name: 'UI', exact: true }).click()
       await modal.getByLabel('Contagem').fill('765')
       await expect(modal.locator('[data-ajuste-equivale]')).toContainText('765 UI = 7,65 frasco')
       await modal.getByLabel('Motivo').fill('Inventário')

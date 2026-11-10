@@ -8,9 +8,11 @@ import { addDaysTZ } from '@/lib/datetime'
  * Os lotes com saldo nas unidades da tela de Estoque (J-45, simulação de
  * 2026-10-28/29): número, validade, quanto sobra e o custo da embalagem.
  *
- * O lote não guarda custo próprio: o custo é o do movimento de ENTRADA que o
- * criou (ligado em `stock_movement_batches` desde 20261029001301). O lote que
- * veio por transferência, ou de antes da ligação, fica sem custo ("—").
+ * O lote não guarda custo próprio: o custo é o de `custo_do_lote` — o do
+ * movimento de entrada ligado a ele (a compra, ou o ajuste de inventário que o
+ * criou, ao último custo), e o que veio por transferência herda o do lote de
+ * origem. A tela lê pela MESMA função (`custos_dos_lotes`, D4 da 11ª: o lote
+ * do ajuste dizia "custo —" e valia R$ 39,50 na conta).
  */
 export interface LoteDoProduto {
   id:          string
@@ -22,6 +24,8 @@ export interface LoteDoProduto {
   quantidade:  number
   /** O custo de UMA embalagem (o do consumo × o rendimento), ou nulo. */
   custoPorEmbalagem: number | null
+  /** De onde vem o custo: a entrada, o ajuste (o último custo de então) ou a transferência. */
+  origemDoCusto: 'ENTRADA' | 'AJUSTE' | 'TRANSFERENCIA' | null
 }
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -34,26 +38,35 @@ export async function lotesComSaldo(
   type Linha = {
     id: string; product_id: string; branch_id: string; batch_number: string | null; expires_at: string | null
     quantity: number | string
-    stock_movement_batches: { stock_movements: { type: string; unit_cost: number | string | null } | null }[] | null
   }
   const linhas = await lerTodas<Linha>((de, ate) => admin.from('product_batches')
-    .select('id, product_id, branch_id, batch_number, expires_at, quantity, stock_movement_batches(stock_movements(type, unit_cost))')
+    .select('id, product_id, branch_id, batch_number, expires_at, quantity')
     .in('branch_id', branchIds)
     .gt('quantity', 0)
     .order('expires_at', { ascending: true, nullsFirst: false }).order('id')
     .range(de, ate) as unknown as PromiseLike<{ data: Linha[] | null; error: { message: string } | null }>,
   'carregar os lotes')
-  return linhas
-    .filter(l => fator.has(l.product_id))
-    .map(l => {
-      const entrada = (l.stock_movement_batches ?? []).find(v => v.stock_movements?.type === 'PURCHASE')?.stock_movements
-      const custo = entrada?.unit_cost != null ? Number(entrada.unit_cost) * (fator.get(l.product_id) ?? 1) : null
-      return {
-        id: l.id, produtoId: l.product_id, unidadeId: l.branch_id,
-        numero: l.batch_number, validade: l.expires_at, quantidade: Number(l.quantity),
-        custoPorEmbalagem: custo != null && custo > 0 ? Math.round(custo * 100) / 100 : null,
-      }
-    })
+  const dosProdutos = linhas.filter(l => fator.has(l.product_id))
+  // O custo de cada lote pela função do banco (uma ida só; os ids no corpo).
+  const custos = new Map<string, { custo: number | null; origem: LoteDoProduto['origemDoCusto'] }>()
+  for (let i = 0; i < dosProdutos.length; i += 500) {
+    const pedaco = dosProdutos.slice(i, i + 500).map(l => l.id)
+    const { data, error } = await admin.rpc('custos_dos_lotes', { p_lotes: pedaco })
+    if (error) throw new Error(`Não consegui ler o custo dos lotes: ${error.message}`)
+    for (const c of (data ?? []) as { lote: string; custo: number | string | null; origem: string | null }[]) {
+      custos.set(c.lote, { custo: c.custo != null ? Number(c.custo) : null, origem: (c.origem as LoteDoProduto['origemDoCusto']) ?? null })
+    }
+  }
+  return dosProdutos.map(l => {
+    const c = custos.get(l.id)
+    const custo = c?.custo != null ? c.custo * (fator.get(l.product_id) ?? 1) : null
+    return {
+      id: l.id, produtoId: l.product_id, unidadeId: l.branch_id,
+      numero: l.batch_number, validade: l.expires_at, quantidade: Number(l.quantity),
+      custoPorEmbalagem: custo != null && custo > 0 ? Math.round(custo * 100) / 100 : null,
+      origemDoCusto: custo != null && custo > 0 ? c?.origem ?? null : null,
+    }
+  })
 }
 
 /** Os lotes que vencem até a data, pelo DIA (os já vencidos entram — é o alerta; D1 da 7ª, `validade.ts`). */

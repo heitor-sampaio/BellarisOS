@@ -14,7 +14,7 @@ describe('a validade do lote no estoque, pelo dia', () => {
   afterAll(() => { process.env.TZ = tzAntes })
 
   const lote = (validade: string | null): LoteDoProduto => ({
-    id: validade ?? 'x', produtoId: 'p', unidadeId: 'u', numero: 'L-A', validade, quantidade: 1, custoPorEmbalagem: null,
+    id: validade ?? 'x', produtoId: 'p', unidadeId: 'u', numero: 'L-A', validade, quantidade: 1, custoPorEmbalagem: null, origemDoCusto: null,
   })
 
   it('mostra o dia gravado, não a véspera', () => {

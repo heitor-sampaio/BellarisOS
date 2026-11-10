@@ -25,6 +25,8 @@ export type LoteNaTela = {
   validade:          string | null
   quantidade:        number
   custoPorEmbalagem: number | null
+  /** D4 da 11ª: o lote que o ajuste criou vale o último custo de então, e a tela diz. */
+  origemDoCusto?: 'ENTRADA' | 'AJUSTE' | 'TRANSFERENCIA' | null
 }
 
 type BranchStock = {
@@ -568,7 +570,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                                             </span>
                                             <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
                                             {podeVerAplicacoes && <BotaoAplicadoEm loteId={l.id} rotulo={`${p.name} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'}`} />}
-                                            <span>{l.custoPorEmbalagem != null ?`custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}` : 'custo —'}</span>
+                                            <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}${l.origemDoCusto === 'AJUSTE' ? ' (último custo)' : ''}` : 'custo —'}</span>
                                           </p>
                                         )
                                       })}

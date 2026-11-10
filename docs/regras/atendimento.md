@@ -1730,8 +1730,9 @@ const procedures = await ler(
     aberta arredondada), a Tânia contou 7,7 e o estoque ficou em 750 UI —
     `estoque_ajuste` contava o frasco aberto inteiro e tirava da contagem o
     "já consumido" dele (20 UI), sem a tela dizer. Agora o Ajuste mostra
-    "780 UI · 7,8 frasco" (`[data-saldo-do-ajuste]`), pergunta "Contar em: UI
-    | frasco" (UI por padrão) e diz a conta ANTES de aplicar
+    "780 UI · 7,8 frasco" (`[data-saldo-do-ajuste]`), pergunta "Contar em:
+    frasco | UI" (a embalagem por padrão desde a D5 da 11ª, abaixo — era UI)
+    e diz a conta ANTES de aplicar
     (`[data-ajuste-equivale]`): "765 UI = 7,65 frasco", ou "7,7 frasco =
     770 UI: o frasco aberto conta pela fração que sobra nele". A contagem vale
     exata na unidade digitada: `estoque_ajuste_em` (migration
@@ -1787,6 +1788,29 @@ const procedures = await ler(
     confere tudo de novo com o saldo e o lote travados; a action é
     `desfazerEntradaDeEstoque` (Estoque em Gerenciar, a unidade ao alcance).
     Prova: `e2e/estoque-uso-da-10.spec.ts` ("A38").
+  - **O ajuste errado também se DESFAZ, e o "Contar em" é um só** (D5 da 11ª
+    simulação, 2026-11-10; princípio 3: a Gisele digitou 15 querendo refis com
+    a contagem em g, o sistema gravou −14.745 g e "Perdas no período" ficou com
+    R$ 567,79 que não aconteceram — a correção entrou como lote novo, sem
+    abater a perda). O Histórico tem "Desfazer ajuste" no ajuste de inventário
+    enquanto nada saiu do lote dele DEPOIS (o que achou a mais: o lote em que
+    entrou; o que achou a menos: os lotes de onde saiu), com o motivo: o saldo
+    e os lotes voltam, o original fica "Desfeito em …", o movimento que o
+    desfaz diz "Ajuste desfeito", e os dois saem de "Perdas no período"
+    (`estoque_desfazer_ajuste`, `desfazerAjusteDeEstoque`, `metrics_perdas`;
+    migration `20261110005401`). A entrega de recompensa (o voucher) não se
+    desfaz por aqui. O "Contar em" do Ajuste e o "Em" da Perda nascem na
+    EMBALAGEM e têm a mesma ordem (embalagem | consumo); e a contagem que muda
+    o saldo em mais de 50% avisa forte, com a conta na outra unidade
+    ("15 g são 0,015 refil", `[data-variacao-grande]`) — só aviso (princípio 2).
+    Prova: `e2e/estoque-defeitos-da-11.spec.ts` ("D5").
+  - **O custo por unidade de consumo tem 4 casas** (D6 da 11ª; princípio 3: a
+    cera a R$ 0,038/g gravava R$ 0,04, e a Drenagem dizia R$ 1,10 de insumos
+    em vez de R$ 1,14): `procedure_products.unit_cost` é numeric(12,4)
+    (migration `20261110005401`), o campo do insumo no procedimento lê e mostra
+    até 4 casas (`lib/estoque/custo-do-insumo.ts`), e o Histórico do estoque
+    diz "R$ 0,0395/g". Prova: o mesmo spec ("D4 e D6"),
+    `tests/custo-do-insumo-4-casas.test.ts`.
   - **A regra é UMA, no banco**: `tem_unidade_de_consumo`, `fator_de_consumo`,
     `custo_de_consumo` (o preço da embalagem ÷ o que ela rende; sem unidade de
     consumo, ÷ 1), `saldo_de_consumo`, `valor_do_saldo` e
@@ -1886,8 +1910,12 @@ const procedures = await ler(
   - **A entrada guarda o lote também só com a validade**, e fica LIGADA ao
     lote que criou em `stock_movement_batches` (migration `20261029001301`).
     Antes a validade sem número de lote sumia. O lote continua sem custo
-    próprio: o custo dele é o do movimento de entrada ligado (o lote que veio
-    por transferência fica sem custo, "—").
+    próprio: o custo dele é o de `custo_do_lote` — a tela lê pela MESMA
+    função (`custos_dos_lotes`, migration `20261110005401`; D4 da 11ª
+    simulação, 2026-11-10, princípio 3: o lote que o ajuste de inventário
+    criou dizia "custo —" e valia R$ 39,50 na conta). O do ajuste diz "R$ 39,50/refil
+    (último custo)" (o custo de então); o que veio por transferência, o do lote
+    de origem. Prova: `e2e/estoque-defeitos-da-11.spec.ts` ("D4").
   - Prova: `e2e/estoque-tela-consumo-e-lotes.spec.ts`, `tests/estoque-situacao.test.ts`.
   - **A validade do lote é um DIA, e se lê pelo dia** (D1 da 7ª simulação,
     2026-11-05; princípio 3 e CLAUDE.md §14): o campo de data da entrada grava
@@ -1938,6 +1966,18 @@ const procedures = await ler(
     quebra linha) e o "Validade em 30 dias" lista "Gel — lote GA-1 ·
     15/11/2026", até três, e "e mais N" (`loteNoCartao`). Prova: o mesmo spec
     ("A40").
+  - **O mínimo do CADASTRO vale na unidade** (D2 da 11ª simulação,
+    2026-11-10; princípio 3: os 5 insumos da Marta, 3/1/2/2/3 no cadastro,
+    ficaram com mínimo 0 na unidade, e o "Estoque baixo" dizia 0). A primeira
+    linha da unidade (`branch_product_stock`) herda o `products.min_stock` —
+    um gatilho antes do INSERT (`trg_bps_minimo_do_produto`, migration
+    `20261110005401`) cobre todo caminho que a faz nascer (entrada, ajuste,
+    transferência, perda, venda, conclusão). O mínimo salvo à mão na unidade
+    ("Salvar mínimo") é o dela, mesmo 0 (`adminUpdateMinStock` grava por
+    UPDATE depois). As 4 linhas de antes com mínimo 0 e produto com mínimo
+    (2 da [sim] Violeta, 1 da [sim] Camélia, 1 da Bellaris Clinic) ficaram como
+    estão: nada diz se alguém zerou o mínimo de propósito. Prova:
+    `e2e/estoque-defeitos-da-11.spec.ts` ("D2").
   - **Salvar o mínimo tem nome e confirma** (A41 da 10ª): "Salvar mínimo" e
     "Mínimo salvo" (`[data-minimo-salvo]`) — era um ícone. Prova: ("A41").
   - **O mínimo e o lote vencendo avisam** (A39 da 10ª): o dashboard da
@@ -2472,6 +2512,9 @@ O resto do fluxo:
 ❌ Avaliar o estoque ou o consumo pelo último custo (products.cost_price) quando há lote: é custo_do_lote (o gatilho do lote grava o do consumo; valor_do_saldo soma os lotes — D2 da 10ª)
 ❌ Ajuste positivo de estoque fora de um lote, ou o negativo fora de "Perdas no período" (estoque_ajuste_com_lote, motivo INVENTARIO — D5 da 10ª)
 ❌ Corrigir uma entrada lançada errada com um ajuste a menos (vira perda e sai do lote errado pelo FEFO): é "Desfazer entrada" (estoque_desfazer_entrada — A38 da 10ª), ou o ajuste com o lote escolhido
+❌ Corrigir um ajuste errado com outro ajuste (a perda do primeiro fica em Perdas): é "Desfazer ajuste" (estoque_desfazer_ajuste — D5 da 11ª)
+❌ Criar a linha da unidade (branch_product_stock) desligando o gatilho do mínimo, ou mostrar o custo de um lote por outra conta que não custo_do_lote (custos_dos_lotes — D2 e D4 da 11ª)
+❌ Mostrar ou guardar o custo por unidade de consumo com 2 casas (R$ 0,038/g vira R$ 0,04 — D6 da 11ª)
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Mostrar no ajuste o saldo em embalagens arredondadas, ou ler a contagem do inventário tirando dela o "já consumido do frasco aberto" (estoque_ajuste, o de antes): a contagem vale EXATA na unidade digitada — estoque_ajuste_em (D3 da 7ª)
 ❌ Dizer no "Aplicado em" do lote a baixa INTEIRA do atendimento (é stock_movement_batches.quantity × o rendimento) ou a hora marcada (é a conclusão) — D6/A12 da 9ª; ou listar só os lotes com saldo onde o recall pede o esgotado (D15)
