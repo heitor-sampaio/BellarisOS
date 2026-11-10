@@ -215,6 +215,12 @@ registra o que chegou (`ferramentasOferecidas`, `saidasDeFerramenta`) e cobra a
 regra real do raciocínio. `e2e/apoio/copilot.ts`: uma rede `[e2e]` com o plano
 completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 
+**O fim da página fica acima do botão no celular** (A4 da 10ª simulação,
+2026-11-10): abaixo de 1024 px, com o botão na tela (fora do inbox, onde ele
+já sobe), o `main` ganha embaixo a altura dele e a folga (`body:has(.copilot-botao…)
+main`, `globals.css` do núcleo) — o último texto e o último botão saíam por baixo
+dele, sem rolagem que os tirasse. Prova: `e2e/configuracoes-atritos-da-10.spec.ts` ("A4").
+
 ## O que nunca fazer aqui
 
 ```

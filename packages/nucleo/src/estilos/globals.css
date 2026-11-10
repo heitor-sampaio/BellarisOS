@@ -2468,6 +2468,14 @@ a.suporte-link-forte:hover { color: var(--brand); }
   .copilot-painel .copilot-rodape { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   .copilot-botao { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 50px; padding: 0; justify-content: center; }
   .copilot-botao .copilot-botao-rotulo { display: none; }
+  /* A4 da 10ª simulação: o botão cobria o fim da página no celular (o último
+     texto, o último botão), sem rolagem que o tirasse de baixo dele. Com o
+     botão na tela, o conteúdo ganha embaixo a altura dele e a folga (16 + 50 +
+     16 px) — fora do inbox, onde a conversa ocupa a tela e o botão já sobe.
+     O `!important` vence o `paddingBottom` inline dos layouts. */
+  body:has(.copilot-botao:not([data-subir="sim"])) main {
+    padding-bottom: calc(var(--content-pad-y) + 82px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
 /* Na tela do atendimento, no celular, o botão sobe acima da barra da ação
    principal (`.sessao-acao-principal`, D1 da 10ª). */
