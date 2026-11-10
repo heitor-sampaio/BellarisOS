@@ -446,6 +446,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             : { fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>
             {formatBRL(monthRevenue)}
           </p>
+          {dinheiroDela && (
+            <p data-fora-do-meu-faturamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.45 }}>
+              {DEFINICOES.foraDoMeuFaturamento.texto}
+            </p>
+          )}
           {revDelta && (
             <p style={{ fontSize: 'var(--text-xs-sz)', marginTop: 10, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontWeight: 700 }}>{revDelta.up ? '▲' : '▼'} {revDelta.value}%</span>

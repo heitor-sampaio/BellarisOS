@@ -62,6 +62,15 @@ export const DEFINICOES = {
       + 'é de quem vendeu. Os Relatórios contam outra coisa — a receita dos atendimentos que você FEZ, no dia em que fez —, '
       + 'e as comissões são a sua parte, em "Minhas comissões".',
   },
+  /**
+   * A33 da 10ª simulação (2026-11-10): à vista, embaixo do "Meu faturamento" — a
+   * Daniela via a comissão da sessão do plano e não a sessão no faturamento.
+   */
+  foraDoMeuFaturamento: {
+    rotulo: 'O que fica fora do "Meu faturamento"',
+    texto: 'A sessão de pacote, de plano ou pré-paga que você atende não entra aqui: o dinheiro é de quem vendeu. '
+      + 'Ela aparece nas suas comissões e na receita dos atendimentos dos Relatórios.',
+  },
   receitaDosAtendimentos: {
     rotulo: 'O que a receita dos atendimentos conta',
     texto: 'O valor dos atendimentos FEITOS, para quem atendeu, no dia em que o atendimento foi FEITO (horário de Brasília): '

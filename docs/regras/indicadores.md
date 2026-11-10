@@ -873,7 +873,13 @@ mês"**, e a dica `DEFINICOES.meuFaturamento` explica os três números — o
 "Meu faturamento" (a VENDA dela, no dia do pagamento), a receita dos
 atendimentos dos Relatórios (a EXECUÇÃO, no dia em que fez) e as comissões (a
 parte dela). Prova: `e2e/comissoes-minhas-no-menu.spec.ts`,
-`tests/menu.test.ts`.
+`tests/menu.test.ts`. **E diz à vista o que fica fora** (A33 da 10ª simulação,
+2026-11-10: a Daniela via a comissão da sessão do plano e não a sessão no
+faturamento): embaixo do número, "A sessão de pacote, de plano ou pré-paga que
+você atende não entra aqui: o dinheiro é de quem vendeu. Ela aparece nas suas
+comissões e na receita dos atendimentos dos Relatórios."
+(`[data-fora-do-meu-faturamento]`, `DEFINICOES.foraDoMeuFaturamento`). Prova:
+`e2e/comissoes-uso-da-10.spec.ts` ("A33").
 
 O mesmo recorte vale no **Copilot** (`copilot.md`) e nas funções dos
 Relatórios, que ganharam `p_professional_id default null` com os MESMOS

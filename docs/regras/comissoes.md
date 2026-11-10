@@ -416,6 +416,14 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     comissões; `indicadores.md`, "Lucro e margem"): a despesa paga
     "Comissões" sai da despesa operacional do lucro, senão a comissão
     descontaria duas vezes.
+  - **No período em curso, o fechamento é até AGORA, e a tela diz** (A32 da
+    10ª simulação, 2026-11-10: no dia 10, a janela dizia "até o fim de
+    nov/2026" e o fechamento gravava "de 10/11 a 10/11"): com o período ainda
+    correndo (`periodoEmCurso`), "tudo o que está a pagar até agora. O período
+    de nov/2026 ainda está em curso: o que for lançado até o fim dele fica para
+    o próximo fechamento."; e cada fechamento diz "lançamentos de 10/11/2026
+    até 10/11/2026 às 02:30" (o primeiro lançamento e o fim, que é a hora do
+    pagamento). A regra não mudou. Prova: `e2e/comissoes-uso-da-10.spec.ts` ("A32").
   - Fechamento não se reabre: estorno depois dele vira lançamento negativo
     no próximo. Saldo negativo não fecha.
   - **Estornar um fechamento** (`estornarFechamento` →

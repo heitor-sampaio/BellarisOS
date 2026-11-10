@@ -73,6 +73,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         voltarPara={voltarPara}
         periodos={lista.map(p => ({ chave: p.chave, rotulo: p.rotulo }))}
         periodoAtual={periodo.chave}
+        // A32 da 10ª: o período que ainda corre — o "Fechar e pagar" paga até AGORA, não até o fim dele.
+        periodoEmCurso={periodo.fim.getTime() > Date.now()}
         unidades={unidades.length > 1 ? unidades : undefined}
         unidadeAtual={unidadeAtual}
         resumo={resumo}

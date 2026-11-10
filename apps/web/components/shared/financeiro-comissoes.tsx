@@ -47,6 +47,7 @@ const METODOS = [
 ]
 
 const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
+const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
 /** "base cheia (sem taxa nem insumo descontados; os pontos…)" ou o que saiu dela (J-46, A10). Os pontos só saem da base do avulso: no pacote, no plano e nas vendas eles são forma de pagamento (`comissao_conta`). */
 const base = (l: LancamentoDoExtrato) => rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.origem === 'AVULSO' ? l.baseComPontos : 'PRECO' })
 const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', ',')
@@ -59,6 +60,8 @@ export interface PropsDaTela {
   voltarPara:    string
   periodos:      { chave: string; rotulo: string }[]
   periodoAtual:  string
+  /** A32 da 10ª: o período escolhido ainda corre (o fechamento paga até agora). */
+  periodoEmCurso?: boolean
   /** Portal da rede: o filtro de unidade. */
   unidades?:     { id: string; name: string }[]
   unidadeAtual?: string
@@ -187,7 +190,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
                   </div>
                 </div>
                 {p.podeFechar && r.aPagar > 0 && (
-                  <Fechar profissional={r} periodo={p.periodoAtual} rotuloDoPeriodo={p.periodos.find(x => x.chave === p.periodoAtual)?.rotulo ?? ''} />
+                  <Fechar profissional={r} periodo={p.periodoAtual} rotuloDoPeriodo={p.periodos.find(x => x.chave === p.periodoAtual)?.rotulo ?? ''} emCurso={!!p.periodoEmCurso} />
                 )}
                 {aberto === chave && <Extrato linhas={doProfissional} />}
               </div>
@@ -217,7 +220,7 @@ function Numero({ rotulo, valor, forte = false }: { rotulo: string; valor: numbe
   )
 }
 
-function Fechar({ profissional, periodo, rotuloDoPeriodo }: { profissional: ResumoDoProfissional; periodo: string; rotuloDoPeriodo: string }) {
+function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso }: { profissional: ResumoDoProfissional; periodo: string; rotuloDoPeriodo: string; emCurso: boolean }) {
   const router = useRouter()
   const [confirmando, setConfirmando] = useState(false)
   const [metodo, setMetodo] = useState('PIX')
@@ -245,7 +248,11 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo }: { profissional: Resu
           style={{ padding: 12, borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
             Pagar <strong>{formatBRL(profissional.aPagar)}</strong> a {profissional.professionalName} ({profissional.branchName}),
-            tudo o que está a pagar até o fim de {rotuloDoPeriodo}. Vira uma despesa paga no financeiro da unidade.
+            {/* A32 da 10ª: no dia 10, "até o fim de nov/2026" prometia o mês inteiro, e o fechamento ia só até agora. */}
+            {emCurso
+              ? <> tudo o que está a pagar até agora. O período de {rotuloDoPeriodo} ainda está em curso: o que for lançado até o fim dele fica para o próximo fechamento.</>
+              : <> tudo o que está a pagar até o fim de {rotuloDoPeriodo}.</>}
+            {' '}Vira uma despesa paga no financeiro da unidade.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <select className="filtro-select" aria-label="Forma de pagamento" value={metodo} onChange={e => setMetodo(e.target.value)}>
@@ -319,7 +326,8 @@ function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: b
     <div data-fechamento={f.id} style={{ borderTop: '1px solid var(--hairline)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)' }}>
         <span style={{ color: 'var(--text)' }}>{f.professionalName} · {f.branchName}</span>
-        <span style={{ color: 'var(--text-muted)' }}>de {data(f.inicio)} a {data(f.fim)}, pago em {data(f.paidAt)}</span>
+        {/* A32 da 10ª: "de 10/11 a 10/11" não dizia que era até a hora do pagamento. */}
+        <span style={{ color: 'var(--text-muted)' }}>lançamentos de {data(f.inicio)} até {data(f.fim)}{f.fim ? ` às ${hora(f.fim)}` : ''}, pago em {data(f.paidAt)}</span>
         <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {f.estornadoAt && <span className="chip chip-muted">Estornado</span>}
           <strong style={{ color: 'var(--text)', textDecoration: f.estornadoAt ? 'line-through' : undefined }}>{formatBRL(f.total)}</strong>
