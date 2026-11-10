@@ -1774,6 +1774,29 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-10 — Décima simulação: a dona que atende sozinha pelo celular e migra de outro sistema, e a clínica média com comissões, estoque e a contadora
+
+O mesmo ciclo pedido pelo Heitor, depois das F46–F48 (as três últimas completas sem defeito do sistema; o que caiu foi a
+instância). Rodaram em produção na madrugada de terça 10/11, das 02:07 às ~04:30 (Brasília), com 11 agentes (run
+`wf_6342c809-422`, sem queda):
+
+- **Time A, "[sim] Clínica Peônia"** (Recife, uma unidade): a dona que atende sozinha e faz tudo num Pixel 7 (412 px),
+  com uma recepção de meio período. Migrou 20 clientes de planilha, trouxe pacotes e pontos de fora e usou a fidelidade
+  com indicação e o app da cliente.
+- **Time B, "[sim] Clínica Tulipa"** (Florianópolis): 6 profissionais, 2 recepcionistas, gerente e contadora. Testou as
+  regras de comissão com o fechamento, o estoque com compra, perda e inventário, os relatórios por cargo, o vale e o
+  plano cancelado.
+
+**Dinheiro:** fechou centavo a centavo nos dois (A: caixa 1.399 → 869 depois do cancelamento, resultado 935,87; B:
+entradas 5.538, comissões 735,36 com cada profissional batendo, lucro −10.743,26). A migração respeitou os princípios 4
+e 5. Quase tudo o que a 9ª pediu funcionou em uso real.
+
+**Defeitos:** 8, todos confirmados no código, nenhuma regressão, 5 sobras (F35, F44, J-46/F41, F42, a varredura do
+celular de 21/09). O mais grave: no celular, o "Finalizar atendimento" fica fora da tela (D1). **Atritos:** 43.
+**Regra ou engano:** 17. **Para o Heitor:** 2 — a indicação que premia e o pagamento parcial da comissão.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-10 (10ª)".
+
 ### 2026-11-07 — Nona simulação: harmonização com comercial e o mês que fecha, e a clínica que abre a 2ª unidade com a operação rodando
 
 Pedido do Heitor: corrigir, rodar outra completa e mais dois times, "até que os times não retornem mais defeitos ou
@@ -9929,6 +9952,61 @@ movimentações para a contadora (A44). Os demais no relatório.
 **F39 FEITA (06/11, 17f7273c…2215204f) — as 9 falhas da completa 42313006118 (1713 passaram):** nenhuma era defeito. Quatro specs velhos diante das regras da 8ª: a grade mostra a profissional ocupada em qualquer unidade (D5/F33, `abrangencia-unidade`), a evolução já escrita só se confere no Finalizar (A29/F37, `atendimento-campos-da-tela`), o crédito na ficha da rede pede a unidade (D1/F33, `acoes-entre-redes`), só se troca para quem atende na unidade (A22/F37 + F36, `agenda-conflito-caminhos`). Cinco instabilidades na janela 23:45–00:02 UTC em que o banco de produção respondeu em 9–52 s com 5xx e statement timeout (`ficha-pre-atendimento`, `portal-cliente-varias-clinicas`, `pre-pago-cancelar-unidade`, `copilot-gravacoes`, `fase2-agenda`): o que a ação grava DEPOIS da resposta se lê com `expect.poll` (regra nova em `docs/regras/e2e.md`), e a limpeza do `fase2-agenda` acha a ficha rápida pelo nome. Em aberto: o `GrantCreditForm` (`client-profile.tsx:1070`) chama `onClose()` na renderização (aviso do React, de junho).
 
 **A 8ª rodada fechou em 06/11** (F33–F38): os 19 defeitos e os 58 atritos feitos, as decisões 1 e 2 do Heitor implementadas e a 3 mantida como estava. Seis frentes mexeram em arquivo compartilhado (auth, cached-queries, topbar, `metrics_*`, comissão, agendar do Copilot): vale a completa, quando o Heitor pedir.
+
+### Da simulação de 2026-11-10 (10ª: 8 defeitos e 43 atritos)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`, com as capturas, os 17 achados que eram regra
+ou engano, o dinheiro esperado × sistema e o que ficou sem testar. A 9ª rodada está em `.sim/arquivo-2026-11-07/`. Os
+ids D1…D8 e A1…A43 são desta rodada. Caminhos relativos a `apps/web/`.
+
+**Alta**
+- **D1.** No celular (412 px), a linha de ações da sessão de atendimento mede 744 px e o "Finalizar atendimento" e o
+  "Cancelar" ficam fora da tela, sem rolagem: a dona só encerrou por JavaScript. Linha sem `flexWrap` desde 26/06,
+  agravada pelo "Mapa de injetáveis" da F42 (`components/branch/appointment-session.tsx:1914-1990`). §1, §6, design.
+- **D2.** O valor em estoque e o custo do consumo usam o ÚLTIMO custo de compra (`products.cost_price`, reescrito a
+  cada entrada), não o do lote, que a perda e a venda já usam. Lançar entrada chegou a baixar o valor total; o
+  relatório diz "ao custo do lote". Princípio 3.
+
+**Média**
+- **D3.** O extrato e o CSV da comissão mostram o PREÇO onde dizem "base sem a taxa" (R$ 420 × 40% → R$ 165,48); o
+  plano cancelado mostra base 1.700 com previsto 35. Os valores estão certos (sobra da J-46 e da F41). Princípio 3.
+- **D4.** O resultado diz "competência", mas a despesa entra quando é paga (a regra, `indicadores.md:395`): a palavra
+  é falsa, e o aluguel a pagar não aparece em lugar nenhum (sobra da F44). Princípio 3.
+- **D5.** O inventário não fecha com os lotes: o ajuste positivo não entra em lote (saldo 18,1 × lotes 17,1) e o
+  negativo grava sem custo e fica fora de "Perdas no período", que o DRE promete. Princípio 3.
+- **D6.** A ficha e o atendimento dizem "Cliente desde nov 2026" para quem a importação trouxe "desde 2021" (lêem
+  `created_at`, não `cliente_desde`; a exportação LGPD também). Sobra da F35. Princípio 3.
+- **D7.** A tabela de Transações da ficha rola de lado no celular e esconde o valor e o "Vencida em" (sem
+  `cards-mobile`; sobra da varredura de 21/09).
+
+**Baixa**
+- **D8.** A justificativa da perda fora do lucro ("já foi paga na compra") é falsa: a compra também fica fora. A regra
+  (F7) não muda; o texto, sim.
+
+**Atritos (43), por tela:** celular e clínica de uma pessoa (A1 a confirmação do "Quem vendeu" cortada no rodapé, A2
+com uma só profissional/sala/unidade/vendedora nada vem escolhido, A3–A5); setup e importação (A6–A11: insumo do
+procedimento criado antes do estoque, prévia da importação sem amostra, rótulos do Novo produto sem ligação, a ordem
+dos cargos, as Integrações no modelo Gerente, a comissão em três telas); agenda e atendimento (A12–A20); caixa,
+financeiro e comissões (A21–A35: o "Remarcar vencimento" só ícone, o voucher de R$ 0 com Estornar, os cartões que não
+fecham entre si, o cancelamento do pacote que deixa pontos negativos sem avisar, o "Cancelar plano" fora da página do
+plano, o CSV da contadora sem taxa/líquido/fornecedor/nota, o "Fechar e pagar" no meio do mês); estoque (A36–A41: o
+rótulo "Lotes esgotados", a Entrada sem "não gera despesa" nem fornecedor/nota, o ajuste sem escolher o lote, o mínimo
+fora do sino); portal (A42 as sessões de antes fora do histórico, A43 sem indicação).
+
+**Decidido pelos princípios, sem perguntar:** D1 o "Finalizar" sempre à vista no celular; D2 consumo e valor em
+estoque pelo custo do lote (sem lote, o último); D3 o extrato mostra a base efetiva; D4 a frase diz a regra de verdade,
+com o "a pagar no período, fora do resultado" ao lado; D5 o ajuste positivo pergunta o lote e o negativo grava o custo
+pelo FEFO e entra em Perdas com o motivo "Inventário"; D8 o texto; A2 a única opção vem escolhida (§1).
+
+**Para o Heitor (não decididos — procurados no DEVLOG e em `docs/regras/`):**
+1. **A indicação que premia.** Hoje o "Indicado por" é texto livre só na importação, e a fidelidade não premia quem
+   indica (a dona deu +300 pontos à mão). Recomendação: "Indicada por" ligada a outra ficha, no Novo cliente, no
+   Agendar e na ficha; em Fidelidade, "Prêmio por indicação", desligado, com N pontos (ou uma recompensa) a quem indica
+   quando a indicada PAGA o primeiro atendimento ou venda, uma vez por indicada; o estorno tira o prêmio; no app,
+   "Indique uma amiga" só com a regra ligada.
+2. **O pagamento parcial da comissão.** O "Fechar e pagar" paga tudo do período. Recomendação: a lista dos lançamentos
+   do período, todos marcados; desmarcar deixa para o próximo fechamento. Sem valor solto (adiantamento), que pediria
+   uma regra de desconto nova.
 
 ### Da simulação de 2026-11-07 (9ª: 18 defeitos e 53 atritos feitos em 07/11, F40–F45)
 
