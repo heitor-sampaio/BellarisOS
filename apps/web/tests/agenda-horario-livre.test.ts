@@ -40,3 +40,15 @@ describe('blocosDosBloqueios (D15: a ocupação desconta o bloqueado)', () => {
     expect(capacidadeEmMinutos(todoDia, [null], dia, dia, [blocos])).toBe(18 * 60)
   })
 })
+
+// A16 da 10ª simulação (2026-11-10): a grade do checkout marcou 03:30, 04:00 e
+// 05:00 como ocupados e deixou 03:00, 04:30 e 05:30 livres. Os atendimentos da
+// Daniela (03:00, 04:15, 05:30) foram CONCLUÍDOS às 02:38, antes da hora: o
+// concluído ocupa só até a conclusão (A31 da 5ª), e `getSchedulingDaySlots`
+// os mandava com 0 minutos — um ponto, que a régua contava como ocupado
+// quando caía DENTRO do intervalo testado (e não quando caía na borda).
+describe('ocupanteDoHorario: o concluído antes da hora não ocupa nada (A16 da 10ª)', () => {
+  const concluidosAntes = ['03:00', '04:15', '05:30'].map(h => ({ scheduledAt: em(h).toISOString(), durationMin: 0, clientName: 'Daniela' }))
+  for (const h of ['03:00', '03:30', '04:00', '04:30', '05:00', '05:30'])
+    it(`60 min às ${h}: livre`, () => expect(ocupanteDoHorario(em(h), 60, concluidosAntes)).toBeNull())
+})

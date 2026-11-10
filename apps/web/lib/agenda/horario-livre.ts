@@ -30,6 +30,11 @@ export function ocupanteDoHorario(
   if (Number.isNaN(ini)) return null
   const fim = ini + Math.max(1, duracaoMin) * 60_000
   for (const a of agendamentos) {
+    // O concluído ANTES da hora marcada ocupa zero minutos (A31 da 5ª: só até a
+    // conclusão): não ocupa nada. Como ponto, ele "batia" em todo intervalo que
+    // o continha — a grade do checkout marcava 03:30, 04:00 e 05:00 e deixava
+    // 03:00 livre (A16 da 10ª).
+    if (!(a.durationMin > 0)) continue
     const de = new Date(a.scheduledAt).getTime()
     if (bate(ini, fim, de, de + a.durationMin * 60_000)) return { clientName: a.clientName }
   }
