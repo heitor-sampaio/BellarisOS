@@ -8,6 +8,7 @@ import type { CampaignStatus, CampaignType, TriggerType } from '@/actions/notifi
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { DeleteCampaignButton } from '@/components/admin/delete-campaign-button'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
+import { quandoDispara } from '@/lib/notifications/quando-dispara'
 
 export const dynamic = 'force-dynamic'
 
@@ -150,6 +151,12 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
           )}
           {campaign.trigger_type && (
             <InfoRow label="Gatilho" value={TRIGGER_LABELS[campaign.trigger_type] ?? campaign.trigger_type} />
+          )}
+          {/* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */}
+          {campaign.type === 'AUTOMATED' && campaign.trigger_type && (
+            <div data-quando-dispara>
+              <InfoRow label="Dispara" value={quandoDispara(campaign.trigger_type, campaign.trigger_config as { days?: number; hours?: number; month?: number; day?: number } | null)} />
+            </div>
           )}
           {campaign.trigger_config && campaign.trigger_type === 'BEFORE_APPOINTMENT' && (
             <InfoRow label="Antecedência" value={`${(campaign.trigger_config as { hours?: number }).hours ?? 24}h antes`} />

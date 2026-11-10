@@ -13,6 +13,7 @@ import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { filtrosDoPublico } from '@/lib/notifications/resumo-do-publico'
+import { quandoDispara } from '@/lib/notifications/quando-dispara'
 import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
 
 // -- Types --------------------------------------------------------------
@@ -68,7 +69,9 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   const gatilho = (existing?.trigger_config ?? {}) as Record<string, number | undefined>
   const regras  = existing?.audience_rules ?? {}
   const [campType,      setCampType]      = useState<CampaignType>(existing?.type ?? 'IMMEDIATE')
-  const [triggerType,   setTriggerType]   = useState<TriggerType>(existing?.trigger_type ?? 'BIRTHDAY')
+  // D8 da 11ª (princípios 3 e 6): o gatilho começa SEM escolha — a dona
+  // escolhe. Nascia "Aniversário", e a "Reativação 60 dias" saiu assim.
+  const [triggerType,   setTriggerType]   = useState<TriggerType | null>(existing?.trigger_type ?? null)
   const [scheduledAt,   setScheduledAt]   = useState(paraCampoLocal(existing?.scheduled_at))
   const [triggerDays,   setTriggerDays]   = useState(gatilho.days ?? 30)
   const [triggerHours,  setTriggerHours]  = useState(gatilho.hours ?? 24)
@@ -114,6 +117,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   function canAdvance(): boolean {
     if (step === 1) {
       if (campType === 'SCHEDULED' && !scheduledAt) return false
+      if (campType === 'AUTOMATED' && !triggerType) return false
       return true
     }
     if (step === 2) return name.trim().length > 0 && title.trim().length > 0 && body.trim().length > 0
@@ -132,7 +136,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
         audience_rules:    audienceRules,
         channels:          ['in_app'],
         ...(campType === 'SCHEDULED' && { scheduled_at: scheduledAt }),
-        ...(campType === 'AUTOMATED' && {
+        ...(campType === 'AUTOMATED' && triggerType && {
           trigger_type:   triggerType,
           trigger_config: getTriggerConfig(),
         }),
@@ -227,7 +231,12 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
           {campType === 'AUTOMATED' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <SectionLabel>Gatilho da automação</SectionLabel>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {!triggerType && (
+                <p data-escolha-o-gatilho style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: -8 }}>
+                  Escolha quando a campanha sai: nenhum gatilho vem marcado.
+                </p>
+              )}
+              <div role="group" aria-label="Gatilho da automação" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {([
                   { t: 'BIRTHDAY',           label: 'Aniversário',        desc: 'No dia do aniversário do cliente',          Icon: Gift },
                   { t: 'ANNUAL_DATE',        label: 'Data comemorativa',  desc: 'Toda vez que uma data específica chegar',   Icon: CalendarHeart },
@@ -238,6 +247,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
                   <button
                     key={opt.t}
                     type="button"
+                    aria-pressed={triggerType === opt.t}
                     onClick={() => setTriggerType(opt.t)}
                     style={{
                       flex:        '1 1 140px',
@@ -518,14 +528,20 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
           {campType === 'SCHEDULED' && scheduledAt && (
             <ReviewRow label="Agendada para" value={new Date(scheduledAt).toLocaleString('pt-BR')} />
           )}
-          {campType === 'AUTOMATED' && (
-            <ReviewRow label="Gatilho" value={{
-              BIRTHDAY: 'Aniversário do cliente',
-              ANNUAL_DATE: `${annualDay}/${annualMonth} todo ano`,
-              DAYS_AFTER_VISIT: `${triggerDays} dias após última visita`,
-              DAYS_BEFORE_EXPIRY: `${triggerDays} dias antes do vencimento`,
-              BEFORE_APPOINTMENT: `${triggerHours}h antes do agendamento`,
-            }[triggerType]} />
+          {campType === 'AUTOMATED' && triggerType && (
+            <>
+              <ReviewRow label="Gatilho" value={{
+                BIRTHDAY: 'Aniversário do cliente',
+                ANNUAL_DATE: `${annualDay}/${annualMonth} todo ano`,
+                DAYS_AFTER_VISIT: `${triggerDays} dias após última visita`,
+                DAYS_BEFORE_EXPIRY: `${triggerDays} dias antes do vencimento`,
+                BEFORE_APPOINTMENT: `${triggerHours}h antes do agendamento`,
+              }[triggerType]} />
+              {/* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */}
+              <div data-quando-dispara>
+                <ReviewRow label="Dispara" value={quandoDispara(triggerType, getTriggerConfig() as { days?: number; hours?: number; month?: number; day?: number } | undefined)} />
+              </div>
+            </>
           )}
           <ReviewRow label="Título"     value={previewTitle} />
           <ReviewRow label="Mensagem"   value={body} />

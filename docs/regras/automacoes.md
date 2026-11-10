@@ -216,6 +216,21 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `tests/campanha-filtros-chegam-ao-disparo.test.ts`. Prova (uma regra por
   teste, a prévia e o disparo): `e2e/campanha-cada-filtro-chega.spec.ts`; as
   automáticas pelo cron: `e2e/campanha-aniversario.spec.ts` ("D1").
+- **O gatilho da campanha automática começa SEM escolha, e a tela diz quando
+  ela sai** (D8 da 11ª simulação, 2026-11-10; princípios 3 e 6: a
+  "Reativação 60 dias" da Marta nasceu com o gatilho "Aniversário", que vinha
+  marcado, e só sairia no aniversário de quem sumiu). Nenhum gatilho vem
+  marcado (`aria-pressed`, "Escolha quando a campanha sai…",
+  `[data-escolha-o-gatilho]`), e o "Próximo" espera a escolha. A revisão e os
+  detalhes da campanha dizem "Dispara: 60 dias depois do último atendimento da
+  cliente, a partir das 09:00" (`[data-quando-dispara]`, `quandoDispara`,
+  `lib/notifications/quando-dispara.ts`). E a hora é verdade: os gatilhos do
+  DIA (aniversário, data comemorativa, depois da visita, antes de o pacote
+  vencer) saem a partir das 09:00 de Brasília (`jaEhHoraDeDisparar`, no cron
+  `notification-campaigns`; `?hora=` é a costura do teste) — saíam logo
+  depois da meia-noite, e o aviso tocava o celular da cliente de madrugada. O
+  lembrete do agendamento segue de hora em hora. Prova:
+  `e2e/campanha-defeitos-da-11.spec.ts`, `tests/campanha-quando-dispara.test.ts`.
 - **Automações e Campanhas são da clínica, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
   alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa
@@ -233,4 +248,5 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ```
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
 ❌ Montar o filtro do público da campanha à mão (branch_ids: rules.branch_ids…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
+❌ Trazer um gatilho de campanha já marcado, ou dizer quando ela sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)
 ```

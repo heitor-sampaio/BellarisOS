@@ -11,6 +11,7 @@ import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { nomeParaSaudar } from '@/lib/saudacao'
+import { jaEhHoraDeDisparar, type GatilhoDaCampanha } from '@/lib/notifications/quando-dispara'
 
 /** Cliente de uma campanha: quem recebe, e o nome para o {{first_name}}. */
 type Destinatario = { id: string; name: string }
@@ -39,6 +40,10 @@ export async function GET(req: NextRequest) {
   const now   = new Date()
   const hoje  = partsInTZ(now)
   const today = { month: hoje.month, day: hoje.day }
+  // D8 da 11ª: os gatilhos do DIA saem a partir das 09:00 de Brasília
+  // (`jaEhHoraDeDisparar`). `?hora=` é a costura do teste (só com o segredo).
+  const horaPedida = Number(req.nextUrl.searchParams.get('hora'))
+  const hora = Number.isInteger(horaPedida) && horaPedida >= 0 && horaPedida <= 23 && req.nextUrl.searchParams.has('hora') ? horaPedida : hoje.hour
 
   // Fetch all active automated campaigns + scheduled ones due now
   const { data: campaigns, error } = await admin
@@ -83,6 +88,9 @@ export async function GET(req: NextRequest) {
 
     // -- AUTOMATED ---------------------------------------------
     if (!camp.trigger_type) continue
+    if (!jaEhHoraDeDisparar(camp.trigger_type as GatilhoDaCampanha, hora)) {
+      results.push({ id: camp.id, type: camp.trigger_type, sent: 0, skipped: true }); continue
+    }
 
     // -- BIRTHDAY ---------------------------------------------
     if (camp.trigger_type === 'BIRTHDAY') {

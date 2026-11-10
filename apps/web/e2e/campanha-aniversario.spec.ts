@@ -77,7 +77,7 @@ test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request
     campanha = c!.id
 
     const rodar = async () => {
-      const r = await request.get('/api/cron/notification-campaigns', { headers: { authorization: `Bearer ${segredo}` } })
+      const r = await request.get('/api/cron/notification-campaigns?hora=12', { headers: { authorization: `Bearer ${segredo}` } })
       expect(r.status()).toBe(200)
     }
     const recebidas = async (cliente: string) =>
@@ -152,7 +152,7 @@ test('D1: as campanhas automáticas mandam só para o público escolhido', async
       expect(error, gatilho).toBeNull()
       campanhas[gatilho] = data!.id
     }
-    const r = await request.get('/api/cron/notification-campaigns', { headers: { authorization: `Bearer ${segredo}` } })
+    const r = await request.get('/api/cron/notification-campaigns?hora=12', { headers: { authorization: `Bearer ${segredo}` } })
     expect(r.status()).toBe(200)
     for (const [gatilho, id] of Object.entries(campanhas)) {
       const { data } = await b.from('client_notifications').select('client_id').eq('data->>campaign_id', id)
