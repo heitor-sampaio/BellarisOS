@@ -1774,6 +1774,35 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-10 — Décima primeira simulação: a clínica de injetáveis do lead ao plano, e a clínica de muito movimento
+
+É o mesmo ciclo pedido pelo Heitor, depois das F49–F53. A completa 42806897903 não achou defeito do sistema: duas falhas eram testes do A2 e duas foram paradas da instância.
+- **Quando:** em produção, na terça 10/11, das 09:35 às ~11:25 (Brasília), com 11 agentes (run `wf_f5442f85-a62`).
+- **A troca da instância:** o Heitor subiu o banco de Micro para Small entre ~10:20 e 10:33. As duas telas com "Algo deu errado" das 10:29–10:33 foram a troca.
+
+Os dois times:
+- **Time A, "[sim] Clínica Violeta"** (BH), uma clínica de harmonização com médica dona, biomédica, comercial e recepção.
+  - No prontuário, o mapa de injetáveis e o lote aplicado em cada paciente.
+  - O termo da toxina assinado pelo link, com o PDF e o `/verificar`.
+  - O caminho do lead à avaliação, ao plano de R$ 8.400 e ao checkout com crediário.
+- **Time B, "[sim] Clínica Azaleia"** (Salvador), uma clínica de corporal e depilação com 4 profissionais.
+  - 16 agendamentos, com falta, atraso, encaixe e bloqueio.
+  - Pacotes e pré-pago, o caixa de duas pessoas com estorno, o estoque de consumo alto e o app de três clientes.
+  - Automações montadas sem ligar.
+
+**Dinheiro:** fechou centavo a centavo nos dois.
+- Time A: caixa R$ 9.110, lucro R$ 6.963,29.
+- Time B: caixa R$ 3.971, que foi a R$ 3.131 depois do cancelamento do pacote; resultado R$ 2.678,87.
+- O custo do lote e a base efetiva da 10ª valeram em uso real.
+
+**Achados:**
+- **Defeitos:** 8, sem nenhuma regressão. Cinco são sobras das F49–F51. O lead criado em sequência saía sem responsável (D1), e o mínimo do cadastro não valia na unidade (D2).
+- **Atritos:** 58.
+- **Regra, engano ou ambiente:** 15.
+- **Para o Heitor:** 1, o bônus no crédito na clínica.
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-10 (11ª)".
+
 ### 2026-11-10 — Décima simulação: a dona que atende sozinha pelo celular e migra de outro sistema, e a clínica média com comissões, estoque e a contadora
 
 O mesmo ciclo pedido pelo Heitor, depois das F46–F48 (as três últimas completas sem defeito do sistema; o que caiu foi a
@@ -9952,6 +9981,71 @@ movimentações para a contadora (A44). Os demais no relatório.
 **F39 FEITA (06/11, 17f7273c…2215204f) — as 9 falhas da completa 42313006118 (1713 passaram):** nenhuma era defeito. Quatro specs velhos diante das regras da 8ª: a grade mostra a profissional ocupada em qualquer unidade (D5/F33, `abrangencia-unidade`), a evolução já escrita só se confere no Finalizar (A29/F37, `atendimento-campos-da-tela`), o crédito na ficha da rede pede a unidade (D1/F33, `acoes-entre-redes`), só se troca para quem atende na unidade (A22/F37 + F36, `agenda-conflito-caminhos`). Cinco instabilidades na janela 23:45–00:02 UTC em que o banco de produção respondeu em 9–52 s com 5xx e statement timeout (`ficha-pre-atendimento`, `portal-cliente-varias-clinicas`, `pre-pago-cancelar-unidade`, `copilot-gravacoes`, `fase2-agenda`): o que a ação grava DEPOIS da resposta se lê com `expect.poll` (regra nova em `docs/regras/e2e.md`), e a limpeza do `fase2-agenda` acha a ficha rápida pelo nome. Em aberto: o `GrantCreditForm` (`client-profile.tsx:1070`) chama `onClose()` na renderização (aviso do React, de junho).
 
 **A 8ª rodada fechou em 06/11** (F33–F38): os 19 defeitos e os 58 atritos feitos, as decisões 1 e 2 do Heitor implementadas e a 3 mantida como estava. Seis frentes mexeram em arquivo compartilhado (auth, cached-queries, topbar, `metrics_*`, comissão, agendar do Copilot): vale a completa, quando o Heitor pedir.
+
+### Da simulação de 2026-11-10 (11ª: 8 defeitos e 58 atritos)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 10ª rodada está em `.sim/arquivo-2026-11-10/`. Os ids D1…D8 e A1…A58 são desta rodada.
+
+**Média**
+- **D1.** O lead criado em sequência no mesmo modal sai sem responsável. É uma corrida: o select aparece com `''` antes de a lista chegar, e a action troca o dono para ninguém (`components/branch/crm-lead-modal.tsx`, `actions/leads.ts`). Princípio 3.
+- **D2.** O mínimo digitado no cadastro do produto não vale na unidade: a primeira entrada cria `branch_product_stock` com mínimo 0. Princípio 3.
+- **D3.** O atendimento concluído antes de começar ainda bloqueia o horário ("das 10:30 às 10:14"). `conflitosDoHorario` não descarta o intervalo vazio. Sobra da F50 A16, que corrigiu só a grade.
+- **D4.** O lote criado pelo ajuste mostra "custo —" e vale o último custo na conta (`lotesComSaldo` lê só `PURCHASE`). Sobra da F49.
+- **D5.** O ajuste de inventário errado não se desfaz e fica em Perdas.
+  - O "Contar em" abre em g no Ajuste e em un na Perda: 15 virou −14.745 g.
+  - A correção entrou como lote novo, sem abater a perda.
+  - Sobra da F49 D5 e da F51 A38.
+
+**Baixa**
+- **D6.** O custo por grama é gravado com 2 casas (`procedure_products.unit_cost numeric(10,2)`).
+- **D7.** Depois do cancelamento, a linha antiga da comissão de venda mostra a base com o fator de hoje. Sobra da F49 D3.
+- **D8.** A campanha nasce com o gatilho "Aniversário" já escolhido. Princípios 3 e 6.
+
+**Atritos (58), por tela:**
+- **CRM** (A1–A4): o Agendar do lead sem o procedimento de interesse, e o valor do card depois do plano.
+- **Termos** (A5–A10):
+  - o termo sem a variável do profissional;
+  - o "Enviar link" só na ficha;
+  - o "Aguardando dados do cadastro" sem dizer o quê.
+- **Setup e configurações** (A11–A22):
+  - a comissão de venda por pessoa;
+  - os modelos de automação com o texto técnico;
+  - nenhum modelo de reativação.
+- **Agenda e atendimento** (A23–A32):
+  - a agenda 24 h no celular abrindo à 00:00;
+  - o mapa de injetáveis no celular;
+  - o "no alto da tela", que agora é o rodapé.
+- **Prontuário** (A33–A35): o lote aplicado fora do prontuário.
+- **Caixa e comissões** (A36–A47):
+  - o estorno parcial que reescreve a linha;
+  - o Fechamento sem dizer quem recebeu;
+  - o pacote no crediário liberando as sessões sem avisar do saldo em aberto.
+- **Estoque** (A48–A54): o mínimo fora do sino.
+- **Portal** (A55–A58).
+
+**Decidido pelos princípios, sem perguntar:**
+- D1: o lead abre com quem cria.
+- D2: a linha da unidade herda o mínimo do produto.
+- D3: o vazio não conflita.
+- D4: o custo do lote do ajuste aparece.
+- D5: o "Desfazer ajuste", o mesmo "Contar em" nas duas janelas e o aviso de variação grande.
+- D6: 4 casas.
+- D7: a base da hora de cada linha.
+- D8: o gatilho começa sem escolha.
+- A41: avisa o saldo em aberto, e o pacote segue liberando.
+
+**Para o Heitor (procurado no DEVLOG e em `docs/regras/`):** o bônus no crédito na clínica (R$ 500 que vira R$ 550).
+- **Recomendação:** "Bônus (opcional)", vazio por padrão.
+  - No caixa entram os R$ 500, e os pontos são sobre o pago.
+  - O saldo fica em R$ 550, com o bônus como concessão ligada à venda.
+  - No estorno, o bônus sai na proporção.
+- A comissão por pessoa na venda (A17) também é regra nova: a frente a traz, sem implementar.
+
+**Decidido pelo Heitor em 2026-11-10 (da 10ª):**
+- A indicação que premia: "1 - sim", como recomendado.
+- O pagamento parcial da comissão: "concordo com marcar e desmarcar". Os lançamentos ficam todos marcados, e o desmarcado vai para o próximo fechamento, sem valor digitado.
+- A instância do Supabase subiu para Small.
+- Implementação: F52.
 
 ### Da simulação de 2026-11-10 (10ª: 8 defeitos e 43 atritos)
 
