@@ -1065,6 +1065,17 @@
   `tests/preco-na-unidade.test.ts`.
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um procedimento
 - `ProcedureProduct`: insumos consumidos por execução — base do consumo automático de estoque
+  - **O catálogo diz o procedimento sem insumo ligado** (A6 da 10ª simulação,
+    2026-11-10; princípio 3: o criado antes do estoque ficava sem insumo, e a
+    baixa automática nunca acontecia, calada): com insumo no estoque, o topo
+    da lista diz "N procedimentos ativos sem insumo ligado: a baixa automática
+    do estoque não acontece neles…" (`[data-sem-insumo-ligado]`) e a linha tem
+    o selo "Sem insumo ligado" (`[data-chip-sem-insumo]`). Só aviso: o que não
+    usa insumo (a avaliação) fica como está. Prova:
+    `e2e/configuracoes-atritos-da-10.spec.ts` ("A6").
+- **No Novo produto, cada rótulo é ligado ao campo** (A8 da 10ª: soltos e
+  centralizados — `design.md`, "Formulários"; o `Label` do
+  `stock-product-modal.tsx` recebe o `htmlFor`). Prova: o mesmo spec ("A8").
 - **"Quem realiza"** (por-01, revisão do Heitor de 2026-11-02: "já deveria ter
   um cadastro das profissionais que podem realizar o procedimento. Isso já
   deve estar na hora da criação de um procedimento e disponível também na

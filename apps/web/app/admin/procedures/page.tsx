@@ -177,6 +177,13 @@ export default async function AdminProceduresPage({
     return acc
   }, {})
 
+  // A6 da 10ª simulação: o procedimento criado ANTES do estoque ficava sem
+  // insumo, e nada lembrava de ligar depois — a baixa automática nunca
+  // acontecia. Com insumo no estoque, o catálogo diz quais estão sem.
+  const temInsumo = productList.length > 0
+  const semInsumo = temInsumo ? procList.filter(p => p.is_active && !p.procedure_products.length) : []
+  const idsSemInsumo = new Set(semInsumo.map(p => p.id))
+
   const totalActive   = procList.filter(p => p.is_active).length
   const totalInactive = procList.filter(p => !p.is_active).length
   const branchList    = branches ?? []
@@ -211,6 +218,16 @@ export default async function AdminProceduresPage({
           </div>
         )}
       </div>
+
+      {semInsumo.length > 0 && (
+        <p data-sem-insumo-ligado role="note" className="card" style={{ padding: '12px 16px', marginBottom: 16, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text)' }}>
+            {semInsumo.length === 1 ? '1 procedimento ativo sem insumo ligado' : `${semInsumo.length} procedimentos ativos sem insumo ligado`}
+          </strong>
+          : a baixa automática do estoque não acontece {semInsumo.length === 1 ? 'nele' : 'neles'}.
+          {canEdit ? ' Ligue os insumos em “Editar” → Insumos utilizados.' : ''} O que não usa insumo (a avaliação, por exemplo) pode ficar assim.
+        </p>
+      )}
 
       {procList.length > 0 && (
         <div className="filtros-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
@@ -293,6 +310,9 @@ export default async function AdminProceduresPage({
                             fixa, esticar não é mais possível, mas o texto
                             precisa poder ocupar duas linhas sem estourar. */}
                         <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>{p.name}</p>
+                        {idsSemInsumo.has(p.id) && (
+                          <span data-chip-sem-insumo className="chip chip-muted" style={{ marginTop: 4, display: 'inline-flex' }}>Sem insumo ligado</span>
+                        )}
                         {p.description && (
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.description}

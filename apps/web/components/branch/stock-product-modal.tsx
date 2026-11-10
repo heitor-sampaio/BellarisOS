@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import {
+import { useId,
   useRef, useCallback, useState, useMemo,
   forwardRef, useImperativeHandle,
 } from 'react'
@@ -51,7 +51,7 @@ interface Props {
   onSuccess?:  () => void
 }
 
-function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; defaultValue?: string | null }) {
+function SupplierCombobox({ suppliers, defaultValue, id }: { suppliers: string[]; defaultValue?: string | null; id?: string }) {
   const [value,    setValue]    = useState(defaultValue ?? '')
   const [open,     setOpen]     = useState(false)
   const containerRef            = useRef<HTMLDivElement>(null)
@@ -68,6 +68,7 @@ function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; de
     <div ref={containerRef} style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
         <input
+          id={id}
           name="supplier"
           type="text"
           className="field campo-busca"
@@ -124,12 +125,14 @@ function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; de
 const UNITS = MEDIDAS_DO_PRODUTO
 
 
-function Label({ children }: { children: React.ReactNode }) {
+/**
+ * O rótulo LIGADO ao campo (A8 da 10ª simulação: no Novo produto os rótulos
+ * saíam soltos e centralizados — nem o leitor de tela nem o clique achavam o
+ * campo; design.md, "Formulários"). É o `.field-label`, alinhado à esquerda.
+ */
+function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label style={{
-      fontSize: 'var(--text-xs-sz)', fontWeight: 700,
-      color: 'var(--text-muted)', letterSpacing: '0.04em',
-    }}>
+    <label htmlFor={htmlFor} className="field-label" style={{ textAlign: 'left', letterSpacing: '0.04em' }}>
       {children}
     </label>
   )
@@ -179,13 +182,17 @@ function ProductFields({
     return cost / upp
   }, [costPriceStr, unitsPerPkgStr, consumptionUnit])
 
+  // Os ids dos campos (o rótulo aponta para eles): um por formulário aberto.
+  const uid = useId()
+  const id = (campo: string) => `${uid}-${campo}`
+
   return (
     <>
       {/* Nome + SKU */}
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label>Nome *</Label>
-          <input name="name" type="text" required className="field"
+          <Label htmlFor={id('nome')}>Nome *</Label>
+          <input id={id('nome')} name="name" type="text" required className="field"
             defaultValue={product?.name}
             placeholder="Ex: Ácido Hialurônico 1%" />
         </div>
@@ -215,7 +222,7 @@ function ProductFields({
       {/* Código de barras */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Label>Código de barras</Label>
+          <Label htmlFor={id('barcode')}>Código de barras</Label>
           {barcodeReady && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -229,6 +236,7 @@ function ProductFields({
         </div>
         <div style={{ position: 'relative' }}>
           <input
+            id={id('barcode')}
             name="barcode"
             type="text"
             className="field"
@@ -261,8 +269,9 @@ function ProductFields({
       {/* Categoria + Unidade */}
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label>Categoria</Label>
+          <Label htmlFor={id('categoria')}>Categoria</Label>
           <select
+            id={id('categoria')}
             name="category_id"
             className="field"
             value={categoryId}
@@ -278,8 +287,8 @@ function ProductFields({
           </select>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label>Embalagem *</Label>
-          <select name="unit" required className="field"
+          <Label htmlFor={id('embalagem')}>Embalagem *</Label>
+          <select id={id('embalagem')} name="unit" required className="field"
             defaultValue={product?.unit ?? 'un'}>
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
@@ -293,15 +302,15 @@ function ProductFields({
         </p>
         <div className="form-2col">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <Label>Quantidade</Label>
-            <input name="units_per_package" type="number" step="0.0001" min="0.0001" className="field"
+            <Label htmlFor={id('conteudo')}>Quantidade</Label>
+            <input id={id('conteudo')} name="units_per_package" type="number" step="0.0001" min="0.0001" className="field"
               value={unitsPerPkgStr}
               onChange={e => setUnitsPerPkgStr(e.target.value)}
               placeholder="Ex: 100" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <Label>Medida</Label>
-            <select name="consumption_unit" className="field"
+            <Label htmlFor={id('medida')}>Medida</Label>
+            <select id={id('medida')} name="consumption_unit" className="field"
               value={consumptionUnit}
               onChange={e => setConsumptionUnit(e.target.value)}
             >
@@ -341,13 +350,13 @@ function ProductFields({
 
         {vendaDireta && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <Label>Preço de venda *</Label>
+            <Label htmlFor={id('preco')}>Preço de venda *</Label>
             <div style={{ position: 'relative' }}>
               <span style={{
                 position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
                 fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
               }}>R$</span>
-              <input name="sale_price" type="number" step="0.01" min="0" className="field"
+              <input id={id('preco')} name="sale_price" type="number" step="0.01" min="0" className="field"
                 defaultValue={product?.sale_price ?? ''}
                 placeholder="0,00" style={{ paddingLeft: 28 }} />
             </div>
@@ -364,12 +373,12 @@ function ProductFields({
       {/* Fornecedor + Estoque mínimo */}
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label>Fornecedor</Label>
-          <SupplierCombobox suppliers={suppliers} defaultValue={product?.supplier} />
+          <Label htmlFor={id('fornecedor')}>Fornecedor</Label>
+          <SupplierCombobox id={id('fornecedor')} suppliers={suppliers} defaultValue={product?.supplier} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label>Estoque mínimo</Label>
-          <input name="min_stock" type="number" step="0.001" min="0" className="field"
+          <Label htmlFor={id('minimo')}>Estoque mínimo</Label>
+          <input id={id('minimo')} name="min_stock" type="number" step="0.001" min="0" className="field"
             defaultValue={product?.min_stock ?? 0}
             placeholder="0" />
         </div>
@@ -425,8 +434,8 @@ function ProductFields({
                   descartado em silêncio — sem movimento, sem saldo, sem despesa. */}
               {branches.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Unidade que recebe o estoque *</Label>
-                  <select name="_branchId" required className="field" defaultValue={unidadeInicial(branches)}>
+                  <Label htmlFor={id('unidade')}>Unidade que recebe o estoque *</Label>
+                  <select id={id('unidade')} name="_branchId" required className="field" defaultValue={unidadeInicial(branches)}>
                     {/* Sobra da F33 (8ª simulação; princípio 3): com duas ou mais, nenhuma vem escolhida. */}
                     {branches.length > 1 && <option value="">Selecione a unidade…</option>}
                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -437,8 +446,9 @@ function ProductFields({
               {/* Quantidade + Preço de custo por embalagem */}
               <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Quantidade *</Label>
+                  <Label htmlFor={id('qtd-inicial')}>Quantidade *</Label>
                   <input
+                    id={id('qtd-inicial')}
                     name="initial_qty"
                     type="number" step="0.001" min="0.001"
                     required
@@ -450,7 +460,7 @@ function ProductFields({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                    <Label>Custo por embalagem</Label>
+                    <Label htmlFor={id('custo')}>Custo por embalagem</Label>
                     {costPerUnit !== null && (
                       <span style={{ fontSize: 'var(--text-overline)', color: 'var(--brand)', fontWeight: 700 }}>
                         = R$ {costPerUnit.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} / {consumptionUnit}
@@ -462,7 +472,7 @@ function ProductFields({
                       position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
                       fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
                     }}>R$</span>
-                    <input name="initial_cost" type="number" step="0.01" min="0" className="field"
+                    <input id={id('custo')} name="initial_cost" type="number" step="0.01" min="0" className="field"
                       value={costPriceStr}
                       onChange={e => setCostPriceStr(e.target.value)}
                       placeholder="0,00" style={{ paddingLeft: 28 }} />
@@ -477,19 +487,19 @@ function ProductFields({
               {/* Lote + Validade */}
               <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Número do lote</Label>
-                  <input name="initial_batch" type="text" className="field" placeholder="Ex: LOT-2024-001" />
+                  <Label htmlFor={id('lote')}>Número do lote</Label>
+                  <input id={id('lote')} name="initial_batch" type="text" className="field" placeholder="Ex: LOT-2024-001" />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Data de validade</Label>
-                  <input name="initial_expires_at" type="date" className="field" />
+                  <Label htmlFor={id('validade')}>Data de validade</Label>
+                  <input id={id('validade')} name="initial_expires_at" type="date" className="field" />
                 </div>
               </div>
 
               {/* Observações */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label>Observações</Label>
-                <input name="initial_notes" type="text" className="field" placeholder="Ex: Compra inicial, NF 1234" />
+                <Label htmlFor={id('obs')}>Observações</Label>
+                <input id={id('obs')} name="initial_notes" type="text" className="field" placeholder="Ex: Compra inicial, NF 1234" />
               </div>
             </>
           )}
