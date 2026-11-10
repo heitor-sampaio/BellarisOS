@@ -1180,6 +1180,34 @@ e é dele que o envio, a lista e o card leem. Prova:
 Em teste, limpar conversa é `apagarConversas()` de `e2e/apoio/banco.ts`, que tira
 o contato junto.
 
+**Os atritos do CRM da 11ª simulação** (2026-11-10; princípios 3 e 1):
+- **O "Agendar" da oportunidade traz o procedimento** (A1: a Tatiane abria o
+  Agendar da Beatriz, interessada em Bioestimulador, e tudo vinha em
+  "Selecione…"). O `ScheduleModal` (o card do quadro e o painel do inbox) recebe
+  os procedimentos de interesse e escolhe o primeiro que a unidade oferece; sem
+  interesse no card, a AVALIAÇÃO da unidade quando há UMA (categoria "Avaliação"
+  ou o nome) — `sugestaoDoAgendar`, `lib/crm/sugestao-do-agendar.ts`. A tela diz
+  de onde veio (`[data-procedimento-sugerido]`); a pessoa troca à vontade, e o
+  crédito já pago continua fixando o dele.
+- **A aba que o cargo não abre avisa** (A2: `?aba=fichas` da Comercial caía calado
+  na Visão geral): "Seu cargo não abre a aba Prontuário desta ficha: abrimos a
+  Visão geral." (`[data-aba-sem-acesso]`, `ClientProfile`). A regra de quem vê
+  não mudou.
+- **O menu "…" do card move de etapa** (A3: só tinha ganho e perdido; no celular
+  arrastar pesa): "Mover para a etapa" lista as outras etapas ABERTAS do funil
+  (`[data-mover-para-etapa]`), pelo `updateLeadStage` de sempre — e a recusa
+  (antes descartada) volta o card e diz por quê.
+- **O card da cliente que comprou diz o VENDIDO** (A4: depois do plano de
+  R$ 8.400, o card da Beatriz seguia com R$ 2.600, o preço do procedimento de
+  interesse). Com a compra que o card já sugere marcar como ganho (A18 da 7ª),
+  o valor do card é o vendido dela — "R$ 8.400,00 vendido"
+  (`[data-valor-vendido]`): o pacote menos o cancelado, o pré-pago, o plano
+  (a soma dos procedimentos vendidos menos o cancelado). `crm_sinais_do_quadro`
+  (migration `20261110005501`, só `service_role`) é a conta de
+  `crm_sinais_dos_clientes` com o valor ao lado; a de antes ficou para o cron
+  dos lembretes. Nada se move sozinho (princípio 6).
+- Prova: `e2e/crm-atritos-da-11.spec.ts`, `tests/crm-sugestao-do-agendar.test.ts`.
+
 ---
 
 ## O que nunca fazer aqui

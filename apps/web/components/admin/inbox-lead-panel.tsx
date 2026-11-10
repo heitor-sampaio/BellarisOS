@@ -47,6 +47,7 @@ import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
+import { sugestaoDoAgendar, TEXTO_DA_SUGESTAO, type SugestaoDoAgendar } from '@/lib/crm/sugestao-do-agendar'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -677,6 +678,7 @@ export function InboxLeadPanel({
           clienteLigado={cliente ? cliente.name : null}
           clienteId={cliente?.id ?? null}
           contatoInicial={{ nome, telefone }}
+          procedimentosDeInteresse={(card.abertas.find(o => o.id === (scheduling || card.abertas[0]?.id))?.procedure_ids) ?? []}
           branches={branches}
           onClose={() => setScheduling(null)}
           onScheduled={() => { setScheduling(null); void recarregar(); onLeadChanged?.() }}
@@ -1068,6 +1070,7 @@ function NovaOportunidade({
  */
 export function ScheduleModal({
   leadId, conversationId, clienteLigado, clienteId, contatoInicial, branches, onClose, onScheduled,
+  procedimentosDeInteresse,
 }: {
   leadId:         string
   conversationId: string | null
@@ -1079,6 +1082,8 @@ export function ScheduleModal({
   branches:       PanelBranch[]
   onClose:        () => void
   onScheduled:    () => void
+  /** Os procedimentos de interesse do card: o primeiro que a unidade oferece vem escolhido (A1 da 11ª). */
+  procedimentosDeInteresse?: string[]
 }) {
   const [nome,     setNome]     = useState(contatoInicial.nome)
   const [telefone, setTelefone] = useState(contatoInicial.telefone)
@@ -1088,6 +1093,9 @@ export function ScheduleModal({
   const [data,       setData]       = useState<CrmSchedulingData | null>(null)
   const [loadingData, setLoadingData] = useState(!!branchId)
   const [procedureId, setProcedureId] = useState('')
+  // A1 da 11ª: o procedimento que veio escolhido, e de onde (a tela diz).
+  const [sugerido, setSugerido] = useState<SugestaoDoAgendar | null>(null)
+  const interesseRef = useRef<string[]>(procedimentosDeInteresse ?? [])
   const [professionalId, setProfessionalId] = useState('')
   const [roomId,     setRoomId]     = useState('')
   const [date,       setDate]       = useState(todayInSP())
@@ -1141,7 +1149,15 @@ export function ScheduleModal({
   useEffect(() => {
     if (!branchId) return
     let active = true
-    getCrmSchedulingData(branchId).then(d => { if (active) { setData(d); setLoadingData(false) } })
+    getCrmSchedulingData(branchId).then(d => {
+      if (!active) return
+      setData(d); setLoadingData(false)
+      // A1 da 11ª: o de interesse do card (ou a avaliação da unidade) vem
+      // escolhido — só se ninguém escolheu antes nem há crédito fixando outro.
+      const s = sugestaoDoAgendar(d.procedures, interesseRef.current)
+      setSugerido(s)
+      setProcedureId(atual => atual || (s?.id ?? ''))
+    })
     return () => { active = false }
   }, [branchId])
 
@@ -1306,6 +1322,11 @@ export function ScheduleModal({
               {data?.procedures.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
+          {sugerido && sugerido.id === procedureId && !credito && (
+            <span data-procedimento-sugerido={sugerido.motivo} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+              {TEXTO_DA_SUGESTAO[sugerido.motivo]}
+            </span>
+          )}
           {/* Fora do label: o aviso não entra no nome do campo. */}
           {avisoDoPlanoAgora && (
             <span data-aviso-do-plano role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 2 }}>

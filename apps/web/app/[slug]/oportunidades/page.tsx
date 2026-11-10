@@ -173,6 +173,8 @@ export default async function BranchOportunidadesPage({
       proximo_agendamento: l.client_id ? sinais.get(l.client_id as string)?.proximoAgendamento ?? null : null,
       compra: l.client_id && sugereGanho(l as unknown as { created_at: string }, sinais.get(l.client_id as string), abertaNaEtapa(l.crm_stage_id))
         ? sinais.get(l.client_id as string)!.compra : null,
+      compra_valor: l.client_id && sugereGanho(l as unknown as { created_at: string }, sinais.get(l.client_id as string), abertaNaEtapa(l.crm_stage_id))
+        ? sinais.get(l.client_id as string)!.compraValor : null,
     }
   })
 

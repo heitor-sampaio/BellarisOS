@@ -10,14 +10,21 @@ import { ler } from '@/lib/db'
  * Uma ida ao banco para a lista toda (`crm_sinais_dos_clientes`, a lista no
  * corpo da rpc).
  */
-export interface SinaisDaCliente { proximoAgendamento: string | null; compraEm: string | null; compra: string | null }
+export interface SinaisDaCliente {
+  proximoAgendamento: string | null; compraEm: string | null; compra: string | null
+  /** O vendido da última compra (A4 da 11ª): o card diz o vendido, não o de interesse. */
+  compraValor: number | null
+}
 
 export async function sinaisDasClientes(tenantId: string, clientIds: string[]): Promise<Map<string, SinaisDaCliente>> {
   const ids = [...new Set(clientIds.filter(Boolean))]
   if (!ids.length) return new Map()
-  const linhas = await ler(createAdminClient().rpc('crm_sinais_dos_clientes', { p_tenant: tenantId, p_clientes: ids }),
-    'ler o agendamento e a compra das clientes do quadro') as { client_id: string; proximo_agendamento: string | null; compra_em: string | null; compra: string | null }[] | null
-  return new Map((linhas ?? []).map(l => [l.client_id, { proximoAgendamento: l.proximo_agendamento, compraEm: l.compra_em, compra: l.compra }]))
+  const linhas = await ler(createAdminClient().rpc('crm_sinais_do_quadro', { p_tenant: tenantId, p_clientes: ids }),
+    'ler o agendamento e a compra das clientes do quadro') as { client_id: string; proximo_agendamento: string | null; compra_em: string | null; compra: string | null; compra_valor: number | string | null }[] | null
+  return new Map((linhas ?? []).map(l => [l.client_id, {
+    proximoAgendamento: l.proximo_agendamento, compraEm: l.compra_em, compra: l.compra,
+    compraValor: l.compra_valor == null ? null : Number(l.compra_valor),
+  }]))
 }
 
 /** Sugere o Ganho quando a cliente comprou DEPOIS de a oportunidade nascer, e ela segue aberta. */

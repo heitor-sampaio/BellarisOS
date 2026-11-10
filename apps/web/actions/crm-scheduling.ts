@@ -27,7 +27,7 @@ import { lerCredito } from '@/lib/creditos/credito'
 import { salasDoAgendar, type SalaParaAgendar } from '@/lib/appointments/salas'
 
 
-export interface CrmSchedProcedure { id: string; name: string; duration_min: number; price: number }
+export interface CrmSchedProcedure { id: string; name: string; duration_min: number; price: number; category?: string | null }
 export interface CrmSchedNamed     { id: string; name: string }
 
 export interface CrmSchedulingData {
@@ -64,7 +64,7 @@ export async function getCrmSchedulingData(branchId: string): Promise<CrmSchedul
   return {
     professionals: (professionals as CrmSchedNamed[]).map(p => ({ id: p.id, name: p.name })),
     procedures:    (procedures as CrmSchedProcedure[]).map(p => ({
-      id: p.id, name: p.name, duration_min: p.duration_min, price: p.price,
+      id: p.id, name: p.name, duration_min: p.duration_min, price: p.price, category: p.category ?? null,
     })),
     rooms:         (rooms as CrmSchedNamed[]).map(r => ({ id: r.id, name: r.name })),
   }

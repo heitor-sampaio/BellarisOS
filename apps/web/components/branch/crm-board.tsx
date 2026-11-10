@@ -7,6 +7,7 @@ import {
   Plus, ArrowRight, ArrowRightLeft, Phone, Mail, X,
   MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage } from '@/actions/leads'
 import { ClientForm } from './client-form'
@@ -20,7 +21,7 @@ import {
   sourceStyle,
   secondsSince, agingLevel, AGING_STYLE,
   AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort, iniciaisDoNome,
-  maskPhone,
+  maskPhone, formatBRL,
 } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { FunnelSelect } from '@/components/shared/funnel-select'
@@ -412,6 +413,8 @@ export interface Lead {
   proximo_agendamento?: string | null
   /** A18: a compra da cliente depois de a oportunidade nascer ("Pacote X"): o card SUGERE o Ganho. */
   compra?: string | null
+  /** A4 da 11ª: o VENDIDO dessa compra — o card diz ele no lugar do valor de interesse. */
+  compra_valor?: number | null
   /** A42 da 9ª: o dia do retorno combinado (yyyy-mm-dd) e o que fazer. */
   retornar_em?: string | null
   retornar_obs?: string | null
@@ -554,6 +557,12 @@ function LeadCard({
 
   // Mover de funil só existe se houver para onde mover.
   const outrosFunis = funnels.filter(f => f.id !== funnelId)
+  // A3 da 11ª: as outras etapas ABERTAS deste funil, para mover pelo menu
+  // (no celular arrastar pesa, e o editor era o único outro caminho).
+  const outrasEtapas = onMoverPara
+    ? allStages.filter(s => s.funnel_id === funnelId && s.outcome === 'OPEN' && s.id !== lead.crm_stage_id)
+        .sort((a, b) => a.position - b.position)
+    : []
 
   /**
    * Leva o card para a PRIMEIRA etapa do funil de destino.
@@ -607,6 +616,7 @@ function LeadCard({
   const totalValue = lead.lead_procedures.reduce(
     (sum, lp) => sum + (lp.procedures?.price ?? 0), 0,
   )
+  const vendido = lead.compra && lead.compra_valor != null && lead.compra_valor > 0 ? lead.compra_valor : null
   const formattedValue = totalValue > 0
     ? totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     : null
@@ -760,7 +770,7 @@ function LeadCard({
             ocupando o topo do card. Excluir lead deixou de existir (2026-09-28):
             sem outro funil, não há menu.
           */}
-          {(outrosFunis.length > 0 || (desfechos && onMoverPara)) && (
+          {(outrosFunis.length > 0 || (desfechos && onMoverPara) || outrasEtapas.length > 0) && (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
@@ -795,6 +805,16 @@ function LeadCard({
                   display: 'flex', flexDirection: 'column', gap: 2,
                 }}
               >
+                {outrasEtapas.length > 0 && onMoverPara && (
+                  <div role="group" aria-label="Mover para a etapa" data-mover-para-etapa style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span className="overline" style={{ padding: '4px 8px 2px' }}>Mover para a etapa</span>
+                    {outrasEtapas.map(s => (
+                      <MenuItem key={s.id} icon={<ArrowRight size={13} />} onClick={() => { setMenuAberto(false); onMoverPara(lead.id, s.id) }}>
+                        {s.name}
+                      </MenuItem>
+                    ))}
+                  </div>
+                )}
                 {/* A19 da 7ª simulação: ganhar ou perder sem rolar até a coluna. */}
                 {desfechos?.ganho && onMoverPara && lead.crm_stage_id !== desfechos.ganho.id && (
                   <MenuItem icon={<Trophy size={13} />} onClick={() => { setMenuAberto(false); onMoverPara(lead.id, desfechos.ganho!.id) }}>
@@ -872,7 +892,7 @@ function LeadCard({
                 </span>
               )}
             </div>
-            {formattedValue && (
+            {formattedValue && vendido == null && (
               <p style={{
                 marginTop: 5, fontSize: 'var(--text-base-sz)', fontWeight: 800,
                 color: 'var(--brand)', letterSpacing: '-0.01em',
@@ -881,6 +901,17 @@ function LeadCard({
               </p>
             )}
           </div>
+        )}
+        {/* A4 da 11ª (princípio 3): comprou depois de a oportunidade nascer —
+            o card diz o vendido (o plano de R$ 8.400), não o preço de tabela
+            do procedimento de interesse (R$ 2.600). */}
+        {vendido != null && (
+          <p data-valor-vendido style={{
+            marginTop: 5, fontSize: 'var(--text-base-sz)', fontWeight: 800,
+            color: 'var(--brand)', letterSpacing: '-0.01em',
+          }}>
+            {formatBRL(vendido)} <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>vendido</span>
+          </p>
         )}
 
         {/* Notas */}
@@ -1231,7 +1262,14 @@ export function CRMBoard({
       return
     }
     setLeads(prev => prev.map(l => l.id === id ? { ...l, crm_stage_id: targetStageId, motivo_perda_id: null, crm_motivos_perda: null } : l))
-    startTransition(async () => { await updateLeadStage(id, targetStageId, slug) })
+    startTransition(async () => {
+      // A recusa volta o card para onde estava e diz por quê (era descartada).
+      const r = await updateLeadStage(id, targetStageId, slug)
+      if (r.error) {
+        setLeads(prev => prev.map(l => l.id === id ? lead : l))
+        toast.error(r.error)
+      }
+    })
   }
 
   const desfechosParaSoltar = [desfechos?.ganho, desfechos?.perdido].filter((s): s is CRMStage => !!s)

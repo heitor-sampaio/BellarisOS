@@ -1600,6 +1600,9 @@ export function ClientProfile({
   const tab: TabKey = visibleTabs.some(t => t.key === abaPedida)
     ? (abaPedida as TabKey)
     : 'visao'
+  // A2 da 11ª: a aba que EXISTE mas o cargo não abre (o Prontuário da
+  // Comercial pelo `?aba=fichas`) diz isso — caía calada na Visão geral.
+  const abaFechada = TABS.find(t => t.key === abaPedida && !visibleTabs.some(v => v.key === t.key)) ?? null
 
   /** Link de uma aba, preservando o resto da URL e limpando o que era da aba anterior. */
   function linkDaAba(key: TabKey) {
@@ -1884,6 +1887,12 @@ export function ClientProfile({
           geral) eram dois links com o mesmo nome, e quem procura pelo nome (o
           leitor de tela, o robô) caía no quadro. Continuam links: a aba mora
           na URL. */}
+      {abaFechada && (
+        <p data-aba-sem-acesso={abaFechada.key} role="status"
+          style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 'var(--radius-field)', background: 'var(--warning-soft)', color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
+          Seu cargo não abre a aba {abaFechada.label} desta ficha: abrimos a Visão geral.
+        </p>
+      )}
       <div className="tabs-bar" role="tablist" aria-label="Abas da ficha" style={{ gap: 0 }}>
         {visibleTabs.map(t => (
           <Link
