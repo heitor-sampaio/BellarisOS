@@ -297,6 +297,12 @@ export interface LancamentoDoExtrato {
    * e o que ficou.
    */
   pagoEm: string | null
+  /**
+   * A17 da 11ª: de onde veio o percentual da comissão de venda — do item
+   * (pacote, produto), da pessoa ou da clínica; nulo nas linhas de antes e na
+   * execução.
+   */
+  regraDe: 'ITEM' | 'PESSOA' | 'CLINICA' | null
 }
 
 export interface Fechamento {
@@ -330,7 +336,8 @@ export async function resumoDasComissoes(r: Recorte): Promise<ResumoDoProfission
 export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtrato[]> {
   const admin = createAdminClient()
   const linhas = await lerTodas<Record<string, unknown>>(
-    (de, ate) => admin.rpc('comissoes_extrato_com_base', argsDoRecorte(r))
+    // A17 da 11ª: o extrato com a origem da regra (o de antes ficou sem chamador).
+    (de, ate) => admin.rpc('comissoes_extrato_com_regra', argsDoRecorte(r))
       .order('released_at', { ascending: false }).order('id').range(de, ate),
     'ler o extrato das comissões',
   )
@@ -352,6 +359,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     baseDesconto: Number(l.base_desconto ?? 0), baseTaxa: Number(l.base_taxa ?? 0), baseInsumos: Number(l.base_insumos ?? 0),
     baseFator: l.base_fator == null ? 1 : Number(l.base_fator),
     pagoEm: l.status === 'PAID' && l.payout_id ? pagoEm.get(String(l.payout_id)) ?? null : null,
+    regraDe: l.regra_de === 'ITEM' || l.regra_de === 'PESSOA' || l.regra_de === 'CLINICA' ? l.regra_de : null,
   }))
 }
 

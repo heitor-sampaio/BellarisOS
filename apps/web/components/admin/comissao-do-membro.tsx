@@ -32,7 +32,7 @@ export const paraTexto = (n: number) => String(n).replace('.', ',')
 /** "1.250,50", "1.400" e "12.5" valem — a regra de todo campo de dinheiro (`parseDinheiro`, D3). */
 export const paraNumero = (t: string) => parseDinheiro(t)
 
-export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende, semDeProposito = false }: {
+export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende, semDeProposito = false, vendaPct = null }: {
   membro:        { id: string; nome: string }
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
@@ -42,6 +42,8 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   atende:        boolean
   /** A14 da 11ª: a clínica marcou "sem comissão, de propósito" — o chip não avisa. */
   semDeProposito?: boolean
+  /** A17 da 11ª: a comissão de venda da pessoa (%); nulo é nenhuma. */
+  vendaPct?: number | null
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -59,6 +61,7 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
         data-comissao={membro.id}>
         {padrao ? `Comissão ${rotuloDaRegra(padrao)}` : semDeProposito ? 'Sem comissão (de propósito)' : 'Sem comissão'}
         {excecoes > 0 && ` · ${excecoes} ${excecoes === 1 ? 'exceção' : 'exceções'}`}
+        {vendaPct != null && vendaPct > 0 && ` · venda ${paraTexto(vendaPct)}%`}
       </button>
 
       <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}
@@ -76,7 +79,7 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
           </div>
           <div className="modal-body" style={{ padding: '20px 24px 24px' }}>
             <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} comGeral={comGeral} onFim={fechar}
-              semDeProposito={semDeProposito} />
+              semDeProposito={semDeProposito} vendaPct={vendaPct} />
           </div>
         </div>
       </dialog>
@@ -84,8 +87,9 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   )
 }
 
-function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDeProposito }: {
+function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDeProposito, vendaPct }: {
   semDeProposito: boolean
+  vendaPct:      number | null
   membroId:      string
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
@@ -100,6 +104,8 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDePro
     .map(r => ({ procedure_id: r.procedure_id!, tipo: r.tipo, valor: paraTexto(r.valor) })))
   const [erro, setErro] = useState<string | null>(null)
   const [deProposito, setDeProposito] = useState(semDeProposito)
+  // A17 da 11ª: vazio por padrão — nenhuma comissão de venda da pessoa.
+  const [venda, setVenda] = useState(vendaPct != null && vendaPct > 0 ? paraTexto(vendaPct) : '')
   const [salvando, iniciar] = useTransition()
 
   const nomeDe = new Map(procedimentos.map(p => [p.id, p.name]))
@@ -129,8 +135,15 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDePro
       if (v === null) return
       excecoes.push({ procedure_id: l.procedure_id, tipo: l.tipo, valor: v })
     }
+    let vendaPctLido: number | null = null
+    if (venda.trim()) {
+      const v = paraNumero(venda)
+      if (!Number.isFinite(v) || v < 0) { setErro('Informe a comissão de venda em %, ou deixe vazio.'); return }
+      if (v > 100) { setErro('Comissão de venda acima de 100%.'); return }
+      vendaPctLido = v
+    }
     iniciar(async () => {
-      const r = await salvarRegrasDoProfissional(membroId, { padrao: regraPadrao, excecoes, semComissaoDeProposito: !regraPadrao && deProposito })
+      const r = await salvarRegrasDoProfissional(membroId, { padrao: regraPadrao, excecoes, semComissaoDeProposito: !regraPadrao && deProposito, vendaPct: vendaPctLido })
       if (r.error) { setErro(r.error); return }
       onFim()
       router.refresh()
@@ -161,6 +174,23 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDePro
             <span>Sem comissão, de propósito <span style={ajuda}>(como a dona que atende): o aviso de “sem comissão” deixa de contar esta pessoa.</span></span>
           </label>
         )}
+      </div>
+
+      {/* A17 da 11ª (princípio 1): a comissão de VENDA da pessoa, ao lado da de execução — vazia por padrão. */}
+      <div data-comissao-de-venda-da-pessoa style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
+        <p className="overline">Comissão de venda</p>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 200 }}>
+          <span className="field-label">Comissão de venda (%)</span>
+          <div style={{ position: 'relative' }}>
+            <input className="field" inputMode="decimal" aria-label="Comissão de venda (%)" placeholder="Vazio: nenhuma" value={venda}
+              onChange={e => setVenda(e.target.value)} style={{ paddingRight: 30 }} />
+            <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>%</span>
+          </div>
+        </label>
+        <p style={ajuda}>
+          Sobre o vendido, quando ela está em “Quem vendeu”: pacote, plano, pré-pago e produto. A comissão de venda do próprio pacote
+          ou produto vence esta; sem as duas, vale a da clínica (Configurações → Comissões). O crédito na clínica não tem comissão de venda.
+        </p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>

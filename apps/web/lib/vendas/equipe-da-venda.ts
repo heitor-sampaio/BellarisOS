@@ -13,27 +13,61 @@ import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
  *
  * A ordem (A15 da 8ª simulação: "Quem vendeu" trazia a Contadora, que só vê,
  * no meio da lista): quem ATENDE aqui, depois quem RECEBE (o caixa ou o
- * financeiro em Gerenciar — `podeReceber`), depois o resto da equipe. A
- * regra aceita qualquer pessoa: ninguém sai da lista.
+ * financeiro em Gerenciar — `podeReceber`), depois quem tem VENDAS no cargo.
+ *
+ * A42 da 11ª: a lista trazia a estoquista, e dava para pôr comissão de venda em
+ * quem nem entra em Vendas. Só fica quem VENDE: atende aqui, recebe, ou tem o
+ * grupo Vendas no cargo (`crm` ou `procedures` — Oportunidades, Inbox,
+ * Procedimentos, Pacotes) — e a Admin. O servidor confere o mesmo
+ * (`quemVendeu`). A clínica decide quem vende pelo cargo (princípio 1).
  */
 export async function equipeDaVenda(tenantId: string, branchId: string | null, euId?: string | null): Promise<MembroDaVenda[]> {
   if (!branchId) return []
   const admin = createAdminClient()
-  const [linhas, quemRecebe] = await Promise.all([
+  const [linhas, quemRecebe, quemVende] = await Promise.all([
     lerTodas((de, ate) => admin.from('users')
       .select('id, name, role_id, atende_em')
       .eq('tenant_id', tenantId).eq('is_active', true)
       .or(`branch_id.is.null,branch_id.eq.${branchId},atende_em.cs.{${branchId}}`)
       .order('name').order('id').range(de, ate), 'carregar a equipe da venda'),
     cargosQueRecebem(tenantId),
+    cargosQueVendem(tenantId),
   ])
   const grupo = (m: MembroDaVenda) => (m.atende ? 0 : m.recebe ? 1 : 2)
   return (linhas ?? []).map(u => ({
     id: u.id as string, nome: (u.name as string | null) ?? '—',
     atende: ((u.atende_em as string[] | null) ?? []).includes(branchId),
     recebe: !!u.role_id && quemRecebe.has(u.role_id as string),
+    vende: !!u.role_id && quemVende.has(u.role_id as string),
     eu: !!euId && u.id === euId,
-  })).sort((a, b) => grupo(a) - grupo(b))
+  })).filter(m => m.atende || m.recebe || m.vende).sort((a, b) => grupo(a) - grupo(b))
+}
+
+/**
+ * A42 da 11ª: os cargos da rede com o grupo VENDAS (`crm` ou `procedures`
+ * abertos), mais os que recebem (o `podeReceber`) e a Admin — quem vende.
+ */
+export async function cargosQueVendem(tenantId: string): Promise<Set<string>> {
+  const [perms, recebem] = await Promise.all([
+    lerTodas((de, ate) => createAdminClient().from('role_permissions').select('role_id')
+      .eq('tenant_id', tenantId).in('module', ['crm', 'procedures']).neq('level', 'NONE')
+      .order('role_id').range(de, ate), 'carregar os cargos que vendem'),
+    cargosQueRecebem(tenantId),
+  ])
+  return new Set([...(perms ?? []).map(p => p.role_id as string), ...recebem])
+}
+
+/**
+ * A42 da 11ª: a pessoa VENDE nesta unidade? Atende aqui, recebe, ou tem Vendas
+ * no cargo (a mesma régua da lista "Quem vendeu").
+ */
+async function vendeNaUnidade(tenantId: string, membroId: string, branchId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient().from('users').select('role_id, atende_em')
+    .eq('id', membroId).eq('tenant_id', tenantId).maybeSingle()
+  if (error) throw new Error(`Não consegui conferir quem vendeu: ${error.message}`)
+  if (!data) return false
+  if (((data.atende_em as string[] | null) ?? []).includes(branchId)) return true
+  return !!data.role_id && (await cargosQueVendem(tenantId)).has(data.role_id as string)
 }
 
 /** Os cargos da rede que RECEBEM (caixa ou financeiro em Gerenciar, ou a Admin da rede) — o `podeReceber`. */
@@ -90,7 +124,12 @@ export async function quemVendeu(
   const id = typeof equipe.vendedorId === 'string' && equipe.vendedorId ? equipe.vendedorId : null
   if (id) {
     const recusa = await recusaDoMembroDaVenda(tenantId, id, branchId, { papel: 'Quem vendeu' })
-    return recusa ? { error: recusa } : { vendedor: id }
+    if (recusa) return { error: recusa }
+    // A42 da 11ª: só quem vende (atende aqui, recebe ou tem Vendas no cargo).
+    if (!(await vendeNaUnidade(tenantId, id, branchId))) {
+      return { error: 'Quem vendeu: escolha quem vende — quem atende aqui, quem recebe ou quem tem Vendas no cargo.' }
+    }
+    return { vendedor: id }
   }
   return equipe.semVendedor === true ? { vendedor: null } : { pergunta: PERGUNTA_SEM_VENDEDOR }
 }

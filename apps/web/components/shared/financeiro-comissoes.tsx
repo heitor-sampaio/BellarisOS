@@ -7,8 +7,8 @@ import { ChevronDown, Download } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
-import { rotuloDaBase } from '@/lib/comissoes/config'
 import { textoDaBase } from '@/lib/comissoes/base-efetiva'
+import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda } from '@/lib/comissoes/extrato-texto'
 
 /**
  * Financeiro → Comissões (os dois portais). Por profissional e unidade: o que
@@ -26,21 +26,6 @@ import { textoDaBase } from '@/lib/comissoes/base-efetiva'
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', AGUARDANDO: 'Aguardando' }
 const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar', PAID: 'Paga', AGUARDANDO: 'Aguardando o pagamento integral' }
 const CHIP: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'chip chip-muted', PAID: 'chip chip-success', AGUARDANDO: 'chip chip-warning' }
-const ORIGEM: Record<string, string> = {
-  AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Sessão de pacote', PACOTE_VENDA: 'Venda de pacote', PRE_PAGO: 'Pré-pago', PRODUTO: 'Venda de produto',
-  PACOTE_RESPONSAVEL: 'Pacote (responsável)', PLANO_VENDA: 'Venda de plano',
-}
-/** A origem da linha, com o nome do pacote quando é dele (2026-10-30): "Venda do pacote X", "Sessão do pacote X". */
-const origemDe = (l: LancamentoDoExtrato) => {
-  if (!l.origem) return ''
-  if (l.pacote && l.origem === 'PACOTE_VENDA') return `Venda do pacote ${l.pacote}`
-  // com-04: a comissão de quem atende sobre o valor do pacote, da profissional responsável.
-  if (l.pacote && l.origem === 'PACOTE_RESPONSAVEL') return `Pacote ${l.pacote} (responsável)`
-  if (l.pacote && l.origem === 'PACOTE') return `Sessão do pacote ${l.pacote}`
-  // Decisão 4 da 7ª: a comissão de quem VENDEU o plano.
-  if (l.plano && l.origem === 'PLANO_VENDA') return `Venda do plano ${l.plano}`
-  return ORIGEM[l.origem] ?? l.origem
-}
 const METODOS = [
   { key: 'PIX', label: 'Pix' }, { key: 'CASH', label: 'Dinheiro' },
   { key: 'DEBIT_CARD', label: 'Débito' }, { key: 'CREDIT_CARD', label: 'Crédito' },
@@ -48,11 +33,6 @@ const METODOS = [
 
 const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
-/** "base cheia (sem taxa nem insumo descontados; os pontos…)" ou o que saiu dela (J-46, A10). Os pontos só saem da base do avulso: no pacote, no plano e nas vendas eles são forma de pagamento (`comissao_conta`). */
-const base = (l: LancamentoDoExtrato) => rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.origem === 'AVULSO' ? l.baseComPontos : 'PRECO' })
-const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', ',')
-const regra = (l: LancamentoDoExtrato) => l.regraTipo == null ? '—'
-  : l.regraTipo === 'PERCENTAGE' ? `${String(l.regraValor).replace('.', ',')}%` : `${formatBRL(l.regraValor ?? 0)} fixo`
 
 export interface PropsDaTela {
   titulo:        string
@@ -86,23 +66,9 @@ export function FinanceiroComissoes(p: PropsDaTela) {
   function exportarCsv() {
     const nome = new Map(p.resumo.map(r => [r.professionalId, r.professionalName]))
     const unidade = new Map(p.resumo.map(r => [r.branchId, r.branchName]))
-    const campo = (v: string) => /[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
-    const linhas = [
-      // D3 da 10ª: "Base" é a EFETIVA (a que a conta usou), com o preço e o que saiu dele ao lado.
-      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação', 'Pago em'],
-      ...p.extrato.map(l => [
-        data(l.releasedAt), nome.get(l.professionalId) ?? '', unidade.get(l.branchId) ?? '', data(l.scheduledAt),
-        l.cliente ?? '', l.procedimento ?? '', origemDe(l),
-        reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto), l.preco == null ? '' : reais(l.baseTaxa), l.preco == null ? '' : reais(l.baseInsumos),
-        l.preco == null || l.baseFator >= 1 ? '' : `${String(Math.round(l.baseFator * 10000) / 100).replace('.', ',')}%`,
-        reais(l.base ?? l.preco), l.preco == null ? '' : base(l), regra(l), TIPO[l.kind], l.motivo ?? '',
-        l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), SITUACAO[l.status],
-        // A21 da 10ª: com o pagamento parcial, o dia em que CADA lançamento foi pago.
-        l.pagoEm ? data(l.pagoEm) : '',
-      ]),
-    ]
-    // BOM + ponto e vírgula: é o que o Excel em pt-BR abre certo.
-    const csv = '﻿' + linhas.map(l => l.map(campo).join(';')).join('\r\n')
+    // D3 da 10ª, A17 e A44 da 11ª: o CSV mora em lib/comissoes/extrato-texto (a base efetiva,
+    // a regra com a origem e o que não sai da base vazio).
+    const csv = csvDoExtrato(p.extrato, nome, unidade)
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
     a.href = url
@@ -195,7 +161,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
                   <Fechar profissional={r} periodo={p.periodoAtual} rotuloDoPeriodo={p.periodos.find(x => x.chave === p.periodoAtual)?.rotulo ?? ''} emCurso={!!p.periodoEmCurso}
                     lancamentos={doProfissional.filter(l => l.status === 'OPEN' && l.kind !== 'AGUARDANDO')} />
                 )}
-                {aberto === chave && <Extrato linhas={doProfissional} />}
+                {aberto === chave && <Extrato linhas={doProfissional} nome={r.professionalName} />}
               </div>
             )
           })}
@@ -293,10 +259,10 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
               <li key={l.id} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <label style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!desmarcados.has(l.id)} onChange={() => alternar(l.id)} disabled={pendente}
-                    aria-label={`${l.procedimento ?? 'Procedimento'}${l.cliente ? ` · ${l.cliente}` : ''} · ${data(l.releasedAt)} · ${formatBRL(l.amount)}`} />
+                    aria-label={`${tituloDoLancamento(l)}${l.cliente ? ` · ${l.cliente}` : ''} · ${data(l.releasedAt)} · ${formatBRL(l.amount)}`} />
                   <span style={{ flex: '1 1 auto', minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                      {l.procedimento ?? 'Procedimento'}{l.cliente ? ` · ${l.cliente}` : ''}
+                      {tituloDoLancamento(l)}{l.cliente ? ` · ${l.cliente}` : ''}
                     </span>
                     <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       {data(l.releasedAt)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}{l.origem ? ` · ${origemDe(l)}` : ''}
@@ -337,7 +303,7 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
   )
 }
 
-function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
+function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string }) {
   if (!linhas.length) {
     return <p style={{ padding: '0 16px 14px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem lançamentos no período.</p>
   }
@@ -347,14 +313,15 @@ function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
         <div key={l.id} data-lancamento={l.kind}
           style={{ padding: '10px 16px', borderBottom: '1px solid var(--hairline)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            {/* A43 da 11ª: a venda diz que é venda ("Venda do plano X"), não "Procedimento". */}
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-              {l.procedimento ?? 'Procedimento'}{l.cliente ? ` · ${l.cliente}` : ''}
+              {tituloDoLancamento(l)}{l.cliente ? ` · ${l.cliente}` : ''}
             </p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {data(l.releasedAt)} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
-              {l.origem ? ` · ${origemDe(l)}` : ''}
-              {/* D3 da 10ª: a base EFETIVA (a que a conta usou) e o caminho do preço até ela. */}
-              {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regra(l)}` : ''}
+              {l.origem && !ehDeVenda(l) ? ` · ${origemDe(l)}` : ''}
+              {/* D3 da 10ª: a base EFETIVA (a que a conta usou) e o caminho do preço até ela; A17 da 11ª: de onde veio a regra. */}
+              {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regraDoLancamento(l, nome)}` : ''}
             </p>
           </div>
           {/* A21 da 10ª: com o pagamento parcial, cada lançamento diz se foi pago (e quando) ou se ficou a pagar. */}

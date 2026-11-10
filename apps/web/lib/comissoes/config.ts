@@ -193,6 +193,12 @@ export const EntradaDasRegras = z.object({
     .refine(l => new Set(l.map(e => e.procedure_id)).size === l.length, 'Há duas exceções para o mesmo procedimento.'),
   /** A14 da 11ª: sem padrão, "de propósito" (a dona que atende): o aviso não a conta. */
   semComissaoDeProposito: z.boolean().optional(),
+  /**
+   * A17 da 11ª (decidido pelo princípio 1): a comissão de VENDA da pessoa (%),
+   * vazia por padrão (nulo). Vale para pacote, plano, pré-pago e produto; a
+   * regra do item vence, e sem as duas vale a da clínica. Ausente, não muda.
+   */
+  vendaPct: z.number().min(0, 'Comissão de venda negativa.').max(100, 'Comissão de venda acima de 100%.').nullable().optional(),
 })
 
 // ─── A comissão do procedimento (2026-10-15) ────────────────────────────────

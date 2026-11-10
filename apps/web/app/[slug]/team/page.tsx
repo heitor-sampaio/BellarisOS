@@ -4,6 +4,7 @@ import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
+import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { reactivateTeamMember } from '@/actions/team'
@@ -64,7 +65,7 @@ export default async function TeamPage({
   const [todosOsMembros, tenantRoles, daRedeQueAtendem, unidadesDaRede] = await Promise.all([
     ler(supabase
       .from('users')
-      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, sem_comissao_de_proposito')
+      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, sem_comissao_de_proposito, comissao_venda_pct')
       .eq('branch_id', branchId)
       .order('name'), 'carregar a equipe'),
     ler(supabase
@@ -106,9 +107,9 @@ export default async function TeamPage({
   const canManage = ctx.permissions.team === 'MANAGE'
   // A comissão é do financeiro, não da equipe (ver a página da rede).
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
-  const [regras, procedimentos, comGeral] = podeComissao
-    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId), procedimentosComComissaoGeral(ctx.tenantId!, branchId)])
-    : [null, [], []]
+  const [regras, procedimentos, comGeral, quemVende] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId), procedimentosComComissaoGeral(ctx.tenantId!, branchId), cargosQueVendem(ctx.tenantId!)])
+    : [null, [], [], new Set<string>()]
 
   return (
     <div>
@@ -218,10 +219,11 @@ export default async function TeamPage({
                   {/* Ações */}
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                    {regras && (m.provides_services || regras.has(m.id)) && (
+                    {regras && (m.provides_services || regras.has(m.id) || (!!m.role_id && quemVende.has(m.role_id as string)) || (m as { comissao_venda_pct?: number | null }).comissao_venda_pct != null) && (
                       <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                         procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
-                        semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito} />
+                        semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito}
+                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null} />
                     )}
                     {canManage && (
                       <TeamMemberEdit

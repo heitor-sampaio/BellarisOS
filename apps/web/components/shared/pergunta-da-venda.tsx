@@ -14,7 +14,8 @@ import type { MembroDaVenda } from '@/components/shared/vender'
 const GRUPOS_DE_QUEM_VENDEU: { rotulo: string; de: (m: MembroDaVenda) => boolean }[] = [
   { rotulo: 'Quem atende', de: m => m.atende },
   { rotulo: 'Quem recebe', de: m => !m.atende && !!m.recebe },
-  { rotulo: 'Outras pessoas da equipe', de: m => !m.atende && !m.recebe },
+  // A42 da 11ª: só quem tem Vendas no cargo — a estoquista não vende.
+  { rotulo: 'Quem tem Vendas no cargo', de: m => !m.atende && !m.recebe },
 ]
 
 export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
@@ -25,7 +26,7 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
       <span className="overline">Quem vendeu</span>
       <select className="field" aria-label="Quem vendeu" value={valor} onChange={e => aoMudar(e.target.value)}>
         <option value="">Escolha quem vendeu (vazio: ninguém, sem comissão de venda)</option>
-        {/* A15 da 8ª simulação: quem atende e quem recebe primeiro; o resto da equipe depois (a regra aceita qualquer pessoa). */}
+        {/* A15 da 8ª simulação: quem atende e quem recebe primeiro; depois quem tem Vendas no cargo (A42 da 11ª). */}
         {GRUPOS_DE_QUEM_VENDEU.map(g => {
           const doGrupo = equipe.filter(g.de)
           return doGrupo.length ? (

@@ -200,7 +200,7 @@ test('A13: o cargo novo grava a Agenda em Gerenciar "só a própria" — o cliqu
   }
 })
 
-test('A15: "Quem vendeu" traz quem atende e quem recebe primeiro; o resto da equipe depois', async ({ browser }) => {
+test('A15: "Quem vendeu" traz quem atende e quem recebe primeiro — e quem não vende sai (A42 da 11ª)', async ({ browser }) => {
   // A Débora pode ter saído no A10: volta para atender.
   expect((await db().from('users').update({ is_active: true, atende_em: [rede!.branchId] }).eq('id', debora!.userId)).error).toBeNull()
   await como(browser, dona!.estado, async p => {
@@ -213,7 +213,8 @@ test('A15: "Quem vendeu" traz quem atende e quem recebe primeiro; o resto da equ
     await expect(grupos.nth(0)).toContainText(await nome(debora!))
     await expect(grupos.nth(1)).toHaveAttribute('label', 'Quem recebe')
     await expect(grupos.nth(1)).toContainText(await nome(dona!))
-    await expect(grupos.nth(2)).toHaveAttribute('label', 'Outras pessoas da equipe')
-    await expect(grupos.nth(2), 'a contadora (só vê) continua, no fim').toContainText(await nome(contadora!))
+    // A42 da 11ª: quem não vende (a contadora, que só vê o financeiro) sai da lista — só fica quem
+    // atende, recebe ou tem Vendas no cargo (era "ninguém sai", A15 da 8ª).
+    await expect(janela.getByLabel('Quem vendeu').locator('option', { hasText: await nome(contadora!) })).toHaveCount(0)
   })
 })

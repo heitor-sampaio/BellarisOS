@@ -46,6 +46,8 @@ export interface MembroDaVenda {
   atende: boolean
   /** Recebe (o caixa ou o financeiro em Gerenciar): vem logo depois de quem atende em "Quem vendeu" (A15 da 8ª). */
   recebe?: boolean
+  /** A42 da 11ª: tem o grupo Vendas no cargo (`crm` ou `procedures`). Só fica na lista quem atende, recebe ou vende. */
+  vende?: boolean
   /** É quem está registrando ("(você)" em "Quem vendeu", que nasce vazio — r2-ven-12). */ eu?: boolean
 }
 

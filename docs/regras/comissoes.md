@@ -231,9 +231,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   Prova: `e2e/vendas-quem-vendeu.spec.ts`. **A lista vem em grupos** (A15 da
   8ª simulação, 2026-11-06: a Contadora, que só vê, aparecia no meio): "Quem
   atende" (nesta unidade), "Quem recebe" (o caixa ou o financeiro em
-  Gerenciar, ou a Admin) e "Outras pessoas da equipe" — ninguém sai, a regra
-  aceita qualquer pessoa (`equipeDaVenda`). Prova:
-  `e2e/equipe-atritos-da-8.spec.ts` ("A15").
+  Gerenciar, ou a Admin) e "Quem tem Vendas no cargo" (`equipeDaVenda`).
+  **E só quem VENDE** (A42 da 11ª simulação, 2026-11-10 — a frente F56: "a
+  lista 'Quem vendeu' só com quem tem Vendas"; a lista trazia a estoquista, e
+  dava para pôr comissão de venda em quem nem entra em Vendas; até aqui era
+  "ninguém sai"): fica quem atende NESTA unidade, quem recebe, ou quem tem o
+  grupo Vendas no cargo (`crm` ou `procedures` abertos — `cargosQueVendem`,
+  `lib/vendas/equipe-da-venda.ts`); a clínica decide quem vende pelo cargo
+  (princípio 1). O servidor confere o mesmo (`quemVendeu`: "Quem vendeu:
+  escolha quem vende — quem atende aqui, quem recebe ou quem tem Vendas no
+  cargo."). Prova: `e2e/equipe-atritos-da-8.spec.ts` ("A15"),
+  `e2e/comissoes-atritos-da-11.spec.ts` ("A42").
 - **A comissão do PACOTE é do cadastro de cada pacote** (decisão do Heitor,
   2026-10-30; migration `20261029001501`): Vendas → Pacotes, seção "Comissão"
   do formulário (só para quem tem `financial: MANAGE`, da rede e com
@@ -346,10 +354,45 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   e a pílula diz "Sem comissão (de propósito)", sem o alerta. Só a marca: a
   conta não muda, e gravar uma regra padrão a desfaz. Prova:
   `e2e/configuracoes-atritos-da-11.spec.ts` ("A14").
-- **A comissão de venda POR PESSOA não existe** (A17 da 11ª: os dois times
-  quiseram um percentual de venda por vendedora; hoje é o "venda de plano (%)"
-  da clínica e o "De venda" de cada pacote, iguais para todas). É regra nova:
-  levada ao Heitor, sem implementar.
+- **A comissão de venda POR PESSOA** (A17 da 11ª simulação, 2026-11-10;
+  decidido pelo princípio 1 — a clínica decide; configuração com padrão que não
+  muda nada: os dois times quiseram um percentual de venda por vendedora).
+  "Comissão de venda (%)" no cadastro de comissão de cada pessoa, na Equipe, ao
+  lado da de execução (`[data-comissao-de-venda-da-pessoa]`), VAZIO por padrão
+  (`users.comissao_venda_pct`, só o servidor grava — `salvarRegrasDoProfissional`,
+  `vendaPct`; o chip diz "· venda 3%" e aparece também para quem vende sem
+  atender). Vale para PACOTE, PLANO, PRÉ-PAGO e PRODUTO, sobre o vendido, para
+  quem está em "Quem vendeu":
+  - **a regra do item vence a da pessoa**, como na execução: o "De venda" do
+    pacote, a comissão do produto (no "Por produto"); **sem nenhuma das duas, a
+    da clínica** — o "venda de plano (%)" e a "venda de produto" (a geral ou a
+    regra sobre o total). O pacote e o pré-pago não têm regra da clínica.
+  - **O pré-pago ganhou a linha de venda**: `origem = 'PRE_PAGO'` SEM
+    atendimento (como a venda do plano é a `PLANO` sem atendimento), sobre o
+    vendido, que cai na proporção das unidades canceladas (`comissao_conta_detalhe`
+    e `comissao_fator_em`). A da execução das unidades usadas continua.
+  - Liberação e cancelamento como hoje (H4; a proporção do que ficou no pacote
+    e no plano cancelados, na devolução de produto).
+  - **A tela diz de onde veio o percentual**: a linha guarda
+    `commission_lines.regra_de` (ITEM, PESSOA, CLINICA), e o extrato e o CSV
+    dizem "3% — da Tatiane", "10% — do pacote", "5% — da clínica"
+    (`regraDoLancamento`, `lib/comissoes/extrato-texto.ts`; o extrato é
+    `comissoes_extrato_com_regra` — o `comissoes_extrato_com_base` ficou sem
+    chamador no app). As linhas de antes dizem só a regra.
+  - O crédito na clínica vendido continua SEM comissão de venda (abaixo).
+  - As funções: `pacote_vender_com_equipe`, `plano_comissao_de_venda`,
+    `procedimento_vender_com_equipe`, `produto_vender_itens`
+    (`private.comissao_venda_da_pessoa`; migration `20261110005603`). Prova:
+    `e2e/comissoes-atritos-da-11.spec.ts`, `tests/comissoes-extrato-texto.test.ts`.
+- **A venda diz que é venda no extrato** (A43 da 11ª; princípio 3: a venda do
+  plano aparecia "Procedimento · Beatriz Nogueira"): o título do lançamento de
+  venda é "Venda do plano X" / "Venda de plano", "Venda do pacote X", "Venda de
+  produto: Sérum", "Venda de pré-pago: Drenagem" (`tituloDoLancamento`); o do
+  atendimento segue o procedimento. Prova: o mesmo spec.
+- **O CSV não diz 0,00 do que não sai da base** (A44 da 11ª): "Taxa da
+  maquininha" e "Insumos" ficam VAZIOS quando a configuração não os desconta
+  (com a base cheia, "0,00" parecia "não houve custo"); com o desconto, o valor
+  (`csvDoExtrato`). Prova: `tests/comissoes-extrato-texto.test.ts`.
 - **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
   oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
   chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`
@@ -529,5 +572,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Pagar parte de um lançamento, ou um valor digitado no fechamento: o lançamento é pago inteiro ou fica (A21 da 10ª — "marcar e desmarcar")
 ❌ Contar no lucro a despesa paga "Comissões" do fechamento (a comissão já desconta quando é lançada — 2026-11-04): ela fica só no caixa
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
+❌ Criar comissão de venda sem a precedência item > pessoa > clínica, ou sem gravar de onde veio (commission_lines.regra_de — A17 da 11ª)
+❌ Aceitar em "Quem vendeu" quem não vende (não atende na unidade, não recebe, sem Vendas no cargo) — A42 da 11ª
 ❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la inteira no plano cancelado (ela vale o usado, na proporção — D4 da 9ª)
 ```
