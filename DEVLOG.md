@@ -10115,6 +10115,43 @@ As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: 
 - **A42:** o Histórico do app mostra as sessões e a última visita de antes do sistema.
 - **Ficaram, pelas regras escritas (sem levar ao Heitor):** a dona com uma unidade continua no `/admin` (`atendimento.md`: a clínica de uma unidade vive no `/admin`); o "Quem vendeu" nasce vazio mesmo com uma pessoa (r2-ven-12); o rascunho só nesta aba (A18, decisão de 27/10). O "aplicar a regra a todas as que estão sem comissão" (A11) seria gravação em lote nova — fora.
 
+**F51 FEITA (10/11, f0b8e992…4e2cdb12) — caixa, financeiro, comissões e estoque da 10ª (A22–A41, sem a A21) e a sobra do Copilot:**
+- **Estoque** (`20261110005101`):
+  - "Ver lotes esgotados" só onde houve lote (A36).
+  - A Entrada diz "Não gera despesa", e traz Fornecedor (vem do cadastro do produto) e Nota fiscal (A37).
+  - No ajuste a menos, a tela pergunta de qual lote sai a diferença. O padrão é o que vence primeiro (A38).
+  - "Desfazer entrada" (A38):
+    - só aparece enquanto o lote não teve saída, e pede o motivo;
+    - não vira perda, e o último custo volta ao da entrada anterior;
+    - a entrada sem lote só se desfaz quando o produto não tem lote com saldo na unidade.
+  - O dashboard da unidade ganhou "Estoque no mínimo ou abaixo". O job `estoque-minimo` avisa no sino o lote vencendo, uma vez por lote, a quem tem o Estoque em Gerenciar na unidade (A39).
+  - "Validade em 30 dias" lista os lotes (A40). O mínimo se salva com o botão "Salvar mínimo" (A41).
+- **Financeiro** (`20261110005102`):
+  - "Remarcar vencimento" aparece escrito, também na ficha (A22).
+  - Pagamento de R$ 0 (A23):
+    - a linha diz "Pago com pontos/voucher";
+    - o botão virou "Desfazer o pagamento", que reativa o voucher e devolve os pontos, como diz `fidelidade.md`, sem dinheiro de volta.
+  - O cartão se chama "Despesas pagas (caixa)" e diz que inclui a compra de estoque e o pagamento das comissões (A24).
+  - Os valores não quebram linha (A25).
+  - Relatórios → Vendas explica a diferença entre venda e caixa (A30).
+  - A contadora (A31):
+    - o CSV de lançamentos ganhou taxa, líquido, vencimento, pago em, fornecedor e nota;
+    - "Exportar o DRE (CSV)" traz o que fica fora do resultado (compras no estoque e perdas), que também aparece na tela;
+    - o Fechamento do dia exporta CSV;
+    - a "competência" a contadora monta com Vencimento e Pago em.
+- **Comissões:**
+  - "Fechar e pagar" no mês em curso: paga o que está a pagar até agora, e o fechamento mostra até que hora conta (A32).
+  - O "Meu faturamento" diz que a sessão de pacote, plano ou pré-pago não entra nele (A33).
+- **Ficha e plano** (`20261110005103`):
+  - Cancelar o pacote mostra os pontos que ele deu e o saldo de hoje (A26).
+  - "Cancelar plano" na página do plano, ou a quem pedir (A27).
+  - O checkout explica onde a clínica muda a exigência do contrato (A28).
+  - O LTV diz que inclui o crédito comprado (A29).
+  - Redigitar o CPF da própria ficha mostra "É o CPF já salvo nesta ficha" (A34).
+  - O Reativar diz que quem tem horário marcado não entra, e "Ver mais N (M no total)" (A35).
+- **Copilot:** "clientes novos" por `coalesce(cliente_desde, created_at)`.
+- **Dado numa rede [sim]:** o spec `notificacoes-interessados` chama o job `estoque-minimo` sem recortar a rede e criou 1 aviso "Lote vencendo" (`batch_expiring`) para um membro da [sim] Tulipa. É o mesmo aviso que o job de produção criaria. Ficou, porque não se apaga dado das redes [sim]. **Pendência:** o spec precisa recortar a rede.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
