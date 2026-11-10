@@ -1,5 +1,5 @@
 import { test, expect, request, type Browser } from '@playwright/test'
-import { banco, PREFIXO } from './apoio/banco'
+import { banco, criarLoginDeTeste, porSenhaDeTeste, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarClientes } from './apoio/limpeza'
@@ -55,18 +55,20 @@ async function bonus(c: string) {
 async function clienteComSenha(rotulo: string, jaEntrou = false) {
   const email = `e2e-fop-${rotulo}-${marca}@bellaris.invalid`
   const senha = `Senha-${marca}-1`
-  const { data: auth, error: eA } = await db().auth.admin.createUser({ email, password: senha, email_confirm: true })
-  expect(eA).toBeNull()
-  loginsAvulsos.push(auth.user!.id)
+  // O Auth com o banco parado responde AuthRetryableFetchError (a completa de
+  // 09–10/11, 03:11Z — F47): os dois do apoio repetem.
+  const authId = await criarLoginDeTeste(db(), email, 'criar o login da cliente')
+  loginsAvulsos.push(authId)
+  await porSenhaDeTeste(db(), authId, senha)
   const { data: c, error: eC } = await db().from('clients').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: `${PREFIXO} ${rotulo} ${marca}`,
-    phone: '5548' + String(Date.now()).slice(-9), email, auth_id: auth.user!.id, is_active: true,
+    phone: '5548' + String(Date.now()).slice(-9), email, auth_id: authId, is_active: true,
     app_account_created_at: jaEntrou ? '2025-01-01T00:00:00Z' : null,
   }).select('id').single<{ id: string }>()
   expect(eC).toBeNull()
   clientesAvulsos.push(c!.id)
   await db().from('loyalty_accounts').upsert({ client_id: c!.id }, { onConflict: 'client_id' })
-  expect((await db().rpc('set_client_claims', { p_auth_id: auth.user!.id, p_client_id: c!.id })).error).toBeNull()
+  expect((await db().rpc('set_client_claims', { p_auth_id: authId, p_client_id: c!.id })).error).toBeNull()
   return { id: c!.id, email, senha }
 }
 
