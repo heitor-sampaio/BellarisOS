@@ -24,7 +24,8 @@ import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
-import { rotaAgenda, rotaClientes, rotaCliente } from '@/lib/rotas'
+import { rotaAgenda, rotaClientes, rotaCliente, rotaNoPortal } from '@/lib/rotas'
+import type { LoteDoAtendimento } from '@/lib/prontuario/lotes-dos-atendimentos'
 import { CampoIndicadaPor, type FichaQueIndicou } from '@/components/shared/campo-indicada-por'
 import type { IndicacaoDaFicha } from '@/lib/clientes/indicacao-da-ficha'
 import { rotaComParams } from '@/lib/query-params'
@@ -331,7 +332,13 @@ interface Props {
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
-  termos?:               { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean } | null
+  termos?:               { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean; recortado?: boolean } | null
+  /** A33 da 11ª: o lote que cada atendimento usou (a baixa), por id do atendimento. */
+  lotesDosAtendimentos?: Record<string, LoteDoAtendimento[]>
+  /** Abre o "Aplicado em" do lote no Estoque (o Estoque e as Clientes). */
+  podeAbrirLote?:        boolean
+  /** A35 da 11ª: quantos anexos clínicos o cargo não abre (o recorte) — só o número. */
+  anexosClinicosFora?:   number
   /** Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27). */
   aReceber?:             ListaAReceber
   /** Receber o atendimento (o módulo de recebimentos, como `confirmPayment`). */
@@ -1504,7 +1511,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
@@ -2272,10 +2279,28 @@ export function ClientProfile({
                       formName={entry.ficha.name} rows={entry.ficha.rows}
                       initial={entry.ficha.answers as AnamnesisAnswers} canEdit={false}
                       injetaveis={{ linkDoPlanejamento: linkDoPlanejamento }}
+                      fotosDoAtendimento={documents.filter(d => d.category === 'foto_clinica' && d.atendimento?.id === entry.appointmentId).length}
                     />
                   ),
                 } : null}
                 evolucao={{ texto: entry.evolucao, intercorrencias: entry.intercorrencias, queixas: entry.queixas ?? null }}
+                insumos={(lotesDosAtendimentos[entry.appointmentId] ?? []).length > 0 ? (
+                  // A33 da 11ª: o lote aplicado na paciente, com o caminho ao
+                  // "Aplicado em" dele (num caso de reação, é por aqui que se começa).
+                  <ul data-lotes-do-atendimento style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {(lotesDosAtendimentos[entry.appointmentId] ?? []).map((l, i) => (
+                      <li key={`${l.loteId}-${i}`} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                        <span><strong>{l.produto}</strong> — {l.numero ? `lote ${l.numero}` : 'lote sem número'}{l.validade ? ` (vence ${l.validade})` : ''}: {l.quantidade}</span>
+                        {podeAbrirLote && (
+                          <Link href={rotaNoPortal(pathname, slug, `/estoque?lote=${l.loteId}`)} data-aplicado-em-do-lote
+                            style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+                            Ver em quem o lote foi aplicado →
+                          </Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : undefined}
               />
             ))
           )}
@@ -2311,12 +2336,13 @@ export function ClientProfile({
       {tab === 'documentos' && termos && (
         <section aria-label="Termos e contratos" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Termos e contratos</h3>
-          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso} />
+          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso} recortado={!!termos.recortado} />
         </section>
       )}
       {tab === 'documentos' && (
         <ClientDocumentsTab
           documents={documents}
+          anexosClinicosFora={anexosClinicosFora}
           clientId={client.id}
           branchId={branchId}
           slug={slug}

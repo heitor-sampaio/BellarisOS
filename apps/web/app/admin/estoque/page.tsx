@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
@@ -33,7 +34,7 @@ const fmtBRL = (v: number) =>
 export default async function AdminEstoquePage({
   searchParams,
 }: {
-  searchParams: Promise<{ unidade?: string; q?: string | string[] }>
+  searchParams: Promise<{ unidade?: string; q?: string | string[]; lote?: string | string[] }>
 }) {
   const { unidade: unidadeParam, q } = await searchParams
   // `?q=` abre a lista filtrada (a busca universal entra por aqui).
@@ -304,6 +305,7 @@ export default async function AdminEstoquePage({
         readOnly={!canEdit}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
         comLoteEsgotado={comLoteEsgotado}
+        loteInicial={await loteDaUrl(ctx.tenantId!, (await searchParams).lote)}
         buscaInicial={busca}
       />
     </div>

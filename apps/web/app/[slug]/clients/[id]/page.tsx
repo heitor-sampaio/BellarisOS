@@ -33,6 +33,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
+import { lotesDosAtendimentos } from '@/lib/prontuario/lotes-dos-atendimentos'
 import { planejamentosAbriveisDasFichas } from '@/lib/injetaveis/alcance'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { paraAnamneseGeral } from '@/lib/anamnese-geral'
@@ -235,6 +236,9 @@ export default async function ClientProfilePage({
   const acessosDoProntuario = await acessosAoProntuario(ctx, id)
   const recordForms = canViewRecords ? buildRecordForms(mreEntries, apptNameById, new Map(allAppointments.map(a => [a.id, a.scheduledAt])),
     new Set(allAppointments.filter(a => a.status === 'COMPLETED').map(a => a.id))) : []
+  // A33 da 11ª: o lote que cada atendimento usou (a baixa), no prontuário — e o
+  // caminho ao "Aplicado em" do lote, a quem abre o Estoque e as Clientes.
+  const lotesDosAtendimentosDaFicha = canViewRecords ? await lotesDosAtendimentos(admin, ctx.tenantId!, recordForms.map(r => r.appointmentId)) : {}
   // O planejador de injetáveis retratado na ficha leva ao planejamento — se
   // ele existe e quem vê pode abri-lo (2026-10-29).
   const planejamentosQueAbrem = canViewRecords
@@ -252,6 +256,9 @@ export default async function ClientProfilePage({
   type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; enviado_em: string | null; enviado_por_nome: string | null; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
   // Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem sai daqui.
   const rawDocs = ((docsRaw as RawDoc[] | null) ?? []).filter(d => canViewRecords || !ehAnexoClinico(d.category))
+  // A35 da 11ª: quantos anexos clínicos ficaram de fora (o recorte), para a aba
+  // não dizer "Nenhum documento" quando há — só a contagem, nada do conteúdo.
+  const anexosClinicosFora = canViewRecords ? 0 : ((docsRaw as RawDoc[] | null) ?? []).filter(d => ehAnexoClinico(d.category)).length
   const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path))
   const documents: ClientDocumentItem[] = rawDocs.map(d => ({
     id:          d.id,
@@ -467,6 +474,9 @@ export default async function ClientProfilePage({
       recentAppointments={recentAppointments}
       allAppointments={allAppointments}
       recordForms={recordForms}
+      lotesDosAtendimentos={lotesDosAtendimentosDaFicha}
+      podeAbrirLote={can(ctx, 'stock', 'VIEW') && can(ctx, 'clients', 'VIEW')}
+      anexosClinicosFora={anexosClinicosFora}
       podeVerProntuario={canViewRecords}
       planejamentosQueAbrem={planejamentosQueAbrem}
       acessosAoProntuario={acessosDoProntuario}
@@ -480,7 +490,7 @@ export default async function ClientProfilePage({
       internalCredits={internalCredits}
       documents={documents}
       termos={can(ctx, 'documents', 'VIEW')
-        ? { itens: veDocumentos ? await documentosDoCliente(ctx.tenantId!, id) : [], podeColher: can(ctx, 'documents', 'MANAGE'),
+        ? { itens: veDocumentos ? await documentosDoCliente(ctx.tenantId!, id) : [], recortado: !veDocumentos, podeColher: can(ctx, 'documents', 'MANAGE'),
             pelaConversa: await envioPelaConversaLigado(ctx.tenantId!) }
         : null}
       canGrantCredit={canGrantCredit}

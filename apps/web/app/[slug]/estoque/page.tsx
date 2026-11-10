@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
@@ -36,7 +37,7 @@ export default async function BranchStockPage({
   params, searchParams,
 }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ q?: string | string[] }>
+  searchParams: Promise<{ q?: string | string[]; lote?: string | string[] }>
 }) {
   const { slug } = await params
   // `?q=` abre a lista filtrada (a busca universal entra por aqui).
@@ -288,6 +289,7 @@ export default async function BranchStockPage({
         readOnly={readOnly}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
         comLoteEsgotado={comLoteEsgotado}
+        loteInicial={await loteDaUrl(ctx.tenantId!, (await searchParams).lote)}
         buscaInicial={busca}
       />
     </div>

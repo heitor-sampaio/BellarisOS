@@ -6,6 +6,7 @@ import { ClipboardCheck, Pencil } from 'lucide-react'
 import { ConstrutorDeFicha } from '@/components/admin/construtor-de-ficha'
 import { salvarFichaDePreAtendimento, definirEnvioDoPreAtendimento } from '@/actions/pre-atendimento'
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
+import { PERGUNTAS_DE_INJETAVEIS } from '@/lib/pre-atendimento/modelo-de-injetaveis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 
 /**
@@ -50,6 +51,8 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
           updateAction={salvarFichaDePreAtendimento}
           tiposFora={TIPOS_FORA_DO_PRE_ATENDIMENTO}
           nomeFixo
+          // A30 da 11ª: o modelo de injetáveis é OPÇÃO — a clínica acrescenta (princípio 6).
+          modelos={[{ rotulo: 'Acrescentar as perguntas de injetáveis', rows: PERGUNTAS_DE_INJETAVEIS }]}
         />
       </div>
     )

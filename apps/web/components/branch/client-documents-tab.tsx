@@ -35,6 +35,8 @@ export interface ClientDocumentItem {
 
 interface Props {
   documents: ClientDocumentItem[]
+  /** A35 da 11ª: quantos anexos clínicos o cargo não abre (o recorte). */
+  anexosClinicosFora?: number
   clientId:  string
   branchId:  string
   slug:      string
@@ -369,7 +371,7 @@ function DocumentRow({
 
 // -- Main component ------------------------------------------------------------
 
-export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false, podeAnexarComum = false }: Props) {
+export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false, podeAnexarComum = false, anexosClinicosFora = 0 }: Props) {
   const router = useRouter()
   const [showForm, setShowForm]   = useState(false)
   // A lista vem das PROPS a cada render; localmente só se guarda o que acabou
@@ -442,6 +444,14 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
           )}
         </div>
 
+        {/* A35 da 11ª: o anexo clínico que o cargo não abre não some calado — a
+            aba diz quantos ficam de fora (só o número, nada do conteúdo). */}
+        {anexosClinicosFora > 0 && (
+          <p data-anexos-clinicos-fora style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '0 0 8px' }}>
+            {anexosClinicosFora === 1 ? 'Há 1 anexo clínico desta cliente' : `Há ${anexosClinicosFora} anexos clínicos desta cliente`} (fotos, exames, laudos)
+            que o seu cargo não abre: o prontuário é de quem o tem — e, no “só os meus”, das clientes que você atende.
+          </p>
+        )}
         {/* Empty state */}
         {localDocs.length === 0 && !showForm && (
           <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>

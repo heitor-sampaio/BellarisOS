@@ -63,7 +63,12 @@ function Situacao({ item }: { item: ItemDeTermo }) {
   }
 }
 
-export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pelaConversa = false, temAcessoAoApp = true }: {
+export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pelaConversa = false, temAcessoAoApp = true, recortado = false }: {
+  /**
+   * A35 da 11ª: a lista veio vazia pelo RECORTE (o prontuário "só os meus" de
+   * quem não atende esta cliente) — a tela diz isso, em vez de "Nenhum termo".
+   */
+  recortado?: boolean
   itens:      ItemDeTermo[]
   /** Unidade do cliente (a rota vem de `lib/rotas`, pelo portal atual). */
   slug:       string
@@ -163,8 +168,10 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
   if (!itens.length) {
     return compacto ? null : (
       <div className="card" style={{ padding: '16px 18px' }}>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Nenhum termo ou contrato para este cliente. Eles nascem do procedimento agendado, conforme o modelo ligado a ele.
+        <p data-termos-recortados={recortado || undefined} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          {recortado
+            ? 'Os termos e contratos desta cliente não aparecem para você: com o prontuário “só os meus”, você vê os das clientes que atende.'
+            : 'Nenhum termo ou contrato para este cliente. Eles nascem do procedimento agendado, conforme o modelo ligado a ele.'}
         </p>
       </div>
     )

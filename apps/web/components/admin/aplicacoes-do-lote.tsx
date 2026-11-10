@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { aplicacoesDoLote, lotesEsgotados, type LoteEsgotado } from '@/actions/stock'
@@ -59,28 +59,50 @@ export function LotesEsgotados({ produtoId, unidadeId, produto, podeVerAplicacoe
  * foi aplicado ou para quem foi vendido, com o dia, quem atendeu (ou vendeu) e
  * a quantidade. A lista é do servidor (`aplicacoesDoLote`).
  */
-export function BotaoAplicadoEm({ loteId, rotulo }: { loteId: string; rotulo: string }) {
-  const [aberto, setAberto] = useState(false)
+export function BotaoAplicadoEm({ loteId, rotulo, abrirAoMontar = false, semBotao = false }: {
+  loteId: string; rotulo: string
+  /**
+   * A33 da 11ª: o lote da ficha da paciente leva ao "Aplicado em" dele
+   * (`/estoque?lote=<id>`) — a janela abre sozinha, uma vez.
+   */
+  abrirAoMontar?: boolean
+  /** Só a janela, sem o botão (a que abre pela URL). */
+  semBotao?: boolean
+}) {
+  const [aberto, setAberto] = useState(abrirAoMontar)
   const [lista, setLista] = useState<AplicacaoDoLote[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, iniciar] = useTransition()
 
-  function abrir(e: React.MouseEvent) {
-    e.stopPropagation()
-    setAberto(true); setErro(null); setLista(null)
+  function buscar() {
     iniciar(async () => {
       const r = await aplicacoesDoLote(loteId)
       if (r.error) { setErro(r.error); return }
       setLista(r.aplicacoes ?? [])
     })
   }
+  function abrir(e: React.MouseEvent) {
+    e.stopPropagation()
+    setAberto(true); setErro(null); setLista(null)
+    buscar()
+  }
+  // Pela URL: a janela já nasce aberta, e a lista se pede uma vez.
+  const buscou = useRef(false)
+  useEffect(() => {
+    if (!abrirAoMontar || buscou.current) return
+    buscou.current = true
+    buscar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirAoMontar])
 
   const dia = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   return (
     <>
-      <button type="button" onClick={abrir} className="btn-ghost" style={{ fontSize: 'var(--text-2xs)', padding: '0 6px', color: 'var(--brand)', fontWeight: 700 }}>
-        Aplicado em
-      </button>
+      {!semBotao && (
+        <button type="button" onClick={abrir} className="btn-ghost" style={{ fontSize: 'var(--text-2xs)', padding: '0 6px', color: 'var(--brand)', fontWeight: 700 }}>
+          Aplicado em
+        </button>
+      )}
       {aberto && (
         <span style={{ display: 'contents' }} onClick={e => e.stopPropagation()}>
           <JanelaModal onFechar={() => setAberto(false)} rotulo={`Aplicado em · ${rotulo}`} largura={560}>

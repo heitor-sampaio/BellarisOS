@@ -102,6 +102,8 @@ interface Props {
   podeVerAplicacoes?: boolean
   /** A36 da 10ª: os pares `produto:unidade` com lote esgotado — só neles o "Ver lotes esgotados". */
   comLoteEsgotado?:  string[]
+  /** A33 da 11ª: o lote da URL (`?lote=`, da ficha da paciente) — o "Aplicado em" dele abre sozinho. */
+  loteInicial?:      { id: string; rotulo: string } | null
 }
 
 type ViewMode  = 'consolidado' | 'por-unidade'
@@ -202,7 +204,7 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [] }: Props) {
+export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null }: Props) {
   const temLoteEsgotado = useMemo(() => new Set(comLoteEsgotado), [comLoteEsgotado])
   const router = useRouter()
   // Chegar com uma unidade na URL só faz sentido junto com a visão por unidade:
@@ -294,6 +296,9 @@ export function AdminStockView({ products, branches, categories, productCategori
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {podeVerAplicacoes && loteInicial && (
+        <BotaoAplicadoEm loteId={loteInicial.id} rotulo={loteInicial.rotulo} abrirAoMontar semBotao />
+      )}
 
       {/* Filtros */}
       <div className="filtros-bar" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>

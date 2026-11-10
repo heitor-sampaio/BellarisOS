@@ -13,6 +13,7 @@ import {
   type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { criarFicha, atualizarFicha } from '@/actions/fichas'
+import { comAsPerguntasDoModelo } from '@/lib/pre-atendimento/modelo-de-injetaveis'
 import { JanelaModal } from '@/components/shared/janela-modal'
 
 export interface ExistingForm {
@@ -37,6 +38,12 @@ interface Props {
   tiposFora?: AnamnesisFieldType[]
   /** O nome da ficha é fixo (o pré-atendimento): o campo do nome não aparece. */
   nomeFixo?: boolean
+  /**
+   * Blocos prontos que a clínica ACRESCENTA, se quiser (A30 da 11ª: as
+   * perguntas de injetáveis). Entram no fim, sem duplicar, e só valem depois
+   * do "Salvar".
+   */
+  modelos?: { rotulo: string; rows: AnamnesisRow[] }[]
 }
 
 const TYPE_ICON: Record<AnamnesisFieldType, ComponentType<{ size?: number }>> = {
@@ -53,7 +60,7 @@ function newField(type: AnamnesisFieldType = 'text'): AnamnesisField {
   return { id: newId(), type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }
 }
 
-export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, updateAction, semInjetaveis = false, tiposFora = [], nomeFixo = false }: Props) {
+export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, updateAction, semInjetaveis = false, tiposFora = [], nomeFixo = false, modelos = [] }: Props) {
   const tipos = FIELD_TYPES.filter(t => !tiposFora.includes(t.value) && !(semInjetaveis && t.value === 'injectable_map'))
   const createFn = createAction ?? criarFicha
   const updateFn = updateAction ?? atualizarFicha
@@ -240,6 +247,18 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
           <Eye size={15} /> Pré-visualizar
         </button>
       </div>
+
+      {modelos.length > 0 && (
+        <div data-modelos-da-ficha style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          {modelos.map(m => (
+            <button key={m.rotulo} type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
+              onClick={() => setRows(rs => comAsPerguntasDoModelo(rs, m.rows))}>
+              <Plus size={13} /> {m.rotulo}
+            </button>
+          ))}
+          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Entram no fim da ficha, para revisar; só valem depois de salvar.</span>
+        </div>
+      )}
 
       {!nomeFixo && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

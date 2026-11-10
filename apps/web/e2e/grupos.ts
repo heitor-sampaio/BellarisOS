@@ -300,6 +300,7 @@ export const ISOLADOS = [
   'injetaveis-atritos-da-11.spec.ts',
   'atendimento-atritos-da-11.spec.ts',
   'agenda-atritos-da-11.spec.ts',
+  'prontuario-atritos-da-11.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',

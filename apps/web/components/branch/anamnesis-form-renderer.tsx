@@ -57,6 +57,12 @@ interface Props {
    * diz para onde leva o planejamento retratado (nulo: sem link).
    */
   injetaveis?: ContextoDosInjetaveis
+  /**
+   * A34 da 11ª: as fotos clínicas anexadas NESTE atendimento (Documentos →
+   * Foto clínica). Na leitura, o campo de foto vazio diz que elas existem — a
+   * ficha dizia "Não informado" com duas fotos anexadas.
+   */
+  fotosDoAtendimento?: number
 }
 
 export interface ContextoDosInjetaveis {
@@ -72,7 +78,7 @@ export interface ContextoDosInjetaveis {
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
-  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha', onAnswersChange, injetaveis }, ref,
+  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false, rotuloSalvar = 'Salvar ficha', onAnswersChange, injetaveis, fotosDoAtendimento = 0 }, ref,
 ) {
   const doSave = saveAction ?? salvarFichaDoProcedimento
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
@@ -178,7 +184,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
             {visiveis.map(f => (
               <FieldView
                 key={f.id} field={f} value={answers[f.id]} canEdit={canEdit && !(semInjetaveis && f.type === 'injectable_map')}
-                appointmentId={appointmentId} slug={slug} injetaveis={injetaveis}
+                appointmentId={appointmentId} slug={slug} injetaveis={injetaveis} fotosDoAtendimento={fotosDoAtendimento}
                 erro={invalidos[f.id]}
                 photoUrl={typeof answers[f.id] === 'string' ? photoUrls[answers[f.id] as string] : undefined}
                 onPhotoUploaded={(path, url) => setPhotoUrls(m => ({ ...m, [path]: url }))}
@@ -213,7 +219,8 @@ const labelStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block',
 }
 
-function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, photoUrl, erro, onPhotoUploaded, onChange, onToggle }: {
+function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, fotosDoAtendimento = 0, photoUrl, erro, onPhotoUploaded, onChange, onToggle }: {
+  fotosDoAtendimento?: number
   field: AnamnesisField
   value: AnswerValue | undefined
   canEdit: boolean
@@ -243,7 +250,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, 
     return (
       <div data-campo={f.id}>
         <span style={labelStyle}>{f.label}</span>
-        <ReadOnlyValue field={f} value={value} photoUrl={photoUrl} linkDoPlanejamento={injetaveis?.linkDoPlanejamento} />
+        <ReadOnlyValue field={f} value={value} photoUrl={photoUrl} linkDoPlanejamento={injetaveis?.linkDoPlanejamento} fotosDoAtendimento={fotosDoAtendimento} />
       </div>
     )
   }
@@ -314,13 +321,23 @@ function FieldView({ field: f, value, canEdit, appointmentId, slug, injetaveis, 
   )
 }
 
-function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento }: {
+function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoAtendimento = 0 }: {
   field: AnamnesisField; value: AnswerValue | undefined; photoUrl?: string
   linkDoPlanejamento?: (mapId: string) => string | null
+  fotosDoAtendimento?: number
 }) {
   if (f.type === 'photo') {
     if (typeof value === 'string' && value && photoUrl) {
       return <Image unoptimized src={photoUrl} alt={f.label} width={220} height={220} style={{ width: 'auto', height: 'auto', maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)' }} />
+    }
+    if (!value && fotosDoAtendimento > 0) {
+      // A34 da 11ª (princípio 3): a foto foi anexada pelo cartão "Fotos do
+      // atendimento", não por este campo — a ficha diz onde ela está.
+      return (
+        <p data-fotos-do-atendimento style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}>
+          {fotosDoAtendimento === 1 ? '1 foto deste atendimento' : `${fotosDoAtendimento} fotos deste atendimento`} em Documentos → Foto clínica.
+        </p>
+      )
     }
     return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>{value ? 'Carregando foto…' : 'Não informado'}</p>
   }

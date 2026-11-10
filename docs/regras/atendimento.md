@@ -1395,6 +1395,34 @@ const procedures = await ler(
   registrado ainda" e a cliente parecia nunca ter sido atendida. Ele entra
   (`buildRecordForms` com os concluídos), e o cartão diz "Sem evolução
   registrada.". Prova: o mesmo spec ("A19").
+- **O prontuário diz o LOTE aplicado e as fotos do atendimento** (A33 e A34 da
+  11ª simulação, 2026-11-10; princípio 3): cada atendimento da aba Prontuário
+  lista o que a baixa tirou de cada lote — "Toxina — lote TOX-A1 (vence
+  26/11/2026): 30 U" (`[data-lotes-do-atendimento]`, `lotesDosAtendimentos`,
+  `lib/prontuario/lotes-dos-atendimentos.ts`: a ligação `stock_movement_batches`
+  do `PROCEDURE_USAGE`, a mesma do "Saiu do lote" do atendimento) — e, a quem
+  abre o Estoque e as Clientes, "Ver em quem o lote foi aplicado →", que leva
+  ao Estoque com `?lote=<id>` e abre ali o "Aplicado em" do lote
+  (`loteDaUrl`, `BotaoAplicadoEm abrirAoMontar`): num caso de reação adversa, é
+  por aqui que se começa. E o campo de foto da ficha que ficou vazio, com fotos
+  anexadas pelo cartão "Fotos do atendimento", diz "2 fotos deste atendimento em
+  Documentos → Foto clínica" (`[data-fotos-do-atendimento]`) — dizia "Não
+  informado". Prova: `e2e/prontuario-atritos-da-11.spec.ts`.
+- **O recorte se diz** (A35 da 11ª): com o prontuário "só os meus", a ficha de
+  quem ela não atende dizia "Nenhum termo ou contrato" e "Nenhum documento
+  anexado" — eles existem. Os Termos dizem "não aparecem para você: com o
+  prontuário “só os meus”…" (`[data-termos-recortados]`), e a aba Documentos
+  "Há 2 anexos clínicos desta cliente (fotos, exames, laudos) que o seu cargo
+  não abre…" (`[data-anexos-clinicos-fora]`) — só o número, nada do conteúdo.
+  A regra de quem vê não mudou.
+- **O modelo de perguntas de injetáveis** (A30 da 11ª: a ficha de
+  pré-atendimento padrão não perguntava doença neuromuscular, toxina anterior,
+  anticoagulante, herpes): no "Editar perguntas" da ficha de pré-atendimento,
+  "Acrescentar as perguntas de injetáveis" põe no fim o bloco do modelo
+  (`PERGUNTAS_DE_INJETAVEIS`, `lib/pre-atendimento/modelo-de-injetaveis.ts`;
+  ids `inj_…`, sem duplicar) para a clínica revisar e salvar. Nada entra
+  sozinho (princípio 6): a ficha padrão da rede nova não mudou. Prova: o mesmo
+  spec ("A30"), `tests/pre-atendimento-modelo-de-injetaveis.test.ts`.
 - **Quem abriu o prontuário fica registrado** (2026-10-27, decisões do Heitor;
   `lib/prontuario/acessos.ts`, tabela `prontuario_acessos`). Toda leitura
   clínica: a ficha da cliente (com os anexos clínicos), a sessão de
