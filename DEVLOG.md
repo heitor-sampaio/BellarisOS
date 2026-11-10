@@ -9996,6 +9996,8 @@ com data (A42); o app que diz "quem marca é a clínica" e deixa marcar (A47). O
 
 **A 9ª rodada fechou as frentes em 07/11** (F40–F45): os 18 defeitos e os 53 atritos feitos ou explicados, as três decisões do Heitor seguidas. Próximo: a completa e a 10ª simulação.
 
+**F46 FEITA (09/11, d87d744e…9e9dc84f) — as 10 falhas da 3ª completa 42417370822 (1.784 passaram):** 2 defeitos, ambos corrigidos. (1) **Regressão da F41 (A36):** no checkout, assinar o documento voltava a tela ao Pagamento e reabria o mesmo documento, porque o efeito que relê o passo guardado dependia de `plan.contratoAssinado`, um objeto novo a cada atualização. O efeito agora roda uma vez por plano. (2) **Cartão do Copilot:** ficava em "Gravando…" até a tela de trás terminar de recarregar. Agora diz "Feito" quando a ação responde (estado próprio, com a atualização da tela correndo à parte). As outras 8 foram paradas do banco, cruzadas pela hora do trace com o `query_logs`: consultas de 10 a 40 s, um checkpoint com `sync` de 9 s e o Auth respondendo 504 depois de 36 s. Todas passam local. O apoio do E2E ganhou `porSenhaDeTeste`, que tenta de novo quando o Auth cai ao pôr a senha. **Para o Heitor:** a instância Micro segue parando durante a completa, e subir a instância continua sendo a correção direta.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
