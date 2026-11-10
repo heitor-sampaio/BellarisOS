@@ -10097,6 +10097,17 @@ As paradas de 03:10 e de 03:25 começam logo depois de um "checkpoint starting" 
 
 As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: os pedidos caíram de ~300 para 1–14 a cada 5 s, com respostas de 3 a 43 s, e o PostgREST registrou "Thread killed by timeout manager". Elas derrubaram o contrato que cita o pagamento, o "Confirmar pagamento", o "Cancelar pacote", o "Unificar" do Copilot (a action nunca respondeu; não é a F46) e a "Condição salva" (a limpeza do `afterAll` chegou antes do RPC atrasado). É a terceira completa seguida em que o código está limpo e a instância cai. **Para o Heitor:** a capacidade da instância.
 
+**F49 FEITA (10/11, b4762d97…e9afead1) — os 8 defeitos da 10ª, mais A1 e A3:**
+- **D1, A3:** no celular, a ação do momento (Marcar chegada e iniciar, Check-in, Iniciar, Finalizar, Confirmar pagamento) fica numa barra presa no rodapé do atendimento, e o Copilot sobe acima dela. O título ocupa a largura toda e as outras ações quebram linha.
+- **A1:** a pergunta "Ninguém foi marcado… Vender assim?" aparece inteira. A causa valia para todo modal com cabeçalho fixo no celular: o cartão era ~20 px mais alto que a folha. Corrigido em `globals.css` do núcleo.
+- **D6:** "Cliente desde" vem da planilha (`cliente_desde`) na ficha, no atendimento e no pacote LGPD.
+- **D7:** Ficha → Financeiro no celular em cartões, pela data que a linha mostra.
+- **D4, D8:** o resultado diz a regra de verdade (despesa pelo que foi pago; "A pagar no período, fora do resultado"), e a perda é "Métrica: não entra no lucro".
+- **D3** (`20261110004901`): o extrato e o CSV da comissão mostram a base efetiva ("R$ 413,70 (R$ 420,00 − R$ 6,30 da taxa) · 40%") e as colunas do caminho até ela. Os valores das 86 linhas não mudaram (md5 conferido).
+- **D2** (`20261110004902`): consumo e valor em estoque pelo custo do lote (`custo_do_lote`). O lote transferido herda o custo do de origem; a margem do catálogo segue pelo custo atual.
+- **D5** (`20261110004903`): o ajuste de inventário a mais pergunta o lote (padrão: um lote novo, sem número); o a menos sai do lote que vence primeiro e entra em Perdas como "Inventário". Os 3 ajustes negativos antigos passaram a aparecer em Perdas, ao último custo.
+- Sem chamador: `comissoes_extrato_linhas` e `estoque_ajuste_em` (DROP fica para a limpeza com o Heitor). Fora da frente: o Copilot conta "clientes novos" por `created_at`, não por `coalesce(cliente_desde, created_at)` — vai na F51.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
