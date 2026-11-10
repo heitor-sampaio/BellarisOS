@@ -111,8 +111,11 @@ test('A11: sem ninguém livre na unidade, o repasse diz quem atende em outra uni
 
 test('A10: o Desativar cancela o escolhido e diz o que fica com a pessoa — o vencido inclusive', async ({ browser }) => {
   const futuro = await agendar(debora!, new Date(`${diaEmQueAUnidadeAbre(4)}T11:00:00-03:00`).toISOString())
-  // A Ana às 23:55 de ontem, que passou sem ninguém fechar.
-  const ontem = new Date(Date.now() - 24 * 3_600_000)
+  // A Ana às 23:55 de ontem, que passou sem ninguém fechar. "Ontem" é o dia de
+  // 25 h atrás: das 00:00 às 00:25, o 23:55 de 24 h atrás (meia hora) ainda
+  // estava EM ANDAMENTO — não "já passou" (a completa de 09–10/11, às 00:00:14,
+  // F47). Com 25 h, ele terminou há pelo menos 35 minutos.
+  const ontem = new Date(Date.now() - 25 * 3_600_000)
   const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(ontem)
   const vencido = await agendar(debora!, new Date(`${dia}T23:55:00-03:00`).toISOString(), 30)
   await como(browser, dona!.estado, async p => {
