@@ -2405,7 +2405,7 @@ export function AppointmentSession({
                         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Falta finalizar a avaliação</p>
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                           {canManage && canEditRecords
-                            ? 'O plano foi enviado, mas o atendimento segue em aberto: use “Finalizar atendimento”, no alto da tela, para registrar a avaliação no prontuário.'
+                            ? <>O plano foi enviado, mas o atendimento segue em aberto: use “Finalizar atendimento”, <OndeEstaOFinalizar />, para registrar a avaliação no prontuário.</>
                             : 'O plano foi enviado, mas o atendimento segue em aberto: quem atende conclui pelo “Finalizar atendimento”.'}
                         </p>
                       </div>
@@ -2633,7 +2633,7 @@ export function AppointmentSession({
                           Sem plano, o avulso termina no "Finalizar". */}
                       {status !== 'COMPLETED' && (
                         <p data-dica-do-avulso style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', textAlign: 'center', marginTop: 10 }}>
-                          Sem plano a propor? Para encerrar este atendimento, basta o &quot;Finalizar atendimento&quot;, no alto da tela.
+                          Sem plano a propor? Para encerrar este atendimento, basta o &quot;Finalizar atendimento&quot;, <OndeEstaOFinalizar />.
                         </p>
                       )}
                       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
@@ -2731,6 +2731,20 @@ export function AppointmentSession({
         {/* No celular, o fim da página não fica por baixo da barra da ação principal. */}
         {temAcaoPrincipal && <div className="sessao-espaco-da-barra" aria-hidden="true" />}
       </div>
+    </>
+  )
+}
+
+/**
+ * Onde está o "Finalizar atendimento" (A31 da 11ª simulação): no computador,
+ * no alto da tela; no celular, a barra presa no rodapé (`.sessao-acao-principal`,
+ * D1 da 10ª). O CSS mostra uma das duas, pela mesma largura da barra.
+ */
+function OndeEstaOFinalizar() {
+  return (
+    <>
+      <span className="onde-no-computador">no alto da tela</span>
+      <span className="onde-no-celular">na barra do rodapé</span>
     </>
   )
 }

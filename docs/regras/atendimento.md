@@ -2455,7 +2455,13 @@ O resto do fluxo:
   acima dela (`subidaDoBotaoDoCopilot`). No computador nada muda de lugar.
   Prova: `e2e/atendimento-atritos-da-10.spec.ts` ("D1 e A3": clica no
   "Finalizar" de verdade, no alto e no fim da página),
-  `tests/copilot-sobe-no-atendimento.test.ts`.
+  `tests/copilot-sobe-no-atendimento.test.ts`. **E o texto diz onde ele está**
+  (A31 da 11ª simulação, 2026-11-10; princípio 3: o celular lia "use
+  “Finalizar atendimento”, no alto da tela" com o botão no rodapé): "no alto
+  da tela" no computador, "na barra do rodapé" no celular, pela mesma largura
+  da barra (`OndeEstaOFinalizar`, as classes `.onde-no-computador` e
+  `.onde-no-celular` do `globals.css`) — no "Falta finalizar a avaliação" e
+  no "Sem plano a propor?". Prova: `e2e/atendimento-sobras-da-11.spec.ts`.
 - **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
   (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
   aparecer no estoque, e a tela mostra o que faltou.

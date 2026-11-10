@@ -2411,6 +2411,13 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .sessao-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .sessao-acao-principal { display: contents; }
 .sessao-espaco-da-barra { display: none; }
+/* A31 da 11ª: o texto que diz ONDE está a ação principal acompanha a barra —
+   "no alto da tela" no computador, "na barra do rodapé" no celular. */
+.onde-no-celular { display: none; }
+@media (max-width: 767px) {
+  .onde-no-computador { display: none; }
+  .onde-no-celular { display: inline; }
+}
 @media (max-width: 767px) {
   .sessao-acoes { width: 100%; padding-left: 34px; }
   .sessao-acao-principal {
