@@ -52,13 +52,14 @@ export function RemarcarVencimento({ lancamento }: { lancamento: { id: string; d
 
   return (
     <>
-      <button type="button" onClick={() => setAberta(true)} title="Remarcar vencimento" aria-label="Remarcar vencimento" style={{
-        width: 30, height: 30, borderRadius: 7,
+      {/* A22 da 10ª: com a palavra, como o "Estornar" (A32 da 9ª) — era só o ícone. */}
+      <button type="button" onClick={() => setAberta(true)} data-remarcar-vencimento style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
         border: '1px solid var(--border)', background: 'var(--surface)',
-        color: 'var(--text-faint)', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap',
       }}>
-        <CalendarClock size={12} aria-hidden />
+        <CalendarClock size={12} aria-hidden /> Remarcar vencimento
       </button>
       {aberta && (
         <JanelaModal rotulo="Remarcar vencimento" largura={400} travado={gravando} onFechar={() => setAberta(false)}>

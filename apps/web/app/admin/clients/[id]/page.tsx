@@ -489,6 +489,7 @@ export default async function AdminClientProfilePage({
         podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
         podeVerPlanos={can(ctx, 'agenda', 'VIEW')}
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
+        podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
         quemDesfaz={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, ctx.branchId ?? null) : null}
         pagoComCredito={await getPagoComCreditoDoCliente(ctx.tenantId!, id)}
         isNetworkWide={ctx.branchId === null}

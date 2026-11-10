@@ -64,6 +64,9 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
     const paymentMethod = str(formData, 'payment_method') || null
     const dueDate       = str(formData, 'due_date') || null
     const notes         = str(formData, 'notes')
+    // A31 da 10ª: o fornecedor (só na despesa) e a nota fiscal.
+    const fornecedor    = type === 'EXPENSE' ? str(formData, 'fornecedor')?.slice(0, 120) ?? null : null
+    const notaFiscal    = str(formData, 'nota_fiscal')?.slice(0, 60) ?? null
     const isPaid        = str(formData, 'is_paid') === 'true'
     const paidOn        = str(formData, 'paid_on')
     const scheduleMode  = str(formData, 'schedule_mode') ?? 'single'
@@ -104,6 +107,8 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
           is_paid:        false,
           notes:          notes ?? null,
           created_by:     ctx.internalUserId,
+          fornecedor,
+          nota_fiscal:    notaFiscal,
           parcela_numero: parcela.numero,
           parcela_total:  parcela.total,
           parcela_grupo:  grupo,
@@ -135,6 +140,8 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
         is_paid:     false,
         notes:       notes ?? null,
         created_by:  ctx.internalUserId,
+        fornecedor,
+        nota_fiscal: notaFiscal,
       }))
 
       const { error: txErr } = await admin.from('financial_transactions').insert(rows)
@@ -146,6 +153,7 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
       const r = await lancarCore(admin, ctx, {
         branchId, tipo: type, categoria: category, descricao: description, valor: amount,
         formaDePagamento: paymentMethod, vencimento: dueDate, pago: isPaid, pagoEm: paidOn, observacoes: notes,
+        fornecedor, notaFiscal,
         bandeira, vezes: vezesNoCartao ? Number(vezesNoCartao) : null,
       })
       if ('error' in r) return { error: r.error }

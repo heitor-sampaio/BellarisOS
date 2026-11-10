@@ -52,6 +52,13 @@ export interface Transaction {
   vencimentos_anteriores?: RemarcacaoDoVencimento[] | null
   /** De quem é o lançamento (2026-10-21). */
   cliente?: { name: string } | null
+  /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos ("Pago com pontos: R$ 180,00"). */
+  pago_sem_dinheiro?: string | null
+  /** A31 da 10ª: a taxa da maquininha e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
+  taxa?:        number | null
+  liquido?:     number | null
+  fornecedor?:  string | null
+  nota_fiscal?: string | null
 }
 
 interface Props {
@@ -97,7 +104,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
   const [estornando, startTx] = useTransition()
   // O lançamento esperando a confirmação do estorno. Era um clique só, sem
   // volta (simulação de um dia de clínica, 2026-10-20).
-  const [aEstornar, setAEstornar] = useState<{ id: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean } | null>(null)
+  const [aEstornar, setAEstornar] = useState<{ id: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean; pagoSemDinheiro?: string | null } | null>(null)
 
   // As actions devolvem `{ error }` quando não conseguem — descartar isso
   // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
@@ -353,6 +360,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           }}>
                             {rotuloDaForma(tx.payment_method, tx.cartao_vezes)}
                           </span>
+                        ) : tx.pago_sem_dinheiro ? (
+                          // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
+                          <span data-pago-sem-dinheiro style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'normal' }}>
+                            {tx.pago_sem_dinheiro}
+                          </span>
                         ) : (
                           <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>—</span>
                         )}
@@ -432,15 +444,15 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           {/* Estorno não se estorna — o banco também recusa. */}
                           {tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
                             // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
-                            <button type="button" data-estornar title="Estornar" onClick={() => tx.credito_vendido_id
+                            <button type="button" data-estornar title={tx.pago_sem_dinheiro ? "Desfazer o pagamento" : "Estornar"} onClick={() => tx.credito_vendido_id
                               ? setCreditoAEstornar({ id: tx.id, descricao: tx.description })
-                              : setAEstornar({ id: tx.id, descricao: tx.description, valor: tx.amount, vendaDeProduto: !!tx.product_sale_id, doAtendimento: !!tx.appointment_id })} style={{
+                              : setAEstornar({ id: tx.id, descricao: tx.description, valor: tx.amount, vendaDeProduto: !!tx.product_sale_id, doAtendimento: !!tx.appointment_id, pagoSemDinheiro: tx.pago_sem_dinheiro ?? null })} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
                               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
                               border: '1px solid var(--border)', background: 'var(--surface)',
                               color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap',
                             }}>
-                              <RotateCcw size={12} aria-hidden /> Estornar
+                              <RotateCcw size={12} aria-hidden /> {tx.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'}
                             </button>
                           )}
                         {/* A venda de produto toda a receber não tem o que estornar: se

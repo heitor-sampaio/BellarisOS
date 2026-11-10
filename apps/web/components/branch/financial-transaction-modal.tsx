@@ -416,6 +416,20 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
               )}
             </div>
 
+            {/* A31 da 10ª: o fornecedor (na despesa) e a nota fiscal, que a contadora pede — iam nas Observações. */}
+            <div className="form-2col">
+              {type === 'EXPENSE' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label htmlFor="lanc-fornecedor">Fornecedor</Label>
+                  <input id="lanc-fornecedor" name="fornecedor" type="text" maxLength={120} className="field" placeholder="Nome do fornecedor" />
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <Label htmlFor="lanc-nota">Nota fiscal</Label>
+                <input id="lanc-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota (opcional)" />
+              </div>
+            </div>
+
             {/* Observações */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <Label htmlFor="lanc-obs">Observações</Label>

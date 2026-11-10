@@ -197,7 +197,8 @@ function KpiCardFull({
           {icon}
         </div>
       </div>
-      <p style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 800, letterSpacing: '-0.025em', color: valColor, lineHeight: 1 }}>
+      {/* A25 da 10ª: o valor numa linha só — o "-" do negativo ficava sozinho em cima. */}
+      <p data-valor-do-kpi style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 800, letterSpacing: '-0.025em', color: valColor, lineHeight: 1, whiteSpace: 'nowrap' }}>
         {format(curr)}
       </p>
       {!d.neutral ? (
@@ -659,6 +660,7 @@ export function FinancialHub({
       {/* KPI grid — 6 cards em linha */}
       {!ownScope && <div className="kpi-grid-auto">
         <KpiCardFull
+          chave="lucro"
           label="Lucro Líquido"
           curr={saldo} prev={prevSaldo}
           // D8 da 8ª: a conta do resultado, para ele se explicar na tela.
@@ -674,8 +676,13 @@ export function FinancialHub({
           iconBg="var(--success-bg)"
           valueColor="var(--success)"
         />
+        {/* A24 da 10ª: o cartão é o CAIXA — com a compra de estoque e o pagamento
+            das comissões, que ficam fora do lucro. Sem dizer, Receita − Despesas
+            não dava o Lucro, e parecia erro. */}
         <KpiCardFull
-          label="Despesas"
+          chave="despesas"
+          label="Despesas pagas (caixa)"
+          nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Lucro Líquido usa a despesa operacional (veja a conta nele).</span>}
           curr={expense} prev={prevExpense}
           icon={<TrendingDown size={13} style={{ color: 'var(--danger)' }} />}
           iconBg="var(--danger-soft)"

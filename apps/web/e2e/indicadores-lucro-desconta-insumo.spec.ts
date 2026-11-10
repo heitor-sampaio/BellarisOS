@@ -88,7 +88,7 @@ test('o banco: a compra de estoque paga (R$ 500) e o insumo consumido (R$ 30), p
 test('Relatórios: as despesas são o caixa (R$ 700) e o lucro desconta o insumo, não a compra (R$ 770, 77%)', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto('/admin/reports?tab=overview&period=month')
-    await expect.poll(async () => dinheiro(await card(p, 'Despesas').innerText()), { timeout: 10_000 }).toBe(700)
+    await expect.poll(async () => dinheiro(await card(p, 'Despesas pagas (caixa)').innerText()), { timeout: 10_000 }).toBe(700)
     await expect.poll(async () => dinheiro(await card(p, 'Lucro').innerText()), { timeout: 10_000 }).toBe(770)
 
     await p.goto('/admin/reports?tab=financeiro&period=month')
@@ -105,10 +105,10 @@ test('o financeiro da unidade e o da rede: "Lucro Líquido" e "Resultado líquid
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro`)
     await expect.poll(async () => dinheiro(await card(p, 'Lucro Líquido').innerText()), { timeout: 10_000 }).toBe(770)
-    await expect.poll(async () => dinheiro(await card(p, 'Despesas').innerText()), { timeout: 10_000 }).toBe(700)
+    await expect.poll(async () => dinheiro(await card(p, 'Despesas pagas (caixa)').innerText()), { timeout: 10_000 }).toBe(700)
 
     await p.goto('/admin/financeiro?period=month')
     await expect.poll(async () => dinheiro(await card(p, 'Resultado líquido').innerText()), { timeout: 10_000 }).toBe(770)
-    await expect.poll(async () => dinheiro(await card(p, 'Despesas totais').innerText()), { timeout: 10_000 }).toBe(700)
+    await expect.poll(async () => dinheiro(await card(p, 'Despesas pagas (caixa)').innerText()), { timeout: 10_000 }).toBe(700)
   })
 })

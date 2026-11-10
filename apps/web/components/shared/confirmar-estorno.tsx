@@ -20,7 +20,9 @@ import { JanelaModal } from '@/components/shared/janela-modal'
  */
 export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDevolverParte }: {
   /** `doAtendimento`: o lançamento é o recebimento de um atendimento (A51: a cobrança dele reabre). */
-  alvo:        { descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean }
+  alvo:        { descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean
+    /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos — nenhum dinheiro volta. */
+    pagoSemDinheiro?: string | null }
   estornando:  boolean
   onConfirmar: (motivo: string, voltou?: boolean) => void
   onVoltar:    () => void
@@ -35,7 +37,8 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
   const produto = !!alvo.vendaDeProduto
   const cancelar = produto && !!alvo.cancelarVenda
   const pronto = motivo.trim().length > 0 && (!produto || voltou !== null)
-  const titulo = cancelar ? 'Cancelar esta venda de produto?' : produto ? 'Estornar esta venda de produto?' : 'Estornar este lançamento?'
+  const semDinheiro = !produto && !!alvo.pagoSemDinheiro
+  const titulo = cancelar ? 'Cancelar esta venda de produto?' : produto ? 'Estornar esta venda de produto?' : semDinheiro ? 'Desfazer este pagamento?' : 'Estornar este lançamento?'
   return (
     <JanelaModal rotulo={titulo} largura={440} travado={estornando} onFechar={onVoltar}>
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -48,6 +51,8 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
             ? 'Cancela a venda inteira: o que estava a receber deixa de existir (e o que já tiver sido pago volta à cliente na mesma forma), e a venda sai das Vendas e do custo. Não se desfaz.'
             : produto
             ? 'Estorna a venda inteira: o que foi pago volta à cliente na mesma forma de pagamento, o que estava a receber é cancelado e a venda sai das Vendas e do custo. Não se desfaz.'
+            : semDinheiro
+            ? `${alvo.pagoSemDinheiro}. Nenhum dinheiro volta: o voucher volta a valer e os pontos usados voltam ao saldo da cliente. Não se desfaz.`
             : 'O estorno cria um lançamento ao contrário, na mesma forma de pagamento, e marca este como estornado. Não se desfaz.'}
         </p>
         {/* A51 da 5ª simulação: a janela não dizia que a cobrança do atendimento reabre. */}

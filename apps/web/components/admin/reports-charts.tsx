@@ -281,9 +281,10 @@ export function DreWaterfall({
             }}>
               {r.label}
             </span>
-            <span style={{
+            {/* A25 da 10ª: o valor numa linha só (o "-" do negativo ficava sozinho em cima). */}
+            <span data-valor-do-dre style={{
               fontSize: 'var(--text-base-sz)', fontWeight: 800,
-              color: r.color, letterSpacing: '-0.01em',
+              color: r.color, letterSpacing: '-0.01em', whiteSpace: 'nowrap',
             }}>
               {_fmtBRL(r.v)}
             </span>

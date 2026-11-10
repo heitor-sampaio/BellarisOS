@@ -894,6 +894,55 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `lib/financeiro/csv-dos-lancamentos.ts`; o arquivo
   "lancamentos-AAAA-MM-DD-a-AAAA-MM-DD.csv"). Prova: o mesmo spec,
   `tests/financeiro-csv-dos-lancamentos.test.ts`.
+  **E é o pacote da contadora** (A31 da 10ª simulação, 2026-11-10: a Lúcia não
+  fechava o mês com o que exportava): o CSV ganhou Taxa da maquininha e Líquido
+  (da receita paga, pela MESMA conta do lucro — `metrics_taxa_dos_lancamentos`,
+  `getTaxaDosLancamentos`, `lib/metrics/contadora.ts`), Vencimento, Pago em,
+  Fornecedor e Nota fiscal. O "Novo lançamento" pede "Fornecedor" (na despesa)
+  e "Nota fiscal" (`financial_transactions.fornecedor`/`nota_fiscal`, migration
+  `20261110005102`; os três caminhos do lançamento os gravam). A "competência"
+  pedida não existe como regra (a despesa entra quando é paga — `indicadores.md`):
+  o CSV dá o vencimento e o dia do pagamento, e a contadora monta a dela. E se
+  exportam também o **DRE** (Relatórios → Financeiro, "Exportar o DRE (CSV)":
+  as linhas do DRE e o que fica FORA do resultado — as compras no estoque, ao
+  custo, com fornecedor e nota, e as perdas —, `csvDoDre`) e o **Fechamento do
+  dia** ("Exportar CSV": as formas, o total, o esperado em espécie e os
+  estornos, `csvDoFechamento`; os dois em `lib/financeiro/csv-da-contadora.ts`).
+  A compra e a perda chegam à contadora, que não abre o Estoque: embaixo do DRE,
+  "Fora do resultado no período: compras no estoque R$ X · perdas R$ Y"
+  (`[data-fora-do-resultado]`, `metrics_entradas_de_estoque` →
+  `getEntradasDeEstoque`). Prova: `e2e/financeiro-uso-da-10.spec.ts` ("A31"),
+  `tests/financeiro-csv-dos-lancamentos.test.ts`, `tests/csv-da-contadora.test.ts`.
+- **Os cartões dizem a base** (A24 da 10ª simulação; princípio 3: Faturamento
+  − Despesas ≠ Lucro, e pagar as comissões subia as Despesas sem mexer no
+  lucro): o cartão das despesas é "Despesas pagas (caixa)" no Financeiro da
+  unidade, no da rede ("Despesas pagas da unidade (caixa)" no recorte) e na
+  Visão geral dos Relatórios, e diz que tem a compra de estoque e o pagamento
+  das comissões, que ficam fora do lucro (o lucro usa a despesa operacional; o
+  gráfico, o "Custo do lucro"). A conta não mudou. E **o valor não parte o
+  sinal** (A25): os valores dos cartões e do DRE são `white-space: nowrap` — o
+  "-" de "-R$ 13.020,00" ficava sozinho numa linha. Prova: o mesmo spec ("A24",
+  "A25").
+- **O pagamento de R$ 0 diz com o que foi pago** (A23 da 10ª): o pago todo com
+  o voucher ou os pontos (`amount` 0, `loyalty_discount` > 0) dizia "Receita ·
+  Pago · + R$ 0,00" com "Estornar". A linha diz "Pago com o voucher “X”: R$
+  180,00" (ou "Pago com pontos: …", `pagosSemDinheiro`,
+  `lib/financeiro/pago-sem-dinheiro.ts`; `[data-pago-sem-dinheiro]`) e o botão é
+  "Desfazer o pagamento" — a janela diz que nenhum dinheiro volta: o voucher
+  volta a valer e os pontos voltam ao saldo. O estorno fica (é o caminho
+  documentado de desfazer o uso do voucher, `fidelidade.md`). Prova: ("A23").
+- **"Remarcar vencimento" com a palavra, também na ficha** (A22 da 10ª; sobra
+  da A37 da 9ª): o botão da lista dos dois financeiros diz "Remarcar
+  vencimento" (era só o ícone), e a parcela em aberto da aba Financeiro da
+  ficha o tem para quem remarca (o Financeiro em Gerenciar, sem "só os meus").
+  Prova: ("A22").
+- **As Vendas fazem a ponte com o caixa** (A30 da 10ª; princípio 5): embaixo
+  dos cartões de Relatórios → Vendas, "O Total vendido é a venda, no dia em
+  que foi feita; o caixa do período é o dinheiro, no dia em que entrou: R$ X
+  (Financeiro). A diferença é a regra…" — o crédito na clínica vendido, o
+  pacote e o plano inteiros, a sessão que não é venda de novo
+  (`[data-ponte-vendas-caixa]`; o caixa é o `revenueCash` do núcleo). Prova:
+  ("A30").
 - **"Novo lançamento" é de quem lança** (D7 da 5ª simulação, 2026-11-01):
   com o Financeiro em Ver, o financeiro da rede mostrava o botão
   (`AdminFinancialView canWrite`, como o da unidade já fazia), e a recusa
@@ -1785,6 +1834,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Mostrar o a receber vencido como "Pendente", ou decidir no navegador se venceu (o dia é do servidor: situacaoDoVencimento; os números, metrics_a_receber_vencido — D13 da 9ª)
 ❌ Tabela de lançamentos sem cards-mobile, ou as Transações da ficha fora da ordem da data que a linha mostra (ordenarTransacoesDaFicha — D7 da 10ª)
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
+❌ Calcular a taxa ou o líquido de um lançamento na tela (o CSV) — é metrics_taxa_dos_lancamentos, a conta do lucro (A31 da 10ª)
+❌ Rotular o cartão do caixa só "Despesas": é "Despesas pagas (caixa)", que tem a compra de estoque e o pagamento das comissões (A24 da 10ª)
 ❌ Vender crédito na clínica pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na clínica" do Vender (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
 ```

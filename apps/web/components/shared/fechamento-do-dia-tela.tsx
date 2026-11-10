@@ -13,6 +13,8 @@ import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber
 import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { parseDinheiro } from '@estetica-os/utils'
+import { csvDoFechamento } from '@/lib/financeiro/csv-da-contadora'
+import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 
 export interface FechamentoFeito {
   id: string; esperado: number; contado: number; diferenca: number
@@ -160,6 +162,16 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
       <AvisosDoDia resumo={resumo} aReceber={aReceber} emAberto={emAberto} operadora={operadora} avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
 
       {/* O dia por forma de pagamento */}
+      {/* A31 da 10ª: o Fechamento se exporta — a contadora não tinha como levá-lo. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button type="button" className="btn-secondary" onClick={() => baixarCsv(`fechamento-${dia}.csv`, csvDoFechamento({
+          dia, unidade: unidades.find(u => u.id === unidadeId)?.name ?? '',
+          formas: resumo.formas, total: resumo.total, esperadoDinheiro: resumo.esperadoDinheiro,
+          estornos: estornos?.itens ?? [],
+        }))}>
+          Exportar CSV
+        </button>
+      </div>
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-wrap">
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>

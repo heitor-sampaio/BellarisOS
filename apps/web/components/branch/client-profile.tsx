@@ -50,6 +50,7 @@ import { ResponsavelLegal, RESPONSAVEL_VAZIO } from '@/components/shared/respons
 import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal as ResponsavelDaFicha } from '@/lib/clients/menor'
 import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
 import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
+import { RemarcarVencimento } from '@/components/shared/remarcar-vencimento'
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 
@@ -317,6 +318,8 @@ interface Props {
    * vê já desfaz (ou não recebe).
    */
   quemDesfaz?:           string[] | null
+  /** A22 da 10ª: quem remarca o vencimento (o Financeiro em Gerenciar, sem "só os meus") o faz aqui também. */
+  podeRemarcar?:         boolean
   /** A43 da 8ª: o que ela pagou com crédito na clínica (não é receita: o LTV não conta). */
   pagoComCredito?:       number
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
@@ -1183,6 +1186,7 @@ function FinanceiroTab({
   soOsProprios = false,
   quemDesfaz = null,
   pagoComCredito = 0,
+  podeRemarcar = false,
 }: {
   transactions:    ProfileTransaction[]
   internalCredits: ProfileInternalCredit[]
@@ -1203,6 +1207,8 @@ function FinanceiroTab({
   quemDesfaz?:     string[] | null
   /** A43 da 8ª: o pago com crédito na clínica (fora do "Total pago"). */
   pagoComCredito?: number
+  /** A22 da 10ª: "Remarcar vencimento" também na parcela da ficha. */
+  podeRemarcar?:   boolean
 }) {
   const [showGrantForm, setShowGrantForm] = useState(false)
 
@@ -1337,6 +1343,10 @@ function FinanceiroTab({
                             {t.estornada ? 'Estornado' : t.estorno ? 'Estorno' : t.isPaid ? 'Pago' : 'Pendente'}
                           </span>
                         )}
+                        {/* A22 da 10ª: a parcela em aberto se remarca aqui também (era sem ação na ficha). */}
+                        {podeRemarcar && !t.isPaid && !t.estornada && !t.estorno && !t.saida && (
+                          <RemarcarVencimento lancamento={{ id: t.id, descricao: t.description, valor: t.amount, vencimento: t.dueDate }} />
+                        )}
                         {/* r2-ven-13: o recibo do pago (PDF), onde a recepção procura. Quem só vê
                             o dela não tira recibo (a rota pede quem recebe ou vê a unidade inteira). */}
                         {t.isPaid && !t.estornada && !t.estorno && !t.saida && !soOsProprios && (
@@ -1430,7 +1440,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
+  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -2209,6 +2219,7 @@ export function ClientProfile({
           soOsProprios={financeiroSoOsProprios}
           quemDesfaz={quemDesfaz}
           pagoComCredito={pagoComCredito}
+          podeRemarcar={podeRemarcar}
         />
       )}
 

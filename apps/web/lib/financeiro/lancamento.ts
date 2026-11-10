@@ -40,6 +40,9 @@ export interface NovoLancamento {
    */
   pagoEm?: string | null
   observacoes?: string | null
+  /** A31 da 10ª: o fornecedor (despesa) e a nota fiscal — informação para a contadora. */
+  fornecedor?: string | null
+  notaFiscal?: string | null
   /** r3-f13-01: a bandeira do cartão do pago agora, opcional. */
   bandeira?: string | null
   /**
@@ -97,6 +100,8 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
     paid_at:        pagoEm,
     notes:          l.observacoes ?? null,
     created_by:     ctx.internalUserId,
+    fornecedor:     l.tipo === 'EXPENSE' ? l.fornecedor?.trim().slice(0, 120) || null : null,
+    nota_fiscal:    l.notaFiscal?.trim().slice(0, 60) || null,
     ...(bandeira ? { cartao_bandeira: bandeira } : {}),
     ...(noCreditoPago && vezes >= 2 ? { cartao_vezes: vezes } : {}),
   }).select('id').single(), 'registrar o lançamento') as { id: string }

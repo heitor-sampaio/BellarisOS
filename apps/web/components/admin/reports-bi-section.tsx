@@ -11,6 +11,7 @@ import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { getPerdas } from '@/lib/metrics/perdas'
+import { getEntradasDeEstoque } from '@/lib/metrics/contadora'
 import { getQuemAtende } from '@/lib/metrics/relatorio'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, getMotivosDePerda, getConversaoPorOrigem, getPainelComercial, percent,
@@ -217,7 +218,8 @@ export async function ReportsBiSection({
     comLucro ? getSeriesDoResultado({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, granularity, professionalId: profDinheiro }) : Promise.resolve([]),
     // As perdas do período (D-7): do estoque da unidade, como o saldo — com o
     // financeiro "só os meus" não se atribuem a ela e nem são consultadas.
-    needBatches ? getPerdas({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : Promise.resolve(undefined),
+    // A31 da 10ª: a aba Financeiro também (o "fora do resultado" do DRE que a contadora exporta).
+    needBatches || needInstall ? getPerdas({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : Promise.resolve(undefined),
     // O "Status dos agendamentos" da Visão geral conta o PERÍODO inteiro, com
     // os que ainda vão acontecer (J-57): o núcleo até o fim dele, a janela da
     // aba Agenda. As outras contas da Visão geral seguem o dinheiro (até agora).
@@ -329,6 +331,9 @@ export async function ReportsBiSection({
         comercial={comercial}
         vendas={vendas}
         perdas={perdas}
+        // A31 da 10ª: a compra (as entradas de estoque, com fornecedor e nota) fica fora do
+        // resultado, e a contadora não a via (não abre o Estoque).
+        comprasNoEstoque={needInstall ? await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : undefined}
         quemAtende={quemAtende}
         receitaDaClinica={profAgenda !== null && profDinheiro === null}
         semReceita={tab === 'procedimentos' || tab === 'profissionais'

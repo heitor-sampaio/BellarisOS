@@ -15,6 +15,9 @@ import type { Relatorio } from '@/lib/metrics/relatorio'
 import type { MetricsCore } from '@/lib/metrics'
 import type { DadosDeVendas } from './reports-bi-section'
 import type { RelatorioDePerdas } from '@/lib/metrics/perdas'
+import type { EntradaDeEstoqueDoPeriodo } from '@/lib/metrics/contadora'
+import { csvDoDre } from '@/lib/financeiro/csv-da-contadora'
+import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { rotuloDoMotivo } from '@/lib/estoque/perda'
 import {
   TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda,
@@ -149,8 +152,10 @@ export interface ReportsBiProps {
   comercial?: DadosComerciais
   /** Só vem preenchido quando a aba Vendas está aberta. */
   vendas?: DadosDeVendas
-  /** As perdas do período (D-7) — só na aba Estoque, e não com o financeiro "só os meus". */
+  /** As perdas do período (D-7) — nas abas Estoque e Financeiro, e não com o financeiro "só os meus". */
   perdas?: RelatorioDePerdas
+  /** A31 da 10ª: as entradas de estoque do período (ao custo, com fornecedor e nota) — aba Financeiro. */
+  comprasNoEstoque?: { linhas: EntradaDeEstoqueDoPeriodo[]; total: number }
 }
 
 // -- Animated number -----------------------------------------------------------
@@ -232,7 +237,8 @@ function KpiCard({
       <p style={{
         fontSize: 'var(--text-name)', fontWeight: 800,
         color: hero ? 'var(--on-brand)' : accent ?? 'var(--brand)',
-        margin: 0, letterSpacing: '-0.02em',
+        // A25 da 10ª: o valor numa linha só (o "-" do negativo ficava sozinho em cima).
+        margin: 0, letterSpacing: '-0.02em', whiteSpace: 'nowrap',
       }}>
         {value == null ? '—' : <AnimatedNum value={value} format={format} />}
       </p>
@@ -378,7 +384,9 @@ function TabOverview(p: ReportsBiProps) {
         <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero dica={DEFINICOES.receita} />
         {/* A despesa e o lucro não se atribuem a ela ("só os meus"). */}
         {!p.soOsMeus && <>
-          <KpiCard label="Despesas"       value={expenses}          format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta dica={DEFINICOES.despesa} />
+          {/* A24 da 10ª: o cartão é o caixa; o gráfico e o lucro usam o "Custo do lucro". */}
+          <KpiCard label="Despesas pagas (caixa)" value={expenses} format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta dica={DEFINICOES.despesa}
+            detalhe="Com a compra de estoque e o pagamento das comissões; o lucro e o gráfico usam o Custo do lucro" />
           <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
         </>}
         <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta dica={DEFINICOES.atendimentos} />
@@ -508,6 +516,20 @@ function TabFinanceiro(p: ReportsBiProps) {
               A perda e o ajuste de estoque ficam fora do lucro: são métrica e não entram no resultado, nem quando a
               compra é paga (a compra de estoque fica no caixa). Estão em Relatórios → Estoque (“Perdas no período”).
             </p>
+            {/* A31 da 10ª: o que fica fora do resultado chega a quem não abre o Estoque (a contadora), e o DRE se exporta. */}
+            <div data-fora-do-resultado style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
+                Fora do resultado no período: compras no estoque (as entradas, ao custo) <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.comprasNoEstoque?.total ?? 0)}</strong>
+                {p.perdas ? <> · perdas <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.perdas.total.custo)}</strong></> : null}.
+              </p>
+              <button type="button" className="btn-secondary" onClick={() => baixarCsv(`dre-${p.period}.csv`, csvDoDre({
+                periodo: p.periodLabel, receita: revenue, despesaOperacional: resultado.despesaOperacional, insumos: resultado.insumoConsumido,
+                taxas: resultado.taxasDaMaquininha, comissoes: resultado.comissoes, lucro: profit,
+                compras: p.comprasNoEstoque ?? { linhas: [], total: 0 }, perdas: p.perdas?.total.custo ?? null,
+              }))}>
+                <Download size={15} aria-hidden /> Exportar o DRE (CSV)
+              </button>
+            </div>
           </SCard>
         )}
         <SCard title="Receita por Forma de Pagamento">
@@ -600,6 +622,14 @@ function TabVendas(p: ReportsBiProps) {
             detalhe={vendasNoPlural(resumo.porTipo[t].quantidade)} />
         ))}
       </div>
+      {/* A30 da 10ª: dois "totais" sem ponte — o caixa e o vendido. A diferença é a regra
+          (princípio 5: o caixa no dia em que o dinheiro entrou), e a tela a diz. */}
+      <p data-ponte-vendas-caixa style={{ margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        O Total vendido é a venda, no dia em que foi feita; o caixa do período é o dinheiro, no dia em que entrou:{' '}
+        <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito na
+        clínica vendido entra no caixa e não aqui (aqui entra o que for pago com ele, quando a cliente usar); o pacote e o plano entram aqui
+        inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo.
+      </p>
 
       <SCard title="Vendas do período">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>

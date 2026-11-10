@@ -93,6 +93,13 @@ interface AdminTx {
   credito_vendido_id?: string | null
   /** O recebimento de um atendimento: estornar reabre a cobrança dele (A51). */
   appointment_id?: string | null
+  /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos. */
+  pago_sem_dinheiro?: string | null
+  /** A31 da 10ª: a taxa e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
+  taxa?:        number | null
+  liquido?:     number | null
+  fornecedor?:  string | null
+  nota_fiscal?: string | null
 }
 
 interface Props {
@@ -219,9 +226,9 @@ function KpiCard({
           {icon}
         </div>
       </div>
-      <span style={{
+      <span data-valor-do-kpi style={{
         fontSize: 'clamp(20px, 5.4vw, 26px)', fontWeight: 800, letterSpacing: '-0.025em',
-        color: brand ? 'var(--on-brand)' : 'var(--text)',
+        color: brand ? 'var(--on-brand)' : 'var(--text)', whiteSpace: 'nowrap',
       }}>{value}</span>
       {delta !== null && delta !== undefined && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -260,7 +267,7 @@ export function AdminFinancialView({
   const [aDevolverParte, setADevolverParte] = useState<string | null>(null)
   // Decisão 1 da 9ª: o estorno da venda de crédito na clínica (volta o saldo não usado).
   const [creditoAEstornar, setCreditoAEstornar] = useState<{ id: string; descricao: string } | null>(null)
-  const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean } | null>(null)
+  const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean; pagoSemDinheiro?: string | null } | null>(null)
   const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
   // A unidade da ação vem da própria transação — não há o que perguntar.
@@ -430,13 +437,17 @@ export function AdminFinancialView({
           icon={<TrendingUp size={16} color={iconColor(true)} />}
           brand
         />
+        {/* A24 da 10ª: o cartão é o CAIXA (com a compra de estoque e o pagamento das comissões). */}
         <KpiCard
-          label={statDaUnidade ? 'Despesas da unidade' : 'Despesas totais'}
+          chave="despesas"
+          label={statDaUnidade ? 'Despesas pagas da unidade (caixa)' : 'Despesas pagas (caixa)'}
+          nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Resultado líquido usa a despesa operacional (veja a conta nele).</span>}
           value={fmtBRL(expenses)}
           delta={deltaExpenses}
           icon={<TrendingDown size={16} color="var(--brand)" />}
         />
         <KpiCard
+          chave="resultado"
           label="Resultado líquido"
           value={fmtBRL(result)}
           nota={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} aPagar={aPagar} />}
@@ -690,7 +701,9 @@ export function AdminFinancialView({
                       </span>
                     </td>
                     <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                      {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes) : '—'}
+                      {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes)
+                        // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
+                        : t.pago_sem_dinheiro ? <span data-pago-sem-dinheiro>{t.pago_sem_dinheiro}</span> : '—'}
                     </td>
                     <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
                       <span data-tipo-do-lancamento className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
@@ -760,15 +773,15 @@ export function AdminFinancialView({
                             coisa do financeiro, não um segundo clique. */}
                         {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
                           // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
-                          <button type="button" data-estornar title="Estornar" onClick={() => t.credito_vendido_id
+                          <button type="button" data-estornar title={t.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'} onClick={() => t.credito_vendido_id
                             ? setCreditoAEstornar({ id: t.id, descricao: t.description })
-                            : setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id })} style={{
+                            : setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id, pagoSemDinheiro: t.pago_sem_dinheiro ?? null })} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,
                             fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
                             border: '1px solid var(--border)', background: 'var(--surface)',
                             color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap',
                           }}>
-                            <RotateCcw size={12} aria-hidden /> Estornar
+                            <RotateCcw size={12} aria-hidden /> {t.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'}
                           </button>
                         )}
                         {/* A venda de produto toda a receber não tem o que estornar: se

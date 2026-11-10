@@ -101,7 +101,7 @@ test('o banco: as taxas da maquininha (R$ 38), as comissões lançadas (R$ 100) 
 test('Relatórios: o lucro desconta as taxas e as comissões, e o DRE as mostra (R$ 1.762, 83,9%)', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto('/admin/reports?tab=overview&period=month')
-    await expect.poll(async () => dinheiro(await card(p, 'Despesas').innerText()), { timeout: 15_000 }).toBe(300)
+    await expect.poll(async () => dinheiro(await card(p, 'Despesas pagas (caixa)').innerText()), { timeout: 15_000 }).toBe(300)
     await expect.poll(async () => dinheiro(await card(p, 'Lucro').innerText()), { timeout: 15_000 }).toBe(1762)
 
     await p.goto('/admin/reports?tab=financeiro&period=month')
@@ -119,11 +119,11 @@ test('o financeiro da unidade e o da rede: "Lucro Líquido" e "Resultado líquid
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro`)
     await expect.poll(async () => dinheiro(await card(p, 'Lucro Líquido').innerText()), { timeout: 15_000 }).toBe(1762)
-    await expect.poll(async () => dinheiro(await card(p, 'Despesas').innerText()), { timeout: 15_000 }).toBe(300)
+    await expect.poll(async () => dinheiro(await card(p, 'Despesas pagas (caixa)').innerText()), { timeout: 15_000 }).toBe(300)
 
     await p.goto('/admin/financeiro?period=month')
     await expect.poll(async () => dinheiro(await card(p, 'Resultado líquido').innerText()), { timeout: 15_000 }).toBe(1762)
-    await expect.poll(async () => dinheiro(await card(p, 'Despesas totais').innerText()), { timeout: 15_000 }).toBe(300)
+    await expect.poll(async () => dinheiro(await card(p, 'Despesas pagas (caixa)').innerText()), { timeout: 15_000 }).toBe(300)
   })
 })
 

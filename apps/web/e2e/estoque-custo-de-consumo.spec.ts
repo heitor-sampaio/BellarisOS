@@ -239,7 +239,7 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       const brl = (t: string) => Number((/R\$\s*(-?[\d.]+,\d{2})/.exec(t)?.[1] ?? 'NaN').replace(/\./g, '').replace(',', '.'))
 
       await p.goto('/admin/reports?period=month')
-      const despesas = p.getByText('Despesas', { exact: true }).first()
+      const despesas = p.getByText('Despesas pagas (caixa)', { exact: true }).first()
       await expect(despesas).toBeVisible()
       const cartao = despesas.locator('xpath=ancestor::div[contains(@class,"card")][1]')
       // Nenhuma despesa paga nesta rede: o cartão diz zero (o número é animado).

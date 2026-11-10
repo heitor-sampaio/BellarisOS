@@ -15,9 +15,12 @@ import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resultado'
 import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/financeiro/desconto-do-lancamento'
+import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
+import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
 
 /** Lançamento como o select pede. */
 type LancamentoLido = {
+  loyalty_discount?: number | string | null; fornecedor?: string | null; nota_fiscal?: string | null
   id: string; type: string; category: string | null; description: string; amount: number | string
   payment_method: string | null; cartao_vezes: number | null; is_paid: boolean; paid_at: string | null; due_date: string | null
   created_at: string; branch_id: string; notes: string | null
@@ -93,7 +96,7 @@ export default async function AdminFinanceiroPage({
   // A lista do período (ou de todo o em aberto, A38 da 8ª), lida em páginas.
   const daLista = (de: number, ate: number) => admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, cliente:clients!financial_transactions_client_id_fkey(name)')
+      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
       // vencimento. Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o
@@ -208,9 +211,17 @@ export default async function AdminFinanceiroPage({
 
   // Transações enriquecidas com nome da filial — e o desconto embaixo do valor (fin-01).
   const descontos = await descontosDosLancamentos(txs)
+  // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
+  const [semDinheiro, taxas] = await Promise.all([
+    pagosSemDinheiro(txs as unknown as LancamentoSemDinheiro[]),
+    getTaxaDosLancamentos(ctx.tenantId!, txs.map(t => t.id)),
+  ])
   const transactions = txs.map(t => ({
     ...t,
     desconto_texto: descontos[t.id] ?? null,
+    pago_sem_dinheiro: semDinheiro[t.id] ?? null,
+    taxa: taxas[t.id]?.taxa ?? null,
+    liquido: taxas[t.id]?.liquido ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
     vencida: !t.is_paid && situacaoDoVencimento(t.due_date) === 'VENCIDA',
     branchName: branchNameMap[t.branch_id] ?? '—',

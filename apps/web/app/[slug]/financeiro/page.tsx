@@ -13,6 +13,8 @@ import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
+import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
+import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
 import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
@@ -98,7 +100,7 @@ export default async function FinancialPage({
   function doPeriodo(de: number, ate: number) {
     return supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal')
     .eq('branch_id', unidadeId)
     .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
     // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
@@ -123,9 +125,17 @@ export default async function FinancialPage({
   })
   // O desconto embaixo do valor (fin-01).
   const descontos = await descontosDosLancamentos(lancamentos ?? [])
+  // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
+  const [semDinheiro, taxas] = await Promise.all([
+    pagosSemDinheiro((lancamentos ?? []) as LancamentoSemDinheiro[]),
+    getTaxaDosLancamentos(ctx.tenantId!, (lancamentos ?? []).map(t => t.id as string)),
+  ])
   const transactions = (lancamentos ?? []).map(({ client_id, ...t }) => ({
     ...t,
     desconto_texto: descontos[t.id as string] ?? null,
+    pago_sem_dinheiro: semDinheiro[t.id as string] ?? null,
+    taxa: taxas[t.id as string]?.taxa ?? null,
+    liquido: taxas[t.id as string]?.liquido ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
     vencida: !t.is_paid && situacaoDoVencimento(t.due_date as string | null) === 'VENCIDA',
     cliente: client_id && nomes.clientes[client_id] ? { name: nomes.clientes[client_id] } : null,

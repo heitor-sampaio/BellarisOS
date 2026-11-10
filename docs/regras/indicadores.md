@@ -519,7 +519,10 @@ KPI que não fazia nenhum dos dois.
   produtos vendidos" — o MESMO número do DRE (`metrics_resultado`); era
   "Custo do mês R$ 0" ao lado do gráfico "Custo R$ 445", e "Consumo de
   insumos R$ 380" ao lado do DRE de R$ 445. Prova:
-  `e2e/indicadores-custo-um-nome-so.spec.ts`. **E o cartão diz o que soma, e
+  `e2e/indicadores-custo-um-nome-so.spec.ts`. O cartão do caixa no Financeiro
+  (unidade e rede) e na Visão geral dos Relatórios é "Despesas pagas (caixa)",
+  com a compra de estoque e o pagamento das comissões, que o lucro não desconta
+  (A24 da 10ª simulação, 2026-11-10; `vendas-financeiro.md` §9.6). **E o cartão diz o que soma, e
   a tela diz o que fica fora** (A50 da 7ª simulação, 2026-11-05: "Insumos e
   produtos R$ 495" sem legenda, e a perda de R$ 380 fora do lucro parecia
   erro — é a regra F7): o cartão tem a dica `DEFINICOES.insumosEProdutos` (o
