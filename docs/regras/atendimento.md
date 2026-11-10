@@ -1976,7 +1976,12 @@ const procedures = await ler(
     ("Salvar mínimo") é o dela, mesmo 0 (`adminUpdateMinStock` grava por
     UPDATE depois). As 4 linhas de antes com mínimo 0 e produto com mínimo
     (2 da [sim] Violeta, 1 da [sim] Camélia, 1 da Bellaris Clinic) ficaram como
-    estão: nada diz se alguém zerou o mínimo de propósito. Prova:
+    estão: nada diz se alguém zerou o mínimo de propósito. **E a linha que nasce
+    não avisa falta que não houve**: as funções criam a linha como um marcador
+    de saldo 0 e gravam o saldo no UPDATE seguinte; com o mínimo herdado, o
+    marcador emitia "estoque.abaixo_do_minimo, saldo 0" na entrada de 10 com
+    mínimo 3. O gatilho (`on_stock_below_min`, migration `20261110005402`)
+    ignora o marcador e decide pelo saldo de verdade. Prova:
     `e2e/estoque-defeitos-da-11.spec.ts` ("D2").
   - **Salvar o mínimo tem nome e confirma** (A41 da 10ª): "Salvar mínimo" e
     "Mínimo salvo" (`[data-minimo-salvo]`) — era um ícone. Prova: ("A41").

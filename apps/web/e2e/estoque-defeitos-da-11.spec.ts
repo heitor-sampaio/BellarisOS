@@ -197,3 +197,23 @@ test('D5: "Desfazer ajuste" devolve o saldo e os lotes, e a perda que ele gerou 
   const deNovo = await db().rpc('estoque_desfazer_ajuste', { p_tenant: rede!.tenantId, p_movimento: m!.id, p_motivo: 'de novo', p_autor: 'e2e' })
   expect(deNovo.error?.message).toContain('já foi desfeito')
 })
+
+test('D2: a linha que nasce com o mínimo herdado não emite "abaixo do mínimo" com saldo 0; a entrada abaixo dele emite o saldo de verdade', async () => {
+  const b = db()
+  const { data: ps, error } = await b.from('products').insert([
+    { tenant_id: rede!.tenantId, name: `${PREFIXO} Acima ${marca}`, unit: 'un', min_stock: 3, uso: 'INSUMO', cost_price: 5 },
+    { tenant_id: rede!.tenantId, name: `${PREFIXO} Abaixo ${marca}`, unit: 'un', min_stock: 3, uso: 'INSUMO', cost_price: 5 },
+  ]).select('id, name')
+  expect(error).toBeNull()
+  const acima = ps!.find(p => p.name.includes('Acima'))!.id as string
+  const abaixo = ps!.find(p => p.name.includes('Abaixo'))!.id as string
+  const entrada = async (produto: string, qtd: number) => expect((await b.rpc('estoque_entrada', {
+    p_produto: produto, p_unidade: rede!.branchId, p_quantidade: qtd, p_custo: 5, p_observacao: null, p_lote: null, p_validade: null, p_autor: 'e2e',
+  })).error).toBeNull()
+  await entrada(acima, 10)
+  await entrada(abaixo, 2)
+  const eventos = async (produto: string) => ((await b.from('domain_events').select('dados').eq('tenant_id', rede!.tenantId)
+    .eq('nome', 'estoque.abaixo_do_minimo').eq('entidade_id', produto)).data ?? []).map(e => n((e.dados as { saldo: number }).saldo))
+  expect(await eventos(acima), '10 un com mínimo 3: nada a avisar').toEqual([])
+  expect(await eventos(abaixo), '2 un com mínimo 3: o saldo de verdade').toEqual([2])
+})
