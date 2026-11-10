@@ -3,7 +3,7 @@ import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
-import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura'
+import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { reactivateTeamMember } from '@/actions/team'
@@ -106,9 +106,9 @@ export default async function TeamPage({
   const canManage = ctx.permissions.team === 'MANAGE'
   // A comissão é do financeiro, não da equipe (ver a página da rede).
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
-  const [regras, procedimentos] = podeComissao
-    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId)])
-    : [null, []]
+  const [regras, procedimentos, comGeral] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId), procedimentosComComissaoGeral(ctx.tenantId!, branchId)])
+    : [null, [], []]
 
   return (
     <div>
@@ -220,7 +220,7 @@ export default async function TeamPage({
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                     {regras && (m.provides_services || regras.has(m.id)) && (
                       <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
-                        procedimentos={procedimentos} atende={!!m.provides_services} />
+                        procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services} />
                     )}
                     {canManage && (
                       <TeamMemberEdit

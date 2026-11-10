@@ -32,10 +32,12 @@ export const paraTexto = (n: number) => String(n).replace('.', ',')
 /** "1.250,50", "1.400" e "12.5" valem — a regra de todo campo de dinheiro (`parseDinheiro`, D3). */
 export const paraNumero = (t: string) => parseDinheiro(t)
 
-export function ComissaoDoMembro({ membro, regras, procedimentos, atende }: {
+export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende }: {
   membro:        { id: string; nome: string }
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
+  /** Os procedimentos com comissão GERAL: valem para todas e vencem a regra dela (A11 da 10ª). */
+  comGeral?:     { id: string; name: string; regra: Pick<RegraDeComissao, 'tipo' | 'valor'> }[]
   /** Atende clientes: sem padrão, o chip avisa. */
   atende:        boolean
 }) {
@@ -71,7 +73,7 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, atende }: {
             <button type="button" className="btn-ghost" onClick={fechar} style={{ padding: 6 }} aria-label="Fechar"><X size={16} /></button>
           </div>
           <div className="modal-body" style={{ padding: '20px 24px 24px' }}>
-            <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} onFim={fechar} />
+            <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} comGeral={comGeral} onFim={fechar} />
           </div>
         </div>
       </dialog>
@@ -79,10 +81,11 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, atende }: {
   )
 }
 
-function Formulario({ membroId, regras, procedimentos, onFim }: {
+function Formulario({ membroId, regras, procedimentos, comGeral, onFim }: {
   membroId:      string
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
+  comGeral:      { id: string; name: string; regra: Pick<RegraDeComissao, 'tipo' | 'valor'> }[]
   onFim:         () => void
 }) {
   const router = useRouter()
@@ -174,7 +177,17 @@ function Formulario({ membroId, regras, procedimentos, onFim }: {
             </div>
           </div>
         ))}
-        <p style={ajuda}>Procedimento com comissão geral (a mesma para todos) não aceita exceção: muda em Procedimentos.</p>
+        {/* A11 da 10ª: QUAIS procedimentos têm a geral — ela vence a regra desta profissional. */}
+        {comGeral.length > 0 ? (
+          <div data-gerais-que-vencem style={{ ...ajuda, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span>Com comissão geral — vale para todas e vence a regra acima; muda em Procedimentos:</span>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {comGeral.map(g => <li key={g.id}><strong style={{ color: 'var(--text)' }}>{g.name}</strong>: {rotuloDaRegra(g.regra)}</li>)}
+            </ul>
+          </div>
+        ) : (
+          <p style={ajuda}>Procedimento com comissão geral (a mesma para todos) não aceita exceção: muda em Procedimentos.</p>
+        )}
         {livres.length > 0 && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Plus size={15} style={{ color: 'var(--brand)', flexShrink: 0 }} aria-hidden />

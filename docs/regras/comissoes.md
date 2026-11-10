@@ -78,6 +78,14 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   conjunto inteiro do procedimento, a Equipe não o oferece como exceção e
   `comissao_regras_definir` recusa. Muda quem tem `financial: MANAGE` e é da
   rede. Prova: `e2e/comissoes-por-procedimento.spec.ts`.
+  - **A comissão da profissional, na Equipe, diz QUAIS procedimentos têm a
+    geral** (A11 da 10ª simulação, 2026-11-10; princípio 3: a Camila tinha
+    35% e a janela não dizia que o Microagulhamento pagava 40% "para todos"):
+    "Com comissão geral — vale para todas e vence a regra acima; muda em
+    Procedimentos: Microagulhamento: 40%" (`[data-gerais-que-vencem]`,
+    `procedimentosComComissaoGeral`). A regra não mudou. O "aplicar a todas que
+    estão sem comissão" do relatório ficou de fora (ver o relatório da F50).
+    Prova: `e2e/configuracoes-atritos-da-10.spec.ts` ("A11").
   - **O valor de uma Admin da rede no procedimento só outra Admin muda**
     (achado da compilação da 5ª simulação, 2026-11-01; a regra é a do
     CLAUDE.md §11, "somente admin pode alterar admin"): o procedimento grava o

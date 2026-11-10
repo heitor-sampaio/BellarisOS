@@ -78,6 +78,21 @@ export async function procedimentosParaComissao(tenantId: string, branchId: stri
   return (linhas ?? []).filter(p => !gerais.has(p.id as string)).map(p => ({ id: p.id as string, name: p.name as string }))
 }
 
+/**
+ * Os procedimentos com comissão GERAL — a que vale para todas e vence a regra
+ * da profissional (`comissoes.md`). O modal da comissão de cada uma os lista,
+ * com a regra (A11 da 10ª simulação: a Camila tinha 35% e não sabia que o
+ * Microagulhamento pagava 40% "para todos").
+ */
+export async function procedimentosComComissaoGeral(tenantId: string, branchId: string | null): Promise<{ id: string; name: string; regra: Pick<RegraDeComissao, 'tipo' | 'valor'> }[]> {
+  let q = createAdminClient().from('procedures').select('id, name')
+    .eq('tenant_id', tenantId).eq('is_active', true)
+  if (branchId) q = q.or(`branch_id.is.null,branch_id.eq.${branchId}`)
+  const [linhas, gerais] = await Promise.all([ler(q.order('name').order('id'), 'listar os procedimentos'), comissoesGeraisDaRede(tenantId)])
+  return (linhas ?? []).filter(p => gerais.has(p.id as string))
+    .map(p => ({ id: p.id as string, name: p.name as string, regra: gerais.get(p.id as string)! }))
+}
+
 /** A comissão GERAL de cada procedimento (a mesma para todos), por procedimento. */
 export async function comissoesGeraisDaRede(tenantId: string, procedimentos?: (string | null)[]): Promise<ComissoesGerais> {
   let q = createAdminClient().from('commission_rules').select('procedure_id, type, value')

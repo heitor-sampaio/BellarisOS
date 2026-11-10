@@ -3,7 +3,7 @@ import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
-import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura'
+import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { TeamFilters } from '@/components/admin/team-filters'
@@ -88,9 +88,9 @@ export default async function AdminTeamPage({
   // A comissão de cada um é do financeiro, não da equipe: quem gere a equipe
   // sem `financial: MANAGE` não vê nem muda quanto cada um ganha.
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
-  const [regras, procedimentos] = podeComissao
-    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId)])
-    : [null, []]
+  const [regras, procedimentos, comGeral] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId)])
+    : [null, [], []]
 
   // A clínica de uma unidade não fala "rede" (F8): o cargo "Admin da rede" é "Admin".
   const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
@@ -286,7 +286,7 @@ export default async function AdminTeamPage({
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                       {regras && (m.provides_services || regras.has(m.id)) && podeMexerEm(m) && (
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
-                          procedimentos={procedimentos} atende={!!m.provides_services} />
+                          procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services} />
                       )}
                       {canManage && podeMexerEm(m) && <TeamMemberEdit
                         member={{
