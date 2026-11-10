@@ -64,7 +64,7 @@ export default async function TeamPage({
   const [todosOsMembros, tenantRoles, daRedeQueAtendem, unidadesDaRede] = await Promise.all([
     ler(supabase
       .from('users')
-      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario')
+      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, sem_comissao_de_proposito')
       .eq('branch_id', branchId)
       .order('name'), 'carregar a equipe'),
     ler(supabase
@@ -220,7 +220,8 @@ export default async function TeamPage({
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                     {regras && (m.provides_services || regras.has(m.id)) && (
                       <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
-                        procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services} />
+                        procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
+                        semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito} />
                     )}
                     {canManage && (
                       <TeamMemberEdit

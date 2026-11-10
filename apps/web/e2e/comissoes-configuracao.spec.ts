@@ -128,7 +128,7 @@ test.describe.serial('comissões — configuração e regras', () => {
     // Com padrão, o aviso de "sem comissão" some.
     await comSessao(browser, gestor!, async p => {
       await p.goto('/admin/settings?tab=comissoes')
-      await expect(p.locator('[aria-label="Comissão de cada profissional"]')).toContainText('Todos os profissionais que atendem têm comissão configurada.')
+      await expect(p.locator('[aria-label="Comissão de cada profissional"]')).toContainText('Todos os profissionais que atendem têm comissão configurada')
     })
   })
 

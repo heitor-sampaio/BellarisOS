@@ -67,7 +67,7 @@ export default async function AdminTeamPage({
     ler((() => {
       let query = supabase
         .from('users')
-        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, branches(name)')
+        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, sem_comissao_de_proposito, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
       if (branch) query = query.eq('branch_id', branch)
@@ -286,7 +286,8 @@ export default async function AdminTeamPage({
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                       {regras && (m.provides_services || regras.has(m.id)) && podeMexerEm(m) && (
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
-                          procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services} />
+                          procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
+                          semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito} />
                       )}
                       {canManage && podeMexerEm(m) && <TeamMemberEdit
                         member={{

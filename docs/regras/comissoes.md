@@ -336,6 +336,20 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   venda do "vale" não pergunta "Quem vendeu" e nenhuma linha nasce. Quem
   atende depois, pago com o crédito, recebe a comissão de EXECUÇÃO do
   atendimento, como sempre. Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
+- **"Sem comissão, de propósito"** (A14 da 11ª simulação, 2026-11-10;
+  princípio 1, a clínica decide): o aviso "profissionais sem comissão" de
+  Configurações → Comissões e a pílula "Sem comissão" da Equipe contavam a
+  dona que atende e fica sem comissão de propósito. Na comissão da pessoa, com
+  "Sem comissão" escolhido, a caixa "Sem comissão, de propósito" grava
+  `users.sem_comissao_de_proposito` (migration `20261110005502`, só o servidor,
+  `salvarRegrasDoProfissional`): o aviso não a conta (`profissionaisSemComissao`)
+  e a pílula diz "Sem comissão (de propósito)", sem o alerta. Só a marca: a
+  conta não muda, e gravar uma regra padrão a desfaz. Prova:
+  `e2e/configuracoes-atritos-da-11.spec.ts` ("A14").
+- **A comissão de venda POR PESSOA não existe** (A17 da 11ª: os dois times
+  quiseram um percentual de venda por vendedora; hoje é o "venda de plano (%)"
+  da clínica e o "De venda" de cada pacote, iguais para todas). É regra nova:
+  levada ao Heitor, sem implementar.
 - **Ao criar quem atende** (2026-10-27, A10), o formulário de novo membro
   oferece "Comissão padrão (%)": só o percentual padrão (as exceções seguem no
   chip), só com `financial: MANAGE` e comissões no plano — `createTeamMember`

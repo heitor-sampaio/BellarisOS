@@ -638,6 +638,14 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             )
           })}
         </div>
+        {/* A13 da 11ª (princípio 3): R$ 7,95/U era o último custo, e o lote que
+            sai primeiro custa R$ 7,80 — a tela diz de onde vem o número. */}
+        {insumos.length > 0 && (
+          <p data-custo-do-insumo-e-o-ultimo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+            O custo de cada insumo é o último custo de compra, por unidade de consumo: é ele que a margem do catálogo usa.
+            No atendimento, a baixa sai ao custo do lote que é usado (o que vence primeiro), que pode ser diferente.
+          </p>
+        )}
       </div>
 
       {/* -- Calculadora de custos -- */}

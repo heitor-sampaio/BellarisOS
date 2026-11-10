@@ -19,3 +19,11 @@ describe('a medida "U"', () => {
     for (const m of ['UI', 'ml', 'mg']) expect(INJECTABLE_UNITS).toContain(m)
   })
 })
+
+// A12 da 11ª simulação (2026-11-10): o ácido hialurônico vem em SERINGA, e o
+// cadastro não tinha a embalagem — virou "un", com "(seringa)" no nome.
+describe('A12 da 11ª: a embalagem "seringa"', () => {
+  it('está entre as medidas do cadastro do produto', () => {
+    expect(MEDIDAS_DO_PRODUTO).toContain('seringa')
+  })
+})

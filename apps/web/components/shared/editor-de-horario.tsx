@@ -17,6 +17,10 @@ const DIAS: { chave: string; nome: string }[] = [
   { chave: '4', nome: 'Quinta' }, { chave: '5', nome: 'Sexta' }, { chave: '6', nome: 'Sábado' }, { chave: '0', nome: 'Domingo' },
 ]
 
+/** O dia inteiro: da meia-noite à meia-noite (o `24:00` que `normalizarHorario` aceita). */
+const DIA_INTEIRO: Intervalo = { de: '00:00', ate: '24:00' }
+const diaInteiro = (lista: Intervalo[]) => lista.length === 1 && lista[0]!.de === '00:00' && lista[0]!.ate === '24:00'
+
 const copiar = (h: Horario): Record<string, Intervalo[]> =>
   Object.fromEntries(DIAS.map(d => [d.chave, (h.dias[d.chave] ?? []).map(i => ({ ...i }))]))
 
@@ -55,14 +59,22 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
         </label>
       )}
 
-      {/* A2 da 9ª: a clínica 24 h preenchia 14 campos — ajusta a segunda e repete (o domingo também). */}
+      {/* A2 da 9ª: a clínica 24 h preenchia 14 campos — ajusta a segunda e repete (o domingo também).
+          A11 da 11ª: e o atalho direto, "24 horas, todos os dias" (00:00 à meia-noite). */}
       {!segue && (
-        <button type="button" className="btn-ghost" data-repetir-horario
-          style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
-          disabled={!(dias['1'] ?? []).length}
-          onClick={() => { const seg = dias['1'] ?? []; setMexeu(true); setDias(Object.fromEntries(DIAS.map(d => [d.chave, seg.map(i => ({ ...i }))]))) }}>
-          Repetir o horário de segunda em todos os dias (domingo incluído)
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <button type="button" className="btn-ghost" data-repetir-horario
+            style={{ fontSize: 'var(--text-xs-sz)' }}
+            disabled={!(dias['1'] ?? []).length}
+            onClick={() => { const seg = dias['1'] ?? []; setMexeu(true); setDias(Object.fromEntries(DIAS.map(d => [d.chave, seg.map(i => ({ ...i }))]))) }}>
+            Repetir o horário de segunda em todos os dias (domingo incluído)
+          </button>
+          <button type="button" className="btn-ghost" data-aberta-24-horas
+            style={{ fontSize: 'var(--text-xs-sz)' }}
+            onClick={() => { setMexeu(true); setDias(Object.fromEntries(DIAS.map(d => [d.chave, [{ ...DIA_INTEIRO }]]))) }}>
+            Aberta 24 horas, todos os dias
+          </button>
+        </div>
       )}
 
       {!segue && DIAS.map(({ chave, nome: nomeDoDia }) => {
@@ -76,7 +88,18 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
               {nomeDoDia}
             </label>
             {!aberto && <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Fechado</span>}
-            {lista.map((i, n) => (
+            {/* O dia inteiro (00:00 à meia-noite): o campo de hora não mostra "24:00", então a linha diz. */}
+            {diaInteiro(lista) && (
+              <span data-dia-inteiro style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+                24 horas
+                <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }}
+                  aria-label={`Escolher o horário de ${nomeDoDia}`}
+                  onClick={() => mudar(chave, [{ de: '08:00', ate: '20:00' }])}>
+                  Escolher o horário
+                </button>
+              </span>
+            )}
+            {!diaInteiro(lista) && lista.map((i, n) => (
               <span key={n} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {n > 0 && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>e</span>}
                 <input type="time" className="field" style={{ width: 110 }} value={i.de} aria-label={`${nomeDoDia}, abre às`}
@@ -102,7 +125,7 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
                 Sem pausa
               </button>
             )}
-            {aberto && lista.length === 1 && (
+            {aberto && lista.length === 1 && !diaInteiro(lista) && (
               <button type="button" className="btn-ghost" style={{ gap: 4, fontSize: 'var(--text-xs-sz)' }}
                 onClick={() => mudar(chave, [{ de: lista[0]!.de, ate: '12:00' }, { de: '13:00', ate: lista[0]!.ate }])}>
                 <Plus size={12} /> Pausa

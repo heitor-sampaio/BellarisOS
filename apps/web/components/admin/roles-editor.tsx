@@ -13,7 +13,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -833,7 +833,7 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
           comissões — "Minhas comissões" é o Financeiro em Ver, só os próprios
           (comissoes.md). O resumo diz a regra (princípio 3); a clínica decide
           no cargo (princípio 1). */}
-      {levels.financial === 'NONE' && (
+      {avisaSemMinhasComissoes(levels) && (
         <p data-sem-minhas-comissoes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Não vê as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira “Minhas comissões”.
         </p>

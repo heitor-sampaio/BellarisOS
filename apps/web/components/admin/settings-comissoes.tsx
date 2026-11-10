@@ -84,7 +84,7 @@ export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, po
             Ninguém da equipe está marcado como “atende clientes”. Marque quem atende na Equipe para configurar a comissão.
           </p>
         ) : (
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Todos os profissionais que atendem têm comissão configurada.</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Todos os profissionais que atendem têm comissão configurada (ou estão marcados “sem comissão, de propósito”, na Equipe).</p>
         )}
         <Link href="/admin/team" className="btn-secondary" style={{ alignSelf: 'flex-start' }}>Abrir a equipe</Link>
       </div>

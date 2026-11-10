@@ -188,6 +188,13 @@ um muro que não depende de cada trava do código.
   unidade"). O `id="br-phone"` em dobro não se reproduziu: o passo 1 usa
   `net-phone`, e o setup tem um campo só. Prova: `e2e/setup-atritos-da-9.spec.ts`,
   `tests/endereco-com-numero.test.ts`.
+- **"Aberta 24 horas, todos os dias"** (A11 da 11ª simulação, 2026-11-10: a
+  Renata abriu a Violeta 24 h com 7 pares de hora e o domingo à mão; o
+  "Repetir" existia e não foi notado): no editor de horário (o setup, Unidades
+  e a Equipe), ao lado do "Repetir", o atalho grava os 7 dias de 00:00 a 24:00
+  (`[data-aberta-24-horas]`), e o dia inteiro aparece como "24 horas" com
+  "Escolher o horário" (`[data-dia-inteiro]`) — o campo de hora não mostra
+  24:00. Prova: `e2e/setup-atritos-da-11.spec.ts`.
 - **O endereço que se dá à cliente é o do APP DA CLIENTE, inteiro** (A4 da
   6ª simulação, 2026-11-04; princípio 3): Configurações → Geral mostrava como
   "Endereço do portal" o identificador da rede (`/{tenants.slug}`), que não
@@ -660,6 +667,13 @@ um muro que não depende de cada trava do código.
   mesmo `created_at`), e o nome desempata. Prova:
   `tests/permissoes-copia-configuracoes.test.ts`,
   `e2e/configuracoes-atritos-da-10.spec.ts` ("A9").
+  **E o resumo diz o que o módulo abre, só a quem cabe** (A15 e A16 da 11ª,
+  2026-11-10; princípio 3): a linha de Recebimentos em Gerenciar diz que vê
+  o "Fechamento do dia" (a Comercial ganhou o item no menu sem a tela dizer), e
+  o "Não vê as próprias comissões…" (A48 da 7ª) só aparece a quem PODE ter
+  comissão — atende (Agenda, Prontuário) ou vende (CRM, Recebimentos) — sem o
+  Financeiro (`avisaSemMinhasComissoes`, `lib/permissions-copy.ts`): a
+  Estoquista não o lia mais. Prova: `tests/resumo-do-cargo-da-11.test.ts`.
 - **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
   simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
   descreve): sem o módulo, a gerente fixa não chegava à aba Unidade até a dona

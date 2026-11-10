@@ -32,7 +32,7 @@ export const paraTexto = (n: number) => String(n).replace('.', ',')
 /** "1.250,50", "1.400" e "12.5" valem — a regra de todo campo de dinheiro (`parseDinheiro`, D3). */
 export const paraNumero = (t: string) => parseDinheiro(t)
 
-export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende }: {
+export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende, semDeProposito = false }: {
   membro:        { id: string; nome: string }
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
@@ -40,6 +40,8 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   comGeral?:     { id: string; name: string; regra: Pick<RegraDeComissao, 'tipo' | 'valor'> }[]
   /** Atende clientes: sem padrão, o chip avisa. */
   atende:        boolean
+  /** A14 da 11ª: a clínica marcou "sem comissão, de propósito" — o chip não avisa. */
+  semDeProposito?: boolean
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -48,14 +50,14 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
 
   const padrao = regras.find(r => r.procedure_id === null) ?? null
   const excecoes = regras.filter(r => r.procedure_id !== null).length
-  const semRegra = atende && !padrao
+  const semRegra = atende && !padrao && !semDeProposito
 
   return (
     <>
       <button type="button" onClick={abrir} title={`Comissão de ${membro.nome}`} aria-label={`Comissão de ${membro.nome}`}
         className={semRegra ? 'chip chip-warning' : 'chip chip-muted'} style={{ cursor: 'pointer' }}
         data-comissao={membro.id}>
-        {padrao ? `Comissão ${rotuloDaRegra(padrao)}` : 'Sem comissão'}
+        {padrao ? `Comissão ${rotuloDaRegra(padrao)}` : semDeProposito ? 'Sem comissão (de propósito)' : 'Sem comissão'}
         {excecoes > 0 && ` · ${excecoes} ${excecoes === 1 ? 'exceção' : 'exceções'}`}
       </button>
 
@@ -73,7 +75,8 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
             <button type="button" className="btn-ghost" onClick={fechar} style={{ padding: 6 }} aria-label="Fechar"><X size={16} /></button>
           </div>
           <div className="modal-body" style={{ padding: '20px 24px 24px' }}>
-            <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} comGeral={comGeral} onFim={fechar} />
+            <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} comGeral={comGeral} onFim={fechar}
+              semDeProposito={semDeProposito} />
           </div>
         </div>
       </dialog>
@@ -81,7 +84,8 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   )
 }
 
-function Formulario({ membroId, regras, procedimentos, comGeral, onFim }: {
+function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDeProposito }: {
+  semDeProposito: boolean
   membroId:      string
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
@@ -95,6 +99,7 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim }: {
   const [linhas, setLinhas] = useState<Linha[]>(() => regras.filter(r => r.procedure_id !== null)
     .map(r => ({ procedure_id: r.procedure_id!, tipo: r.tipo, valor: paraTexto(r.valor) })))
   const [erro, setErro] = useState<string | null>(null)
+  const [deProposito, setDeProposito] = useState(semDeProposito)
   const [salvando, iniciar] = useTransition()
 
   const nomeDe = new Map(procedimentos.map(p => [p.id, p.name]))
@@ -125,7 +130,7 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim }: {
       excecoes.push({ procedure_id: l.procedure_id, tipo: l.tipo, valor: v })
     }
     iniciar(async () => {
-      const r = await salvarRegrasDoProfissional(membroId, { padrao: regraPadrao, excecoes })
+      const r = await salvarRegrasDoProfissional(membroId, { padrao: regraPadrao, excecoes, semComissaoDeProposito: !regraPadrao && deProposito })
       if (r.error) { setErro(r.error); return }
       onFim()
       router.refresh()
@@ -149,6 +154,13 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim }: {
               ? 'Sobre o valor de cada procedimento executado, conforme Configurações → Comissões.'
               : 'Um valor fixo por procedimento executado.'}
         </p>
+        {/* A14 da 11ª (princípio 1): a dona que atende fica sem comissão de propósito — a clínica diz, e o aviso a deixa. */}
+        {tipo === 'NENHUMA' && (
+          <label data-sem-comissao-de-proposito style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={deProposito} onChange={e => setDeProposito(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>Sem comissão, de propósito <span style={ajuda}>(como a dona que atende): o aviso de “sem comissão” deixa de contar esta pessoa.</span></span>
+          </label>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>

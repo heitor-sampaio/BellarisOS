@@ -115,7 +115,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   cashier: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Recebe o pagamento do atendimento e do plano de tratamento, na recepção. Não lança despesa, não estorna e não vê o financeiro da unidade — isso é Financeiro.',
+    // A15 da 11ª: Recebimentos abre o "Fechamento do dia" no menu — a linha diz.
+    MANAGE: 'Recebe o pagamento do atendimento e do plano de tratamento, na recepção, e vê o Fechamento do dia (o que entrou, por forma de pagamento). Não lança despesa, não estorna e não vê o financeiro da unidade — isso é Financeiro.',
   },
   crm: {
     NONE:   SEM_ACESSO,
@@ -212,4 +213,15 @@ export const SO_NA_REDE_NOTE: Partial<Record<AppModule, string>> = {
 export const SENSITIVE_NOTE: Partial<Record<AppModule, string>> = {
   roles: 'Quem tem isto pode conceder a si mesmo qualquer outro acesso.',
   team:  'Permite atribuir a alguém um cargo mais poderoso que o próprio.',
+}
+
+/**
+ * "Não vê as próprias comissões…" no resumo do cargo (A48 da 7ª) só para quem
+ * PODE ter comissão — quem atende (Agenda, Prontuário) ou vende (CRM,
+ * Recebimentos) — e está sem o Financeiro. A16 da 11ª simulação: a Estoquista
+ * (só o Estoque) lia o aviso sem nem atender. Princípio 3.
+ */
+export function avisaSemMinhasComissoes(niveis: Partial<Record<'agenda' | 'medical_records' | 'crm' | 'cashier' | 'financial', string>>): boolean {
+  if ((niveis.financial ?? 'NONE') !== 'NONE') return false
+  return (['agenda', 'medical_records', 'crm', 'cashier'] as const).some(m => (niveis[m] ?? 'NONE') !== 'NONE')
 }

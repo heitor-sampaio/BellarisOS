@@ -1083,6 +1083,14 @@
     o selo "Sem insumo ligado" (`[data-chip-sem-insumo]`). Só aviso: o que não
     usa insumo (a avaliação) fica como está. Prova:
     `e2e/configuracoes-atritos-da-10.spec.ts` ("A6").
+- **A calculadora do procedimento diz que o custo é o ÚLTIMO** (A13 da 11ª,
+  2026-11-10; princípio 3: R$ 7,95/U era o último custo, e o lote que sai
+  primeiro custava R$ 7,80): embaixo dos insumos, "O custo de cada insumo é o
+  último custo de compra… No atendimento, a baixa sai ao custo do lote que é
+  usado…" (`[data-custo-do-insumo-e-o-ultimo]`). A regra (a margem do catálogo
+  pelo custo atual, F49 D2) não mudou. E a embalagem tem **"seringa"** (A12: o
+  ácido hialurônico virou "un", com "(seringa)" no nome; `MEDIDAS_DO_PRODUTO`).
+  Prova: `e2e/configuracoes-atritos-da-11.spec.ts`, `tests/estoque-medidas.test.ts`.
 - **No Novo produto, cada rótulo é ligado ao campo** (A8 da 10ª: soltos e
   centralizados — `design.md`, "Formulários"; o `Label` do
   `stock-product-modal.tsx` recebe o `htmlFor`). Prova: o mesmo spec ("A8").

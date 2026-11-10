@@ -191,6 +191,8 @@ export const EntradaDasRegras = z.object({
   padrao:   Regra.nullable(),
   excecoes: z.array(Regra.and(z.object({ procedure_id: z.string().uuid() }))).max(200)
     .refine(l => new Set(l.map(e => e.procedure_id)).size === l.length, 'Há duas exceções para o mesmo procedimento.'),
+  /** A14 da 11ª: sem padrão, "de propósito" (a dona que atende): o aviso não a conta. */
+  semComissaoDeProposito: z.boolean().optional(),
 })
 
 // ─── A comissão do procedimento (2026-10-15) ────────────────────────────────
