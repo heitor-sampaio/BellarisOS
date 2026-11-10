@@ -267,6 +267,11 @@ export interface LancamentoDoExtrato {
   baseComPontos: 'PRECO' | 'VALOR_PAGO' | null
   /** O plano da linha, quando é a VENDA do plano (decisão 4 da 7ª). */
   plano: string | null
+  /**
+   * A base EFETIVA que a conta usou (base × regra = previsto) e o que saiu do
+   * preço até ela — D3 da 10ª: o extrato mostrava o preço onde dizia base.
+   */
+  base: number | null; baseDesconto: number; baseTaxa: number; baseInsumos: number; baseFator: number
 }
 
 export interface Fechamento {
@@ -300,7 +305,7 @@ export async function resumoDasComissoes(r: Recorte): Promise<ResumoDoProfission
 export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtrato[]> {
   const admin = createAdminClient()
   const linhas = await lerTodas<Record<string, unknown>>(
-    (de, ate) => admin.rpc('comissoes_extrato_linhas', argsDoRecorte(r))
+    (de, ate) => admin.rpc('comissoes_extrato_com_base', argsDoRecorte(r))
       .order('released_at', { ascending: false }).order('id').range(de, ate),
     'ler o extrato das comissões',
   )
@@ -317,6 +322,9 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     previsto: l.previsto == null ? null : Number(l.previsto),
     baseComPontos: l.base_com_pontos === 'VALOR_PAGO' ? 'VALOR_PAGO' : l.base_com_pontos === 'PRECO' ? 'PRECO' : null,
     plano: (l.plano as string | null) ?? null,
+    base: l.base == null ? null : Number(l.base),
+    baseDesconto: Number(l.base_desconto ?? 0), baseTaxa: Number(l.base_taxa ?? 0), baseInsumos: Number(l.base_insumos ?? 0),
+    baseFator: l.base_fator == null ? 1 : Number(l.base_fator),
   }))
 }
 

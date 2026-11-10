@@ -8,6 +8,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { rotuloDaBase } from '@/lib/comissoes/config'
+import { textoDaBase } from '@/lib/comissoes/base-efetiva'
 
 /**
  * Financeiro → Comissões (os dois portais). Por profissional e unidade: o que
@@ -48,6 +49,7 @@ const METODOS = [
 const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
 /** "base cheia (sem taxa nem insumo descontados; os pontos…)" ou o que saiu dela (J-46, A10). Os pontos só saem da base do avulso: no pacote, no plano e nas vendas eles são forma de pagamento (`comissao_conta`). */
 const base = (l: LancamentoDoExtrato) => rotuloDaBase({ desconta_taxa: l.descontaTaxa, desconta_insumos: l.descontaInsumos, base_com_pontos: l.origem === 'AVULSO' ? l.baseComPontos : 'PRECO' })
+const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', ',')
 const regra = (l: LancamentoDoExtrato) => l.regraTipo == null ? '—'
   : l.regraTipo === 'PERCENTAGE' ? `${String(l.regraValor).replace('.', ',')}%` : `${formatBRL(l.regraValor ?? 0)} fixo`
 
@@ -83,11 +85,14 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     const unidade = new Map(p.resumo.map(r => [r.branchId, r.branchName]))
     const campo = (v: string) => /[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
     const linhas = [
-      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação'],
+      // D3 da 10ª: "Base" é a EFETIVA (a que a conta usou), com o preço e o que saiu dele ao lado.
+      ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação'],
       ...p.extrato.map(l => [
         data(l.releasedAt), nome.get(l.professionalId) ?? '', unidade.get(l.branchId) ?? '', data(l.scheduledAt),
         l.cliente ?? '', l.procedimento ?? '', origemDe(l),
-        l.preco == null ? '' : l.preco.toFixed(2).replace('.', ','), l.preco == null ? '' : base(l), regra(l), TIPO[l.kind], l.motivo ?? '',
+        reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto), l.preco == null ? '' : reais(l.baseTaxa), l.preco == null ? '' : reais(l.baseInsumos),
+        l.preco == null || l.baseFator >= 1 ? '' : `${String(Math.round(l.baseFator * 10000) / 100).replace('.', ',')}%`,
+        reais(l.base ?? l.preco), l.preco == null ? '' : base(l), regra(l), TIPO[l.kind], l.motivo ?? '',
         l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), SITUACAO[l.status],
       ]),
     ]
@@ -272,7 +277,8 @@ function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {data(l.releasedAt)} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
               {l.origem ? ` · ${origemDe(l)}` : ''}
-              {l.preco != null ? ` · ${base(l)}: ${formatBRL(l.preco)} · ${regra(l)}` : ''}
+              {/* D3 da 10ª: a base EFETIVA (a que a conta usou) e o caminho do preço até ela. */}
+              {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regra(l)}` : ''}
             </p>
           </div>
           <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando' : SITUACAO[l.status]}</span>

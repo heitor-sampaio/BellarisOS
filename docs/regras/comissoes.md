@@ -118,6 +118,22 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   no pacote, no plano e nas vendas os pontos são forma de pagamento e nunca
   saem da base (`comissao_conta`). Prova: `tests/comissoes-config.test.ts`,
   `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-pacote.spec.ts`.
+  **O valor ao lado da frase é a base EFETIVA** (D3 da 10ª simulação,
+  2026-11-10; princípio 3): o extrato dizia "base sem a taxa da maquininha:
+  R$ 420,00 · 40%" ao lado de R$ 165,48 (40% de 420 daria 168), e o CSV punha
+  o preço na coluna Base — a venda do plano cancelado com Base 1.700 e
+  Previsto 35. A base que a conta usa sai do banco: `private.comissao_conta_detalhe`
+  (o corpo da conta, que `comissao_conta` passou a ler — a conta continua num
+  lugar só; migration `20261110004901`) devolve a base (base × regra =
+  previsto), o desconto, a taxa e os insumos em reais e a proporção do que
+  ficou (pacote/plano cancelado, venda devolvida em parte), e o extrato é
+  `comissoes_extrato_com_base` (o `comissoes_extrato_linhas` de antes ficou sem
+  chamador no app). A tela diz "base sem a taxa da maquininha: R$ 413,70
+  (R$ 420,00 − R$ 6,30 da taxa) · 40%" (`textoDaBase`,
+  `lib/comissoes/base-efetiva.ts`), e o CSV tem Preço, Desconto, Taxa da
+  maquininha, Insumos, Proporção que ficou e Base. No valor fixo, a base é o
+  preço sem os pontos e o voucher. Prova: `e2e/comissoes-atritos-da-10.spec.ts`,
+  `tests/comissoes-base-efetiva.test.ts`.
   **Taxas da maquininha** em `payment_fees`
   (Pix, débito, crédito 1–12x; sem teto desde a F16-3 — acima de 100% em
   `taxa_pct_sem_teto`, e a comissão sobre o líquido nunca fica negativa),
@@ -432,6 +448,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 
 ```
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
+❌ Mostrar o preço da linha (commission_lines.preco) como "base", ou refazer a base no TypeScript — é a de comissao_conta_detalhe (comissoes_extrato_com_base — D3 da 10ª); mudou a conta, muda nela (comissao_conta lê dela)
 ❌ Liberar comissão sobre o que a cliente ainda deve à clínica (crediário, avulso sem pagamento) — só com o pagamento integral; o cartão em N vezes JÁ é pago
 ❌ Criar linha de comissão em outro modo que não INTEGRAL (o gatilho trg_comissao_linha_integral garante), ou reescrever o modo de uma linha antiga
 ❌ Decidir a regra de um procedimento sem as gerais (regraAplicavel sem o terceiro argumento ignora "a mesma para todos")
