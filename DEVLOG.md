@@ -10012,6 +10012,13 @@ As outras cinco foram o banco ou o Auth parados, conferidos no `edge_logs`/`post
 
 As paradas de 03:10 e de 03:25 começam logo depois de um "checkpoint starting" (escrita de 200–270 s, de 5 em 5 min). **Para o Heitor:** subir a instância segue sendo a correção direta.
 
+**F48 FEITA (10/11, 06c71e04…0f90de92) — as 8 falhas da 5ª completa 42753034265 (1.790 passaram):** nenhum defeito do sistema, nenhuma migration, e a F46 não regrediu. Três eram testes frágeis, corrigidos no teste:
+- A comissão do crediário (H4): o teste lia `commission_lines` no meio do RPC que a cria depois do ACCEPTED. Agora espera o `vendido_por`.
+- O A18: comparava o relógio do banco com o do runner por milissegundos. A oportunidade agora nasce um minuto antes.
+- O login pela tela: até 45 s para chegar ao destino.
+
+As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: os pedidos caíram de ~300 para 1–14 a cada 5 s, com respostas de 3 a 43 s, e o PostgREST registrou "Thread killed by timeout manager". Elas derrubaram o contrato que cita o pagamento, o "Confirmar pagamento", o "Cancelar pacote", o "Unificar" do Copilot (a action nunca respondeu; não é a F46) e a "Condição salva" (a limpeza do `afterAll` chegou antes do RPC atrasado). É a terceira completa seguida em que o código está limpo e a instância cai. **Para o Heitor:** a capacidade da instância.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
