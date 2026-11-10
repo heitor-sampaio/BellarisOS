@@ -306,6 +306,7 @@ export const ISOLADOS = [
   'vendas-credito-bonus.spec.ts',
   'comissoes-atritos-da-11.spec.ts',
   'vendas-atritos-da-11.spec.ts',
+  'relatorios-atritos-da-11.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',

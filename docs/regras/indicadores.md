@@ -674,7 +674,11 @@ acompanha o recorte ("2 ativos na Zona Sul" — A24 da 5ª, 2026-11-02;
 unidade, o mesmo critério do filtro; prova: `e2e/clientes-contador-da-unidade.spec.ts`).
 Os **Relatórios** também (A57 da 5ª, 2026-11-02): `?unidade=<id|endereço>`,
 com `?branch=<id>` como apelido, e o seletor de unidade grava `?unidade=`
-(prova: `e2e/relatorios-unidade-na-url.spec.ts`).
+(prova: `e2e/relatorios-unidade-na-url.spec.ts`). **E o endereço em português
+leva a eles** (A47 da 11ª, 2026-11-10: `/admin/relatorios` dava 404):
+`/admin/relatorios` e `/[slug]/relatorios` são o redirect de uma linha para
+`…/reports`, com a URL que veio (CLAUDE.md §6, "caminho antigo vira
+redirect"). Prova: `e2e/relatorios-atritos-da-11.spec.ts`.
 Prova: `e2e/indicadores-unidade-na-url.spec.ts`.
 Recortado a uma unidade, o total de clientes continua o da CLÍNICA (H5: "a
 cliente é da clínica") — e a tela diz "N clientes da clínica" no subtítulo e
