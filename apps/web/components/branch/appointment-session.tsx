@@ -63,6 +63,7 @@ import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal
 import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
+import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -103,8 +104,10 @@ export interface SessionClient {
   name:      string
   phone:     string | null
   birthDate: string | null
-  /** O cadastro: "cliente desde". */
+  /** O cadastro no sistema. */
   createdAt: string | null
+  /** "Cliente desde" da importação (`clients.cliente_desde`, um dia) — vale antes do cadastro (D6 da 10ª). */
+  clienteDesde?: string | null
   tags:      string[]
   notes:     string | null
   document:  string | null
@@ -1416,6 +1419,13 @@ export function AppointmentSession({
   const status    = appointment.status
   const overline  = STATUS_OVERLINE[status] ?? STATUS_OVERLINE['SCHEDULED']!
   const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status)
+  // As ações principais do topo (uma por estado) — no celular, a barra do rodapé (D1 da 10ª).
+  const aChegar              = status === 'SCHEDULED' || status === 'CONFIRMED'
+  const mostraChegarEIniciar = aChegar && canCheckin && canManage && ehDaProfissional
+  const mostraCheckin        = aChegar && canCheckin && !(canManage && ehDaProfissional)
+  const mostraIniciar        = (status === 'ARRIVED' || (status === 'CONFIRMED' && !(canCheckin && ehDaProfissional))) && canManage
+  const mostraFinalizar      = status === 'IN_PROGRESS' && canManage && canEditRecords
+  const temAcaoPrincipal     = mostraChegarEIniciar || mostraCheckin || mostraIniciar || mostraFinalizar || aReceber
   const isDone    = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
   const age       = calcAge(client.birthDate)
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
@@ -1897,12 +1907,17 @@ export function AppointmentSession({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* -- Top bar --------------------------------------------------- */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <Link href={rotaAgenda(pathname, slug)} style={{ display: 'flex', alignItems: 'center', marginTop: 6, color: 'var(--text-faint)', textDecoration: 'none', flexShrink: 0 }}>
+        {/* D1 e A3 da 10ª simulação: no celular a linha das ações media 744 px
+            numa tela de 412 — o "Finalizar" ficava fora, e o título, espremido,
+            quebrava uma palavra por linha. O topo quebra linha (o título em
+            cima, as ações embaixo) e a ação principal vira uma barra presa no
+            rodapé (`.sessao-acao-principal`, globals.css). */}
+        <div className="sessao-topo">
+          <Link href={rotaAgenda(pathname, slug)} aria-label="Voltar à agenda" style={{ display: 'flex', alignItems: 'center', marginTop: 6, color: 'var(--text-faint)', textDecoration: 'none', flexShrink: 0 }}>
             <ArrowLeft size={18} />
           </Link>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="sessao-titulo">
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: overline.color, marginBottom: 3 }}>
               {overline.label}
             </p>
@@ -1912,10 +1927,10 @@ export function AppointmentSession({
           </div>
 
           {/* Ações do topo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginTop: 4 }}>
+          <div className="sessao-acoes">
             {/* Timer IN_PROGRESS */}
             {status === 'IN_PROGRESS' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
+              <div data-cronometro style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block', animation: 'pulse 1.4s ease-in-out infinite' }} />
                 {fmtTimer(elapsed)}
               </div>
@@ -1938,8 +1953,24 @@ export function AppointmentSession({
               </button>
             )}
 
+            {/* Sem o check-in no cargo, a tela diz quem marca a chegada. */}
+            {status === 'SCHEDULED' && !canCheckin && canManage && (
+              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                A recepção marca a chegada; depois você inicia.
+              </span>
+            )}
+            {/* Concluir grava a evolução no prontuário: sem o módulo, a tela diz quem conclui. */}
+            {status === 'IN_PROGRESS' && canManage && !canEditRecords && (
+              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                Quem conclui é o profissional (concluir grava o prontuário).
+              </span>
+            )}
+
+            {/* A ação principal: no computador, na linha; no celular, a barra do
+                rodapé, sempre à vista (D1 da 10ª). */}
+            {temAcaoPrincipal && <div className="sessao-acao-principal" data-acao-principal>
             {/* A profissional deste atendimento: chegada e início num gesto só (A21). */}
-            {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && canManage && ehDaProfissional && (
+            {mostraChegarEIniciar && (
               <button type="button" onClick={() => handleChegarEIniciar()} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
@@ -1947,14 +1978,8 @@ export function AppointmentSession({
                 {starting ? 'Iniciando…' : 'Marcar chegada e iniciar'}
               </button>
             )}
-            {/* Sem o check-in no cargo, a tela diz quem marca a chegada. */}
-            {status === 'SCHEDULED' && !canCheckin && canManage && (
-              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                A recepção marca a chegada; depois você inicia.
-              </span>
-            )}
 
-            {(status === 'SCHEDULED' || status === 'CONFIRMED') && canCheckin && !(canManage && ehDaProfissional) && (
+            {mostraCheckin && (
               <button type="button" onClick={handleCheckin} disabled={checkingIn}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--success)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
                 {checkingIn ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
@@ -1963,7 +1988,7 @@ export function AppointmentSession({
             )}
 
             {/* Iniciar (Confirmado ou Chegou + canManage) */}
-            {(status === 'ARRIVED' || (status === 'CONFIRMED' && !(canCheckin && ehDaProfissional))) && canManage && (
+            {mostraIniciar && (
               <button type="button" onClick={() => handleStart()} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
                 title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
@@ -1972,14 +1997,8 @@ export function AppointmentSession({
               </button>
             )}
 
-            {/* Finalizar (IN_PROGRESS + canManage) — conclui clinicamente. Concluir
-                grava a evolução no prontuário: sem o módulo, a tela diz quem conclui. */}
-            {status === 'IN_PROGRESS' && canManage && !canEditRecords && (
-              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Quem conclui é o profissional (concluir grava o prontuário).
-              </span>
-            )}
-            {status === 'IN_PROGRESS' && canManage && canEditRecords && (
+            {/* Finalizar (IN_PROGRESS + canManage + prontuário) — conclui clinicamente. */}
+            {mostraFinalizar && (
               <button type="button" onClick={() => {
                 const falta = conferirObrigatorias()
                 if (falta) setOQueFalta(falta.grupos)
@@ -2002,6 +2021,7 @@ export function AppointmentSession({
                 Confirmar pagamento
               </button>
             )}
+            </div>}
 
             {/* Pagamento confirmado — badge informativo */}
             {status === 'COMPLETED' && paymentTransaction && (
@@ -2149,7 +2169,7 @@ export function AppointmentSession({
                   age ? `${age} anos` : null,
                   typeof anamnesis?.respostas.skinType === 'string' ? `Pele ${anamnesis.respostas.skinType}` : null,
                   // Desde quando é CLIENTE (o cadastro) — mostrava o mês de nascimento.
-                  client.createdAt ? `Cliente desde ${format(new Date(client.createdAt), 'MMM yyyy', { locale: ptBR })}` : null,
+                  mesDeClienteDesde(client) ? `Cliente desde ${mesDeClienteDesde(client)}` : null,
                 ].filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -2700,6 +2720,8 @@ export function AppointmentSession({
           </div>
 
         </div>
+        {/* No celular, o fim da página não fica por baixo da barra da ação principal. */}
+        {temAcaoPrincipal && <div className="sessao-espaco-da-barra" aria-hidden="true" />}
       </div>
     </>
   )

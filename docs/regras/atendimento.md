@@ -2244,6 +2244,21 @@ O resto do fluxo:
   `retorno_avisado_em` e a função `retornos_a_marcar` ficam, sem ninguém
   ler, até a limpeza `20261101000709` (drop, com confirmação humana). Quem
   quer a revisão marca um agendamento. Prova: `tests/sem-retorno-em-dias.test.ts`.
+- **No celular, o "Finalizar atendimento" está sempre à vista** (D1 e A3 da
+  10ª simulação, 2026-11-10; a clínica única, §1, e o app Android é o portal
+  web): a linha de ações do topo media 744 px numa tela de 412, o "Finalizar"
+  ficava fora dela sem rolagem (a dona só concluía com um clique por
+  JavaScript), o título quebrava uma palavra por linha e o selo "Atendimento em
+  andamento" encostava no cronômetro. O topo quebra linha (`.sessao-topo`: o
+  título com a largura da tela, as ações embaixo) e, abaixo de 768 px, a ação
+  principal do estado — Marcar chegada e iniciar, Check-in, Iniciar,
+  Finalizar, Confirmar pagamento (`[data-acao-principal]`) — é uma barra presa
+  no rodapé, com a barra de navegação do Android (`env(safe-area-inset-bottom)`)
+  e um espaço no fim da página para não cobrir nada; o botão do Copilot sobe
+  acima dela (`subidaDoBotaoDoCopilot`). No computador nada muda de lugar.
+  Prova: `e2e/atendimento-atritos-da-10.spec.ts` ("D1 e A3": clica no
+  "Finalizar" de verdade, no alto e no fim da página),
+  `tests/copilot-sobe-no-atendimento.test.ts`.
 - **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
   (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
   aparecer no estoque, e a tela mostra o que faltou.
@@ -2321,5 +2336,6 @@ O resto do fluxo:
 ❌ Recriar um "Retorno em N dias" (regra, lista ou cron) — é um agendamento novo (aut-04)
 ❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409
 ❌ Gravar a avaliação da cliente fora de avaliar_atendimento, ou ler a nota de um procedimento fora de metrics_notas_dos_procedimentos (a configuração e a avaliação de antes moram ali)
+❌ Ação do topo da tela do atendimento numa linha que não quebra, ou a ação principal fora de .sessao-acao-principal (no celular o "Finalizar" saía da tela — D1 da 10ª)
 ❌ Tabela nova com chave estrangeira para appointments E para procedures na chave primária: o PostgREST a lê como junção e TODO embed appointments → procedures(name) quebra com PGRST201 (foi a avaliacoes_dos_procedimentos por ~15 min, 2026-11-04 — migration 20261104001804)
 ```

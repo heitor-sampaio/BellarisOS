@@ -1344,6 +1344,16 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
     border-radius: var(--radius-card-token) var(--radius-card-token) 0 0;
     max-height: 92dvh;
   }
+  /* A1 da 10ª simulação: no modal de cabeçalho fixo (modal-flex) o cartão de
+     dentro tinha 100dvh − 48 px, mais alto que a folha (92dvh) presa no fim da
+     tela — os últimos ~20 px (o "Vender assim" da pergunta) ficavam abaixo da
+     tela, onde nenhuma rolagem chega. O cartão cabe na folha, e o fim sobe a
+     barra de navegação do Android. */
+  dialog.modal.modal-flex .modal-container {
+    max-height: 92dvh;
+    border-radius: var(--radius-card-token) var(--radius-card-token) 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 /* -- Automações: o editor no celular ---------------------- */
@@ -2390,6 +2400,29 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .aviso-assinatura[data-tom="atraso"] { background: var(--warning-soft); color: var(--warning); border-color: var(--warning-border); }
 @media (max-width: 640px) { .aviso-assinatura { white-space: normal; } }
 
+/* ── O topo da tela do atendimento (D1 e A3 da 10ª simulação, 2026-11-10) ──
+   A linha das ações media 744 px no celular de 412: o "Finalizar" ficava fora
+   da tela, sem rolagem, e o título espremido quebrava uma palavra por linha.
+   O topo quebra linha (o título em cima, as ações embaixo) e, no celular, a
+   ação principal (Finalizar, Iniciar, Check-in, Confirmar pagamento) é uma
+   barra presa no rodapé, acima da barra de navegação do Android. */
+.sessao-topo { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.sessao-titulo { flex: 1 1 260px; min-width: 0; }
+.sessao-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.sessao-acao-principal { display: contents; }
+.sessao-espaco-da-barra { display: none; }
+@media (max-width: 767px) {
+  .sessao-acoes { width: 100%; padding-left: 34px; }
+  .sessao-acao-principal {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; gap: 10px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface); border-top: 1px solid var(--border);
+  }
+  .sessao-acao-principal > * { flex: 1; justify-content: center; }
+  .sessao-espaco-da-barra { display: block; height: calc(64px + env(safe-area-inset-bottom, 0px)); }
+}
+
 /* -- Copilot: a secretária virtual (apps/web/components/copilot, 2026-10-08) --
    Flutua sobre TODAS as telas da equipe (nunca no portal do cliente). No
    computador, janela ancorada à direita que não bloqueia a página; no
@@ -2435,6 +2468,11 @@ a.suporte-link-forte:hover { color: var(--brand); }
   .copilot-painel .copilot-rodape { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   .copilot-botao { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 50px; padding: 0; justify-content: center; }
   .copilot-botao .copilot-botao-rotulo { display: none; }
+}
+/* Na tela do atendimento, no celular, o botão sobe acima da barra da ação
+   principal (`.sessao-acao-principal`, D1 da 10ª). */
+@media (max-width: 767px) {
+  .copilot-botao[data-subir="celular"] { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 }
 
 .copilot-cabecalho {

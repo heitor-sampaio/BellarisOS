@@ -85,6 +85,19 @@ Princípios inegociáveis:
     inset: 0` é só o fundo invisível que fecha um menu — não é modal.
   - Imprimir de dentro da janela (o termo no checkout) solta a altura dela no
     `@media print` de `globals.css`.
+  - **No celular, a folha cabe na tela** (A1 da 10ª simulação, 2026-11-10):
+    abaixo de 640 px o modal é uma folha presa no fim da tela (`92dvh`), e o
+    cartão do `.modal-flex` tinha `100dvh − 48 px` — os últimos ~20 px do corpo
+    (o botão do fim) ficavam abaixo da tela, onde nenhuma rolagem chega. O
+    cartão tem a altura da folha e sobe a barra de navegação do Android. O que
+    APARECE no fim de um formulário longo depois de um clique (a pergunta antes
+    de gravar) rola até ficar à vista e leva o foco (`PerguntaDaVenda`).
+    Prova: `e2e/vendas-pergunta-no-celular.spec.ts`.
+- **A ação que fecha o trabalho de uma tela longa fica à vista no celular**
+  (D1 da 10ª): a barra presa no rodapé, com o `safe-area`, abaixo da topbar e
+  do Copilot na ordem das camadas, e um espaço no fim da página — como a
+  `.sessao-acao-principal` do atendimento. Linha de ações que não quebra é o
+  defeito de volta.
 - **Popover ancorado num gatilho que fica à direita vira o lado no celular.**
   `left: 0` de um gatilho encostado na borda direita nasce metade fora da
   tela, e o que fica de fora não tem rolagem que o alcance. O `<SegSelect>`

@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDia } from '@estetica-os/utils'
+import { dataDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { textoDoProntuarioForaDoPacote, prontuarioNaSolicitacao, type SituacaoDoProntuario } from '@/lib/lgpd/situacao-do-prontuario'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
@@ -407,7 +408,9 @@ export async function buildClientExport(
         ['Gênero', String(client.gender ?? '—')],
         ['Endereço', [client.address, client.address_number, client.address_complement, client.neighborhood, client.city, client.state, client.zip_code].filter(Boolean).join(', ') || '—'],
         ['Unidade de cadastro', unit(client.branch_id)],
-        ['Cliente desde', fmtDate(client.created_at)],
+        // D6 da 10ª: o da planilha importada (cliente_desde), senão o cadastro; com os dois, o cadastro também.
+        ['Cliente desde', dataDeClienteDesde({ clienteDesde: client.cliente_desde, createdAt: client.created_at }) ?? '—'],
+        ...(client.cliente_desde ? [['Cadastro no sistema', fmtDate(client.created_at)] as [string, string]] : []),
         ['Conta no aplicativo', client.app_account_created_at ? `criada em ${fmtDate(client.app_account_created_at)}` : 'não possui'],
       ],
     },

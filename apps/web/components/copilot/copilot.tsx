@@ -1,5 +1,6 @@
 'use client'
 
+import { subidaDoBotaoDoCopilot } from '@/lib/copilot/subida-do-botao'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -367,12 +368,12 @@ export function Copilot() {
     if (problema) setErro(problema)
   }
 
-  // No inbox, o botão sobe: embaixo, à direita, mora o "Enviar" da conversa.
-  const subir = /\/inbox(\/|$)/.test(pathname)
+  // No inbox (o "Enviar") e no atendimento pelo celular (a barra do Finalizar), o botão sobe.
+  const subir = subidaDoBotaoDoCopilot(pathname)
 
   if (!aberto) {
     return (
-      <button type="button" className="copilot-botao" data-subir={subir ? 'sim' : 'nao'}
+      <button type="button" className="copilot-botao" data-subir={subir}
         onClick={() => abrirOuFechar(true)} aria-label="Copilot" aria-expanded="false" title="Copilot (Ctrl+J)">
         <Sparkles size={18} />
         <span className="copilot-botao-rotulo">Copilot</span>

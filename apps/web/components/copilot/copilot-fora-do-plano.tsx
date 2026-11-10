@@ -1,5 +1,6 @@
 'use client'
 
+import { subidaDoBotaoDoCopilot } from '@/lib/copilot/subida-do-botao'
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -15,12 +16,12 @@ import { Sparkles, X } from 'lucide-react'
 export function CopilotForaDoPlano({ emTeste, assinaturaHref }: { emTeste: boolean; assinaturaHref: string }) {
   const [aberto, setAberto] = useState(false)
   const pathname = usePathname()
-  // No inbox, o botão sobe (o "Enviar" mora embaixo, à direita) — como o Copilot.
-  const subir = /\/inbox(\/|$)/.test(pathname)
+  // O botão sobe onde o Copilot sobe (o "Enviar" do inbox, a barra do atendimento no celular).
+  const subir = subidaDoBotaoDoCopilot(pathname)
 
   if (!aberto) {
     return (
-      <button type="button" className="copilot-botao copilot-botao-fora" data-subir={subir ? 'sim' : 'nao'}
+      <button type="button" className="copilot-botao copilot-botao-fora" data-subir={subir}
         onClick={() => setAberto(true)} aria-label="Copilot: fora do plano" aria-expanded="false" title="Copilot (fora do plano)">
         <Sparkles size={18} />
         <span className="copilot-botao-rotulo">Copilot</span>

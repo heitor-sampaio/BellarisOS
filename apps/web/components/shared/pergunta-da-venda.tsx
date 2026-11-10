@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import type { MembroDaVenda } from '@/components/shared/vender'
 
@@ -52,8 +53,19 @@ export function PerguntaDaVenda({ texto, pendente, aoConfirmar, aoVoltar, rotulo
   aoVoltar: () => void
   rotuloConfirmar?: string
 }) {
+  // A1 da 10ª simulação: no celular a pergunta nascia no fim da janela, fora da
+  // tela, e o botão de vender parecia morto. Ao aparecer, ela rola até ficar
+  // inteira à vista e o foco vai para a resposta ("Vender assim").
+  const caixa = useRef<HTMLDivElement>(null)
+  const confirmar = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    caixa.current?.scrollIntoView({ block: 'nearest' })
+  }, [texto])
+  useEffect(() => {
+    if (!pendente) confirmar.current?.focus({ preventScroll: true })
+  }, [texto, pendente])
   return (
-    <div data-pergunta-da-venda role="alertdialog" aria-label="Confirmar a venda" style={{
+    <div ref={caixa} data-pergunta-da-venda role="alertdialog" aria-label="Confirmar a venda" style={{
       display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-field-token)',
       background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
     }}>
@@ -61,9 +73,9 @@ export function PerguntaDaVenda({ texto, pendente, aoConfirmar, aoVoltar, rotulo
         <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} aria-hidden />
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.45 }}>{texto}</p>
       </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button type="button" className="btn-secondary" onClick={aoVoltar} disabled={pendente}>Voltar e escolher</button>
-        <button type="button" className="btn-primary" onClick={aoConfirmar} disabled={pendente}>{pendente ? 'Vendendo…' : rotuloConfirmar}</button>
+        <button ref={confirmar} type="button" className="btn-primary" onClick={aoConfirmar} disabled={pendente}>{pendente ? 'Vendendo…' : rotuloConfirmar}</button>
       </div>
     </div>
   )

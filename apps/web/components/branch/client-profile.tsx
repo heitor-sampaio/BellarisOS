@@ -51,6 +51,7 @@ import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal
 import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
 import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
+import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 
 // -- Types --------------------------------------------------------------------
 
@@ -69,6 +70,8 @@ export interface ProfileClient {
   notes:              string | null
   isActive:           boolean
   createdAt:          string
+  /** "Cliente desde" da importação (clients.cliente_desde) — vale antes do cadastro (D6 da 10ª). */
+  clienteDesde?:      string | null
   zipCode:            string | null
   address:            string | null
   addressNumber:      string | null
@@ -157,6 +160,8 @@ export interface ProfileTransaction {
   estorno?:      boolean
   /** Dinheiro que SAIU (EXPENSE): o estorno devolvido à cliente, com o sinal de menos. */
   saida?:        boolean
+  /** O número da parcela do crediário (a ordem da ficha — D7 da 10ª). */
+  parcela?:      number | null
 }
 
 export interface ProfileInternalCredit {
@@ -1261,7 +1266,9 @@ function FinanceiroTab({
           </div>
         ) : (
           <div className="table-wrap">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          {/* D7 da 10ª: no celular, cada lançamento vira um cartão (cards-mobile) —
+              a tabela de 5 colunas rolava de lado e escondia o valor e o "Vencida em". */}
+          <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--hairline)' }}>
                 {['Data', 'Descrição', 'Forma', 'Valor', 'Status'].map(h => (
@@ -1277,7 +1284,7 @@ function FinanceiroTab({
 
                 return (
                   <tr key={t.id} data-lancamento={t.id} data-transacao-da-ficha style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
-                    <td style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Data" style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {!t.isPaid && t.dueDate
                         ? `Vence ${new Date(t.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
                         : t.scheduledAt
@@ -1285,7 +1292,7 @@ function FinanceiroTab({
                           : format(new Date(t.createdAt), 'dd/MM/yyyy', { locale: ptBR })
                       }
                     </td>
-                    <td style={{ padding: '12px 16px', maxWidth: 240 }}>
+                    <td data-label="" style={{ padding: '12px 16px', maxWidth: 240 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {t.isCheckout && (
                           <Receipt size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
@@ -1295,7 +1302,7 @@ function FinanceiroTab({
                         </p>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Forma" data-par style={{ padding: '12px 16px' }}>
                       {(t.forma !== undefined ? t.forma : t.paymentMethod && rotuloDaForma(t.paymentMethod, t.cartaoVezes)) && (
                         <span data-forma-do-lancamento style={{
                           fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 8px', borderRadius: 10,
@@ -1312,7 +1319,7 @@ function FinanceiroTab({
                         </span>
                       )}
                     </td>
-                    <td style={{
+                    <td data-label="Valor" data-par style={{
                       padding: '12px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 800, whiteSpace: 'nowrap',
                       color: t.saida ? 'var(--danger)' : t.estornada ? 'var(--text-faint)' : 'var(--text)',
                       textDecoration: t.estornada ? 'line-through' : undefined,
@@ -1320,7 +1327,7 @@ function FinanceiroTab({
                       {/* O estorno é dinheiro que saiu: com o sinal (D6, 2026-10-28). */}
                       {t.saida ? `− ${fmtBRL(t.amount)}` : fmtBRL(t.amount)}
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Status" style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {/* D13 da 9ª: a vencida não é "Pendente", igual à que vai vencer. */}
                         {t.vencida && t.dueDate && !t.isPaid && !t.estornada ? (
@@ -1538,7 +1545,8 @@ export function ClientProfile({
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
 
   const initials = getInitials(client.name)
-  const since    = format(new Date(client.createdAt), "MMM yyyy", { locale: ptBR })
+  // Desde quando é cliente: o da planilha importada, senão o cadastro (D6 da 10ª).
+  const since    = mesDeClienteDesde(client) ?? '—'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

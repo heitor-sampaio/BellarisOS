@@ -677,7 +677,15 @@ dela — e vê Configurações só com essa aba.
   - **"Cliente desde"** (`clients.cliente_desde`, data; aceita "03/2021" e
     "2019"): a ficha de antes do mês NÃO conta como cliente nova dele — os
     novos clientes contam por `coalesce(cliente_desde, created_at)`
-    (`indicadores.md`), e o selo "Novo" da lista também.
+    (`indicadores.md`), e o selo "Novo" da lista também. **E a tela diz o
+    dela** (D6 da 10ª simulação, 2026-11-10; princípio 3): a ficha e o
+    atendimento diziam "Cliente desde nov 2026" (o cadastro no sistema) para
+    quem a planilha diz desde 2021. "Cliente desde" na ficha, no cabeçalho do
+    atendimento e no pacote LGPD é o `cliente_desde`, senão o cadastro — UMA
+    regra, `lib/clientes/cliente-desde.ts` (o dia gravado lido como dia: o
+    01/03 não vira fevereiro); o pacote LGPD diz também o "Cadastro no
+    sistema" quando os dois existem. Prova: `e2e/ficha-atritos-da-10.spec.ts`,
+    `e2e/atendimento-atritos-da-10.spec.ts` ("D6"), `tests/cliente-desde.test.ts`.
   - **"Última visita"** (`clients.ultima_visita_antes`, data): a última
     visita no sistema de ANTES. **Não vira atendimento** (nada se inventa: sem
     agendamento, prontuário, receita nem comissão); entra onde a tela pergunta
@@ -1160,6 +1168,7 @@ o contato junto.
 ❌ Recusar a linha da planilha por um campo OPCIONAL ilegível (CPF, e-mail, data, unidade, etapa…): ela entra sem ele, com o aviso — só o impossível recusa (D2 da 8ª, princípio 2)
 ❌ Gravar a "última visita" da planilha como atendimento (inventa agendamento, receita e comissão): é clients.ultima_visita_antes (F35)
 ❌ Contar como cliente nova do mês a ficha importada com "cliente desde" de antes — é coalesce(cliente_desde, created_at)
+❌ Escrever "Cliente desde" pelo created_at, ou ler cliente_desde com new Date (vira a véspera): é lib/clientes/cliente-desde.ts (D6 da 10ª)
 ❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")

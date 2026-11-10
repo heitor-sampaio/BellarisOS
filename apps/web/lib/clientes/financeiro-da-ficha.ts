@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
+import { ordenarTransacoesDaFicha } from '@/lib/clientes/ordem-das-transacoes'
 import { getAtendimentosAReceber, type ListaAReceber } from '@/lib/metrics/a-receber'
 import type { ProfileTransaction, ProfileInternalCredit } from '@/components/branch/client-profile'
 
@@ -73,7 +74,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   // pontuar (a regra de padrão, D4), o lançamento da venda diz por quê — a
   // ficha mostrava o pago e nada sobre os pontos que não vieram.
   const produtoNaoPontua = await vendaDeProdutoNaoPontua(ctx.tenantId!, admin)
-  const transactions: ProfileTransaction[] = (linhas as Linha[]).map(l => ({
+  // D7 da 10ª: em ordem pela data que a linha mostra (ordenarTransacoesDaFicha).
+  const transactions: ProfileTransaction[] = ordenarTransacoesDaFicha((linhas as Linha[]).map(l => ({
     id:            l.id,
     description:   l.description,
     amount:        Number(l.amount),
@@ -95,7 +97,8 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     estornada:     l.notes === 'Estornada',
     estorno:       l.category === 'Estorno',
     saida:         l.type === 'EXPENSE',
-  })).sort((a, b) => (b.paidAt ?? b.createdAt).localeCompare(a.paidAt ?? a.createdAt))
+    parcela:       l.parcela_numero,
+  })))
 
   return {
     veFinanceiro, soOsProprios, transactions, aReceber,

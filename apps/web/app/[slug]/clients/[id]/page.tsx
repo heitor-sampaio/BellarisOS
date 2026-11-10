@@ -90,6 +90,7 @@ export default async function ClientProfilePage({
     notes:             raw.notes ?? null,
     isActive:          raw.is_active,
     createdAt:         raw.created_at,
+    clienteDesde:      raw.cliente_desde ?? null,
     zipCode:           raw.zip_code ?? null,
     address:           raw.address ?? null,
     addressNumber:     raw.address_number ?? null,

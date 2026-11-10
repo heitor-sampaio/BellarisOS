@@ -736,6 +736,23 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   só o que é dos atendimentos DELA, totais incluídos, e sem o crédito interno
   (é da cliente, não de um atendimento) — D6, 2026-10-27. Quem recebe vê
   tudo. A aba somava na tela as últimas 50 linhas.
+  **As Transações saem em ordem e cabem no celular** (D7 da 10ª simulação,
+  2026-11-10; princípio 3): a tabela de cinco colunas rolava de lado a 412 px
+  (695 px num espaço de 378), escondendo o valor, a forma e o "Vencida em", e
+  as parcelas gravadas no mesmo instante saíam embaralhadas (3/3, 1/3, 2/3,
+  entrada). No celular cada lançamento é um cartão (`cards-mobile`), e a ordem
+  é a da data que a LINHA MOSTRA, da mais nova para a mais antiga — o
+  vencimento da parcela em aberto, o dia do atendimento, senão o lançamento;
+  no empate, a parcela maior primeiro (`ordenarTransacoesDaFicha`,
+  `lib/clientes/ordem-das-transacoes.ts`). Prova:
+  `e2e/ficha-atritos-da-10.spec.ts` ("D7"), `tests/ordem-das-transacoes.test.ts`.
+- **A pergunta "Ninguém foi marcado em “Quem vendeu”… Vender assim?" fica à
+  vista** (A1 da 10ª simulação, 2026-11-10): no Vender a 412 px ela nascia no
+  fim da janela, abaixo da tela, e o botão parecia morto. Ao aparecer, a
+  pergunta (`PerguntaDaVenda`, a mesma do checkout do plano) rola até ficar
+  inteira na tela e o foco vai para "Vender assim"; e a folha do modal no
+  celular passou a caber na tela (`design.md`). Prova:
+  `e2e/vendas-pergunta-no-celular.spec.ts`.
 - **Atendimento de R$ 0 conclui SEM cobrança** (D9, 2026-10-27): a tela diz
   "Sem cobrança", não entra em "a receber", concluir não lança conta a
   receber de zero, e `confirmar_pagamento_do_atendimento` recusa
@@ -1766,6 +1783,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Devolver parte de uma venda de produto estornando a venda inteira e vendendo de novo, ou fora de produto_devolver_itens — e ler o valor, as unidades ou o custo de uma venda de produto sem tirar o devolvido (price − valor_devolvido, custo − custo_devolvido)
 ❌ Deixar a "Forma do pagamento do usado" em branco no estorno inteiro: vem a do pagamento original (comOPagamentoInteiro — A41 da 8ª)
 ❌ Mostrar o a receber vencido como "Pendente", ou decidir no navegador se venceu (o dia é do servidor: situacaoDoVencimento; os números, metrics_a_receber_vencido — D13 da 9ª)
+❌ Tabela de lançamentos sem cards-mobile, ou as Transações da ficha fora da ordem da data que a linha mostra (ordenarTransacoesDaFicha — D7 da 10ª)
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
 ❌ Vender crédito na clínica pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na clínica" do Vender (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem

@@ -75,7 +75,7 @@ export async function SessaoDeAtendimento({
         procedures(id, name, category, duration_min, form_id),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
-        client:clients(id, name, phone, birth_date, created_at, tags, notes, document, auth_id, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone)
+        client:clients(id, name, phone, birth_date, created_at, cliente_desde, tags, notes, document, auth_id, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone)
       `)
       .eq('id', id)
       .eq('branch_id', branchId)
@@ -104,7 +104,7 @@ export async function SessaoDeAtendimento({
   type RawProc   = { id: string; name: string; category: string; duration_min: number }
   type RawProf   = { id: string; name: string }
   type RawRoom   = { id: string; name: string } | null
-  type RawClient = { id: string; name: string; phone: string | null; birth_date: string | null; created_at: string | null; tags: string[] | null; notes: string | null; document: string | null }
+  type RawClient = { id: string; name: string; phone: string | null; birth_date: string | null; created_at: string | null; cliente_desde?: string | null; tags: string[] | null; notes: string | null; document: string | null }
 
   const proc = apptRaw.procedures   as unknown as RawProc   | null
   const prof = apptRaw.professional as unknown as RawProf   | null
@@ -501,6 +501,7 @@ export async function SessaoDeAtendimento({
     phone:     cli.phone ?? null,
     birthDate: cli.birth_date ?? null,
     createdAt: cli.created_at ?? null,
+    clienteDesde: cli.cliente_desde ?? null,
     tags:      (cli.tags as string[]) ?? [],
     notes:     cli.notes ?? null,
     document:  cli.document ?? null,
