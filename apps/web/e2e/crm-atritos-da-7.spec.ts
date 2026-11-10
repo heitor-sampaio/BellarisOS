@@ -173,7 +173,13 @@ test('A18: o card diz "Agendado dd/mm hh:mm" e, depois da venda, sugere levar a 
   const leadAgendado = await lead('Lead agendado A18', { client_id: agendada, crm_stage_id: etapa.avaliacao })
 
   const compradora = await rede.criarCliente('Compradora A18')
-  const leadComprou = await lead('Lead comprou A18', { client_id: compradora, crm_stage_id: etapa.avaliacao })
+  // A oportunidade nasce um minuto antes: o `created_at` é o relógio do BANCO e
+  // o `aceito_em` abaixo, o do runner — gravados com ~30 ms entre um e outro, a
+  // diferença dos dois relógios bastava para a compra "vir antes" e a
+  // sugestão não aparecer (completa de 10/11, F48).
+  const leadComprou = await lead('Lead comprou A18', {
+    client_id: compradora, crm_stage_id: etapa.avaliacao, created_at: new Date(Date.now() - 60_000).toISOString(),
+  })
   expect((await db().from('treatment_plans').insert({
     branch_id: rede.branchId, client_id: compradora, professional_id: rede.professionalId, status: 'ACCEPTED',
     name: 'Plano A18', aceito_em: new Date().toISOString(),
