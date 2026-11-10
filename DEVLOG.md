@@ -10108,6 +10108,13 @@ As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: 
 - **D5** (`20261110004903`): o ajuste de inventário a mais pergunta o lote (padrão: um lote novo, sem número); o a menos sai do lote que vence primeiro e entra em Perdas como "Inventário". Os 3 ajustes negativos antigos passaram a aparecer em Perdas, ao último custo.
 - Sem chamador: `comissoes_extrato_linhas` e `estoque_ajuste_em` (DROP fica para a limpeza com o Heitor). Fora da frente: o Copilot conta "clientes novos" por `created_at`, não por `coalesce(cliente_desde, created_at)` — vai na F51.
 
+**F50 FEITA (10/11, a821f0d9…ac18571e, sem migration) — os atritos de setup, agenda e atendimento da 10ª (A2, A4–A20, A42):**
+- **A2:** com uma só opção (profissional, sala livre, unidade), ela vem escolhida — no Agendar, no checkout do plano, no app (o passo da profissional e o da unidade somem) e no Novo cliente/importação ("Unidade: …" no lugar do seletor). Uma regra só: `unicaOpcao` (`lib/uma-opcao.ts`). O setup começa pela Equipe; "Outra unidade" vai para o fim.
+- **Agenda e atendimento:** um botão primário só, o do próximo passo, e a legenda dos gestos (A5); o nascimento na própria janela do Agendar (A12); o "Momento da foto" no nome do anexo (A13); "Receber pagamento" sem o "já foi encerrado" (A14); a sessão do pacote de fora diz "nada a receber" (A15); o concluído antes da hora não ocupa a grade (A16); o horário fora da grade é "encaixe (permitido)" (A17); "0,2 un" (A19); "Quem conclui é o profissional" antes de iniciar (A20).
+- **Configurações:** o fim da página acima do botão do Copilot no celular (A4); o selo "Sem insumo ligado" (A6); a prévia da importação com amostra e o formato do pacote (A7); os rótulos do Novo produto (A8); a ordem estável dos cargos (A9); o texto de Configurações em Cargos (A10); o modal da comissão diz quais procedimentos têm a regra geral (A11).
+- **A42:** o Histórico do app mostra as sessões e a última visita de antes do sistema.
+- **Ficaram, pelas regras escritas (sem levar ao Heitor):** a dona com uma unidade continua no `/admin` (`atendimento.md`: a clínica de uma unidade vive no `/admin`); o "Quem vendeu" nasce vazio mesmo com uma pessoa (r2-ven-12); o rascunho só nesta aba (A18, decisão de 27/10). O "aplicar a regra a todas as que estão sem comissão" (A11) seria gravação em lote nova — fora.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
