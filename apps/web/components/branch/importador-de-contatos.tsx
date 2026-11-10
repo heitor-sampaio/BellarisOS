@@ -8,7 +8,8 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
 import { camposDoDestino, sugerirMapeamento, colunasQueFaltam, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
-import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
+import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, pacotesDaLinha, type LinhaValidada, type Referencias } from '@/lib/importacao/normalizar'
+import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
 
@@ -362,6 +363,14 @@ export function ImportadorDeContatos(p: Props) {
               </div>
             ))}
           </div>
+          {/* A7 da 10ª: o formato do pacote, antes da prévia (o aviso só vinha depois, na ficha). */}
+          {mapa.includes('pacote') && (
+            <p data-formato-do-pacote style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+              Pacote de antes: <strong style={{ color: 'var(--text)' }}>procedimento; total; usadas</strong> e, se tiver, o valor de referência e a
+              validade — ex.: “Limpeza de pele; 10; 7; R$ 1.500,00; 31/12/2027”. Mais de um na mesma célula, separados por “|”. Sem o
+              valor de referência, as sessões trazidas contam R$ 0 (sem comissão de execução nem receita dos atendimentos).
+            </p>
+          )}
           {faltando.length > 0 && (
             <Aviso tom="espera">Escolha a coluna de: {faltando.join(', ')}.</Aviso>
           )}
@@ -380,6 +389,43 @@ export function ImportadorDeContatos(p: Props) {
               {plural(prontas, 'linha pronta', 'linhas prontas')} para importar
               {comErro > 0 && <> · {plural(comErro, 'recusada', 'recusadas')} ({comErro === 1 ? 'fica' : 'ficam'} de fora e {comErro === 1 ? 'vai' : 'vão'} para o relatório)</>}
             </Aviso>
+            {/* A7 da 10ª: uma amostra do que entra — era só "20 linhas prontas". */}
+            {prontas > 0 && (
+              <div data-amostra-da-importacao style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span className="field-label">Como as primeiras entram</span>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {validadas.filter(l => !l.erros.length).slice(0, 3).map(l => {
+                    const d = l.dados as Record<string, unknown>
+                    const pacotes = destino === 'clientes' ? pacotesDaLinha(l.dados) : []
+                    return (
+                      <li key={l.numero}>
+                        <strong>{nomeDe(l)}</strong>
+                        {[
+                          typeof d.phone === 'string' && d.phone ? maskPhone(d.phone) : null,
+                          typeof d.email === 'string' && d.email ? d.email : null,
+                          pacotes.length ? plural(pacotes.length, 'pacote de antes', 'pacotes de antes') : null,
+                        ].filter(Boolean).map(t => ` · ${t}`).join('')}
+                        <span style={{ color: 'var(--text-faint)' }}> (linha {l.numero})</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+            {/* A7 da 10ª: o pacote sem valor de referência, avisado ANTES (princípio 4: conta R$ 0). */}
+            {(() => {
+              if (destino !== 'clientes') return null
+              const semValor = validadas.filter(l => !l.erros.length).flatMap(l => pacotesDaLinha(l.dados)).filter(pc => pc.valor === null).length
+              return semValor > 0 ? (
+                <Aviso tom="espera">
+                  <span data-pacotes-sem-valor>
+                    {plural(semValor, 'pacote de antes sem valor de referência', 'pacotes de antes sem valor de referência')}: as sessões
+                    trazidas não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos. Para contar, ponha o valor na
+                    planilha (“procedimento; total; usadas; valor”).
+                  </span>
+                </Aviso>
+              ) : null
+            })()}
             <LinhasDoRelatorio rotulo={`${plural(comErro, 'linha recusada', 'linhas recusadas')} — só o impossível recusa (sem nome, a ficha sem telefone, a repetida):`}
               atributo="data-linhas-recusadas" linhas={validadas.filter(l => l.erros.length).map(l => ({ linha: l.numero, nome: nomeDe(l), motivo: l.erros.join(' ') }))} />
             <LinhasDoRelatorio rotulo={`${plural(comAviso.length, 'linha entra', 'linhas entram')} com aviso — o campo ilegível fica de fora, e o resto da ficha entra:`}

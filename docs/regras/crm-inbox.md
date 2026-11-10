@@ -711,6 +711,17 @@ dela — e vê Configurações só com essa aba.
   - Quem já existe só tem o VAZIO completado, como sempre (inclusive as datas
     e o responsável).
   Prova: `e2e/importacao-migracao.spec.ts`.
+- **A prévia mostra uma amostra, e o pacote se explica antes** (A7 da 10ª
+  simulação, 2026-11-10; princípios 3 e 4: dizia só "20 linhas prontas", e o
+  pacote sem valor só se via depois, na ficha). O passo das colunas, com a
+  coluna do pacote escolhida, diz o formato ("procedimento; total; usadas" e,
+  se tiver, o valor e a validade — `[data-formato-do-pacote]`); a prévia mostra
+  como entram as três primeiras (nome, telefone, e-mail, os pacotes —
+  `[data-amostra-da-importacao]`) e avisa "N pacotes de antes sem valor de
+  referência: … não geram comissão de execução (R$ 0) nem entram na receita"
+  (`[data-pacotes-sem-valor]`, `pacotesDaLinha`). **Com UMA unidade, a
+  importação não pergunta qual** (A2 da 10ª, `design.md`). Prova:
+  `e2e/configuracoes-atritos-da-10.spec.ts` ("A7").
 - Roda em `after()` (`lib/importacao/processar.ts`), no padrão do histórico do
   WhatsApp: `importacoes` reivindicada com uma `execucao` nova, e TODO sinal de
   vida e a gravação final filtram por ela — a passagem que perdeu a vez para de
