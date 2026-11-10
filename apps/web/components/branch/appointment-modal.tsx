@@ -17,6 +17,7 @@ import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { dayKeyTZ } from '@/lib/datetime'
 import { unicaOpcao } from '@/lib/uma-opcao'
+import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 
 interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; /** Quem realiza (por-01; vazio = todas). */ realizam?: string[] }
@@ -473,6 +474,11 @@ export function AppointmentModal({
                       value={novoTelefone}
                       onChange={e => setNovoTelefone(maskTelefoneDigitando(e.target.value))}
                     />
+                  </div>
+                  {/* "Indicada por" (decisão do Heitor, 2026-11-10): a ficha de quem indicou a cliente nova. */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Indicada por (opcional)</span>
+                    <CampoIndicadaPor />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>

@@ -407,6 +407,26 @@ async function gravarCliente(
     resultado = 'nova'
   }
 
+  // "Indicado por" (decisão do Heitor, 2026-11-10): o nome que bate com UMA
+  // ficha da clínica (sem caixa nem acento) LIGA a indicação; senão, o texto
+  // fica como sempre e a linha diz que não ligou. A ficha que já tem quem a
+  // indicou não muda (só o vazio se completa).
+  const indicadoPor = typeof dados.referred_by === 'string' ? dados.referred_by.trim() : ''
+  if (indicadoPor && !existente?.indicada_por) {
+    const fichas = ((await ler(admin.rpc('fichas_pelo_nome', { p_tenant: p.tenant_id, p_nome: indicadoPor }),
+      'procurar a ficha de quem indicou')) ?? []) as { id: string; name: string }[]
+    const outras = fichas.filter(f => f.id !== clientId)
+    if (outras.length === 1) {
+      await gravar(admin.from('clients').update({ indicada_por: outras[0]!.id })
+        .eq('id', clientId).eq('tenant_id', p.tenant_id).is('indicada_por', null), 'ligar a indicação')
+      if (resultado === 'sem_mudanca') resultado = 'completada'
+    } else {
+      avisos.push(outras.length === 0
+        ? `Indicada por “${indicadoPor}”: nenhuma ficha com esse nome — ficou o texto, sem ligar.`
+        : `Indicada por “${indicadoPor}”: ${outras.length} fichas com esse nome — ficou o texto, sem ligar (escolha na ficha, aba Dados).`)
+    }
+  }
+
   // A8 / decisão 1 (c): o pacote de antes — o mesmo de "Trazer pacote de fora",
   // na unidade da linha. Importar de novo não o traz duas vezes; o que o banco
   // recusa fica de fora com o motivo (a ficha já entrou).

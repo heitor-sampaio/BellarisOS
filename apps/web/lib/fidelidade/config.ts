@@ -10,6 +10,15 @@ import { z } from 'zod'
  */
 
 export const MODOS_DE_GANHO = ['POR_REAL', 'POR_PROCEDIMENTO'] as const
+
+/**
+ * O prêmio por indicação (decisão do Heitor, 2026-11-10): nasce DESLIGADO;
+ * ligado, N pontos ou uma recompensa do catálogo para QUEM INDICOU, quando a
+ * indicada paga o primeiro atendimento ou a primeira venda. Quem dá é o banco
+ * (`private.indicacao_premiar`, no gatilho do pagamento).
+ */
+export const PREMIOS_DE_INDICACAO = ['DESLIGADO', 'PONTOS', 'RECOMPENSA'] as const
+export type PremioDeIndicacao = typeof PREMIOS_DE_INDICACAO[number]
 export type ModoDeGanho = typeof MODOS_DE_GANHO[number]
 
 
@@ -36,6 +45,12 @@ export interface ConfigFidelidade {
   expiry_notice_days:  number | null
   /** A venda de PRODUTO dá pontos (D4, 2026-10-30) — por real pago, em qualquer modo. Nasce desligado. */
   pontua_venda_de_produto: boolean
+  /** O prêmio por indicação (nasce desligado). */
+  indicacao_premio:        PremioDeIndicacao
+  /** Os pontos de quem indicou (com o prêmio em PONTOS). */
+  indicacao_pontos:        number
+  /** A recompensa de quem indicou (com o prêmio em RECOMPENSA). */
+  indicacao_recompensa_id: string | null
 }
 
 /** A config de quem nunca configurou: tudo desligado, com valores sensatos para quando ligar. */
@@ -53,6 +68,9 @@ export const CONFIG_PADRAO: ConfigFidelidade = {
   client_redeem:       false,
   expiry_notice_days:  null,
   pontua_venda_de_produto: false,
+  indicacao_premio:        'DESLIGADO',
+  indicacao_pontos:        0,
+  indicacao_recompensa_id: null,
 }
 
 /** O que a tela manda para salvar. Os números chegam do formulário; a validação é aqui. */
@@ -91,6 +109,18 @@ export const EntradaDaConfig = z.object({
   ]),
   // A venda de produto pontua? Sem o campo (chamador antigo), não.
   pontua_venda_de_produto: z.boolean().optional().default(false),
+  // O prêmio por indicação. Sem o campo (chamador antigo), desligado.
+  indicacao_premio: z.enum(PREMIOS_DE_INDICACAO).optional().default('DESLIGADO'),
+  indicacao_pontos: z.coerce.number().int('Os pontos da indicação são um número inteiro.')
+    .min(0, 'Os pontos não podem ser negativos.').max(1_000_000, 'Pontos demais.').optional().default(0),
+  indicacao_recompensa_id: z.string().uuid().nullable().optional().default(null),
+}).superRefine((c, ctx) => {
+  if (c.indicacao_premio === 'PONTOS' && !(c.indicacao_pontos > 0)) {
+    ctx.addIssue({ code: 'custom', path: ['indicacao_pontos'], message: 'Diga quantos pontos ganha quem indicou.' })
+  }
+  if (c.indicacao_premio === 'RECOMPENSA' && !c.indicacao_recompensa_id) {
+    ctx.addIssue({ code: 'custom', path: ['indicacao_recompensa_id'], message: 'Escolha a recompensa de quem indicou.' })
+  }
 })
 export type EntradaDaConfig = z.infer<typeof EntradaDaConfig>
 
@@ -115,5 +145,8 @@ export function configDaLinha(linha: Record<string, unknown> | null | undefined)
     client_redeem:       linha.client_redeem === true,
     expiry_notice_days:  linha.expiry_notice_days == null ? null : num(linha.expiry_notice_days, 0) || null,
     pontua_venda_de_produto: linha.pontua_venda_de_produto === true,
+    indicacao_premio:        linha.indicacao_premio === 'PONTOS' || linha.indicacao_premio === 'RECOMPENSA' ? linha.indicacao_premio : 'DESLIGADO',
+    indicacao_pontos:        num(linha.indicacao_pontos, 0),
+    indicacao_recompensa_id: typeof linha.indicacao_recompensa_id === 'string' ? linha.indicacao_recompensa_id : null,
   }
 }

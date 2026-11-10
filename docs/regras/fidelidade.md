@@ -181,6 +181,72 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     **Teste que as chama com data escolhida à mão passa a rede `[e2e]`** — sem
     o recorte, "e se hoje fosse 2027?" vence pontos e dá bônus de clientes
     reais na produção.
+- **A indicação que premia** (A43 da 10ª simulação e o caso da Ana Clara e da
+  Marina; decisão do Heitor, 2026-11-10: "1 - sim"; migrations
+  `20261110005202`, `20261110005203`). A Ana indicou a Marina, a Marina pagou e
+  a Ana não ganhou nada — a dona deu +300 à mão em "Ajustar pontos".
+  - **"Indicada por" é um VÍNCULO com outra ficha da mesma clínica**
+    (`clients.indicada_por`), não um texto: escolhe-se pela busca do nome ou do
+    telefone (`CampoIndicadaPor`, `buscarQuemIndicou` — a regra de
+    `buscar_clientes`) no Novo cliente, no Agendar com cliente nova
+    (`garantirClienteRapido`) e na ficha, aba Dados (`updateClientContactData`,
+    `indicadaPor`). O id vem do navegador e é conferido antes de gravar
+    (`conferirIndicadaPor`, `lib/clients/indicada-por.ts`: "A ficha de quem
+    indicou não é desta clínica.") e de novo no banco (`trg_indicada_por_confere`:
+    de outra clínica ou a própria ficha, recusado). A **importação** liga pelo
+    nome quando ele bate com UMA ficha ativa (sem caixa nem acento,
+    `fichas_pelo_nome`); quando não bate (nenhuma ou mais de uma), guarda o
+    texto em `referred_by`, como sempre, e o resultado diz "Indicada por
+    “Fulana”: nenhuma ficha com esse nome — ficou o texto, sem ligar." A ficha
+    que já tem quem a indicou não muda (só o vazio se completa). Ligar na aba
+    Dados tira o texto da planilha.
+  - **Em Fidelidade, "Prêmio por indicação" NASCE DESLIGADO** (princípio 6;
+    `loyalty_configs.indicacao_premio`: `DESLIGADO` | `PONTOS` | `RECOMPENSA`,
+    com `indicacao_pontos` e `indicacao_recompensa_id`; Configurações →
+    Fidelidade → Indicação, `[data-testid=opcional-indicacao]`): N pontos ou
+    uma recompensa do catálogo para QUEM INDICOU. A recompensa sai como voucher
+    SEM custo de pontos (o retrato da recompensa, como na troca); só a ATIVA
+    (a arquivada não sai, e o app não a promete). Cancelar esse voucher não
+    devolve pontos — ele não custou nenhum (`cancelar_voucher` só devolve
+    `points_cost > 0`).
+  - **O prêmio sai quando a indicada PAGA o primeiro atendimento ou a primeira
+    venda** (princípio 5: sem dinheiro, sem prêmio) — o PRIMEIRO pagamento que
+    vale: receita paga com dinheiro, que não é estorno, não foi estornada, não
+    é crédito interno nem foi paga toda com pontos
+    (`private.indicacao_pagamento_que_vale`). **Uma vez por indicada**
+    (`indicacao_premios`, um prêmio ativo por indicada, índice único). Nunca
+    retroativo: se ela já tinha um pagamento que vale (antes da indicação ou do
+    prêmio ligado), esse foi o primeiro, e nada sai. Quem dá é o banco, pelo
+    gatilho do pagamento (`trg_fidelidade_indicacao` →
+    `private.indicacao_premiar`, com as travas `indicacao:<indicada>` e
+    `fidelidade:<quem indicou>`) — o argumento do ponto: receita paga nasce em
+    vários lugares. Os pontos entram como `BONUS` "Indicação de Marina"
+    (`bonus_ref` `INDICACAO:<prêmio>`), na unidade do pagamento e com a validade
+    da rede.
+  - **O estorno desse pagamento tira o prêmio**, como tira os pontos do
+    pagamento (`trg_fidelidade_estorno_da_indicacao`): os pontos voltam num
+    `ESTORNO_GANHO` "Estorno da indicação de Marina (o pagamento dela foi
+    estornado)", com o vencimento do prêmio; o voucher ainda ativo é cancelado
+    (o já usado não volta: o prêmio fica como foi). **Se ela ainda tem outro
+    pagamento que vale, o prêmio passa para o primeiro deles** (decidido pelo
+    princípio 5: ela pagou — sai e volta, e fica um só); sem nenhum, o próximo
+    pagamento dela é o primeiro que vale e premia. O estorno PARCIAL (o
+    cancelamento do pacote que devolve parte) não tira o prêmio: o pagamento
+    continua de pé.
+  - **A ficha diz**: na Visão geral (`[data-indicacao-da-ficha]`), "Indicada
+    por: Ana Clara" (o link da ficha; o texto da planilha sem ficha diz "ligar
+    na aba Dados") e "Indicou: Marina (prêmio dado em 10/11)" — ou "prêmio
+    estornado em …", "prêmio quando ela fizer o primeiro pagamento", "sem
+    prêmio: ela já tinha pagado antes…" (`indicacoes_da_ficha`,
+    `situacaoDoPremio` em `lib/fidelidade/indicacao.ts`). Com a fidelidade
+    desligada, nada de prêmio (só os nomes). O extrato de pontos diz "Indicação
+    de Marina" (`rotuloDoLancamento`).
+  - **No app, "Indique uma amiga" só com o prêmio ligado, e diz o prêmio**
+    (`[data-indique-uma-amiga]` em Meus pontos, `textoDoIndiqueUmaAmiga`): "você
+    ganha 300 pontos" ou "um voucher: …". **A cliente não cadastra a amiga pelo
+    app** — só a clínica cria ficha (CLAUDE.md §5): "É só ela dizer o seu nome
+    na recepção…".
+  - Prova: `e2e/fidelidade-indicacao.spec.ts`, `tests/fidelidade-indicacao.test.ts`.
 - **O painel Fidelidade da ficha segue as props do servidor** (D16 da
   simulação de 2026-10-29): o saldo, o extrato e os vouchers copiados para o
   estado são trocados pelos novos quando o `router.refresh` (da venda, do
@@ -200,4 +266,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 ❌ Confirmar pagamento de atendimento fora de confirmar_pagamento_do_atendimento, ou confiar no valor que o navegador manda
 ❌ Ler o voucher pela recompensa (o voucher tem o retrato de quando foi trocado) ou deixar o cliente trocar pontos sem client_redeem ligado
 ❌ Chamar expirar_pontos / fidelidade_bonus_aniversario / avisos_de_vencimento em teste sem p_tenant (vale para as redes reais)
+❌ Dar o prêmio por indicação no TypeScript, ou sem o pagamento da indicada (é o gatilho do pagamento, private.indicacao_premiar — uma vez por indicada)
+❌ Gravar "Indicada por" como texto livre na tela, ou com o id do navegador sem conferirIndicadaPor (a ficha é da clínica e não é a própria)
+❌ Deixar a cliente cadastrar a amiga pelo app (só a clínica cria ficha — CLAUDE.md §5)
 ```

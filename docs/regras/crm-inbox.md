@@ -265,6 +265,13 @@
     resumo).
   - Prova: `e2e/portal-cliente-atritos-da-8.spec.ts`.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
+- **"Indicada por" é a ligação a OUTRA ficha da clínica** (`clients.indicada_por`;
+  decisão do Heitor, 2026-11-10 — a regra inteira, com o prêmio, está em
+  `fidelidade.md` §9.2.2, "A indicação que premia"): escolhida pela busca no Novo
+  cliente, no Agendar com cliente nova e na aba Dados; a Visão geral diz "Indicada
+  por: Ana Clara" e "Indicou: Marina (…)". A importação liga pelo nome que bate com
+  UMA ficha e, senão, guarda o texto (`referred_by`) e diz que não ligou. Prova:
+  `e2e/fidelidade-indicacao.spec.ts`.
 - Tags como `String[]` no registro; o VOCABULÁRIO é da rede (`tags`, abaixo).
   `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a
   rede nova nasce.

@@ -21,6 +21,7 @@ import { pessoaDoCrmDoTelefone, ligarPessoaDoCrmAoCliente, type PessoaDoCrm } fr
 import { criarLoginDoCliente, darAcessoAoCliente, desfazerLogin, ligarLoginAoCliente, documentoDoAcesso, type DocumentoDoAcesso } from '@/lib/clients/acesso'
 import { CPF_INVALIDO, documentoDaFicha, documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 import { colunasDoResponsavel } from '@/lib/clients/menor'
+import { conferirIndicadaPor } from '@/lib/clients/indicada-por'
 import { umaVez, chaveDoEnvio, chaveDoConteudo } from '@/lib/envio-unico'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste, type PreenchidoAgora } from '@/lib/clients/ja-existe'
 import type { TenantContext } from '@estetica-os/types'
@@ -178,6 +179,10 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
 
   const admin = createAdminClient()
 
+  // "Indicada por" (decisão do Heitor, 2026-11-10): a ficha de quem indicou, da clínica.
+  const indicada = await conferirIndicadaPor(admin, ctx.tenantId!, formData.get('indicada_por'))
+  if ('error' in indicada) return { error: indicada.error }
+
   const repetido = await documentoEstrangeiroRepetido(admin, ctx.tenantId!, doc.colunas)
   if (repetido) return { error: repetido }
 
@@ -224,6 +229,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
     name, phone: fone.gravar, email, ...doc.colunas, ...resp.colunas,
     birth_date: birthDate, gender, notes, tags,
     is_active: true, auth_id: authId,
+    ...(indicada.id ? { indicada_por: indicada.id } : {}),
   }
 
   const { data: client, error } = await admin.from('clients').insert(dadosDoCliente).select('id').single()
@@ -573,6 +579,11 @@ export async function updateClientContactData(
     notes?:             string | null
     /** O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). Só vale na menor. */
     responsavel?:       { nome?: string; cpf?: string; parentesco?: string; telefone?: string }
+    /**
+     * "Indicada por" (decisão do Heitor, 2026-11-10): o id da ficha de quem
+     * indicou, ou nulo para tirar. Opcional: quem não o edita não o apaga.
+     */
+    indicadaPor?:       string | null
   },
   slug: string,
 ): Promise<{ error?: string }> {
@@ -593,6 +604,13 @@ export async function updateClientContactData(
   // O responsável só vem quando a tela o mostra (a menor); sem o campo, o que está fica.
   const resp = data.responsavel ? colunasDoResponsavel(data.responsavel, data.birthDate) : { colunas: {} }
   if ('error' in resp) return resp
+  // A ficha de quem indicou é da clínica e não é ela mesma; ligada, o texto da importação sai (a ligação diz).
+  let indicacao: Record<string, unknown> = {}
+  if (data.indicadaPor !== undefined) {
+    const indicada = await conferirIndicadaPor(admin, ctx.tenantId!, data.indicadaPor, clientId)
+    if ('error' in indicada) return { error: indicada.error }
+    indicacao = indicada.id ? { indicada_por: indicada.id, referred_by: null } : { indicada_por: null }
+  }
 
   // O núcleo que a ficha e o Copilot dividem (lib/clients/atualizar.ts).
   return atualizarClienteCore(admin, ctx, clientId, {
@@ -615,6 +633,7 @@ export async function updateClientContactData(
     // Só quando o campo veio: a tela de dados não edita notas, e mandar
     // `undefined` aqui apagaria o que a recepção escreveu em outra tela.
     ...(data.notes !== undefined ? { notes: data.notes?.trim() || null } : {}),
+    ...indicacao,
   }, slug)
 }
 

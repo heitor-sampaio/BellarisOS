@@ -9,6 +9,7 @@ import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
 import { formatarPontos, rotuloDoLancamento, faltamPontos } from '@/lib/fidelidade/formato'
 import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
 import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
+import { textoDoIndiqueUmaAmiga, COMO_INDICAR } from '@/lib/fidelidade/indicacao'
 
 /**
  * Portal do cliente → Meus pontos: saldo e extrato.
@@ -40,6 +41,11 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
     cfg.scope_per_branch ? saldosPorUnidade(ctx.clientId!, admin) : Promise.resolve([]),
   ])
   const ativos = vouchers.filter(v => situacaoDoVoucher(v) === 'ATIVO')
+  // A recompensa do prêmio por indicação só vale ativa: a arquivada não sai (o banco não a dá), e a tela não a promete.
+  const indiqueUmaAmiga = textoDoIndiqueUmaAmiga({
+    premio: cfg.indicacao_premio, pontos: cfg.indicacao_pontos,
+    recompensa: recompensas.find(r => r.id === cfg.indicacao_recompensa_id)?.name ?? null,
+  })
   // O saldo que paga uma troca aqui: com abrangência por unidade, o da unidade
   // deste portal (a troca acontece nela).
   let saldoParaTrocar = saldo
@@ -89,6 +95,17 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
           </p>
         )}
       </div>
+
+      {/* "Indique uma amiga" (decisão do Heitor, 2026-11-10): só com o prêmio
+          ligado, e diz o prêmio. A cliente não cadastra a amiga pelo app — só a
+          clínica cria ficha (CLAUDE.md §5). */}
+      {indiqueUmaAmiga && (
+        <section className="card" data-indique-uma-amiga aria-label="Indique uma amiga" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p className="overline">Indique uma amiga</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }}>{indiqueUmaAmiga}</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>{COMO_INDICAR}</p>
+        </section>
+      )}
 
       {ativos.length > 0 && (
         <section className="card" style={{ padding: '14px 18px' }} aria-label="Meus vouchers" data-testid="meus-vouchers">

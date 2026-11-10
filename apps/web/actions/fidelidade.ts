@@ -53,6 +53,14 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
     return { error: 'A abrangência não muda depois que a rede já tem pontos lançados.' }
   }
 
+  // O prêmio por indicação em recompensa: a recompensa é desta rede (o id vem do navegador).
+  if (c.indicacao_premio === 'RECOMPENSA') {
+    const rec = await ler(createAdminClient().from('loyalty_rewards').select('id, is_active')
+      .eq('id', c.indicacao_recompensa_id!).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a recompensa da indicação') as { id: string; is_active: boolean } | null
+    if (!rec) return { error: 'Recompensa não encontrada.' }
+    if (!rec.is_active) return { error: 'Esta recompensa está arquivada: escolha uma ativa para o prêmio por indicação.' }
+  }
+
   try {
     await gravar(createAdminClient()
       .from('loyalty_configs')
@@ -70,6 +78,10 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
         first_access_bonus:  c.first_access_bonus,
         client_redeem:       c.client_redeem,
         pontua_venda_de_produto: c.pontua_venda_de_produto,
+        // O prêmio por indicação: o número e a recompensa ficam guardados com o prêmio desligado (religar devolve o que estava).
+        indicacao_premio:        c.indicacao_premio,
+        indicacao_pontos:        c.indicacao_pontos,
+        indicacao_recompensa_id: c.indicacao_premio === 'RECOMPENSA' ? c.indicacao_recompensa_id : (atual.indicacao_recompensa_id ?? null),
         // Sem validade não há o que avisar: o aviso só se guarda junto dela.
         expiry_notice_days:  c.expiry_months == null ? null : c.expiry_notice_days,
         updated_at:      new Date().toISOString(),

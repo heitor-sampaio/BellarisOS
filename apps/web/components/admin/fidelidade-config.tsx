@@ -6,7 +6,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigFidelidade } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
-import type { ConfigFidelidade, ModoDeGanho } from '@/lib/fidelidade/config'
+import type { ConfigFidelidade, ModoDeGanho, PremioDeIndicacao } from '@/lib/fidelidade/config'
 import { Fala, useFala } from '@/components/shared/uma-unidade'
 
 /**
@@ -29,11 +29,17 @@ const MODOS: { key: ModoDeGanho; label: string; explicacao: string }[] = [
   },
 ]
 
-export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }: {
+const PREMIOS: { key: PremioDeIndicacao; label: string }[] = [
+  { key: 'DESLIGADO', label: 'Desligado' }, { key: 'PONTOS', label: 'Pontos' }, { key: 'RECOMPENSA', label: 'Uma recompensa' },
+]
+
+export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, recompensas = [] }: {
   inicial: ConfigFidelidade
   podeEditar: boolean
   /** A rede já tem pontos lançados: a abrangência fica travada. */
   temLancamentos?: boolean
+  /** O catálogo, para o prêmio por indicação em recompensa (as arquivadas ficam fora da escolha). */
+  recompensas?: { id: string; name: string; is_active: boolean }[]
 }) {
   const fala = useFala()
   const [ligado,   setLigado]   = useState(inicial.enabled)
@@ -53,6 +59,10 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   const [pontosPrimeiroAcesso, setPontosPrimeiroAcesso] = useState(String(inicial.first_access_bonus || 50))
   const [trocaNoPortal, setTrocaNoPortal] = useState(inicial.client_redeem)
   const [pontuaProduto, setPontuaProduto] = useState(inicial.pontua_venda_de_produto)
+  // O prêmio por indicação (decisão do Heitor, 2026-11-10): nasce desligado.
+  const [indicacao, setIndicacao] = useState<PremioDeIndicacao>(inicial.indicacao_premio)
+  const [pontosIndicacao, setPontosIndicacao] = useState(String(inicial.indicacao_pontos || 300))
+  const [recompensaIndicacao, setRecompensaIndicacao] = useState(inicial.indicacao_recompensa_id ?? '')
   const [avisar,   setAvisar]   = useState(inicial.expiry_notice_days != null)
   const [diasAviso, setDiasAviso] = useState(String(inicial.expiry_notice_days ?? 7))
   const [erro,     setErro]     = useState<string | null>(null)
@@ -89,6 +99,9 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
           first_access_bonus:  primeiroAcesso ? numero(pontosPrimeiroAcesso) : 0,
           client_redeem:       trocaNoPortal,
           pontua_venda_de_produto: pontuaProduto,
+          indicacao_premio:        indicacao,
+          indicacao_pontos:        numero(pontosIndicacao),
+          indicacao_recompensa_id: recompensaIndicacao || null,
           expiry_notice_days:  vencem && avisar ? numero(diasAviso) : null,
         })
         if (res.error) setErro(res.error)
@@ -239,6 +252,53 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
           <CampoNumero rotulo="Pontos no primeiro acesso" nome="first_access_bonus" valor={pontosPrimeiroAcesso} onChange={setPontosPrimeiroAcesso}
             desabilitado={!podeEditar} />
         </Opcional>
+      </Bloco>
+
+      {/* O prêmio por indicação (A43 da 10ª; decisão do Heitor, 2026-11-10:
+          "1 - sim"). Nasce desligado (princípio 6); sem dinheiro, sem prêmio (princípio 5). */}
+      <Bloco titulo="Indicação">
+        <div data-testid="opcional-indicacao" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>Prêmio por indicação</span>
+          {podeEditar ? (
+            <SegSelect
+              options={PREMIOS.map(o => ({ key: o.key, label: o.label }))}
+              value={indicacao}
+              onSelect={k => setIndicacao(k as PremioDeIndicacao)}
+              ariaLabel="Prêmio por indicação"
+            />
+          ) : (
+            <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{PREMIOS.find(o => o.key === indicacao)?.label}</strong>
+          )}
+          {indicacao === 'PONTOS' && (
+            <div style={{ maxWidth: 260 }}>
+              <CampoNumero rotulo="Pontos para quem indicou" nome="indicacao_pontos" valor={pontosIndicacao} onChange={setPontosIndicacao}
+                desabilitado={!podeEditar} />
+            </div>
+          )}
+          {indicacao === 'RECOMPENSA' && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, maxWidth: 360 }}>
+              <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                Recompensa para quem indicou
+              </span>
+              <select className="filtro-select" value={recompensaIndicacao} onChange={e => setRecompensaIndicacao(e.target.value)} disabled={!podeEditar}>
+                <option value="">Selecione…</option>
+                {recompensas.filter(r => r.is_active || r.id === recompensaIndicacao).map(r => (
+                  <option key={r.id} value={r.id}>{r.name}{r.is_active ? '' : ' (arquivada)'}</option>
+                ))}
+              </select>
+              {!recompensas.some(r => r.is_active) && (
+                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  Cadastre a recompensa no catálogo, logo abaixo, e volte aqui para escolher.
+                </span>
+              )}
+            </label>
+          )}
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+            {indicacao === 'DESLIGADO'
+              ? 'A ficha guarda quem indicou (“Indicada por”), mas ninguém ganha nada pela indicação.'
+              : `Quem indicou ganha ${indicacao === 'PONTOS' ? 'os pontos' : 'um voucher da recompensa, sem gastar pontos,'} quando a indicada pagar o primeiro atendimento ou a primeira compra na clínica — uma vez por indicada. Se esse pagamento for estornado, o prêmio sai junto. Quem já tinha pago antes da indicação não conta. No app, a cliente vê “Indique uma amiga” com o prêmio; a ficha da amiga continua sendo feita pela clínica.`}
+          </p>
+        </div>
       </Bloco>
 
       {/* A venda de produto (D4, decisão do Heitor: "os pontos são

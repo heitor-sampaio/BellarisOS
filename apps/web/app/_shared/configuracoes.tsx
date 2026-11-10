@@ -540,6 +540,7 @@ export async function Configuracoes({
       {conteudo === 'fidelidade' && configFidelidade && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
+            recompensas={(catalogo?.recompensas ?? []).map(r => ({ id: r.id, name: r.name, is_active: r.is_active }))}
             temLancamentos={temLancamentos} />
           {catalogo && (
             <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}

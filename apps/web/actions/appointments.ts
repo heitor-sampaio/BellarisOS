@@ -112,6 +112,8 @@ export async function addAppointment(
         branchId,
         // A resposta a "Já existe a ficha de X" (r2-cli-01).
         jaExiste: (formData.get('_jaExiste') as string | null) ?? null,
+        // "Indicada por" (decisão do Heitor, 2026-11-10): a ficha de quem indicou a cliente nova.
+        indicadaPor: (formData.get('indicada_por') as string | null) || null,
       })
       // A ficha que já existe: nada se grava — a janela pergunta (r2-cli-01).
       if (novo.jaExiste) return { jaExiste: novo.jaExiste }

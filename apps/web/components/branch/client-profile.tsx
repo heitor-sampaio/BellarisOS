@@ -24,7 +24,9 @@ import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
-import { rotaAgenda, rotaClientes } from '@/lib/rotas'
+import { rotaAgenda, rotaClientes, rotaCliente } from '@/lib/rotas'
+import { CampoIndicadaPor, type FichaQueIndicou } from '@/components/shared/campo-indicada-por'
+import type { IndicacaoDaFicha } from '@/lib/clientes/indicacao-da-ficha'
 import { rotaComParams } from '@/lib/query-params'
 import { isUnitTag, unitTag, unitTagName, iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
@@ -84,6 +86,8 @@ export interface ProfileClient {
   temAcesso?:         boolean
   /** O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). */
   responsavel?:       ResponsavelDaFicha | null
+  /** A indicação (decisão do Heitor, 2026-11-10): quem a indicou e quem ela indicou, com o prêmio. */
+  indicacao?:         IndicacaoDaFicha | null
 }
 
 export interface ProfileStats {
@@ -435,6 +439,46 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
   )
 }
 
+/**
+ * A indicação na Visão geral (decisão do Heitor, 2026-11-10): "Indicada por:
+ * Ana Clara" e "Indicou: Marina (prêmio dado em 10/11)". Os nomes levam à
+ * ficha de cada uma. Sem indicação nenhuma, o cartão não aparece.
+ */
+function IndicacaoNaVisaoGeral({ indicacao, linkDaFicha, linkDosDados }: {
+  indicacao: IndicacaoDaFicha; linkDaFicha: (id: string) => string; linkDosDados: string
+}) {
+  const { indicadaPor, indicadaPorTexto, indicou } = indicacao
+  if (!indicadaPor && !indicadaPorTexto && indicou.length === 0) return null
+  const linha: React.CSSProperties = { fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }
+  const nome: React.CSSProperties = { color: 'var(--brand)', fontWeight: 'var(--weight-bold)', textDecoration: 'none' }
+  return (
+    <div className="card" data-indicacao-da-ficha style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <p className="overline" style={{ margin: 0 }}>INDICAÇÃO</p>
+      {indicadaPor && (
+        <p style={linha}>Indicada por: <Link href={linkDaFicha(indicadaPor.id)} style={nome}>{indicadaPor.nome}</Link></p>
+      )}
+      {!indicadaPor && indicadaPorTexto && (
+        <p style={linha}>
+          Indicada por: “{indicadaPorTexto}” <span style={{ color: 'var(--text-muted)' }}>(da planilha, sem ficha ligada — </span>
+          <Link href={linkDosDados} style={nome}>ligar na aba Dados</Link><span style={{ color: 'var(--text-muted)' }}>)</span>
+        </p>
+      )}
+      {indicou.length > 0 && (
+        <p style={linha}>
+          Indicou:{' '}
+          {indicou.map((i, n) => (
+            <span key={i.id}>
+              {n > 0 && ' · '}
+              <Link href={linkDaFicha(i.id)} style={nome}>{i.nome}</Link>
+              {i.premio && <span style={{ color: 'var(--text-muted)' }}> ({i.premio})</span>}
+            </span>
+          ))}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function NotasDoCliente({
   client, slug, podeEditar,
 }: { client: ProfileClient; slug: string; /** Clientes em Gerenciar: quem só vê lê as anotações (D5). */ podeEditar: boolean }) {
@@ -681,6 +725,10 @@ function DadosTab({ client, slug, branches, podeEditar }: {
   } : RESPONSAVEL_VAZIO)
   const menor = ehMenorDeIdade(birthDate)
 
+  // "Indicada por" (decisão do Heitor, 2026-11-10): só vai ao salvar se mudou.
+  const [indicadaPor, setIndicadaPor] = useState<FichaQueIndicou | null>(client.indicacao?.indicadaPor ?? null)
+  const [mudouIndicacao, setMudouIndicacao] = useState(false)
+
   const [selectedTags, setSelectedTags] = useState<string[]>(client.tags ?? [])
   // As tags da rede (Configurações → Tags) — e as que o cliente já tem fora
   // dela (importadas, arquivadas), que antes ficavam gravadas e invisíveis.
@@ -745,7 +793,8 @@ function DadosTab({ client, slug, branches, podeEditar }: {
     const result = await updateClientContactData(
       client.id,
       { name: nome, gender, document: cpf, documentType: tipoDoc, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags,
-        ...(menor ? { responsavel } : {}) },
+        ...(menor ? { responsavel } : {}),
+        ...(mudouIndicacao ? { indicadaPor: indicadaPor?.id ?? null } : {}) },
       slug,
     )
     setSaving(false)
@@ -995,6 +1044,20 @@ function DadosTab({ client, slug, branches, podeEditar }: {
           )
         })()}
       </div>}
+
+      {/* "Indicada por" (decisão do Heitor, 2026-11-10): a ficha de quem indicou — é por ela que o prêmio por indicação chega. */}
+      <div>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Indicada por</p>
+        <div style={{ maxWidth: 420 }}>
+          <CampoIndicadaPor nome="_indicada_por_da_ficha" inicial={indicadaPor} excetoId={client.id} desabilitado={!podeEditar}
+            aoMudar={f => { setIndicadaPor(f); setMudouIndicacao(true); setSaved(false) }} />
+        </div>
+        {!indicadaPor && client.indicacao?.indicadaPorTexto && (
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
+            A planilha dizia “{client.indicacao.indicadaPorTexto}”, sem ficha com esse nome: escolha a ficha de quem indicou para ligar.
+          </p>
+        )}
+      </div>
 
       </fieldset>
 
@@ -1857,6 +1920,9 @@ export function ClientProfile({
           pedidoLgpd={pedidoLgpd}
         />
         <NotasDoCliente client={client} slug={slug} podeEditar={podeEditarCadastro} />
+        {client.indicacao && (
+          <IndicacaoNaVisaoGeral indicacao={client.indicacao} linkDaFicha={id => rotaCliente(pathname, slug, id)} linkDosDados={linkDaAba('dados')} />
+        )}
         <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar && !arquivada}
           branches={branches} currentBranchId={currentBranchId ?? ''} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>

@@ -6,6 +6,7 @@ import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { getPagoComCreditoDoCliente } from '@/lib/metrics/fechamento-extra'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
 import { responsavelDaFicha } from '@/lib/clients/menor'
+import { indicacaoDaFicha } from '@/lib/clientes/indicacao-da-ficha'
 import { unificacoesDaFicha } from '@/lib/clients/unificacoes'
 import { historicoDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { camposDoPacoteDeFora, linhaDoHistoricoDoPacote } from '@/lib/pacotes/de-fora'
@@ -101,6 +102,8 @@ export default async function ClientProfilePage({
     temAcesso:         !!raw.auth_id,
     // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05).
     responsavel:       responsavelDaFicha(raw),
+    // A indicação (decisão do Heitor, 2026-11-10): quem a indicou e quem ela indicou, com o prêmio.
+    indicacao:         await indicacaoDaFicha(ctx.tenantId!, raw.id as string, raw),
   }
 
   // Parallel data fetches (cacheadas — TTL 60s, tags clients/appointments do tenant)

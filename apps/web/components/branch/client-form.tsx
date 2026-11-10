@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO, documentoEstrangeiro } from '@estetica-os/utils'
 import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
+import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
@@ -341,6 +342,12 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
 
       {/* A menor de idade: o responsável legal (decisão 2 do Heitor, 2026-11-05). */}
       <ResponsavelLegal nascimento={nascimento} valor={responsavel} aoMudar={setResponsavel} comNomes />
+
+      {/* "Indicada por" (decisão do Heitor, 2026-11-10): a ficha de quem indicou,
+          não um texto — é por ela que o prêmio por indicação chega a quem indicou. */}
+      <Field label="Indicada por (opcional)" grupo>
+        <CampoIndicadaPor />
+      </Field>
 
       {/* Tags */}
       <Field label="Tags" grupo>

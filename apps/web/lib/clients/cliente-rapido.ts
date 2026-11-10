@@ -16,6 +16,7 @@ import { EVENTOS } from '@estetica-os/types'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { conferirIndicadaPor } from '@/lib/clients/indicada-por'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -67,6 +68,11 @@ export interface ClienteRapidoInput {
    * (`lib/clients/ja-existe.ts`). Sem ela, a ficha que já existe PERGUNTA.
    */
   jaExiste?:       string | null
+  /**
+   * "Indicada por" (decisão do Heitor, 2026-11-10): o id da ficha de quem
+   * indicou. Só na ficha que NASCE aqui; conferido (da clínica) antes de gravar.
+   */
+  indicadaPor?:    string | null
 }
 
 export interface ClienteRapidoResult {
@@ -110,6 +116,8 @@ export async function garantirClienteRapido(
   if (!fone) return { error: 'Informe um telefone com DDD (de outro país, comece com + e o código do país).' }
   const telefone = fone.gravar
   if (!input.branchId)          return { error: 'Unidade não identificada.' }
+  const indicada = await conferirIndicadaPor(admin, ctx.tenantId!, input.indicadaPor)
+  if ('error' in indicada) return { error: indicada.error }
 
   const branch = await ler(admin
     .from('branches')
@@ -168,6 +176,7 @@ export async function garantirClienteRapido(
       ...(!input.complemento?.document && input.complemento?.estrangeiro
         ? { documento_tipo: input.complemento.estrangeiro.tipo, documento_numero: input.complemento.estrangeiro.numero } : {}),
       ...(input.complemento?.birthDate ? { birth_date: input.complemento.birthDate } : {}),
+      ...(indicada.id ? { indicada_por: indicada.id } : {}),
     })
     .select('id')
     .single()

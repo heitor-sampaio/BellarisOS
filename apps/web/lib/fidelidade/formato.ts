@@ -22,6 +22,8 @@ const ROTULOS: Record<TipoDeLancamento, string> = {
 /** O bônus diz QUAL (aniversário, primeiro acesso) pela descrição que o banco gravou. */
 export function rotuloDoLancamento(tipo: string, descricao?: string | null): string {
   if (tipo === 'BONUS' && descricao) return descricao
+  // O prêmio por indicação que saiu com o estorno do pagamento da indicada (F52): diz de quem.
+  if (tipo === 'ESTORNO_GANHO' && descricao?.startsWith('Estorno da indicação')) return descricao
   return ROTULOS[tipo as TipoDeLancamento] ?? 'Lançamento'
 }
 
