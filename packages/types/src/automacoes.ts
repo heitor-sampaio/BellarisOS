@@ -258,6 +258,12 @@ export interface ConfigBuscarClientes {
 
 export interface ConfigCondicaoSe {
   grupo: GrupoDeCondicao
+  /**
+   * Só um lado ligado, de propósito: o outro caminho termina aqui (o
+   * "Lembrete": se o agendamento caiu, nada a mandar). Sem isto, a validação
+   * avisa "Só um lado da condição está ligado" (A18 da 11ª).
+   */
+  outroLadoTerminaDeProposito?: boolean
 }
 
 export interface ConfigCondicaoEscolha {

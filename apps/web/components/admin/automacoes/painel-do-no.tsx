@@ -13,8 +13,9 @@ import {
   type GrupoDeVariaveis, type CampoVisto,
 } from '@/lib/automacoes/disponiveis'
 import { nomeDoPasso, chaveDoPasso } from '@/lib/automacoes/passos'
+import { SITUACOES_DO_AGENDAMENTO, ehSituacaoDoAgendamento } from '@/lib/automacoes/resumo'
 import { conferirExpressao, ehCaminhoSimples, NOMES_DE_FUNCAO } from '@/lib/automacoes/expressao'
-import { amostraDoEvento } from '@/actions/automacoes'
+import { amostraDoEvento, contarBuscaDeClientes } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 
 /**
@@ -164,6 +165,15 @@ export function PainelDoNo({
             onChange={g => set({ grupo: g })}
             somenteLeitura={somenteLeitura}
           />
+        )}
+        {/* A18 da 11ª: o lado sem ligação que termina DE PROPÓSITO (o modelo de
+            lembrete: cancelado, nada a mandar) não é engano — a clínica diz. */}
+        {no.tipo === NODES.CONDICAO_SE && (
+          <label data-outro-lado-termina style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <input type="checkbox" disabled={somenteLeitura} checked={!!c.outroLadoTerminaDeProposito}
+              onChange={e => set({ outroLadoTerminaDeProposito: e.target.checked || undefined })} style={{ marginTop: 2 }} />
+            <span>Com só uma saída ligada, o outro caminho termina aqui de propósito (não avisar).</span>
+          </label>
         )}
 
         {no.tipo === NODES.CONDICAO_ESCOLHA && (
@@ -521,6 +531,7 @@ export function PainelDoNo({
                 que ninguém revisou.
               </Dica>
             </Campo>
+            <QuemAchariaHoje cfg={c} />
           </>
         )}
 
@@ -952,7 +963,31 @@ function EditorDeGrupo({
             >
               {OPERADORES.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
             </select>
-            {!op?.semValor && (CAMPOS_DE_PROCEDIMENTO.has(r.campo) && ['igual', 'diferente'].includes(r.operador) ? (
+            {!op?.semValor && ehSituacaoDoAgendamento(r.campo) && ['em', 'nao_em'].includes(r.operador) ? (
+              // A18 da 11ª: a situação pelo nome ("Cancelado"), não o código
+              // (o campo dizia "CANCELLED,NO_SHOW,COMPLETED").
+              <div role="group" aria-label={`Valores da regra ${i + 1}`} data-situacoes-da-regra style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {SITUACOES_DO_AGENDAMENTO.map(s => {
+                  const lista = Array.isArray(r.valor) ? (r.valor as string[]) : []
+                  const marcado = lista.includes(s.valor)
+                  return (
+                    <button key={s.valor} type="button" className="chip-filtro" aria-pressed={marcado} disabled={somenteLeitura}
+                      onClick={() => mudarRegra(i, { valor: marcado ? lista.filter(v => v !== s.valor) : [...lista, s.valor] })}>
+                      {s.rotulo}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : !op?.semValor && ehSituacaoDoAgendamento(r.campo) && ['igual', 'diferente'].includes(r.operador) ? (
+              <select
+                className="field" value={String(r.valor ?? '')} disabled={somenteLeitura}
+                aria-label={`Valor da regra ${i + 1}`}
+                onChange={e => mudarRegra(i, { valor: e.target.value })}
+              >
+                <option value="">Escolha a situação…</option>
+                {SITUACOES_DO_AGENDAMENTO.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
+              </select>
+            ) : !op?.semValor && (CAMPOS_DE_PROCEDIMENTO.has(r.campo) && ['igual', 'diferente'].includes(r.operador) ? (
               // A14: o procedimento era texto livre — "botox" não casava com
               // "Botox". O nome sai da lista da clínica; o salvo que não está
               // mais nela (renomeado, desativado) continua visível.
@@ -1080,4 +1115,37 @@ function agruparEventos(): [string, string[]][] {
     mapa.set(entidade, [...(mapa.get(entidade) ?? []), nome])
   }
   return [...mapa.entries()]
+}
+
+/**
+ * "Hoje, a busca acharia N clientes" (A21 da 11ª simulação: a automação não
+ * dizia quem receberia). A mesma busca do motor (`contarBuscaDeClientes`),
+ * pedida 600 ms depois da última mudança do passo.
+ */
+function QuemAchariaHoje({ cfg }: { cfg: Record<string, unknown> }) {
+  const chave = JSON.stringify({ d: cfg.semRetornoHaDias, a: cfg.aniversarioHoje, t: cfg.tags, u: cfg.unidadeId, l: cfg.limite })
+  const [conta, setConta] = useState<{ chave: string; texto: string } | null>(null)
+  useEffect(() => {
+    let vivo = true
+    const t = setTimeout(() => {
+      contarBuscaDeClientes(cfg)
+        .then(r => {
+          if (!vivo) return
+          const texto = 'error' in r
+            ? r.error
+            : r.quantas === 0 ? 'Hoje, a busca não acharia nenhuma cliente.'
+              : `Hoje, a busca acharia ${r.quantas.toLocaleString('pt-BR')} ${r.quantas === 1 ? 'cliente' : 'clientes'}${r.truncado ? ' (o teto deste passo cortou o resto)' : ''}.`
+          setConta({ chave, texto })
+        })
+        .catch(() => { /* sem a conta, o passo segue */ })
+    }, 600)
+    return () => { vivo = false; clearTimeout(t) }
+    // `chave` resume o que a busca lê; o `cfg` muda de identidade a cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chave])
+  return (
+    <p data-quem-acharia-hoje style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+      {conta?.chave === chave ? conta.texto : 'Contando quem a busca acharia hoje…'}
+    </p>
+  )
 }

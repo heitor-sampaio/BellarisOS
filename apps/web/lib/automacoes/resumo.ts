@@ -49,13 +49,31 @@ export function rotuloDaSaida(saida: string): string {
   return ROTULO_DA_SAIDA[saida] ?? saida
 }
 
+/**
+ * Os códigos que o banco guarda, como a tela os diz (A18 da 11ª: o card dizia
+ * "não é nenhum de CANCELLED, NO_SHOW, COMPLETED"). Só os de situação, que
+ * nenhuma clínica escreve; o valor que a clínica escreveu passa como está.
+ */
+const VALOR_TEXTO: Record<string, string> = {
+  SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', ARRIVED: 'Chegou', IN_PROGRESS: 'Em atendimento',
+  COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu',
+  OPEN: 'Aberta', WON: 'Ganha', LOST: 'Perdida',
+}
+const valorNaTela = (v: unknown) => (typeof v === 'string' && VALOR_TEXTO[v]) || v
+
+/** As situações do agendamento, para o "Se" escolher pelo nome (A18 da 11ª). */
+export const SITUACOES_DO_AGENDAMENTO = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW']
+  .map(valor => ({ valor, rotulo: VALOR_TEXTO[valor]! }))
+/** O campo é a situação de um agendamento (do contexto ou do fato). */
+export const ehSituacaoDoAgendamento = (campo: string) => campo === 'agendamento.status' || campo === 'evento.dados.status'
+
 function descreverGrupo(grupo?: GrupoDeCondicao): string {
   const regras = grupo?.regras ?? []
   if (!regras.length) return 'sem filtro'
 
   const partes = regras.map(r => {
     const op = OPERADOR_TEXTO[r.operador] ?? r.operador
-    const valor = Array.isArray(r.valor) ? r.valor.join(', ') : r.valor
+    const valor = Array.isArray(r.valor) ? r.valor.map(valorNaTela).join(', ') : valorNaTela(r.valor)
     const campo = rotuloDoCaminho(r.campo)
     return r.operador === 'vazio' || r.operador === 'preenchido'
       ? `${campo} ${op}`
@@ -92,8 +110,11 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
         return `a cada ${quantos(n, frequencia)}`
       }
 
-      const freq = { diaria: 'Todo dia', semanal: 'Toda semana', mensal: 'Todo mês' }[frequencia]
-        ?? 'Todo dia'
+      // Qual dia (A19 da 11ª: "Todo mês às 09:00" não dizia que é o dia 1).
+      const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+      const freq = frequencia === 'mensal' ? `Todo mês, dia ${Number(c.diaDoMes ?? 1)},`
+        : frequencia === 'semanal' ? `Toda semana, ${DIAS[Number(c.diaDaSemana ?? 1)] ?? 'segunda'},`
+        : 'Todo dia'
       return `${freq} às ${(c.hora as string) ?? '--:--'}`
     }
 
@@ -118,10 +139,13 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
 
     case NODES.ESPERA_ATE: {
       const min = Number(c.minutos ?? 0)
-      if (!min) return `até ${(c.campo as string) ?? 'a data'}`
+      // A18 da 11ª: o campo pelo nome ("Data e hora do agendamento") e o tempo
+      // por extenso ("1 dia") — dizia "1d antes de evento.dados.agendadoPara".
+      const campo = c.campo ? `“${rotuloDoCaminho(c.campo as string)}”` : 'a data'
+      if (!min) return `até ${campo}`
       const abs = Math.abs(min)
-      const quanto = abs % 1440 === 0 ? `${abs / 1440}d` : abs % 60 === 0 ? `${abs / 60}h` : `${abs}min`
-      return `${quanto} ${min < 0 ? 'antes de' : 'depois de'} ${(c.campo as string) ?? 'a data'}`
+      const quanto = abs % 1440 === 0 ? quantos(abs / 1440, 'dias') : abs % 60 === 0 ? quantos(abs / 60, 'horas') : quantos(abs, 'minutos')
+      return `${quanto} ${min < 0 ? 'antes de' : 'depois de'} ${campo}`
     }
 
     case NODES.ACAO_MENSAGEM:

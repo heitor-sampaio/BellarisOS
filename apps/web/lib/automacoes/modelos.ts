@@ -25,6 +25,35 @@ export interface ModeloDeAutomacao {
 
 export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
   {
+    // A19 da 11ª simulação (2026-11-10): não havia modelo de reativação, e a
+    // Marta montou uma campanha de "Reativação 60 dias" que só sairia no
+    // aniversário de quem sumiu (D8). Pelo relógio, uma vez por mês — a busca
+    // "sem retorno" acha quem continua sumida, então ela recebe de novo no
+    // mês seguinte, e a descrição diz isso. Nasce RASCUNHO, como todo modelo
+    // (princípio 6).
+    chave: 'reativacao',
+    nome: 'Reativação de quem sumiu',
+    descricao: 'Todo mês, no dia 1 às 9h, busca as clientes sem atendimento há mais de 60 dias e manda um convite para voltar. Quem continuar sem voltar recebe de novo no mês seguinte.',
+    revisar: 'Os dias sem visita, o dia do mês, o horário e o texto.',
+    grafo: () => ({
+      nos: [
+        { id: 'n_reat_relogio', tipo: NODES.GATILHO_AGENDA, nome: 'Todo mês, dia 1, às 9h', pos: { x: 80, y: 120 },
+          config: { frequencia: 'mensal', diaDoMes: 1, hora: '09:00' } },
+        { id: 'n_reat_busca', tipo: NODES.BUSCAR_CLIENTES, nome: 'Sem visita há mais de 60 dias', pos: { x: 360, y: 120 },
+          config: { semRetornoHaDias: 60, limite: 200 } },
+        { id: 'n_reat_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Convite para voltar', pos: { x: 640, y: 120 },
+          config: {
+            canal: 'whatsapp',
+            texto: 'Oi, {{cliente.nome}}! Sentimos sua falta por aqui. Que tal agendar um horário? É só responder esta mensagem.',
+          } },
+      ],
+      ligacoes: [
+        { id: 'l_reat_1', de: 'n_reat_relogio', para: 'n_reat_busca' },
+        { id: 'l_reat_2', de: 'n_reat_busca', para: 'n_reat_msg' },
+      ],
+    }),
+  },
+  {
     chave: 'aniversario',
     nome: 'Parabéns no aniversário',
     descricao: 'Todo dia às 9h, busca as clientes que fazem aniversário e manda uma mensagem de parabéns.',
@@ -59,7 +88,8 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
         // O procedimento fica no "Se", não no gatilho (decisão do Heitor): o
         // valor vazio não deixa ligar até a clínica escolher.
         { id: 'n_ret_se', tipo: NODES.CONDICAO_SE, nome: 'Se o procedimento', pos: { x: 360, y: 120 },
-          config: { grupo: { juncao: 'e', regras: [
+          // Outro procedimento: o fluxo termina aqui, de propósito (A18 da 11ª).
+          config: { outroLadoTerminaDeProposito: true, grupo: { juncao: 'e', regras: [
             { campo: 'evento.dados.procedimentoNome', operador: 'igual', valor: '' },
           ] } } },
         { id: 'n_ret_espera', tipo: NODES.ESPERA_DURACAO, nome: 'Esperar 30 dias', pos: { x: 640, y: 120 },
@@ -92,7 +122,8 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
         { id: 'n_lem_espera', tipo: NODES.ESPERA_ATE, nome: 'Um dia antes', pos: { x: 360, y: 120 },
           config: { campo: 'evento.dados.agendadoPara', minutos: -1440 } },
         { id: 'n_lem_se', tipo: NODES.CONDICAO_SE, nome: 'Se ainda está de pé', pos: { x: 640, y: 120 },
-          config: { grupo: { juncao: 'e', regras: [
+          // Cancelado ou já feito: nada a lembrar — termina aqui, de propósito (A18 da 11ª).
+          config: { outroLadoTerminaDeProposito: true, grupo: { juncao: 'e', regras: [
             { campo: 'agendamento.status', operador: 'nao_em', valor: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
           ] } } },
         { id: 'n_lem_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Lembrete', pos: { x: 920, y: 120 },

@@ -231,6 +231,35 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   depois da meia-noite, e o aviso tocava o celular da cliente de madrugada. O
   lembrete do agendamento segue de hora em hora. Prova:
   `e2e/campanha-defeitos-da-11.spec.ts`, `tests/campanha-quando-dispara.test.ts`.
+- **O construtor fala português, e o modelo dito pronto não avisa à toa** (A18
+  da 11ª simulação, 2026-11-10; princípio 3: o "Lembrete antes do agendamento"
+  dizia "Esperar até 1d antes de evento.dados.agendadoPara" e "não é nenhum de
+  CANCELLED, NO_SHOW, COMPLETED", e avisava "Só um lado da condição está
+  ligado"). O card da espera diz "1 dia antes de “Data e hora do agendamento”"
+  (o campo por `rotuloDoCaminho`, o tempo por extenso); a condição diz as
+  situações pelo nome ("Cancelado, Não compareceu, Concluído" — `VALOR_TEXTO`,
+  `lib/automacoes/resumo.ts`), e o painel as escolhe por nome
+  (`[data-situacoes-da-regra]`, `SITUACOES_DO_AGENDAMENTO`); o relógio diz o dia
+  ("Todo mês, dia 1, às 09:00"). O "Se" com uma saída só que termina DE
+  PROPÓSITO (`ConfigCondicaoSe.outroLadoTerminaDeProposito`: os modelos de
+  lembrete e de retorno; no painel, "o outro caminho termina aqui de
+  propósito") não leva o aviso; o montado à mão continua avisando.
+- **O modelo de reativação** (A19 da 11ª: não havia, e a "Reativação 60 dias"
+  da Marta virou campanha de aniversário): "Reativação de quem sumiu" —
+  todo mês, dia 1, às 9h, busca quem está sem atendimento há mais de 60 dias e
+  manda o convite. Quem continua sumida recebe de novo no mês seguinte, e a
+  descrição diz isso. Nasce RASCUNHO, como todo modelo (princípio 6).
+- **Quem receberia hoje, fora do assistente** (A21 da 11ª): o detalhe da
+  campanha (rascunho, ativa ou pausada) mostra o público e quantos recebem
+  (`AudiencePreview`, a conta do disparo — `[data-quem-receberia-hoje]`, a quem
+  tem o Marketing em Gerenciar); o passo "Buscar clientes" da automação diz
+  "Hoje, a busca acharia N clientes" (`contarBuscaDeClientes`, só LÊ, a
+  `buscarClientes` do motor — `[data-quem-acharia-hoje]`). E a prévia do título
+  da campanha diz que "Ana" é um nome de EXEMPLO (`[data-previa-do-titulo]`).
+- **As ações da lista de campanhas têm nome** (A22 da 11ª: "Ativar" e
+  "Arquivar" eram ícones lado a lado): "Ver", "Ativar", "Pausar", "Arquivar"
+  escritos no botão. Prova: `e2e/automacoes-atritos-da-11.spec.ts`,
+  `tests/automacoes-atritos-da-11.test.ts`.
 - **Automações e Campanhas são da clínica, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
   alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa

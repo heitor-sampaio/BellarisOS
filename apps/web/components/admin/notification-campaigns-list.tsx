@@ -233,6 +233,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                           <IconBtn
                             icon={<Eye size={14} />}
                             title="Ver detalhes"
+                            rotulo="Ver"
                             onClick={() => router.push(`/admin/notificacoes/${c.id}`)}
                           />
                           {c.status === 'DRAFT' && (
@@ -294,11 +295,18 @@ function KpiCard({ label, value }: { label: string; value: string }) {
   )
 }
 
+/**
+ * A ação da linha com o NOME à vista (A22 da 11ª simulação: "Ativar" e
+ * "Arquivar" eram dois ícones lado a lado, só com o `title`, e ativar a
+ * campanha errada é mandar aviso a quem não devia).
+ */
 function IconBtn({
-  icon, title, onClick, color = 'var(--text-muted)', loading = false,
+  icon, title, rotulo, onClick, color = 'var(--text-muted)', loading = false,
 }: {
   icon: React.ReactNode
   title: string
+  /** O texto à vista; sem ele, o `title`. */
+  rotulo?: string
   onClick: () => void
   color?: string
   loading?: boolean
@@ -309,16 +317,19 @@ function IconBtn({
       title={title}
       onClick={onClick}
       disabled={loading}
+      data-acao-da-campanha
       style={{
-        width: 30, height: 30, borderRadius: 8,
+        height: 30, padding: '0 10px', gap: 5, borderRadius: 8,
         border: '1px solid var(--border)',
         background: 'var(--surface)',
         color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 'var(--text-xs-sz)', fontWeight: 700, whiteSpace: 'nowrap',
         cursor: loading ? 'wait' : 'pointer',
         opacity: loading ? 0.5 : 1,
       }}
     >
       {icon}
+      <span>{rotulo ?? title}</span>
     </button>
   )
 }

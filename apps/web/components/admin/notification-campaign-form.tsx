@@ -104,7 +104,11 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
     ...(maxDays            && { max_days_since_visit: maxDays }),
   }
 
-  const previewTitle = title.replace(/\{\{first_name\}\}/g, 'Ana')
+  // A19 da 11ª: "Sentimos sua falta, Ana" parecia o texto de verdade — é um
+  // nome de EXEMPLO no lugar do {{first_name}}, e a tela diz.
+  const NOME_DE_EXEMPLO = 'Ana'
+  const usaNome = /\{\{first_name\}\}/.test(title)
+  const previewTitle = title.replace(/\{\{first_name\}\}/g, NOME_DE_EXEMPLO)
 
   function getTriggerConfig(): Record<string, unknown> | undefined {
     if (campType !== 'AUTOMATED') return undefined
@@ -352,7 +356,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
             />
             {title && (
               <p style={{ marginTop: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 600 }}>
-                Preview: {previewTitle}
+                <span data-previa-do-titulo>Prévia{usaNome ? ` (com um nome de exemplo, ${NOME_DE_EXEMPLO}: cada cliente recebe o dela)` : ''}: {previewTitle}</span>
               </p>
             )}
           </div>
@@ -543,7 +547,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
               </div>
             </>
           )}
-          <ReviewRow label="Título"     value={previewTitle} />
+          <ReviewRow label={usaNome ? `Título (exemplo com o nome ${NOME_DE_EXEMPLO})` : 'Título'} value={previewTitle} />
           <ReviewRow label="Mensagem"   value={body} />
           <ReviewRow label="Canal"      value="Aviso no celular (push) · fica no sino do portal · não vai pelo WhatsApp" />
           {/* A15 da 7ª simulação: o público estimado vinha sem o filtro que o explica. */}

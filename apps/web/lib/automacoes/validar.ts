@@ -107,7 +107,9 @@ export function validarGrafo(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
           grau: 'erro', noId: no.id,
           mensagem: 'A condição não leva a lugar nenhum: ligue ao menos uma das saídas.',
         })
-      } else if (!saidas.includes('sim') || !saidas.includes('nao')) {
+      } else if ((!saidas.includes('sim') || !saidas.includes('nao'))
+        // A18 da 11ª: o modelo (ou a clínica) disse que o outro lado termina de propósito.
+        && !(no.config as { outroLadoTerminaDeProposito?: boolean } | undefined)?.outroLadoTerminaDeProposito) {
         problemas.push({
           grau: 'aviso', noId: no.id,
           mensagem: 'Só um lado da condição está ligado — o outro caminho termina aqui.',

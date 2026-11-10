@@ -15,6 +15,7 @@ import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ler, tentar } from '@/lib/db'
+import { buscarClientes } from '@/lib/automacoes/tempo'
 
 /**
  * As automações, pela tela.
@@ -824,4 +825,31 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
 
   revalidatePath(`/admin/automacoes/${automationId}`)
   return { runId: run.id as string }
+}
+
+/**
+ * Quantas clientes a busca do passo "Buscar clientes" acharia HOJE (A21 da 11ª
+ * simulação, 2026-11-10: a automação não dizia quem receberia — só o
+ * assistente da campanha contava). Só LÊ: a mesma `buscarClientes` do motor,
+ * com o teto do passo.
+ */
+export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: number; truncado: boolean } | { error: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'VIEW')
+  const c = (cfg && typeof cfg === 'object' ? cfg : {}) as Record<string, unknown>
+  const dias = Number(c.semRetornoHaDias)
+  const limite = Number(c.limite)
+  const tags = Array.isArray(c.tags) ? (c.tags as unknown[]).filter((t): t is string => typeof t === 'string').slice(0, 50) : undefined
+  const unidade = typeof c.unidadeId === 'string' && /^[0-9a-f-]{36}$/i.test(c.unidadeId) ? c.unidadeId : null
+  if (unidade) {
+    const daRede = await ler(createAdminClient().from('branches').select('id').eq('id', unidade).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade da busca')
+    if (!daRede) return { error: 'Unidade não encontrada.' }
+  }
+  const { clientes, truncado } = await buscarClientes(ctx.tenantId!, {
+    semRetornoHaDias: Number.isFinite(dias) && dias > 0 ? Math.floor(dias) : undefined,
+    aniversarioHoje: c.aniversarioHoje === true,
+    tags, unidadeId: unidade,
+    limite: Number.isFinite(limite) && limite > 0 ? Math.min(Math.floor(limite), 500) : 200,
+  })
+  return { quantas: clientes.length, truncado }
 }

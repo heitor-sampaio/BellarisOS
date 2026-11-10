@@ -2,7 +2,8 @@
 import { idOu404 } from '@/lib/id-da-rota'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Zap, Clock, RefreshCw, Users, Send, BookOpen, Pencil } from 'lucide-react'
-import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
+import { AudiencePreview } from '@/components/admin/audience-preview'
 import { getCampaign, activateCampaign, pauseCampaign, archiveCampaign, deleteCampaign } from '@/actions/notification-campaigns'
 import type { CampaignStatus, CampaignType, TriggerType } from '@/actions/notification-campaigns'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -179,6 +180,14 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
         <div className="card" style={{ flex: '1 1 260px', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Público</h2>
           <AudienceRow rules={campaign.audience_rules} />
+          {/* A21 da 11ª: quem receberia HOJE, também fora do assistente (o
+              rascunho não dizia) — a mesma conta do disparo. */}
+          {can(ctx, 'marketing', 'MANAGE') && !['ARCHIVED', 'COMPLETED'].includes(campaign.status) && (
+            <div data-quem-receberia-hoje style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <p className="overline">Quem receberia hoje</p>
+              <AudiencePreview rules={campaign.audience_rules} />
+            </div>
+          )}
         </div>
       </div>
 

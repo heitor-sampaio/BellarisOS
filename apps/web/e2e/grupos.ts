@@ -296,6 +296,7 @@ export const ISOLADOS = [
   'crm-atritos-da-11.spec.ts',
   'documentos-atritos-da-11.spec.ts',
   'configuracoes-atritos-da-11.spec.ts',
+  'automacoes-atritos-da-11.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',
