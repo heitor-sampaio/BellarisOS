@@ -174,6 +174,8 @@ export interface ProfileInternalCredit {
   concedido?:  boolean
   /** O lançamento cujo estorno o devolveu (um uso que voltou). */
   transactionId?: string | null
+  /** A29 da 10ª: comprado no Vender (o "vale") — o dinheiro entrou no Investido total na compra. */
+  comprado?:   boolean
 }
 
 export interface ClientHistoryEvent {
@@ -825,8 +827,9 @@ function DadosTab({ client, slug, branches, podeEditar }: {
             CPF já cadastrado para <strong>{cpfDupName}</strong>.
           </p>
         )}
+        {/* A34 da 10ª: dizia "CPF já vinculado a este cliente." em verde, e parecia erro. */}
         {cpfStatus === 'self' && (
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 600, marginTop: 5 }}>CPF já vinculado a este cliente.</p>
+          <p data-cpf-da-ficha style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 5 }}>É o CPF já salvo nesta ficha.</p>
         )}
       </div>
 
@@ -1777,7 +1780,13 @@ export function ClientProfile({
           { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested),
             // A43 da 8ª: "R$ 0" ao lado do preço médio de R$ 450, sem dizer que ela pagou com crédito.
             // A41 da 9ª: de onde veio o crédito — o concedido nunca teve dinheiro.
-            nota: pagoComCredito > 0 ? `+ ${fmtBRL(pagoComCredito)} pagos com crédito na clínica: não contam aqui (${textoDaOrigemDoCredito(internalCredits)}).` : undefined },
+            nota: [
+              pagoComCredito > 0 ? `+ ${fmtBRL(pagoComCredito)} pagos com crédito na clínica: não contam aqui (${textoDaOrigemDoCredito(internalCredits)}).` : null,
+              // A29 da 10ª: logo depois da venda do vale, o LTV subia sem nota — o crédito comprado conta na compra.
+              internalCredits.some(c => c.comprado && c.amount > 0)
+                ? 'Inclui o crédito na clínica comprado: o dinheiro conta aqui no dia da compra, e usar o crédito depois não conta de novo.'
+                : null,
+            ].filter(Boolean).join(' ') || undefined },
           // A56: ao lado do que ela PAGOU (de tudo), o preço médio dos
           // atendimentos cobrados — outra conta, outro nome, e a dica diz qual.
           { label: 'PREÇO MÉDIO POR ATEND.', value: stats.mediaPorAtendimento == null ? '—' : fmtBRL(stats.mediaPorAtendimento), dica: DEFINICOES.precoMedioPorAtendimento,

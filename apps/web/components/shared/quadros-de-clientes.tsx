@@ -126,7 +126,8 @@ export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, c
           <span style={{ color: 'var(--brand)', fontWeight: 700 }}>✦</span>
         </h2>
       </div>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Sem visita há mais de 90 dias</p>
+      {/* A35 da 10ª: o quadro não dizia que quem tem horário marcado sai da conta. */}
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Sem visita há mais de 90 dias — quem tem horário marcado não entra</p>
 
       {clientes.length === 0 ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', paddingTop: 8, flex: 1 }}>
@@ -164,7 +165,8 @@ export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, c
               padding: '8px', borderRadius: 10, border: '1px solid var(--border)',
               fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'none',
             }}>
-              Ver {total - clientes.length} clientes inativos
+              {/* A35 da 10ª: "Ver 5 clientes inativos" parecia o total (são as além das que o quadro lista). */}
+              Ver mais {total - clientes.length} ({total} no total)
             </Link>
           )}
         </>

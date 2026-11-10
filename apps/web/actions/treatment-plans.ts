@@ -674,6 +674,14 @@ export async function getResumoDoPlano(planId: string): Promise<{
    * Financeiro pede a parcela que vence depois). Nulo: quem lê já o tem.
    */
   quemRecebe?: string[] | null
+  /**
+   * A27 da 10ª: o "Cancelar plano" também na página do plano — quem tem o
+   * Financeiro em Gerenciar (a permissão do pacote) e o plano fechado (ACCEPTED).
+   * Quem não pode lê a quem pedir (os mesmos nomes do `quemRecebe`).
+   */
+  podeCancelar?: boolean
+  /** O plano está fechado e ainda se cancela (ACCEPTED). */
+  cancelavel?: boolean
   error?: string
 }> {
   const ctx = await getTenantContext()
@@ -681,11 +689,13 @@ export async function getResumoDoPlano(planId: string): Promise<{
   const admin = createAdminClient()
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
+  const gerencia = can(ctx, 'financial', 'MANAGE')
   const [resumo, quemRecebe] = await Promise.all([
     getFinanceiroDoPlano(ctx.tenantId!, planId),
-    can(ctx, 'financial', 'MANAGE') ? Promise.resolve(null) : quemDesfazNoCaixa(ctx.tenantId!, plan.branch_id as string),
+    gerencia ? Promise.resolve(null) : quemDesfazNoCaixa(ctx.tenantId!, plan.branch_id as string),
   ])
-  return { resumo, quemRecebe }
+  const cancelavel = plan.status === 'ACCEPTED'
+  return { resumo, quemRecebe, cancelavel, podeCancelar: cancelavel && gerencia }
 }
 
 export async function getPlanoParaEditar(planId: string): Promise<{
@@ -1040,7 +1050,8 @@ export async function previaDoCancelamentoDoPlano(
       p_motivo: null, p_destino: null, p_agendamentos: null, p_esperado: null, p_simular: true,
       p_estorno: null, p_novo: null,
     }), 'calcular o cancelamento do plano') as Record<string, unknown>
-    return { previa: lerPreviaDoCancelamento(j) }
+    const previa = lerPreviaDoCancelamento(j)
+    return { previa: { ...previa, pontos: previa.fidelidade ? await pontosDoConjunto(ctx.tenantId!, { plano: plano.id }) : null } }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -1325,6 +1336,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
+import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.

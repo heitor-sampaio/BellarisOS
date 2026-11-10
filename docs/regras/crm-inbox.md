@@ -69,7 +69,10 @@
   `avisoDoAcessoCriado`, `tests/textos-do-cadastro.test.ts`) e a ficha
   ganha o selo "Tem acesso ao app" ao lado do nome (A13, 2026-10-27). Depois, a aba Dados da ficha dá o acesso
   (`darAcessoAoApp`, com o e-mail e o CPF SALVOS; o núcleo é
-  `darAcessoAoCliente`). Prova: `e2e/ficha-cadastro-de-balcao.spec.ts`.
+  `darAcessoAoCliente`). Prova: `e2e/ficha-cadastro-de-balcao.spec.ts`. O CPF
+  digitado que é o da própria ficha diz "É o CPF já salvo nesta ficha." em texto
+  neutro (`[data-cpf-da-ficha]`; A34 da 10ª, 2026-11-10: era "CPF já vinculado a
+  este cliente." em verde, e parecia erro). Prova: `e2e/ficha-uso-da-10.spec.ts` ("A34").
 - **O cadastro confere o que se digita** (D12 e D13 da simulação de
   2026-10-29; cadastro, aba Dados e "Dar acesso ao app"):
   - o CPF pelos dígitos verificadores, recusando a sequência repetida —

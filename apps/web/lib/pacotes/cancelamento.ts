@@ -69,6 +69,12 @@ export interface PreviaDoCancelamento {
   agendamentos:  SessaoAgendadaDoPacote[]
   /** O pagamento que volta em parte, se houver: pede a escolha de como estornar. */
   parcial:       PagamentoEmParte | null
+  /**
+   * A26 da 10ª simulação: os pontos LÍQUIDOS que os pagamentos do pacote (ou do
+   * plano) deram e o saldo da cliente hoje (`fidelidade_pontos_do_conjunto`) —
+   * a janela avisa que o estorno pode deixar o saldo negativo. Nulo sem fidelidade.
+   */
+  pontos?:       { ganhos: number; saldo: number } | null
 }
 
 const num = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100

@@ -759,6 +759,10 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   "Ninguém sumiu: quem já veio voltou nos últimos 90 dias 🎉 2 clientes
   cadastradas nos últimos 90 dias ainda não têm visita." (`vazioDoReativar`,
   `quadros-de-clientes.tsx`). Prova: `e2e/indicadores-reativar-sem-visita.spec.ts`.
+  **E diz o recorte e o resto** (A35 da 10ª simulação, 2026-11-10: "Ver 5
+  clientes inativos" parecia o total): "Sem visita há mais de 90 dias — quem
+  tem horário marcado não entra", e o link "Ver mais 5 (8 no total)". A conta
+  não mudou. Prova: `e2e/ficha-uso-da-10.spec.ts` ("A35").
   **E o Copilot dá a mesma resposta** (r3-f13-10, o Heitor, 2026-11-03: "os
   dois têm de dar a mesma resposta"): a escolha entre a conta da unidade e a
   da clínica mora num lugar só, `getClientesParaReativarDoRecorte`

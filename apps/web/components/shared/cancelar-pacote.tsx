@@ -163,6 +163,20 @@ function CancelarConjunto({ tipo, id, onFechar }: { tipo: 'PACOTE' | 'PLANO'; id
             <EscolhaDaDevolucao prefixo="cancelar-pacote" devolver={previa.devolver} parcial={previa.parcial}
               fidelidade={previa.fidelidade} estado={escolha} aoMudar={setEscolha} desligado={cancelando} opcoesDeVezes={opcoesDeVezes} />
 
+            {/* A26 da 10ª: a Camila tinha trocado os pontos do pacote, e o estorno a levou a −380 sem aviso. */}
+            {previa.devolver > 0 && previa.pontos && previa.pontos.ganhos > 0 && (
+              <p data-pontos-do-cancelamento role="note" style={{
+                fontSize: 'var(--text-xs-sz)', lineHeight: 1.5, padding: '10px 12px', borderRadius: 'var(--radius-field-token)',
+                color: 'var(--text)', background: previa.pontos.saldo < previa.pontos.ganhos ? 'var(--warning-soft)' : 'var(--bg-app)',
+                border: `1px solid ${previa.pontos.saldo < previa.pontos.ganhos ? 'var(--warning-border)' : 'var(--border)'}`,
+              }}>
+                Os pagamentos deste {nome} deram <strong>{previa.pontos.ganhos.toLocaleString('pt-BR')} pontos</strong>, e a cliente tem{' '}
+                <strong>{previa.pontos.saldo.toLocaleString('pt-BR')}</strong> hoje. O estorno tira os pontos do que voltar, na proporção
+                {previa.pontos.saldo < previa.pontos.ganhos ? ' — e o saldo pode ficar negativo (ela já trocou ou usou parte deles)' : ''}.
+                Com crédito na clínica, os pontos ficam.
+              </p>
+            )}
+
             {temAgendadas && (
               <div data-agendamentos-do-pacote role="radiogroup" aria-labelledby="cancelar-pacote-agendadas" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span id="cancelar-pacote-agendadas" className="field-label">

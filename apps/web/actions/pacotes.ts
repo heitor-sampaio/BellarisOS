@@ -33,6 +33,7 @@ import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avis
 import { EVENTOS } from '@estetica-os/types'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
+import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -321,7 +322,8 @@ export async function previaDoCancelamentoDoPacote(
       p_motivo: null, p_destino: null, p_agendamentos: null, p_esperado: null, p_simular: true,
       p_estorno: null, p_novo: null,
     }), 'calcular o cancelamento do pacote') as Record<string, unknown>
-    return { previa: lerPreviaDoCancelamento(j) }
+    const previa = lerPreviaDoCancelamento(j)
+    return { previa: { ...previa, pontos: previa.fidelidade ? await pontosDoConjunto(ctx.tenantId!, { pacote: cp.id }) : null } }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

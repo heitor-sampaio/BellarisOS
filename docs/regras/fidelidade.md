@@ -84,7 +84,14 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   ligado ao contra-lançamento "Estorno parcial"). Devolvido como CRÉDITO na
   clínica, os pontos ficam: o dinheiro não voltou (e pagar com crédito interno
   não pontua). Parcela a receber que caiu nunca deu ponto. Prova:
-  `e2e/pacote-cancelar.spec.ts`. **A unidade cancelada do pré-pago** segue a
+  `e2e/pacote-cancelar.spec.ts`. **E a janela diz os pontos antes** (A26 da 10ª
+  simulação, 2026-11-10: a Camila tinha trocado os pontos do pacote, e o estorno
+  a levou a −380 sem aviso): com a fidelidade ligada e algo a devolver, o
+  "Cancelar pacote" (e o "Cancelar plano") diz "Os pagamentos deste pacote
+  deram 750 pontos, e a cliente tem 220 hoje. O estorno tira os pontos do que
+  voltar, na proporção — e o saldo pode ficar negativo…" (`[data-pontos-do-cancelamento]`,
+  `fidelidade_pontos_do_conjunto`, migration `20261110005103`). A regra não
+  mudou. Prova: `e2e/ficha-uso-da-10.spec.ts` ("A26"). **A unidade cancelada do pré-pago** segue a
   mesma regra (D1 da 6ª simulação, 2026-11-04): o estorno tira os pontos do
   que voltou, o crédito na clínica os deixa. Prova:
   `e2e/pre-pago-cancelar-unidade.spec.ts`.

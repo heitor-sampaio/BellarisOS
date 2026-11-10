@@ -225,7 +225,12 @@ plano").
     Gerenciar (a permissão do pacote), com a unidade do plano ao alcance
     (`cancelarPlano` e `previaDoCancelamentoDoPlano`, `actions/treatment-plans.ts`).
     Quem recebe e não cancela lê "Cancelar o plano é de quem tem o Financeiro em
-    Gerenciar: …" (`quemDesfazNoCaixa`). A janela é a do pacote
+    Gerenciar: …" (`quemDesfazNoCaixa`). **Também na página do plano**
+    (`/planejamentos/<id>`, A27 da 10ª simulação, 2026-11-10: os dois times
+    procuraram ali): o resumo do plano fechado tem "Cancelar plano"
+    (`[data-cancelar-plano]`, `getResumoDoPlano` devolve `podeCancelar`) ou, para
+    quem não pode, o "a quem pedir" (`[data-quem-cancela-o-plano]`). Prova:
+    `e2e/ficha-uso-da-10.spec.ts` ("A27"). A janela é a do pacote
     (`CancelarPlano`, `components/shared/cancelar-pacote.tsx`).
   - **O usado é o preço das sessões FEITAS no plano** (o agendamento
     concluído), cada uma pela soma dos procedimentos dela, já com o desconto
@@ -1467,6 +1472,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     pagamento (o contrato assinado para ele fica; `prepararDocumentosDoCheckout`
     confere). Fechar ou cancelar o checkout o apaga. Prova:
     `e2e/financeiro-atritos-da-7.spec.ts` ("A45").
+- **A assinatura que trava o checkout diz de onde vem a exigência** (A28 da 10ª
+  simulação, 2026-11-10; princípio 1): com um documento que "Bloqueia" sem
+  assinatura, o passo da documentação diz "Quem exige a assinatura de “Contrato
+  do plano” é o modelo do documento: em Configurações → Documentos, a clínica
+  escolhe se ele “Bloqueia” o checkout ou “Só avisa”." (`textoDaExigenciaDoModelo`,
+  `lib/checkout/exigencia-do-modelo.ts`, `[data-exigencia-do-modelo]`). Prova:
+  `tests/checkout-exigencia-do-modelo.test.ts`.
 - **O checkout do plano diz o que fica sem data e confirma ao concluir** (A37
   da 8ª simulação, 2026-11-06; princípio 3 — agendar no checkout continua
   opcional): no passo do agendamento, "As sessões 2 e 3 ficam sem data: agende
@@ -1626,6 +1638,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (`[data-saldo-do-credito]`, `SaldoDoCredito`; o saldo do banco,
   `getCreditoInternoDoCliente`, pela action `saldoDoCreditoDaCliente`, de quem
   recebe). Prova: `e2e/caixa-atritos-da-8.spec.ts`.
+- **O crédito comprado conta no Investido total na compra, e a ficha diz** (A29
+  da 10ª simulação, 2026-11-10: logo depois da venda do vale, o LTV foi a R$ 650
+  sem nota): com um crédito na clínica comprado (`internal_credits.credito_vendido_id`),
+  "Inclui o crédito na clínica comprado: o dinheiro conta aqui no dia da compra,
+  e usar o crédito depois não conta de novo." (`[data-pago-com-credito]`). Prova:
+  `e2e/ficha-uso-da-10.spec.ts` ("A29").
 - **A ficha diz o que ela pagou com crédito** (A43 da 8ª): "+ R$ 180,00 pagos
   com crédito na clínica: não contam aqui…" embaixo do "Investido total" e na
   aba Financeiro (`[data-pago-com-credito]`,

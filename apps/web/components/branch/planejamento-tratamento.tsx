@@ -16,6 +16,7 @@ import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
 import { rodapeDoPlanoFechado } from '@/lib/plano-de-tratamento/textos'
+import { CancelarPlano } from '@/components/shared/cancelar-pacote'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -517,11 +518,14 @@ function ResumoDoPlano({ planId }: { planId: string }) {
   const [resumo, setResumo] = useState<FinanceiroDoPlano | null>(null)
   // A28 da 9ª: a quem a recepção sem o Financeiro pede a parcela que vence depois.
   const [quemRecebe, setQuemRecebe] = useState<string[] | null>(null)
+  // A27 da 10ª: o "Cancelar plano" também aqui, e a quem pedir para quem não pode.
+  const [cancelamento, setCancelamento] = useState<{ cancelavel: boolean; podeCancelar: boolean }>({ cancelavel: false, podeCancelar: false })
+  const [cancelando, setCancelando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   useEffect(() => {
     let vivo = true
     getResumoDoPlano(planId)
-      .then(res => { if (vivo) { if (res.resumo) { setResumo(res.resumo); setQuemRecebe(res.quemRecebe ?? null) } else setErro(res.error ?? 'Não foi possível ler o plano.') } })
+      .then(res => { if (vivo) { if (res.resumo) { setResumo(res.resumo); setQuemRecebe(res.quemRecebe ?? null); setCancelamento({ cancelavel: !!res.cancelavel, podeCancelar: !!res.podeCancelar }) } else setErro(res.error ?? 'Não foi possível ler o plano.') } })
       .catch(() => { if (vivo) setErro('Não foi possível ler o pagamento do plano.') })
     return () => { vivo = false }
   }, [planId])
@@ -577,6 +581,18 @@ function ResumoDoPlano({ planId }: { planId: string }) {
         <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
         {rodapeDoPlanoFechado(resumo.aReceber, quemRecebe)}
       </p>
+
+      {cancelamento.cancelavel && (cancelamento.podeCancelar ? (
+        <button type="button" className="btn-secondary" data-cancelar-plano onClick={() => setCancelando(true)} style={{ alignSelf: 'flex-start' }}>
+          Cancelar plano
+        </button>
+      ) : quemRecebe && (
+        <p data-quem-cancela-o-plano style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          Cancelar o plano é de quem tem o Financeiro em Gerenciar
+          {quemRecebe.length > 0 ? `: ${quemRecebe.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+        </p>
+      ))}
+      {cancelando && <CancelarPlano planId={planId} onFechar={() => setCancelando(false)} />}
     </div>
   )
 }
