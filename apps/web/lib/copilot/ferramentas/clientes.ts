@@ -10,6 +10,8 @@ import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { addDaysTZ } from '@/lib/datetime'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
+import { filtroDosClientesNovos } from '@/lib/copilot/clientes-novos'
+import { diaDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
   BUSINESS_TZ, STATUS_DO_AGENDAMENTO, dinheiro, hojeEmBrasilia, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota, unidadesDaRede,
@@ -164,12 +166,14 @@ export const clientes: FerramentaDeLeitura<{
         detalhe: [x.ultimaVisita ? `última visita ${x.ultimaVisita.slice(0, 10)}` : 'nunca veio', x.unidade].filter(Boolean).join(' · '),
       }))
     } else if (args.filtro === 'novos') {
-      const desde = addDaysTZ(new Date(), -(args.dias ?? 30)).toISOString()
-      let q = c.admin.from('clients').select('id, name, phone, created_at').eq('tenant_id', tenant).eq('is_active', true)
-        .gte('created_at', desde).order('created_at', { ascending: false }).limit(50)
+      // Sobra da F49 (10ª): pela regra do dashboard — coalesce(cliente_desde,
+      // created_at) —, não pelo cadastro: a importada de 2021 não é nova.
+      const desde = addDaysTZ(new Date(), -(args.dias ?? 30))
+      let q = c.admin.from('clients').select('id, name, phone, created_at, cliente_desde').eq('tenant_id', tenant).eq('is_active', true)
+        .or(filtroDosClientesNovos(desde)).order('created_at', { ascending: false }).limit(50)
       if (tagDaUnidade) q = q.contains('tags', [tagDaUnidade])
-      lista = ((await ler(q, 'ler os clientes novos')) as (Lin & { created_at: string })[] | null ?? [])
-        .map(x => ({ ...x, detalhe: `desde ${x.created_at.slice(0, 10)}` }))
+      lista = ((await ler(q, 'ler os clientes novos')) as (Lin & { created_at: string; cliente_desde: string | null })[] | null ?? [])
+        .map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: `desde ${diaDeClienteDesde({ clienteDesde: x.cliente_desde, createdAt: x.created_at })}` }))
     } else if (args.filtro === 'tag') {
       if (!args.tag) return { dados: { erro: 'Qual tag?' } }
       // O vocabulário da rede (Configurações → Tags): "VIP" e "vip" são a

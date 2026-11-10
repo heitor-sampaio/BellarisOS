@@ -118,6 +118,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     "sem visita" é o "Reativar clientes" do dashboard
     (`getClientesParaReativarDoRecorte`, r3-f13-10: "os dois têm de dar a
     mesma resposta").
+  - **Os "clientes novos" são os do dashboard** (sobra da F49, 10ª simulação,
+    2026-11-10): `coalesce(cliente_desde, created_at)`, a regra de
+    `indicadores.md` — a importada de 2021, cadastrada hoje, não é nova. Era o
+    `created_at`. O filtro é `filtroDosClientesNovos` (`lib/copilot/clientes-novos.ts`),
+    e o detalhe diz o "desde" de `diaDeClienteDesde`. Prova:
+    `tests/copilot-clientes-novos.test.ts`.
   - **Oportunidade**: `criar_oportunidade` aceita valor e responsável (este só
     com `podeTrocarResponsavel`, e como a tela: cria e troca em seguida);
     `trocar_responsavel` pelo `trocarResponsavelCore`; a leitura diz se já é
