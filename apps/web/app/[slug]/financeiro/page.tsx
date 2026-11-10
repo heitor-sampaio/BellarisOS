@@ -1,3 +1,4 @@
+import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
@@ -100,7 +101,7 @@ export default async function FinancialPage({
   function doPeriodo(de: number, ate: number) {
     return supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno')
     .eq('branch_id', unidadeId)
     .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
     // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
@@ -134,6 +135,9 @@ export default async function FinancialPage({
     ...t,
     desconto_texto: descontos[t.id as string] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id as string] ?? null,
+    // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.
+    estorno_parcial_texto: notaDoEstornoParcial(t as unknown as LancamentoParaNota),
+    uso_de_credito_texto: notaDoUsoDeCredito(t as unknown as LancamentoParaNota),
     taxa: taxas[t.id as string]?.taxa ?? null,
     liquido: taxas[t.id as string]?.liquido ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.

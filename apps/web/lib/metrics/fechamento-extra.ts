@@ -94,3 +94,37 @@ export async function getMovimentoDasUnidades(args: {
     total: { entradas: soma('entradas'), saidas: soma('saidas'), lancamentos: unidades.reduce((s, u) => s + u.lancamentos, 0) },
   }
 }
+
+/** A40 da 11ª: o que UMA pessoa recebeu no dia, por forma (do banco). */
+export interface RecebidoPorPessoa {
+  /** Nulo: o recebimento sem quem registrado (os de antes de 10/11/2026 com baixa depois). */
+  pessoa:  string | null
+  nome:    string | null
+  formas:  { forma: string; entradas: number; lancamentos: number }[]
+  total:   { entradas: number; lancamentos: number }
+}
+
+/**
+ * A40 da 11ª simulação (a Elaine e a Fabiana no caixa da Azaleia): o Fechamento
+ * do dia por QUEM RECEBEU — as entradas de cada pessoa (a regra única de
+ * receita, as mesmas do resumo por forma), por forma e o total dela, contadas
+ * no banco (`metrics_fechamento_por_quem_recebeu`). A tela não soma.
+ */
+export async function getFechamentoPorQuemRecebeu(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<RecebidoPorPessoa[]> {
+  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_fechamento_por_quem_recebeu', {
+    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  }).order('pessoa', { nullsFirst: false }).order('forma').range(de, ate), 'separar o dia por quem recebeu') as {
+    pessoa: string | null; nome: string | null; forma: string; entradas: number | string; lancamentos: number
+  }[]
+  const porPessoa = new Map<string, RecebidoPorPessoa>()
+  for (const l of linhas ?? []) {
+    const chave = l.pessoa ?? ''
+    const p = porPessoa.get(chave) ?? { pessoa: l.pessoa, nome: l.nome, formas: [], total: { entradas: 0, lancamentos: 0 } }
+    if (l.forma === 'TOTAL') p.total = { entradas: Number(l.entradas), lancamentos: Number(l.lancamentos) }
+    else p.formas.push({ forma: l.forma, entradas: Number(l.entradas), lancamentos: Number(l.lancamentos) })
+    porPessoa.set(chave, p)
+  }
+  // Quem recebeu mais primeiro; o "não registrado" por último.
+  return [...porPessoa.values()].sort((a, b) =>
+    (a.pessoa ? 0 : 1) - (b.pessoa ? 0 : 1) || b.total.entradas - a.total.entradas || (a.nome ?? '').localeCompare(b.nome ?? '', 'pt-BR'))
+}

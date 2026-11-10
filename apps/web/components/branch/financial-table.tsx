@@ -38,6 +38,10 @@ export interface Transaction {
   estorno_motivo?: string | null
   /** O desconto e o motivo, embaixo do valor (fin-01): "Desconto R$ 20,00 · cliente antiga". */
   desconto_texto?: string | null
+  /** A36 da 11ª: "Pago R$ 1.100,00 · R$ 990,00 estornados" (o estorno parcial). */
+  estorno_parcial_texto?: string | null
+  /** A37 da 11ª: o uso do crédito na clínica não é receita. */
+  uso_de_credito_texto?: string | null
   created_at:     string
   appointment_id: string | null
   /** Da venda de produto: o estorno é da venda e pergunta se o produto voltou (H2). */
@@ -381,6 +385,16 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                         {tx.desconto_texto && (
                           <p data-desconto-do-lancamento style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
                             {tx.desconto_texto}
+                          </p>
+                        )}
+                        {tx.estorno_parcial_texto && (
+                          <p data-estorno-parcial-do-lancamento style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+                            {tx.estorno_parcial_texto}
+                          </p>
+                        )}
+                        {tx.uso_de_credito_texto && (
+                          <p data-uso-de-credito style={{ fontSize: 'var(--text-overline)', fontWeight: 500, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+                            {tx.uso_de_credito_texto}
                           </p>
                         )}
                       </td>

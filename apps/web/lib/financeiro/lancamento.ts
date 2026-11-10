@@ -148,6 +148,8 @@ export async function marcarPagoCore(
   // Com a guarda: o já pago (ou estornado) não tem o pagamento sobrescrito.
   const feitas = await gravar(admin.from('financial_transactions').update({
     is_paid: true, paid_at: agora, updated_at: agora,
+    // A40 da 11ª: quem deu a baixa é quem recebeu (o Fechamento do dia por pessoa).
+    ...(tx.type === 'INCOME' && ctx.internalUserId ? { recebido_por: ctx.internalUserId } : {}),
     ...(forma ? { payment_method: forma } : {}),
     ...(daBandeira ? { cartao_bandeira: daBandeira } : {}),
     ...(emVezes ? { cartao_vezes: emVezes } : {}),

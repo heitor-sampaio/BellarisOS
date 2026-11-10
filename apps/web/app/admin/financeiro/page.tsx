@@ -1,3 +1,4 @@
+import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -7,7 +8,7 @@ import { dayKeyTZ, startOfDayTZ } from '@/lib/datetime'
 import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
-import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto, getComposicaoFinanceira } from '@/lib/metrics'
 import { lerTodas } from '@/lib/db'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
@@ -96,7 +97,7 @@ export default async function AdminFinanceiroPage({
   // A lista do período (ou de todo o em aberto, A38 da 8ª), lida em páginas.
   const daLista = (de: number, ate: number) => admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, cliente:clients!financial_transactions_client_id_fkey(name)')
+      .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
       // vencimento. Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o
@@ -115,7 +116,7 @@ export default async function AdminFinanceiroPage({
       .order('data_de_referencia', { ascending: soOEmAberto }).order('id')
       .range(de, ate)
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento, composicao] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -159,6 +160,8 @@ export default async function AdminFinanceiroPage({
     // "Reforça", item 4: os concluídos sem pagamento da rede inteira,
     // separados dos lançamentos (só apareciam no Fechamento).
     getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId! }),
+    // A38 da 11ª: o débito do período, que conta como recebido no dia (a nota do "A receber da operadora").
+    getComposicaoFinanceira(metricArgs),
   ])
   // E de cada unidade, para o recorte da tela (uma chamada por unidade, como o em aberto).
   const concluidosSemPagamentoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
@@ -220,6 +223,9 @@ export default async function AdminFinanceiroPage({
     ...t,
     desconto_texto: descontos[t.id] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id] ?? null,
+    // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.
+    estorno_parcial_texto: notaDoEstornoParcial(t as unknown as LancamentoParaNota),
+    uso_de_credito_texto: notaDoUsoDeCredito(t as unknown as LancamentoParaNota),
     taxa: taxas[t.id]?.taxa ?? null,
     liquido: taxas[t.id]?.liquido ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
@@ -248,6 +254,7 @@ export default async function AdminFinanceiroPage({
         totalConcluidosSemPagamento={concluidosSemPagamento}
         totalAPagar={emAbertoDaRede.aPagar}
         aReceberDaOperadora={operadora}
+        debitoNoPeriodo={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0}
         parcelasDaOperadora={parcelasDaOperadora}
         fluxoDeCaixa={await getFluxoDeCaixa({ tenantId: ctx.tenantId!, branchIds, porUnidade: true, meses: 12 })}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}

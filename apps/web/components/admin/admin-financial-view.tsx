@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { NotaDoDebito } from '@/components/shared/nota-do-debito'
 import { useState, useTransition, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -87,6 +88,10 @@ interface AdminTx {
   vencimentos_anteriores?: RemarcacaoDoVencimento[] | null
   /** O desconto e o motivo, embaixo do valor (fin-01). */
   desconto_texto?: string | null
+  /** A36 da 11ª: "Pago R$ 1.100,00 · R$ 990,00 estornados" (o estorno parcial). */
+  estorno_parcial_texto?: string | null
+  /** A37 da 11ª: o uso do crédito na clínica não é receita. */
+  uso_de_credito_texto?: string | null
   /** Da venda de produto: o estorno é da venda e pergunta se o produto voltou (H2). */
   product_sale_id?: string | null
   /** Da venda de crédito na clínica (decisão 1 da 9ª): o estorno é da venda e devolve o saldo não usado. */
@@ -127,6 +132,8 @@ interface Props {
    * pagou tudo) — o total das ativas e cada unidade (lib/metrics/operadora).
    */
   aReceberDaOperadora: { total: AReceberDaOperadora; porUnidade: Record<string, AReceberDaOperadora> }
+  /** A38 da 11ª: o débito do período (a composição por forma), que conta como recebido no dia. */
+  debitoNoPeriodo?: number
   /** As parcelas da operadora: todo o em aberto e o que vence no período (D3). */
   parcelasDaOperadora: ParcelaDaOperadora[]
   /** r2-fin-04: o fluxo de caixa dos próximos meses — o do recorte e o de cada unidade. */
@@ -254,7 +261,7 @@ function KpiCard({
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
-  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa,
+  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, soOEmAberto = false, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
@@ -479,6 +486,8 @@ export function AdminFinancialView({
               bruto={{ periodo: operadora.aReceberBruto, emAberto: operadora.emAbertoBruto }} />
             {/* D3: o cartão leva à lista das parcelas. */}
             <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} />
+            {/* A38 da 11ª: o débito conta como recebido no dia. */}
+            <NotaDoDebito debito={debitoNoPeriodo} />
           </>}
           icon={<CreditCard size={16} color="var(--brand)" />}
         />
@@ -733,6 +742,16 @@ export function AdminFinancialView({
                       {t.desconto_texto && (
                         <span data-desconto-do-lancamento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
                           {t.desconto_texto}
+                        </span>
+                      )}
+                      {t.estorno_parcial_texto && (
+                        <span data-estorno-parcial-do-lancamento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+                          {t.estorno_parcial_texto}
+                        </span>
+                      )}
+                      {t.uso_de_credito_texto && (
+                        <span data-uso-de-credito style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+                          {t.uso_de_credito_texto}
                         </span>
                       )}
                     </td>

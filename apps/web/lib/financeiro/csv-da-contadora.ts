@@ -58,6 +58,8 @@ export interface FechamentoParaCsv {
   total:    { entradas: number; saidas: number; saldo: number; lancamentos: number }
   esperadoDinheiro: number
   estornos: { descricao: string; forma: string | null; vezes: number | null; valor: number; motivo: string | null }[]
+  /** A40 e A44 da 11ª: as entradas de cada pessoa que recebeu, por forma (o CSV só trazia as formas). */
+  porQuemRecebeu?: { pessoa: string | null; nome: string | null; formas: { forma: string; entradas: number; lancamentos: number }[]; total: { entradas: number; lancamentos: number } }[]
 }
 
 /** O Fechamento do dia: as formas, o total, o dinheiro esperado e os estornos do dia. */
@@ -72,5 +74,17 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ['Estornos do dia'],
     ['Descrição', 'Forma', 'Valor', 'Motivo'],
     ...f.estornos.map(e => [e.descricao, e.forma ? rotuloDaForma(e.forma, e.vezes) : '', reais(-e.valor), e.motivo ?? '']),
+    ...(f.porQuemRecebeu?.length ? [
+      [],
+      ['Por quem recebeu'],
+      ['Quem recebeu', 'Forma', 'Entradas', 'Lançamentos'],
+      ...f.porQuemRecebeu.flatMap(p => {
+        const quem = p.pessoa ? (p.nome ?? 'Sem nome') : 'Não registrado'
+        return [
+          ...p.formas.map(l => [quem, rotuloDaFormaDoFechamento(l.forma), reais(l.entradas), String(l.lancamentos)]),
+          [quem, 'Total', reais(p.total.entradas), String(p.total.lancamentos)],
+        ]
+      }),
+    ] : []),
   ])
 }

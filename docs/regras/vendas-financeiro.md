@@ -716,6 +716,23 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       (`[data-a-receber-de-qualquer-dia]`), e o título "Concluídos a receber
       hoje, de qualquer dia".
     - Prova: `e2e/financeiro-atritos-da-8.spec.ts`.
+  - **Por quem recebeu** (A40 da 11ª simulação, 2026-11-10; princípio 3: a
+    Elaine e a Fabiana no caixa da Azaleia, e cada uma precisava saber o que
+    entrega): o quadro "Por quem recebeu" (`[data-por-quem-recebeu]`) lista as
+    entradas do dia de cada pessoa, por forma, e o total dela — o mesmo conjunto
+    do resumo (a regra única de receita), contado no banco
+    (`metrics_fechamento_por_quem_recebeu` → `getFechamentoPorQuemRecebeu`,
+    `lib/metrics/fechamento-extra.ts`). Quem recebeu é
+    `financial_transactions.recebido_por` (migration `20261110005601`): no
+    lançamento que já nasce pago, quem o lançou (o gatilho
+    `trg_lancamento_guarda_o_pagamento`, pelo `created_by`); na baixa depois
+    (a parcela do crediário, o atendimento concluído, o plano no check-in), quem
+    deu a baixa (`marcarPagoCore`, `confirmar_pagamento_do_atendimento`,
+    `plano_receber`). O recebimento de antes da coluna só é atribuído quando
+    nasceu pago; o resto aparece "Quem recebeu não registrado" (princípio 4).
+    As saídas e os estornos ficam no total da unidade. O CSV do Fechamento traz
+    a seção "Por quem recebeu" (A44 da 11ª: só trazia as formas). Prova:
+    `e2e/financeiro-atritos-da-11.spec.ts` ("A40"), `tests/csv-da-contadora.test.ts`.
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
   de 2026-10-27, decisões do Heitor). A conta é UMA, no banco
@@ -936,6 +953,28 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   "Desfazer o pagamento" — a janela diz que nenhum dinheiro volta: o voucher
   volta a valer e os pontos voltam ao saldo. O estorno fica (é o caminho
   documentado de desfazer o uso do voucher, `fidelidade.md`). Prova: ("A23").
+- **O pagamento estornado em parte diz o que foi pago** (A36 da 11ª simulação,
+  2026-11-10; princípio 3 — a regra r2-ven-05 não muda: o pagamento passa a
+  valer o usado e o "Estorno parcial" leva o resto). A linha do pacote dizia só
+  "Pix · 110,00", e quem lia não via que a Camila pagou R$ 1.100. O pagamento
+  PAGO de receita que diminui guarda o valor de antes
+  (`financial_transactions.valor_antes_do_estorno`, pelo gatilho
+  `trg_lancamento_guarda_o_pagamento` — vale nas cinco portas do estorno
+  parcial; migration `20261110005601`), e a linha dos dois financeiros diz
+  "Pago R$ 1.100,00 · R$ 990,00 estornados" (`notaDoEstornoParcial`,
+  `lib/financeiro/notas-do-lancamento.ts`, `[data-estorno-parcial-do-lancamento]`).
+  O Fechamento do dia diz, nos estornos, que as entradas já mostram o que ficou.
+  Os estornos parciais de antes da coluna ficam sem a nota.
+- **O uso do crédito na clínica diz que não é receita** (A37 da 11ª): a linha
+  "Receita · Pago · + R$ 130,00" do pagamento com `INTERNAL_CREDIT` ganha "Uso
+  do crédito na clínica: não é receita — o caixa foi quando o crédito foi
+  comprado…" (`notaDoUsoDeCredito`, `[data-uso-de-credito]`). A regra F7 fica.
+- **O "A receber da operadora" diz o débito** (A38 da 11ª; princípio 4: o
+  débito e o Pix não têm prazo configurado): "Débito no período: R$ 540,00 —
+  conta como recebido no dia da venda" (`NotaDoDebito`,
+  `[data-debito-no-periodo]`, o débito da composição por forma,
+  `metrics_financeiro_composicao`), nos dois financeiros. Prova (A36–A38):
+  `e2e/financeiro-atritos-da-11.spec.ts`, `tests/financeiro-notas-do-lancamento.test.ts`.
 - **"Remarcar vencimento" com a palavra, também na ficha** (A22 da 10ª; sobra
   da A37 da 9ª): o botão da lista dos dois financeiros diz "Remarcar
   vencimento" (era só o ícone), e a parcela em aberto da aba Financeiro da

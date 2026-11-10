@@ -34,3 +34,24 @@ describe('A31: o CSV da contadora', () => {
     expect(l).toContain('Estorno: Sérum;Dinheiro;-397,00;devolveu')
   })
 })
+
+// A40 e A44 da 11ª simulação (2026-11-10): o CSV do Fechamento só trazia as
+// formas — com duas recepcionistas, cada uma precisa saber o que entrega.
+describe('A40/A44: o CSV do Fechamento por quem recebeu', () => {
+  it('cada pessoa, por forma, e o total dela; o sem registro diz isso', () => {
+    const csv = csvDoFechamento({
+      dia: '2026-11-10', unidade: 'Azaleia Pituba',
+      formas: [{ forma: 'PIX', entradas: 130, saidas: 0, saldo: 130, lancamentos: 2 }],
+      total: { entradas: 130, saidas: 0, saldo: 130, lancamentos: 2 }, esperadoDinheiro: 50, estornos: [],
+      porQuemRecebeu: [
+        { pessoa: 'e', nome: 'Elaine', formas: [{ forma: 'PIX', entradas: 100, lancamentos: 1 }], total: { entradas: 100, lancamentos: 1 } },
+        { pessoa: null, nome: null, formas: [{ forma: 'CASH', entradas: 30, lancamentos: 1 }], total: { entradas: 30, lancamentos: 1 } },
+      ],
+    })
+    const l = csv.slice(1).split('\r\n')
+    expect(l).toContain('Por quem recebeu')
+    expect(l).toContain('Elaine;Pix;100,00;1')
+    expect(l).toContain('Elaine;Total;100,00;1')
+    expect(l).toContain('Não registrado;Dinheiro;30,00;1')
+  })
+})

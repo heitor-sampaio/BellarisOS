@@ -8,7 +8,7 @@ import { fecharODia, informarFundoDeTroco } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
-import type { EstornoDoDia, MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
+import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa } from '@/lib/metrics/fechamento-extra'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
@@ -44,7 +44,7 @@ export interface OperadoraNoFechamento {
   link:     string | null
 }
 
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null, estornos = null, daRede = null, ehHoje = true }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, ehHoje = true }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -71,6 +71,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   fundoInformado?: { quem: string | null; quando: string } | null
   /** A42 da 8ª: o que foi estornado no dia (do banco; o total, de lib/metrics). */
   estornos?: { itens: EstornoDoDia[]; total: number } | null
+  /** A40 da 11ª: as entradas do dia de cada pessoa que recebeu, por forma (do banco). */
+  porQuemRecebeu?: RecebidoPorPessoa[]
   /** A45 da 8ª: o dia de cada unidade e o da clínica (o portal da rede). */
   daRede?: { unidades: MovimentoDaUnidade[]; total: { entradas: number; saidas: number; lancamentos: number } } | null
   /** O dia aberto é hoje (A48: o "a receber" é sempre o de hoje, de qualquer dia). */
@@ -168,6 +170,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           dia, unidade: unidades.find(u => u.id === unidadeId)?.name ?? '',
           formas: resumo.formas, total: resumo.total, esperadoDinheiro: resumo.esperadoDinheiro,
           estornos: estornos?.itens ?? [],
+          porQuemRecebeu,
         }))}>
           Exportar CSV
         </button>
@@ -202,6 +205,36 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
         </div>
       </div>
 
+      {/* A40 da 11ª: com duas recepcionistas, cada uma precisa saber o que entrega. */}
+      {porQuemRecebeu.length > 0 && (
+        <div data-por-quem-recebeu className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Por quem recebeu</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            As entradas do dia de cada pessoa, por forma — quem registrou o recebimento (na venda, quem vendeu; na baixa de uma parcela, quem deu a baixa).
+            As saídas e os estornos ficam no total da unidade, acima.
+          </p>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+            {porQuemRecebeu.map(p => (
+              <li key={p.pessoa ?? 'sem'} data-quem-recebeu={p.pessoa ?? 'nao-registrado'}
+                style={{ borderTop: '1px solid var(--hairline)', padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: p.pessoa ? 'var(--text)' : 'var(--text-muted)' }}>
+                    {p.pessoa ? (p.nome ?? 'Sem nome') : 'Quem recebeu não registrado'}
+                  </span>
+                  <span data-total-de-quem-recebeu style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                    {brl(p.total.entradas)}
+                  </span>
+                </div>
+                <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  {p.formas.map(f => `${rotuloDaFormaDoFechamento(f.forma)} ${brl(f.entradas)}`).join(' · ')}
+                  {!p.pessoa && ' — recebimentos de antes de 10/11/2026 com a baixa feita depois da venda.'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* A42 da 8ª: o estorno do dia — a venda e o estorno saem das entradas e
           das saídas pela regra única, e o resumo não mostrava o que voltou. */}
       {estornos && estornos.itens.length > 0 && (
@@ -211,6 +244,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           </p>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
             O que voltou às clientes neste dia. O pagamento estornado e o estorno ficam fora das entradas e das saídas acima — um anula o outro.
+            No estorno parcial, o pagamento passa a valer o que ficou (o Financeiro diz quanto foi pago e quanto voltou), e as entradas já mostram esse valor.
           </p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {estornos.itens.map(e => (

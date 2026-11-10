@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { NotaDoDebito } from '@/components/shared/nota-do-debito'
 import { useMemo, useTransition, useRef } from 'react'
 import { montarBarras, type BarDatum, type PontoDaSerie } from '@/lib/financeiro/barras'
 import type { ComposicaoFinanceira } from '@/lib/metrics'
@@ -724,6 +725,8 @@ export function FinancialHub({
               bruto={{ periodo: aReceberDaOperadora.aReceberBruto, emAberto: aReceberDaOperadora.emAbertoBruto }} />
             {/* D3: o cartão leva à lista das parcelas. */}
             <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} />
+            {/* A38 da 11ª: o débito conta como recebido no dia. */}
+            <NotaDoDebito debito={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0} />
           </>}
           label="A receber da operadora"
           curr={aReceberDaOperadora.aReceber} prev={0}
