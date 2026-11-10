@@ -56,6 +56,11 @@ e a da plataforma não podem se encostar:
   (`gravarSessaoNoHost`, sem endpoint). `estadoNo(host)` abre uma SEGUNDA
   sessão para o outro host — a mesma nos dois giraria o refresh token num e
   derrubaria o outro.
+- O código TOTP do atendente passa por `passarOCodigo` (`apoio/totp.ts`, F47):
+  o desafio primeiro, o código calculado DEPOIS dele, e o recusado tenta de
+  novo na janela seguinte. Com `challengeAndVerify({ code: totp(…) })` o
+  código saía antes do desafio, e o desafio de 34 s do Auth lento o fez
+  chegar duas janelas atrasado ("Invalid TOTP code entered").
 - `chamarAcao` aceita rota absoluta: no host do sistema ou do suporte, lê os
   manifestos de `apps/<app>/.next`.
 - O "entrar como" abre a conta numa ABA NOVA (`entrarComo` devolve `page`, a
@@ -209,6 +214,11 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     `haMinutosHoje(n)` (`apoio/datas.ts`): às 00:04, "8 minutos atrás" era
     ontem, e cinco specs falharam (a janela nunca abria, "A chegada só se
     marca no dia do agendamento", o relatório de hoje contava metade).
+    O inverso também (F47, a completa de 09–10/11): o "23:55 de ontem" que
+    deve ter PASSADO (o vencido do Desativar) conta o FIM — às 00:00, o de
+    meia hora de 24 h atrás ainda está em andamento; "ontem" é o dia de 25 h
+    atrás. E o "ainda há livre hoje" pula com `cabeHoje(60)`: depois das
+    23:30 não sobra horário de 30 min.
   - `page.goto` com `net::ERR_ABORTED` numa tela que a sessão acabou de
     perder: a própria tela (o refresh dela) navegou primeiro para o mesmo
     destino. É `irComASessaoCaindo` (`apoio/suporte.ts`): tolera só o
