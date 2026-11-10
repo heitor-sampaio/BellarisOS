@@ -263,6 +263,11 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     reiniciou às 05:24:56: 13 das 15 falhas caíam nessas janelas. Sinais no
     log do teste: "Não achei o tenant" com o JSON do Cloudflare (521), action
     em "Salvando…" para sempre, "abrir a sessão" com HTTP 504.
+    ⚠️ O erro que o banco registra DEPOIS do fim do teste pode ser efeito do
+    `afterAll`, não a causa (F48): na completa de 10/11 o RPC da condição
+    esperou 8 s por conexão, chegou ao Postgres às 04:31:58 — depois de o
+    `afterAll` apagar a assinatura (04:31:56) — e disse "A rede está sem
+    plano". Confira o `parsed.timestamp` do erro contra o horário da limpeza.
   - **O que a action grava DEPOIS do que o teste espera se lê com
     `expect.poll`** (a completa de 06/11, F39, com o banco engasgado): o
     evento do agendamento sai no `after()` do `createAppointmentCore` (depois
@@ -270,7 +275,16 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     depois do prontuário. Lidos logo em seguida, com um `.single()`, davam
     `null` ou o pendente ainda aberto — só quando o banco estava lento.
     Provas: `copilot-gravacoes` ("agendar"), `ficha-pre-atendimento` ("salvar
-    fecha o pendente").
+    fecha o pendente"). O mesmo vale para o checkout do plano (F48): o
+    `ACCEPTED` sai antes de `plano_comissao_de_venda`, e quem espera a
+    comissão espera o que a MESMA gravação marca (o `vendido_por`), não o
+    status (`comissoes-venda-do-plano`, o crediário).
+  - **Dois relógios não se comparam por milissegundos** (F48, a completa de
+    10/11): o `created_at` que o banco põe (`now()`) e o instante que o teste
+    grava (`new Date()` no runner) saíram com ~30 ms entre um e outro, e a
+    diferença dos relógios bastou para a compra "vir antes" da oportunidade
+    (A18 do `crm-atritos-da-7`: a sugestão de Ganho não apareceu). Teste que
+    depende de "A depois de B" grava a folga explícita (B um minuto antes).
   - Teste que cria pela TELA e cai antes de ler o id do que gravou (a janela
     não fechou a tempo) limpa no `afterAll` pelo que só ele tem (o nome
     `[e2e]` da ficha): o agendamento que ficava para trás travava a rodada
@@ -297,4 +311,5 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 ❌ Comando com espaço no -g de um spawnSync com shell no Windows (o argumento se parte): use uma palavra só
 ❌ Repetir uma gravação que falhou por outro motivo que não o 57014 (só o cancelamento por tempo garante que nada foi gravado)
 ❌ Clicar num cartão da grade do dia logo depois do goto sem cartaoNaGradeDoDia (a rolagem da grade o tira de baixo do ponteiro — F45)
+❌ Gravar "A depois de B" com B pelo now() do banco e A pelo new Date() do runner, colados: a diferença dos relógios inverte a ordem — dê a folga (F48)
 ```
