@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { cabeHoje } from './apoio/datas'
 
 /**
  * O horário de funcionamento (2026-10-21; D11 da simulação de um dia de
@@ -61,6 +62,10 @@ test('os livres seguem a unidade (com a pausa), o profissional e o dia fechado',
 })
 
 test('hoje, o que já passou não é oferecido', async ({ browser }) => {
+  // O livre de 30 min começa na meia hora cheia seguinte e termina até 24:00:
+  // depois das 23:30 não sobra nenhum hoje (a completa de 09–10/11 rodou este
+  // às 23:48 — F47). Com uma hora de folga, sempre sobra.
+  test.skip(!cabeHoje(60), 'perto da meia-noite não sobra horário livre hoje')
   await db().from('branches').update({ horario: { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, [{ de: '00:00', ate: '24:00' }]])) } }).eq('id', rede!.branchId)
   await db().from('users').update({ horario: null }).eq('id', rede!.professionalId)
   const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
