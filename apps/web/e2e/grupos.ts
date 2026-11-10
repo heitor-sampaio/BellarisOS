@@ -286,6 +286,7 @@ export const ISOLADOS = [
   'crm-defeitos-da-11.spec.ts',
   'agenda-defeitos-da-11.spec.ts',
   'estoque-defeitos-da-11.spec.ts',
+  'comissoes-defeitos-da-11.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',

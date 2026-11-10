@@ -142,6 +142,19 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   maquininha, Insumos, Proporção que ficou e Base. No valor fixo, a base é o
   preço sem os pontos e o voucher. Prova: `e2e/comissoes-atritos-da-10.spec.ts`,
   `tests/comissoes-base-efetiva.test.ts`.
+  **Cada lançamento com a base DA HORA DELE** (D7 da 11ª simulação,
+  2026-11-10; princípio 3): depois do cancelamento do pacote de R$ 1.100
+  (ficaram R$ 110), a liberação de R$ 33,00 — lançada com o pacote inteiro —
+  dizia "base cheia R$ 110,00 (… na proporção do que ficou (10%)) · 3%". O
+  extrato aplicava o fator de HOJE a todos os lançamentos da linha. O fator (a
+  proporção do que ficou) só muda no cancelamento do pacote e do plano
+  (`cancelado_em`) e na devolução da venda de produto
+  (`product_sale_returns.created_at`); `private.comissao_fator_em` diz o de
+  um instante, e `comissoes_extrato_com_base` o usa no `released_at` de cada
+  lançamento (o que aguarda, o de agora; migration `20261110005403`). A
+  liberação diz "base cheia: R$ 1.100,00 · 3%"; o acerto, "R$ 110,00
+  (R$ 1.100,00, na proporção do que ficou (10%))". A conta não mudou. Prova:
+  `e2e/comissoes-defeitos-da-11.spec.ts`.
   **Taxas da maquininha** em `payment_fees`
   (Pix, débito, crédito 1–12x; sem teto desde a F16-3 — acima de 100% em
   `taxa_pct_sem_teto`, e a comissão sobre o líquido nunca fica negativa),
@@ -465,6 +478,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ```
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
 ❌ Mostrar o preço da linha (commission_lines.preco) como "base", ou refazer a base no TypeScript — é a de comissao_conta_detalhe (comissoes_extrato_com_base — D3 da 10ª); mudou a conta, muda nela (comissao_conta lê dela)
+❌ Escrever no lançamento antigo a base de HOJE (o fator do cancelamento que veio depois dele): é a da hora do lançamento (private.comissao_fator_em — D7 da 11ª)
 ❌ Liberar comissão sobre o que a cliente ainda deve à clínica (crediário, avulso sem pagamento) — só com o pagamento integral; o cartão em N vezes JÁ é pago
 ❌ Criar linha de comissão em outro modo que não INTEGRAL (o gatilho trg_comissao_linha_integral garante), ou reescrever o modo de uma linha antiga
 ❌ Decidir a regra de um procedimento sem as gerais (regraAplicavel sem o terceiro argumento ignora "a mesma para todos")
