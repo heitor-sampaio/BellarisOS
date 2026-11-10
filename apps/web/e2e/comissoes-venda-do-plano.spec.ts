@@ -193,7 +193,11 @@ test('no crediário a comissão espera a última parcela (H4), e libera quando e
     await p.getByRole('button', { name: 'Ir para a documentação' }).click()
     await concluir(p)
   })
-  await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
+  // O ACCEPTED sai ANTES da comissão (`plano_comissao_de_venda`, outra
+  // gravação, que marca o `vendido_por` na mesma transação da linha): esperar
+  // só o status lia a linha no meio (completa de 10/11, F48). É o do à vista.
+  await expect.poll(async () => (await db().from('treatment_plans').select('status, vendido_por').eq('id', planId).single()).data)
+    .toEqual({ status: 'ACCEPTED', vendido_por: consultor!.userId })
   expect(await comissaoDaVenda(planId), 'a linha existe e ainda não lançou nada').toEqual([expect.objectContaining({ lancado: 0, status: 'ATIVA' })])
 
   const { data: parcelas } = await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId).eq('is_paid', false).order('parcela_numero')
