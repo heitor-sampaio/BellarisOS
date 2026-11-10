@@ -189,6 +189,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
      */
     const [responsaveis, setResponsaveis] = useState<Responsaveis | null>(null)
     const [ownerId,      setOwnerId]      = useState(existing?.owner_id ?? '')
+    /**
+     * D1 da 11ª: a pessoa mexeu no Responsável DESTA abertura. A lista que
+     * chega do servidor depois não pode trocar a escolha dela por baixo.
+     */
+    const escolheuResponsavel = useRef(false)
     const idResponsavel = useId()
     const idNome        = useId()
     const idOrigem      = useId()
@@ -255,17 +260,24 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setTags(tagsIniciais)
       setTagDraft('')
       setErroConversa(null)
-      setOwnerId(existing?.owner_id ?? '')
+      // D1 da 11ª: o lead novo abre JÁ com quem o cria. Da 2ª abertura em
+      // diante a lista de antes está em memória e o select aparece na hora —
+      // abrir em "Sem responsável" e só voltar para quem cria quando o
+      // servidor respondesse fazia o lead gravado nesse meio-tempo nascer sem
+      // ninguém (4 de 6 na simulação).
+      setOwnerId(existing?.owner_id ?? (existing ? '' : responsaveis?.eu ?? ''))
+      escolheuResponsavel.current = false
       setAberto(true)
       dialogRef.current?.showModal()
       responsaveisParaOportunidade()
         .then(r => {
           setResponsaveis(r)
-          // Lead novo nasce de quem o cria (é o que o servidor faz sem o campo).
-          if (!existing) setOwnerId(r.eu ?? '')
+          // Lead novo nasce de quem o cria (é o que o servidor faz sem o campo)
+          // — a não ser que a pessoa já tenha escolhido outro.
+          if (!existing && !escolheuResponsavel.current) setOwnerId(r.eu ?? '')
         })
         .catch(() => setResponsaveis(null))
-    }, [existing, initialStageId, stages, branchName, pessoa])
+    }, [existing, initialStageId, stages, branchName, pessoa, responsaveis])
 
     const close = useCallback(() => dialogRef.current?.close(), [])
 
@@ -600,8 +612,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   }}>
                     Responsável
                   </label>
+                  {/* A marca de que o campo estava NA TELA: sem ela, o vazio não
+                      tira o responsável no servidor (D1 da 11ª). */}
+                  <input type="hidden" name="_responsavelNaTela" value="1" />
                   <select id={idResponsavel} name="owner_id" className="field"
-                    value={ownerId} onChange={e => setOwnerId(e.target.value)}>
+                    value={ownerId} onChange={e => { escolheuResponsavel.current = true; setOwnerId(e.target.value) }}>
                     <option value="">Sem responsável</option>
                     {/* Responsável que saiu da lista (desativado) segue como
                         opção: salvar sem mexer não pode tirá-lo em silêncio. */}

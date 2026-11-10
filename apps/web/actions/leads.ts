@@ -40,7 +40,13 @@ function parseStringArray(fd: FormData, key: string): string[] {
  */
 function responsavelDoForm(fd: FormData): string | null | undefined {
   if (!fd.has('owner_id')) return undefined
-  return str(fd, 'owner_id')
+  const escolhido = str(fd, 'owner_id')
+  // D1 da 11ª: o VAZIO só tira o responsável quando a tela mostrou o campo
+  // (`_responsavelNaTela`). O de uma tela que não o mostrou (a página de um
+  // deploy anterior, o select que ainda não tinha o valor) não troca quem
+  // está — era assim que 4 de 6 leads nasceram sem ninguém.
+  if (escolhido === null && !fd.has('_responsavelNaTela')) return undefined
+  return escolhido
 }
 
 function parseProcedureIds(fd: FormData): string[] {

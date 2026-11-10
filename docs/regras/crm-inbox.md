@@ -957,6 +957,16 @@ conceito não pode ter dois nomes) — no código segue `owner`.
 - Nasce de quem cria o lead; o card mostra as iniciais (o nome no `title`), e
   o modal do lead tem o campo "Responsável" (os membros ATIVOS da rede, mais
   "Sem responsável" — que devolve o card ao bolo comum).
+- **O lead novo ABRE com quem o cria, e o vazio só tira o responsável quando
+  a tela mostrou o campo** (D1 da 11ª simulação, 2026-11-10; princípio 3: a
+  Tatiane criou 6 leads seguidos e 4 nasceram "Sem responsável"). Da 2ª
+  abertura do "Novo lead" em diante a lista de responsáveis já estava em
+  memória: o select aparecia em "Sem responsável" até o servidor responder, e
+  o lead gravado nesse meio-tempo mandava `owner_id=''`. Agora o modal abre
+  com o `eu` da lista em memória, a resposta que chega depois não troca o que
+  a pessoa escolheu, e o select vai com a marca `_responsavelNaTela`; sem ela,
+  o `owner_id` vazio não troca nada (`responsavelDoForm`, `createLead` e
+  `updateLead`). Prova: `e2e/crm-defeitos-da-11.spec.ts` ("D1").
 - **Troca só quem tem o CRM em Gerenciar com escopo "todos"**
   (`podeTrocarResponsavel`, `lib/crm/responsavel.ts`). O "só os meus" vê o
   nome e não troca: passar o card adiante o tiraria do próprio alcance, e
@@ -1192,6 +1202,7 @@ o contato junto.
 ❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
+❌ Ler o owner_id vazio sem a marca _responsavelNaTela como "Sem responsável", ou abrir o "Novo lead" com um Responsável diferente do que a tela vai mandar (D1 da 11ª)
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
 ❌ Oferecer a origem do lead da lista fixa (LEAD_SOURCES) onde a clínica escolhe — são as origens dela (crm_origens: origensDaRede, useOrigensDaRede); LEAD_SOURCES fica para a atribuição do anúncio e o fallback (A14 da 7ª)
 ❌ Mover o card porque a cliente comprou — o card SUGERE ("Mover para Fechado"), quem move é a pessoa (A18 da 7ª, crm-05)
