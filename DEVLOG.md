@@ -10267,6 +10267,12 @@ As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: 
 - Fora da frente, anotado: a entrega de recompensa (voucher) grava ajuste de estoque negativo e aparece em "Perdas no período" como Inventário.
 - Mexeu em `globals.css` do núcleo, `lib/appointments/core.ts`, `actions/stock.ts` e nos crons `estoque-minimo` e `notification-campaigns`: vale a completa do fim do ciclo.
 
+**F52 FEITA (10/11, 07627821 e 90832817, um push só; migrations 20261110005201–03) — as duas decisões do Heitor da 10ª:**
+- **Pagamento parcial da comissão (A21):** o "Fechar e pagar" lista os lançamentos do período, todos marcados; desmarcar recalcula o "Pagar agora (1 lançamento fica a pagar)"; sem valor digitado. O desmarcado fica "A pagar" e volta marcado no próximo fechamento. "Paga em…/A pagar" por linha no extrato e no "Minhas comissões", e a coluna "Pago em" no CSV. No banco, `comissao_fechar_escolhidos` paga só os ids marcados e recusa o fechamento inteiro se um for de outra pessoa ou já pago; a `comissao_fechar` antiga passou a chamá-la.
+- **Indicação que premia (decisão 1 + A43):** "Indicada por" ligado a outra ficha (Novo cliente, Agendar com cliente nova, ficha → Dados; a importação liga pelo nome quando bate uma ficha só e senão guarda o texto e diz); em Fidelidade → Indicação, o prêmio nasce "Desligado" (pontos ou uma recompensa); a indicada que PAGA o primeiro atendimento ou venda premia quem indicou, uma vez; o estorno desse pagamento tira o prêmio (o voucher de prêmio é cancelado, se não foi usado). A ficha mostra "Indicou: Marina (prêmio dado em 10/11)", o extrato "Indicação de Marina", e o app mostra "Indique uma amiga" só com o prêmio ligado. Tabela `indicacao_premios` só do servidor, com as restritivas do suporte.
+- Decidido pelos princípios: o "primeiro pagamento" é dinheiro que entrou e ficou (não conta crédito interno, pagamento todo em pontos nem o estornado; a entrada de um plano conta); se o que premiou é estornado e há outro pagamento de pé, o prêmio passa a ele (fica um só); o estorno parcial não tira o prêmio; nada retroativo (quem já tinha pagado antes da indicação ou de o prêmio ser ligado não premia, e a ficha diz por quê); recompensa arquivada não é dada nem prometida.
+- Gatilhos novos em `financial_transactions` (toda receita paga e todo estorno): vale a completa do fim do ciclo.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
