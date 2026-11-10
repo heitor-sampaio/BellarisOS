@@ -1683,6 +1683,36 @@ const procedures = await ler(
     e o cartão diz "7,8 → 8 frasco (780 → 800 UI)". `estoque_ajuste` (o de
     antes) ficou sem chamador. Prova: `e2e/estoque-tela-consumo-e-lotes.spec.ts`
     ("D3"), `e2e/estoque-custo-de-consumo.spec.ts`.
+  - **O consumo e o valor em estoque vão pelo custo do LOTE** (D2 da 10ª
+    simulação, 2026-11-10; princípio 3 — o relatório dizia "ao custo do lote"
+    e usava o último custo): o Gel com 10 un a R$ 22 e 6 un a R$ 24 valia
+    16 × 24, uma entrada mais barata BAIXAVA o valor de tudo, e a limpeza que
+    "sai do lote" de R$ 18,50 gravava R$ 19,50. O custo de um lote é
+    `custo_do_lote` (o do movimento de entrada ligado a ele — a compra, ou o
+    ajuste de inventário que o criou ou somou nele; o que veio por
+    transferência herda o do lote de origem). O gatilho do lote grava no
+    insumo do atendimento (PROCEDURE_USAGE) e no ajuste negativo o custo dos
+    lotes que o FEFO tirou — a mesma conta da perda sem lote escolhido —, e o
+    que nenhum lote cobre fica com o custo que o movimento trouxe (o último);
+    os insumos da comissão, lidos depois na mesma transação, já saem com ele.
+    `valor_do_saldo` soma cada lote ao custo dele e o que nenhum lote cobre ao
+    último custo (os lotes que passam do saldo valem a média deles). A margem
+    do CATÁLOGO segue o custo atual (`custo_de_consumo`). Os movimentos de
+    antes não foram reescritos. Migration `20261110004902`. Prova:
+    `e2e/estoque-atritos-da-10.spec.ts` ("D2").
+  - **O ajuste (inventário) fecha com os lotes e com as perdas** (D5 da 10ª,
+    2026-11-10; decidido pelos princípios, o relatório da 10ª): o positivo
+    não entrava em lote nenhum (saldo 18,1 com os lotes 17,1, a unidade a mais
+    sem validade) e o negativo gravava custo nulo, fora de "Perdas no
+    período". Agora a contagem MAIOR que o saldo pergunta "Em qual lote entra
+    a diferença" — um dos lotes da unidade, ou "Um lote novo, sem número", com
+    a validade opcional — e soma nele, ao custo dele (o novo, ao último
+    custo); a MENOR sai pelo FEFO, ao custo do lote, e entra em "Perdas no
+    período" com o motivo "Inventário" (`[data-ajuste-negativo]` diz isso
+    antes de aplicar). `estoque_ajuste_com_lote` (migration `20261110004903`;
+    `ajusteDeEstoqueCore`, a tela e o Copilot — que, sem lote, abre o novo sem
+    número); `estoque_ajuste_em` ficou sem chamador no app. Prova: o mesmo
+    spec ("D5").
   - **A regra é UMA, no banco**: `tem_unidade_de_consumo`, `fator_de_consumo`,
     `custo_de_consumo` (o preço da embalagem ÷ o que ela rende; sem unidade de
     consumo, ÷ 1), `saldo_de_consumo`, `valor_do_saldo` e
@@ -2327,6 +2357,8 @@ O resto do fluxo:
 ❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)
 ❌ Gravar movimento de estoque em embalagens de produto com unidade de consumo, ou com o custo da embalagem (é custo_de_consumo)
 ❌ Ler o custo de um movimento com coalesce(m.unit_cost, p.cost_price) (é custo_do_movimento) ou mandar o custo do insumo do app para a conclusão
+❌ Avaliar o estoque ou o consumo pelo último custo (products.cost_price) quando há lote: é custo_do_lote (o gatilho do lote grava o do consumo; valor_do_saldo soma os lotes — D2 da 10ª)
+❌ Ajuste positivo de estoque fora de um lote, ou o negativo fora de "Perdas no período" (estoque_ajuste_com_lote, motivo INVENTARIO — D5 da 10ª)
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Mostrar no ajuste o saldo em embalagens arredondadas, ou ler a contagem do inventário tirando dela o "já consumido do frasco aberto" (estoque_ajuste, o de antes): a contagem vale EXATA na unidade digitada — estoque_ajuste_em (D3 da 7ª)
 ❌ Dizer no "Aplicado em" do lote a baixa INTEIRA do atendimento (é stock_movement_batches.quantity × o rendimento) ou a hora marcada (é a conclusão) — D6/A12 da 9ª; ou listar só os lotes com saldo onde o recall pede o esgotado (D15)

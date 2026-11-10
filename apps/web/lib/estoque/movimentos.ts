@@ -79,6 +79,11 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
  */
 export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
   productId: string; branchId: string; novoSaldo: number; motivo: string; emConsumo?: boolean
+  /**
+   * D5 da 10ª: a contagem MAIOR que o saldo entra num lote — o escolhido, ou um
+   * novo "sem número" (com a validade, se vier). O negativo sai pelo FEFO.
+   */
+  loteId?: string | null; loteValidade?: string | null
 }): Promise<{ ok: true; de: number } | { error: string }> {
   if (ctx.branchId !== null && a.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!a.motivo.trim()) return { error: 'Motivo do ajuste é obrigatório.' }
@@ -87,10 +92,15 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
     return { error: 'Produto ou unidade não encontrado.' }
   }
 
-  // Numa transação só, com a linha do saldo travada (estoque_ajuste_em).
-  const anterior = await gravar(admin.rpc('estoque_ajuste_em', {
+  if (a.loteId && !/^[0-9a-f-]{36}$/i.test(a.loteId)) return { error: 'Lote não encontrado nesta unidade.' }
+  if (a.loteValidade && !/^\d{4}-\d{2}-\d{2}$/.test(a.loteValidade)) return { error: 'Validade do lote ilegível.' }
+
+  // Numa transação só, com a linha do saldo travada (estoque_ajuste_com_lote:
+  // a contagem exata, e o que sobra entra num lote — D5 da 10ª).
+  const anterior = await gravar(admin.rpc('estoque_ajuste_com_lote', {
     p_produto: a.productId, p_unidade: a.branchId, p_contagem: a.novoSaldo, p_em_consumo: !!a.emConsumo,
     p_motivo: a.motivo.trim(), p_autor: ctx.internalUserId,
+    p_lote: a.loteId || null, p_lote_numero: null, p_lote_validade: a.loteValidade || null,
   }), 'registrar o ajuste de estoque') as number
   return { ok: true, de: Number(anterior) }
 }

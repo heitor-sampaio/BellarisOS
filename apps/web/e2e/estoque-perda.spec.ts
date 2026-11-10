@@ -164,7 +164,7 @@ test.describe.serial('a saída por perda', () => {
       // com perdas para análise: o consumo (zero aqui) + as perdas.
       const kpi = (r: string) => p.getByText(r, { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
       await expect(kpi('Perdas no período')).toContainText('925,00')
-      await expect(kpi('Perdas no período')).toContainText('Não sai do lucro')
+      await expect(kpi('Perdas no período')).toContainText('não entra no lucro')
       await expect(kpi('Consumo com perdas')).toContainText('925,00')
     })
   })

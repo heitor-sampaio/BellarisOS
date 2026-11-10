@@ -323,7 +323,11 @@
     relatórios e a coluna "Valor" da tela de estoque, que vem de
     `metrics_valor_em_estoque_por_produto` — `getValorEmEstoquePorProduto`).
     Contava embalagens inteiras: 495 ml de um frasco de 100 ml a R$ 90 valiam
-    R$ 450, e não R$ 445,50 (A39, 2026-10-27).
+    R$ 450, e não R$ 445,50 (A39, 2026-10-27). **E o custo é o de cada LOTE**
+    (D2 da 10ª simulação, 2026-11-10): o saldo coberto pelos lotes vale o
+    custo de cada um (`custo_do_lote`), e só o que nenhum lote cobre vale o
+    último custo — era tudo pelo último custo, e uma entrada mais barata
+    baixava o valor do que já estava na prateleira (`atendimento.md` §9.5).
     O gráfico "Valor em estoque por categoria" (aba Estoque) tem uma fatia
     **"Sem categoria"** para o produto sem categoria ou com ela em branco, e
     as fatias somam o valor em estoque da aba. Até 2026-10-28 esse produto
@@ -338,6 +342,10 @@
     (como o saldo). A perda não entra no giro nem no lucro. A venda de
     produto estornada cujo produto NÃO voltou também é perda ali
     (`VENDA_ESTORNADA`, "Venda estornada (não voltou)" — H2, 2026-11-01).
+    **E o ajuste de inventário que contou a MENOS** (`INVENTARIO`,
+    "Inventário" — D5 da 10ª, 2026-11-10; migration `20261110004903`): o
+    movimento `MANUAL_ADJUSTMENT` negativo, ao custo do lote de onde saiu (os
+    de antes, sem custo gravado, ao último custo).
     **A perda é MÉTRICA, não dinheiro** (est-04/est-05, revisão de 2026-11-02:
     "perdido ou não, o insumo já foi pago na compra … serve como métrica"):
     não entra no lucro nem no financeiro, e o relatório mostra, além da

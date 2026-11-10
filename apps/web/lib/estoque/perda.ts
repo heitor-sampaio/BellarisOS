@@ -23,7 +23,15 @@ export function lerMotivoDaPerda(v: unknown): MotivoDaPerda | null {
  */
 export const MOTIVO_VENDA_ESTORNADA = 'VENDA_ESTORNADA'
 
+/**
+ * O ajuste de inventário que contou MENOS que o saldo (D5 da 10ª simulação,
+ * 2026-11-10) também é perda no relatório (`metrics_perdas`), ao custo do
+ * lote de onde saiu. Nasce do Ajuste, não se escolhe na Perda.
+ */
+export const MOTIVO_INVENTARIO = 'INVENTARIO'
+
 export function rotuloDoMotivo(v: string | null | undefined): string {
   if (v === MOTIVO_VENDA_ESTORNADA) return 'Venda estornada (não voltou)'
+  if (v === MOTIVO_INVENTARIO) return 'Inventário'
   return MOTIVOS_DA_PERDA.find(m => m.key === v)?.label ?? '—'
 }

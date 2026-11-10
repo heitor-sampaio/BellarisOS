@@ -625,7 +625,11 @@ async function adminAdjustStockInterno(
     const emConsumo = str(formData, 'unidade') === 'CONSUMO'
 
     // O núcleo (lib/estoque/movimentos.ts) é o mesmo do Copilot.
-    const r = await ajusteDeEstoqueCore(createAdminClient(), ctx, { productId, branchId, novoSaldo: newQty, motivo: reason, emConsumo })
+    // D5 da 10ª: o que a contagem achou a mais entra num lote (o escolhido, ou um novo sem número).
+    const r = await ajusteDeEstoqueCore(createAdminClient(), ctx, {
+      productId, branchId, novoSaldo: newQty, motivo: reason, emConsumo,
+      loteId: str(formData, 'loteId'), loteValidade: str(formData, 'lote_validade'),
+    })
     if ('error' in r) return { error: r.error }
 
     revalidatePath('/admin/estoque')

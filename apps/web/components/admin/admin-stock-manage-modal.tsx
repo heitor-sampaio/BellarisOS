@@ -304,6 +304,8 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   const [branchId,  setBranchId]  = useState(defaultBranchId ?? unicaUnidade(allBranches))
   const [newQty,    setNewQty]    = useState('')
   const [confirmed, setConfirmed] = useState(false)
+  const [loteDoAjuste, setLoteDoAjuste] = useState('')
+  const lotesDaUnidade = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
 
   // D3 da 7ª simulação: a toxina tinha 780 UI e o ajuste mostrava "8 frasco"
   // (a embalagem aberta arredondada); a contagem de 7,7 virava 750 UI. O saldo
@@ -424,6 +426,42 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
         </div>
         {equivale && <span data-ajuste-equivale style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>{equivale}</span>}
       </FieldWrap>
+
+      {/* D5 da 10ª simulação: o que a contagem achou a MAIS entra num lote (era
+          saldo sem lote, sem validade); o que achou a MENOS sai pelo lote que
+          vence primeiro e é perda ("Inventário"), ao custo do lote. */}
+      {delta !== null && delta > 0 && (
+        <>
+          <FieldWrap>
+            <label htmlFor="ajuste-lote" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              Em qual lote entra a diferença
+            </label>
+            <select id="ajuste-lote" name="loteId" className="field" value={loteDoAjuste} onChange={e => setLoteDoAjuste(e.target.value)}>
+              <option value="">Um lote novo, sem número</option>
+              {lotesDaUnidade.map(l => (
+                <option key={l.id} value={l.id}>
+                  {l.numero ? `Lote ${l.numero}` : 'Lote sem número'}
+                  {l.validade ? ` · vence ${validadeNaTela(l.validade)}` : ''}
+                  {` · ${fmtQ(l.quantidade)} ${product.unit}`}
+                </option>
+              ))}
+            </select>
+          </FieldWrap>
+          {loteDoAjuste === '' && (
+            <FieldWrap>
+              <label htmlFor="ajuste-lote-validade" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                Validade do lote novo (opcional)
+              </label>
+              <input id="ajuste-lote-validade" name="lote_validade" type="date" className="field" />
+            </FieldWrap>
+          )}
+        </>
+      )}
+      {delta !== null && delta < 0 && (
+        <p data-ajuste-negativo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          A diferença sai do lote que vence primeiro e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
+        </p>
+      )}
 
       <FieldWrap>
         <label htmlFor="ajuste-motivo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Motivo *</label>
