@@ -28,6 +28,7 @@ import { textoDoHorarioMarcado } from '@/lib/appointments/texto-do-aviso'
 import { unidadeParaOAviso } from '@/lib/appointments/unidade-do-aviso'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
+import { fimDaOcupacao, bateNaOcupacao } from '@/lib/appointments/ocupacao'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -90,17 +91,9 @@ interface ConsultaDeHorario {
  * com início e fim — é o que o modal mostra ANTES de confirmar (J-30:
  * "já tem atendimento das 11:00 às 12:00"). Nulo = livre.
  */
-/**
- * Até quando um agendamento ocupa o horário (A31 da 5ª simulação): o
- * CONCLUÍDO adiantado libera o resto — ocupa só até a conclusão (a Bianca
- * concluiu às 10:53 o das 12:00, e o das 12:00 seguia ocupado, com a sala).
- * Concluído antes de começar não ocupa nada (o fim fica antes do início).
- */
-export function fimDaOcupacao(a: { scheduled_at: string; duration_min: number | null; status?: string | null; completed_at?: string | null }): number {
-  const fim = new Date(a.scheduled_at).getTime() + (a.duration_min || 60) * 60000
-  if (a.status === 'COMPLETED' && a.completed_at) return Math.min(fim, new Date(a.completed_at).getTime())
-  return fim
-}
+// A régua de até quando um agendamento ocupa, e de quando ele bate, mora
+// pura em ./ocupacao: a grade, a recusa e os livres dividem (D3 da 11ª).
+export { fimDaOcupacao }
 
 export interface ConflitoDeHorario {
   inicio: Date; fim: Date
@@ -138,7 +131,7 @@ export async function conflitosDoHorario(admin: Admin, a: ConsultaDeHorario): Pr
   for (const c of candidatos) {
     const oIni = new Date(c.scheduled_at).getTime()
     const oFim = fimDaOcupacao(c)
-    if (ini < oFim && fim > oIni) batem.push({ inicio: new Date(oIni), fim: new Date(oFim), unidadeId: c.branch_id, unidade: c.branches?.name ?? '' })
+    if (bateNaOcupacao(ini, fim, oIni, oFim)) batem.push({ inicio: new Date(oIni), fim: new Date(oFim), unidadeId: c.branch_id, unidade: c.branches?.name ?? '' })
   }
   return batem.sort((x, y) => x.inicio.getTime() - y.inicio.getTime())
 }
@@ -420,7 +413,7 @@ export async function computeAvailableSlots(
     const slotStart = new Date(`${date}T${slot}:00-03:00`).getTime()
     const slotEnd   = slotStart + durationMin * 60000
     if (slotStart <= agora) return false
-    return !occupied.some((o) => slotStart < o.end && slotEnd > o.start)
+    return !occupied.some((o) => bateNaOcupacao(slotStart, slotEnd, o.start, o.end))
   })
 }
 

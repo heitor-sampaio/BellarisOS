@@ -851,6 +851,16 @@
   no núcleo, na remarcação, nas salas e no aviso do modal) e nos livres de
   `computeAvailableSlots`. A Bianca concluiu às 10:53 o das 12:00, e o das
   12:00 seguia ocupado — foi assim que a Priscila ficou sem a Sala Rosa.
+  **E o concluído ANTES de começar não ocupa nada, também na recusa** (D3 da
+  11ª simulação, 2026-11-10; princípio 3): marcado às 10:30 e concluído às
+  10:14, a grade já o mostrava livre (A16 da 10ª), mas a recusa e o aviso
+  diziam "Carla já tem atendimento das 10:30 às 10:14" ao remarcar para as
+  10:07. A régua é UMA, pura, `bateNaOcupacao` (`lib/appointments/ocupacao.ts`,
+  com `fimDaOcupacao`): a ocupação vazia ou invertida não bate em nada — em
+  `conflitosDoHorario` (a recusa, o aviso do modal, a remarcação) e nos livres
+  de `computeAvailableSlots`. A mensagem nunca cita intervalo invertido.
+  Prova: `e2e/agenda-defeitos-da-11.spec.ts` ("D3"),
+  `tests/agenda-concluido-antes-de-comecar.test.ts`.
 - **O conflito diz a unidade do outro atendimento** (A30): o profissional da
   rede atende em várias, e a recepção de uma não vê a agenda da outra. O
   aviso do modal ("…das 15:00 às 16:00, na unidade Moinhos.") e a recusa
@@ -2439,6 +2449,7 @@ O resto do fluxo:
 ❌ Ler o nome da cliente ou do profissional de um registro da unidade por join da sessão (clients(name), users!professional_id(name)) — a cliente de outra unidade e o profissional da rede viram "—"; é nomesDosRegistros
 ❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
 ❌ Medir até quando um agendamento ocupa o horário fora de fimDaOcupacao (o concluído adiantado libera o resto — A31)
+❌ Conferir se um agendamento bate num horário fora de bateNaOcupacao (o concluído antes de começar não ocupa nada — D3 da 11ª)
 ❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio; nem RECUSAR o encaixe da equipe no bloqueado (é aviso — princípio 2)
 ❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
 ❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)

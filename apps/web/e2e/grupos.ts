@@ -284,6 +284,7 @@ export const ISOLADOS = [
   'portal-cliente-historico-da-10.spec.ts',
   // F54 (os defeitos da 11ª simulação), cada um na sua rede [e2e].
   'crm-defeitos-da-11.spec.ts',
+  'agenda-defeitos-da-11.spec.ts',
   // A frente do portal da cliente (2026-10-30): cada um na sua rede [e2e].
   'portal-cliente-documento-enviado.spec.ts',
   'portal-cliente-sem-preferencia.spec.ts',
