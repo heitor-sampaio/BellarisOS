@@ -74,6 +74,13 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
             categoriaFixa="foto_clinica"
             appointmentId={appointmentId}
             nomePadrao={`Foto clínica — ${hoje}`}
+            // A13 da 10ª: antes, durante ou depois — a primeira foto nasce "antes", a seguinte "depois".
+            momentos={{
+              inicial: fotos.length ? 'DEPOIS' : 'ANTES',
+              opcoes: [['ANTES', 'Antes'], ['DURANTE', 'Durante'], ['DEPOIS', 'Depois']].map(([key, label]) => ({
+                key: key!, label: label!, nome: `Foto clínica (${label!.toLowerCase()}) — ${hoje}`,
+              })),
+            }}
             titulo="Nova foto clínica"
             rotuloDoEnvio="Anexar foto"
             aceita=".jpg,.jpeg,.png,.webp"

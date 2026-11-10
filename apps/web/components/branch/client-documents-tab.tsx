@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale'
 import { uploadClientDocument, deleteClientDocument, enviarDocumentoACliente } from '@/actions/client-documents'
 import { ehAnexoClinico, type AtendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { rotaAtendimento } from '@/lib/rotas'
+import { SegSelect } from '@/components/shared/seg-select'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -95,7 +96,7 @@ function categoryLabel(cat: string): string {
  */
 export function UploadForm({
   clientId, branchId, slug, podeAnexarClinico, podeAnexarComum, onClose,
-  categoriaFixa, appointmentId, nomePadrao, rotuloDoEnvio = 'Anexar documento', titulo = 'Novo documento', aceita,
+  categoriaFixa, appointmentId, nomePadrao, rotuloDoEnvio = 'Anexar documento', titulo = 'Novo documento', aceita, momentos,
 }: {
   clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; podeAnexarComum: boolean; onClose: () => void
   /** A categoria já decidida (a foto clínica do atendimento): sem o seletor. */
@@ -107,9 +108,16 @@ export function UploadForm({
   titulo?:        string
   /** O `accept` do arquivo; padrão, os tipos da ficha. */
   aceita?:        string
+  /**
+   * O momento da foto (A13 da 10ª: as duas fotos saíam com o mesmo nome, sem
+   * marcar antes e depois): cada um dá o nome sugerido; o nome segue editável.
+   */
+  momentos?:      { opcoes: { key: string; label: string; nome: string }[]; inicial: string }
 }) {
   const formRef     = useRef<HTMLFormElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
+  const [momento, setMomento] = useState(momentos?.inicial ?? '')
+  const [nome, setNome] = useState(() => momentos?.opcoes.find(o => o.key === momentos.inicial)?.nome ?? nomePadrao ?? '')
   const [state, action, pending] = useActionState(uploadClientDocument, null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,12 +156,20 @@ export function UploadForm({
           o Cancelar daqui e o botão do cabeçalho virando "Cancelar". */}
       <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>{titulo}</p>
 
+      {momentos && (
+        <div role="group" aria-label="Momento da foto" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="field-label">Momento da foto</span>
+          <SegSelect ariaLabel="Momento da foto" options={momentos.opcoes.map(o => ({ key: o.key, label: o.label }))} value={momento}
+            onSelect={k => { setMomento(k); const o = momentos.opcoes.find(x => x.key === k); if (o) setNome(o.nome) }} />
+        </div>
+      )}
+
       <div className={categoriaFixa ? undefined : 'form-2col'}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span className="field-label">Nome do documento *</span>
           <input
             type="text" name="name" required
-            defaultValue={nomePadrao}
+            value={nome} onChange={e => setNome(e.target.value)}
             placeholder="Ex: Termo de anamnese — Jun 2026"
             className="field"
             style={{ background: 'var(--surface)' }}

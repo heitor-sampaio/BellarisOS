@@ -204,6 +204,8 @@ interface Props {
   podeInjetaveis?:       boolean
   /** Sessão de pacote: já paga na venda do pacote — não se cobra de novo (2026-09-27). */
   isPackageSession?:     boolean
+  /** O pacote é o trazido de fora (F35): não houve venda — já pago antes do sistema (A15 da 10ª). */
+  pacoteDeFora?:         boolean
   /** Procedimento pré-pago: pago na venda, a recepção não cobra de novo. */
   isPrePago?:            boolean
   /**
@@ -389,8 +391,9 @@ function CancelModal({ appointmentId, slug, onClose, desistencia = null }: {
  * Dizia sempre "O pagamento será confirmado pela recepcionista" — também na
  * sessão do plano já pago, ao lado do "Nada a cobrar agora" do plano.
  */
-function textoDoPagamentoAoFinalizar(t: { plano: boolean; pacote: boolean; prePago: boolean; semCobranca: boolean }): string {
+function textoDoPagamentoAoFinalizar(t: { plano: boolean; pacote: boolean; pacoteDeFora?: boolean; prePago: boolean; semCobranca: boolean }): string {
   if (t.plano)       return 'Sessão do plano de tratamento: o pagamento é o do plano, nada a receber neste atendimento.'
+  if (t.pacote && t.pacoteDeFora) return 'Sessão do pacote trazido de fora: já paga antes do sistema, nada a receber.'
   if (t.pacote)      return 'Sessão de pacote: paga na venda do pacote, nada a receber.'
   if (t.prePago)     return 'Procedimento pré-pago: pago na venda, nada a receber.'
   if (t.semCobranca) return 'Sem cobrança: atendimento de R$ 0,00.'
@@ -1104,7 +1107,8 @@ function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty
               {/* Qty */}
               {readonly || !checked ? (
                 <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: checked ? 'var(--text-muted)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
-                  {item.quantity} {item.unit}
+                  {/* A19 da 10ª: "0,2 un", com vírgula (era "0.2 un" — design.md: pt-BR). */}
+                  {item.quantity.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} {item.unit}
                 </span>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1226,7 +1230,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
 }: Props) {
   const router   = useRouter()
@@ -1881,7 +1885,7 @@ export function AppointmentSession({
           queixas={usaFormularioDaAvaliacao && canViewRecords ? evalComplaints : undefined}
           anamnese={anamneseDigitada}
           ficha={fichaDigitada}
-          pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, prePago: isPrePago, semCobranca })}
+          pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, pacoteDeFora, prePago: isPrePago, semCobranca })}
           onClose={() => setShowFinish(false)}
           // A36: a dose do mapa de injetáveis (o da ficha, na tela ou salvo) × a baixa.
           planejamentos={ficha ? planejamentosDaFicha(ficha.rows, (fichaDigitada ?? respostasDaFicha) as Record<string, unknown>) : []}
@@ -1960,7 +1964,9 @@ export function AppointmentSession({
               </span>
             )}
             {/* Concluir grava a evolução no prontuário: sem o módulo, a tela diz quem conclui. */}
-            {status === 'IN_PROGRESS' && canManage && !canEditRecords && (
+            {/* A20 da 10ª: dito ANTES de iniciar também — a gerente iniciava e só
+                depois lia que não ia concluir. */}
+            {['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status) && canManage && !canEditRecords && (
               <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Quem conclui é o profissional (concluir grava o prontuário).
               </span>
@@ -2295,7 +2301,9 @@ export function AppointmentSession({
                   </p>
                 ) : isPackageSession ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
-                    Sessão de pacote — paga na venda do pacote.
+                    {pacoteDeFora
+                      ? 'Sessão do pacote trazido de fora — já paga antes do sistema, nada a receber.'
+                      : 'Sessão de pacote — paga na venda do pacote.'}
                   </p>
                 ) : isPrePago ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>

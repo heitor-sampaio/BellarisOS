@@ -208,7 +208,8 @@ export async function SessaoDeAtendimento({
 
     // Sessão de pacote: já paga na venda do pacote, não se cobra de novo
     // (2026-09-27). O servidor recusa em `confirmPayment`; aqui é o botão.
-    ler(admin.from('package_sessions').select('id').eq('appointment_id', id).maybeSingle(),
+    // O pacote trazido de fora (F35) não teve venda: a tela diz isso (A15 da 10ª).
+    ler(admin.from('package_sessions').select('id, client_packages(de_fora)').eq('appointment_id', id).maybeSingle(),
       'conferir se é sessão de pacote'),
     // Procedimento pré-pago: também pago na venda.
     ler(admin.from('procedure_sale_units').select('id').eq('appointment_id', id).neq('status', 'CANCELADA').maybeSingle(),
@@ -644,6 +645,7 @@ export async function SessaoDeAtendimento({
         podeMontarPlano={temRecurso(ctx, 'planos_de_tratamento')}
         podeInjetaveis={temRecurso(ctx, 'injetaveis')}
         isPackageSession={!!sessaoDePacote}
+        pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}
         isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}
         pagamentoCombinado={canPayment ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, appointment.id) : null}
