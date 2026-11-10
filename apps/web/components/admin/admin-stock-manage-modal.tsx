@@ -12,7 +12,9 @@ import {
 } from '@/actions/stock'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
-import { validadeNaTela } from '@/lib/estoque/validade'
+import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
+import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
+import { lerNotaDaEntradaAnterior, guardarNotaDaEntrada } from '@/lib/estoque/nota-da-entrada'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -126,6 +128,12 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
   const envio = useEnvioUnico()
   const [error, setError]     = useState<string>()
   const [pending, setPending] = useState(false)
+  // A51 da 11ª: a validade que já passou avisa (princípio 2 — não recusa).
+  const [validade, setValidade] = useState('')
+  const validadeVencida = !!validade && loteVencido(validade)
+  // A54 da 11ª: a nota com vários produtos — a próxima entrada traz a nota e o
+  // fornecedor da anterior (na mesma aba, por 2 horas), e diz que dá para apagar.
+  const [notaAnterior] = useState(() => lerNotaDaEntradaAnterior())
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true); setError(undefined)
@@ -135,7 +143,13 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
       // A chave do envio (D10): o duplo clique movimenta uma vez só.
       fd.set('_envio', envio.chave())
       const res = await adminAddStock(undefined, fd)
-      if (res?.success) { envio.renovar(); onSuccess() }
+      if (res?.success) {
+        envio.renovar()
+        guardarNotaDaEntrada(String(fd.get('nota_fiscal') ?? ''), String(fd.get('fornecedor') ?? ''))
+        // A52 da 11ª: a entrada confirma.
+        toast.success(`Entrada registrada: +${Number(fd.get('quantity')).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${product.unit} de ${product.name}.`)
+        onSuccess()
+      }
       else setError(res?.error ?? 'Erro inesperado.')
     } catch { setError('Erro inesperado.') }
     finally { setPending(false) }
@@ -186,22 +200,33 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
         </FieldWrap>
         <FieldWrap>
           <Label htmlFor="entrada-validade">Validade</Label>
-          <input id="entrada-validade" name="expires_at" type="date" className="field" />
+          <input id="entrada-validade" name="expires_at" type="date" className="field" value={validade} onChange={e => setValidade(e.target.value)} />
         </FieldWrap>
       </div>
+      {validadeVencida && (
+        <p data-validade-vencida role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
+          Esta validade já passou ({validadeNaTela(validade)}): o lote entra vencido. Confira a data na embalagem — se estiver certa, a entrada vale assim.
+        </p>
+      )}
 
       {/* A37 da 10ª: o fornecedor e a nota, estruturados (eram as Observações). */}
       <div className="form-2col">
         <FieldWrap>
           <Label htmlFor="entrada-fornecedor">Fornecedor</Label>
           <input id="entrada-fornecedor" name="fornecedor" type="text" maxLength={120} className="field"
-            defaultValue={product.supplier ?? ''} placeholder="Nome do fornecedor" />
+            defaultValue={product.supplier ?? notaAnterior?.fornecedor ?? ''} placeholder="Nome do fornecedor" />
         </FieldWrap>
         <FieldWrap>
           <Label htmlFor="entrada-nota">Nota fiscal</Label>
-          <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota" />
+          <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota"
+            defaultValue={notaAnterior?.nota ?? ''} />
         </FieldWrap>
       </div>
+      {notaAnterior && (
+        <p data-nota-da-entrada-anterior style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+          A nota {notaAnterior.nota} veio da entrada anterior (outro produto da mesma nota) — apague se esta for outra.
+        </p>
+      )}
 
       <FieldWrap>
         <Label htmlFor="entrada-obs">Observações</Label>
@@ -351,7 +376,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   const equivale = rende && parsedNew !== null && parsedNew >= 0
     ? (contaEmConsumo
       ? `${fmtQ(parsedNew)} ${product.consumptionUnit} = ${fmtQ(parsedNew / rende, 4)} ${product.unit}`
-      : `${fmtQ(parsedNew, 4)} ${product.unit} = ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}: o ${product.unit} aberto conta pela fração que sobra nele (0,7 ${product.unit} = ${fmtQ(0.7 * rende)} ${product.consumptionUnit}).`)
+      : `${fmtQ(parsedNew, 4)} ${product.unit} = ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}. O ${product.unit} aberto entra pelo que sobra nele: pela metade, 0,5.`)
     : null
   // D5 da 11ª: a variação de mais da metade do saldo avisa forte, com a conta
   // na outra unidade — −98% passava só com a caixa genérica.
@@ -372,7 +397,11 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
       fd.set('unidade', contaEmConsumo ? 'CONSUMO' : 'EMBALAGEM')
       if (parsedNew !== null) fd.set('new_quantity', String(parsedNew))
       const res = await adminAdjustStock(undefined, fd)
-      if (res?.success) onSuccess()
+      if (res?.success) {
+        // A52 da 11ª: o ajuste confirma.
+        toast.success(`Ajuste aplicado: ${product.name} agora tem ${fmtQ(parsedNew ?? 0, 4)} ${unidadeDaContagem}.`)
+        onSuccess()
+      }
       else setError(res?.error ?? 'Erro inesperado.')
     } catch { setError('Erro inesperado.') }
     finally { setPending(false) }
@@ -386,9 +415,10 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
         display: 'flex', gap: 9, alignItems: 'flex-start',
       }}>
         <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+        {/* A49 da 11ª: era "Operação crítica… inconsistência" — assustava numa contagem de rotina. */}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', lineHeight: 1.5 }}>
-          <strong>Operação crítica.</strong> O ajuste sobrescreve o estoque e pode gerar
-          inconsistência com movimentações anteriores. Use apenas após inventário físico confirmado.
+          <strong>Contagem do inventário.</strong> Digite o que há na prateleira agora: o saldo passa a ser a contagem.
+          A diferença a mais entra num lote; a menos vai para Perdas (Inventário). Errou? Desfaça no Histórico.
         </p>
       </div>
 
@@ -547,7 +577,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
           style={{ marginTop: 2, accentColor: 'var(--brand)', flexShrink: 0 }} />
         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, lineHeight: 1.4,
           color: confirmed ? 'var(--brand)' : 'var(--text-muted)' }}>
-          Confirmo que o novo valor foi verificado fisicamente e estou ciente da inconsistência no histórico.
+          Confirmo que contei na prateleira.
         </span>
       </label>
 
@@ -603,7 +633,12 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
       // A chave do envio (D10): o duplo clique movimenta uma vez só.
       fd.set('_envio', envio.chave())
       const res = await registrarPerda(undefined, fd)
-      if (res?.success) { envio.renovar(); onSuccess() }
+      if (res?.success) {
+        envio.renovar()
+        // A52 da 11ª: a perda confirma.
+        toast.success(`Perda registrada: −${quantidade.trim()} ${emConsumo && product.consumptionUnit ? product.consumptionUnit : product.unit} de ${product.name}.`)
+        onSuccess()
+      }
       else setError(res?.error ?? 'Erro inesperado.')
     } catch { setError('Erro inesperado.') }
     finally { setPending(false) }
@@ -744,7 +779,10 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{b.name}</p>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 1 }}>
-                Atual: {currentStock.toLocaleString('pt-BR')} {product.unit}
+                {/* A50 da 11ª: "Atual: 11 frasco" valia 10,84 — a aberta contava inteira. */}
+                Atual: {product.consumptionUnit && Number(product.unitsPerPackage) > 0 && bs?.currentRendimento != null
+                  ? saldoNaPrateleira(Number(bs.currentRendimento), Number(product.unitsPerPackage), product.unit, product.consumptionUnit)
+                  : `${currentStock.toLocaleString('pt-BR')} ${product.unit}`}
               </p>
             </div>
 
@@ -930,6 +968,9 @@ const MOV_LABEL: Record<string, string> = {
   SALE_RETURN:       'Devolução de venda',
 }
 
+/** O que se digita em embalagens (§9.5): o Histórico o destaca nelas (A50 da 11ª). */
+const EM_EMBALAGENS = new Set(['PURCHASE', 'TRANSFER_IN', 'TRANSFER_OUT'])
+
 function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou }: {
   product: ProductInfo
   defaultBranchId?: string
@@ -1025,14 +1066,29 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
               )}
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: entrada ? 'var(--success)' : 'var(--danger)' }}>
-                {entrada ? '+' : ''}{fmt(m.quantity)} {m.unidade}
-              </p>
-              {/* O movimento também em embalagens (J-44): −32 UI = 0,32 frasco. */}
-              {m.emEmbalagens != null && (
-                <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
-                  {fmt(Math.abs(m.emEmbalagens))} {m.embalagem}
-                </p>
+              {/* A50 da 11ª: o que se DIGITA em embalagens (entrada, transferência) se destaca nelas —
+                  "+50.000 g" para 50 refis tinha o "50 refil" pequeno embaixo. */}
+              {m.emEmbalagens != null && EM_EMBALAGENS.has(m.type) ? (
+                <>
+                  <p data-quantidade-principal style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: entrada ? 'var(--success)' : 'var(--danger)' }}>
+                    {entrada ? '+' : '−'}{fmt(Math.abs(m.emEmbalagens))} {m.embalagem}
+                  </p>
+                  <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
+                    {fmt(Math.abs(m.quantity))} {m.unidade}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p data-quantidade-principal style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: entrada ? 'var(--success)' : 'var(--danger)' }}>
+                    {entrada ? '+' : ''}{fmt(m.quantity)} {m.unidade}
+                  </p>
+                  {/* O movimento também em embalagens (J-44): −32 UI = 0,32 frasco. */}
+                  {m.emEmbalagens != null && (
+                    <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
+                      {fmt(Math.abs(m.emEmbalagens))} {m.embalagem}
+                    </p>
+                  )}
+                </>
               )}
               {/* O movimento está na unidade de consumo (ml, UI); o saldo
                   mostra também a equivalência em embalagens. */}

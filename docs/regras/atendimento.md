@@ -1884,6 +1884,38 @@ const procedures = await ler(
     o saldo em mais de 50% avisa forte, com a conta na outra unidade
     ("15 g são 0,015 refil", `[data-variacao-grande]`) — só aviso (princípio 2).
     Prova: `e2e/estoque-defeitos-da-11.spec.ts` ("D5").
+  - **Os atritos de estoque da 11ª simulação** (2026-11-10; princípio 3, e o 2
+    na validade vencida — avisar, não recusar):
+    - **O Ajuste fala da contagem sem assustar** (A49): "Contagem do
+      inventário. Digite o que há na prateleira agora… A diferença a mais
+      entra num lote; a menos vai para Perdas (Inventário). Errou? Desfaça no
+      Histórico." (era "Operação crítica… inconsistência com movimentações
+      anteriores"), a caixa é "Confirmo que contei na prateleira", e a conta da
+      embalagem diz "10,5 refil = 10.500 g. O refil aberto entra pelo que sobra
+      nele: pela metade, 0,5." (era "conta pela fração que sobra nele (0,7 un =
+      700 g)").
+    - **O saldo como na prateleira, e a entrada na embalagem** (A50): o
+      "Estoque mínimo" diz "Atual: 10 refil fechados + 1 aberto com 840 g"
+      (`saldoNaPrateleira`, `lib/estoque/saldo-em-texto.ts`; era "Atual: 11
+      refil", o `current_stock` com a aberta inteira), e o Histórico destaca a
+      ENTRADA e a TRANSFERÊNCIA na embalagem ("+50 refil", com "50.000 g"
+      embaixo; `[data-quantidade-principal]`) — o que se digita nelas; o resto
+      segue na unidade de consumo.
+    - **A validade que já passou avisa** (A51): "Esta validade já passou
+      (01/01/2025): o lote entra vencido. Confira a data… se estiver certa, a
+      entrada vale assim." (`[data-validade-vencida]`, `loteVencido`).
+    - **Entrada, perda e ajuste confirmam** (A52): "Entrada registrada: +3
+      frasco de Gel.", "Perda registrada: …", "Ajuste aplicado: … agora tem …".
+    - **"Aplicado em: ver clientes"** (A53): o botão do lote se lia como um
+      rótulo vazio no lote sem uso.
+    - **A nota com vários produtos** (A54): a entrada lembra a nota e o
+      fornecedor da anterior NESTA aba, por 2 horas (`lib/estoque/nota-da-entrada.ts`,
+      sessionStorage), e a próxima entrada — outro produto da mesma nota — já
+      vem com eles, dizendo "A nota X veio da entrada anterior… apague se esta
+      for outra." (`[data-nota-da-entrada-anterior]`). A entrada de várias
+      linhas numa janela só ficou de fora (decisão da F56: o atrito era repetir
+      a nota).
+    - Prova: `e2e/estoque-atritos-da-11.spec.ts`, `tests/estoque-saldo-na-prateleira.test.ts`.
   - **O custo por unidade de consumo tem 4 casas** (D6 da 11ª; princípio 3: a
     cera a R$ 0,038/g gravava R$ 0,04, e a Drenagem dizia R$ 1,10 de insumos
     em vez de R$ 1,14): `procedure_products.unit_cost` é numeric(12,4)

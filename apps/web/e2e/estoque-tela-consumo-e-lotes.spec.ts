@@ -245,8 +245,9 @@ test.describe.serial('a tela de estoque', () => {
       await expect(consumo).toContainText('0,32 frasco')
       await expect(consumo).toContainText(lote)
       const compra = modal.locator('[data-movimento]').filter({ hasText: 'Entrada' })
-      await expect(compra).toContainText('+300 UI')
-      await expect(compra).toContainText('3 frasco')
+      // A50 da 11ª: a entrada se destaca na embalagem (o que se digitou), com o consumo embaixo.
+      await expect(compra).toContainText('+3 frasco')
+      await expect(compra).toContainText('300 UI')
       await expect(compra).toContainText(lote)
       await expect(compra).toContainText('R$ 650,00')
     })

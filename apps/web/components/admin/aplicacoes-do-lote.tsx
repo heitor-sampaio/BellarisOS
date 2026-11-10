@@ -100,7 +100,8 @@ export function BotaoAplicadoEm({ loteId, rotulo, abrirAoMontar = false, semBota
     <>
       {!semBotao && (
         <button type="button" onClick={abrir} className="btn-ghost" style={{ fontSize: 'var(--text-2xs)', padding: '0 6px', color: 'var(--brand)', fontWeight: 700 }}>
-          Aplicado em
+          {/* A53 da 11ª: "Aplicado em" sozinho parecia um rótulo vazio no lote ainda sem uso. */}
+          Aplicado em: ver clientes
         </button>
       )}
       {aberto && (
