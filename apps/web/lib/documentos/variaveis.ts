@@ -41,6 +41,8 @@ export interface VariavelDeDocumento {
   tipos:    readonly TipoDeModelo[]
   /** Sem valor, sai vazia em vez de impedir o documento. */
   opcional?: true
+  /** D6 da 12ª: QUANDO a opcional sai vazia, dito no menu do editor ("vazia sem entrada"). */
+  vaziaQuando?: string
   /** O que aparece na prévia do editor. */
   exemplo:  string
 }
@@ -60,9 +62,9 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'cliente.documento':     { grupo: 'Cliente',     rotulo: 'Documento, com o tipo (CPF, passaporte ou RNE)', tipos: TODOS, exemplo: 'CPF 123.456.789-01' },
   'cliente.nascimento':    { grupo: 'Cliente',     rotulo: 'Data de nascimento', tipos: TODOS, exemplo: '14/03/1990' },
   'cliente.telefone':      { grupo: 'Cliente',     rotulo: 'Telefone',          tipos: TODOS, exemplo: '(47) 99123-4567' },
-  'cliente.email':         { grupo: 'Cliente',     rotulo: 'E-mail',            tipos: TODOS, exemplo: 'marina@exemplo.com', opcional: true },
+  'cliente.email':         { grupo: 'Cliente',     rotulo: 'E-mail',            tipos: TODOS, exemplo: 'marina@exemplo.com', opcional: true, vaziaQuando: 'sem e-mail no cadastro' },
   'cliente.endereco':      { grupo: 'Cliente',     rotulo: 'Endereço (rua, número e bairro)', tipos: TODOS, exemplo: 'Rua das Flores, 120 — Centro' },
-  'cliente.complemento':   { grupo: 'Cliente',     rotulo: 'Complemento',       tipos: TODOS, exemplo: 'Apto 302', opcional: true },
+  'cliente.complemento':   { grupo: 'Cliente',     rotulo: 'Complemento',       tipos: TODOS, exemplo: 'Apto 302', opcional: true, vaziaQuando: 'sem complemento no cadastro' },
   'cliente.cidade':        { grupo: 'Cliente',     rotulo: 'Cidade',            tipos: TODOS, exemplo: 'Joinville' },
   'cliente.uf':            { grupo: 'Cliente',     rotulo: 'UF',                tipos: TODOS, exemplo: 'SC' },
   'cliente.cep':           { grupo: 'Cliente',     rotulo: 'CEP',               tipos: TODOS, exemplo: '89201-000' },
@@ -70,22 +72,22 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   // O responsável legal da menor (decisão 2 do Heitor, 2026-11-05). Opcionais
   // no catálogo — na adulta saem vazias —, mas na MENOR o nome e o CPF são
   // obrigatórios (`variavelObrigatoria`): sem eles o termo fica INCOMPLETO.
-  'responsavel.nome':       { grupo: 'Responsável legal', rotulo: 'Nome do responsável (menor de idade)', tipos: TODOS, exemplo: 'Marta Lima', opcional: true },
-  'responsavel.cpf':        { grupo: 'Responsável legal', rotulo: 'CPF do responsável', tipos: TODOS, exemplo: '529.982.247-25', opcional: true },
-  'responsavel.parentesco': { grupo: 'Responsável legal', rotulo: 'Parentesco', tipos: TODOS, exemplo: 'Mãe', opcional: true },
-  'responsavel.telefone':   { grupo: 'Responsável legal', rotulo: 'Telefone do responsável', tipos: TODOS, exemplo: '(71) 98888-7777', opcional: true },
+  'responsavel.nome':       { grupo: 'Responsável legal', rotulo: 'Nome do responsável (menor de idade)', tipos: TODOS, exemplo: 'Marta Lima', opcional: true, vaziaQuando: 'na cliente adulta' },
+  'responsavel.cpf':        { grupo: 'Responsável legal', rotulo: 'CPF do responsável', tipos: TODOS, exemplo: '529.982.247-25', opcional: true, vaziaQuando: 'na cliente adulta' },
+  'responsavel.parentesco': { grupo: 'Responsável legal', rotulo: 'Parentesco', tipos: TODOS, exemplo: 'Mãe', opcional: true, vaziaQuando: 'na cliente adulta' },
+  'responsavel.telefone':   { grupo: 'Responsável legal', rotulo: 'Telefone do responsável', tipos: TODOS, exemplo: '(71) 98888-7777', opcional: true, vaziaQuando: 'na cliente adulta' },
 
   'rede.nome':             { grupo: 'Rede',        rotulo: 'Nome da rede',      tipos: TODOS, exemplo: 'Clínica Bellaris' },
   'rede.documento':        { grupo: 'Rede',        rotulo: 'CNPJ ou CPF da rede', tipos: TODOS, exemplo: '12.345.678/0001-90' },
-  'rede.telefone':         { grupo: 'Rede',        rotulo: 'Telefone da rede',  tipos: TODOS, exemplo: '(47) 3030-1000', opcional: true },
-  'rede.email':            { grupo: 'Rede',        rotulo: 'E-mail da rede',    tipos: TODOS, exemplo: 'contato@clinica.com', opcional: true },
+  'rede.telefone':         { grupo: 'Rede',        rotulo: 'Telefone da rede',  tipos: TODOS, exemplo: '(47) 3030-1000', opcional: true, vaziaQuando: 'sem telefone no cadastro da clínica' },
+  'rede.email':            { grupo: 'Rede',        rotulo: 'E-mail da rede',    tipos: TODOS, exemplo: 'contato@clinica.com', opcional: true, vaziaQuando: 'sem e-mail no cadastro da clínica' },
 
   'unidade.nome':          { grupo: 'Unidade',     rotulo: 'Nome da unidade',   tipos: TODOS, exemplo: 'Unidade Centro' },
   'unidade.cnpj':          { grupo: 'Unidade',     rotulo: 'CNPJ da unidade',   tipos: TODOS, exemplo: '12.345.678/0002-71' },
   'unidade.endereco':      { grupo: 'Unidade',     rotulo: 'Endereço da unidade', tipos: TODOS, exemplo: 'Av. Brasil, 500' },
   'unidade.cidade':        { grupo: 'Unidade',     rotulo: 'Cidade da unidade', tipos: TODOS, exemplo: 'Joinville' },
   'unidade.uf':            { grupo: 'Unidade',     rotulo: 'UF da unidade',     tipos: TODOS, exemplo: 'SC' },
-  'unidade.telefone':      { grupo: 'Unidade',     rotulo: 'Telefone da unidade', tipos: TODOS, exemplo: '(47) 3030-1001', opcional: true },
+  'unidade.telefone':      { grupo: 'Unidade',     rotulo: 'Telefone da unidade', tipos: TODOS, exemplo: '(47) 3030-1001', opcional: true, vaziaQuando: 'sem telefone no cadastro da unidade' },
 
   'procedimento.nome':     { grupo: 'Procedimento', rotulo: 'Nome do procedimento', tipos: DO_PROCEDIMENTO, exemplo: 'Toxina botulínica' },
   'procedimento.valor':    { grupo: 'Procedimento', rotulo: 'Valor do atendimento', tipos: SO_CONTRATO, exemplo: 'R$ 1.200,00' },
@@ -102,16 +104,16 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   // plano ele vem do checkout; no do procedimento, a recepção o define antes
   // de colher a assinatura (`definirPagamentoDoContrato`) — até lá o contrato
   // fica INCOMPLETO, porque `pagamento.forma` é obrigatória.
-  'pagamento.forma':       { grupo: 'Pagamento',   rotulo: 'Forma de pagamento (frase completa)', tipos: COM_PAGAMENTO, exemplo: 'Entrada de R$ 800,00 + 4x de R$ 1.000,00 no cartão de crédito' },
-  'pagamento.metodo':      { grupo: 'Pagamento',   rotulo: 'Meio de pagamento', tipos: COM_PAGAMENTO, exemplo: 'no cartão de crédito', opcional: true },
-  'pagamento.entrada':     { grupo: 'Pagamento',   rotulo: 'Valor da entrada',  tipos: COM_PAGAMENTO, exemplo: 'R$ 800,00', opcional: true },
-  'pagamento.parcelas':    { grupo: 'Pagamento',   rotulo: 'Número de parcelas', tipos: COM_PAGAMENTO, exemplo: '4', opcional: true },
-  'pagamento.valor_parcela': { grupo: 'Pagamento', rotulo: 'Valor da parcela',  tipos: COM_PAGAMENTO, exemplo: 'R$ 1.000,00', opcional: true },
-  'pagamento.primeiro_vencimento': { grupo: 'Pagamento', rotulo: 'Primeiro vencimento', tipos: COM_PAGAMENTO, exemplo: '10/10/2026', opcional: true },
+  'pagamento.forma':       { grupo: 'Pagamento',   rotulo: 'Forma de pagamento — a frase completa (já diz a entrada, as parcelas e os vencimentos)', tipos: COM_PAGAMENTO, exemplo: 'Entrada de R$ 800,00 + 4x de R$ 1.000,00 no cartão de crédito' },
+  'pagamento.metodo':      { grupo: 'Pagamento',   rotulo: 'Meio de pagamento', tipos: COM_PAGAMENTO, exemplo: 'no cartão de crédito', opcional: true, vaziaQuando: 'no a receber no atendimento e nas parcelas sem entrada' },
+  'pagamento.entrada':     { grupo: 'Pagamento',   rotulo: 'Valor da entrada',  tipos: COM_PAGAMENTO, exemplo: 'R$ 800,00', opcional: true, vaziaQuando: 'sem entrada (à vista, cartão em vezes, a receber)' },
+  'pagamento.parcelas':    { grupo: 'Pagamento',   rotulo: 'Número de parcelas', tipos: COM_PAGAMENTO, exemplo: '4', opcional: true, vaziaQuando: 'à vista de uma vez e no a receber' },
+  'pagamento.valor_parcela': { grupo: 'Pagamento', rotulo: 'Valor da parcela',  tipos: COM_PAGAMENTO, exemplo: 'R$ 1.000,00', opcional: true, vaziaQuando: 'à vista de uma vez e no a receber' },
+  'pagamento.primeiro_vencimento': { grupo: 'Pagamento', rotulo: 'Primeiro vencimento', tipos: COM_PAGAMENTO, exemplo: '10/10/2026', opcional: true, vaziaQuando: 'à vista, no cartão em vezes e no a receber sem data' },
   // Desconto da venda (2026-09-30): o valor antes dele e o desconto em reais.
   // `pagamento.forma` já fala do valor com desconto e diz o desconto.
   'pagamento.subtotal':    { grupo: 'Pagamento',   rotulo: 'Valor antes do desconto', tipos: COM_PAGAMENTO, exemplo: 'R$ 4.800,00', opcional: true },
-  'pagamento.desconto':    { grupo: 'Pagamento',   rotulo: 'Desconto', tipos: COM_PAGAMENTO, exemplo: 'R$ 480,00', opcional: true },
+  'pagamento.desconto':    { grupo: 'Pagamento',   rotulo: 'Desconto', tipos: COM_PAGAMENTO, exemplo: 'R$ 480,00', opcional: true, vaziaQuando: 'sem desconto' },
 } as const satisfies Record<string, VariavelDeDocumento>
 
 export type NomeDeVariavel = keyof typeof VARIAVEIS_DE_DOCUMENTO
@@ -228,4 +230,29 @@ const DICA_DO_TIPO: Record<TipoDeModelo, string> = {
   TERMO:          'O termo também é assinado no fechamento de um plano, onde não há um agendamento só.',
   CONTRATO:       'O contrato do procedimento é o do atendimento avulso; o do plano é o contrato de plano.',
   CONTRATO_PLANO: 'O contrato de plano cobre vários procedimentos e sessões.',
+}
+
+/**
+ * O rótulo da variável no menu "Inserir variável" (D6 da 12ª simulação): a
+ * opcional diz QUANDO sai vazia — o contrato da Patrícia saiu "Entrada: , em 6
+ * parcelas…, primeiro vencimento em ." porque a dona juntou a frase completa
+ * (`pagamento.forma`) com as opcionais, vazias no cartão em vezes.
+ */
+export function rotuloNoMenu(nome: string): string {
+  const v = CATALOGO[nome]
+  if (!v) return nome
+  return v.opcional && v.vaziaQuando ? `${v.rotulo} (vazia ${v.vaziaQuando})` : v.rotulo
+}
+
+/**
+ * O aviso do checkout (D6 da 12ª): as variáveis que o modelo usa e que saem
+ * VAZIAS neste documento, pelo nome do menu. Só aviso — nada se bloqueia
+ * (princípio 2). Nulo sem nenhuma.
+ */
+export function avisoDasVazias(nomes: readonly string[]): string | null {
+  const rotulos = [...new Set(nomes)].map(n => CATALOGO[n]?.rotulo ?? n)
+  if (!rotulos.length) return null
+  const lista = rotulos.length === 1 ? rotulos[0] : `${rotulos.slice(0, -1).join(', ')} e ${rotulos[rotulos.length - 1]}`
+  const um = rotulos.length === 1
+  return `Neste plano ${um ? 'sai vazia' : 'saem vazias'}: ${lista}. Confira se o texto do contrato fica certo sem ${um ? 'ela' : 'elas'} (a forma de pagamento já é a frase completa).`
 }

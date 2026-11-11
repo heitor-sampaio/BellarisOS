@@ -52,6 +52,11 @@ export interface DocumentoEmitido {
   closed_reason:       string | null
   payment_snapshot:    unknown
   created_at:          string
+  /**
+   * D6 da 12ª: as variáveis OPCIONAIS que saíram vazias nesta montagem. Não se
+   * grava — só vem no documento que `garantirRenderizado` acabou de montar.
+   */
+  vazias?:             string[]
 }
 
 export const COLUNAS_DO_DOCUMENTO =
@@ -196,6 +201,7 @@ export async function garantirRenderizado(
   let texto: string
   let hash: string
   let faltando: string[] = []
+  let vazias: string[] = []
 
   if (versao.source === 'EDITOR') {
     const pagamento = opcoes.pagamento ? opcoes.pagamento.valor : pagamentoDoRetrato(doc.payment_snapshot)
@@ -215,6 +221,7 @@ export async function garantirRenderizado(
     texto = textoDoDocumento(r.documento)
     hash = sha256(conteudo)
     faltando = r.faltando
+    vazias = r.vazias
   } else {
     // O PDF enviado vai como está: o hash do documento é o hash do arquivo.
     texto = `Documento em PDF: ${versao.file_name ?? 'arquivo'}`
@@ -234,7 +241,8 @@ export async function garantirRenderizado(
     p_pagamento: opcoes.pagamento ? pagamentoNormalizado(opcoes.pagamento.valor, opcoes.pagamento.desconto ?? 0) : null,
   }), 'montar o documento')
 
-  return lerDocumento(tenantId, docId)
+  const montado = await lerDocumento(tenantId, docId)
+  return montado ? { ...montado, vazias } : montado
 }
 
 /**

@@ -7,7 +7,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { converterDocumentoDoEditor, type DocumentoDoEditor, type NoPM } from '@/lib/documentos/editor/converter'
 import { interpolar } from '@/lib/documentos/arvore'
-import { VARIAVEIS_DE_DOCUMENTO, variaveisDoTipo, ehOpcional, type TipoDeModelo } from '@/lib/documentos/variaveis'
+import { VARIAVEIS_DE_DOCUMENTO, variaveisDoTipo, ehOpcional, rotuloNoMenu, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { extensoesDoDocumento } from './extensoes'
 import { BarraDoEditor, type Parte } from './barra'
 
@@ -76,7 +76,8 @@ export default function EditorRico({ inicial, tipo, imagens, onChange }: {
     const porGrupo = new Map<string, { nome: string; rotulo: string }[]>()
     for (const { nome, variavel } of variaveisDoTipo(tipo)) {
       const lista = porGrupo.get(variavel.grupo) ?? []
-      lista.push({ nome, rotulo: variavel.rotulo })
+      // D6 da 12ª: a opcional diz quando sai vazia; a forma, que é a frase completa.
+      lista.push({ nome, rotulo: rotuloNoMenu(nome) })
       porGrupo.set(variavel.grupo, lista)
     }
     return [...porGrupo]

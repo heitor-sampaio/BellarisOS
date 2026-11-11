@@ -457,6 +457,24 @@ DEVLOG ("Termos e contratos").
     que não troque glifo.
   - Prova: `e2e/documentos-atritos-da-11.spec.ts`, `tests/documentos-arvore.test.ts`
     ("A5", "A6", "A7 da 11ª").
+- **A variável opcional que sai vazia se diz** (D6 da 12ª simulação, 2026-11-11;
+  princípios 2 e 3 — avisar, nada se bloqueia): o contrato do plano no Visa 6x
+  saiu assinado com "Entrada: , em 6 parcelas de R$ 105,00, primeiro vencimento
+  em ." — a cláusula da dona juntava `pagamento.forma` (que já é a frase
+  inteira) com as opcionais, vazias por desenho quando o pagamento não as tem.
+  - O menu "Inserir variável" diz, junto de cada opcional, QUANDO ela sai vazia
+    ("Valor da entrada (vazia sem entrada (à vista, cartão em vezes, a
+    receber))"; `vaziaQuando` no catálogo, `rotuloNoMenu`), e a forma de
+    pagamento diz que é a frase completa ("já diz a entrada, as parcelas e os
+    vencimentos").
+  - O passo Documentação do checkout — onde se colhe e se manda o link — diz,
+    no contrato em aberto, quais saem vazias NESTE plano: "Neste plano saem
+    vazias: Valor da entrada e Primeiro vencimento. Confira se o texto do
+    contrato fica certo sem elas…" (`[data-variaveis-vazias]`, `avisoDasVazias`).
+    A lista é a da montagem (`interpolar` devolve `vazias`;
+    `garantirRenderizado` a passa ao documento que acabou de montar, sem gravar;
+    `ResumoDeDocumento.vazias`).
+  - Prova: `e2e/documentos-defeitos-da-12.spec.ts`, `tests/defeitos-da-12.test.ts` ("D6").
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado

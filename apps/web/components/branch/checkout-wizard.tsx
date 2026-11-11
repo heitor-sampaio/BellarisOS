@@ -7,6 +7,7 @@ import { checkoutTreatmentPlan, cancelCheckout, avulsosDoPlanoNoCheckout } from 
 import { prepararDocumentosDoCheckout, documentoParaAssinar } from '@/actions/documentos'
 import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { ResumoDeDocumento } from '@/lib/documentos/leitura'
+import { avisoDasVazias } from '@/lib/documentos/variaveis'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
@@ -951,6 +952,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                   {d.status === 'INCOMPLETO' && (
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
                       Falta no cadastro do cliente: {d.faltando.join(', ')}.
+                    </p>
+                  )}
+                  {/* D6 da 12ª: o que sai vazio NESTE plano, antes de colher ou mandar o link (só aviso — princípio 2). */}
+                  {(d.status === 'PENDENTE' || d.status === 'INCOMPLETO') && avisoDasVazias(d.vazias) && (
+                    <p data-variaveis-vazias style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600, marginTop: 2 }}>
+                      {avisoDasVazias(d.vazias)}
                     </p>
                   )}
                 </div>

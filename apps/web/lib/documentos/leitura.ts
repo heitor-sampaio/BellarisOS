@@ -45,6 +45,11 @@ export interface ResumoDeDocumento {
   pagamento:     { rotulo: string; valor: PagamentoDoPlano | null; desconto: number } | null
   /** O preço do atendimento do documento — sobre ele se dá o desconto do contrato. */
   valorDoAtendimento: number | null
+  /**
+   * D6 da 12ª: as variáveis opcionais que saíram VAZIAS na montagem de agora (só
+   * quando o documento acabou de ser montado — o checkout monta a cada passo).
+   */
+  vazias:        string[]
 }
 
 const CATALOGO = VARIAVEIS_DE_DOCUMENTO as Record<string, { grupo: string; rotulo: string }>
@@ -103,6 +108,7 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
     codigo:        d.verification_code,
     motivo:        d.closed_reason,
     linkAte:       linkAte.get(d.id) ?? null,
+    vazias:        d.vazias ?? [],
     pedePagamento: d.kind === 'CONTRATO' && !!d.appointment_id
       && (d.payment_snapshot != null || (d.missing_fields ?? []).some(v => v.startsWith('pagamento.'))),
     pagamento:     d.kind === 'CONTRATO' && d.payment_snapshot != null

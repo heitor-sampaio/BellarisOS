@@ -165,8 +165,10 @@ export function interpolar(
   ehOpcional: (variavel: string) => boolean,
   /** Ajuste do TEXTO do modelo (não do valor da variável): a concordância pelo sexo da ficha (A50). */
   ajustar: (texto: string) => string = t => t,
-): { documento: DocumentoResolvido; faltando: string[] } {
+): { documento: DocumentoResolvido; faltando: string[]; vazias: string[] } {
   const faltando = new Set<string>()
+  // D6 da 12ª: as OPCIONAIS que saíram vazias — o checkout as diz antes de assinar.
+  const vazias = new Set<string>()
 
   const trechos = (ts: TrechoDeModelo[]): Trecho[] => {
     const saida: Trecho[] = []
@@ -176,6 +178,7 @@ export function interpolar(
         const valor = resolver(t.variavel)
         if (valor == null || valor === '') {
           if (!ehOpcional(t.variavel)) faltando.add(t.variavel)
+          else vazias.add(t.variavel)
           texto = ''
         } else texto = valor
       } else texto = ajustar(t.texto)
@@ -209,6 +212,7 @@ export function interpolar(
   return {
     documento: { versao: 2, base: { fonte: doc.base.fonte, tamanho: doc.base.tamanho }, cabecalho: blocos(doc.cabecalho), rodape: blocos(doc.rodape), blocos: blocos(doc.blocos) },
     faltando:  [...faltando],
+    vazias:    [...vazias],
   }
 }
 
