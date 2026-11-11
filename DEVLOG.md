@@ -10387,6 +10387,17 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 - Limpeza destrutiva nova (com o Heitor presente): `metrics_estornos_do_dia` e `metrics_taxa_dos_lancamentos` ficaram sem uso.
 - Prova: `e2e/financeiro-dinheiro-da-12.spec.ts` (6) e 98 vizinhos. Mexeu em `lib/metrics` e `metrics_*`: vale completa.
 
+**F60 FEITA (11/11, 7210ef4f…e577d96c, push; migrations 20261111006001/6002/6003): os atritos de setup, termos, comercial e agenda (A1–A29).**
+- Cargos (A2, A3): nenhum alcance nasce escolhido, nem o do CRM (princípio 3; substitui a A5 da 9ª) — a tela e a action pedem a escolha ao ligar o módulo, e o Relatórios em "Ver" pede as abas. O modelo Recepcionista da rede NOVA traz "Minhas comissões"; cargos gravados não mudam.
+- Setup e configuração (A1, A4, A5, A6, A9, A11, A12, A24): o "Aberta 24 horas" volta ao horário de antes no segundo toque; "É de propósito" na pílula "Sem comissão"; o "De venda" do pacote diz que vale no lugar da comissão da pessoa; 300 pontos e 30 dias "são uma sugestão"; a margem sem custo fica vazia; os avisos de quem não alcança a aba ou a Equipe; quem monta o plano e o que liberar; o que conta como primeiro pagamento da indicação.
+- Termos (A13–A17): "Registro no conselho" opcional na pessoa da equipe (`users.registro_conselho`) e `{{profissional.registro}}`; a profissional no contrato de plano; "paciente" vale como "cliente" (princípio 2); o editor sem o "1. 1."; o Agendar diz qual dado do cadastro o termo pede.
+- Vendas (A18–A20, A22): o Vender diz a regra da comissão de venda ("8% do vendido — da Rita", "5% — do pacote"), e a de outra pessoa só a quem vê a de todos; "Venda de procedimento" no extrato; o agendar da sessão do pacote pede profissional e data.
+- A19 (decisão da frente, para o Heitor revisar): a taxa e o líquido da maquininha no Vender ficam só para quem tem o Financeiro de todos — desfaz a A40 da 8ª, coerente com a A39 e com o texto do cargo de Recebimentos.
+- Agenda (A26–A29): o destaque da Minha agenda anda com o relógio ("Atrasado: 5 min"); "Não compareceu" diz quando aparece; a Minha agenda cabe no celular; "Aceitar plano" grava a observação que está na tela.
+- A7: a recompensa "Produto / brinde" aceita brinde ou serviço só com o nome, e "Entregar brinde" só marca o voucher. A frente o deixou num branch porque o drop da check pede confirmação; a sessão principal aplicou a migration 6003 e trouxe o commit (8c44f3d2, 4919ee4d — vão com o push da F61).
+- Ficaram: A8 (unificar as sintaxes de variável é projeto), A10 (só anotado), A23 (r2-ven-12), A25 (a Minha agenda abre o atendimento por desenho, agenda-06); A21 não se reproduziu (ficou o teste).
+- Prova: `e2e/{configuracoes,documentos,vendas,agenda}-atritos-da-12.spec.ts`, `tests/{documentos,vendas}-atritos-da-12.test.ts`, `tests/fidelidade-brinde-sem-estoque.test.ts`; vitest 2083/2083. Mexeu em permissões, Configurações dos dois portais e no conversor dos documentos: vale completa.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
