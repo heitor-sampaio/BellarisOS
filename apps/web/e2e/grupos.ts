@@ -40,6 +40,8 @@ export const ISOLADOS = [
   'financeiro-atritos-da-12.spec.ts',
   'plano-defeitos-da-12.spec.ts',
   'campanha-defeitos-da-12.spec.ts',
+  // A F62 (o fuso da clínica: a unidade de Manaus).
+  'fuso-da-unidade.spec.ts',
   // A F59 (o dinheiro da 12ª: o estorno no dia em que o dinheiro sai).
   'financeiro-dinheiro-da-12.spec.ts',
   // A F60 (os atritos de setup, termos, comercial e agenda da 12ª).

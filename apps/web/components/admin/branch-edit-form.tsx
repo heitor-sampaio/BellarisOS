@@ -7,6 +7,7 @@ import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { normalizarHorario } from '@/lib/agenda/horario'
 import { maskPhoneDigitando, maskCEPDigitando } from '@estetica-os/utils'
 import { fetchCep } from '@/lib/cep'
+import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -26,6 +27,7 @@ interface BranchData {
   state:              string | null
   zip_code:           string | null
   horario?:           unknown
+  fuso?:              string | null
 }
 
 interface Props {
@@ -179,6 +181,9 @@ export function BranchEditForm({ branch }: Props) {
             </select>
           </div>
         </div>
+
+        {/* F62: o fuso da unidade; o estado do CEP só SUGERE (nada se move sozinho). */}
+        <CampoDoFuso id="be-fuso" modo="sugere" valorInicial={branch.fuso} uf={uf} cidade={city} />
       </section>
 
       <section className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>

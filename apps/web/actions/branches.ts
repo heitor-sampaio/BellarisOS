@@ -11,6 +11,17 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { slugDoTexto, candidatosDeEndereco, escolherEndereco } from '@/lib/unidades/endereco'
 import { maskCPF, maskCNPJ } from '@estetica-os/utils'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
+import { FUSOS } from '@/lib/unidades/fuso'
+
+/**
+ * O fuso do formulário (F62): sem o campo, nada muda (undefined); fora da
+ * lista, é impossível — recusado.
+ */
+function lerFusoDoForm(formData: FormData): string | undefined | { erro: string } {
+  const v = formData.get('fuso')
+  if (typeof v !== 'string' || !v) return undefined
+  return FUSOS.some(f => f.valor === v) ? v : { erro: 'Fuso horário inválido.' }
+}
 
 /**
  * A unidade nova SEM CNPJ pergunta antes (cfg-01, revisão do Heitor de
@@ -62,6 +73,8 @@ export async function createBranch(
   const horarioLido = lerHorarioDoForm(formData)
   if (horarioLido && 'erro' in horarioLido) return { error: horarioLido.erro }
   const horario = horarioLido ?? undefined
+  const fuso = lerFusoDoForm(formData)
+  if (typeof fuso === 'object') return { error: fuso.erro }
 
   if (!name) return { error: 'Nome é obrigatório.' }
   // O LIMITE de unidades do plano da rede (lib/planos/limites.ts).
@@ -88,6 +101,7 @@ export async function createBranch(
     () => inserirUnidade(ctx.tenantId!, base, nomeDaClinica, {
       name, document, state_registration: stateRegistration, email, phone, address, city, state, zip_code: zipCode,
       ...(horario ? { horario } : {}),
+      ...(fuso ? { fuso } : {}),
     }),
     { gravou: r => 'success' in r })
 }
@@ -135,6 +149,8 @@ export async function updateBranch(
   const horarioLido = lerHorarioDoForm(formData)
   if (horarioLido && 'erro' in horarioLido) return { error: horarioLido.erro }
   const horario = horarioLido
+  const fuso = lerFusoDoForm(formData)
+  if (typeof fuso === 'object') return { error: fuso.erro }
 
   if (!name) return { error: 'Nome é obrigatório.' }
   // Quem tem unidade fixa edita a dela; a da rede, todas (§11). Até 2026-09-28
@@ -156,6 +172,7 @@ export async function updateBranch(
       state,
       zip_code: zipCode,
       ...(horario !== undefined ? { horario } : {}),
+      ...(fuso ? { fuso } : {}),
     })
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)

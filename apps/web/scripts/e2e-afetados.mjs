@@ -46,6 +46,10 @@ const AREAS = [
   { nome: 'listas longas (sem o corte de 1000)',
     chaves: ['cached-queries', 'lerTodas', 'notification-campaigns', 'disparo-de-campanha', 'automacoes/tempo', 'atividade-da-pessoa', 'reports-bi-section', 'lista-de-checkout', 'injectable-map', 'oportunidades/page', 'inbox/page', 'admin/agenda/page', 'financeiro/page', 'comissoes/leitura', 'metrics/queries'],
     specs: /^(listas-sem-corte|agenda-mais-de-mil|campanha-aniversario)/ },
+  // O fuso da unidade (F62): as datas, a agenda, o Fechamento, o cron e os documentos no fuso dela.
+  { nome: 'fuso da unidade',
+    chaves: ['fuso', 'datetime', 'metrics/period'],
+    specs: /^(fuso-da-unidade)/ },
   { nome: 'Copilot',
     chaves: ['copilot', 'openai'],
     specs: /^(copilot|api-sem-credencial)/ },

@@ -8,6 +8,7 @@ import { Check, Loader2, AlertTriangle } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
+import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { maskCNPJDigitando, maskCPFouCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -340,6 +341,8 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
     // O horário vem do editor (campo oculto do formulário).
     const horario = formRef.current ? new FormData(formRef.current).get('horario') : null
     if (typeof horario === 'string') formData.set('horario', horario)
+    const fuso = formRef.current ? new FormData(formRef.current).get('fuso') : null
+    if (typeof fuso === 'string') formData.set('fuso', fuso)
 
     startTransition(async () => {
       const result = await createBranch(undefined, formData)
@@ -546,6 +549,9 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           </select>
         </div>
       </div>
+
+      {/* F62: o fuso da unidade acompanha o estado do CEP até a pessoa escolher. */}
+      <CampoDoFuso id="br-fuso" modo="segue" uf={uf} cidade={city} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p className="overline">Horário de funcionamento</p>

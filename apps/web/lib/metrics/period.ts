@@ -1,7 +1,4 @@
-import {
-  startOfDayTZ, endOfDayTZ, startOfMonthTZ, endOfMonthTZ,
-  addDaysTZ, addMonthsTZ, partsInTZ, zonedToUtc, weekdayTZ,
-} from '@/lib/datetime'
+import { noFuso, BUSINESS_TZ } from '@/lib/datetime'
 
 /**
  * Resolução do período selecionado nos filtros dos indicadores.
@@ -41,8 +38,8 @@ const MONTHS = [
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ]
 
-const fmtDay = (d: Date) => {
-  const p = partsInTZ(d)
+const fmtDay = (d: Date, tz: string) => {
+  const p = noFuso(tz).parts(d)
   return `${String(p.day).padStart(2, '0')}/${String(p.month).padStart(2, '0')}/${p.year}`
 }
 
@@ -59,8 +56,15 @@ export function resolvePeriod(
   rawFrom?: string,
   rawTo?: string,
   now: Date = new Date(),
+  /** O fuso da unidade (F62); sem ele, o de Brasília. */
+  tz: string = BUSINESS_TZ,
 ): ResolvedPeriod {
   const key: PeriodKey = isPeriodKey(rawPeriod) ? rawPeriod : 'month'
+  const f = noFuso(tz)
+  const startOfDayTZ = f.startOfDay, endOfDayTZ = f.endOfDay
+  const startOfMonthTZ = f.startOfMonth, endOfMonthTZ = f.endOfMonth
+  const addDaysTZ = f.addDays, addMonthsTZ = f.addMonths
+  const partsInTZ = f.parts, weekdayTZ = f.weekday, zonedToUtc = f.zonedToUtc
   const p = partsInTZ(now)
 
   let from: Date
@@ -120,7 +124,7 @@ export function resolvePeriod(
         const [ty, tm, td] = rawTo.split('-').map(Number)
         from  = zonedToUtc(fy!, fm!, fd!)
         to    = zonedToUtc(ty!, tm!, td!, 23, 59, 59, 999)
-        label = `${fmtDay(from)} – ${fmtDay(to)}`
+        label = `${fmtDay(from, tz)} – ${fmtDay(to, tz)}`
       } else {
         from  = startOfMonthTZ(now)
         label = `${MONTHS[p.month - 1]!.replace(/^\w/, c => c.toUpperCase())} de ${p.year}`

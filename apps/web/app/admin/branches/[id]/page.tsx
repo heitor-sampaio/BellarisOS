@@ -28,7 +28,7 @@ export default async function BranchDetailPage({ params }: Props) {
     .from('branches')
     .select(`
       id, name, slug, document, state_registration,
-      email, phone, address, city, state, zip_code, horario,
+      email, phone, address, city, state, zip_code, horario, fuso,
       is_active, created_at,
       users(id, name, is_active)
     `)

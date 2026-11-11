@@ -5,6 +5,7 @@ import { flushSync } from 'react-dom'
 import { Plus, X, Loader2, AlertTriangle } from 'lucide-react'
 import { createBranch, type RespostaDeCriarUnidade } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
+import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { maskPhoneDigitando, maskCEPDigitando, maskCPFouCNPJDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
@@ -311,6 +312,8 @@ export function BranchForm() {
                       </select>
                     </div>
                   </div>
+                  {/* F62: o fuso acompanha o estado do CEP até a pessoa escolher. */}
+                  <CampoDoFuso id="br-fuso" modo="segue" uf={uf} cidade={city} />
                 </div>
               </section>
 

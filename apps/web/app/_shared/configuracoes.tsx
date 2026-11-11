@@ -271,7 +271,7 @@ export async function Configuracoes({
   const unidadeParaEditar = conteudo === 'unidade' && unidadeDaTela
     ? await Promise.all([
         ler(admin.from('branches')
-          .select('id, name, document, state_registration, email, phone, address, city, state, zip_code, horario')
+          .select('id, name, document, state_registration, email, phone, address, city, state, zip_code, horario, fuso')
           .eq('id', unidadeDaTela.id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'carregar a unidade'),
         ler(admin.from('rooms').select('id, name, is_active').eq('branch_id', unidadeDaTela.id).order('name'), 'carregar as salas'),
       ])
