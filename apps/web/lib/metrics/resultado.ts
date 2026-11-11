@@ -210,13 +210,25 @@ export function giroDoEstoque(n: { consumo: number; valorEmEstoque: number }): n
  * lados do estorno (a regra de metrics_core) — em centavos. A tela fazia o
  * reduce ela mesma e tirava o sinal com Math.abs: "6 lançamentos · R$ 2.400,00"
  * era um resultado negativo. A lista é a da tela, lida inteira (lerTodas).
+ *
+ * F59 (D2 e D9 da 12ª): com o que o BANCO diz que cada lançamento conta no caixa
+ * (`no_caixa`, `metrics_caixa_dos_lancamentos`: o pagamento pelo valor que
+ * entrou, no dia dele; o estorno no dia em que foi feito; nulo, não conta), a
+ * lista soma isso — é o caixa do período, o mesmo do Fechamento. Sem ele, a
+ * regra antiga, já sem o uso do crédito na clínica (D9: não é caixa).
  */
 export function resultadoDaLista(linhas: {
   type: 'INCOME' | 'EXPENSE'; amount: number; is_paid: boolean; notes?: string | null; category?: string | null
+  payment_method?: string | null; no_caixa?: number | null
 }[]): number {
   let centavos = 0
   for (const l of linhas) {
+    if (l.no_caixa !== undefined) {
+      if (l.no_caixa != null) centavos += Math.round(Number(l.no_caixa) * 100)
+      continue
+    }
     if (!l.is_paid || (l.notes ?? '') === 'Estornada' || (l.category ?? '') === 'Estorno') continue
+    if (l.payment_method === 'INTERNAL_CREDIT') continue
     const v = Math.round(Number(l.amount) * 100)
     centavos += l.type === 'INCOME' ? v : -v
   }

@@ -228,6 +228,8 @@ export default async function AdminFinanceiroPage({
     uso_de_credito_texto: notaDoUsoDeCredito(t as unknown as LancamentoParaNota),
     taxa: taxas[t.id]?.taxa ?? null,
     liquido: taxas[t.id]?.liquido ?? null,
+    // D9 e A45 da 12ª: o que ele conta no caixa (do banco; nulo = não conta).
+    no_caixa: taxas[t.id]?.noCaixa ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
     vencida: !t.is_paid && situacaoDoVencimento(t.due_date) === 'VENCIDA',
     branchName: branchNameMap[t.branch_id] ?? '—',

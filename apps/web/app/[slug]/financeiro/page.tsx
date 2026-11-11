@@ -140,6 +140,8 @@ export default async function FinancialPage({
     uso_de_credito_texto: notaDoUsoDeCredito(t as unknown as LancamentoParaNota),
     taxa: taxas[t.id as string]?.taxa ?? null,
     liquido: taxas[t.id as string]?.liquido ?? null,
+    // D9 e A45 da 12ª: o que ele conta no caixa (do banco; nulo = não conta).
+    no_caixa: taxas[t.id as string]?.noCaixa ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
     vencida: !t.is_paid && situacaoDoVencimento(t.due_date as string | null) === 'VENCIDA',
     cliente: client_id && nomes.clientes[client_id] ? { name: nomes.clientes[client_id] } : null,

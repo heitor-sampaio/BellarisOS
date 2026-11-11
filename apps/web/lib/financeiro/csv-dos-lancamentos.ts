@@ -34,6 +34,14 @@ export interface LinhaDoCsv {
   pagoEm?:     string | null
   fornecedor?: string | null
   nota?:       string | null
+  /**
+   * A45 da 12ª (F59): o que o lançamento conta no CAIXA, com o sinal (do banco,
+   * `metrics_caixa_dos_lancamentos`); nulo, não conta. Com ele, a coluna Valor
+   * do "Sim" é esse valor (o pagamento pelo que entrou; o estorno, negativo) —
+   * somar os "Sim" dá o caixa. Sem ele (undefined), conta o pago que não é
+   * estorno nem estornado.
+   */
+  noCaixa?:    number | null
 }
 
 const SITUACAO: Record<LinhaDoCsv['situacao'], string> = { PAGO: 'Pago', EM_ABERTO: 'Em aberto', ESTORNADO: 'Estornado' }
@@ -49,16 +57,17 @@ const dia = (iso: string | null | undefined) => iso
   : ''
 
 export function csvDosLancamentos(linhas: LinhaDoCsv[], opcoes: { comUnidade?: boolean } = {}): string {
-  const cabecalho = ['Data', 'Descrição', 'Cliente', ...(opcoes.comUnidade ? ['Unidade'] : []), 'Categoria', 'Tipo', 'Forma', 'Situação', 'Valor',
+  const cabecalho = ['Data', 'Descrição', 'Cliente', ...(opcoes.comUnidade ? ['Unidade'] : []), 'Categoria', 'Tipo', 'Forma', 'Situação', 'Valor', 'Conta no caixa',
     'Taxa da maquininha', 'Líquido', 'Vencimento', 'Pago em', 'Fornecedor', 'Nota fiscal']
   const corpo = linhas.map(l => {
     const sinal = l.tipo === 'EXPENSE' ? -1 : 1
-    const centavos = Math.round(l.valor * 100) * sinal
+    const conta = l.noCaixa !== undefined ? l.noCaixa != null : l.situacao === 'PAGO' && !l.estorno
+    const centavos = l.noCaixa != null ? Math.round(l.noCaixa * 100) : Math.round(l.valor * 100) * sinal
     return [
       dia(l.data), l.descricao, l.cliente ?? '', ...(opcoes.comUnidade ? [l.unidade ?? ''] : []), l.categoria ?? '',
       l.estorno ? 'Estorno' : l.tipo === 'EXPENSE' ? 'Despesa' : 'Receita',
       l.forma ? rotuloDaForma(l.forma, l.vezes) : '', SITUACAO[l.situacao],
-      (centavos / 100).toFixed(2).replace('.', ','),
+      (centavos / 100).toFixed(2).replace('.', ','), conta ? 'Sim' : 'Não',
       reais(l.taxa), reais(l.liquido), dia(l.vencimento), l.situacao === 'EM_ABERTO' ? '' : dia(l.pagoEm),
       l.fornecedor ?? '', l.nota ?? '',
     ].map(v => campo(String(v)))
@@ -87,7 +96,7 @@ export function linhaDoLancamento(t: {
   payment_method: string | null; cartao_vezes?: number | null; is_paid: boolean; notes: string | null; amount: number | string
   cliente?: { name: string } | null
   due_date?: string | null; paid_at?: string | null; fornecedor?: string | null; nota_fiscal?: string | null
-  taxa?: number | null; liquido?: number | null
+  taxa?: number | null; liquido?: number | null; no_caixa?: number | null
 }, unidade?: string | null): LinhaDoCsv {
   return {
     data: t.data_de_referencia ?? t.created_at, descricao: t.description, cliente: t.cliente?.name ?? null,
@@ -96,5 +105,6 @@ export function linhaDoLancamento(t: {
     valor: Number(t.amount), estorno: t.category === 'Estorno', unidade: unidade ?? null,
     taxa: t.taxa ?? null, liquido: t.liquido ?? null, vencimento: t.due_date ?? null, pagoEm: t.paid_at ?? null,
     fornecedor: t.fornecedor ?? null, nota: t.nota_fiscal ?? null,
+    ...(t.no_caixa !== undefined ? { noCaixa: t.no_caixa } : {}),
   }
 }

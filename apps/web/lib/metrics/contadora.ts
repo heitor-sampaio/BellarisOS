@@ -11,21 +11,41 @@ import { lerTodas } from '@/lib/db'
 
 const n = (v: unknown) => Number(v ?? 0)
 
+/** O que um lançamento conta no caixa, com a taxa e o líquido da receita (do banco). */
+export interface CaixaDoLancamento {
+  /** Nulo no que não é receita (ou estorno de receita) paga. */
+  taxa:    number | null
+  liquido: number | null
+  /**
+   * F59 (D9 e A45 da 12ª): o que ele conta no CAIXA, com o sinal (+ entrou,
+   * − saiu); nulo, não conta — o em aberto, o uso do crédito na clínica, o pago
+   * todo em pontos. O pagamento conta pelo valor que entrou, no dia dele; o
+   * estorno, no dia em que foi feito (D2) — somado no período, é o caixa dele.
+   */
+  noCaixa: number | null
+}
+
 /**
- * A taxa da maquininha e o líquido de cada lançamento (por id), pela MESMA conta
- * do lucro (`metrics_taxa_dos_lancamentos`, o ramo das taxas de
- * `metrics_custos_da_venda`). Nulo no que não é receita paga.
+ * O caixa, a taxa da maquininha e o líquido de cada lançamento (por id), pela
+ * MESMA conta do lucro e do Fechamento (`metrics_caixa_dos_lancamentos`: a régua
+ * `metrics_movimentos_pagos`, lançamento a lançamento; as taxas como
+ * `metrics_custos_da_venda`).
  */
-export async function getTaxaDosLancamentos(tenantId: string, ids: string[]): Promise<Record<string, { taxa: number; liquido: number }>> {
-  const saida: Record<string, { taxa: number; liquido: number }> = {}
+export async function getTaxaDosLancamentos(tenantId: string, ids: string[]): Promise<Record<string, CaixaDoLancamento>> {
+  const saida: Record<string, CaixaDoLancamento> = {}
   if (!ids.length) return saida
   const admin = createAdminClient()
   // A lista de ids vai no CORPO (rpc é POST): no .in() ela iria na URL.
-  type Linha = { id: string; taxa: number | string | null; liquido: number | string | null }
-  const linhas = await lerTodas<Linha>((de, ate) => admin.rpc('metrics_taxa_dos_lancamentos', { p_tenant: tenantId, p_ids: ids })
+  type Linha = { id: string; taxa: number | string | null; liquido: number | string | null; no_caixa: number | string | null }
+  const linhas = await lerTodas<Linha>((de, ate) => admin.rpc('metrics_caixa_dos_lancamentos', { p_tenant: tenantId, p_ids: ids })
     .order('id').range(de, ate) as unknown as PromiseLike<{ data: Linha[] | null; error: { message: string } | null }>,
-  'ler a taxa dos lançamentos')
-  for (const l of linhas) if (l.taxa != null) saida[l.id] = { taxa: n(l.taxa), liquido: n(l.liquido) }
+  'ler o caixa dos lançamentos')
+  for (const l of linhas) {
+    saida[l.id] = {
+      taxa: l.taxa == null ? null : n(l.taxa), liquido: l.liquido == null ? null : n(l.liquido),
+      noCaixa: l.no_caixa == null ? null : n(l.no_caixa),
+    }
+  }
   return saida
 }
 
