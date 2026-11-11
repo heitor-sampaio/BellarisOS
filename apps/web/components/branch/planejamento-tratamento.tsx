@@ -11,7 +11,7 @@ import type { FinanceiroDoPlano, LancamentoDoPlano } from '@/lib/metrics/plano'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { endOfDayTZ } from '@/lib/datetime'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
-import type { TreatmentProcedure, ExistingPlan, AvailableProduct } from '@/components/branch/treatment-plan-editor'
+import type { TreatmentProcedure, ExistingPlan, AvailableProduct, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
@@ -103,6 +103,15 @@ export function PlanejamentoTratamento({
   const [achados,       setAchados]       = useState<{ id: string; name: string; phone: string | null }[]>([])
   const [clienteLigado, setClienteLigado] = useState<{ id: string; nome: string } | null>(null)
   const termoRef = useRef("")
+  // A29 da 12ª: aceitar (ou mandar à recepção) usa o que está na tela — o editor
+  // é lido e salvo antes, como o "Enviar para a recepção" da avaliação já fazia.
+  const editorRef = useRef<TreatmentPlanEditorRef>(null)
+  async function salvarOQueEstaNaTela(): Promise<boolean> {
+    if (!aberto || !editorRef.current) return true
+    const res = await salvarPlanoDoCliente(aberto.id, editorRef.current.getSessions(), editorRef.current.getNotes())
+    if (res.error) { setErro(res.error); return false }
+    return true
+  }
 
   // A carga da lista que falhou (a action lança sem a Agenda, a rede caiu) vira
   // um aviso — nunca "Carregando planos…" para sempre (D6, 2026-11-01).
@@ -205,6 +214,7 @@ export function PlanejamentoTratamento({
   async function enviarParaRecepcao() {
     if (!aberto) return
     setErro(null); setSalvando(true)
+    if (aberto.status === 'DRAFT' && !(await salvarOQueEstaNaTela())) { setSalvando(false); return }
     const res = await proposeTreatmentPlan(aberto.id, slug)
     setSalvando(false)
     if (res.error) { setErro(res.error); return }
@@ -246,6 +256,7 @@ export function PlanejamentoTratamento({
     setErro(null); setSalvando(true)
     // Só plano proposto entra no checkout — é a regra da própria action.
     if (aberto.status === 'DRAFT') {
+      if (!(await salvarOQueEstaNaTela())) { setSalvando(false); return }
       const prop = await proposeTreatmentPlan(aberto.id, slug)
       if (prop.error) { setSalvando(false); setErro(prop.error); return }
     }
@@ -407,6 +418,7 @@ export function PlanejamentoTratamento({
       {/* O editor é o mesmo da avaliação; aqui ele salva por planId, não por
           atendimento — daí `hideActions` e os botões abaixo. */}
       <TreatmentPlanEditor
+        ref={editorRef}
         key={aberto.id}
         appointmentId=""
         slug={slug}

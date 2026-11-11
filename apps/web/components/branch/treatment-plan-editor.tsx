@@ -761,6 +761,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
+            aria-label="Observações da profissional"
             placeholder="Recomendações, contraindicações, observações clínicas…"
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 10,

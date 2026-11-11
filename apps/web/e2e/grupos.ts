@@ -42,6 +42,7 @@ export const ISOLADOS = [
   'configuracoes-atritos-da-12.spec.ts',
   'documentos-atritos-da-12.spec.ts',
   'vendas-atritos-da-12.spec.ts',
+  'agenda-atritos-da-12.spec.ts',
   'vendas-unidade-da-venda.spec.ts',
   // A F35 (a migração: o pacote de fora, as colunas da importação, as aniversariantes).
   'pacote-de-fora.spec.ts',

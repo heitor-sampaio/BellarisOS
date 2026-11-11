@@ -910,7 +910,8 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
 
   // 1. Observações da profissional
   if (!plan.professional_notes?.trim()) {
-    return { error: 'Preencha as observações antes de enviar.' }
+    // A29 da 12ª: o botão é "Aceitar plano" (ou "Cliente vai pensar") — a frase diz os dois.
+    return { error: 'Preencha as observações da profissional antes de aceitar o plano ou mandá-lo à recepção.' }
   }
 
   // 2. Pelo menos 1 sessão

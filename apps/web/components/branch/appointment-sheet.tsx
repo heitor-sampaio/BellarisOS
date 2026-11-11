@@ -493,6 +493,13 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               </button>
             </div>
             )}
+            {/* A27 da 12ª (princípio 3): a regra fica — a falta é de quem não veio
+                NA HORA —, e a janela diz quando ela aparece. */}
+            {podeCancelar && !jaComecou && (
+              <p data-falta-depois-do-horario style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                “Não compareceu” aparece a partir do horário marcado ({dateStr}, {timeStr}): antes dele, a cliente ainda pode vir. Para desmarcar agora, é “Cancelar”, com o motivo.
+              </p>
+            )}
 
             {confirmandoFalta && podeCancelar && jaComecou && (
               <div data-confirmar-falta role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning-border)' }}>

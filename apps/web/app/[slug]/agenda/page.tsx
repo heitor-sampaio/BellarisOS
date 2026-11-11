@@ -278,6 +278,8 @@ export default async function AgendaPage({ params, searchParams }: {
           agendar={canManageAgenda && currentPro
             ? { procedures: procedures ?? [], rooms: rooms ?? [], professionals: [{ id: currentPro.id, name: currentPro.name }] }
             : null}
+          // A28 da 12ª: "Minhas comissões" à mão na agenda dela (só o menu tinha).
+          comissoesHref={can(ctx, 'financial', 'VIEW') ? `/${slug}/financeiro/comissoes` : null}
         />
       </div>
     )

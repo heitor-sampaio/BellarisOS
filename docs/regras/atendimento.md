@@ -569,6 +569,27 @@
     profissional saía cortada a 412 px).
   - Prova: `e2e/agenda-atritos-da-11.spec.ts`, `e2e/atendimento-atritos-da-11.spec.ts`,
     `tests/agenda-remarcar-no-passado.test.ts`, `tests/inicio-adiantado.test.ts` ("A25").
+- **Os atritos da agenda da 12ª simulação** (2026-11-11; princípio 3):
+  - **O destaque da "Minha agenda" anda com o relógio e diz o atrasado** (A26:
+    às 00:3x a Gabi lia "Próximo atendimento 22:00" — a tela aberta na véspera
+    congelava o dia e a hora —, com a avaliação das 00:30 em aberto). O "agora"
+    é o `useAgora` (de 30 em 30 s); o horário que já começou e segue em aberto
+    (agendado, confirmado ou chegou, ainda dentro da duração) vem antes do
+    próximo: "Atrasado: 5 min" (ou "Chegou · atrasado 5 min").
+  - **A janela diz quando a falta aparece** (A27; a regra fica — "Não
+    compareceu" só depois do início): antes do horário, "“Não compareceu”
+    aparece a partir do horário marcado (…): antes dele, a cliente ainda pode
+    vir. Para desmarcar agora, é “Cancelar”, com o motivo."
+    (`[data-falta-depois-do-horario]`).
+  - **No celular, a "Minha agenda" cabe** (A28): o título do dia não quebra (no
+    celular, o dia curto — "qua, 11 de nov" —, `onde-no-celular`), a navegação
+    e a legenda quebram a LINHA (`[data-legenda-da-agenda]`), e "Minhas
+    comissões" fica no topo dela para quem tem o Financeiro em Ver
+    (`[data-minhas-comissoes]`).
+  - Ficou como está: o toque no cartão da "Minha agenda" abre o atendimento, e
+    o da agenda de todas abre a janela de ações (A25) — é o desenho do
+    agenda-06 (a "Minha agenda" abre a tela do atendimento).
+  - Prova: `e2e/agenda-atritos-da-12.spec.ts`.
 - **A grade do dia rola a cada troca de dia** (D8): hoje, uma hora antes de
   agora; outro dia, o primeiro atendimento ou a abertura da unidade, o que
   vier antes (`rolagemDaGrade`). O novo agendamento sugere o próximo horário
@@ -1791,6 +1812,12 @@ const procedures = await ler(
   e "Planejamentos" sozinho dizia também os de injetáveis. O título da lista e
   o "voltar" do plano aberto dizem "Tratamentos"; a rota segue
   `/planejamentos`. Prova: `e2e/atendimento-atritos-da-8.spec.ts` ("A30").
+- **"Aceitar plano" usa o que está na tela** (A29 da 12ª simulação, 2026-11-11;
+  princípio 3): com a observação digitada e não salva, a Bianca lia "Preencha
+  as observações antes de enviar." O "Aceitar plano" e o "Cliente vai pensar"
+  salvam o editor antes (o `ref` do `TreatmentPlanEditor`, como o "Enviar para
+  a recepção" da avaliação), e a recusa diz "…antes de aceitar o plano ou
+  mandá-lo à recepção." Prova: `e2e/agenda-atritos-da-12.spec.ts` ("A29").
 - **"Novo plano" (de tratamento) só grava ao salvar** (2026-10-21, decisão do
   Heitor): na ficha da cliente e no atendimento, o botão abre o editor com um
   rascunho que existe só na tela; o plano nasce no primeiro "Salvar plano"

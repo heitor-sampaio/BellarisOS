@@ -24,6 +24,7 @@ import type { CalendarEvent } from './agenda-month-view'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { BotaoBloquearHorario, BlocoDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { useAgora } from '@/lib/use-agora'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -78,15 +79,23 @@ interface Props {
    * profissionais é só ela, quando atende nesta unidade.
    */
   agendar?: { procedures: { id: string; name: string; category: string; duration_min: number; price: string | number }[]; rooms: { id: string; name: string }[]; professionals: { id: string; name: string }[] } | null
+  /** A28 da 12ª: o atalho para as comissões dela (quem tem o Financeiro em Ver), no topo da agenda. */
+  comissoesHref?: string | null
 }
 
 export function ProfessionalAgendaView({
   events, slug, professionalName, branchName, professionalId, branchId, janela,
   horarioDaUnidade, horarioDaProfissional, ocupadoFora, dataInicial = null, bloqueios = [], podeBloquear = false, agendar = null,
+  comissoesHref = null,
 }: Props) {
   const [agendando, setAgendando] = useState(false)
   const router = useRouter()
   const today  = useMemo(() => new Date(), [])
+  // A26 da 12ª: o "agora" do destaque anda com o relógio (de 30 em 30 s). A tela
+  // aberta na véspera congelava o dia e a hora: às 00:3x ela ainda dizia
+  // "Próximo atendimento 22:00". Antes de hidratar, a hora da abertura.
+  const agoraDoRelogio = useAgora()
+  const agora = useMemo(() => (agoraDoRelogio != null ? new Date(agoraDoRelogio) : today), [agoraDoRelogio, today])
 
   // Realtime: atualiza a agenda ao receber qualquer mudança nos agendamentos deste profissional
   useEffect(() => {
@@ -144,15 +153,25 @@ export function ProfessionalAgendaView({
   )
 
   const todayEvents = useMemo(() =>
-    eventsByDay.get(format(today, 'yyyy-MM-dd')) ?? [],
-    [eventsByDay, today],
+    eventsByDay.get(format(agora, 'yyyy-MM-dd')) ?? [],
+    [eventsByDay, agora],
   )
 
   // -- KPIs ----------------------------------------------------------
   const heroEvent = useMemo(() => {
     const inProgress = todayEvents.find(e => e.status === 'IN_PROGRESS')
     if (inProgress) return { ev: inProgress, label: 'Em atendimento agora' }
-    const now = today.getTime()
+    const now = agora.getTime()
+    // A26 da 12ª (princípio 3): o horário que já começou e segue em aberto (sem
+    // ninguém iniciar) é o que importa agora — "Atrasado: N min", não o próximo.
+    const atrasado = todayEvents
+      .filter(e => ['SCHEDULED', 'CONFIRMED', 'ARRIVED'].includes(e.status))
+      .filter(e => { const ini = parseISO(e.start).getTime(); return ini <= now && now < ini + e.durationMin * 60_000 })
+      .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())[0]
+    if (atrasado) {
+      const min = Math.max(0, Math.floor((now - parseISO(atrasado.start).getTime()) / 60_000))
+      return { ev: atrasado, label: atrasado.status === 'ARRIVED' ? `Chegou · atrasado ${min} min` : `Atrasado: ${min} min` }
+    }
     // O já concluído (atendido antes da hora) também sai: o destaque dizia
     // "Próximo atendimento" de quem já tinha ido embora (simulação, 2026-10-20).
     const next = todayEvents
@@ -160,7 +179,7 @@ export function ProfessionalAgendaView({
       .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())[0]
     if (next) return { ev: next, label: 'Próximo atendimento' }
     return null
-  }, [todayEvents, today])
+  }, [todayEvents, agora])
 
   // As horas marcadas hoje ("· 2h35" no cartão Hoje).
   const todayDuration = useMemo(() =>
@@ -177,8 +196,8 @@ export function ProfessionalAgendaView({
       ...ocupadoFora,
       ...todayEvents.filter(e => e.unidade && !['CANCELLED', 'NO_SHOW'].includes(e.status)).map(e => ({ inicio: e.start, minutos: e.durationMin })),
       ...blocosDosBloqueios(bloqueios),
-    ] }, today),
-  [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, today, bloqueios])
+    ] }, agora),
+  [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, agora, bloqueios])
 
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const weekEnd   = endOfWeek(today, { weekStartsOn: 1 })
@@ -296,6 +315,11 @@ export function ProfessionalAgendaView({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {comissoesHref && (
+          <Link data-minhas-comissoes href={comissoesHref} className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }}>
+            Minhas comissões
+          </Link>
+        )}
         {/* O bloqueio do próprio horário (decisão 3 da 7ª): o almoço, a folga. */}
         {podeBloquear && professionalId && (
           <BotaoBloquearHorario branchId={branchId} profissionais={[]} soEu={{ id: professionalId, name: professionalName || 'Você' }} dia={selectedDate} />
@@ -402,13 +426,16 @@ export function ProfessionalAgendaView({
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
 
           {/* Nav de data */}
-          <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--hairline)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* A28 da 12ª: no celular, a navegação e a legenda quebram a LINHA, não o título nem a legenda. */}
+          <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, columnGap: 12, borderBottom: '1px solid var(--hairline)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <button type="button" onClick={() => setSelected(d => addDays(d, -1))} className="btn-ghost" style={{ padding: '5px 8px' }} aria-label="Dia anterior">
                 <ChevronLeft size={15} />
               </button>
-              <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
-                {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+              <span data-titulo-do-dia style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                {/* No celular, o dia curto ("qua, 11 de nov"); no computador, por extenso. */}
+                <span className="onde-no-computador">{format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}</span>
+                <span className="onde-no-celular">{format(selectedDate, "EEE, d 'de' MMM", { locale: ptBR })}</span>
               </span>
               <button type="button" onClick={() => setSelected(d => addDays(d, 1))} className="btn-ghost" style={{ padding: '5px 8px' }} aria-label="Próximo dia">
                 <ChevronRight size={15} />
@@ -425,7 +452,7 @@ export function ProfessionalAgendaView({
             </div>
 
             {/* Legenda */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div data-legenda-da-agenda style={{ display: 'flex', alignItems: 'center', columnGap: 14, rowGap: 4, flexWrap: 'wrap' }}>
               {[
                 { dot: 'var(--success)',      label: 'Confirmado'      },
                 { dot: 'var(--brand)', label: 'Em atendimento'  },
