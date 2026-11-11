@@ -278,8 +278,12 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
         await expect(modal).toBeVisible({ timeout: 2_000 })
       }).toPass({ timeout: 30_000 })
       await modal.getByRole('button', { name: 'Histórico', exact: true }).click()
-      // A compra de 5 frascos: +500 ml; o consumo: −5 ml, com o saldo em ml e em frascos.
-      await expect(modal.getByText('+500 ml', { exact: true })).toBeVisible()
+      // A compra de 5 frascos se destaca na embalagem, "+5 frasco", com os 500 ml embaixo
+      // (A50 da 11ª: a entrada se lê no que se digitou); o consumo: −5 ml, com o saldo
+      // em ml e em frascos.
+      const compra = modal.locator('[data-movimento]').filter({ hasText: 'Entrada' })
+      await expect(compra.locator('[data-quantidade-principal]')).toHaveText('+5 frasco')
+      await expect(compra.getByText('500 ml', { exact: true })).toBeVisible()
       await expect(modal.getByText('-5 ml', { exact: true })).toBeVisible()
       await expect(modal.getByText('saldo 495 ml · 4,95 frasco', { exact: true })).toBeVisible()
     } finally { await ctx.close() }

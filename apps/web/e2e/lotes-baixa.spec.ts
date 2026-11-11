@@ -111,7 +111,8 @@ test.describe.serial('lotes por unidade', () => {
       await modal.locator('select[name="branchId"]').last().selectOption(f!.outra.branchId)
       await modal.locator('input[name="new_quantity"]').fill('6')   // 10 → 6: saem 4
       await modal.locator('textarea[name="reason"]').fill('[e2e] contagem')
-      await modal.getByText(/Confirmo que o novo valor/).click()
+      // A49 da 11ª: a confirmação é "Confirmo que contei na prateleira." (era "Confirmo que o novo valor…").
+      await modal.getByText('Confirmo que contei na prateleira.', { exact: true }).click()
       await modal.getByRole('button', { name: 'Aplicar ajuste' }).click()
       await expect(modal).toBeHidden()
     } finally { await ctx.close() }

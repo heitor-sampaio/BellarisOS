@@ -90,7 +90,8 @@ test('transferir, ajustar e o alerta de mínimo — com os eventos do gatilho', 
   await modal.locator('select[name="branchId"]').last().selectOption(b.id)
   await modal.locator('input[name="new_quantity"]').fill('5')
   await modal.locator('textarea[name="reason"]').fill('[e2e] contagem física')
-  await modal.getByText(/Confirmo que o novo valor/).click()
+  // A49 da 11ª: a confirmação é "Confirmo que contei na prateleira." (era "Confirmo que o novo valor…").
+  await modal.getByText('Confirmo que contei na prateleira.', { exact: true }).click()
   await modal.getByRole('button', { name: 'Aplicar ajuste' }).click()
   await expect.poll(() => saldo(b.id), { message: 'o ajuste fixa o saldo' }).toBe(5)
   const { data: ajuste } = await db.from('stock_movements').select('quantity, balance_after, notes')
