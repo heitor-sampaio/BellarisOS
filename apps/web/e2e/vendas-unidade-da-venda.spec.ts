@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { pagoNoPix } from './apoio/vender'
 
 /**
  * D1 e A14 da 8ª simulação (2026-11-06): na ficha da rede (`/admin`), a venda
@@ -62,8 +62,11 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, rotulo: 'Recepcao da rede',
     permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' }],
   })
-  // A Débora é do Batel: só aparece em "Quem vendeu" de uma venda do Batel.
+  // A Débora é a profissional do Batel (atende lá): só aparece em "Quem vendeu" de uma
+  // venda do Batel. A42 da 11ª: "Quem vendeu" só traz quem VENDE (atende na unidade,
+  // recebe, ou tem Vendas no cargo) — sem o "Atende", ela não entraria em lista nenhuma.
   debora = await criarMembro(`vud${marca}`, { tenant: rede.tenantId, branchId: batel, rotulo: 'Debora', permissoes: [] })
+  expect((await db().from('users').update({ atende_em: [batel] }).eq('id', debora.userId)).error, 'a Débora atende no Batel').toBeNull()
 })
 
 test.afterAll(async () => {
@@ -80,18 +83,27 @@ test('D1: o "Vender" da ficha da rede pergunta a unidade, e a venda sai da escol
     await expect(unidade).toHaveValue('')
     await expect(dlg.getByLabel('Produto'), 'sem a unidade, nada a vender ainda').toHaveCount(0)
 
+    // Na Água Verde, a equipe é a dela: o hidratante sem estoque, e a Débora (do Batel) fora.
+    await unidade.selectOption({ label: NOME_A })
+    await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
+    await expect(dlg.getByLabel('Produto').locator('option', { hasText: PRODUTO })).toContainText('sem estoque')
+    await expect(dlg.getByLabel('Quem vendeu').locator('option', { hasText: '(você)' }), 'a lista da Água Verde está lá').toHaveCount(1)
+    await expect(dlg.getByLabel('Quem vendeu').locator('option', { hasText: 'Debora' })).toHaveCount(0)
+
     await unidade.selectOption({ label: NOME_B })
     await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
     await expect(dlg.getByLabel('Produto').locator('option', { hasText: PRODUTO })).toContainText('4 un em estoque')
-    // A equipe é a do Batel: a Débora está em "Quem vendeu".
-    await expect(dlg.getByLabel('Quem vendeu').locator('option', { hasText: 'Debora' })).toHaveCount(1)
-    await euVendi(dlg)
+    // A equipe é a do Batel: a Débora está em "Quem vendeu" — e é ela quem vende.
+    const opcaoDaDebora = dlg.getByLabel('Quem vendeu').locator('option', { hasText: 'Debora' })
+    await expect(opcaoDaDebora).toHaveCount(1)
+    await dlg.getByLabel('Quem vendeu').selectOption(await opcaoDaDebora.getAttribute('value') ?? '')
     await pagoNoPix(dlg)
     await dlg.getByRole('button', { name: /^Vender por R\$\s90,00$/ }).click()
     await expect(dlg).toBeHidden()
   })
-  const { data: venda } = await db().from('product_sales').select('id, branch_id').eq('tenant_id', rede!.tenantId).single()
+  const { data: venda } = await db().from('product_sales').select('id, branch_id, sold_by').eq('tenant_id', rede!.tenantId).single()
   expect(venda!.branch_id, 'a venda é do Batel').toBe(batel)
+  expect(venda!.sold_by, 'quem vendeu é a Débora: o servidor a aceita no Batel, a unidade escolhida').toBe(debora!.userId)
   const { data: lanc } = await db().from('financial_transactions').select('branch_id').eq('product_sale_id', venda!.id)
   expect(lanc!.map(l => l.branch_id), 'o dinheiro entra no caixa do Batel').toEqual([batel])
   const { data: saldo } = await db().from('branch_product_stock').select('current_stock').eq('product_id', hidratante).eq('branch_id', batel).single()
