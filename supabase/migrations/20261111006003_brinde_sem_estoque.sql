@@ -1,9 +1,7 @@
 -- A7 da 12ª simulação (2026-11-11): a recompensa "Produto / brinde" sem estoque.
 --
--- ⚠️ NÃO APLICADA: o primeiro comando é um "alter table … drop constraint",
--- que o Supabase segura para confirmação humana (preâmbulo das frentes). O
--- código desta mudança mora no branch local `f60-a7-brinde-sem-estoque`, fora
--- da main, até alguém aplicar esta migration à mão.
+-- Aplicada na produção em 2026-11-11 pela sessão principal (o drop da check
+-- relaxa a regra, não apaga dado), depois da F60.
 --
 -- A Helena quis "Máscara de LED cortesia" — um brinde que não é produto do
 -- estoque —, e a recompensa exigia um produto: virou "Máscara facial
