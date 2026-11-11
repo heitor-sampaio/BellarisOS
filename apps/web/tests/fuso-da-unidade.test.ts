@@ -250,3 +250,19 @@ describe('a rotina da fidelidade no fuso da clínica (F62b)', () => {
       .toBe('120 pontos vencem até 01/12/2026. Use na próxima visita.')
   })
 })
+
+describe('o início adiantado no relógio da unidade (F62b)', () => {
+  it('"marcado para as 09:00" é a hora de Manaus, e o "não é hoje" é o dia de lá', async () => {
+    const { perguntaDoInicioAdiantado, atrasoDoInicio } = await import('@/lib/appointments/inicio-adiantado')
+    // 12:30Z = 08:30 em Manaus; o das 09:00 de Manaus é 13:00Z.
+    expect(perguntaDoInicioAdiantado('2026-11-14T13:00:00.000Z', new Date('2026-11-14T12:30:00.000Z'), 'America/Manaus'))
+      .toBe('O atendimento está marcado para as 09:00 — faltam 30 min. Iniciar mesmo assim?')
+    // 23:30 de 13/11 em Manaus (00:30 do 14 em Brasília), o das 09:00 do dia 14 dela: é amanhã lá.
+    expect(perguntaDoInicioAdiantado('2026-11-14T13:00:00.000Z', new Date('2026-11-14T03:30:00.000Z'), 'America/Manaus'))
+      .toMatch(/^O atendimento está marcado para 14\/11 às 09:00 — falta 1 dia, não é hoje\. Iniciar agora registra o atendimento como feito hoje, 13\/11/)
+    expect(atrasoDoInicio('2026-11-14T13:00:00.000Z', '2026-11-14T13:57:00.000Z', 'America/Manaus'))
+      .toBe('57 min depois do horário marcado (09:00)')
+    // Sem fuso, o de Brasília: como era.
+    expect(atrasoDoInicio('2026-11-14T13:00:00.000Z', '2026-11-14T13:57:00.000Z')).toBe('57 min depois do horário marcado (10:00)')
+  })
+})

@@ -66,6 +66,7 @@ import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { useAgora } from '@/lib/use-agora'
 import { atrasoDoInicio } from '@/lib/appointments/inicio-adiantado'
+import { useFuso } from '@/components/shared/fuso'
 
 
 // -- Types ----------------------------------------------------------------------
@@ -1427,8 +1428,10 @@ export function AppointmentSession({
   const status    = appointment.status
   // A25 da 11ª: o relógio do navegador (sem erro de hidratação), para o atraso antes de iniciar.
   const agoraMs   = useAgora()
+  // O horário marcado no relógio da unidade (F62b).
+  const fuso      = useFuso()
   const atrasoAgora = !appointment.startedAt && ['SCHEDULED', 'CONFIRMED', 'ARRIVED'].includes(status) && agoraMs != null
-    ? atrasoDoInicio(appointment.scheduledAt, new Date(agoraMs)) : null
+    ? atrasoDoInicio(appointment.scheduledAt, new Date(agoraMs), fuso) : null
   const overline  = STATUS_OVERLINE[status] ?? STATUS_OVERLINE['SCHEDULED']!
   const isActive  = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status)
   // As ações principais do topo (uma por estado) — no celular, a barra do rodapé (D1 da 10ª).
@@ -1945,9 +1948,9 @@ export function AppointmentSession({
                 Atrasado: {atrasoAgora}.
               </p>
             )}
-            {atrasoDoInicio(appointment.scheduledAt, appointment.startedAt) && (
+            {atrasoDoInicio(appointment.scheduledAt, appointment.startedAt, fuso) && (
               <p data-atraso-do-inicio style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-muted)', marginTop: 4 }}>
-                Iniciado {atrasoDoInicio(appointment.scheduledAt, appointment.startedAt)}.
+                Iniciado {atrasoDoInicio(appointment.scheduledAt, appointment.startedAt, fuso)}.
               </p>
             )}
           </div>

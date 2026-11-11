@@ -36,7 +36,7 @@ import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { periodRef, dayKeyTZ, partsInTZ, instanteNoFuso } from '@/lib/datetime'
 import { fusoValido } from '@/lib/unidades/fuso'
-import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { fusoDaUnidade, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -176,9 +176,11 @@ class InicioAdiantado extends Error {}
 
 /** A pergunta do início adiantado (A32), lida do agendamento; nula quando pode iniciar. */
 async function perguntaDoInicio(appointmentId: string): Promise<string | null> {
-  const ag = await ler(createAdminClient().from('appointments').select('scheduled_at')
-    .eq('id', appointmentId).maybeSingle(), 'buscar o horário do agendamento') as { scheduled_at: string | null } | null
-  return perguntaDoInicioAdiantado(ag?.scheduled_at ?? null)
+  const admin = createAdminClient()
+  const ag = await ler(admin.from('appointments').select('scheduled_at, branch_id')
+    .eq('id', appointmentId).maybeSingle(), 'buscar o horário do agendamento') as { scheduled_at: string | null; branch_id: string | null } | null
+  // A hora marcada e o "não é hoje" no relógio da unidade (F62b).
+  return perguntaDoInicioAdiantado(ag?.scheduled_at ?? null, new Date(), await lerFusoDaUnidade(admin, ag?.branch_id))
 }
 
 async function updateAppointmentStatusInterno(
@@ -579,7 +581,7 @@ async function startAppointmentInterno(
 
     // Antes do horário, em qualquer tempo: pergunta (A32, r2-age-06). O servidor só inicia com a resposta.
     if (opcoes?.inicioAdiantadoConfirmado !== true) {
-      const pergunta = perguntaDoInicioAdiantado(appt.scheduled_at as string | null)
+      const pergunta = perguntaDoInicioAdiantado(appt.scheduled_at as string | null, new Date(), await fusoDaUnidade(ctx.tenantId, apptBranch.id))
       if (pergunta) return { error: pergunta, confirmarInicioAdiantado: true }
     }
 
