@@ -21,6 +21,7 @@ import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { parseDecimal } from '@estetica-os/utils'
+import { useFuso } from '@/components/shared/fuso'
 
 type BranchStock = {
   branchId:     string
@@ -129,11 +130,13 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
   onClose: () => void; onSuccess: () => void
 }) {
   const envio = useEnvioUnico()
+  // A validade passada pelo dia da unidade (F62b).
+  const fuso = useFuso()
   const [error, setError]     = useState<string>()
   const [pending, setPending] = useState(false)
   // A51 da 11ª: a validade que já passou avisa (princípio 2 — não recusa).
   const [validade, setValidade] = useState('')
-  const validadeVencida = !!validade && loteVencido(validade)
+  const validadeVencida = !!validade && loteVencido(validade, new Date(), fuso)
   // A54 da 11ª: a nota com vários produtos — a próxima entrada traz a nota e o
   // fornecedor da anterior (na mesma aba, por 2 horas), e diz que dá para apagar.
   const [notaAnterior] = useState(() => lerNotaDaEntradaAnterior())

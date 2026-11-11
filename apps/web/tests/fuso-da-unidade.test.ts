@@ -303,3 +303,32 @@ describe('o Copilot no relógio da unidade (F62b)', () => {
     expect(ehClienteNova({ clienteDesde: '2026-11-13', createdAt: null }, desde)).toBe(false)
   })
 })
+
+describe('a validade do lote no dia da unidade (F62b)', () => {
+  it('às 23:30 de 14/11 em Manaus o lote de 14/11 ainda vale (em Brasília já é 15/11)', async () => {
+    const { loteVencido, venceAte } = await import('@/lib/estoque/validade')
+    const agora = new Date('2026-11-15T03:30:00.000Z')
+    expect(loteVencido('2026-11-14T00:00:00+00:00', agora, 'America/Manaus')).toBe(false)
+    expect(loteVencido('2026-11-14T00:00:00+00:00', agora)).toBe(true)
+    expect(venceAte('2026-11-15T00:00:00+00:00', agora, 'America/Manaus')).toBe(false)
+    expect(venceAte('2026-11-15T00:00:00+00:00', agora)).toBe(true)
+  })
+})
+
+describe('o FEFO e os lotes vencendo no dia da unidade (F62b)', () => {
+  it('às 23:30 de 14/11 em Manaus o lote de 14/11 ainda sai primeiro, e o de 14/12 vence "em 30 dias"', async () => {
+    const { lotesDaBaixa } = await import('@/lib/estoque/fefo')
+    const { lotesVencendo } = await import('@/lib/estoque/lotes')
+    const agora = new Date('2026-11-15T03:30:00.000Z')
+    const lotes = [
+      { id: 'a', numero: 'A', validade: '2026-11-14T00:00:00+00:00', recebidoEm: '2026-01-01', quantidade: 1 },
+      { id: 'b', numero: 'B', validade: '2026-12-31T00:00:00+00:00', recebidoEm: '2026-01-01', quantidade: 1 },
+    ]
+    expect(lotesDaBaixa(lotes, 1, 1, agora, 'America/Manaus')[0]!.id).toBe('a')
+    expect(lotesDaBaixa(lotes, 1, 1, agora)[0]!.id).toBe('b')
+    const doProduto = [{ id: 'c', produtoId: 'p', unidadeId: 'u', numero: null, validade: '2026-12-15T00:00:00+00:00', quantidade: 1, custoPorEmbalagem: null, origemDoCusto: null }]
+    const em30 = new Date(agora.getTime() + 30 * 86_400_000) // 14/12 23:30 em Manaus, 15/12 00:30 em Brasília
+    expect(lotesVencendo(doProduto, em30, 'America/Manaus')).toHaveLength(0)
+    expect(lotesVencendo(doProduto, em30)).toHaveLength(1)
+  })
+})

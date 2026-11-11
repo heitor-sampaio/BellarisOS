@@ -17,10 +17,11 @@ export interface ParteDaBaixa { id: string; numero: string | null; validade: str
 
 const arred = (n: number) => Math.round(n * 1000) / 1000
 
-export function lotesDaBaixa(lotes: LoteParaBaixa[], dose: number, fator: number, hoje: Date = new Date()): ParteDaBaixa[] {
+export function lotesDaBaixa(lotes: LoteParaBaixa[], dose: number, fator: number, hoje: Date = new Date(), fuso?: string): ParteDaBaixa[] {
   const f = fator > 0 ? fator : 1
   const ordem = [...lotes].filter(l => l.quantidade > 0).sort((a, b) => {
-    const va = loteVencido(a.validade, hoje) ? 1 : 0, vb = loteVencido(b.validade, hoje) ? 1 : 0
+    // Vencido pelo dia da unidade (F62b), como o gatilho do banco.
+    const va = loteVencido(a.validade, hoje, fuso) ? 1 : 0, vb = loteVencido(b.validade, hoje, fuso) ? 1 : 0
     if (va !== vb) return va - vb
     if (a.validade !== b.validade) {
       if (!a.validade) return 1

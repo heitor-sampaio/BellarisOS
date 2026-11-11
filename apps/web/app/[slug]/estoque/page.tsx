@@ -13,6 +13,7 @@ import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
@@ -137,7 +138,9 @@ export default async function BranchStockPage({
   const productIds   = products.map(p => p.id)
 
   const now          = new Date()
-  const in30Days     = addDaysTZ(now, 30)
+  // O mês do giro e o "em 30 dias" no fuso da unidade (F62b).
+  const fuso         = await fusoDaUnidade(ctx.tenantId, branchId)
+  const in30Days     = addDaysTZ(now, 30, fuso)
 
   // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
   // vencendo — os dois alertas quietos exatamente quando não deviam.
@@ -148,7 +151,7 @@ export default async function BranchStockPage({
   const [valorEstoque, valorGiro, lotes, valores] = productIds.length > 0
     ? await Promise.all([
         getValorEmEstoque([branchId]),
-        getGiroDeEstoque({ branchIds: [branchId], from: startOfMonthTZ(now), to: endOfMonthTZ(now) }),
+        getGiroDeEstoque({ branchIds: [branchId], from: startOfMonthTZ(now, fuso), to: endOfMonthTZ(now, fuso) }),
 
         // O lote é DA UNIDADE (desde 2026-09-28): o que vence aqui é o que está
         // nesta prateleira, não o que está em outra unidade. Todos os lotes com
@@ -170,7 +173,7 @@ export default async function BranchStockPage({
   // Conta LOTES, não produtos — cinco lotes do mesmo produto vencendo são cinco
   // avisos. Lotes já vencidos entram no alerta em vez de sumirem dele. E diz
   // QUAIS produtos (J-45): o cartão só dava o número.
-  const vencendo        = lotesVencendo(lotes, in30Days)
+  const vencendo        = lotesVencendo(lotes, in30Days, fuso)
   const validadeProxima = vencendo.length
   const nomeDoProduto   = new Map(products.map(p => [p.id, p.name]))
   // A40 da 10ª: o cartão diz o lote e a data, não só o produto.

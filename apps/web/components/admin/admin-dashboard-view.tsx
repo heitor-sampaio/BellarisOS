@@ -20,6 +20,7 @@ import type { ResolvedPermissions, AppModule } from '@estetica-os/types'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { LotesVencendo, type LoteNoDashboard } from '@/components/shared/lotes-vencendo'
+import { useFuso } from '@/components/shared/fuso'
 import { FunnelSelect } from '@/components/shared/funnel-select'
 
 // --- Types -------------------------------------------------------------------
@@ -451,6 +452,8 @@ export function AdminDashboardView({
 }: AdminDashboardProps) {
   // "do mês" só no mês: com o filtro "Hoje" os cartões diziam "do mês" (D36).
   const rotulo = rotulosDoPeriodo(currentPeriod)
+  // O dia do lote vencido (F62b): o relógio da tela.
+  const fusoDaTela = useFuso()
 
   const deltaRevenue      = pctDelta(totalRevenue,      prevRevenue)
   const deltaAppointments = pctDelta(totalAppointments, prevAppointments)
@@ -807,7 +810,7 @@ export function AdminDashboardView({
       )}
 
       {/* -- Lotes vencendo (A41 da 7ª) -- */}
-      {can('stock') && <LotesVencendo lotes={lotesVencendo} agora={agora} />}
+      {can('stock') && <LotesVencendo lotes={lotesVencendo} agora={agora} fuso={fusoDaTela} />}
 
       {/* -- Alertas -- */}
       {((can('procedures') && pendingPlans.length > 0) || (can('stock') && lowStockItems.length > 0)) && (

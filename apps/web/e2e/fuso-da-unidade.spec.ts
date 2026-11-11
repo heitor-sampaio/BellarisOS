@@ -357,3 +357,102 @@ test.describe('os indicadores da unidade', () => {
     expect(barras).toEqual([{ dia: instanteNoFuso(ONTEM, '00:00', MANAUS).toISOString(), receita: 77 }])
   })
 })
+
+/**
+ * F62b — os indicadores que leem um DIA sem hora ("cliente desde", "última
+ * visita antes do sistema") e o "a partir de hoje" da busca. O dia vira
+ * instante na meia-noite da UNIDADE da cliente (Manaus: 04:00 UTC), não na de
+ * Brasília (03:00 UTC): a cliente de Manaus "desde 10/03" era nova em 09/03
+ * no relatório de lá.
+ */
+test.describe('os indicadores do dia sem hora (F62b)', () => {
+  const MANAUS = 'America/Manaus'
+  const DIA = '2026-03-10'
+  const MEIA_NOITE = instanteNoFuso(DIA, '00:00', MANAUS).toISOString() // 2026-03-10T04:00:00.000Z
+  const TAG = `fzd${marca}`
+  let unidade: OutraRede | null = null
+  let cliente = ''
+  let daBusca = ''
+  const nomeDaBusca = `Busca fuso fzd${marca}`
+
+  test.beforeAll(async () => {
+    unidade = await criarOutraRede(`fzd${marca}`)
+    const b = db()
+    expect((await b.from('branches').update({ fuso: MANAUS }).eq('id', unidade.branchId)).error).toBeNull()
+    cliente = await unidade.criarCliente(`Cliente desde fzd${marca}`)
+    expect((await b.from('clients').update({ cliente_desde: DIA, ultima_visita_antes: DIA, tags: [TAG] }).eq('id', cliente)).error).toBeNull()
+    daBusca = await unidade.criarCliente(nomeDaBusca)
+    // 23:30 de ontem em Manaus (= 03:30 UTC de hoje, já "hoje" em Brasília) e 23:00 de hoje em Manaus.
+    const ontem = dayKeyTZ(addDaysTZ(new Date(), -1, MANAUS), MANAUS)
+    const hoje = dayKeyTZ(new Date(), MANAUS)
+    for (const quando of [instanteNoFuso(ontem, '23:30', MANAUS), instanteNoFuso(hoje, '23:00', MANAUS)]) {
+      expect((await b.from('appointments').insert({
+        branch_id: unidade.branchId, client_id: daBusca, procedure_id: unidade.procedureId, professional_id: unidade.professionalId,
+        status: 'SCHEDULED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: quando.toISOString(),
+      })).error).toBeNull()
+    }
+  })
+
+  test.afterAll(async () => {
+    if (unidade) await db().from('appointments').delete().eq('branch_id', unidade.branchId)
+    await unidade?.limpar()
+  })
+
+  test('a cliente "desde 10/03" é nova em 10/03 de Manaus, não em 09/03', async () => {
+    const dia = async (d: string) => {
+      const { data, error } = await db().rpc('metrics_by_branch', {
+        p_tenant: unidade!.tenantId, p_from: instanteNoFuso(d, '00:00', MANAUS).toISOString(),
+        p_to: new Date(instanteNoFuso(d, '00:00', MANAUS).getTime() + 86_400_000 - 1).toISOString(),
+      })
+      expect(error).toBeNull()
+      return Number((data as { branch_id: string; new_clients: number }[]).find(r => r.branch_id === unidade!.branchId)?.new_clients)
+    }
+    expect(await dia('2026-03-09'), 'na véspera, em Manaus, ainda não era cliente').toBe(0)
+    expect(await dia(DIA)).toBe(1)
+  })
+
+  test('a última visita de antes do sistema é a meia-noite de Manaus', async () => {
+    const { data, error } = await db().rpc('ultimas_visitas', { p_tenant: unidade!.tenantId, p_branch: unidade!.branchId })
+    expect(error).toBeNull()
+    const minha = (data as { client_id: string; ultima: string }[]).find(r => r.client_id === cliente)
+    expect(new Date(minha!.ultima).toISOString()).toBe(MEIA_NOITE)
+
+    for (const [fn, args] of [
+      ['metrics_clientes_para_reativar_rede', { p_tenant: unidade!.tenantId, p_desde: new Date().toISOString(), p_limite: 50 }],
+      ['metrics_clientes_para_reativar', { p_tenant: unidade!.tenantId, p_branch_id: unidade!.branchId, p_tag: TAG, p_desde: new Date().toISOString(), p_limite: 50 }],
+    ] as const) {
+      const r = await db().rpc(fn, args)
+      expect(r.error, fn).toBeNull()
+      const linha = (r.data as { lista: { id: string; ultima_visita: string }[] }).lista.find(x => x.id === cliente)
+      expect(new Date(linha!.ultima_visita).toISOString(), fn).toBe(MEIA_NOITE)
+    }
+  })
+
+  test('o público da campanha corta o "cliente desde" e o "sem retorno" no dia de Manaus', async () => {
+    // 03:30 UTC de 10/03 = 23:30 de 09/03 em Manaus: ela ainda não era cliente, nem tinha vindo.
+    const corte = '2026-03-10T03:30:00.000Z'
+    const publico = async (filtros: Record<string, unknown>) => {
+      const { data, error } = await db().rpc('clientes_do_publico', { p_tenant: unidade!.tenantId, p_filtros: filtros })
+      expect(error).toBeNull()
+      return (data as { id: string }[]).map(c => c.id)
+    }
+    expect(await publico({ cliente_desde_antes: corte })).not.toContain(cliente)
+    expect(await publico({ sem_retorno_desde: corte, tags: [TAG] })).not.toContain(cliente)
+    expect(await publico({ cliente_desde_antes: '2026-03-10T04:30:00.000Z' })).toContain(cliente)
+  })
+
+  test('a faixa etária aceita o fuso do recorte', async () => {
+    const { data, error } = await db().rpc('metrics_faixa_etaria', { p_nascimento: '1990-05-01T00:00:00Z', p_fuso: MANAUS })
+    expect(error).toBeNull()
+    expect(data).toBe('35–44')
+  })
+
+  test('a busca acha os agendamentos "de hoje em diante" pelo dia de Manaus', async () => {
+    const { data, error } = await db().rpc('busca_universal', {
+      p_tenant: unidade!.tenantId, p_termo: nomeDaBusca, p_tipos: ['agendamento'], p_limite: 20,
+    })
+    expect(error).toBeNull()
+    const quandos = (data as { tipo: string; extra: { quando: string } }[]).map(r => new Date(r.extra.quando).getTime())
+    expect(quandos, 'só o de hoje em Manaus; o das 23:30 de ontem lá já passou').toHaveLength(1)
+  })
+})

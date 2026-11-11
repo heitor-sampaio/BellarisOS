@@ -10,6 +10,7 @@ import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
@@ -140,8 +141,6 @@ export default async function AdminEstoquePage({
 
   // Segunda rodada: movimentos e lotes (dependem dos product IDs)
   const now       = new Date()
-  const in30Days  = addDaysTZ(now, 30)
-  const monthStart = startOfMonthTZ(now)
 
   // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
   // vencendo — os dois alertas quietos exatamente quando não deviam.
@@ -149,6 +148,10 @@ export default async function AdminEstoquePage({
   const todasAsUnidades = ((await ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!), 'listar as unidades da rede')) ?? [])
     .map(b => b.id as string)
   const unidadesDoRecorte = unidadeId ? [unidadeId] : todasAsUnidades
+  // O mês do giro e o "em 30 dias" no fuso do recorte (F62b), como o dashboard.
+  const fuso       = await fusoDoRecorte(ctx.tenantId, unidadeId ? [unidadeId] : null)
+  const in30Days   = addDaysTZ(now, 30, fuso)
+  const monthStart = startOfMonthTZ(now, fuso)
 
   // Valor em estoque e giro do mês somados no banco — a mesma conta da tela da
   // filial e do dashboard. Giro = consumo em procedimentos no mês (não qualquer
@@ -157,7 +160,7 @@ export default async function AdminEstoquePage({
   const [valorEstoque, valorGiro, lotes, valores] = productIds.length > 0
     ? await Promise.all([
         getValorEmEstoque(unidadesDoRecorte),
-        getGiroDeEstoque({ branchIds: unidadesDoRecorte, from: monthStart, to: endOfMonthTZ(now) }),
+        getGiroDeEstoque({ branchIds: unidadesDoRecorte, from: monthStart, to: endOfMonthTZ(now, fuso) }),
 
         // Os lotes com saldo das unidades do recorte (J-45): a linha aberta
         // mostra número, validade e custo, e o cartão diz quais vencem.
@@ -183,7 +186,7 @@ export default async function AdminEstoquePage({
   })))
 
   // Conta lotes, não produtos distintos — e diz QUAIS produtos (J-45).
-  const vencendo        = lotesVencendo(lotes, in30Days)
+  const vencendo        = lotesVencendo(lotes, in30Days, fuso)
   const validadeProxima = vencendo.length
   const nomeDoProduto   = new Map(products.map(p => [p.id, p.name]))
   // A40 da 10ª: o cartão diz o lote e a data, não só o produto.

@@ -20,7 +20,7 @@ export interface LoteNoDashboard {
   href:       string
 }
 
-export function LotesVencendo({ lotes, agora }: { lotes: LoteNoDashboard[]; agora: string }) {
+export function LotesVencendo({ lotes, agora, fuso }: { lotes: LoteNoDashboard[]; agora: string; /** O dia de "vencido" (F62b); sem ele, Brasília. */ fuso?: string }) {
   if (!lotes.length) return null
   const hoje = new Date(agora)
   return (
@@ -34,7 +34,7 @@ export function LotesVencendo({ lotes, agora }: { lotes: LoteNoDashboard[]; agor
       </div>
       <div>
         {lotes.slice(0, 5).map((l, i) => {
-          const vencido = loteVencido(l.validade, hoje)
+          const vencido = loteVencido(l.validade, hoje, fuso)
           return (
             <div key={l.id} style={{
               padding: '11px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,

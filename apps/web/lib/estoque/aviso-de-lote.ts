@@ -4,6 +4,7 @@ import { contar, lerTodas } from '@/lib/db'
 import { addDaysTZ } from '@/lib/datetime'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { venceAte, validadeNaTela } from './validade'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -38,7 +39,12 @@ export async function avisarLotesVencendo(admin: Admin, opcoes: { tenantId?: str
   }, 'carregar os lotes vencendo')
 
   let avisados = 0
-  const vencendo = linhas.filter(l => venceAte(l.expires_at, ate))
+  // O "em 30 dias" de cada lote é contado do dia da unidade dele (F62b).
+  const vencendo: Linha[] = []
+  for (const l of linhas) {
+    const fuso = await fusoDaUnidade(l.products?.tenant_id, l.branch_id)
+    if (venceAte(l.expires_at, addDaysTZ(agora, opcoes.dias ?? 30, fuso), fuso)) vencendo.push(l)
+  }
   for (const l of vencendo) {
     const ja = await contar(admin.from('user_notifications')
       .select('id', { count: 'exact', head: true })

@@ -128,12 +128,13 @@ export const estoque: FerramentaDeLeitura<{
         .gt('quantity', 0).lte('expires_at', ate).order('expires_at').limit(50), 'ler os lotes vencendo') as unknown as {
           batch_number: string | null; expires_at: string; quantity: number; branch_id: string; products: { name: string; unit: string | null }
         }[] | null) ?? []
+      const fusosDosLotes = await fusosPorUnidade(c, lotes.map(l => l.branch_id))
       return {
         dados: {
           filtro, ateODia,
           lotes: lotes.map(l => ({
             produto: l.products.name, lote: l.batch_number, vence: l.expires_at.slice(0, 10),
-            jaVenceu: loteVencido(l.expires_at),
+            jaVenceu: loteVencido(l.expires_at, new Date(), fusosDosLotes.get(l.branch_id) ?? fusoDoLote),
             quantidade: `${Number(l.quantity)} ${l.products.unit ?? ''}`.trim(), unidade: filiais.get(l.branch_id) ?? null,
           })),
         },

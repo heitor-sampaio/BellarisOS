@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import { venceAte } from './validade'
 import { addDaysTZ } from '@/lib/datetime'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * Os lotes com saldo nas unidades da tela de Estoque (J-45, simulação de
@@ -70,8 +71,8 @@ export async function lotesComSaldo(
 }
 
 /** Os lotes que vencem até a data, pelo DIA (os já vencidos entram — é o alerta; D1 da 7ª, `validade.ts`). */
-export function lotesVencendo(lotes: LoteDoProduto[], ate: Date): LoteDoProduto[] {
-  return lotes.filter(l => venceAte(l.validade, ate))
+export function lotesVencendo(lotes: LoteDoProduto[], ate: Date, fuso?: string): LoteDoProduto[] {
+  return lotes.filter(l => venceAte(l.validade, ate, fuso))
 }
 
 /** Um lote que vence logo, como o dashboard o mostra (A41 da 7ª simulação). */
@@ -101,9 +102,11 @@ export async function lotesVencendoDoRecorte(
   'carregar os produtos dos lotes')
   const fatorDe = (p: Produto) => (p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 1)
   const lotes = await lotesComSaldo(admin, branchIds, produtos.map(p => ({ id: p.id, fator: fatorDe(p) })))
-  const ate = addDaysTZ(agora, dias)
+  // "Em 30 dias" a partir do dia do recorte (F62b), como o cartão do Estoque.
+  const fuso = await fusoDoRecorte(tenantId, branchIds)
+  const ate = addDaysTZ(agora, dias, fuso)
   const porId = new Map(produtos.map(p => [p.id, p]))
-  return lotesVencendo(lotes, ate).map(l => {
+  return lotesVencendo(lotes, ate, fuso).map(l => {
     const p = porId.get(l.produtoId)!
     return { ...l, produto: p.name, embalagem: p.unit }
   })

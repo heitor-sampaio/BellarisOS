@@ -11,6 +11,7 @@ import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { BotaoAplicadoEm, LotesEsgotados } from '@/components/admin/aplicacoes-do-lote'
+import { useFuso } from '@/components/shared/fuso'
 import {
   situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo,
   formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
@@ -208,6 +209,8 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
 
 export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null }: Props) {
   const temLoteEsgotado = useMemo(() => new Set(comLoteEsgotado), [comLoteEsgotado])
+  // O dia do "vencido" é o da unidade (F62b).
+  const fuso = useFuso()
   const router = useRouter()
   // Chegar com uma unidade na URL só faz sentido junto com a visão por unidade:
   // no consolidado o saldo dela ficaria somado ao das outras.
@@ -568,7 +571,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
                                       {lotes.map(l => {
                                         // A validade é um DIA (D1 da 7ª): no dia ainda vale.
-                                        const vencido = loteVencido(l.validade, new Date(agora))
+                                        const vencido = loteVencido(l.validade, new Date(agora), fuso)
                                         return (
                                           <p key={l.id} data-lotes-do-produto style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                             <strong style={{ color: 'var(--text)' }}>{l.numero ? `Lote ${l.numero}` : 'Lote sem número'}</strong>

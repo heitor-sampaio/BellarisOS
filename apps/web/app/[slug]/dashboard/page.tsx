@@ -382,7 +382,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       {vencidas && <ParcelasVencidas vencidas={vencidas} href={`/${slug}/financeiro?aberto=vencidas#lancamentos`} />}
 
       {/* Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */}
-      <LotesVencendo lotes={lotesVencendo} agora={now.toISOString()} />
+      <LotesVencendo lotes={lotesVencendo} agora={now.toISOString()} fuso={fuso} />
 
       {/* A39 da 10ª: o mínimo também no dashboard da unidade, a quem tem o Estoque. */}
       <EstoqueAbaixoDoMinimo itens={abaixoDoMinimo} href={`/${slug}/estoque`} />

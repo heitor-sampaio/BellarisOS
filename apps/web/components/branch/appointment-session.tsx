@@ -1015,6 +1015,8 @@ function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty
   slug?:       string
 }) {
   const pathname = usePathname()
+  // O lote vencido pelo dia da unidade (F62b), como o FEFO do banco.
+  const fuso = useFuso()
   const [adding,  setAdding]  = useState(false)
   const [search,  setSearch]  = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
@@ -1105,7 +1107,7 @@ function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty
                   if (!lotes || (!lotes.feita && !checked)) return null
                   const texto = lotes.feita
                     ? textoDosLotesDaBaixa(lotes.feita[item.productId] ?? [], item.unit, item.quantity, true)
-                    : textoDosLotesDaBaixa(lotesDaBaixa(lotes.prever[item.productId] ?? [], item.quantity, lotes.fatores[item.productId] ?? 1), item.unit, item.quantity)
+                    : textoDosLotesDaBaixa(lotesDaBaixa(lotes.prever[item.productId] ?? [], item.quantity, lotes.fatores[item.productId] ?? 1, new Date(), fuso), item.unit, item.quantity)
                   return texto ? <p data-lote-do-insumo style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>{texto}</p> : null
                 })()}
               </div>
