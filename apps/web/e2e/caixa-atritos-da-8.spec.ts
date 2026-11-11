@@ -108,7 +108,8 @@ test('A36 + A46: o crédito interno mostra o saldo e o que sobra, e a venda conc
 })
 
 test('A40: ao escolher o cartão e as vezes, a tela diz a taxa e o líquido; a linha das vezes diz o que fazer', async ({ browser }) => {
-  await como(browser, recepcao!, async p => {
+  // A19 da 12ª: a taxa e o líquido são de quem vê o financeiro da clínica (a dona); a recepção que só recebe não os vê.
+  await como(browser, dona!, async p => {
     await p.goto(`/${slug}/clients/${cliente}`)
     await p.getByRole('button', { name: 'Vender', exact: true }).click()
     const dlg = p.getByRole('dialog', { name: 'Vender' })

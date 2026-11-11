@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Info } from 'lucide-react'
-import { taxasDoCartaoDeCredito, cartaoPorBandeiraDaRede, taxaDoDebito } from '@/actions/comissoes'
+import { taxasDoCartaoDeCredito, cartaoPorBandeiraDaRede, taxaDoDebito, mostraOLiquidoDaMaquininha } from '@/actions/comissoes'
 import { ehBandeira, taxaDoCreditoNaBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { liquidoNaMaquininha } from '@/lib/metrics/resultado'
 import { formatBRL } from '@estetica-os/utils'
@@ -21,10 +21,12 @@ export function AvisoDaTaxa({ vezes, bandeira, total }: {
 }) {
   const [taxas, setTaxas] = useState<{ parcelas: number; taxa_pct: number }[] | null>(null)
   const [porBandeira, setPorBandeira] = useState<CartaoPorBandeira>({})
+  // A19 da 12ª: a taxa e o líquido só a quem vê o financeiro da clínica.
+  const [mostra, setMostra] = useState(false)
   useEffect(() => {
     let vivo = true
-    Promise.all([taxasDoCartaoDeCredito(), cartaoPorBandeiraDaRede()])
-      .then(([t, b]) => { if (vivo) { setTaxas(t); setPorBandeira(b) } })
+    Promise.all([taxasDoCartaoDeCredito(), cartaoPorBandeiraDaRede(), mostraOLiquidoDaMaquininha()])
+      .then(([t, b, m]) => { if (vivo) { setTaxas(t); setPorBandeira(b); setMostra(m) } })
       // Só um aviso: sem ele a tela segue, e o motivo vai ao console.
       .catch(e => console.error('[pagamento] taxas do cartão:', e))
     return () => { vivo = false }
@@ -35,7 +37,7 @@ export function AvisoDaTaxa({ vezes, bandeira, total }: {
   const vale = taxaDoCreditoNaBandeira(taxas, ehBandeira(bandeira) ? porBandeira[bandeira] : undefined, vezes)
   const rotulo = vezes === 1 ? 'à vista' : `${vezes}x`
   if (vale.cadastrada) {
-    if (!total || total <= 0) return null
+    if (!total || total <= 0 || !mostra) return null
     // A40 da 8ª: o líquido e a taxa só apareciam no Financeiro.
     const conta = liquidoNaMaquininha(total, vale.taxa)
     return (
@@ -69,10 +71,11 @@ export function AvisoDaTaxa({ vezes, bandeira, total }: {
 export function AvisoDaTaxaDoDebito({ bandeira, total }: { bandeira?: string; total?: number }) {
   const [geral, setGeral] = useState<number | null | undefined>(undefined)
   const [porBandeira, setPorBandeira] = useState<CartaoPorBandeira>({})
+  const [mostra, setMostra] = useState(false)
   useEffect(() => {
     let vivo = true
-    Promise.all([taxaDoDebito(), cartaoPorBandeiraDaRede()])
-      .then(([t, b]) => { if (vivo) { setGeral(t); setPorBandeira(b) } })
+    Promise.all([taxaDoDebito(), cartaoPorBandeiraDaRede(), mostraOLiquidoDaMaquininha()])
+      .then(([t, b, m]) => { if (vivo) { setGeral(t); setPorBandeira(b); setMostra(m) } })
       .catch(e => console.error('[pagamento] taxa do débito:', e))
     return () => { vivo = false }
   }, [])
@@ -87,6 +90,8 @@ export function AvisoDaTaxaDoDebito({ bandeira, total }: { bandeira?: string; to
       </p>
     )
   }
+  // A19 da 12ª: a taxa e o líquido só a quem vê o financeiro da clínica.
+  if (!mostra) return null
   const conta = total && total > 0 ? liquidoNaMaquininha(total, taxa) : null
   return (
     <p data-taxa-do-debito role="note" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>

@@ -18,7 +18,7 @@ describe('A43: o título do lançamento de venda diz que é venda', () => {
   it('a venda do plano com nome, do pacote e do pré-pago', () => {
     expect(tituloDoLancamento({ ...base, plano: 'Harmonização', procedimento: 'Harmonização' })).toBe('Venda do plano Harmonização')
     expect(tituloDoLancamento({ ...base, origem: 'PACOTE_VENDA', pacote: '10 drenagens', procedimento: '10 drenagens' })).toBe('Venda do pacote 10 drenagens')
-    expect(tituloDoLancamento({ ...base, origem: 'PRE_PAGO_VENDA', procedimento: 'Drenagem' })).toBe('Venda de pré-pago: Drenagem')
+    expect(tituloDoLancamento({ ...base, origem: 'PRE_PAGO_VENDA', procedimento: 'Drenagem' })).toBe('Venda de procedimento: Drenagem')
   })
   it('o atendimento segue com o procedimento', () => {
     expect(tituloDoLancamento({ ...base, origem: 'AVULSO', procedimento: 'Toxina' })).toBe('Toxina')

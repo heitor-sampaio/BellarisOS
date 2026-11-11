@@ -21,6 +21,7 @@ import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagament
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
+import { textoDaComissaoDaVenda, type RegraDeVenda } from '@/lib/comissoes/comissao-da-venda'
 
 /**
  * "Vender" (decisão do Heitor, 2026-09-30): um botão só, e a janela pergunta
@@ -37,6 +38,10 @@ export interface ProdutoAVenda {
   id: string; name: string; price: number; unidade: string; disponivel: number
   /** Se a venda de produto pontua (A48): `null` com a fidelidade da rede desligada. */
   fidelidade?: 'PONTUA' | 'NAO_PONTUA' | null
+  /** A18 da 12ª: a comissão de venda DO PRODUTO (só no "Por produto"); nula = sem a dele. */
+  comissaoDoItem?: RegraDeVenda | null
+  /** A18 da 12ª: a "Venda de produto" da clínica (%), a que vale sem a do produto e a da pessoa. */
+  comissaoDaClinicaPct?: number | null
 }
 
 /** Alguém da equipe numa venda (com-04/com-06): a responsável do pacote sai de quem atende. */
@@ -49,6 +54,11 @@ export interface MembroDaVenda {
   /** A42 da 11ª: tem o grupo Vendas no cargo (`crm` ou `procedures`). Só fica na lista quem atende, recebe ou vende. */
   vende?: boolean
   /** É quem está registrando ("(você)" em "Quem vendeu", que nasce vazio — r2-ven-12). */ eu?: boolean
+  /**
+   * A comissão de venda da pessoa (%), A18 da 12ª: nula = nenhuma; AUSENTE = o
+   * cargo de quem vende não a vê (é de outra pessoa e ele só vê as próprias).
+   */
+  comissaoVendaPct?: number | null
 }
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO' | 'CREDITO'
@@ -341,7 +351,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
       <p data-resumo-do-produto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
         {linhas.map(l => `${l.qtd} × ${formatBRL(l.prod.price)}`).join(' + ')} = {formatBRL(tabela)} · sai do estoque agora, pelo lote que vence primeiro
       </p>
-      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }} />
+      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }}
+        comissao={comissaoDosProdutos(equipe.find(m => m.id === vendedorId), linhas.map(l => l.prod))} />
       {/* A48 da 5ª simulação: a venda de produto nasce sem pontuar, e a tela não dizia. */}
       {fidelidade && (
         <p data-pontos-do-produto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
@@ -579,7 +590,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
           </p>
         </div>
       )}
-      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }} />
+      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }}
+        comissao={comissaoDoPrePago(equipe.find(m => m.id === vendedorId))} />
       <p data-resumo-do-procedimento style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
         {qtd} × {formatBRL(proc.price)} = {formatBRL(tabela)} · as unidades ficam na ficha para agendar
       </p>
@@ -604,4 +616,20 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       )}
     </div>
   )
+}
+
+/** A18 da 12ª: a comissão de venda do produto (cada um do kit com a sua), dita embaixo de "Quem vendeu". */
+function comissaoDosProdutos(quem: MembroDaVenda | undefined, produtos: ProdutoAVenda[]): string | null {
+  if (!quem) return null
+  return textoDaComissaoDaVenda({
+    tipo: 'PRODUTO', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct },
+    clinicaPct: produtos[0]?.comissaoDaClinicaPct ?? null,
+    itens: produtos.map(p => ({ nome: p.name, regra: p.comissaoDoItem ?? null })),
+  })
+}
+
+/** A18 da 12ª: o pré-pago só tem a comissão de venda da pessoa. */
+function comissaoDoPrePago(quem: MembroDaVenda | undefined): string | null {
+  if (!quem) return null
+  return textoDaComissaoDaVenda({ tipo: 'PRE_PAGO', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct }, itens: [{ regra: null }] })
 }

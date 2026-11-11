@@ -259,6 +259,12 @@ export function SessionScheduler({
         </div>
       </div>
 
+      {/* A22 da 12ª (princípio 3): os horários só vêm depois da profissional e da data — a tela diz. */}
+      {!(profId && date) && (
+        <p data-dica-dos-horarios style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
+          {profId ? 'Escolha a data para ver os horários livres.' : 'Escolha a profissional e a data para ver os horários livres.'}
+        </p>
+      )}
       {profId && date && (
         <div style={{ marginBottom: 12 }}>
           <GradeDeHorarios

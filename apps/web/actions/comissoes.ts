@@ -27,6 +27,7 @@ import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
 import { EntradaDoCartaoPorBandeira, semBandeirasVazias, lerCartaoPorBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { falaDaRede } from '@/lib/unidades/uma-so'
+import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -384,6 +385,18 @@ export async function taxaDoDebito(): Promise<number | null> {
     .select('taxa_pct, taxa_pct_sem_teto').eq('tenant_id', ctx.tenantId!).eq('metodo', 'DEBIT_CARD').eq('parcelas', 1).maybeSingle(),
   'carregar a taxa do débito') as { taxa_pct: number | string; taxa_pct_sem_teto: number | string | null } | null
   return linha ? Number(linha.taxa_pct_sem_teto ?? linha.taxa_pct) : null
+}
+
+/**
+ * A19 da 12ª simulação: a taxa e o LÍQUIDO da maquininha (o que a clínica
+ * recebe) são do financeiro da clínica — a vendedora com "só as próprias
+ * comissões" os via no Vender. Mostra a quem vê o financeiro de todos
+ * (`veComissaoDeTodos`, a régua de "quem vê quanto cada um ganha"); quem só
+ * recebe vê o aviso de taxa não cadastrada, que não diz valor nenhum.
+ */
+export async function mostraOLiquidoDaMaquininha(): Promise<boolean> {
+  const ctx = await getTenantContext()
+  return podeReceber(ctx) && veComissaoDeTodos(ctx)
 }
 
 export async function taxasDoCartaoDeCredito(): Promise<{ parcelas: number; taxa_pct: number }[]> {

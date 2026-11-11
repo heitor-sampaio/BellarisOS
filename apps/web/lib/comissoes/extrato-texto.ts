@@ -10,7 +10,7 @@ import { rotuloDaBase } from '@/lib/comissoes/config'
 
 export const ORIGEM: Record<string, string> = {
   AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Sessão de pacote', PACOTE_VENDA: 'Venda de pacote', PRE_PAGO: 'Pré-pago', PRODUTO: 'Venda de produto',
-  PACOTE_RESPONSAVEL: 'Pacote (responsável)', PLANO_VENDA: 'Venda de plano', PRE_PAGO_VENDA: 'Venda de pré-pago',
+  PACOTE_RESPONSAVEL: 'Pacote (responsável)', PLANO_VENDA: 'Venda de plano', PRE_PAGO_VENDA: 'Venda de procedimento',
 }
 
 /** A origem da linha, com o nome do pacote quando é dele (2026-10-30): "Venda do pacote X", "Sessão do pacote X". */
@@ -34,12 +34,13 @@ export const ehDeVenda = (l: LancamentoDoExtrato) => !!l.origem && DE_VENDA.has(
  * A43 da 11ª: a venda do plano aparecia como "Procedimento · Beatriz" (o
  * título era o procedimento, que a venda não tem). O título da venda é a
  * venda: "Venda do plano X", "Venda do pacote X", "Venda de produto: Sérum",
- * "Venda de pré-pago: Drenagem"; o do atendimento segue o procedimento.
+ * "Venda de procedimento: Drenagem" (A20 da 12ª); o do atendimento segue o procedimento.
  */
 export function tituloDoLancamento(l: LancamentoDoExtrato): string {
   if (!ehDeVenda(l)) return l.procedimento ?? 'Procedimento'
   if (l.origem === 'PRODUTO') return l.procedimento ? `Venda de produto: ${l.procedimento}` : 'Venda de produto'
-  if (l.origem === 'PRE_PAGO_VENDA') return l.procedimento ? `Venda de pré-pago: ${l.procedimento}` : 'Venda de pré-pago'
+  // A20 da 12ª: a venda de procedimento avulso é "Venda de procedimento" (o nome do Vender), não "pré-pago".
+  if (l.origem === 'PRE_PAGO_VENDA') return l.procedimento ? `Venda de procedimento: ${l.procedimento}` : 'Venda de procedimento'
   return origemDoLancamento(l)
 }
 

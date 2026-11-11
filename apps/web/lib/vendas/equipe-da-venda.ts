@@ -21,12 +21,16 @@ import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
  * Procedimentos, Pacotes) — e a Admin. O servidor confere o mesmo
  * (`quemVendeu`). A clínica decide quem vende pelo cargo (princípio 1).
  */
-export async function equipeDaVenda(tenantId: string, branchId: string | null, euId?: string | null): Promise<MembroDaVenda[]> {
+export async function equipeDaVenda(
+  tenantId: string, branchId: string | null, euId?: string | null,
+  /** A18 da 12ª: quem vê a comissão de todos (`veComissaoDeTodos`) recebe a de cada um; os outros, só a própria. */
+  veComissoes = false,
+): Promise<MembroDaVenda[]> {
   if (!branchId) return []
   const admin = createAdminClient()
   const [linhas, quemRecebe, quemVende] = await Promise.all([
     lerTodas((de, ate) => admin.from('users')
-      .select('id, name, role_id, atende_em')
+      .select('id, name, role_id, atende_em, comissao_venda_pct')
       .eq('tenant_id', tenantId).eq('is_active', true)
       .or(`branch_id.is.null,branch_id.eq.${branchId},atende_em.cs.{${branchId}}`)
       .order('name').order('id').range(de, ate), 'carregar a equipe da venda'),
@@ -40,6 +44,8 @@ export async function equipeDaVenda(tenantId: string, branchId: string | null, e
     recebe: !!u.role_id && quemRecebe.has(u.role_id as string),
     vende: !!u.role_id && quemVende.has(u.role_id as string),
     eu: !!euId && u.id === euId,
+    ...((veComissoes || (!!euId && u.id === euId))
+      ? { comissaoVendaPct: u.comissao_venda_pct != null ? Number(u.comissao_venda_pct) : null } : {}),
   })).filter(m => m.atende || m.recebe || m.vende).sort((a, b) => grupo(a) - grupo(b))
 }
 

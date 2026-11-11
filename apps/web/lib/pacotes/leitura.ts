@@ -59,6 +59,8 @@ export async function pacotesAVenda(tenantId: string, branchId: string | null): 
     composicao: p.composicao, validityDays: p.validityDays,
     // com-04: o pacote paga quem atende sobre o valor dele — a venda pede a responsável.
     pedeResponsavel: p.comissao.execucao.tipo === 'PACOTE',
+    // A18 da 12ª: o "De venda" do pacote, dito no Vender.
+    comissaoVenda: p.comissao.venda,
   }))
 }
 

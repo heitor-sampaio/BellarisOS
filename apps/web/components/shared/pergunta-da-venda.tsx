@@ -18,8 +18,10 @@ const GRUPOS_DE_QUEM_VENDEU: { rotulo: string; de: (m: MembroDaVenda) => boolean
   { rotulo: 'Quem tem Vendas no cargo', de: m => !m.atende && !m.recebe },
 ]
 
-export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
+export function CampoQuemVendeu({ equipe, valor, aoMudar, comissao = null }: {
   equipe: MembroDaVenda[]; valor: string; aoMudar: (id: string) => void
+  /** A18 da 12ª: a comissão de venda de quem foi escolhido e de onde vem (`textoDaComissaoDaVenda`). */
+  comissao?: string | null
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -40,6 +42,11 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar }: {
       {!valor && (
         <span data-quem-vendeu-vazio style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
           Vazio: ninguém vendeu — sem comissão de venda.
+        </span>
+      )}
+      {valor && comissao && (
+        <span data-comissao-da-venda style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+          {comissao}
         </span>
       )}
     </label>

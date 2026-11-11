@@ -10,6 +10,7 @@ import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import type { ProcedimentoAVenda, ProdutoAVenda, MembroDaVenda, VendaDaUnidade } from '@/components/shared/vender'
 import { produtosAVenda } from '@/lib/produtos/leitura'
 import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
+import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -860,7 +861,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       const unidades = await Promise.all(ativas.map(async u => {
         const [pacotes, procs, produtos, equipe] = await Promise.all([
           pacotesAVenda(ctx.tenantId!, u.id), procedimentosAVenda(ctx.tenantId!, u.id), produtosAVenda(ctx.tenantId!, u.id),
-          equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId),
+          equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId, veComissaoDeTodos(ctx)),
         ])
         return { id: u.id, nome: u.name, pacotes, procedimentos: procs, produtos, equipe }
       }))
@@ -872,7 +873,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       // primeiro, como o pacote e o pré-pago.
       const [pacotes, procs, produtos, equipe] = await Promise.all([
         pacotesAVenda(ctx.tenantId!, unidade), procedimentosAVenda(ctx.tenantId!, unidade), produtosAVenda(ctx.tenantId!, unidade),
-        equipeDaVenda(ctx.tenantId!, unidade, ctx.internalUserId),
+        equipeDaVenda(ctx.tenantId!, unidade, ctx.internalUserId, veComissaoDeTodos(ctx)),
       ])
       if (pacotes.length || procs.length || produtos.length) venda = { branchId: unidade, pacotes, procedimentos: procs, produtos, equipe }
     } else if (!unidade && !cliente) {

@@ -27,6 +27,7 @@ import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { produtosAVenda } from '@/lib/produtos/leitura'
 import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
+import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -191,7 +192,7 @@ export default async function AdminClientProfilePage({
     ? await Promise.all(unidadesAtivas.map(async u => {
         const [pacotes, procedimentos, produtos, equipe] = await Promise.all([
           pacotesAVenda(ctx.tenantId!, u.id), procedimentosAVenda(ctx.tenantId!, u.id),
-          produtosAVenda(ctx.tenantId!, u.id), equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId),
+          produtosAVenda(ctx.tenantId!, u.id), equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId, veComissaoDeTodos(ctx)),
         ])
         return { id: u.id, nome: u.name, pacotes, procedimentos, produtos, equipe }
       }))
@@ -496,7 +497,7 @@ export default async function AdminClientProfilePage({
         pacotesAVenda={podeReceber(ctx) && !perguntaAUnidade ? await pacotesAVenda(ctx.tenantId!, branchId || null) : []}
         procedimentosAVenda={podeReceber(ctx) && !perguntaAUnidade ? await procedimentosAVenda(ctx.tenantId!, branchId || null) : []}
         produtosAVenda={podeReceber(ctx) && !perguntaAUnidade ? await produtosAVenda(ctx.tenantId!, branchId || null) : []}
-        equipeDaVenda={podeReceber(ctx) && !perguntaAUnidade ? await equipeDaVenda(ctx.tenantId!, branchId || null, ctx.internalUserId) : []}
+        equipeDaVenda={podeReceber(ctx) && !perguntaAUnidade ? await equipeDaVenda(ctx.tenantId!, branchId || null, ctx.internalUserId, veComissaoDeTodos(ctx)) : []}
         perguntaAUnidade={perguntaAUnidade}
         vendaPorUnidade={vendaPorUnidade}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}

@@ -101,7 +101,10 @@
     (A32 e A58 da 8ª simulação, 2026-11-06): só depois do horário escolhido,
     e o "Agendar a 1ª sessão" da venda do pacote parecia não pedir a sala;
     escolhido o horário, ela diz qual está "(ocupada)". Prova:
-    `e2e/agenda-atritos-da-8.spec.ts` ("A32/A58").
+    `e2e/agenda-atritos-da-8.spec.ts` ("A32/A58"). **E diz que os horários vêm
+    depois** (A22 da 12ª simulação, 2026-11-11): antes da profissional e da
+    data, "Escolha a profissional e a data para ver os horários livres."
+    (`[data-dica-dos-horarios]`). Prova: `e2e/vendas-atritos-da-12.spec.ts` ("A22").
 - **Na agenda da REDE, o novo agendamento nasce sem unidade** (A14 da 8ª
   simulação, 2026-11-06; princípio 3): o "+ Agendar" da ficha da rede (e o
   "Novo agendamento" com "Toda a rede") começava na primeira unidade em ordem

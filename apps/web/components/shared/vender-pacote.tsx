@@ -12,6 +12,7 @@ import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagament
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
+import { textoDaComissaoDaVenda, type RegraDeVenda } from '@/lib/comissoes/comissao-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
 
 /**
@@ -27,6 +28,8 @@ export interface PacoteAVenda {
   composicao: string; validityDays: number | null
   /** O pacote paga quem atende sobre o valor dele (com-04): a venda pede a profissional responsável. */
   pedeResponsavel?: boolean
+  /** A18 da 12ª: o "De venda" do pacote — vence a comissão de venda da pessoa. */
+  comissaoVenda?: RegraDeVenda | null
 }
 
 /** O formulário da venda do pacote — dentro do "Vender" (`components/shared/vender.tsx`). */
@@ -116,7 +119,12 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
         {pacote.composicao} ({pacote.totalSessions} sessões) · {formatBRL(pacote.price)}
         {pacote.validityDays ? ` · válido por ${pacote.validityDays} dias` : ''}
       </p>
-      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null); setSemVendedor(false) }} />
+      <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null); setSemVendedor(false) }}
+        comissao={(() => {
+          // A18 da 12ª: a comissão de venda de quem vendeu, e de onde vem (o pacote vence a pessoa).
+          const quem = equipe.find(m => m.id === vendedorId)
+          return quem ? textoDaComissaoDaVenda({ tipo: 'PACOTE', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct }, itens: [{ regra: pacote.comissaoVenda ?? null }] }) : null
+        })()} />
       {pacote.pedeResponsavel && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span className="overline">Profissional responsável</span>

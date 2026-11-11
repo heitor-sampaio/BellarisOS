@@ -355,6 +355,16 @@ plano").
   - Prova: `e2e/pacote-de-fora.spec.ts`.
 - **A tela de Pacotes manda ao "Vender" da ficha** (A46): dizia "Vender pacote",
   e o botão se chama "Vender" (escolha Pacote).
+- **A taxa e o líquido da maquininha no Vender são de quem vê o financeiro da
+  clínica** (A19 da 12ª simulação, 2026-11-11: a Rita, com Recebimentos e "só
+  as próprias comissões", via "Taxa da maquininha… a clínica recebe R$ …"): o
+  `[data-liquido-do-cartao]` e o `[data-taxa-do-debito]` com a taxa só aparecem
+  a quem tem o Financeiro com escopo de todos (`mostraOLiquidoDaMaquininha`,
+  `veComissaoDeTodos`) — a régua de "quem vê quanto cada um ganha" e do texto do
+  cargo de Recebimentos ("não vê o financeiro da unidade", A39). Quem só recebe
+  segue vendo o aviso de taxa NÃO cadastrada (sem valor). Muda a A40 da 8ª,
+  que os mostrava a toda a recepção. Prova: `e2e/vendas-atritos-da-12.spec.ts`
+  ("A19"), `e2e/caixa-atritos-da-8.spec.ts` ("A40", agora com a dona).
 - **Quem vende é quem RECEBE, e a tela diz** (D1 da 12ª simulação, 2026-11-11;
   princípio 3 — quem vende segue decidido pelo cargo, princípio 1): a Rita, com
   Procedimentos, CRM e Clientes em Gerenciar, lia "fechar a venda do pacote" na

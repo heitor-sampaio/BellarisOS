@@ -398,8 +398,23 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 - **A venda diz que é venda no extrato** (A43 da 11ª; princípio 3: a venda do
   plano aparecia "Procedimento · Beatriz Nogueira"): o título do lançamento de
   venda é "Venda do plano X" / "Venda de plano", "Venda do pacote X", "Venda de
-  produto: Sérum", "Venda de pré-pago: Drenagem" (`tituloDoLancamento`); o do
-  atendimento segue o procedimento. Prova: o mesmo spec.
+  produto: Sérum", "Venda de procedimento: Drenagem" (`tituloDoLancamento`; era
+  "Venda de pré-pago", A20 da 12ª — o Vender chama de "Procedimento"); o do
+  atendimento segue o procedimento. Prova: o mesmo spec, `tests/vendas-atritos-da-12.test.ts`.
+- **O Vender diz a comissão de venda ANTES de vender** (A18 da 12ª simulação,
+  2026-11-11; princípio 3: a Rita só sabia pelo extrato): escolhido quem
+  vendeu, embaixo do campo, "Comissão de venda de Rita: 8% do vendido — da
+  Rita. Sai quando a venda estiver paga inteira." ("5% do vendido — do
+  pacote", "2% do vendido — da clínica"; no kit, cada produto com a sua) —
+  `[data-comissao-da-venda]`, `textoDaComissaoDaVenda`
+  (`lib/comissoes/comissao-da-venda.ts`), a MESMA precedência do banco (item >
+  pessoa > clínica; o pré-pago só a da pessoa; a do produto só no "Por
+  produto"). Só a REGRA: o valor em reais é do banco (`comissao_conta`). A
+  comissão de OUTRA pessoa só aparece a quem vê a de todos
+  (`veComissaoDeTodos`, `lib/comissoes/quem-ve.ts`; `equipeDaVenda` só manda a
+  da própria pessoa a quem vê "só as próprias") — a regra do pacote, que vence,
+  aparece sempre. O checkout do plano não mudou. Prova:
+  `e2e/vendas-atritos-da-12.spec.ts` ("A18").
 - **O CSV não diz 0,00 do que não sai da base** (A44 da 11ª): "Taxa da
   maquininha" e "Insumos" ficam VAZIOS quando a configuração não os desconta
   (com a base cheia, "0,00" parecia "não houve custo"); com o desconto, o valor
@@ -585,5 +600,6 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ❌ Criar comissão de venda sem a precedência item > pessoa > clínica, ou sem gravar de onde veio (commission_lines.regra_de — A17 da 11ª)
 ❌ Aceitar em "Quem vendeu" quem não vende (não atende na unidade, não recebe, sem Vendas no cargo) — A42 da 11ª
+❌ Mandar ao navegador a comissão de venda de outra pessoa a quem vê só as próprias (equipeDaVenda sem veComissaoDeTodos — A18 da 12ª)
 ❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la inteira no plano cancelado (ela vale o usado, na proporção — D4 da 9ª)
 ```
