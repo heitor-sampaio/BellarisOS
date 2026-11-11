@@ -17,7 +17,8 @@ import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
-import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
+import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ, naParede, horaNoFuso } from '@/lib/datetime'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import {
   resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
@@ -85,6 +86,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
   const branchId = branch.id
   const now = new Date()
+  // O relógio da unidade (F62): o "hoje", o mês e os 6 meses saem nele.
+  const fuso = await fusoDaUnidade(ctx.tenantId, branchId)
   const admin = createAdminClient()
 
   const perm = ctx.permissions
@@ -110,12 +113,12 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
   // Janelas no fuso do negócio. Antes eram montadas no fuso do processo (UTC
   // em produção), então "hoje" e "este mês" começavam 3h cedo demais.
-  const period     = resolvePeriod('month', undefined, undefined, now)
-  const todayStart = startOfDayTZ(now)
-  const todayEnd   = endOfDayTZ(now)
-  const sixMonthsAgo = startOfMonthTZ(addMonthsTZ(now, -5))
-  const thirtyDaysAgo = addDaysTZ(now, -30)
-  const ninetyDaysAgo = addDaysTZ(now, -90)
+  const period     = resolvePeriod('month', undefined, undefined, now, fuso)
+  const todayStart = startOfDayTZ(now, fuso)
+  const todayEnd   = endOfDayTZ(now, fuso)
+  const sixMonthsAgo = startOfMonthTZ(addMonthsTZ(now, -5, fuso), fuso)
+  const thirtyDaysAgo = addDaysTZ(now, -30, fuso)
+  const ninetyDaysAgo = addDaysTZ(now, -90, fuso)
 
   // O mês até agora; o núcleo junta o dinheiro de um recorte e a agenda do outro.
   const janela = { tenantId: ctx.tenantId!, branchIds: [branchId], from: period.from, to: period.to }
@@ -256,7 +259,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       .in('professional_id', profissionais.map(p => p.id))
       .neq('branch_id', branchId)
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
-      .gte('scheduled_at', addDaysTZ(todayStart, -1).toISOString())
+      .gte('scheduled_at', addDaysTZ(todayStart, -1, fuso).toISOString())
       .lte('scheduled_at', todayEnd.toISOString()), 'carregar a agenda dos profissionais nas outras unidades')
     for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number }[]) {
       (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min })
@@ -277,16 +280,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     profissionais: profissionais.map(p => normalizarHorario(p.horario)),
     ocupadoFora:   profissionais.map(p => ocupadoFora[p.id] ?? []),
   }
-  const capacityMin = capacidadeEmMinutos(horarios.unidade, horarios.profissionais, todayStart, todayEnd, horarios.ocupadoFora)
-  const occupancy   = occupancyPct(scheduledMin, horarios, todayStart, todayEnd) ?? 0
+  const capacityMin = capacidadeEmMinutos(horarios.unidade, horarios.profissionais, todayStart, todayEnd, horarios.ocupadoFora, fuso)
+  const occupancy   = occupancyPct(scheduledMin, horarios, todayStart, todayEnd, fuso) ?? 0
 
   // -- Gráfico dos últimos 6 meses -------------------------------
-  const seriesByMonth = new Map(monthSeries.map(p => [monthKeyTZ(p.bucket), p.revenue]))
+  const seriesByMonth = new Map(monthSeries.map(p => [monthKeyTZ(p.bucket, fuso), p.revenue]))
   const chartData = Array.from({ length: 6 }, (_, i) => {
-    const month = addMonthsTZ(now, -(5 - i))
+    const month = addMonthsTZ(now, -(5 - i), fuso)
     return {
-      label: format(month, 'MMM', { locale: ptBR }),
-      value: seriesByMonth.get(monthKeyTZ(month)) ?? 0,
+      label: format(naParede(month, fuso), 'MMM', { locale: ptBR }),
+      value: seriesByMonth.get(monthKeyTZ(month, fuso)) ?? 0,
     }
   })
   // Variação do semestre = último mês vs. primeiro. Antes era o total dos 6
@@ -368,7 +371,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           Dashboard
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 3 }}>
-          {branch.name} · {format(now, "EEE, dd 'de' MMM yyyy", { locale: ptBR })}
+          {branch.name} · {format(naParede(now, fuso), "EEE, dd 'de' MMM yyyy", { locale: ptBR })}
         </p>
       </div>
 
@@ -572,7 +575,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--brand)', minWidth: 38, flexShrink: 0 }}>
-                      {format(new Date(a.scheduled_at), 'HH:mm')}
+                      {horaNoFuso(a.scheduled_at, fuso)}
                     </span>
                     {client && <Avatar name={client.name} size={32} />}
                     <div style={{ flex: 1, minWidth: 0 }}>

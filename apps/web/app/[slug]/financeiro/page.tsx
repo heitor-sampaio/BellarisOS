@@ -23,6 +23,7 @@ import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { startOfDayTZ } from '@/lib/datetime'
 import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 export default async function FinancialPage({
   params,
@@ -40,9 +41,6 @@ export default async function FinancialPage({
   // A43 da 12ª: ou todo o A PAGAR em aberto, de qualquer vencimento (a despesa).
   const soAPagar = sp.aberto === 'a-pagar'
   const soOEmAberto = sp.aberto === 'todos' || soAsVencidas || soAPagar
-  // Janela no fuso do negócio e período anterior de mesma duração decorrida.
-  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
-    resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
   // `cashier` governa RECEBER — no atendimento e no checkout do plano. Esta
@@ -58,6 +56,11 @@ export default async function FinancialPage({
     .from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
+
+  // Janela no fuso da UNIDADE (F62) e período anterior de mesma duração decorrida.
+  const fuso = await fusoDaUnidade(ctx.tenantId, branch.id as string)
+  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
+    resolvePeriod(period, sp.from, sp.to, new Date(), fuso)
 
   // Os totais do período vêm do MESMO lugar que alimenta o dashboard e os
   // relatórios: agregados no Postgres, eixo em `paid_at`, estorno fora dos dois
@@ -99,7 +102,7 @@ export default async function FinancialPage({
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
   const unidadeId = branch.id as string
   const lancamentos = await lerTodas((de, ate) => soAsVencidas
-    ? doPeriodo(de, ate).lt('due_date', startOfDayTZ(new Date()).toISOString())
+    ? doPeriodo(de, ate).lt('due_date', startOfDayTZ(new Date(), fuso).toISOString())
     : doPeriodo(de, ate), 'carregar os lançamentos')
   function doPeriodo(de: number, ate: number) {
     return supabase
@@ -232,7 +235,7 @@ export default async function FinancialPage({
         soAPagar={soAPagar}
         aPagarEmAberto={aPagarEmAberto.total}
         vencidas={vencidas.total}
-        nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start), dayKeyTZ(fimDoPeriodo))}
+        nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start, fuso), dayKeyTZ(fimDoPeriodo, fuso))}
         serie={serie}
         emAberto={emAberto}
         aPagarAnterior={aPagarAnterior}

@@ -19,6 +19,7 @@ import { resultadoDoPeriodo, SEM_ESTOQUE_NO_RESULTADO } from '@/lib/metrics/resu
 import { descontosDosLancamentos, type LancamentoComDesconto } from '@/lib/financeiro/desconto-do-lancamento'
 import { pagosSemDinheiro, type LancamentoSemDinheiro } from '@/lib/financeiro/pago-sem-dinheiro'
 import { getTaxaDosLancamentos } from '@/lib/metrics/contadora'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 
 /** Lançamento como o select pede. */
 type LancamentoLido = {
@@ -46,9 +47,6 @@ export default async function AdminFinanceiroPage({
   // período anterior de mesma duração. A resolução local antes montava "custom"
   // com o início em UTC e o fim no fuso do processo — duas convenções na mesma
   // função — e comparava o mês parcial com uma janela de tamanho diferente.
-  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
-    resolvePeriod(period, sp.from, sp.to)
-
   const ctx = await getTenantContext()
   // Esta tela é do financeiro. `cashier` governa RECEBER — no atendimento e no
   // checkout do plano —, não ler o consolidado da rede.
@@ -82,6 +80,10 @@ export default async function AdminFinanceiroPage({
 
   const branches   = branchesRaw ?? []
   const branchIds  = branches.map(b => b.id)
+  // F62: no fuso do recorte — o comum das unidades; com fusos diferentes, o de Brasília.
+  const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
+  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
+    resolvePeriod(period, sp.from, sp.to, new Date(), fuso)
 
   if (branchIds.length === 0) {
     return (
@@ -128,7 +130,7 @@ export default async function AdminFinanceiroPage({
     // Inteira, em páginas (2026-10-22): tinha teto de 500. Consulta que falha
     // PARA, em vez de virar um extrato vazio.
     lerTodas((de, ate) => soAsVencidas
-      ? daLista(de, ate).lt('due_date', startOfDayTZ(new Date()).toISOString())
+      ? daLista(de, ate).lt('due_date', startOfDayTZ(new Date(), fuso).toISOString())
       : daLista(de, ate), 'carregar os lançamentos da rede'),
 
     // Clientes da rede, para o crédito interno. Só quem recebe precisa.
@@ -281,7 +283,7 @@ export default async function AdminFinanceiroPage({
         transactions={transactions}
         soOEmAberto={soOEmAberto}
         soAsVencidas={soAsVencidas}
-        nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start), dayKeyTZ(fimDoPeriodo))}
+        nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start, fuso), dayKeyTZ(fimDoPeriodo, fuso))}
         branchSlugMap={branchSlugMap}
         branches={branches}
         unidadeInicial={branches.find(b => b.id === sp.unidade || b.slug === sp.unidade)?.id ?? ""}

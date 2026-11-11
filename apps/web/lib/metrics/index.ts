@@ -42,6 +42,8 @@ export function occupancyPct(
   horarios: { unidade: Horario | null; profissionais: (Horario | null)[]; ocupadoFora?: BlocoOcupado[][] },
   from: Date,
   to: Date,
+  /** O fuso da unidade (F62); sem ele, o de Brasília. */
+  fuso?: string,
 ): number | null {
-  return ocupacaoEmPct(scheduledMinutes, horarios.unidade, horarios.profissionais, from, to, horarios.ocupadoFora)
+  return ocupacaoEmPct(scheduledMinutes, horarios.unidade, horarios.profissionais, from, to, horarios.ocupadoFora, fuso)
 }

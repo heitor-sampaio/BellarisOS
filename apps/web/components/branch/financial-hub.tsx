@@ -3,6 +3,7 @@
 import { NotaDoDebito } from '@/components/shared/nota-do-debito'
 import { useMemo, useTransition, useRef } from 'react'
 import { montarBarras, type BarDatum, type PontoDaSerie } from '@/lib/financeiro/barras'
+import { useFuso } from '@/components/shared/fuso'
 import type { ComposicaoFinanceira } from '@/lib/metrics'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -577,7 +578,8 @@ export function FinancialHub({
 
   // -- Charts ----------------------------------------------------
   // Os valores vêm de metrics_series; aqui só se posiciona (lib/financeiro/barras).
-  const barData = useMemo(() => montarBarras(serie, period, periodStart), [serie, period, periodStart])
+  const fuso = useFuso()
+  const barData = useMemo(() => montarBarras(serie, period, periodStart, new Date(), fuso), [serie, period, periodStart, fuso])
 
   // A composição vem do banco (metrics_financeiro_composicao): a tela somava a
   // lista e contava a contra-transação do estorno como despesa — as categorias

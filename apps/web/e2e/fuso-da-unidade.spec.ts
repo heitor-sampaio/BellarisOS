@@ -300,3 +300,60 @@ test.describe('o Fechamento do dia', () => {
     })
   })
 })
+
+/**
+ * Os indicadores da unidade no fuso dela: o período ("ontem", "este mês") e o
+ * dia de cada barra do gráfico saem no relógio da unidade. O pagamento das
+ * 23:30 de Manaus é de ontem em Manaus — em Brasília já era hoje.
+ */
+test.describe('os indicadores da unidade', () => {
+  const MANAUS = 'America/Manaus'
+  let unidade: OutraRede | null = null
+  let financeiro: MembroDeTeste | null = null
+  let slugI = ''
+  const ONTEM = dayKeyTZ(addDaysTZ(new Date(), -1, MANAUS), MANAUS)
+  const HOJE = dayKeyTZ(new Date(), MANAUS)
+
+  test.beforeAll(async () => {
+    unidade = await criarOutraRede(`fzc${marca}`)
+    const b = db()
+    expect((await b.from('branches').update({ fuso: MANAUS }).eq('id', unidade.branchId)).error).toBeNull()
+    slugI = (await b.from('branches').select('slug').eq('id', unidade.branchId).single<{ slug: string }>()).data!.slug
+    // Tudo no banco ANTES de qualquer tela abrir.
+    expect((await b.from('financial_transactions').insert({
+      branch_id: unidade.branchId, is_paid: true, paid_at: instanteNoFuso(ONTEM, '23:30', MANAUS).toISOString(), created_by: 'e2e',
+      type: 'INCOME', category: 'Atendimento', description: `Noite de Manaus ${marca}`, amount: 77, payment_method: 'CASH',
+    })).error).toBeNull()
+    financeiro = await criarMembro(`fzi${marca}`, {
+      tenant: unidade.tenantId, branchId: unidade.branchId, rotulo: 'Financeiro', permissoes: [{ modulo: 'financial', nivel: 'VIEW' }],
+    })
+  })
+
+  test.afterAll(async () => {
+    if (unidade) await db().from('financial_transactions').delete().eq('branch_id', unidade.branchId)
+    await financeiro?.limpar()
+    await unidade?.limpar()
+  })
+
+  test('o período do Financeiro é o dia de Manaus', async ({ browser }) => {
+    await como(browser, financeiro!, async p => {
+      const receita = p.locator('.card', { hasText: 'Receita Bruta' })
+      await p.goto(`/${slugI}/financeiro?period=custom&from=${ONTEM}&to=${ONTEM}`)
+      await expect(receita).toContainText('77,00')
+      await p.goto(`/${slugI}/financeiro?period=custom&from=${HOJE}&to=${HOJE}`)
+      await expect(receita).toBeVisible()
+      await expect(receita).not.toContainText('77,00')
+    })
+  })
+
+  test('a barra do gráfico é a do dia de Manaus', async () => {
+    const { data, error } = await db().rpc('metrics_series', {
+      p_tenant: unidade!.tenantId, p_branch_ids: [unidade!.branchId],
+      p_from: instanteNoFuso(ONTEM, '00:00', MANAUS).toISOString(), p_to: new Date().toISOString(),
+      p_granularity: 'day', p_professional_id: null,
+    })
+    expect(error).toBeNull()
+    const barras = (data as { bucket: string; revenue: number }[]).map(r => ({ dia: new Date(r.bucket).toISOString(), receita: Number(r.revenue) }))
+    expect(barras).toEqual([{ dia: instanteNoFuso(ONTEM, '00:00', MANAUS).toISOString(), receita: 77 }])
+  })
+})

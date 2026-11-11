@@ -5,6 +5,7 @@ import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { addDaysTZ } from '@/lib/datetime'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
@@ -105,8 +106,10 @@ export async function ReportsBiSection({
   const donoNoCrm = recorte.crm
 
   // -- Período -------------------------------------------------------
-  // Janela no fuso do negócio, com período anterior de mesma duração decorrida.
-  const periodInfo  = resolvePeriod(period, rawFrom, rawTo, now)
+  // Janela no fuso do RECORTE (F62: a unidade, o dela; a rede, o comum), com
+  // período anterior de mesma duração decorrida.
+  const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
+  const periodInfo  = resolvePeriod(period, rawFrom, rawTo, now, fuso)
   const startDate   = periodInfo.from
   const endDate     = periodInfo.to
   const prevStart   = periodInfo.prevFrom
@@ -281,7 +284,7 @@ export async function ReportsBiSection({
   // insumo consumido — a linha do lucro soma o cartão de lucro.
   const evolutionData: ChartPoint[] = pontosDaEvolucao(seriesData, {
     granularidade: granularity, de: startDate, ate: endDate,
-  }, seriesDoResultado)
+  }, seriesDoResultado, fuso)
 
   // -- Render --------------------------------------------------------
   return (

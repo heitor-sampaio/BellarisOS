@@ -12,9 +12,8 @@
 export interface BarDatum { label: string; income: number; expense: number }
 export interface PontoDaSerie { bucket: string; revenue: number; expenses: number }
 
-const FUSO = 'America/Sao_Paulo'
-const diaDe   = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: FUSO }).format(d)
-const horaDe  = (d: Date) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: FUSO, hour: '2-digit', hour12: false }).format(d)) % 24
+/** Sem o fuso da unidade (F62), o de Brasília. */
+const FUSO_PADRAO = 'America/Sao_Paulo'
 const rotuloDoDia = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
 
 /** A granularidade que a série pede para cada período. */
@@ -22,8 +21,11 @@ export function granularidadeDoPeriodo(period: string): 'hour' | 'week' | 'day' 
   return period === 'today' ? 'hour' : period === 'quarter' ? 'week' : 'day'
 }
 
-export function montarBarras(serie: PontoDaSerie[], period: string, inicioISO: string, agora: Date = new Date()): BarDatum[] {
+export function montarBarras(serie: PontoDaSerie[], period: string, inicioISO: string, agora: Date = new Date(), fuso: string = FUSO_PADRAO): BarDatum[] {
   const gran = granularidadeDoPeriodo(period)
+  // No relógio da unidade (F62): o mesmo em que o banco montou as barras.
+  const diaDe  = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(d)
+  const horaDe = (d: Date) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: fuso, hour: '2-digit', hour12: false }).format(d)) % 24
 
   if (gran === 'hour') {
     const horas: BarDatum[] = Array.from({ length: 24 }, (_, h) => ({ label: `${h}h`, income: 0, expense: 0 }))

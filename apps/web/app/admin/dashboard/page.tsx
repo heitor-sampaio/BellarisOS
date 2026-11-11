@@ -25,6 +25,7 @@ import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, lerTodas, contar } from '@/lib/db'
 import { resumoDoFunil, rankingDasAvaliacoes } from '@/lib/metrics/resultado'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
@@ -113,29 +114,6 @@ export default async function AdminDashboardPage({
   const admin = createAdminClient()
   const now   = new Date()
 
-  // -- Período selecionado -------------------------------------------
-  // Janela e comparação resolvidas em America/Sao_Paulo, com o período
-  // anterior de mesma duração decorrida (antes o mês parcial era comparado
-  // com o mês anterior inteiro, e todo delta nascia negativo).
-  const periodInfo  = resolvePeriod(rawPeriod, rawFrom, rawTo, now)
-  const period      = periodInfo.key
-  const startDate   = periodInfo.from
-  const endDate     = periodInfo.to
-  const prevStart   = periodInfo.prevFrom
-  const prevEnd     = periodInfo.prevTo
-  const periodLabel = periodInfo.label
-
-  // O seletor da tela oferece um subconjunto dos períodos; qualquer outro
-  // valor vindo da URL cai em "month", que é o padrão exibido.
-  const SELECTOR_PERIODS = ['today', '7d', '15d', 'month', 'all', 'custom'] as const
-  const selectorPeriod = (SELECTOR_PERIODS as readonly string[]).includes(period)
-    ? (period as typeof SELECTOR_PERIODS[number])
-    : 'month'
-
-  // -- Datas fixas (não afetadas pelo seletor) -----------------------
-  const startOfToday = startOfDayTZ(now)
-  const endOfToday   = endOfDayTZ(now)
-
   // -- Filiais -------------------------------------------------------
   // Falha de consulta não é rede sem filial — o erro sobe em vez de virar um
   // dashboard vazio com cara de rede nova.
@@ -158,6 +136,32 @@ export default async function AdminDashboardPage({
   const branches  = unidadeId ? todasAsUnidades.filter(b => b.id === unidadeId) : todasAsUnidades
   const unidadeRecortada = unidadeId && !umaUnidade ? (branches[0]?.name ?? null) : null
   const branchIds = branches.map(b => b.id)
+  const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
+
+  // -- Período selecionado -------------------------------------------
+  // Janela e comparação resolvidas no fuso do RECORTE (F62: a unidade, o
+  // dela; a rede, o comum das unidades — com fusos diferentes, o de Brasília), com o período
+  // anterior de mesma duração decorrida (antes o mês parcial era comparado
+  // com o mês anterior inteiro, e todo delta nascia negativo).
+  const periodInfo  = resolvePeriod(rawPeriod, rawFrom, rawTo, now, fuso)
+  const period      = periodInfo.key
+  const startDate   = periodInfo.from
+  const endDate     = periodInfo.to
+  const prevStart   = periodInfo.prevFrom
+  const prevEnd     = periodInfo.prevTo
+  const periodLabel = periodInfo.label
+
+  // O seletor da tela oferece um subconjunto dos períodos; qualquer outro
+  // valor vindo da URL cai em "month", que é o padrão exibido.
+  const SELECTOR_PERIODS = ['today', '7d', '15d', 'month', 'all', 'custom'] as const
+  const selectorPeriod = (SELECTOR_PERIODS as readonly string[]).includes(period)
+    ? (period as typeof SELECTOR_PERIODS[number])
+    : 'month'
+
+  // -- Datas fixas (não afetadas pelo seletor) -----------------------
+  const startOfToday = startOfDayTZ(now, fuso)
+  const endOfToday   = endOfDayTZ(now, fuso)
+
   const vencidasDoRecorte = veVencidas && branchIds.length
     ? (await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds })).total : null
 
@@ -408,7 +412,7 @@ export default async function AdminDashboardPage({
   // o fuso do servidor e divergiam do total.
   const granularity: 'hour' | 'day' = period === 'today' ? 'hour' : 'day'
 
-  const evolutionData = pontosDaEvolucao(seriesData, { granularidade: granularity, de: startDate, ate: endDate }, await seriesDoResultadoP)
+  const evolutionData = pontosDaEvolucao(seriesData, { granularidade: granularity, de: startDate, ate: endDate }, await seriesDoResultadoP, fuso)
 
   // -- Aproveitamento da agenda por filial ---------------------------
   // Renomeado de "ocupação": o denominador é o total marcado, não a
@@ -626,7 +630,7 @@ export default async function AdminDashboardPage({
   // unidade, a clínica e a unidade são a mesma coisa (r2-ind-03, o Heitor):
   // todas as clientes ativas, não só as com a tag da unidade. Com a agenda
   // "só os meus", as dela (o recorte da agenda).
-  const noventaDias = addDaysTZ(now, -90)
+  const noventaDias = addDaysTZ(now, -90, fuso)
   const umaSoNoRecorte = branches.length === 1 && !umaUnidade ? branches[0]! : null
   // A regra é UMA, a do Copilot também (r3-f13-10): getClientesParaReativarDoRecorte.
   const paraReativar = !canClients

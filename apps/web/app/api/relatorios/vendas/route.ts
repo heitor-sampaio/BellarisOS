@@ -3,6 +3,7 @@ import { getTenantContext, podeVerRelatorio, alcancaUnidade, isOwnScope } from '
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { resolvePeriod } from '@/lib/metrics'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import {
   getTodasAsVendas, ehTipoDeVenda, descricaoDaVenda, ROTULO_DO_TIPO,
@@ -56,7 +57,9 @@ export async function GET(req: NextRequest) {
   }
 
   const tipo = q.get('tipo')
-  const periodo = resolvePeriod(q.get('period') ?? 'month', q.get('from') ?? undefined, q.get('to') ?? undefined, new Date())
+  // F62: o período no fuso do recorte (a unidade, o dela; a rede, o comum).
+  const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
+  const periodo = resolvePeriod(q.get('period') ?? 'month', q.get('from') ?? undefined, q.get('to') ?? undefined, new Date(), fuso)
   const vendas = await getTodasAsVendas({
     tenantId: ctx.tenantId, branchIds, from: periodo.from, to: periodo.fullTo,
     tipo: ehTipoDeVenda(tipo) ? tipo : null,

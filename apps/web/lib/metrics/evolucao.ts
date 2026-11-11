@@ -43,9 +43,11 @@ export function pontosDaEvolucao(
   serie: SeriesPoint[],
   janela: { granularidade: 'hour' | 'day'; de: Date; ate: Date },
   doResultado: FatiaDoResultado[] = [],
+  /** O fuso do recorte (F62): o mesmo em que o banco montou as barras. Sem ele, o de Brasília. */
+  fuso?: string,
 ): PontoDaEvolucao[] {
   const chave = (bucket: string) =>
-    janela.granularidade === 'hour' ? String(partsInTZ(new Date(bucket)).hour) : dayKeyTZ(bucket)
+    janela.granularidade === 'hour' ? String(partsInTZ(new Date(bucket), fuso).hour) : dayKeyTZ(bucket, fuso)
   const porFatia = new Map(serie.map(p => [chave(p.bucket), p]))
   const estoquePorFatia = new Map(doResultado.map(p => [chave(p.bucket), p]))
   const ponto = (k: string, day: number, rotulo: string): PontoDaEvolucao => {
@@ -66,7 +68,7 @@ export function pontosDaEvolucao(
   const MS_DIA = 86_400_000
   const dias = Math.max(1, Math.floor((janela.ate.getTime() - janela.de.getTime()) / MS_DIA) + 1)
   return Array.from({ length: dias }, (_, i) => {
-    const k = dayKeyTZ(startOfDayTZ(addDaysTZ(janela.de, i)))
+    const k = dayKeyTZ(startOfDayTZ(addDaysTZ(janela.de, i, fuso), fuso), fuso)
     return ponto(k, i + 1, `${k.slice(8, 10)}/${k.slice(5, 7)}`)
   })
 }
