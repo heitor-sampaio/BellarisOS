@@ -18,6 +18,31 @@
   (`startOfDayTZ`, `startOfMonthTZ`, `dayKeyTZ`…), nunca `new Date(y, m, d)`
   nem `startOfMonth()` do date-fns. O container roda com `TZ=America/Sao_Paulo`,
   mas os helpers não dependem do fuso do processo.
+- **O fuso é o da UNIDADE** (F62, o Heitor, 2026-11-11: "Não, deixa a clinica
+  configurar o seu fuso"). `branches.fuso` (Configurações → Unidade, o "Nova
+  unidade" e o setup; o CEP sugere pelo estado), com o horário de Brasília de
+  padrão — quem não mexe não vê nada mudar. Todo dia e toda hora da unidade
+  saem nele: a agenda e o agendar (inclusive o app), o "hoje", o horário de
+  funcionamento, o Fechamento do dia, os indicadores, o cron (as campanhas
+  das 09:00, o aniversário, os retornos do CRM, o texto do lembrete) e as
+  datas dos documentos.
+  - **O fuso do recorte**: a unidade, o dela (`fusoDaUnidade`); a rede, o
+    comum das unidades (`fusoDoRecorte` / `fusoDaRede`; no banco,
+    `fuso_do_recorte(p_tenant, p_branch_ids)`) — com fusos diferentes, o de
+    Brasília. É nele que `resolvePeriod(…, fuso)` monta a janela e as funções
+    `metrics_*` montam dia, mês e hora (migration `20261111006202`, como
+    subconsulta: uma vez por chamada).
+  - **"O dia é o da unidade"** no consolidado: cada lançamento cai no dia do
+    relógio da unidade dele (a barra de `metrics_series`; o Fechamento da rede
+    com a janela do dia de cada unidade).
+  - **No navegador**, o fuso vem do `FusoProvider` dos layouts (`useFuso`); a
+    grade da agenda trabalha "na parede" (`naParede`/`daParede`), e a hora
+    escolhida vira o instante por `instanteNoFuso`. A tela diz o relógio
+    quando não é o de Brasília (`NotaDoFuso`, princípio 3).
+  - A campanha automática é da REDE (não tem unidade): roda no fuso comum.
+  - Helper novo com dia ou hora recebe o fuso como parâmetro opcional (padrão
+    o de Brasília) — nunca lê `America/Sao_Paulo` fixo.
+  - Prova: `e2e/fuso-da-unidade.spec.ts` e `tests/fuso-da-unidade.test.ts`.
 - **Período** por `resolvePeriod()`: o período anterior tem a mesma duração
   decorrida do atual. Comparar mês parcial com mês anterior inteiro faz todo
   delta nascer negativo.
