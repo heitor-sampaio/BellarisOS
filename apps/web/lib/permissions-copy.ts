@@ -101,7 +101,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   procedures: {
     NONE:   SEM_ACESSO,
     VIEW:   'Vê a tabela de procedimentos e preços, os pacotes do cliente e a fila de fechamentos.',
-    MANAGE: 'Tudo do Ver, mais criar e precificar procedimento, montar orçamento, colher assinatura do termo e fechar a venda do pacote.',
+    // D1 da 12ª: não promete a venda — o “Vender” da ficha é de quem recebe (podeReceber).
+    MANAGE: 'Tudo do Ver, mais criar e precificar procedimento e pacote, montar orçamento e colher assinatura do termo. Vender (o “Vender” da ficha) é de Recebimentos.',
   },
   stock: {
     NONE:   SEM_ACESSO,
@@ -225,3 +226,25 @@ export function avisaSemMinhasComissoes(niveis: Partial<Record<'agenda' | 'medic
   if ((niveis.financial ?? 'NONE') !== 'NONE') return false
   return (['agenda', 'medical_records', 'crm', 'cashier'] as const).some(m => (niveis[m] ?? 'NONE') !== 'NONE')
 }
+
+/**
+ * O “Vender” da ficha (pacote, procedimento pré-pago, produto, crédito) é de
+ * quem RECEBE — Recebimentos, ou o Financeiro em Gerenciar (`podeReceber`,
+ * lib/auth.ts). D1 da 12ª simulação: a Rita, com Procedimentos e CRM em
+ * Gerenciar, lia “fechar a venda do pacote” e não via o botão. O resumo do cargo
+ * diz a regra (princípio 3); quem vende segue decidido pelo cargo (princípio 1).
+ * Nulo para quem nem vende nem mexe no comercial.
+ */
+export function quemVendeNoResumo(niveis: Partial<Record<'procedures' | 'crm' | 'clients' | 'cashier' | 'financial', string>>): string | null {
+  if (niveis.cashier === 'MANAGE' || niveis.financial === 'MANAGE') {
+    return 'Vende pelo “Vender” da ficha (procedimento, pacote, produto, crédito na clínica).'
+  }
+  if ((['procedures', 'crm', 'clients'] as const).some(m => niveis[m] === 'MANAGE')) {
+    return 'Não vende pelo “Vender” da ficha: vender é de Recebimentos (ou do Financeiro em Gerenciar).'
+  }
+  return null
+}
+
+/** O texto da tela de Pacotes (D1 da 12ª): onde se vende, e quem vende. */
+export const TEXTO_DA_VENDA_DO_PACOTE =
+  'A venda é na ficha do cliente, em “Vender” (escolha Pacote). O “Vender” aparece a quem tem Recebimentos (ou o Financeiro em Gerenciar).'

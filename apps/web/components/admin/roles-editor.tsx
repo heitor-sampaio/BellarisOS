@@ -13,7 +13,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -836,6 +836,13 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
       {avisaSemMinhasComissoes(levels) && (
         <p data-sem-minhas-comissoes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Não vê as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira “Minhas comissões”.
+        </p>
+      )}
+      {/* D1 da 12ª: o “Vender” da ficha é de quem recebe — o resumo diz, para
+          o comercial não esperar um botão que o cargo não abre (princípio 3). */}
+      {quemVendeNoResumo(levels) && (
+        <p data-quem-vende style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {quemVendeNoResumo(levels)}
         </p>
       )}
     </div>

@@ -5,6 +5,7 @@ import { ler } from '@/lib/db'
 import { PacotesCatalogo } from '@/components/admin/pacotes-catalogo'
 import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
+import { TEXTO_DA_VENDA_DO_PACOTE } from '@/lib/permissions-copy'
 
 /**
  * Vendas → Pacotes, o corpo dos dois portais. O catálogo é da REDE: edita quem
@@ -30,7 +31,7 @@ export async function PacotesDaRede({ ctx, unidadeId, busca }: { ctx: TenantCont
           Pacotes
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          Um conjunto de procedimentos, iguais ou não, vendido por um preço só. A venda é na ficha do cliente, em “Vender” (escolha Pacote).
+          Um conjunto de procedimentos, iguais ou não, vendido por um preço só. {TEXTO_DA_VENDA_DO_PACOTE}
         </p>
       </div>
       <PacotesCatalogo

@@ -340,6 +340,17 @@ plano").
   - Prova: `e2e/pacote-de-fora.spec.ts`.
 - **A tela de Pacotes manda ao "Vender" da ficha** (A46): dizia "Vender pacote",
   e o botão se chama "Vender" (escolha Pacote).
+- **Quem vende é quem RECEBE, e a tela diz** (D1 da 12ª simulação, 2026-11-11;
+  princípio 3 — quem vende segue decidido pelo cargo, princípio 1): a Rita, com
+  Procedimentos, CRM e Clientes em Gerenciar, lia "fechar a venda do pacote" na
+  linha de Procedimentos e não via o "Vender" (`podeReceber`: Recebimentos, ou o
+  Financeiro em Gerenciar). A linha de Procedimentos em Gerenciar não promete mais
+  a venda ("Vender (o “Vender” da ficha) é de Recebimentos."), o resumo do cargo
+  ("O que essa pessoa vai ver") diz "Não vende pelo “Vender” da ficha: vender é
+  de Recebimentos (ou do Financeiro em Gerenciar)." — ou "Vende pelo “Vender” da
+  ficha…" — (`quemVendeNoResumo`, `[data-quem-vende]`), e a tela de Pacotes diz o
+  mesmo (`TEXTO_DA_VENDA_DO_PACOTE`, `lib/permissions-copy.ts`). A trava não mudou.
+  Prova: `tests/defeitos-da-12.test.ts` ("D1").
 - Prova: `e2e/pacotes-venda.spec.ts`.
 
 ### 9.3.2 Procedimento pré-pago (2026-09-30)
