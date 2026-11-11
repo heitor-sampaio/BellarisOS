@@ -9,6 +9,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoEstornoDoCredito, estornarVendaDeCredito } from '@/actions/credito-na-clinica'
 import type { PreviaDoEstornoDoCredito } from '@/lib/creditos/venda-de-credito'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { textoDoJaUsado } from '@/lib/creditos/bonus'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import {
   EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
@@ -111,7 +112,8 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
               borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
             }}>
               <div style={linha}><span>Vendido</span><span style={valor}>{formatBRL(previa.pago)}</span></div>
-              <div style={linha}><span>Já usado</span><span style={valor}>{formatBRL(previa.usado)}</span></div>
+              {/* A31 da 12ª: o usado inteiro, e quanto dele foi do bônus. */}
+              <div style={linha}><span>Já usado</span><span data-ja-usado style={{ ...valor, whiteSpace: 'normal', textAlign: 'right' }}>{textoDoJaUsado(previa)}</span></div>
               {temBonus && <div style={linha}><span>Bônus que sai</span><span style={valor}>{formatBRL(previa.bonusSai)}</span></div>}
               <div style={{ ...linha, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
                 <span style={{ color: 'var(--text)', fontWeight: 700 }}>Volta à cliente</span><span style={valor}>{formatBRL(previa.volta)}</span>

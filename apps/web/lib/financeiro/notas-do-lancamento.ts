@@ -31,6 +31,18 @@ export function notaDoEstornoParcial(t: LancamentoParaNota): string | null {
 }
 
 /**
+ * A57 da 12ª: o mesmo, no APP da cliente, com as palavras dela — "R$ 300,00
+ * pagos · R$ 136,36 devolvidos" (a compra de crédito estornada em parte dizia só
+ * "R$ 163,64 Pago").
+ */
+export function notaDoEstornoParcialParaACliente(t: LancamentoParaNota): string | null {
+  const antes = t.valor_antes_do_estorno == null ? null : Number(t.valor_antes_do_estorno)
+  const agora = Number(t.amount)
+  if (antes == null || !Number.isFinite(antes) || !(antes > agora) || t.notes === 'Estornada') return null
+  return `${formatBRL(antes)} pagos · ${formatBRL(Math.round((antes - agora) * 100) / 100)} devolvidos`
+}
+
+/**
  * A37: o uso do crédito interno aparecia como "Receita · Pago · + R$ 130,00",
  * fora da Receita total (certo — F7) e sem dizer por quê.
  */

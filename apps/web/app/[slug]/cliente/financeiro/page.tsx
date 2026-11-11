@@ -8,6 +8,7 @@ import { formatBRL, formatDia } from '@estetica-os/utils'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
+import { notaDoEstornoParcialParaACliente } from '@/lib/financeiro/notas-do-lancamento'
 
 type TxRow = {
   id:             string
@@ -35,6 +36,8 @@ type TxRow = {
   pacoteCancelado: string | null
   /** D4 da 9ª: o pagamento de um plano cancelado — o dia do cancelamento, como o do pacote. */
   planoCancelado: string | null
+  /** A57 da 12ª: o pagamento estornado em parte — "R$ 300,00 pagos · R$ 136,36 devolvidos". */
+  devolvidoEmParte: string | null
 }
 
 /** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
@@ -45,6 +48,7 @@ type LancamentoLido = {
   cartao_bandeira: string | null; product_sale_id: string | null
   type: string; category: string | null; client_packages: { cancelado_em: string | null } | null
   treatment_plans: { cancelado_em: string | null } | null
+  valor_antes_do_estorno: number | string | null
   appointments: { procedures: { name: string } | null } | null
 }
 
@@ -58,7 +62,7 @@ export default async function ClientFinancialPage() {
     .from('financial_transactions')
     .select(`
       id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, product_sale_id,
-      due_date, data_de_referencia,
+      due_date, data_de_referencia, valor_antes_do_estorno,
       type, category, client_packages(cancelado_em), treatment_plans(cancelado_em),
       appointments(procedures(name))
     `)
@@ -90,6 +94,9 @@ export default async function ClientFinancialPage() {
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
     planoCancelado:  r.treatment_plans?.cancelado_em ?? null,
+    devolvidoEmParte: r.type === 'INCOME' && r.category !== 'Estorno'
+      ? notaDoEstornoParcialParaACliente({ type: r.type, amount: r.amount, is_paid: Boolean(r.is_paid), notes: r.notes, valor_antes_do_estorno: r.valor_antes_do_estorno })
+      : null,
   }))
     // D4 da 7ª simulação: as parcelas apareciam com a data de CRIAÇÃO (todas
     // 05/11) e na ordem 3/3, 2/3, 1/3. O que falta pagar vem primeiro, pela
@@ -177,6 +184,9 @@ export default async function ClientFinancialPage() {
                 <p data-plano-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
                   Plano cancelado em {new Date(r.planoCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                 </p>
+              )}
+              {r.devolvidoEmParte && (
+                <p data-devolvido-em-parte style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{r.devolvidoEmParte}</p>
               )}
               {r.semPontos && (
                 <p data-sem-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Venda de produto não pontua</p>
