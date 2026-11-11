@@ -7,6 +7,8 @@ import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { getAReceberDaOperadora } from '@/lib/metrics/operadora'
 import { diaDoFechamento, janelaDoDia, diaAindaAberto } from '@/lib/financeiro/fechamento'
 import { normalizarHorario } from '@/lib/agenda/horario'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { FusoProvider } from '@/components/shared/fuso'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/fechamento-do-dia-tela'
 import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
@@ -26,8 +28,11 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
   /** A45 da 8ª: o dia de cada unidade e o da clínica (o portal da rede, com duas ou mais). */
   daRede?:   { unidades: MovimentoDaUnidade[]; total: { entradas: number; saidas: number; lancamentos: number } } | null
 }) {
-  const dia = diaDoFechamento(diaPedido)
-  const janela = janelaDoDia(dia)!
+  // O dia e a janela no relógio da UNIDADE (F62): o pagamento das 23:30 de
+  // Manaus é do dia de Manaus, não do seguinte em Brasília.
+  const fuso = await fusoDaUnidade(ctx.tenantId, unidadeId)
+  const dia = diaDoFechamento(diaPedido, new Date(), fuso)
+  const janela = janelaDoDia(dia, new Date(), fuso)!
   const [resumo, aReceber, feitos, emAberto, unidade, operadora, estornos, porQuemRecebeu, bandeiras] = await Promise.all([
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to, dia }),
     // Os concluídos a receber da unidade, de qualquer dia (D5, 2026-10-27):
@@ -58,7 +63,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
     ? await ler(createAdminClient().from('fundos_de_troco').select('informado_por_nome, informado_em')
         .eq('tenant_id', ctx.tenantId!).eq('branch_id', unidadeId).eq('dia', dia).maybeSingle(), 'ler o fundo de troco') as { informado_por_nome: string | null; informado_em: string } | null
     : null
-  const atendeAte = diaAindaAberto(dia, normalizarHorario(unidade?.horario ?? null))
+  const atendeAte = diaAindaAberto(dia, normalizarHorario(unidade?.horario ?? null), new Date(), fuso)
   // O caminho do Financeiro só a quem o abre (o financeiro da unidade inteira),
   // na lista das parcelas da operadora (ANCORA_DAS_PARCELAS, de um arquivo do navegador).
   const financeiroDaUnidade = can(ctx, 'financial', 'VIEW') && !isOwnScope(ctx, 'financial')
@@ -75,6 +80,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
   return (
     <>
       <RealtimeRefresher tables={['financial_transactions', 'appointments']} />
+      <FusoProvider fuso={fuso}>
       <FechamentoDoDiaTela
         basePath={basePath}
         dia={dia}
@@ -95,7 +101,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         porQuemRecebeu={porQuemRecebeu}
         bandeiras={bandeiras}
         daRede={daRede}
-        ehHoje={dia === diaDoFechamento(undefined)}
+        ehHoje={dia === diaDoFechamento(undefined, new Date(), fuso)}
         aReceber={aReceber}
         emAberto={emAberto.total}
         operadora={{ emAberto: operadora.total.emAberto, proximo: operadora.total.proximo, link: financeiroDaUnidade }}
@@ -105,6 +111,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         // Receber o atendimento é do módulo de recebimentos (confirmPayment).
         podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
       />
+      </FusoProvider>
     </>
   )
 }

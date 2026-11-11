@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics'
 import { janelaDoDia } from '@/lib/financeiro/fechamento'
+import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
  * Fechar o dia (2026-10-21, decisão do Heitor): quem RECEBE (caixa ou
@@ -28,14 +29,16 @@ export async function fecharODia(
     assertPodeReceber(ctx)
     // Fecha quem recebe E vê a unidade inteira (D6): o financeiro "só os meus" não.
     if (!podeVerFechamento(ctx)) throw semAcesso()
-    const janela = janelaDoDia(dia)
-    if (!janela) return { error: 'Dia inválido.' }
+    if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Dia inválido.' }
     if (!Number.isFinite(contado) || contado < 0) return { error: 'Informe o dinheiro contado.' }
 
     const admin = createAdminClient()
-    const unidade = await ler(admin.from('branches').select('id')
+    const unidade = await ler(admin.from('branches').select('id, fuso')
       .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade')
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+    // O dia no relógio da unidade (F62).
+    const janela = janelaDoDia(dia, new Date(), fusoValido((unidade as { fuso?: string | null }).fuso))
+    if (!janela) return { error: 'Dia inválido.' }
 
     const resumo = await getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId, from: janela.from, to: janela.to, dia })
     await gravar(admin.from('fechamentos_do_dia').insert({
@@ -74,14 +77,16 @@ export async function informarFundoDeTroco(
     const ctx = await getTenantContext()
     assertPodeReceber(ctx)
     if (!podeVerFechamento(ctx)) throw semAcesso()
-    if (!janelaDoDia(dia)) return { error: 'Dia inválido.' }
+    if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Dia inválido.' }
     if (typeof valor !== 'number' || !Number.isFinite(valor) || valor < 0 || valor > 1_000_000) return { error: 'Informe o fundo de troco (R$ 0,00 ou mais).' }
     if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId)) return { error: 'Unidade não encontrada.' }
 
     const admin = createAdminClient()
-    const unidade = await ler(admin.from('branches').select('id')
+    const unidade = await ler(admin.from('branches').select('id, fuso')
       .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade')
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+    // O dia no relógio da unidade (F62): o de amanhã dela ainda não se informa.
+    if (!janelaDoDia(dia, new Date(), fusoValido((unidade as { fuso?: string | null }).fuso))) return { error: 'Dia inválido.' }
 
     await gravar(admin.from('fundos_de_troco').upsert({
       tenant_id:          ctx.tenantId!,

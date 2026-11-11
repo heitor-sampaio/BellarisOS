@@ -89,9 +89,13 @@ export interface MovimentoDaUnidade { id: string; nome: string; entradas: number
  */
 export async function getMovimentoDasUnidades(args: {
   tenantId: string; unidades: { id: string; name: string }[]; from: Date; to: Date
+  /** F62: a janela do dia de CADA unidade, no relógio dela ("o dia é o da unidade"); sem ela, `from`/`to`. */
+  janelaDe?: (unidadeId: string) => { from: Date; to: Date } | null
 }): Promise<{ unidades: MovimentoDaUnidade[]; total: { entradas: number; saidas: number; lancamentos: number } }> {
-  const resumos = await Promise.all(args.unidades.map(u =>
-    getFechamentoDoDia({ tenantId: args.tenantId, branchId: u.id, from: args.from, to: args.to })))
+  const resumos = await Promise.all(args.unidades.map(u => {
+    const j = args.janelaDe?.(u.id) ?? { from: args.from, to: args.to }
+    return getFechamentoDoDia({ tenantId: args.tenantId, branchId: u.id, from: j.from, to: j.to })
+  }))
   const unidades = args.unidades.map((u, i) => ({
     id: u.id, nome: u.name,
     entradas: resumos[i]!.total.entradas, saidas: resumos[i]!.total.saidas, lancamentos: resumos[i]!.total.lancamentos,

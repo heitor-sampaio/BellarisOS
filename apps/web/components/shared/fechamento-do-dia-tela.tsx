@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle2, Clock, Info, Wallet } from 'lucide-react'
 import { fecharODia, informarFundoDeTroco } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
+import { useFuso } from '@/components/shared/fuso'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
@@ -23,9 +24,11 @@ export interface FechamentoFeito {
 
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-const diaCurto = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
-const diaLongo = (dia: string) => new Date(`${dia}T12:00:00-03:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' })
+// No relógio da unidade (F62): o fuso vem do `useFuso` de quem chama.
+const horaNo = (fuso: string) => (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })
+const diaCurtoNo = (fuso: string) => (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })
+/** O dia do calendário (é a data, não um instante). */
+const diaLongo = (dia: string) => new Date(`${dia}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 
 /** "Faltou R$ 5,00" / "Sobrou…" / "Bateu" — a diferença vem do banco. */
 function Diferenca({ valor }: { valor: number }) {
@@ -114,7 +117,10 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
     })
   }
 
-  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+  const fuso = useFuso()
+  const hora = horaNo(fuso)
+  const diaCurto = diaCurtoNo(fuso)
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date())
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 860 }}>
@@ -170,7 +176,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
       {/* A31 da 10ª: o Fechamento se exporta — a contadora não tinha como levá-lo. */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={() => baixarCsv(`fechamento-${dia}.csv`, csvDoFechamento({
-          dia, unidade: unidades.find(u => u.id === unidadeId)?.name ?? '',
+          dia, unidade: unidades.find(u => u.id === unidadeId)?.name ?? '', fuso,
           formas: resumo.formas, total: resumo.total, esperadoDinheiro: resumo.esperadoDinheiro,
           estornos: estornos?.itens ?? [],
           porQuemRecebeu,
@@ -378,6 +384,7 @@ function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
   const [texto, setTexto] = useState(valor ? String(valor).replace('.', ',') : '')
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, start] = useTransition()
+  const hora = horaNo(useFuso())
   const tem = valor != null && valor > 0
 
   function salvar(e: React.FormEvent) {

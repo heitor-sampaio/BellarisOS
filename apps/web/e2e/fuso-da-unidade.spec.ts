@@ -253,3 +253,50 @@ test.describe('a agenda e o agendar', () => {
     }).toEqual([instanteNoFuso(DIA, '08:00', MANAUS).toISOString()])
   })
 })
+
+/**
+ * O "hoje" e o Fechamento do dia no fuso da unidade: o pagamento das 23:30 de
+ * Manaus (00:30 do dia seguinte em Brasília) é do dia de Manaus em que entrou.
+ */
+test.describe('o Fechamento do dia', () => {
+  const MANAUS = 'America/Manaus'
+  let unidade: OutraRede | null = null
+  let recepcao: MembroDeTeste | null = null
+  let slugF = ''
+  const ONTEM = dayKeyTZ(addDaysTZ(new Date(), -1, MANAUS), MANAUS)
+
+  test.beforeAll(async () => {
+    unidade = await criarOutraRede(`fzb${marca}`)
+    const b = db()
+    expect((await b.from('branches').update({ fuso: MANAUS }).eq('id', unidade.branchId)).error).toBeNull()
+    slugF = (await b.from('branches').select('slug').eq('id', unidade.branchId).single<{ slug: string }>()).data!.slug
+    // Tudo no banco ANTES de qualquer tela abrir.
+    const pagoEm = instanteNoFuso(ONTEM, '23:30', MANAUS).toISOString()
+    expect((await b.from('financial_transactions').insert({
+      branch_id: unidade.branchId, is_paid: true, paid_at: pagoEm, created_by: 'e2e',
+      type: 'INCOME', category: 'Atendimento', description: `Noite de Manaus ${marca}`, amount: 77, payment_method: 'CASH',
+    })).error).toBeNull()
+    recepcao = await criarMembro(`fzf${marca}`, {
+      tenant: unidade.tenantId, branchId: unidade.branchId, rotulo: 'Recepcao', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }],
+    })
+  })
+
+  test.afterAll(async () => {
+    if (unidade) {
+      await db().from('fechamentos_do_dia').delete().eq('branch_id', unidade.branchId)
+      await db().from('financial_transactions').delete().eq('branch_id', unidade.branchId)
+    }
+    await recepcao?.limpar()
+    await unidade?.limpar()
+  })
+
+  test('o pagamento das 23:30 de Manaus fecha no dia de Manaus, não no seguinte', async ({ browser }) => {
+    await como(browser, recepcao!, async p => {
+      await p.goto(`/${slugF}/fechamento?dia=${ONTEM}`)
+      await expect(p.locator('[data-forma="TOTAL"]')).toContainText('77,00')
+      await p.goto(`/${slugF}/fechamento`)
+      await expect(p.locator('[data-forma="TOTAL"]')).toBeVisible()
+      await expect(p.locator('[data-forma="TOTAL"]')).not.toContainText('77,00')
+    })
+  })
+})

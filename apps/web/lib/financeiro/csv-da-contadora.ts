@@ -13,7 +13,7 @@ function campo(v: string) {
 }
 const reais = (v: number) => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',')
 const qtd = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 3, useGrouping: false })
-const dia = (iso: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
+const dia = (iso: string, fuso = 'America/Sao_Paulo') => new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
 const csv = (linhas: string[][]) => '﻿' + linhas.map(l => l.map(campo).join(';')).join('\r\n')
 
 export interface DreParaCsv {
@@ -68,13 +68,15 @@ export interface FechamentoParaCsv {
   bandeiras?: { forma: string; bandeira: string | null; entradas: number; saidas: number }[]
   /** A47 da 12ª: o último fechamento do dia, ou nulo — "Ainda não fechado". */
   fechado?: { quem: string | null; quando: string; diferenca: number } | null
+  /** F62: as horas no relógio da unidade; sem ele, o de Brasília. */
+  fuso?: string
 }
 
-const hora = (iso: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+const hora = (iso: string, fuso = 'America/Sao_Paulo') => new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 
 /** A47 da 12ª: "Ainda não fechado" ou "Fechado por Cláudia em 11/11/2026 às 01:51" — a tela e o CSV dizem o mesmo. */
-export function situacaoDoFechamento(f: { quem: string | null; quando: string } | null | undefined): string {
-  return f ? `Fechado por ${f.quem ?? '—'} em ${dia(f.quando)} às ${hora(f.quando)}` : 'Ainda não fechado'
+export function situacaoDoFechamento(f: { quem: string | null; quando: string } | null | undefined, fuso?: string): string {
+  return f ? `Fechado por ${f.quem ?? '—'} em ${dia(f.quando, fuso)} às ${hora(f.quando, fuso)}` : 'Ainda não fechado'
 }
 
 const diferencaEmTexto = (v: number) => v === 0 ? 'Bateu' : `${v < 0 ? 'Faltou' : 'Sobrou'} ${reais(Math.abs(v))}`
@@ -87,7 +89,7 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ...f.formas.map(l => [rotuloDaFormaDoFechamento(l.forma), reais(l.entradas), reais(l.saidas), reais(l.saldo), String(l.lancamentos)]),
     ['Total do dia', reais(f.total.entradas), reais(f.total.saidas), reais(f.total.saldo), String(f.total.lancamentos)],
     ['Dinheiro em espécie esperado', reais(f.esperadoDinheiro)],
-    ...(f.fechado !== undefined ? [['Situação do dia', situacaoDoFechamento(f.fechado), ...(f.fechado ? [diferencaEmTexto(f.fechado.diferenca)] : [])]] : []),
+    ...(f.fechado !== undefined ? [['Situação do dia', situacaoDoFechamento(f.fechado, f.fuso), ...(f.fechado ? [diferencaEmTexto(f.fechado.diferenca)] : [])]] : []),
     ...(f.bandeiras?.length ? [
       [],
       ['Cartão por bandeira'],
@@ -99,7 +101,7 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ['Descrição', 'Forma', 'Valor', 'Motivo', 'Pagamento de', 'Nas saídas do dia'],
     ...f.estornos.map(e => [
       e.descricao, e.forma ? rotuloDaForma(e.forma, e.vezes) : '', reais(-e.valor), e.motivo ?? '',
-      e.pagoEm ? dia(e.pagoEm) : '', e.mesmoDia === false ? 'Sim' : e.mesmoDia ? 'Não (o pagamento é do mesmo dia)' : '',
+      e.pagoEm ? dia(e.pagoEm, f.fuso) : '', e.mesmoDia === false ? 'Sim' : e.mesmoDia ? 'Não (o pagamento é do mesmo dia)' : '',
     ]),
     ...(f.porQuemRecebeu?.length ? [
       [],
